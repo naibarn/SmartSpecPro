@@ -402,6 +402,9 @@ export default function MediaStudio() {
   const [isPreviewCollapsed, setIsPreviewCollapsed] = useState(false);
   // Track multiple generation tasks for progressive preview (when count > 1)
   const [generationTasks, setGenerationTasks] = useState<GenerationTask[]>([]);
+  const autoPreviewSessionStartRef = useRef<number>(0);
+  const autoPreviewWindowUntilRef = useRef<number>(0);
+  const autoPreviewSeenTaskIdsRef = useRef<Set<string>>(new Set());
   // Track session start time to filter out old failed tasks from History Gallery
   const [sessionStartTime] = useState<Date>(() => new Date());
   const [taskLibraryState, setTaskLibraryState] = useState<Record<string, TaskLibraryUIState>>({});
@@ -574,6 +577,8 @@ export default function MediaStudio() {
   // Mutations
   const uploadMutation = trpc.ai.upload.useMutation();
   const executeSkillMutation = trpc.chat.executeSkill.useMutation();
+  const generateImageAsyncMutation = trpc.media.generateImageAsync.useMutation();
+  const generateVideoAsyncMutation = trpc.media.generateVideoAsync.useMutation();
   const enhancePromptMutation = trpc.skills.enhancePrompt.useMutation();
   const executeCustomSkillMutation = trpc.skills.executeCustomSkill.useMutation();
 
@@ -1347,6 +1352,12 @@ export default function MediaStudio() {
       return;
     }
 
+    // Allow preview to auto-follow newly completed history items for this run.
+    const nowMs = Date.now();
+    autoPreviewSessionStartRef.current = nowMs;
+    autoPreviewWindowUntilRef.current = nowMs + 10 * 60 * 1000;
+    autoPreviewSeenTaskIdsRef.current.clear();
+
     // Check if Multi Video mode for video tab
     const isMultiVideo = activeTab === "video" && videoOutputType === "multi-video";
     console.log('[Generate] Active tab:', activeTab);
@@ -1380,29 +1391,16 @@ export default function MediaStudio() {
     setGenerationTasks(initialTasks);
     setIsGenerating(true);
 
-    // Prepare common params
-    const mediaTypeFallback = activeTab === "image"
-      ? "image-generation"
-      : activeTab === "video"
-      ? "video-generation"
-      : "audio-generation";
+    // Generate image/video via media gateway directly.
+    // Skills are used only for Auto Prompt (or legacy audio fallback below).
+    const shouldUseDirectMediaGateway = activeTab === "image" || activeTab === "video";
 
-    const mediaCompatibleSkillTypesByTab: Record<"image" | "video" | "audio", string[]> = {
-      image: ["image-generation", "image-video-generation"],
-      video: ["video-generation", "image-video-generation"],
-      audio: ["audio-generation"],
-    };
+    // Legacy fallback for audio-only flow
+    const mediaTypeFallback = activeTab === "audio" ? "audio-generation" : "";
     const selectedSkillForExecution = skillsList?.find((s) => s.id === selectedSkillId);
-    const isSelectedSkillMediaCompatible = !!selectedSkillForExecution
-      && mediaCompatibleSkillTypesByTab[activeTab].includes(selectedSkillForExecution.type);
-
-    // Always force a media-compatible skill. Some selected skills (e.g. prompt-enhancement)
-    // return text output and would make generation appear "silent" with no history task.
-    const skillId = isSelectedSkillMediaCompatible ? selectedSkillId : mediaTypeFallback;
-    console.log('[Generate] Using skillId:', skillId, '(selectedSkillId:', selectedSkillId, ', fallback:', mediaTypeFallback, ')');
-    if (selectedSkillForExecution && !isSelectedSkillMediaCompatible) {
-      toast.warning(`Selected skill "${selectedSkillForExecution.name}" cannot generate ${activeTab}. Using default ${activeTab} generation skill.`);
-    }
+    const skillId = activeTab === "audio" && selectedSkillForExecution?.type === "audio-generation"
+      ? selectedSkillId
+      : mediaTypeFallback;
 
     // When Advanced Mode is ON, use aspectRatio from dynamicFormValues (if set)
     const currentAspectRatio = aspectRatio;
@@ -1445,6 +1443,10 @@ export default function MediaStudio() {
       }
     }
 
+    const outputFormatValue = modelInputValues.outputFormat ?? modelInputValues.output_format;
+    const referenceStyleUrl = (modelInputValues.referenceStyleUrl ?? modelInputValues.reference_style_url) as string | undefined;
+    const referenceVideoUrl = (modelInputValues.referenceVideoUrl ?? modelInputValues.reference_video_url) as string | undefined;
+
     // Loop through each image generation with delay
     let successCount = 0;
     for (let i = 0; i < imageCount; i++) {
@@ -1456,101 +1458,123 @@ export default function MediaStudio() {
       // Get the appropriate prompt for this iteration
       const currentPrompt = isMultiVideo ? promptsToGenerate[i] : finalPrompt;
       console.log(`[Generate] Iteration ${i + 1}/${imageCount}, Prompt length:`, currentPrompt.length);
-      console.log(`[Generate] SkillId:`, skillId);
       console.log(`[Generate] Model:`, selectedModel);
       console.log(`[Generate] Duration:`, activeTab === "video" ? (modelInputValues.duration ? Number(modelInputValues.duration) : duration) : undefined);
 
       try {
-        const apiParams = {
-          skillId,
+        let resultUrl: string | undefined;
+        let creditsUsed: number | undefined;
+        let startedAsyncTask = false;
+
+        const commonPayload = {
           prompt: currentPrompt,
-          model: selectedModel,
+          model: selectedModel || undefined,
           aspectRatio: finalAspectRatio,
-          numImages: 1, // Always 1 per call for progressive loading
-          duration: activeTab === "video" ? (modelInputValues.duration ? Number(modelInputValues.duration) : duration) : undefined,
           // Only use referenceImageUrls as fallback when model doesn't define specific image_urls field
-          referenceImageUrls: (!usedModelSpecificImageKey && referenceImages.length > 0) ? referenceImages.map((r: any) => r.url) : undefined,
+          referenceImageUrls: (!usedModelSpecificImageKey && referenceImages.length > 0)
+            ? referenceImages.map((r: any) => r.url)
+            : undefined,
           ...(Object.keys(extraParams).length > 0 ? { extraParams } : {}),
           ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
           ...(modelInputValues.resolution ? { resolution: modelInputValues.resolution } : {}),
         } as any;
-        console.log(`[Generate] Full API params for iteration ${i + 1}:`, JSON.stringify(apiParams, null, 2));
 
-        const result = await executeSkillMutation.mutateAsync(apiParams);
-        console.log(`[Generate] Result for iteration ${i + 1}:`, result.success ? 'SUCCESS' : 'FAILED');
-        if (!result.success) {
-          console.error(`[Generate] Error details:`, result.error);
+        if (shouldUseDirectMediaGateway && activeTab === "image") {
+          const task = await generateImageAsyncMutation.mutateAsync({
+            ...commonPayload,
+            numImages: 1, // Keep progressive UI behavior
+            ...(outputFormatValue ? { outputFormat: String(outputFormatValue) } : {}),
+            ...(referenceStyleUrl ? { referenceStyleUrl } : {}),
+          });
+          resultUrl = task.resultUrl || extractTaskResultUrl(task as any) || undefined;
+          creditsUsed = task.creditsUsed;
+          startedAsyncTask = !!task.id || !!task.taskId;
+        } else if (shouldUseDirectMediaGateway && activeTab === "video") {
+          const task = await generateVideoAsyncMutation.mutateAsync({
+            ...commonPayload,
+            duration: modelInputValues.duration ? Number(modelInputValues.duration) : duration,
+            ...(referenceVideoUrl ? { referenceVideoUrl } : {}),
+          });
+          resultUrl = task.resultUrl || extractTaskResultUrl(task as any) || undefined;
+          creditsUsed = task.creditsUsed;
+          startedAsyncTask = !!task.id || !!task.taskId;
+        } else {
+          // Legacy fallback for audio tab
+          const result = await executeSkillMutation.mutateAsync({
+            skillId,
+            ...commonPayload,
+            duration: activeTab === "video" ? (modelInputValues.duration ? Number(modelInputValues.duration) : duration) : undefined,
+          } as any);
+
+          if (!result.success) {
+            throw new Error(result.error || "Unknown generation error");
+          }
+          resultUrl = result.resultUrl || result.resultUrls?.[0];
+          creditsUsed = result.creditsUsed;
+          startedAsyncTask = !!result.isAsync || !!result.taskId;
         }
 
-        if (result.success) {
-          const url = result.resultUrl || result.resultUrls?.[0];
-          if (url) {
-            // Update task with completed status and URL
-            setGenerationTasks(prev =>
-              prev.map((t, idx) => idx === i ? { ...t, status: 'completed' as const, url } : t)
-            );
+        if (resultUrl) {
+          // Update task with completed status and URL
+          setGenerationTasks(prev =>
+            prev.map((t, idx) => idx === i ? { ...t, status: 'completed' as const, url: resultUrl } : t)
+          );
 
-            // Add to generated media
-            const newMedia: GeneratedMedia = {
-              id: `${Date.now()}-${Math.random()}`,
-              type: activeTab,
-              url,
-              prompt: currentPrompt, // Use the current prompt (for multi-video, this is the individual prompt)
-              model: selectedModel,
-              createdAt: new Date().toISOString(),
-              creditsUsed: result.creditsUsed,
-            };
-            setGeneratedMedia(prev => [newMedia, ...prev]);
+          // Add to generated media
+          const newMedia: GeneratedMedia = {
+            id: `${Date.now()}-${Math.random()}`,
+            type: activeTab,
+            url: resultUrl,
+            prompt: currentPrompt, // For multi-video, this is the individual prompt
+            model: selectedModel,
+            createdAt: new Date().toISOString(),
+            creditsUsed,
+          };
+          setGeneratedMedia(prev => [newMedia, ...prev]);
 
-            // Set first completed image as preview
-            if (successCount === 0) {
-              setPreviewUrl(url);
-            }
-            successCount++;
-
-            // Auto-detect grid for image results (only for first image)
-            if (activeTab === "image" && i === 0) {
-              detectGrid(url).then((detected) => {
-                if (detected && detected.confidence >= 0.7) {
-                  toast.info(
-                    `Grid detected! Open Image Tools to split or crop (${detected.rows * detected.cols} cells).`,
-                    {
-                      duration: 5000,
-                      action: {
-                        label: "Open Tools",
-                        onClick: () => openSplitDialog(url),
-                      },
-                    }
-                  );
-                }
-              }).catch(() => {
-                // Silently ignore detection errors
-              });
-            }
-            void refetchMediaHistory();
-          } else if (result.isAsync || result.taskId) {
-            // Async tasks may not have an immediate result URL. Ensure UI does not look stuck.
-            setGenerationTasks(prev =>
-              prev.map((t, idx) => idx === i ? { ...t, status: 'queued' as const } : t)
-            );
-            toast.info(result.message || "Generation task started. Check Media History for progress.");
-            void refetchMediaHistory();
-          } else {
-            const errorMessage = result.message || "Generation completed but no media output URL was returned.";
-            console.error(`[Generate] Missing output URL for iteration ${i + 1}:`, errorMessage, result);
-            setGenerationTasks(prev =>
-              prev.map((t, idx) => idx === i ? { ...t, status: 'error' as const, error: errorMessage } : t)
-            );
-            toast.error("Generation failed", { description: errorMessage });
+          // Set first completed image as preview
+          if (successCount === 0) {
+            setPreviewUrl(resultUrl);
           }
+          successCount++;
+
+          // Auto-detect grid for image results (only for first image)
+          if (activeTab === "image" && i === 0) {
+            detectGrid(resultUrl).then((detected) => {
+              if (detected && detected.confidence >= 0.7) {
+                toast.info(
+                  `Grid detected! Open Image Tools to split or crop (${detected.rows * detected.cols} cells).`,
+                  {
+                    duration: 5000,
+                    action: {
+                      label: "Open Tools",
+                      onClick: () => openSplitDialog(resultUrl),
+                    },
+                  }
+                );
+              }
+            }).catch(() => {
+              // Silently ignore detection errors
+            });
+          }
+          void refetchMediaHistory();
+        } else if (startedAsyncTask) {
+          // Async task created successfully; output will appear in history.
+          setGenerationTasks(prev =>
+            prev.map((t, idx) => idx === i ? { ...t, status: 'queued' as const } : t)
+          );
+          successCount++;
+          if (i === 0) {
+            toast.info("Generation task started. Check Media History for progress.");
+          }
+          void refetchMediaHistory();
         } else {
-          console.error(`Generation ${i + 1} failed:`, result.error);
-          const errorMessage = result.error || "Unknown generation error";
+          const errorMessage = "Generation completed but no media output URL was returned.";
+          console.error(`[Generate] Missing output URL for iteration ${i + 1}:`, errorMessage);
           setGenerationTasks(prev =>
             prev.map((t, idx) => idx === i ? { ...t, status: 'error' as const, error: errorMessage } : t)
           );
           toast.error("Generation failed", { description: errorMessage });
-          void refetchMediaHistory();
         }
       } catch (error: any) {
         console.error(`[Generate] Exception in iteration ${i + 1}:`, error);
@@ -1699,6 +1723,53 @@ export default function MediaStudio() {
 
     return null;
   };
+
+  const getTaskTimestampMs = (task: any): number => {
+    const candidates = [task?.completedAt, task?.updatedAt, task?.startedAt, task?.createdAt];
+    for (const value of candidates) {
+      if (typeof value !== "string" || !value) continue;
+      const parsed = Date.parse(value);
+      if (!Number.isNaN(parsed)) return parsed;
+    }
+    return 0;
+  };
+
+  useEffect(() => {
+    const tasks = mediaHistory?.tasks;
+    if (!tasks?.length) return;
+
+    const now = Date.now();
+    if (!autoPreviewSessionStartRef.current || now > autoPreviewWindowUntilRef.current) {
+      return;
+    }
+
+    const sessionStartMs = autoPreviewSessionStartRef.current;
+    const newCompletedCandidates = tasks
+      .map((task) => ({
+        task,
+        url: extractTaskResultUrl(task),
+        timestampMs: getTaskTimestampMs(task),
+      }))
+      .filter((entry) =>
+        entry.task?.status === "completed" &&
+        !!entry.url &&
+        entry.timestampMs >= sessionStartMs - 1500 &&
+        !autoPreviewSeenTaskIdsRef.current.has(entry.task.id)
+      );
+
+    if (newCompletedCandidates.length === 0) return;
+
+    for (const entry of newCompletedCandidates) {
+      autoPreviewSeenTaskIdsRef.current.add(entry.task.id);
+    }
+
+    const latestEntry = newCompletedCandidates.sort(
+      (a, b) => b.timestampMs - a.timestampMs
+    )[0];
+    if (latestEntry?.url) {
+      setPreviewUrl(latestEntry.url);
+    }
+  }, [mediaHistory?.tasks]);
 
   const toCanvasSafeImageUrl = (imageUrl: string): string => {
     if (!imageUrl) return imageUrl;

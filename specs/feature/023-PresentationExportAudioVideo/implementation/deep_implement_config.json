@@ -23,7 +23,68 @@
     "section-14-infrastructure",
     "section-15-testing-strategy"
   ],
-  "sections_state": {},
+  "sections_state": {
+    "section-01-database-migration": {
+      "status": "complete",
+      "commit_hash": "c8c0139"
+    },
+    "section-02-shared-contracts": {
+      "status": "complete",
+      "commit_hash": "e843185"
+    },
+    "section-03-export-service": {
+      "status": "complete",
+      "commit_hash": "b40ac31"
+    },
+    "section-04-trpc-router": {
+      "status": "complete",
+      "commit_hash": "a156123be281567d18257b605b049424fa88fb5e"
+    },
+    "section-05-slide-render-route": {
+      "status": "complete",
+      "commit_hash": "3632105"
+    },
+    "section-06-python-fastapi-export": {
+      "status": "complete",
+      "commit_hash": "2d4c553"
+    },
+    "section-07-python-celery-task": {
+      "status": "complete",
+      "commit_hash": "ed25d4be35ec8e9520684250dcb9a456c947cdfd"
+    },
+    "section-08-export-dialog": {
+      "status": "complete",
+      "commit_hash": "8c84a53"
+    },
+    "section-09-slide-audio-panel": {
+      "status": "complete",
+      "commit_hash": "e9cfef1"
+    },
+    "section-10-editor-modifications": {
+      "status": "complete",
+      "commit_hash": "72c8ec2"
+    },
+    "section-11-play-mode-page": {
+      "status": "complete",
+      "commit_hash": "ba81d45"
+    },
+    "section-12-playback-engine": {
+      "status": "complete",
+      "commit_hash": "b628151"
+    },
+    "section-13-audio-track-player": {
+      "status": "complete",
+      "commit_hash": "929e166"
+    },
+    "section-14-infrastructure": {
+      "status": "complete",
+      "commit_hash": "be2feb2"
+    },
+    "section-15-testing-strategy": {
+      "status": "complete",
+      "commit_hash": "25dd565"
+    }
+  },
   "pre_commit": {
     "present": false,
     "type": "none",

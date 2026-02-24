@@ -15,6 +15,7 @@ from app.services.library_indexing_service import (
     retry_due_library_index_jobs,
 )
 from app.services.library_backfill_service import run_library_backfill_batch
+from app.services.media_debug_trace import write_media_debug_event
 from app.llm_proxy.gateway_unified import LLMGateway
 from app.llm_proxy.models import (
     ImageGenerationRequest,
@@ -293,7 +294,25 @@ async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
     Async implementation of image generation
     """
     async with AsyncSessionLocal() as db:
+        task = None
+        user = None
+        api_config = request_data.get("api_config") if isinstance(request_data, dict) else None
+        if not isinstance(api_config, dict):
+            api_config = {}
+        trace_id = str(
+            api_config.get("trace_id")
+            or api_config.get("debug_trace_id")
+            or ""
+        ).strip() or None
         try:
+            debug_log_file = write_media_debug_event("image.task.start", {
+                "trace_id": trace_id,
+                "task_id": task_id,
+                "user_id": user_id,
+                "model": request_data.get("model"),
+                "provider_hint": api_config.get("provider"),
+                "request_keys": sorted(list(request_data.keys())) if isinstance(request_data, dict) else [],
+            })
             # Get task and user from database
             result = await db.execute(
                 select(MediaTask).filter(MediaTask.id == task_id)
@@ -329,19 +348,49 @@ async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
             task.credits_balance = int(response.credits_balance) if response.credits_balance else None
             task.completed_at = datetime.utcnow()
             await db.commit()
+            write_media_debug_event("image.task.completed", {
+                "trace_id": trace_id,
+                "task_id": task_id,
+                "provider_task_id": response.id,
+                "result_url": task.result_url,
+                "provider": response.provider,
+                "log_file": debug_log_file,
+            })
 
             logger.info("generate_image_task_completed", task_id=task_id)
             return {"status": "completed", "task_id": task_id, "result_url": task.result_url}
 
         except Exception as e:
             logger.error("generate_image_task_failed", task_id=task_id, error=str(e))
+            debug_log_file = write_media_debug_event("image.task.failed", {
+                "trace_id": trace_id,
+                "task_id": task_id,
+                "user_id": user_id,
+                "model": request_data.get("model") if isinstance(request_data, dict) else None,
+                "provider_hint": api_config.get("provider"),
+                "error": str(e),
+            })
 
             # Update task status to failed
             try:
-                task.status = TaskStatus.FAILED
-                task.error_message = str(e)
-                task.completed_at = datetime.utcnow()
-                await db.commit()
+                if task is not None:
+                    task.status = TaskStatus.FAILED
+                    task.error_message = str(e)
+                    existing_result_data = task.result_data if isinstance(task.result_data, dict) else {}
+                    task.result_data = {
+                        **existing_result_data,
+                        "debug": {
+                            "trace_id": trace_id,
+                            "provider_hint": api_config.get("provider"),
+                            "log_file": debug_log_file,
+                        },
+                        "failure": {
+                            "error": str(e),
+                            "error_type": type(e).__name__,
+                        },
+                    }
+                    task.completed_at = datetime.utcnow()
+                    await db.commit()
             except:
                 pass
 

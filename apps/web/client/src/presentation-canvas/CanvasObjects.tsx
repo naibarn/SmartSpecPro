@@ -9,6 +9,8 @@ interface CanvasObjectsProps {
   onMoveSelection: (deltaX: number, deltaY: number) => void;
   onResizeSelection: (width: number, height: number) => void;
   onRotateSelection: (deltaDegrees: number) => void;
+  /** Called once on pointer-up so the caller can break any open merge/undo group. */
+  onDragEnd?: () => void;
   interactionScale: number;
   canvasWidth: number;
   canvasHeight: number;
@@ -170,6 +172,7 @@ export function CanvasObjects({
   onMoveSelection,
   onResizeSelection,
   onRotateSelection,
+  onDragEnd,
   interactionScale,
   canvasWidth,
   canvasHeight,
@@ -234,6 +237,7 @@ export function CanvasObjects({
         return;
       }
       dragStateRef.current = null;
+      onDragEnd?.();
     }
 
     window.addEventListener("pointermove", handlePointerMove);
@@ -245,7 +249,7 @@ export function CanvasObjects({
       window.removeEventListener("pointerup", handlePointerUp);
       window.removeEventListener("pointercancel", handlePointerUp);
     };
-  }, [onMoveSelection, onResizeSelection, onRotateSelection, stageScale]);
+  }, [onMoveSelection, onResizeSelection, onRotateSelection, onDragEnd, stageScale]);
 
   if (!elements.length) {
     return (

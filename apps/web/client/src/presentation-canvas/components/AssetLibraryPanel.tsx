@@ -75,9 +75,9 @@ export function AssetLibraryPanel({
       </div>
 
       {activeTab === "slides" ? (
-        <ScrollArea className="h-[calc(70vh-120px)] pr-2">
+        <div className="min-h-0 flex-1 overflow-hidden">
           {slidesPanel}
-        </ScrollArea>
+        </div>
       ) : (
         <>
           <div className="relative">

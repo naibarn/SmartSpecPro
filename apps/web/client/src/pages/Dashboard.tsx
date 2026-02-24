@@ -202,14 +202,19 @@ export default function Dashboard() {
               </button>
             </div>
             <nav className="flex-1 overflow-y-auto px-3 pb-4 space-y-1">
-              {quickActions.map((action, index) => (
+              {mainMenuItems.map((item) => (
                 <button
-                  key={index}
-                  onClick={() => { setLocation(action.href); setSidebarOpen(false); }}
+                  key={item.id}
+                  onClick={() => {
+                    if (item.external) { window.open(item.path, '_blank', 'noopener,noreferrer'); }
+                    else { setLocation(item.path); }
+                    setSidebarOpen(false);
+                  }}
                   className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left text-gray-600 hover:bg-gray-100 text-sm"
                 >
-                  <action.icon className="w-4 h-4 flex-shrink-0" />
-                  <span className="font-medium truncate">{action.label}</span>
+                  <item.IconComponent className="w-4 h-4 flex-shrink-0" />
+                  <span className="font-medium truncate">{item.label}</span>
+                  {item.external && <ExternalLink className="w-3 h-3 ml-auto flex-shrink-0" />}
                 </button>
               ))}
 

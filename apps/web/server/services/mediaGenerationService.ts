@@ -222,11 +222,21 @@ export const DEFAULT_MODELS = {
 
 export interface ImageGenerationRequest {
   prompt: string;
-  model?: ImageModel;
+  model?: string;
   size?: string;
   aspectRatio?: string;
   negativePrompt?: string;
   numImages?: number;
+  /** Output resolution (e.g., "1K", "2K", "4K") */
+  resolution?: string;
+  /** Output format (e.g., "png", "jpeg") */
+  outputFormat?: string;
+  /** Per-model API overrides from model config */
+  apiConfig?: Record<string, string>;
+  /** Dynamic model-specific input fields */
+  extraParams?: Record<string, any>;
+  /** Tenant public URL for resolving relative reference URLs */
+  publicUrl?: string;
   /** Reference images for style transfer or img2img (1-5 URLs) */
   referenceImageUrls?: string[];
   /** Reference style URL for style transfer */
@@ -235,12 +245,18 @@ export interface ImageGenerationRequest {
 
 export interface VideoGenerationRequest {
   prompt: string;
-  model?: VideoModel;
+  model?: string;
   duration?: number;
   aspectRatio?: string;
   fps?: number;
   /** Output resolution (e.g., "720p", "1080p") */
   resolution?: string;
+  /** Per-model API overrides from model config */
+  apiConfig?: Record<string, string>;
+  /** Dynamic model-specific input fields */
+  extraParams?: Record<string, any>;
+  /** Tenant public URL for resolving relative reference URLs */
+  publicUrl?: string;
   /** Reference images for video generation (img2vid) */
   referenceImageUrls?: string[];
   /** Reference video URL for vid2vid */
@@ -642,10 +658,22 @@ export class MediaGenerationService {
       aspect_ratio: request.aspectRatio,
       negative_prompt: request.negativePrompt,
       n: request.numImages || 1,
+      resolution: request.resolution,
+      output_format: request.outputFormat,
     };
 
     // Get publicUrl from request for resolving relative URLs to tenant domain
-    const publicUrl = (request as any).publicUrl as string | undefined;
+    const publicUrl = request.publicUrl;
+
+    // Add apiConfig for model-specific endpoints and payload formats
+    if (request.apiConfig) {
+      payload.api_config = request.apiConfig;
+    }
+
+    // Add extraParams for model-specific fields
+    if (request.extraParams) {
+      payload.extra_params = resolveExtraParamsUrls(request.extraParams, publicUrl);
+    }
 
     // Add reference images if provided (1-5 images)
     if (request.referenceImageUrls && request.referenceImageUrls.length > 0) {
@@ -702,10 +730,11 @@ export class MediaGenerationService {
       duration: request.duration,
       aspect_ratio: request.aspectRatio,
       fps: request.fps,
+      resolution: request.resolution,
     };
 
     // Get publicUrl from request for resolving relative URLs to tenant domain
-    const publicUrl = (request as any).publicUrl as string | undefined;
+    const publicUrl = request.publicUrl;
 
     // Add reference images for img2vid
     if (request.referenceImageUrls && request.referenceImageUrls.length > 0) {
@@ -720,13 +749,13 @@ export class MediaGenerationService {
     }
 
     // Add apiConfig for model-specific endpoints and payload formats (e.g., Veo 3)
-    if ((request as any).apiConfig) {
-      payload.api_config = (request as any).apiConfig;
+    if (request.apiConfig) {
+      payload.api_config = request.apiConfig;
     }
 
     // Add extraParams for additional model-specific parameters
-    if ((request as any).extraParams) {
-      payload.extra_params = (request as any).extraParams;
+    if (request.extraParams) {
+      payload.extra_params = resolveExtraParamsUrls(request.extraParams, publicUrl);
     }
 
     console.log('[MediaGeneration] generateVideoAsync called with:', {
@@ -922,6 +951,78 @@ export class MediaGenerationService {
     };
   }
 
+  private extractTaskErrorMessage(data: Record<string, unknown>): string | undefined {
+    const directError = data.error_message;
+    if (typeof directError === "string" && directError.trim()) {
+      return directError.trim();
+    }
+
+    const resultData = data.result_data;
+    if (!resultData || typeof resultData !== "object") {
+      return undefined;
+    }
+
+    const seen = new Set<string>();
+    const messages: string[] = [];
+    const enqueue = (value: unknown) => {
+      if (typeof value !== "string") return;
+      const normalized = value.trim();
+      if (!normalized || seen.has(normalized)) return;
+      seen.add(normalized);
+      messages.push(normalized);
+    };
+
+    const extract = (value: unknown, depth: number) => {
+      if (depth > 5 || value === null || value === undefined) return;
+      if (typeof value === "string") {
+        enqueue(value);
+        return;
+      }
+      if (Array.isArray(value)) {
+        value.forEach((item) => extract(item, depth + 1));
+        return;
+      }
+      if (typeof value !== "object") return;
+      const obj = value as Record<string, unknown>;
+
+      // Prioritized keys commonly used by providers.
+      const priorityKeys = [
+        "error",
+        "errorMessage",
+        "failMsg",
+        "message",
+        "msg",
+        "detail",
+        "reason",
+      ];
+      for (const key of priorityKeys) {
+        if (key in obj) {
+          extract(obj[key], depth + 1);
+        }
+      }
+
+      // Traverse common nested containers.
+      const nestedKeys = [
+        "data",
+        "response",
+        "submission",
+        "output",
+        "result",
+        "resultJson",
+        "kie_ai_response",
+        "raw_response",
+      ];
+      for (const key of nestedKeys) {
+        if (key in obj) {
+          extract(obj[key], depth + 1);
+        }
+      }
+    };
+
+    extract(resultData, 0);
+    return messages[0];
+  }
+
   /**
    * Map Python backend task to our format
    */
@@ -929,6 +1030,7 @@ export class MediaGenerationService {
     return {
       id: data.id as string,
       taskId: data.task_id as string | undefined, // External provider task ID (e.g., Kie.ai)
+      celeryTaskId: data.celery_task_id as string | undefined,
       userId: data.user_id as string,
       mediaType: data.media_type as MediaType,
       status: data.status as TaskStatus,
@@ -937,7 +1039,7 @@ export class MediaGenerationService {
       parameters: data.parameters as Record<string, unknown>,
       resultUrl: data.result_url as string,
       resultData: data.result_data as Record<string, unknown>,
-      errorMessage: data.error_message as string,
+      errorMessage: this.extractTaskErrorMessage(data),
       creditsUsed: data.credits_used as number,
       creditsBalance: data.credits_balance as number,
       createdAt: data.created_at as string,

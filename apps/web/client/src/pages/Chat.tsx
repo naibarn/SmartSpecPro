@@ -4,7 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
 import { ChatSidebar, ChatView, MemoryPanel, SkillSettings, ArtifactPanel, MediaGenerationPanel, SchedulePanel, type Artifact } from "@/components/chat";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, PanelLeftClose, PanelLeft, Brain, Wand2, Layers, Sparkles, Bell, MessageCircle } from "lucide-react";
+import { ChevronLeft, PanelLeftClose, Brain, Wand2, Layers, Sparkles, Bell, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 
@@ -179,7 +179,7 @@ export default function Chat() {
             {sidebarOpen ? (
               <PanelLeftClose className="h-5 w-5" />
             ) : (
-              <MessageCircle className="h-5 w-5" />
+              <Menu className="h-5 w-5" />
             )}
           </Button>
           <h1 className="text-lg font-semibold hidden sm:block">AI Chat</h1>
@@ -250,22 +250,23 @@ export default function Chat() {
             onClick={() => setSidebarOpen(false)}
           />
         )}
-        {/* Mobile sidebar drawer */}
-        {sidebarOpen && (
-          <div
-            className="fixed left-0 z-40 w-80 bg-background lg:hidden"
-            style={{ top: "3.5rem", height: "calc(100dvh - 3.5rem)" }}
-          >
-            <ChatSidebar
-              selectedConversationId={selectedConversationId}
-              onSelectConversation={(id) => {
-                setSelectedConversationId(id);
-                setSidebarOpen(false);
-              }}
-              onNewChat={handleNewChat}
-            />
-          </div>
-        )}
+        {/* Mobile sidebar drawer — always in DOM, slides in/out via CSS */}
+        <div
+          className={cn(
+            "fixed left-0 z-40 w-80 bg-background transition-transform duration-300 ease-in-out lg:hidden",
+            sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          )}
+          style={{ top: "3.5rem", height: "calc(100dvh - 3.5rem)" }}
+        >
+          <ChatSidebar
+            selectedConversationId={selectedConversationId}
+            onSelectConversation={(id) => {
+              setSelectedConversationId(id);
+              setSidebarOpen(false);
+            }}
+            onNewChat={handleNewChat}
+          />
+        </div>
         {/* Desktop sidebar inline */}
         <div
           className={cn(

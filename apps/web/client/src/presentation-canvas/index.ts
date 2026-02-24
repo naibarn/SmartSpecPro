@@ -7,6 +7,7 @@ export { PropertyPanel } from "./components/PropertyPanel";
 export { TransformHandles } from "./components/TransformHandles";
 export { MobileQuickActions } from "./components/MobileQuickActions";
 export { MobileBottomSheet } from "./components/MobileBottomSheet";
+export { MobileDrawerPanel } from "./components/MobileDrawerPanel";
 export { AssetLibraryPanel } from "./components/AssetLibraryPanel";
 export type { MobileBottomSheetTab } from "./components/MobileBottomSheet";
 export type { AssetLibraryTab, CanvasLibraryAsset } from "./components/AssetLibraryPanel";

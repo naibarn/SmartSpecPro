@@ -12,8 +12,6 @@ import {
   MEDIA_MODELS,
   DEFAULT_MODELS,
   type MediaType,
-  type ImageModel,
-  type VideoModel,
   type AudioModel,
   type TaskStatus,
 } from "../services/mediaGenerationService";
@@ -81,53 +79,73 @@ async function getModelWithPricing(modelId: string): Promise<{
   return { creditCost: hardcoded?.creditCost ?? 10, configJson: null };
 }
 
+async function resolveModelMeta(
+  modelId: string,
+  expectedType: MediaType,
+): Promise<{ provider: string; type: MediaType }> {
+  const hardcodedModel = MEDIA_MODELS[modelId];
+  if (hardcodedModel) {
+    if (hardcodedModel.type !== expectedType) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: `Model "${modelId}" is not a ${expectedType} model`,
+      });
+    }
+    return { provider: hardcodedModel.provider, type: hardcodedModel.type };
+  }
+
+  const db = await getDb();
+  if (db) {
+    const [dbModel] = await db
+      .select({
+        modelType: mediaModels.modelType,
+        provider: mediaModels.provider,
+        isEnabled: mediaModels.isEnabled,
+      })
+      .from(mediaModels)
+      .where(eq(mediaModels.modelId, modelId))
+      .limit(1);
+
+    if (dbModel) {
+      if (!dbModel.isEnabled) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Model "${modelId}" is disabled`,
+        });
+      }
+      if (dbModel.modelType !== expectedType) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Model "${modelId}" is not a ${expectedType} model`,
+        });
+      }
+      return { provider: dbModel.provider, type: dbModel.modelType as MediaType };
+    }
+  }
+
+  throw new TRPCError({
+    code: "BAD_REQUEST",
+    message: `Invalid model: ${modelId}`,
+  });
+}
+
 // ==================== Zod Schemas ====================
 
 const mediaTypeSchema = z.enum(["image", "video", "audio"]);
 const taskStatusSchema = z.enum(["pending", "processing", "completed", "failed", "cancelled"]);
-
-const imageModelSchema = z.enum([
-  "google-nano-banana-pro",
-  "flux-2.0",
-  "z-image",
-  "grok-imagine",
-]);
-
-const videoModelSchema = z.enum([
-  "veo-3-1",
-  "sora-2",
-  "kling-2.6",
-]);
+const mediaModelIdSchema = z.string().min(1).max(120);
+const flexibleAspectRatioSchema = z.string().min(2).max(20);
+const referenceMediaUrlSchema = z
+  .string()
+  .min(1)
+  .max(2048)
+  .refine((value) => value.startsWith("/") || /^https?:\/\//i.test(value), {
+    message: "Reference URL must be a relative path or http(s) URL",
+  });
 
 const audioModelSchema = z.enum([
   "elevenlabs-tts",
   "elevenlabs-sfx",
-]);
-
-// Aspect ratio validation - prevent injection attacks
-const aspectRatioSchema = z.enum([
-  "1:1",
-  "16:9",
-  "9:16",
-  "4:3",
-  "3:4",
-]);
-
-// Image size validation
-const imageSizeSchema = z.enum([
-  "1024x1024",
-  "1024x1792",
-  "1792x1024",
-]);
-
-// Voice validation for audio
-const voiceSchema = z.enum([
-  "alloy",
-  "echo",
-  "fable",
-  "onyx",
-  "nova",
-  "shimmer",
 ]);
 
 // ==================== Router ====================
@@ -197,9 +215,9 @@ export const mediaRouter = router({
     .input(
       z.object({
         prompt: z.string().min(1).max(2000),
-        model: imageModelSchema.optional(),
+        model: mediaModelIdSchema.optional(),
         size: z.string().optional(),
-        aspectRatio: aspectRatioSchema.optional(),
+        aspectRatio: flexibleAspectRatioSchema.optional(),
         negativePrompt: z.string().max(1000).optional(),
         numImages: z.number().min(1).max(4).optional(),
         resolution: z.string().optional(),
@@ -219,14 +237,7 @@ export const mediaRouter = router({
       }
 
       const model = input.model || DEFAULT_MODELS.image;
-      const modelMeta = MEDIA_MODELS[model];
-
-      if (!modelMeta) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Invalid model: ${model}`,
-        });
-      }
+      const modelMeta = await resolveModelMeta(model, "image");
 
       // Calculate credit cost from DB pricingTiers
       const dbModel = await getModelWithPricing(model);
@@ -246,20 +257,27 @@ export const mediaRouter = router({
 
       try {
         const userToken = getUserToken(ctx);
+        const debugTraceId = crypto.randomUUID();
+        const apiConfigWithProvider = {
+          ...(input.apiConfig ?? {}),
+          provider: modelMeta.provider,
+          trace_id: debugTraceId,
+        };
 
         const result = await mediaGenerationService.generateImage(
           {
             prompt: input.prompt,
-            model: model as ImageModel,
+            model,
             size: input.size,
             aspectRatio: input.aspectRatio,
             negativePrompt: input.negativePrompt,
             numImages: input.numImages,
             resolution: input.resolution,
             outputFormat: input.outputFormat,
-            apiConfig: input.apiConfig,
+            apiConfig: apiConfigWithProvider,
             extraParams: input.extraParams,
-          } as any,
+            publicUrl: ctx.publicUrl ?? undefined,
+          },
           userToken
         );
 
@@ -292,9 +310,9 @@ export const mediaRouter = router({
     .input(
       z.object({
         prompt: z.string().min(1).max(2000),
-        model: videoModelSchema.optional(),
+        model: mediaModelIdSchema.optional(),
         duration: z.number().min(1).max(60).optional(),
-        aspectRatio: aspectRatioSchema.optional(),
+        aspectRatio: flexibleAspectRatioSchema.optional(),
         fps: z.number().min(15).max(60).optional(),
         resolution: z.string().optional(),
         apiConfig: z.record(z.string()).optional(),
@@ -312,14 +330,7 @@ export const mediaRouter = router({
       }
 
       const model = input.model || DEFAULT_MODELS.video;
-      const modelMeta = MEDIA_MODELS[model];
-
-      if (!modelMeta) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Invalid model: ${model}`,
-        });
-      }
+      const modelMeta = await resolveModelMeta(model, "video");
 
       // Calculate credit cost from DB pricingTiers
       const dbModel = await getModelWithPricing(model);
@@ -339,14 +350,24 @@ export const mediaRouter = router({
 
       try {
         const userToken = getUserToken(ctx);
+        const debugTraceId = crypto.randomUUID();
+        const apiConfigWithProvider = {
+          ...(input.apiConfig ?? {}),
+          provider: modelMeta.provider,
+          trace_id: debugTraceId,
+        };
 
         const result = await mediaGenerationService.generateVideo(
           {
             prompt: input.prompt,
-            model: model as VideoModel,
+            model,
             duration: input.duration,
             aspectRatio: input.aspectRatio,
             fps: input.fps,
+            resolution: input.resolution,
+            apiConfig: apiConfigWithProvider,
+            extraParams: input.extraParams,
+            publicUrl: ctx.publicUrl ?? undefined,
           },
           userToken
         );
@@ -461,13 +482,15 @@ export const mediaRouter = router({
     .input(
       z.object({
         prompt: z.string().min(1).max(2000),
-        model: imageModelSchema.optional(),
+        model: mediaModelIdSchema.optional(),
         size: z.string().optional(),
-        aspectRatio: aspectRatioSchema.optional(),
+        aspectRatio: flexibleAspectRatioSchema.optional(),
         negativePrompt: z.string().max(1000).optional(),
         numImages: z.number().min(1).max(4).optional(),
         resolution: z.string().optional(),
         outputFormat: z.string().optional(),
+        referenceImageUrls: z.array(referenceMediaUrlSchema).max(5).optional(),
+        referenceStyleUrl: referenceMediaUrlSchema.optional(),
         apiConfig: z.record(z.string()).optional(),
         extraParams: z.record(z.any()).optional(),
       })
@@ -483,14 +506,7 @@ export const mediaRouter = router({
       }
 
       const model = input.model || DEFAULT_MODELS.image;
-      const modelMeta = MEDIA_MODELS[model];
-
-      if (!modelMeta) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Invalid model: ${model}`,
-        });
-      }
+      const modelMeta = await resolveModelMeta(model, "image");
 
       // Calculate credit cost from DB pricingTiers
       const dbModel = await getModelWithPricing(model);
@@ -526,15 +542,28 @@ export const mediaRouter = router({
 
       try {
         const userToken = getUserToken(ctx);
+        const debugTraceId = crypto.randomUUID();
+        const apiConfigWithProvider = {
+          ...(input.apiConfig ?? {}),
+          provider: modelMeta.provider,
+          trace_id: debugTraceId,
+        };
 
         const task = await mediaGenerationService.generateImageAsync(
           {
             prompt: input.prompt,
-            model: model as ImageModel,
+            model,
             size: input.size,
             aspectRatio: input.aspectRatio,
             negativePrompt: input.negativePrompt,
             numImages: input.numImages,
+            resolution: input.resolution,
+            outputFormat: input.outputFormat,
+            referenceImageUrls: input.referenceImageUrls,
+            referenceStyleUrl: input.referenceStyleUrl,
+            apiConfig: apiConfigWithProvider,
+            extraParams: input.extraParams,
+            publicUrl: ctx.publicUrl ?? undefined,
           },
           userToken
         );
@@ -571,11 +600,13 @@ export const mediaRouter = router({
     .input(
       z.object({
         prompt: z.string().min(1).max(2000),
-        model: videoModelSchema.optional(),
+        model: mediaModelIdSchema.optional(),
         duration: z.number().min(1).max(60).optional(),
-        aspectRatio: aspectRatioSchema.optional(),
+        aspectRatio: flexibleAspectRatioSchema.optional(),
         fps: z.number().min(15).max(60).optional(),
         resolution: z.string().optional(),
+        referenceImageUrls: z.array(referenceMediaUrlSchema).max(5).optional(),
+        referenceVideoUrl: referenceMediaUrlSchema.optional(),
         apiConfig: z.record(z.string()).optional(),
         extraParams: z.record(z.any()).optional(),
       })
@@ -591,14 +622,7 @@ export const mediaRouter = router({
       }
 
       const model = input.model || DEFAULT_MODELS.video;
-      const modelMeta = MEDIA_MODELS[model];
-
-      if (!modelMeta) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Invalid model: ${model}`,
-        });
-      }
+      const modelMeta = await resolveModelMeta(model, "video");
 
       // Calculate credit cost from DB pricingTiers
       const dbModel = await getModelWithPricing(model);
@@ -636,14 +660,26 @@ export const mediaRouter = router({
 
       try {
         const userToken = getUserToken(ctx);
+        const debugTraceId = crypto.randomUUID();
+        const apiConfigWithProvider = {
+          ...(input.apiConfig ?? {}),
+          provider: modelMeta.provider,
+          trace_id: debugTraceId,
+        };
 
         const task = await mediaGenerationService.generateVideoAsync(
           {
             prompt: input.prompt,
-            model: model as VideoModel,
+            model,
             duration: input.duration,
             aspectRatio: input.aspectRatio,
             fps: input.fps,
+            resolution: input.resolution,
+            referenceImageUrls: input.referenceImageUrls,
+            referenceVideoUrl: input.referenceVideoUrl,
+            apiConfig: apiConfigWithProvider,
+            extraParams: input.extraParams,
+            publicUrl: ctx.publicUrl ?? undefined,
           },
           userToken
         );

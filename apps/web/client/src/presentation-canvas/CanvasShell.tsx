@@ -28,9 +28,9 @@ export function CanvasShell({
 
   if (useStudioLayout) {
     return (
-      <div className="overflow-hidden rounded-2xl border border-slate-300/80 bg-slate-900/95 shadow-xl" data-testid="canvas-shell">
+      <div className="h-full overflow-hidden rounded-xl border border-slate-300/80 bg-slate-900/95" data-testid="canvas-shell">
         <div
-          className="grid h-[calc(100vh-180px)] transition-[grid-template-columns] duration-300"
+          className="grid h-full transition-[grid-template-columns] duration-300"
           style={{
             gridTemplateColumns: `${leftCollapsed ? "0px 0px" : "74px minmax(280px,320px)"} minmax(0,1fr) ${rightCollapsed ? "0px" : "minmax(280px,320px)"}`,
           }}
@@ -49,7 +49,7 @@ export function CanvasShell({
           >
             {assetPanel}
           </aside>
-          <section className="relative min-h-0 space-y-3 bg-slate-100/90 p-3">
+          <section className="relative flex min-h-0 flex-col gap-1.5 bg-slate-100/90 p-2">
             <div className="absolute left-0 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2">
               <Button
                 type="button"
@@ -74,8 +74,8 @@ export function CanvasShell({
                 {rightCollapsed ? <PanelRightOpen className="h-4 w-4" /> : <PanelRightClose className="h-4 w-4" />}
               </Button>
             </div>
-            {canvasToolbar}
-            {canvasStage}
+            <div className="shrink-0">{canvasToolbar}</div>
+            <div className="min-h-0 flex-1">{canvasStage}</div>
             {canvasFooter ? (
               <div className="pointer-events-none absolute bottom-0 left-3 right-3 z-20">
                 <div className="pointer-events-auto">
@@ -99,23 +99,15 @@ export function CanvasShell({
     );
   }
 
+  // Mobile layout: canvas fills available height, bottom sheet below canvas
   return (
-    <div className="grid gap-4 lg:grid-cols-[260px_1fr_320px]" data-testid="canvas-shell">
-      <aside className="rounded border bg-card p-3 space-y-3">
-        <h2 className="font-medium">Slides</h2>
-        {slidesPanel}
-      </aside>
-
-      <section className="rounded border bg-card p-3 space-y-3">
-        {canvasToolbar}
-        {canvasStage}
-        {canvasFooter}
+    <div className="flex h-full flex-col" data-testid="canvas-shell">
+      <section className="relative flex min-h-0 flex-1 flex-col gap-1.5 p-2">
+        <div className="shrink-0">{canvasToolbar}</div>
+        <div className="min-h-0 flex-1">{canvasStage}</div>
+        {canvasFooter ? <div className="shrink-0">{canvasFooter}</div> : null}
       </section>
-
-      <aside className="rounded border bg-card p-3 space-y-3">
-        <h2 className="font-medium">Properties</h2>
-        {propertiesPanel}
-      </aside>
+      {propertiesPanel ? <div className="shrink-0">{propertiesPanel}</div> : null}
     </div>
   );
 }

@@ -33,6 +33,7 @@ interface CanvasStageProps {
   onResizeSelection: (width: number, height: number) => void;
   onRotateSelection: (deltaDegrees: number) => void;
   onArrangeSelection: (direction: ArrangeDirection) => void;
+  onDragEnd?: () => void;
   onDropAsset?: (payload: CanvasStageDropAssetPayload) => void;
 }
 
@@ -69,6 +70,7 @@ export function CanvasStage({
   onResizeSelection,
   onRotateSelection,
   onArrangeSelection,
+  onDragEnd,
   onDropAsset,
 }: CanvasStageProps) {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -113,19 +115,18 @@ export function CanvasStage({
   const interactionScale = Math.max(0.0001, baseScaleX * effectiveScale);
 
   useEffect(() => {
-    const recalcViewport = () => {
-      const nextWidth = workspaceViewportRef.current?.clientWidth ?? 0;
-      const nextHeight = workspaceViewportRef.current?.clientHeight ?? 0;
-      if (nextWidth > 0 && nextHeight > 0) {
-        setViewportSize({ width: nextWidth, height: nextHeight });
+    const el = workspaceViewportRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const { width, height } = entry.contentRect;
+      if (width > 0 && height > 0) {
+        setViewportSize({ width, height });
       }
-    };
-
-    recalcViewport();
-    window.addEventListener("resize", recalcViewport);
-    return () => {
-      window.removeEventListener("resize", recalcViewport);
-    };
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
   }, []);
 
   const primarySelected = selectedElementIds[0]
@@ -387,8 +388,8 @@ export function CanvasStage({
   }
 
   return (
-    <div className="rounded-xl border border-slate-300 bg-slate-200/80 p-2 shadow-inner" data-testid="canvas-stage">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-slate-600">
+    <div className="flex h-full flex-col rounded-xl border border-slate-300 bg-slate-200/80 p-2 shadow-inner" data-testid="canvas-stage">
+      <div className="mb-1 flex shrink-0 flex-wrap items-center justify-between gap-2 px-1 text-xs text-slate-600">
         {viewport ? (
           <p data-testid="canvas-stage-viewport">
             viewport: {effectiveScale.toFixed(2)}x ({Math.round(offsetX)}, {Math.round(offsetY)})
@@ -428,7 +429,7 @@ export function CanvasStage({
 
       <div
         ref={workspaceViewportRef}
-        className="relative h-[min(84vh,920px)] min-h-[420px] w-full overflow-hidden rounded-lg border border-slate-300 bg-slate-300/70"
+        className="relative min-h-0 w-full flex-1 overflow-hidden rounded-lg border border-slate-300 bg-slate-300/70"
       >
         <div className="absolute inset-0 p-3">
           <div className="flex h-full min-h-0 items-center gap-3">
@@ -477,6 +478,7 @@ export function CanvasStage({
                       onMoveSelection={onMoveSelection}
                       onResizeSelection={onResizeSelection}
                       onRotateSelection={onRotateSelection}
+                      onDragEnd={onDragEnd}
                       interactionScale={interactionScale}
                       canvasWidth={canvasWidth}
                       canvasHeight={canvasHeight}

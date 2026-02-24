@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from "react";
 import { useLocation, useRoute } from "wouter";
 import {
+  BookMarked,
   Check,
+  ChevronDown,
+  ChevronUp,
   Copy,
   Crop,
   ChevronLeft,
@@ -9,11 +12,14 @@ import {
   Download,
   ImageIcon,
   Loader2,
+  Menu,
   Minus,
   Maximize2,
   Minimize2,
   Pause,
   MousePointer2,
+  Plus,
+  Save,
   SkipBack,
   SkipForward,
   RectangleHorizontal,
@@ -35,6 +41,7 @@ import {
   CanvasShell,
   CanvasStage,
   MobileBottomSheet,
+  MobileDrawerPanel,
   MobileQuickActions,
   PropertyPanel,
   TransformHandles,
@@ -705,7 +712,8 @@ export default function PresentationEditor() {
   const [autoDeckInitAttempted, setAutoDeckInitAttempted] = useState(false);
   const [autoDeckInitPending, setAutoDeckInitPending] = useState(false);
   const [autoDeckInitError, setAutoDeckInitError] = useState<string | null>(null);
-  const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() => window.innerWidth < 768);
+  const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() => window.innerWidth < 1024);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [mobileSheetTab, setMobileSheetTab] = useState<MobileBottomSheetTab>("Properties");
   const [desktopInspectorTab, setDesktopInspectorTab] = useState<"properties" | "versions" | "audio">("properties");
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
@@ -984,7 +992,7 @@ export default function PresentationEditor() {
 
   useEffect(() => {
     const onResize = () => {
-      setIsMobileViewport(window.innerWidth < 768);
+      setIsMobileViewport(window.innerWidth < 1024);
     };
 
     window.addEventListener("resize", onResize);
@@ -1332,6 +1340,29 @@ export default function PresentationEditor() {
     }
 
     executeCommand(rotateSelectionCommand(deltaDegrees));
+  }
+
+  // --- Drag (continuous) variants — merge into a single undo entry per gesture ---
+
+  function handleDragMove(deltaX: number, deltaY: number) {
+    if (!isTouchActionAllowed(40)) return;
+    syncCommandState(
+      commandBusRef.current.executeAndMerge(moveSelectionCommand(deltaX, deltaY, snapLockEnabled)),
+    );
+  }
+
+  function handleDragResize(width: number, height: number) {
+    if (isMobileViewport) return;
+    syncCommandState(commandBusRef.current.executeAndMerge(resizeSelectionCommand(width, height)));
+  }
+
+  function handleDragRotate(deltaDegrees: number) {
+    if (isMobileViewport) return;
+    syncCommandState(commandBusRef.current.executeAndMerge(rotateSelectionCommand(deltaDegrees)));
+  }
+
+  function handleDragEnd() {
+    commandBusRef.current.breakMerge();
   }
 
   function handleArrangeSelection(direction: ArrangeDirection) {
@@ -2106,8 +2137,8 @@ export default function PresentationEditor() {
     exportStatusQuery.data?.status
     || (triggerExportMutation.isPending ? "queued" : "idle");
   const slidesPanel = (
-    <>
-      <div className="space-y-2">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
         {slides.map((slide) => {
           const preview = summarizeSlidePreview(
             selectedSlideId === slide.id ? draftContent : slide.slideContent,
@@ -2184,30 +2215,36 @@ export default function PresentationEditor() {
           );
         })}
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <Button onClick={() => void handleAddSlide()} aria-label="Add Slide" disabled={deckMutationBusy}>
+      <div className="shrink-0 grid grid-cols-2 gap-1.5 border-t border-slate-700 pt-2">
+        <Button size="sm" onClick={() => void handleAddSlide()} aria-label="Add Slide" disabled={deckMutationBusy} className="gap-1">
+          <Plus className="h-3.5 w-3.5" />
           Add Slide
         </Button>
-        <Button onClick={() => void handleDuplicateSlide()} aria-label="Duplicate Slide" variant="secondary" disabled={deckMutationBusy}>
-          Duplicate Slide
+        <Button size="sm" onClick={() => void handleDuplicateSlide()} aria-label="Duplicate Slide" variant="secondary" disabled={deckMutationBusy} className="gap-1">
+          <Copy className="h-3.5 w-3.5" />
+          Duplicate
         </Button>
-        <Button onClick={() => void handleMoveSlide("up")} aria-label="Move Slide Up" variant="outline" disabled={deckMutationBusy}>
+        <Button size="sm" onClick={() => void handleMoveSlide("up")} aria-label="Move Slide Up" variant="outline" disabled={deckMutationBusy} className="gap-1">
+          <ChevronUp className="h-3.5 w-3.5" />
           Move Up
         </Button>
-        <Button onClick={() => void handleMoveSlide("down")} aria-label="Move Slide Down" variant="outline" disabled={deckMutationBusy}>
+        <Button size="sm" onClick={() => void handleMoveSlide("down")} aria-label="Move Slide Down" variant="outline" disabled={deckMutationBusy} className="gap-1">
+          <ChevronDown className="h-3.5 w-3.5" />
           Move Down
         </Button>
         <Button
+          size="sm"
           onClick={() => void handleDeleteSlide()}
           aria-label="Delete Slide"
           variant="destructive"
-          className="col-span-2"
+          className="col-span-2 gap-1"
           disabled={deckMutationBusy}
         >
+          <Trash2 className="h-3.5 w-3.5" />
           Delete Slide
         </Button>
       </div>
-    </>
+    </div>
   );
   const versionHistoryPanel = (
     <div className="rounded-lg border border-slate-300 bg-white p-2">
@@ -2466,99 +2503,81 @@ export default function PresentationEditor() {
     />
   );
   const canvasToolbar = isMobileViewport ? (
-    <div className="space-y-2">
-      <MobileQuickActions
-        mode={mobileGestures.state.mode}
-        onToggleMode={handleToggleMobileMode}
-        onNudgeSelection={handleMoveSelection}
-        onDeleteSelection={handleDeleteSelection}
-        disabled={!selectedElementId}
-      />
-      <div className="grid grid-cols-2 gap-2">
-        <Button onClick={() => handleAddElement("text")} variant="secondary">
-          Add Text
-        </Button>
-        <Button onClick={() => handleAddElement("image")} variant="secondary">
-          Add Image
-        </Button>
-        <Button onClick={() => handleAddElement("video")} variant="secondary">
-          Add Video
-        </Button>
-        <Button
-          onClick={() => setSnapLockEnabled((previous) => !previous)}
-          variant={snapLockEnabled ? "default" : "outline"}
-          className="col-span-2"
-          aria-label={snapLockEnabled ? "Disable Snap Lock" : "Enable Snap Lock"}
-        >
-          Snap Lock: {snapLockEnabled ? "On" : "Off"}
-        </Button>
-        <Button onClick={handleApplyMobilePanGesture} variant="outline" className="col-span-2">
-          Simulate Pinch + Pan
-        </Button>
-      </div>
-    </div>
+    <MobileQuickActions
+      mode={mobileGestures.state.mode}
+      onToggleMode={handleToggleMobileMode}
+      onNudgeSelection={handleMoveSelection}
+      onDeleteSelection={handleDeleteSelection}
+      disabled={!selectedElementId}
+    />
   ) : (
-    <div className="space-y-2 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-slate-100">
-      <div className="flex flex-wrap gap-2">
+    <div className="space-y-1 rounded-lg border border-slate-800 bg-slate-950 px-2 py-1.5 text-slate-100">
+      <div className="flex flex-wrap gap-1.5">
         <Button
           onClick={() => handleAddElement("text")}
           aria-label="Add Text Element"
           variant="secondary"
-          className="gap-1"
+          size="sm"
+          className="gap-1 text-xs"
         >
-          <Type className="h-4 w-4" />
-          Add Text Element
+          <Type className="h-3.5 w-3.5" />
+          Add Text
         </Button>
         <Button
           onClick={() => handleAddElement("image")}
           aria-label="Add Image Element"
           variant="secondary"
-          className="gap-1"
+          size="sm"
+          className="gap-1 text-xs"
         >
-          <ImageIcon className="h-4 w-4" />
-          Add Image Element
+          <ImageIcon className="h-3.5 w-3.5" />
+          Add Image
         </Button>
         <Button
           onClick={() => handleAddElement("video")}
           aria-label="Add Video Element"
           variant="secondary"
-          className="gap-1"
+          size="sm"
+          className="gap-1 text-xs"
         >
-          <Clapperboard className="h-4 w-4" />
-          Add Video Element
+          <Clapperboard className="h-3.5 w-3.5" />
+          Add Video
         </Button>
         <Button
           onClick={() => handleAddElement("rect")}
           aria-label="Add Rectangle Element"
           variant="secondary"
-          className="gap-1"
+          size="sm"
+          className="gap-1 text-xs"
         >
-          <RectangleHorizontal className="h-4 w-4" />
-          Add Rectangle
+          <RectangleHorizontal className="h-3.5 w-3.5" />
+          Rectangle
         </Button>
         <Button
           onClick={() => handleAddElement("line")}
           aria-label="Add Line Element"
           variant="secondary"
-          className="gap-1"
+          size="sm"
+          className="gap-1 text-xs"
         >
-          <Minus className="h-4 w-4" />
-          Add Line
+          <Minus className="h-3.5 w-3.5" />
+          Line
         </Button>
         <Button
           onClick={() => setSnapLockEnabled((previous) => !previous)}
           aria-label={snapLockEnabled ? "Disable Snap Lock" : "Enable Snap Lock"}
           variant={snapLockEnabled ? "secondary" : "outline"}
-          className="gap-1"
+          size="sm"
+          className="gap-1 text-xs"
         >
           Snap Lock: {snapLockEnabled ? "On" : "Off"}
         </Button>
-        <label className="ml-auto flex items-center gap-2 rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-300">
-          <Crop className="h-3.5 w-3.5" />
+        <label className="ml-auto flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-900 px-2 py-0.5 text-xs text-slate-300">
+          <Crop className="h-3 w-3" />
           <span>Canvas</span>
           <select
             aria-label="Canvas Aspect Ratio"
-            className="rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100 outline-none"
+            className="rounded border border-slate-700 bg-slate-950 px-1.5 py-0.5 text-xs text-slate-100 outline-none"
             value={activeCanvasSize.preset}
             onChange={(event) => handleChangeCanvasPreset(event.target.value)}
           >
@@ -2569,19 +2588,19 @@ export default function PresentationEditor() {
             ))}
           </select>
         </label>
-        <div className="flex items-center gap-1 rounded-md border border-slate-700 bg-slate-900 px-1 py-1">
+        <div className="flex items-center gap-0.5 rounded-md border border-slate-700 bg-slate-900 px-1 py-0.5">
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 px-2 text-slate-200 hover:bg-slate-800"
+            className="h-6 px-1.5 text-slate-200 hover:bg-slate-800"
             aria-label="Zoom Out"
             onClick={() => updateDesktopZoom(desktopViewport.scale - DESKTOP_ZOOM_STEP)}
           >
-            <ZoomOut className="h-3.5 w-3.5" />
+            <ZoomOut className="h-3 w-3" />
           </Button>
           <button
             type="button"
-            className="min-w-[54px] rounded px-1 text-center text-xs text-slate-300"
+            className="min-w-[44px] rounded px-1 text-center text-xs text-slate-300"
             aria-label="Canvas Zoom Percentage"
             onClick={() => updateDesktopZoom(1)}
           >
@@ -2590,33 +2609,33 @@ export default function PresentationEditor() {
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 px-2 text-slate-200 hover:bg-slate-800"
+            className="h-6 px-1.5 text-slate-200 hover:bg-slate-800"
             aria-label="Zoom In"
             onClick={() => updateDesktopZoom(desktopViewport.scale + DESKTOP_ZOOM_STEP)}
           >
-            <ZoomIn className="h-3.5 w-3.5" />
+            <ZoomIn className="h-3 w-3" />
           </Button>
         </div>
       </div>
-      <div className="flex flex-wrap gap-2 border-t border-slate-800 pt-2">
-        <Button onClick={handleUndo} aria-label="Undo Edit" variant="outline" className="gap-1">
-          <Undo2 className="h-4 w-4" />
+      <div className="flex flex-wrap gap-1.5 border-t border-slate-800 pt-1">
+        <Button onClick={handleUndo} aria-label="Undo Edit" variant="outline" size="sm" className="gap-1 text-xs">
+          <Undo2 className="h-3.5 w-3.5" />
           Undo
         </Button>
-        <Button onClick={handleRedo} aria-label="Redo Edit" variant="outline" className="gap-1">
-          <Redo2 className="h-4 w-4" />
+        <Button onClick={handleRedo} aria-label="Redo Edit" variant="outline" size="sm" className="gap-1 text-xs">
+          <Redo2 className="h-3.5 w-3.5" />
           Redo
         </Button>
-        <Button onClick={handleDuplicateSelection} aria-label="Duplicate Selection" variant="outline" className="gap-1">
-          <Copy className="h-4 w-4" />
-          Duplicate Selection
+        <Button onClick={handleDuplicateSelection} aria-label="Duplicate Selection" variant="outline" size="sm" className="gap-1 text-xs">
+          <Copy className="h-3.5 w-3.5" />
+          Duplicate
         </Button>
-        <Button onClick={handleDeleteSelection} aria-label="Delete Selection" variant="outline" className="gap-1">
-          <Trash2 className="h-4 w-4" />
-          Delete Selection
+        <Button onClick={handleDeleteSelection} aria-label="Delete Selection" variant="outline" size="sm" className="gap-1 text-xs">
+          <Trash2 className="h-3.5 w-3.5" />
+          Delete
         </Button>
-        <Button onClick={() => handleRotateSelection(15)} aria-label="Rotate Selection" variant="outline" className="gap-1">
-          <RotateCw className="h-4 w-4" />
+        <Button onClick={() => handleRotateSelection(15)} aria-label="Rotate Selection" variant="outline" size="sm" className="gap-1 text-xs">
+          <RotateCw className="h-3.5 w-3.5" />
           Rotate +15
         </Button>
       </div>
@@ -2754,12 +2773,63 @@ export default function PresentationEditor() {
       ? propertyEditorPanel
       : mobileSheetTab === "Add"
         ? (
-          <div className="grid grid-cols-2 gap-2">
-            <Button onClick={() => handleAddElement("text")} variant="secondary">Text</Button>
-            <Button onClick={() => handleAddElement("image")} variant="secondary">Image</Button>
-            <Button onClick={() => handleAddElement("video")} variant="secondary">Video</Button>
-            <Button onClick={() => handleAddElement("rect")} variant="secondary">Shape</Button>
-            <Button onClick={() => handleAddElement("line")} variant="secondary">Line</Button>
+          <div className="space-y-2">
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                onClick={() => handleAddElement("text")}
+                size="sm"
+                variant="secondary"
+                className="gap-1 text-xs"
+              >
+                <Type className="h-3.5 w-3.5" />
+                Text
+              </Button>
+              <Button
+                onClick={() => handleAddElement("image")}
+                size="sm"
+                variant="secondary"
+                className="gap-1 text-xs"
+              >
+                <ImageIcon className="h-3.5 w-3.5" />
+                Image
+              </Button>
+              <Button
+                onClick={() => handleAddElement("video")}
+                size="sm"
+                variant="secondary"
+                className="gap-1 text-xs"
+              >
+                <Clapperboard className="h-3.5 w-3.5" />
+                Video
+              </Button>
+              <Button
+                onClick={() => handleAddElement("rect")}
+                size="sm"
+                variant="secondary"
+                className="gap-1 text-xs"
+              >
+                <RectangleHorizontal className="h-3.5 w-3.5" />
+                Rect
+              </Button>
+              <Button
+                onClick={() => handleAddElement("line")}
+                size="sm"
+                variant="secondary"
+                className="gap-1 text-xs"
+              >
+                <Minus className="h-3.5 w-3.5" />
+                Line
+              </Button>
+              <Button
+                onClick={() => setSnapLockEnabled((p) => !p)}
+                size="sm"
+                variant={snapLockEnabled ? "default" : "outline"}
+                className="gap-1 text-xs"
+              >
+                <Crop className="h-3.5 w-3.5" />
+                {snapLockEnabled ? "Snap On" : "Snap Off"}
+              </Button>
+            </div>
           </div>
         )
         : mobileSheetTab === "Layers"
@@ -2773,7 +2843,7 @@ export default function PresentationEditor() {
             </div>
           )
           : mobileSheetTab === "Pages"
-            ? slidesPanel
+            ? <div className="h-[45vh]">{slidesPanel}</div>
             : versionHistoryPanel;
 
   const propertiesPanel = isMobileViewport ? (
@@ -2811,144 +2881,167 @@ export default function PresentationEditor() {
   })();
 
   return (
-    <div className="min-h-screen bg-slate-100 p-4 md:p-6 space-y-3">
-      <header className="rounded-xl border border-slate-300 bg-slate-950 px-4 py-2 text-slate-100 shadow-lg">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-1">
-            <Button variant="outline" size="sm" onClick={handleBackToPresentationLibrary}>
-              <ChevronLeft className="mr-1 h-4 w-4" />
-              Back to Presentation Library
-            </Button>
-            {isProjectTitleEditing ? (
-              <div className="flex items-center gap-2">
-                <Input
-                  value={projectTitleDraft}
-                  onChange={(event) => setProjectTitleDraft(event.target.value)}
-                  aria-label="Project Name"
-                  className="h-8 w-72 border-slate-700 bg-slate-900 text-slate-100"
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      void handleSaveProjectTitle();
-                    }
-                    if (event.key === "Escape") {
-                      event.preventDefault();
-                      setProjectTitleDraft(projectTitle);
-                      setIsProjectTitleEditing(false);
-                    }
-                  }}
-                />
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => void handleSaveProjectTitle()}
-                  disabled={isProjectTitleSaving}
-                  aria-label="Save Project Name"
-                >
-                  <Check className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setProjectTitleDraft(projectTitle);
-                    setIsProjectTitleEditing(false);
-                  }}
-                  disabled={isProjectTitleSaving}
-                  aria-label="Cancel Project Name Edit"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg font-semibold tracking-tight md:text-xl">{projectTitle}</h1>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-2 text-slate-200 hover:bg-slate-800"
-                  onClick={() => setIsProjectTitleEditing(true)}
-                  aria-label="Edit Project Name"
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-            <p className="text-xs text-slate-300">Presentation Editor</p>
-          </div>
-          <div className="flex items-center gap-2">
+    <div className="flex h-screen flex-col overflow-hidden bg-slate-950">
+      <header className="flex shrink-0 items-center gap-2 border-b border-slate-800 bg-slate-950 px-3 py-1.5 text-slate-100">
+        {isMobileViewport ? (
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 shrink-0 text-slate-300 hover:bg-slate-800"
+            onClick={() => setIsMobileDrawerOpen(true)}
+            aria-label="Open Tools Panel"
+          >
+            <Menu className="h-4 w-4" />
+          </Button>
+        ) : null}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleBackToPresentationLibrary}
+          className="shrink-0 gap-1 px-2 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Back
+        </Button>
+        <div className="h-4 w-px shrink-0 bg-slate-700" />
+        {isProjectTitleEditing ? (
+          <div className="flex items-center gap-1.5">
+            <Input
+              value={projectTitleDraft}
+              onChange={(event) => setProjectTitleDraft(event.target.value)}
+              aria-label="Project Name"
+              className="h-7 w-52 border-slate-700 bg-slate-900 text-sm text-slate-100"
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void handleSaveProjectTitle();
+                }
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  setProjectTitleDraft(projectTitle);
+                  setIsProjectTitleEditing(false);
+                }
+              }}
+            />
             <Button
-              onClick={() => void handleSaveSlide()}
-              aria-label="Save Slide"
-              className="gap-1"
-              disabled={!deck || !selectedSlide || saveState === "pending"}
+              variant="secondary"
+              size="sm"
+              onClick={() => void handleSaveProjectTitle()}
+              disabled={isProjectTitleSaving}
+              aria-label="Save Project Name"
+              className="h-7 px-2"
             >
-              Save
+              <Check className="h-3.5 w-3.5" />
             </Button>
             <Button
-              onClick={() => void handleSaveToTemplate()}
-              aria-label="Save to Template"
               variant="outline"
-              className="gap-1"
-              disabled={!deck || saveAsTemplateMutation.isPending || isProjectTitleSaving}
+              size="sm"
+              onClick={() => {
+                setProjectTitleDraft(projectTitle);
+                setIsProjectTitleEditing(false);
+              }}
+              disabled={isProjectTitleSaving}
+              aria-label="Cancel Project Name Edit"
+              className="h-7 px-2"
             >
-              Save to Template
-            </Button>
-            <Button onClick={handlePlaySlideshow} aria-label="Play Slideshow" variant="secondary" className="gap-1">
-              <Play className="h-4 w-4" />
-              Play
-            </Button>
-            <Button
-              onClick={() => setIsExportDialogOpen(true)}
-              aria-label="Export"
-              variant="secondary"
-              disabled={!isExportsEnabled || !deck}
-            >
-              <Download className="h-4 w-4 mr-1" />
-              Export
-            </Button>
-            <Button
-              onClick={() => setLocation(`/presentation/${deck.libraryItemId}/play`)}
-              aria-label="Play Mode"
-              variant="secondary"
-              disabled={!deck}
-            >
-              <Play className="h-4 w-4 mr-1" />
-              Play Mode
+              <X className="h-3.5 w-3.5" />
             </Button>
           </div>
+        ) : (
+          <div className="flex items-center gap-1">
+            <h1 className="text-sm font-semibold">{projectTitle}</h1>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+              onClick={() => setIsProjectTitleEditing(true)}
+              aria-label="Edit Project Name"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        )}
+        <span className="hidden text-xs text-slate-500 md:inline">· Presentation Editor</span>
+        <div className="ml-auto flex items-center gap-1">
+          <Button
+            onClick={() => void handleSaveSlide()}
+            aria-label="Save Slide"
+            size="sm"
+            className="gap-1"
+            disabled={!deck || !selectedSlide || saveState === "pending"}
+          >
+            <Save className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Save</span>
+          </Button>
+          <Button
+            onClick={() => void handleSaveToTemplate()}
+            aria-label="Save to Template"
+            variant="outline"
+            size="sm"
+            className="gap-1"
+            disabled={!deck || saveAsTemplateMutation.isPending || isProjectTitleSaving}
+          >
+            <BookMarked className="h-3.5 w-3.5" />
+            <span className="hidden lg:inline">Template</span>
+          </Button>
+          <Button onClick={handlePlaySlideshow} aria-label="Play Slideshow" variant="secondary" size="sm" className="gap-1">
+            <Play className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Play</span>
+          </Button>
+          <Button
+            onClick={() => setIsExportDialogOpen(true)}
+            aria-label="Export"
+            variant="secondary"
+            size="sm"
+            className="gap-1"
+            disabled={!isExportsEnabled || !deck}
+          >
+            <Download className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Export</span>
+          </Button>
+          <Button
+            onClick={() => setLocation(`/presentation/${deck.libraryItemId}/play`)}
+            aria-label="Play Mode"
+            variant="secondary"
+            size="sm"
+            className="gap-1"
+            disabled={!deck}
+          >
+            <Play className="h-3.5 w-3.5" />
+            <span className="hidden lg:inline">Play Mode</span>
+          </Button>
         </div>
-        <p className="mt-1 text-xs text-slate-300">
-          Presentation #{docId} loaded. Item type: <code>{itemType || PRESENTATION_ITEM_TYPE}</code>
-        </p>
       </header>
 
-      <CanvasShell
-        slidesPanel={slidesPanel}
-        toolRail={isMobileViewport ? undefined : editorToolRail}
-        assetPanel={isMobileViewport ? undefined : assetPanel}
-        canvasToolbar={canvasToolbar}
-        canvasStage={(
-          <CanvasStage
-            elements={draftContent.elements}
-            canvasSize={activeCanvasSize}
-            selectedElementIds={selectedElementIds}
-            snapGuides={commandState.snapGuides}
-            suppressTransformHandles={isMobilePanMode}
-            showTransformDock={isMobileViewport}
-            viewport={activeViewport}
-            onViewportChange={isMobileViewport ? undefined : handleDesktopViewportChange}
-            onSelectElement={handleSelectElement}
-            onMoveSelection={handleMoveSelection}
-            onResizeSelection={handleResizeSelection}
-            onRotateSelection={handleRotateSelection}
-            onArrangeSelection={handleArrangeSelection}
-            onDropAsset={handleCanvasDropAsset}
-          />
-        )}
-        canvasFooter={canvasFooter}
-        propertiesPanel={propertiesPanel}
-      />
+      <div className="min-h-0 flex-1 overflow-hidden p-2">
+        <CanvasShell
+          slidesPanel={isMobileViewport ? null : slidesPanel}
+          toolRail={isMobileViewport ? undefined : editorToolRail}
+          assetPanel={isMobileViewport ? undefined : assetPanel}
+          canvasToolbar={canvasToolbar}
+          canvasStage={(
+            <CanvasStage
+              elements={draftContent.elements}
+              canvasSize={activeCanvasSize}
+              selectedElementIds={selectedElementIds}
+              snapGuides={commandState.snapGuides}
+              suppressTransformHandles={isMobilePanMode}
+              showTransformDock={false}
+              viewport={activeViewport}
+              onViewportChange={isMobileViewport ? undefined : handleDesktopViewportChange}
+              onSelectElement={handleSelectElement}
+              onMoveSelection={handleDragMove}
+              onResizeSelection={handleDragResize}
+              onRotateSelection={handleDragRotate}
+              onDragEnd={handleDragEnd}
+              onArrangeSelection={handleArrangeSelection}
+              onDropAsset={handleCanvasDropAsset}
+            />
+          )}
+          canvasFooter={canvasFooter}
+          propertiesPanel={propertiesPanel}
+        />
+      </div>
       {activePlaybackSlide ? (
         <div
           ref={playbackOverlayRef}
@@ -3080,6 +3173,16 @@ export default function PresentationEditor() {
           open={isExportDialogOpen}
           onClose={() => setIsExportDialogOpen(false)}
           deckId={deck.id}
+        />
+      )}
+      {isMobileViewport && (
+        <MobileDrawerPanel
+          isOpen={isMobileDrawerOpen}
+          onClose={() => setIsMobileDrawerOpen(false)}
+          slidesPanel={slidesPanel}
+          onAddElement={handleAddElement}
+          snapLockEnabled={snapLockEnabled}
+          onToggleSnapLock={() => setSnapLockEnabled((p) => !p)}
         />
       )}
     </div>

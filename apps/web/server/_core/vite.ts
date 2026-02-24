@@ -6,6 +6,12 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 
+const STATIC_ASSET_REQUEST = /\.(ico|svg|png|jpg|jpeg|gif|webp|css|js|mjs|woff2?|ttf|eot|map|json|wasm)(\?.*)?$/i;
+
+function isStaticAssetRequest(url: string): boolean {
+  return STATIC_ASSET_REQUEST.test(url);
+}
+
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
     middlewareMode: true,
@@ -25,7 +31,7 @@ export async function setupVite(app: Express, server: Server) {
     const url = req.originalUrl;
 
     // Skip static asset requests that Vite didn't serve (return 404 instead of 500)
-    if (/\.(ico|svg|png|jpg|jpeg|gif|webp|css|js|woff2?|ttf|eot|map|json)(\?.*)?$/.test(url)) {
+    if (isStaticAssetRequest(url)) {
       return res.status(404).end();
     }
 
@@ -60,10 +66,25 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  app.use(
+    express.static(distPath, {
+      setHeaders: (res, filePath) => {
+        if (path.extname(filePath).toLowerCase() === ".html") {
+          res.setHeader("Cache-Control", "no-store");
+        }
+      },
+    })
+  );
 
   // fall through to index.html if the file doesn't exist
-  app.use("*", (_req, res) => {
+  app.use("*", (req, res) => {
+    if (isStaticAssetRequest(req.originalUrl)) {
+      res.setHeader("Cache-Control", "no-store");
+      res.type("text/plain");
+      return res.status(404).send("Not Found");
+    }
+
+    res.setHeader("Cache-Control", "no-store");
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }

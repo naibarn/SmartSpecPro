@@ -74,7 +74,9 @@ interface MediaTask {
   status: TaskStatus;
   model: string;
   prompt: string;
+  parameters?: Record<string, unknown>;
   resultUrl?: string;
+  resultData?: Record<string, unknown>;
   creditsUsed?: number;
   errorMessage?: string;
   createdAt: string;
@@ -113,6 +115,139 @@ function getStatusMeta(status: string | undefined) {
 
 function getMediaTypeMeta(mediaType: string | undefined) {
   return mediaTypeConfig[mediaType as MediaType] || fallbackMediaTypeConfig;
+}
+
+function extractTaskErrorInfo(task: MediaTask | null): {
+  summary: string;
+  details: string[];
+  stateHint?: string;
+  codeHint?: string;
+} | null {
+  if (!task) return null;
+
+  const seen = new Set<string>();
+  const details: string[] = [];
+  const push = (value: unknown) => {
+    if (typeof value !== 'string') return;
+    const normalized = value.trim();
+    if (!normalized || seen.has(normalized)) return;
+    seen.add(normalized);
+    details.push(normalized);
+  };
+
+  const resultData = task.resultData;
+  const visited = new WeakSet<object>();
+  const walk = (value: unknown, depth = 0) => {
+    if (depth > 5 || value === null || value === undefined) return;
+    if (typeof value === 'string') {
+      push(value);
+      return;
+    }
+    if (Array.isArray(value)) {
+      value.forEach((item) => walk(item, depth + 1));
+      return;
+    }
+    if (typeof value !== 'object') return;
+    const obj = value as Record<string, unknown>;
+    if (visited.has(obj)) return;
+    visited.add(obj);
+
+    const priorityKeys = ['error', 'errorMessage', 'failMsg', 'message', 'msg', 'detail', 'reason'];
+    for (const key of priorityKeys) {
+      if (key in obj) walk(obj[key], depth + 1);
+    }
+
+    const nestedKeys = ['data', 'response', 'submission', 'output', 'result', 'resultJson', 'kie_ai_response', 'raw_response'];
+    for (const key of nestedKeys) {
+      if (key in obj) walk(obj[key], depth + 1);
+    }
+  };
+
+  const findScalar = (value: unknown, keys: string[], depth = 0): string | undefined => {
+    if (depth > 5 || value === null || value === undefined) return undefined;
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const found = findScalar(item, keys, depth + 1);
+        if (found) return found;
+      }
+      return undefined;
+    }
+    if (typeof value !== 'object') return undefined;
+    const obj = value as Record<string, unknown>;
+    for (const key of keys) {
+      const candidate = obj[key];
+      if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
+      if (typeof candidate === 'number' || typeof candidate === 'boolean') return String(candidate);
+    }
+    for (const nested of Object.values(obj)) {
+      const found = findScalar(nested, keys, depth + 1);
+      if (found) return found;
+    }
+    return undefined;
+  };
+
+  push(task.errorMessage);
+  if (resultData) walk(resultData);
+
+  const stateHint = findScalar(resultData, ['state', 'status', 'task_state', 'taskStatus', 'successFlag']);
+  const codeHint = findScalar(resultData, ['errorCode', 'code', 'statusCode', 'status_code']);
+
+  const summary =
+    details[0] ||
+    (task.status === 'failed'
+      ? 'Generation failed, but provider did not return a clear error message.'
+      : '');
+
+  if (!summary) return null;
+
+  return {
+    summary,
+    details: details.slice(0, 8),
+    stateHint,
+    codeHint,
+  };
+}
+
+function extractTaskDebugInfo(task: MediaTask | null): {
+  traceId?: string;
+  providerHint?: string;
+  logFile?: string;
+} | null {
+  if (!task) return null;
+
+  const resultData = task.resultData && typeof task.resultData === 'object'
+    ? (task.resultData as Record<string, unknown>)
+    : {};
+  const parameters = task.parameters && typeof task.parameters === 'object'
+    ? (task.parameters as Record<string, unknown>)
+    : {};
+
+  const debugObj = (resultData.debug && typeof resultData.debug === 'object')
+    ? (resultData.debug as Record<string, unknown>)
+    : {};
+
+  const apiConfigRaw = (
+    parameters.api_config ??
+    parameters.apiConfig
+  );
+  const apiConfig = apiConfigRaw && typeof apiConfigRaw === 'object'
+    ? (apiConfigRaw as Record<string, unknown>)
+    : {};
+
+  const traceId =
+    (typeof debugObj.trace_id === 'string' && debugObj.trace_id.trim()) ? debugObj.trace_id.trim() :
+    (typeof apiConfig.trace_id === 'string' && apiConfig.trace_id.trim()) ? apiConfig.trace_id.trim() :
+    undefined;
+  const providerHint =
+    (typeof debugObj.provider_hint === 'string' && debugObj.provider_hint.trim()) ? debugObj.provider_hint.trim() :
+    (typeof apiConfig.provider === 'string' && apiConfig.provider.trim()) ? apiConfig.provider.trim() :
+    undefined;
+  const logFile =
+    (typeof debugObj.log_file === 'string' && debugObj.log_file.trim()) ? debugObj.log_file.trim() :
+    undefined;
+
+  if (!traceId && !providerHint && !logFile) return null;
+  return { traceId, providerHint, logFile };
 }
 
 export default function MediaHistory() {
@@ -334,6 +469,7 @@ export default function MediaHistory() {
 
   const selectedTaskLibraryState = selectedTask ? taskLibraryState[selectedTask.id] : undefined;
   const selectedTaskLibraryMeta = getLibraryItemStatusMeta(selectedTaskLibraryState?.status);
+  const selectedTaskDebugInfo = extractTaskDebugInfo(selectedTask);
 
   // Format date for display - show both relative and absolute time
   // Automatically converts UTC to local timezone
@@ -806,6 +942,18 @@ export default function MediaHistory() {
                         <p className="truncate text-sm text-gray-600" title={task.prompt}>
                           {task.prompt}
                         </p>
+                        {task.status === 'failed' && (() => {
+                          const info = extractTaskErrorInfo(task);
+                          if (!info?.summary) return null;
+                          return (
+                            <p
+                              className="truncate text-xs text-red-600 mt-1"
+                              title={info.summary}
+                            >
+                              {info.summary}
+                            </p>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell>
                         <Badge className={`gap-1 ${status.color}`}>
@@ -986,7 +1134,7 @@ export default function MediaHistory() {
               {isFetchingResult && (
                 <div className="flex items-center justify-center p-4 bg-blue-50 rounded-lg">
                   <Loader2 className="w-5 h-5 animate-spin text-blue-500 mr-2" />
-                  <span className="text-blue-700">Fetching result from Kie.ai...</span>
+                  <span className="text-blue-700">Fetching result from provider...</span>
                 </div>
               )}
 
@@ -1041,8 +1189,32 @@ export default function MediaHistory() {
                 </div>
                 {selectedTask.taskId && (
                   <div className="col-span-2">
-                    <span className="text-sm text-gray-500">Kie.ai Task ID</span>
+                    <span className="text-sm text-gray-500">Provider Task ID</span>
                     <p className="font-mono text-xs break-all select-all bg-white p-2 rounded border mt-1">{selectedTask.taskId}</p>
+                  </div>
+                )}
+                {selectedTask.celeryTaskId && (
+                  <div className="col-span-2">
+                    <span className="text-sm text-gray-500">Celery Task ID</span>
+                    <p className="font-mono text-xs break-all select-all bg-white p-2 rounded border mt-1">{selectedTask.celeryTaskId}</p>
+                  </div>
+                )}
+                {selectedTaskDebugInfo?.traceId && (
+                  <div className="col-span-2">
+                    <span className="text-sm text-gray-500">Debug Trace ID</span>
+                    <p className="font-mono text-xs break-all select-all bg-white p-2 rounded border mt-1">{selectedTaskDebugInfo.traceId}</p>
+                  </div>
+                )}
+                {selectedTaskDebugInfo?.providerHint && (
+                  <div>
+                    <span className="text-sm text-gray-500">Provider Hint</span>
+                    <p className="font-mono text-sm">{selectedTaskDebugInfo.providerHint}</p>
+                  </div>
+                )}
+                {selectedTaskDebugInfo?.logFile && (
+                  <div className="col-span-2">
+                    <span className="text-sm text-gray-500">Debug Log File</span>
+                    <p className="font-mono text-xs break-all select-all bg-white p-2 rounded border mt-1">{selectedTaskDebugInfo.logFile}</p>
                   </div>
                 )}
                 <div>
@@ -1088,10 +1260,43 @@ export default function MediaHistory() {
                   <span className="text-sm text-gray-500">Prompt</span>
                   <p className="text-sm mt-1 whitespace-pre-wrap">{selectedTask.prompt}</p>
                 </div>
-                {selectedTask.errorMessage && (
+                {(selectedTask.status === 'failed' || selectedTask.status === 'cancelled') && (() => {
+                  const errorInfo = extractTaskErrorInfo(selectedTask);
+                  if (!errorInfo) return null;
+                  return (
+                    <div className="col-span-2 rounded-lg border border-red-200 bg-red-50/70 p-3">
+                      <span className="text-sm font-medium text-red-700">Error Summary</span>
+                      <p className="text-sm text-red-700 mt-1">{errorInfo.summary}</p>
+                      {(errorInfo.codeHint || errorInfo.stateHint) && (
+                        <p className="text-xs text-red-600 mt-1">
+                          {errorInfo.codeHint ? `Code: ${errorInfo.codeHint}` : ''}
+                          {errorInfo.codeHint && errorInfo.stateHint ? ' | ' : ''}
+                          {errorInfo.stateHint ? `State: ${errorInfo.stateHint}` : ''}
+                        </p>
+                      )}
+                      {errorInfo.details.length > 1 && (
+                        <div className="mt-2 space-y-1">
+                          <span className="text-xs font-medium text-red-600">Details</span>
+                          {errorInfo.details.slice(1).map((detail, index) => (
+                            <p key={`${detail}-${index}`} className="text-xs text-red-600 break-words">
+                              - {detail}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+                {(selectedTask.status === 'failed' || selectedTask.status === 'cancelled') && selectedTask.resultData && (
                   <div className="col-span-2">
-                    <span className="text-sm text-red-500">Error</span>
-                    <p className="text-sm text-red-600 mt-1">{selectedTask.errorMessage}</p>
+                    <details className="rounded border bg-white p-2">
+                      <summary className="cursor-pointer text-xs text-gray-600 select-none">
+                        Technical Error Payload
+                      </summary>
+                      <pre className="text-[11px] text-gray-700 mt-2 overflow-auto max-h-56 whitespace-pre-wrap break-words">
+                        {JSON.stringify(selectedTask.resultData, null, 2)}
+                      </pre>
+                    </details>
                   </div>
                 )}
                 <div>

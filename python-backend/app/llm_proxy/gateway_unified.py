@@ -1,5 +1,7 @@
 from decimal import Decimal
 from typing import Dict, Any, Optional, List, Literal, Union
+import re
+import httpx
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
@@ -8,6 +10,7 @@ from app.llm_proxy.proxy import LLMProxy, LLMProviderError
 from app.llm_proxy.unified_client import get_unified_client, UnifiedLLMClient
 from app.llm_proxy.models import LLMRequest, LLMResponse, ImageGenerationRequest, ImageGenerationResponse, VideoGenerationRequest, VideoGenerationResponse, AudioGenerationRequest, AudioGenerationResponse
 from app.services.credit_service import CreditService, InsufficientCreditsError
+from app.services.media_debug_trace import write_media_debug_event
 from app.services.web_gateway_client import get_gateway_client
 from app.core.credits import usd_to_credits, credits_to_usd
 from app.models.user import User
@@ -95,6 +98,65 @@ class LLMGateway:
         self.unified_client = get_unified_client()
         self.credit_service = CreditService(db)
         self.web_gateway = get_gateway_client()
+
+    @staticmethod
+    def _normalize_model_id(model: Optional[str]) -> str:
+        if not model:
+            return ""
+        return re.sub(r"[^a-z0-9]+", "-", model.strip().lower()).strip("-")
+
+    @staticmethod
+    def _normalize_provider_id(provider: Optional[str]) -> str:
+        if not provider:
+            return ""
+
+        normalized = re.sub(r"[^a-z0-9]+", "_", provider.strip().lower()).strip("_")
+        if normalized in {"byteplus", "modelark", "byteplus_modelark", "byteplus_model_ark"}:
+            return "byteplus_modelark"
+        if normalized in {"kie", "kie_ai", "kieai"}:
+            return "kie_ai"
+        return normalized
+
+    async def _resolve_media_provider(
+        self,
+        model_id: str,
+        api_config: Optional[Dict[str, str]],
+    ) -> Optional[str]:
+        # 1) Explicit provider hint from caller payload
+        if isinstance(api_config, dict):
+            for key in ("provider", "provider_id", "providerId", "providerName"):
+                value = api_config.get(key)
+                if isinstance(value, str) and value.strip():
+                    return self._normalize_provider_id(value)
+
+        # 2) Provider from media_models table
+        try:
+            from sqlalchemy import text
+
+            candidates: List[str] = []
+            for candidate in (
+                model_id,
+                model_id.strip(),
+                self._normalize_model_id(model_id),
+                model_id.replace(".", "-"),
+                model_id.replace("_", "-"),
+                model_id.replace("-", "."),
+            ):
+                if candidate and candidate not in candidates:
+                    candidates.append(candidate)
+
+            for candidate in candidates:
+                result = await self.db.execute(
+                    text('SELECT "provider" FROM media_models WHERE lower("modelId") = lower(:model_id) LIMIT 1'),
+                    {"model_id": candidate},
+                )
+                row = result.fetchone()
+                if row and row[0]:
+                    return self._normalize_provider_id(str(row[0]))
+        except Exception as e:
+            logger.warning("resolve_media_provider_failed", model=model_id, error=str(e))
+
+        return None
     
     async def invoke(
         self,
@@ -188,6 +250,21 @@ class LLMGateway:
         Generate image with credit checking.
         """
         logger.info("image_generation_request", user_id=user.id, model=request.model)
+        api_config = request.api_config if isinstance(request.api_config, dict) else {}
+        trace_id = str(
+            api_config.get("trace_id")
+            or api_config.get("debug_trace_id")
+            or ""
+        ).strip() or None
+        log_file = write_media_debug_event("image.generate.start", {
+            "trace_id": trace_id,
+            "user_id": user.id,
+            "model": request.model,
+            "provider_hint": api_config.get("provider"),
+            "api_config_keys": sorted(list(api_config.keys())),
+            "has_reference_images": bool(request.reference_image_urls),
+            "prompt_preview": (request.prompt or "")[:180],
+        })
 
         # Estimate cost via Web Gateway or use local estimate
         estimated_cost = await self._estimate_cost(request, False)
@@ -195,7 +272,36 @@ class LLMGateway:
 
         # --- BytePlus ModelArk routing ---
         from app.llm_proxy.providers.byteplus_modelark_provider import BytePlusModelArkProvider
-        if request.model in BytePlusModelArkProvider.IMAGE_MODELS:
+        resolved_provider = await self._resolve_media_provider(request.model, request.api_config)
+        normalized_model = self._normalize_model_id(request.model)
+        byteplus_image_models = {
+            self._normalize_model_id(model_name)
+            for model_name in BytePlusModelArkProvider.IMAGE_MODELS
+        }
+        route_to_byteplus = (
+            resolved_provider == "byteplus_modelark"
+            or normalized_model in byteplus_image_models
+        )
+
+        logger.info(
+            "image_provider_routing",
+            model=request.model,
+            normalized_model=normalized_model,
+            resolved_provider=resolved_provider,
+            route="byteplus_modelark" if route_to_byteplus else "kie_ai",
+        )
+        write_media_debug_event("image.generate.routing", {
+            "trace_id": trace_id,
+            "task_log_file": log_file,
+            "user_id": user.id,
+            "model": request.model,
+            "normalized_model": normalized_model,
+            "resolved_provider": resolved_provider,
+            "provider_hint": api_config.get("provider"),
+            "route": "byteplus_modelark" if route_to_byteplus else "kie_ai",
+        })
+
+        if route_to_byteplus:
             from app.services.media_provider_service import get_media_provider_key
             provider_config = await get_media_provider_key("byteplus_modelark")
             if not provider_config or not provider_config.get("apiKey"):
@@ -226,16 +332,78 @@ class LLMGateway:
                 transaction = await self._deduct_credits(user, actual_cost, request, response, estimated_cost, False)
                 response.credits_used = abs(transaction.amount)
                 response.credits_balance = transaction.balance_after
+                write_media_debug_event("image.generate.byteplus.success", {
+                    "trace_id": trace_id,
+                    "user_id": user.id,
+                    "model": request.model,
+                    "provider_task_id": result.get("provider_task_id"),
+                    "result_url": result.get("result_url"),
+                    "log_file": log_file,
+                })
                 return response
             except HTTPException:
                 raise
+            except httpx.HTTPStatusError as e:
+                provider_status = e.response.status_code
+                provider_message = ""
+                try:
+                    payload = e.response.json()
+                    provider_message = (
+                        payload.get("message")
+                        or payload.get("msg")
+                        or payload.get("error")
+                        or str(payload)
+                    )
+                except Exception:
+                    provider_message = (e.response.text or "").strip()
+                provider_message = provider_message[:500] if provider_message else "Unknown provider error"
+
+                logger.error(
+                    "byteplus_image_generation_http_error",
+                    user_id=user.id,
+                    model=request.model,
+                    status=provider_status,
+                    detail=provider_message,
+                )
+                write_media_debug_event("image.generate.byteplus.error", {
+                    "trace_id": trace_id,
+                    "user_id": user.id,
+                    "model": request.model,
+                    "http_status": provider_status,
+                    "error": provider_message,
+                    "log_file": log_file,
+                })
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=f"BytePlus API error ({provider_status}): {provider_message}",
+                )
             except Exception as e:
                 logger.error("byteplus_image_generation_failed", user_id=user.id, model=request.model, error=str(e))
-                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="BytePlus image generation failed. See server logs for details.")
+                write_media_debug_event("image.generate.byteplus.error", {
+                    "trace_id": trace_id,
+                    "user_id": user.id,
+                    "model": request.model,
+                    "error": str(e),
+                    "log_file": log_file,
+                })
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"BytePlus image generation failed: {str(e)}",
+                )
             finally:
                 if client is not None:
                     await client.aclose()
         # --- End BytePlus routing ---
+
+        write_media_debug_event("image.generate.fallback_to_kie", {
+            "trace_id": trace_id,
+            "user_id": user.id,
+            "model": request.model,
+            "resolved_provider": resolved_provider,
+            "provider_hint": api_config.get("provider"),
+            "reason": "byteplus_not_selected",
+            "log_file": log_file,
+        })
 
         if not self.unified_client.kie_ai_client:
             # Try to initialize from SmartSpecWeb media_providers
@@ -381,6 +549,13 @@ class LLMGateway:
             return response
         except Exception as e:
             logger.error("image_generation_failed", user_id=user.id, error=str(e))
+            write_media_debug_event("image.generate.kie.error", {
+                "trace_id": trace_id,
+                "user_id": user.id,
+                "model": request.model,
+                "error": str(e),
+                "log_file": log_file,
+            })
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Image generation failed: {str(e)}")
 
     async def generate_video(
@@ -400,7 +575,26 @@ class LLMGateway:
 
         # --- BytePlus ModelArk routing ---
         from app.llm_proxy.providers.byteplus_modelark_provider import BytePlusModelArkProvider
-        if request.model in BytePlusModelArkProvider.VIDEO_MODELS:
+        resolved_provider = await self._resolve_media_provider(request.model, request.api_config)
+        normalized_model = self._normalize_model_id(request.model)
+        byteplus_video_models = {
+            self._normalize_model_id(model_name)
+            for model_name in BytePlusModelArkProvider.VIDEO_MODELS
+        }
+        route_to_byteplus = (
+            resolved_provider == "byteplus_modelark"
+            or normalized_model in byteplus_video_models
+        )
+
+        logger.info(
+            "video_provider_routing",
+            model=request.model,
+            normalized_model=normalized_model,
+            resolved_provider=resolved_provider,
+            route="byteplus_modelark" if route_to_byteplus else "kie_ai",
+        )
+
+        if route_to_byteplus:
             from app.services.media_provider_service import get_media_provider_key
             provider_config = await get_media_provider_key("byteplus_modelark")
             if not provider_config or not provider_config.get("apiKey"):

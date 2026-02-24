@@ -1,52 +1,55 @@
 # Orchestra Plan
 
 ## Task
-Add Presentation Editor version history and restore capability using the same shared versioning system as Document Management.
+Redesign Presentation Editor mobile/tablet layout so canvas fills maximum screen space, with a collapsible bottom sheet (swipe-up gesture) and a slide-in drawer panel for slides/tools — no impact on desktop layout.
 
-## Classification
-- scope: medium
-- risk: medium
-- affected_domains: ["CMD-2 Backend", "CMD-1 Frontend"]
-- estimated_file_count: 6
-- chosen_route: multi-agent-waves
-- task_summary: Persist presentation save snapshots to shared library content versions, expose list/restore APIs for Presentation Editor, and add UI to browse and restore versions.
-- bug_route: false
+## Task Classification
+- Scope: medium
+- Risk: low
+- Affected domains: CMD-1 Frontend
+- Estimated file count: 6
+- Chosen route: multi-agent-waves
+- Bug route: false
+- Classification notes: All changes are frontend-only React/Tailwind UI. File count (~6) exceeds
+  the small-scope ceiling of 3. Involves gesture handling (pointer events for swipe-up),
+  new MobileDrawerPanel component, and significant rework of PresentationEditor mobile layout.
+  No API, auth, DB, or backend changes — risk is low.
 
 ## Wave Plan
 
-### Wave 1 — Backend contract + service
-- Add presentation version snapshot model/parser in service layer using `library_content_versions`.
-- Capture snapshots on manual presentation saves (shared version system, no new table).
-- Add tRPC procedures for listing presentation versions and restoring from version.
-- Add/adjust backend tests for version listing and restore.
+### Wave 1 — Frontend: Mobile Layout Redesign (ssp-frontend)
 
-### Wave 2 — Frontend integration
-- Add Presentation Editor UI section for version history.
-- Fetch versions from new presentation endpoint.
-- Restore selected version and refresh deck/editor state.
-- Add/adjust editor tests for version history rendering and restore action.
+**Agent:** ssp-frontend
+**Files owned:**
+1. `apps/web/client/src/presentation-canvas/components/MobileBottomSheet.tsx`
+   — Add collapsible state (collapsed by default), swipe-up pointer gesture, expand/collapse toggle
+2. `apps/web/client/src/presentation-canvas/components/MobileQuickActions.tsx`
+   — Already simplified (icons only); review and ensure it is minimal (mode toggle + nudge + delete)
+3. `apps/web/client/src/presentation-canvas/components/MobileDrawerPanel.tsx` ← NEW
+   — Left slide-in drawer: Slides panel + Add-element grid + Snap toggle; triggered by hamburger button
+4. `apps/web/client/src/presentation-canvas/CanvasShell.tsx`
+   — No structural changes needed (already flex h-full); may need to remove canvasFooter overlap
+5. `apps/web/client/src/pages/PresentationEditor.tsx`
+   — Simplify mobile canvasToolbar to just MobileQuickActions (no add-element grid)
+   — Add hamburger (☰) button in header when isMobileViewport
+   — Wire MobileDrawerPanel with open/close state
+   — Remove add-element buttons from mobile canvasToolbar (they are in the drawer now)
+6. `apps/web/client/src/presentation-canvas/index.ts`
+   — Export MobileDrawerPanel
 
-### Wave 3 — Validation
-- Run targeted test suite for Presentation Editor and presentation router/service changes.
-- Resolve failures and finalize progress artifacts.
+**Design contract:**
+- MobileDrawerPanel: `{ isOpen: boolean; onClose: () => void; slidesPanel: ReactNode; onAddElement: (type) => void; snapLockEnabled: boolean; onToggleSnapLock: () => void }`
+- MobileBottomSheet: adds `isCollapsed` internal state; tab click expands; drag handle toggles
+- MobileQuickActions: unchanged from last session (already correct)
+- Desktop layout (useStudioLayout=true path in CanvasShell): MUST NOT be modified
 
-### Wave 4 — Restore UX hardening (follow-up)
-- Group saved versions by slide inside Presentation Editor.
-- Add diff preview panel for selected version before restore.
-- Add explicit restore confirmation dialog to prevent accidental rollback.
+### Wave 2 — Quality Gate
+- TypeScript check: `cd apps/web && pnpm check`
+- Expected: 0 errors
 
-## Integration Result
-- waves_completed: 3
-- files_changed:
-  - /home/dev/projects/SmartSpecPro/apps/web/server/services/presentationService.ts
-  - /home/dev/projects/SmartSpecPro/apps/web/server/routers/presentation.ts
-  - /home/dev/projects/SmartSpecPro/apps/web/server/routers/presentation.test.ts
-  - /home/dev/projects/SmartSpecPro/apps/web/client/src/pages/PresentationEditor.tsx
-  - /home/dev/projects/SmartSpecPro/apps/web/client/src/pages/PresentationEditor.test.tsx
-- quality_gates:
-  - `npm test -- server/routers/presentation.test.ts client/src/pages/PresentationEditor.test.tsx` => passed
-  - `npm test -- server/services/presentationService.test.ts` => passed
-  - `cd apps/web && npm test -- client/src/pages/PresentationEditor.test.tsx` => passed (42 tests, includes grouped preview + confirm restore coverage)
-  - `npm run check` => failed (pre-existing repo-wide TypeScript issues outside this change set)
-- security_gate_required: true (new tRPC procedures added)
-- security_gate: not executed in this run (warning)
+## Route Status
+route: multi-agent-waves
+waves_completed: 0
+agents_dispatched: []
+quality_gates: pending
+security_gate: skipped (low risk, UI only)

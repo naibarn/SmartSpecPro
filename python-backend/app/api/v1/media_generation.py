@@ -779,17 +779,31 @@ async def fetch_task_result(
                 }
 
         elif task_state == "fail":
+            status_data = status_response.get("data", {})
+            if not isinstance(status_data, dict):
+                status_data = {}
             error_msg = (
                 status_response.get("failMsg") or
-                status_response.get("data", {}).get("failMsg") or
+                status_data.get("failMsg") or
+                status_data.get("errorMessage") or
+                status_response.get("message") or
+                status_response.get("msg") or
                 status_response.get("error") or
                 "Task failed on Kie.ai"
             )
+            if isinstance(error_msg, dict):
+                error_msg = error_msg.get("message") or error_msg.get("detail") or json.dumps(error_msg, ensure_ascii=False)
+            error_msg = str(error_msg)
             updated_task = await MediaTaskService.update_task_status(
                 db,
                 task_id,
                 TaskStatus.FAILED,
-                error_message=error_msg
+                error_message=error_msg,
+                result_data={
+                    "kie_ai_response": status_response,
+                    "normalized_state": task_state,
+                    "raw_state": raw_state,
+                },
             )
             return {
                 "success": False,

@@ -212,6 +212,31 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           white-space: nowrap;
           padding: 0 6px;
         }
+
+        /* Mobile: single scrollable row instead of wrapping */
+        @media (max-width: 639px) {
+          .toolbar {
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 4px 8px;
+            gap: 6px;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+          }
+          .toolbar::-webkit-scrollbar {
+            display: none;
+          }
+          .toolbar-group {
+            flex-shrink: 0;
+          }
+          .toolbar-group.right {
+            margin-left: 0;
+          }
+          .zoom-display {
+            min-width: 40px;
+          }
+        }
       `}</style>
 
       {/* Undo/Redo */}

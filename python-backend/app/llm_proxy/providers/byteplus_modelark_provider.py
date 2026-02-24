@@ -165,11 +165,19 @@ class BytePlusModelArkProvider:
             raise ValueError(
                 f"BytePlus image response missing data[0].url: {list(resp.keys())}"
             )
-        provider_task_id = resp.get("id")
+        provider_task_id = (
+            resp.get("id")
+            or resp.get("request_id")
+            or resp.get("requestId")
+        )
         usage = resp.get("usage") or {}
         usage_tokens = usage.get("total_tokens", 0)
         if not provider_task_id:
-            raise ValueError(f"BytePlus image response missing id: {list(resp.keys())}")
+            # BytePlus synchronous image responses can omit a task/request id.
+            # Generate a stable fallback id so downstream logs/history still
+            # have an identifier without failing the request.
+            created = resp.get("created")
+            provider_task_id = f"byteplus-sync-{created}" if created is not None else "byteplus-sync"
 
         result: dict = {
             "result_url": data[0]["url"],

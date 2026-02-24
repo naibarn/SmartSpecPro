@@ -4,7 +4,9 @@ import { toast } from "sonner";
 import {
   ChevronsLeft,
   ChevronsRight,
+  ChevronDown,
   ChevronLeft,
+  Eye,
   FilePlus2,
   FileText,
   FolderOpen,
@@ -16,6 +18,7 @@ import {
   PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
+  Plus,
   Search,
   Upload,
   Video,
@@ -31,6 +34,12 @@ import { TrashPanel } from "@/components/library/TrashPanel";
 import { SafeMarkdown } from "@/components/chat/SafeMarkdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -40,6 +49,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
+import { cn } from "@/lib/utils";
 import {
   buildDocumentQueryString,
   DEFAULT_DOCUMENT_QUERY_STATE,
@@ -126,6 +136,8 @@ export default function DocumentManagement() {
   const [libraryPanelWidth, setLibraryPanelWidth] = useState(440);
   const [previewPanelWidth, setPreviewPanelWidth] = useState(430);
   const [importingDriveFileId, setImportingDriveFileId] = useState<string | null>(null);
+  const [mobileTab, setMobileTab] = useState<"library" | "editor" | "preview">("library");
+  const [isLibraryHeaderCollapsed, setIsLibraryHeaderCollapsed] = useState(false);
   const [openEditorTabs, setOpenEditorTabs] = useState<DocumentEditorTab[]>(() => {
     if (typeof window === "undefined") {
       return [];
@@ -356,6 +368,9 @@ export default function DocumentManagement() {
       viewMode: "editor",
       docId: item.id,
     }));
+    if (!isDesktopLayout) {
+      setMobileTab("editor");
+    }
     window.setTimeout(() => {
       if (typeof window !== "undefined" && window.innerWidth < 1400) {
         editorWorkspaceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -956,8 +971,11 @@ export default function DocumentManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50/50 to-cyan-50/40">
-      <header className="sticky top-0 z-10 border-b bg-white/70 backdrop-blur-xl">
+    <div className={cn(
+      "bg-gradient-to-br from-slate-50 via-sky-50/50 to-cyan-50/40",
+      isDesktopLayout ? "min-h-screen" : "flex h-dvh flex-col overflow-hidden",
+    )}>
+      <header className="sticky top-0 z-10 shrink-0 border-b bg-white/70 backdrop-blur-xl">
         <div className="px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -969,20 +987,50 @@ export default function DocumentManagement() {
                 <ChevronLeft className="mr-1 h-4 w-4" />
                 Back
               </Button>
-              <div className="flex items-center gap-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-cyan-500">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-cyan-500">
                   <FileText className="h-5 w-5 text-white" />
                 </div>
-                <div>
-                  <h1 className="text-lg font-bold">Document Management</h1>
-                  <p className="text-xs text-muted-foreground">
+                <div className="min-w-0">
+                  <h1 className="text-base sm:text-lg font-bold truncate">Document Management</h1>
+                  <p className="hidden sm:block text-xs text-muted-foreground">
                     Manage personal and shared RAG files with preview and markdown editing.
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            {/* Mobile: single + dropdown for all actions */}
+            <div className="flex sm:hidden items-center">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1">
+                    <Plus className="h-4 w-4" />
+                    Add
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => imageInputRef.current?.click()} disabled={uploadFileMutation.isPending}>
+                    <ImagePlus className="mr-2 h-4 w-4" /> Upload Image
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => videoInputRef.current?.click()} disabled={uploadFileMutation.isPending}>
+                    <Video className="mr-2 h-4 w-4" /> Upload Video
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => fileInputRef.current?.click()} disabled={uploadFileMutation.isPending}>
+                    <Upload className="mr-2 h-4 w-4" /> Upload File
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleCreateNewDocument} disabled={createItemMutation.isPending || saveMarkdownMutation.isPending}>
+                    <FilePlus2 className="mr-2 h-4 w-4" /> New Document
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleCreateNewPresentation} disabled={createItemMutation.isPending || createPresentationDeckMutation.isPending}>
+                    <FilePlus2 className="mr-2 h-4 w-4" /> New Presentation
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Tablet / desktop: full button row */}
+            <div className="hidden sm:flex flex-wrap items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -1069,9 +1117,11 @@ export default function DocumentManagement() {
         }}
       />
 
-      <main className="px-4 py-6 sm:px-6 lg:px-8">
-        {/* File Type Support Information Banner */}
-        <div className="mb-4 rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 via-cyan-50 to-blue-50 p-4 shadow-sm">
+      <main className={cn(
+        isDesktopLayout ? "px-4 py-6 sm:px-6 lg:px-8" : "flex-1 min-h-0 overflow-hidden px-3 pt-3 pb-14",
+      )}>
+        {/* File Type Support Information Banner — desktop only */}
+        <div className="mb-4 rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 via-cyan-50 to-blue-50 p-4 shadow-sm hidden xl:block">
           <div className="flex items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-cyan-500 shadow-sm">
               <Info className="h-5 w-5 text-white" />
@@ -1093,6 +1143,243 @@ export default function DocumentManagement() {
           </div>
         </div>
 
+        {/* ── MOBILE / TABLET LAYOUT (< 1280px) ── */}
+        {!isDesktopLayout && (
+          <div className="h-full">
+            {mobileTab === "library" && (
+              <div className="flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white shadow-md overflow-hidden">
+                <button
+                  type="button"
+                  className="shrink-0 flex w-full items-center justify-between border-b px-3 pt-3 pb-2 text-left"
+                  onClick={() => setIsLibraryHeaderCollapsed((p) => !p)}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-slate-900">Library</span>
+                    <Badge variant="outline" className="rounded-full border-slate-300 bg-slate-50 text-[11px]">
+                      {getCurrentScopeLabel(queryState.scope)}
+                    </Badge>
+                  </div>
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 text-slate-400 transition-transform duration-200",
+                      isLibraryHeaderCollapsed ? "-rotate-90" : "rotate-0",
+                    )}
+                  />
+                </button>
+                {!isLibraryHeaderCollapsed && (
+                  <div className="shrink-0 border-b px-3 pb-2 pt-2">
+                    <DocumentLibraryTabs
+                      value={queryState.scope}
+                      onChange={(scope) => setQueryState((prev) => ({ ...prev, scope }))}
+                    />
+                  </div>
+                )}
+                {queryState.scope === "trash" ? (
+                  <div className="flex-1 overflow-y-auto p-3">
+                    <TrashPanel />
+                  </div>
+                ) : queryState.scope === "my_drive" ? (
+                  <div className="flex-1 overflow-y-auto p-3">
+                    <GoogleDriveBrowser
+                      onImportFile={handleImportFromDrive}
+                      importingFileId={importingDriveFileId}
+                    />
+                  </div>
+                ) : queryState.scope === "my_onedrive" ? (
+                  <div className="flex-1 overflow-y-auto p-3">
+                    <OneDriveBrowser
+                      onImportFile={handleImportFromDrive}
+                      importingFileId={importingDriveFileId}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex flex-1 min-h-0 flex-col overflow-hidden p-3 gap-2">
+                    <div className="shrink-0 grid gap-2 rounded-xl border border-slate-200 bg-slate-50/80 p-2">
+                      <div className="relative">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          className="h-10 rounded-xl border-slate-300 bg-white pl-9"
+                          placeholder="Search files..."
+                          value={queryState.query}
+                          onChange={(event) => setQueryState((prev) => ({ ...prev, query: event.target.value }))}
+                        />
+                      </div>
+                      <Select
+                        value={queryState.sort}
+                        onValueChange={(value) => setQueryState((prev) => ({ ...prev, sort: value as DocumentQueryState["sort"] }))}
+                      >
+                        <SelectTrigger className="h-10 rounded-xl border-slate-300 bg-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="updated_desc">Newest updated first</SelectItem>
+                          <SelectItem value="created_desc">Newest created first</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex-1 overflow-y-auto">
+                      {listError && (
+                        <div className="mb-2 rounded bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                          Failed to load: {listError.message}
+                        </div>
+                      )}
+                      <DocumentGridList
+                        items={documents}
+                        selectedId={selectedId}
+                        isLoading={listLoading}
+                        className="h-auto"
+                        emptyMessage="No documents match the selected scope and filters."
+                        onSelect={(item) => {
+                          setPendingAutoSelectId(null);
+                          setProvisionalSelectedItem(null);
+                          openEditorTab(item, { scope: queryState.scope });
+                        }}
+                        onOpen={(item) => {
+                          setPendingAutoSelectId(null);
+                          setProvisionalSelectedItem(null);
+                          openEditorTab(item, { scope: queryState.scope });
+                        }}
+                        onDelete={handleDeleteItem}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {mobileTab === "editor" && (
+              <div className="flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white shadow-md overflow-hidden">
+                <div className="shrink-0 flex items-center justify-between border-b px-3 pt-3 pb-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                      onClick={() => setMobileTab("library")}
+                      title="Back to Library"
+                    >
+                      <FolderOpen className="h-3.5 w-3.5" />
+                      Library
+                    </button>
+                    <span className="text-sm font-semibold text-slate-900">Editor</span>
+                  </div>
+                  {hasUnsavedTabs ? (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                      Unsaved
+                    </span>
+                  ) : null}
+                </div>
+                <div className="shrink-0 flex gap-2 overflow-x-auto border-b px-3 py-2">
+                  {openEditorTabs.length ? openEditorTabs.map((tab) => {
+                    const isActive = tab.id === selectedId;
+                    const isDirty = isEditorTabDirty(tab.id);
+                    return (
+                      <div
+                        key={tab.id}
+                        className={`flex min-w-[160px] shrink-0 items-center rounded-xl border ${
+                          isActive
+                            ? "border-sky-300 bg-sky-50 text-sky-900 shadow-sm"
+                            : "border-slate-200 bg-slate-50/70 text-slate-700"
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          className="flex min-w-0 flex-1 items-center gap-1.5 px-2 py-2 text-left"
+                          onClick={() => activateEditorTab(tab.id)}
+                        >
+                          <FileText className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate text-xs">{tab.title}</span>
+                          {isDirty ? (
+                            <span className="shrink-0 text-xs font-semibold text-amber-600">*</span>
+                          ) : null}
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-r-xl px-2 py-2 text-muted-foreground hover:bg-slate-100 hover:text-foreground"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            closeEditorTab(tab.id);
+                          }}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    );
+                  }) : (
+                    <div className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
+                      Open a file from the Library tab.
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-h-0 overflow-y-auto p-2">
+                  <DocumentPreviewPanel
+                    item={selectedItem}
+                    previewType={previewType}
+                    previewText={previewText}
+                    markdownValue={selectedMarkdownDraft?.value ?? ""}
+                    markdownUpdatedAt={selectedMarkdownDraft?.updatedAt || markdownContentQuery.data?.updated_at || selectedItem?.updated_at}
+                    markdownError={markdownError}
+                    isMarkdownSaving={saveMarkdownMutation.isPending}
+                    isRenamingTitle={updateItemMutation.isPending}
+                    markdownFullHeight
+                    markdownEditorOnly
+                    documentId={selectedItem?.id}
+                    onMarkdownChange={(value) => {
+                      if (!selectedItem) return;
+                      const docId = selectedItem.id;
+                      setMarkdownDraftByDocId((prev) => {
+                        const current = prev[docId];
+                        const fallbackUpdatedAt = selectedItem.updated_at;
+                        return {
+                          ...prev,
+                          [docId]: {
+                            value,
+                            savedValue: current?.savedValue ?? "",
+                            updatedAt: current?.updatedAt ?? fallbackUpdatedAt,
+                          },
+                        };
+                      });
+                    }}
+                    onMarkdownSave={handleSaveMarkdown}
+                    onVersionRestore={handleVersionRestore}
+                    onRenameTitle={handleRenameDocument}
+                  />
+                  {!selectedItem && selectedItemQuery.isLoading ? (
+                    <div className="p-2 text-sm text-muted-foreground">Loading document...</div>
+                  ) : null}
+                  {!selectedItem && !selectedItemQuery.isLoading ? (
+                    <div className="flex items-center gap-2 p-2 text-sm text-muted-foreground">
+                      <FolderOpen className="h-4 w-4" />
+                      Open a file from the Library tab.
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            )}
+
+            {mobileTab === "preview" && (
+              <div className="flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white shadow-md overflow-hidden">
+                <div className="shrink-0 border-b px-3 pt-3 pb-2">
+                  <div className="text-sm font-semibold text-slate-900">Markdown Preview</div>
+                  <div className="text-xs text-muted-foreground">Live preview for active .md document</div>
+                </div>
+                {selectedItem && previewType === "markdown" ? (
+                  <div className="flex-1 min-h-0 overflow-y-auto p-3">
+                    <SafeMarkdown className="md-preview">
+                      {activeMarkdownValue || "_Empty markdown file_"}
+                    </SafeMarkdown>
+                  </div>
+                ) : (
+                  <div className="p-4 text-sm text-muted-foreground">
+                    Open a markdown file from the Library tab to see live preview here.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── DESKTOP LAYOUT (≥ 1280px) — unchanged ── */}
+        {isDesktopLayout && (
         <div
           ref={desktopLayoutRef}
           className="flex flex-col gap-4 xl:h-[calc(100vh-140px)] xl:flex-row"
@@ -1512,7 +1799,34 @@ export default function DocumentManagement() {
             </div>
           )}
         </div>
+        )} {/* end isDesktopLayout */}
       </main>
+
+      {/* ── MOBILE / TABLET BOTTOM TAB BAR ── */}
+      {!isDesktopLayout && (
+        <div className="fixed bottom-0 left-0 right-0 z-20 flex h-14 shrink-0 border-t bg-white/90 shadow-lg backdrop-blur-md">
+          {(
+            [
+              { tab: "library", Icon: FolderOpen, label: "Library" },
+              { tab: "editor", Icon: FileText, label: "Editor" },
+              { tab: "preview", Icon: Eye, label: "Preview" },
+            ] as const
+          ).map(({ tab, Icon, label }) => (
+            <button
+              key={tab}
+              type="button"
+              className={cn(
+                "flex flex-1 flex-col items-center justify-center gap-0.5 text-xs font-medium transition-colors",
+                mobileTab === tab ? "text-sky-600" : "text-slate-500 hover:text-slate-700",
+              )}
+              onClick={() => setMobileTab(tab)}
+            >
+              <Icon className="h-5 w-5" />
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

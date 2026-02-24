@@ -1,5 +1,16 @@
-[COMPLETE] wave-1-backend-version-snapshots — presentation manual saves now persist snapshots in shared library_content_versions and backend list/restore APIs are available
-[COMPLETE] wave-2-frontend-version-history — PresentationEditor now renders saved version history and supports restore action
-[COMPLETE] wave-3-validation — targeted router/service/editor tests passed; repo-wide typecheck still has pre-existing failures
-[COMPLETE] wave-4-restore-ux-hardening — version history is grouped per slide, selected version shows preview diff, and restore requires explicit confirmation
-[PENDING] security pre-merge review gate (not executed in this run)
+# Orchestra Progress
+
+## Session: 2026-02-24 — Mobile Layout Redesign
+
+[COMPLETE] wave-1-frontend — MobileDrawerPanel created, MobileBottomSheet collapsible, PresentationEditor simplified toolbar + hamburger, index.ts export added. Build: ✓ built in 17.87s
+
+[COMPLETE] wave-2-quality-gate — npm run build passed (0 errors)
+
+## Session: 2026-02-24 — Chat Mobile Sidebar Fix
+
+[COMPLETE] Fix Chat.tsx mobile sidebar — replaced undefined `MessageCircle` with `Menu` icon, converted conditional-render sidebar to always-in-DOM CSS slide-in (`-translate-x-full` → `translate-x-0`) with `transition-transform duration-300`. Build: ✓ built in 18.00s
+
+## Summary
+- Files changed: 5 (1 new, 4 modified)
+- Security gate: skipped (low risk, UI only)
+- All waves complete

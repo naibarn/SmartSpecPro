@@ -10,6 +10,61 @@ import App from "./App";
 import { getLoginUrl } from "./const";
 import "./index.css";
 
+const CHUNK_RELOAD_MARKER = "__smartspec_chunk_reload_at__";
+const CHUNK_RELOAD_WINDOW_MS = 30_000;
+const CHUNK_ERROR_PATTERNS = [
+  /Failed to fetch dynamically imported module/i,
+  /Importing a module script failed/i,
+  /Loading chunk [\w-]+ failed/i,
+  /ChunkLoadError/i,
+];
+
+function isChunkLoadError(error: unknown): boolean {
+  if (error instanceof Error) {
+    return CHUNK_ERROR_PATTERNS.some((pattern) => pattern.test(error.message));
+  }
+  if (typeof error === "string") {
+    return CHUNK_ERROR_PATTERNS.some((pattern) => pattern.test(error));
+  }
+  return false;
+}
+
+function reloadForChunkError(): void {
+  if (typeof window === "undefined") return;
+
+  const lastReloadAtRaw = sessionStorage.getItem(CHUNK_RELOAD_MARKER);
+  const lastReloadAt = lastReloadAtRaw ? Number(lastReloadAtRaw) : 0;
+  const now = Date.now();
+  if (Number.isFinite(lastReloadAt) && now - lastReloadAt < CHUNK_RELOAD_WINDOW_MS) {
+    toast.error("แอปอัปเดตแล้ว แต่ไฟล์หน้าเว็บเก่าค้างอยู่", {
+      description: "กรุณา hard refresh (Ctrl+Shift+R) แล้วลองใหม่อีกครั้ง",
+      duration: 7000,
+    });
+    return;
+  }
+
+  sessionStorage.setItem(CHUNK_RELOAD_MARKER, String(now));
+  window.location.reload();
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener(
+    "error",
+    (event) => {
+      if (!isChunkLoadError(event.error) && !isChunkLoadError(event.message)) return;
+      event.preventDefault();
+      reloadForChunkError();
+    },
+    true
+  );
+
+  window.addEventListener("unhandledrejection", (event) => {
+    if (!isChunkLoadError(event.reason)) return;
+    event.preventDefault();
+    reloadForChunkError();
+  });
+}
+
 // Initialize Sentry for frontend error tracking (only when DSN is configured)
 if (import.meta.env.VITE_SENTRY_DSN) {
   Sentry.init({

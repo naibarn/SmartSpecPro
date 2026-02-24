@@ -96,6 +96,8 @@ export const VideoEditorPhase3: React.FC = () => {
   const [textClipRolloutEnabled, setTextClipRolloutEnabled] = useState<boolean>(() => isTextClipRolloutEnabled());
   const [sidebarWidth, setSidebarWidth] = useState<number>(SIDEBAR_DEFAULT_WIDTH);
   const [isSidebarResizing, setIsSidebarResizing] = useState(false);
+  // Mobile sidebar bottom-sheet
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const editorLayoutRef = React.useRef<HTMLDivElement | null>(null);
   const sidebarResizeRef = React.useRef<{ startX: number; startWidth: number }>({
     startX: 0,
@@ -2353,6 +2355,121 @@ export const VideoEditorPhase3: React.FC = () => {
             padding: 12px;
             overflow-y: auto;
           }
+
+          /* Mobile panel toggle button — hidden on tablet/desktop */
+          .mobile-panel-btn {
+            display: none;
+          }
+
+          /* Mobile-only layout adjustments (< 640px) */
+          @media (max-width: 639px) {
+            /* dvh accounts for mobile browser address bar correctly */
+            .video-editor-phase3 {
+              height: 100dvh;
+            }
+
+            .editor-header {
+              padding: 6px 8px;
+              gap: 6px;
+              flex-shrink: 0;
+            }
+
+            .project-title {
+              font-size: 12px;
+              max-width: 90px;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+            }
+
+            .header-button {
+              padding: 5px 8px;
+              font-size: 11px;
+              flex-shrink: 0;
+            }
+
+            .header-hide-mobile {
+              display: none;
+            }
+
+            .mobile-panel-btn {
+              display: flex;
+              align-items: center;
+              gap: 4px;
+              padding: 5px 10px;
+              background: #0078d4;
+              border: none;
+              border-radius: 4px;
+              color: white;
+              cursor: pointer;
+              font-size: 11px;
+              flex-shrink: 0;
+            }
+
+            .editor-layout {
+              flex-direction: column;
+              overflow: hidden;
+            }
+
+            .editor-main {
+              flex: 1;
+              min-height: 0;
+              overflow: hidden;
+              display: flex;
+              flex-direction: column;
+            }
+
+            /* Preview fills available space, shrinks when toolbar/timeline need room */
+            .preview-container {
+              flex: 1;
+              min-height: 0;
+              overflow: hidden;
+            }
+
+            /* Timeline locked at bottom — never shrinks */
+            .timeline-section {
+              height: 180px;
+              flex-shrink: 0;
+              overflow: hidden;
+            }
+
+            .sidebar-resize-handle {
+              display: none;
+            }
+
+            .sidebar {
+              position: fixed;
+              bottom: 0;
+              left: 0;
+              right: 0;
+              width: 100% !important;
+              min-width: 0 !important;
+              max-width: 100% !important;
+              height: 52dvh;
+              border-left: none;
+              border-top: 2px solid #0078d4;
+              z-index: 200;
+              transform: translateY(100%);
+              transition: transform 0.3s ease;
+            }
+
+            .sidebar.mobile-open {
+              transform: translateY(0);
+            }
+
+            .sidebar-backdrop {
+              display: block;
+              position: fixed;
+              inset: 0;
+              background: rgba(0, 0, 0, 0.5);
+              z-index: 199;
+            }
+          }
+
+          /* Hide backdrop by default; shown by JS on mobile only */
+          .sidebar-backdrop {
+            display: none;
+          }
         `}</style>
 
         {/* Header */}
@@ -2407,8 +2524,15 @@ export const VideoEditorPhase3: React.FC = () => {
           <button className="header-button" onClick={() => { setShowProjectList(true); projectListQuery.refetch(); }} title="Open saved project">
             &#128194; Projects
           </button>
-          <button className="header-button" onClick={handleLoad} title="Open from file">
+          <button className="header-button header-hide-mobile" onClick={handleLoad} title="Open from file">
             &#128196; File
+          </button>
+          <button
+            className="mobile-panel-btn"
+            onClick={() => setMobileSidebarOpen(prev => !prev)}
+            title="Toggle panel"
+          >
+            📚 {mobileSidebarOpen ? 'Close' : 'Panel'}
           </button>
         </div>
 
@@ -2533,8 +2657,16 @@ export const VideoEditorPhase3: React.FC = () => {
             title="Drag to resize panel"
           />
 
+          {/* Mobile backdrop — tapping it closes the sidebar */}
+          {mobileSidebarOpen && (
+            <div
+              className="sidebar-backdrop"
+              onClick={() => setMobileSidebarOpen(false)}
+            />
+          )}
+
           {/* Sidebar */}
-          <div className="sidebar" style={{ width: `${sidebarWidth}px` }}>
+          <div className={`sidebar${mobileSidebarOpen ? ' mobile-open' : ''}`} style={{ width: `${sidebarWidth}px` }}>
             <div className="sidebar-tabs">
               <button
                 className={`sidebar-tab ${sidebarView === 'library' ? 'active' : ''}`}
