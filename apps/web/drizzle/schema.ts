@@ -1832,20 +1832,54 @@ export type InsertPresentationSourceAttachment = typeof presentationSourceAttach
 export const presentationConversionRecords = pgTable("presentation_conversion_records", {
   id: serial("id").primaryKey(),
   tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
-  sourceItemId: integer("source_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
+
+  // Nullable: no source library item for Google Slides imports
+  sourceItemId: integer("source_item_id").references(() => libraryItems.id, { onDelete: "cascade" }),
+
   sourceFormat: varchar("source_format", { length: 16 }).notNull(),
   idempotencyKey: varchar("idempotency_key", { length: 128 }).notNull(),
-  deckLibraryItemId: integer("deck_library_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
-  deckId: integer("deck_id").notNull().references(() => presentationDecks.id, { onDelete: "cascade" }),
+
+  // Nullable: set by callback handler after deck creation completes
+  deckLibraryItemId: integer("deck_library_item_id").references(() => libraryItems.id, { onDelete: "cascade" }),
+
+  // Nullable: set by callback handler after deck creation completes
+  deckId: integer("deck_id").references(() => presentationDecks.id, { onDelete: "cascade" }),
+
+  // job lifecycle tracking
+  status: varchar("status", { length: 16 }).notNull().default("queued"),
+  // Values: "queued" | "processing" | "done" | "failed" | "cancelled"
+
+  progress: integer("progress").notNull().default(0),
+  // Values: 0–100
+
+  // required so the callback handler can construct a PresentationActor
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+
+  // stores Google Slides URL when sourceFormat is "google_slides"
+  slidesUrl: varchar("slides_url", { length: 2048 }),
+
   partialFidelity: boolean("partial_fidelity").notNull().default(false),
   fidelityWarnings: json("fidelity_warnings").$type<string[]>().notNull().default([]),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
-  uniqueIndex("presentation_conversion_records_source_unique").on(t.tenantId, t.sourceItemId),
+  // Partial unique index: restricts uniqueness only for PPTX imports that have a real sourceItemId.
+  // PostgreSQL allows multiple NULLs in a unique index, so a plain index on
+  // (tenantId, sourceItemId) would permit any number of Google Slides rows
+  // (all with sourceItemId=NULL). The partial index restricts uniqueness only
+  // for PPTX imports that have a real sourceItemId.
+  uniqueIndex("presentation_conversion_records_source_unique")
+    .on(t.tenantId, t.sourceItemId)
+    .where(sql`${t.sourceItemId} IS NOT NULL`),
+
+  // Idempotency lookup index
   index("presentation_conversion_records_idempotency_idx").on(t.tenantId, t.sourceItemId, t.idempotencyKey),
+
   index("presentation_conversion_records_expires_at_idx").on(t.expiresAt),
+
+  // lookup by userId for ownership queries
+  index("presentation_conversion_records_user_idx").on(t.userId),
 ]);
 
 export type PresentationConversionRecord = typeof presentationConversionRecords.$inferSelect;

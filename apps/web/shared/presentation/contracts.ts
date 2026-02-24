@@ -99,6 +99,7 @@ export const presentationSourceFormatSchema = z.enum([
 const presentationReadOnlySourceFormatSchema = z.enum([
   "pptx",
   "ppt",
+  "google_slides",
   "unknown",
 ]);
 
@@ -135,8 +136,8 @@ export const presentationConversionStatusSchema = z.enum([
 
 export const presentationConversionResultSchema = z.object({
   schemaVersion: z.literal(PRESENTATION_CONVERSION_SCHEMA_VERSION),
-  sourceItemId: z.number().int().positive(),
-  sourceFormat: z.enum(["pptx", "ppt"]),
+  sourceItemId: z.number().int().positive().optional(),
+  sourceFormat: z.enum(["pptx", "ppt", "google_slides"]),
   conversionStatus: presentationConversionStatusSchema,
   partialFidelity: z.boolean(),
   fidelityWarnings: z.array(z.string().min(1).max(200)).max(25),
