@@ -16,6 +16,8 @@ const mutationMocks = {
   updateSlide: vi.fn(),
   createDeck: vi.fn(),
   triggerExport: vi.fn(),
+  setSlideAudio: vi.fn(),
+  setDeckAudio: vi.fn(),
 };
 
 function buildDeckByItem() {
@@ -316,8 +318,33 @@ vi.mock("@/lib/trpc", () => ({
           isPending: false,
         })),
       },
+      setSlideAudio: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: mutationMocks.setSlideAudio,
+          isPending: false,
+        })),
+      },
+      setDeckAudio: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: mutationMocks.setDeckAudio,
+          isPending: false,
+        })),
+      },
     },
   },
+}));
+
+vi.mock("@/components/presentation/ExportDialog", () => ({
+  ExportDialog: ({ open }: { open: boolean }) =>
+    open ? <div data-testid="export-dialog-mock">ExportDialog</div> : null,
+}));
+
+vi.mock("@/components/presentation/SlideAudioPanel", () => ({
+  SlideAudioPanel: ({ slideId, deckId }: { slideId: number | null; deckId: number }) => (
+    <div data-testid="slide-audio-panel-mock" data-slide-id={String(slideId)} data-deck-id={String(deckId)}>
+      SlideAudioPanel
+    </div>
+  ),
 }));
 
 import PresentationEditor from "./PresentationEditor";
@@ -347,6 +374,8 @@ describe("PresentationEditor", () => {
       deduped: false,
       message: "Queued",
     });
+    mutationMocks.setSlideAudio.mockResolvedValue({});
+    mutationMocks.setDeckAudio.mockResolvedValue({});
     queryState.guard = {
       allowed: true,
       itemId: 42,
@@ -371,8 +400,8 @@ describe("PresentationEditor", () => {
     expect(screen.getByRole("button", { name: /add text element/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /save slide/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /play slideshow/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /export png/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /export mp4/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^export$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /play mode/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /disable snap lock/i })).toBeInTheDocument();
     expect(screen.getByTestId("slide-preview-1")).toBeInTheDocument();
     expect(screen.getByTestId("slide-preview-2")).toBeInTheDocument();
@@ -716,35 +745,46 @@ describe("PresentationEditor", () => {
     });
   });
 
-  it("surfaces actionable export failure messaging", async () => {
-    mutationMocks.triggerExport.mockRejectedValueOnce(new Error("PRESENTATION_EXPORT_THROTTLED: retry later"));
-
+  it("Export button is present in toolbar", () => {
     render(<PresentationEditor />);
-    fireEvent.click(screen.getByRole("button", { name: /export mp4/i }));
+    expect(screen.getByRole("button", { name: /^export$/i })).toBeInTheDocument();
+  });
 
+  it("clicking Export button opens ExportDialog modal", async () => {
+    render(<PresentationEditor />);
+    fireEvent.click(screen.getByRole("button", { name: /^export$/i }));
     await waitFor(() => {
-      expect(screen.getByText(/retry later/i)).toBeInTheDocument();
+      expect(screen.getByTestId("export-dialog-mock")).toBeInTheDocument();
     });
   });
 
-  it("renders deterministic export warning codes from export responses", async () => {
-    mutationMocks.triggerExport.mockResolvedValueOnce({
-      exportId: 2,
-      status: "queued",
-      deduped: false,
-      message: "Queued with degradation warnings",
-      warnings: [{ code: "SLIDE_TRANSITION_UNSUPPORTED", slideId: 71 }],
-    });
-
+  it("Audio tab is present in right properties panel", () => {
     render(<PresentationEditor />);
-    fireEvent.click(screen.getByRole("button", { name: /export png/i }));
+    expect(screen.getByRole("button", { name: /inspector tab audio/i })).toBeInTheDocument();
+  });
 
+  it("Audio tab renders SlideAudioPanel with current deck ID", async () => {
+    render(<PresentationEditor />);
+    fireEvent.click(screen.getByRole("button", { name: /inspector tab audio/i }));
     await waitFor(() => {
-      expect(screen.getByTestId("presentation-export-warnings")).toHaveTextContent(
-        /SLIDE_TRANSITION_UNSUPPORTED \(slide 71\)/i,
-      );
-      expect(screen.getByTestId("presentation-export-warnings")).toHaveAttribute("role", "status");
-      expect(screen.getByTestId("presentation-export-warnings")).toHaveAttribute("aria-live", "polite");
+      const panel = screen.getByTestId("slide-audio-panel-mock");
+      expect(panel).toBeInTheDocument();
+      // deckId is 7 per the buildDeckByItem() fixture
+      expect(panel).toHaveAttribute("data-deck-id", "7");
+    });
+  });
+
+  it("Play Mode button is present in toolbar", () => {
+    render(<PresentationEditor />);
+    expect(screen.getByRole("button", { name: /play mode/i })).toBeInTheDocument();
+  });
+
+  it("clicking Play Mode button navigates to /presentation/:itemId/play", async () => {
+    render(<PresentationEditor />);
+    fireEvent.click(screen.getByRole("button", { name: /play mode/i }));
+    await waitFor(() => {
+      // docId is 42 per the routeParamsMock fixture
+      expect(setLocationMock).toHaveBeenCalledWith("/presentation/42/play");
     });
   });
 

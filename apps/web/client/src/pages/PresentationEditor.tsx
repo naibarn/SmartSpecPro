@@ -6,6 +6,7 @@ import {
   Crop,
   ChevronLeft,
   Clapperboard,
+  Download,
   ImageIcon,
   Loader2,
   Minus,
@@ -68,6 +69,8 @@ import {
 import { SelectionEngine } from "@/presentation-canvas/selection/SelectionEngine";
 import { CommandBus } from "@/presentation-canvas/commands/CommandBus";
 import { useMobileGestures } from "@/presentation-canvas/mobile/useMobileGestures";
+import { ExportDialog } from "@/components/presentation/ExportDialog";
+import { SlideAudioPanel } from "@/components/presentation/SlideAudioPanel";
 import { useAutosaveController } from "@/presentation-canvas/save/useAutosaveController";
 import {
   createConflictPolicyState,
@@ -704,7 +707,8 @@ export default function PresentationEditor() {
   const [autoDeckInitError, setAutoDeckInitError] = useState<string | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() => window.innerWidth < 768);
   const [mobileSheetTab, setMobileSheetTab] = useState<MobileBottomSheetTab>("Properties");
-  const [desktopInspectorTab, setDesktopInspectorTab] = useState<"properties" | "versions">("properties");
+  const [desktopInspectorTab, setDesktopInspectorTab] = useState<"properties" | "versions" | "audio">("properties");
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [libraryTab, setLibraryTab] = useState<AssetLibraryTab>("slides");
   const [librarySearchQuery, setLibrarySearchQuery] = useState("");
   const [selectedSavedVersionId, setSelectedSavedVersionId] = useState<number | null>(null);
@@ -716,6 +720,7 @@ export default function PresentationEditor() {
   });
   const [snapLockEnabled, setSnapLockEnabled] = useState(true);
   const mobileGestures = useMobileGestures();
+  const isExportsEnabled = import.meta.env.VITE_PRESENTATION_EXPORTS_ENABLED !== "false";
 
   useEffect(() => {
     if (isProjectTitleEditing) {
@@ -2693,9 +2698,21 @@ export default function PresentationEditor() {
       />
     </div>
   );
+  const audioPanel = deck ? (
+    <SlideAudioPanel
+      slideId={selectedSlide?.id ?? null}
+      slideVersion={selectedSlide?.version ?? null}
+      slideAudioTrack={(selectedSlide as any)?.audioTrack ?? null}
+      deckId={deck.id}
+      deckVersion={deck.version}
+      deckAudioTrack={(deck as any)?.projectAudioTrack ?? null}
+    />
+  ) : (
+    <div className="p-4 text-sm text-muted-foreground">Loading...</div>
+  );
   const desktopInspectorPanel = (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2 rounded-md border border-slate-300 bg-white p-1">
+      <div className="grid grid-cols-3 gap-2 rounded-md border border-slate-300 bg-white p-1">
         <Button
           variant={desktopInspectorTab === "properties" ? "default" : "ghost"}
           size="sm"
@@ -2714,8 +2731,21 @@ export default function PresentationEditor() {
         >
           Versions ({savedVersions.length})
         </Button>
+        <Button
+          variant={desktopInspectorTab === "audio" ? "default" : "ghost"}
+          size="sm"
+          className="h-8"
+          onClick={() => setDesktopInspectorTab("audio")}
+          aria-label="Inspector Tab Audio"
+        >
+          Audio
+        </Button>
       </div>
-      {desktopInspectorTab === "properties" ? propertyEditorPanel : versionHistoryPanel}
+      {desktopInspectorTab === "properties"
+        ? propertyEditorPanel
+        : desktopInspectorTab === "versions"
+          ? versionHistoryPanel
+          : audioPanel}
     </div>
   );
 
@@ -2868,11 +2898,23 @@ export default function PresentationEditor() {
               <Play className="h-4 w-4" />
               Play
             </Button>
-            <Button onClick={() => void handleExport("png")} aria-label="Export PNG" variant="secondary">
-              PNG
+            <Button
+              onClick={() => setIsExportDialogOpen(true)}
+              aria-label="Export"
+              variant="secondary"
+              disabled={!isExportsEnabled || !deck}
+            >
+              <Download className="h-4 w-4 mr-1" />
+              Export
             </Button>
-            <Button onClick={() => void handleExport("mp4")} aria-label="Export MP4" variant="secondary">
-              MP4
+            <Button
+              onClick={() => setLocation(`/presentation/${deck.libraryItemId}/play`)}
+              aria-label="Play Mode"
+              variant="secondary"
+              disabled={!deck}
+            >
+              <Play className="h-4 w-4 mr-1" />
+              Play Mode
             </Button>
           </div>
         </div>
@@ -3033,6 +3075,13 @@ export default function PresentationEditor() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {deck && (
+        <ExportDialog
+          open={isExportDialogOpen}
+          onClose={() => setIsExportDialogOpen(false)}
+          deckId={deck.id}
+        />
+      )}
     </div>
   );
 }
