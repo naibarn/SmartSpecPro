@@ -12,7 +12,7 @@ It combines agent skills, media creation, presentation editing, document intelli
 
 Production showcase: [https://smartaihub.app](https://smartaihub.app)
 
-![SmartSpecPro Dashboard](apps/web/client/public/images/dashboard-preview.png)
+![SmartAIHub Production Showcase](docs/assets/SmartAIHub.png)
 
 ## Alpha Release Notice
 
@@ -51,6 +51,8 @@ It is built for:
 - Organizations that need tenant/domain controls, auditability, and role-based administration.
 - Builders who want a production-grade base that can be customized, rebranded, and extended.
 
+![SmartSpecPro Platform At A Glance](docs/assets/01-platform-at-a-glance.png)
+
 ## 2. Core Product Areas
 
 ### A. AI Chat With Embedded Skills
@@ -65,6 +67,8 @@ Key modules:
 - `apps/web/client/src/pages/Chat.tsx`
 - `apps/web/server/routers/chat.ts`
 - `apps/web/server/routers/memory.ts`
+
+![Prompt To Deliverable Flow](docs/assets/02-prompt-to-deliverable.png)
 
 ### B. Agent Skill Marketplace and Skill Lifecycle
 
@@ -93,6 +97,8 @@ Key modules:
 - `apps/web/server/routers/media.ts`
 - `apps/web/server/services/mediaGenerationService.ts`
 - `python-backend/app/api/v1/media_generation.py`
+
+![Media Generation Example](docs/assets/03-media-generation-example.png)
 
 ### D. Presentation Studio
 
@@ -175,6 +181,8 @@ flowchart LR
     PY --> VDB[Vector DB\nChroma / pgvector / Vectorize]
     W --> OBS[PostHog + Sentry]
 ```
+
+![SmartSpecPro Web Architecture](docs/assets/04-web-architecture.png)
 
 Design highlights:
 
@@ -333,6 +341,8 @@ SmartSpecPro includes built-in scale tier profiles (`apps/web/server/services/sc
 | Pro | 2 vCPU / 1 GiB, 1-5 instances | 2 vCPU / 2 GiB, 1-4 instances |
 | Business | 2 vCPU / 2 GiB, 2-8 instances | 2 vCPU / 2 GiB, 1-6 instances |
 | Enterprise | 4 vCPU / 4 GiB, 3-15 instances | 4 vCPU / 4 GiB, 2-10 instances |
+
+![Deployment And Scale Reference](docs/assets/05-deployment-scale-reference.png)
 
 ### Recommended Managed Services
 
