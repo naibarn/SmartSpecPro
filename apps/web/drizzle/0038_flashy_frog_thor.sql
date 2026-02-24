@@ -1,0 +1,1 @@
+ALTER TABLE "presentation_conversion_records" ADD COLUMN "error" text;

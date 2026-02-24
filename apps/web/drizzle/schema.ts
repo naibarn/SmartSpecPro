@@ -1860,6 +1860,10 @@ export const presentationConversionRecords = pgTable("presentation_conversion_re
 
   partialFidelity: boolean("partial_fidelity").notNull().default(false),
   fidelityWarnings: json("fidelity_warnings").$type<string[]>().notNull().default([]),
+
+  // Nullable: set by callback handler when job fails (surfaces failure reason to frontend)
+  error: text("error"),
+
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),

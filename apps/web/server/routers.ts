@@ -64,6 +64,7 @@ import { adminOpsRouter } from "./routers/adminOps";
 import { funnelAnalyticsRouter } from "./routers/funnelAnalytics";
 import { infrastructureRouter } from "./routers/infrastructure";
 import { presentationRouter } from "./routers/presentation";
+import { presentationImportRouter } from "./routers/presentationImport";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -840,7 +841,7 @@ export const appRouter = router({
       const cfg: Record<string, string> = {};
       for (const s of twoFaSettings) { if (s.value) cfg[s.key] = s.value; }
       if (cfg.enabled === "false") throw new Error("2FA is disabled by administrator");
-      const issuer = cfg.issuer || "SmartSpec Pro";
+      const issuer = cfg.issuer || "SmartAIHub";
       const codesCount = parseInt(cfg.backup_codes_count || "10", 10);
 
       const [user] = await db.select({ id: users.id, email: users.email, twoFactorEnabled: users.twoFactorEnabled }).from(users).where(eq(users.id, ctx.user.id));
@@ -1353,6 +1354,9 @@ export const appRouter = router({
 
   // Presentation domain APIs
   presentation: presentationRouter,
+
+  // Presentation import (PPTX + Google Slides)
+  presentationImport: presentationImportRouter,
 
   // Library operations (admin)
   libraryOps: libraryOpsRouter,
