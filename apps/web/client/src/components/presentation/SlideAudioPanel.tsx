@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Music, Trash2, Plus } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Music, Trash2, Plus, Play, Pause, Search, RefreshCw } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import type { AudioTrackInput, ProjectAudioTrackInput } from "@shared/presentation/contracts";
@@ -44,19 +45,36 @@ export interface SlideAudioPanelProps {
 }
 
 // ---------------------------------------------------------------------------
-// AudioPickerDialog — uses trpc.library.search filtered to "audio" item type
+// AudioPickerDialog — full browsable library with search + preview
 // ---------------------------------------------------------------------------
 
 interface AudioPickerDialogProps {
   open: boolean;
   onClose: () => void;
+  /** Called when user confirms a selection */
   onSelect: (libraryItemId: number, title: string) => void;
+  /** Whether we're picking for the current slide or the whole project */
+  target: "slide" | "deck";
 }
 
-function AudioPickerDialog({ open, onClose, onSelect }: AudioPickerDialogProps) {
+function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialogProps) {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [playingId, setPlayingId] = useState<number | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Stop audio + reset on dialog close
+  useEffect(() => {
+    if (!open) {
+      audioRef.current?.pause();
+      audioRef.current = null;
+      setPlayingId(null);
+      setQuery("");
+      setDebouncedQuery("");
+    }
+  }, [open]);
+
+  // Debounce search input
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedQuery(query.trim()), 300);
     return () => window.clearTimeout(t);
@@ -66,56 +84,158 @@ function AudioPickerDialog({ open, onClose, onSelect }: AudioPickerDialogProps) 
     {
       query: debouncedQuery || undefined,
       filters: { itemType: "audio" },
+      limit: 40,
     },
     { enabled: open },
   );
 
   const results = searchQuery.data?.results ?? [];
 
-  function handleSelect(itemId: number, title: string) {
+  function handleTogglePlay(itemId: number, url: string) {
+    if (playingId === itemId) {
+      // Pause currently playing track
+      audioRef.current?.pause();
+      setPlayingId(null);
+    } else {
+      // Stop previous track and start new one
+      audioRef.current?.pause();
+      const audio = new Audio(url);
+      audio.play().catch(() => {
+        setPlayingId(null);
+      });
+      audio.onended = () => setPlayingId(null);
+      audioRef.current = audio;
+      setPlayingId(itemId);
+    }
+  }
+
+  function handleAdd(itemId: number, title: string) {
+    // Stop preview before confirming
+    audioRef.current?.pause();
+    setPlayingId(null);
     onSelect(itemId, title);
     onClose();
-    setQuery("");
   }
+
+  const dialogTitle = target === "slide" ? "Add Audio to Slide" : "Add Background Audio";
+  const addLabel = target === "slide" ? "Add to Slide" : "Set as Background";
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg flex flex-col gap-4 max-h-[85vh]">
         <DialogHeader>
-          <DialogTitle>Select Audio</DialogTitle>
+          <DialogTitle>{dialogTitle}</DialogTitle>
           <DialogDescription className="sr-only">
-            Search your media library for audio files to attach.
+            Browse, search and preview audio files from your media library, then click Add.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-3">
+
+        {/* Search input */}
+        <div className="relative shrink-0">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input
+            className="pl-8"
             placeholder="Search audio files..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            autoFocus
             data-testid="audio-picker-search"
           />
-          <div className="max-h-64 overflow-y-auto space-y-1">
-            {searchQuery.isLoading && (
-              <p className="text-sm text-muted-foreground py-2 text-center">Loading...</p>
-            )}
-            {!searchQuery.isLoading && results.length === 0 && (
-              <p className="text-sm text-muted-foreground py-2 text-center">
-                No audio files found.
+        </div>
+
+        {/* Results list */}
+        <div className="overflow-y-auto flex-1 space-y-1.5 pr-0.5 min-h-0">
+          {searchQuery.isLoading && (
+            <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground">
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              <span className="text-sm">Loading...</span>
+            </div>
+          )}
+
+          {!searchQuery.isLoading && results.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-10 gap-2">
+              <Music className="h-8 w-8 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">
+                {query ? "No audio files match your search." : "No audio files in your library yet."}
               </p>
-            )}
-            {results.map((item) => (
-              <button
+            </div>
+          )}
+
+          {results.map((item) => {
+            const isPlaying = playingId === item.item_id;
+            const canPreview = !!item.source_url && item.status === "ready";
+            const subtitle = [
+              item.model_name ?? item.provider_name,
+              new Date(item.created_at).toLocaleDateString(),
+            ]
+              .filter(Boolean)
+              .join(" · ");
+
+            return (
+              <div
                 key={item.item_id}
-                className="w-full text-left flex items-center gap-2 rounded-md p-2 text-sm hover:bg-muted/50 cursor-pointer"
-                onClick={() => handleSelect(item.item_id, item.title)}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors",
+                  isPlaying
+                    ? "border-primary/40 bg-primary/5"
+                    : "border-transparent hover:border-border hover:bg-muted/40",
+                )}
                 data-testid={`audio-picker-item-${item.item_id}`}
               >
-                <Music className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <span className="truncate">{item.title}</span>
-              </button>
-            ))}
-          </div>
+                {/* Play / Pause preview button */}
+                <button
+                  type="button"
+                  className={cn(
+                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors",
+                    isPlaying
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-muted-foreground/30 text-muted-foreground hover:border-primary hover:text-primary",
+                    !canPreview && "cursor-not-allowed opacity-40",
+                  )}
+                  disabled={!canPreview}
+                  onClick={() => canPreview && handleTogglePlay(item.item_id, item.source_url!)}
+                  aria-label={isPlaying ? "Pause preview" : "Play preview"}
+                  title={canPreview ? (isPlaying ? "Pause" : "Preview") : "Preview unavailable"}
+                >
+                  {isPlaying ? (
+                    <Pause className="h-3.5 w-3.5" />
+                  ) : (
+                    <Play className="h-3.5 w-3.5 translate-x-px" />
+                  )}
+                </button>
+
+                {/* Title + metadata */}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium leading-tight">{item.title}</p>
+                  {subtitle && (
+                    <p className="truncate text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+                  )}
+                </div>
+
+                {/* Add button */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 shrink-0 px-2.5 text-xs"
+                  onClick={() => handleAdd(item.item_id, item.title)}
+                  data-testid={`audio-picker-add-${item.item_id}`}
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Add
+                </Button>
+              </div>
+            );
+          })}
         </div>
+
+        {/* Footer — result count + hint */}
+        {!searchQuery.isLoading && results.length > 0 && (
+          <p className="text-xs text-muted-foreground shrink-0">
+            {results.length} result{results.length !== 1 ? "s" : ""}
+            {" · "}Click <Play className="inline h-3 w-3" /> to preview, then{" "}
+            <strong className="font-medium">{addLabel}</strong>.
+          </p>
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -332,9 +452,18 @@ export function SlideAudioPanel({
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Music className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span className="text-sm truncate">
+              <span className="text-sm truncate flex-1">
                 {slideAudioTrack.title ?? `Audio #${slideAudioTrack.libraryItemId}`}
               </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2 text-xs text-muted-foreground"
+                onClick={openSlidePicker}
+                title="Change audio"
+              >
+                <RefreshCw className="h-3 w-3" />
+              </Button>
             </div>
 
             {/* Volume */}
@@ -444,9 +573,18 @@ export function SlideAudioPanel({
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Music className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span className="text-sm truncate">
+              <span className="text-sm truncate flex-1">
                 {deckAudioTrack.title ?? `Audio #${deckAudioTrack.libraryItemId}`}
               </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2 text-xs text-muted-foreground"
+                onClick={openDeckPicker}
+                title="Change background audio"
+              >
+                <RefreshCw className="h-3 w-3" />
+              </Button>
             </div>
 
             {/* Volume */}
@@ -524,6 +662,7 @@ export function SlideAudioPanel({
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}
         onSelect={handlePickerSelect}
+        target={pickerTarget}
       />
     </div>
   );
