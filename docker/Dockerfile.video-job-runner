@@ -41,6 +41,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && fc-cache -fv
 
+# Install Playwright and PDF/image processing libraries for presentation export
+RUN pip install playwright PyJWT pypdf Pillow
+
+# Install Chromium browser and all required system dependencies for headless rendering
+RUN playwright install chromium --with-deps
+
 # Create non-root user
 RUN useradd -m -u 1001 appuser
 
