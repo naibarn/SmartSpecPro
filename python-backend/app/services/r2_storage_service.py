@@ -283,6 +283,53 @@ class R2StorageService:
                         filename=filename)
             return None
 
+    async def upload_bytes(
+        self,
+        key: str,
+        data: bytes,
+        content_type: str,
+        db_session: Optional["AsyncSession"] = None,
+    ) -> str:
+        """Upload raw bytes to R2/S3 at an explicit key.
+
+        Unlike upload_file(), the caller controls the full object key.
+        Returns the public URL of the uploaded object.
+
+        Raises ValueError if storage is not configured.
+        """
+        settings = await self.get_active_settings(db_session=db_session)
+
+        if not settings:
+            raise ValueError("Storage not configured — cannot upload bytes")
+
+        if settings.get("providerType") == "local":
+            raise ValueError("Local storage provider does not support external-access uploads")
+
+        try:
+            client = self._get_s3_client(settings)
+
+            client.put_object(
+                Bucket=settings.get("bucket", ""),
+                Key=key,
+                Body=data,
+                ContentType=content_type,
+            )
+
+            public_url_prefix = settings.get("publicUrlPrefix", "").rstrip("/")
+            if public_url_prefix:
+                url = f"{public_url_prefix}/{key}"
+            else:
+                endpoint = settings.get("endpoint", "").rstrip("/")
+                bucket = settings.get("bucket", "")
+                url = f"{endpoint}/{bucket}/{key}"
+
+            logger.info("bytes_uploaded_r2", key=key, size=len(data))
+            return url
+
+        except Exception as e:
+            logger.error("upload_bytes_error", key=key, error=str(e))
+            raise
+
     async def upload_from_url(
         self,
         source_url: str,

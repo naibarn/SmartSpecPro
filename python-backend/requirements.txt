@@ -168,3 +168,10 @@ pypdf>=4.0.0
 
 # JPEG conversion for JPG export format
 Pillow>=10.0.0
+
+# ==========================================
+# Section 024: Import Presentations
+# ==========================================
+
+# PPTX parsing
+python-pptx>=1.0.2
