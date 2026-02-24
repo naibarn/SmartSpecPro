@@ -1,5 +1,5 @@
 """
-SmartSpec Pro - Gallery API Router
+SmartAIHub - Gallery API Router
 Public gallery for AI-generated content with SEO optimization.
 """
 
@@ -421,7 +421,7 @@ async def create_gallery_item(
     
     # Generate SEO fields
     item.slug = generate_slug(data.title, item.id)
-    item.meta_title = f"{data.title} | SmartSpec Gallery"
+    item.meta_title = f"{data.title} | SmartAIHub Gallery"
     item.meta_description = generate_meta_description(task.prompt, task.model_name)
     
     # Auto-approve for now (can add moderation later)
@@ -458,7 +458,7 @@ async def update_gallery_item(
     if data.title is not None:
         item.title = data.title
         item.slug = generate_slug(data.title, item.id)
-        item.meta_title = f"{data.title} | SmartSpec Gallery"
+        item.meta_title = f"{data.title} | SmartAIHub Gallery"
     
     if data.description is not None:
         item.description = data.description

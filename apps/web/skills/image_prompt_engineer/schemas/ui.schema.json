@@ -1,5 +1,5 @@
 {
-  "$schema": "https://smartspec.pro/skill-ui-schema/v1",
+  "$schema": "https://smartaihub.app/skill-ui-schema/v1",
   "version": "3.1",
   "skillId": "image_prompt_engineer",
   "title": "Image Prompt Engineer",

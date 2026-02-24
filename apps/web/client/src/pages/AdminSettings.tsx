@@ -102,7 +102,7 @@ export default function AdminSettings() {
 
   // SMTP settings state
   const [smtpForm, setSmtpForm] = useState({
-    host: "", port: 587, secure: false, user: "", pass: "", fromName: "SmartSpec Pro", fromEmail: "",
+    host: "", port: 587, secure: false, user: "", pass: "", fromName: "SmartAIHub", fromEmail: "",
   });
   const [showSmtpPass, setShowSmtpPass] = useState(false);
 
@@ -337,7 +337,7 @@ export default function AdminSettings() {
   }, [telegramSettings]);
 
   // 2FA settings
-  const [twoFaForm, setTwoFaForm] = useState({ enabled: true, enforced: false, issuer: "SmartSpec Pro", backupCodesCount: 10 });
+  const [twoFaForm, setTwoFaForm] = useState({ enabled: true, enforced: false, issuer: "SmartAIHub", backupCodesCount: 10 });
   const { data: twoFaSettings, refetch: refetchTwoFa } =
     trpc.systemSettings.getTwoFaSettings.useQuery(undefined, { enabled: !!user && user.role === "admin" });
   const updateTwoFaMutation = trpc.systemSettings.updateTwoFaSettings.useMutation({
@@ -349,7 +349,7 @@ export default function AdminSettings() {
       setTwoFaForm({
         enabled: twoFaSettings.enabled ?? true,
         enforced: twoFaSettings.enforced ?? false,
-        issuer: twoFaSettings.issuer || "SmartSpec Pro",
+        issuer: twoFaSettings.issuer || "SmartAIHub",
         backupCodesCount: twoFaSettings.backupCodesCount || 10,
       });
     }
@@ -412,7 +412,7 @@ export default function AdminSettings() {
     provider: "chromadb" as VectorDbProvider,
     embeddingModel: "all-MiniLM-L6-v2",
     embeddingDimension: 384,
-    chromaPersistDir: "~/.smartspec/chroma",
+    chromaPersistDir: "~/.smartaihub/chroma",
     pgvectorHost: "",
     pgvectorPort: "5432",
     pgvectorDatabase: "",
@@ -504,7 +504,7 @@ export default function AdminSettings() {
         provider: (vectorDbSettings.provider as VectorDbProvider) || "chromadb",
         embeddingModel: vectorDbSettings.embeddingModel || "all-MiniLM-L6-v2",
         embeddingDimension: vectorDbSettings.embeddingDimension || 384,
-        chromaPersistDir: vectorDbSettings.chromaPersistDir || "~/.smartspec/chroma",
+        chromaPersistDir: vectorDbSettings.chromaPersistDir || "~/.smartaihub/chroma",
         pgvectorHost: vectorDbSettings.pgvectorHost || "",
         pgvectorPort: vectorDbSettings.pgvectorPort || "5432",
         pgvectorDatabase: vectorDbSettings.pgvectorDatabase || "",
@@ -1013,7 +1013,7 @@ export default function AdminSettings() {
                           </p>
                           <ul className="list-disc list-inside mt-1 space-y-0.5 text-blue-700 dark:text-blue-300 ml-2">
                             <li>Application type: <strong>Web application</strong></li>
-                            <li>Name: e.g. &quot;SmartSpec Web&quot;</li>
+                            <li>Name: e.g. &quot;SmartAIHub Web&quot;</li>
                             <li>Authorized JavaScript origins: <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded text-xs font-mono">https://smartaihub.app</code></li>
                             <li>
                               Authorized redirect URIs &mdash; add <strong>both</strong> of these:
@@ -1214,7 +1214,7 @@ export default function AdminSettings() {
                     <summary className="cursor-pointer font-medium text-gray-700 dark:text-gray-300">Azure App Registration Setup Guide</summary>
                     <ol className="mt-2 space-y-1.5 pl-5 list-decimal">
                       <li>Go to <strong>Azure Portal</strong> &gt; <strong>App registrations</strong> &gt; <strong>New registration</strong></li>
-                      <li>Name: e.g. &quot;SmartSpec OneDrive&quot;</li>
+                      <li>Name: e.g. &quot;SmartAIHub OneDrive&quot;</li>
                       <li>Supported account types: <strong>&quot;Accounts in any organizational directory and personal Microsoft accounts&quot;</strong></li>
                       <li>Redirect URI: select <strong>Web</strong>, enter: <code className="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-xs font-mono">https://smartaihub.app/auth/callback/onedrive</code></li>
                       <li>Go to <strong>Certificates &amp; secrets</strong> &gt; <strong>New client secret</strong> &gt; copy the Value (not the ID)</li>
@@ -1318,7 +1318,7 @@ export default function AdminSettings() {
                   <div>
                     <Label>From Name</Label>
                     <Input
-                      placeholder="SmartSpec Pro"
+                      placeholder="SmartAIHub"
                       value={smtpForm.fromName}
                       onChange={(e) => setSmtpForm((p) => ({ ...p, fromName: e.target.value }))}
                       className="mt-1"
@@ -1636,7 +1636,7 @@ export default function AdminSettings() {
                   <Label htmlFor="botUsername">Bot Username</Label>
                   <Input
                     id="botUsername"
-                    placeholder="SmartSpecProBot"
+                    placeholder="SmartAIHubBot"
                     value={telegramForm.botUsername}
                     onChange={(e) => setTelegramForm((p) => ({ ...p, botUsername: e.target.value }))}
                     className="mt-1"
@@ -1651,13 +1651,13 @@ export default function AdminSettings() {
                   <Label htmlFor="appUrl">Application URL</Label>
                   <Input
                     id="appUrl"
-                    placeholder="https://app.smartspecpro.com"
+                    placeholder="https://app.smartaihub.app"
                     value={telegramForm.appUrl}
                     onChange={(e) => setTelegramForm((p) => ({ ...p, appUrl: e.target.value }))}
                     className="mt-1"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Base URL for "View in SmartSpecPro" inline buttons in notifications
+                    Base URL for "View in SmartAIHub" inline buttons in notifications
                   </p>
                 </div>
 
@@ -1854,7 +1854,7 @@ export default function AdminSettings() {
                   <Input
                     value={twoFaForm.issuer}
                     onChange={(e) => setTwoFaForm((p) => ({ ...p, issuer: e.target.value }))}
-                    placeholder="SmartSpec Pro"
+                    placeholder="SmartAIHub"
                     className="mt-1"
                   />
                   <p className="text-xs text-gray-500 mt-1">
@@ -2403,7 +2403,7 @@ export default function AdminSettings() {
                         onChange={(e) =>
                           setVectorDbForm({ ...vectorDbForm, chromaPersistDir: e.target.value })
                         }
-                        placeholder="~/.smartspec/chroma"
+                        placeholder="~/.smartaihub/chroma"
                         className="max-w-md font-mono text-sm"
                       />
                       <p className="text-xs text-muted-foreground">
@@ -2415,7 +2415,7 @@ export default function AdminSettings() {
                       <CardContent className="p-3 text-xs">
                         <strong className="text-green-800 dark:text-green-200">Example:</strong>
                         <code className="block mt-1 p-2 bg-white dark:bg-slate-900 rounded border text-green-700 dark:text-green-300">
-                          CHROMA_PERSIST_DIR=~/.smartspec/chroma
+                          CHROMA_PERSIST_DIR=~/.smartaihub/chroma
                         </code>
                       </CardContent>
                     </Card>
@@ -2467,7 +2467,7 @@ export default function AdminSettings() {
                           onChange={(e) =>
                             setVectorDbForm({ ...vectorDbForm, pgvectorDatabase: e.target.value })
                           }
-                          placeholder="smartspec"
+                          placeholder="smartaihub"
                           className="font-mono text-sm"
                         />
                       </div>
@@ -2480,7 +2480,7 @@ export default function AdminSettings() {
                           onChange={(e) =>
                             setVectorDbForm({ ...vectorDbForm, pgvectorUser: e.target.value })
                           }
-                          placeholder="smartspec"
+                          placeholder="smartaihub"
                           className="font-mono text-sm"
                         />
                       </div>
@@ -2521,7 +2521,7 @@ export default function AdminSettings() {
                       <CardContent className="p-3 text-xs space-y-2">
                         <strong className="text-green-800 dark:text-green-200">Setup pgvector:</strong>
                         <code className="block p-2 bg-white dark:bg-slate-900 rounded border text-green-700 dark:text-green-300">
-                          {`-- Connect to PostgreSQL\npsql -U smartspec -d smartspec\n\n-- Enable pgvector extension\nCREATE EXTENSION IF NOT EXISTS vector;`}
+                          {`-- Connect to PostgreSQL\npsql -U smartaihub -d smartaihub\n\n-- Enable pgvector extension\nCREATE EXTENSION IF NOT EXISTS vector;`}
                         </code>
                       </CardContent>
                     </Card>
@@ -2558,7 +2558,7 @@ export default function AdminSettings() {
                           onChange={(e) =>
                             setVectorDbForm({ ...vectorDbForm, vectorizeIndexName: e.target.value })
                           }
-                          placeholder="smartspec-library"
+                          placeholder="smartaihub-library"
                           className="font-mono text-sm"
                         />
                       </div>

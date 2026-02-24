@@ -1,5 +1,5 @@
 /**
- * SmartSpecWeb Marketplace - Template Detail Page
+ * SmartAIHub Marketplace - Template Detail Page
  * SEO-optimized individual template pages
  */
 
@@ -66,7 +66,7 @@ export default function TemplateDetailPage({ template }: Props) {
   }
 
   const openInDesktopApp = () => {
-    window.location.href = `smartspec://marketplace/template/${template.id}`;
+    window.location.href = `smartaihub://marketplace/template/${template.id}`;
   };
 
   const creatorRevenue = Math.floor(template.price_credits * 0.85);
@@ -75,7 +75,7 @@ export default function TemplateDetailPage({ template }: Props) {
   return (
     <>
       <Head>
-        <title>{template.name} - SmartSpec Marketplace</title>
+        <title>{template.name} - SmartAIHub Marketplace</title>
         <meta name="description" content={template.tagline} />
         <meta name="keywords" content={template.tags.join(', ')} />
         <meta property="og:title" content={template.name} />
@@ -248,7 +248,7 @@ export default function TemplateDetailPage({ template }: Props) {
                 </button>
 
                 <p className="text-xs text-gray-500 text-center mb-6">
-                  Opens in SmartSpec Desktop App
+                  Opens in SmartAIHub Desktop App
                 </p>
 
                 {/* Features */}
@@ -297,7 +297,7 @@ export default function TemplateDetailPage({ template }: Props) {
                     {template.min_smartspec_version && (
                       <div className="flex justify-between">
                         <span className="text-gray-600">Requires</span>
-                        <span className="font-medium">SmartSpec v{template.min_smartspec_version}+</span>
+                        <span className="font-medium">SmartAIHub v{template.min_smartspec_version}+</span>
                       </div>
                     )}
                   </div>
@@ -305,9 +305,9 @@ export default function TemplateDetailPage({ template }: Props) {
 
                 {/* Download Desktop App */}
                 <div className="mt-6 pt-6 border-t border-gray-200">
-                  <p className="text-sm text-gray-600 mb-3">Don't have SmartSpec yet?</p>
+                  <p className="text-sm text-gray-600 mb-3">Don't have SmartAIHub yet?</p>
                   <a
-                    href="https://github.com/naibarn/SmartSpecPro/releases"
+                    href="https://smartaihub.app/download"
                     className="block w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-center hover:bg-gray-50 transition-colors"
                   >
                     Download Desktop App

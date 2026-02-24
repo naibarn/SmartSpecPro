@@ -1,5 +1,5 @@
 """
-SmartSpec Pro - Current Tenant API
+SmartAIHub - Current Tenant API
 Returns the current tenant information for the frontend
 """
 
@@ -30,7 +30,7 @@ class TenantTheme(BaseModel):
 
 
 class TenantSeo(BaseModel):
-    defaultTitle: str = "SmartSpec Pro"
+    defaultTitle: str = "SmartAIHub"
     defaultDescription: str = "AI-Powered Code Generation Platform"
     defaultKeywords: List[str] = ["AI", "code generation", "SaaS"]
     ogImage: Optional[str] = None
@@ -112,7 +112,7 @@ async def get_current_tenant(request: Request):
                     settings=row[6] if row[6] else {},  # settings
                     theme=TenantTheme(),
                     seo=TenantSeo(
-                        defaultTitle=f"{row[1]} - SmartSpec Pro",
+                        defaultTitle=f"{row[1]} - SmartAIHub",
                         defaultDescription=f"Welcome to {row[1]}",
                     ),
                 )
@@ -124,8 +124,8 @@ async def get_current_tenant(request: Request):
     # Return default tenant if not found
     default_tenant = TenantData(
         id="default",
-        slug="smartspec-pro",
-        name="SmartSpec Pro",
+        slug="smartaihub",
+        name="SmartAIHub",
         primaryDomain=domain,
         theme=TenantTheme(),
         seo=TenantSeo(),

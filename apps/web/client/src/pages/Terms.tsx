@@ -1,5 +1,5 @@
 /**
- * Terms of Service Page - SmartSpec Pro
+ * Terms of Service Page - SmartAIHub
  * Legal terms and conditions for using the platform
  */
 
@@ -14,7 +14,7 @@ const sections = [
     id: 'acceptance',
     title: '1. Acceptance of Terms',
     icon: FileText,
-    content: `By accessing or using SmartSpec Pro ("Service"), you agree to be bound by these Terms of Service ("Terms"). If you disagree with any part of the terms, you may not access the Service.
+    content: `By accessing or using SmartAIHub ("Service"), you agree to be bound by these Terms of Service ("Terms"). If you disagree with any part of the terms, you may not access the Service.
 
 These Terms apply to all visitors, users, and others who access or use the Service. By using the Service, you represent that you are at least 18 years of age and have the legal capacity to enter into these Terms.`
   },
@@ -22,7 +22,7 @@ These Terms apply to all visitors, users, and others who access or use the Servi
     id: 'description',
     title: '2. Description of Service',
     icon: Shield,
-    content: `SmartSpec Pro is an AI-powered code generation platform that provides:
+    content: `SmartAIHub is an AI-powered code generation platform that provides:
 
 • **Code Generation**: Automated generation of production-ready code from natural language descriptions
 • **AI Models Access**: Access to multiple AI models for various development tasks
@@ -63,7 +63,7 @@ We reserve the right to investigate and take appropriate action against anyone w
     id: 'intellectual-property',
     title: '5. Intellectual Property',
     icon: Scale,
-    content: `**Our Content**: The Service and its original content, features, and functionality are owned by SmartSpec Pro and are protected by international copyright, trademark, and other intellectual property laws.
+    content: `**Our Content**: The Service and its original content, features, and functionality are owned by SmartAIHub and are protected by international copyright, trademark, and other intellectual property laws.
 
 **Your Content**: You retain ownership of any code, content, or materials you create using the Service. By using the Service, you grant us a non-exclusive license to use, store, and process your content solely for providing the Service.
 
@@ -117,7 +117,7 @@ Some jurisdictions do not allow the exclusion of certain warranties or limitatio
     id: 'indemnification',
     title: '9. Indemnification',
     icon: Shield,
-    content: `You agree to defend, indemnify, and hold harmless SmartSpec Pro and its officers, directors, employees, and agents from any claims, damages, losses, liabilities, and expenses (including attorneys' fees) arising from:
+    content: `You agree to defend, indemnify, and hold harmless SmartAIHub and its officers, directors, employees, and agents from any claims, damages, losses, liabilities, and expenses (including attorneys' fees) arising from:
 
 • Your use of the Service
 • Your violation of these Terms
@@ -140,7 +140,7 @@ Your continued use of the Service after changes constitutes acceptance of the mo
     id: 'governing-law',
     title: '11. Governing Law',
     icon: Scale,
-    content: `These Terms shall be governed by and construed in accordance with the laws of the jurisdiction in which SmartSpec Pro operates, without regard to conflict of law principles.
+    content: `These Terms shall be governed by and construed in accordance with the laws of the jurisdiction in which SmartAIHub operates, without regard to conflict of law principles.
 
 Any disputes arising from these Terms or the Service shall be resolved through binding arbitration in accordance with applicable arbitration rules, except where prohibited by law.`
   },
@@ -150,9 +150,9 @@ Any disputes arising from these Terms or the Service shall be resolved through b
     icon: FileText,
     content: `If you have any questions about these Terms, please contact us:
 
-**Email**: legal@smartspec.pro
-**Address**: SmartSpec Pro Legal Department
-**Support**: https://smartspec.pro/contact
+**Email**: legal@smartaihub.app
+**Address**: SmartAIHub Legal Department
+**Support**: https://smartaihub.app/contact
 
 We aim to respond to all inquiries within 5 business days.`
   }
@@ -189,7 +189,7 @@ export default function Terms() {
             </div>
             
             <p className="text-lg text-gray-600">
-              Please read these terms carefully before using SmartSpec Pro. By using our service, 
+              Please read these terms carefully before using SmartAIHub. By using our service, 
               you agree to be bound by these terms and conditions.
             </p>
           </motion.div>
@@ -251,7 +251,7 @@ export default function Terms() {
             className="mt-12 text-center"
           >
             <p className="text-gray-500 text-sm">
-              By using SmartSpec Pro, you acknowledge that you have read, understood, and agree to these Terms of Service.
+              By using SmartAIHub, you acknowledge that you have read, understood, and agree to these Terms of Service.
             </p>
             <div className="flex justify-center gap-4 mt-4">
               <Link href="/privacy" className="text-purple-600 hover:text-purple-700 font-medium">

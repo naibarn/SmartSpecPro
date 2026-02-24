@@ -120,7 +120,7 @@ export function DashboardLayout({
   onNavigate,
   onSignIn,
   isLoading,
-  appName = "SmartSpec Pro",
+  appName = "SmartAIHub",
   logoUrl,
 }: DashboardLayoutProps) {
   const [sidebarWidth, setSidebarWidth] = useState(() => {

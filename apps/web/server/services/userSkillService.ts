@@ -6,6 +6,7 @@
 import { getDb } from "../db";
 import { skills as skillsTable, userSkillVisibility, skillPermissions, groupMembers, users } from "../../drizzle/schema";
 import { eq, and, sql, ilike, or, count, inArray } from "drizzle-orm";
+import { sanitizeBrandText } from "./brandingSanitizer";
 
 // Per-user cache with TTL
 const userVisibleCache = new Map<number, { skillIds: number[], expiry: number }>();
@@ -193,7 +194,14 @@ export async function getUserVisibleSkills(
       .where(and(...conditions)),
   ]);
 
-  return { skills: items, total: totalResult[0]?.total ?? 0 };
+  return {
+    skills: items.map((item) => ({
+      ...item,
+      name: sanitizeBrandText(item.name || ""),
+      description: sanitizeBrandText(item.description || ""),
+    })),
+    total: totalResult[0]?.total ?? 0,
+  };
 }
 
 /**
@@ -298,9 +306,11 @@ export async function getAllSkillsForUser(
   return {
     skills: items.map((s) => ({
       ...s,
+      name: sanitizeBrandText(s.name || ""),
+      description: sanitizeBrandText(s.description || ""),
       visible: s.visible ?? false,
       autoTriggerEnabled: s.autoTriggerEnabled ?? true,
-      ownerName: s.ownerName ?? null,
+      ownerName: s.ownerName ? sanitizeBrandText(s.ownerName) : null,
       isOwner: s.createdBy === userId,
     })),
     total: totalResult[0]?.total ?? 0,
@@ -389,5 +399,9 @@ export async function getSlashCommands(userId: number) {
     )
     .orderBy(skillsTable.priority);
 
-  return rows;
+  return rows.map((row) => ({
+    ...row,
+    name: sanitizeBrandText(row.name || ""),
+    description: sanitizeBrandText(row.description || ""),
+  }));
 }

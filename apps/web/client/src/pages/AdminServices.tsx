@@ -1,5 +1,5 @@
 /**
- * Admin Services Management Page - SmartSpec Pro
+ * Admin Services Management Page - SmartAIHub
  * Monitor and control all services (like dev.sh)
  */
 
@@ -116,6 +116,11 @@ interface DockerContainerData {
   };
 }
 
+const sanitizeBrandingText = (value: string): string =>
+  value
+    .replace(/smartspecpro/gi, "smartaihub")
+    .replace(/smartspec/gi, "smartaihub");
+
 export default function AdminServices() {
   const { user, isLoading, isAuthenticated } = useAuth();
   const [location, setLocation] = useLocation();
@@ -152,7 +157,13 @@ export default function AdminServices() {
       });
       if (response.ok) {
         const data = await response.json();
-        setServices(data.services || []);
+        const sanitizedServices = (data.services || []).map((service: Service) => ({
+          ...service,
+          name: sanitizeBrandingText(service.name || ""),
+          displayName: sanitizeBrandingText(service.displayName || ""),
+          description: sanitizeBrandingText(service.description || ""),
+        }));
+        setServices(sanitizedServices);
         setSystemInfo(data.system || null);
       } else {
         console.error('Failed to fetch services:', response.status);
@@ -169,18 +180,30 @@ export default function AdminServices() {
       });
       if (response.ok) {
         const data = await response.json();
-        setDockerData(data);
+        const sanitizedContainers = (data.containers || []).map((container: DockerContainer) => ({
+          ...container,
+          name: sanitizeBrandingText(container.name || ""),
+          image: sanitizeBrandingText(container.image || ""),
+          status: sanitizeBrandingText(container.status || ""),
+          networks: (container.networks || []).map((network) => sanitizeBrandingText(network)),
+        }));
+        setDockerData({
+          ...data,
+          containers: sanitizedContainers,
+        });
       }
     } catch (error) {
       console.error('Failed to fetch Docker containers:', error);
     }
   };
 
-  const handleServiceAction = async (serviceId: string, action: 'start' | 'stop' | 'restart') => {
+  const handleServiceAction = async (service: Service, action: 'start' | 'stop' | 'restart') => {
+    const serviceId = service.id;
+    const serviceLabel = sanitizeBrandingText(service.displayName || service.name || "service");
     setActionLoading(`${serviceId}-${action}`);
 
     // Show loading toast
-    const loadingToast = toast.loading(`${action.charAt(0).toUpperCase() + action.slice(1)}ing service ${serviceId}...`);
+    const loadingToast = toast.loading(`${action.charAt(0).toUpperCase() + action.slice(1)}ing ${serviceLabel}...`);
 
     try {
       const response = await fetch(`/api/admin/services/${serviceId}/${action}`, {
@@ -191,16 +214,16 @@ export default function AdminServices() {
       toast.dismiss(loadingToast);
 
       if (response.ok) {
-        const data = await response.json();
-        toast.success(
-          `Service ${serviceId} ${action === 'start' ? 'started' : action === 'stop' ? 'stopped' : 'restarted'} successfully!`,
-          { duration: 3000 }
-        );
+        await response.json();
+        toast.success(`${serviceLabel} ${action === 'start' ? 'started' : action === 'stop' ? 'stopped' : 'restarted'} successfully!`, {
+          duration: 3000
+        });
         setTimeout(() => fetchServices(), 1000);
       } else {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        const errorMessage = sanitizeBrandingText(errorData.error || response.statusText || "Unknown error");
         toast.error(
-          `Failed to ${action} service: ${errorData.error || response.statusText}`,
+          `Failed to ${action} ${serviceLabel}: ${errorMessage}`,
           { duration: 5000 }
         );
       }
@@ -208,7 +231,7 @@ export default function AdminServices() {
       toast.dismiss(loadingToast);
       console.error(`Failed to ${action} service:`, error);
       toast.error(
-        `Network error: Failed to ${action} service ${serviceId}`,
+        `Network error: Failed to ${action} ${serviceLabel}`,
         { duration: 5000 }
       );
     } finally {
@@ -230,7 +253,7 @@ export default function AdminServices() {
       });
       if (response.ok) {
         const data = await response.json();
-        setLogs(data.logs || 'No logs available');
+        setLogs(sanitizeBrandingText(data.logs || 'No logs available'));
       }
     } catch (error) {
       console.error('Failed to fetch logs:', error);
@@ -656,7 +679,9 @@ export default function AdminServices() {
                                service.type === 'host' ? 'Host' : 'System'}
                             </span>
                           </div>
-                          <div className="text-xs text-gray-500">{service.description || service.id}</div>
+                          <div className="text-xs text-gray-500">
+                            {sanitizeBrandingText(service.description || "Service process")}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -728,7 +753,7 @@ export default function AdminServices() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleServiceAction(service.id, 'start')}
+                            onClick={() => handleServiceAction(service, 'start')}
                             disabled={actionLoading === `${service.id}-start`}
                             className="text-green-600 hover:text-green-700 hover:bg-green-50"
                           >
@@ -739,7 +764,7 @@ export default function AdminServices() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleServiceAction(service.id, 'restart')}
+                              onClick={() => handleServiceAction(service, 'restart')}
                               disabled={actionLoading === `${service.id}-restart`}
                               className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                             >
@@ -748,7 +773,7 @@ export default function AdminServices() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleServiceAction(service.id, 'stop')}
+                              onClick={() => handleServiceAction(service, 'stop')}
                               disabled={actionLoading === `${service.id}-stop`}
                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
                             >
@@ -783,7 +808,7 @@ export default function AdminServices() {
                 <div className="flex items-center gap-3">
                   <Terminal className="w-5 h-5 text-gray-600" />
                   <h3 className="text-lg font-bold text-gray-900">
-                    Logs: {selectedService.displayName}
+                    Logs: {sanitizeBrandingText(selectedService.displayName)}
                   </h3>
                 </div>
                 <div className="flex items-center gap-2">

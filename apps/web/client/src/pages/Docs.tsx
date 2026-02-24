@@ -54,7 +54,7 @@ const quickLinks = [
   {
     icon: Video,
     title: 'Video Guides',
-    description: 'Watch video tutorials to learn SmartSpec Pro visually.',
+    description: 'Watch video tutorials to learn SmartAIHub visually.',
     href: '/docs/videos',
     color: 'from-pink-500 to-rose-500'
   }
@@ -99,11 +99,11 @@ const docSections = [
   }
 ];
 
-const codeExample = `import smartspec from '@smartspec/sdk';
+const codeExample = `import smartaihub from '@smartaihub/sdk';
 
 // Initialize the client
-const client = new smartspec.Client({
-  apiKey: process.env.SMARTSPEC_API_KEY
+const client = new smartaihub.Client({
+  apiKey: process.env.SMARTAIHUB_API_KEY
 });
 
 // Generate code from natural language
@@ -119,7 +119,7 @@ const popularArticles = [
   {
     icon: Terminal,
     title: 'CLI Installation Guide',
-    description: 'Install and configure the SmartSpec CLI tool',
+    description: 'Install and configure the SmartAIHub CLI tool',
     readTime: '5 min'
   },
   {
@@ -137,7 +137,7 @@ const popularArticles = [
   {
     icon: Database,
     title: 'Database Integration',
-    description: 'Connect SmartSpec to your database',
+    description: 'Connect SmartAIHub to your database',
     readTime: '12 min'
   }
 ];
@@ -166,7 +166,7 @@ export default function Docs() {
               Documentation
             </span>
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6">
-              Learn <span className="gradient-text">SmartSpec Pro</span>
+              Learn <span className="gradient-text">SmartAIHub</span>
             </h1>
             <p className="text-lg text-muted-foreground mb-8">
               Everything you need to build amazing applications with AI-powered code generation.

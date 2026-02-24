@@ -52,6 +52,7 @@ import {
 } from "../services/userSkillService";
 import { generateMarketplaceContent } from "../services/marketplaceContentGenerator";
 import { decrypt } from "../services/crypto";
+import { sanitizeBrandText } from "../services/brandingSanitizer";
 
 // Skills directory path
 const SKILLS_DIR = path.resolve(process.cwd(), "skills");
@@ -727,8 +728,8 @@ export const skillsRouter = router({
       // Return simplified skill info for listing
       return skills.map((skill) => ({
         id: skill.id,
-        name: skill.name,
-        description: skill.description,
+        name: sanitizeBrandText(skill.name),
+        description: sanitizeBrandText(skill.description),
         icon: skill.icon,
         type: skill.type,
         creditMultiplier: skill.creditMultiplier,
@@ -768,8 +769,8 @@ export const skillsRouter = router({
         skills: result.skills.map((skill) => ({
           id: skill.id,
           slug: skill.slug,
-          name: skill.name,
-          description: skill.description,
+          name: sanitizeBrandText(skill.name || ""),
+          description: sanitizeBrandText(skill.description || ""),
           icon: skill.icon,
           category: skill.category,
           creditMultiplier: skill.creditMultiplier,
@@ -1775,6 +1776,10 @@ export const skillsRouter = router({
 
       return result.map((skill) => ({
         ...skill,
+        name: sanitizeBrandText(skill.name || ""),
+        description: sanitizeBrandText(skill.description || ""),
+        author: sanitizeBrandText(skill.author || ""),
+        marketplaceContent: skill.marketplaceContent ? sanitizeBrandText(skill.marketplaceContent) : null,
         creditMultiplier: Number(skill.creditMultiplier) || 1,
         tags: skill.tags || [],
         triggerPatterns: skill.triggerPatterns || [],
@@ -1805,6 +1810,10 @@ export const skillsRouter = router({
 
       return {
         ...skill,
+        name: sanitizeBrandText(skill.name || ""),
+        description: sanitizeBrandText(skill.description || ""),
+        author: sanitizeBrandText(skill.author || ""),
+        marketplaceContent: skill.marketplaceContent ? sanitizeBrandText(skill.marketplaceContent) : null,
         creditMultiplier: Number(skill.creditMultiplier) || 1,
         tags: skill.tags || [],
         triggerPatterns: skill.triggerPatterns || [],
@@ -1865,6 +1874,11 @@ export const skillsRouter = router({
 
       return rows.map((skill) => ({
         ...skill,
+        name: sanitizeBrandText(skill.name || ""),
+        description: sanitizeBrandText(skill.description || ""),
+        author: sanitizeBrandText(skill.author || ""),
+        marketplaceContent: skill.marketplaceContent ? sanitizeBrandText(skill.marketplaceContent) : null,
+        ownerName: skill.ownerName ? sanitizeBrandText(skill.ownerName) : null,
         creditMultiplier: Number(skill.creditMultiplier) || 1,
         tags: skill.tags || [],
         triggerPatterns: skill.triggerPatterns || [],

@@ -10,6 +10,7 @@ import { db } from "../db";
 import { tenants, tenantPages, themePresets } from "../../drizzle/schema";
 import { eq, and, asc } from "drizzle-orm";
 import { sdk } from "../_core/sdk";
+import { sanitizeBrandingDeep } from "../services/brandingSanitizer";
 
 export function registerTenantRoutes(app: Express) {
   // Get current tenant information
@@ -22,7 +23,7 @@ export function registerTenantRoutes(app: Express) {
       const theme = getTenantTheme(req.tenant);
       const seo = getTenantSeo(req.tenant);
 
-      res.json({
+      res.json(sanitizeBrandingDeep({
         tenant: {
           id: req.tenant.id,
           slug: req.tenant.slug,
@@ -36,7 +37,7 @@ export function registerTenantRoutes(app: Express) {
           settings: req.tenant.settings || {},
           contactInfo: req.tenant.contactInfo || {},
         },
-      });
+      }));
     } catch (error) {
       console.error("Error fetching tenant:", error);
       res.status(500).json({ error: "Failed to fetch tenant information" });
@@ -71,7 +72,7 @@ export function registerTenantRoutes(app: Express) {
       // TODO: Query seo_metadata table for path-specific metadata
       // For now, return tenant defaults
 
-      res.json({ seo, path });
+      res.json(sanitizeBrandingDeep({ seo, path }));
     } catch (error) {
       console.error("Error fetching SEO:", error);
       res.status(500).json({ error: "Failed to fetch SEO metadata" });
@@ -193,7 +194,7 @@ export function registerTenantRoutes(app: Express) {
         return acc;
       }, {} as Record<string, any>);
 
-      res.json(pagesMap);
+      res.json(sanitizeBrandingDeep(pagesMap));
     } catch (error) {
       console.error("Error fetching pages:", error);
       res.status(500).json({ error: "Failed to fetch pages" });
@@ -234,7 +235,7 @@ export function registerTenantRoutes(app: Express) {
         }
       }
 
-      res.json(page);
+      res.json(sanitizeBrandingDeep(page));
     } catch (error) {
       console.error("Error fetching page:", error);
       res.status(500).json({ error: "Failed to fetch page" });
@@ -389,7 +390,7 @@ export function registerTenantRoutes(app: Express) {
         return res.status(404).json({ error: "Page not found" });
       }
 
-      res.json(page);
+      res.json(sanitizeBrandingDeep(page));
     } catch (error) {
       console.error("Error fetching public page:", error);
       res.status(500).json({ error: "Failed to fetch page" });
@@ -406,7 +407,7 @@ export function registerTenantRoutes(app: Express) {
         .where(eq(themePresets.isActive, true))
         .orderBy(asc(themePresets.sortOrder));
 
-      res.json({ presets });
+      res.json(sanitizeBrandingDeep({ presets }));
     } catch (error) {
       console.error("Error fetching theme presets:", error);
       res.status(500).json({ error: "Failed to fetch theme presets" });
@@ -427,7 +428,7 @@ export function registerTenantRoutes(app: Express) {
         return res.status(404).json({ error: "Theme preset not found" });
       }
 
-      res.json({ preset });
+      res.json(sanitizeBrandingDeep({ preset }));
     } catch (error) {
       console.error("Error fetching theme preset:", error);
       res.status(500).json({ error: "Failed to fetch theme preset" });
@@ -491,11 +492,11 @@ export function registerTenantRoutes(app: Express) {
       // Clear cache
       clearTenantCache();
 
-      res.json({
+      res.json(sanitizeBrandingDeep({
         success: true,
         message: `Theme "${preset.displayName}" applied successfully`,
         appliedTheme: preset.themeConfig,
-      });
+      }));
     } catch (error) {
       console.error("Error applying theme preset:", error);
       res.status(500).json({ error: "Failed to apply theme preset" });

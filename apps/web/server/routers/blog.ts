@@ -10,6 +10,7 @@ import { blogPosts } from "../../drizzle/schema";
 import { eq, and, desc, asc } from "drizzle-orm";
 import { sdk } from "../_core/sdk";
 import sanitizeHtml from "sanitize-html";
+import { sanitizeBrandingDeep } from "../services/brandingSanitizer";
 
 /** Server-side HTML sanitization for blog content using sanitize-html */
 function sanitizeBlogHtml(html: string): string {
@@ -65,7 +66,7 @@ export function registerBlogRoutes(app: Express) {
         )
         .orderBy(desc(blogPosts.publishedAt), desc(blogPosts.createdAt));
 
-      res.json({ posts });
+      res.json(sanitizeBrandingDeep({ posts }));
     } catch (error) {
       console.error("Error fetching blog posts:", error);
       res.status(500).json({ error: "Failed to fetch blog posts" });
@@ -97,7 +98,7 @@ export function registerBlogRoutes(app: Express) {
         return res.status(404).json({ error: "Post not found" });
       }
 
-      res.json({ post });
+      res.json(sanitizeBrandingDeep({ post }));
     } catch (error) {
       console.error("Error fetching blog post:", error);
       res.status(500).json({ error: "Failed to fetch blog post" });
@@ -129,7 +130,7 @@ export function registerBlogRoutes(app: Express) {
         .where(eq(blogPosts.tenantId, req.tenant.id))
         .orderBy(desc(blogPosts.updatedAt));
 
-      res.json({ posts });
+      res.json(sanitizeBrandingDeep({ posts }));
     } catch (error) {
       console.error("Error fetching admin blog posts:", error);
       res.status(500).json({ error: "Failed to fetch blog posts" });
@@ -165,7 +166,7 @@ export function registerBlogRoutes(app: Express) {
         return res.status(404).json({ error: "Post not found" });
       }
 
-      res.json({ post });
+      res.json(sanitizeBrandingDeep({ post }));
     } catch (error) {
       console.error("Error fetching blog post:", error);
       res.status(500).json({ error: "Failed to fetch blog post" });
@@ -222,7 +223,7 @@ export function registerBlogRoutes(app: Express) {
         })
         .returning();
 
-      res.json({ post, message: "Post created successfully" });
+      res.json(sanitizeBrandingDeep({ post, message: "Post created successfully" }));
     } catch (error) {
       console.error("Error creating blog post:", error);
       res.status(500).json({ error: "Failed to create blog post" });
@@ -298,7 +299,7 @@ export function registerBlogRoutes(app: Express) {
         .where(eq(blogPosts.id, parseInt(id)))
         .returning();
 
-      res.json({ post, message: "Post updated successfully" });
+      res.json(sanitizeBrandingDeep({ post, message: "Post updated successfully" }));
     } catch (error) {
       console.error("Error updating blog post:", error);
       res.status(500).json({ error: "Failed to update blog post" });

@@ -1,5 +1,5 @@
 /**
- * SmartSpecWeb Marketplace - Public Browse Page
+ * SmartAIHub Marketplace - Public Browse Page
  * SEO-optimized marketplace homepage
  */
 
@@ -116,19 +116,19 @@ export default function MarketplacePage() {
 
   const openInDesktopApp = (templateId: string) => {
     // Deep link to desktop app
-    window.location.href = `smartspec://marketplace/template/${templateId}`;
+    window.location.href = `smartaihub://marketplace/template/${templateId}`;
   };
 
   return (
     <>
       <Head>
-        <title>SmartSpec Marketplace - Discover Templates for Rapid Development</title>
+        <title>SmartAIHub Marketplace - Discover Templates for Rapid Development</title>
         <meta
           name="description"
           content="Browse and purchase high-quality templates for image generation, video creation, AI features, and more. Build faster with ready-to-use code templates."
         />
         <meta name="keywords" content="templates, code marketplace, image generation, video generation, AI, React, TypeScript" />
-        <meta property="og:title" content="SmartSpec Marketplace" />
+        <meta property="og:title" content="SmartAIHub Marketplace" />
         <meta property="og:description" content="Discover premium templates for rapid development" />
         <meta property="og:type" content="website" />
       </Head>
@@ -139,14 +139,14 @@ export default function MarketplacePage() {
           <div className="container mx-auto px-4">
             <div className="max-w-3xl mx-auto text-center">
               <h1 className="text-5xl font-bold mb-4">
-                SmartSpec Marketplace
+                SmartAIHub Marketplace
               </h1>
               <p className="text-xl mb-8 opacity-90">
                 Discover and purchase high-quality templates to accelerate your development
               </p>
               <div className="flex gap-4 justify-center">
                 <a
-                  href="smartspec://marketplace"
+                  href="smartaihub://marketplace"
                   className="px-6 py-3 bg-white text-blue-600 rounded-lg font-semibold hover:bg-gray-100 transition-colors flex items-center gap-2"
                 >
                   <ExternalLink className="w-5 h-5" />
@@ -299,10 +299,10 @@ export default function MarketplacePage() {
               Ready to Build Faster?
             </h2>
             <p className="text-xl mb-8 opacity-90">
-              Download SmartSpec Desktop App and start using templates today
+              Download SmartAIHub Desktop App and start using templates today
             </p>
             <a
-              href="https://github.com/naibarn/SmartSpecPro/releases"
+              href="https://smartaihub.app/download"
               className="inline-flex items-center gap-2 px-8 py-4 bg-white text-blue-600 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
             >
               <Download className="w-5 h-5" />

@@ -1,5 +1,5 @@
 /**
- * Privacy Policy Page - SmartSpec Pro
+ * Privacy Policy Page - SmartAIHub
  * Data privacy and protection policies
  */
 
@@ -14,9 +14,9 @@ const sections = [
     id: 'introduction',
     title: '1. Introduction',
     icon: Shield,
-    content: `SmartSpec Pro ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our AI-powered code generation platform.
+    content: `SmartAIHub ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our AI-powered code generation platform.
 
-Please read this privacy policy carefully. By using SmartSpec Pro, you consent to the data practices described in this policy. If you do not agree with the terms of this privacy policy, please do not access the Service.`
+Please read this privacy policy carefully. By using SmartAIHub, you consent to the data practices described in this policy. If you do not agree with the terms of this privacy policy, please do not access the Service.`
   },
   {
     id: 'information-collected',
@@ -179,7 +179,7 @@ You can request deletion of your data at any time through your account settings 
 • This does not affect prior lawful processing
 
 **To Exercise Your Rights**
-Contact us at privacy@smartspec.pro or use the settings in your account dashboard. We will respond within 30 days.`
+Contact us at privacy@smartaihub.app or use the settings in your account dashboard. We will respond within 30 days.`
   },
   {
     id: 'cookies',
@@ -230,9 +230,9 @@ We comply with the California Consumer Privacy Act (CCPA) and California Privacy
     id: 'children',
     title: '10. Children\'s Privacy',
     icon: Shield,
-    content: `SmartSpec Pro is not intended for users under 18 years of age. We do not knowingly collect personal information from children.
+    content: `SmartAIHub is not intended for users under 18 years of age. We do not knowingly collect personal information from children.
 
-If we learn that we have collected information from a child under 18, we will promptly delete that information. If you believe we have collected information from a child, please contact us immediately at privacy@smartspec.pro.`
+If we learn that we have collected information from a child under 18, we will promptly delete that information. If you believe we have collected information from a child, please contact us immediately at privacy@smartaihub.app.`
   },
   {
     id: 'changes',
@@ -254,14 +254,14 @@ We encourage you to review this policy periodically. Your continued use of the S
     content: `If you have questions or concerns about this Privacy Policy or our data practices, please contact us:
 
 **Data Protection Officer**
-Email: privacy@smartspec.pro
+Email: privacy@smartaihub.app
 
 **General Inquiries**
-Email: support@smartspec.pro
-Contact Form: https://smartspec.pro/contact
+Email: support@smartaihub.app
+Contact Form: https://smartaihub.app/contact
 
 **Mailing Address**
-SmartSpec Pro Privacy Team
+SmartAIHub Privacy Team
 [Address will be provided upon request]
 
 We aim to respond to all privacy-related inquiries within 30 days.`
@@ -300,7 +300,7 @@ export default function Privacy() {
             
             <p className="text-lg text-gray-600">
               Your privacy is important to us. This policy explains how we collect, use, and protect 
-              your personal information when you use SmartSpec Pro.
+              your personal information when you use SmartAIHub.
             </p>
           </motion.div>
 
@@ -392,7 +392,7 @@ export default function Privacy() {
             className="mt-12 text-center"
           >
             <p className="text-gray-500 text-sm">
-              By using SmartSpec Pro, you acknowledge that you have read and understood this Privacy Policy.
+              By using SmartAIHub, you acknowledge that you have read and understood this Privacy Policy.
             </p>
             <div className="flex justify-center gap-4 mt-4">
               <Link href="/terms" className="text-teal-600 hover:text-teal-700 font-medium">

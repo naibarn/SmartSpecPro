@@ -816,10 +816,10 @@ Compilation fails with "Prompt injection patterns detected"
 **Contact:**
 - Report bugs: GitHub Issues
 - Feature requests: Create issue with label `feature-request`
-- Security issues: security@smartspecpro.com (private disclosure)
+- Security issues: security@smartaihub.app (private disclosure)
 
 ---
 
 **Last Updated:** 2026-02-08
 **Version:** 1.0.0
-**Maintained By:** SmartSpecPro Development Team
+**Maintained By:** SmartAIHub Development Team

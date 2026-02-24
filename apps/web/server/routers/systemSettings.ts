@@ -910,7 +910,7 @@ export const systemSettingsRouter = router({
 
   getSmtpSettings: adminProcedure.query(async () => {
     const db = await getDb();
-    if (!db) return { host: "", port: 587, secure: false, user: "", fromName: "SmartSpec Pro", fromEmail: "", configured: false };
+    if (!db) return { host: "", port: 587, secure: false, user: "", fromName: "SmartAIHub", fromEmail: "", configured: false };
 
     const settings = await db.select().from(systemSettings)
       .where(eq(systemSettings.category, "smtp"));
@@ -925,7 +925,7 @@ export const systemSettingsRouter = router({
       port: parseInt(map.port || "587", 10),
       secure: map.secure === "true",
       user: map.user || "",
-      fromName: map.from_name || "SmartSpec Pro",
+      fromName: map.from_name || "SmartAIHub",
       fromEmail: map.from_email || "",
       configured: !!(map.host && map.user),
     };
@@ -1143,7 +1143,7 @@ export const systemSettingsRouter = router({
 
   getTwoFaSettings: adminProcedure.query(async () => {
     const db = await getDb();
-    if (!db) return { enabled: true, enforced: false, issuer: "SmartSpec Pro", backupCodesCount: 10 };
+    if (!db) return { enabled: true, enforced: false, issuer: "SmartAIHub", backupCodesCount: 10 };
 
     const settings = await db.select().from(systemSettings)
       .where(eq(systemSettings.category, "2fa"));
@@ -1156,7 +1156,7 @@ export const systemSettingsRouter = router({
     return {
       enabled: map.enabled !== "false", // default true
       enforced: map.enforced === "true", // default false
-      issuer: map.issuer || "SmartSpec Pro",
+      issuer: map.issuer || "SmartAIHub",
       backupCodesCount: parseInt(map.backup_codes_count || "10", 10),
     };
   }),
@@ -1326,7 +1326,7 @@ export const systemSettingsRouter = router({
       provider: "chromadb", // chromadb, pgvector, or cloudflare_vectorize
       embeddingModel: "all-MiniLM-L6-v2",
       embeddingDimension: 384,
-      chromaPersistDir: "~/.smartspec/chroma",
+      chromaPersistDir: "~/.smartaihub/chroma",
       pgvectorHost: undefined,
       pgvectorPort: undefined,
       pgvectorDatabase: undefined,
@@ -1345,7 +1345,7 @@ export const systemSettingsRouter = router({
       } else if (setting.key === "embeddingDimension") {
         result.embeddingDimension = parseInt(setting.value || "384", 10);
       } else if (setting.key === "chromaPersistDir") {
-        result.chromaPersistDir = setting.value || "~/.smartspec/chroma";
+        result.chromaPersistDir = setting.value || "~/.smartaihub/chroma";
       } else if (setting.key === "pgvectorHost") {
         result.pgvectorHost = setting.value;
       } else if (setting.key === "pgvectorPort") {
@@ -1479,7 +1479,7 @@ export const systemSettingsRouter = router({
     try {
       if (provider === "chromadb") {
         // Test ChromaDB connection
-        const persistDir = config.chromaPersistDir || "~/.smartspec/chroma";
+        const persistDir = config.chromaPersistDir || "~/.smartaihub/chroma";
         return {
           success: true,
           message: `ChromaDB configured at: ${persistDir}`,
@@ -1605,7 +1605,7 @@ export const systemSettingsRouter = router({
             { name: "code_snippets", documentCount: 0, embeddingDimension: 384 },
             { name: "conversation_history", documentCount: 0, embeddingDimension: 384 },
           ],
-          storageLocation: config.chromaPersistDir || "~/.smartspec/chroma",
+          storageLocation: config.chromaPersistDir || "~/.smartaihub/chroma",
         };
       } else if (provider === "pgvector") {
         // Get stats from pgvector

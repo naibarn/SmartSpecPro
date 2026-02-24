@@ -38,9 +38,9 @@ const footerLinks = {
 };
 
 const socialLinks = [
-  { icon: Github, href: 'https://github.com/smartspec', label: 'GitHub' },
-  { icon: Twitter, href: 'https://twitter.com/smartspec', label: 'Twitter' },
-  { icon: Linkedin, href: 'https://linkedin.com/company/smartspec', label: 'LinkedIn' },
+  { icon: Github, href: 'https://github.com/smartaihub', label: 'GitHub' },
+  { icon: Twitter, href: 'https://twitter.com/smartaihub', label: 'Twitter' },
+  { icon: Linkedin, href: 'https://linkedin.com/company/smartaihub', label: 'LinkedIn' },
 ];
 
 export function Footer() {
@@ -94,7 +94,7 @@ export function Footer() {
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 via-coral-400 to-teal-400 flex items-center justify-center">
                       <Sparkles className="w-5 h-5 text-white" />
                     </div>
-                    <span className="text-xl font-bold gradient-text">SmartSpec</span>
+                    <span className="text-xl font-bold gradient-text">SmartAIHub</span>
                   </>
                 )}
               </div>
@@ -186,12 +186,12 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-border/50 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} SmartSpec Pro. All rights reserved.
+            © {new Date().getFullYear()} SmartAIHub. All rights reserved.
           </p>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Mail className="w-4 h-4" />
-            <a href="mailto:hello@smartspec.pro" className="hover:text-foreground transition-colors">
-              hello@smartspec.pro
+            <a href="mailto:hello@smartaihub.app" className="hover:text-foreground transition-colors">
+              hello@smartaihub.app
             </a>
           </div>
         </div>

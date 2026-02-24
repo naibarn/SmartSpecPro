@@ -8,6 +8,7 @@ import { skills, skillLikes, skillComments, users } from "../../drizzle/schema";
 import { eq, and, ilike, sql, desc, count } from "drizzle-orm";
 import { createRateLimiter } from "../services/rateLimiter";
 import { TRPCError } from "@trpc/server";
+import { sanitizeBrandText } from "../services/brandingSanitizer";
 
 const commentLimiter = createRateLimiter("marketplace-comments", {
   windowMs: 10 * 60 * 1000, // 10 minutes
@@ -88,7 +89,15 @@ export const marketplaceRouter = router({
         .from(skills)
         .where(whereClause);
 
-      return { skills: items, total: totalResult?.count || 0 };
+      return {
+        skills: items.map((item) => ({
+          ...item,
+          name: sanitizeBrandText(item.name),
+          description: sanitizeBrandText(item.description || ""),
+          author: sanitizeBrandText(item.author || ""),
+        })),
+        total: totalResult?.count || 0,
+      };
     }),
 
   /**
@@ -135,7 +144,14 @@ export const marketplaceRouter = router({
         userLiked = !!like;
       }
 
-      return { ...skill, userLiked };
+      return {
+        ...skill,
+        name: sanitizeBrandText(skill.name),
+        description: sanitizeBrandText(skill.description || ""),
+        author: sanitizeBrandText(skill.author || ""),
+        marketplaceContent: sanitizeBrandText(skill.marketplaceContent || ""),
+        userLiked,
+      };
     }),
 
   /**
@@ -205,7 +221,10 @@ export const marketplaceRouter = router({
         .values({ skillId: input.skillId, userId, content: input.content })
         .returning();
 
-      return comment;
+      return {
+        ...comment,
+        content: sanitizeBrandText(comment.content || ""),
+      };
     }),
 
   /**
@@ -241,7 +260,14 @@ export const marketplaceRouter = router({
         .from(skillComments)
         .where(eq(skillComments.skillId, input.skillId));
 
-      return { comments: items, total: totalResult?.count || 0 };
+      return {
+        comments: items.map((item) => ({
+          ...item,
+          content: sanitizeBrandText(item.content || ""),
+          userName: sanitizeBrandText(item.userName || ""),
+        })),
+        total: totalResult?.count || 0,
+      };
     }),
 
   /**

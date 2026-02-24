@@ -10,7 +10,7 @@
 SmartSpecPro Web is an end-to-end AI productivity platform for teams that need more than a chat UI.  
 It combines agent skills, media creation, presentation editing, document intelligence (RAG + vector search), and virtual workflow automation in one product.
 
-Production showcase: [https://smartaihub.app](https://smartaihub.app)
+Production showcase: deploy to your own tenant domain.
 
 ![SmartAIHub Production Showcase](docs/assets/SmartAIHub.png)
 

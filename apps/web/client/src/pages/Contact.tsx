@@ -1,5 +1,5 @@
 /**
- * Contact Page - SmartSpec Pro
+ * Contact Page - SmartAIHub
  * Contact form with support options
  */
 
@@ -40,7 +40,7 @@ const contactTypes: ContactTypeOption[] = [
     id: 'general',
     label: 'General Inquiry',
     icon: <MessageSquare className="w-5 h-5" />,
-    description: 'Questions about SmartSpec Pro',
+    description: 'Questions about SmartAIHub',
   },
   {
     id: 'support',
@@ -72,8 +72,8 @@ const contactInfo = [
   {
     icon: <Mail className="w-6 h-6" />,
     title: 'Email',
-    value: 'support@smartspec.pro',
-    link: 'mailto:support@smartspec.pro',
+    value: 'support@smartaihub.app',
+    link: 'mailto:support@smartaihub.app',
   },
   {
     icon: <Phone className="w-6 h-6" />,
@@ -164,7 +164,7 @@ export default function Contact() {
               </span>
             </h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Have questions about SmartSpec Pro? Our team is here to help you
+              Have questions about SmartAIHub? Our team is here to help you
               build amazing applications faster.
             </p>
           </motion.div>

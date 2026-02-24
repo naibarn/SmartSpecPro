@@ -209,7 +209,7 @@ async def health_check():
     return {
         "status": "ok",
         "timestamp": datetime.utcnow().isoformat(),
-        "service": "SmartSpec Pro API"
+        "service": "SmartAIHub API"
     }
 
 
