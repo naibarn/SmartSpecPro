@@ -59,7 +59,7 @@ Either:
 - Document password changes
 - Use secrets management for production
 
-See [scripts/README.md](scripts/README.md) for details on the validation system.
+See [scripts/README.md](../../../scripts/README.md) for details on the validation system.
 
 ---
 

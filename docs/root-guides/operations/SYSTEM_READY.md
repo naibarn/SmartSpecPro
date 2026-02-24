@@ -76,7 +76,7 @@ https://smartspec.local
 ```
 
 **หมายเหตุ:** Chrome อาจแสดง HSTS error สำหรับ `.local` domain
-**แก้ไข:** ดูวิธีแก้ใน [FIX_CHROME_HSTS_ERROR.md](FIX_CHROME_HSTS_ERROR.md)
+**แก้ไข:** ดูวิธีแก้ใน [FIX_CHROME_HSTS_ERROR.md](../setup/FIX_CHROME_HSTS_ERROR.md)
 
 ---
 
@@ -134,12 +134,12 @@ docker logs -f smartspec-redis
 
 | เอกสาร | เนื้อหา |
 |--------|---------|
-| [QUICK_START.md](QUICK_START.md) | คู่มือเริ่มต้นใช้งานฉบับสั้น ⭐ |
-| [NGINX_SETUP_COMPLETE.md](NGINX_SETUP_COMPLETE.md) | รายละเอียด nginx configuration |
-| [FIX_CHROME_HSTS_ERROR.md](FIX_CHROME_HSTS_ERROR.md) | แก้ปัญหา Chrome HSTS (ถ้าใช้ domain) |
-| [EXTERNAL_ACCESS_GUIDE.md](EXTERNAL_ACCESS_GUIDE.md) | การเข้าถึงจากเครื่องอื่น |
+| [QUICK_START.md](../setup/QUICK_START.md) | คู่มือเริ่มต้นใช้งานฉบับสั้น ⭐ |
+| [NGINX_SETUP_COMPLETE.md](../setup/NGINX_SETUP_COMPLETE.md) | รายละเอียด nginx configuration |
+| [FIX_CHROME_HSTS_ERROR.md](../setup/FIX_CHROME_HSTS_ERROR.md) | แก้ปัญหา Chrome HSTS (ถ้าใช้ domain) |
+| [EXTERNAL_ACCESS_GUIDE.md](../setup/EXTERNAL_ACCESS_GUIDE.md) | การเข้าถึงจากเครื่องอื่น |
 | [TENANT_SETUP_FIXED.md](TENANT_SETUP_FIXED.md) | รายละเอียด tenant configuration |
-| [START_BACKEND.md](START_BACKEND.md) | การ setup backend |
+| [START_BACKEND.md](../setup/START_BACKEND.md) | การ setup backend |
 
 ---
 

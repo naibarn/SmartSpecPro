@@ -211,7 +211,7 @@ After HTTPS is working:
 Full documentation:
 - [SSL_SETUP_GUIDE.md](SSL_SETUP_GUIDE.md) - Complete SSL setup
 - [SUBDOMAIN_SSO_SETUP.md](SUBDOMAIN_SSO_SETUP.md) - SSO configuration
-- [README.md](README.md) - Main project documentation
+- [README.md](../../../README.md) - Main project documentation
 
 Common issues:
 - Certificate warnings → Import to Trusted Root CA

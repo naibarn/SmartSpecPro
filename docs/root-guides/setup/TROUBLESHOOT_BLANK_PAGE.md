@@ -286,5 +286,5 @@ docker restart smartspec-nginx-ssl
 ## Contact & Resources
 
 - [SSL_SETUP_GUIDE.md](SSL_SETUP_GUIDE.md) - Complete SSL guide
-- [NEXT_STEPS.md](NEXT_STEPS.md) - Setup instructions
+- [NEXT_STEPS.md](../plans/NEXT_STEPS.md) - Setup instructions
 - [HTTPS_QUICK_START.md](HTTPS_QUICK_START.md) - Quick reference

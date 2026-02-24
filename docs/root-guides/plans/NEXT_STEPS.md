@@ -332,9 +332,9 @@ No need to regenerate certificates daily - they're valid for 365 days!
 
 ## 📚 Additional Resources
 
-- [HTTPS_QUICK_START.md](HTTPS_QUICK_START.md) - Quick reference guide
-- [SSL_SETUP_GUIDE.md](SSL_SETUP_GUIDE.md) - Detailed SSL documentation
-- [SUBDOMAIN_SSO_SETUP.md](SUBDOMAIN_SSO_SETUP.md) - SSO configuration details
+- [HTTPS_QUICK_START.md](../setup/HTTPS_QUICK_START.md) - Quick reference guide
+- [SSL_SETUP_GUIDE.md](../setup/SSL_SETUP_GUIDE.md) - Detailed SSL documentation
+- [SUBDOMAIN_SSO_SETUP.md](../setup/SUBDOMAIN_SSO_SETUP.md) - SSO configuration details
 
 ## 🆘 Still Having Issues?
 

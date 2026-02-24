@@ -207,7 +207,7 @@ docker logs smartspec-postgres
 | [NGINX_SETUP_COMPLETE.md](NGINX_SETUP_COMPLETE.md) | รายละเอียด nginx configuration |
 | [EXTERNAL_ACCESS_GUIDE.md](EXTERNAL_ACCESS_GUIDE.md) | การเข้าถึงจากเครื่องอื่น |
 | [CHROME_HTTPS_SOLUTIONS.md](CHROME_HTTPS_SOLUTIONS.md) | แก้ปัญหา Chrome HTTPS redirect |
-| [TENANT_SETUP_FIXED.md](TENANT_SETUP_FIXED.md) | รายละเอียด tenant configuration |
+| [TENANT_SETUP_FIXED.md](../operations/TENANT_SETUP_FIXED.md) | รายละเอียด tenant configuration |
 | [START_BACKEND.md](START_BACKEND.md) | การ setup backend |
 
 ---
