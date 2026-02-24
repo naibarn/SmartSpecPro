@@ -339,7 +339,7 @@ export const presentationRouter = router({
         const actor = toPresentationActor(ctx);
         const db = await getDb();
         if (!db) return [];
-        const exports = await getExportsByDeckId(input.deckId, actor.tenantId, input.limit, db);
+        const exports = await getExportsByDeckId(input.deckId, actor.tenantId, actor.userId, input.limit, db);
         return exports.map((r) => ({
           exportId: r.id,
           format: r.format,

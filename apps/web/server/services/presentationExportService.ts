@@ -124,13 +124,14 @@ export async function getExportRecordByCeleryTaskId(
 }
 
 /**
- * Fetch recent export records for a given deck, scoped to a tenant.
+ * Fetch recent export records for a given deck, scoped to a tenant and user.
  * Results are ordered newest-first and capped by `limit`.
  * @returns Array of export records (may be empty).
  */
 export async function getExportsByDeckId(
   deckId: number,
   tenantId: string,
+  userId: number,
   limit: number,
   db: DrizzleDB,
 ): Promise<PresentationExport[]> {
@@ -141,6 +142,7 @@ export async function getExportsByDeckId(
       and(
         eq(presentationExports.deckId, deckId),
         eq(presentationExports.tenantId, tenantId),
+        eq(presentationExports.userId, userId),
       ),
     )
     .orderBy(desc(presentationExports.createdAt))
