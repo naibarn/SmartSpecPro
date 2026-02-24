@@ -52,6 +52,35 @@ _SLIDE_READY_POLL_INTERVAL_MS = 100
 
 
 # ---------------------------------------------------------------------------
+# Filter-value sanitisers — prevent FFmpeg filter_complex injection
+# ---------------------------------------------------------------------------
+
+
+def _safe_volume(v: object, default: float = 1.0) -> float:
+    """Clamp volume to valid FFmpeg range [0.0, 2.0]."""
+    try:
+        return max(0.0, min(2.0, float(v)))  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+
+
+def _safe_fps(v: object, default: int = 30) -> int:
+    """Clamp fps to valid range [1, 120]."""
+    try:
+        return max(1, min(120, int(v)))  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+
+
+def _safe_delay_ms(v: object, default: int = 0) -> int:
+    """Clamp delay to non-negative integer milliseconds."""
+    try:
+        return max(0, int(v))  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+
+
+# ---------------------------------------------------------------------------
 # Task definition
 # ---------------------------------------------------------------------------
 
@@ -282,7 +311,7 @@ def _build_mp4(render_spec: dict, quality: str, screenshot_paths: list[str], tmp
     continues without that track.
     """
     slides = render_spec["slides"]
-    fps = render_spec.get("fps", 30)
+    fps = _safe_fps(render_spec.get("fps", 30))
     preset = QUALITY_PRESETS.get(quality, QUALITY_PRESETS["standard"])
     crf = preset["crf"]
     preset_name = preset["preset"]
@@ -303,7 +332,7 @@ def _build_mp4(render_spec: dict, quality: str, screenshot_paths: list[str], tmp
     if project_audio_spec and project_audio_spec.get("url"):
         try:
             project_audio_path = _download_audio(project_audio_spec["url"], tmp_dir, 0)
-            project_volume = project_audio_spec.get("volume", 1.0)
+            project_volume = _safe_volume(project_audio_spec.get("volume", 1.0))
         except Exception as exc:
             logger.warning(
                 "audio_download_failed_project_track",
@@ -334,7 +363,7 @@ def _build_mp4(render_spec: dict, quality: str, screenshot_paths: list[str], tmp
                             "path": dl_path,
                             "start_ms": start_ms,
                             "end_ms": abs_end_ms,
-                            "volume": audio_spec.get("volume", 1.0),
+                            "volume": _safe_volume(audio_spec.get("volume", 1.0)),
                         }
                     )
                 except Exception as exc:
@@ -394,7 +423,7 @@ def _build_mp4(render_spec: dict, quality: str, screenshot_paths: list[str], tmp
     for si, track in enumerate(slide_audio_tracks):
         label = f"[s{si}]"
         delay_ms = int(track["start_ms"])
-        vol = track["volume"]
+        vol = _safe_volume(track["volume"])
         filter_chain = f"[{audio_input_idx}:a]adelay={delay_ms}|{delay_ms},volume={vol}"
         if track["end_ms"] is not None:
             # atrim start/end are relative to the input stream (before adelay),

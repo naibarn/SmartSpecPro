@@ -6,12 +6,12 @@ GET  /api/v1/presentations/export/{id}     — poll task status
 """
 
 import json
-from typing import Any, Optional
+from typing import Any, Optional, Self
 
 import structlog
 from celery.result import AsyncResult
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 from app.core.auth import get_current_user
 from app.models.user import User
@@ -58,6 +58,58 @@ class PresentationExportRequest(BaseModel):
                 f"render_spec exceeds maximum allowed size of {_RENDER_SPEC_MAX_BYTES} bytes"
             )
         return v
+
+    @model_validator(mode="after")
+    def validate_render_spec_numeric_fields(self) -> Self:
+        """
+        Coerce and range-check numeric fields inside render_spec that are later
+        interpolated into FFmpeg filter_complex strings.  Raises a 422 if a
+        caller supplies a non-numeric value (e.g. an injection payload string).
+        Out-of-range numeric values are clamped rather than rejected so that
+        legitimate callers with slightly wrong values still succeed.
+        """
+        spec = self.render_spec
+
+        # --- fps ---
+        fps_raw = spec.get("fps")
+        if fps_raw is not None:
+            if not isinstance(fps_raw, (int, float)):
+                raise ValueError(
+                    f"render_spec.fps must be a number, got {type(fps_raw).__name__!r}"
+                )
+            spec["fps"] = max(1, min(120, int(fps_raw)))
+
+        # --- projectAudioTrack.volume ---
+        project_audio = spec.get("projectAudioTrack")
+        if isinstance(project_audio, dict):
+            vol_raw = project_audio.get("volume")
+            if vol_raw is not None:
+                if not isinstance(vol_raw, (int, float)):
+                    raise ValueError(
+                        "render_spec.projectAudioTrack.volume must be a number, "
+                        f"got {type(vol_raw).__name__!r}"
+                    )
+                project_audio["volume"] = max(0.0, min(2.0, float(vol_raw)))
+
+        # --- slides[*].audioTrack.volume ---
+        slides = spec.get("slides")
+        if isinstance(slides, list):
+            for slide_idx, slide in enumerate(slides):
+                if not isinstance(slide, dict):
+                    continue
+                audio_track = slide.get("audioTrack")
+                if not isinstance(audio_track, dict):
+                    continue
+                vol_raw = audio_track.get("volume")
+                if vol_raw is not None:
+                    if not isinstance(vol_raw, (int, float)):
+                        raise ValueError(
+                            f"render_spec.slides[{slide_idx}].audioTrack.volume must be a number, "
+                            f"got {type(vol_raw).__name__!r}"
+                        )
+                    audio_track["volume"] = max(0.0, min(2.0, float(vol_raw)))
+
+        return self
 
     @field_validator("format")
     @classmethod
