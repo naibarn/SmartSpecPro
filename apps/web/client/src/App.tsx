@@ -19,6 +19,7 @@ const Factory = lazy(() => import("@/pages/Factory"));
 const VideoEditorPage = lazy(() => import("@/pages/VideoEditorPage"));
 const PresentationEditor = lazy(() => import("@/pages/PresentationEditor"));
 const PresentationLibrary = lazy(() => import("@/pages/PresentationLibrary"));
+const PresentationPlayMode = lazy(() => import("@/pages/PresentationPlayMode"));
 const Home = lazy(() => import("./pages/Home"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Features = lazy(() => import("./pages/Features"));
@@ -188,6 +189,7 @@ function Router() {
         <Route path="/video-editor" component={VideoEditorPage} />
         <Route path="/presentations" component={PresentationLibrary} />
         <Route path="/presentation-editor/:docId" component={PresentationEditor} />
+        <Route path="/presentation/:itemId/play" component={PresentationPlayMode} />
         <Route path="/docker-redirect" component={DockerRedirect} />
         <Route path="/404" component={NotFound} />
         <Route component={NotFound} />
