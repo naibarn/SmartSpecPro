@@ -4,6 +4,9 @@ PPTX Importer — parses a .pptx file into PresentationSlideContent dicts.
 Uses python-pptx to extract shapes (text, image, rect, line, group).
 Uploads embedded images to R2 via R2StorageService.upload_bytes.
 Returns ImportResult with slides and fidelity_warnings.
+
+Security: python-pptx is a read-only parser that does not execute VBA macros.
+Any macro content embedded in the file is ignored during parsing.
 """
 import io
 from dataclasses import dataclass

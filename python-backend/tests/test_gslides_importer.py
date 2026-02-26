@@ -751,6 +751,29 @@ async def test_download_image_rejects_non_https():
 
 @pytest.mark.asyncio
 @pytest.mark.unit
+async def test_download_image_uses_follow_redirects_and_timeout():
+    """_download_image passes follow_redirects=True and timeout=30.0 to httpx."""
+    from app.services.gslides_importer import _download_image
+
+    with patch("httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_response = MagicMock()
+        mock_response.content = b"image-bytes"
+        mock_response.raise_for_status = MagicMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+        mock_client_cls.return_value = mock_client
+
+        result = await _download_image("https://example.com/img.jpg", "token")
+
+    assert result == b"image-bytes"
+    # Verify follow_redirects=True and timeout=30.0 are passed
+    mock_client_cls.assert_called_once_with(follow_redirects=True, timeout=30.0)
+
+
+@pytest.mark.asyncio
+@pytest.mark.unit
 async def test_download_image_https_success():
     """_download_image with HTTPS URL downloads and returns bytes."""
     from app.services.gslides_importer import _download_image

@@ -91,8 +91,11 @@ def rgb_float_to_hex(color: dict) -> str:
 async def _download_image(url: str, access_token: str) -> bytes | None:
     """Download a GSlides contentUrl.
 
-    Security: rejects non-HTTPS URLs without making an HTTP request.
-    Returns None on any httpx.HTTPError. Does NOT log the URL (contains embedded credentials).
+    Security:
+      - Rejects non-HTTPS URLs without making an HTTP request (primary SSRF defense).
+      - Follows redirects (Google CDN may 302) with timeout=30s.
+      - Returns None on any httpx.HTTPError.
+      - Does NOT log the URL (contains embedded credentials).
     """
     if not url.startswith("https://"):
         return None
