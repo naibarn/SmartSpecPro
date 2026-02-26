@@ -203,8 +203,8 @@ export function ImportPresentationDialog({ onClose }: ImportPresentationDialogPr
   function handleOpenDeck() {
     const id = statusQuery.data?.deckLibraryItemId;
     if (id) {
-      setLocation(`/presentation/${id}`);
       onClose();
+      setLocation(`/presentation/${id}`);
     } else {
       setErrorMessage("Could not open deck — library item not found.");
       setStep("error");
