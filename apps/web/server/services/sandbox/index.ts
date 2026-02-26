@@ -4,6 +4,13 @@ export type {
   SandboxDispatchResult,
   ExecutionMode,
 } from "./dispatchService";
+export {
+  isSandboxEnabled,
+  getDispatchMode,
+  isFeatureRequiredForSandbox,
+  shouldUseSandboxForFeature,
+} from "./featureFlags";
+export type { DispatchMode } from "./featureFlags";
 export { resolveProfile, checkTenantPolicy } from "./policyResolver";
 export { projectStatus } from "./statusProjection";
 export type {
