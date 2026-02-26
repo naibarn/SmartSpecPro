@@ -62,6 +62,19 @@ from .library import (
     LibraryIndexJob,
 )
 
+# Sandbox execution
+from .sandbox import (
+    SandboxProfile,
+    SandboxJob,
+    SandboxArtifact,
+    TenantSandboxPolicy,
+    SandboxExecutionMode,
+    SandboxJobStatus,
+    SandboxArtifactType,
+    SandboxFeatureType,
+    SandboxNetworkAction,
+)
+
 __all__ = [
     # Existing
     "AuditLog",
@@ -131,4 +144,14 @@ __all__ = [
     "LibraryChunk",
     "LibraryPermission",
     "LibraryIndexJob",
+    # Sandbox
+    "SandboxProfile",
+    "SandboxJob",
+    "SandboxArtifact",
+    "TenantSandboxPolicy",
+    "SandboxExecutionMode",
+    "SandboxJobStatus",
+    "SandboxArtifactType",
+    "SandboxFeatureType",
+    "SandboxNetworkAction",
 ]

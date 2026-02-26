@@ -92,7 +92,9 @@ async def init_db():
         # Media and assets
         asset, media_task, media_callback_event, library,
         # Notifications and preferences
-        notification, user_preferences, custom_skill_prompt
+        notification, user_preferences, custom_skill_prompt,
+        # Sandbox execution
+        sandbox,
     )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

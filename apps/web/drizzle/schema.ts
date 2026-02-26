@@ -126,6 +126,29 @@ export const editSessionStatusEnum = pgEnum("edit_session_status", [
   "expired",
 ]);
 
+// OpenSandbox enums
+export const sandboxExecutionModeEnum = pgEnum("sandbox_execution_mode", [
+  "code", "command", "browser", "file", "media",
+]);
+
+export const sandboxJobStatusEnum = pgEnum("sandbox_job_status", [
+  "accepted", "policy_resolved", "queued", "provisioning",
+  "staging_inputs", "executing", "collecting_outputs", "persisting",
+  "completed", "failed", "timed_out", "canceled",
+]);
+
+export const sandboxArtifactTypeEnum = pgEnum("sandbox_artifact_type", [
+  "primary", "log", "screenshot", "thumbnail", "chunk", "debug",
+]);
+
+export const sandboxNetworkActionEnum = pgEnum("sandbox_network_action", [
+  "deny", "allow",
+]);
+
+export const sandboxFeatureTypeEnum = pgEnum("sandbox_feature_type", [
+  "chat", "skill", "workflow", "library", "media", "presentation", "connector",
+]);
+
 /**
  * Core user table backing auth flow.
  * Extend this file with additional tables as your product grows.
@@ -591,6 +614,12 @@ export const apiAuditEvents = pgTable("api_audit_events", {
   mediaType: varchar("mediaType", { length: 20 }),
   mediaTaskId: varchar("mediaTaskId", { length: 128 }),
   metadata: json("metadata"),
+
+  /** Associated sandbox job ID */
+  sandboxJobId: varchar("sandboxJobId", { length: 36 }),
+  /** OpenSandbox container ID for correlation */
+  opensandboxId: varchar("opensandboxId", { length: 128 }),
+
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index("api_audit_events_trace_id").on(t.traceId),
@@ -1503,6 +1532,10 @@ export const mediaCallbackEvents = pgTable("media_callback_events", {
   maxAttempts: integer("max_attempts").notNull().default(5),
   nextRetryAt: timestamp("next_retry_at", { withTimezone: true }),
   processedAt: timestamp("processed_at", { withTimezone: true }),
+
+  /** Associated sandbox job ID (if media was processed in sandbox) */
+  sandboxJobId: varchar("sandbox_job_id", { length: 36 }),
+
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
@@ -1863,6 +1896,9 @@ export const presentationConversionRecords = pgTable("presentation_conversion_re
 
   // Nullable: set by callback handler when job fails (surfaces failure reason to frontend)
   error: text("error"),
+
+  /** Associated sandbox job ID (if conversion ran in sandbox) */
+  sandboxJobId: varchar("sandbox_job_id", { length: 36 }),
 
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -2284,6 +2320,17 @@ export const skills = pgTable("skills", {
   /** Reason for rejection (if visibility = 'rejected') */
   rejectionReason: text("rejectionReason"),
 
+  /** Sandbox profile slug for skills that require sandbox execution */
+  sandboxProfileSlug: varchar("sandboxProfileSlug", { length: 64 }),
+  /** Whether this skill needs network access in sandbox */
+  requiresNetwork: boolean("requiresNetwork"),
+  /** Whether this skill needs browser automation in sandbox */
+  requiresBrowser: boolean("requiresBrowser"),
+  /** Maximum runtime for this skill in seconds (overrides profile default) */
+  maxRuntimeSeconds: integer("maxRuntimeSeconds"),
+  /** Maximum input file size in MB (overrides profile default) */
+  maxInputMb: integer("maxInputMb"),
+
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -2658,6 +2705,9 @@ export const scheduledMessages = pgTable("scheduled_messages", {
 
   /** LLM model to use */
   modelId: varchar("modelId", { length: 128 }),
+
+  /** Dynamic parameters required to execute the assigned skill */
+  dynamicParams: json("dynamicParams").$type<Record<string, any>>(),
 
   /** Associated skill */
   skillId: varchar("skillId", { length: 100 }).default("chat-alert"),
@@ -3304,6 +3354,9 @@ export const workflowExecutions = pgTable("workflow_executions", {
   /** Trigger type that started this execution */
   triggerType: varchar("triggerType", { length: 50 }),
 
+  /** Sandbox job IDs used during this workflow execution */
+  sandboxJobIds: jsonb("sandboxJobIds").$type<string[]>().default([]),
+
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
@@ -3718,3 +3771,125 @@ export const funnelBackfillCheckpoints = pgTable("funnel_backfill_checkpoints", 
 
 export type FunnelBackfillCheckpoint = typeof funnelBackfillCheckpoints.$inferSelect;
 export type InsertFunnelBackfillCheckpoint = typeof funnelBackfillCheckpoints.$inferInsert;
+
+// ============================================================
+// OpenSandbox Tables
+// ============================================================
+
+/**
+ * Sandbox Profiles -- Reusable runtime configurations for sandbox containers.
+ * Each profile defines resource limits, execution mode, and security policies.
+ */
+export const sandboxProfiles = pgTable("sandbox_profiles", {
+  id: serial("id").primaryKey(),
+  slug: varchar("slug", { length: 64 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  executionMode: sandboxExecutionModeEnum("executionMode").notNull(),
+  baseImage: varchar("baseImage", { length: 512 }).notNull(),
+  entrypointTemplate: text("entrypointTemplate"),
+  cpuLimit: varchar("cpuLimit", { length: 16 }).default("1000m").notNull(),
+  memoryLimitMb: integer("memoryLimitMb").default(2048).notNull(),
+  ephemeralDiskMb: integer("ephemeralDiskMb").default(5120).notNull(),
+  timeoutSeconds: integer("timeoutSeconds").default(300).notNull(),
+  networkDefaultAction: sandboxNetworkActionEnum("networkDefaultAction").default("deny").notNull(),
+  allowBrowser: boolean("allowBrowser").default(false).notNull(),
+  allowCommand: boolean("allowCommand").default(false).notNull(),
+  allowCodeInterpreter: boolean("allowCodeInterpreter").default(false).notNull(),
+  allowFileUpload: boolean("allowFileUpload").default(true).notNull(),
+  maxInputMb: integer("maxInputMb").default(50),
+  maxOutputMb: integer("maxOutputMb").default(100),
+  isActive: boolean("isActive").default(true).notNull(),
+  version: integer("version").default(1).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type SandboxProfile = typeof sandboxProfiles.$inferSelect;
+export type InsertSandboxProfile = typeof sandboxProfiles.$inferInsert;
+
+/**
+ * Sandbox Jobs -- Canonical execution records for sandbox operations.
+ * Tracks lifecycle from acceptance through execution to completion/failure.
+ */
+export const sandboxJobs = pgTable("sandbox_jobs", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id),
+  featureType: sandboxFeatureTypeEnum("featureType").notNull(),
+  featureRefId: varchar("featureRefId", { length: 128 }),
+  executionMode: sandboxExecutionModeEnum("executionMode").notNull(),
+  sandboxProfileId: integer("sandboxProfileId").references(() => sandboxProfiles.id),
+  opensandboxId: varchar("opensandboxId", { length: 128 }),
+  status: sandboxJobStatusEnum("status").default("accepted").notNull(),
+  statusReason: text("statusReason"),
+  imageUri: varchar("imageUri", { length: 512 }),
+  inputManifestJson: jsonb("inputManifestJson").$type<Record<string, unknown>>(),
+  outputManifestJson: jsonb("outputManifestJson").$type<Record<string, unknown>>(),
+  stdoutExcerpt: text("stdoutExcerpt"),
+  stderrExcerpt: text("stderrExcerpt"),
+  costEstimate: numeric("costEstimate", { precision: 12, scale: 4 }),
+  costActual: numeric("costActual", { precision: 12, scale: 4 }),
+  idempotencyKey: varchar("idempotencyKey", { length: 128 }),
+  startedAt: timestamp("startedAt", { withTimezone: true }),
+  finishedAt: timestamp("finishedAt", { withTimezone: true }),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("sandbox_jobs_idempotency_idx")
+    .on(t.tenantId, t.featureType, t.idempotencyKey)
+    .where(sql`${t.idempotencyKey} IS NOT NULL`),
+  index("sandbox_jobs_tenant_status_idx").on(t.tenantId, t.status),
+  index("sandbox_jobs_opensandbox_id_idx").on(t.opensandboxId),
+  index("sandbox_jobs_user_idx").on(t.userId),
+  index("sandbox_jobs_created_idx").on(t.createdAt),
+  index("sandbox_jobs_expires_idx").on(t.expiresAt),
+]);
+
+export type SandboxJob = typeof sandboxJobs.$inferSelect;
+export type InsertSandboxJob = typeof sandboxJobs.$inferInsert;
+
+/**
+ * Sandbox Artifacts -- Output files produced by sandbox jobs.
+ * Tracks S3/R2 object keys, types, sizes, and checksums.
+ */
+export const sandboxArtifacts = pgTable("sandbox_artifacts", {
+  id: serial("id").primaryKey(),
+  sandboxJobId: varchar("sandboxJobId", { length: 36 }).notNull().references(() => sandboxJobs.id, { onDelete: "cascade" }),
+  artifactType: sandboxArtifactTypeEnum("artifactType").notNull(),
+  objectKey: varchar("objectKey", { length: 512 }).notNull(),
+  mimeType: varchar("mimeType", { length: 128 }),
+  sizeBytes: bigint("sizeBytes", { mode: "number" }),
+  sha256: varchar("sha256", { length: 64 }),
+  isPrimary: boolean("isPrimary").default(false).notNull(),
+  metadataJson: jsonb("metadataJson").$type<Record<string, unknown>>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("sandbox_artifacts_job_idx").on(t.sandboxJobId),
+  index("sandbox_artifacts_type_idx").on(t.artifactType),
+]);
+
+export type SandboxArtifact = typeof sandboxArtifacts.$inferSelect;
+export type InsertSandboxArtifact = typeof sandboxArtifacts.$inferInsert;
+
+/**
+ * Tenant Sandbox Policies -- Per-tenant sandbox usage limits and configuration.
+ * One policy per tenant controlling concurrency, runtime, network, and image access.
+ */
+export const tenantSandboxPolicies = pgTable("tenant_sandbox_policies", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().unique().references(() => tenants.id, { onDelete: "cascade" }),
+  defaultProfileId: integer("defaultProfileId").references(() => sandboxProfiles.id),
+  maxConcurrentSandboxes: integer("maxConcurrentSandboxes").default(5).notNull(),
+  maxDailyRuntimeSeconds: integer("maxDailyRuntimeSeconds").default(36000).notNull(),
+  maxSingleJobSeconds: integer("maxSingleJobSeconds").default(1800).notNull(),
+  defaultNetworkAction: sandboxNetworkActionEnum("defaultNetworkAction"),
+  egressRulesJson: jsonb("egressRulesJson").$type<Array<{ host: string; port?: number }>>(),
+  allowedImagesJson: jsonb("allowedImagesJson").$type<string[]>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type TenantSandboxPolicy = typeof tenantSandboxPolicies.$inferSelect;
+export type InsertTenantSandboxPolicy = typeof tenantSandboxPolicies.$inferInsert;
