@@ -1,0 +1,39 @@
+[Unit]
+Description=SmartSpecPro OpenSandbox Server
+Documentation=https://github.com/smartspecpro/smartspec
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/opensandbox
+
+# Load production API key
+EnvironmentFile=-/opt/opensandbox/.env
+
+# Start: bring up Docker Compose stack detached
+ExecStart=/usr/bin/docker compose \
+    -f /opt/opensandbox/docker-compose.hetzner-sandbox.yml \
+    --env-file /opt/opensandbox/.env \
+    up -d --remove-orphans
+
+# Stop: tear down cleanly (allow up to 30s for in-flight sandbox operations)
+ExecStop=/usr/bin/docker compose \
+    -f /opt/opensandbox/docker-compose.hetzner-sandbox.yml \
+    down --timeout 30
+
+# Restart policy — back off to prevent tight crash loops
+Restart=on-failure
+RestartSec=10s
+StartLimitIntervalSec=120s
+StartLimitBurst=5
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=opensandbox
+
+[Install]
+WantedBy=multi-user.target
