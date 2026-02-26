@@ -7,6 +7,7 @@ import {
   PRESENTATION_ERROR_CODE,
   isPresentationFeatureEnabled,
   isPresentationExportWriteEnabled,
+  isPresentationAIGenerationEnabled,
 } from "@shared/presentation/constants";
 import {
   isPresentationItemType,
@@ -99,7 +100,21 @@ function getAvailability(): PresentationAvailability {
     };
   }
 
-  return { enabled: true };
+  return {
+    enabled: true,
+    aiGenerationEnabled: isPresentationAIGenerationEnabled(),
+  };
+}
+
+function ensureAIGenerationEnabled(): void {
+  if (isPresentationAIGenerationEnabled()) {
+    return;
+  }
+
+  throw new PresentationServiceError(
+    PRESENTATION_ERROR_CODE.FEATURE_DISABLED,
+    `${PRESENTATION_ERROR_CODE.FEATURE_DISABLED}: AI presentation generation is currently disabled`,
+  );
 }
 
 function ensureFeatureEnabled(): void {
@@ -165,6 +180,17 @@ function mapPresentationServiceError(error: PresentationServiceError): TRPCError
 
   if (error.code === PRESENTATION_ERROR_CODE.EXPORT_THROTTLED) {
     return new TRPCError({ code: "TOO_MANY_REQUESTS", message: error.message, cause: error.details });
+  }
+
+  if (error.code === PRESENTATION_ERROR_CODE.AI_INSUFFICIENT_CREDITS) {
+    return new TRPCError({ code: "PRECONDITION_FAILED", message: error.message });
+  }
+
+  if (
+    error.code === PRESENTATION_ERROR_CODE.AI_GENERATION_FAILED
+    || error.code === PRESENTATION_ERROR_CODE.AI_INVALID_RESPONSE
+  ) {
+    return new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error.message });
   }
 
   return new TRPCError({ code: "BAD_REQUEST", message: error.message });
