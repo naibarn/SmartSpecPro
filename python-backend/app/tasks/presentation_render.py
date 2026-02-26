@@ -297,7 +297,7 @@ def _download_audio(url: str, dest_dir: str, idx: int) -> str:
     return dest_path
 
 
-def _build_mp4(render_spec: dict, quality: str, screenshot_paths: list[str], tmp_dir: str) -> str:
+def _build_mp4(render_spec: dict, quality: str, screenshot_paths: list[str], tmp_dir: str, runner=None) -> str:
     """
     Encode slides to MP4 using FFmpeg concat demuxer.
 
@@ -394,7 +394,10 @@ def _build_mp4(render_spec: dict, quality: str, screenshot_paths: list[str], tmp
             output_path,
         ]
         # M-2: timeout prevents subprocess blocking past Celery SoftTimeLimitExceeded
-        subprocess.run(cmd, check=True, capture_output=True, timeout=540)
+        if runner:
+            runner.run_command_sync(cmd, check=True, timeout=540)
+        else:
+            subprocess.run(cmd, check=True, capture_output=True, timeout=540)
         return output_path
 
     # ------------------------------------------------------------------
@@ -472,7 +475,10 @@ def _build_mp4(render_spec: dict, quality: str, screenshot_paths: list[str], tmp
         output_path,
     ]
     # M-2: timeout prevents subprocess blocking past Celery SoftTimeLimitExceeded
-    subprocess.run(cmd, check=True, capture_output=True, timeout=540)
+    if runner:
+        runner.run_command_sync(cmd, check=True, timeout=540)
+    else:
+        subprocess.run(cmd, check=True, capture_output=True, timeout=540)
     return output_path
 
 

@@ -713,29 +713,30 @@ def _is_image_uri(uri: str) -> bool:
     return ext in _IMAGE_EXTENSIONS
 
 
-def _has_audio_stream(uri: str) -> bool:
+def _has_audio_stream(uri: str, runner=None) -> bool:
     """Probe whether an input file has at least one audio stream.
 
     Uses ffprobe with a short timeout. Returns False on any error
     (missing audio, network issue, etc.) so the caller generates silence.
     """
     try:
-        result = subprocess.run(
-            [
-                "ffprobe", "-v", "quiet",
-                "-select_streams", "a",
-                "-show_entries", "stream=codec_type",
-                "-of", "csv=p=0",
-                uri,
-            ],
-            capture_output=True, text=True, timeout=15,
-        )
+        cmd = [
+            "ffprobe", "-v", "quiet",
+            "-select_streams", "a",
+            "-show_entries", "stream=codec_type",
+            "-of", "csv=p=0",
+            uri,
+        ]
+        if runner:
+            result = runner.run_command_sync(cmd, timeout=15)
+        else:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
         return "audio" in result.stdout
     except Exception:
         return False
 
 
-def build_ffmpeg_command_for_render(spec: dict) -> list[str]:
+def build_ffmpeg_command_for_render(spec: dict, runner=None) -> list[str]:
     """Build FFmpeg render command from timeline."""
     project = spec.get("inputs", {}).get("project")
     if not project:
@@ -779,7 +780,7 @@ def build_ffmpeg_command_for_render(spec: dict) -> list[str]:
                 if _is_image_uri(uri):
                     image_inputs.add(idx)
                     silent_inputs.add(idx)
-                elif not _has_audio_stream(path):
+                elif not _has_audio_stream(path, runner=runner):
                     # Video file without audio (e.g. AI-generated clips)
                     silent_inputs.add(idx)
 
@@ -1080,10 +1081,13 @@ def parse_waveform_pcm(pcm_data: bytes, sample_rate: int, bucket_ms: int, max_bu
 # Job Handlers
 # ========================================
 
-def handle_probe(spec: dict, tmp_dir: str) -> dict:
+def handle_probe(spec: dict, tmp_dir: str, runner=None) -> dict:
     """Probe a media file and return metadata."""
     cmd = build_ffmpeg_command_for_probe(spec)
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+    if runner:
+        result = runner.run_command_sync(cmd, timeout=30)
+    else:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
     if result.returncode != 0:
         raise RuntimeError(f"ffprobe failed: {_sanitize_stderr(result.stderr)}")
 
@@ -1101,7 +1105,7 @@ def handle_probe(spec: dict, tmp_dir: str) -> dict:
     }
 
 
-def handle_render_mp4(spec: dict, tmp_dir: str) -> dict:
+def handle_render_mp4(spec: dict, tmp_dir: str, runner=None) -> dict:
     """Render MP4 from timeline."""
     job_id = spec["jobId"]
     user_id = str(spec.get("_userId", "unknown"))
@@ -1130,7 +1134,7 @@ def handle_render_mp4(spec: dict, tmp_dir: str) -> dict:
     # Override output target in spec so FFmpeg writes to the correct location
     spec.setdefault("output", {})["target"] = base_output_path
 
-    cmd = build_ffmpeg_command_for_render(spec)
+    cmd = build_ffmpeg_command_for_render(spec, runner=runner)
 
     import structlog
     _render_log = structlog.get_logger()
@@ -1138,13 +1142,19 @@ def handle_render_mp4(spec: dict, tmp_dir: str) -> dict:
 
     report_progress(job_id, 0.1, "rendering", "Starting FFmpeg render")
 
-    process = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-    )
-    _, stderr = process.communicate(timeout=1800)
+    if runner:
+        _render_result = runner.run_command_sync(cmd, timeout=1800)
+        stderr = _render_result.stderr or ""
+        _returncode = _render_result.returncode
+    else:
+        process = subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        )
+        _, stderr = process.communicate(timeout=1800)
+        _returncode = process.returncode
 
-    if process.returncode != 0:
-        _render_log.error("ffmpeg_render_failed", job_id=job_id, returncode=process.returncode, stderr=stderr[-2000:])
+    if _returncode != 0:
+        _render_log.error("ffmpeg_render_failed", job_id=job_id, returncode=_returncode, stderr=stderr[-2000:])
         raise RuntimeError(f"FFmpeg render failed: {_sanitize_stderr(stderr)}")
 
     text_render_derived: dict[str, Any] | None = None
@@ -1187,12 +1197,15 @@ def handle_render_mp4(spec: dict, tmp_dir: str) -> dict:
                 output_path,
             ]
             _render_log.info("ffmpeg_text_fastpath_cmd", job_id=job_id, cmd=" ".join(drawtext_cmd))
-            drawtext_result = subprocess.run(
-                drawtext_cmd,
-                capture_output=True,
-                text=True,
-                timeout=1800,
-            )
+            if runner:
+                drawtext_result = runner.run_command_sync(drawtext_cmd, timeout=1800)
+            else:
+                drawtext_result = subprocess.run(
+                    drawtext_cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=1800,
+                )
             if drawtext_result.returncode == 0:
                 strategy = "drawtext"
                 fallback_reason = "accepted_equivalent"
@@ -1238,12 +1251,15 @@ def handle_render_mp4(spec: dict, tmp_dir: str) -> dict:
                 output_path,
             ]
             _render_log.info("ffmpeg_text_ass_cmd", job_id=job_id, cmd=" ".join(ass_cmd))
-            ass_result = subprocess.run(
-                ass_cmd,
-                capture_output=True,
-                text=True,
-                timeout=1800,
-            )
+            if runner:
+                ass_result = runner.run_command_sync(ass_cmd, timeout=1800)
+            else:
+                ass_result = subprocess.run(
+                    ass_cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=1800,
+                )
             if ass_result.returncode != 0:
                 _render_log.error(
                     "ffmpeg_text_ass_failed",
@@ -1273,14 +1289,17 @@ def handle_render_mp4(spec: dict, tmp_dir: str) -> dict:
     return result
 
 
-def handle_waveform_peaks(spec: dict, tmp_dir: str) -> dict:
+def handle_waveform_peaks(spec: dict, tmp_dir: str, runner=None) -> dict:
     """Extract waveform peaks from audio."""
     job_id = spec["jobId"]
     cmd = build_ffmpeg_command_for_waveform(spec)
 
     report_progress(job_id, 0.1, "extracting_waveform")
 
-    process = subprocess.run(cmd, capture_output=True, timeout=120)
+    if runner:
+        process = runner.run_command_sync(cmd, timeout=120, text=False, capture_output=True)
+    else:
+        process = subprocess.run(cmd, capture_output=True, timeout=120)
     if not process.stdout:
         raise RuntimeError("No PCM data extracted")
 
@@ -1297,7 +1316,7 @@ def handle_waveform_peaks(spec: dict, tmp_dir: str) -> dict:
     }
 
 
-def handle_dead_air_detect(spec: dict, tmp_dir: str) -> dict:
+def handle_dead_air_detect(spec: dict, tmp_dir: str, runner=None) -> dict:
     """Detect silence segments in audio."""
     import structlog
 
@@ -1308,7 +1327,10 @@ def handle_dead_air_detect(spec: dict, tmp_dir: str) -> dict:
     logger.info("silence_detect_start", job_id=job_id, cmd=" ".join(cmd))
     report_progress(job_id, 0.1, "detecting_silence")
 
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+    if runner:
+        result = runner.run_command_sync(cmd, timeout=120)
+    else:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
 
     if result.returncode != 0:
         logger.error(
@@ -1336,7 +1358,7 @@ def handle_dead_air_detect(spec: dict, tmp_dir: str) -> dict:
     }
 
 
-def handle_thumbnails(spec: dict, tmp_dir: str) -> dict:
+def handle_thumbnails(spec: dict, tmp_dir: str, runner=None) -> dict:
     """Generate thumbnails at regular intervals."""
     job_id = spec["jobId"]
     assets = spec.get("inputs", {}).get("assets", [])
@@ -1355,10 +1377,11 @@ def handle_thumbnails(spec: dict, tmp_dir: str) -> dict:
     report_progress(job_id, 0.1, "generating_thumbnails")
 
     # Probe duration first
-    probe = subprocess.run(
-        ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", path],
-        capture_output=True, text=True, timeout=30,
-    )
+    probe_cmd = ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", path]
+    if runner:
+        probe = runner.run_command_sync(probe_cmd, timeout=30)
+    else:
+        probe = subprocess.run(probe_cmd, capture_output=True, text=True, timeout=30)
     duration = float(json.loads(probe.stdout).get("format", {}).get("duration", 0))
     timestamps = []
     t = 0.0
@@ -1369,10 +1392,11 @@ def handle_thumbnails(spec: dict, tmp_dir: str) -> dict:
     artifacts = []
     for i, ts in enumerate(timestamps):
         out_path = os.path.join(tmp_dir, f"thumb_{i:04d}.jpg")
-        subprocess.run(
-            ["ffmpeg", "-ss", str(ts), "-i", path, "-vframes", "1", "-q:v", "2", "-y", out_path],
-            capture_output=True, timeout=30,
-        )
+        thumb_cmd = ["ffmpeg", "-ss", str(ts), "-i", path, "-vframes", "1", "-q:v", "2", "-y", out_path]
+        if runner:
+            runner.run_command_sync(thumb_cmd, timeout=30)
+        else:
+            subprocess.run(thumb_cmd, capture_output=True, timeout=30)
         if os.path.exists(out_path):
             artifacts.append({"kind": "thumbnail", "uri": out_path, "mime": "image/jpeg"})
         report_progress(job_id, 0.1 + 0.9 * (i + 1) / len(timestamps), "generating_thumbnails")
@@ -1380,7 +1404,7 @@ def handle_thumbnails(spec: dict, tmp_dir: str) -> dict:
     return {"artifacts": artifacts}
 
 
-def handle_subtitles_extract(spec: dict, tmp_dir: str) -> dict:
+def handle_subtitles_extract(spec: dict, tmp_dir: str, runner=None) -> dict:
     """Extract subtitles from video."""
     assets = spec.get("inputs", {}).get("assets", [])
     if not assets:
@@ -1395,10 +1419,11 @@ def handle_subtitles_extract(spec: dict, tmp_dir: str) -> dict:
         raise ValueError(f"Unsupported subtitle format: {fmt!r}. Allowed: {', '.join(sorted(ALLOWED_SUB_FORMATS))}")
     out_path = os.path.join(tmp_dir, f"subtitles.{fmt}")
 
-    subprocess.run(
-        ["ffmpeg", "-i", path, "-map", "0:s:0", "-y", out_path],
-        capture_output=True, timeout=60,
-    )
+    sub_cmd = ["ffmpeg", "-i", path, "-map", "0:s:0", "-y", out_path]
+    if runner:
+        runner.run_command_sync(sub_cmd, timeout=60)
+    else:
+        subprocess.run(sub_cmd, capture_output=True, timeout=60)
 
     return {
         "artifacts": [{"kind": "subtitle", "uri": out_path, "mime": f"text/{fmt}"}] if os.path.exists(out_path) else [],
@@ -1449,7 +1474,7 @@ def _calculate_keep_segments(
     return keep_segments
 
 
-def _probe_media_info(input_path: str) -> dict:
+def _probe_media_info(input_path: str, runner=None) -> dict:
     """Probe a media file for duration, frame rate, and stream types.
 
     Returns dict with keys:
@@ -1459,12 +1484,11 @@ def _probe_media_info(input_path: str) -> dict:
         has_audio: bool
         is_vfr: bool (True if variable frame rate detected)
     """
-    result = subprocess.run(
-        ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", input_path],
-        capture_output=True,
-        text=True,
-        timeout=30,
-    )
+    cmd = ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", input_path]
+    if runner:
+        result = runner.run_command_sync(cmd, timeout=30)
+    else:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
 
     if result.returncode != 0:
         raise RuntimeError(f"ffprobe failed: {_sanitize_stderr(result.stderr)}")
@@ -1636,7 +1660,7 @@ def _build_trim_concat_cmd(
     return cmd
 
 
-def handle_dead_air_cut(spec: dict, tmp_dir: str) -> dict:
+def handle_dead_air_cut(spec: dict, tmp_dir: str, runner=None) -> dict:
     """Cut silent segments from video/audio and concatenate remaining parts.
 
     Reads segments to remove from spec.params.segments.
@@ -1698,7 +1722,7 @@ def handle_dead_air_cut(spec: dict, tmp_dir: str) -> dict:
     # Handle empty segments
     if len(validated_segments) == 0:
         # No segments to remove, return input as-is
-        media_info = _probe_media_info(input_path)
+        media_info = _probe_media_info(input_path, runner=runner)
         original_duration_ms = int(media_info["duration_s"] * 1000)
         # Determine MIME type based on streams
         if media_info["has_video"]:
@@ -1718,7 +1742,7 @@ def handle_dead_air_cut(spec: dict, tmp_dir: str) -> dict:
         }
 
     # Probe the source file
-    media_info = _probe_media_info(input_path)
+    media_info = _probe_media_info(input_path, runner=runner)
     duration_s = media_info["duration_s"]
     duration_ms = int(duration_s * 1000)
 
@@ -1773,7 +1797,10 @@ def handle_dead_air_cut(spec: dict, tmp_dir: str) -> dict:
     report_progress(job_id, 0.4, "encoding", "Running FFmpeg")
 
     # Run FFmpeg
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
+    if runner:
+        result = runner.run_command_sync(cmd, timeout=1800)
+    else:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
 
     if result.returncode != 0:
         raise RuntimeError(f"FFmpeg failed: {_sanitize_stderr(result.stderr)}")
@@ -1815,21 +1842,22 @@ def handle_dead_air_cut(spec: dict, tmp_dir: str) -> dict:
 _BROWSER_COMPATIBLE_VIDEO_CODECS = {"h264", "vp8", "vp9", "av1"}
 
 
-def _detect_video_codec(uri: str) -> str | None:
+def _detect_video_codec(uri: str, runner=None) -> str | None:
     """Probe a file and return its video codec name (lowercase), or None."""
     try:
-        result = subprocess.run(
-            ["ffprobe", "-v", "quiet", "-select_streams", "v:0",
-             "-show_entries", "stream=codec_name", "-of", "csv=p=0", uri],
-            capture_output=True, text=True, timeout=30,
-        )
+        cmd = ["ffprobe", "-v", "quiet", "-select_streams", "v:0",
+               "-show_entries", "stream=codec_name", "-of", "csv=p=0", uri]
+        if runner:
+            result = runner.run_command_sync(cmd, timeout=30)
+        else:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         codec = result.stdout.strip().lower()
         return codec if codec else None
     except Exception:
         return None
 
 
-def handle_transcode_h264(spec: dict, tmp_dir: str) -> dict:
+def handle_transcode_h264(spec: dict, tmp_dir: str, runner=None) -> dict:
     """Transcode a video file to H.264/AAC MP4 for browser playback.
 
     Probes the input first — if already H.264, returns the original URI
@@ -1849,7 +1877,7 @@ def handle_transcode_h264(spec: dict, tmp_dir: str) -> dict:
     report_progress(job_id, 0.05, "probing", "Checking video codec")
 
     # Probe codec to decide if transcoding is needed
-    codec = _detect_video_codec(asset_uri)
+    codec = _detect_video_codec(asset_uri, runner=runner)
 
     if codec and codec in _BROWSER_COMPATIBLE_VIDEO_CODECS:
         # Already browser-compatible — return original URI
@@ -1865,7 +1893,7 @@ def handle_transcode_h264(spec: dict, tmp_dir: str) -> dict:
     input_path = _resolve_asset_path(asset_uri, tmp_dir)
 
     # Probe media info for progress reporting
-    media_info = _probe_media_info(input_path)
+    media_info = _probe_media_info(input_path, runner=runner)
     total_duration_us = int(media_info["duration_s"] * 1_000_000)
 
     # Build output path
@@ -1898,23 +1926,31 @@ def handle_transcode_h264(spec: dict, tmp_dir: str) -> dict:
 
     report_progress(job_id, 0.15, "transcoding", f"Transcoding from {codec or 'unknown'} to H.264")
 
-    process = subprocess.Popen(
-        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-    )
+    if runner:
+        # Sandbox mode: no progress streaming, single batch execution
+        report_progress(job_id, 0.5, "transcoding", "Transcoding in sandbox...")
+        _tc_result = runner.run_command_sync(cmd, timeout=1800)
+        stderr = _tc_result.stderr or ""
+        _tc_returncode = _tc_result.returncode
+    else:
+        process = subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        )
 
-    # Parse progress from FFmpeg stdout
-    if process.stdout:
-        for line in process.stdout:
-            line = line.strip()
-            pct = parse_ffmpeg_progress(line, total_duration_us)
-            if pct is not None:
-                # Map 0-1 range into 0.15-0.90 for UI
-                mapped = 0.15 + pct * 0.75
-                report_progress(job_id, mapped, "transcoding", f"Transcoding: {int(pct * 100)}%")
+        # Parse progress from FFmpeg stdout
+        if process.stdout:
+            for line in process.stdout:
+                line = line.strip()
+                pct = parse_ffmpeg_progress(line, total_duration_us)
+                if pct is not None:
+                    # Map 0-1 range into 0.15-0.90 for UI
+                    mapped = 0.15 + pct * 0.75
+                    report_progress(job_id, mapped, "transcoding", f"Transcoding: {int(pct * 100)}%")
 
-    _, stderr = process.communicate(timeout=1800)
+        _, stderr = process.communicate(timeout=1800)
+        _tc_returncode = process.returncode
 
-    if process.returncode != 0:
+    if _tc_returncode != 0:
         raise RuntimeError(f"Transcode failed: {_sanitize_stderr(stderr)}")
 
     if not os.path.exists(output_path):
@@ -1939,7 +1975,7 @@ def handle_transcode_h264(spec: dict, tmp_dir: str) -> dict:
 # ========================================
 
 
-def handle_extract_audio(spec: dict, tmp_dir: str) -> dict:
+def handle_extract_audio(spec: dict, tmp_dir: str, runner=None) -> dict:
     """Extract audio track from a video file to AAC/M4A.
 
     Uses FFmpeg to copy or re-encode the audio stream without the video.
@@ -1959,7 +1995,7 @@ def handle_extract_audio(spec: dict, tmp_dir: str) -> dict:
     input_path = _resolve_asset_path(asset_uri, tmp_dir)
 
     # Probe media info
-    media_info = _probe_media_info(input_path)
+    media_info = _probe_media_info(input_path, runner=runner)
     if not media_info["has_audio"]:
         raise ValueError("Input file has no audio stream to extract")
 
@@ -1980,7 +2016,10 @@ def handle_extract_audio(spec: dict, tmp_dir: str) -> dict:
         "-y", output_path,
     ]
 
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+    if runner:
+        result = runner.run_command_sync(cmd, timeout=600)
+    else:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
 
     if result.returncode != 0:
         raise RuntimeError(f"Audio extraction failed: {_sanitize_stderr(result.stderr)}")
@@ -1991,10 +2030,11 @@ def handle_extract_audio(spec: dict, tmp_dir: str) -> dict:
     report_progress(job_id, 0.8, "probing", "Probing output duration")
 
     # Probe output for duration
-    probe_result = subprocess.run(
-        ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", output_path],
-        capture_output=True, text=True, timeout=30,
-    )
+    probe_out_cmd = ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", output_path]
+    if runner:
+        probe_result = runner.run_command_sync(probe_out_cmd, timeout=30)
+    else:
+        probe_result = subprocess.run(probe_out_cmd, capture_output=True, text=True, timeout=30)
     output_duration = 0.0
     if probe_result.returncode == 0:
         try:
@@ -2119,7 +2159,14 @@ def execute_media_job(self, spec_json: str, user_id: str, job_id: str) -> dict:
         if not handler:
             raise ValueError(f"Unsupported job type: {job_type}")
 
-        result = handler(spec, tmp_dir)
+        # Route through sandbox when enabled
+        from app.integrations.opensandbox.config import opensandbox_settings as _osb_settings
+        if _osb_settings.is_enabled:
+            from app.video.sandbox_runner import SandboxMediaRunner
+            with SandboxMediaRunner.session(profile="media-processing", job_id=job_id) as runner:
+                result = handler(spec, tmp_dir, runner=runner)
+        else:
+            result = handler(spec, tmp_dir)
         report_done(job_id, result)
 
         # Persist render to media_tasks DB for permanent Media Library visibility

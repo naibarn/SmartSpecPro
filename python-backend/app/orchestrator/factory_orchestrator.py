@@ -23,8 +23,11 @@ class SaaSFactoryOrchestrator:
         self.cp = cp
         self.workspace = validate_workspace(workspace, workspace_root)
         self.max_report_bytes = max_report_bytes
+        self._runner = None  # Optional SandboxMediaRunner for sandbox execution
 
     def _run_cmd(self, cmd: List[str], cwd: str) -> subprocess.CompletedProcess:
+        if self._runner:
+            return self._runner.run_command_sync(cmd, timeout=60 * 30, cwd=cwd)
         env = sanitize_env(dict(os.environ))
         return subprocess.run(cmd, cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, timeout=60 * 30)
 
