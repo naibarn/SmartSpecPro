@@ -89,6 +89,10 @@ celery_app.conf.update(
         "tasks.import_presentation": {"queue": "presentation_import"},
         # Sandbox job execution -> sandbox queue (isolated, resource-intensive)
         "app.workers.sandbox_job_worker.execute_sandbox_job": {"queue": "sandbox"},
+        # Sandbox maintenance tasks
+        "app.tasks.sandbox_maintenance_tasks.cleanup_expired_sandbox_jobs": {"queue": "celery"},
+        "app.tasks.sandbox_maintenance_tasks.cleanup_orphan_sandboxes": {"queue": "sandbox"},
+        "app.tasks.sandbox_maintenance_tasks.detect_stuck_sandbox_jobs": {"queue": "sandbox"},
     },
 )
 
@@ -141,6 +145,19 @@ celery_app.conf.beat_schedule = {
     "check-expired-approvals": {
         "task": "app.tasks.approval_timeout_tasks.check_expired_approvals",
         "schedule": 300.0,  # Every 5 minutes - auto-reject expired workflow approvals
+    },
+    # Sandbox maintenance tasks
+    "cleanup-expired-sandbox-jobs": {
+        "task": "app.tasks.sandbox_maintenance_tasks.cleanup_expired_sandbox_jobs",
+        "schedule": crontab(hour=4, minute=0),  # Daily at 4:00 AM UTC
+    },
+    "cleanup-orphan-sandboxes": {
+        "task": "app.tasks.sandbox_maintenance_tasks.cleanup_orphan_sandboxes",
+        "schedule": crontab(minute="*/10"),  # Every 10 minutes
+    },
+    "detect-stuck-sandbox-jobs": {
+        "task": "app.tasks.sandbox_maintenance_tasks.detect_stuck_sandbox_jobs",
+        "schedule": crontab(minute="*/5"),  # Every 5 minutes
     },
 }
 

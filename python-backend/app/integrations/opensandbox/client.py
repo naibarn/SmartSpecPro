@@ -226,3 +226,15 @@ class OpenSandboxBackendAdapter:
 
     async def destroy(self, sandbox_id: str) -> None:
         await self._client.destroy_sandbox(sandbox_id)
+
+
+# Module-level singleton for convenience
+_default_client: OpenSandboxClient | None = None
+
+
+def get_sandbox_client() -> OpenSandboxClient:
+    """Get or create the module-level OpenSandboxClient singleton."""
+    global _default_client
+    if _default_client is None:
+        _default_client = OpenSandboxClient()
+    return _default_client
