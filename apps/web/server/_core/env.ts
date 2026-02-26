@@ -38,4 +38,11 @@ export const ENV = {
     process.env.PYTHON_BACKEND_URL ??
     process.env.VITE_PYTHON_BACKEND_URL ??
     "",
+
+  // OpenSandbox integration
+  opensandboxEnabled: process.env.OPENSANDBOX_ENABLED === "true",
+  opensandboxDispatchMode: process.env.OPENSANDBOX_DISPATCH_MODE ?? "optional",
+  sandboxDefaultProfile: process.env.SANDBOX_DEFAULT_PROFILE ?? "code-default",
+  sandboxRequireForSkills: process.env.SANDBOX_REQUIRE_FOR_SKILLS === "true",
+  sandboxRequireForMedia: process.env.SANDBOX_REQUIRE_FOR_MEDIA === "true",
 };

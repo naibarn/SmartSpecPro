@@ -65,6 +65,7 @@ import { funnelAnalyticsRouter } from "./routers/funnelAnalytics";
 import { infrastructureRouter } from "./routers/infrastructure";
 import { presentationRouter } from "./routers/presentation";
 import { presentationImportRouter } from "./routers/presentationImport";
+import { sandboxRouter } from "./routers/sandbox";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -1426,6 +1427,9 @@ export const appRouter = router({
 
   // Approval Gate operations (proxies to Python backend)
   approvals: approvalsRouter,
+
+  // OpenSandbox integration
+  sandbox: sandboxRouter,
 
   // AI helpers (streaming chat is served via /api/llm/stream; this router is for uploads)
   ai: router({
