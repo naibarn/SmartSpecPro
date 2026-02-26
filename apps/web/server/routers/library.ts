@@ -4,6 +4,7 @@ import { PRESENTATION_ITEM_TYPE } from "@shared/presentation/constants";
 import { isPresentationTemplateItem } from "@shared/presentation/template";
 
 import { protectedProcedure, router } from "../_core/trpc";
+import { shouldUseSandbox, dispatchToSandbox } from "../services/sandbox/dispatchService";
 import { auditLogger } from "../services/auditLogger";
 import { shareOperationLimiter } from "../services/rateLimiter";
 import { isLibraryEnabledForTenant } from "../services/libraryFeatureFlags";
@@ -32,6 +33,18 @@ import {
   uploadLibraryFile,
   updateLibraryItem,
 } from "../services/libraryService";
+
+/**
+ * MIME types that require sandbox-isolated parsing.
+ * These formats use native libraries that could be exploited via crafted files.
+ */
+const SANDBOX_PARSE_MIME_TYPES = new Set([
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation", // PPTX
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",   // DOCX
+  "application/vnd.ms-powerpoint",                                              // PPT
+  "application/msword",                                                         // DOC
+]);
 
 const visibilitySchema = z.enum(["private", "team", "public"]);
 const itemStatusSchema = z.enum(["draft", "ready", "indexing", "archived", "failed"]);
@@ -198,6 +211,39 @@ export const libraryRouter = router({
       };
 
       const result = await uploadLibraryFile(input, actor);
+
+      // Dispatch complex file parsing to sandbox when enabled
+      const requiresSandboxParsing =
+        shouldUseSandbox("sandbox-file") &&
+        SANDBOX_PARSE_MIME_TYPES.has(input.fileType);
+
+      if (requiresSandboxParsing) {
+        try {
+          const sandboxResult = await dispatchToSandbox({
+            featureType: "library",
+            executionMode: "sandbox-file",
+            tenantId: tenantIdResolved,
+            userId: ctx.user.id,
+            inputFiles: [
+              {
+                key: result.item.objectKey || "",
+                mimeType: input.fileType,
+                sizeBytes: Buffer.byteLength(input.fileBase64, "base64"),
+              },
+            ],
+            profileOverride: "file-parser",
+            metadata: {
+              libraryItemId: result.item.id,
+              fileName: input.fileName,
+            },
+          });
+
+          (result as any).sandboxParseJobId = sandboxResult.jobId;
+        } catch (err) {
+          console.error("[library.uploadFile] Sandbox parsing dispatch failed:", err);
+        }
+      }
+
       auditLogger.log({
         eventType: "library_mutation",
         userId: ctx.user.id,

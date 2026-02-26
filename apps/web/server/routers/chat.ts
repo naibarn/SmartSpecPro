@@ -1579,6 +1579,31 @@ export const chatRouter = router({
         userToken
       );
 
+      // Handle sandbox job result -- return job ID for client polling
+      if (result.type === "sandbox-job" && result.jobId) {
+        if (input.conversationId) {
+          try {
+            await createMessage({
+              conversationId: input.conversationId,
+              role: "assistant",
+              content: `Executing "${skill.name}" in a secure sandbox environment. Job ID: ${result.jobId}`,
+              skillUsed: input.skillId,
+            });
+          } catch (err) {
+            console.error("[executeSkill] Failed to save sandbox job message:", err);
+          }
+        }
+
+        return {
+          success: true,
+          skillId: input.skillId,
+          type: "sandbox-job" as const,
+          jobId: result.jobId,
+          message: result.message || "Job dispatched to secure sandbox",
+          isAsync: true,
+        };
+      }
+
       // Handle structured actions from Python skills (e.g. ISC create_skill)
       if (result.success && result._action?.type === "create_skill") {
         const createResult = await handleIscCreateSkill(result._action, ctx.user.id);

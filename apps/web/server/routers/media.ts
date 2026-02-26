@@ -26,6 +26,7 @@ import { resolveTenantIdVarchar } from "../services/tenantContext";
 import { getDb } from "../db";
 import { mediaModels } from "../../drizzle/schema";
 import { eq, asc, and } from "drizzle-orm";
+import { shouldUseSandbox, dispatchToSandbox } from "../services/sandbox/dispatchService";
 
 // Helper to create secure token for Python backend (fallback)
 function createMediaToken(userId: number): string {
@@ -234,6 +235,36 @@ export const mediaRouter = router({
           code: "TOO_MANY_REQUESTS",
           message: `Rate limit exceeded for media generation. Try again in ${Math.ceil(mediaGenerationLimiter.getResetTime(rateLimitKey) / 1000)} seconds.`,
         });
+      }
+
+      // Check if media should route through sandbox
+      if (
+        shouldUseSandbox("sandbox-media") &&
+        process.env.SANDBOX_REQUIRE_FOR_MEDIA === "true"
+      ) {
+        const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+        const sandboxResult = await dispatchToSandbox({
+          featureType: "media",
+          executionMode: "sandbox-media",
+          tenantId: tenantId || "",
+          userId: ctx.user.id,
+          inputFiles: [],
+          metadata: {
+            model: input.model,
+            prompt: input.prompt,
+            aspectRatio: input.aspectRatio,
+            numImages: input.numImages,
+            ...input.extraParams,
+          },
+        });
+
+        return {
+          success: true,
+          taskId: sandboxResult.jobId,
+          isAsync: true,
+          message: "Media generation dispatched to secure sandbox",
+          isSandboxJob: true,
+        };
       }
 
       const model = input.model || DEFAULT_MODELS.image;
