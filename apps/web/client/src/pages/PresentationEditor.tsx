@@ -11,6 +11,7 @@ import {
   Clapperboard,
   Download,
   ImageIcon,
+  Sparkles,
   Loader2,
   Menu,
   Minus,
@@ -82,6 +83,7 @@ import { CommandBus } from "@/presentation-canvas/commands/CommandBus";
 import { useMobileGestures } from "@/presentation-canvas/mobile/useMobileGestures";
 import { ExportDialog } from "@/components/presentation/ExportDialog";
 import { ImportPresentationDialog } from "@/components/presentation/ImportPresentationDialog";
+import { AIDraftModal } from "@/components/presentation/AIDraftModal";
 import { SlideAudioPanel } from "@/components/presentation/SlideAudioPanel";
 import { useAutosaveController } from "@/presentation-canvas/save/useAutosaveController";
 import {
@@ -723,6 +725,7 @@ export default function PresentationEditor() {
   const [desktopInspectorTab, setDesktopInspectorTab] = useState<"properties" | "versions" | "audio">("properties");
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isAIDraftModalOpen, setIsAIDraftModalOpen] = useState(false);
   const [libraryTab, setLibraryTab] = useState<AssetLibraryTab>("slides");
   const [librarySearchQuery, setLibrarySearchQuery] = useState("");
   const [selectedSavedVersionId, setSelectedSavedVersionId] = useState<number | null>(null);
@@ -735,6 +738,8 @@ export default function PresentationEditor() {
   const [snapLockEnabled, setSnapLockEnabled] = useState(true);
   const mobileGestures = useMobileGestures();
   const isExportsEnabled = import.meta.env.VITE_PRESENTATION_EXPORTS_ENABLED !== "false";
+  const availabilityQuery = trpc.presentation.availability.useQuery();
+  const isAIGenerationEnabled = availabilityQuery.data?.aiGenerationEnabled === true;
 
   useEffect(() => {
     if (isProjectTitleEditing) {
@@ -3036,6 +3041,19 @@ export default function PresentationEditor() {
             <Upload className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Import</span>
           </Button>
+          {isAIGenerationEnabled && (
+            <Button
+              onClick={() => setIsAIDraftModalOpen(true)}
+              aria-label="Draft with AI"
+              variant="secondary"
+              size="sm"
+              className="gap-1"
+              disabled={!deck}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Draft with AI</span>
+            </Button>
+          )}
           <Button
             onClick={() => setIsExportDialogOpen(true)}
             aria-label="Export"
@@ -3225,6 +3243,15 @@ export default function PresentationEditor() {
       )}
       {isImportDialogOpen && (
         <ImportPresentationDialog onClose={() => setIsImportDialogOpen(false)} />
+      )}
+      {isAIDraftModalOpen && deck && (
+        <AIDraftModal
+          isOpen={isAIDraftModalOpen}
+          onClose={() => setIsAIDraftModalOpen(false)}
+          deckId={deck.id}
+          expectedVersion={expectedSlideVersion ?? 1}
+          currentSlideCount={slides.length}
+        />
       )}
       {isMobileViewport && (
         <MobileDrawerPanel
