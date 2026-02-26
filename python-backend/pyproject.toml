@@ -67,6 +67,9 @@ markers = [
     "llm: LLM gateway related tests",
     "payment: Payment related tests",
     "sandbox: OpenSandbox integration tests",
+    "readiness: Launch readiness gate verification tests",
+    "chaos: Chaos testing scenarios for fault injection",
+    "security: Security verification tests",
 ]
 
 # Filter warnings
