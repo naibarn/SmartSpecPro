@@ -10,7 +10,7 @@ from app.core.config import settings
 import os
 
 # Required queues — worker MUST consume from all of these
-REQUIRED_QUEUES = ["celery", "video", "media", "presentation_export"]
+REQUIRED_QUEUES = ["celery", "video", "media", "presentation_export", "presentation_import", "sandbox"]
 
 # Create Celery app
 celery_app = Celery(
@@ -40,6 +40,8 @@ celery_app.conf.update(
         Queue("video"),
         Queue("media"),
         Queue("presentation_export"),
+        Queue("presentation_import"),
+        Queue("sandbox"),  # OpenSandbox job execution
     ],
     task_create_missing_queues=True,
     # Queue routing: isolate FFmpeg video tasks from API-based media tasks
@@ -83,6 +85,10 @@ celery_app.conf.update(
         "app.tasks.approval_timeout_tasks.check_expired_approvals": {"queue": "celery"},
         # Presentation headless rendering (CPU + Playwright + FFmpeg)
         "app.tasks.presentation_render.render_presentation": {"queue": "presentation_export"},
+        # Presentation import (PPTX/Google Slides -> slides JSON)
+        "tasks.import_presentation": {"queue": "presentation_import"},
+        # Sandbox job execution -> sandbox queue (isolated, resource-intensive)
+        "app.workers.sandbox_job_worker.execute_sandbox_job": {"queue": "sandbox"},
     },
 )
 
@@ -139,7 +145,7 @@ celery_app.conf.beat_schedule = {
 }
 
 # Auto-discover tasks
-celery_app.autodiscover_tasks(["app.tasks"])
+celery_app.autodiscover_tasks(["app.tasks", "app.workers"])
 
 if __name__ == "__main__":
     celery_app.start()
