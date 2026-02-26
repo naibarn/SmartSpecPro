@@ -23,6 +23,12 @@ import {
   getModelsByTypeAsync,
 } from "./modelRegistry";
 import { calculateCreditCost } from "./pricingCalculator";
+import {
+  isSandboxEnabled,
+  shouldUseSandboxForFeature,
+  getDispatchMode,
+  dispatchToSandbox as sandboxDispatch,
+} from "./sandbox";
 
 // Simple in-memory rate limiter per user per skill type
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -86,7 +92,7 @@ export interface SkillCreateAction {
 export interface SkillExecutionResult {
   success: boolean;
   skillId: string;
-  type: "image" | "video" | "audio" | "text" | "action";
+  type: "image" | "video" | "audio" | "text" | "action" | "sandbox-job";
   data?: MediaGenerationResponse;
   resultUrl?: string;
   resultUrls?: string[];
@@ -95,6 +101,8 @@ export interface SkillExecutionResult {
   creditsUsed?: number;
   taskId?: string;
   isAsync?: boolean;
+  /** Sandbox job ID for polling (when type is 'sandbox-job') */
+  jobId?: string;
   /** Structured side-effect from a python skill (e.g. create_skill) */
   _action?: SkillCreateAction;
 }
@@ -128,16 +136,10 @@ export async function executeSkill(
   }
 
   // Route by executionMode first — type is for categorization only
-  const executionMode = (skill as any).executionMode as string | undefined;
+  const executionMode = skill.executionMode as string | undefined;
 
-  // Python skills: always use subprocess regardless of type
-  if (executionMode === "python") {
-    console.log(`[SkillExecutor] Routing to executePythonSkill (executionMode: python)`);
-    return await executePythonSkill(skill, params, userToken);
-  }
-
-  // LLM-only and prompt-enhancement skills: return form data as text for chat LLM to process
-  if (executionMode === "llm-only" || executionMode === "enhance-prompt") {
+  // core-text / llm-only / enhance-prompt: LLM text path (never uses sandbox)
+  if (executionMode === "core-text" || executionMode === "llm-only" || executionMode === "enhance-prompt") {
     console.log(`[SkillExecutor] Skill '${skill.id}' has executionMode '${executionMode}' — returning text result for LLM processing`);
     return {
       success: true,
@@ -145,6 +147,37 @@ export async function executeSkill(
       type: "text",
       message: params.prompt || `Using skill: ${skill.name}`,
     };
+  }
+
+  // Sandbox execution modes — dispatch to OpenSandbox when enabled
+  if (
+    executionMode?.startsWith("sandbox-") ||
+    (executionMode === "media-generate" && isSandboxEnabled())
+  ) {
+    try {
+      if (shouldUseSandboxForFeature("skill", executionMode || "sandbox-code")) {
+        console.log(`[SkillExecutor] Routing to sandbox dispatch (mode: ${executionMode})`);
+        return await executeSandboxSkill(skill, params, userId);
+      }
+    } catch (err) {
+      // shouldUseSandboxForFeature throws when required but disabled
+      if (getDispatchMode() === "required") {
+        return {
+          success: false,
+          skillId: skill.id,
+          type: "text",
+          error: "Secure execution environment is required but unavailable. Please contact your administrator.",
+        };
+      }
+      // optional mode: fall through to legacy paths
+      console.warn(`[SkillExecutor] Sandbox check failed, falling back to legacy:`, err);
+    }
+  }
+
+  // Python skills: subprocess execution (legacy)
+  if (executionMode === "python") {
+    console.log(`[SkillExecutor] Routing to executePythonSkill (executionMode: python)`);
+    return await executePythonSkill(skill, params, userToken);
   }
 
   // Media generation: route by type
@@ -495,6 +528,58 @@ export async function executeAudioGeneration(
       skillId: "audio-generation",
       type: "audio",
       error: error instanceof Error ? error.message : "Audio generation failed",
+    };
+  }
+}
+
+/**
+ * Execute a skill via the OpenSandbox dispatch system.
+ * Returns a sandbox-job result with jobId for client polling.
+ */
+async function executeSandboxSkill(
+  skill: SkillDefinition,
+  params: SkillExecutionParams,
+  userId: number,
+): Promise<SkillExecutionResult> {
+  try {
+    const result = await sandboxDispatch({
+      featureType: "skill",
+      executionMode: (skill.executionMode || "sandbox-code") as any,
+      tenantId: "default",
+      userId,
+      inputFiles: [],
+      profileOverride: skill.sandboxProfileSlug,
+      metadata: {
+        skillSlug: skill.id,
+        skillName: skill.name,
+        prompt: params.prompt,
+        extraParams: params.extraParams,
+      },
+    });
+
+    return {
+      success: true,
+      skillId: skill.id,
+      type: "sandbox-job",
+      jobId: result.jobId,
+      isAsync: true,
+      message: `Skill '${skill.name}' dispatched to secure execution environment. Job ID: ${result.jobId}`,
+    };
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error(`[SkillExecutor] Sandbox dispatch failed for skill '${skill.id}':`, errMsg);
+
+    // Fall back to legacy python subprocess if dispatch mode is optional
+    if (getDispatchMode() !== "required" && skill.executionMode !== "sandbox-media") {
+      console.warn(`[SkillExecutor] Falling back to legacy python subprocess for '${skill.id}'`);
+      return await executePythonSkill(skill, params, "");
+    }
+
+    return {
+      success: false,
+      skillId: skill.id,
+      type: "text",
+      error: `Secure execution environment temporarily unavailable. Please try again later.`,
     };
   }
 }

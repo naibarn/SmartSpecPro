@@ -1,7 +1,8 @@
-"""Code Runner Executor - Execute custom Python code in a sandbox."""
+"""Code Runner Executor - Execute custom Python code in a sandbox or RestrictedPython."""
 import io
+import json
+import logging
 import signal
-import sys
 from contextlib import redirect_stdout
 from typing import Any
 
@@ -9,6 +10,8 @@ from RestrictedPython import compile_restricted, safe_globals
 from RestrictedPython.Guards import guarded_iter_unpack_sequence, safe_builtins
 
 from app.orchestrator.node_executors.base import ExecutionContext, NodeExecutionData
+
+logger = logging.getLogger(__name__)
 
 
 class TimeoutException(Exception):
@@ -23,28 +26,34 @@ def timeout_handler(signum, frame):
 
 
 class CodeExecutor:
-    """Executor for code runner nodes."""
+    """Executor for code runner nodes.
+
+    Routes to OpenSandbox when enabled for full Python environment access,
+    or falls back to RestrictedPython for restricted local execution.
+    """
+
+    def _is_sandbox_enabled(self) -> bool:
+        """Check if sandbox execution is enabled."""
+        try:
+            from app.integrations.opensandbox.config import opensandbox_settings
+            return opensandbox_settings.is_enabled
+        except Exception:
+            return False
+
+    def _get_dispatch_mode(self) -> str:
+        """Get sandbox dispatch mode (optional or required)."""
+        try:
+            from app.integrations.opensandbox.config import opensandbox_settings
+            return opensandbox_settings.OPENSANDBOX_DISPATCH_MODE
+        except Exception:
+            return "optional"
 
     async def execute(
         self,
         data: NodeExecutionData,
         context: ExecutionContext,
     ) -> dict[str, Any]:
-        """
-        Execute Python code in a restricted sandbox.
-
-        Args:
-            data: Node execution data
-            context: Execution context
-
-        Returns:
-            Dictionary with execution result and stdout
-
-        Raises:
-            ValueError: If code is not provided
-            TimeoutException: If execution exceeds timeout
-            Exception: If code execution fails
-        """
+        """Execute Python code via sandbox or RestrictedPython fallback."""
         code = data.inputs.get("code", "").strip()
         input_data = data.inputs.get("input")
         timeout = int(data.inputs.get("timeout", 30))
@@ -52,7 +61,78 @@ class CodeExecutor:
         if not code:
             raise ValueError("Python code is required")
 
-        # Compile code with RestrictedPython
+        # Route to sandbox when enabled
+        if self._is_sandbox_enabled():
+            try:
+                return await self._execute_in_sandbox(code, input_data, timeout, context)
+            except Exception as e:
+                if self._get_dispatch_mode() == "required":
+                    raise
+                logger.warning(
+                    "Sandbox execution failed, falling back to RestrictedPython: %s",
+                    str(e),
+                )
+
+        # Legacy: RestrictedPython path
+        return self._execute_restricted(code, input_data, timeout)
+
+    async def _execute_in_sandbox(
+        self,
+        code: str,
+        input_data: Any,
+        timeout: int,
+        context: ExecutionContext,
+    ) -> dict[str, Any]:
+        """Execute code via OpenSandbox with full Python environment."""
+        from app.integrations.opensandbox.client import get_sandbox_client
+
+        client = get_sandbox_client()
+
+        # Wrap user code to capture result and provide input_data
+        wrapper = f"""
+import json, sys
+
+input = json.loads('''{json.dumps(input_data) if input_data is not None else "null"}''')
+result = None
+
+{code}
+
+# Output result as JSON
+print(json.dumps({{"result": result}}))
+"""
+
+        response = await client.execute_code(
+            code=wrapper,
+            profile_slug="code-default",
+            timeout_seconds=timeout,
+        )
+
+        if response.get("exit_code", 1) != 0:
+            stderr = response.get("stderr", "")
+            raise ValueError(f"Code execution failed in sandbox: {stderr}")
+
+        stdout_text = response.get("stdout", "")
+
+        # Parse result from stdout JSON
+        result = None
+        try:
+            parsed = json.loads(stdout_text.strip().split("\n")[-1])
+            result = parsed.get("result")
+        except (json.JSONDecodeError, IndexError):
+            pass
+
+        return {
+            "result": result,
+            "stdout": stdout_text,
+        }
+
+    def _execute_restricted(
+        self,
+        code: str,
+        input_data: Any,
+        timeout: int,
+    ) -> dict[str, Any]:
+        """Execute code via RestrictedPython (legacy path)."""
         try:
             byte_code = compile_restricted(
                 code,
@@ -94,13 +174,12 @@ class CodeExecutor:
             signal.alarm(0)
 
         except TimeoutException:
-            signal.alarm(0)  # Cancel alarm
+            signal.alarm(0)
             raise TimeoutException(f"Code execution exceeded {timeout} second timeout")
         except Exception as e:
-            signal.alarm(0)  # Cancel alarm
+            signal.alarm(0)
             raise ValueError(f"Code execution failed: {str(e)}")
 
-        # Get result
         result = safe_env.get("result")
         stdout_text = stdout_capture.getvalue()
 

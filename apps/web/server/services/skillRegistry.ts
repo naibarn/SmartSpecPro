@@ -66,6 +66,11 @@ function dbSkillToDefinition(dbSkill: {
   folderPath: string | null;
   executionMode: string | null;
   chainTo: string | null;
+  sandboxProfileSlug?: string | null;
+  requiresNetwork?: boolean | null;
+  requiresBrowser?: boolean | null;
+  maxRuntimeSeconds?: number | null;
+  maxInputMb?: number | null;
 }): SkillDefinition {
   const skillType = categoryToSkillType(dbSkill.category) as SkillType;
   const mediaType = SKILL_TO_MEDIA_TYPE[skillType];
@@ -103,6 +108,11 @@ function dbSkillToDefinition(dbSkill: {
     skillFilePath: dbSkill.folderPath ? `${dbSkill.folderPath}/skill.md` : undefined,
     executionMode: (dbSkill.executionMode as any) || "llm-only",
     chainTo: dbSkill.chainTo || undefined,
+    sandboxProfileSlug: dbSkill.sandboxProfileSlug ?? undefined,
+    requiresNetwork: dbSkill.requiresNetwork ?? undefined,
+    requiresBrowser: dbSkill.requiresBrowser ?? undefined,
+    maxRuntimeSeconds: dbSkill.maxRuntimeSeconds ?? undefined,
+    maxInputMb: dbSkill.maxInputMb ?? undefined,
   };
 }
 
