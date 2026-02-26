@@ -175,3 +175,10 @@ Pillow>=10.0.0
 
 # PPTX parsing
 python-pptx>=1.0.2
+
+# ==========================================
+# Section 026: OpenSandbox Integration
+# ==========================================
+
+# Circuit breaker for sandbox client resilience
+pybreaker>=1.0.0
