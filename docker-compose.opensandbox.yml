@@ -1,0 +1,60 @@
+# SmartSpecPro - OpenSandbox Execution Plane
+# Runs the OpenSandbox server for secure, isolated code/media execution.
+# Separate from main infra and media stacks to avoid conflicts.
+#
+# REQUIRES: Docker running, Docker socket accessible
+#
+# Usage:
+#   docker compose -f docker-compose.opensandbox.yml up -d
+#   docker compose -f docker-compose.opensandbox.yml down
+#
+# Security note:
+#   The opensandbox-server container has Docker socket access and is a
+#   privileged infrastructure component. Never expose port 8080 externally.
+
+services:
+  # ============================================
+  # OPENSANDBOX SERVER
+  # Manages sandbox container lifecycle: create, execute, destroy.
+  # Communicates with Docker via socket to spawn isolated containers.
+  # ============================================
+  opensandbox-server:
+    image: registry.cn-hangzhou.aliyuncs.com/opensandbox/server:latest
+    container_name: smartspec-opensandbox
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - OPENSANDBOX_API_KEY=${OPENSANDBOX_API_KEY:-dev-sandbox-key-change-me}
+      - OPENSANDBOX_RUNTIME=docker
+      - OPENSANDBOX_DOCKER_NETWORK=opensandbox-exec
+      - OPENSANDBOX_DEFAULT_TIMEOUT=600
+      - OPENSANDBOX_MAX_SANDBOXES=20
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - opensandbox-network
+      - opensandbox-exec
+
+networks:
+  opensandbox-network:
+    name: opensandbox-network
+    driver: bridge
+  opensandbox-exec:
+    name: opensandbox-exec
+    driver: bridge
+    internal: true
