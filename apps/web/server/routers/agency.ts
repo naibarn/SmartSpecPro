@@ -711,23 +711,25 @@ export const agencyRouter = router({
         });
       }
 
-      for (const entry of quotaEntries) {
-        // Upsert: delete then insert
-        await db
-          .delete(systemSettings)
-          .where(
-            and(
-              eq(systemSettings.category, "agency_quotas"),
-              eq(systemSettings.key, entry.key),
-            ),
-          );
-        await db.insert(systemSettings).values({
-          category: "agency_quotas",
-          key: entry.key,
-          value: entry.value,
-          updatedBy: ctx.user!.id,
-        });
-      }
+      await db.transaction(async (tx) => {
+        for (const entry of quotaEntries) {
+          // Upsert: delete then insert within transaction
+          await tx
+            .delete(systemSettings)
+            .where(
+              and(
+                eq(systemSettings.category, "agency_quotas"),
+                eq(systemSettings.key, entry.key),
+              ),
+            );
+          await tx.insert(systemSettings).values({
+            category: "agency_quotas",
+            key: entry.key,
+            value: entry.value,
+            updatedBy: ctx.user!.id,
+          });
+        }
+      });
 
       return { success: true };
     }),
@@ -839,7 +841,7 @@ export const agencyRouter = router({
       for (const agency of activeAgencies) {
         try {
           const runs = await agencyBridge.listRuns(agency.id, userToken, {
-            status: "running",
+            status: "running,queued",
             limit: 100,
           });
           for (const run of runs.runs) {
@@ -869,24 +871,22 @@ export const agencyRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      // Query aggregated metrics from agency_runs directly
-      const conditions: string[] = [];
-      const params: Record<string, any> = {};
+      // Query aggregated metrics from agency_runs using parameterized queries
+      const conditions: ReturnType<typeof sql>[] = [];
 
       if (input.agencyId) {
-        conditions.push(`agency_id = '${input.agencyId}'`);
+        conditions.push(sql`agency_id = ${input.agencyId}`);
       }
       if (input.tenantId) {
-        conditions.push(`tenant_id = '${input.tenantId}'`);
+        conditions.push(sql`tenant_id = ${input.tenantId}`);
       }
       conditions.push(
-        `started_at > NOW() - INTERVAL '${input.windowHours} hours'`,
+        sql`started_at > NOW() - INTERVAL '1 hour' * ${input.windowHours}`,
       );
 
-      const whereClause =
-        conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+      const whereClause = sql.join(conditions, sql` AND `);
 
-      const result = await db.instance.execute(sql.raw(`
+      const result = await db.instance.execute(sql`
         SELECT
           COUNT(*) as total_runs,
           COUNT(*) FILTER (WHERE status = 'failed') as failed_runs,
@@ -895,8 +895,8 @@ export const agencyRouter = router({
           COALESCE(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_ms), 0) as p95_latency_ms,
           COALESCE(AVG(step_count), 0) as avg_step_count
         FROM agency_runs
-        ${whereClause}
-      `));
+        WHERE ${whereClause}
+      `);
 
       const row = (result as any).rows?.[0] ?? {};
       const totalRuns = Number(row.total_runs ?? 0);
@@ -919,26 +919,26 @@ export const agencyRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      // Simple alert check from DB stats
-      const conditions: string[] = [
-        `started_at > NOW() - INTERVAL '1 hours'`,
+      // Simple alert check from DB stats using parameterized queries
+      const conditions: ReturnType<typeof sql>[] = [
+        sql`started_at > NOW() - INTERVAL '1 hour'`,
       ];
       if (input.tenantId) {
-        conditions.push(`tenant_id = '${input.tenantId}'`);
+        conditions.push(sql`tenant_id = ${input.tenantId}`);
       }
-      const whereClause = `WHERE ${conditions.join(" AND ")}`;
+      const whereClause = sql.join(conditions, sql` AND `);
 
-      const result = await db.instance.execute(sql.raw(`
+      const result = await db.instance.execute(sql`
         SELECT
           agency_id,
           COUNT(*) as total,
           COUNT(*) FILTER (WHERE status = 'failed') as failed,
           COUNT(*) FILTER (WHERE status = 'completed') as completed
         FROM agency_runs
-        ${whereClause}
+        WHERE ${whereClause}
         GROUP BY agency_id
         HAVING COUNT(*) > 0
-      `));
+      `);
 
       const alerts: Array<{
         agencyId: string;

@@ -50,24 +50,42 @@ export async function purgeOldRecords(
     purgeDays = config.purgeDays;
   }
 
-  // Delete old agency_messages
-  const msgResult = await db.instance.execute(sql`
-    DELETE FROM agency_messages
-    WHERE created_at < NOW() - INTERVAL '${sql.raw(String(purgeDays))} days'
-    ${tenantId ? sql`AND tenant_id = ${tenantId}` : sql``}
-  `);
+  // Delete in batches of 1000 to avoid long transactions
+  const BATCH_SIZE = 1000;
+  let totalPurged = 0;
+  let deleted = 0;
 
-  // Delete old agency_runs
-  const runResult = await db.instance.execute(sql`
-    DELETE FROM agency_runs
-    WHERE created_at < NOW() - INTERVAL '${sql.raw(String(purgeDays))} days'
-    ${tenantId ? sql`AND tenant_id = ${tenantId}` : sql``}
-  `);
+  // Batch-delete old agency_messages
+  do {
+    const msgResult = await db.instance.execute(sql`
+      DELETE FROM agency_messages
+      WHERE ctid IN (
+        SELECT ctid FROM agency_messages
+        WHERE created_at < NOW() - INTERVAL '${sql.raw(String(purgeDays))} days'
+        ${tenantId ? sql`AND tenant_id = ${tenantId}` : sql``}
+        LIMIT ${BATCH_SIZE}
+      )
+    `);
+    deleted = (msgResult as any).rowCount ?? 0;
+    totalPurged += deleted;
+  } while (deleted >= BATCH_SIZE);
 
-  const purgedCount =
-    ((msgResult as any).rowCount ?? 0) + ((runResult as any).rowCount ?? 0);
+  // Batch-delete old agency_runs
+  do {
+    const runResult = await db.instance.execute(sql`
+      DELETE FROM agency_runs
+      WHERE ctid IN (
+        SELECT ctid FROM agency_runs
+        WHERE created_at < NOW() - INTERVAL '${sql.raw(String(purgeDays))} days'
+        ${tenantId ? sql`AND tenant_id = ${tenantId}` : sql``}
+        LIMIT ${BATCH_SIZE}
+      )
+    `);
+    deleted = (runResult as any).rowCount ?? 0;
+    totalPurged += deleted;
+  } while (deleted >= BATCH_SIZE);
 
-  return { purgedCount };
+  return { purgedCount: totalPurged };
 }
 
 export async function getRetentionConfig(tenantId: string): Promise<{
