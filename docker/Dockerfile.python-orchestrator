@@ -1,9 +1,9 @@
 # SmartSpec Python Backend - Cloud Run Production Dockerfile
 # Multi-stage build for optimized image size
-# Uses python:3.11-slim (Debian-based for better C extension compatibility)
+# Uses python:3.12-slim (Debian-based for better C extension compatibility)
 
 # Stage 1: Builder
-FROM python:3.11-slim AS builder
+FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
@@ -25,7 +25,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir --user -r requirements.txt
 
 # Stage 2: Runtime
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 

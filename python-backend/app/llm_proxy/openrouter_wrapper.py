@@ -4,7 +4,7 @@ SmartSpec Pro - Advanced LLM Routing
 """
 
 from typing import Optional, List, Literal, Dict, Any
-from openai import OpenAI, OpenAIError
+from openai import OpenAI, APIError
 import structlog
 import time
 
@@ -132,7 +132,7 @@ class OpenRouterWrapper:
             ChatCompletion response
         
         Raises:
-            OpenAIError: If all attempts fail
+            APIError: If all attempts fail
         
         Example:
             >>> response = client.chat(
@@ -193,7 +193,7 @@ class OpenRouterWrapper:
                 
                 return response
             
-            except OpenAIError as e:
+            except APIError as e:
                 logger.warning(
                     "openrouter_error",
                     model=model,

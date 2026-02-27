@@ -3,7 +3,7 @@
 # This image runs as a Cloud Run Job (runs to completion, not a long-running server)
 
 # Stage 1: Builder (same as python-orchestrator)
-FROM python:3.11-slim AS builder
+FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
@@ -24,7 +24,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir --user -r requirements.txt
 
 # Stage 2: Video Job Runner (extends runtime with FFmpeg)
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 

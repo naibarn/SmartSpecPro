@@ -2,11 +2,11 @@
 # Phase 0: Technical Foundation
 
 # Web Framework
-fastapi==0.109.0
+fastapi>=0.115.0
 starlette>=0.35.0
 uvicorn[standard]==0.27.0
 python-multipart==0.0.6
-pydantic>=2.7.4
+pydantic>=2.11.0
 pydantic-settings>=2.3.0
 email-validator>=2.0.0
 
@@ -19,8 +19,8 @@ langchain-community>=0.3.0
 langchain-openai>=0.2.0
 
 # LLM Providers
-openai>=1.50.0
-anthropic==0.8.1
+openai>=2.2.0
+anthropic>=0.40.0
 google-generativeai==0.3.2
 groq==0.4.1
 
@@ -182,3 +182,10 @@ python-pptx>=1.0.2
 
 # Circuit breaker for sandbox client resilience
 pybreaker>=1.0.0
+
+# ==========================================
+# Section 027: Agency-Swarm Integration
+# ==========================================
+
+# Multi-agent orchestration framework
+agency-swarm==1.8.0
