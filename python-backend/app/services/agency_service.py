@@ -10,7 +10,7 @@ Agency objects are instantiated per-request (never reused).
 import uuid
 import time
 from datetime import datetime, timezone
-from typing import AsyncIterator
+from typing import AsyncGenerator
 
 import structlog
 from pydantic import BaseModel
@@ -47,6 +47,10 @@ class InsufficientCreditsError(Exception):
     """Raised when user lacks credits for estimated run cost."""
 
 
+class AgencyDisabledError(Exception):
+    """Raised when agency or feature is disabled."""
+
+
 # ── Run Context ────────────────────────────────────────────────────
 
 
@@ -77,7 +81,7 @@ class AgencyService:
         """Load agency definition from PostgreSQL via read-only queries.
 
         Raises:
-            AgencyNotFoundError: If agency does not exist.
+            AgencyNotFoundError: If agency does not exist or is not active.
             AgencyPermissionError: If agency belongs to different tenant.
         """
         result = await self.db.execute(
@@ -103,13 +107,16 @@ class AgencyService:
                 f"not {tenant_id}"
             )
 
-        # Load agents
-        agents_data = await self._load_agents(agency_id)
+        # Check agency status
+        if row.status not in ("active", "draft"):
+            raise AgencyNotFoundError(
+                f"Agency {agency_id} is not available (status: {row.status})"
+            )
 
         # Load communication flows
         flows_data = await self._load_flows(agency_id)
 
-        config = AgencyConfig(
+        return AgencyConfig(
             agency_id=row.id,
             name=row.name,
             system_prompt=row.system_prompt or "",
@@ -118,10 +125,8 @@ class AgencyService:
             user_id=0,  # Set by caller from RunContext
             conversation_id="",  # Set by caller from RunContext
             max_run_time_seconds=row.max_run_time_seconds or 600,
+            credit_multiplier=float(row.credit_multiplier or "1.00"),
         )
-        # Store multiplier on config for use during run (avoids extra DB query)
-        config._credit_multiplier = float(row.credit_multiplier or "1.00")  # type: ignore[attr-defined]
-        return config
 
     async def _load_agents(self, agency_id: str) -> list[dict]:
         """Load agent definitions for an agency."""
@@ -174,12 +179,12 @@ class AgencyService:
         run_id = str(uuid.uuid4())
         start_time = time.monotonic()
 
-        # 1. Load agency config
+        # 1. Load agency config (includes flows)
         agency_config = await self.load_agency(agency_id, context.tenant_id)
         agency_config.user_id = context.user_id
         agency_config.conversation_id = context.conversation_id
 
-        # 2. Load agent definitions
+        # 2. Load agent definitions (separate query, not duplicated from load_agency)
         agents_data = await self._load_agents(agency_id)
 
         # 3. Pre-check credits
@@ -202,6 +207,7 @@ class AgencyService:
                 db=self.db,
                 agent_id=agent_data["id"],
                 agency_whitelist=set(),  # TODO: load whitelist from agency config
+                adapter=self.adapter,
             )
             agent_tools[agent_data["id"]] = tools
 
@@ -267,14 +273,16 @@ class AgencyService:
 
             elapsed_ms = int((time.monotonic() - start_time) * 1000)
 
-            # 10. Apply multiplier markup (stored from load_agency)
-            multiplier = getattr(agency_config, "_credit_multiplier", 1.0)
-
+            # 10. Apply multiplier markup
+            # NOTE: total_gateway_cost is 0.0 here because per-call costs are
+            # tracked by the Node.js gateway. The reconciliation endpoint
+            # (section-06) will sum costs by run_id for accurate markup.
+            # TODO(section-06): Replace 0.0 with actual gateway cost from reconciliation.
             await self.credit_manager.apply_multiplier_markup(
                 user_id=context.user_id,
                 agency_id=agency_id,
-                total_gateway_cost=0.0,  # Tracked by gateway per-call
-                multiplier=multiplier,
+                total_gateway_cost=0.0,
+                multiplier=agency_config.credit_multiplier,
             )
 
             # 11. Update run record (status: completed)
@@ -339,11 +347,13 @@ class AgencyService:
         agency_id: str,
         message: str,
         context: RunContext,
-    ) -> AsyncIterator[dict]:
+    ) -> AsyncGenerator[dict, None]:
         """Streaming variant: yields SSE-formatted event dicts.
 
-        Event types: run_started, agent_switch, token, tool_call,
-        tool_result, run_finished, run_error, heartbeat.
+        Event types: run_started, token, run_finished, run_error.
+
+        Note: Heartbeat, credit pre-check, and run records for streaming
+        are implemented in the SSE router layer (section-07).
         """
         run_id = str(uuid.uuid4())
 
@@ -361,6 +371,7 @@ class AgencyService:
                     db=self.db,
                     agent_id=agent_data["id"],
                     agency_whitelist=set(),
+                    adapter=self.adapter,
                 )
                 agent_tools[agent_data["id"]] = tools
 
