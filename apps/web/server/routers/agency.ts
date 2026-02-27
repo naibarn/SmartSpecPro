@@ -304,6 +304,150 @@ export const agencyRouter = router({
       return { success: true };
     }),
 
+  /** Full graph save for the visual builder (replaces all agents/flows). */
+  saveBuilder: protectedProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        name: z.string().min(1).max(255).optional(),
+        description: z.string().optional(),
+        systemPrompt: z.string().optional(),
+        agents: z.array(
+          z.object({
+            name: z.string().min(1).max(100),
+            description: z.string().optional(),
+            instructions: z.string(),
+            model: z.string().max(100),
+            modelSettings: z
+              .object({
+                max_tokens: z.number().optional(),
+                temperature: z.number().min(0).max(2).optional(),
+                top_p: z.number().min(0).max(1).optional(),
+              })
+              .optional(),
+            isEntryPoint: z.boolean().default(false),
+            isOptional: z.boolean().default(false),
+            position: z.object({ x: z.number(), y: z.number() }).optional(),
+            toolIds: z.array(z.string().uuid()).optional(),
+          }),
+        ).min(1),
+        communicationFlows: z
+          .array(
+            z.object({
+              fromAgentName: z.string(),
+              toAgentName: z.string(),
+              flowType: z.enum(["delegation", "handoff"]),
+            }),
+          )
+          .optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      await assertAgencyEnabled(tenantId);
+      const userId = ctx.user!.id;
+      const isAdmin = ctx.user!.role === "admin";
+
+      const [agency] = await db
+        .select()
+        .from(agencies)
+        .where(and(eq(agencies.id, input.id), eq(agencies.tenantId, tenantId)))
+        .limit(1);
+
+      if (!agency) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      }
+      if (agency.createdBy !== userId && !isAdmin) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Not authorized" });
+      }
+
+      // Validate exactly one entry point
+      const entryPoints = input.agents.filter((a) => a.isEntryPoint);
+      if (entryPoints.length !== 1) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Exactly one entry point agent is required, found ${entryPoints.length}`,
+        });
+      }
+
+      await db.transaction(async (tx) => {
+        // Update agency metadata
+        const setValues: Record<string, any> = {};
+        if (input.name !== undefined) setValues.name = input.name;
+        if (input.description !== undefined) setValues.description = input.description;
+        if (input.systemPrompt !== undefined) setValues.systemPrompt = input.systemPrompt;
+        if (Object.keys(setValues).length > 0) {
+          await tx.update(agencies).set(setValues).where(eq(agencies.id, input.id));
+        }
+
+        // Delete existing agents, tools, and flows
+        const existingAgents = await tx
+          .select({ id: agencyAgents.id })
+          .from(agencyAgents)
+          .where(eq(agencyAgents.agencyId, input.id));
+        const existingAgentIds = existingAgents.map((a) => a.id);
+
+        if (existingAgentIds.length > 0) {
+          await tx.delete(agencyAgentTools).where(inArray(agencyAgentTools.agentId, existingAgentIds));
+        }
+        await tx.delete(agencyCommunicationFlows).where(eq(agencyCommunicationFlows.agencyId, input.id));
+        await tx.delete(agencyAgents).where(eq(agencyAgents.agencyId, input.id));
+
+        // Re-insert agents
+        const agentNameToId: Record<string, string> = {};
+        for (const agent of input.agents) {
+          const agentId = crypto.randomUUID();
+          agentNameToId[agent.name] = agentId;
+
+          await tx.insert(agencyAgents).values({
+            id: agentId,
+            agencyId: input.id,
+            name: agent.name,
+            description: agent.description ?? null,
+            instructions: agent.instructions,
+            model: agent.model,
+            modelSettings: agent.modelSettings ?? null,
+            isEntryPoint: agent.isEntryPoint,
+            isOptional: agent.isOptional,
+            position: agent.position ?? null,
+          });
+
+          if (agent.toolIds?.length) {
+            for (const toolId of agent.toolIds) {
+              await tx.insert(agencyAgentTools).values({
+                id: crypto.randomUUID(),
+                agentId,
+                toolId,
+              });
+            }
+          }
+        }
+
+        // Re-insert communication flows
+        if (input.communicationFlows?.length) {
+          for (const flow of input.communicationFlows) {
+            const fromId = agentNameToId[flow.fromAgentName];
+            const toId = agentNameToId[flow.toAgentName];
+            if (!fromId || !toId) {
+              throw new TRPCError({
+                code: "BAD_REQUEST",
+                message: `Invalid flow: agent "${!fromId ? flow.fromAgentName : flow.toAgentName}" not found`,
+              });
+            }
+            await tx.insert(agencyCommunicationFlows).values({
+              id: crypto.randomUUID(),
+              agencyId: input.id,
+              fromAgentId: fromId,
+              toAgentId: toId,
+              flowType: flow.flowType,
+            });
+          }
+        }
+      });
+
+      return { success: true };
+    }),
+
   delete: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
