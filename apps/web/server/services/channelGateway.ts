@@ -24,6 +24,18 @@ import { enqueueDelivery } from "./deliveryQueue";
 import { sendTelegramMessage } from "./telegramService";
 import { getMessage } from "./telegramI18n";
 import { inArray } from "drizzle-orm";
+import {
+  createMessage,
+  getConversationById,
+  buildChatContext,
+  updateConversationCredits,
+} from "./chatService";
+import { executeWithFallback } from "./llmRouter";
+import {
+  hasEnoughCredits,
+  deductCreditsForModel,
+  calculateCreditsForLLM,
+} from "./creditService";
 
 // ── Result types ──────────────────────────────────────────────────────────
 
@@ -32,6 +44,23 @@ export interface IngestResult {
   error?: string;
   errorCode?: "no_connection" | "revoked" | "no_channel" | "pipeline_error";
   responseMessageId?: string;
+}
+
+export interface ServerSideChatParams {
+  conversationId: number;
+  userId: number;
+  tenantId: string;
+  content: string;
+  connectionId: string;
+  externalSourceId?: string;
+}
+
+export interface ServerSideChatResult {
+  success: boolean;
+  assistantMessageId?: number;
+  content?: string;
+  creditsUsed?: number;
+  error?: string;
 }
 
 // ── Inbound: ingest ───────────────────────────────────────────────────────
@@ -88,24 +117,35 @@ async function ingest(event: ChatIngressEvent): Promise<IngestResult> {
     }
 
     // 4. Route by conversation type
-    // Section-07 (processMessageServerSide) and section-08 (pipeline hooks)
-    // will fill in actual LLM processing. For now, the gateway validates
-    // the routing path and returns success.
     if (channel.conversationType === "chat" && channel.chatConversationId) {
-      // Chat pipeline stub — section-07 implements processMessageServerSide()
-      console.info(
-        "[ChannelGateway] Route to chat pipeline:",
-        channel.chatConversationId,
-      );
+      const result = await processMessageServerSide({
+        conversationId: channel.chatConversationId,
+        userId: connection.userId,
+        tenantId: connection.tenantId,
+        content: event.message.text,
+        connectionId: connectionId,
+        externalSourceId: event.channel.externalMessageId,
+      });
+
+      if (!result.success) {
+        return {
+          ok: false,
+          error: result.error || "Chat pipeline error",
+          errorCode: "pipeline_error",
+        };
+      }
+
+      return { ok: true, responseMessageId: result.assistantMessageId?.toString() };
     } else if (
       channel.conversationType === "agency" &&
       channel.agencyConversationId
     ) {
-      // Agency pipeline — route through agencyBridge
+      // Agency pipeline — deferred to section-08 pipeline hooks
       console.info(
         "[ChannelGateway] Route to agency pipeline:",
         channel.agencyConversationId,
       );
+      return { ok: true };
     } else {
       return {
         ok: false,
@@ -113,8 +153,6 @@ async function ingest(event: ChatIngressEvent): Promise<IngestResult> {
         errorCode: "pipeline_error",
       };
     }
-
-    return { ok: true };
   } catch (err) {
     console.error("[ChannelGateway] Ingest error:", err);
     return {
@@ -281,6 +319,142 @@ async function handleNonTextMessage(
   }
 }
 
+// ── Server-side chat processing ───────────────────────────────────────────
+
+async function processMessageServerSide(
+  params: ServerSideChatParams,
+): Promise<ServerSideChatResult> {
+  try {
+    // 1. Validate conversation
+    const conversation = await getConversationById(
+      params.conversationId,
+      params.userId,
+    );
+    if (!conversation) {
+      return { success: false, error: "Conversation not found" };
+    }
+
+    // 2. Check credits
+    const estimatedInputTokens = Math.ceil(params.content.length / 4);
+    const estimatedCredits = calculateCreditsForLLM(
+      estimatedInputTokens,
+      0,
+      conversation.model || "gpt-4o-mini",
+    );
+    const canAfford = await hasEnoughCredits(params.userId, estimatedCredits);
+    if (!canAfford) {
+      return { success: false, error: "Insufficient credits" };
+    }
+
+    // 3. Save user message with source metadata
+    const userMessage = await createMessage({
+      conversationId: params.conversationId,
+      role: "user",
+      content: params.content,
+      sourceChannel: "telegram",
+      sourceConnectionId: params.connectionId,
+      externalSourceId: params.externalSourceId || null,
+    } as any);
+
+    // 4. Build chat context (includes the user message we just saved)
+    const context = await buildChatContext(
+      params.conversationId,
+      params.userId,
+      (conversation as any).systemPrompt,
+    );
+
+    // 5. Call LLM (non-streaming)
+    const model = (conversation as any).model || "gpt-4o-mini";
+    let result = await executeWithFallback({
+      model,
+      messages: context as any[],
+      stream: false,
+      userId: params.userId,
+      conversationId: params.conversationId,
+    });
+
+    // Auto-accept fallback for Telegram (no interactive dialog possible)
+    if (result.type === "fallback_required") {
+      result = await executeWithFallback({
+        model,
+        messages: context as any[],
+        stream: false,
+        userId: params.userId,
+        conversationId: params.conversationId,
+        preferredProvider: (result as any).to?.providerId,
+      });
+    }
+
+    // 6. Handle result
+    if (result.type === "error") {
+      // Save error as assistant message so conversation state is consistent
+      await createMessage({
+        conversationId: params.conversationId,
+        role: "assistant",
+        content: `Sorry, I couldn't process your message. ${result.error}`,
+        sourceChannel: "telegram",
+      } as any);
+      return { success: false, error: result.error };
+    }
+
+    // Extract response content
+    const response = (result as any).response;
+    const assistantContent =
+      response?.choices?.[0]?.message?.content || "I couldn't generate a response. Please try again.";
+    const inputTokens = response?.usage?.prompt_tokens || 0;
+    const outputTokens = response?.usage?.completion_tokens || 0;
+
+    // 7. Deduct credits
+    const { creditsUsed } = await deductCreditsForModel({
+      userId: params.userId,
+      model,
+      provider: (result as any).providerName,
+      inputTokens,
+      outputTokens,
+      sourceType: "chat",
+      conversationId: params.conversationId,
+    });
+
+    // 8. Save assistant message
+    const assistantMessage = await createMessage({
+      conversationId: params.conversationId,
+      role: "assistant",
+      content: assistantContent,
+      sourceChannel: "telegram",
+    } as any);
+
+    // 9. Update conversation credits tracking
+    await updateConversationCredits(params.conversationId, creditsUsed).catch(() => {});
+
+    // 10. Emit egress to deliver response to Telegram bindings
+    await emitEgress({
+      eventId: crypto.randomUUID(),
+      conversationId: String(params.conversationId),
+      conversationType: "chat",
+      messageId: String(assistantMessage.id),
+      tenantId: params.tenantId,
+      targets: [],
+      rendering: {
+        plainText: assistantContent,
+        html: assistantContent,
+      },
+    });
+
+    return {
+      success: true,
+      assistantMessageId: assistantMessage.id,
+      content: assistantContent,
+      creditsUsed,
+    };
+  } catch (err) {
+    console.error("[ChannelGateway] processMessageServerSide error:", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Unknown error",
+    };
+  }
+}
+
 // ── Export ─────────────────────────────────────────────────────────────────
 
 export const channelGateway = {
@@ -288,4 +462,5 @@ export const channelGateway = {
   emitEgress,
   sendTypingLoop,
   handleNonTextMessage,
+  processMessageServerSide,
 };

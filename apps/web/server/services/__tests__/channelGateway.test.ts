@@ -8,6 +8,14 @@ const {
   mockEnqueueDelivery,
   mockSendTelegramMessage,
   mockGetMessage,
+  mockGetConversationById,
+  mockCreateMessage,
+  mockBuildChatContext,
+  mockUpdateConversationCredits,
+  mockExecuteWithFallback,
+  mockHasEnoughCredits,
+  mockDeductCreditsForModel,
+  mockCalculateCreditsForLLM,
 } = vi.hoisted(() => ({
   mockSelect: vi.fn(),
   mockInsert: vi.fn(),
@@ -19,6 +27,14 @@ const {
   mockGetMessage: vi
     .fn()
     .mockImplementation((_key: string) => "Mocked i18n message"),
+  mockGetConversationById: vi.fn(),
+  mockCreateMessage: vi.fn(),
+  mockBuildChatContext: vi.fn(),
+  mockUpdateConversationCredits: vi.fn().mockResolvedValue(undefined),
+  mockExecuteWithFallback: vi.fn(),
+  mockHasEnoughCredits: vi.fn().mockResolvedValue(true),
+  mockDeductCreditsForModel: vi.fn().mockResolvedValue({ creditsUsed: 5, wasFree: false }),
+  mockCalculateCreditsForLLM: vi.fn().mockReturnValue(5),
 }));
 
 vi.mock("../../db", () => ({
@@ -39,6 +55,23 @@ vi.mock("../telegramService", () => ({
 
 vi.mock("../telegramI18n", () => ({
   getMessage: mockGetMessage,
+}));
+
+vi.mock("../chatService", () => ({
+  getConversationById: mockGetConversationById,
+  createMessage: mockCreateMessage,
+  buildChatContext: mockBuildChatContext,
+  updateConversationCredits: mockUpdateConversationCredits,
+}));
+
+vi.mock("../llmRouter", () => ({
+  executeWithFallback: mockExecuteWithFallback,
+}));
+
+vi.mock("../creditService", () => ({
+  hasEnoughCredits: mockHasEnoughCredits,
+  deductCreditsForModel: mockDeductCreditsForModel,
+  calculateCreditsForLLM: mockCalculateCreditsForLLM,
 }));
 
 vi.mock("../../../drizzle/schema", () => ({
@@ -186,37 +219,59 @@ describe("channelGateway", () => {
     it("routes chat-type event to chat pipeline", async () => {
       // First call: connection lookup
       // Second call: channel lookup
+      // Third call: emitEgress binding query (returns empty)
       let callCount = 0;
       mockSelect.mockImplementation(() => ({
         from: () => ({
-          where: (..._args: any[]) => ({
-            limit: () => {
-              callCount++;
-              if (callCount === 1) {
-                return Promise.resolve([
-                  {
-                    id: "conn-1",
-                    status: "active",
-                    activeChannelId: "ch-1",
-                    tenantId: "tenant-1",
-                    userId: 42,
-                  },
-                ]);
-              }
-              return Promise.resolve([
-                {
-                  id: "ch-1",
-                  conversationType: "chat",
-                  chatConversationId: 1,
-                  agencyConversationId: null,
-                  state: "active",
-                  channelRefId: "12345",
+          where: (..._args: any[]) => {
+            callCount++;
+            if (callCount <= 2) {
+              return {
+                limit: () => {
+                  if (callCount === 1) {
+                    return Promise.resolve([
+                      {
+                        id: "conn-1",
+                        status: "active",
+                        activeChannelId: "ch-1",
+                        tenantId: "tenant-1",
+                        userId: 42,
+                      },
+                    ]);
+                  }
+                  return Promise.resolve([
+                    {
+                      id: "ch-1",
+                      conversationType: "chat",
+                      chatConversationId: 1,
+                      agencyConversationId: null,
+                      state: "active",
+                      channelRefId: "12345",
+                    },
+                  ]);
                 },
-              ]);
-            },
-          }),
+              };
+            }
+            // emitEgress query returns no bindings
+            return Promise.resolve([]);
+          },
         }),
       }));
+
+      // Mock processMessageServerSide dependencies
+      mockGetConversationById.mockResolvedValue({ id: 1, model: "gpt-4o-mini" });
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockCreateMessage.mockResolvedValue({ id: 100, role: "user", content: "test" });
+      mockBuildChatContext.mockResolvedValue([]);
+      mockExecuteWithFallback.mockResolvedValue({
+        type: "success",
+        response: {
+          choices: [{ message: { content: "response" } }],
+          usage: { prompt_tokens: 5, completion_tokens: 3 },
+        },
+        providerId: 1,
+        providerName: "openai",
+      });
 
       const result = await channelGateway.ingest(makeIngressEvent());
 
@@ -439,6 +494,147 @@ describe("channelGateway", () => {
 
       // Should not throw
       await channelGateway.handleNonTextMessage("123", "bot-token", "en");
+    });
+  });
+
+  // --- Server-side chat processing ---
+
+  describe("processMessageServerSide", () => {
+    const defaultParams = {
+      conversationId: 1,
+      userId: 42,
+      tenantId: "tenant-1",
+      content: "Hello from Telegram",
+      connectionId: "conn-1",
+      externalSourceId: "ext-msg-1",
+    };
+
+    function setupHappyPath() {
+      mockGetConversationById.mockResolvedValue({
+        id: 1,
+        model: "gpt-4o-mini",
+        systemPrompt: "You are a helpful assistant.",
+      });
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockCreateMessage
+        .mockResolvedValueOnce({ id: 100, role: "user", content: "Hello" })
+        .mockResolvedValueOnce({ id: 101, role: "assistant", content: "Hi!" });
+      mockBuildChatContext.mockResolvedValue([
+        { role: "system", content: "You are helpful" },
+        { role: "user", content: "Hello from Telegram" },
+      ]);
+      mockExecuteWithFallback.mockResolvedValue({
+        type: "success",
+        response: {
+          choices: [{ message: { content: "Hi there!" } }],
+          usage: { prompt_tokens: 10, completion_tokens: 5 },
+        },
+        providerId: 1,
+        providerName: "openai",
+      });
+      // emitEgress needs a mock for the DB query
+      mockDbSelectArray([]);
+    }
+
+    it("saves user message with sourceChannel=telegram", async () => {
+      setupHappyPath();
+
+      await channelGateway.processMessageServerSide(defaultParams);
+
+      expect(mockCreateMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          conversationId: 1,
+          role: "user",
+          content: "Hello from Telegram",
+          sourceChannel: "telegram",
+          sourceConnectionId: "conn-1",
+        }),
+      );
+    });
+
+    it("calls buildChatContext with correct parameters", async () => {
+      setupHappyPath();
+
+      await channelGateway.processMessageServerSide(defaultParams);
+
+      expect(mockBuildChatContext).toHaveBeenCalledWith(
+        1,
+        42,
+        "You are a helpful assistant.",
+      );
+    });
+
+    it("calls LLM non-streaming and saves assistant response", async () => {
+      setupHappyPath();
+
+      const result = await channelGateway.processMessageServerSide(defaultParams);
+
+      expect(mockExecuteWithFallback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          stream: false,
+          userId: 42,
+          conversationId: 1,
+        }),
+      );
+      expect(result.success).toBe(true);
+    });
+
+    it("deducts credits after LLM response", async () => {
+      setupHappyPath();
+
+      await channelGateway.processMessageServerSide(defaultParams);
+
+      expect(mockDeductCreditsForModel).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 42,
+          inputTokens: 10,
+          outputTokens: 5,
+          sourceType: "chat",
+        }),
+      );
+    });
+
+    it("returns error when conversation not found", async () => {
+      mockGetConversationById.mockResolvedValue(undefined);
+
+      const result = await channelGateway.processMessageServerSide(defaultParams);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("not found");
+      expect(mockExecuteWithFallback).not.toHaveBeenCalled();
+    });
+
+    it("returns error when insufficient credits", async () => {
+      mockGetConversationById.mockResolvedValue({
+        id: 1,
+        model: "gpt-4o-mini",
+      });
+      mockHasEnoughCredits.mockResolvedValue(false);
+
+      const result = await channelGateway.processMessageServerSide(defaultParams);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("credits");
+      expect(mockExecuteWithFallback).not.toHaveBeenCalled();
+    });
+
+    it("handles LLM error gracefully", async () => {
+      mockGetConversationById.mockResolvedValue({ id: 1, model: "gpt-4o-mini" });
+      mockHasEnoughCredits.mockResolvedValue(true);
+      mockCreateMessage.mockResolvedValue({ id: 100, role: "user" });
+      mockBuildChatContext.mockResolvedValue([]);
+      mockExecuteWithFallback.mockResolvedValue({
+        type: "error",
+        error: "Provider unavailable",
+        statusCode: 503,
+      });
+      mockDbSelectArray([]);
+
+      const result = await channelGateway.processMessageServerSide(defaultParams);
+
+      expect(result.success).toBe(false);
+      // Should still save an error message for conversation consistency
+      expect(mockCreateMessage).toHaveBeenCalledTimes(2);
     });
   });
 });
