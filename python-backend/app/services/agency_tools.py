@@ -20,6 +20,8 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Any
 
+from app.services.agency_audit import log_agency_event
+
 logger = structlog.get_logger(__name__)
 
 
@@ -50,18 +52,42 @@ def _make_run_func(tool_config: ToolConfig, whitelist: set[str]):
                     tool_id=config.tool_id,
                     risk_level=config.risk_level,
                 )
+                log_agency_event(
+                    "agency_tool_failed",
+                    tool_name=config.tool_id,
+                    risk_level=config.risk_level,
+                    metadata={"reason": "not_in_whitelist"},
+                )
                 return (
                     f"Tool '{config.tool_id}' is not authorized for this agency. "
                     f"Only whitelisted tools can be used."
                 )
 
+        # Audit: tool called
+        log_agency_event(
+            "agency_tool_called",
+            tool_name=config.tool_id,
+            risk_level=config.risk_level,
+        )
+
         query = getattr(tool_instance, "query", "")
 
         # Route based on risk level
         if config.risk_level == "high":
-            return _execute_sandbox(config, query)
+            result = _execute_sandbox(config, query)
         else:
-            return _execute_http(config, query)
+            result = _execute_http(config, query)
+
+        # Audit: log tool failure if result indicates error
+        if result.startswith("Tool execution failed") or result.startswith("Sandbox execution failed"):
+            log_agency_event(
+                "agency_tool_failed",
+                tool_name=config.tool_id,
+                risk_level=config.risk_level,
+                error_message=result[:200],
+            )
+
+        return result
 
     return run_func
 

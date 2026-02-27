@@ -10,7 +10,14 @@ import crypto from "crypto";
 import { TRPCError } from "@trpc/server";
 import { router, adminProcedure, protectedProcedure } from "../_core/trpc";
 import { db, getDb } from "../db";
-import { systemSettings, users } from "../../drizzle/schema";
+import {
+  systemSettings,
+  users,
+  telegramLinkTokens,
+  telegramConnections,
+  conversations,
+  agencyConversations,
+} from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { encrypt, decrypt } from "../services/crypto";
 import { clearTelegramCache } from "../services/telegramService";
@@ -353,8 +360,16 @@ const registerWebhook = adminProcedure.mutation(async () => {
  * Generate a verification code and return a Telegram deep link.
  * User clicks this link in Telegram to initiate account linking.
  */
-const generateTelegramLink = protectedProcedure.mutation(
-  async ({ ctx }) => {
+const generateTelegramLink = protectedProcedure
+  .input(
+    z
+      .object({
+        conversationId: z.union([z.number(), z.string()]).optional(),
+        conversationType: z.enum(["chat", "agency"]).optional(),
+      })
+      .optional(),
+  )
+  .mutation(async ({ input, ctx }) => {
     const db = await getDb();
     if (!db) {
       throw new TRPCError({
@@ -387,6 +402,45 @@ const generateTelegramLink = protectedProcedure.mutation(
       });
     }
 
+    // Validate conversation ownership if provided
+    if (input?.conversationId && input?.conversationType) {
+      if (input.conversationType === "chat") {
+        const [conv] = await db
+          .select({ id: conversations.id })
+          .from(conversations)
+          .where(
+            and(
+              eq(conversations.id, Number(input.conversationId)),
+              eq(conversations.userId, ctx.user.id),
+            ),
+          )
+          .limit(1);
+        if (!conv) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Conversation not found or not owned by user",
+          });
+        }
+      } else {
+        const [conv] = await db
+          .select({ id: agencyConversations.id })
+          .from(agencyConversations)
+          .where(
+            and(
+              eq(agencyConversations.id, String(input.conversationId)),
+              eq(agencyConversations.userId, ctx.user.id),
+            ),
+          )
+          .limit(1);
+        if (!conv) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Agency conversation not found or not owned by user",
+          });
+        }
+      }
+    }
+
     // Generate verification code (128-bit entropy)
     const code = crypto.randomBytes(16).toString("hex"); // 32-char hex string
 
@@ -403,13 +457,63 @@ const generateTelegramLink = protectedProcedure.mutation(
         `telegram:verify:${code}`,
         JSON.stringify(verificationData),
         "EX",
-        300 // 5 minutes
+        300, // 5 minutes
       );
     } catch (err) {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: "Failed to generate verification link",
       });
+    }
+
+    // Create telegram_link_tokens record for auditing + conversation binding
+    const tokenHash = crypto.createHash("sha256").update(code).digest("hex");
+
+    // Determine purpose: 'connect' if no active connection, 'resume' otherwise
+    const [existingConn] = await db
+      .select({ id: telegramConnections.id })
+      .from(telegramConnections)
+      .where(
+        and(
+          eq(telegramConnections.userId, ctx.user.id),
+          eq(telegramConnections.status, "active"),
+        ),
+      )
+      .limit(1);
+
+    const purpose = existingConn ? "resume" : "connect";
+
+    // Resolve tenant from user
+    const [currentUser] = await db
+      .select({ currentTenantId: users.currentTenantId })
+      .from(users)
+      .where(eq(users.id, ctx.user.id))
+      .limit(1);
+
+    const tenantId = String(currentUser?.currentTenantId ?? "");
+
+    try {
+      await db.insert(telegramLinkTokens).values({
+        id: crypto.randomUUID(),
+        tenantId,
+        userId: ctx.user.id,
+        targetChatConversationId:
+          input?.conversationType === "chat"
+            ? Number(input.conversationId)
+            : null,
+        targetAgencyConversationId:
+          input?.conversationType === "agency"
+            ? String(input.conversationId)
+            : null,
+        targetConversationType: input?.conversationType ?? null,
+        purpose,
+        tokenHash,
+        expiresAt: new Date(Date.now() + 300_000),
+        createdBy: ctx.user.id,
+      });
+    } catch (err) {
+      console.error("[Telegram] Failed to create link token record:", err);
+      // Non-fatal: Redis token still works as fallback
     }
 
     // Construct deep link

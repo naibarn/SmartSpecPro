@@ -42,6 +42,18 @@ export type AuditEventType =
   | "funnel_scope_fallback"
   | "funnel_export"
   | "funnel_raw_events_query"
+  | "agency_created"
+  | "agency_updated"
+  | "agency_deleted"
+  | "agency_run_started"
+  | "agency_run_completed"
+  | "agency_run_failed"
+  | "agency_credit_reserved"
+  | "agency_credit_deducted"
+  | "agency_credit_refunded"
+  | "agency_tool_called"
+  | "agency_tool_failed"
+  | "agency_archival"
   | "error";
 
 export interface AuditLogEntry {

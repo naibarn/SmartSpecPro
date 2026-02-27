@@ -28,6 +28,7 @@ from app.services.agency_swarm_adapter import (
 from app.services.agency_credits import AgencyCreditManager
 from app.services.agency_persistence import create_persistence_hooks
 from app.services.agency_tools import resolve_tools_for_agent
+from app.services.agency_audit import log_agency_event, reconcile_credits
 
 logger = structlog.get_logger(__name__)
 
@@ -261,6 +262,16 @@ class AgencyService:
         )
         await self.db.commit()
 
+        # Audit: run started
+        log_agency_event(
+            "agency_run_started",
+            run_id=run_id,
+            agency_id=agency_id,
+            tenant_id=context.tenant_id,
+            user_id=context.user_id,
+            metadata={"agent_count": len(agents_data)},
+        )
+
         try:
             # 9. Execute agency
             result = await self.adapter.run(
@@ -312,6 +323,24 @@ class AgencyService:
                 duration_ms=elapsed_ms,
             )
 
+            # Audit: run completed
+            log_agency_event(
+                "agency_run_completed",
+                run_id=run_id,
+                agency_id=agency_id,
+                tenant_id=context.tenant_id,
+                user_id=context.user_id,
+                duration_ms=elapsed_ms,
+                step_count=result.step_count,
+            )
+
+            # Credit reconciliation (gateway cost is 0.0 until reconciliation endpoint is wired)
+            await reconcile_credits(
+                run_id=run_id,
+                gateway_total=0.0,
+                run_total_credits=0.0,
+            )
+
             return result
 
         except Exception as exc:
@@ -339,6 +368,18 @@ class AgencyService:
                 await self.db.commit()
             except Exception:
                 logger.error("agency_run_record_update_failed", run_id=run_id)
+
+            # Audit: run failed
+            log_agency_event(
+                "agency_run_failed",
+                run_id=run_id,
+                agency_id=agency_id,
+                tenant_id=context.tenant_id,
+                user_id=context.user_id,
+                duration_ms=elapsed_ms,
+                error_type=type(exc).__name__,
+                error_message=str(exc)[:500],
+            )
 
             raise
 

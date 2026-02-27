@@ -17,8 +17,9 @@ import {
   agencyAgentTools,
   agencyCommunicationFlows,
   agencyConversations,
+  systemSettings,
 } from "../../drizzle/schema";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import { agencyBridge } from "../services/agencyBridge";
 import { getTenantFeatureFlag, setTenantFeatureFlag } from "../services/featureFlags";
 import crypto from "crypto";
@@ -647,5 +648,291 @@ export const agencyRouter = router({
       const userToken = ctx.userToken ?? "";
       await agencyBridge.cancelRun(input.agencyId, input.runId, userToken);
       return { success: true };
+    }),
+
+  // --- Admin: Quotas ---
+
+  adminSetQuotas: adminProcedure
+    .input(
+      z.object({
+        tenantId: z.string(),
+        maxAgencies: z.number().min(0).max(100).optional(),
+        maxConcurrentRuns: z.number().min(0).max(50).optional(),
+        maxCreditPerRun: z.number().min(0).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const quotaEntries: Array<{ key: string; value: string }> = [];
+      if (input.maxAgencies !== undefined) {
+        quotaEntries.push({
+          key: `tenant_${input.tenantId}_maxAgencies`,
+          value: String(input.maxAgencies),
+        });
+      }
+      if (input.maxConcurrentRuns !== undefined) {
+        quotaEntries.push({
+          key: `tenant_${input.tenantId}_maxConcurrentRuns`,
+          value: String(input.maxConcurrentRuns),
+        });
+      }
+      if (input.maxCreditPerRun !== undefined) {
+        quotaEntries.push({
+          key: `tenant_${input.tenantId}_maxCreditPerRun`,
+          value: String(input.maxCreditPerRun),
+        });
+      }
+
+      for (const entry of quotaEntries) {
+        // Upsert: delete then insert
+        await db
+          .delete(systemSettings)
+          .where(
+            and(
+              eq(systemSettings.category, "agency_quotas"),
+              eq(systemSettings.key, entry.key),
+            ),
+          );
+        await db.insert(systemSettings).values({
+          category: "agency_quotas",
+          key: entry.key,
+          value: entry.value,
+          updatedBy: ctx.user!.id,
+        });
+      }
+
+      return { success: true };
+    }),
+
+  adminGetQuotas: adminProcedure
+    .input(z.object({ tenantId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const rows = await db
+        .select()
+        .from(systemSettings)
+        .where(eq(systemSettings.category, "agency_quotas"));
+
+      const prefix = `tenant_${input.tenantId}_`;
+      const quotas: Record<string, number> = {
+        maxAgencies: 10,
+        maxConcurrentRuns: 5,
+        maxCreditPerRun: 100,
+      };
+
+      for (const row of rows) {
+        if (row.key.startsWith(prefix) && row.value) {
+          const quotaName = row.key.slice(prefix.length);
+          const parsed = parseInt(row.value, 10);
+          if (!isNaN(parsed)) {
+            quotas[quotaName] = parsed;
+          }
+        }
+      }
+
+      return quotas;
+    }),
+
+  // --- Admin: Tool Whitelists ---
+
+  adminSetToolWhitelist: adminProcedure
+    .input(
+      z.object({
+        agencyId: z.string().uuid(),
+        toolIds: z.array(z.string().uuid()),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await db.transaction(async (tx) => {
+        // Get all agents for this agency
+        const agents = await tx
+          .select({ id: agencyAgents.id })
+          .from(agencyAgents)
+          .where(eq(agencyAgents.agencyId, input.agencyId));
+
+        const agentIds = agents.map((a) => a.id);
+
+        // Delete existing tool assignments for all agents
+        if (agentIds.length > 0) {
+          await tx
+            .delete(agencyAgentTools)
+            .where(inArray(agencyAgentTools.agentId, agentIds));
+        }
+
+        // Insert new tool assignments for each agent
+        for (const agentId of agentIds) {
+          for (const toolId of input.toolIds) {
+            await tx.insert(agencyAgentTools).values({
+              id: crypto.randomUUID(),
+              agentId,
+              toolId,
+            });
+          }
+        }
+      });
+
+      return { success: true };
+    }),
+
+  adminGetToolWhitelist: adminProcedure
+    .input(z.object({ agencyId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const agents = await db
+        .select({ id: agencyAgents.id })
+        .from(agencyAgents)
+        .where(eq(agencyAgents.agencyId, input.agencyId));
+
+      const agentIds = agents.map((a: { id: string }) => a.id);
+      if (agentIds.length === 0) return { tools: [] };
+
+      const toolAssignments = await db
+        .select()
+        .from(agencyAgentTools)
+        .where(inArray(agencyAgentTools.agentId, agentIds));
+
+      // Deduplicate tool IDs
+      const uniqueToolIds = [...new Set(toolAssignments.map((t: { toolId: string }) => t.toolId))];
+      return { tools: uniqueToolIds };
+    }),
+
+  // --- Admin: Kill All Runs ---
+
+  adminKillAllRuns: adminProcedure
+    .input(z.object({ tenantId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const userToken = ctx.userToken ?? "";
+
+      // Query active agency runs for this tenant from Python backend
+      const activeAgencies = await db
+        .select({ id: agencies.id })
+        .from(agencies)
+        .where(eq(agencies.tenantId, input.tenantId));
+
+      let cancelledCount = 0;
+      for (const agency of activeAgencies) {
+        try {
+          const runs = await agencyBridge.listRuns(agency.id, userToken, {
+            status: "running",
+            limit: 100,
+          });
+          for (const run of runs.runs) {
+            try {
+              await agencyBridge.cancelRun(agency.id, run.id, userToken);
+              cancelledCount++;
+            } catch {
+              // Continue cancelling other runs
+            }
+          }
+        } catch {
+          // Agency may not have active runs
+        }
+      }
+
+      return { cancelledCount };
+    }),
+
+  // --- Admin: Metrics ---
+
+  adminGetMetrics: adminProcedure
+    .input(
+      z.object({
+        agencyId: z.string().uuid().optional(),
+        tenantId: z.string().optional(),
+        windowHours: z.number().min(1).max(168).default(24),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      // Query aggregated metrics from agency_runs directly
+      const conditions: string[] = [];
+      const params: Record<string, any> = {};
+
+      if (input.agencyId) {
+        conditions.push(`agency_id = '${input.agencyId}'`);
+      }
+      if (input.tenantId) {
+        conditions.push(`tenant_id = '${input.tenantId}'`);
+      }
+      conditions.push(
+        `started_at > NOW() - INTERVAL '${input.windowHours} hours'`,
+      );
+
+      const whereClause =
+        conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+      const result = await db.instance.execute(sql.raw(`
+        SELECT
+          COUNT(*) as total_runs,
+          COUNT(*) FILTER (WHERE status = 'failed') as failed_runs,
+          COUNT(*) FILTER (WHERE status = 'completed') as completed_runs,
+          COALESCE(AVG(duration_ms), 0) as avg_duration_ms,
+          COALESCE(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration_ms), 0) as p95_latency_ms,
+          COALESCE(AVG(step_count), 0) as avg_step_count
+        FROM agency_runs
+        ${whereClause}
+      `));
+
+      const row = (result as any).rows?.[0] ?? {};
+      const totalRuns = Number(row.total_runs ?? 0);
+      const failedRuns = Number(row.failed_runs ?? 0);
+      const completedRuns = Number(row.completed_runs ?? 0);
+
+      return {
+        successRate: totalRuns > 0 ? completedRuns / totalRuns : 0,
+        p95Latency: Number(row.p95_latency_ms ?? 0),
+        totalRuns,
+        failedRuns,
+        avgStepCount: Number(row.avg_step_count ?? 0),
+      };
+    }),
+
+  adminGetAlerts: adminProcedure
+    .input(
+      z.object({
+        tenantId: z.string().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      // Simple alert check from DB stats
+      const conditions: string[] = [
+        `started_at > NOW() - INTERVAL '1 hours'`,
+      ];
+      if (input.tenantId) {
+        conditions.push(`tenant_id = '${input.tenantId}'`);
+      }
+      const whereClause = `WHERE ${conditions.join(" AND ")}`;
+
+      const result = await db.instance.execute(sql.raw(`
+        SELECT
+          agency_id,
+          COUNT(*) as total,
+          COUNT(*) FILTER (WHERE status = 'failed') as failed,
+          COUNT(*) FILTER (WHERE status = 'completed') as completed
+        FROM agency_runs
+        ${whereClause}
+        GROUP BY agency_id
+        HAVING COUNT(*) > 0
+      `));
+
+      const alerts: Array<{
+        agencyId: string;
+        metric: string;
+        value: number;
+        threshold: number;
+      }> = [];
+
+      for (const row of (result as any).rows ?? []) {
+        const total = Number(row.total);
+        const failed = Number(row.failed);
+        const successRate = total > 0 ? (total - failed) / total : 1;
+
+        if (successRate < 0.9) {
+          alerts.push({
+            agencyId: row.agency_id,
+            metric: "success_rate",
+            value: successRate,
+            threshold: 0.9,
+          });
+        }
+      }
+
+      return { alerts };
     }),
 });

@@ -21,6 +21,7 @@ import { registerAgencyStreamRoutes } from "./agencyStreamProxy";
 
 import { createWebhookRouter } from "../routes/webhooks";
 import { createTelegramWebhookRouter } from "../routes/telegramWebhook";
+import "../services/telegramLinkService"; // Register /start link handler
 import { createSlideRenderRouter } from "../routes/slideRender";
 import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
 import { registerServicesRoutes } from "../routers/services";
