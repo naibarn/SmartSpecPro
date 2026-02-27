@@ -66,6 +66,7 @@ import { infrastructureRouter } from "./routers/infrastructure";
 import { presentationRouter } from "./routers/presentation";
 import { presentationImportRouter } from "./routers/presentationImport";
 import { sandboxRouter } from "./routers/sandbox";
+import { agencyRouter } from "./routers/agency";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -1430,6 +1431,9 @@ export const appRouter = router({
 
   // OpenSandbox integration
   sandbox: sandboxRouter,
+
+  // Agency-Swarm multi-agent system
+  agency: agencyRouter,
 
   // AI helpers (streaming chat is served via /api/llm/stream; this router is for uploads)
   ai: router({

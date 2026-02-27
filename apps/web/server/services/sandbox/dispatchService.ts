@@ -15,10 +15,11 @@ export type ExecutionMode =
   | "sandbox-browser"
   | "sandbox-file"
   | "sandbox-media"
+  | "sandbox-python"
   | "media-generate";
 
 export interface SandboxDispatchRequest {
-  featureType: "chat" | "skill" | "workflow" | "library" | "media" | "presentation" | "connector";
+  featureType: "chat" | "skill" | "workflow" | "library" | "media" | "presentation" | "connector" | "agency";
   executionMode: ExecutionMode;
   tenantId: string;
   userId: number;

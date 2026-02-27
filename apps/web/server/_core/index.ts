@@ -362,7 +362,7 @@ app.get("/api/media/image-proxy", async (req, res) => {
 const VALID_SOURCE_TYPES = new Set([
   "chat", "skill", "media_image", "media_video", "media_audio",
   "indexing", "rag", "stt", "translation", "brainstorm",
-  "scheduler", "admin", "other",
+  "scheduler", "admin", "agency", "other",
 ]);
 
 // Helper: derive sourceType from service tag when not explicitly provided
@@ -427,6 +427,57 @@ app.post("/api/internal/credits/charge", async (req, res) => {
     }
 
     return res.status(400).json({ success: false, error: "Either amount or chunkCount is required" });
+  } catch (err: any) {
+    const status = err.message?.includes("Insufficient credits") ? 402 : 500;
+    return res.status(status).json({ success: false, error: err.message });
+  }
+});
+
+// Internal agency multiplier markup endpoint (Python backend -> Node.js)
+app.post("/api/internal/credits/agency-markup", async (req, res) => {
+  const authHeader = req.headers.authorization || "";
+  if (!authHeader.startsWith("Bearer ") || !ENV.webGatewayToken) {
+    return res.status(401).json({ success: false, error: "Unauthorized" });
+  }
+  const token = authHeader.slice(7);
+  if (token !== ENV.webGatewayToken) {
+    return res.status(401).json({ success: false, error: "Unauthorized" });
+  }
+
+  try {
+    const { userId, agencyId, markupAmount, sourceType } = req.body;
+
+    if (typeof userId !== "number" || !Number.isFinite(userId) || userId <= 0) {
+      return res.status(400).json({ success: false, error: "userId must be a positive number" });
+    }
+    if (typeof agencyId !== "string" || !agencyId) {
+      return res.status(400).json({ success: false, error: "agencyId is required" });
+    }
+    if (typeof markupAmount !== "number" || !Number.isFinite(markupAmount) || markupAmount <= 0) {
+      return res.status(400).json({ success: false, error: "markupAmount must be a positive number" });
+    }
+
+    const { deductCredits } = await import("../services/creditService");
+
+    const result = await deductCredits({
+      userId,
+      amount: markupAmount,
+      description: `Agency multiplier markup for agency ${agencyId}`,
+      sourceType: "agency",
+      metadata: {
+        agencyId,
+        markupAmount,
+        sourceType: sourceType ?? "agency",
+        service: "agency.multiplier_markup",
+      },
+    });
+
+    return res.json({
+      success: true,
+      markupCharged: markupAmount,
+      creditsUsed: result.creditsUsed,
+      transactionId: result.transactionId,
+    });
   } catch (err: any) {
     const status = err.message?.includes("Insufficient credits") ? 402 : 500;
     return res.status(status).json({ success: false, error: err.message });
