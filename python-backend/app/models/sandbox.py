@@ -15,6 +15,7 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
+    Enum as SAEnum,
     ForeignKey,
     Index,
     Integer,
@@ -26,6 +27,11 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 
 from app.core.database import Base
+
+
+def _enum_values(enum_cls):
+    """Persist enum values (not enum member names) in PostgreSQL enum columns."""
+    return [member.value for member in enum_cls]
 
 
 class SandboxExecutionMode(str, enum.Enum):
@@ -72,6 +78,7 @@ class SandboxFeatureType(str, enum.Enum):
     MEDIA = "media"
     PRESENTATION = "presentation"
     CONNECTOR = "connector"
+    AGENCY = "agency"
 
 
 class SandboxNetworkAction(str, enum.Enum):
@@ -148,14 +155,47 @@ class SandboxJob(Base):
     tenant_id = Column("tenantId", String(36), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
     user_id = Column("userId", Integer, ForeignKey("users.id"), nullable=False)
 
-    feature_type = Column("featureType", String(16), nullable=False)
+    feature_type = Column(
+        "featureType",
+        SAEnum(
+            SandboxFeatureType,
+            name="sandbox_feature_type",
+            values_callable=_enum_values,
+            native_enum=True,
+            create_type=False,
+            validate_strings=True,
+        ),
+        nullable=False,
+    )
     feature_ref_id = Column("featureRefId", String(128), nullable=True)
-    execution_mode = Column("executionMode", String(16), nullable=False)
+    execution_mode = Column(
+        "executionMode",
+        SAEnum(
+            SandboxExecutionMode,
+            name="sandbox_execution_mode",
+            values_callable=_enum_values,
+            native_enum=True,
+            create_type=False,
+            validate_strings=True,
+        ),
+        nullable=False,
+    )
 
     sandbox_profile_id = Column("sandboxProfileId", Integer, ForeignKey("sandbox_profiles.id"), nullable=True)
     opensandbox_id = Column("opensandboxId", String(128), nullable=True)
 
-    status = Column(String(24), nullable=False, default=SandboxJobStatus.ACCEPTED.value)
+    status = Column(
+        SAEnum(
+            SandboxJobStatus,
+            name="sandbox_job_status",
+            values_callable=_enum_values,
+            native_enum=True,
+            create_type=False,
+            validate_strings=True,
+        ),
+        nullable=False,
+        default=SandboxJobStatus.ACCEPTED.value,
+    )
     status_reason = Column("statusReason", Text, nullable=True)
 
     image_uri = Column("imageUri", String(512), nullable=True)

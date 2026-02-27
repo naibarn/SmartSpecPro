@@ -95,6 +95,8 @@ async def init_db():
         notification, user_preferences, custom_skill_prompt,
         # Sandbox execution
         sandbox,
+        # Agency-Swarm
+        agency,
     )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

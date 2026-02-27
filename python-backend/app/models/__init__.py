@@ -75,6 +75,9 @@ from .sandbox import (
     SandboxNetworkAction,
 )
 
+# Agency-Swarm multi-agent orchestration
+from .agency import AgencyMessage, AgencyRun, AgencyRunStatus
+
 __all__ = [
     # Existing
     "AuditLog",
@@ -154,4 +157,8 @@ __all__ = [
     "SandboxArtifactType",
     "SandboxFeatureType",
     "SandboxNetworkAction",
+    # Agency
+    "AgencyMessage",
+    "AgencyRun",
+    "AgencyRunStatus",
 ]

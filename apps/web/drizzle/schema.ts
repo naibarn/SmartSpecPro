@@ -107,6 +107,7 @@ export const creditSourceTypeEnum = pgEnum("credit_source_type", [
   "brainstorm",
   "scheduler",
   "admin",
+  "agency",
   "other",
 ]);
 
@@ -146,7 +147,7 @@ export const sandboxNetworkActionEnum = pgEnum("sandbox_network_action", [
 ]);
 
 export const sandboxFeatureTypeEnum = pgEnum("sandbox_feature_type", [
-  "chat", "skill", "workflow", "library", "media", "presentation", "connector",
+  "chat", "skill", "workflow", "library", "media", "presentation", "connector", "agency",
 ]);
 
 /**
@@ -3893,3 +3894,141 @@ export const tenantSandboxPolicies = pgTable("tenant_sandbox_policies", {
 
 export type TenantSandboxPolicy = typeof tenantSandboxPolicies.$inferSelect;
 export type InsertTenantSandboxPolicy = typeof tenantSandboxPolicies.$inferInsert;
+
+// ==========================================
+// Section 027: Agency-Swarm Integration
+// ==========================================
+
+/**
+ * Agencies -- Multi-agent orchestration units.
+ * Each agency contains a team of AI agents with directional communication flows.
+ */
+export const agencies = pgTable("agencies", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  slug: varchar("slug", { length: 100 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  systemPrompt: text("systemPrompt"),
+  creditMultiplier: numeric("creditMultiplier", { precision: 5, scale: 2 }).default("1.00"),
+  maxAgents: integer("maxAgents").default(10),
+  maxRunTimeSeconds: integer("maxRunTimeSeconds").default(600),
+  status: varchar("status", { length: 20 }).default("draft").notNull(),
+  isFallbackSafe: boolean("isFallbackSafe").default(false).notNull(),
+  isPublished: boolean("isPublished").default(false).notNull(),
+  createdBy: integer("createdBy").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("agencies_tenant_slug_idx").on(t.tenantId, t.slug),
+  index("agencies_tenant_idx").on(t.tenantId),
+  index("agencies_created_by_idx").on(t.createdBy),
+]);
+
+export type Agency = typeof agencies.$inferSelect;
+export type InsertAgency = typeof agencies.$inferInsert;
+
+/**
+ * Agency Agents -- Individual AI agents within an agency.
+ * Each agent has its own model, instructions, and tool set.
+ */
+export const agencyAgents = pgTable("agency_agents", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  agencyId: varchar("agencyId", { length: 36 }).notNull().references(() => agencies.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  instructions: text("instructions"),
+  model: varchar("model", { length: 100 }),
+  modelSettings: json("modelSettings").$type<{
+    max_tokens?: number;
+    temperature?: number;
+    top_p?: number;
+  }>(),
+  isEntryPoint: boolean("isEntryPoint").default(false).notNull(),
+  isOptional: boolean("isOptional").default(false).notNull(),
+  position: json("position").$type<{ x: number; y: number }>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("agency_agents_agency_idx").on(t.agencyId),
+  uniqueIndex("agency_agents_agency_name_idx").on(t.agencyId, t.name),
+]);
+
+export type AgencyAgent = typeof agencyAgents.$inferSelect;
+export type InsertAgencyAgent = typeof agencyAgents.$inferInsert;
+
+/**
+ * Agency Tools -- Tool definitions available to agency agents.
+ */
+export const agencyTools = pgTable("agency_tools", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  toolType: varchar("toolType", { length: 20 }).notNull(),
+  config: json("config").$type<Record<string, unknown>>(),
+  riskLevel: varchar("riskLevel", { length: 10 }).default("low").notNull(),
+  requiresApproval: boolean("requiresApproval").default(false).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("agency_tools_tenant_idx").on(t.tenantId),
+  uniqueIndex("agency_tools_tenant_name_idx").on(t.tenantId, t.name),
+]);
+
+export type AgencyTool = typeof agencyTools.$inferSelect;
+export type InsertAgencyTool = typeof agencyTools.$inferInsert;
+
+/**
+ * Agency Agent Tools -- Junction table linking agents to their assigned tools.
+ */
+export const agencyAgentTools = pgTable("agency_agent_tools", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  agentId: varchar("agentId", { length: 36 }).notNull().references(() => agencyAgents.id, { onDelete: "cascade" }),
+  toolId: varchar("toolId", { length: 36 }).notNull().references(() => agencyTools.id, { onDelete: "cascade" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("agency_agent_tools_agent_tool_idx").on(t.agentId, t.toolId),
+  index("agency_agent_tools_tool_idx").on(t.toolId),
+]);
+
+export type AgencyAgentTool = typeof agencyAgentTools.$inferSelect;
+export type InsertAgencyAgentTool = typeof agencyAgentTools.$inferInsert;
+
+/**
+ * Agency Communication Flows -- Directional communication links between agents.
+ */
+export const agencyCommunicationFlows = pgTable("agency_communication_flows", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  agencyId: varchar("agencyId", { length: 36 }).notNull().references(() => agencies.id, { onDelete: "cascade" }),
+  fromAgentId: varchar("fromAgentId", { length: 36 }).notNull().references(() => agencyAgents.id, { onDelete: "cascade" }),
+  toAgentId: varchar("toAgentId", { length: 36 }).notNull().references(() => agencyAgents.id, { onDelete: "cascade" }),
+  flowType: varchar("flowType", { length: 20 }).default("delegation").notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("agency_comm_flows_agency_idx").on(t.agencyId),
+  uniqueIndex("agency_comm_flows_unique_idx").on(t.agencyId, t.fromAgentId, t.toAgentId),
+]);
+
+export type AgencyCommunicationFlow = typeof agencyCommunicationFlows.$inferSelect;
+export type InsertAgencyCommunicationFlow = typeof agencyCommunicationFlows.$inferInsert;
+
+/**
+ * Agency Conversations -- Chat sessions between a user and an agency.
+ */
+export const agencyConversations = pgTable("agency_conversations", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  agencyId: varchar("agencyId", { length: 36 }).notNull().references(() => agencies.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 255 }).default("New Agency Chat").notNull(),
+  totalCreditsUsed: numeric("totalCreditsUsed", { precision: 12, scale: 4 }).default("0"),
+  messageCount: integer("messageCount").default(0).notNull(),
+  isArchived: boolean("isArchived").default(false).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("agency_conversations_agency_user_idx").on(t.agencyId, t.userId),
+  index("agency_conversations_user_idx").on(t.userId),
+]);
+
+export type AgencyConversation = typeof agencyConversations.$inferSelect;
+export type InsertAgencyConversation = typeof agencyConversations.$inferInsert;

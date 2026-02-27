@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import { getTableColumns } from 'drizzle-orm';
-import { userGroups, groupMembers, libraryPermissions, libraryItems, presentationExports, presentationSlides, presentationDecks } from './schema';
+import { userGroups, groupMembers, libraryPermissions, libraryItems, presentationExports, presentationSlides, presentationDecks, agencies, agencyAgents, agencyAgentTools, agencyTools, agencyCommunicationFlows, agencyConversations } from './schema';
 
 describe('user_groups table schema', () => {
   test('has required columns with correct types', () => {
@@ -227,5 +227,116 @@ describe('presentation_decks project audio column', () => {
   test('projectAudioTrack column is nullable', () => {
     const cols = getTableColumns(presentationDecks);
     expect(cols.projectAudioTrack.notNull).toBeFalsy();
+  });
+});
+
+// ==========================================
+// Section 027: Agency-Swarm Schema Tests
+// ==========================================
+
+describe('agencies table schema', () => {
+  test('has all required columns', () => {
+    const columns = getTableColumns(agencies);
+    expect(columns.id).toBeDefined();
+    expect(columns.tenantId).toBeDefined();
+    expect(columns.slug).toBeDefined();
+    expect(columns.name).toBeDefined();
+    expect(columns.description).toBeDefined();
+    expect(columns.systemPrompt).toBeDefined();
+    expect(columns.creditMultiplier).toBeDefined();
+    expect(columns.maxAgents).toBeDefined();
+    expect(columns.maxRunTimeSeconds).toBeDefined();
+    expect(columns.status).toBeDefined();
+    expect(columns.isFallbackSafe).toBeDefined();
+    expect(columns.isPublished).toBeDefined();
+    expect(columns.createdBy).toBeDefined();
+    expect(columns.createdAt).toBeDefined();
+    expect(columns.updatedAt).toBeDefined();
+  });
+
+  test('tenantId is not null (FK constraint)', () => {
+    const columns = getTableColumns(agencies);
+    expect(columns.tenantId.notNull).toBe(true);
+  });
+});
+
+describe('agency_agents table schema', () => {
+  test('has all required columns', () => {
+    const columns = getTableColumns(agencyAgents);
+    expect(columns.id).toBeDefined();
+    expect(columns.agencyId).toBeDefined();
+    expect(columns.name).toBeDefined();
+    expect(columns.description).toBeDefined();
+    expect(columns.instructions).toBeDefined();
+    expect(columns.model).toBeDefined();
+    expect(columns.modelSettings).toBeDefined();
+    expect(columns.isEntryPoint).toBeDefined();
+    expect(columns.isOptional).toBeDefined();
+    expect(columns.position).toBeDefined();
+    expect(columns.createdAt).toBeDefined();
+    expect(columns.updatedAt).toBeDefined();
+  });
+
+  test('agencyId is not null (FK constraint)', () => {
+    const columns = getTableColumns(agencyAgents);
+    expect(columns.agencyId.notNull).toBe(true);
+  });
+});
+
+describe('agency_agent_tools junction table schema', () => {
+  test('has all required columns', () => {
+    const columns = getTableColumns(agencyAgentTools);
+    expect(columns.id).toBeDefined();
+    expect(columns.agentId).toBeDefined();
+    expect(columns.toolId).toBeDefined();
+    expect(columns.createdAt).toBeDefined();
+  });
+
+  test('agentId and toolId are not null', () => {
+    const columns = getTableColumns(agencyAgentTools);
+    expect(columns.agentId.notNull).toBe(true);
+    expect(columns.toolId.notNull).toBe(true);
+  });
+});
+
+describe('agency_tools table schema', () => {
+  test('has all required columns', () => {
+    const columns = getTableColumns(agencyTools);
+    expect(columns.id).toBeDefined();
+    expect(columns.tenantId).toBeDefined();
+    expect(columns.name).toBeDefined();
+    expect(columns.description).toBeDefined();
+    expect(columns.toolType).toBeDefined();
+    expect(columns.config).toBeDefined();
+    expect(columns.riskLevel).toBeDefined();
+    expect(columns.requiresApproval).toBeDefined();
+    expect(columns.createdAt).toBeDefined();
+  });
+});
+
+describe('agency_communication_flows table schema', () => {
+  test('has all required columns', () => {
+    const columns = getTableColumns(agencyCommunicationFlows);
+    expect(columns.id).toBeDefined();
+    expect(columns.agencyId).toBeDefined();
+    expect(columns.fromAgentId).toBeDefined();
+    expect(columns.toAgentId).toBeDefined();
+    expect(columns.flowType).toBeDefined();
+    expect(columns.createdAt).toBeDefined();
+  });
+});
+
+describe('agency_conversations table schema', () => {
+  test('has all required columns', () => {
+    const columns = getTableColumns(agencyConversations);
+    expect(columns.id).toBeDefined();
+    expect(columns.agencyId).toBeDefined();
+    expect(columns.userId).toBeDefined();
+    expect(columns.title).toBeDefined();
+    expect(columns.totalCreditsUsed).toBeDefined();
+    expect(columns.messageCount).toBeDefined();
+    expect(columns.isArchived).toBeDefined();
+    expect(columns.createdAt).toBeDefined();
+    expect(columns.updatedAt).toBeDefined();
   });
 });

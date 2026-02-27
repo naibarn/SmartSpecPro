@@ -288,6 +288,20 @@
       "when": 1772107186315,
       "tag": "0040_yellow_silhouette",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1772180251828,
+      "tag": "0041_classy_shockwave",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1772181099675,
+      "tag": "0042_quiet_jane_foster",
+      "breakpoints": true
     }
   ]
 }

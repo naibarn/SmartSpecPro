@@ -19,6 +19,26 @@ import { estimateCost, reserveCredits, refundReservedCredits } from "../services
 import { getArtifactUrl, getJobArtifactUrls } from "../services/sandbox/artifactAccess";
 import { internalFetch } from "../services/sandbox/dispatchService";
 
+type SandboxJobAccessContext = {
+  userId?: number | null;
+  tenantId?: string | null;
+  role?: string | null;
+};
+
+type SandboxJobOwnership = {
+  userId: number;
+  tenantId: string;
+};
+
+export function canAccessSandboxJob(
+  job: SandboxJobOwnership,
+  ctx: SandboxJobAccessContext,
+): boolean {
+  if (ctx.role === "admin") return true;
+  if (!ctx.tenantId || !ctx.userId) return false;
+  return job.tenantId === ctx.tenantId && job.userId === ctx.userId;
+}
+
 export const sandboxRouter = router({
   /**
    * Create a new sandbox job.
@@ -27,10 +47,10 @@ export const sandboxRouter = router({
     .input(
       z.object({
         featureType: z.enum([
-          "chat", "skill", "workflow", "library", "media", "presentation", "connector",
+          "chat", "skill", "workflow", "library", "media", "presentation", "connector", "agency",
         ]),
         executionMode: z.enum([
-          "sandbox-code", "sandbox-command", "sandbox-browser", "sandbox-file", "sandbox-media",
+          "sandbox-code", "sandbox-command", "sandbox-browser", "sandbox-file", "sandbox-media", "sandbox-python",
         ]),
         inputFiles: z
           .array(
@@ -130,8 +150,11 @@ export const sandboxRouter = router({
 
       const job = rows[0];
 
-      // Verify ownership or admin
-      if (job.tenantId !== ctx.tenantId && ctx.user?.role !== "admin") {
+      if (!canAccessSandboxJob(job, {
+        userId: ctx.user?.id,
+        tenantId: ctx.tenantId,
+        role: ctx.user?.role,
+      })) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Sandbox job not found" });
       }
 
@@ -176,7 +199,11 @@ export const sandboxRouter = router({
 
       const job = rows[0];
 
-      if (job.tenantId !== ctx.tenantId && ctx.user?.role !== "admin") {
+      if (!canAccessSandboxJob(job, {
+        userId: ctx.user?.id,
+        tenantId: ctx.tenantId,
+        role: ctx.user?.role,
+      })) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Sandbox job not found" });
       }
 
@@ -232,7 +259,11 @@ export const sandboxRouter = router({
 
       const job = rows[0];
 
-      if (job.tenantId !== ctx.tenantId && ctx.user?.role !== "admin") {
+      if (!canAccessSandboxJob(job, {
+        userId: ctx.user?.id,
+        tenantId: ctx.tenantId,
+        role: ctx.user?.role,
+      })) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Sandbox job not found" });
       }
 
@@ -257,7 +288,7 @@ export const sandboxRouter = router({
           .optional(),
         featureType: z
           .enum([
-            "chat", "skill", "workflow", "library", "media", "presentation", "connector",
+            "chat", "skill", "workflow", "library", "media", "presentation", "connector", "agency",
           ])
           .optional(),
         limit: z.number().min(1).max(100).default(50),
@@ -272,7 +303,11 @@ export const sandboxRouter = router({
         if (!ctx.tenantId) {
           throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context required" });
         }
+        if (!ctx.user?.id) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "User context required" });
+        }
         conditions.push(eq(sandboxJobs.tenantId, ctx.tenantId));
+        conditions.push(eq(sandboxJobs.userId, ctx.user.id));
       }
 
       if (input.status) {
