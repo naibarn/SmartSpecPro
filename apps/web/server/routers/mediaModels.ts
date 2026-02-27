@@ -11,6 +11,18 @@ import { eq, asc, desc, and, ilike, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { clearModelCache } from "../services/modelRegistry";
 import { clearSkillRegistryCache } from "../services/skillRegistry";
+import {
+  getMediaModelResolutionCounters,
+  resetMediaModelResolutionCounters,
+} from "../services/mediaGenerationService";
+import {
+  getModelRegistryCounters,
+  resetModelRegistryCounters,
+} from "../services/modelRegistry";
+import {
+  getMediaModelLookupCounters,
+  resetMediaModelLookupCounters,
+} from "./media";
 
 // Zod schemas
 const mediaModelTypeSchema = z.enum(["image", "video", "audio"]);
@@ -344,6 +356,43 @@ export const mediaModelsRouter = router({
         providers: [],
       };
     }
+  }),
+
+  /**
+   * Runtime observability counters for model resolution/fallback behavior
+   */
+  runtimeCounters: adminProcedure.query(() => {
+    const mediaLookup = getMediaModelLookupCounters();
+    const mediaResolution = getMediaModelResolutionCounters();
+    const modelRegistry = getModelRegistryCounters();
+
+    const fallbackTotal =
+      mediaLookup.pricingDbMissFallback +
+      mediaLookup.metadataDbMissFallback +
+      mediaLookup.defaultFallbackStatic +
+      mediaResolution.providerDefaultFallback +
+      modelRegistry.staticFallbackHits;
+
+    return {
+      generatedAt: new Date().toISOString(),
+      mediaLookup,
+      mediaResolution,
+      modelRegistry,
+      fallbackTotal,
+    };
+  }),
+
+  /**
+   * Reset runtime observability counters
+   */
+  resetRuntimeCounters: adminProcedure.mutation(() => {
+    resetMediaModelLookupCounters();
+    resetMediaModelResolutionCounters();
+    resetModelRegistryCounters();
+    return {
+      success: true,
+      resetAt: new Date().toISOString(),
+    };
   }),
 
   // ==================== Public Operations ====================

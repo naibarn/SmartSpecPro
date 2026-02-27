@@ -14,28 +14,10 @@ import {
 
 export type MediaType = "image" | "video" | "audio";
 
-export type ImageModel =
-  | "google-nano-banana-pro"
-  | "flux-2.0"
-  | "z-image"
-  | "grok-imagine"
-  // BytePlus ModelArk — Seedream image models
-  | "seedream-4-5-251128"
-  | "seedream-4-0-250828";
-
-export type VideoModel =
-  | "veo-3-1"
-  | "sora-2"
-  | "kling-2.6"
-  // BytePlus ModelArk — Seedance video models
-  | "seedance-1-0-pro-fast-251015"
-  | "seedance-1-0-pro-250528"
-  | "seedance-1-0-lite-t2v-250428"
-  | "seedance-1-0-lite-i2v-250428";
-
-export type AudioModel =
-  | "elevenlabs-tts"
-  | "elevenlabs-sfx";
+// Use string IDs so newly added DB models don't require code changes.
+export type ImageModel = string;
+export type VideoModel = string;
+export type AudioModel = string;
 
 export type TaskStatus =
   | "pending"
@@ -57,6 +39,54 @@ export interface ModelMetadata {
   creditCost: number;
 }
 
+const mediaModelResolutionCounters = {
+  providerFromApiConfig: 0,
+  providerFromStaticRegistry: 0,
+  providerDefaultFallback: 0,
+  unknownModelRequests: 0,
+};
+
+export function getMediaModelResolutionCounters(): Readonly<typeof mediaModelResolutionCounters> {
+  return { ...mediaModelResolutionCounters };
+}
+
+export function resetMediaModelResolutionCounters(): void {
+  mediaModelResolutionCounters.providerFromApiConfig = 0;
+  mediaModelResolutionCounters.providerFromStaticRegistry = 0;
+  mediaModelResolutionCounters.providerDefaultFallback = 0;
+  mediaModelResolutionCounters.unknownModelRequests = 0;
+}
+
+function resolveProviderFromApiConfig(apiConfig?: Record<string, string>): string | null {
+  if (!apiConfig) return null;
+  for (const key of ["provider", "provider_id", "providerId", "providerName"]) {
+    const value = apiConfig[key as keyof typeof apiConfig];
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return null;
+}
+
+function resolveProvider(modelId: string, apiConfig?: Record<string, string>): string {
+  const providerFromConfig = resolveProviderFromApiConfig(apiConfig);
+  if (providerFromConfig) {
+    mediaModelResolutionCounters.providerFromApiConfig += 1;
+    return providerFromConfig;
+  }
+
+  const modelMeta = MEDIA_MODELS[modelId];
+  if (modelMeta?.provider) {
+    mediaModelResolutionCounters.providerFromStaticRegistry += 1;
+    return modelMeta.provider;
+  }
+
+  mediaModelResolutionCounters.providerDefaultFallback += 1;
+  mediaModelResolutionCounters.unknownModelRequests += 1;
+  console.warn("[MediaModelResolution] Unknown model provider fallback", { modelId });
+  return "kie.ai";
+}
+
 // Model registry with metadata
 export const MEDIA_MODELS: Record<string, ModelMetadata> = {
   // Image models
@@ -69,6 +99,15 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
     supportsSizes: ["1024x1024", "1024x1792", "1792x1024"],
     supportsAspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
     creditCost: 10,
+  },
+  "google-banana-2": {
+    id: "google-banana-2",
+    type: "image",
+    name: "Google Banana 2",
+    provider: "kie.ai",
+    description: "Gemini 3.1 Flash Image model with fast 4K generation and image editing support",
+    supportsAspectRatios: ["1:1", "1:4", "1:8", "2:3", "3:2", "3:4", "4:1", "4:3", "4:5", "5:4", "8:1", "9:16", "16:9", "21:9", "auto"],
+    creditCost: 40,
   },
   "flux-2.0": {
     id: "flux-2.0",
@@ -443,8 +482,7 @@ export class MediaGenerationService {
     userToken: string
   ): Promise<MediaGenerationResponse> {
     const modelId = request.model || DEFAULT_MODELS.image;
-    const modelMeta = MEDIA_MODELS[modelId];
-    const provider = modelMeta?.provider || "kie.ai";
+    const provider = resolveProvider(modelId, request.apiConfig);
 
     const payload: Record<string, unknown> = {
       prompt: request.prompt,
@@ -528,8 +566,7 @@ export class MediaGenerationService {
     userToken: string
   ): Promise<MediaGenerationResponse> {
     const modelId = request.model || DEFAULT_MODELS.video;
-    const modelMeta = MEDIA_MODELS[modelId];
-    const provider = modelMeta?.provider || "kie.ai";
+    const provider = resolveProvider(modelId, request.apiConfig);
 
     const payload: Record<string, unknown> = {
       prompt: request.prompt,
@@ -605,8 +642,7 @@ export class MediaGenerationService {
     userToken: string
   ): Promise<MediaGenerationResponse> {
     const modelId = request.model || DEFAULT_MODELS.audio;
-    const modelMeta = MEDIA_MODELS[modelId];
-    const provider = modelMeta?.provider || "kie.ai";
+    const provider = resolveProvider(modelId);
 
     const payload = {
       text: request.text,
@@ -648,8 +684,7 @@ export class MediaGenerationService {
     userToken: string
   ): Promise<MediaTask> {
     const modelId = request.model || DEFAULT_MODELS.image;
-    const modelMeta = MEDIA_MODELS[modelId];
-    const provider = modelMeta?.provider || "kie.ai";
+    const provider = resolveProvider(modelId, request.apiConfig);
 
     const payload: Record<string, unknown> = {
       prompt: request.prompt,
@@ -721,8 +756,7 @@ export class MediaGenerationService {
     userToken: string
   ): Promise<MediaTask> {
     const modelId = request.model || DEFAULT_MODELS.video;
-    const modelMeta = MEDIA_MODELS[modelId];
-    const provider = modelMeta?.provider || "kie.ai";
+    const provider = resolveProvider(modelId, request.apiConfig);
 
     const payload: Record<string, unknown> = {
       prompt: request.prompt,
@@ -808,8 +842,7 @@ export class MediaGenerationService {
     userToken: string
   ): Promise<MediaTask> {
     const modelId = request.model || DEFAULT_MODELS.audio;
-    const modelMeta = MEDIA_MODELS[modelId];
-    const provider = modelMeta?.provider || "kie.ai";
+    const provider = resolveProvider(modelId);
 
     const payload = {
       text: request.text,

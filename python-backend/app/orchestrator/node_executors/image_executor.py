@@ -56,7 +56,7 @@ class ImageExecutor:
         if not prompt:
             return {"imageUrl": None, "metadata": {"error": "Image generation requires a prompt"}}
 
-        model = inputs.get("model") or config.get("model", "google-nano-banana-pro")
+        model = inputs.get("model") or config.get("model", "")
 
         # Collect dynamic fields from config (set by configJson.inputFields on frontend)
         aspect_ratio = config.get("aspect_ratio") or config.get("aspectRatio")
@@ -87,8 +87,9 @@ class ImageExecutor:
         # --- Build tRPC payload --------------------------------------------------
         trpc_input: dict[str, Any] = {
             "prompt": prompt,
-            "model": model,
         }
+        if model:
+            trpc_input["model"] = model
         if aspect_ratio:
             trpc_input["aspectRatio"] = aspect_ratio
         if resolution:
@@ -105,7 +106,7 @@ class ImageExecutor:
         logger.info(
             "image_executor_request",
             execution_id=context.execution_id,
-            model=model,
+            model=model or "default",
             has_aspect_ratio=bool(aspect_ratio),
             has_resolution=bool(resolution),
             extra_param_count=len(extra_params),

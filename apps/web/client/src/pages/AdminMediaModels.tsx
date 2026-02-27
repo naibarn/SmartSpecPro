@@ -69,6 +69,9 @@ import {
   GripVertical,
   Settings2,
   Code,
+  Activity,
+  RefreshCw,
+  RotateCcw,
 } from "lucide-react";
 
 interface MediaModel {
@@ -184,6 +187,16 @@ export default function AdminMediaModels() {
     enabled: !!user && user.role === "admin",
   });
 
+  const {
+    data: runtimeCounters,
+    isFetching: isRuntimeCountersRefreshing,
+    refetch: refetchRuntimeCounters,
+  } = trpc.mediaModels.runtimeCounters.useQuery(undefined, {
+    enabled: !!user && user.role === "admin",
+    refetchInterval: 5000,
+    refetchIntervalInBackground: true,
+  });
+
   // Mutations
   const createMutation = trpc.mediaModels.create.useMutation({
     onSuccess: (data) => {
@@ -234,6 +247,18 @@ export default function AdminMediaModels() {
   const toggleEnabledMutation = trpc.mediaModels.toggleEnabled.useMutation({
     onSuccess: () => {
       refetch();
+    },
+  });
+
+  const resetRuntimeCountersMutation = trpc.mediaModels.resetRuntimeCounters.useMutation({
+    onSuccess: () => {
+      toast.success("Runtime counters reset");
+      refetchRuntimeCounters();
+    },
+    onError: (error) => {
+      toast.error("Failed to reset runtime counters", {
+        description: error.message,
+      });
     },
   });
 
@@ -539,6 +564,124 @@ export default function AdminMediaModels() {
           </Card>
         </div>
       )}
+
+      {/* Runtime Counters */}
+      <Card className="mb-6">
+        <CardHeader>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5 text-emerald-600" />
+                Runtime Counter Observability
+              </CardTitle>
+              <CardDescription>
+                Live counters for DB default selection and fallback behavior (auto-refresh every 5 seconds)
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => refetchRuntimeCounters()}
+                disabled={isRuntimeCountersRefreshing}
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${isRuntimeCountersRefreshing ? "animate-spin" : ""}`} />
+                Refresh
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => resetRuntimeCountersMutation.mutate()}
+                disabled={resetRuntimeCountersMutation.isPending}
+              >
+                <RotateCcw className={`mr-2 h-4 w-4 ${resetRuntimeCountersMutation.isPending ? "animate-spin" : ""}`} />
+                Reset Counters
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {!runtimeCounters ? (
+            <div className="text-sm text-muted-foreground">Loading runtime counters...</div>
+          ) : (
+            <div className="space-y-4">
+              <div className="text-xs text-muted-foreground">
+                Last sample: {new Date(runtimeCounters.generatedAt).toLocaleString()} | Total fallback hits:{" "}
+                <span className="font-semibold text-amber-600">{runtimeCounters.fallbackTotal}</span>
+              </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                <Card className="border-emerald-200">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Default Resolution</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span>defaultFromDb</span>
+                      <span className="font-semibold">{runtimeCounters.mediaLookup.defaultFromDb}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>defaultFallbackStatic</span>
+                      <span className="font-semibold text-amber-600">{runtimeCounters.mediaLookup.defaultFallbackStatic}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>unknownModelRejected</span>
+                      <span className="font-semibold">{runtimeCounters.mediaLookup.unknownModelRejected}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="border-blue-200">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">DB Lookup Fallback</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span>pricingDbMissFallback</span>
+                      <span className="font-semibold text-amber-600">{runtimeCounters.mediaLookup.pricingDbMissFallback}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>metadataDbMissFallback</span>
+                      <span className="font-semibold text-amber-600">{runtimeCounters.mediaLookup.metadataDbMissFallback}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>providerDefaultFallback</span>
+                      <span className="font-semibold text-amber-600">{runtimeCounters.mediaResolution.providerDefaultFallback}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="border-violet-200">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Provider & Registry</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span>providerFromApiConfig</span>
+                      <span className="font-semibold">{runtimeCounters.mediaResolution.providerFromApiConfig}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>providerFromStaticRegistry</span>
+                      <span className="font-semibold">{runtimeCounters.mediaResolution.providerFromStaticRegistry}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>unknownModelRequests</span>
+                      <span className="font-semibold">{runtimeCounters.mediaResolution.unknownModelRequests}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>registry.staticFallbackHits</span>
+                      <span className="font-semibold text-amber-600">{runtimeCounters.modelRegistry.staticFallbackHits}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>registry.cacheHits</span>
+                      <span className="font-semibold">{runtimeCounters.modelRegistry.cacheHits}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Filters */}
       <Card className="mb-6">

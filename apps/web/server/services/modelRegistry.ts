@@ -76,6 +76,25 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     priority: 1,
   },
   {
+    id: "google-banana-2",
+    type: "image",
+    name: "Google Banana 2",
+    provider: "kie.ai",
+    description: "Gemini 3.1 Flash Image model with fast 4K generation and strong consistency",
+    aliases: [
+      "google banana 2",
+      "banana 2",
+      "banana-2",
+      "nano banana 2",
+      "nano-banana-2",
+      "google/nano-banana-2",
+    ],
+    creditCost: 40,
+    aspectRatios: ["1:1", "1:4", "1:8", "2:3", "3:2", "3:4", "4:1", "4:3", "4:5", "5:4", "8:1", "9:16", "16:9", "21:9", "auto"],
+    isEnabled: true,
+    priority: 2,
+  },
+  {
     id: "flux-2.0",
     type: "image",
     name: "Flux 2.0",
@@ -86,7 +105,7 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     aspectRatios: ["1:1", "16:9", "9:16"],
     sizes: ["1024x1024", "1024x1792", "1792x1024"],
     isEnabled: true,
-    priority: 2,
+    priority: 3,
   },
   {
     id: "z-image",
@@ -99,7 +118,7 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     aspectRatios: ["1:1"],
     sizes: ["1024x1024"],
     isEnabled: true,
-    priority: 3,
+    priority: 4,
   },
   {
     id: "grok-imagine",
@@ -112,7 +131,7 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
     aspectRatios: ["1:1", "16:9", "9:16"],
     sizes: ["1024x1024", "1024x1792", "1792x1024"],
     isEnabled: true,
-    priority: 4,
+    priority: 5,
   },
 
   // ==================== Video Models ====================
@@ -195,6 +214,28 @@ const STATIC_MODEL_REGISTRY: ModelDefinition[] = [
 let _cachedModels: ModelDefinition[] | null = null;
 let _cacheLoadedAt: number = 0;
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache
+const _registryCounters = {
+  staticFallbackHits: 0,
+  cacheHits: 0,
+};
+
+export function getModelRegistryCounters(): Readonly<typeof _registryCounters> {
+  return { ..._registryCounters };
+}
+
+export function resetModelRegistryCounters(): void {
+  _registryCounters.staticFallbackHits = 0;
+  _registryCounters.cacheHits = 0;
+}
+
+function reportStaticFallback(reason: string): void {
+  const details = { reason, staticFallbackHits: _registryCounters.staticFallbackHits };
+  if (process.env.NODE_ENV === "production") {
+    console.error("[ModelRegistry] STATIC FALLBACK ACTIVE", details);
+    return;
+  }
+  console.warn("[ModelRegistry] Using static fallback registry", details);
+}
 
 /**
  * Convert database model to ModelDefinition
@@ -252,7 +293,8 @@ export async function refreshModelCache(): Promise<void> {
     console.log(`[ModelRegistry] Loaded ${dbModels.length} models from database`);
   } else {
     _cachedModels = null;
-    console.log("[ModelRegistry] No models in database, using static fallback");
+    _registryCounters.staticFallbackHits += 1;
+    reportStaticFallback("empty_db_model_list");
   }
 }
 
@@ -262,6 +304,7 @@ export async function refreshModelCache(): Promise<void> {
 function getModelRegistry(): ModelDefinition[] {
   // Check if cache is valid
   if (_cachedModels && Date.now() - _cacheLoadedAt < CACHE_TTL_MS) {
+    _registryCounters.cacheHits += 1;
     return _cachedModels;
   }
 
@@ -269,7 +312,13 @@ function getModelRegistry(): ModelDefinition[] {
   refreshModelCache().catch(() => {});
 
   // Return cached models or static fallback
-  return _cachedModels || STATIC_MODEL_REGISTRY;
+  if (_cachedModels) {
+    return _cachedModels;
+  }
+
+  _registryCounters.staticFallbackHits += 1;
+  reportStaticFallback("cache_miss_or_refresh_pending");
+  return STATIC_MODEL_REGISTRY;
 }
 
 /**
@@ -433,9 +482,42 @@ export function getAllModelAliases(): Map<string, string> {
  * This handles mapping from skill registry names to actual API names
  */
 export function mapToApiModelId(internalId: string): string {
-  // Map underscore format to hyphen format for API
-  const mappings: Record<string, string> = {
+  const trimmed = internalId.trim();
+  if (!trimmed) {
+    return internalId;
+  }
+
+  // Exact ID hit
+  const exact = getModelById(trimmed);
+  if (exact) {
+    return exact.id;
+  }
+
+  // Resolve from aliases (DB/static registry aware)
+  const aliasMap = getAllModelAliases();
+  const candidates = Array.from(new Set([
+    trimmed,
+    trimmed.toLowerCase(),
+    trimmed.replace(/_/g, "-"),
+    trimmed.replace(/_/g, " "),
+    trimmed.replace(/-/g, " "),
+    trimmed.replace(/\./g, " "),
+    trimmed.replace(/\s+/g, "-"),
+    trimmed.replace(/\s+/g, "_"),
+  ]));
+
+  for (const candidate of candidates) {
+    const resolved = aliasMap.get(candidate.toLowerCase());
+    if (resolved) {
+      return resolved;
+    }
+  }
+
+  // Legacy hardcoded compatibility map (last fallback).
+  const legacyMappings: Record<string, string> = {
     nano_banana_pro: "google-nano-banana-pro",
+    nano_banana_2: "google-banana-2",
+    google_banana_2: "google-banana-2",
     flux_2_0: "flux-2.0",
     z_image: "z-image",
     grok_imagine: "grok-imagine",
@@ -446,7 +528,7 @@ export function mapToApiModelId(internalId: string): string {
     elevenlabs_sfx: "elevenlabs-sfx",
   };
 
-  return mappings[internalId] || internalId;
+  return legacyMappings[trimmed] || trimmed;
 }
 
 /**

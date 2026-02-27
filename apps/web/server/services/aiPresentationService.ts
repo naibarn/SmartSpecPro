@@ -15,12 +15,13 @@ import { PRESENTATION_ERROR_CODE } from "@shared/presentation/constants";
 import { invokeLLM } from "../_core/llm";
 import { callLLMStructured } from "./callLLMStructured";
 import { getSkillByIdAsync } from "./skillRegistry";
-import { mediaGenerationService } from "./mediaGenerationService";
+import { mediaGenerationService, type ImageModel } from "./mediaGenerationService";
+import { getModelsByTypeAsync } from "./modelRegistry";
 import { addSlideToDeck, type PresentationActor } from "./presentationService";
 import { hasEnoughCredits } from "./creditService";
 import { getRedisClient } from "./redis";
 import { auditLogger } from "./auditLogger";
-import { getDb } from "../db";
+import { getDb, type DrizzleDB } from "../db";
 import { generateSlide } from "./aiPresentationLayoutEngine";
 
 // ── Constants ──────────────────────────────────────────────
@@ -36,6 +37,25 @@ const CREDIT_SPLIT = 10;
 const CREDIT_IMAGE_SKILL = 75;
 const CREDIT_IMAGE_GEN = 40;
 const CREDIT_BUFFER_MULTIPLIER = 1.2;
+
+const FALLBACK_IMAGE_MODEL: ImageModel = "flux-2.0";
+
+function sanitizeErrorMessage(err: unknown): string {
+  const msg = err instanceof Error ? err.message : "Unknown error";
+  return msg
+    .replace(/https?:\/\/[^\s]+/g, "[redacted-url]")
+    .replace(/\/[\w/.-]+\.(ts|js|json)/g, "[redacted-path]")
+    .slice(0, 200);
+}
+
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
+}
 
 // ── Slide Split System Prompt ──────────────────────────────
 
@@ -64,6 +84,7 @@ export function buildArticlePrompt(
   topic: string,
   language: string,
   numSlides: number,
+  skillParams?: Record<string, unknown>,
 ): string {
   const langInstruction =
     language === "auto"
@@ -72,13 +93,23 @@ export function buildArticlePrompt(
         ? "Write the entire article in Thai."
         : "Write the entire article in English.";
 
+  let paramSection = "";
+  if (skillParams && Object.keys(skillParams).length > 0) {
+    const lines = Object.entries(skillParams)
+      .filter(([, v]) => v !== undefined && v !== null && v !== "")
+      .map(([k, v]) => `- ${k}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`);
+    if (lines.length > 0) {
+      paramSection = `\n\nAdditional parameters provided by the user:\n${lines.join("\n")}`;
+    }
+  }
+
   return `Write a well-structured article about: ${topic}
 
 ${langInstruction}
 
 The article will be split into approximately ${numSlides} presentation slides, so organize the content into ${numSlides} clearly numbered sections. Each section should cover one main idea and be 2-4 sentences long.
 
-Include a clear, descriptive title at the top.`;
+Include a clear, descriptive title at the top.${paramSection}`;
 }
 
 // ── Main Pipeline ──────────────────────────────────────────
@@ -94,6 +125,16 @@ export async function generateAIDraft(
   const lockKey = `ai_draft_lock:${actor.userId}`;
   const cancelKey = `ai_draft_cancel:${taskId}`;
   const warnings: string[] = [];
+
+  // Sanitize user inputs
+  const sanitizedPrompt = input.prompt.replace(/[\x00-\x1f\x7f]/g, "").slice(0, 1000);
+  const requestedImageModel = input.imageModel?.trim();
+  const availableImageModels = await getModelsByTypeAsync("image");
+  const imageModelToUse: ImageModel = (
+    requestedImageModel && availableImageModels.some((model) => model.id === requestedImageModel)
+      ? requestedImageModel
+      : availableImageModels[0]?.id || FALLBACK_IMAGE_MODEL
+  ) as ImageModel;
 
   async function updateProgress(partial: Partial<AIDraftProgress>): Promise<void> {
     const progress: AIDraftProgress = {
@@ -121,7 +162,7 @@ export async function generateAIDraft(
     });
   }
 
-  // ── Credit pre-check ──────────────────────────────────
+  // ── Credit pre-check (UX fast-fail; actual deductions are atomic in invokeLLM/mediaGen)
   const estimatedCost = estimateCreditCost(input.numSlides);
   const hasCredits = await hasEnoughCredits(actor.userId, estimatedCost);
   if (!hasCredits) {
@@ -136,7 +177,7 @@ export async function generateAIDraft(
   }
 
   // ── Redis lock acquisition ────────────────────────────
-  const lockResult = await redis.set(lockKey, taskId, "NX", "EX", LOCK_TTL_SECONDS);
+  const lockResult = await redis.set(lockKey, taskId, "EX", LOCK_TTL_SECONDS, "NX");
   if (lockResult === null) {
     await updateProgress({
       completed: true,
@@ -164,9 +205,11 @@ export async function generateAIDraft(
       timestamp: new Date().toISOString(),
       eventType: "skill_execute",
       userId: actor.userId,
-      requestPayload: { phase: 1, skillId: input.articleSkillId, topic: input.prompt },
+      requestPayload: { phase: 1, skillId: input.articleSkillId, topic: sanitizedPrompt },
     });
 
+    // Skills are system-level (filesystem-based), already validated by Zod in router.
+    // No per-user scoping needed — all enabled skills are visible to all users.
     const articleSkill = await getSkillByIdAsync(input.articleSkillId);
     if (!articleSkill?.systemPrompt) {
       await updateProgress({
@@ -184,7 +227,7 @@ export async function generateAIDraft(
       const result = await invokeLLM({
         messages: [
           { role: "system", content: articleSkill.systemPrompt },
-          { role: "user", content: buildArticlePrompt(input.prompt, input.language, input.numSlides) },
+          { role: "user", content: buildArticlePrompt(sanitizedPrompt, input.language, input.numSlides, input.articleSkillParams) },
         ],
       });
       const content = result.choices[0]?.message?.content;
@@ -194,7 +237,7 @@ export async function generateAIDraft(
         completed: true,
         error: {
           code: PRESENTATION_ERROR_CODE.AI_GENERATION_FAILED,
-          message: `Article generation failed: ${(err as Error).message}`,
+          message: `Article generation failed: ${sanitizeErrorMessage(err)}`,
         },
       });
       return;
@@ -223,7 +266,7 @@ export async function generateAIDraft(
         completed: true,
         error: {
           code: PRESENTATION_ERROR_CODE.AI_INVALID_RESPONSE,
-          message: `Article split failed: ${(err as Error).message}`,
+          message: `Article split failed: ${sanitizeErrorMessage(err)}`,
         },
       });
       return;
@@ -235,7 +278,7 @@ export async function generateAIDraft(
     }
 
     // Build slide preview
-    const slidePreview = slides.map((s) => ({
+    const slidePreview: Array<{ title: string; imageStatus: "pending" | "done" | "placeholder" }> = slides.map((s) => ({
       title: s.title,
       imageStatus: "pending" as const,
     }));
@@ -291,7 +334,7 @@ export async function generateAIDraft(
         let imageUrl: string | null = null;
         try {
           const mediaTask = await mediaGenerationService.generateImageAsync(
-            { prompt: imagePrompt, model: input.imageModel || "flux-2.0", aspectRatio: "16:9" },
+            { prompt: imagePrompt, model: imageModelToUse, aspectRatio: "16:9" },
             userToken,
           );
           imageUrl = await pollMediaTask(mediaTask.id, userToken, IMAGE_POLL_TIMEOUT_MS);
@@ -335,11 +378,34 @@ export async function generateAIDraft(
       return;
     }
 
-    // Override footer text if provided
+    // Override footer text if provided (sanitize user input)
     const presetCopy = JSON.parse(JSON.stringify(preset));
     if (input.footerCustomText && presetCopy.footer) {
-      presetCopy.footer.customText = input.footerCustomText;
+      presetCopy.footer.customText = escapeHtml(input.footerCustomText.slice(0, 200));
       presetCopy.footer.showCustomText = true;
+    }
+
+    // Apply style overrides from user (header/footer toggles)
+    if (input.styleOverrides) {
+      const ov = input.styleOverrides;
+      if (ov.headerEnabled !== undefined) {
+        if (!presetCopy.header) {
+          presetCopy.header = { enabled: false, height: 60, backgroundColor: "transparent" };
+        }
+        presetCopy.header.enabled = ov.headerEnabled;
+      }
+      if (ov.showDeckTitle !== undefined && presetCopy.header) {
+        presetCopy.header.showDeckTitle = ov.showDeckTitle;
+      }
+      if (ov.footerEnabled !== undefined) {
+        if (!presetCopy.footer) {
+          presetCopy.footer = { enabled: false, height: 40, backgroundColor: "transparent" };
+        }
+        presetCopy.footer.enabled = ov.footerEnabled;
+      }
+      if (ov.showPageNumber !== undefined && presetCopy.footer) {
+        presetCopy.footer.showPageNumber = ov.showPageNumber;
+      }
     }
 
     const compiledSlides: unknown[] = [];
@@ -350,7 +416,7 @@ export async function generateAIDraft(
         imageUrl: imageUrls[i] ?? null,
         svgGraphic: svg,
         stylePreset: presetCopy,
-        deckTitle: input.prompt.slice(0, 50),
+        deckTitle: sanitizedPrompt.slice(0, 50),
         slideIndex: i,
         totalSlides: slides.length,
       });
@@ -363,7 +429,7 @@ export async function generateAIDraft(
 
     await updateProgress({ phase: 6, phaseLabel: "Saving slides..." });
 
-    const db = getDb();
+    const db = await getDb();
     if (!db) {
       await updateProgress({
         completed: true,
@@ -376,13 +442,13 @@ export async function generateAIDraft(
     }
 
     try {
-      await db.transaction(async (tx: unknown) => {
+      await db.transaction(async (tx) => {
         let expectedVersion = input.expectedVersion;
         for (const slideContent of compiledSlides) {
           await addSlideToDeck(
-            { deckId: input.deckId, expectedVersion, slideContent },
+            { deckId: input.deckId, expectedVersion, slideContent: slideContent as Record<string, unknown> },
             actor,
-            tx as never,
+            tx as unknown as DrizzleDB,
           );
           expectedVersion++;
         }
@@ -392,7 +458,7 @@ export async function generateAIDraft(
         completed: true,
         error: {
           code: PRESENTATION_ERROR_CODE.AI_GENERATION_FAILED,
-          message: `Slide insertion failed: ${(err as Error).message}`,
+          message: `Slide insertion failed: ${sanitizeErrorMessage(err)}`,
         },
       });
       return;
@@ -431,7 +497,7 @@ export async function generateAIDraft(
       completed: true,
       error: {
         code: PRESENTATION_ERROR_CODE.AI_GENERATION_FAILED,
-        message: `Unexpected error: ${(err as Error).message}`,
+        message: `Unexpected error: ${sanitizeErrorMessage(err)}`,
       },
     }).catch(() => {});
   } finally {

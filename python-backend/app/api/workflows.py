@@ -23,6 +23,7 @@ from app.models.workflow_event_subscription import WorkflowEventSubscription
 from app.orchestrator.cost_estimator import CostEstimator
 from app.orchestrator.execution_registry import get_active_execution, register_execution, unregister_execution
 from app.orchestrator.langgraph_runtime import get_langgraph_runtime
+from app.orchestrator.node_executors.skill_executor import discover_available_skills
 from app.orchestrator.node_registry import NodeRegistry
 from app.orchestrator.ring_buffer import get_ring_buffer_store
 from app.orchestrator.stream_translator import StreamTranslator
@@ -600,6 +601,7 @@ async def list_workflows(
 @router.post("/execute", response_model=ExecuteWorkflowResponse)
 async def execute_workflow(
     request: ExecuteWorkflowRequest,
+    http_request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -610,6 +612,10 @@ async def execute_workflow(
     Returns execution_id for tracking status.
     """
     workflow_json = request.workflowJson
+    auth_header = http_request.headers.get("authorization", "")
+    user_token: str = ""
+    if auth_header.lower().startswith("bearer "):
+        user_token = auth_header.split(" ", 1)[1].strip()
 
     # 1. Validate workflow is compiled
     if "_compiledMetadata" not in workflow_json:
@@ -681,6 +687,7 @@ async def execute_workflow(
             "execution_id": execution_id,
             "credits_available": user_balance,
             "form_values": input_data.get("form_values", {}),
+            "user_token": user_token,
         }
     }
 
@@ -1496,6 +1503,7 @@ async def get_image_providers(
                 "name": "Kie AI (Media Studio)",
                 "models": [
                     "google-nano-banana-pro",
+                    "google-banana-2",
                     "flux-2.0",
                     "z-image",
                     "grok-imagine",
@@ -2086,26 +2094,17 @@ async def get_available_skills(
     """
     Get list of available skills for skill nodes.
     """
-    # TODO: Integrate with skill registry
+    skills = discover_available_skills()
     return {
         "skills": [
             {
-                "id": "enhance-prompt",
-                "name": "Enhance Prompt",
-                "description": "Improve and expand user prompts",
-                "category": "text",
-            },
-            {
-                "id": "summarize",
-                "name": "Summarize Text",
-                "description": "Create concise summaries",
-                "category": "text",
-            },
-            {
-                "id": "translate",
-                "name": "Translate",
-                "description": "Translate text between languages",
-                "category": "text",
-            },
+                "id": skill["id"],
+                "name": skill["name"],
+                "description": skill.get("description", ""),
+                "category": skill.get("category", "general"),
+                "version": skill.get("version", "1.0.0"),
+                "source": skill.get("source", "unknown"),
+            }
+            for skill in skills
         ]
     }

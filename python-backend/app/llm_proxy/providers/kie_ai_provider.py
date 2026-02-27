@@ -9,9 +9,9 @@ from urllib.parse import urlparse
 
 logger = structlog.get_logger()
 
-# Model name mapping: SmartSpecPro -> Kie.ai API
-# Frontend uses prefixed names, Kie.ai API expects different names
-MODEL_NAME_MAP = {
+# Legacy model name mapping fallback: SmartSpecPro -> Kie.ai API
+# Primary source should be media_models.configJson.kieModelId (sent via api_config).
+FALLBACK_MODEL_NAME_MAP = {
     # Image models
     "gpt-4o-image": "gpt-image-1",
     "chatgpt-4o-image": "gpt-image-1",
@@ -20,6 +20,10 @@ MODEL_NAME_MAP = {
     "midjourney": "midjourney",
     "google-nano-banana-pro": "nano-banana-pro",
     "nano_banana_pro": "nano-banana-pro",
+    "google-banana-2": "nano-banana-2",
+    "google/nano-banana-2": "nano-banana-2",
+    "nano_banana_2": "nano-banana-2",
+    "google_banana_2": "nano-banana-2",
     "flux-2.0": "flux-2.0",
     "flux-2-0": "flux-2.0",
     "flux-1-1-pro": "flux-1.1-pro",
@@ -50,12 +54,65 @@ MODEL_NAME_MAP = {
     "music-cover": "music-cover",
 }
 
+_MODEL_RESOLUTION_STATS = {
+    "explicit_api_model": 0,
+    "fallback_alias_map": 0,
+    "passthrough_model": 0,
+}
+
+
+def get_model_resolution_stats() -> Dict[str, int]:
+    """Expose model-resolution counters for observability/tests."""
+    return dict(_MODEL_RESOLUTION_STATS)
+
+
+def reset_model_resolution_stats() -> None:
+    """Reset model-resolution counters."""
+    for key in _MODEL_RESOLUTION_STATS:
+        _MODEL_RESOLUTION_STATS[key] = 0
+
+
+def _get_api_config_value(api_config: Optional[Dict[str, Any]], *keys: str) -> Optional[str]:
+    """Read a string value from api_config supporting snake_case and camelCase keys."""
+    if not isinstance(api_config, dict):
+        return None
+
+    for key in keys:
+        value = api_config.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def resolve_api_model(model: str, api_config: Optional[Dict[str, Any]] = None) -> str:
+    """
+    Resolve Kie model ID from api_config first, then fallback alias mapping.
+    """
+    explicit_model = _get_api_config_value(
+        api_config,
+        "kie_model_id",
+        "kieModelId",
+        "model_id",
+        "modelId",
+    )
+    if explicit_model:
+        _MODEL_RESOLUTION_STATS["explicit_api_model"] += 1
+        return explicit_model
+
+    return normalize_model_name(model)
+
 
 def normalize_model_name(model: str) -> str:
-    """Convert SmartSpecPro model names to Kie.ai API model names"""
-    normalized = MODEL_NAME_MAP.get(model, model)
-    logger.debug("model_name_normalized", original=model, normalized=normalized)
-    return normalized
+    """Fallback conversion for legacy/internal model aliases."""
+    normalized = FALLBACK_MODEL_NAME_MAP.get(model)
+    if normalized:
+        _MODEL_RESOLUTION_STATS["fallback_alias_map"] += 1
+        logger.warning("kie_ai_model_alias_fallback_used", original=model, normalized=normalized)
+        return normalized
+
+    _MODEL_RESOLUTION_STATS["passthrough_model"] += 1
+    logger.debug("kie_ai_model_passthrough", model=model)
+    return model
 
 
 class KieAIProvider:
@@ -563,10 +620,7 @@ class KieAIProvider:
         extra_params = kwargs.pop("extra_params", None)
 
         # Determine API model name
-        if api_config and api_config.get("kie_model_id"):
-            api_model = api_config["kie_model_id"]
-        else:
-            api_model = normalize_model_name(model)
+        api_model = resolve_api_model(model, api_config)
 
         # Build input parameters for image generation
         input_params = {
@@ -620,11 +674,13 @@ class KieAIProvider:
                     callback_url=callback_url[:50] if callback_url else None)
 
         # Determine endpoint — use api_config endpoint or default to create_task
-        api_endpoint = api_config.get("endpoint") if api_config else None
+        api_endpoint = _get_api_config_value(api_config, "endpoint", "api_endpoint", "apiEndpoint")
 
         if api_endpoint and api_endpoint != "/api/v1/jobs/createTask":
             # Use custom endpoint directly (e.g., /api/v1/veo/generate)
             payload = {"prompt": prompt, **input_params}
+            if api_model:
+                payload["model"] = api_model
             if callback_url:
                 payload["callBackUrl"] = callback_url
             result = await self._make_request("POST", api_endpoint.removeprefix("/api/v1/"), data=payload)
@@ -680,10 +736,7 @@ class KieAIProvider:
         wait_for_completion = kwargs.pop("wait_for_completion", True)
 
         # Determine API model name
-        if api_config and api_config.get("kie_model_id"):
-            api_model = api_config["kie_model_id"]
-        else:
-            api_model = normalize_model_name(model)
+        api_model = resolve_api_model(model, api_config)
 
         input_params = {
             "prompt": prompt,
@@ -717,13 +770,13 @@ class KieAIProvider:
             callback_url = None
 
         # Determine endpoint — use api_config endpoint or default to create_task
-        api_endpoint = api_config.get("endpoint") if api_config else None
+        api_endpoint = _get_api_config_value(api_config, "endpoint", "api_endpoint", "apiEndpoint")
 
         if api_endpoint and api_endpoint != "/api/v1/jobs/createTask":
             # Use custom endpoint (e.g., /api/v1/veo/generate, /api/v1/runway/generate)
             payload = {"prompt": prompt, **input_params}
-            if api_config.get("kie_model_id"):
-                payload["model"] = api_config["kie_model_id"]
+            if api_model:
+                payload["model"] = api_model
             if callback_url:
                 payload["callBackUrl"] = callback_url
             result = await self._make_request("POST", api_endpoint.removeprefix("/api/v1/"), data=payload)
@@ -792,8 +845,9 @@ class KieAIProvider:
         Returns:
             Generation result with audio URL
         """
-        # Normalize model name for Kie.ai API
-        api_model = normalize_model_name(model)
+        # Resolve model ID from api_config first, then fallback alias mapping
+        api_config = kwargs.pop("api_config", None)
+        api_model = resolve_api_model(model, api_config)
 
         input_params = {"text": text}
 

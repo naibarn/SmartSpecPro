@@ -156,6 +156,9 @@ class Settings(BaseSettings):
     LANGSMITH_PROJECT: str = "smartspec-dev"
     LANGSMITH_ENDPOINT: str = "https://api.smith.langchain.com"
 
+    # Agency-Swarm
+    AGENCY_SWARM_ENABLED: bool = False
+
     # Rate Limiting
     RATE_LIMIT_PER_MINUTE: int = 60
     RATE_LIMIT_BURST: int = 10
