@@ -40,6 +40,7 @@ import { auditMiddleware } from "../middleware/auditMiddleware";
 import { correlationIdMiddleware } from "../middleware/correlationId";
 // BullMQ scheduler/queue init removed — migrated to Cloud Tasks (Section 05)
 import { initializeTelegramQueue, shutdownTelegramWorker } from "../services/telegramService";
+import { initDeliveryQueue, closeDeliveryQueue } from "../services/deliveryQueue";
 import { initializeTrashPurgeJob, shutdownTrashPurgeWorker } from "../jobs/purgeOldTrashItems";
 import { initializeGDriveCleanupJob, shutdownGDriveCleanupWorker } from "../jobs/gdriveSessionCleanup";
 import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
@@ -739,6 +740,13 @@ async function main() {
     console.error("[Startup] Failed to initialize Telegram queue:", error);
   }
 
+  // Initialize Chat Bridge delivery queue (BullMQ)
+  try {
+    await initDeliveryQueue();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize delivery queue:", error);
+  }
+
   // Initialize provider health circuit breaker from DB state
   try {
     await initFromDb();
@@ -822,6 +830,7 @@ process.on("SIGTERM", async () => {
   await shutdownGDriveCleanupWorker().catch(() => {});
   await shutdownTrashPurgeWorker().catch(() => {});
   await shutdownTelegramWorker().catch(() => {});
+  await closeDeliveryQueue().catch(() => {});
 
   // 4. Flush PostHog event batch
   try {
@@ -864,6 +873,7 @@ process.on("SIGINT", async () => {
   await shutdownGDriveCleanupWorker().catch(() => {});
   await shutdownTrashPurgeWorker().catch(() => {});
   await shutdownTelegramWorker().catch(() => {});
+  await closeDeliveryQueue().catch(() => {});
 
   try {
     const redis = getRedisClient();
