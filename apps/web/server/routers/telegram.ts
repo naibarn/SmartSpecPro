@@ -15,10 +15,11 @@ import {
   users,
   telegramLinkTokens,
   telegramConnections,
+  conversationChannels,
   conversations,
   agencyConversations,
 } from "../../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, count, sql } from "drizzle-orm";
 import { encrypt, decrypt } from "../services/crypto";
 import { clearTelegramCache } from "../services/telegramService";
 import { getRedisClient } from "../services/redis";
@@ -561,12 +562,54 @@ const checkTelegramStatus = protectedProcedure.query(async ({ ctx }) => {
 
   const prefs = (user.userPreferences || {}) as any;
 
+  // Query active connection details
+  const [activeConnection] = await db
+    .select({
+      id: telegramConnections.id,
+      telegramUsername: telegramConnections.telegramUsername,
+      status: telegramConnections.status,
+      linkedAt: telegramConnections.linkedAt,
+      activeChannelId: telegramConnections.activeChannelId,
+    })
+    .from(telegramConnections)
+    .where(
+      and(
+        eq(telegramConnections.userId, ctx.user.id),
+        eq(telegramConnections.status, "active"),
+      ),
+    )
+    .limit(1);
+
+  let boundConversationCount = 0;
+  if (activeConnection) {
+    const [countResult] = await db
+      .select({ cnt: count() })
+      .from(conversationChannels)
+      .where(
+        and(
+          eq(conversationChannels.connectionId, activeConnection.id),
+          eq(conversationChannels.state, "active"),
+        ),
+      );
+    boundConversationCount = Number(countResult?.cnt) || 0;
+  }
+
   return {
     linked: user.telegramVerified === true, // Canonical signal
     username: user.telegramUsername || undefined,
     verifiedAt: user.telegramVerifiedAt || undefined,
     notifyLevel: prefs.telegramNotifyLevel || "off",
     deliveryFailing: prefs.telegramDeliveryFailing || false,
+    connection: activeConnection
+      ? {
+          id: activeConnection.id,
+          telegramUsername: activeConnection.telegramUsername,
+          status: activeConnection.status,
+          linkedAt: activeConnection.linkedAt,
+          activeChannelId: activeConnection.activeChannelId,
+        }
+      : null,
+    boundConversationCount,
   };
 });
 
@@ -595,6 +638,33 @@ const unlinkTelegram = protectedProcedure.mutation(async ({ ctx }) => {
     telegramDeliveryFailing,
     ...remainingPrefs
   } = currentPrefs;
+
+  // Revoke active telegram_connections and their channel bindings
+  const activeConnections = await db
+    .select({ id: telegramConnections.id })
+    .from(telegramConnections)
+    .where(
+      and(
+        eq(telegramConnections.userId, ctx.user.id),
+        eq(telegramConnections.status, "active"),
+      ),
+    );
+
+  for (const conn of activeConnections) {
+    await db
+      .update(telegramConnections)
+      .set({
+        status: "revoked",
+        revokedAt: new Date(),
+        revokedBy: String(ctx.user.id),
+      })
+      .where(eq(telegramConnections.id, conn.id));
+
+    await db
+      .update(conversationChannels)
+      .set({ state: "revoked", updatedAt: new Date() })
+      .where(eq(conversationChannels.connectionId, conn.id));
+  }
 
   // Update users table - clear all Telegram fields
   await db
@@ -664,6 +734,439 @@ const updateTelegramPreferences = protectedProcedure
     return { success: true };
   });
 
+// ============================================================================
+// Chat Bridge Endpoints (Section 10)
+// ============================================================================
+
+/**
+ * Verify that the user owns the specified conversation.
+ * Throws TRPCError NOT_FOUND if the conversation doesn't exist or
+ * doesn't belong to the user.
+ */
+async function verifyConversationOwnership(
+  database: any,
+  userId: number,
+  conversationId: string,
+  conversationType: "chat" | "agency",
+): Promise<void> {
+  if (conversationType === "chat") {
+    const numericId = parseInt(conversationId, 10);
+    if (isNaN(numericId)) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Conversation not found",
+      });
+    }
+    const [conv] = await database
+      .select({ id: conversations.id })
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.id, numericId),
+          eq(conversations.userId, userId),
+        ),
+      )
+      .limit(1);
+    if (!conv) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Conversation not found",
+      });
+    }
+  } else {
+    const [conv] = await database
+      .select({ id: agencyConversations.id })
+      .from(agencyConversations)
+      .where(
+        and(
+          eq(agencyConversations.id, conversationId),
+          eq(agencyConversations.userId, userId),
+        ),
+      )
+      .limit(1);
+    if (!conv) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Conversation not found",
+      });
+    }
+  }
+}
+
+/**
+ * Get Telegram channel binding status for a conversation.
+ */
+const getConversationChannelStatus = protectedProcedure
+  .input(
+    z.object({
+      conversationId: z.string(),
+      conversationType: z.enum(["chat", "agency"]).default("chat"),
+    }),
+  )
+  .query(async ({ input, ctx }) => {
+    const database = await getDb();
+    if (!database) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+    }
+
+    await verifyConversationOwnership(
+      database,
+      ctx.user.id,
+      input.conversationId,
+      input.conversationType,
+    );
+
+    // Find active channel binding
+    const convCondition =
+      input.conversationType === "chat"
+        ? eq(conversationChannels.chatConversationId, parseInt(input.conversationId, 10))
+        : eq(conversationChannels.agencyConversationId, input.conversationId);
+
+    const [channel] = await database
+      .select({
+        id: conversationChannels.id,
+        syncMode: conversationChannels.syncMode,
+        connectionId: conversationChannels.connectionId,
+      })
+      .from(conversationChannels)
+      .where(
+        and(
+          convCondition,
+          eq(conversationChannels.channelType, "telegram"),
+          eq(conversationChannels.state, "active"),
+        ),
+      )
+      .limit(1);
+
+    if (!channel) {
+      return { bound: false as const };
+    }
+
+    // Get connection status
+    let connectionStatus = "unknown";
+    if (channel.connectionId) {
+      const [conn] = await database
+        .select({ status: telegramConnections.status })
+        .from(telegramConnections)
+        .where(eq(telegramConnections.id, channel.connectionId))
+        .limit(1);
+      if (conn) connectionStatus = conn.status;
+    }
+
+    return {
+      bound: true as const,
+      syncMode: channel.syncMode,
+      connectionStatus,
+    };
+  });
+
+/**
+ * Bind a conversation to the user's active Telegram connection.
+ */
+const bindConversation = protectedProcedure
+  .input(
+    z.object({
+      conversationId: z.string(),
+      conversationType: z.enum(["chat", "agency"]),
+      syncMode: z.enum(["two_way", "notify_only"]).default("two_way"),
+    }),
+  )
+  .mutation(async ({ input, ctx }) => {
+    const database = await getDb();
+    if (!database) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+    }
+
+    await verifyConversationOwnership(
+      database,
+      ctx.user.id,
+      input.conversationId,
+      input.conversationType,
+    );
+
+    // Require active Telegram connection
+    const [connection] = await database
+      .select()
+      .from(telegramConnections)
+      .where(
+        and(
+          eq(telegramConnections.userId, ctx.user.id),
+          eq(telegramConnections.status, "active"),
+        ),
+      )
+      .limit(1);
+
+    if (!connection) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "No active Telegram connection. Link your account first.",
+      });
+    }
+
+    // Check for duplicate binding
+    const convCondition =
+      input.conversationType === "chat"
+        ? eq(conversationChannels.chatConversationId, parseInt(input.conversationId, 10))
+        : eq(conversationChannels.agencyConversationId, input.conversationId);
+
+    const [existing] = await database
+      .select({ id: conversationChannels.id })
+      .from(conversationChannels)
+      .where(
+        and(
+          convCondition,
+          eq(conversationChannels.channelType, "telegram"),
+          eq(conversationChannels.state, "active"),
+        ),
+      )
+      .limit(1);
+
+    if (existing) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "This conversation is already bound to Telegram.",
+      });
+    }
+
+    const channelId = crypto.randomUUID();
+    const now = new Date();
+
+    try {
+      await database.insert(conversationChannels).values({
+        id: channelId,
+        tenantId: connection.tenantId,
+        chatConversationId:
+          input.conversationType === "chat"
+            ? parseInt(input.conversationId, 10)
+            : null,
+        agencyConversationId:
+          input.conversationType === "agency" ? input.conversationId : null,
+        conversationType: input.conversationType,
+        channelType: "telegram",
+        channelRefId: connection.telegramChatId,
+        connectionId: connection.id,
+        syncMode: input.syncMode,
+        state: "active",
+        createdAt: now,
+        updatedAt: now,
+      });
+    } catch (err: any) {
+      if (err?.code === "23505") {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "This conversation is already bound to Telegram.",
+        });
+      }
+      throw err;
+    }
+
+    // Auto-select as active channel
+    await database
+      .update(telegramConnections)
+      .set({ activeChannelId: channelId })
+      .where(eq(telegramConnections.id, connection.id));
+
+    return { success: true, channelId };
+  });
+
+/**
+ * Unbind a conversation from Telegram.
+ */
+const unbindConversation = protectedProcedure
+  .input(
+    z.object({
+      conversationId: z.string(),
+      conversationType: z.enum(["chat", "agency"]).default("chat"),
+    }),
+  )
+  .mutation(async ({ input, ctx }) => {
+    const database = await getDb();
+    if (!database) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+    }
+
+    await verifyConversationOwnership(
+      database,
+      ctx.user.id,
+      input.conversationId,
+      input.conversationType,
+    );
+
+    // Find the active channel binding
+    const convCondition =
+      input.conversationType === "chat"
+        ? eq(conversationChannels.chatConversationId, parseInt(input.conversationId, 10))
+        : eq(conversationChannels.agencyConversationId, input.conversationId);
+
+    const [channel] = await database
+      .select({
+        id: conversationChannels.id,
+        connectionId: conversationChannels.connectionId,
+      })
+      .from(conversationChannels)
+      .where(
+        and(
+          convCondition,
+          eq(conversationChannels.channelType, "telegram"),
+          eq(conversationChannels.state, "active"),
+        ),
+      )
+      .limit(1);
+
+    if (!channel) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "No active Telegram binding for this conversation.",
+      });
+    }
+
+    // Revoke the channel
+    await database
+      .update(conversationChannels)
+      .set({ state: "revoked", updatedAt: new Date() })
+      .where(eq(conversationChannels.id, channel.id));
+
+    // Clear activeChannelId if it pointed to this channel
+    if (channel.connectionId) {
+      const [conn] = await database
+        .select({ activeChannelId: telegramConnections.activeChannelId })
+        .from(telegramConnections)
+        .where(eq(telegramConnections.id, channel.connectionId))
+        .limit(1);
+
+      if (conn && conn.activeChannelId === channel.id) {
+        await database
+          .update(telegramConnections)
+          .set({ activeChannelId: null })
+          .where(eq(telegramConnections.id, channel.connectionId));
+      }
+    }
+
+    return { success: true };
+  });
+
+/**
+ * Admin: List all Telegram connections for the tenant.
+ */
+const adminListConnections = adminProcedure
+  .input(
+    z.object({
+      status: z.enum(["active", "revoked", "pending", "blocked"]).optional(),
+      limit: z.number().int().min(1).max(100).default(20),
+      offset: z.number().int().min(0).default(0),
+    }),
+  )
+  .query(async ({ input, ctx }) => {
+    const database = await getDb();
+    if (!database) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+    }
+
+    const tenantId = String(ctx.user.currentTenantId ?? "");
+
+    // Build conditions
+    const conditions = [eq(telegramConnections.tenantId, tenantId)];
+    if (input.status) {
+      conditions.push(eq(telegramConnections.status, input.status));
+    }
+
+    const whereClause = conditions.length === 1 ? conditions[0] : and(...conditions);
+
+    // Count total
+    const [countResult] = await database
+      .select({ total: count() })
+      .from(telegramConnections)
+      .where(whereClause);
+
+    const total = countResult?.total ?? 0;
+
+    // Fetch paginated data with user info
+    const connections = await database
+      .select({
+        id: telegramConnections.id,
+        userId: telegramConnections.userId,
+        telegramUserId: telegramConnections.telegramUserId,
+        telegramUsername: telegramConnections.telegramUsername,
+        status: telegramConnections.status,
+        linkedAt: telegramConnections.linkedAt,
+        revokedAt: telegramConnections.revokedAt,
+        userEmail: users.email,
+        userName: users.name,
+      })
+      .from(telegramConnections)
+      .leftJoin(users, eq(telegramConnections.userId, users.id))
+      .where(whereClause)
+      .limit(input.limit)
+      .offset(input.offset);
+
+    return { connections, total };
+  });
+
+/**
+ * Admin: Revoke a Telegram connection and all its channel bindings.
+ */
+const adminRevokeConnection = adminProcedure
+  .input(z.object({ connectionId: z.string() }))
+  .mutation(async ({ input, ctx }) => {
+    const database = await getDb();
+    if (!database) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+    }
+
+    const tenantId = String(ctx.user.currentTenantId ?? "");
+
+    // Verify connection exists, belongs to tenant, and is active
+    const [connection] = await database
+      .select()
+      .from(telegramConnections)
+      .where(
+        and(
+          eq(telegramConnections.id, input.connectionId),
+          eq(telegramConnections.tenantId, tenantId),
+          eq(telegramConnections.status, "active"),
+        ),
+      )
+      .limit(1);
+
+    if (!connection) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Connection not found",
+      });
+    }
+
+    const now = new Date();
+
+    // Revoke connection
+    await database
+      .update(telegramConnections)
+      .set({
+        status: "revoked",
+        revokedAt: now,
+        revokedBy: String(ctx.user.id),
+      })
+      .where(eq(telegramConnections.id, connection.id));
+
+    // Revoke all channel bindings
+    await database
+      .update(conversationChannels)
+      .set({ state: "revoked", updatedAt: now })
+      .where(eq(conversationChannels.connectionId, connection.id));
+
+    // Clear legacy user fields for backward compat
+    await database
+      .update(users)
+      .set({
+        telegramVerified: false,
+        telegramChatId: null,
+        telegramUsername: null,
+        telegramVerifiedAt: null,
+      })
+      .where(eq(users.id, connection.userId));
+
+    return { success: true };
+  });
+
 export const telegramRouter = router({
   // Admin endpoints
   getTelegramSettings,
@@ -676,4 +1179,13 @@ export const telegramRouter = router({
   checkTelegramStatus,
   unlinkTelegram,
   updateTelegramPreferences,
+
+  // Chat Bridge endpoints
+  getConversationChannelStatus,
+  bindConversation,
+  unbindConversation,
+
+  // Admin Chat Bridge endpoints
+  adminListConnections,
+  adminRevokeConnection,
 });
