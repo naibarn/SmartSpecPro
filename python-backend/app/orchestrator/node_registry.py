@@ -3814,6 +3814,61 @@ class NodeRegistry:
             )
         )
 
+        # Agency Run node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="agency_run",
+                display_name="Agency Run",
+                description="Execute a multi-agent agency",
+                icon="Users",
+                color="purple",
+                category="ai",
+                inputs=[
+                    InputSpec(
+                        name="agency_id",
+                        display_name="Agency",
+                        data_type="text",
+                        ui_type="select",
+                        required=True,
+                        accepts_connection=False,
+                        options_endpoint="/api/v1/workflows/agencies",
+                        placeholder="Select an agency...",
+                    ),
+                    InputSpec(
+                        name="message",
+                        display_name="Message",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Enter message or connect from previous node...",
+                    ),
+                    InputSpec(
+                        name="timeout_seconds",
+                        display_name="Timeout (seconds)",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=600,
+                        validation={"min": 10, "max": 3600},
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(
+                        name="result",
+                        display_name="Agency Result",
+                        data_type="text",
+                    ),
+                    OutputSpec(
+                        name="run_metadata",
+                        display_name="Run Metadata",
+                        data_type="json",
+                    ),
+                ],
+                executor="app.orchestrator.node_executors.agency_executor.AgencyExecutor",
+            )
+        )
 
 
 # Helper function to get executor class by node type

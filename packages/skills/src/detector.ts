@@ -6,7 +6,12 @@
  * Each platform wires up its own skill source and filtering.
  */
 
-import type { SkillDefinition, SkillDetectionResult } from "./types";
+import type {
+  SkillDefinition,
+  SkillDetectionResult,
+  AgencyTriggerDefinition,
+  AgencyDetectionResult,
+} from "./types";
 
 /**
  * Detect if a message triggers any skill from a given skill list.
@@ -197,4 +202,66 @@ export function formatSkillDetection(result: SkillDetectionResult): string {
   if (!result.detected || !result.skill) return "";
   const pct = Math.round(result.confidence * 100);
   return `[Detected: ${result.skill.name} (${pct}% confidence)]`;
+}
+
+// ---- Agency Detection ----
+
+/**
+ * Detect if a message triggers any agency from a given list.
+ * Structurally identical to detectSkillFromList but for agencies.
+ * Agencies are sorted by priority (higher first) before matching.
+ */
+export function detectAgencyFromList(
+  message: string,
+  agencies: AgencyTriggerDefinition[]
+): AgencyDetectionResult {
+  const noMatch: AgencyDetectionResult = {
+    detected: false,
+    agency: null,
+    confidence: 0,
+    matchedTrigger: null,
+    suggestedPrompt: null,
+  };
+
+  // Sort by priority descending (higher priority checked first)
+  const sorted = [...agencies].sort((a, b) => b.priority - a.priority);
+
+  for (const agency of sorted) {
+    for (const trigger of agency.triggers) {
+      const match = message.match(trigger.regex);
+      if (match) {
+        const confidence = calculateAgencyConfidence(message, match[0]);
+        const suggestedPrompt = extractPrompt(message, match[0]);
+
+        return {
+          detected: true,
+          agency,
+          confidence,
+          matchedTrigger: match[0],
+          suggestedPrompt,
+        };
+      }
+    }
+  }
+
+  return noMatch;
+}
+
+/**
+ * Calculate detection confidence for agency triggers.
+ */
+function calculateAgencyConfidence(message: string, matchedText: string): number {
+  let confidence = 0.7;
+
+  // Higher confidence if match is at the start
+  if (message.toLowerCase().startsWith(matchedText.toLowerCase())) {
+    confidence += 0.15;
+  }
+
+  // Higher confidence for longer, more specific matches
+  if (matchedText.length > 10) {
+    confidence += 0.05;
+  }
+
+  return Math.min(Math.max(confidence, 0), 1);
 }
