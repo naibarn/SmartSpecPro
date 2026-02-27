@@ -297,8 +297,15 @@ const registerWebhook = adminProcedure.mutation(async () => {
     const botToken = decrypt(botTokenEncrypted);
     const webhookSecret = decrypt(webhookSecretEncrypted);
 
-    // Construct webhook URL
-    const webhookUrl = `${appUrl}/api/webhook/telegram`;
+    // Construct webhook URL using bot_username as path identifier
+    const botUsername = settingsMap.get("bot_username");
+    if (!botUsername) {
+      return {
+        success: false,
+        error: "Bot username not configured. Please set bot username in Telegram settings.",
+      };
+    }
+    const webhookUrl = `https://smartaihub.app/webhooks/telegram/${botUsername}`;
 
     const url = `https://api.telegram.org/bot${botToken}/setWebhook`;
 
@@ -308,7 +315,7 @@ const registerWebhook = adminProcedure.mutation(async () => {
       body: JSON.stringify({
         url: webhookUrl,
         secret_token: webhookSecret,
-        allowed_updates: ["message"],
+        allowed_updates: ["message", "callback_query"],
       }),
       signal: AbortSignal.timeout(10000), // 10s timeout
     });

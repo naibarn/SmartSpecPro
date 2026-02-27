@@ -20,6 +20,7 @@ import { registerMediaJobRoutes } from "../routers/mediaJobs";
 import { registerAgencyStreamRoutes } from "./agencyStreamProxy";
 
 import { createWebhookRouter } from "../routes/webhooks";
+import { createTelegramWebhookRouter } from "../routes/telegramWebhook";
 import { createSlideRenderRouter } from "../routes/slideRender";
 import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
 import { registerServicesRoutes } from "../routers/services";
@@ -222,7 +223,9 @@ const csrfCheck = (req: any, res: any, next: any) => {
     req.path === "/v1/media/callback/kie-ai" ||
     req.originalUrl === "/api/v1/media/callback/kie-ai" ||
     req.path.startsWith("/webhooks/gdrive") ||
-    req.originalUrl.startsWith("/api/webhooks/gdrive")
+    req.originalUrl.startsWith("/api/webhooks/gdrive") ||
+    req.path.startsWith("/webhooks/telegram/") ||
+    req.originalUrl.startsWith("/webhooks/telegram/")
   ) {
     return next();
   }
@@ -327,8 +330,11 @@ app.get("/api/storage/files/*", async (req, res) => {
 // Internal slide render route — localhost-only, JWT-gated, for Playwright screenshots
 app.use("/internal", createSlideRenderRouter());
 
-// Webhook routes (before CSRF-protected routes, Google Drive sends raw POSTs)
+// Webhook routes (before CSRF-protected routes, external services send raw POSTs)
 app.use("/api/webhooks", createWebhookRouter());
+
+// Telegram Bot API webhook (Telegram sends POSTs with secret-token header, no Origin)
+app.use("/webhooks/telegram", createTelegramWebhookRouter());
 
 // Cloud Tasks handler routes (called by Cloud Tasks with OIDC auth)
 // Mounted at /_internal/tasks to avoid conflict with the frontend /tasks SPA route
