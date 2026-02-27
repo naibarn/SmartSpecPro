@@ -964,4 +964,130 @@ export const agencyRouter = router({
 
       return { alerts };
     }),
+
+  // --- Templates ---
+
+  listTemplates: protectedProcedure.query(async ({ ctx }) => {
+    const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+    await assertAgencyEnabled(tenantId);
+    const templatesEnabled = await getTenantFeatureFlag(
+      "AGENCY_TEMPLATES_ENABLED",
+      tenantId,
+    );
+    if (!templatesEnabled) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Not found" });
+    }
+
+    const { getTemplates } = await import(
+      "../../skills/agency-templates/index"
+    );
+    return getTemplates().map((t) => ({
+      id: t.id,
+      name: t.name,
+      description: t.description,
+      longDescription: t.longDescription,
+      category: t.category,
+      agentCount: t.agentCount,
+      icon: t.icon,
+      agents: t.agents.map((a) => ({
+        name: a.name,
+        description: a.description,
+        model: a.model,
+        isEntryPoint: a.isEntryPoint,
+        isOptional: a.isOptional,
+      })),
+      communicationFlows: t.communicationFlows,
+    }));
+  }),
+
+  createFromTemplate: agencyTemplateProcedure
+    .input(
+      z.object({
+        templateId: z.string(),
+        name: z.string().min(1).max(255).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      await assertAgencyEnabled(tenantId);
+      const templatesEnabled = await getTenantFeatureFlag(
+        "AGENCY_TEMPLATES_ENABLED",
+        tenantId,
+      );
+      if (!templatesEnabled) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Not found" });
+      }
+
+      const { getTemplateById } = await import(
+        "../../skills/agency-templates/index"
+      );
+      const template = getTemplateById(input.templateId);
+      if (!template) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Template not found",
+        });
+      }
+
+      const userId = ctx.user!.id;
+      const name = input.name || template.name;
+      const slug = `${template.id}-${crypto.randomUUID().slice(0, 8)}`;
+      const agencyId = crypto.randomUUID();
+
+      await db.transaction(async (tx) => {
+        await tx.insert(agencies).values({
+          id: agencyId,
+          tenantId,
+          slug,
+          name,
+          description: template.description,
+          systemPrompt: null,
+          creditMultiplier: String(template.defaultSettings.creditMultiplier),
+          maxAgents: template.agentCount,
+          maxRunTimeSeconds: template.defaultSettings.maxRunTimeSeconds,
+          isFallbackSafe: template.defaultSettings.isFallbackSafe,
+          status: "draft",
+          createdBy: userId,
+        });
+
+        const agentNameToId: Record<string, string> = {};
+
+        for (const agent of template.agents) {
+          const agentId = crypto.randomUUID();
+          agentNameToId[agent.name] = agentId;
+
+          await tx.insert(agencyAgents).values({
+            id: agentId,
+            agencyId,
+            name: agent.name,
+            description: agent.description,
+            instructions: agent.instructions,
+            model: agent.model,
+            isEntryPoint: agent.isEntryPoint,
+            isOptional: agent.isOptional,
+            position: agent.position,
+          });
+        }
+
+        for (const flow of template.communicationFlows) {
+          const fromId = agentNameToId[flow.fromAgentName];
+          const toId = agentNameToId[flow.toAgentName];
+          if (!fromId || !toId) {
+            throw new TRPCError({
+              code: "INTERNAL_SERVER_ERROR",
+              message: `Invalid template: agent name "${!fromId ? flow.fromAgentName : flow.toAgentName}" not found`,
+            });
+          }
+          await tx.insert(agencyCommunicationFlows).values({
+            id: crypto.randomUUID(),
+            agencyId,
+            fromAgentId: fromId,
+            toAgentId: toId,
+            flowType: flow.flowType,
+          });
+        }
+      });
+
+      return { agencyId };
+    }),
 });

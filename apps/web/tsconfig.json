@@ -5,6 +5,7 @@
     "shared/**/*",
     "server/**/*",
     "drizzle/**/*",
+    "skills/**/*",
     "vite.config.ts",
     "../../packages/ui/src/**/*"
   ],

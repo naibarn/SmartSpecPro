@@ -1,0 +1,50 @@
+{
+  "id": "code-review",
+  "name": "Code Review Agency",
+  "description": "A review team that analyzes code for bugs, tests for edge cases, and produces structured review reports.",
+  "longDescription": "The Code Review Agency automates multi-perspective code review. The Reviewer agent analyzes code for bugs, security issues, and best practices. The Tester agent identifies edge cases and missing test coverage. The Reporter agent compiles findings into a structured review report.",
+  "category": "engineering",
+  "agentCount": 3,
+  "icon": "Code",
+  "agents": [
+    {
+      "name": "Reviewer",
+      "description": "Analyzes code for bugs, security issues, and best practices",
+      "instructions": "You are a senior code reviewer. Analyze the provided code for: bugs and logic errors, security vulnerabilities, performance issues, code style and best practices, and potential maintenance concerns. Provide specific, actionable feedback with line references where possible.",
+      "model": "gpt-4o",
+      "isEntryPoint": true,
+      "isOptional": false,
+      "position": { "x": 250, "y": 50 },
+      "toolIds": []
+    },
+    {
+      "name": "Tester",
+      "description": "Identifies edge cases and suggests test scenarios",
+      "instructions": "You are a QA engineer and testing specialist. Analyze the code to identify: missing test coverage, edge cases that should be tested, potential failure modes, and suggested test scenarios. For each finding, describe the test case, expected behavior, and priority.",
+      "model": "gpt-4o",
+      "isEntryPoint": false,
+      "isOptional": true,
+      "position": { "x": 100, "y": 250 },
+      "toolIds": []
+    },
+    {
+      "name": "Reporter",
+      "description": "Compiles review findings into structured reports",
+      "instructions": "You are a technical report writer. Compile the findings from the Reviewer and Tester into a structured code review report. Organize by severity (critical, major, minor, suggestion). Include an executive summary, detailed findings with code references, and prioritized recommendations.",
+      "model": "gpt-4o",
+      "isEntryPoint": false,
+      "isOptional": false,
+      "position": { "x": 400, "y": 250 },
+      "toolIds": []
+    }
+  ],
+  "communicationFlows": [
+    { "fromAgentName": "Reviewer", "toAgentName": "Tester", "flowType": "delegation" },
+    { "fromAgentName": "Reviewer", "toAgentName": "Reporter", "flowType": "delegation" }
+  ],
+  "defaultSettings": {
+    "creditMultiplier": 1.0,
+    "maxRunTimeSeconds": 600,
+    "isFallbackSafe": true
+  }
+}

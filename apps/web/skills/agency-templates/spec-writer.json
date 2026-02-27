@@ -1,0 +1,50 @@
+{
+  "id": "spec-writer",
+  "name": "Spec Writer Agency",
+  "description": "A product team that collaborates on writing detailed technical specifications from requirements.",
+  "longDescription": "The Spec Writer Agency models a product team workflow. The PM agent gathers and clarifies requirements. The Architect agent designs the technical approach. The Writer agent produces the formal specification document.",
+  "category": "engineering",
+  "agentCount": 3,
+  "icon": "FileText",
+  "agents": [
+    {
+      "name": "PM",
+      "description": "Gathers requirements and coordinates the specification process",
+      "instructions": "You are a product manager. Analyze the feature request or requirements input, identify ambiguities, define acceptance criteria, and coordinate with the Architect for technical design and the Writer for documentation. Ensure the final specification is complete and actionable.",
+      "model": "gpt-4o",
+      "isEntryPoint": true,
+      "isOptional": false,
+      "position": { "x": 250, "y": 50 },
+      "toolIds": []
+    },
+    {
+      "name": "Architect",
+      "description": "Designs technical approach and system architecture",
+      "instructions": "You are a software architect. Given product requirements, design the technical approach: system components, data models, APIs, integration points, and trade-offs. Consider scalability, security, and maintainability. Provide structured technical decisions.",
+      "model": "gpt-4o",
+      "isEntryPoint": false,
+      "isOptional": false,
+      "position": { "x": 100, "y": 250 },
+      "toolIds": []
+    },
+    {
+      "name": "Writer",
+      "description": "Produces formal specification documents",
+      "instructions": "You are a technical writer specializing in specifications. Combine product requirements and architectural decisions into a clear, formal specification document. Include sections for overview, requirements, technical design, API contracts, data models, and acceptance criteria.",
+      "model": "gpt-4o",
+      "isEntryPoint": false,
+      "isOptional": false,
+      "position": { "x": 400, "y": 250 },
+      "toolIds": []
+    }
+  ],
+  "communicationFlows": [
+    { "fromAgentName": "PM", "toAgentName": "Architect", "flowType": "delegation" },
+    { "fromAgentName": "PM", "toAgentName": "Writer", "flowType": "delegation" }
+  ],
+  "defaultSettings": {
+    "creditMultiplier": 1.0,
+    "maxRunTimeSeconds": 900,
+    "isFallbackSafe": true
+  }
+}
