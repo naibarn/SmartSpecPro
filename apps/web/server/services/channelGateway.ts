@@ -23,6 +23,7 @@ import type {
 import { enqueueDelivery } from "./deliveryQueue";
 import { sendTelegramMessage } from "./telegramService";
 import { getMessage } from "./telegramI18n";
+import { renderForTelegram } from "./telegramRendering";
 import { inArray } from "drizzle-orm";
 import {
   createMessage,
@@ -196,9 +197,9 @@ async function emitEgress(event: ChatEgressEvent): Promise<void> {
         deliveryStatus: "pending",
       });
 
-      // Build delivery job with deterministic ID for dedup
-      const text = event.rendering.html || event.rendering.plainText;
-      const chunks = splitForTelegram(text);
+      // Render and split message for Telegram
+      const text = event.rendering.plainText;
+      const chunks = renderForTelegram(text);
 
       for (let i = 0; i < chunks.length; i++) {
         const job: DeliveryJob = {
@@ -455,6 +456,40 @@ async function processMessageServerSide(
   }
 }
 
+// ── Active channel check ─────────────────────────────────────────────────
+
+/**
+ * Fast check for whether a conversation has any active Telegram channel bindings.
+ * Used by pipeline hooks to avoid constructing ChatEgressEvent when unnecessary.
+ */
+async function hasActiveChannels(
+  conversationId: number | string,
+  conversationType: "chat" | "agency",
+): Promise<boolean> {
+  try {
+    const condition =
+      conversationType === "chat"
+        ? eq(conversationChannels.chatConversationId, Number(conversationId))
+        : eq(conversationChannels.agencyConversationId, String(conversationId));
+
+    const [row] = await db
+      .select({ id: conversationChannels.id })
+      .from(conversationChannels)
+      .where(
+        and(
+          condition,
+          eq(conversationChannels.channelType, "telegram"),
+          eq(conversationChannels.state, "active"),
+        ),
+      )
+      .limit(1);
+
+    return !!row;
+  } catch {
+    return false;
+  }
+}
+
 // ── Export ─────────────────────────────────────────────────────────────────
 
 export const channelGateway = {
@@ -463,4 +498,5 @@ export const channelGateway = {
   sendTypingLoop,
   handleNonTextMessage,
   processMessageServerSide,
+  hasActiveChannels,
 };

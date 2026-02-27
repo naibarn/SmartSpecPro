@@ -362,10 +362,10 @@ describe("channelGateway", () => {
 
       expect(mockEnqueueDelivery).toHaveBeenCalledTimes(2);
       expect(mockEnqueueDelivery).toHaveBeenCalledWith(
-        expect.objectContaining({ chatId: "111", text: "<b>Hello!</b>" }),
+        expect.objectContaining({ chatId: "111", text: "Hello!" }),
       );
       expect(mockEnqueueDelivery).toHaveBeenCalledWith(
-        expect.objectContaining({ chatId: "222", text: "<b>Hello!</b>" }),
+        expect.objectContaining({ chatId: "222", text: "Hello!" }),
       );
     });
 

@@ -591,6 +591,35 @@ export const agencyRouter = router({
         userId,
       });
 
+      // --- Channel bridge fan-out (section-08) ---
+      try {
+        const { channelGateway } = await import("../services/channelGateway");
+        const hasChannels = await channelGateway.hasActiveChannels(
+          input.conversationId,
+          "agency",
+        );
+        if (hasChannels && (result as any).messages?.length) {
+          const lastAssistant = [...(result as any).messages]
+            .reverse()
+            .find((m: any) => m.role === "assistant");
+          if (lastAssistant) {
+            await channelGateway.emitEgress({
+              eventId: crypto.randomUUID(),
+              conversationId: input.conversationId,
+              conversationType: "agency",
+              messageId: String(lastAssistant.id ?? ""),
+              tenantId,
+              targets: [],
+              rendering: {
+                plainText: lastAssistant.content ?? "",
+              },
+            });
+          }
+        }
+      } catch (err) {
+        console.error("[Agency] emitEgress failed:", err);
+      }
+
       return result;
     }),
 
