@@ -57,13 +57,15 @@ from app.api import (
     csrf,  # CSRF Protection
     oauth,  # OAuth Social Login
     telegram_webhook,  # Telegram bot webhook for account linking
-    internal_mcp,  # Internal MCP tools API (Google Drive)
-    internal_gdrive,  # Internal Google Drive sync API
-    onedrive,  # OneDrive file operations API
-    internal_onedrive,  # Internal OneDrive sync API
-    admin_alerts,  # Admin alert threshold checking
-    internal_library,  # Internal library scope propagation API
-)
+     internal_mcp,  # Internal MCP tools API (Google Drive)
+     internal_gdrive,  # Internal Google Drive sync API
+     onedrive,  # OneDrive file operations API
+     internal_onedrive,  # Internal OneDrive sync API
+     admin_alerts,  # Admin alert threshold checking
+     internal_library,  # Internal library scope propagation API
+    internal_sandbox,  # Internal sandbox dispatch/cancel API
+    agencies,  # Agency-Swarm multi-agent endpoints
+ )
 from app.api.v1 import (
     skills,
     auth_generator,
@@ -297,6 +299,8 @@ app.include_router(onedrive.router, tags=["OneDrive"])
 app.include_router(internal_onedrive.router, tags=["Internal OneDrive"])
 app.include_router(admin_alerts.router, tags=["Admin Alerts"])
 app.include_router(internal_library.router, tags=["Internal Library"])
+app.include_router(internal_sandbox.router, tags=["Internal Sandbox"])
+app.include_router(agencies.router, tags=["Agencies"])
 
 @app.get("/")
 async def root():

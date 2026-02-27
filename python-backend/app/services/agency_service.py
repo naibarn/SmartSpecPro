@@ -428,3 +428,156 @@ class AgencyService:
                 "event": "run_error",
                 "data": {"error_type": type(exc).__name__, "message": str(exc)[:500]},
             }
+
+    async def list_runs(
+        self,
+        agency_id: str,
+        tenant_id: str,
+        limit: int = 20,
+        offset: int = 0,
+        status_filter: str | None = None,
+    ) -> dict:
+        """List runs for an agency filtered by tenant.
+
+        Returns dict with 'runs' list and 'total' count.
+        """
+        params: dict = {
+            "agency_id": agency_id,
+            "tenant_id": tenant_id,
+            "limit": limit,
+            "offset": offset,
+        }
+
+        where_clause = "WHERE agency_id = :agency_id AND tenant_id = :tenant_id"
+        if status_filter:
+            where_clause += " AND status = :status"
+            params["status"] = status_filter
+
+        # Count
+        count_result = await self.db.execute(
+            text(f"SELECT count(*) FROM agency_runs {where_clause}"),
+            params,
+        )
+        total = count_result.scalar() or 0
+
+        # Fetch
+        result = await self.db.execute(
+            text(f"""
+                SELECT id, status,
+                       COALESCE(total_credits_used, 0) as total_credits_used,
+                       started_at, completed_at, duration_ms,
+                       error_type, error_message,
+                       COALESCE(step_count, 0) as step_count
+                FROM agency_runs
+                {where_clause}
+                ORDER BY started_at DESC NULLS LAST
+                LIMIT :limit OFFSET :offset
+            """),
+            params,
+        )
+
+        runs = [
+            {
+                "id": row.id,
+                "status": row.status,
+                "total_credits_used": float(row.total_credits_used),
+                "started_at": row.started_at.isoformat() if row.started_at else None,
+                "completed_at": row.completed_at.isoformat() if row.completed_at else None,
+                "duration_ms": row.duration_ms,
+                "error_type": row.error_type,
+                "error_message": row.error_message,
+                "step_count": row.step_count,
+            }
+            for row in result.all()
+        ]
+
+        return {"runs": runs, "total": total}
+
+    async def get_run(
+        self,
+        run_id: str,
+        agency_id: str,
+        tenant_id: str,
+    ) -> dict:
+        """Get a single run by ID, scoped to agency and tenant.
+
+        Raises AgencyNotFoundError if not found or wrong tenant.
+        """
+        result = await self.db.execute(
+            text("""
+                SELECT id, status,
+                       COALESCE(total_credits_used, 0) as total_credits_used,
+                       started_at, completed_at, duration_ms,
+                       error_type, error_message,
+                       COALESCE(step_count, 0) as step_count
+                FROM agency_runs
+                WHERE id = :run_id
+                  AND agency_id = :agency_id
+                  AND tenant_id = :tenant_id
+            """),
+            {"run_id": run_id, "agency_id": agency_id, "tenant_id": tenant_id},
+        )
+        row = result.first()
+        if not row:
+            raise AgencyNotFoundError(f"Run {run_id} not found")
+
+        return {
+            "id": row.id,
+            "status": row.status,
+            "total_credits_used": float(row.total_credits_used),
+            "started_at": row.started_at.isoformat() if row.started_at else None,
+            "completed_at": row.completed_at.isoformat() if row.completed_at else None,
+            "duration_ms": row.duration_ms,
+            "error_type": row.error_type,
+            "error_message": row.error_message,
+            "step_count": row.step_count,
+        }
+
+    async def cancel_run(
+        self,
+        run_id: str,
+        agency_id: str,
+        tenant_id: str,
+    ) -> dict:
+        """Cancel a running agency run.
+
+        Raises AgencyNotFoundError if run not found or wrong tenant.
+        """
+        result = await self.db.execute(
+            text("""
+                SELECT id, status FROM agency_runs
+                WHERE id = :run_id
+                  AND agency_id = :agency_id
+                  AND tenant_id = :tenant_id
+            """),
+            {"run_id": run_id, "agency_id": agency_id, "tenant_id": tenant_id},
+        )
+        row = result.first()
+        if not row:
+            raise AgencyNotFoundError(f"Run {run_id} not found")
+
+        if row.status in ("completed", "failed", "cancelled"):
+            return {"run_id": run_id, "status": row.status}
+
+        await self.db.execute(
+            text("""
+                UPDATE agency_runs
+                SET status = 'cancelled',
+                    completed_at = :completed_at
+                WHERE id = :run_id
+            """),
+            {
+                "run_id": run_id,
+                "completed_at": datetime.now(timezone.utc),
+            },
+        )
+        await self.db.commit()
+
+        logger.info(
+            "agency_run_cancelled",
+            run_id=run_id,
+            agency_id=agency_id,
+            tenant_id=tenant_id,
+        )
+
+        return {"run_id": run_id, "status": "cancelled"}
