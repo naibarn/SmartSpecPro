@@ -19,6 +19,14 @@ import { decrypt } from "../services/crypto";
 import { systemSettings, telegramUpdates } from "../../drizzle/schema";
 import { sendTelegramMessage } from "../services/telegramService";
 import { getMessage } from "../services/telegramI18n";
+import {
+  handleResume,
+  handleUnlink,
+  handleStatus,
+  handleHelp,
+  handleStartNoToken,
+  handleCallbackQuery,
+} from "./telegramCommands";
 
 // ── Telegram Update types (minimal subset) ──────────────────────────────
 
@@ -74,6 +82,14 @@ export function registerWebhookHandler(
 ): void {
   handlers[command] = handler;
 }
+
+// Register command handlers (section-09)
+registerWebhookHandler("resume", handleResume);
+registerWebhookHandler("unlink", handleUnlink);
+registerWebhookHandler("status", handleStatus);
+registerWebhookHandler("help", handleHelp);
+registerWebhookHandler("start", handleStartNoToken);
+registerWebhookHandler("callback_query", handleCallbackQuery);
 
 // ── In-process rate limiter ──────────────────────────────────────────────
 

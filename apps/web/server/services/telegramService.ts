@@ -144,12 +144,12 @@ export function formatTelegramMessage(
     text = text.substring(0, 3997) + "...";
   }
 
-  // Inline keyboard with "View in SmartSpecPro" button
+  // Inline keyboard with "View in SmartAIHub" button
   const replyMarkup = {
     inline_keyboard: [
       [
         {
-          text: "View in SmartSpecPro",
+          text: "View in SmartAIHub",
           url: `${appUrl}/notifications`,
         },
       ],
@@ -245,6 +245,31 @@ export async function sendTelegramMessage(
         err instanceof Error ? err.message : String(err)
       }`
     );
+  }
+}
+
+/**
+ * Answers a callback query from an inline keyboard button press.
+ * Must be called to dismiss the loading state in the Telegram client.
+ */
+export async function answerCallbackQuery(
+  botToken: string,
+  callbackQueryId: string,
+  text?: string,
+): Promise<void> {
+  const url = `https://api.telegram.org/bot${botToken}/answerCallbackQuery`;
+  const payload: any = { callback_query_id: callbackQueryId };
+  if (text) payload.text = text;
+
+  try {
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(5000),
+    });
+  } catch {
+    // Fire-and-forget — callback answer failures are non-critical
   }
 }
 
