@@ -79,6 +79,8 @@ vi.mock("drizzle-orm", () => ({
   and: vi.fn((...args: any[]) => ({ _type: "and", args })),
   count: vi.fn(() => "count_agg"),
   sql: vi.fn(() => "sql_fragment"),
+  gt: vi.fn((_col: any, val: any) => ({ _type: "gt", val })),
+  lt: vi.fn((_col: any, val: any) => ({ _type: "lt", val })),
 }));
 
 vi.mock("../../services/crypto", () => ({
@@ -88,6 +90,10 @@ vi.mock("../../services/crypto", () => ({
 
 vi.mock("../../services/telegramService", () => ({
   clearTelegramCache: vi.fn(),
+}));
+
+vi.mock("../../services/deliveryQueue", () => ({
+  clearDeliveryBotTokenCache: vi.fn(),
 }));
 
 vi.mock("../../services/redis", () => ({
@@ -131,6 +137,9 @@ function createMockDb(queryResults: any[][] = []) {
       set: vi.fn().mockReturnValue({
         where: vi.fn().mockResolvedValue(undefined),
       }),
+    })),
+    delete: vi.fn().mockImplementation(() => ({
+      where: vi.fn().mockResolvedValue(undefined),
     })),
   };
 
@@ -302,6 +311,8 @@ describe("Telegram backward compatibility", () => {
           { key: "enabled", value: "true" },
           { key: "bot_username", value: "testbot" },
         ],
+        // token rate limit count query
+        [{ cnt: 0 }],
         // check existing connection
         [],
         // user query for tenantId
@@ -314,8 +325,7 @@ describe("Telegram backward compatibility", () => {
         ctx: makeCtx(),
       });
 
-      // Returns the expected shape
-      expect(result.code).toBeDefined();
+      // Returns the expected shape (code removed from response for security)
       expect(result.deepLink).toMatch(/https:\/\/t\.me\/testbot\?start=/);
       expect(result.expiresIn).toBe(300);
 
@@ -324,6 +334,177 @@ describe("Telegram backward compatibility", () => {
 
       // telegram_link_tokens record still created (with null targetConversationType)
       expect(db.insert).toHaveBeenCalled();
+    });
+  });
+
+  // ============================================================
+  // generateTelegramLink security: rate limit
+  // ============================================================
+  describe("generateTelegramLink security", () => {
+    it("rejects when user has generated 5+ tokens in the last hour", async () => {
+      const mockRedis = { set: vi.fn(), del: vi.fn(), get: vi.fn() };
+      mockGetRedisClient.mockReturnValue(mockRedis);
+
+      const db = createMockDb([
+        // system settings
+        [
+          { key: "enabled", value: "true" },
+          { key: "bot_username", value: "testbot" },
+        ],
+        // token rate limit count: already at 5
+        [{ cnt: 5 }],
+      ]);
+      mockGetDb.mockResolvedValue(db);
+
+      await expect(
+        handlers.generateTelegramLink({ input: undefined, ctx: makeCtx() }),
+      ).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });
+    });
+
+    it("allows when user has fewer than 5 tokens in the last hour", async () => {
+      const mockRedis = { set: vi.fn().mockResolvedValue("OK"), del: vi.fn(), get: vi.fn() };
+      mockGetRedisClient.mockReturnValue(mockRedis);
+
+      const db = createMockDb([
+        [{ key: "enabled", value: "true" }, { key: "bot_username", value: "testbot" }],
+        [{ cnt: 4 }],      // token rate limit: 4 tokens (under limit)
+        [],                // no existing connection
+        [{ currentTenantId: "t1" }],
+      ]);
+      mockGetDb.mockResolvedValue(db);
+
+      const result = await handlers.generateTelegramLink({ input: undefined, ctx: makeCtx() });
+      expect(result.deepLink).toMatch(/https:\/\/t\.me\/testbot\?start=/);
+    });
+
+    it("cleans up expired tokens before inserting new one", async () => {
+      const mockRedis = { set: vi.fn().mockResolvedValue("OK"), del: vi.fn(), get: vi.fn() };
+      mockGetRedisClient.mockReturnValue(mockRedis);
+
+      const db = createMockDb([
+        [{ key: "enabled", value: "true" }, { key: "bot_username", value: "testbot" }],
+        [{ cnt: 0 }],
+        [],
+        [{ currentTenantId: "t1" }],
+      ]);
+      mockGetDb.mockResolvedValue(db);
+
+      await handlers.generateTelegramLink({ input: undefined, ctx: makeCtx() });
+
+      // delete() should be called to clean up expired tokens
+      expect(db.delete).toHaveBeenCalled();
+    });
+  });
+
+  // ============================================================
+  // unbindConversation security: ownership check
+  // ============================================================
+  describe("unbindConversation security", () => {
+    it("rejects unbind when channel belongs to different user's connection", async () => {
+      const db = createMockDb([
+        // verifyConversationOwnership → conversation exists
+        [{ id: 1 }],
+        // find active channel binding
+        [{ id: "ch-uuid-1", connectionId: "conn-uuid-1" }],
+        // connection lookup → belongs to userId=999 (NOT the calling user id=1)
+        [{ userId: 999 }],
+      ]);
+      mockGetDb.mockResolvedValue(db);
+
+      await expect(
+        handlers.unbindConversation({
+          input: { conversationId: "1", conversationType: "chat" },
+          ctx: makeCtx({ id: 1 }),
+        }),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    });
+
+    it("allows unbind when channel belongs to calling user's connection", async () => {
+      const db = createMockDb([
+        [{ id: 1 }],
+        [{ id: "ch-uuid-1", connectionId: "conn-uuid-1" }],
+        // connection belongs to userId=1 (same as calling user)
+        [{ userId: 1 }],
+        // activeChannelId query for cleanup
+        [{ activeChannelId: null }],
+      ]);
+      mockGetDb.mockResolvedValue(db);
+
+      const result = await handlers.unbindConversation({
+        input: { conversationId: "1", conversationType: "chat" },
+        ctx: makeCtx({ id: 1 }),
+      });
+      expect(result.success).toBe(true);
+    });
+  });
+
+  // ============================================================
+  // updateTelegramSettings security: cache clearing
+  // ============================================================
+  describe("updateTelegramSettings security", () => {
+    it("clears delivery bot token cache when settings change", async () => {
+      const { clearDeliveryBotTokenCache } = await import("../../services/deliveryQueue");
+
+      const db = createMockDb([
+        // upsert enabled=true (existing row)
+        [{ id: "row-1" }],
+        // webhook_secret row exists
+        [{ id: "ws-1", value: "enc:oldsecret" }],
+      ]);
+      mockGetDb.mockResolvedValue(db);
+
+      await handlers.updateTelegramSettings({
+        input: { enabled: true },
+        ctx: makeCtx(),
+      });
+
+      expect(clearDeliveryBotTokenCache).toHaveBeenCalled();
+    });
+
+    it("returns webhookReRegistered=false when botToken changes but Telegram unreachable", async () => {
+      vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("Network error")));
+
+      const db = createMockDb([
+        // upsert bot_token
+        [{ id: "row-1" }],
+        // webhook_secret row exists → rotate
+        [{ id: "ws-1" }],
+        // callTelegramSetWebhook re-reads settings
+        [
+          { key: "bot_token", value: "enc:token" },
+          { key: "webhook_secret", value: "enc:secret" },
+          { key: "app_url", value: "https://smartaihub.app" },
+          { key: "bot_username", value: "testbot" },
+        ],
+      ]);
+      mockGetDb.mockResolvedValue(db);
+
+      const result = await handlers.updateTelegramSettings({
+        input: { botToken: "123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghi" },
+        ctx: makeCtx(),
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.webhookReRegistered).toBe(false);
+
+      vi.unstubAllGlobals();
+    });
+  });
+
+  // ============================================================
+  // adminListConnections security: null tenantId guard
+  // ============================================================
+  describe("adminListConnections security", () => {
+    it("rejects when currentTenantId is null", async () => {
+      const db = createMockDb([]);
+      mockGetDb.mockResolvedValue(db);
+
+      await expect(
+        handlers.adminListConnections({
+          input: { limit: 20, offset: 0 },
+          ctx: makeCtx({ currentTenantId: null }),
+        }),
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
     });
   });
 

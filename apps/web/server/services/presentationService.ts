@@ -822,6 +822,16 @@ export async function createPresentationDeckForLibraryItem(
     db,
   );
 
+  // Auto-create the first slide so the user doesn't start with an empty deck.
+  await createPresentationSlide(
+    {
+      deckId: deck.id,
+      title: "Slide 1",
+      slideContent: { elements: [] },
+    },
+    db,
+  );
+
   return { created: true, deck };
 }
 

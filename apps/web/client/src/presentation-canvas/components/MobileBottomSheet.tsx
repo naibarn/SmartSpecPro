@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 
-const TABS = ["Add", "Layers", "Properties", "Pages", "Versions"] as const;
+const TABS = ["Add", "Layers", "Properties", "Pages", "Versions", "Audio"] as const;
 
 export type MobileBottomSheetTab = typeof TABS[number];
 

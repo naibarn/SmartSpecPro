@@ -240,6 +240,7 @@ function GlobalUrgentReminders() {
     content: string;
     priority: string;
     scheduledMessageId: number | null;
+    conversationId?: number | null;
   } | null>(null);
 
   const { data: urgentReminders } = trpc.scheduledMessages.getUrgentReminders.useQuery(
@@ -278,6 +279,7 @@ function GlobalUrgentReminders() {
       content: latest.content || "",
       priority: latest.priority,
       scheduledMessageId: latest.scheduledMessageId,
+      conversationId: latest.conversationId,
     });
 
     // Toast any others
@@ -309,8 +311,13 @@ function GlobalUrgentReminders() {
       markRead.mutate({ id: modalReminder.id });
     }
     const alertId = modalReminder?.scheduledMessageId;
+    const conversationId = modalReminder?.conversationId;
     setModalReminder(null);
-    setLocation(`/chat?panel=schedule${alertId ? `&alertId=${alertId}` : ""}`);
+    if (conversationId) {
+      setLocation(`/chat?c=${conversationId}`);
+    } else {
+      setLocation(`/chat?panel=schedule${alertId ? `&alertId=${alertId}` : ""}`);
+    }
   }, [setLocation, modalReminder, markRead]);
 
   const reminderModalRef = useRef<HTMLDivElement>(null);
@@ -653,7 +660,7 @@ function GlobalNotificationBell() {
                   onClick={() => {
                     if (n.conversationId) {
                       setShowDropdown(false);
-                      setLocation(`/chat`);
+                      setLocation(`/chat?c=${n.conversationId}`);
                     }
                     if (!n.isRead) markRead.mutate({ id: n.id });
                   }}

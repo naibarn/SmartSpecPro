@@ -55,6 +55,41 @@ class TestSandboxModels:
         assert status.status == "running"
         assert status.metadata == {"job_id": "job-1"}
 
+    def test_sandbox_status_accepts_nested_status_object(self):
+        """SandboxStatus normalizes lifecycle API shape where status is an object."""
+        from app.integrations.opensandbox.models import SandboxStatus
+
+        data = {
+            "id": "sb-xyz",
+            "status": {
+                "state": "Running",
+                "reason": "PROVISIONED",
+                "message": "sandbox is ready",
+            },
+        }
+        status = SandboxStatus.model_validate(data)
+        assert status.status == "running"
+        assert status.reason == "PROVISIONED"
+
+    def test_sandbox_config_builds_lifecycle_payload(self):
+        """SandboxConfig converts internal fields to lifecycle API payload."""
+        from app.integrations.opensandbox.models import SandboxConfig
+
+        config = SandboxConfig(
+            image="python:3.11-slim",
+            timeout_seconds=120,
+            cpu_limit="500m",
+            memory_limit_mb=512,
+            disk_limit_mb=1024,
+            env_vars={"PYTHONUNBUFFERED": "1"},
+        )
+        payload = config.to_create_payload()
+        assert payload["image"]["uri"] == "python:3.11-slim"
+        assert payload["timeout"] == 120
+        assert payload["resourceLimits"]["cpu"] == "500m"
+        assert payload["resourceLimits"]["memory"] == "512Mi"
+        assert payload["network"]["defaultAction"] == "deny"
+
     def test_command_result_captures_all_fields(self):
         """CommandResult stores exit_code, stdout, stderr."""
         from app.integrations.opensandbox.models import CommandResult

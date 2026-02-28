@@ -158,6 +158,8 @@ services:
       context: ./python-backend
       dockerfile: Dockerfile
     container_name: smartspec-celery-sandbox
+    group_add:
+      - "${DOCKER_GID:-989}"
     command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2 -Q sandbox -n sandbox@%h
     env_file:
       - ./python-backend/.env
@@ -166,10 +168,12 @@ services:
       - CELERY_RESULT_BACKEND=redis://smartspec-redis:6379/0
       - REDIS_URL=redis://smartspec-redis:6379/0
       - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec123@smartspec-postgres:5432/smartspec
+      - OPENSANDBOX_BASE_URL=http://smartspec-opensandbox:8080
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
       - ./python-backend:/app
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     deploy:
       resources:
         limits:

@@ -97,7 +97,7 @@ export function ToolPicker({
           />
         </div>
 
-        <ScrollArea className="max-h-80">
+        <ScrollArea className="max-h-[60vh] pr-4">
           {tools.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
               {toolsData === undefined

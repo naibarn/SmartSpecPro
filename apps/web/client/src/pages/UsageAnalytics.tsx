@@ -107,7 +107,7 @@ export default function UsageAnalytics() {
       {/* Header */}
       <div className="border-b bg-card">
         <div className="px-4 sm:px-6 lg:px-8 py-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex items-center gap-4">
               <Link href="/dashboard">
                 <Button variant="ghost" size="sm">
@@ -116,8 +116,8 @@ export default function UsageAnalytics() {
                 </Button>
               </Link>
               <div>
-                <h1 className="text-2xl font-bold flex items-center gap-2">
-                  <BarChart3 className="h-6 w-6 text-blue-500" />
+                <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6 text-blue-500" />
                   Usage Analytics
                 </h1>
                 <p className="text-sm text-muted-foreground">
@@ -127,7 +127,7 @@ export default function UsageAnalytics() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 sm:ml-auto">
               {/* Admin user selector */}
               {isAdmin && userList.data && (
                 <select
@@ -279,20 +279,77 @@ export default function UsageAnalytics() {
                 No transactions found for this period.
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Model</TableHead>
-                    <TableHead>Provider</TableHead>
-                    <TableHead className="text-right">Credits</TableHead>
-                    <TableHead className="text-right">Tokens</TableHead>
-                    <TableHead className="text-right">Latency</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
+              <>
+                {/* Mobile card list — hidden on sm+ */}
+                <div className="sm:hidden divide-y divide-border">
+                  {txns.map((tx) => (
+                    <div key={tx.id} className="py-3 space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="outline" className="text-xs">
+                            {tx.requestType || tx.type || "LLM"}
+                          </Badge>
+                          {tx.errorType ? (
+                            <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                          ) : (
+                            <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                          )}
+                        </div>
+                        <span className="text-sm font-semibold tabular-nums">{tx.creditsCharged ?? 0} cr</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground font-mono truncate">{tx.model || "-"}</div>
+                      <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                        <span>{tx.providerName || "-"}</span>
+                        <span>
+                          {tx.createdAt
+                            ? new Date(tx.createdAt).toLocaleString([], {
+                                month: "numeric",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : "-"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        {tx.inputTokens != null && (
+                          <span>{tx.inputTokens}/{tx.outputTokens} tok</span>
+                        )}
+                        {tx.responseTimeMs != null && (
+                          <span>{formatLatency(tx.responseTimeMs)}</span>
+                        )}
+                        <div className="ml-auto">
+                          <TransactionDetailDialog
+                            traceId={tx.traceId || undefined}
+                            txId={tx.id}
+                            txType={tx.type as "llm" | "media"}
+                            date={
+                              tx.createdAt
+                                ? new Date(tx.createdAt).toISOString().slice(0, 10)
+                                : undefined
+                            }
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Desktop table — hidden on mobile */}
+                <div className="hidden sm:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Time</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Model</TableHead>
+                      <TableHead>Provider</TableHead>
+                      <TableHead className="text-right">Credits</TableHead>
+                      <TableHead className="text-right">Tokens</TableHead>
+                      <TableHead className="text-right">Latency</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead></TableHead>
+                    </TableRow>
+                  </TableHeader>
                 <TableBody>
                   {txns.map((tx) => (
                     <TableRow key={tx.id}>
@@ -353,6 +410,8 @@ export default function UsageAnalytics() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
+              </>
             )}
           </CardContent>
         </Card>

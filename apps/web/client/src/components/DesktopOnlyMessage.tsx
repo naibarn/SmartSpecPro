@@ -56,7 +56,7 @@ export default function DesktopOnlyMessage({ feature }: Props) {
         <div className="rounded-xl border border-border/50 bg-muted/30 p-5 space-y-3">
           <p className="text-sm text-muted-foreground">
             This feature requires native system access and is only available in the
-            <span className="font-semibold text-foreground"> SmartSpec Pro Desktop App</span>.
+            <span className="font-semibold text-foreground"> SmartAIHub Desktop App</span>.
           </p>
           <Button variant="default" size="lg" className="gap-2">
             <Download className="w-4 h-4" />

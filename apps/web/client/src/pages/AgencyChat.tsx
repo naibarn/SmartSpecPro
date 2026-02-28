@@ -254,6 +254,15 @@ export default function AgencyChat() {
 
           {/* Input Bar */}
           <div className="border-t p-4">
+            {agency?.creatorFeeCredits > 0 && (
+              <div className="mx-auto mb-2 flex max-w-3xl items-center gap-1.5 rounded-md bg-amber-50 px-3 py-1.5 text-xs text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                <CreditCard className="h-3.5 w-3.5" />
+                <span>
+                  Creator fee: {agency.creatorFeeCredits} credits per successful
+                  run (separate from LLM costs)
+                </span>
+              </div>
+            )}
             <div className="mx-auto flex max-w-3xl gap-2">
               <Textarea
                 value={input}

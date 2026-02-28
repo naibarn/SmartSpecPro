@@ -1,7 +1,7 @@
 /**
  * Features Page
  * Design: Ethereal Gradient Flow
- * Showcases all SmartSpec Pro features in detail
+ * Showcases all SmartAIHub features in detail
  */
 
 import { motion } from 'framer-motion';
@@ -269,7 +269,7 @@ export default function Features() {
               {heroSection?.title || parsed?.heroTitle || (<>Everything You Need to{' '}<span className="gradient-text">Build Faster</span></>)}
             </h1>
             <p className="text-lg text-muted-foreground mb-8">
-              {heroSection?.subtitle || heroSection?.content || parsed?.heroDesc || 'SmartSpec Pro combines cutting-edge AI with developer-friendly tools to supercharge your productivity.'}
+              {heroSection?.subtitle || heroSection?.content || parsed?.heroDesc || 'SmartAIHub combines cutting-edge AI with developer-friendly tools to supercharge your productivity.'}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
@@ -431,7 +431,7 @@ export default function Features() {
               {ctaSection?.title || parsed?.ctaTitle || 'Ready to Experience the Future of Development?'}
             </h2>
             <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-              {ctaSection?.subtitle || ctaSection?.content || parsed?.ctaDesc || 'Join thousands of developers who are already building faster with SmartSpec Pro.'}
+              {ctaSection?.subtitle || ctaSection?.content || parsed?.ctaDesc || 'Join thousands of developers who are already building faster with SmartAIHub.'}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 

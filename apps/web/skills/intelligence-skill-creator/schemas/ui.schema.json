@@ -3,7 +3,7 @@
   "skillId": "intelligence-skill-creator",
   "title": "Intelligence Skill Creator",
   "titleTh": "ตัวสร้าง Skill อัจฉริยะ",
-  "description": "Create complete SmartSpecPro skills with schemas, code, and tests — or improve existing ones",
+  "description": "Create complete SmartAIHub skills with schemas, code, and tests — or improve existing ones",
   "descriptionTh": "สร้าง Skill ใหม่พร้อม schemas, code และ tests ครบชุด หรือปรับปรุง Skill ที่มีอยู่",
   "sections": [
     {

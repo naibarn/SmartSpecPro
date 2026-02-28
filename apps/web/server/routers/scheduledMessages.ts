@@ -80,6 +80,8 @@ export const scheduledMessagesRouter = router({
       scheduledAt: z.string().optional().nullable(), // ISO 8601
       isRecurring: z.boolean().default(false),
       modelId: z.string().max(128).optional().nullable(),
+      skillId: z.string().max(100).optional().nullable(),
+      dynamicParams: z.record(z.any()).optional().nullable(),
       emailNotify: z.boolean().default(true),
       description: z.string().max(500).optional().nullable(),
       conversationId: z.number().optional().nullable(),
@@ -156,6 +158,8 @@ export const scheduledMessagesRouter = router({
         isSimpleReminder: input.isSimpleReminder,
         priority: input.priority,
         modelId: input.isSimpleReminder ? undefined : (input.modelId || undefined),
+        skillId: input.skillId || "chat-alert",
+        dynamicParams: input.dynamicParams || undefined,
         emailNotify: input.emailNotify,
         description: input.description || undefined,
         conversationId: input.conversationId || undefined,
@@ -255,6 +259,8 @@ export const scheduledMessagesRouter = router({
       description: z.string().max(500).optional().nullable(),
       emailNotify: z.boolean().optional(),
       modelId: z.string().max(128).optional().nullable(),
+      skillId: z.string().max(100).optional().nullable(),
+      dynamicParams: z.record(z.any()).optional().nullable(),
       priority: z.enum(["low", "normal", "high", "critical"]).optional(),
       isSimpleReminder: z.boolean().optional(),
     }))
@@ -416,6 +422,7 @@ export const scheduledMessagesRouter = router({
         priority: userNotifications.priority,
         createdAt: userNotifications.createdAt,
         scheduledMessageId: userNotifications.scheduledMessageId,
+        conversationId: userNotifications.conversationId,
       })
       .from(userNotifications)
       .where(and(

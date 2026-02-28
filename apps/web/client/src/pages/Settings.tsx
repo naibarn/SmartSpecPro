@@ -1,5 +1,5 @@
 /**
- * Settings Page - SmartSpec Pro
+ * Settings Page - SmartAIHub
  * User settings and preferences
  */
 
@@ -607,12 +607,12 @@ export default function Settings() {
             className="lg:col-span-1"
           >
             <div className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 shadow-lg shadow-purple-500/5 p-4">
-              <nav className="space-y-1">
+              <nav className="flex flex-row overflow-x-auto lg:flex-col lg:overflow-visible gap-1 lg:gap-0 lg:space-y-1 pb-1 lg:pb-0">
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all ${
+                    className={`flex-shrink-0 lg:w-full flex items-center gap-3 px-3 py-2 lg:px-4 lg:py-3 rounded-xl text-left transition-all ${
                       activeTab === tab.id
                         ? 'bg-gradient-to-r from-purple-500/10 to-pink-500/10 text-purple-700'
                         : 'text-gray-600 hover:bg-gray-50'
@@ -622,10 +622,10 @@ export default function Settings() {
                     <span className="font-medium">{tab.label}</span>
                   </button>
                 ))}
-                <div className="border-t border-gray-200/50 my-2" />
+                <div className="hidden lg:block border-t border-gray-200/50 my-2" />
                 <button
                   onClick={() => setLocation('/settings/skills')}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all text-gray-600 hover:bg-gray-50"
+                  className="flex-shrink-0 lg:w-full flex items-center gap-3 px-3 py-2 lg:px-4 lg:py-3 rounded-xl text-left transition-all text-gray-600 hover:bg-gray-50"
                 >
                   <Bot className="w-5 h-5" />
                   <span className="font-medium">Skills</span>
@@ -1111,6 +1111,20 @@ export default function Settings() {
                             </div>
                           </div>
 
+                          {telegramStatus.data.connection && (
+                            <div className="text-xs text-gray-500 space-y-1 mt-2">
+                              {telegramStatus.data.connection.telegramUsername && (
+                                <div>Connected as: @{telegramStatus.data.connection.telegramUsername}</div>
+                              )}
+                              <div>Linked: {new Date(telegramStatus.data.connection.linkedAt).toLocaleDateString()}</div>
+                              {(telegramStatus.data.boundConversationCount ?? 0) > 0 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {telegramStatus.data.boundConversationCount} conversation{telegramStatus.data.boundConversationCount !== 1 ? 's' : ''} bridged
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+
                           {telegramStatus.data.deliveryFailing && (
                             <div className="flex items-center gap-2 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
                               <AlertCircle className="w-4 h-4 text-yellow-600" />
@@ -1315,7 +1329,7 @@ export default function Settings() {
                       <div>
                         <h3 className="font-semibold text-blue-900 mb-1">API Documentation</h3>
                         <p className="text-sm text-blue-700">
-                          Learn how to integrate SmartSpec Pro with your applications using our API.
+                          Learn how to integrate SmartAIHub with your applications using our API.
                         </p>
                       </div>
                     </div>

@@ -55,8 +55,8 @@ const sidebarSections = [
 const defaultContent: Record<string, { title: string; body: string }> = {
   intro: {
     title: 'Introduction',
-    body: `<h2>Welcome to SmartSpec Pro</h2>
-<p>SmartSpec Pro is an AI-powered platform that helps you build production-ready applications faster. Whether you're generating code, creating images, producing videos, or synthesizing audio, our platform provides the tools you need.</p>
+    body: `<h2>Welcome to SmartAIHub</h2>
+<p>SmartAIHub is an AI-powered platform that helps you build production-ready applications faster. Whether you're generating code, creating images, producing videos, or synthesizing audio, our platform provides the tools you need.</p>
 <h3>What You Can Do</h3>
 <ul>
 <li><strong>Generate Code</strong> — Transform natural language descriptions into production-ready code across multiple languages and frameworks.</li>

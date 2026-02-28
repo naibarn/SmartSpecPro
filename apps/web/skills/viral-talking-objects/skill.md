@@ -1,7 +1,7 @@
 ---
 name: viral-talking-objects
 version: "1.1.0"
-author: SmartSpec
+author: SmartAIHub
 category: image_video_generation
 icon: video
 description: |

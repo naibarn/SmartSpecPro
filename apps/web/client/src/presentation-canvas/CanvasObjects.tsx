@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactElement } from "react";
 
 import type { PresentationElement } from "@/lib/presentationEditorState";
 
@@ -39,11 +39,10 @@ function getElementAriaLabel(element: PresentationElement, index: number): strin
 }
 
 function getBaseElementClass(isSelected: boolean): string {
-  return `absolute rounded border text-left transition ${
-    isSelected
-      ? "border-primary ring-2 ring-primary/40 shadow"
-      : "border-slate-300 hover:border-slate-400"
-  }`;
+  return `absolute rounded border text-left transition ${isSelected
+    ? "border-primary ring-2 ring-primary/40 shadow"
+    : "border-slate-300 hover:border-slate-400"
+    }`;
 }
 
 interface PointerDragState {
@@ -57,7 +56,7 @@ interface PointerDragState {
   baseHeight: number;
 }
 
-function renderElementBody(element: PresentationElement): JSX.Element {
+function renderElementBody(element: PresentationElement): ReactElement {
   if (element.type === "text") {
     const fontSize = Number.isFinite(element.fontSize) ? element.fontSize : 48;
     const lineHeight = Number.isFinite(element.lineHeight) ? element.lineHeight : 1.25;
@@ -79,6 +78,8 @@ function renderElementBody(element: PresentationElement): JSX.Element {
             textAlign: element.textAlign || "left",
             lineHeight,
             letterSpacing: `${letterSpacing}px`,
+            ...(element.textShadow ? { textShadow: element.textShadow } : {}),
+            ...(element.textStroke ? { WebkitTextStroke: element.textStroke } : {}),
           }}
           title={element.text || "Text"}
         >
@@ -90,8 +91,20 @@ function renderElementBody(element: PresentationElement): JSX.Element {
 
   if (element.type === "image") {
     const hasSource = Boolean(element.src?.trim());
+    // Inline SVG graphic — transparent background, color-tinted
+    if (element.svgContent) {
+      const color = element.svgColor || "#ffffff";
+      const coloredSvg = element.svgContent.replace(/currentColor/g, color);
+      return (
+        <div
+          className="relative h-full w-full"
+          style={{ color }}
+          dangerouslySetInnerHTML={{ __html: coloredSvg }}
+        />
+      );
+    }
     return (
-      <div className="relative h-full w-full bg-slate-100">
+      <div className={`relative h-full w-full ${hasSource ? "" : "bg-slate-100"}`}>
         {hasSource ? (
           <img
             src={element.src}

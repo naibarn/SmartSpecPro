@@ -73,6 +73,7 @@ import { defaultMenuItems, type MenuItem as SharedMenuItem, type UserRole } from
 import StorageSettingsPanel from "@/components/admin/StorageSettingsPanel";
 import InfrastructureSettingsPanel from "@/components/admin/InfrastructureSettingsPanel";
 import AgencyAdminPanel from "@/components/admin/AgencyAdminPanel";
+import TelegramConnectionsPanel from "@/components/admin/TelegramConnectionsPanel";
 
 interface StripeSettings {
   secretKey?: string;
@@ -1729,6 +1730,11 @@ export default function AdminSettings() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Telegram Connections Management */}
+            <div className="mt-6">
+              <TelegramConnectionsPanel />
+            </div>
           </TabsContent>
 
           {/* Registration Settings Tab */}

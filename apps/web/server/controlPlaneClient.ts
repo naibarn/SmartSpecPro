@@ -14,7 +14,7 @@ export function loadServerEnv(): ServerEnv {
   if (!parsed.success) {
     // eslint-disable-next-line no-console
     console.error(parsed.error.format());
-    throw new Error("Invalid SmartSpec Web server env");
+    throw new Error("Invalid SmartAIHub Web server env");
   }
   return parsed.data;
 }

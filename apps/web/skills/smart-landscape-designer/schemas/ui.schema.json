@@ -1,0 +1,398 @@
+{
+  "version": "1.2.2",
+  "skillId": "smart-landscape-designer-single-prompt",
+  "title": "Smart Landscape Designer",
+  "description": "Generate one copy-ready landscape image prompt, with structured reference image attachments and a single-string output.",
+  "sections": [
+    {
+      "id": "request",
+      "title": "Request",
+      "icon": "file-text",
+      "fields": [
+        {
+          "id": "userRequest",
+          "type": "textarea",
+          "label": "Request",
+          "placeholder": "Example: Add a lush modern tropical front yard with a stone path and warm landscape lighting",
+          "helpText": "Describe the landscape change or creation request.",
+          "required": true,
+          "rows": 3,
+          "default": "Redesign the front yard with a lush modern tropical landscape, add a walkway, and warm garden lighting."
+        },
+        {
+          "id": "outputLanguage",
+          "type": "select",
+          "label": "Output Language",
+          "helpText": "Choose the language of the final returned prompt.",
+          "required": true,
+          "default": "en",
+          "options": [
+            {
+              "value": "en",
+              "label": "English"
+            },
+            {
+              "value": "th",
+              "label": "Thai"
+            }
+          ]
+        },
+        {
+          "id": "intent",
+          "type": "select",
+          "label": "Intent",
+          "helpText": "Helps the skill choose the best prompt mode.",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto Detect"
+            },
+            {
+              "value": "modify_existing",
+              "label": "Modify an Existing Property"
+            },
+            {
+              "value": "convert_drawing",
+              "label": "Convert a Drawing or Plan"
+            },
+            {
+              "value": "create_new_landscape",
+              "label": "Create a New Landscape from Text Only"
+            },
+            {
+              "value": "create_house_reference",
+              "label": "Create a New House and Landscape Reference"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "reference_images",
+      "title": "Reference Images",
+      "icon": "image",
+      "fields": [
+        {
+          "id": "reference_images",
+          "type": "array",
+          "label": "Reference Images",
+          "helpText": "Attach image files in the runtime UI. This array stores the fixed reference role and optional notes for each attachment in the same order.",
+          "default": [],
+          "minItems": 0,
+          "maxItems": 8,
+          "itemLabel": "Reference Image",
+          "itemFields": [
+            {
+              "id": "file",
+              "type": "file",
+              "label": "Attach Image",
+              "helpText": "Attach one image file. The file itself is handled by the runtime; the JSON payload stores only role and notes.",
+              "accept": "image/*",
+              "multiple": false,
+              "default": null
+            },
+            {
+              "id": "role",
+              "type": "text",
+              "label": "Image Role",
+              "helpText": "Fixed for this skill.",
+              "default": "reference",
+              "readOnly": true
+            },
+            {
+              "id": "notes",
+              "type": "text",
+              "label": "Notes",
+              "placeholder": "Example: use this as inspiration for planting style and materials only",
+              "default": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "prompt_strategy",
+      "title": "Prompt Strategy",
+      "icon": "sparkles",
+      "fields": [
+        {
+          "id": "modeOverride",
+          "type": "select",
+          "label": "Mode Override",
+          "helpText": "Default is Mode 5 because this skill is optimized for text-to-landscape prompt generation.",
+          "default": "mode5_text_to_landscape",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto Detect"
+            },
+            {
+              "value": "mode1_direct_mod",
+              "label": "Mode 1 - Modify an Existing Property Photo"
+            },
+            {
+              "value": "mode2_drawing_to_photo",
+              "label": "Mode 2 - Convert a Drawing or Plan into a Realistic Landscape Photo"
+            },
+            {
+              "value": "mode3_advisory",
+              "label": "Mode 3 - Advisory (still returns one final prompt)"
+            },
+            {
+              "value": "mode4_multi_image",
+              "label": "Mode 4 - Combine Multiple Reference Images"
+            },
+            {
+              "value": "mode5_text_to_landscape",
+              "label": "Mode 5 - Text to Landscape"
+            },
+            {
+              "value": "mode6_multi_variation",
+              "label": "Mode 6 - Draft Multiple Variants, Return One Best Prompt"
+            },
+            {
+              "value": "mode7_reference_creation",
+              "label": "Mode 7 - Create a New House and Landscape Reference"
+            }
+          ]
+        },
+        {
+          "id": "variationType",
+          "type": "select",
+          "label": "Variation Type",
+          "helpText": "This affects how the skill creates one final prompt, not how many prompts it returns.",
+          "default": "single_direct",
+          "options": [
+            {
+              "value": "single_direct",
+              "label": "Direct Single Prompt (fastest, no internal alternatives)"
+            },
+            {
+              "value": "best_of_many",
+              "label": "Generate Several Candidates, Return the Best One"
+            },
+            {
+              "value": "custom_guided",
+              "label": "Use a Custom Focus, Then Return One Final Prompt"
+            }
+          ]
+        },
+        {
+          "id": "numberOfOptions",
+          "type": "select",
+          "label": "Number of Options",
+          "helpText": "How many internal candidates the skill may draft before it chooses and returns one final prompt.",
+          "default": 4,
+          "options": [
+            {
+              "value": 1,
+              "label": "1 candidate"
+            },
+            {
+              "value": 2,
+              "label": "2 candidates"
+            },
+            {
+              "value": 3,
+              "label": "3 candidates"
+            },
+            {
+              "value": 4,
+              "label": "4 candidates"
+            },
+            {
+              "value": 6,
+              "label": "6 candidates"
+            },
+            {
+              "value": 8,
+              "label": "8 candidates"
+            }
+          ]
+        },
+        {
+          "id": "customSelection",
+          "type": "select",
+          "label": "Custom Selection",
+          "helpText": "Used when Variation Type is 'Use a Custom Focus'. Pick the creative direction for the single final prompt.",
+          "default": "balanced_mix",
+          "options": [
+            {
+              "value": "balanced_mix",
+              "label": "Balanced Mix"
+            },
+            {
+              "value": "more_tropical",
+              "label": "More Tropical"
+            },
+            {
+              "value": "more_minimal",
+              "label": "More Minimal"
+            },
+            {
+              "value": "more_luxury",
+              "label": "More Luxury"
+            },
+            {
+              "value": "more_low_maintenance",
+              "label": "More Low Maintenance"
+            },
+            {
+              "value": "more_night_lighting",
+              "label": "More Night Lighting"
+            },
+            {
+              "value": "more_softscape",
+              "label": "More Softscape / More Plants"
+            },
+            {
+              "value": "more_hardscape",
+              "label": "More Hardscape / More Paving"
+            },
+            {
+              "value": "match_reference_style",
+              "label": "Match the Reference Style Closely"
+            },
+            {
+              "value": "follow_custom_notes",
+              "label": "Follow My Custom Notes"
+            }
+          ]
+        },
+        {
+          "id": "customSelectionNotes",
+          "type": "text",
+          "label": "Custom Selection Notes (optional)",
+          "placeholder": "Example: prioritize a premium resort feel with dramatic night lighting",
+          "helpText": "Optional extra guidance, especially useful when Custom Selection = Follow My Custom Notes.",
+          "default": ""
+        },
+        {
+          "id": "preserveArchitecture",
+          "type": "select",
+          "label": "Preserve Architecture",
+          "helpText": "Auto preserves the building when reference images are attached for an existing-property request.",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto"
+            },
+            {
+              "value": "preserve",
+              "label": "Preserve the Existing Building"
+            },
+            {
+              "value": "no_preserve",
+              "label": "Allow Building Changes If Requested"
+            }
+          ]
+        },
+        {
+          "id": "buildingCondition",
+          "type": "select",
+          "label": "Building Condition",
+          "default": "auto",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Auto"
+            },
+            {
+              "value": "newly_built",
+              "label": "Newly Built / Clean Finish"
+            },
+            {
+              "value": "aged",
+              "label": "Aged / Established Look"
+            }
+          ]
+        },
+        {
+          "id": "cameraSpec",
+          "type": "text",
+          "label": "Camera Spec",
+          "default": "Canon EOS R5, 24-70mm lens, f/8"
+        },
+        {
+          "id": "maxPromptChars",
+          "type": "slider",
+          "label": "Max prompt length (chars)",
+          "min": 800,
+          "max": 8000,
+          "step": 100,
+          "default": 5000,
+          "helpText": "Hard character limit for the single returned prompt."
+        }
+      ]
+    },
+    {
+      "id": "constraints",
+      "title": "Constraints",
+      "icon": "settings",
+      "fields": [
+        {
+          "id": "avoid3DRender",
+          "type": "boolean",
+          "label": "Avoid 3D Render Look",
+          "default": true
+        },
+        {
+          "id": "includeAntiRenderTerms",
+          "type": "boolean",
+          "label": "Embed Anti-Render Terms in the Prompt",
+          "default": true
+        },
+        {
+          "id": "useThaiTropicalPlants",
+          "type": "boolean",
+          "label": "Use Thai Tropical Plants",
+          "default": true
+        },
+        {
+          "id": "avoidOvergrownTrees",
+          "type": "boolean",
+          "label": "Avoid Overgrown Trees",
+          "default": true
+        },
+        {
+          "id": "maxTreeHeightMeters",
+          "type": "slider",
+          "label": "Max Tree Height (m)",
+          "min": 3,
+          "max": 12,
+          "step": 1,
+          "default": 6
+        },
+        {
+          "id": "allowMaterialColorChanges",
+          "type": "boolean",
+          "label": "Allow Material and Color Changes",
+          "default": true
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "userRequest": "userRequest",
+    "outputLanguage": "outputLanguage",
+    "reference_images": "reference_images",
+    "intent": "intent",
+    "modeOverride": "modeOverride",
+    "variationType": "variationType",
+    "numberOfOptions": "numberOfOptions",
+    "customSelection": "customSelection",
+    "customSelectionNotes": "customSelectionNotes",
+    "preserveArchitecture": "preserveArchitecture",
+    "buildingCondition": "buildingCondition",
+    "cameraSpec": "cameraSpec",
+    "maxPromptChars": "maxPromptChars",
+    "avoid3DRender": "constraints.avoid3DRender",
+    "includeAntiRenderTerms": "constraints.includeAntiRenderTerms",
+    "useThaiTropicalPlants": "constraints.useThaiTropicalPlants",
+    "avoidOvergrownTrees": "constraints.avoidOvergrownTrees",
+    "maxTreeHeightMeters": "constraints.maxTreeHeightMeters",
+    "allowMaterialColorChanges": "constraints.allowMaterialColorChanges"
+  }
+}

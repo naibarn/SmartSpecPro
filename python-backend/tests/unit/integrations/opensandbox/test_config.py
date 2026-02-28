@@ -93,3 +93,13 @@ class TestOpenSandboxConfig:
         assert isinstance(settings.OPENSANDBOX_CREATE_TIMEOUT_SECONDS, int)
         assert isinstance(settings.OPENSANDBOX_READY_POLL_INTERVAL_MS, int)
         assert settings.OPENSANDBOX_REQUEST_TIMEOUT_SECONDS == 45
+
+    def test_api_prefix_normalization(self):
+        """API prefix is normalized with leading slash and no trailing slash."""
+        from app.integrations.opensandbox.config import OpenSandboxSettings
+
+        settings = OpenSandboxSettings(
+            OPENSANDBOX_API_PREFIX="api/v1/",
+            _env_file=None,
+        )
+        assert settings.OPENSANDBOX_API_PREFIX == "/api/v1"

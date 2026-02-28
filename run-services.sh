@@ -457,7 +457,7 @@ cmd_start() {
     # Brief validation check
     sleep 3
     local failed_workers=0
-    for worker in smartspec-celery-media smartspec-celery-import smartspec-celery-beat; do
+    for worker in smartspec-celery-media smartspec-celery-import smartspec-celery-sandbox smartspec-celery-beat; do
         if ! docker ps --format '{{.Names}}' | grep -q "^${worker}$"; then
             log_warn "${worker} is not running"
             ((failed_workers++))
@@ -641,7 +641,7 @@ cmd_status() {
     # 3. Background Workers
     echo -e "${BLUE}--- Celery Workers (Background Tasks) ---${NC}"
 
-    for worker in smartspec-celery-media smartspec-celery-video smartspec-celery-import smartspec-celery-beat smartspec-flower; do
+    for worker in smartspec-celery-media smartspec-celery-video smartspec-celery-import smartspec-celery-sandbox smartspec-celery-beat smartspec-flower; do
         local worker_name=$(echo $worker | sed 's/smartspec-celery-//' | sed 's/smartspec-//')
         if docker ps --format '{{.Names}}' | grep -q "^${worker}$"; then
             local worker_health=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}ok{{end}}' "$worker" 2>/dev/null || echo "")
@@ -666,6 +666,7 @@ cmd_status() {
     screen -list 2>/dev/null | grep -q "\.smartspec-docker-status" && ((running_count++)) || true
     docker ps --format '{{.Names}}' | grep -q '^smartspec-celery-media$' && ((running_count++)) || true
     docker ps --format '{{.Names}}' | grep -q '^smartspec-celery-import$' && ((running_count++)) || true
+    docker ps --format '{{.Names}}' | grep -q '^smartspec-celery-sandbox$' && ((running_count++)) || true
     docker ps --format '{{.Names}}' | grep -q '^smartspec-celery-beat$' && ((running_count++)) || true
     docker ps --format '{{.Names}}' | grep -q '^smartspec-flower$' && ((running_count++)) || true
 

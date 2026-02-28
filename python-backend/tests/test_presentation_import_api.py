@@ -620,3 +620,242 @@ class TestImportPresentationTask:
         mock_notify.assert_called_once()
         assert mock_notify.call_args[0][1] == "failed"
         assert "Invalid Google Slides URL" in mock_notify.call_args[1]["error"]
+
+    async def test_unknown_source_type_raises_value_error(self):
+        """Unknown source_type raises ValueError."""
+        from app.tasks.presentation_import_tasks import _import_async
+
+        mock_notify = AsyncMock()
+
+        with (
+            patch("app.tasks.presentation_import_tasks._update_conversion", new_callable=AsyncMock),
+            patch("app.tasks.presentation_import_tasks._notify_nodejs", mock_notify),
+            patch("app.tasks.presentation_import_tasks.get_r2_storage_service", return_value=MagicMock()),
+        ):
+            with pytest.raises(ValueError, match="Unknown source_type"):
+                await _import_async(
+                    None, 42, "keynote", 1, "tenant-abc",
+                    source_item_id=None, slides_url=None,
+                )
+
+        mock_notify.assert_called_once()
+        assert mock_notify.call_args[0][1] == "failed"
+
+    async def test_pptx_source_item_id_none_raises_value_error(self):
+        """PPTX path: source_item_id=None raises ValueError."""
+        from app.tasks.presentation_import_tasks import _import_async
+
+        mock_notify = AsyncMock()
+
+        with (
+            patch("app.tasks.presentation_import_tasks._update_conversion", new_callable=AsyncMock),
+            patch("app.tasks.presentation_import_tasks._notify_nodejs", mock_notify),
+            patch("app.tasks.presentation_import_tasks.get_r2_storage_service", return_value=MagicMock()),
+        ):
+            with pytest.raises(ValueError, match="source_item_id is required"):
+                await _import_async(
+                    None, 42, "pptx", 1, "tenant-abc",
+                    source_item_id=None, slides_url=None,
+                )
+
+        mock_notify.assert_called_once()
+        assert mock_notify.call_args[0][1] == "failed"
+
+    async def test_pptx_library_item_not_found_raises_value_error(self):
+        """PPTX path: library item not in DB raises ValueError."""
+        from app.tasks.presentation_import_tasks import _import_async
+
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = None  # Not found
+        mock_session.execute.return_value = mock_result
+
+        with (
+            patch("app.tasks.presentation_import_tasks._update_conversion", new_callable=AsyncMock),
+            patch("app.tasks.presentation_import_tasks._notify_nodejs", new_callable=AsyncMock),
+            patch("app.tasks.presentation_import_tasks.get_r2_storage_service", return_value=MagicMock()),
+            patch("app.tasks.presentation_import_tasks.AsyncSessionLocal") as mock_factory,
+        ):
+            mock_factory.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_factory.return_value.__aexit__ = AsyncMock(return_value=None)
+
+            with pytest.raises(ValueError, match="has no source URL"):
+                await _import_async(
+                    None, 42, "pptx", 1, "tenant-abc",
+                    source_item_id=7, slides_url=None,
+                )
+
+    async def test_pptx_non_https_source_url_raises_value_error(self):
+        """PPTX path: non-HTTPS source URL is rejected (SSRF guard)."""
+        from app.tasks.presentation_import_tasks import _import_async
+
+        mock_row = MagicMock()
+        mock_row.source_url = "http://internal-server:8080/file.pptx"
+        mock_result = MagicMock()
+        mock_result.fetchone.return_value = mock_row
+        mock_session = AsyncMock()
+        mock_session.execute.return_value = mock_result
+
+        with (
+            patch("app.tasks.presentation_import_tasks._update_conversion", new_callable=AsyncMock),
+            patch("app.tasks.presentation_import_tasks._notify_nodejs", new_callable=AsyncMock),
+            patch("app.tasks.presentation_import_tasks.get_r2_storage_service", return_value=MagicMock()),
+            patch("app.tasks.presentation_import_tasks.AsyncSessionLocal") as mock_factory,
+        ):
+            mock_factory.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_factory.return_value.__aexit__ = AsyncMock(return_value=None)
+
+            with pytest.raises(ValueError, match="must use HTTPS"):
+                await _import_async(
+                    None, 42, "pptx", 1, "tenant-abc",
+                    source_item_id=7, slides_url=None,
+                )
+
+
+@pytest.mark.unit
+class TestTruncateSlides:
+    """Unit tests for _truncate_slides helper."""
+
+    def test_truncates_to_fit_within_limit(self):
+        """Binary search truncates slides to fit within 8MB limit."""
+        from app.tasks.presentation_import_tasks import _truncate_slides, _SLIDES_JSON_MAX_BYTES
+
+        big_slide = {"content": "x" * 100_000}
+        n = (_SLIDES_JSON_MAX_BYTES // len(json.dumps(big_slide))) + 10
+        slides = [big_slide] * n
+
+        truncated, warnings = _truncate_slides(slides, ["existing warning"])
+        assert len(truncated) < n
+        assert len(json.dumps(truncated).encode()) <= _SLIDES_JSON_MAX_BYTES
+        assert any("truncated" in w.lower() for w in warnings)
+        assert "existing warning" in warnings
+
+    def test_preserves_at_least_one_slide_when_possible(self):
+        """If one slide fits, at least one slide is kept."""
+        from app.tasks.presentation_import_tasks import _truncate_slides, _SLIDES_JSON_MAX_BYTES
+
+        small_slide = {"content": "hello"}
+        slides = [small_slide] * 5
+        truncated, warnings = _truncate_slides(slides, [])
+        assert len(truncated) >= 1
+
+
+@pytest.mark.unit
+class TestNotifyNodejs:
+    """Unit tests for _notify_nodejs helper."""
+
+    async def test_sends_post_request_with_bearer_token(self):
+        """_notify_nodejs sends POST with correct URL and auth header."""
+        from app.tasks.presentation_import_tasks import _notify_nodejs
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+
+        with (
+            patch("app.tasks.presentation_import_tasks.httpx.AsyncClient", return_value=mock_client),
+            patch("app.tasks.presentation_import_tasks.WEB_GATEWAY_TOKEN", "test-token"),
+            patch("app.tasks.presentation_import_tasks.NODE_INTERNAL_URL", "http://localhost:3000"),
+        ):
+            await _notify_nodejs(42, "done", slides=[{"s": 1}], fidelity_warnings=["warn"])
+
+        mock_client.post.assert_called_once()
+        call_kwargs = mock_client.post.call_args
+        assert "/api/internal/presentation-import/callback" in call_kwargs[0][0]
+        assert call_kwargs[1]["headers"]["Authorization"] == "Bearer test-token"
+        payload = call_kwargs[1]["json"]
+        assert payload["conversionId"] == 42
+        assert payload["status"] == "done"
+
+    async def test_http_error_does_not_raise(self):
+        """_notify_nodejs swallows HTTP errors (logs, but doesn't raise)."""
+        from app.tasks.presentation_import_tasks import _notify_nodejs
+
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(side_effect=Exception("Connection refused"))
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+
+        with patch("app.tasks.presentation_import_tasks.httpx.AsyncClient", return_value=mock_client):
+            # Should NOT raise
+            await _notify_nodejs(42, "failed", error="test error")
+
+    async def test_sends_error_field_for_failed_status(self):
+        """_notify_nodejs includes error field when status='failed'."""
+        from app.tasks.presentation_import_tasks import _notify_nodejs
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+
+        with (
+            patch("app.tasks.presentation_import_tasks.httpx.AsyncClient", return_value=mock_client),
+            patch("app.tasks.presentation_import_tasks.WEB_GATEWAY_TOKEN", "tok"),
+            patch("app.tasks.presentation_import_tasks.NODE_INTERNAL_URL", "http://localhost:3000"),
+        ):
+            await _notify_nodejs(99, "failed", error="something broke")
+
+        payload = mock_client.post.call_args[1]["json"]
+        assert payload["error"] == "something broke"
+        assert "slides" not in payload
+
+
+@pytest.mark.unit
+class TestUpdateConversion:
+    """Unit tests for _update_conversion helper."""
+
+    async def test_no_op_when_no_columns_provided(self):
+        """_update_conversion does nothing when no keyword args are passed."""
+        from app.tasks.presentation_import_tasks import _update_conversion
+
+        with patch("app.tasks.presentation_import_tasks.AsyncSessionLocal") as mock_factory:
+            mock_session = AsyncMock()
+            mock_factory.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_factory.return_value.__aexit__ = AsyncMock(return_value=None)
+
+            await _update_conversion(42, "tenant-abc")
+
+        # Session should never be opened because of early return
+        mock_session.execute.assert_not_called()
+
+    async def test_updates_status_and_progress(self):
+        """_update_conversion builds correct SQL for status + progress."""
+        from app.tasks.presentation_import_tasks import _update_conversion
+
+        mock_session = AsyncMock()
+        mock_session.commit = AsyncMock()
+
+        with patch("app.tasks.presentation_import_tasks.AsyncSessionLocal") as mock_factory:
+            mock_factory.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_factory.return_value.__aexit__ = AsyncMock(return_value=None)
+
+            await _update_conversion(42, "tenant-abc", status="processing", progress=50)
+
+        mock_session.execute.assert_called_once()
+        mock_session.commit.assert_called_once()
+
+    async def test_updates_fidelity_warnings(self):
+        """_update_conversion handles fidelity_warnings JSON serialization."""
+        from app.tasks.presentation_import_tasks import _update_conversion
+
+        mock_session = AsyncMock()
+        mock_session.commit = AsyncMock()
+
+        with patch("app.tasks.presentation_import_tasks.AsyncSessionLocal") as mock_factory:
+            mock_factory.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+            mock_factory.return_value.__aexit__ = AsyncMock(return_value=None)
+
+            await _update_conversion(
+                42, "tenant-abc", fidelity_warnings=["Tables not supported"]
+            )
+
+        mock_session.execute.assert_called_once()
+        call_args = mock_session.execute.call_args
+        params = call_args[0][1]
+        assert params["fw"] == json.dumps(["Tables not supported"])

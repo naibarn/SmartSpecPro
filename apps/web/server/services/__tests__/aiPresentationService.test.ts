@@ -91,7 +91,7 @@ vi.mock("../redis", () => ({
 }));
 
 vi.mock("../../db", () => ({
-  getDb: () => ({
+  getDb: async () => ({
     transaction: mockDbTransaction,
   }),
 }));
@@ -424,7 +424,7 @@ describe("generateAIDraft - concurrency control", () => {
     setupHappyPath();
     // Lock acquisition returns null (already held)
     mockRedisSet.mockImplementation(async (...args: unknown[]) => {
-      if (typeof args[0] === "string" && (args[0] as string).includes("ai_draft_lock:") && args[2] === "NX") {
+      if (typeof args[0] === "string" && (args[0] as string).includes("ai_draft_lock:") && args[4] === "NX") {
         return null;
       }
       return "OK";

@@ -2,7 +2,7 @@ import crypto from "crypto";
 import { ENV } from "./env";
 
 /**
- * SmartSpec Web gateway: OpenAI-compatible pass-through to Forge API.
+ * SmartAIHub Web gateway: OpenAI-compatible pass-through to Forge API.
  * Supports both JSON and SSE streaming.
  *
  * Secured by optional SMARTSPEC_WEB_GATEWAY_KEY header: x-gateway-key

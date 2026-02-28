@@ -202,7 +202,8 @@ export function createTasksRouter(): Router {
         skill,
         { prompt: context?.prompt || "", conversationId, context },
         userId,
-        "" // No user token available in Cloud Tasks context
+        "", // No user token available in Cloud Tasks context
+        typeof req.body?.tenantId === "string" ? req.body.tenantId : undefined,
       );
 
       console.log(`[Tasks] Skill ${skillId} step ${currentStep || 0} completed: ${result.success}`);

@@ -336,7 +336,8 @@ app.use("/internal", createSlideRenderRouter());
 app.use("/api/webhooks", createWebhookRouter());
 
 // Telegram Bot API webhook (Telegram sends POSTs with secret-token header, no Origin)
-app.use("/webhooks/telegram", createTelegramWebhookRouter());
+// Tighter body limit than global 10MB — Telegram updates are small JSON payloads
+app.use("/webhooks/telegram", express.json({ limit: "1mb" }), createTelegramWebhookRouter());
 
 // Cloud Tasks handler routes (called by Cloud Tasks with OIDC auth)
 // Mounted at /_internal/tasks to avoid conflict with the frontend /tasks SPA route
@@ -491,6 +492,64 @@ app.post("/api/internal/credits/agency-markup", async (req, res) => {
   } catch (err: any) {
     const status = err.message?.includes("Insufficient credits") ? 402 : 500;
     return res.status(status).json({ success: false, error: err.message });
+  }
+});
+
+// Internal creator fee settlement endpoint (Python backend -> Node.js)
+app.post("/api/internal/credits/creator-fee-settle", async (req, res) => {
+  const authHeader = req.headers.authorization || "";
+  if (!authHeader.startsWith("Bearer ") || !ENV.webGatewayToken) {
+    return res.status(401).json({ success: false, error: "Unauthorized" });
+  }
+  const token = authHeader.slice(7);
+  if (token !== ENV.webGatewayToken) {
+    return res.status(401).json({ success: false, error: "Unauthorized" });
+  }
+
+  try {
+    const { runId, agencyId, userId, creatorId, creatorFeeCredits, platformSharePct, tenantId } = req.body;
+
+    if (typeof runId !== "string" || !runId) {
+      return res.status(400).json({ success: false, error: "runId is required" });
+    }
+    if (typeof agencyId !== "string" || !agencyId) {
+      return res.status(400).json({ success: false, error: "agencyId is required" });
+    }
+    if (typeof userId !== "number" || !Number.isFinite(userId) || userId <= 0) {
+      return res.status(400).json({ success: false, error: "userId must be a positive number" });
+    }
+    if (typeof creatorId !== "number" || !Number.isFinite(creatorId) || creatorId <= 0) {
+      return res.status(400).json({ success: false, error: "creatorId must be a positive number" });
+    }
+    if (typeof creatorFeeCredits !== "number" || !Number.isFinite(creatorFeeCredits) || creatorFeeCredits < 0) {
+      return res.status(400).json({ success: false, error: "creatorFeeCredits must be a non-negative number" });
+    }
+    if (typeof platformSharePct !== "number" || !Number.isFinite(platformSharePct) || platformSharePct < 0 || platformSharePct > 100) {
+      return res.status(400).json({ success: false, error: "platformSharePct must be between 0 and 100" });
+    }
+    if (typeof tenantId !== "string" || !tenantId) {
+      return res.status(400).json({ success: false, error: "tenantId is required" });
+    }
+
+    const { settleCreatorFee } = await import("../services/creatorRevenueService");
+
+    const result = await settleCreatorFee({
+      runId,
+      entityType: "agency",
+      entityId: agencyId,
+      runnerId: userId,
+      creatorId,
+      tenantId,
+      totalFee: creatorFeeCredits,
+      platformSharePct,
+    });
+
+    return res.json({
+      success: true,
+      ...result,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 

@@ -65,6 +65,9 @@ class AgencyConfig(BaseModel):
     conversation_id: str
     max_run_time_seconds: int = 600
     credit_multiplier: float = 1.0
+    creator_fee_credits: int = 0
+    platform_share_pct: int = 20
+    creator_id: int | None = None
 
 
 class RunResult(BaseModel):

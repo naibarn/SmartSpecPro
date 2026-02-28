@@ -184,7 +184,7 @@ function DashboardLayoutContent({
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="font-semibold tracking-tight truncate">
-                    {tenant?.name || "SmartSpec Pro"}
+                    {tenant?.name || "SmartAIHub"}
                   </span>
                 </div>
               ) : null}
@@ -273,7 +273,7 @@ function DashboardLayoutContent({
                   </div>
                 )}
                 <span className="font-semibold tracking-tight text-foreground">
-                  {tenant?.name || "SmartSpec Pro"}
+                  {tenant?.name || "SmartAIHub"}
                 </span>
               </div>
             </div>

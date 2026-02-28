@@ -52,14 +52,37 @@ class Orchestrator:
             else:
                 test_policy = f"custom: {choice}"
 
-        manifest = read_text(skill_name, "manifest.json")
-        skill_code = read_text(skill_name, "skill.py")
-        tests = read_text(skill_name, "tests.json")
+        try:
+            manifest = read_text(skill_name, "skill.md")
+        except FileNotFoundError:
+            try:
+                manifest = read_text(skill_name, "manifest.json")
+            except FileNotFoundError:
+                manifest = "Manifest missing."
+
+        try:
+            skill_code = read_text(skill_name, "python/skill.py")
+        except FileNotFoundError:
+            try:
+                skill_code = read_text(skill_name, "js/skill.js")
+            except FileNotFoundError:
+                try:
+                    skill_code = read_text(skill_name, "skill.py")
+                except FileNotFoundError:
+                    skill_code = "Code missing."
+                    
+        try:
+            tests = read_text(skill_name, "tests/tests.json")
+        except FileNotFoundError:
+            try:
+                tests = read_text(skill_name, "tests.json")
+            except FileNotFoundError:
+                tests = "Tests missing."
 
         failed = [r for r in report.results if not r.passed]
         failure_block = "\n".join([f"- {r.test_id}: missing={r.missing} output={r.output}" for r in failed]) or "(all passed)"
 
-        system = f"You are an expert engineer. Output ONLY a unified diff that edits files under skills/{skill_name}/. No markdown, no explanations."
+        system = f"You are an expert engineer. Output ONLY valid JSON. Keys must be file paths (e.g. 'skills/{skill_name}/python/skill.py' or 'skills/{skill_name}/tests.json'), values are the FULL replacement string for that file. No markdown, no unified diffs, no explanations."
         user = f"""manifest.json:
 {manifest}
 
@@ -86,16 +109,17 @@ TEST POLICY:
 {test_policy}
 
 Hard requirements:
-- Keep respond(input_text: str, context=None) -> str
-- skill.py uses stdlib only
+- Keep respond(input_text: str, context=None) -> str (if Python) or module.exports = {{ respond }} (if JS)
+- skill code uses stdlib only
 - Make tests pass
-Return unified diff ONLY.
+Return JSON ONLY. Do not use markdown code blocks.
 """
 
-        diff = self.llm.chat([{"role":"system","content":system},{"role":"user","content":user}]).strip()
+        payload = self.llm.chat([{"role":"system","content":system},{"role":"user","content":user}]).strip()
+        payload = payload.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
 
         scfg = self.cfg.safety
-        vr = validate_patch(skill_name, diff,
+        vr = validate_patch(skill_name, payload,
             restrict_under_skills=bool(scfg.get("restrict_paths_under_skills", True)),
             disallow_new_deps_in_skill_py=bool(scfg.get("disallow_new_deps_in_skill_py", True)),
             require_respond_signature=bool(scfg.get("require_respond_signature", True)),
@@ -105,15 +129,16 @@ Return unified diff ONLY.
 Errors: {vr.errors}
 Warnings: {vr.warnings}
 
-Revise the patch to satisfy validation. Return unified diff ONLY.
-Original patch:
-{diff}
+Revise the patch to satisfy validation. Return JSON ONLY.
+Original payload:
+{payload}
 """
-            diff = self.llm.chat([{"role":"system","content":"Return unified diff only."},{"role":"user","content":fix}]).strip()
+            payload = self.llm.chat([{"role":"system","content":"Return JSON only."},{"role":"user","content":fix}]).strip()
+            payload = payload.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
 
         return PatchProposal(
             skill_name=skill_name,
             created_at_iso=__import__("datetime").datetime.utcnow().replace(microsecond=0).isoformat()+"Z",
             rationale=f"orchestrated patch; strategy={strategy}; triage={triage.categories}; topics={topics[:self.cfg.max_topics]}",
-            unified_diff=diff
+            patch_payload=payload
         )

@@ -23,6 +23,8 @@ import { eq, and, lte, isNull, sql } from "drizzle-orm";
 import { deductCredits, hasEnoughCredits, calculateCreditsForLLM } from "./creditService";
 import { getProviderForModel } from "./llmRouter";
 import { decrypt } from "./crypto";
+import { signBearerToken } from "../_core/tokens";
+import crypto from "crypto";
 
 const USE_CLOUD_TASKS = () => process.env.USE_CLOUD_TASKS === "true";
 
@@ -86,6 +88,151 @@ export async function deliverScheduledMessage(scheduleId: number): Promise<void>
       }
 
       console.log(`[Scheduler] Simple reminder ${scheduleId} fired (0 credits)`);
+      return;
+    } catch (err: any) {
+      await logExecution(db, scheduleId, null, "failed", err.message);
+      throw err;
+    }
+  }
+
+  // ── Custom Skill Execution ──
+  if (schedule.skillId && schedule.skillId !== "chat-alert") {
+    try {
+      const { skills } = await import("../../drizzle/schema");
+      const { executeSkill } = await import("./skillExecutor");
+
+      const [skillDef] = await db
+        .select()
+        .from(skills)
+        .where(eq(skills.slug, schedule.skillId))
+        .limit(1);
+
+      if (!skillDef) {
+        await logExecution(db, scheduleId, null, "failed", `Skill ${schedule.skillId} not found`);
+        return;
+      }
+
+      // Check credits
+      const enough = await hasEnoughCredits(schedule.userId, 10);
+      if (!enough) {
+        await logExecution(db, scheduleId, null, "failed", "Insufficient credits for skill execution");
+        return;
+      }
+
+      // Generate a temporary execution token
+      const userToken = signBearerToken({
+        sub: String(userId),
+        type: "access",
+        scopes: ["skill:execute"],
+        jti: `skill_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
+      }, "15m");
+
+      const result = await executeSkill(
+        skillDef as any,
+        {
+          prompt: schedule.prompt || "",
+          extraParams: (schedule as any).dynamicParams || {},
+          publicUrl: process.env.PUBLIC_URL || "http://localhost:3000",
+        },
+        userId,
+        userToken,
+        typeof (schedule as any).tenantId === "string" ? (schedule as any).tenantId : undefined,
+      );
+
+      if (!result.success) {
+        await logExecution(db, scheduleId, null, "failed", result.error || "Skill execution failed", result.creditsUsed);
+
+        // Optionally update status
+        await db
+          .update(scheduledMessages)
+          .set({
+            lastRunAt: new Date(),
+            updatedAt: new Date(),
+            ...(schedule.isRecurring ? {} : { status: "failed" as const }),
+          })
+          .where(eq(scheduledMessages.id, scheduleId));
+
+        return;
+      }
+
+      const content = result.message || "Skill executed successfully";
+      const creditsUsed = result.creditsUsed || 0;
+
+      // Find or create conversation
+      let convId = schedule.conversationId;
+      if (!convId) {
+        const [newConv] = await db
+          .insert(conversations)
+          .values({
+            userId,
+            title: `Alert: ${schedule.description || schedule.prompt.slice(0, 40)}`,
+            model: schedule.modelId || "gpt-4o-mini",
+          })
+          .returning({ id: conversations.id });
+        convId = newConv.id;
+
+        await db
+          .update(scheduledMessages)
+          .set({ conversationId: convId })
+          .where(eq(scheduledMessages.id, scheduleId));
+      }
+
+      // Save user prompt message
+      await db.insert(messages).values({
+        conversationId: convId,
+        role: "user",
+        content: `[Scheduled] ${schedule.prompt}`,
+        modelUsed: schedule.modelId || "gpt-4o-mini",
+      });
+
+      // Save assistant response message
+      await db.insert(messages).values({
+        conversationId: convId,
+        role: "assistant",
+        content,
+        modelUsed: schedule.modelId || "gpt-4o-mini",
+        inputTokens: 0,
+        outputTokens: 0,
+        creditsUsed: creditsUsed.toString(),
+        skillUsed: schedule.skillId,
+        skillArgs: (schedule as any).dynamicParams || {},
+        artifacts: result.data ? [result.data as any] : [],
+      });
+
+      // Create notification
+      const { createNotification } = await import("./notificationService");
+      await createNotification({
+        db,
+        userId,
+        type: "scheduled_message",
+        title: schedule.description || `Skill Update: ${skillDef.name}`,
+        content: content.slice(0, 500),
+        conversationId: convId,
+        scheduledMessageId: scheduleId,
+        priority: schedule.priority || "normal",
+      });
+
+      // Update schedule timestamps
+      await db
+        .update(scheduledMessages)
+        .set({
+          lastRunAt: new Date(),
+          updatedAt: new Date(),
+          ...(schedule.isRecurring ? {} : { status: "completed" as const }),
+        })
+        .where(eq(scheduledMessages.id, scheduleId));
+
+      await logExecution(db, scheduleId, content, "success", null, creditsUsed);
+
+      if (schedule.emailNotify) {
+        try {
+          await sendAlertEmail(db, userId, schedule, content);
+        } catch (emailErr) {
+          console.error("[Scheduler] Email notification failed:", emailErr);
+        }
+      }
+
+      console.log(`[Scheduler] Executed skill ${schedule.skillId} successfully (schedule ${scheduleId})`);
       return;
     } catch (err: any) {
       await logExecution(db, scheduleId, null, "failed", err.message);
@@ -317,7 +464,7 @@ async function sendAlertEmail(db: any, userId: number, schedule: any, content: s
         <hr />
         <div>${escapeHtml(content).replace(/\n/g, "<br>")}</div>
         <hr />
-        <p style="color: #666; font-size: 12px;">This is an automated alert from SmartSpec Chat.</p>
+        <p style="color: #666; font-size: 12px;">This is an automated alert from SmartAIHub Chat.</p>
       `,
     });
   } catch {

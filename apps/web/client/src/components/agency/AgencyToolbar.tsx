@@ -7,6 +7,7 @@ import {
   LayoutGrid,
   Play,
   Loader2,
+  Coins,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +15,8 @@ interface AgencyToolbarProps {
   agencyName: string;
   agencyStatus: "draft" | "published" | "archived";
   isSaving: boolean;
+  creatorFeeCredits?: number;
+  onCreatorFeeChange?: (fee: number) => void;
   onSave: () => void;
   onPublish: () => void;
   onAutoLayout: () => void;
@@ -32,6 +35,8 @@ export function AgencyToolbar({
   agencyName,
   agencyStatus,
   isSaving,
+  creatorFeeCredits = 0,
+  onCreatorFeeChange,
   onSave,
   onPublish,
   onAutoLayout,
@@ -64,6 +69,23 @@ export function AgencyToolbar({
           {agencyStatus}
         </Badge>
       </div>
+
+      {/* Creator Fee */}
+      {onCreatorFeeChange && (
+        <div className="flex items-center gap-1.5 rounded-md border bg-muted/50 px-2 py-1">
+          <Coins className="h-3.5 w-3.5 text-amber-500" />
+          <span className="text-xs text-muted-foreground">Fee:</span>
+          <input
+            type="number"
+            min={0}
+            max={1000}
+            value={creatorFeeCredits}
+            onChange={(e) => onCreatorFeeChange(Math.max(0, Math.min(1000, parseInt(e.target.value) || 0)))}
+            className="w-14 border-none bg-transparent text-xs font-medium outline-none text-right"
+          />
+          <span className="text-xs text-muted-foreground">credits/run</span>
+        </div>
+      )}
 
       {/* Right side */}
       <div className="flex items-center gap-2">

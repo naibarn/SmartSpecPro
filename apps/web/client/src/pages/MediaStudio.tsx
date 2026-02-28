@@ -1,5 +1,5 @@
 /**
- * Media Studio Page - SmartSpec Pro
+ * Media Studio Page - SmartAIHub
  * Full-featured media generation interface with reference images, Auto Prompt, and history
  */
 
@@ -407,6 +407,15 @@ export default function MediaStudio() {
   const autoPreviewSeenTaskIdsRef = useRef<Set<string>>(new Set());
   // Track session start time to filter out old failed tasks from History Gallery
   const [sessionStartTime] = useState<Date>(() => new Date());
+  const [expiredUrls, setExpiredUrls] = useState<Set<string>>(() => new Set());
+  const markExpired = useCallback((url: string) => {
+    setExpiredUrls((prev) => {
+      if (prev.has(url)) return prev;
+      const next = new Set(prev);
+      next.add(url);
+      return next;
+    });
+  }, []);
   const [taskLibraryState, setTaskLibraryState] = useState<Record<string, TaskLibraryUIState>>({});
   const [librarySearchQuery, setLibrarySearchQuery] = useState("");
   const [debouncedLibrarySearchQuery, setDebouncedLibrarySearchQuery] = useState("");
@@ -1503,7 +1512,7 @@ export default function MediaStudio() {
           const result = await executeSkillMutation.mutateAsync({
             skillId,
             ...commonPayload,
-            duration: activeTab === "video" ? (modelInputValues.duration ? Number(modelInputValues.duration) : duration) : undefined,
+            duration: undefined,
           } as any);
 
           if (!result.success) {
@@ -1511,7 +1520,7 @@ export default function MediaStudio() {
           }
           resultUrl = result.resultUrl || result.resultUrls?.[0];
           creditsUsed = result.creditsUsed;
-          startedAsyncTask = !!result.isAsync || !!result.taskId;
+          startedAsyncTask = !!(result as any).isAsync || !!(result as any).taskId;
         }
 
         if (resultUrl) {
@@ -3338,16 +3347,16 @@ export default function MediaStudio() {
             </div>
 
             {/* Generated Media History */}
-            {generatedMedia.length > 0 && (
+            {generatedMedia.filter((m) => !expiredUrls.has(m.url)).length > 0 && (
               <div className="bg-white/70 backdrop-blur rounded-xl border p-4 space-y-3 overflow-hidden">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold">Generated Media</h3>
-                  <Badge variant="outline">{generatedMedia.length} items</Badge>
+                  <Badge variant="outline">{generatedMedia.filter((m) => !expiredUrls.has(m.url)).length} items</Badge>
                 </div>
 
                 <ScrollArea className="h-[200px] overflow-hidden">
                   <div className="grid grid-cols-4 gap-2 pr-2">
-                    {generatedMedia.map((media) => (
+                    {generatedMedia.filter((m) => !expiredUrls.has(m.url)).map((media) => (
                       <div
                         key={media.id}
                         className="relative group cursor-pointer"
@@ -3358,6 +3367,7 @@ export default function MediaStudio() {
                             src={media.url}
                             alt={media.prompt}
                             className="w-full aspect-square object-cover rounded-lg border"
+                            onError={() => markExpired(media.url)}
                           />
                         ) : media.type === "video" ? (
                           <div className="w-full aspect-square bg-gray-100 rounded-lg border flex items-center justify-center">
@@ -3483,12 +3493,13 @@ export default function MediaStudio() {
                           <span className="text-xs text-muted-foreground">Generating #{task.index + 1}</span>
                         </div>
                       )}
-                      {task.status === 'completed' && task.url && (
+                      {task.status === 'completed' && task.url && !expiredUrls.has(task.url) && (
                         <>
                           <img
                             src={task.url}
                             alt={`Generated ${task.index + 1}`}
                             className="w-full h-full object-cover cursor-pointer"
+                            onError={() => markExpired(task.url!)}
                             onClick={() => {
                               const media = generatedMedia.find((m: any) => m.url === task.url);
                               openLightbox(task.url!, media?.prompt || prompt || "", media?.model || selectedModel, media?.createdAt);
@@ -3539,13 +3550,14 @@ export default function MediaStudio() {
                       <Loader2 className="h-12 w-12 animate-spin text-purple-500 mx-auto mb-4" />
                       <p className="text-sm text-muted-foreground">Creating your {activeTab}...</p>
                     </div>
-                  ) : previewUrl ? (
+                  ) : previewUrl && !expiredUrls.has(previewUrl) ? (
                     activeTab === "image" ? (
                       <>
                         <img
                           src={previewUrl}
                           alt="Preview"
                           className="w-full h-full object-contain cursor-pointer"
+                          onError={() => markExpired(previewUrl)}
                           onClick={() => {
                             // Find the matching generated media for prompt info
                             const media = generatedMedia.find((m: any) => m.url === previewUrl);
@@ -3572,6 +3584,7 @@ export default function MediaStudio() {
                         src={previewUrl}
                         controls
                         className="w-full h-full object-contain"
+                        onError={() => markExpired(previewUrl)}
                       />
                     ) : (
                       <audio src={previewUrl} controls className="w-full" />
@@ -3667,7 +3680,7 @@ export default function MediaStudio() {
                 {/* Completed tasks grid */}
                 <div className="grid grid-cols-3 gap-2 mb-4 pb-2">
                   {mediaHistory?.tasks
-                    ?.filter((task) => task.status === "completed" && !!extractTaskResultUrl(task))
+                    ?.filter((task) => task.status === "completed" && !!extractTaskResultUrl(task) && !expiredUrls.has(extractTaskResultUrl(task)!))
                     .map((task) => {
                       const resultUrl = extractTaskResultUrl(task);
                       if (!resultUrl) return null;
@@ -3742,6 +3755,7 @@ export default function MediaStudio() {
                               muted
                               playsInline
                               preload="metadata"
+                              onError={() => markExpired(resultUrl)}
                             />
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                               <div className="rounded-full bg-black/50 p-2">
@@ -3758,6 +3772,7 @@ export default function MediaStudio() {
                             src={resultUrl}
                             alt={task.prompt?.slice(0, 30)}
                             className="w-full aspect-square object-cover rounded-lg border hover:border-purple-400 transition-colors"
+                            onError={() => markExpired(resultUrl)}
                           />
                         )}
                         <div className="mt-1 flex items-center justify-center gap-1.5 rounded-md border bg-white/90 px-1 py-1 shadow-sm">
@@ -3939,14 +3954,22 @@ export default function MediaStudio() {
           <div className="flex flex-col h-full">
             {/* Image - Large preview almost full screen */}
             <div className="flex-1 bg-black/95 flex items-center justify-center p-2 min-h-[60vh]">
-              {lightboxImage && (
+              {lightboxImage && !expiredUrls.has(lightboxImage.url) ? (
                 <img
                   src={lightboxImage.url}
                   alt="Full size preview"
                   className="max-w-full max-h-[80vh] object-contain cursor-zoom-in"
+                  onError={() => {
+                    markExpired(lightboxImage.url);
+                    setLightboxOpen(false);
+                  }}
                   onClick={() => window.open(lightboxImage.url, "_blank", "noopener,noreferrer")}
                   title="Click to open full size in new tab"
                 />
+              ) : lightboxImage && (
+                <div className="text-center text-gray-400">
+                  <p className="text-sm">This media is no longer available</p>
+                </div>
               )}
             </div>
 

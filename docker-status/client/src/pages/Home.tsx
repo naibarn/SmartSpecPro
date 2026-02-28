@@ -510,7 +510,7 @@ export default function Home() {
                 </h1>
               </div>
               <Badge variant="outline" className="font-mono text-xs border-primary/50 text-primary">
-                SmartSpec Pro
+                SmartAIHub
               </Badge>
             </div>
             <div className="flex items-center gap-4">
@@ -683,7 +683,7 @@ export default function Home() {
         <div className="container py-4">
           <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
             <span>DOCKER ENGINE {dockerInfo?.version || "N/A"}</span>
-            <span>SmartSpec Pro Infrastructure Monitor</span>
+            <span>SmartAIHub Infrastructure Monitor</span>
             <span>© 2025</span>
           </div>
         </div>

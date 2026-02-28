@@ -19,9 +19,10 @@ import {
   conversations,
   agencyConversations,
 } from "../../drizzle/schema";
-import { eq, and, count, sql } from "drizzle-orm";
+import { eq, and, count, sql, gt, lt } from "drizzle-orm";
 import { encrypt, decrypt } from "../services/crypto";
 import { clearTelegramCache } from "../services/telegramService";
+import { clearDeliveryBotTokenCache } from "../services/deliveryQueue";
 import { getRedisClient } from "../services/redis";
 
 // ============================================================================
@@ -93,7 +94,7 @@ const getTelegramSettings = adminProcedure.query(async () => {
 const updateTelegramSettings = adminProcedure
   .input(
     z.object({
-      botToken: z.string().optional(),
+      botToken: z.string().regex(/^\d+:[A-Za-z0-9_-]{35}$/, "Invalid bot token format").optional(),
       botUsername: z.string().max(64).optional(),
       appUrl: z.string().url().optional(),
       enabled: z.boolean().optional(),
@@ -182,7 +183,7 @@ const updateTelegramSettings = adminProcedure
       }
     }
 
-    // Auto-generate webhook_secret if it doesn't exist
+    // Auto-generate or rotate webhook_secret
     const [webhookSecretRow] = await db
       .select()
       .from(systemSettings)
@@ -193,22 +194,95 @@ const updateTelegramSettings = adminProcedure
         )
       );
 
-    if (!webhookSecretRow) {
+    if (!webhookSecretRow || input.botToken !== undefined) {
+      // Generate new secret if missing OR if botToken changed
       const generatedSecret = crypto.randomBytes(32).toString("hex");
-      await db.insert(systemSettings).values({
-        category,
-        key: "webhook_secret",
-        value: encrypt(generatedSecret),
-        isSensitive: true,
-        updatedBy: userId,
-      });
+      if (webhookSecretRow) {
+        await db
+          .update(systemSettings)
+          .set({
+            value: encrypt(generatedSecret),
+            updatedBy: userId,
+            updatedAt: new Date(),
+          })
+          .where(eq(systemSettings.id, webhookSecretRow.id));
+      } else {
+        await db.insert(systemSettings).values({
+          category,
+          key: "webhook_secret",
+          value: encrypt(generatedSecret),
+          isSensitive: true,
+          updatedBy: userId,
+        });
+      }
     }
 
-    // Clear Telegram service cache so new settings are picked up
+    // Clear caches so new settings are picked up
     clearTelegramCache();
+    clearDeliveryBotTokenCache();
 
-    return { success: true };
+    // If botToken changed, re-register webhook so Telegram uses the new secret
+    let webhookReRegistered = false;
+    if (input.botToken !== undefined) {
+      const result = await callTelegramSetWebhook(db);
+      webhookReRegistered = result.ok;
+      if (!result.ok) {
+        console.warn("[Telegram] Auto webhook re-registration failed:", result.error);
+      }
+    }
+
+    return { success: true, webhookReRegistered };
   });
+
+/**
+ * Shared helper: call Telegram setWebhook API with current DB settings.
+ * Returns { ok, error? } without throwing.
+ */
+async function callTelegramSetWebhook(
+  database: Awaited<ReturnType<typeof getDb>>,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!database) return { ok: false, error: "Database unavailable" };
+
+  const settings = await database
+    .select()
+    .from(systemSettings)
+    .where(eq(systemSettings.category, "telegram"));
+
+  const map = new Map(settings.map((s: any) => [s.key, s.value]));
+
+  const botTokenEnc = map.get("bot_token");
+  const secretEnc = map.get("webhook_secret");
+  const appUrl = map.get("app_url");
+  const botUsername = map.get("bot_username");
+
+  if (!botTokenEnc || !secretEnc || !appUrl || !botUsername) {
+    return { ok: false, error: "Missing required settings" };
+  }
+
+  try {
+    const botToken = decrypt(botTokenEnc);
+    const webhookSecret = decrypt(secretEnc);
+    const webhookUrl = `${appUrl}/webhooks/telegram/${botUsername}`;
+
+    const res = await fetch(
+      `https://api.telegram.org/bot${botToken}/setWebhook`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: webhookUrl,
+          secret_token: webhookSecret,
+          allowed_updates: ["message", "callback_query"],
+        }),
+        signal: AbortSignal.timeout(10_000),
+      },
+    );
+    const data = (await res.json()) as { ok: boolean; description?: string };
+    return data.ok ? { ok: true } : { ok: false, error: data.description };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
 
 /**
  * Test Telegram connection by calling Bot API getMe
@@ -277,76 +351,11 @@ const testTelegramConnection = adminProcedure.mutation(async () => {
  */
 const registerWebhook = adminProcedure.mutation(async () => {
   const db = await getDb();
-  if (!db) {
-    throw new Error("Database not available");
+  const result = await callTelegramSetWebhook(db);
+  if (result.ok) {
+    return { success: true, message: "Webhook registered successfully" };
   }
-
-  // Read bot_token, webhook_secret, app_url from system_settings
-  const settings = await db
-    .select()
-    .from(systemSettings)
-    .where(eq(systemSettings.category, "telegram"));
-
-  const settingsMap = new Map(settings.map((s: any) => [s.key, s.value]));
-
-  const botTokenEncrypted = settingsMap.get("bot_token");
-  const webhookSecretEncrypted = settingsMap.get("webhook_secret");
-  const appUrl = settingsMap.get("app_url");
-
-  if (!botTokenEncrypted || !webhookSecretEncrypted || !appUrl) {
-    return {
-      success: false,
-      error:
-        "Missing required settings (bot_token, webhook_secret, app_url). Please configure Telegram settings first.",
-    };
-  }
-
-  try {
-    const botToken = decrypt(botTokenEncrypted);
-    const webhookSecret = decrypt(webhookSecretEncrypted);
-
-    // Construct webhook URL using bot_username as path identifier
-    const botUsername = settingsMap.get("bot_username");
-    if (!botUsername) {
-      return {
-        success: false,
-        error: "Bot username not configured. Please set bot username in Telegram settings.",
-      };
-    }
-    const webhookUrl = `https://smartaihub.app/webhooks/telegram/${botUsername}`;
-
-    const url = `https://api.telegram.org/bot${botToken}/setWebhook`;
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        url: webhookUrl,
-        secret_token: webhookSecret,
-        allowed_updates: ["message", "callback_query"],
-      }),
-      signal: AbortSignal.timeout(10000), // 10s timeout
-    });
-
-    const data = await response.json();
-
-    if (response.ok && data.ok) {
-      return {
-        success: true,
-        message: "Webhook registered successfully",
-      };
-    } else {
-      return {
-        success: false,
-        error: data.description || "Failed to register webhook",
-      };
-    }
-  } catch (err) {
-    return {
-      success: false,
-      error: err instanceof Error ? err.message : "Connection failed",
-    };
-  }
+  return { success: false, error: result.error ?? "Failed to register webhook" };
 });
 
 // ============================================================================
@@ -442,6 +451,34 @@ const generateTelegramLink = protectedProcedure
       }
     }
 
+    // Rate limit: max 5 tokens per hour per user
+    const oneHourAgo = new Date(Date.now() - 3600_000);
+    const [tokenCount] = await db
+      .select({ cnt: count() })
+      .from(telegramLinkTokens)
+      .where(
+        and(
+          eq(telegramLinkTokens.userId, ctx.user.id),
+          gt(telegramLinkTokens.createdAt, oneHourAgo),
+        ),
+      );
+    if (Number(tokenCount?.cnt) >= 5) {
+      throw new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message: "Too many link attempts. Please try again later.",
+      });
+    }
+
+    // Cleanup expired tokens for this user
+    await db
+      .delete(telegramLinkTokens)
+      .where(
+        and(
+          eq(telegramLinkTokens.userId, ctx.user.id),
+          lt(telegramLinkTokens.expiresAt, new Date()),
+        ),
+      );
+
     // Generate verification code (128-bit entropy)
     const code = crypto.randomBytes(16).toString("hex"); // 32-char hex string
 
@@ -521,7 +558,6 @@ const generateTelegramLink = protectedProcedure
     const deepLink = `https://t.me/${botUsername}?start=${code}`;
 
     return {
-      code,
       deepLink,
       expiresIn: 300,
     };
@@ -562,14 +598,13 @@ const checkTelegramStatus = protectedProcedure.query(async ({ ctx }) => {
 
   const prefs = (user.userPreferences || {}) as any;
 
-  // Query active connection details
+  // Query active connection details (activeChannelId omitted — internal)
   const [activeConnection] = await db
     .select({
       id: telegramConnections.id,
       telegramUsername: telegramConnections.telegramUsername,
       status: telegramConnections.status,
       linkedAt: telegramConnections.linkedAt,
-      activeChannelId: telegramConnections.activeChannelId,
     })
     .from(telegramConnections)
     .where(
@@ -606,7 +641,6 @@ const checkTelegramStatus = protectedProcedure.query(async ({ ctx }) => {
           telegramUsername: activeConnection.telegramUsername,
           status: activeConnection.status,
           linkedAt: activeConnection.linkedAt,
-          activeChannelId: activeConnection.activeChannelId,
         }
       : null,
     boundConversationCount,
@@ -1020,6 +1054,21 @@ const unbindConversation = protectedProcedure
       });
     }
 
+    // Verify channel belongs to user's connection
+    if (channel.connectionId) {
+      const [conn] = await database
+        .select({ userId: telegramConnections.userId })
+        .from(telegramConnections)
+        .where(eq(telegramConnections.id, channel.connectionId))
+        .limit(1);
+      if (!conn || conn.userId !== ctx.user.id) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Channel does not belong to your connection.",
+        });
+      }
+    }
+
     // Revoke the channel
     await database
       .update(conversationChannels)
@@ -1062,7 +1111,10 @@ const adminListConnections = adminProcedure
       throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
     }
 
-    const tenantId = String(ctx.user.currentTenantId ?? "");
+    if (!ctx.user.currentTenantId) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "No tenant context" });
+    }
+    const tenantId = String(ctx.user.currentTenantId);
 
     // Build conditions
     const conditions = [eq(telegramConnections.tenantId, tenantId)];
@@ -1080,12 +1132,11 @@ const adminListConnections = adminProcedure
 
     const total = countResult?.total ?? 0;
 
-    // Fetch paginated data with user info
+    // Fetch paginated data with user info (telegramUserId omitted — internal ID)
     const connections = await database
       .select({
         id: telegramConnections.id,
         userId: telegramConnections.userId,
-        telegramUserId: telegramConnections.telegramUserId,
         telegramUsername: telegramConnections.telegramUsername,
         status: telegramConnections.status,
         linkedAt: telegramConnections.linkedAt,

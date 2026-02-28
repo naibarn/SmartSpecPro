@@ -25,6 +25,7 @@ import { AgentNode, type AgentNodeData } from "@/components/agency/AgentNode";
 import { CommunicationEdge } from "@/components/agency/CommunicationEdge";
 import { AgentPropertyPanel } from "@/components/agency/AgentPropertyPanel";
 import { AgencyToolbar } from "@/components/agency/AgencyToolbar";
+import { AgencySidebar } from "@/components/agency/AgencySidebar";
 import { Loader2 } from "lucide-react";
 
 const DEFAULT_AGENT_DATA: AgentNodeData = {
@@ -135,6 +136,7 @@ function AgencyCanvas() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [agencyName, setAgencyName] = useState("Untitled Agency");
   const [agencyStatus, setAgencyStatus] = useState<"draft" | "published" | "archived">("draft");
+  const [creatorFeeCredits, setCreatorFeeCredits] = useState(0);
   const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null);
   const canvasInitRef = useRef(false);
   const nodeCounterRef = useRef(0);
@@ -167,6 +169,7 @@ function AgencyCanvas() {
 
     setAgencyName(agencyData.name ?? "Untitled Agency");
     setAgencyStatus(agencyData.status ?? "draft");
+    setCreatorFeeCredits(agencyData.creatorFeeCredits ?? 0);
 
     // Convert agents to nodes
     const agentNodes: Node<AgentNodeData>[] = (agencyData.agents ?? []).map(
@@ -240,13 +243,70 @@ function AgencyCanvas() {
     setSelectedNodeId(null);
   }, []);
 
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+  }, []);
+
+  const onDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+
+      const type = event.dataTransfer.getData("application/reactflow");
+      const templateDataStr = event.dataTransfer.getData("application/templateData");
+
+      if (!type || !templateDataStr || !rfInstance) {
+        return;
+      }
+
+      const parsedTemplate = JSON.parse(templateDataStr);
+
+      const reactFlowBounds = document.querySelector(".react-flow")?.getBoundingClientRect();
+      if (!reactFlowBounds) return;
+
+      const position = rfInstance.project({
+        x: event.clientX - reactFlowBounds.left,
+        y: event.clientY - reactFlowBounds.top,
+      });
+
+      const newNodeId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `agent-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+      const newNode: Node<AgentNodeData> = {
+        id: newNodeId,
+        type,
+        position,
+        data: {
+          name: parsedTemplate.name || "New Agent",
+          description: parsedTemplate.description || "",
+          instructions: parsedTemplate.instructions || "",
+          model: parsedTemplate.defaultModel || "",
+          modelSettings: {},
+          isEntryPoint: parsedTemplate.isEntryPoint || false,
+          isOptional: false,
+          tools: parsedTemplate.defaultTools || [],
+        },
+      };
+
+      setNodes((nds) => {
+        // Only one entry point allowed. If this is entry, unset others.
+        if (newNode.data.isEntryPoint) {
+          return [...nds.map(n => ({ ...n, data: { ...n.data, isEntryPoint: false } })), newNode];
+        }
+        return [...nds, newNode];
+      });
+      setSelectedNodeId(newNode.id);
+    },
+    [rfInstance, setNodes]
+  );
+
   const handleAddAgent = useCallback(() => {
     nodeCounterRef.current += 1;
     const counter = nodeCounterRef.current;
     setNodes((nds) => {
       const isFirst = nds.length === 0;
+      const newNodeId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `agent-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
       const newNode: Node<AgentNodeData> = {
-        id: crypto.randomUUID(),
+        id: newNodeId,
         type: "agent",
         position: {
           x: 100 + (counter % 4) * 280,
@@ -338,6 +398,7 @@ function AgencyCanvas() {
           slug,
           agents,
           communicationFlows,
+          creatorFeeCredits,
         });
 
         toast.success("Agency created");
@@ -350,6 +411,11 @@ function AgencyCanvas() {
           agents,
           communicationFlows,
         });
+        // Save creator fee via update
+        await updateMutation.mutateAsync({
+          id: agencyId,
+          creatorFeeCredits,
+        });
         toast.success("Agency saved");
       }
     } catch (err: any) {
@@ -360,8 +426,10 @@ function AgencyCanvas() {
     isNew,
     agencyId,
     agencyName,
+    creatorFeeCredits,
     createMutation,
     saveBuilderMutation,
+    updateMutation,
     setLocation,
   ]);
 
@@ -445,6 +513,8 @@ function AgencyCanvas() {
         agencyName={agencyName}
         agencyStatus={agencyStatus}
         isSaving={isSaving}
+        creatorFeeCredits={creatorFeeCredits}
+        onCreatorFeeChange={setCreatorFeeCredits}
         onSave={handleSave}
         onPublish={handlePublish}
         onAutoLayout={handleAutoLayout}
@@ -453,9 +523,11 @@ function AgencyCanvas() {
         onNameChange={setAgencyName}
       />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
+        <AgencySidebar />
+
         {/* Canvas */}
-        <div className="flex-1">
+        <div className="flex-1 relative h-full">
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -465,6 +537,8 @@ function AgencyCanvas() {
             onNodeClick={onNodeClick}
             onPaneClick={onPaneClick}
             onInit={setRfInstance}
+            onDragOver={onDragOver}
+            onDrop={onDrop}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             fitView

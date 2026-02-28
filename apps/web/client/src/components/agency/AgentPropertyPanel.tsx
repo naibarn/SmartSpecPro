@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { ToolPicker } from "./ToolPicker";
+import { ModelPicker } from "./ModelPicker";
 import type { AgentNodeData } from "./AgentNode";
 import { X, Wrench, ChevronDown, ChevronRight, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -87,24 +88,22 @@ export function AgentPropertyPanel({
           {/* Model */}
           <div className="space-y-1.5">
             <Label htmlFor="agent-model">Model</Label>
-            <Input
-              id="agent-model"
+            <ModelPicker
               value={agent.model}
-              onChange={(e) => onChange({ model: e.target.value })}
-              placeholder="e.g. gpt-4o, claude-sonnet-4-20250514"
+              onChange={(value) => onChange({ model: value })}
             />
           </div>
 
           <Separator />
 
-          {/* Model Settings (collapsible) */}
+          {/* Advanced Settings (collapsible) */}
           <div>
             <button
               type="button"
               onClick={() => setSettingsOpen(!settingsOpen)}
-              className="flex w-full items-center justify-between text-sm font-medium"
+              className="flex w-full items-center justify-between text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
             >
-              Model Settings
+              Advanced Settings
               {settingsOpen ? (
                 <ChevronDown className="h-4 w-4" />
               ) : (

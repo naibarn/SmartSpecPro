@@ -5,7 +5,7 @@ category: workflow
 execution_mode: python
 icon: wrench
 version: "1.0.0"
-author: SmartSpec
+author: SmartAIHub
 isAutoTrigger: false
 enabledByDefault: true
 priority: 80

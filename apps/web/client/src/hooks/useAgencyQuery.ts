@@ -1,7 +1,7 @@
 import { trpc } from "@/lib/trpc";
 
 export function useAgencyList() {
-  return trpc.agency.list.useQuery();
+  return trpc.agency.list.useQuery({});
 }
 
 export function useAgencyById(agencyId: string | undefined) {

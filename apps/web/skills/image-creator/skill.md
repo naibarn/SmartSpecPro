@@ -5,7 +5,7 @@ category: image_generation
 execution_mode: media-generate
 icon: image
 version: "1.0.0"
-author: SmartSpec
+author: SmartAIHub
 isAutoTrigger: true
 enabledByDefault: true
 priority: 95

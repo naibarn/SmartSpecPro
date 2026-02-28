@@ -19,22 +19,32 @@ class BaseImprover(Protocol):
 @dataclass
 class HeuristicImprover:
     def propose_patch(self, skill_name: str, report: EvaluationReport) -> PatchProposal:
-        original = read_text(skill_name, "skill.py")
+        try:
+            original = read_text(skill_name, "python/skill.py")
+            rel_path = "python/skill.py"
+        except FileNotFoundError:
+            try:
+                original = read_text(skill_name, "js/skill.js")
+                rel_path = "js/skill.js"
+            except FileNotFoundError:
+                original = read_text(skill_name, "skill.py")
+                rel_path = "skill.py"
+
         failed = [r for r in report.results if not r.passed]
         if not failed:
             return PatchProposal(skill_name, _dt.datetime.utcnow().replace(microsecond=0).isoformat()+"Z",
                                  "All tests passed; no patch proposed.", "")
         patched = original
         if "ISC AUTO PATCH" not in patched:
-            patched += """\n\n# --- ISC AUTO PATCH (heuristic) ---\n\ndef _isc_format_steps(steps):\n    return '\\n'.join([f'{i+1}. {s}' for i, s in enumerate(steps)])\n"""
+            if rel_path.endswith(".py"):
+                patched += """\n\n# --- ISC AUTO PATCH (heuristic) ---\n\ndef _isc_format_steps(steps):\n    return '\\n'.join([f'{i+1}. {s}' for i, s in enumerate(steps)])\n"""
+            else:
+                patched += """\n\n// --- ISC AUTO PATCH (heuristic) ---\n\nfunction _iscFormatSteps(steps) { return steps.map((s, i) => `${i+1}. ${s}`).join('\\n'); }\n"""
 
-        diff = "".join(difflib.unified_diff(
-            original.splitlines(True), patched.splitlines(True),
-            fromfile=f"skills/{skill_name}/skill.py (before)",
-            tofile=f"skills/{skill_name}/skill.py (after)",
-        ))
+        import json
+        payload = json.dumps({f"skills/{skill_name}/{rel_path}": patched})
         return PatchProposal(skill_name, _dt.datetime.utcnow().replace(microsecond=0).isoformat()+"Z",
-                             f"Heuristic patch. Failed tests: {[r.test_id for r in failed]}", diff)
+                             f"Heuristic patch. Failed tests: {[r.test_id for r in failed]}", payload)
 
 @dataclass
 class LLMImprover:
@@ -64,7 +74,7 @@ class LLMImprover:
         ))
         proposal = orch.propose_patch(skill_name, report)
 
-        vr = validate_patch(skill_name, proposal.unified_diff,
+        vr = validate_patch(skill_name, proposal.patch_payload,
             restrict_under_skills=bool(scfg.get("restrict_paths_under_skills", True)),
             disallow_new_deps_in_skill_py=bool(scfg.get("disallow_new_deps_in_skill_py", True)),
             require_respond_signature=bool(scfg.get("require_respond_signature", True)),
@@ -73,8 +83,12 @@ class LLMImprover:
             raise RuntimeError("Patch failed validator: " + "; ".join(vr.errors))
         return proposal
 
-def apply_diff(project_root: Path, unified_diff: str) -> None:
-    res = subprocess.run(["patch","-N","-r","-","-p0"], input=unified_diff, text=True,
-                         capture_output=True, cwd=str(project_root))
-    if res.returncode != 0:
-        raise RuntimeError(res.stderr.strip() or res.stdout.strip() or "patch failed")
+def apply_diff(project_root: Path, patch_payload: str) -> None:
+    import json
+    data = json.loads(patch_payload)
+    for filepath, content in data.items():
+        if ".." in filepath:
+            raise RuntimeError("Path traversal attempt in patch")
+        out_path = project_root / filepath
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(content, encoding="utf-8")

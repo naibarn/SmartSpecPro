@@ -11,7 +11,8 @@ import {
 
 export type PresentationElementType = SharedPresentationElement["type"];
 export type PresentationElement = SharedPresentationElement;
-export type PresentationElementPatch = Partial<Omit<PresentationElement, "id" | "type">>;
+type DistributivePatch<T> = T extends unknown ? Partial<Omit<T, "id" | "type">> : never;
+export type PresentationElementPatch = DistributivePatch<PresentationElement>;
 export type PresentationSlideContent = SharedPresentationSlideContent;
 export type ArrangeDirection = "forward" | "backward" | "front" | "back";
 export type { PresentationCanvasSize };

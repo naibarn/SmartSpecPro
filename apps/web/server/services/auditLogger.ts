@@ -54,6 +54,19 @@ export type AuditEventType =
   | "agency_tool_called"
   | "agency_tool_failed"
   | "agency_archival"
+  | "creator_fee_settled"
+  | "telegram_webhook_secret_invalid"
+  | "telegram_webhook_dedupe_failed"
+  | "telegram_webhook_audit_failed"
+  | "telegram_webhook_processing_error"
+  | "telegram_webhook_reply_failed"
+  | "channel_gateway_agency_error"
+  | "channel_gateway_ingest_error"
+  | "channel_gateway_skip_null_ref"
+  | "channel_gateway_egress_error"
+  | "channel_gateway_invalid_conversation_id"
+  | "channel_gateway_llm_error"
+  | "channel_gateway_chat_error"
   | "error";
 
 export interface AuditLogEntry {

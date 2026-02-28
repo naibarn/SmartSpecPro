@@ -1,5 +1,5 @@
 /**
- * Generate Page - SmartSpec Pro
+ * Generate Page - SmartAIHub
  * AI content generation interface
  */
 

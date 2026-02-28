@@ -15,6 +15,7 @@ class OpenSandboxSettings(BaseSettings):
 
     OPENSANDBOX_ENABLED: bool = False
     OPENSANDBOX_BASE_URL: str = "http://localhost:8080"
+    OPENSANDBOX_API_PREFIX: str = "/v1"
     OPENSANDBOX_API_KEY: str = ""
     OPENSANDBOX_REQUEST_TIMEOUT_SECONDS: int = 30
     OPENSANDBOX_CREATE_TIMEOUT_SECONDS: int = 120
@@ -44,6 +45,19 @@ class OpenSandboxSettings(BaseSettings):
                 f"OPENSANDBOX_BASE_URL must start with http:// or https://, got: {v}"
             )
         return v.rstrip("/")
+
+    @field_validator("OPENSANDBOX_API_PREFIX")
+    @classmethod
+    def validate_api_prefix(cls, v: str) -> str:
+        """Normalize optional API prefix (e.g. /v1, /api/v1, or empty)."""
+        if not v:
+            return ""
+        normalized = v.strip()
+        if not normalized:
+            return ""
+        if not normalized.startswith("/"):
+            normalized = f"/{normalized}"
+        return normalized.rstrip("/")
 
     @field_validator("OPENSANDBOX_DISPATCH_MODE")
     @classmethod

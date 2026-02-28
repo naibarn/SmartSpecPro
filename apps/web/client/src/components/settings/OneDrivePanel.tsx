@@ -845,7 +845,7 @@ function PricingInfoPanel() {
     <div className="space-y-4">
       <div className="rounded-lg border p-4 bg-blue-50">
         <h3 className="text-sm font-semibold text-blue-900">
-          SmartSpecPro - Pricing & Cost Guide
+          SmartAIHub - Pricing & Cost Guide
         </h3>
         <p className="text-xs text-blue-700 mt-1">
           1 credit = $0.001 USD | 1,000 credits = $1.00

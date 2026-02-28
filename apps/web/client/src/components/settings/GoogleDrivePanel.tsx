@@ -600,7 +600,7 @@ function PricingInfoPanel() {
   return (
     <div className="space-y-4">
       <div className="rounded-lg border p-4 bg-purple-50">
-        <h3 className="text-sm font-semibold text-purple-900">SmartSpecPro - Pricing & Cost Guide</h3>
+        <h3 className="text-sm font-semibold text-purple-900">SmartAIHub - Pricing & Cost Guide</h3>
         <p className="text-xs text-purple-700 mt-1">1 credit = $0.001 USD | 1,000 credits = $1.00</p>
       </div>
 

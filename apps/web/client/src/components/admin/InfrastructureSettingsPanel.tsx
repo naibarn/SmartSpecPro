@@ -556,7 +556,7 @@ export default function InfrastructureSettingsPanel() {
                         <ExternalLink className="h-3 w-3" />
                       </a>
                     </li>
-                    <li>Enter a project name (e.g. <code className="bg-blue-100 px-1 rounded">smartspecpro-mvp</code>)</li>
+                    <li>Enter a project name (e.g. <code className="bg-blue-100 px-1 rounded">smartaihub-mvp</code>)</li>
                     <li>Copy the <strong>Project ID</strong> and paste it in the field below</li>
                   </ol>
                 </div>
@@ -663,7 +663,7 @@ done`}
               onChange={(e) =>
                 setGcpForm({ ...gcpForm, gcp_project_id: e.target.value })
               }
-              placeholder="e.g. smartspecpro-mvp"
+              placeholder="e.g. smartaihub-mvp"
             />
           </div>
 

@@ -94,6 +94,8 @@ celery_app.conf.update(
         "app.tasks.sandbox_maintenance_tasks.cleanup_orphan_sandboxes": {"queue": "sandbox"},
         "app.tasks.sandbox_maintenance_tasks.detect_stuck_sandbox_jobs": {"queue": "sandbox"},
     },
+    # Ensure non-default task modules are always loaded at worker startup.
+    imports=("app.workers.sandbox_job_worker",),
 )
 
 # Periodic tasks

@@ -5,13 +5,14 @@ import type {
   SlideStylePreset,
 } from "@shared/presentation/aiTypes";
 import type { SvgGraphic } from "@shared/presentation/svgGraphicsCatalog";
+import { auditLogger } from "./auditLogger";
 
 // ── Public Types ───────────────────────────────────────────
 
 export interface LayoutEngineInput {
   slideData: AIPresentationSlide;
   imageUrl: string | null;
-  svgGraphic: SvgGraphic;
+  svgGraphic: SvgGraphic | null;
   stylePreset: SlideStylePreset;
   deckTitle?: string;
   slideIndex: number;
@@ -43,7 +44,7 @@ interface TemplateContext {
   contentArea: ContentArea;
   slideData: AIPresentationSlide;
   imageUrl: string | null;
-  svgGraphic: SvgGraphic;
+  svgGraphic: SvgGraphic | null;
   preset: SlideStylePreset;
   scale: ScaleFactors;
   canvasWidth: number;
@@ -290,20 +291,22 @@ function buildSplitRightImage(ctx: TemplateContext): SlideElement[] {
     }),
   );
 
-  // 2. SVG graphic
-  const svgSize = Math.round(80 * scale.scaleX);
-  elements.push(
-    makeImageElement({
-      x: contentArea.x + Math.round(40 * scale.scaleX),
-      y: contentArea.y + Math.round(40 * scale.scaleY),
-      width: svgSize,
-      height: svgSize,
-      src: "",
-      alt: ctx.svgGraphic.label,
-      svgContent: ctx.svgGraphic.svg,
-      svgColor: preset.colors.secondary,
-    }),
-  );
+  // 2. SVG graphic (skip if no graphic available for category)
+  if (ctx.svgGraphic) {
+    const svgSize = Math.round(80 * scale.scaleX);
+    elements.push(
+      makeImageElement({
+        x: contentArea.x + Math.round(40 * scale.scaleX),
+        y: contentArea.y + Math.round(40 * scale.scaleY),
+        width: svgSize,
+        height: svgSize,
+        src: "",
+        alt: ctx.svgGraphic.label,
+        svgContent: ctx.svgGraphic.svg,
+        svgColor: preset.colors.secondary,
+      }),
+    );
+  }
 
   // 3. Title text
   const titleFontSize = Math.max(8, Math.round(48 * scale.scaleX));
@@ -389,20 +392,22 @@ function buildSplitLeftImage(ctx: TemplateContext): SlideElement[] {
     }),
   );
 
-  // 3. SVG graphic on right
-  const svgSize = Math.round(80 * scale.scaleX);
-  elements.push(
-    makeImageElement({
-      x: contentArea.x + halfWidth + Math.round(40 * scale.scaleX),
-      y: contentArea.y + Math.round(40 * scale.scaleY),
-      width: svgSize,
-      height: svgSize,
-      src: "",
-      alt: ctx.svgGraphic.label,
-      svgContent: ctx.svgGraphic.svg,
-      svgColor: preset.colors.secondary,
-    }),
-  );
+  // 3. SVG graphic on right (skip if no graphic available)
+  if (ctx.svgGraphic) {
+    const svgSize = Math.round(80 * scale.scaleX);
+    elements.push(
+      makeImageElement({
+        x: contentArea.x + halfWidth + Math.round(40 * scale.scaleX),
+        y: contentArea.y + Math.round(40 * scale.scaleY),
+        width: svgSize,
+        height: svgSize,
+        src: "",
+        alt: ctx.svgGraphic.label,
+        svgContent: ctx.svgGraphic.svg,
+        svgColor: preset.colors.secondary,
+      }),
+    );
+  }
 
   // 4. Title text on right
   const titleFontSize = Math.max(8, Math.round(48 * scale.scaleX));
@@ -805,10 +810,16 @@ export function generateSlide(input: LayoutEngineInput): LayoutEngineOutput {
   const parsed = presentationSlideContentSchema.safeParse(slideContent);
 
   if (!parsed.success) {
-    console.error(
-      "Layout engine validation failed:",
-      parsed.error.issues,
-    );
+    auditLogger.log({
+      timestamp: new Date().toISOString(),
+      eventType: "error",
+      requestPayload: {
+        component: "aiPresentationLayoutEngine",
+        message: "Layout engine validation failed",
+        issues: parsed.error.issues,
+        slideIndex: input.slideIndex,
+      },
+    });
 
     // Build minimal fallback slide and validate it too
     const fallbackContent = {

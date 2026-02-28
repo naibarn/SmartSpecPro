@@ -22,13 +22,15 @@ from app.core.celery_app import celery_app
 from app.integrations.opensandbox.client import (
     OpenSandboxClient,
     RetryableHTTPError,
+    SandboxAPIError,
     SandboxProvisionError,
 )
 from app.integrations.opensandbox.config import opensandbox_settings
-from app.integrations.opensandbox.execution import run_command, run_code
-from app.integrations.opensandbox.files import collect_outputs, stage_inputs
+from app.integrations.opensandbox.execution import run_command
+from app.integrations.opensandbox.files import collect_outputs, stage_inline_files, stage_inputs
 from app.integrations.opensandbox.lifecycle import SandboxLifecycleManager
 from app.integrations.opensandbox.models import SandboxConfig
+from app.integrations.opensandbox.docker_command_bridge import run_command_via_docker_bridge
 from app.models.sandbox import SandboxJob, SandboxJobStatus, SandboxProfile
 from app.services.sandbox_artifacts import SandboxArtifactService
 from app.services.sandbox_audit import SandboxAuditService
@@ -44,13 +46,17 @@ NON_TERMINAL_STATUSES = {s.value for s in SandboxJobStatus if s.value not in {
 # Terminal statuses (job is done)
 TERMINAL_STATUSES = {"completed", "failed", "timed_out", "canceled"}
 
+# Reuse one event loop per Celery worker process to avoid asyncpg objects
+# crossing different loops when tasks are executed sequentially.
+_WORKER_EVENT_LOOP: asyncio.AbstractEventLoop | None = None
+
 
 @asynccontextmanager
 async def _get_db_session():
     """Get an async database session."""
-    from app.core.database import async_session_factory
+    from app.core.database import AsyncSessionLocal
 
-    async with async_session_factory() as session:
+    async with AsyncSessionLocal() as session:
         yield session
 
 
@@ -70,6 +76,11 @@ async def _load_profile(db, profile_id: int) -> Optional[SandboxProfile]:
     stmt = select(SandboxProfile).where(SandboxProfile.id == profile_id)
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
+
+
+def _is_lifecycle_only_error(exc: Exception) -> bool:
+    """Return True when OpenSandbox server does not expose command/code APIs."""
+    return isinstance(exc, SandboxAPIError) and "lifecycle APIs only" in str(exc)
 
 
 async def _update_job_status(
@@ -104,10 +115,15 @@ async def _update_job_status(
 def execute_sandbox_job(self, job_id: str) -> dict:
     """Execute a sandbox job through its full lifecycle.
 
-    This is a synchronous Celery task that internally runs async code
-    via asyncio.run(), matching the existing pattern in media_job_worker.py.
+    This is a synchronous Celery task that internally runs async code on a
+    persistent per-process event loop. Using asyncio.run() per task can create
+    cross-loop issues with async DB drivers in long-lived worker processes.
     """
-    return asyncio.run(_execute_sandbox_job_async(self, job_id))
+    global _WORKER_EVENT_LOOP
+    if _WORKER_EVENT_LOOP is None or _WORKER_EVENT_LOOP.is_closed():
+        _WORKER_EVENT_LOOP = asyncio.new_event_loop()
+        asyncio.set_event_loop(_WORKER_EVENT_LOOP)
+    return _WORKER_EVENT_LOOP.run_until_complete(_execute_sandbox_job_async(self, job_id))
 
 
 async def _execute_sandbox_job_async(task, job_id: str) -> dict:
@@ -198,6 +214,9 @@ async def _execute_sandbox_job_async(task, job_id: str) -> dict:
             input_files = manifest.get("input_files", [])
             if input_files:
                 await stage_inputs(client, sandbox_id, input_files, storage_service=None)
+            inline_files = manifest.get("inline_files", [])
+            if inline_files:
+                await stage_inline_files(client, sandbox_id, inline_files)
 
             # Execute commands
             await _update_job_status(db, job_id, "executing")
@@ -214,11 +233,36 @@ async def _execute_sandbox_job_async(task, job_id: str) -> dict:
             commands = manifest.get("commands", [])
             all_stdout = []
             all_stderr = []
+            docker_bridge_execution = False
 
-            for cmd in commands:
-                result = await run_command(
-                    client, sandbox_id, cmd, timeout=profile.timeout_seconds
-                )
+            for cmd_index, cmd in enumerate(commands):
+                if docker_bridge_execution:
+                    result = await run_command_via_docker_bridge(
+                        sandbox_id=sandbox_id,
+                        command=cmd,
+                        timeout_seconds=profile.timeout_seconds,
+                    )
+                else:
+                    try:
+                        result = await run_command(
+                            client, sandbox_id, cmd, timeout=profile.timeout_seconds
+                        )
+                    except Exception as exc:
+                        if not _is_lifecycle_only_error(exc):
+                            raise
+
+                        docker_bridge_execution = True
+                        logger.warning(
+                            "sandbox_commands_api_unavailable_using_docker_bridge",
+                            job_id=job_id,
+                            command_index=cmd_index,
+                        )
+                        result = await run_command_via_docker_bridge(
+                            sandbox_id=sandbox_id,
+                            command=cmd,
+                            timeout_seconds=profile.timeout_seconds,
+                        )
+
                 all_stdout.append(result.stdout)
                 all_stderr.append(result.stderr)
 

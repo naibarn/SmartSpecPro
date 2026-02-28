@@ -46,7 +46,7 @@ export function generateTotpSecret(): string {
 }
 
 /** Build otpauth:// URI for QR code scanning */
-export function generateTotpUri(secret: string, email: string, issuer = "SmartSpec Pro"): string {
+export function generateTotpUri(secret: string, email: string, issuer = "SmartAIHub"): string {
   const label = `${encodeURIComponent(issuer)}:${encodeURIComponent(email)}`;
   const params = new URLSearchParams({ secret, issuer, algorithm: "SHA1", digits: "6", period: "30" });
   return `otpauth://totp/${label}?${params}`;

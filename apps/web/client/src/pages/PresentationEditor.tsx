@@ -17,6 +17,7 @@ import {
   Minus,
   Maximize2,
   Minimize2,
+  Music,
   Pause,
   MousePointer2,
   Plus,
@@ -2228,6 +2229,14 @@ export default function PresentationEditor() {
                     VIDEO
                   </span>
                 ) : null}
+                {(slide as any)?.audioTrack != null ? (
+                  <span
+                    className="absolute left-1 top-1 flex items-center gap-0.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white"
+                    title="Slide has audio"
+                  >
+                    <Music className="h-2.5 w-2.5" />
+                  </span>
+                ) : null}
                 {preview.textSnippet ? (
                   <p className="absolute inset-x-1 bottom-1 truncate rounded bg-black/65 px-1.5 py-0.5 text-[10px] text-white">
                     {preview.textSnippet}
@@ -2759,6 +2768,9 @@ export default function PresentationEditor() {
       />
     </div>
   );
+  const hasProjectAudio = Boolean((deck as any)?.projectAudioTrack);
+  const hasSlideAudio = slides.some((s: any) => s.audioTrack != null);
+  const hasAnyAudio = hasProjectAudio || hasSlideAudio;
   const audioPanel = deck ? (
     <SlideAudioPanel
       slideId={selectedSlide?.id ?? null}
@@ -2767,6 +2779,7 @@ export default function PresentationEditor() {
       deckId={deck.id}
       deckVersion={deck.version}
       deckAudioTrack={(deck as any)?.projectAudioTrack ?? null}
+      onAudioChanged={refreshDeck}
     />
   ) : (
     <div className="p-4 text-sm text-muted-foreground">Loading...</div>
@@ -2795,11 +2808,14 @@ export default function PresentationEditor() {
         <Button
           variant={desktopInspectorTab === "audio" ? "default" : "ghost"}
           size="sm"
-          className="h-8"
+          className="h-8 relative"
           onClick={() => setDesktopInspectorTab("audio")}
-          aria-label="Inspector Tab Audio"
+          aria-label={`Inspector Tab Audio${hasAnyAudio ? " (configured)" : ""}`}
         >
           Audio
+          {hasAnyAudio && desktopInspectorTab !== "audio" ? (
+            <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-sky-500" />
+          ) : null}
         </Button>
       </div>
       {desktopInspectorTab === "properties"
@@ -2886,7 +2902,11 @@ export default function PresentationEditor() {
           )
           : mobileSheetTab === "Pages"
             ? <div className="h-[45vh]">{slidesPanel}</div>
-            : versionHistoryPanel;
+            : mobileSheetTab === "Versions"
+              ? versionHistoryPanel
+              : mobileSheetTab === "Audio"
+                ? audioPanel
+                : null;
 
   const propertiesPanel = isMobileViewport ? (
     <MobileBottomSheet
@@ -3004,6 +3024,14 @@ export default function PresentationEditor() {
           </div>
         )}
         <span className="hidden text-xs text-slate-500 md:inline">· Presentation Editor</span>
+        {hasProjectAudio ? (
+          <span
+            className="hidden md:flex items-center gap-1 text-xs text-sky-400"
+            title="Project-wide background audio configured"
+          >
+            <Music className="h-3 w-3" />
+          </span>
+        ) : null}
         <div className="ml-auto flex items-center gap-1">
           <Button
             onClick={() => void handleSaveSlide()}

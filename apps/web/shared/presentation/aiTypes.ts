@@ -124,6 +124,15 @@ export const GenerateAIDraftInputSchema = z.object({
   imageModel: z.string().min(1).optional(),
   stylePresetId: z.enum(AI_STYLE_PRESET_IDS).default("dark-professional"),
   footerCustomText: z.string().max(200).optional(),
+  styleOverrides: z
+    .object({
+      headerEnabled: z.boolean().optional(),
+      showDeckTitle: z.boolean().optional(),
+      footerEnabled: z.boolean().optional(),
+      showPageNumber: z.boolean().optional(),
+    })
+    .optional(),
+  articleSkillParams: z.record(z.string(), z.any()).optional(),
 });
 
 export type GenerateAIDraftInput = z.infer<typeof GenerateAIDraftInputSchema>;

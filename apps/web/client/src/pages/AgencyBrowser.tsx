@@ -14,6 +14,7 @@ import {
   Edit,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AgencyTemplateModal } from "@/components/agency/AgencyTemplateModal";
 
 interface AgencyItem {
   id: string;
@@ -22,6 +23,7 @@ interface AgencyItem {
   status?: string;
   agentCount?: number;
   creditMultiplier?: number;
+  creatorFeeCredits?: number;
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -60,7 +62,8 @@ export default function AgencyBrowser() {
     );
   }
 
-  const filtered = ((agencies as AgencyItem[] | undefined) || []).filter(
+  const agencyList = (agencies as unknown as { agencies: AgencyItem[] } | undefined)?.agencies ?? [];
+  const filtered = agencyList.filter(
     (a) =>
       !search ||
       a.name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -69,13 +72,15 @@ export default function AgencyBrowser() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
+      <AgencyTemplateModal open={isModalOpen} onOpenChange={setIsModalOpen} />
+
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Users className="h-6 w-6" />
           <h1 className="text-2xl font-bold">Agencies</h1>
         </div>
-        <Button onClick={() => setLocation("/agencies/new/edit")}>
+        <Button onClick={() => setIsModalOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Create Agency
         </Button>
@@ -94,29 +99,34 @@ export default function AgencyBrowser() {
 
       {/* Grid */}
       {filtered.length === 0 ? (
-        <div className="py-16 text-center text-muted-foreground">
-          <Users className="mx-auto mb-4 h-12 w-12 opacity-50" />
-          <p className="text-lg font-medium">No agencies found</p>
-          <p className="text-sm">
+        <div className="py-16 text-center text-muted-foreground border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+          <Users className="mx-auto mb-4 h-12 w-12 text-slate-300" />
+          <p className="text-lg font-medium text-slate-600">No agencies found</p>
+          <p className="text-sm mt-1 text-slate-500">
             {search
-              ? "Try a different search term."
-              : "Create your first agency to get started."}
+              ? "Try adjusting your search terms."
+              : "Create your first agency team to get started."}
           </p>
+          {!search && (
+            <Button className="mt-6" variant="outline" onClick={() => setIsModalOpen(true)}>
+              Browse Templates
+            </Button>
+          )}
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((agency) => (
             <div
               key={agency.id}
-              className="group cursor-pointer rounded-lg border bg-card p-4 transition-colors hover:border-primary/50 hover:bg-accent/50"
+              className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-5 transition-all hover:border-indigo-300 hover:shadow-md hover:-translate-y-1"
               onClick={() => setLocation(`/agencies/${agency.id}`)}
             >
-              <div className="mb-2 flex items-start justify-between">
-                <h3 className="font-semibold">{agency.name}</h3>
+              <div className="mb-3 flex items-start justify-between">
+                <h3 className="font-semibold text-slate-800 text-lg leading-tight">{agency.name}</h3>
                 <Badge
                   variant="secondary"
                   className={cn(
-                    "text-xs",
+                    "text-[10px] uppercase tracking-wider font-bold",
                     STATUS_STYLES[agency.status || ""] || "",
                   )}
                 >
@@ -125,46 +135,30 @@ export default function AgencyBrowser() {
               </div>
 
               {agency.description && (
-                <p className="mb-3 line-clamp-2 text-sm text-muted-foreground">
+                <p className="mb-4 line-clamp-2 text-sm text-slate-600 leading-relaxed">
                   {agency.description}
                 </p>
               )}
 
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <div className="flex items-center gap-3">
-                  <span className="flex items-center gap-1">
-                    <Users className="h-3 w-3" />
+              <div className="flex items-center justify-between mt-auto">
+                <div className="flex items-center gap-3 text-xs font-medium text-slate-500 bg-slate-50 px-2 py-1.5 rounded-md">
+                  <span className="flex items-center gap-1.5">
+                    <Users className="h-3.5 w-3.5" />
                     {agency.agentCount ?? 0} agents
                   </span>
-                  {(agency.creditMultiplier ?? 1) > 1 && (
-                    <span className="text-amber-500">
-                      {agency.creditMultiplier}x credits
-                    </span>
-                  )}
                 </div>
 
-                <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                <div className="flex gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
                   <Button
-                    variant="ghost"
+                    variant="secondary"
                     size="icon"
-                    className="h-7 w-7"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setLocation(`/agencies/${agency.id}`);
-                    }}
-                  >
-                    <MessageSquare className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
+                    className="h-8 w-8 bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900"
                     onClick={(e) => {
                       e.stopPropagation();
                       setLocation(`/agencies/${agency.id}/edit`);
                     }}
                   >
-                    <Edit className="h-3 w-3" />
+                    <Edit className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>

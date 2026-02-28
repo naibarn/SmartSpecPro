@@ -13,6 +13,7 @@ export const transactionTypeEnum = pgEnum("transaction_type", [
   "refund",
   "adjustment",
   "subscription",
+  "creator_fee",
 ]);
 
 // Package type: one-time purchase or subscription
@@ -108,7 +109,15 @@ export const creditSourceTypeEnum = pgEnum("credit_source_type", [
   "scheduler",
   "admin",
   "agency",
+  "creator_revenue",
   "other",
+]);
+
+// Settlement status for creator revenue sharing
+export const settlementStatusEnum = pgEnum("settlement_status", [
+  "completed",
+  "partial",
+  "skipped",
 ]);
 
 // Google Drive indexing mode enum
@@ -3923,6 +3932,10 @@ export const agencies = pgTable("agencies", {
   description: text("description"),
   systemPrompt: text("systemPrompt"),
   creditMultiplier: numeric("creditMultiplier", { precision: 5, scale: 2 }).default("1.00"),
+  /** Creator fee in credits charged to runner on successful run completion (0 = no fee) */
+  creatorFeeCredits: integer("creatorFeeCredits").default(0).notNull(),
+  /** Platform share percentage of creator fee (default 20% — creator gets 80%) */
+  platformSharePct: integer("platformSharePct").default(20).notNull(),
   maxAgents: integer("maxAgents").default(10),
   maxRunTimeSeconds: integer("maxRunTimeSeconds").default(600),
   status: varchar("status", { length: 20 }).default("draft").notNull(),
@@ -3968,6 +3981,53 @@ export const agencyAgents = pgTable("agency_agents", {
 
 export type AgencyAgent = typeof agencyAgents.$inferSelect;
 export type InsertAgencyAgent = typeof agencyAgents.$inferInsert;
+
+/**
+ * Agency Templates -- Pre-configured multi-agent orchestration templates
+ * (e.g. "SEO Team", "Software Development Agency")
+ */
+export const agencyTemplates = pgTable("agency_templates", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  systemPrompt: text("systemPrompt"),
+  category: varchar("category", { length: 64 }).notNull(), // e.g. "Marketing", "Development"
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type AgencyTemplate = typeof agencyTemplates.$inferSelect;
+export type InsertAgencyTemplate = typeof agencyTemplates.$inferInsert;
+
+/**
+ * Agent Templates -- Pre-configured individual roles
+ * (e.g. "CEO", "Copywriter", "Data Analyst")
+ * 
+ * Can be linked to a specific agency_template, or act as a standalone draggable node.
+ */
+export const agentTemplates = pgTable("agent_templates", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  agencyTemplateId: varchar("agencyTemplateId", { length: 36 }).references(() => agencyTemplates.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 100 }).notNull(),
+  role: varchar("role", { length: 100 }).notNull(), // Job title "CEO"
+  description: text("description"),
+  instructions: text("instructions"),
+  category: varchar("category", { length: 64 }).notNull(), // Sidebar category
+  icon: varchar("icon", { length: 64 }).default("bot"),
+  defaultModel: varchar("defaultModel", { length: 100 }),
+  isEntryPoint: boolean("isEntryPoint").default(false).notNull(),
+  position: json("position").$type<{ x: number; y: number }>(),
+  defaultTools: json("defaultTools").$type<string[]>(), // slugs of tools to auto-attach
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("agent_templates_agency_tmpl_idx").on(t.agencyTemplateId),
+  index("agent_templates_category_idx").on(t.category),
+]);
+
+export type AgentTemplate = typeof agentTemplates.$inferSelect;
+export type InsertAgentTemplate = typeof agentTemplates.$inferInsert;
 
 /**
  * Agency Tools -- Tool definitions available to agency agents.
@@ -4199,3 +4259,75 @@ export const telegramUpdates = pgTable("telegram_updates", {
 
 export type TelegramUpdate = typeof telegramUpdates.$inferSelect;
 export type InsertTelegramUpdate = typeof telegramUpdates.$inferInsert;
+
+// ==========================================
+// Creator Revenue Sharing
+// ==========================================
+
+/**
+ * Creator Settlements -- Revenue sharing ledger.
+ * Tracks every creator fee charged when someone runs another user's agency/workflow/skill.
+ * Fee is split between creator (80% default) and platform (20% default).
+ */
+export const creatorSettlements = pgTable("creator_settlements", {
+  id: serial("id").primaryKey(),
+
+  /** The run that triggered this settlement */
+  runId: varchar("runId", { length: 36 }).notNull(),
+
+  /** Entity type: agency, workflow, or skill */
+  entityType: varchar("entityType", { length: 20 }).notNull(),
+
+  /** Entity ID (agency.id, workflow.id, or skill.id) */
+  entityId: varchar("entityId", { length: 36 }).notNull(),
+
+  /** Runner (user who paid the fee) */
+  runnerId: integer("runnerId").notNull().references(() => users.id),
+
+  /** Creator (user who receives the payout) */
+  creatorId: integer("creatorId").notNull().references(() => users.id),
+
+  /** Tenant context */
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id),
+
+  /** Total fee configured on the entity */
+  totalFee: integer("totalFee").notNull(),
+
+  /** Actual amount charged (may be less if runner had insufficient credits) */
+  actualCharged: integer("actualCharged").notNull(),
+
+  /** Creator's share (actualCharged * (100 - platformSharePct) / 100) */
+  creatorShare: integer("creatorShare").notNull(),
+
+  /** Platform's share (actualCharged - creatorShare) */
+  platformShare: integer("platformShare").notNull(),
+
+  /** Platform share percentage at time of settlement (snapshot for audit) */
+  platformSharePct: integer("platformSharePct").notNull(),
+
+  /** Transaction ID for the runner's deduction */
+  debitTransactionId: integer("debitTransactionId").references(() => creditTransactions.id),
+
+  /** Transaction ID for the creator's credit */
+  creditTransactionId: integer("creditTransactionId").references(() => creditTransactions.id),
+
+  /** Settlement status */
+  status: settlementStatusEnum("status").default("completed").notNull(),
+
+  /** Idempotency key to prevent double settlement */
+  idempotencyKey: varchar("idempotencyKey", { length: 256 }),
+
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("creator_settlements_idempotency_key_unique")
+    .on(t.idempotencyKey)
+    .where(sql`"idempotencyKey" IS NOT NULL`),
+  index("creator_settlements_creator_idx").on(t.creatorId),
+  index("creator_settlements_runner_idx").on(t.runnerId),
+  index("creator_settlements_entity_idx").on(t.entityType, t.entityId),
+  index("creator_settlements_run_idx").on(t.runId),
+  index("creator_settlements_tenant_idx").on(t.tenantId),
+]);
+
+export type CreatorSettlement = typeof creatorSettlements.$inferSelect;
+export type InsertCreatorSettlement = typeof creatorSettlements.$inferInsert;

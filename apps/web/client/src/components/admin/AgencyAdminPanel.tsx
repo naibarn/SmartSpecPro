@@ -45,6 +45,7 @@ import {
   Shield,
   Settings,
   Zap,
+  Coins,
 } from "lucide-react";
 
 export default function AgencyAdminPanel() {
@@ -123,11 +124,12 @@ export default function AgencyAdminPanel() {
       </CardHeader>
       <CardContent className="pt-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-5 w-full">
+          <TabsList className="grid grid-cols-6 w-full">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="quotas">Quotas</TabsTrigger>
             <TabsTrigger value="tools">Tools</TabsTrigger>
             <TabsTrigger value="metrics">Metrics</TabsTrigger>
+            <TabsTrigger value="revenue">Revenue</TabsTrigger>
             <TabsTrigger value="killswitch">Kill Switch</TabsTrigger>
           </TabsList>
 
@@ -397,6 +399,11 @@ export default function AgencyAdminPanel() {
             )}
           </TabsContent>
 
+          {/* Tab: Revenue */}
+          <TabsContent value="revenue" className="mt-4 space-y-4">
+            <RevenueTab tenantId={tenantId} />
+          </TabsContent>
+
           {/* Tab: Kill Switch */}
           <TabsContent value="killswitch" className="mt-4 space-y-4">
             {!tenantId ? (
@@ -462,5 +469,96 @@ export default function AgencyAdminPanel() {
         </Tabs>
       </CardContent>
     </Card>
+  );
+}
+
+function RevenueTab({ tenantId }: { tenantId: string }) {
+  const { data, isLoading } = trpc.agency.adminGetRevenueStats.useQuery(
+    { tenantId: tenantId || undefined, windowDays: 30 },
+    { enabled: true },
+  );
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-2 mb-1">
+              <Coins className="h-4 w-4 text-amber-500" />
+              <span className="text-xs text-muted-foreground">
+                Platform Revenue
+              </span>
+            </div>
+            <p className="text-xl font-bold">
+              {data?.totalPlatformRevenue ?? 0}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <span className="text-xs text-muted-foreground">
+              Creator Payouts
+            </span>
+            <p className="text-xl font-bold text-green-600">
+              {data?.totalCreatorPayouts ?? 0}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <span className="text-xs text-muted-foreground">
+              Total Charged
+            </span>
+            <p className="text-xl font-bold">
+              {data?.totalCharged ?? 0}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <span className="text-xs text-muted-foreground">Settlements</span>
+            <p className="text-xl font-bold">
+              {data?.settlementCount ?? 0}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {data?.topCreators && data.topCreators.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Top Creators (30d)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {data.topCreators.map((c: any) => (
+                <div
+                  key={c.creatorId}
+                  className="flex items-center justify-between text-sm"
+                >
+                  <span className="text-muted-foreground">
+                    User #{c.creatorId}
+                  </span>
+                  <div>
+                    <span className="font-medium">{c.totalEarned} credits</span>
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      ({c.runCount} runs)
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }

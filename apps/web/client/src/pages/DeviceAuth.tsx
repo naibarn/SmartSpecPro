@@ -162,7 +162,7 @@ export default function DeviceAuth() {
             Authorize Desktop App
           </h1>
           <p className="text-gray-500 mt-2">
-            Enter the code shown in SmartSpec Pro
+            Enter the code shown in SmartAIHub
           </p>
         </div>
 
@@ -338,7 +338,7 @@ export default function DeviceAuth() {
           <p className="text-xs text-gray-400">
             Make sure you're authorizing a device you trust.
             <br />
-            SmartSpec Pro will have access to your credits.
+            SmartAIHub will have access to your credits.
           </p>
         </div>
       </div>

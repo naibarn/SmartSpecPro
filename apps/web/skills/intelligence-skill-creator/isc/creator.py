@@ -13,7 +13,7 @@ Pipeline (7 phases):
 Mandatory output for every created skill:
   schemas/input.schema.json   — validated inputs
   schemas/output.schema.json  — structured output spec
-  schemas/ui.schema.json      — SmartSpecPro UI form (Thai + English)
+  schemas/ui.schema.json      — SmartAIHub UI form (Thai + English)
   skill.md                    — manifest with YAML frontmatter
   python/skill.py OR js/skill.js
   tests/tests.json
@@ -33,11 +33,11 @@ from isc.models import CreatedSkill
 
 # ── System prompts ──────────────────────────────────────────────────────────────
 
-_SYS_PLANNER = """You are an expert SmartSpecPro skill architect.
+_SYS_PLANNER = """You are an expert SmartAIHub skill architect.
 
 Your job: analyze a user description and design a complete, production-quality skill.
 
-SmartSpecPro skill conventions:
+SmartAIHub skill conventions:
 - Python skill: respond(input, context=None) -> str in python/skill.py
 - JavaScript skill: async respond(input, context=null) -> str in js/skill.js
 - Schemas ALWAYS go in schemas/: input.schema.json, output.schema.json, ui.schema.json
@@ -49,15 +49,17 @@ Language selection heuristic:
 
 RETURN: valid JSON only (no markdown fences, no preamble, no explanation)."""
 
-_SYS_SCHEMA = """You are an expert JSON Schema and SmartSpecPro UI schema designer.
+_SYS_SCHEMA = """You are an expert JSON Schema and SmartAIHub UI schema designer.
 
 JSON Schema rules (draft-07):
 - input.schema.json: validates skill inputs; use enum, pattern, minimum/maximum where helpful
 - output.schema.json: describes the structured output object the skill returns
 
-SmartSpecPro ui.schema.json rules:
+SmartAIHub ui.schema.json rules:
 - Sections group related fields; first section collapsed=false, rest collapsed=true
-- Field types: text | textarea | select | boolean | slider | number
+- Field types: text | textarea | select | boolean | slider | number | file | files | array
+- For file/image uploads: use type="file" (single string URL) or type="files" (array of strings)
+- For array of complex objects: use type="array" and define "itemFields" (array of sub-fields)
 - Every field MUST have: id, type, label, labelTh, helpText, helpTextTh
 - Select fields MUST have: options (array of {value, label, labelTh})
 - Slider/number MUST have: min, max, step (all numeric)
@@ -67,7 +69,7 @@ SmartSpecPro ui.schema.json rules:
 
 RETURN: valid JSON only (no markdown fences, no explanation)."""
 
-_SYS_PYTHON = """You are an expert Python developer creating SmartSpecPro skill implementations.
+_SYS_PYTHON = """You are an expert Python developer creating SmartAIHub skill implementations.
 
 MANDATORY conventions:
 1. `from __future__ import annotations` at top
@@ -81,13 +83,18 @@ MANDATORY conventions:
    itertools, functools, hashlib, base64, urllib.parse, urllib.request, html, csv, io,
    textwrap, string, random, time, uuid, typing, dataclasses, contextlib, copy, struct, zlib
 9. HTTP: use `urllib.request` (NOT requests, NOT httpx, NOT aiohttp)
-10. Add full docstrings and type hints everywhere
+10. CRITICAL SECURITY RULE 1: NO DIRECT DATABASE ACCESS. Never import sqlite3, psycopg2, pg, mysql. Use HTTP APIs (or MCP) only.
+11. CRITICAL SECURITY RULE 2: NO LOCAL FILESYSTEM ACCESS. Never use open(), os.remove, or pathlib for the local host. Use HTTP APIs or MCP only.
+12. CRITICAL SECURITY RULE 3: NEVER CALL EXTERNAL LLMs DIRECTLY. Do not use api.openai.com, anthropic.com, or any external LLM providers.
+    Instead, you MUST use the internal LLM gateway: `POST {context.get("publicUrl", "http://localhost:3000")}/api/llm/chat` with header `Authorization: Bearer {context.get("userToken", "")}`. 
+    Payload format: `{"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "..."}]}`
+13. Add full docstrings and type hints everywhere
 11. Helper functions for complex sub-tasks
 12. Make output SMART: validate, transform, format beautifully
 
 RETURN: ONLY the complete Python code (no markdown fences, no explanation)."""
 
-_SYS_JS = """You are an expert JavaScript developer creating SmartSpecPro skill implementations.
+_SYS_JS = """You are an expert JavaScript developer creating SmartAIHub skill implementations.
 
 MANDATORY conventions:
 1. `"use strict";` at top
@@ -100,22 +107,30 @@ MANDATORY conventions:
    http, https, querystring, buffer, stream, events, string_decoder, zlib, timers
 8. HTTP: use built-in `https`/`http` modules (NOT axios, NOT node-fetch unless Node 18+)
 9. async/await throughout; no callbacks unless unavoidable
-10. JSDoc comments on all functions
+10. CRITICAL SECURITY RULE 1: NO DIRECT DATABASE ACCESS. Never require sqlite3, pg, mysql, etc. Use HTTP APIs (or MCP) only.
+11. CRITICAL SECURITY RULE 2: NO LOCAL FILESYSTEM ACCESS. Never use fs.readFile, fs.writeFile, or manipulate local disks directly. Use HTTP APIs or MCP.
+12. CRITICAL SECURITY RULE 3: NEVER CALL EXTERNAL LLMs DIRECTLY. Do not use api.openai.com, SDKs, or external LLM endpoints. 
+    Instead, you MUST use the internal LLM gateway: `POST ${context.publicUrl || "http://localhost:3000"}/api/llm/chat` with header `Authorization: Bearer ${context.userToken || ""}`.
+    Payload format: `{"model": "gpt-4o-mini", "messages": [{"role": "user", "content": "..."}]}`
+13. JSDoc comments on all functions
 11. Helper functions for complex sub-tasks
 12. `module.exports = { respond };` at bottom
 
 RETURN: ONLY the complete JavaScript code (no markdown fences, no explanation)."""
 
-_SYS_CRITIC = """You are a senior code reviewer specializing in SmartSpecPro skills.
+_SYS_CRITIC = """You are a senior code reviewer specializing in SmartAIHub skills.
 
 Review the code against these criteria:
 1. CONTRACT: Does respond() ALWAYS return a valid JSON string? Never throws?
 2. CORRECTNESS: Does it implement ALL logic steps from the plan?
 3. VALIDATION: Are ALL required inputs checked at the start?
 4. EDGE CASES: Empty input, null/undefined fields, large inputs, invalid types?
-5. SECURITY: No eval(), no shell injection from untrusted input, no path traversal?
-6. QUALITY: No dead code, clear variable names, readable logic?
-7. ERROR HANDLING: Every exception caught and returned as error JSON?
+5. SECURITY (CRITICAL): No eval(), no shell injection from untrusted input.
+6. SECURITY (CRITICAL): NO direct database access imports (sqlite3, pg, etc.).
+7. SECURITY (CRITICAL): NO local filesystem reads/writes (`open`, `fs.readFile`).
+8. SECURITY (CRITICAL): NO direct external LLM API calls (openai, anthropic). MUST use `POST <publicUrl>/api/llm/chat` with `Authorization: Bearer <token>`.
+9. QUALITY: No dead code, clear variable names, readable logic?
+10. ERROR HANDLING: Every exception caught and returned as error JSON?
 
 RETURN: valid JSON only:
 {"issues": ["issue description", ...], "fixed_code": "...COMPLETE corrected code..."}
@@ -176,7 +191,7 @@ def _llm_text(client: OpenAICompatibleClient, system: str, user: str) -> str:
 
 class SkillCreator:
     """
-    Multi-agent pipeline that creates a complete SmartSpecPro skill from a description.
+    Multi-agent pipeline that creates a complete SmartAIHub skill from a description.
 
     Always produces:
       schemas/input.schema.json   (MANDATORY)
@@ -254,15 +269,27 @@ class SkillCreator:
         if critic_issues:
             _log(f"  Critic found {len(critic_issues)} issue(s); applied fixes")
 
+        # Phase 5.5: Security Check
+        _log("Phase 5.5/7 — Enforcing Security Constraints")
+        self._phase_security_check(skill_code, plan.get('language', 'python'))
+
         # Phase 6: Tests
         _log("Phase 6/7 — Generating test cases")
         tests = self._phase_tests(plan, input_schema)
+
+        # Phase 6.5: Test-Driven Creation (Self-Correction)
+        _log("Phase 6.5/7 — Test-Driven Creation (Self-Correction)")
+        skill_code, tests = self._phase_tdc(plan, plan['skill_name'], skill_code, tests)
+
+        # Phase 6.7: Dependencies
+        _log("Phase 6.7/7 — Generating dependencies")
+        dependencies = self._phase_dependencies(plan, skill_code)
 
         # Phase 7: Write to disk
         _log(f"Phase 7/7 — Writing to {self.skills_root / plan['skill_name']}")
         return self._phase_write(
             plan, input_schema, output_schema, ui_schema,
-            skill_md, skill_code, tests, critic_issues,
+            skill_md, skill_code, tests, critic_issues, dependencies
         )
 
     def convert_from_workflow(
@@ -274,7 +301,7 @@ class SkillCreator:
         complexity: str = "moderate",
     ) -> CreatedSkill:
         """
-        Convert a Virtual Workflow (ReactFlow JSON) to a complete SmartSpecPro skill.
+        Convert a Virtual Workflow (ReactFlow JSON) to a complete SmartAIHub skill.
 
         The pipeline runs the same 7 phases as `create()` but the planner
         receives the full workflow structure so it can faithfully translate
@@ -339,13 +366,22 @@ class SkillCreator:
         if critic_issues:
             _log(f"  Critic found {len(critic_issues)} issue(s); applied fixes")
 
+        _log("Phase 5.5/7 — Enforcing Security Constraints")
+        self._phase_security_check(skill_code, plan.get('language', 'python'))
+
         _log("Phase 6/7 — Generating test cases")
         tests = self._phase_tests(plan, input_schema)
+
+        _log("Phase 6.5/7 — Test-Driven Creation (Self-Correction)")
+        skill_code, tests = self._phase_tdc(plan, plan['skill_name'], skill_code, tests)
+
+        _log("Phase 6.7/7 — Generating dependencies")
+        dependencies = self._phase_dependencies(plan, skill_code)
 
         _log(f"Phase 7/7 — Writing to {self.skills_root / plan['skill_name']}")
         return self._phase_write(
             plan, input_schema, output_schema, ui_schema,
-            skill_md, skill_code, tests, critic_issues,
+            skill_md, skill_code, tests, critic_issues, dependencies
         )
 
     # ── Phase 1: Plan ───────────────────────────────────────────────────────────
@@ -445,7 +481,7 @@ Return the EXACT same JSON structure as a standard skill plan:
     # ── Phase 2: Schemas ────────────────────────────────────────────────────────
 
     def _phase_input_schema(self, plan: dict) -> dict:
-        prompt = f"""Create input.schema.json for this SmartSpecPro skill.
+        prompt = f"""Create input.schema.json for this SmartAIHub skill.
 
 PLAN:
 {json.dumps(plan, ensure_ascii=False, indent=2)}
@@ -460,6 +496,7 @@ Return a COMPLETE JSON Schema (draft-07):
   - Each property: type, description, [enum/minimum/maximum/pattern/default as appropriate]
   - For enum: add "enumDescriptions" object mapping each value to a description
   - For numbers: add minimum, maximum, multipleOf as appropriate
+  - For file/image uploads: use type="string" (for single URL output) or type="array" with items type="string" (for multiple URLs)
 - "examples": array with 2-3 complete valid example input objects
 - "additionalProperties": false
 
@@ -468,7 +505,7 @@ Be comprehensive — add sensible optional parameters beyond the plan's basic in
         return _llm_json(self.client, _SYS_SCHEMA, prompt)
 
     def _phase_output_schema(self, plan: dict) -> dict:
-        prompt = f"""Create output.schema.json for this SmartSpecPro skill.
+        prompt = f"""Create output.schema.json for this SmartAIHub skill.
 
 PLAN:
 {json.dumps(plan, ensure_ascii=False, indent=2)}
@@ -493,7 +530,7 @@ Return a COMPLETE JSON Schema (draft-07):
         skill_title = plan.get("skill_title", "Skill")
         required_fields = input_schema.get("required", [])
 
-        prompt = f"""Create ui.schema.json for this SmartSpecPro skill's UI form.
+        prompt = f"""Create ui.schema.json for this SmartAIHub skill's UI form.
 
 PLAN:
 {json.dumps(plan, ensure_ascii=False, indent=2)}
@@ -527,6 +564,8 @@ Field design rules:
 - boolean: "default" must be boolean true/false
 - text/textarea: add "placeholder" and "placeholderTh"
 - slider: add "default" numeric value
+- file/files: use "accept": "image/*" if it is an image upload field
+- array: define "itemFields" (array of sub-fields defining each item's structure) and "itemLabel"
 
 outputMapping: map EVERY field id → the matching input schema property name.
 
@@ -614,10 +653,10 @@ triggerPatterns:
 
 ## Schema Files
 
-All schemas are in `schemas/` — mandatory for every SmartSpecPro skill:
+All schemas are in `schemas/` — mandatory for every SmartAIHub skill:
 - `schemas/input.schema.json` — Input field validation & documentation
 - `schemas/output.schema.json` — Output structure specification
-- `schemas/ui.schema.json` — SmartSpecPro UI form (Thai/English labels)
+- `schemas/ui.schema.json` — SmartAIHub UI form (Thai/English labels)
 
 ## Usage Example
 
@@ -789,11 +828,50 @@ Return JSON: {{"issues": [...], "fixed_code": "...COMPLETE file content..."}}"""
             _log(f"  Critic phase non-fatal error: {e}")
             return code, []
 
+    # ── Phase 5.5: Security Check ───────────────────────────────────────────────
+
+    def _phase_security_check(self, code: str, language: str) -> None:
+        """
+        Scan the generated code using regex heuristics for forbidden operations.
+        Raises an exception if violations are found so the creation halts rather
+        than creating dangerous skills.
+        """
+        violations = []
+        code_lower = code.lower()
+        
+        # 1. Direct LLM Calls
+        if re.search(r'(api\.openai\.com|api\.anthropic\.com|generativelanguage\.googleapis\.com)', code_lower):
+            violations.append("Direct LLM API call detected. Must use internal gateway (/api/llm/chat).")
+            
+        # 2. Database imports
+        if language == "python":
+            if re.search(r'^\s*import\s+(sqlite3|psycopg2|mysql|sqlalchemy|pymongo)', code, re.MULTILINE):
+                violations.append("Direct Database import detected. Must use HTTP APIs/MCP.")
+            if re.search(r'^\s*from\s+(sqlite3|psycopg2|mysql|sqlalchemy|pymongo)\s+import', code, re.MULTILINE):
+                violations.append("Direct Database import detected. Must use HTTP APIs/MCP.")
+        else: # javascript
+            if re.search(r'(require|import).*(sqlite|mysql|pg|mongodb|postgres)', code_lower):
+                 violations.append("Direct Database import detected. Must use HTTP APIs/MCP.")
+
+        # 3. File System Access
+        if language == "python":
+            if re.search(r'open\s*\(.*,\s*[\'"]w[\'"]\)', code): # writing files
+                 violations.append("File system write (open(..., 'w')) detected. Must use HTTP APIs/MCP.")
+            if re.search(r'os\.(remove|rmdir|unlink|mkdir|makedirs|rename)', code):
+                 violations.append("File system manipulation (os.*) detected. Must use HTTP APIs/MCP.")
+        else:
+            if re.search(r'fs\.(writeFile|unlink|mkdir|rename|appendFile|rm)', code):
+                 violations.append("File system manipulation (fs.*) detected. Must use HTTP APIs/MCP.")
+
+        if violations:
+            msg = "\n".join(f"- {v}" for v in violations)
+            raise RuntimeError(f"SECURITY CHECK FAILED. Code violates constraints:\n{msg}")
+
     # ── Phase 6: Test Generation ────────────────────────────────────────────────
 
     def _phase_tests(self, plan: dict, input_schema: dict) -> list[dict]:
         required = input_schema.get("required", [])
-        prompt = f"""Generate comprehensive test cases for this SmartSpecPro skill.
+        prompt = f"""Generate comprehensive test cases for this SmartAIHub skill.
 
 PLAN:
 {json.dumps(plan, ensure_ascii=False, indent=2)}
@@ -834,6 +912,91 @@ Include:
             }
         ]
 
+    # ── Phase 6.5: Test-Driven Creation ─────────────────────────────────────────
+
+    def _phase_tdc(self, plan: dict, skill_name: str, skill_code: str, tests: list[dict]) -> tuple[str, list[dict]]:
+        """
+        Write the skill to a temporary directory, run evaluators, and if tests fail,
+        ask the LLM to fix the code. Max 2 iterations.
+        """
+        import tempfile
+        import json
+        from pathlib import Path
+        from .evaluator import evaluate_from_path
+        
+        lang = plan.get('language', 'python')
+        
+        for iteration in range(2):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                tmp_path = Path(tmpdir) / skill_name
+                tmp_path.mkdir(parents=True, exist_ok=True)
+                
+                if lang == "python":
+                    code_file = tmp_path / "python" / "skill.py"
+                    rel_path = "python/skill.py"
+                else:
+                    code_file = tmp_path / "js" / "skill.js"
+                    rel_path = "js/skill.js"
+                    
+                code_file.parent.mkdir(parents=True, exist_ok=True)
+                code_file.write_text(skill_code, encoding="utf-8")
+                
+                test_file = tmp_path / "tests.json"
+                test_file.write_text(json.dumps({"tests": tests}, indent=2), encoding="utf-8")
+                
+                report = evaluate_from_path(tmp_path)
+                
+                if report.pass_rate >= 1.0:
+                    _log(f"  TDC Iteration {iteration+1}: All tests passed!")
+                    break
+                    
+                _log(f"  TDC Iteration {iteration+1}: {report.passed}/{report.total} tests passed. Asking LLM for fixes...")
+                
+                failed_tests = [r for r in report.results if not r.passed]
+                failure_details = "\n".join([f"- Test {r.test_id}: expected contains {r.missing}. Actual output: {r.output}" for r in failed_tests])
+                
+                system = f"You are an expert engineer. Your task is to fix the '{lang}' code so it passes the failing tests.\nOutput ONLY valid JSON where keys are file paths (e.g. '{rel_path}') and values are the FULL replacement string for that file.\nNo markdown, no explanations."
+                user = f"Current code:\n{skill_code}\n\nFailing test results:\n{failure_details}\n\nPlease fix the code."
+                
+                try:
+                    payload = self.client.chat([{"role":"system","content":system},{"role":"user","content":user}]).strip()
+                    payload = payload.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+                    fixes = json.loads(payload)
+                    for filepath, content in fixes.items():
+                        if "skill.py" in filepath or "skill.js" in filepath:
+                            skill_code = content
+                except Exception as e:
+                    _log(f"  TDC Iteration {iteration+1}: Failed to parse LLM fix ({e}). Keeping previous code.")
+                    break
+        
+        return skill_code, tests
+
+    # ── Phase 6.7: Dependencies ─────────────────────────────────────────────────
+
+    def _phase_dependencies(self, plan: dict, skill_code: str) -> str:
+        lang = plan.get('language', 'python')
+        if lang == "python":
+            sys_msg = "You are a Python expert. Analyze the code and return ONLY the contents of a requirements.txt file (e.g., beautifulsoup4==4.12.0). Do NOT include stdlib modules (json, math, etc.). If no external dependencies are needed, return an empty string. No markdown."
+        else:
+            sys_msg = "You are a Node.js expert. Analyze the code and return ONLY the contents of a valid package.json file containing only the required 'dependencies' field. Do NOT include node built-ins (fs, path, etc.). If no external dependencies are needed, return an empty string. No markdown."
+        
+        user_msg = f"Code:\n{skill_code}"
+        
+        try:
+            deps = self.client.chat([{"role":"system","content":sys_msg},{"role":"user","content":user_msg}]).strip()
+            deps = deps.replace("```json", "").replace("```text", "").replace("```", "").strip()
+            if deps.lower() in ["none", ""]:
+                return ""
+            
+            # Additional safety check
+            if lang == "javascript" and not deps.startswith("{"):
+                return ""
+            
+            return deps
+        except Exception as e:
+            _log(f"  Dependency generation failed: {e}")
+            return ""
+
     # ── Phase 7: Write to Disk ──────────────────────────────────────────────────
 
     def _phase_write(
@@ -846,6 +1009,7 @@ Include:
         skill_code: str,
         tests: list[dict],
         critic_issues: list[str],
+        dependencies: str = "",
     ) -> CreatedSkill:
         skill_name: str = plan["skill_name"]
         language: str = plan.get("language", "python")
@@ -878,11 +1042,17 @@ Include:
             code_dir.mkdir(exist_ok=True)
             (code_dir / "skill.py").write_text(skill_code, encoding="utf-8")
             files_written.append("python/skill.py")
+            if dependencies:
+                (code_dir / "requirements.txt").write_text(dependencies, encoding="utf-8")
+                files_written.append("python/requirements.txt")
         else:
             code_dir = skill_dir / "js"
             code_dir.mkdir(exist_ok=True)
             (code_dir / "skill.js").write_text(skill_code, encoding="utf-8")
             files_written.append("js/skill.js")
+            if dependencies:
+                (code_dir / "package.json").write_text(dependencies, encoding="utf-8")
+                files_written.append("js/package.json")
 
         # ── tests/tests.json ──────────────────────────────────────────────────
         tests_dir = skill_dir / "tests"
@@ -963,7 +1133,7 @@ def _build_readme(plan: dict, files: list[str]) -> str:
 |------|---------|
 | `schemas/input.schema.json` | Input field validation & API documentation |
 | `schemas/output.schema.json` | Output structure specification |
-| `schemas/ui.schema.json` | SmartSpecPro UI form (Thai/English labels) |
+| `schemas/ui.schema.json` | SmartAIHub UI form (Thai/English labels) |
 
 ## Logic
 

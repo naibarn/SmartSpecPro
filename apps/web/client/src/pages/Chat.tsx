@@ -69,8 +69,12 @@ export default function Chat() {
     const panel = params.get("panel");
 
     const alertId = params.get("alertId");
+    const conversationId = params.get("c");
 
-    if (dm) {
+    if (conversationId) {
+      setSelectedConversationId(Number(conversationId));
+      window.history.replaceState({}, "", "/chat");
+    } else if (dm) {
       setInitialDmUserId(Number(dm));
       setInitialDmUserName(dmName || "User");
       setRightPanel("schedule");

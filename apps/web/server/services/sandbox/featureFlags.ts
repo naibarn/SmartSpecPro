@@ -16,6 +16,7 @@ const SANDBOX_MODES = new Set([
   "sandbox-browser",
   "sandbox-file",
   "sandbox-media",
+  "sandbox-python",
   "media-generate",
 ]);
 

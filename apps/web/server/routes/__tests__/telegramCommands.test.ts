@@ -186,9 +186,9 @@ describe("Telegram Commands", () => {
     it("shows active conversation status info", async () => {
       const ctx = makeCtx([
         // findActiveConnection
-        [{ id: "conn-1", activeChannelId: "ch-1", status: "active" }],
+        [{ id: "conn-1", activeChannelId: "a0000000-0000-4000-8000-000000000001", status: "active" }],
         // load channel binding
-        [{ id: "ch-1", conversationType: "chat", chatConversationId: 42 }],
+        [{ id: "a0000000-0000-4000-8000-000000000001", conversationType: "chat", chatConversationId: 42 }],
         // load conversation details
         [{ title: "Test Chat", updatedAt: new Date("2026-01-01") }],
       ]);
@@ -235,7 +235,7 @@ describe("Telegram Commands", () => {
         // join query returns one channel
         [
           {
-            channelId: "ch-1",
+            channelId: "a0000000-0000-4000-8000-000000000001",
             conversationType: "chat",
             chatTitle: "My Chat",
             agencyTitle: null,
@@ -257,13 +257,13 @@ describe("Telegram Commands", () => {
         // join query returns multiple channels
         [
           {
-            channelId: "ch-1",
+            channelId: "a0000000-0000-4000-8000-000000000001",
             conversationType: "chat",
             chatTitle: "Chat A",
             agencyTitle: null,
           },
           {
-            channelId: "ch-2",
+            channelId: "b0000000-0000-4000-8000-000000000002",
             conversationType: "agency",
             chatTitle: null,
             agencyTitle: "Agency B",
@@ -281,10 +281,10 @@ describe("Telegram Commands", () => {
       expect(replyMarkup).toBeDefined();
       expect(replyMarkup.inline_keyboard).toHaveLength(2);
       expect(replyMarkup.inline_keyboard[0][0].callback_data).toBe(
-        "resume:ch-1",
+        "resume:a0000000-0000-4000-8000-000000000001",
       );
       expect(replyMarkup.inline_keyboard[1][0].callback_data).toBe(
-        "resume:ch-2",
+        "resume:b0000000-0000-4000-8000-000000000002",
       );
     });
   });
@@ -332,9 +332,9 @@ describe("Telegram Commands", () => {
     it("shows status for linked user with active conversation", async () => {
       const ctx = makeCtx([
         // findActiveConnection
-        [{ id: "conn-1", activeChannelId: "ch-1", status: "active" }],
+        [{ id: "conn-1", activeChannelId: "a0000000-0000-4000-8000-000000000001", status: "active" }],
         // load channel
-        [{ id: "ch-1", conversationType: "chat", chatConversationId: 42 }],
+        [{ id: "a0000000-0000-4000-8000-000000000001", conversationType: "chat", chatConversationId: 42 }],
         // load conversation
         [{ title: "My Chat" }],
       ]);
@@ -405,7 +405,7 @@ describe("Telegram Commands", () => {
           // verify channel belongs to connection
           [
             {
-              id: "ch-1",
+              id: "a0000000-0000-4000-8000-000000000001",
               conversationType: "chat",
               chatConversationId: 42,
               connectionId: "conn-1",
@@ -420,7 +420,7 @@ describe("Telegram Commands", () => {
             callback_query: {
               id: "cq-3",
               from: { id: 555 },
-              data: "resume:ch-1",
+              data: "resume:a0000000-0000-4000-8000-000000000001",
             },
           },
         },
