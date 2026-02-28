@@ -6,7 +6,7 @@ export function useAgencyList() {
 
 export function useAgencyById(agencyId: string | undefined) {
   return trpc.agency.getById.useQuery(
-    { agencyId: agencyId! },
+    { id: agencyId! },
     { enabled: !!agencyId },
   );
 }

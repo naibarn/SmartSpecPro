@@ -153,6 +153,19 @@ class AgencyService:
             for row in result.all()
         ]
 
+    async def _load_tool_whitelist(self, agency_id: str) -> set[str]:
+        """Load all tool IDs assigned to any agent in this agency."""
+        result = await self.db.execute(
+            text("""
+                SELECT DISTINCT aat."toolId"
+                FROM agency_agent_tools aat
+                JOIN agency_agents aa ON aa.id = aat."agentId"
+                WHERE aa."agencyId" = :agency_id
+            """),
+            {"agency_id": agency_id},
+        )
+        return {row[0] for row in result.all()}
+
     async def _load_flows(self, agency_id: str) -> list[tuple[str, str]]:
         """Load communication flows as (from_name, to_name) tuples."""
         result = await self.db.execute(
@@ -202,12 +215,13 @@ class AgencyService:
             )
 
         # 4. Resolve tools for each agent
+        agency_whitelist = await self._load_tool_whitelist(agency_id)
         agent_tools: dict[str, list[type]] = {}
         for agent_data in agents_data:
             tools = await resolve_tools_for_agent(
                 db=self.db,
                 agent_id=agent_data["id"],
-                agency_whitelist=set(),  # TODO: load whitelist from agency config
+                agency_whitelist=agency_whitelist,
                 adapter=self.adapter,
             )
             agent_tools[agent_data["id"]] = tools
@@ -406,12 +420,13 @@ class AgencyService:
 
             agents_data = await self._load_agents(agency_id)
 
+            agency_whitelist = await self._load_tool_whitelist(agency_id)
             agent_tools: dict[str, list[type]] = {}
             for agent_data in agents_data:
                 tools = await resolve_tools_for_agent(
                     db=self.db,
                     agent_id=agent_data["id"],
-                    agency_whitelist=set(),
+                    agency_whitelist=agency_whitelist,
                     adapter=self.adapter,
                 )
                 agent_tools[agent_data["id"]] = tools

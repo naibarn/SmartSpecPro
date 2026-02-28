@@ -56,13 +56,18 @@ export async function purgeOldRecords(
   let deleted = 0;
 
   // Batch-delete old agency_messages
+  // Note: agency_messages has no tenant_id — filter through conversation → agency
   do {
     const msgResult = await db.instance.execute(sql`
       DELETE FROM agency_messages
       WHERE ctid IN (
-        SELECT ctid FROM agency_messages
-        WHERE created_at < NOW() - INTERVAL '${sql.raw(String(purgeDays))} days'
-        ${tenantId ? sql`AND tenant_id = ${tenantId}` : sql``}
+        SELECT m.ctid FROM agency_messages m
+        ${tenantId ? sql`
+          JOIN agency_conversations c ON c.id = m.conversation_id
+          JOIN agencies a ON a.id = c.agency_id
+        ` : sql``}
+        WHERE m.created_at < NOW() - INTERVAL '${sql.raw(String(purgeDays))} days'
+        ${tenantId ? sql`AND a.tenant_id = ${tenantId}` : sql``}
         LIMIT ${BATCH_SIZE}
       )
     `);

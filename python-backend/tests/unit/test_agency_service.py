@@ -131,6 +131,7 @@ class TestAgencyServiceExecuteRun:
         service.load_agency = AsyncMock(return_value=mock_agency_config)
         service._load_agents = AsyncMock(return_value=[])
         service._load_flows = AsyncMock(return_value=[])
+        service._load_tool_whitelist = AsyncMock(return_value=set())
 
         # Mock adapter
         mock_agent = MagicMock()
@@ -180,6 +181,7 @@ class TestAgencyServiceExecuteRun:
         ))
         service._load_agents = AsyncMock(return_value=[])
         service._load_flows = AsyncMock(return_value=[])
+        service._load_tool_whitelist = AsyncMock(return_value=set())
 
         mock_agent = MagicMock(name="Agent1")
         mock_agent._is_entry_point = True
@@ -217,6 +219,7 @@ class TestAgencyServiceExecuteRun:
         ))
         service._load_agents = AsyncMock(return_value=[])
         service._load_flows = AsyncMock(return_value=[])
+        service._load_tool_whitelist = AsyncMock(return_value=set())
 
         mock_agent = MagicMock(name="Agent1")
         mock_agent._is_entry_point = True
@@ -259,6 +262,7 @@ class TestAgencyServiceCreditPreCheckFailed:
         ))
         service._load_agents = AsyncMock(return_value=[])
         service._load_flows = AsyncMock(return_value=[])
+        service._load_tool_whitelist = AsyncMock(return_value=set())
         service.credit_manager.pre_check = AsyncMock(return_value=False)
         service.credit_manager.estimate_run_cost = MagicMock(return_value=10.0)
 
