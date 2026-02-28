@@ -40,6 +40,38 @@ async function assertAgencyEnabled(tenantId: string): Promise<void> {
   }
 }
 
+// Q-1: Detect cycles in communication flows using DFS
+function detectFlowCycle(
+  flows: Array<{ fromAgentName: string; toAgentName: string }>,
+): string | null {
+  const adj = new Map<string, string[]>();
+  for (const f of flows) {
+    if (!adj.has(f.fromAgentName)) adj.set(f.fromAgentName, []);
+    adj.get(f.fromAgentName)!.push(f.toAgentName);
+  }
+
+  const visited = new Set<string>();
+  const inStack = new Set<string>();
+
+  function dfs(node: string): boolean {
+    visited.add(node);
+    inStack.add(node);
+    for (const neighbor of adj.get(node) ?? []) {
+      if (inStack.has(neighbor)) return true; // Cycle found
+      if (!visited.has(neighbor) && dfs(neighbor)) return true;
+    }
+    inStack.delete(node);
+    return false;
+  }
+
+  for (const node of adj.keys()) {
+    if (!visited.has(node) && dfs(node)) {
+      return node; // Return first node in cycle
+    }
+  }
+  return null;
+}
+
 // Rate-limited procedures specific to agencies
 const agencyCreateProcedure = protectedProcedure.use(
   createRateLimitMiddleware({ namespace: "agency-create", limit: 10, windowMs: 86_400_000 }),
@@ -447,6 +479,15 @@ export const agencyRouter = router({
 
         // Insert communication flows
         if (input.communicationFlows?.length) {
+          // Q-1: Detect circular flows
+          const cycleNode = detectFlowCycle(input.communicationFlows);
+          if (cycleNode) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `Circular communication flow detected involving agent "${cycleNode}"`,
+            });
+          }
+
           for (const flow of input.communicationFlows) {
             const fromId = agentNameToId[flow.fromAgentName];
             const toId = agentNameToId[flow.toAgentName];
@@ -659,6 +700,15 @@ export const agencyRouter = router({
 
         // Re-insert communication flows
         if (input.communicationFlows?.length) {
+          // Q-1: Detect circular flows
+          const cycleNode = detectFlowCycle(input.communicationFlows);
+          if (cycleNode) {
+            throw new TRPCError({
+              code: "BAD_REQUEST",
+              message: `Circular communication flow detected involving agent "${cycleNode}"`,
+            });
+          }
+
           for (const flow of input.communicationFlows) {
             const fromId = agentNameToId[flow.fromAgentName];
             const toId = agentNameToId[flow.toAgentName];
@@ -728,6 +778,16 @@ export const agencyRouter = router({
       await assertAgencyEnabled(tenantId);
       const userId = ctx.user!.id;
 
+      // M-1: Verify agency belongs to this tenant
+      const [agency] = await db
+        .select({ id: agencies.id })
+        .from(agencies)
+        .where(and(eq(agencies.id, input.agencyId), eq(agencies.tenantId, tenantId)))
+        .limit(1);
+      if (!agency) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      }
+
       const result = await db
         .select()
         .from(agencyConversations)
@@ -766,6 +826,11 @@ export const agencyRouter = router({
 
       if (!agency) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      }
+
+      // M-2: Non-owners can only create conversations on published agencies
+      if ((agency as any).status !== "published" && (agency as any).createdBy !== userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Agency is not published" });
       }
 
       const conversationId = crypto.randomUUID();

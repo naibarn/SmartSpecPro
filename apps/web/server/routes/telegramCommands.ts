@@ -22,6 +22,12 @@ import type { WebhookContext } from "./telegramWebhook";
 
 const APP_URL = "https://smartaihub.app";
 
+// ── HTML escape for Telegram parse_mode=HTML ──────────────────────────────
+
+function escapeTelegramHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 // ── Shared helper ─────────────────────────────────────────────────────────
 
 async function findActiveConnection(
@@ -123,7 +129,7 @@ export async function handleStatus(ctx: WebhookContext): Promise<void> {
     }
 
     const text = getMessage("status_active", ctx.languageCode)
-      .replace("{name}", name)
+      .replace("{name}", escapeTelegramHtml(name))
       .replace("{count}", String(count))
       .replace("{lastActivity}", lastActivity);
     await sendTelegramMessage(ctx.botToken, ctx.chatId, text, "HTML");
@@ -302,7 +308,7 @@ export async function handleStartNoToken(ctx: WebhookContext): Promise<void> {
         }
 
         const statusText = getMessage("status_active", ctx.languageCode)
-          .replace("{name}", name)
+          .replace("{name}", escapeTelegramHtml(name))
           .replace("{count}", "0")
           .replace("{lastActivity}", "-");
         await sendTelegramMessage(ctx.botToken, ctx.chatId, statusText, "HTML");
@@ -333,12 +339,20 @@ export async function handleCallbackQuery(ctx: WebhookContext): Promise<void> {
       await handleUnlinkCallback(ctx, data, queryId);
     } else if (data.startsWith("resume:")) {
       const channelId = data.slice("resume:".length);
+      // Validate UUID format before DB query
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(channelId)) {
+        await answerCallbackQuery(ctx.botToken, queryId);
+        return;
+      }
       await handleResumeCallback(ctx, channelId, queryId);
     } else {
       await answerCallbackQuery(ctx.botToken, queryId);
     }
   } catch (err) {
-    console.error("[TelegramCmd] callback error:", err);
+    const sanitizedData = data
+      .replace(/[^\x20-\x7E]/g, "")
+      .slice(0, 50);
+    console.error("[TelegramCmd] callback error for data:", sanitizedData, err);
     await answerCallbackQuery(ctx.botToken, queryId).catch(() => {});
   }
 }
@@ -376,7 +390,11 @@ async function handleUnlinkCallback(
   // Revoke connection
   await ctx.db
     .update(telegramConnections)
-    .set({ status: "revoked", revokedAt: new Date() })
+    .set({
+      status: "revoked",
+      revokedAt: new Date(),
+      revokedBy: `telegram:${ctx.telegramUserId}`,
+    })
     .where(eq(telegramConnections.id, connection.id));
 
   // Revoke all channel bindings

@@ -28,7 +28,7 @@ export async function archiveOldRecords(): Promise<{ archivedCount: number }> {
     UPDATE agency_conversations
     SET "isArchived" = true
     WHERE "isArchived" = false
-      AND "updatedAt" < NOW() - INTERVAL '${sql.raw(String(DEFAULT_ARCHIVE_DAYS))} days'
+      AND "updatedAt" < NOW() - make_interval(days => ${DEFAULT_ARCHIVE_DAYS})
   `);
 
   const archivedCount = (result as any).rowCount ?? 0;
@@ -66,7 +66,7 @@ export async function purgeOldRecords(
           JOIN agency_conversations c ON c.id = m.conversation_id
           JOIN agencies a ON a.id = c.agency_id
         ` : sql``}
-        WHERE m.created_at < NOW() - INTERVAL '${sql.raw(String(purgeDays))} days'
+        WHERE m.created_at < NOW() - make_interval(days => ${purgeDays})
         ${tenantId ? sql`AND a.tenant_id = ${tenantId}` : sql``}
         LIMIT ${BATCH_SIZE}
       )
@@ -81,7 +81,7 @@ export async function purgeOldRecords(
       DELETE FROM agency_runs
       WHERE ctid IN (
         SELECT ctid FROM agency_runs
-        WHERE created_at < NOW() - INTERVAL '${sql.raw(String(purgeDays))} days'
+        WHERE created_at < NOW() - make_interval(days => ${purgeDays})
         ${tenantId ? sql`AND tenant_id = ${tenantId}` : sql``}
         LIMIT ${BATCH_SIZE}
       )

@@ -37,6 +37,11 @@ import {
   deductCreditsForModel,
   calculateCreditsForLLM,
 } from "./creditService";
+import { agencyBridge } from "./agencyBridge";
+import {
+  agencies,
+  agencyConversations,
+} from "../../drizzle/schema";
 
 // ── Result types ──────────────────────────────────────────────────────────
 
@@ -73,11 +78,16 @@ async function ingest(event: ChatIngressEvent): Promise<IngestResult> {
       return { ok: false, error: "Missing connectionId", errorCode: "no_connection" };
     }
 
-    // 1. Validate connection
+    // 1. Validate connection (scoped to tenant for defense-in-depth)
     const [connection] = await db
       .select()
       .from(telegramConnections)
-      .where(eq(telegramConnections.id, connectionId))
+      .where(
+        and(
+          eq(telegramConnections.id, connectionId),
+          eq(telegramConnections.tenantId, event.tenantId),
+        ),
+      )
       .limit(1);
 
     if (!connection) {
@@ -141,12 +151,49 @@ async function ingest(event: ChatIngressEvent): Promise<IngestResult> {
       channel.conversationType === "agency" &&
       channel.agencyConversationId
     ) {
-      // Agency pipeline — deferred to section-08 pipeline hooks
-      console.info(
-        "[ChannelGateway] Route to agency pipeline:",
-        channel.agencyConversationId,
-      );
-      return { ok: true };
+      // Agency pipeline — route through agencyBridge
+      try {
+        // Resolve agencyId from the conversation
+        const [agencyConv] = await db
+          .select({ agencyId: agencyConversations.agencyId })
+          .from(agencyConversations)
+          .where(eq(agencyConversations.id, channel.agencyConversationId))
+          .limit(1);
+
+        if (!agencyConv) {
+          return { ok: false, error: "Agency conversation not found", errorCode: "pipeline_error" };
+        }
+
+        const result = await agencyBridge.executeRun({
+          agencyId: agencyConv.agencyId,
+          conversationId: channel.agencyConversationId,
+          message: event.message.text,
+          userToken: "", // Server-side call — no user token needed
+          tenantId: connection.tenantId,
+          userId: connection.userId,
+        });
+
+        // Emit the agency response to Telegram
+        if (result.response) {
+          await emitEgress({
+            eventId: crypto.randomUUID(),
+            conversationId: channel.agencyConversationId,
+            conversationType: "agency",
+            messageId: result.runId,
+            tenantId: connection.tenantId,
+            targets: [],
+            rendering: {
+              plainText: result.response,
+              html: result.response,
+            },
+          });
+        }
+
+        return { ok: true, responseMessageId: result.runId };
+      } catch (err) {
+        console.error("[ChannelGateway] Agency pipeline error:", err);
+        return { ok: false, error: "Agency processing failed", errorCode: "pipeline_error" };
+      }
     } else {
       return {
         ok: false,
@@ -158,7 +205,7 @@ async function ingest(event: ChatIngressEvent): Promise<IngestResult> {
     console.error("[ChannelGateway] Ingest error:", err);
     return {
       ok: false,
-      error: err instanceof Error ? err.message : "Unknown error",
+      error: "An internal error occurred",
       errorCode: "pipeline_error",
     };
   }
@@ -236,6 +283,7 @@ async function queryActiveBindings(event: ChatEgressEvent) {
           eq(conversationChannels.chatConversationId, convId),
           eq(conversationChannels.channelType, "telegram"),
           eq(conversationChannels.state, "active"),
+          eq(conversationChannels.tenantId, event.tenantId),
           inArray(conversationChannels.syncMode, ["two_way", "notify_only"]),
         ),
       );
@@ -248,6 +296,7 @@ async function queryActiveBindings(event: ChatEgressEvent) {
           eq(conversationChannels.agencyConversationId, event.conversationId),
           eq(conversationChannels.channelType, "telegram"),
           eq(conversationChannels.state, "active"),
+          eq(conversationChannels.tenantId, event.tenantId),
           inArray(conversationChannels.syncMode, ["two_way", "notify_only"]),
         ),
       );
@@ -273,36 +322,6 @@ function splitForTelegram(text: string): string[] {
     remaining = remaining.slice(splitAt);
   }
   return chunks;
-}
-
-// ── Typing indicator ──────────────────────────────────────────────────────
-
-function sendTypingLoop(
-  chatId: string,
-  botToken: string,
-): { stop: () => void } {
-  const url = `https://api.telegram.org/bot${botToken}/sendChatAction`;
-  const body = JSON.stringify({ chat_id: chatId, action: "typing" });
-
-  const doSend = () => {
-    fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body,
-    }).catch(() => {
-      // Best-effort — typing indicator failures are non-critical
-    });
-  };
-
-  // Fire immediately, then repeat every 4 seconds
-  doSend();
-  const interval = setInterval(doSend, 4000);
-
-  return {
-    stop() {
-      clearInterval(interval);
-    },
-  };
 }
 
 // ── Non-text message handling ─────────────────────────────────────────────
@@ -388,11 +407,12 @@ async function processMessageServerSide(
 
     // 6. Handle result
     if (result.type === "error") {
-      // Save error as assistant message so conversation state is consistent
+      console.error("[ChannelGateway] LLM pipeline error:", result.error);
+      // Save generic error as assistant message — don't expose internal error details
       await createMessage({
         conversationId: params.conversationId,
         role: "assistant",
-        content: `Sorry, I couldn't process your message. ${result.error}`,
+        content: "Sorry, I couldn't process your message. Please try again.",
         sourceChannel: "telegram",
       } as any);
       return { success: false, error: result.error };
@@ -495,7 +515,6 @@ async function hasActiveChannels(
 export const channelGateway = {
   ingest,
   emitEgress,
-  sendTypingLoop,
   handleNonTextMessage,
   processMessageServerSide,
   hasActiveChannels,

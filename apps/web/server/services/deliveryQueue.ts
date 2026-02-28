@@ -7,13 +7,13 @@
 
 import { Queue, Worker, UnrecoverableError } from "bullmq";
 import type { Job } from "bullmq";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import type { DeliveryJob } from "@shared/channelTypes";
 import { getRealtimeClient } from "./redisClients";
 import { sendTelegramMessage } from "./telegramService";
 import { decrypt } from "./crypto";
 import { getDb } from "../db";
-import { channelMessages, systemSettings } from "../../drizzle/schema";
+import { channelMessages, conversationChannels, systemSettings } from "../../drizzle/schema";
 
 // ── Constants ────────────────────────────────────────────────────────────
 
@@ -97,6 +97,42 @@ async function processDeliveryJob(job: Job<DeliveryJob>): Promise<void> {
   }
 
   const db = await getDb();
+
+  // Pre-delivery validation: check message record still exists
+  if (db) {
+    const [msgRecord] = await db
+      .select({
+        id: channelMessages.id,
+        deliveryStatus: channelMessages.deliveryStatus,
+        conversationChannelId: channelMessages.conversationChannelId,
+      })
+      .from(channelMessages)
+      .where(eq(channelMessages.id, channelMessageId))
+      .limit(1);
+
+    if (!msgRecord) {
+      throw new UnrecoverableError("Channel message record not found (deleted)");
+    }
+    if (msgRecord.deliveryStatus === "sent") {
+      return; // Already delivered — idempotent skip
+    }
+
+    // Check that the channel binding is still active
+    if (msgRecord.conversationChannelId) {
+      const [channel] = await db
+        .select({ state: conversationChannels.state })
+        .from(conversationChannels)
+        .where(eq(conversationChannels.id, msgRecord.conversationChannelId))
+        .limit(1);
+      if (channel && channel.state !== "active") {
+        await db
+          .update(channelMessages)
+          .set({ deliveryStatus: "failed", failureCode: "connection_revoked" })
+          .where(eq(channelMessages.id, channelMessageId));
+        throw new UnrecoverableError("Connection revoked — delivery cancelled");
+      }
+    }
+  }
 
   try {
     const result = await sendTelegramMessage(botToken, chatId, text, parseMode);
@@ -237,6 +273,24 @@ export async function enqueueDelivery(job: DeliveryJob): Promise<void> {
     console.warn("[DeliveryQueue] Queue not initialized, skipping delivery");
     return;
   }
+
+  // Idempotency: skip if message already sent
+  try {
+    const dbConn = await getDb();
+    if (dbConn) {
+      const [existing] = await dbConn
+        .select({ deliveryStatus: channelMessages.deliveryStatus })
+        .from(channelMessages)
+        .where(eq(channelMessages.id, job.channelMessageId))
+        .limit(1);
+      if (existing?.deliveryStatus === "sent") {
+        return; // Already delivered
+      }
+    }
+  } catch {
+    // Non-critical — proceed with enqueue
+  }
+
   await deliveryQueue.add("deliver", job, {
     jobId: `tg-deliver-${job.channelMessageId}`,
   });
@@ -259,6 +313,13 @@ export async function closeDeliveryQueue(): Promise<void> {
   }
   cachedBotToken = null;
   console.log("[DeliveryQueue] Shut down");
+}
+
+// ── Cache management ────────────────────────────────────────────────────
+
+export function clearDeliveryBotTokenCache(): void {
+  cachedBotToken = null;
+  botTokenCacheExpiry = 0;
 }
 
 // ── Exports for testing ──────────────────────────────────────────────────

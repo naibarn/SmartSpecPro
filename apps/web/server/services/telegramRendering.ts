@@ -88,7 +88,8 @@ function markdownToTelegramHtml(content: string): string {
   // 4. Convert inline formatting
 
   // Inline code: `code` → <code>code</code> (must be before bold/italic)
-  processed = processed.replace(/`([^`]+)`/g, "<code>$1</code>");
+  // Escape HTML inside inline code to prevent XSS
+  processed = processed.replace(/`([^`]+)`/g, (_m, code: string) => `<code>${escapeHtml(code)}</code>`);
 
   // Bold: **text** or __text__
   processed = processed.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
