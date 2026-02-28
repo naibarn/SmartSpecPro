@@ -2552,6 +2552,24 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
         )}
 
         {/* Attachment Previews */}
+        {selectedLibrarySources.length > 0 && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {selectedLibrarySources.map((item) => (
+              <Badge key={item.item_id} variant="secondary" className="gap-2 pr-1">
+                <Search className="h-3 w-3" />
+                {item.title}
+                <button
+                  className="rounded-full p-0.5 hover:bg-black/10"
+                  onClick={() => toggleLibrarySource(item)}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
+
+        {/* Attachment Previews */}
         {attachments.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-2">
             {attachments.map((a) => (

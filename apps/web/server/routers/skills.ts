@@ -1218,6 +1218,9 @@ export const skillsRouter = router({
       }
 
       try {
+        // DEBUG: Log maxPromptLength to verify it's being passed
+        console.log(`[Skills] enhancePrompt called with maxPromptLength: ${input.maxPromptLength}`);
+
         // Build prompts using the CreateImagePrompt skill
         const systemPrompt = buildSystemPrompt(input);
 

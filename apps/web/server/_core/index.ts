@@ -129,7 +129,7 @@ app.use((err: any, req: any, res: any, next: any) => {
   }
   next(err);
 });
-app.use(express.urlencoded({ limit: "10mb", extended: true }));
+app.use(express.urlencoded({ limit: "100mb", extended: true }));
 app.use(cookieParser(ENV.cookieSecret));
 
 // ============================================================================
@@ -692,6 +692,49 @@ async function main() {
     console.log("[Startup] LLM queue processing: in-process (credits/usage), Cloud Tasks (skills)");
   } catch (error) {
     console.error("[Startup] Queue info log failed:", error);
+  }
+
+  // Initialize trash auto-purge job (daily at 2 AM)
+  try {
+    await initializeTrashPurgeJob();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize trash purge job:", error);
+  }
+
+  // Initialize Google Drive edit session cleanup (every 6h)
+  try {
+    await initializeGDriveCleanupJob();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize GDrive cleanup job:", error);
+  }
+
+  // Initialize Telegram notification queue
+  try {
+    const db = await getDb();
+    if (db) {
+      await initializeTelegramQueue(db, {
+        host: process.env.REDIS_HOST || "localhost",
+        port: parseInt(process.env.REDIS_PORT || "6379"),
+        password: process.env.REDIS_PASSWORD,
+      });
+    }
+  } catch (error) {
+    console.error("[Startup] Failed to initialize Telegram queue:", error);
+  }
+
+  // Initialize provider health circuit breaker from DB state
+  try {
+    await initFromDb();
+    startPeriodicPersistence();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize provider health:", error);
+  }
+
+  // Initialize LLM queue system (BullMQ workers for background tasks)
+  try {
+    await initializeQueues();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize LLM queues:", error);
   }
 
   // Initialize trash auto-purge job (daily at 2 AM)

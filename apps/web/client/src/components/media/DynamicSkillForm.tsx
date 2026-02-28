@@ -80,6 +80,23 @@ const iconMap: Record<string, LucideIcon> = {
   layers: Layers,
 };
 
+// Icon mapping for section icons
+const iconMap: Record<string, LucideIcon> = {
+  sparkles: Sparkles,
+  palette: Palette,
+  "wand-2": Wand2,
+  type: Type,
+  image: Image,
+  settings: Settings,
+  video: Video,
+  music: Music,
+  zap: Zap,
+  globe: Globe,
+  camera: Camera,
+  film: Film,
+  layers: Layers,
+};
+
 // Schema Types
 export interface SkillInputField {
   id: string;

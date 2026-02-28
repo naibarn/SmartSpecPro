@@ -273,6 +273,10 @@ app.include_router(cloud_tasks_api.router, tags=["Cloud Tasks"])
 from app.api.v1 import kie_webhooks
 app.include_router(kie_webhooks.router, tags=["Webhooks"])
 
+# Media Job processing (FFmpeg worker bridge)
+from app.api.v1 import media_jobs as media_jobs_api
+app.include_router(media_jobs_api.router, prefix="/api/v1", tags=["Media Jobs"])
+
 # OpenAI-compatible surface for desktop/runner/proxy (forwarded to SmartSpecWeb gateway)
 app.include_router(openai_compat.router)
 app.include_router(kilo_cli.router)
