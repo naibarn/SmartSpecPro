@@ -106,6 +106,90 @@ services:
       - smartspec-network
 
   # ============================================
+  # CELERY IMPORT WORKER
+  # Handles: import_presentation_task (PPTX / Google Slides)
+  # These are API-bound (S3 download, Google API), light CPU
+  # ============================================
+  celery-import:
+    build:
+      context: ./python-backend
+      dockerfile: Dockerfile
+    container_name: smartspec-celery-import
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=4 -Q presentation_import -n import@%h
+    env_file:
+      - ./python-backend/.env
+    environment:
+      # Override networking: use Docker hostnames instead of localhost
+      - CELERY_BROKER_URL=redis://smartspec-redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://smartspec-redis:6379/0
+      - REDIS_URL=redis://smartspec-redis:6379/0
+      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec123@smartspec-postgres:5432/smartspec
+      - NODE_INTERNAL_URL=http://host.docker.internal:3000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./python-backend:/app
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 3G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.core.celery_app inspect ping -d import@$$HOSTNAME || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - smartspec-network
+
+  # ============================================
+  # CELERY SANDBOX WORKER
+  # Handles: execute_sandbox_job (OpenSandbox orchestration)
+  # Manages sandbox lifecycle: provision, execute, collect, destroy
+  # Resource limits: 2 CPUs / 4GB RAM max
+  # ============================================
+  celery-sandbox:
+    build:
+      context: ./python-backend
+      dockerfile: Dockerfile
+    container_name: smartspec-celery-sandbox
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2 -Q sandbox -n sandbox@%h
+    env_file:
+      - ./python-backend/.env
+    environment:
+      - CELERY_BROKER_URL=redis://smartspec-redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://smartspec-redis:6379/0
+      - REDIS_URL=redis://smartspec-redis:6379/0
+      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec123@smartspec-postgres:5432/smartspec
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./python-backend:/app
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.core.celery_app inspect ping -d sandbox@$$HOSTNAME || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - smartspec-network
+      - opensandbox-network
+
+  # ============================================
   # CELERY BEAT (Periodic Task Scheduler)
   # Runs exactly once — schedules cleanup + retry tasks
   # ============================================
@@ -150,6 +234,7 @@ services:
     depends_on:
       - celery-media
       - celery-video
+      - celery-import
     deploy:
       resources:
         limits:
@@ -167,4 +252,6 @@ services:
 
 networks:
   smartspec-network:
+    external: true
+  opensandbox-network:
     external: true

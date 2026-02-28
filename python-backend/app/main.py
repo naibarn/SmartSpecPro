@@ -75,6 +75,7 @@ from app.api.v1 import (
     media_advanced,
     webhooks,
     presentations_export,  # Presentation export endpoints
+    presentation_import,   # Presentation import endpoints
 )
 
 # Initialize Sentry before anything else (captures startup errors)
@@ -253,6 +254,11 @@ app.include_router(
     presentations_export.router,
     prefix="/api/v1/presentations",
     tags=["Presentation Export"],
+)
+app.include_router(
+    presentation_import.router,
+    prefix="/api/v1/presentation-import",
+    tags=["Presentation Import"],
 )
 
 # Media Job processing (FFmpeg worker bridge)

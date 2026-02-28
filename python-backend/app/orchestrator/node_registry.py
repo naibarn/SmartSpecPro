@@ -391,7 +391,7 @@ class NodeRegistry:
                         ui_type="select",
                         required=True,
                         accepts_connection=False,
-                        default="google-nano-banana-pro",
+                        default="",
                         options_endpoint="/api/v1/workflows/media-models?type=image",
                     ),
                     InputSpec(

@@ -26,6 +26,7 @@ class DockerExecutionMode(str, Enum):
     HOST = "host"  # Run commands directly on host
     DOCKER = "docker"  # Run commands inside Docker container
     AUTO = "auto"  # Auto-detect based on environment
+    SANDBOX = "sandbox"  # Route through OpenSandbox
 
 
 @dataclass
@@ -72,17 +73,21 @@ class DockerExecutor:
     development environments that match production.
     """
     
-    def __init__(self, config: Optional[DockerConfig] = None):
+    def __init__(self, config: Optional[DockerConfig] = None, mode: Optional[DockerExecutionMode] = None):
         """
         Initialize the Docker executor.
-        
+
         Args:
             config: Docker configuration
+            mode: Override execution mode (e.g., SANDBOX for OpenSandbox routing)
         """
         self.config = config or DockerConfig()
+        if mode is not None:
+            self.config.mode = mode
         self._docker_available: Optional[bool] = None
         self._container_running: Optional[bool] = None
         self._effective_mode: Optional[DockerExecutionMode] = None
+        self._sandbox_runner = None  # Optional SandboxMediaRunner for SANDBOX mode
         
         logger.info(
             "Docker executor initialized",
@@ -213,6 +218,8 @@ class DockerExecutor:
             self._effective_mode = DockerExecutionMode.HOST
         elif self.config.mode == DockerExecutionMode.DOCKER:
             self._effective_mode = DockerExecutionMode.DOCKER
+        elif self.config.mode == DockerExecutionMode.SANDBOX:
+            self._effective_mode = DockerExecutionMode.SANDBOX
         else:
             # Auto-detect
             # Check if we're already inside a container
@@ -306,8 +313,13 @@ class DockerExecutor:
             Tuple of (exit_code, stdout, stderr)
         """
         effective_mode = await self.get_effective_mode()
-        
-        if effective_mode == DockerExecutionMode.DOCKER:
+
+        if effective_mode == DockerExecutionMode.SANDBOX and self._sandbox_runner:
+            result = await self._sandbox_runner.run_command(
+                command, timeout=timeout or self.config.default_timeout
+            )
+            return (result.returncode, result.stdout or "", result.stderr or "")
+        elif effective_mode == DockerExecutionMode.DOCKER:
             return await self._execute_in_docker(
                 command, cwd, env, timeout, user, capture_output
             )

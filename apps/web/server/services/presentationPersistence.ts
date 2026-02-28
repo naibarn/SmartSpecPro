@@ -100,8 +100,9 @@ export interface PresentationConversionIdempotencyLookupInput extends Presentati
 
 export interface UpsertPresentationConversionRecordInput {
   tenantId: string;
-  sourceItemId: number;
-  sourceFormat: "pptx" | "ppt";
+  userId: number;
+  sourceItemId: number | null;
+  sourceFormat: "pptx" | "ppt" | "google_slides";
   idempotencyKey: string;
   deckLibraryItemId: number;
   deckId: number;
@@ -126,10 +127,10 @@ export interface ReleasePresentationConversionLockInput {
 }
 
 export interface StoredPresentationConversionRecord {
-  sourceItemId: number;
-  sourceFormat: "pptx" | "ppt";
-  deckLibraryItemId: number;
-  deckId: number;
+  sourceItemId: number | null;
+  sourceFormat: "pptx" | "ppt" | "google_slides";
+  deckLibraryItemId: number | null;
+  deckId: number | null;
   partialFidelity: boolean;
   fidelityWarnings: string[];
 }
@@ -585,7 +586,7 @@ function mapStoredConversionRecord(
   const rawWarnings = Array.isArray(row.fidelityWarnings) ? row.fidelityWarnings : [];
   return {
     sourceItemId: row.sourceItemId,
-    sourceFormat: row.sourceFormat === "ppt" ? "ppt" : "pptx",
+    sourceFormat: row.sourceFormat === "ppt" ? "ppt" : row.sourceFormat === "google_slides" ? "google_slides" : "pptx",
     deckLibraryItemId: row.deckLibraryItemId,
     deckId: row.deckId,
     partialFidelity: row.partialFidelity,
@@ -666,6 +667,7 @@ export async function upsertPresentationConversionRecord(
     .insert(presentationConversionRecords)
     .values({
       tenantId: input.tenantId,
+      userId: input.userId,
       sourceItemId: input.sourceItemId,
       sourceFormat: input.sourceFormat,
       idempotencyKey: input.idempotencyKey,
@@ -679,6 +681,7 @@ export async function upsertPresentationConversionRecord(
     })
     .onConflictDoUpdate({
       target: [presentationConversionRecords.tenantId, presentationConversionRecords.sourceItemId],
+      targetWhere: sql`${presentationConversionRecords.sourceItemId} IS NOT NULL`,
       set: {
         sourceFormat: input.sourceFormat,
         idempotencyKey: input.idempotencyKey,

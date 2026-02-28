@@ -12,6 +12,7 @@ from typing import Dict, List, Any
 class ImageModel(str, Enum):
     """Supported image generation models"""
     NANO_BANANA_PRO = "google-nano-banana-pro"
+    BANANA_2 = "google-banana-2"
     FLUX_2_0 = "flux-2.0"
     Z_IMAGE = "z-image"
     GROK_IMAGINE = "grok-imagine"
@@ -46,6 +47,14 @@ MODEL_METADATA: Dict[str, Dict[str, Any]] = {
         "description": "High-quality image generation with Google's latest model",
         "supports_sizes": ["1024x1024", "1024x1792", "1792x1024"],
         "supports_aspect_ratios": ["1:1", "16:9", "9:16", "4:3", "3:4"],
+    },
+    ImageModel.BANANA_2.value: {
+        "type": "image",
+        "name": "Google Banana 2",
+        "provider": "kie.ai",
+        "description": "Gemini 3.1 Flash Image model with fast 4K generation",
+        "supports_sizes": ["1K", "2K", "4K"],
+        "supports_aspect_ratios": ["1:1", "1:4", "1:8", "2:3", "3:2", "3:4", "4:1", "4:3", "4:5", "5:4", "8:1", "9:16", "16:9", "21:9", "auto"],
     },
     ImageModel.FLUX_2_0.value: {
         "type": "image",

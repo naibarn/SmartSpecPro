@@ -107,6 +107,7 @@ export const creditSourceTypeEnum = pgEnum("credit_source_type", [
   "brainstorm",
   "scheduler",
   "admin",
+  "agency",
   "other",
 ]);
 
@@ -124,6 +125,29 @@ export const editSessionStatusEnum = pgEnum("edit_session_status", [
   "saved_back",
   "discarded",
   "expired",
+]);
+
+// OpenSandbox enums
+export const sandboxExecutionModeEnum = pgEnum("sandbox_execution_mode", [
+  "code", "command", "browser", "file", "media",
+]);
+
+export const sandboxJobStatusEnum = pgEnum("sandbox_job_status", [
+  "accepted", "policy_resolved", "queued", "provisioning",
+  "staging_inputs", "executing", "collecting_outputs", "persisting",
+  "completed", "failed", "timed_out", "canceled",
+]);
+
+export const sandboxArtifactTypeEnum = pgEnum("sandbox_artifact_type", [
+  "primary", "log", "screenshot", "thumbnail", "chunk", "debug",
+]);
+
+export const sandboxNetworkActionEnum = pgEnum("sandbox_network_action", [
+  "deny", "allow",
+]);
+
+export const sandboxFeatureTypeEnum = pgEnum("sandbox_feature_type", [
+  "chat", "skill", "workflow", "library", "media", "presentation", "connector", "agency",
 ]);
 
 /**
@@ -591,6 +615,12 @@ export const apiAuditEvents = pgTable("api_audit_events", {
   mediaType: varchar("mediaType", { length: 20 }),
   mediaTaskId: varchar("mediaTaskId", { length: 128 }),
   metadata: json("metadata"),
+
+  /** Associated sandbox job ID */
+  sandboxJobId: varchar("sandboxJobId", { length: 36 }),
+  /** OpenSandbox container ID for correlation */
+  opensandboxId: varchar("opensandboxId", { length: 128 }),
+
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index("api_audit_events_trace_id").on(t.traceId),
@@ -1503,6 +1533,10 @@ export const mediaCallbackEvents = pgTable("media_callback_events", {
   maxAttempts: integer("max_attempts").notNull().default(5),
   nextRetryAt: timestamp("next_retry_at", { withTimezone: true }),
   processedAt: timestamp("processed_at", { withTimezone: true }),
+
+  /** Associated sandbox job ID (if media was processed in sandbox) */
+  sandboxJobId: varchar("sandbox_job_id", { length: 36 }),
+
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
@@ -1832,20 +1866,61 @@ export type InsertPresentationSourceAttachment = typeof presentationSourceAttach
 export const presentationConversionRecords = pgTable("presentation_conversion_records", {
   id: serial("id").primaryKey(),
   tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
-  sourceItemId: integer("source_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
+
+  // Nullable: no source library item for Google Slides imports
+  sourceItemId: integer("source_item_id").references(() => libraryItems.id, { onDelete: "cascade" }),
+
   sourceFormat: varchar("source_format", { length: 16 }).notNull(),
   idempotencyKey: varchar("idempotency_key", { length: 128 }).notNull(),
-  deckLibraryItemId: integer("deck_library_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
-  deckId: integer("deck_id").notNull().references(() => presentationDecks.id, { onDelete: "cascade" }),
+
+  // Nullable: set by callback handler after deck creation completes
+  deckLibraryItemId: integer("deck_library_item_id").references(() => libraryItems.id, { onDelete: "cascade" }),
+
+  // Nullable: set by callback handler after deck creation completes
+  deckId: integer("deck_id").references(() => presentationDecks.id, { onDelete: "cascade" }),
+
+  // job lifecycle tracking
+  status: varchar("status", { length: 16 }).notNull().default("queued"),
+  // Values: "queued" | "processing" | "done" | "failed" | "cancelled"
+
+  progress: integer("progress").notNull().default(0),
+  // Values: 0–100
+
+  // required so the callback handler can construct a PresentationActor
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+
+  // stores Google Slides URL when sourceFormat is "google_slides"
+  slidesUrl: varchar("slides_url", { length: 2048 }),
+
   partialFidelity: boolean("partial_fidelity").notNull().default(false),
   fidelityWarnings: json("fidelity_warnings").$type<string[]>().notNull().default([]),
+
+  // Nullable: set by callback handler when job fails (surfaces failure reason to frontend)
+  error: text("error"),
+
+  /** Associated sandbox job ID (if conversion ran in sandbox) */
+  sandboxJobId: varchar("sandbox_job_id", { length: 36 }),
+
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
-  uniqueIndex("presentation_conversion_records_source_unique").on(t.tenantId, t.sourceItemId),
+  // Partial unique index: restricts uniqueness only for PPTX imports that have a real sourceItemId.
+  // PostgreSQL allows multiple NULLs in a unique index, so a plain index on
+  // (tenantId, sourceItemId) would permit any number of Google Slides rows
+  // (all with sourceItemId=NULL). The partial index restricts uniqueness only
+  // for PPTX imports that have a real sourceItemId.
+  uniqueIndex("presentation_conversion_records_source_unique")
+    .on(t.tenantId, t.sourceItemId)
+    .where(sql`${t.sourceItemId} IS NOT NULL`),
+
+  // Idempotency lookup index
   index("presentation_conversion_records_idempotency_idx").on(t.tenantId, t.sourceItemId, t.idempotencyKey),
+
   index("presentation_conversion_records_expires_at_idx").on(t.expiresAt),
+
+  // lookup by userId for ownership queries
+  index("presentation_conversion_records_user_idx").on(t.userId),
 ]);
 
 export type PresentationConversionRecord = typeof presentationConversionRecords.$inferSelect;
@@ -2246,6 +2321,17 @@ export const skills = pgTable("skills", {
   /** Reason for rejection (if visibility = 'rejected') */
   rejectionReason: text("rejectionReason"),
 
+  /** Sandbox profile slug for skills that require sandbox execution */
+  sandboxProfileSlug: varchar("sandboxProfileSlug", { length: 64 }),
+  /** Whether this skill needs network access in sandbox */
+  requiresNetwork: boolean("requiresNetwork"),
+  /** Whether this skill needs browser automation in sandbox */
+  requiresBrowser: boolean("requiresBrowser"),
+  /** Maximum runtime for this skill in seconds (overrides profile default) */
+  maxRuntimeSeconds: integer("maxRuntimeSeconds"),
+  /** Maximum input file size in MB (overrides profile default) */
+  maxInputMb: integer("maxInputMb"),
+
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -2620,6 +2706,9 @@ export const scheduledMessages = pgTable("scheduled_messages", {
 
   /** LLM model to use */
   modelId: varchar("modelId", { length: 128 }),
+
+  /** Dynamic parameters required to execute the assigned skill */
+  dynamicParams: json("dynamicParams").$type<Record<string, any>>(),
 
   /** Associated skill */
   skillId: varchar("skillId", { length: 100 }).default("chat-alert"),
@@ -3266,6 +3355,9 @@ export const workflowExecutions = pgTable("workflow_executions", {
   /** Trigger type that started this execution */
   triggerType: varchar("triggerType", { length: 50 }),
 
+  /** Sandbox job IDs used during this workflow execution */
+  sandboxJobIds: jsonb("sandboxJobIds").$type<string[]>().default([]),
+
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
@@ -3680,3 +3772,263 @@ export const funnelBackfillCheckpoints = pgTable("funnel_backfill_checkpoints", 
 
 export type FunnelBackfillCheckpoint = typeof funnelBackfillCheckpoints.$inferSelect;
 export type InsertFunnelBackfillCheckpoint = typeof funnelBackfillCheckpoints.$inferInsert;
+
+// ============================================================
+// OpenSandbox Tables
+// ============================================================
+
+/**
+ * Sandbox Profiles -- Reusable runtime configurations for sandbox containers.
+ * Each profile defines resource limits, execution mode, and security policies.
+ */
+export const sandboxProfiles = pgTable("sandbox_profiles", {
+  id: serial("id").primaryKey(),
+  slug: varchar("slug", { length: 64 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  executionMode: sandboxExecutionModeEnum("executionMode").notNull(),
+  baseImage: varchar("baseImage", { length: 512 }).notNull(),
+  entrypointTemplate: text("entrypointTemplate"),
+  cpuLimit: varchar("cpuLimit", { length: 16 }).default("1000m").notNull(),
+  memoryLimitMb: integer("memoryLimitMb").default(2048).notNull(),
+  ephemeralDiskMb: integer("ephemeralDiskMb").default(5120).notNull(),
+  timeoutSeconds: integer("timeoutSeconds").default(300).notNull(),
+  networkDefaultAction: sandboxNetworkActionEnum("networkDefaultAction").default("deny").notNull(),
+  allowBrowser: boolean("allowBrowser").default(false).notNull(),
+  allowCommand: boolean("allowCommand").default(false).notNull(),
+  allowCodeInterpreter: boolean("allowCodeInterpreter").default(false).notNull(),
+  allowFileUpload: boolean("allowFileUpload").default(true).notNull(),
+  maxInputMb: integer("maxInputMb").default(50),
+  maxOutputMb: integer("maxOutputMb").default(100),
+  isActive: boolean("isActive").default(true).notNull(),
+  version: integer("version").default(1).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type SandboxProfile = typeof sandboxProfiles.$inferSelect;
+export type InsertSandboxProfile = typeof sandboxProfiles.$inferInsert;
+
+/**
+ * Sandbox Jobs -- Canonical execution records for sandbox operations.
+ * Tracks lifecycle from acceptance through execution to completion/failure.
+ */
+export const sandboxJobs = pgTable("sandbox_jobs", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id),
+  featureType: sandboxFeatureTypeEnum("featureType").notNull(),
+  featureRefId: varchar("featureRefId", { length: 128 }),
+  executionMode: sandboxExecutionModeEnum("executionMode").notNull(),
+  sandboxProfileId: integer("sandboxProfileId").references(() => sandboxProfiles.id),
+  opensandboxId: varchar("opensandboxId", { length: 128 }),
+  status: sandboxJobStatusEnum("status").default("accepted").notNull(),
+  statusReason: text("statusReason"),
+  imageUri: varchar("imageUri", { length: 512 }),
+  inputManifestJson: jsonb("inputManifestJson").$type<Record<string, unknown>>(),
+  outputManifestJson: jsonb("outputManifestJson").$type<Record<string, unknown>>(),
+  stdoutExcerpt: text("stdoutExcerpt"),
+  stderrExcerpt: text("stderrExcerpt"),
+  costEstimate: numeric("costEstimate", { precision: 12, scale: 4 }),
+  costActual: numeric("costActual", { precision: 12, scale: 4 }),
+  idempotencyKey: varchar("idempotencyKey", { length: 128 }),
+  startedAt: timestamp("startedAt", { withTimezone: true }),
+  finishedAt: timestamp("finishedAt", { withTimezone: true }),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("sandbox_jobs_idempotency_idx")
+    .on(t.tenantId, t.featureType, t.idempotencyKey)
+    .where(sql`${t.idempotencyKey} IS NOT NULL`),
+  index("sandbox_jobs_tenant_status_idx").on(t.tenantId, t.status),
+  index("sandbox_jobs_opensandbox_id_idx").on(t.opensandboxId),
+  index("sandbox_jobs_user_idx").on(t.userId),
+  index("sandbox_jobs_created_idx").on(t.createdAt),
+  index("sandbox_jobs_expires_idx").on(t.expiresAt),
+]);
+
+export type SandboxJob = typeof sandboxJobs.$inferSelect;
+export type InsertSandboxJob = typeof sandboxJobs.$inferInsert;
+
+/**
+ * Sandbox Artifacts -- Output files produced by sandbox jobs.
+ * Tracks S3/R2 object keys, types, sizes, and checksums.
+ */
+export const sandboxArtifacts = pgTable("sandbox_artifacts", {
+  id: serial("id").primaryKey(),
+  sandboxJobId: varchar("sandboxJobId", { length: 36 }).notNull().references(() => sandboxJobs.id, { onDelete: "cascade" }),
+  artifactType: sandboxArtifactTypeEnum("artifactType").notNull(),
+  objectKey: varchar("objectKey", { length: 512 }).notNull(),
+  mimeType: varchar("mimeType", { length: 128 }),
+  sizeBytes: bigint("sizeBytes", { mode: "number" }),
+  sha256: varchar("sha256", { length: 64 }),
+  isPrimary: boolean("isPrimary").default(false).notNull(),
+  metadataJson: jsonb("metadataJson").$type<Record<string, unknown>>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("sandbox_artifacts_job_idx").on(t.sandboxJobId),
+  index("sandbox_artifacts_type_idx").on(t.artifactType),
+]);
+
+export type SandboxArtifact = typeof sandboxArtifacts.$inferSelect;
+export type InsertSandboxArtifact = typeof sandboxArtifacts.$inferInsert;
+
+/**
+ * Tenant Sandbox Policies -- Per-tenant sandbox usage limits and configuration.
+ * One policy per tenant controlling concurrency, runtime, network, and image access.
+ */
+export const tenantSandboxPolicies = pgTable("tenant_sandbox_policies", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().unique().references(() => tenants.id, { onDelete: "cascade" }),
+  defaultProfileId: integer("defaultProfileId").references(() => sandboxProfiles.id),
+  maxConcurrentSandboxes: integer("maxConcurrentSandboxes").default(5).notNull(),
+  maxDailyRuntimeSeconds: integer("maxDailyRuntimeSeconds").default(36000).notNull(),
+  maxSingleJobSeconds: integer("maxSingleJobSeconds").default(1800).notNull(),
+  defaultNetworkAction: sandboxNetworkActionEnum("defaultNetworkAction"),
+  egressRulesJson: jsonb("egressRulesJson").$type<Array<{ host: string; port?: number }>>(),
+  allowedImagesJson: jsonb("allowedImagesJson").$type<string[]>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type TenantSandboxPolicy = typeof tenantSandboxPolicies.$inferSelect;
+export type InsertTenantSandboxPolicy = typeof tenantSandboxPolicies.$inferInsert;
+
+// ==========================================
+// Section 027: Agency-Swarm Integration
+// ==========================================
+
+/**
+ * Agencies -- Multi-agent orchestration units.
+ * Each agency contains a team of AI agents with directional communication flows.
+ */
+export const agencies = pgTable("agencies", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  slug: varchar("slug", { length: 100 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  systemPrompt: text("systemPrompt"),
+  creditMultiplier: numeric("creditMultiplier", { precision: 5, scale: 2 }).default("1.00"),
+  maxAgents: integer("maxAgents").default(10),
+  maxRunTimeSeconds: integer("maxRunTimeSeconds").default(600),
+  status: varchar("status", { length: 20 }).default("draft").notNull(),
+  isFallbackSafe: boolean("isFallbackSafe").default(false).notNull(),
+  isPublished: boolean("isPublished").default(false).notNull(),
+  createdBy: integer("createdBy").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("agencies_tenant_slug_idx").on(t.tenantId, t.slug),
+  index("agencies_tenant_idx").on(t.tenantId),
+  index("agencies_created_by_idx").on(t.createdBy),
+]);
+
+export type Agency = typeof agencies.$inferSelect;
+export type InsertAgency = typeof agencies.$inferInsert;
+
+/**
+ * Agency Agents -- Individual AI agents within an agency.
+ * Each agent has its own model, instructions, and tool set.
+ */
+export const agencyAgents = pgTable("agency_agents", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  agencyId: varchar("agencyId", { length: 36 }).notNull().references(() => agencies.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  instructions: text("instructions"),
+  model: varchar("model", { length: 100 }),
+  modelSettings: json("modelSettings").$type<{
+    max_tokens?: number;
+    temperature?: number;
+    top_p?: number;
+  }>(),
+  isEntryPoint: boolean("isEntryPoint").default(false).notNull(),
+  isOptional: boolean("isOptional").default(false).notNull(),
+  position: json("position").$type<{ x: number; y: number }>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("agency_agents_agency_idx").on(t.agencyId),
+  uniqueIndex("agency_agents_agency_name_idx").on(t.agencyId, t.name),
+]);
+
+export type AgencyAgent = typeof agencyAgents.$inferSelect;
+export type InsertAgencyAgent = typeof agencyAgents.$inferInsert;
+
+/**
+ * Agency Tools -- Tool definitions available to agency agents.
+ */
+export const agencyTools = pgTable("agency_tools", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  toolType: varchar("toolType", { length: 20 }).notNull(),
+  config: json("config").$type<Record<string, unknown>>(),
+  riskLevel: varchar("riskLevel", { length: 10 }).default("low").notNull(),
+  requiresApproval: boolean("requiresApproval").default(false).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("agency_tools_tenant_idx").on(t.tenantId),
+  uniqueIndex("agency_tools_tenant_name_idx").on(t.tenantId, t.name),
+]);
+
+export type AgencyTool = typeof agencyTools.$inferSelect;
+export type InsertAgencyTool = typeof agencyTools.$inferInsert;
+
+/**
+ * Agency Agent Tools -- Junction table linking agents to their assigned tools.
+ */
+export const agencyAgentTools = pgTable("agency_agent_tools", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  agentId: varchar("agentId", { length: 36 }).notNull().references(() => agencyAgents.id, { onDelete: "cascade" }),
+  toolId: varchar("toolId", { length: 36 }).notNull().references(() => agencyTools.id, { onDelete: "cascade" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("agency_agent_tools_agent_tool_idx").on(t.agentId, t.toolId),
+  index("agency_agent_tools_tool_idx").on(t.toolId),
+]);
+
+export type AgencyAgentTool = typeof agencyAgentTools.$inferSelect;
+export type InsertAgencyAgentTool = typeof agencyAgentTools.$inferInsert;
+
+/**
+ * Agency Communication Flows -- Directional communication links between agents.
+ */
+export const agencyCommunicationFlows = pgTable("agency_communication_flows", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  agencyId: varchar("agencyId", { length: 36 }).notNull().references(() => agencies.id, { onDelete: "cascade" }),
+  fromAgentId: varchar("fromAgentId", { length: 36 }).notNull().references(() => agencyAgents.id, { onDelete: "cascade" }),
+  toAgentId: varchar("toAgentId", { length: 36 }).notNull().references(() => agencyAgents.id, { onDelete: "cascade" }),
+  flowType: varchar("flowType", { length: 20 }).default("delegation").notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("agency_comm_flows_agency_idx").on(t.agencyId),
+  uniqueIndex("agency_comm_flows_unique_idx").on(t.agencyId, t.fromAgentId, t.toAgentId),
+]);
+
+export type AgencyCommunicationFlow = typeof agencyCommunicationFlows.$inferSelect;
+export type InsertAgencyCommunicationFlow = typeof agencyCommunicationFlows.$inferInsert;
+
+/**
+ * Agency Conversations -- Chat sessions between a user and an agency.
+ */
+export const agencyConversations = pgTable("agency_conversations", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  agencyId: varchar("agencyId", { length: 36 }).notNull().references(() => agencies.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 255 }).default("New Agency Chat").notNull(),
+  totalCreditsUsed: numeric("totalCreditsUsed", { precision: 12, scale: 4 }).default("0"),
+  messageCount: integer("messageCount").default(0).notNull(),
+  isArchived: boolean("isArchived").default(false).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("agency_conversations_agency_user_idx").on(t.agencyId, t.userId),
+  index("agency_conversations_user_idx").on(t.userId),
+]);
+
+export type AgencyConversation = typeof agencyConversations.$inferSelect;
+export type InsertAgencyConversation = typeof agencyConversations.$inferInsert;

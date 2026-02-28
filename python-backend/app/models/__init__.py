@@ -62,6 +62,22 @@ from .library import (
     LibraryIndexJob,
 )
 
+# Sandbox execution
+from .sandbox import (
+    SandboxProfile,
+    SandboxJob,
+    SandboxArtifact,
+    TenantSandboxPolicy,
+    SandboxExecutionMode,
+    SandboxJobStatus,
+    SandboxArtifactType,
+    SandboxFeatureType,
+    SandboxNetworkAction,
+)
+
+# Agency-Swarm multi-agent orchestration
+from .agency import AgencyMessage, AgencyRun, AgencyRunStatus
+
 __all__ = [
     # Existing
     "AuditLog",
@@ -131,4 +147,18 @@ __all__ = [
     "LibraryChunk",
     "LibraryPermission",
     "LibraryIndexJob",
+    # Sandbox
+    "SandboxProfile",
+    "SandboxJob",
+    "SandboxArtifact",
+    "TenantSandboxPolicy",
+    "SandboxExecutionMode",
+    "SandboxJobStatus",
+    "SandboxArtifactType",
+    "SandboxFeatureType",
+    "SandboxNetworkAction",
+    # Agency
+    "AgencyMessage",
+    "AgencyRun",
+    "AgencyRunStatus",
 ]

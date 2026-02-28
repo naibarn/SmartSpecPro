@@ -15,15 +15,16 @@ from typing import Callable
 from app.video.render_profiles import PROFILES, get_ffmpeg_output_args
 
 
-def _probe_clip(file_path: str) -> dict:
+def _probe_clip(file_path: str, runner=None) -> dict:
     """Probe a clip file for codec, resolution, and fps."""
-    result = subprocess.run(
-        [
-            "ffprobe", "-v", "quiet", "-print_format", "json",
-            "-show_streams", "-show_format", file_path,
-        ],
-        capture_output=True, text=True, timeout=30,
-    )
+    cmd = [
+        "ffprobe", "-v", "quiet", "-print_format", "json",
+        "-show_streams", "-show_format", file_path,
+    ]
+    if runner:
+        result = runner.run_command_sync(cmd, timeout=30)
+    else:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
     if result.returncode != 0:
         return {}
     data = json.loads(result.stdout)
@@ -62,6 +63,7 @@ def run_assembly_stage(
     render_spec: dict,
     work_dir: str,
     progress_callback: Callable[[float, str], None] | None = None,
+    runner=None,
 ) -> str:
     """Assemble V1 track clips into a single intermediate file.
 
@@ -123,7 +125,7 @@ def run_assembly_stage(
     for path in clip_paths:
         if not os.path.exists(path):
             raise FileNotFoundError(f"Input clip not found: {path}")
-        clip_infos.append(_probe_clip(path))
+        clip_infos.append(_probe_clip(path, runner=runner))
 
     if progress_callback:
         progress_callback(0.1, "assembly")
@@ -187,7 +189,10 @@ def run_assembly_stage(
             output_path,
         ]
 
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
+    if runner:
+        result = runner.run_command_sync(cmd, timeout=1800)
+    else:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
     if result.returncode != 0:
         raise RuntimeError(f"Assembly stage failed: {result.stderr[-500:]}")
 
@@ -203,6 +208,7 @@ def run_final_render(
     profile_name: str,
     output_path: str,
     progress_callback: Callable[[float, str], None] | None = None,
+    runner=None,
 ) -> str:
     """Apply overlays, text, audio mixing, and encode to final output.
 
@@ -257,7 +263,10 @@ def run_final_render(
         cmd.extend(get_ffmpeg_output_args(profile))
         cmd.append(output_path)
 
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
+        if runner:
+            result = runner.run_command_sync(cmd, timeout=1800)
+        else:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
         if result.returncode != 0:
             raise RuntimeError(f"Final render failed: {result.stderr[-500:]}")
 
@@ -371,7 +380,10 @@ def run_final_render(
     cmd.extend(get_ffmpeg_output_args(profile))
     cmd.append(output_path)
 
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
+    if runner:
+        result = runner.run_command_sync(cmd, timeout=1800)
+    else:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
     if result.returncode != 0:
         raise RuntimeError(f"Final render failed: {result.stderr[-500:]}")
 

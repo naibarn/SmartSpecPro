@@ -50,6 +50,7 @@ export const presentationAvailabilitySchema = z.object({
   enabled: z.boolean(),
   errorCode: z.enum(PRESENTATION_ERROR_CODE_VALUES).optional(),
   message: z.string().optional(),
+  aiGenerationEnabled: z.boolean().optional(),
 });
 
 export const presentationConflictReasonCodeSchema = z.enum([
@@ -99,6 +100,7 @@ export const presentationSourceFormatSchema = z.enum([
 const presentationReadOnlySourceFormatSchema = z.enum([
   "pptx",
   "ppt",
+  "google_slides",
   "unknown",
 ]);
 
@@ -135,8 +137,8 @@ export const presentationConversionStatusSchema = z.enum([
 
 export const presentationConversionResultSchema = z.object({
   schemaVersion: z.literal(PRESENTATION_CONVERSION_SCHEMA_VERSION),
-  sourceItemId: z.number().int().positive(),
-  sourceFormat: z.enum(["pptx", "ppt"]),
+  sourceItemId: z.number().int().positive().optional(),
+  sourceFormat: z.enum(["pptx", "ppt", "google_slides"]),
   conversionStatus: presentationConversionStatusSchema,
   partialFidelity: z.boolean(),
   fidelityWarnings: z.array(z.string().min(1).max(200)).max(25),
@@ -191,6 +193,8 @@ export const presentationTextElementSchema = z.object({
   lineHeight: z.number().finite().min(0.6).max(4).optional(),
   letterSpacing: z.number().finite().min(-20).max(100).optional(),
   backgroundColor: z.string().min(1).max(64).optional(),
+  textShadow: z.string().max(256).optional(),
+  textStroke: z.string().max(128).optional(),
 }).strict();
 
 export const presentationImageElementSchema = z.object({
@@ -204,6 +208,8 @@ export const presentationImageElementSchema = z.object({
   rotation: presentationElementRotationSchema.optional(),
   src: z.string().max(4_096),
   alt: z.string().max(512),
+  svgContent: z.string().max(8_192).optional(),
+  svgColor: z.string().max(32).optional(),
 }).strict();
 
 export const presentationVideoElementSchema = z.object({

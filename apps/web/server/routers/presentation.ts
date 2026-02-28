@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
@@ -7,6 +8,7 @@ import {
   PRESENTATION_ERROR_CODE,
   isPresentationFeatureEnabled,
   isPresentationExportWriteEnabled,
+  isPresentationAIGenerationEnabled,
 } from "@shared/presentation/constants";
 import {
   isPresentationItemType,
@@ -58,6 +60,9 @@ import {
   triggerPresentationExport,
 } from "../services/presentationPlaybackExport";
 import { applyTemplateAssetToDeck } from "../services/presentationTemplateService";
+import { getRedisClient } from "../services/redis";
+import { generateAIDraft } from "../services/aiPresentationService";
+import { GenerateAIDraftInputSchema } from "@shared/presentation/aiTypes";
 
 const DOCUMENT_MANAGEMENT_ROUTE_BASE =
   "/document-management?scope=my_library&sort=updated_desc&mode=editor&doc=";
@@ -99,7 +104,21 @@ function getAvailability(): PresentationAvailability {
     };
   }
 
-  return { enabled: true };
+  return {
+    enabled: true,
+    aiGenerationEnabled: isPresentationAIGenerationEnabled(),
+  };
+}
+
+function ensureAIGenerationEnabled(): void {
+  if (isPresentationAIGenerationEnabled()) {
+    return;
+  }
+
+  throw new PresentationServiceError(
+    PRESENTATION_ERROR_CODE.FEATURE_DISABLED,
+    `${PRESENTATION_ERROR_CODE.FEATURE_DISABLED}: AI presentation generation is currently disabled`,
+  );
 }
 
 function ensureFeatureEnabled(): void {
@@ -167,6 +186,17 @@ function mapPresentationServiceError(error: PresentationServiceError): TRPCError
     return new TRPCError({ code: "TOO_MANY_REQUESTS", message: error.message, cause: error.details });
   }
 
+  if (error.code === PRESENTATION_ERROR_CODE.AI_INSUFFICIENT_CREDITS) {
+    return new TRPCError({ code: "PRECONDITION_FAILED", message: error.message });
+  }
+
+  if (
+    error.code === PRESENTATION_ERROR_CODE.AI_GENERATION_FAILED
+    || error.code === PRESENTATION_ERROR_CODE.AI_INVALID_RESPONSE
+  ) {
+    return new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: error.message });
+  }
+
   return new TRPCError({ code: "BAD_REQUEST", message: error.message });
 }
 
@@ -188,6 +218,122 @@ const deckIdSchema = z.object({
 export const presentationRouter = router({
   availability: protectedProcedure.query(() => {
     return presentationAvailabilitySchema.parse(getAvailability());
+  }),
+
+  ai: router({
+    generateDraft: protectedProcedure
+      .input(GenerateAIDraftInputSchema)
+      .mutation(async ({ input, ctx }) => {
+        try {
+          ensureFeatureEnabled();
+          ensureAIGenerationEnabled();
+
+          const actor = toPresentationActor(ctx);
+          const redis = getRedisClient();
+          const taskId = crypto.randomUUID();
+
+          // Acquire per-user lock
+          const lockResult = await redis.set(
+            `ai_draft_lock:${actor.userId}`,
+            taskId,
+            "NX",
+            "EX",
+            300,
+          );
+          if (lockResult === null) {
+            throw new TRPCError({
+              code: "TOO_MANY_REQUESTS",
+              message: "AI draft already in progress for this user",
+            });
+          }
+
+          // Initialize progress in Redis
+          const initialProgress = {
+            userId: actor.userId,
+            phase: 0,
+            phaseLabel: "Starting...",
+            slidesCompleted: 0,
+            totalSlides: input.numSlides,
+            slidePreview: [],
+            completed: false,
+          };
+          await redis.set(
+            `ai_draft_progress:${taskId}`,
+            JSON.stringify(initialProgress),
+            "EX",
+            300,
+          );
+
+          // Fire-and-forget pipeline
+          generateAIDraft(input, actor, ctx.userToken!, taskId).catch(
+            async (err) => {
+              try {
+                await redis.set(
+                  `ai_draft_progress:${taskId}`,
+                  JSON.stringify({
+                    ...initialProgress,
+                    completed: true,
+                    error: {
+                      code: "AI_GENERATION_FAILED",
+                      message: (err as Error).message,
+                    },
+                  }),
+                  "EX",
+                  300,
+                );
+                await redis.del(`ai_draft_lock:${actor.userId}`);
+              } catch {
+                // best-effort cleanup
+              }
+            },
+          );
+
+          return { taskId };
+        } catch (err) {
+          if (err instanceof PresentationServiceError) {
+            throw mapPresentationServiceError(err);
+          }
+          throw err;
+        }
+      }),
+
+    getDraftProgress: protectedProcedure
+      .input(z.object({ taskId: z.string().min(1).max(128) }))
+      .query(async ({ input }) => {
+        const redis = getRedisClient();
+        const raw = await redis.get(`ai_draft_progress:${input.taskId}`);
+        if (!raw) {
+          return {
+            phase: 0,
+            phaseLabel: "Unknown",
+            slidesCompleted: 0,
+            totalSlides: 0,
+            slidePreview: [],
+            completed: false,
+            error: { code: "not_found", message: "Draft progress not found" },
+          };
+        }
+        return JSON.parse(raw);
+      }),
+
+    cancelDraft: protectedProcedure
+      .input(z.object({ taskId: z.string().min(1).max(128) }))
+      .mutation(async ({ input, ctx }) => {
+        const redis = getRedisClient();
+        const raw = await redis.get(`ai_draft_progress:${input.taskId}`);
+        if (!raw) {
+          return { success: false };
+        }
+        const progress = JSON.parse(raw);
+        if (progress.completed) {
+          return { success: false };
+        }
+        if (progress.userId !== ctx.user.id) {
+          return { success: false };
+        }
+        await redis.set(`ai_draft_cancel:${input.taskId}`, "1", "EX", 300);
+        return { success: true };
+      }),
   }),
 
   getDeck: protectedProcedure

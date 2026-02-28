@@ -897,6 +897,46 @@ const IMAGE_MODELS = [
     } as ModelDefinition,
   },
   {
+    modelId: "google-banana-2",
+    name: "Google Banana 2",
+    description: "Google Banana 2 (Gemini 3.1 Flash Image) - Fast 4K image generation with strong character consistency and editing support.",
+    modelType: "image",
+    provider: "kie.ai",
+    aliases: ["google banana 2", "banana-2", "nano-banana-2", "google/nano-banana-2"],
+    creditCost: 40,
+    priority: 11,
+    sortOrder: 11,
+    aspectRatios: ["1:1", "1:4", "1:8", "2:3", "3:2", "3:4", "4:1", "4:3", "4:5", "5:4", "8:1", "9:16", "16:9", "21:9", "auto"],
+    configJson: {
+      apiEndpoint: "/api/v1/jobs/createTask",
+      apiPayloadFormat: "market",
+      kieModelId: "nano-banana-2",
+      generateType: "text-to-image",
+      maxPromptLength: 20000,
+      inputFields: [
+        { key: "image_input", label: "Reference Images", type: "image_urls" },
+        { key: "aspect_ratio", label: "Aspect Ratio", type: "select",
+          options: [
+            { value: "1:1", label: "1:1" }, { value: "1:4", label: "1:4" }, { value: "1:8", label: "1:8" },
+            { value: "2:3", label: "2:3" }, { value: "3:2", label: "3:2" }, { value: "3:4", label: "3:4" },
+            { value: "4:1", label: "4:1" }, { value: "4:3", label: "4:3" }, { value: "4:5", label: "4:5" },
+            { value: "5:4", label: "5:4" }, { value: "8:1", label: "8:1" }, { value: "9:16", label: "9:16" },
+            { value: "16:9", label: "16:9" }, { value: "21:9", label: "21:9" }, { value: "auto", label: "Auto" },
+          ],
+          default: "1:1" },
+        { key: "google_search", label: "Google Search", type: "boolean", default: false },
+        { key: "resolution", label: "Resolution", type: "select",
+          options: [{ value: "1K", label: "1K" }, { value: "2K", label: "2K" }, { value: "4K", label: "4K" }],
+          default: "1K", affectsPricing: true },
+        { key: "output_format", label: "Format", type: "select",
+          options: [{ value: "jpg", label: "JPG" }, { value: "png", label: "PNG" }],
+          default: "jpg" },
+      ],
+      pricingTiers: { "1K": 40, "2K": 60, "4K": 90 },
+      pricingFormula: "flat",
+    } as ModelDefinition,
+  },
+  {
     modelId: "google/pro-image-to-image",
     name: "Nano Banana Pro",
     description: "Nano Banana Pro - Advanced image editing and generation with 1K/2K/4K output.",
@@ -1811,14 +1851,9 @@ async function seed() {
       return;
     }
 
-    // Clear existing Kie AI models
-    const deleted = await sql`
-      DELETE FROM media_models WHERE provider = 'kie.ai'
-      RETURNING id
-    `;
-    console.log(`Cleared ${deleted.length} existing Kie AI models\n`);
+    console.log("Using UPSERT mode (no destructive delete)\n");
 
-    // Insert Video Models
+    // Upsert Video Models
     console.log("=== VIDEO MODELS ===");
     for (const model of VIDEO_MODELS) {
       await sql`
@@ -1838,12 +1873,23 @@ async function seed() {
           ${JSON.stringify(model.configJson)},
           true
         )
+        ON CONFLICT ("modelId") DO UPDATE SET
+          name = EXCLUDED.name,
+          description = EXCLUDED.description,
+          "modelType" = EXCLUDED."modelType",
+          provider = EXCLUDED.provider,
+          aliases = EXCLUDED.aliases,
+          "creditCost" = EXCLUDED."creditCost",
+          priority = EXCLUDED.priority,
+          "sortOrder" = EXCLUDED."sortOrder",
+          "configJson" = EXCLUDED."configJson",
+          "isEnabled" = media_models."isEnabled"
       `;
-      console.log(`  + ${model.name} (${model.creditCost} credits)`);
+      console.log(`  upsert ${model.name} (${model.creditCost} credits)`);
     }
-    console.log(`\nAdded ${VIDEO_MODELS.length} video models\n`);
+    console.log(`\nUpserted ${VIDEO_MODELS.length} video models\n`);
 
-    // Insert Image Models
+    // Upsert Image Models
     console.log("=== IMAGE MODELS ===");
     for (const model of IMAGE_MODELS) {
       await sql`
@@ -1864,12 +1910,24 @@ async function seed() {
           ${JSON.stringify(model.configJson)},
           true
         )
+        ON CONFLICT ("modelId") DO UPDATE SET
+          name = EXCLUDED.name,
+          description = EXCLUDED.description,
+          "modelType" = EXCLUDED."modelType",
+          provider = EXCLUDED.provider,
+          aliases = EXCLUDED.aliases,
+          "aspectRatios" = EXCLUDED."aspectRatios",
+          "creditCost" = EXCLUDED."creditCost",
+          priority = EXCLUDED.priority,
+          "sortOrder" = EXCLUDED."sortOrder",
+          "configJson" = EXCLUDED."configJson",
+          "isEnabled" = media_models."isEnabled"
       `;
-      console.log(`  + ${model.name} (${model.creditCost} credits)`);
+      console.log(`  upsert ${model.name} (${model.creditCost} credits)`);
     }
-    console.log(`\nAdded ${IMAGE_MODELS.length} image models\n`);
+    console.log(`\nUpserted ${IMAGE_MODELS.length} image models\n`);
 
-    // Insert Audio Models
+    // Upsert Audio Models
     console.log("=== AUDIO MODELS ===");
     for (const model of AUDIO_MODELS) {
       await sql`
@@ -1890,10 +1948,22 @@ async function seed() {
           ${JSON.stringify(model.configJson)},
           true
         )
+        ON CONFLICT ("modelId") DO UPDATE SET
+          name = EXCLUDED.name,
+          description = EXCLUDED.description,
+          "modelType" = EXCLUDED."modelType",
+          provider = EXCLUDED.provider,
+          aliases = EXCLUDED.aliases,
+          voices = EXCLUDED.voices,
+          "creditCost" = EXCLUDED."creditCost",
+          priority = EXCLUDED.priority,
+          "sortOrder" = EXCLUDED."sortOrder",
+          "configJson" = EXCLUDED."configJson",
+          "isEnabled" = media_models."isEnabled"
       `;
-      console.log(`  + ${model.name} (${model.creditCost} credits)`);
+      console.log(`  upsert ${model.name} (${model.creditCost} credits)`);
     }
-    console.log(`\nAdded ${AUDIO_MODELS.length} audio models\n`);
+    console.log(`\nUpserted ${AUDIO_MODELS.length} audio models\n`);
 
     // Summary
     const total = VIDEO_MODELS.length + IMAGE_MODELS.length + AUDIO_MODELS.length;

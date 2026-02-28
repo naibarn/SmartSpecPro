@@ -331,12 +331,26 @@ vi.mock("@/lib/trpc", () => ({
         })),
       },
     },
+    presentationImport: {
+      startImport: { useMutation: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })) },
+      getImportStatus: { useQuery: vi.fn(() => ({ data: null, isLoading: false })) },
+      cancelImport: { useMutation: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })) },
+    },
   },
 }));
 
 vi.mock("@/components/presentation/ExportDialog", () => ({
   ExportDialog: ({ open }: { open: boolean }) =>
     open ? <div data-testid="export-dialog-mock">ExportDialog</div> : null,
+}));
+
+vi.mock("@/components/presentation/ImportPresentationDialog", () => ({
+  ImportPresentationDialog: ({ onClose }: { onClose: () => void }) => (
+    <div data-testid="import-dialog-mock">
+      ImportPresentationDialog
+      <button onClick={onClose}>Close Import</button>
+    </div>
+  ),
 }));
 
 vi.mock("@/components/presentation/SlideAudioPanel", () => ({
@@ -1328,5 +1342,35 @@ describe("PresentationEditor", () => {
     expect(mutationMocks.updateSlide).toHaveBeenLastCalledWith(expect.objectContaining({
       saveMode: "manual",
     }));
+  });
+
+  describe("Import button integration", () => {
+    it('renders an "Import" button in the toolbar', () => {
+      render(<PresentationEditor />);
+      expect(screen.getByRole("button", { name: /^import$/i })).toBeInTheDocument();
+    });
+
+    it("opens ImportPresentationDialog when Import button is clicked", async () => {
+      render(<PresentationEditor />);
+      expect(screen.queryByTestId("import-dialog-mock")).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: /^import$/i }));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("import-dialog-mock")).toBeInTheDocument();
+      });
+    });
+
+    it("closes ImportPresentationDialog when onClose is called", async () => {
+      render(<PresentationEditor />);
+
+      fireEvent.click(screen.getByRole("button", { name: /^import$/i }));
+      await waitFor(() => expect(screen.getByTestId("import-dialog-mock")).toBeInTheDocument());
+
+      fireEvent.click(screen.getByRole("button", { name: /close import/i }));
+      await waitFor(() => {
+        expect(screen.queryByTestId("import-dialog-mock")).not.toBeInTheDocument();
+      });
+    });
   });
 });

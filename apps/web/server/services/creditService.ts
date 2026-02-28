@@ -14,7 +14,7 @@ export type TransactionType = "purchase" | "usage" | "bonus" | "refund" | "adjus
 export type CreditSourceType =
   | "chat" | "skill" | "media_image" | "media_video" | "media_audio"
   | "indexing" | "rag" | "stt" | "translation" | "brainstorm"
-  | "scheduler" | "admin" | "other";
+  | "scheduler" | "admin" | "agency" | "other";
 
 export class BudgetExceededError extends Error {
   public readonly monthlyLimit: number;

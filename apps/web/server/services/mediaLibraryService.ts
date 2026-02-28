@@ -1,5 +1,7 @@
 import { getDb } from "../db";
 import { MEDIA_MODELS, mediaGenerationService, type MediaTask } from "./mediaGenerationService";
+import { mediaModels } from "../../drizzle/schema";
+import { eq } from "drizzle-orm";
 import {
   createLibraryItem,
   safeEnqueueLibraryIndexJob,
@@ -36,13 +38,36 @@ function buildDefaultTitle(task: MediaTask): string {
   return `${mediaLabel.toUpperCase()} - ${modelLabel}`;
 }
 
-function buildTaskMetadata(task: MediaTask): Record<string, unknown> {
-  const modelMeta = task.model ? MEDIA_MODELS[task.model] : null;
+async function resolveModelProvider(task: MediaTask): Promise<string | null> {
+  if (!task.model) {
+    return null;
+  }
 
+  try {
+    const db = await getDb();
+    if (db) {
+      const [dbModel] = await db
+        .select({ provider: mediaModels.provider })
+        .from(mediaModels)
+        .where(eq(mediaModels.modelId, task.model))
+        .limit(1);
+      if (dbModel?.provider) {
+        return dbModel.provider;
+      }
+    }
+  } catch {
+    // Fall through to static metadata.
+  }
+
+  return MEDIA_MODELS[task.model]?.provider || null;
+}
+
+async function buildTaskMetadata(task: MediaTask): Promise<Record<string, unknown>> {
+  const provider = await resolveModelProvider(task);
   return {
     prompt: task.prompt,
     model: task.model,
-    provider: modelMeta?.provider || null,
+    provider,
     task_id: task.id,
     provider_task_id: task.taskId || null,
     celery_task_id: task.celeryTaskId || null,
@@ -72,6 +97,7 @@ export async function addMediaTaskToLibrary(
   if (!db) {
     throw new Error("Database not available");
   }
+  const metadata = await buildTaskMetadata(task);
 
   const created = await createLibraryItem(
     {
@@ -81,7 +107,7 @@ export async function addMediaTaskToLibrary(
       description: task.prompt,
       status: "indexing",
       visibility: input.visibility || "private",
-      metadata: buildTaskMetadata(task),
+      metadata,
       sourceUrl: task.resultUrl || null,
       thumbnailUrl: task.mediaType === "image" ? task.resultUrl || null : null,
       sourceLink: {

@@ -20,6 +20,11 @@ from app.tasks.onedrive_tasks import (
     disconnect_onedrive_cleanup,
 )
 from app.tasks.approval_timeout_tasks import check_expired_approvals
+from app.tasks.sandbox_maintenance_tasks import (
+    cleanup_expired_sandbox_jobs,
+    cleanup_orphan_sandboxes,
+    detect_stuck_sandbox_jobs,
+)
 
 __all__ = [
     "generate_image_task",
@@ -36,4 +41,7 @@ __all__ = [
     "cleanup_expired_onedrive_edit_sessions",
     "disconnect_onedrive_cleanup",
     "check_expired_approvals",
+    "cleanup_expired_sandbox_jobs",
+    "cleanup_orphan_sandboxes",
+    "detect_stuck_sandbox_jobs",
 ]

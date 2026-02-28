@@ -26,6 +26,9 @@ export const PRESENTATION_ERROR_CODE_VALUES = [
   "PRESENTATION_VALIDATION_FAILED",
   "PRESENTATION_EXPORT_THROTTLED",
   "PRESENTATION_RENDER_SCHEMA_MISMATCH",
+  "PRESENTATION_AI_GENERATION_FAILED",
+  "PRESENTATION_AI_INSUFFICIENT_CREDITS",
+  "PRESENTATION_AI_INVALID_RESPONSE",
 ] as const;
 
 export type PresentationErrorCode = typeof PRESENTATION_ERROR_CODE_VALUES[number];
@@ -45,6 +48,9 @@ export const PRESENTATION_ERROR_CODE: Record<string, PresentationErrorCode> = {
   VALIDATION_FAILED: "PRESENTATION_VALIDATION_FAILED",
   EXPORT_THROTTLED: "PRESENTATION_EXPORT_THROTTLED",
   RENDER_SCHEMA_MISMATCH: "PRESENTATION_RENDER_SCHEMA_MISMATCH",
+  AI_GENERATION_FAILED: "PRESENTATION_AI_GENERATION_FAILED",
+  AI_INSUFFICIENT_CREDITS: "PRESENTATION_AI_INSUFFICIENT_CREDITS",
+  AI_INVALID_RESPONSE: "PRESENTATION_AI_INVALID_RESPONSE",
 };
 
 export const PRESENTATION_CONFLICT_SCHEMA_VERSION = "presentation_conflict_v1";
@@ -56,6 +62,7 @@ export const PRESENTATION_EXPORT_SCHEMA_VERSION = "presentation_export_v1";
 
 export const PRESENTATION_FEATURE_FLAG_ENV = "PRESENTATION_EDITOR_ENABLED";
 export const PRESENTATION_EXPORT_WRITE_FLAG_ENV = "PRESENTATION_EXPORTS_ENABLED";
+export const PRESENTATION_AI_GENERATION_FLAG_ENV = "PRESENTATION_AI_GENERATION_ENABLED";
 
 export function isPresentationFeatureEnabled(): boolean {
   const raw = (process.env[PRESENTATION_FEATURE_FLAG_ENV] || "").trim().toLowerCase();
@@ -73,4 +80,14 @@ export function isPresentationExportWriteEnabled(): boolean {
   }
 
   return !["0", "false", "off", "no", "disabled"].includes(raw);
+}
+
+export function isPresentationAIGenerationEnabled(): boolean {
+  const raw = (process.env[PRESENTATION_AI_GENERATION_FLAG_ENV] || "")
+    .trim()
+    .toLowerCase();
+  if (!raw) {
+    return false; // default OFF — AI generation must be explicitly enabled
+  }
+  return ["1", "true", "on", "yes", "enabled"].includes(raw);
 }

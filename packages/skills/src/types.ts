@@ -83,8 +83,32 @@ export interface SkillDefinition {
   /** Reference to external skill file path */
   skillFilePath?: string;
 
-  /** Execution mode: llm-only (text), media-generate (LLM→prompt→media API), python (subprocess via python/skill.py) */
-  executionMode?: "llm-only" | "media-generate" | "python";
+  /** Execution mode for skill dispatch routing */
+  executionMode?:
+    | "llm-only"         // Legacy: LLM-only text processing
+    | "core-text"        // Canonical: LLM-only text processing
+    | "media-generate"   // Legacy: media generation (sandbox-media when enabled)
+    | "python"           // Legacy: subprocess execution
+    | "sandbox-code"     // Python/Node code execution in sandbox
+    | "sandbox-command"  // Shell command execution in sandbox
+    | "sandbox-browser"  // Browser automation in sandbox
+    | "sandbox-file"     // File processing in sandbox
+    | "sandbox-media";   // Media generation in sandbox
+
+  /** Sandbox profile slug from sandbox_profiles table */
+  sandboxProfileSlug?: string;
+
+  /** Whether this skill requires network access in sandbox */
+  requiresNetwork?: boolean;
+
+  /** Whether this skill requires browser access in sandbox */
+  requiresBrowser?: boolean;
+
+  /** Max runtime in seconds for sandbox execution */
+  maxRuntimeSeconds?: number;
+
+  /** Max input size in MB for sandbox execution */
+  maxInputMb?: number;
 
   /** Chain to another skill after this skill completes (skill slug) */
   chainTo?: string;
@@ -119,6 +143,12 @@ export interface SkillMetadata {
   default_model?: string;
   defaultModel?: string;
   config?: Record<string, unknown>;
+  // Sandbox-related frontmatter fields
+  sandbox_profile?: string;
+  requires_network?: boolean;
+  requires_browser?: boolean;
+  max_runtime_seconds?: number;
+  max_input_mb?: number;
 }
 
 export interface SkillDetectionResult {

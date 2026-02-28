@@ -227,51 +227,58 @@ async def _generate_image_thumbnail(input_path: str, output_path: str) -> None:
     await asyncio.to_thread(_do_thumbnail)
 
 
-async def _generate_video_thumbnail(input_path: str, output_path: str) -> None:
+async def _generate_video_thumbnail(input_path: str, output_path: str, runner=None) -> None:
     """Extract a frame at 25% of video duration using FFmpeg."""
     # Get duration via ffprobe
     duration = 0.0
+    probe_cmd = [
+        "ffprobe", "-v", "error",
+        "-show_entries", "format=duration",
+        "-of", "default=noprint_wrappers=1:nokey=1",
+        input_path,
+    ]
     try:
-        probe = await asyncio.to_thread(
-            subprocess.run,
-            [
-                "ffprobe", "-v", "error",
-                "-show_entries", "format=duration",
-                "-of", "default=noprint_wrappers=1:nokey=1",
-                input_path,
-            ],
-            capture_output=True, text=True, timeout=30,
-        )
+        if runner:
+            probe = await runner.run_command(probe_cmd, timeout=30)
+        else:
+            probe = await asyncio.to_thread(
+                subprocess.run, probe_cmd,
+                capture_output=True, text=True, timeout=30,
+            )
         duration = float(probe.stdout.strip() or "0")
     except Exception:
         pass
 
     seek_time = duration * VIDEO_THUMB_POSITION_RATIO if duration > 0 else 0
 
-    await asyncio.to_thread(
-        subprocess.run,
-        [
-            "ffmpeg", "-y", "-ss", str(seek_time),
-            "-i", input_path,
-            "-frames:v", "1",
-            "-q:v", "3",
-            output_path,
-        ],
-        capture_output=True, timeout=30,
-    )
+    thumb_cmd = [
+        "ffmpeg", "-y", "-ss", str(seek_time),
+        "-i", input_path,
+        "-frames:v", "1",
+        "-q:v", "3",
+        output_path,
+    ]
+    if runner:
+        await runner.run_command(thumb_cmd, timeout=30)
+    else:
+        await asyncio.to_thread(
+            subprocess.run, thumb_cmd,
+            capture_output=True, timeout=30,
+        )
 
 
-def _ffprobe_metadata(file_path: str) -> dict:
+def _ffprobe_metadata(file_path: str, runner=None) -> dict:
     """Extract video/audio metadata via ffprobe (sync)."""
-    result = subprocess.run(
-        [
-            "ffprobe", "-v", "error",
-            "-show_entries", "format=duration,format_name:stream=width,height,codec_name",
-            "-of", "json",
-            file_path,
-        ],
-        capture_output=True, text=True, timeout=30,
-    )
+    cmd = [
+        "ffprobe", "-v", "error",
+        "-show_entries", "format=duration,format_name:stream=width,height,codec_name",
+        "-of", "json",
+        file_path,
+    ]
+    if runner:
+        result = runner.run_command_sync(cmd, timeout=30)
+    else:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
     import json as _json
 
     metadata = {}

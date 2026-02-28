@@ -1,0 +1,74 @@
+# =============================================================================
+# SmartSpecPro — OpenSandbox Production Stack (Hetzner CPX31, Singapore)
+# =============================================================================
+#
+# Production variant of docker-compose.opensandbox.yml.
+# Key differences from the localhost version:
+#   - No host port mapping (Nginx proxies via Docker network DNS)
+#   - Higher resource limits (CPX31: 4 vCPU, 8 GB RAM)
+#   - Explicit env_file reference for /opt/opensandbox/.env
+#   - sandbox-exec references the externally-managed internal network
+#
+# Deploy:
+#   docker compose -f docker-compose.hetzner-sandbox.yml up -d
+#
+# The /opt/opensandbox/.env file must contain:
+#   OPENSANDBOX_API_KEY=<production-secret>
+# =============================================================================
+
+services:
+  # ============================================
+  # OPENSANDBOX SERVER
+  # Manages sandbox container lifecycle on Docker.
+  # Nginx (on the host) proxies /health and /api/ to this container.
+  # The Docker socket is mounted read-only — only opensandbox-server
+  # can spawn sandbox containers; they land on the sandbox-exec network.
+  # ============================================
+  opensandbox-server:
+    image: registry.cn-hangzhou.aliyuncs.com/opensandbox/server:latest
+    container_name: smartspec-opensandbox
+    # Expose port 8080 to the opensandbox-network only (not to the host).
+    # Nginx resolves the container by name via Docker DNS.
+    expose:
+      - "8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    env_file:
+      - .env
+    environment:
+      - OPENSANDBOX_RUNTIME=docker
+      # Sandbox containers are created on the internal (no-internet) network
+      - OPENSANDBOX_DOCKER_NETWORK=sandbox-exec
+      - OPENSANDBOX_DEFAULT_TIMEOUT=600
+      - OPENSANDBOX_MAX_SANDBOXES=20
+    deploy:
+      resources:
+        limits:
+          # Leave headroom for Nginx, OS overhead, and up to 20 sandbox containers
+          cpus: '3.0'
+          memory: 6G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - opensandbox-network
+
+networks:
+  # Bridge network for API communication: Nginx host <-> opensandbox-server
+  opensandbox-network:
+    name: opensandbox-network
+    driver: bridge
+
+  # Internal execution network where sandbox containers run.
+  # Created externally by setup-hetzner-sandbox.sh with --internal flag,
+  # which prevents all internet access for containers on this network.
+  sandbox-exec:
+    name: sandbox-exec
+    external: true

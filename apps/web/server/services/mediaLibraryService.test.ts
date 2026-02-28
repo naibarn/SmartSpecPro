@@ -6,6 +6,7 @@ const {
   mockCreateLibraryItem,
   mockSafeEnqueueLibraryIndexJob,
   mockDb,
+  mockEq,
 } = vi.hoisted(() => {
   const db = { select: vi.fn(), insert: vi.fn(), update: vi.fn() };
 
@@ -15,6 +16,7 @@ const {
     mockGetTask: vi.fn(),
     mockCreateLibraryItem: vi.fn(),
     mockSafeEnqueueLibraryIndexJob: vi.fn(),
+    mockEq: vi.fn(),
   };
 });
 
@@ -36,6 +38,17 @@ vi.mock("./libraryService", () => ({
   safeEnqueueLibraryIndexJob: mockSafeEnqueueLibraryIndexJob,
 }));
 
+vi.mock("../../drizzle/schema", () => ({
+  mediaModels: {
+    provider: "provider",
+    modelId: "modelId",
+  },
+}));
+
+vi.mock("drizzle-orm", () => ({
+  eq: mockEq,
+}));
+
 import { addMediaTaskToLibrary, autoAddMediaTaskToLibrary } from "./mediaLibraryService";
 
 const ORIGINAL_AUTO_ADD = process.env.MEDIA_LIBRARY_AUTO_ADD_ENABLED;
@@ -43,6 +56,13 @@ const ORIGINAL_AUTO_ADD = process.env.MEDIA_LIBRARY_AUTO_ADD_ENABLED;
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetDb.mockResolvedValue(mockDb);
+  mockDb.select.mockReturnValue({
+    from: vi.fn().mockReturnValue({
+      where: vi.fn().mockReturnValue({
+        limit: vi.fn().mockResolvedValue([]),
+      }),
+    }),
+  });
 });
 
 afterEach(() => {
@@ -148,6 +168,52 @@ describe("addMediaTaskToLibrary", () => {
 
     expect(result.created).toBe(false);
     expect(result.itemId).toBe(502);
+  });
+
+  it("stores provider metadata from database when model exists in media_models", async () => {
+    mockDb.select.mockReturnValueOnce({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue([{ provider: "byteplus_modelark" }]),
+        }),
+      }),
+    });
+    mockGetTask.mockResolvedValue({
+      id: "task-789",
+      taskId: "provider-789",
+      userId: "9",
+      mediaType: "image",
+      status: "completed",
+      model: "db-only-image-model",
+      prompt: "Custom model",
+      resultUrl: "https://cdn.example.com/custom.png",
+      createdAt: "2026-02-10T00:00:00.000Z",
+      updatedAt: "2026-02-10T00:00:00.000Z",
+    });
+    mockCreateLibraryItem.mockResolvedValue({ item: { id: 777 }, idempotent: false });
+    mockSafeEnqueueLibraryIndexJob.mockResolvedValue({
+      jobId: 9007,
+      status: "pending",
+      created: true,
+      payloadVersion: "v2",
+      dedupeKey: "d7",
+    });
+
+    await addMediaTaskToLibrary(
+      { mediaTaskId: "task-789", userToken: "token-abc" },
+      { userId: 9, tenantId: 44, role: "user" },
+    );
+
+    expect(mockCreateLibraryItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          model: "db-only-image-model",
+          provider: "byteplus_modelark",
+        }),
+      }),
+      expect.anything(),
+      expect.anything(),
+    );
   });
 
   it("rejects non-completed or unauthorized tasks", async () => {

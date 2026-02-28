@@ -736,6 +736,10 @@ export const skillsRouter = router({
         enabledByDefault: skill.enabledByDefault,
         priority: skill.priority,
         hasSkillFile: !!skill.skillFilePath,
+        // Sandbox metadata
+        sandboxRequired: !!skill.executionMode?.startsWith("sandbox-"),
+        sandboxProfileSlug: skill.sandboxProfileSlug ?? null,
+        executionMode: skill.executionMode ?? null,
       }));
     }),
 
@@ -758,7 +762,7 @@ export const skillsRouter = router({
 
       // Import here to avoid circular dependency
       const { getUserVisibleSkills } = await import("../services/userSkillService");
-      
+
       const result = await getUserVisibleSkills(userId, {
         search: input?.search,
         limit: input?.limit || 50,
@@ -963,34 +967,46 @@ export const skillsRouter = router({
         // Ignore errors when scanning directories
       }
 
+      let foundSchema: any = null;
+
       for (const schemaPath of possiblePaths) {
         if (fs.existsSync(schemaPath)) {
           try {
             const content = fs.readFileSync(schemaPath, "utf-8");
             const schema = JSON.parse(content);
 
+            // If we are scanning generic folders, we MUST verify the skillId matches
+            // It could be checking ui.schema.json which might contain skillId
+            const isTargetedPath = skillIdVariations.some(variant => schemaPath.includes(`/${variant}/`) || schemaPath.includes(`\\${variant}\\`)) || (skill?.skillFilePath && schemaPath.includes(path.dirname(skill.skillFilePath)));
+
+            if (!isTargetedPath) {
+              // Only accept it if it declares the exact skillId, since it came from a random folder
+              if (schema.skillId !== input.skillId) {
+                continue;
+              }
+            }
+
             // Check if schema has our custom format with sections
             // or if it's a standard JSON Schema that needs conversion
             if (schema.sections) {
-              // Our custom format - use directly
-              return {
-                skillId: input.skillId,
-                hasSchema: true,
-                schema,
-              };
+              foundSchema = schema;
+              break;
             } else if (schema.properties) {
-              // Standard JSON Schema - convert to our format
-              const convertedSchema = convertJsonSchemaToSkillSchema(schema, input.skillId);
-              return {
-                skillId: input.skillId,
-                hasSchema: true,
-                schema: convertedSchema,
-              };
+              foundSchema = convertJsonSchemaToSkillSchema(schema, input.skillId);
+              break;
             }
           } catch (error) {
-            console.error(`[Skills] Error parsing schema for ${input.skillId}:`, error);
+            console.error(`[Skills] Error parsing schema for ${input.skillId} at ${schemaPath}:`, error);
           }
         }
+      }
+
+      if (foundSchema) {
+        return {
+          skillId: input.skillId,
+          hasSchema: true,
+          schema: foundSchema,
+        };
       }
 
       // No schema found - return hasSchema: false

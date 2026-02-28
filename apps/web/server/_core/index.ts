@@ -42,6 +42,7 @@ import { initializeGDriveCleanupJob, shutdownGDriveCleanupWorker } from "../jobs
 import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
 import { startHistoryCollection } from "../services/llmQueue";
 import { createTasksRouter } from "../routes/tasks";
+import { presentationImportCallbackHandler } from "../routes/presentationImportCallback";
 import { PostgresAdapter } from "../services/postgresAdapter";
 import { getUploadStaticHeaders } from "../services/uploadContentSafety";
 import { ImageProxySafetyError, proxyImageFromUrl } from "../services/imageProxySafety";
@@ -486,6 +487,9 @@ app.post("/api/internal/google-drive/cleanup", async (req, res) => {
   }
 });
 
+// Internal presentation import callback (Python backend -> Node.js)
+app.post("/api/internal/presentation-import/callback", presentationImportCallbackHandler);
+
 // Device auth routes (for desktop app)
 registerDeviceAuthRoutes(app);
 
@@ -721,7 +725,7 @@ async function main() {
   server.requestTimeout = 120_000;   // 2 min — same as timeout, explicit
 
   server.listen(port, '0.0.0.0', () => {
-    console.log(`SmartSpec Web listening on http://0.0.0.0:${port}`);
+    console.log(`SmartAIHub Web listening on http://0.0.0.0:${port}`);
   });
 }
 

@@ -40,10 +40,10 @@ import {
 } from "./presentationObservability";
 
 interface ConversionRecord {
-  sourceItemId: number;
-  sourceFormat: "pptx" | "ppt";
-  deckLibraryItemId: number;
-  deckId: number;
+  sourceItemId: number | null;
+  sourceFormat: "pptx" | "ppt" | "google_slides";
+  deckLibraryItemId: number | null;
+  deckId: number | null;
   partialFidelity: boolean;
   fidelityWarnings: string[];
 }
@@ -80,8 +80,9 @@ export interface PresentationConversionDependencies {
   }) => Promise<StoredPresentationConversionRecord | null>;
   upsertStoredConversionRecord: (input: {
     tenantId: string;
-    sourceItemId: number;
-    sourceFormat: "pptx" | "ppt";
+    userId: number;
+    sourceItemId: number | null;
+    sourceFormat: "pptx" | "ppt" | "google_slides";
     idempotencyKey: string;
     deckLibraryItemId: number;
     deckId: number;
@@ -127,7 +128,7 @@ const defaultDependencies: PresentationConversionDependencies = {
   conversionRecordTtlMs: CONVERSION_RECORD_TTL_MS,
 };
 
-function buildSourceKey(actor: Pick<PresentationActor, "tenantId">, sourceItemId: number): string {
+function buildSourceKey(actor: Pick<PresentationActor, "tenantId">, sourceItemId: number | null): string {
   return `${actor.tenantId}:${sourceItemId}`;
 }
 
@@ -195,8 +196,9 @@ const fallbackStateDependencies = {
 
   async upsertStoredConversionRecord(input: {
     tenantId: string;
-    sourceItemId: number;
-    sourceFormat: "pptx" | "ppt";
+    userId: number;
+    sourceItemId: number | null;
+    sourceFormat: "pptx" | "ppt" | "google_slides";
     idempotencyKey: string;
     deckLibraryItemId: number;
     deckId: number;
@@ -592,6 +594,7 @@ export async function convertOfficeSourceToPresentation(
       const persistedAtMs = resolved.now();
       const persistedRecord = await resolved.upsertStoredConversionRecord({
         tenantId: actor.tenantId,
+        userId: actor.userId,
         sourceItemId: sourceItem.id,
         sourceFormat,
         idempotencyKey: normalizedIdempotencyKey,

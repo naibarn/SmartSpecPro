@@ -26,6 +26,8 @@ import { resolveTenantIdVarchar } from "../services/tenantContext";
 import { getDb } from "../db";
 import { mediaModels } from "../../drizzle/schema";
 import { eq, asc, and } from "drizzle-orm";
+import { shouldUseSandbox, dispatchToSandbox } from "../services/sandbox/dispatchService";
+import { checkAbuseGuard, hashPrompt } from "../services/abuseGuard";
 
 // Helper to create secure token for Python backend (fallback)
 function createMediaToken(userId: number): string {
@@ -52,9 +54,29 @@ function isLibraryUrlValidationError(error: unknown): boolean {
   return error instanceof Error && error.name === "LibraryUrlValidationError";
 }
 
+const mediaModelLookupCounters = {
+  pricingDbMissFallback: 0,
+  metadataDbMissFallback: 0,
+  unknownModelRejected: 0,
+  defaultFromDb: 0,
+  defaultFallbackStatic: 0,
+};
+
+export function getMediaModelLookupCounters(): Readonly<typeof mediaModelLookupCounters> {
+  return { ...mediaModelLookupCounters };
+}
+
+export function resetMediaModelLookupCounters(): void {
+  mediaModelLookupCounters.pricingDbMissFallback = 0;
+  mediaModelLookupCounters.metadataDbMissFallback = 0;
+  mediaModelLookupCounters.unknownModelRejected = 0;
+  mediaModelLookupCounters.defaultFromDb = 0;
+  mediaModelLookupCounters.defaultFallbackStatic = 0;
+}
+
 /**
  * Look up a media model from the DB to get its configJson (pricingTiers).
- * Falls back to the hardcoded MEDIA_MODELS if DB lookup fails.
+ * Falls back to static metadata only when DB is unavailable or missing the model.
  */
 async function getModelWithPricing(modelId: string): Promise<{
   creditCost: number;
@@ -72,19 +94,122 @@ async function getModelWithPricing(modelId: string): Promise<{
         return { creditCost: dbModel.creditCost, configJson: dbModel.configJson as Record<string, any> | null };
       }
     }
-  } catch {
-    // Fall through to hardcoded
+  } catch (error) {
+    console.warn("[MediaModelLookup] Pricing DB lookup failed, fallback to static/default", {
+      modelId,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
+  mediaModelLookupCounters.pricingDbMissFallback += 1;
   const hardcoded = MEDIA_MODELS[modelId];
+  if (!hardcoded) {
+    console.warn("[MediaModelLookup] Pricing fallback used default credit cost", { modelId });
+  }
   return { creditCost: hardcoded?.creditCost ?? 10, configJson: null };
+}
+
+async function getModelName(modelId: string): Promise<string> {
+  try {
+    const db = await getDb();
+    if (db) {
+      const [dbModel] = await db
+        .select({ name: mediaModels.name })
+        .from(mediaModels)
+        .where(eq(mediaModels.modelId, modelId))
+        .limit(1);
+      if (dbModel?.name) {
+        return dbModel.name;
+      }
+    }
+  } catch {
+    // Fall through to hardcoded metadata.
+  }
+  mediaModelLookupCounters.metadataDbMissFallback += 1;
+  return MEDIA_MODELS[modelId]?.name ?? modelId;
+}
+
+async function getDefaultModelId(type: MediaType): Promise<string> {
+  try {
+    const db = await getDb();
+    if (db) {
+      const [dbModel] = await db
+        .select({ modelId: mediaModels.modelId })
+        .from(mediaModels)
+        .where(and(eq(mediaModels.modelType, type), eq(mediaModels.isEnabled, true)))
+        .orderBy(asc(mediaModels.sortOrder), asc(mediaModels.priority), asc(mediaModels.id))
+        .limit(1);
+      if (dbModel?.modelId) {
+        mediaModelLookupCounters.defaultFromDb += 1;
+        return dbModel.modelId;
+      }
+    }
+  } catch (error) {
+    console.warn("[MediaModelLookup] Default model DB lookup failed, using static default", {
+      type,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  mediaModelLookupCounters.defaultFallbackStatic += 1;
+  return DEFAULT_MODELS[type];
 }
 
 async function resolveModelMeta(
   modelId: string,
   expectedType: MediaType,
 ): Promise<{ provider: string; type: MediaType }> {
+  const db = await getDb();
+  if (db) {
+    try {
+      const [dbModel] = await db
+        .select({
+          modelType: mediaModels.modelType,
+          provider: mediaModels.provider,
+          isEnabled: mediaModels.isEnabled,
+        })
+        .from(mediaModels)
+        .where(eq(mediaModels.modelId, modelId))
+        .limit(1);
+
+      if (!dbModel) {
+        mediaModelLookupCounters.unknownModelRejected += 1;
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Invalid model: ${modelId}`,
+        });
+      }
+
+      if (!dbModel.isEnabled) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Model "${modelId}" is disabled`,
+        });
+      }
+
+      if (dbModel.modelType !== expectedType) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Model "${modelId}" is not a ${expectedType} model`,
+        });
+      }
+
+      return { provider: dbModel.provider, type: dbModel.modelType as MediaType };
+    } catch (error) {
+      if (error instanceof TRPCError) {
+        throw error;
+      }
+      console.warn("[MediaModelLookup] Metadata DB lookup failed, trying static fallback", {
+        modelId,
+        expectedType,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   const hardcodedModel = MEDIA_MODELS[modelId];
   if (hardcodedModel) {
+    mediaModelLookupCounters.metadataDbMissFallback += 1;
+    console.warn("[MediaModelLookup] Model metadata fallback hit", { modelId, expectedType });
     if (hardcodedModel.type !== expectedType) {
       throw new TRPCError({
         code: "BAD_REQUEST",
@@ -94,35 +219,7 @@ async function resolveModelMeta(
     return { provider: hardcodedModel.provider, type: hardcodedModel.type };
   }
 
-  const db = await getDb();
-  if (db) {
-    const [dbModel] = await db
-      .select({
-        modelType: mediaModels.modelType,
-        provider: mediaModels.provider,
-        isEnabled: mediaModels.isEnabled,
-      })
-      .from(mediaModels)
-      .where(eq(mediaModels.modelId, modelId))
-      .limit(1);
-
-    if (dbModel) {
-      if (!dbModel.isEnabled) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Model "${modelId}" is disabled`,
-        });
-      }
-      if (dbModel.modelType !== expectedType) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Model "${modelId}" is not a ${expectedType} model`,
-        });
-      }
-      return { provider: dbModel.provider, type: dbModel.modelType as MediaType };
-    }
-  }
-
+  mediaModelLookupCounters.unknownModelRejected += 1;
   throw new TRPCError({
     code: "BAD_REQUEST",
     message: `Invalid model: ${modelId}`,
@@ -143,10 +240,7 @@ const referenceMediaUrlSchema = z
     message: "Reference URL must be a relative path or http(s) URL",
   });
 
-const audioModelSchema = z.enum([
-  "elevenlabs-tts",
-  "elevenlabs-sfx",
-]);
+const audioModelSchema = mediaModelIdSchema;
 
 // ==================== Router ====================
 
@@ -199,7 +293,46 @@ export const mediaRouter = router({
   // Get single model details
   getModel: protectedProcedure
     .input(z.object({ modelId: z.string() }))
-    .query(({ input }) => {
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (db) {
+        try {
+          const [dbModel] = await db
+            .select({
+              id: mediaModels.modelId,
+              type: mediaModels.modelType,
+              name: mediaModels.name,
+              provider: mediaModels.provider,
+              description: mediaModels.description,
+              creditCost: mediaModels.creditCost,
+              supportsAspectRatios: mediaModels.aspectRatios,
+              supportsSizes: mediaModels.sizes,
+              supportsDurations: mediaModels.durations,
+              supportsVoices: mediaModels.voices,
+            })
+            .from(mediaModels)
+            .where(and(eq(mediaModels.modelId, input.modelId), eq(mediaModels.isEnabled, true)))
+            .limit(1);
+
+          if (!dbModel) {
+            throw new TRPCError({
+              code: "NOT_FOUND",
+              message: `Model ${input.modelId} not found`,
+            });
+          }
+
+          return dbModel;
+        } catch (error) {
+          if (error instanceof TRPCError) {
+            throw error;
+          }
+          console.warn("[MediaModelLookup] getModel DB lookup failed, fallback to static registry", {
+            modelId: input.modelId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+
       const model = mediaGenerationService.getModel(input.modelId);
       if (!model) {
         throw new TRPCError({
@@ -236,7 +369,50 @@ export const mediaRouter = router({
         });
       }
 
-      const model = input.model || DEFAULT_MODELS.image;
+      // Abuse guard: detect duplicate/burst/loop patterns
+      const abuseResult = await checkAbuseGuard({
+        userId: ctx.user.id,
+        namespace: "media",
+        promptHash: hashPrompt(input.prompt, input.model),
+      });
+      if (!abuseResult.allowed) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Request blocked: ${abuseResult.reason}. Retry after ${abuseResult.retryAfter}s.`,
+        });
+      }
+
+      // Check if media should route through sandbox
+      if (
+        shouldUseSandbox("sandbox-media") &&
+        process.env.SANDBOX_REQUIRE_FOR_MEDIA === "true"
+      ) {
+        const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+        const sandboxResult = await dispatchToSandbox({
+          featureType: "media",
+          executionMode: "sandbox-media",
+          tenantId: tenantId || "",
+          userId: ctx.user.id,
+          inputFiles: [],
+          metadata: {
+            model: input.model,
+            prompt: input.prompt,
+            aspectRatio: input.aspectRatio,
+            numImages: input.numImages,
+            ...input.extraParams,
+          },
+        });
+
+        return {
+          success: true,
+          taskId: sandboxResult.jobId,
+          isAsync: true,
+          message: "Media generation dispatched to secure sandbox",
+          isSandboxJob: true,
+        };
+      }
+
+      const model = input.model || await getDefaultModelId("image");
       const modelMeta = await resolveModelMeta(model, "image");
 
       // Calculate credit cost from DB pricingTiers
@@ -329,7 +505,20 @@ export const mediaRouter = router({
         });
       }
 
-      const model = input.model || DEFAULT_MODELS.video;
+      // Abuse guard: detect duplicate/burst/loop patterns
+      const abuseResult = await checkAbuseGuard({
+        userId: ctx.user.id,
+        namespace: "media",
+        promptHash: hashPrompt(input.prompt, input.model),
+      });
+      if (!abuseResult.allowed) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Request blocked: ${abuseResult.reason}. Retry after ${abuseResult.retryAfter}s.`,
+        });
+      }
+
+      const model = input.model || await getDefaultModelId("video");
       const modelMeta = await resolveModelMeta(model, "video");
 
       // Calculate credit cost from DB pricingTiers
@@ -417,15 +606,21 @@ export const mediaRouter = router({
         });
       }
 
-      const model = input.model || DEFAULT_MODELS.audio;
-      const modelMeta = MEDIA_MODELS[model];
-
-      if (!modelMeta) {
+      // Abuse guard: detect duplicate/burst/loop patterns
+      const abuseResult = await checkAbuseGuard({
+        userId: ctx.user.id,
+        namespace: "media",
+        promptHash: hashPrompt(input.text, input.model),
+      });
+      if (!abuseResult.allowed) {
         throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Invalid model: ${model}`,
+          code: "TOO_MANY_REQUESTS",
+          message: `Request blocked: ${abuseResult.reason}. Retry after ${abuseResult.retryAfter}s.`,
         });
       }
+
+      const model = input.model || await getDefaultModelId("audio");
+      const modelMeta = await resolveModelMeta(model, "audio");
 
       // Calculate credit cost from DB pricingTiers
       const dbModel = await getModelWithPricing(model);
@@ -505,7 +700,20 @@ export const mediaRouter = router({
         });
       }
 
-      const model = input.model || DEFAULT_MODELS.image;
+      // Abuse guard: detect duplicate/burst/loop patterns
+      const abuseResult = await checkAbuseGuard({
+        userId: ctx.user.id,
+        namespace: "media",
+        promptHash: hashPrompt(input.prompt, input.model),
+      });
+      if (!abuseResult.allowed) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Request blocked: ${abuseResult.reason}. Retry after ${abuseResult.retryAfter}s.`,
+        });
+      }
+
+      const model = input.model || await getDefaultModelId("image");
       const modelMeta = await resolveModelMeta(model, "image");
 
       // Calculate credit cost from DB pricingTiers
@@ -621,7 +829,20 @@ export const mediaRouter = router({
         });
       }
 
-      const model = input.model || DEFAULT_MODELS.video;
+      // Abuse guard: detect duplicate/burst/loop patterns
+      const abuseResult = await checkAbuseGuard({
+        userId: ctx.user.id,
+        namespace: "media",
+        promptHash: hashPrompt(input.prompt, input.model),
+      });
+      if (!abuseResult.allowed) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Request blocked: ${abuseResult.reason}. Retry after ${abuseResult.retryAfter}s.`,
+        });
+      }
+
+      const model = input.model || await getDefaultModelId("video");
       const modelMeta = await resolveModelMeta(model, "video");
 
       // Calculate credit cost from DB pricingTiers
@@ -980,15 +1201,9 @@ export const mediaRouter = router({
       })
     )
     .query(async ({ input }) => {
-      const modelId = input.model || DEFAULT_MODELS[input.type];
-
-      const modelMeta = MEDIA_MODELS[modelId];
-      if (!modelMeta) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Invalid model: ${modelId}`,
-        });
-      }
+      const modelId = input.model || await getDefaultModelId(input.type);
+      await resolveModelMeta(modelId, input.type);
+      const modelName = await getModelName(modelId);
 
       // Calculate from DB pricingTiers
       const dbModel = await getModelWithPricing(modelId);
@@ -1000,7 +1215,7 @@ export const mediaRouter = router({
 
       return {
         model: modelId,
-        modelName: modelMeta.name,
+        modelName,
         baseCredits: dbModel.creditCost,
         estimatedCredits,
         multiplier: input.numImages || 1,

@@ -55,6 +55,7 @@ const AdminQueueMedia = lazy(() => import("./pages/AdminQueueMedia"));
 const AdminOpsDashboard = lazy(() => import("./pages/Admin/AdminOpsDashboard"));
 const AdminOverviewDashboard = lazy(() => import("./pages/Admin/AdminOverviewDashboard"));
 const AdminFunnelDashboard = lazy(() => import("./pages/AdminFunnelDashboard"));
+const AdminSandbox = lazy(() => import("./pages/AdminSandbox"));
 const DomainAdmin = lazy(() => import("./pages/DomainAdmin"));
 const DomainThemeEditor = lazy(() => import("./pages/DomainThemeEditor"));
 const DomainAdminContent = lazy(() => import("./pages/DomainAdminContent"));
@@ -146,6 +147,7 @@ function Router() {
         <Route path="/admin/ops" component={AdminOpsDashboard} />
         <Route path="/admin/dashboard" component={AdminOverviewDashboard} />
         <Route path="/admin/funnel" component={AdminFunnelDashboard} />
+        <Route path="/admin/sandbox" component={AdminSandbox} />
         <Route path="/admin/tenants" component={AdminTenants} />
         <Route path="/domain-admin" component={DomainAdmin} />
         <Route path="/domain-admin/theme" component={DomainThemeEditor} />

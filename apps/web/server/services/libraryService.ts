@@ -350,7 +350,7 @@ async function resolveDb(dbClient?: DbClient): Promise<DbClient> {
   return db;
 }
 
-const MAX_LIBRARY_UPLOAD_BYTES = 30 * 1024 * 1024;
+const MAX_LIBRARY_UPLOAD_BYTES = 50 * 1024 * 1024;
 const ALLOWED_LIBRARY_UPLOAD_EXTENSIONS = new Set([
   "jpg", "jpeg", "png", "gif", "webp", "svg", "bmp",
   "mp4", "webm", "mov", "avi", "mkv",
@@ -1127,7 +1127,7 @@ export async function uploadLibraryFile(
   }
 
   if (fileBuffer.length > MAX_LIBRARY_UPLOAD_BYTES) {
-    throw new Error("File too large (max 30MB)");
+    throw new Error("File too large (max 50MB)");
   }
 
   const svgUpload = isSvgUpload(fileType, ext);

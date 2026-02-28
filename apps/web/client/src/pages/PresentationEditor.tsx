@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type ReactElement } from "react";
 import { useLocation, useRoute } from "wouter";
 import {
   BookMarked,
@@ -11,6 +11,7 @@ import {
   Clapperboard,
   Download,
   ImageIcon,
+  Sparkles,
   Loader2,
   Menu,
   Minus,
@@ -20,6 +21,7 @@ import {
   MousePointer2,
   Plus,
   Save,
+  Shapes,
   SkipBack,
   SkipForward,
   RectangleHorizontal,
@@ -30,6 +32,7 @@ import {
   Trash2,
   Type,
   Undo2,
+  Upload,
   X,
   ZoomIn,
   ZoomOut,
@@ -40,6 +43,7 @@ import {
   CANVAS_LIBRARY_ASSET_DRAG_MIME,
   CanvasShell,
   CanvasStage,
+  GraphicsPanel,
   MobileBottomSheet,
   MobileDrawerPanel,
   MobileQuickActions,
@@ -49,6 +53,7 @@ import {
   type CanvasLibraryAsset,
   type CanvasStageDropAssetPayload,
   type MobileBottomSheetTab,
+  type SvgGraphic,
 } from "@/presentation-canvas";
 import {
   AlertDialog,
@@ -77,6 +82,8 @@ import { SelectionEngine } from "@/presentation-canvas/selection/SelectionEngine
 import { CommandBus } from "@/presentation-canvas/commands/CommandBus";
 import { useMobileGestures } from "@/presentation-canvas/mobile/useMobileGestures";
 import { ExportDialog } from "@/components/presentation/ExportDialog";
+import { ImportPresentationDialog } from "@/components/presentation/ImportPresentationDialog";
+import { AIDraftModal } from "@/components/presentation/AIDraftModal";
 import { SlideAudioPanel } from "@/components/presentation/SlideAudioPanel";
 import { useAutosaveController } from "@/presentation-canvas/save/useAutosaveController";
 import {
@@ -519,7 +526,7 @@ function renderReadonlySlideElement(
   index: number,
   canvasWidth: number,
   canvasHeight: number,
-): JSX.Element {
+): ReactElement {
   const commonStyle = {
     left: `${(element.x / canvasWidth) * 100}%`,
     top: `${(element.y / canvasHeight) * 100}%`,
@@ -658,8 +665,8 @@ export default function PresentationEditor() {
     {
       enabled: Boolean(
         docId
-          && itemType === PRESENTATION_ITEM_TYPE
-          && guardQuery.data?.allowed !== false,
+        && itemType === PRESENTATION_ITEM_TYPE
+        && guardQuery.data?.allowed !== false,
       ),
       retry: false,
     },
@@ -717,6 +724,8 @@ export default function PresentationEditor() {
   const [mobileSheetTab, setMobileSheetTab] = useState<MobileBottomSheetTab>("Properties");
   const [desktopInspectorTab, setDesktopInspectorTab] = useState<"properties" | "versions" | "audio">("properties");
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isAIDraftModalOpen, setIsAIDraftModalOpen] = useState(false);
   const [libraryTab, setLibraryTab] = useState<AssetLibraryTab>("slides");
   const [librarySearchQuery, setLibrarySearchQuery] = useState("");
   const [selectedSavedVersionId, setSelectedSavedVersionId] = useState<number | null>(null);
@@ -729,6 +738,8 @@ export default function PresentationEditor() {
   const [snapLockEnabled, setSnapLockEnabled] = useState(true);
   const mobileGestures = useMobileGestures();
   const isExportsEnabled = import.meta.env.VITE_PRESENTATION_EXPORTS_ENABLED !== "false";
+  const availabilityQuery = trpc.presentation.availability.useQuery();
+  const isAIGenerationEnabled = availabilityQuery.data?.aiGenerationEnabled === true;
 
   useEffect(() => {
     if (isProjectTitleEditing) {
@@ -1239,6 +1250,28 @@ export default function PresentationEditor() {
           y: nextY,
         };
     executeCommand(addElementCommand(nextElement));
+  }
+
+  function handleInsertGraphic(graphic: SvgGraphic) {
+    const type: PresentationElementType = "image";
+    const id = nextElementId(type);
+    const size = Math.min(activeCanvasSize.width, activeCanvasSize.height) * 0.2;
+    const defaultX = Math.max(0, Math.round((activeCanvasSize.width - size) / 2));
+    const defaultY = Math.max(0, Math.round((activeCanvasSize.height - size) / 2));
+    // Store raw SVG (with currentColor placeholder) so color can be changed later
+    const nextElement = {
+      ...createElement(type, id),
+      src: "",
+      alt: graphic.label,
+      svgContent: graphic.svg,
+      svgColor: "#ffffff",
+      width: Math.round(size),
+      height: Math.round(size),
+      x: defaultX,
+      y: defaultY,
+    };
+    executeCommand(addElementCommand(nextElement as any));
+    setLibraryTab("slides");
   }
 
   function handleDragAssetStart(event: DragEvent<HTMLElement>, asset: CanvasLibraryAsset) {
@@ -2147,11 +2180,10 @@ export default function PresentationEditor() {
             <button
               key={slide.id}
               type="button"
-              className={`w-full rounded-lg border px-2 py-2 text-left text-sm transition ${
-                selectedSlideId === slide.id
-                  ? "border-sky-400 bg-sky-500/10 text-sky-800"
-                  : "border-slate-300 bg-white hover:border-slate-400"
-              }`}
+              className={`w-full rounded-lg border px-2 py-2 text-left text-sm transition ${selectedSlideId === slide.id
+                ? "border-sky-400 bg-sky-500/10 text-sky-800"
+                : "border-slate-300 bg-white hover:border-slate-400"
+                }`}
               onClick={() => setSelectedSlideId(slide.id)}
               aria-label={`Select slide ${slide.orderIndex + 1}`}
               data-testid={`slide-preview-${slide.orderIndex + 1}`}
@@ -2280,11 +2312,10 @@ export default function PresentationEditor() {
                       <button
                         key={version.id}
                         type="button"
-                        className={`w-full rounded border px-2 py-1.5 text-left ${
-                          isSelected
-                            ? "border-sky-300 bg-sky-50"
-                            : "border-slate-200 bg-white hover:border-slate-300"
-                        }`}
+                        className={`w-full rounded border px-2 py-1.5 text-left ${isSelected
+                          ? "border-sky-300 bg-sky-50"
+                          : "border-slate-200 bg-white hover:border-slate-300"
+                          }`}
                         onClick={() => setSelectedSavedVersionId(version.id)}
                         aria-label={`Select Version ${version.versionNumber ?? version.id}`}
                         data-testid={`presentation-version-item-${version.id}`}
@@ -2418,11 +2449,10 @@ export default function PresentationEditor() {
         type="button"
         size="icon"
         variant={libraryTab === "slides" ? "secondary" : "ghost"}
-        className={`h-10 w-10 ${
-          libraryTab === "slides"
-            ? "bg-sky-600 text-white hover:bg-sky-500"
-            : "text-slate-300 hover:bg-slate-800"
-        }`}
+        className={`h-10 w-10 ${libraryTab === "slides"
+          ? "bg-sky-600 text-white hover:bg-sky-500"
+          : "text-slate-300 hover:bg-slate-800"
+          }`}
         onClick={() => setLibraryTab("slides")}
         aria-label="Open Slides Panel"
       >
@@ -2432,11 +2462,10 @@ export default function PresentationEditor() {
         type="button"
         size="icon"
         variant={libraryTab === "photos" ? "secondary" : "ghost"}
-        className={`h-10 w-10 ${
-          libraryTab === "photos"
-            ? "bg-sky-600 text-white hover:bg-sky-500"
-            : "text-slate-300 hover:bg-slate-800"
-        }`}
+        className={`h-10 w-10 ${libraryTab === "photos"
+          ? "bg-sky-600 text-white hover:bg-sky-500"
+          : "text-slate-300 hover:bg-slate-800"
+          }`}
         onClick={() => setLibraryTab("photos")}
         aria-label="Open Photos Library"
       >
@@ -2446,15 +2475,27 @@ export default function PresentationEditor() {
         type="button"
         size="icon"
         variant={libraryTab === "videos" ? "secondary" : "ghost"}
-        className={`h-10 w-10 ${
-          libraryTab === "videos"
-            ? "bg-sky-600 text-white hover:bg-sky-500"
-            : "text-slate-300 hover:bg-slate-800"
-        }`}
+        className={`h-10 w-10 ${libraryTab === "videos"
+          ? "bg-sky-600 text-white hover:bg-sky-500"
+          : "text-slate-300 hover:bg-slate-800"
+          }`}
         onClick={() => setLibraryTab("videos")}
         aria-label="Open Videos Library"
       >
         <Clapperboard className="h-4 w-4" />
+      </Button>
+      <Button
+        type="button"
+        size="icon"
+        variant={libraryTab === "graphics" ? "secondary" : "ghost"}
+        className={`h-10 w-10 ${libraryTab === "graphics"
+          ? "bg-sky-600 text-white hover:bg-sky-500"
+          : "text-slate-300 hover:bg-slate-800"
+          }`}
+        onClick={() => setLibraryTab("graphics")}
+        aria-label="Open Graphics Library"
+      >
+        <Shapes className="h-4 w-4" />
       </Button>
       <div className="my-2 h-px w-8 bg-slate-700" />
       <Button
@@ -2498,6 +2539,7 @@ export default function PresentationEditor() {
       assets={currentLibraryAssets}
       isLoading={libraryLoading}
       slidesPanel={slidesPanel}
+      graphicsPanel={<GraphicsPanel onInsertGraphic={handleInsertGraphic} />}
       onInsertAsset={(asset) => insertLibraryAsset(asset)}
       onDragAssetStart={handleDragAssetStart}
     />
@@ -2989,6 +3031,30 @@ export default function PresentationEditor() {
             <span className="hidden sm:inline">Play</span>
           </Button>
           <Button
+            onClick={() => setIsImportDialogOpen(true)}
+            aria-label="Import"
+            title="Import a file to create a new presentation"
+            variant="secondary"
+            size="sm"
+            className="gap-1"
+          >
+            <Upload className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Import</span>
+          </Button>
+          {isAIGenerationEnabled && (
+            <Button
+              onClick={() => setIsAIDraftModalOpen(true)}
+              aria-label="Draft with AI"
+              variant="secondary"
+              size="sm"
+              className="gap-1"
+              disabled={!deck}
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Draft with AI</span>
+            </Button>
+          )}
+          <Button
             onClick={() => setIsExportDialogOpen(true)}
             aria-label="Export"
             variant="secondary"
@@ -3173,6 +3239,18 @@ export default function PresentationEditor() {
           open={isExportDialogOpen}
           onClose={() => setIsExportDialogOpen(false)}
           deckId={deck.id}
+        />
+      )}
+      {isImportDialogOpen && (
+        <ImportPresentationDialog onClose={() => setIsImportDialogOpen(false)} />
+      )}
+      {isAIDraftModalOpen && deck && (
+        <AIDraftModal
+          isOpen={isAIDraftModalOpen}
+          onClose={() => setIsAIDraftModalOpen(false)}
+          deckId={deck.id}
+          expectedVersion={expectedSlideVersion ?? 1}
+          currentSlideCount={slides.length}
         />
       )}
       {isMobileViewport && (
