@@ -1,0 +1,224 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/smart-landscape-designer/input.schema.json",
+  "title": "SmartLandscapeDesignerSinglePromptInput",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "userRequest",
+    "outputLanguage",
+    "reference_images",
+    "intent",
+    "modeOverride",
+    "preserveArchitecture",
+    "buildingCondition",
+    "variationType",
+    "numberOfOptions",
+    "customSelection",
+    "customSelectionNotes",
+    "cameraSpec",
+    "maxPromptChars",
+    "constraints"
+  ],
+  "properties": {
+    "userRequest": {
+      "type": "string",
+      "minLength": 3,
+      "default": "Redesign the front yard with a lush modern tropical landscape, add a walkway, and warm garden lighting.",
+      "description": "Main request for the final image-generation prompt."
+    },
+    "outputLanguage": {
+      "type": "string",
+      "enum": [
+        "en",
+        "th"
+      ],
+      "default": "en",
+      "description": "Language of the final returned prompt string."
+    },
+    "reference_images": {
+      "type": "array",
+      "default": [],
+      "description": "Reference images with their purposes. Image files are attached by the runtime outside the JSON payload. Each array item describes the corresponding attached image in the same order.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "role",
+          "notes"
+        ],
+        "default": {
+          "role": "reference",
+          "notes": ""
+        },
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "reference"
+            ],
+            "default": "reference",
+            "description": "Purpose of the reference image. For this skill, every attached image is treated as a reference image."
+          },
+          "notes": {
+            "type": "string",
+            "default": "",
+            "description": "Additional notes about the image."
+          }
+        }
+      }
+    },
+    "intent": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "modify_existing",
+        "convert_drawing",
+        "create_new_landscape",
+        "create_house_reference"
+      ],
+      "default": "auto",
+      "description": "Intent hint for mode selection."
+    },
+    "modeOverride": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "mode1_direct_mod",
+        "mode2_drawing_to_photo",
+        "mode3_advisory",
+        "mode4_multi_image",
+        "mode5_text_to_landscape",
+        "mode6_multi_variation",
+        "mode7_reference_creation"
+      ],
+      "default": "mode5_text_to_landscape",
+      "description": "Force a specific mode. Default is Mode 5 for text-only prompt generation."
+    },
+    "preserveArchitecture": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "preserve",
+        "no_preserve"
+      ],
+      "default": "auto",
+      "description": "Architecture preservation policy. Auto preserves when reference images are attached for an existing-property request."
+    },
+    "buildingCondition": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "newly_built",
+        "aged"
+      ],
+      "default": "auto",
+      "description": "Visual age of the building in the prompt."
+    },
+    "variationType": {
+      "type": "string",
+      "enum": [
+        "single_direct",
+        "best_of_many",
+        "custom_guided"
+      ],
+      "default": "single_direct",
+      "description": "How the skill decides the final single prompt: direct single, choose the best from several internal candidates, or use a custom creative focus."
+    },
+    "numberOfOptions": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 8,
+      "default": 4,
+      "description": "How many internal prompt candidates the skill may draft before returning one final prompt. When variationType is single_direct, 1 is effectively used."
+    },
+    "customSelection": {
+      "type": "string",
+      "enum": [
+        "balanced_mix",
+        "more_tropical",
+        "more_minimal",
+        "more_luxury",
+        "more_low_maintenance",
+        "more_night_lighting",
+        "more_softscape",
+        "more_hardscape",
+        "match_reference_style",
+        "follow_custom_notes"
+      ],
+      "default": "balanced_mix",
+      "description": "Creative focus used when variationType is custom_guided."
+    },
+    "customSelectionNotes": {
+      "type": "string",
+      "default": "",
+      "description": "Optional extra instruction used when customSelection is follow_custom_notes, or to refine the chosen custom focus."
+    },
+    "cameraSpec": {
+      "type": "string",
+      "default": "Canon EOS R5, 24-70mm lens, f/8",
+      "description": "Camera wording to include for realism."
+    },
+    "maxPromptChars": {
+      "type": "integer",
+      "minimum": 800,
+      "maximum": 8000,
+      "default": 5000,
+      "description": "Maximum character count for the final generated prompt string."
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "avoid3DRender",
+        "includeAntiRenderTerms",
+        "useThaiTropicalPlants",
+        "avoidOvergrownTrees",
+        "maxTreeHeightMeters",
+        "allowMaterialColorChanges"
+      ],
+      "default": {
+        "avoid3DRender": true,
+        "includeAntiRenderTerms": true,
+        "useThaiTropicalPlants": true,
+        "avoidOvergrownTrees": true,
+        "maxTreeHeightMeters": 6,
+        "allowMaterialColorChanges": true
+      },
+      "properties": {
+        "avoid3DRender": {
+          "type": "boolean",
+          "default": true,
+          "description": "Keep the prompt clearly photo-real, not CGI or architectural rendering."
+        },
+        "includeAntiRenderTerms": {
+          "type": "boolean",
+          "default": true,
+          "description": "Embed explicit anti-render wording directly inside the final prompt."
+        },
+        "useThaiTropicalPlants": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use Thai tropical plant selections when possible."
+        },
+        "avoidOvergrownTrees": {
+          "type": "boolean",
+          "default": true,
+          "description": "Keep trees from blocking the facade."
+        },
+        "maxTreeHeightMeters": {
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 12,
+          "default": 6,
+          "description": "Soft cap for tree height."
+        },
+        "allowMaterialColorChanges": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow material and color edits when explicitly requested."
+        }
+      }
+    }
+  }
+}

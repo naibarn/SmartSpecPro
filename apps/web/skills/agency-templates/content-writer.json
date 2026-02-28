@@ -1,0 +1,50 @@
+{
+  "id": "content-writer",
+  "name": "Content Writer Agency",
+  "description": "An editorial team that plans, writes, and reviews content with an editor-writer-reviewer pipeline.",
+  "longDescription": "The Content Writer Agency mimics an editorial team. The Editor agent understands the content brief, plans the structure, and coordinates the pipeline. The Writer produces the draft. The Reviewer checks for quality, consistency, and style.",
+  "category": "content",
+  "agentCount": 3,
+  "icon": "PenTool",
+  "agents": [
+    {
+      "name": "Editor",
+      "description": "Plans content structure and coordinates the editorial pipeline",
+      "instructions": "You are a senior editor. Analyze the content brief, plan the article structure (outline, key points, tone), delegate writing to the Writer, and delegate review to the Reviewer. Iterate as needed to produce high-quality content.",
+      "model": "gpt-4o",
+      "isEntryPoint": true,
+      "isOptional": false,
+      "position": { "x": 250, "y": 50 },
+      "toolIds": []
+    },
+    {
+      "name": "Writer",
+      "description": "Drafts content based on editorial direction",
+      "instructions": "You are a skilled content writer. Follow the editor's brief to produce engaging, well-structured content. Match the requested tone and style. Include relevant examples and data points. Deliver clean, publication-ready drafts.",
+      "model": "gpt-4o",
+      "isEntryPoint": false,
+      "isOptional": false,
+      "position": { "x": 100, "y": 250 },
+      "toolIds": []
+    },
+    {
+      "name": "Reviewer",
+      "description": "Reviews content for quality, accuracy, and style consistency",
+      "instructions": "You are a content reviewer and quality checker. Review drafts for grammar, clarity, factual accuracy, style consistency, and engagement. Provide specific, actionable feedback. Flag any issues that need the editor's attention.",
+      "model": "gpt-4o",
+      "isEntryPoint": false,
+      "isOptional": true,
+      "position": { "x": 400, "y": 250 },
+      "toolIds": []
+    }
+  ],
+  "communicationFlows": [
+    { "fromAgentName": "Editor", "toAgentName": "Writer", "flowType": "delegation" },
+    { "fromAgentName": "Editor", "toAgentName": "Reviewer", "flowType": "delegation" }
+  ],
+  "defaultSettings": {
+    "creditMultiplier": 1.0,
+    "maxRunTimeSeconds": 600,
+    "isFallbackSafe": true
+  }
+}

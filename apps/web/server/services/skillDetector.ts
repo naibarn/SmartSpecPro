@@ -21,14 +21,31 @@ import {
 import {
   type SkillDetectionResult,
   type SkillSettings,
+  type AgencyTriggerDefinition,
+  type AgencyDetectionResult,
   calculateConfidence as sharedCalculateConfidence,
   extractPrompt as sharedExtractPrompt,
   isExplicitSkillRequest as sharedIsExplicitSkillRequest,
   extractMediaParams,
   formatSkillDetection as sharedFormatSkillDetection,
+  detectAgencyFromList,
 } from "@smartspec/skills";
 
 export type { SkillDetectionResult, SkillSettings } from "@smartspec/skills";
+export type { AgencyTriggerDefinition, AgencyDetectionResult } from "@smartspec/skills";
+
+/**
+ * Extended detection result that may include an agency match.
+ */
+export interface ExtendedSkillDetectionResult extends SkillDetectionResult {
+  agencyMatch?: {
+    agencyId: string;
+    agencyName: string;
+    confidence: number;
+    matchedTrigger: string | null;
+    suggestedPrompt: string | null;
+  };
+}
 
 interface SkillPreference {
   skillId: string;
@@ -141,6 +158,45 @@ export async function detectSkill(
 const calculateConfidence = sharedCalculateConfidence;
 const extractPrompt = (message: string, matchedTrigger: string, _skill: SkillDefinition) =>
   sharedExtractPrompt(message, matchedTrigger);
+
+/**
+ * Detect skill with optional agency matching.
+ * Extends detectSkill() with agency trigger detection when enabled.
+ * Non-breaking: consumers that don't check agencyMatch continue to work.
+ */
+export async function detectSkillWithAgency(
+  message: string,
+  conversationId?: number,
+  skillSettings?: SkillSettings | null,
+  userId?: number,
+  agencyTriggers?: AgencyTriggerDefinition[]
+): Promise<ExtendedSkillDetectionResult> {
+  // Run standard skill detection
+  const skillResult = await detectSkill(message, conversationId, skillSettings, userId);
+
+  // If no agency triggers provided or empty, return skill-only result
+  if (!agencyTriggers || agencyTriggers.length === 0) {
+    return skillResult;
+  }
+
+  // Run agency detection
+  const agencyResult = detectAgencyFromList(message, agencyTriggers);
+
+  if (agencyResult.detected && agencyResult.agency) {
+    return {
+      ...skillResult,
+      agencyMatch: {
+        agencyId: agencyResult.agency.agencyId,
+        agencyName: agencyResult.agency.name,
+        confidence: agencyResult.confidence,
+        matchedTrigger: agencyResult.matchedTrigger,
+        suggestedPrompt: agencyResult.suggestedPrompt,
+      },
+    };
+  }
+
+  return skillResult;
+}
 
 /**
  * Check if message explicitly requests a skill

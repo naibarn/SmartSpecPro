@@ -1,5 +1,5 @@
 /**
- * User Profile Page - SmartSpec Pro
+ * User Profile Page - SmartAIHub
  * Design: Ethereal Gradient Flow
  * - Glassmorphism cards with aurora gradients
  * - Soft shadows and backdrop blur
@@ -160,7 +160,7 @@ export default function Profile() {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-gray-900">SmartSpec Pro</span>
+            <span className="text-xl font-bold text-gray-900">SmartAIHub</span>
           </a>
 
           <div className="flex items-center gap-4">
@@ -262,7 +262,8 @@ export default function Profile() {
 
         {/* Tabs */}
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="bg-white/70 backdrop-blur-xl border border-white/50 p-1 rounded-xl">
+          <div className="overflow-x-auto">
+          <TabsList className="bg-white/70 backdrop-blur-xl border border-white/50 p-1 rounded-xl min-w-max">
             <TabsTrigger value="profile" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-500 data-[state=active]:text-white">
               <User className="w-4 h-4 mr-2" />
               Profile
@@ -280,6 +281,7 @@ export default function Profile() {
               Billing
             </TabsTrigger>
           </TabsList>
+          </div>
 
           {/* Profile Tab */}
           <TabsContent value="profile">

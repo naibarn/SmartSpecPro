@@ -1,5 +1,5 @@
 /**
- * Gallery Page - SmartSpec Pro
+ * Gallery Page - SmartAIHub
  * Design: Ethereal Gradient Flow
  * Features: Images, Videos, Website Demos with full SEO/ASO support
  * 
@@ -277,8 +277,8 @@ export default function Gallery() {
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
-    "name": "SmartSpec Pro Gallery",
-    "description": "Explore AI-generated images, videos, and website demos created with SmartSpec Pro",
+    "name": "SmartAIHub Gallery",
+    "description": "Explore AI-generated images, videos, and website demos created with SmartAIHub",
     "url": `${window.location.origin}/gallery`,
     "mainEntity": {
       "@type": "ItemList",
@@ -300,19 +300,19 @@ export default function Gallery() {
   return (
     <>
       <Helmet>
-        <title>Gallery - SmartSpec Pro | AI-Generated Content Showcase</title>
-        <meta name="description" content="Explore our gallery of AI-generated images, videos, and website demos. See what's possible with SmartSpec Pro's advanced AI capabilities." />
-        <meta name="keywords" content="AI gallery, AI images, AI videos, website demos, SmartSpec Pro, AI art, generated content" />
+        <title>Gallery - SmartAIHub | AI-Generated Content Showcase</title>
+        <meta name="description" content="Explore our gallery of AI-generated images, videos, and website demos. See what's possible with SmartAIHub's advanced AI capabilities." />
+        <meta name="keywords" content="AI gallery, AI images, AI videos, website demos, SmartAIHub, AI art, generated content" />
         
         {/* Open Graph */}
-        <meta property="og:title" content="Gallery - SmartSpec Pro" />
+        <meta property="og:title" content="Gallery - SmartAIHub" />
         <meta property="og:description" content="Explore AI-generated images, videos, and website demos" />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={`${window.location.origin}/gallery`} />
         
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Gallery - SmartSpec Pro" />
+        <meta name="twitter:title" content="Gallery - SmartAIHub" />
         <meta name="twitter:description" content="Explore AI-generated images, videos, and website demos" />
         
         {/* Structured Data */}
@@ -357,7 +357,7 @@ export default function Gallery() {
                 Explore Our <span className="gradient-text">Gallery</span>
               </h1>
               <p className="text-lg text-muted-foreground">
-                Discover stunning AI-generated images, videos, and website demos created with SmartSpec Pro.
+                Discover stunning AI-generated images, videos, and website demos created with SmartAIHub.
               </p>
             </motion.div>
           </div>
@@ -398,7 +398,7 @@ export default function Gallery() {
                   />
                 </div>
                 <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-                  <SelectTrigger className="w-32">
+                  <SelectTrigger className="w-auto min-w-[7rem]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -664,7 +664,7 @@ export default function Gallery() {
                 </div>
 
                 {/* Info panel — fixed height with scroll so media stays large */}
-                <div className="flex-shrink-0 h-[180px] overflow-y-auto px-5 py-3 bg-background border-t">
+                <div className="flex-shrink-0 h-[180px] max-h-[35vh] overflow-y-auto px-5 py-3 bg-background border-t">
                   {/* Title + actions row */}
                   <div className="flex items-start justify-between gap-3">
                     <DialogHeader className="min-w-0 flex-1">

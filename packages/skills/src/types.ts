@@ -166,3 +166,31 @@ export interface SkillSettings {
   enabledSkills: string[];
   detectionMode: "ask" | "auto" | "explicit";
 }
+
+/**
+ * Minimal agency definition for trigger detection.
+ * Not the full agency config -- just enough for matching.
+ */
+export interface AgencyTriggerDefinition {
+  /** Agency ID (UUID) */
+  agencyId: string;
+  /** Agency display name */
+  name: string;
+  /** Agency description */
+  description: string;
+  /** Trigger rules (same format as skill triggers) */
+  triggers: TriggerRule[];
+  /** Priority for detection ordering */
+  priority: number;
+}
+
+/**
+ * Result of agency trigger detection.
+ */
+export interface AgencyDetectionResult {
+  detected: boolean;
+  agency: AgencyTriggerDefinition | null;
+  confidence: number;
+  matchedTrigger: string | null;
+  suggestedPrompt: string | null;
+}

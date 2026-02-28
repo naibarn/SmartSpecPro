@@ -58,6 +58,9 @@ def make_langgraph_node(
                 "memory_service": configurable.get("memory_service"),
                 "episodic_memory": configurable.get("episodic_memory"),
                 "form_values": configurable.get("form_values", {}),
+                "user_token": configurable.get("user_token", ""),
+                "workspace_root": configurable.get("workspace_root"),
+                "workspace": configurable.get("workspace"),
             },
         )
 

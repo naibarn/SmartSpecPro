@@ -84,9 +84,11 @@ class CodeExecutor:
         context: ExecutionContext,
     ) -> dict[str, Any]:
         """Execute code via OpenSandbox with full Python environment."""
-        from app.integrations.opensandbox.client import get_sandbox_client
-
-        client = get_sandbox_client()
+        from app.integrations.opensandbox.client import OpenSandboxClient
+        from app.integrations.opensandbox.config import opensandbox_settings
+        from app.integrations.opensandbox.execution import run_code
+        from app.integrations.opensandbox.lifecycle import SandboxLifecycleManager
+        from app.integrations.opensandbox.models import SandboxConfig
 
         # Wrap user code to capture result and provide input_data
         wrapper = f"""
@@ -101,17 +103,42 @@ result = None
 print(json.dumps({{"result": result}}))
 """
 
-        response = await client.execute_code(
-            code=wrapper,
-            profile_slug="code-default",
-            timeout_seconds=timeout,
-        )
+        sandbox_id: str | None = None
+        client = OpenSandboxClient(opensandbox_settings)
+        lifecycle = SandboxLifecycleManager(client)
 
-        if response.get("exit_code", 1) != 0:
-            stderr = response.get("stderr", "")
-            raise ValueError(f"Code execution failed in sandbox: {stderr}")
+        try:
+            sandbox_id = await lifecycle.provision_sandbox(
+                SandboxConfig(
+                    image="python:3.11-slim",
+                    timeout_seconds=max(timeout, 5),
+                    network_default_action=opensandbox_settings.SANDBOX_DEFAULT_NETWORK_ACTION,
+                    metadata={
+                        "workflow_id": context.workflow_id or "",
+                        "execution_id": context.execution_id or "",
+                        "node_id": "code",
+                    },
+                ),
+                job_id=context.execution_id or context.workflow_id or "workflow-code",
+            )
 
-        stdout_text = response.get("stdout", "")
+            response = await run_code(
+                client=client,
+                sandbox_id=sandbox_id,
+                code=wrapper,
+                language="python",
+            )
+            if response.exit_code != 0:
+                raise ValueError(
+                    f"Code execution failed in sandbox: {response.stderr}"
+                )
+            stdout_text = response.stdout
+        finally:
+            try:
+                if sandbox_id:
+                    await lifecycle.destroy_sandbox(sandbox_id)
+            finally:
+                await client.close()
 
         # Parse result from stdout JSON
         result = None

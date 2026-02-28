@@ -1,5 +1,5 @@
 /**
- * Login Page - SmartSpec Pro
+ * Login Page - SmartAIHub
  * User authentication with multiple providers
  */
 
@@ -313,7 +313,7 @@ export default function Login() {
               <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
-              <span className="text-2xl font-bold">SmartSpec Pro</span>
+              <span className="text-2xl font-bold">SmartAIHub</span>
             </Link>
 
             <h1 className="text-4xl font-bold mb-6">
@@ -365,7 +365,7 @@ export default function Login() {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-gray-900">SmartSpec Pro</span>
+            <span className="text-xl font-bold text-gray-900">SmartAIHub</span>
           </Link>
 
           <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/50 shadow-xl shadow-purple-500/10 p-8">

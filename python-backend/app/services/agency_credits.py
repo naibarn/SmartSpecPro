@@ -152,6 +152,78 @@ class AgencyCreditManager:
                 markup=markup,
             )
 
+    async def settle_creator_fee(
+        self,
+        run_id: str,
+        agency_id: str,
+        user_id: int,
+        creator_id: int,
+        creator_fee_credits: int,
+        platform_share_pct: int,
+        tenant_id: str,
+    ) -> None:
+        """Call Node.js gateway to settle creator fee after successful run.
+
+        Failures are logged but do not fail the run (post-settle pattern).
+        Skips when fee=0 or runner is the creator.
+        """
+        if creator_fee_credits <= 0 or user_id == creator_id:
+            return
+
+        if not self._gateway_url or not self._gateway_token:
+            logger.warning(
+                "creator_fee_settle_skipped",
+                reason="gateway_not_configured",
+                run_id=run_id,
+                agency_id=agency_id,
+            )
+            return
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(
+                    f"{self._gateway_url}/api/internal/credits/creator-fee-settle",
+                    json={
+                        "runId": run_id,
+                        "agencyId": agency_id,
+                        "userId": user_id,
+                        "creatorId": creator_id,
+                        "creatorFeeCredits": creator_fee_credits,
+                        "platformSharePct": platform_share_pct,
+                        "tenantId": tenant_id,
+                    },
+                    headers={"Authorization": f"Bearer {self._gateway_token}"},
+                )
+
+            if resp.status_code == 200:
+                data = resp.json()
+                logger.info(
+                    "creator_fee_settled",
+                    run_id=run_id,
+                    agency_id=agency_id,
+                    user_id=user_id,
+                    creator_id=creator_id,
+                    status=data.get("status"),
+                    actual_charged=data.get("actualCharged"),
+                    creator_share=data.get("creatorShare"),
+                )
+            else:
+                logger.error(
+                    "creator_fee_settle_failed",
+                    run_id=run_id,
+                    agency_id=agency_id,
+                    status=resp.status_code,
+                    body=resp.text[:200],
+                )
+
+        except Exception as exc:
+            logger.error(
+                "creator_fee_settle_error",
+                run_id=run_id,
+                agency_id=agency_id,
+                error=str(exc),
+            )
+
     def estimate_run_cost(
         self,
         agent_count: int,

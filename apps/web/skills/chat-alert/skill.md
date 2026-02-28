@@ -4,7 +4,7 @@ description: Schedule recurring or one-time chat messages with AI responses. Set
 category: automation
 icon: Bell
 version: "1.0.0"
-author: SmartSpec
+author: SmartAIHub
 isAutoTrigger: true
 enabledByDefault: true
 priority: 90

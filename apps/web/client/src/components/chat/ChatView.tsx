@@ -58,6 +58,7 @@ import { Brain, Lightbulb, Languages, Mic } from "lucide-react";
 import { usePushToTalk } from "@/hooks/usePushToTalk";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { useChatSkillForm, SkillCommandButton, SkillFormErrorBoundary } from "@/components/chat/skill";
+import { TelegramBindingButton } from "./TelegramBindingButton";
 import { ScheduleConfirmCard } from "./ScheduleConfirmCard";
 import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -411,7 +412,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
     } catch {
       // ignore malformed data
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // intentionally runs once on mount
 
   // Ctrl+K to open Skill Selector
@@ -425,6 +426,16 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isSkillFormEnabled, skillForm.setShowSkillSelector]);
+
+  // Listen for open-skill-selector event from SchedulePanel
+  useEffect(() => {
+    if (!isSkillFormEnabled) return;
+    const handleOpenSkillSelector = () => {
+      skillForm.setShowSkillSelector(true);
+    };
+    window.addEventListener('open-skill-selector', handleOpenSkillSelector);
+    return () => window.removeEventListener('open-skill-selector', handleOpenSkillSelector);
   }, [isSkillFormEnabled, skillForm.setShowSkillSelector]);
 
   // Brainstorm mode state
@@ -626,7 +637,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
     if (/ภาษาไทย|prompt\s*ไทย|เป็นไทย|ขอไทย/i.test(clean)) {
       language = "th";
       clean = clean.replace(/(?:ขอ\s*)?(?:prompt\s*)?(?:เป็น\s*)?ภาษาไทย|prompt\s*ไทย|เป็นไทย|ขอไทย/gi, "");
-    // English explicitly requested
+      // English explicitly requested
     } else if (/ภาษาอังกฤษ|prompt\s*อังกฤษ|เป็นอังกฤษ|ขออังกฤษ|in\s*english/i.test(clean)) {
       language = "en";
       clean = clean.replace(/(?:ขอ\s*)?(?:prompt\s*)?(?:เป็น\s*)?ภาษาอังกฤษ|prompt\s*อังกฤษ|เป็นอังกฤษ|ขออังกฤษ|in\s*english/gi, "");
@@ -834,7 +845,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
           .map((p: any) => p.text)
           .join("\n");
       }
-    } catch {}
+    } catch { }
     return content;
   };
 
@@ -850,7 +861,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
           .join("\n");
         return text || content;
       }
-    } catch {}
+    } catch { }
     return content;
   };
 
@@ -870,7 +881,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
           return p;
         });
       }
-    } catch {}
+    } catch { }
     return content;
   };
 
@@ -1247,7 +1258,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                 const friendlyError = parseErrorResponse(JSON.stringify({ error: { message: data.error } }));
                 toast.error(friendlyError || "Brainstorm failed");
               }
-            } catch {}
+            } catch { }
           }
         }
       }
@@ -1381,7 +1392,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
     const isImageRequestWithoutDetails = /^(?:สร้างภาพ|generate\s+image|create\s+image)\s*(?:ด้วย|with|ใช้|from|ตาม)?/i.test(text) && text.length < 50;
 
     if ((isUseThisPromptRequest || isImageRequestWithoutDetails) &&
-        (currentSkillId === "image-creator" || currentSkillType === "image-generation" || !currentSkillId)) {
+      (currentSkillId === "image-creator" || currentSkillType === "image-generation" || !currentSkillId)) {
       // Find the last assistant message to extract prompt
       const lastAssistantMessage = [...messages].reverse().find(m => m.role === "assistant");
 
@@ -1985,6 +1996,15 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
             </Tooltip>
           </TooltipProvider>
 
+          {/* Telegram Bridge Toggle */}
+          {conversationId && (
+            <TelegramBindingButton
+              conversationId={String(conversationId)}
+              conversationType="chat"
+              compact
+            />
+          )}
+
           {/* Model B selector (when brainstorm is ON) */}
           {brainstormMode && modelsData?.models && (
             <>
@@ -2110,12 +2130,12 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                       m.role === "user"
                         ? "ml-auto bg-primary text-primary-foreground"
                         : m.skillUsed === "brainstorm" && m.skillArgs?.brainstormRole === "model_a"
-                        ? "mr-auto bg-blue-50 border-l-4 border-blue-400"
-                        : m.skillUsed === "brainstorm" && m.skillArgs?.brainstormRole === "model_b"
-                        ? "mr-auto bg-purple-50 border-l-4 border-purple-400"
-                        : m.skillUsed === "brainstorm" && m.skillArgs?.brainstormRole === "summary"
-                        ? "mr-auto bg-green-50 border-l-4 border-green-400"
-                        : "mr-auto bg-muted"
+                          ? "mr-auto bg-blue-50 border-l-4 border-blue-400"
+                          : m.skillUsed === "brainstorm" && m.skillArgs?.brainstormRole === "model_b"
+                            ? "mr-auto bg-purple-50 border-l-4 border-purple-400"
+                            : m.skillUsed === "brainstorm" && m.skillArgs?.brainstormRole === "summary"
+                              ? "mr-auto bg-green-50 border-l-4 border-green-400"
+                              : "mr-auto bg-muted"
                     )}
                   >
                     {/* Brainstorm badge */}
@@ -2193,65 +2213,65 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                 if (m.role === "assistant") {
                   return (
                     <div key={m.id}>
-                    <ContextMenu>
-                      <ContextMenuTrigger asChild>
-                        {messageBubble}
-                      </ContextMenuTrigger>
-                      <ContextMenuContent>
-                        <ContextMenuItem
-                          onSelect={() => {
-                            const selected = window.getSelection()?.toString();
-                            const content = selected && selected.length > 10
-                              ? selected
-                              : m.content.substring(0, 500);
-                            setSuggestedMemory({
-                              content,
-                              importance: 7,
-                              source: "manual",
-                            });
-                            setSaveDialogOpen(true);
-                          }}
-                        >
-                          <Brain className="mr-2 h-4 w-4" />
-                          Save to Memory
-                        </ContextMenuItem>
-                        <ContextMenuItem
-                          onSelect={() => {
-                            const selected = window.getSelection()?.toString();
-                            const text = selected && selected.length > 5
-                              ? selected
-                              : m.content.substring(0, 2000);
-                            setTranslatingMsgId(m.id);
-                            translateMutation.mutate({ text });
-                          }}
-                          disabled={translatingMsgId === m.id}
-                        >
-                          <Languages className="mr-2 h-4 w-4" />
-                          {translatingMsgId === m.id ? 'Translating...' : 'Translate'}
-                        </ContextMenuItem>
-                      </ContextMenuContent>
-                    </ContextMenu>
-                    {translatedMessages[m.id] && (
-                      <div className="mt-1 mr-auto max-w-[85%] bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-medium text-blue-600 flex items-center gap-1">
-                            <Languages className="h-3 w-3" /> Translation
-                          </span>
-                          <button
-                            onClick={() => setTranslatedMessages((prev) => {
-                              const next = { ...prev };
-                              delete next[m.id];
-                              return next;
-                            })}
-                            className="text-blue-400 hover:text-blue-600"
+                      <ContextMenu>
+                        <ContextMenuTrigger asChild>
+                          {messageBubble}
+                        </ContextMenuTrigger>
+                        <ContextMenuContent>
+                          <ContextMenuItem
+                            onSelect={() => {
+                              const selected = window.getSelection()?.toString();
+                              const content = selected && selected.length > 10
+                                ? selected
+                                : m.content.substring(0, 500);
+                              setSuggestedMemory({
+                                content,
+                                importance: 7,
+                                source: "manual",
+                              });
+                              setSaveDialogOpen(true);
+                            }}
                           >
-                            <X className="h-3 w-3" />
-                          </button>
+                            <Brain className="mr-2 h-4 w-4" />
+                            Save to Memory
+                          </ContextMenuItem>
+                          <ContextMenuItem
+                            onSelect={() => {
+                              const selected = window.getSelection()?.toString();
+                              const text = selected && selected.length > 5
+                                ? selected
+                                : m.content.substring(0, 2000);
+                              setTranslatingMsgId(m.id);
+                              translateMutation.mutate({ text });
+                            }}
+                            disabled={translatingMsgId === m.id}
+                          >
+                            <Languages className="mr-2 h-4 w-4" />
+                            {translatingMsgId === m.id ? 'Translating...' : 'Translate'}
+                          </ContextMenuItem>
+                        </ContextMenuContent>
+                      </ContextMenu>
+                      {translatedMessages[m.id] && (
+                        <div className="mt-1 mr-auto max-w-[85%] bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-medium text-blue-600 flex items-center gap-1">
+                              <Languages className="h-3 w-3" /> Translation
+                            </span>
+                            <button
+                              onClick={() => setTranslatedMessages((prev) => {
+                                const next = { ...prev };
+                                delete next[m.id];
+                                return next;
+                              })}
+                              className="text-blue-400 hover:text-blue-600"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                          <p className="text-sm text-blue-900 whitespace-pre-wrap">{translatedMessages[m.id]}</p>
                         </div>
-                        <p className="text-sm text-blue-900 whitespace-pre-wrap">{translatedMessages[m.id]}</p>
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
                   );
                 }
 
@@ -2289,9 +2309,9 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                 <div className={cn(
                   "mr-auto max-w-[85%] rounded-lg px-4 py-3",
                   brainstormStreamingRole === "model_a" ? "bg-blue-50 border-l-4 border-blue-400" :
-                  brainstormStreamingRole === "model_b" ? "bg-purple-50 border-l-4 border-purple-400" :
-                  brainstormStreamingRole === "summary" ? "bg-green-50 border-l-4 border-green-400" :
-                  "bg-muted",
+                    brainstormStreamingRole === "model_b" ? "bg-purple-50 border-l-4 border-purple-400" :
+                      brainstormStreamingRole === "summary" ? "bg-green-50 border-l-4 border-green-400" :
+                        "bg-muted",
                 )}>
                   {brainstormStreamingRole && (
                     <div className="mb-2 flex items-center gap-2">
@@ -2367,7 +2387,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                                     fullContent += delta;
                                     setStreamingContent(fullContent);
                                   }
-                                } catch {}
+                                } catch { }
                               }
                             }
                           }

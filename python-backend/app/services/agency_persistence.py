@@ -7,6 +7,7 @@ that agency-swarm expects for conversation persistence.
 The callbacks are async since they use SQLAlchemy async sessions.
 """
 
+import json
 from datetime import datetime, timezone
 from typing import Any, Callable
 
@@ -90,14 +91,14 @@ def create_persistence_hooks(
                              tool_calls, pii_redacted, created_at)
                         VALUES
                             (:conv_id, :role, :content, :agent_name,
-                             :tool_calls, :pii_redacted, :created_at)
+                             CAST(:tool_calls AS json), :pii_redacted, :created_at)
                     """),
                     {
                         "conv_id": conversation_id,
                         "role": role,
                         "content": content,
                         "agent_name": agent_name,
-                        "tool_calls": tool_calls,
+                        "tool_calls": json.dumps(tool_calls) if tool_calls else None,
                         "pii_redacted": pii_redacted,
                         "created_at": datetime.now(timezone.utc),
                     },

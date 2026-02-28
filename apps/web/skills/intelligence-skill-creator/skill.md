@@ -19,7 +19,7 @@ triggerPatterns:
 
 # Intelligence Skill Creator (ISC) — v0.4.0
 
-7-phase multi-agent LLM pipeline that creates complete, production-ready SmartSpecPro skills from a natural language description — or iteratively improves existing ones.
+7-phase multi-agent LLM pipeline that creates complete, production-ready SmartAIHub skills from a natural language description — or iteratively improves existing ones.
 
 ## Capabilities
 
@@ -28,7 +28,7 @@ triggerPatterns:
 - **Phase 2 — Schemas:** Generates all 3 mandatory schemas in sequence:
   - `schemas/input.schema.json` — full input validation with enums, ranges, examples
   - `schemas/output.schema.json` — structured output specification
-  - `schemas/ui.schema.json` — SmartSpecPro UI form with Thai + English labels
+  - `schemas/ui.schema.json` — SmartAIHub UI form with Thai + English labels
 - **Phase 3 — skill.md:** Generates manifest with YAML frontmatter, input/output tables, usage examples
 - **Phase 4 — Code:** Generates complete `python/skill.py` OR `js/skill.js` with stdlib only
 - **Phase 5 — Critic:** Second LLM pass reviews and fixes correctness, edge cases, security
@@ -50,7 +50,7 @@ skills/{skill-name}/
 ├── schemas/
 │   ├── input.schema.json    ← MANDATORY (JSON Schema draft-07, full validation)
 │   ├── output.schema.json   ← MANDATORY (output structure spec)
-│   └── ui.schema.json       ← MANDATORY (SmartSpecPro UI form, Thai + English)
+│   └── ui.schema.json       ← MANDATORY (SmartAIHub UI form, Thai + English)
 ├── skill.md                 ← manifest + YAML frontmatter
 ├── python/skill.py          ← if language=python (respond() entry point)
 │   OR js/skill.js           ← if language=javascript

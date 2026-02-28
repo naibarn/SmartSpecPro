@@ -122,6 +122,6 @@ export function computeSnapPosition(
   return {
     x: active.x + (xGuide?.delta ?? 0),
     y: active.y + (yGuide?.delta ?? 0),
-    guides: [xGuide, yGuide].filter((value): value is SnapGuide => Boolean(value)),
+    guides: [xGuide, yGuide].filter((v): v is CandidateGuide => v !== null),
   };
 }

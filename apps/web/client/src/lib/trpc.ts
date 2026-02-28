@@ -1,5 +1,5 @@
 /**
- * tRPC client configuration for SmartSpec Web
+ * tRPC client configuration for SmartAIHub Web
  */
 import { createTRPCReact } from "@trpc/react-query";
 import type { AppRouter } from "@server/routers";

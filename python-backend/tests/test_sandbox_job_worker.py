@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock, patch, call
 
 import pytest
 
+from app.integrations.opensandbox.client import SandboxAPIError
 from app.workers.sandbox_job_worker import (
     NON_TERMINAL_STATUSES,
     TERMINAL_STATUSES,
@@ -87,6 +88,7 @@ class TestWorkerLifecycle:
     @patch("app.workers.sandbox_job_worker.SandboxAuditService")
     @patch("app.workers.sandbox_job_worker.SandboxArtifactService")
     @patch("app.workers.sandbox_job_worker.collect_outputs")
+    @patch("app.workers.sandbox_job_worker.stage_inline_files")
     @patch("app.workers.sandbox_job_worker.stage_inputs")
     @patch("app.workers.sandbox_job_worker.run_command")
     @patch("app.workers.sandbox_job_worker.SandboxLifecycleManager")
@@ -95,6 +97,7 @@ class TestWorkerLifecycle:
         MockLifecycle,
         mock_run_cmd,
         mock_stage,
+        mock_stage_inline,
         mock_collect,
         MockArtifactSvc,
         MockAuditSvc,
@@ -108,6 +111,7 @@ class TestWorkerLifecycle:
 
         mock_run_cmd.return_value = _make_command_result()
         mock_stage.return_value = []
+        mock_stage_inline.return_value = []
         mock_collect.return_value = []
 
         cost_svc = AsyncMock()
@@ -139,6 +143,65 @@ class TestWorkerLifecycle:
 
         lifecycle.provision_sandbox.assert_called_once()
         lifecycle.destroy_sandbox.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("app.workers.sandbox_job_worker.SandboxCostService")
+    @patch("app.workers.sandbox_job_worker.SandboxAuditService")
+    @patch("app.workers.sandbox_job_worker.SandboxArtifactService")
+    @patch("app.workers.sandbox_job_worker.collect_outputs")
+    @patch("app.workers.sandbox_job_worker.stage_inline_files")
+    @patch("app.workers.sandbox_job_worker.stage_inputs")
+    @patch("app.workers.sandbox_job_worker.run_command")
+    @patch("app.workers.sandbox_job_worker.SandboxLifecycleManager")
+    async def test_stages_inline_files_when_present_in_manifest(
+        self,
+        MockLifecycle,
+        mock_run_cmd,
+        mock_stage_inputs,
+        mock_stage_inline,
+        mock_collect,
+        MockArtifactSvc,
+        MockAuditSvc,
+        MockCostSvc,
+    ):
+        """Worker stages inline files before command execution when provided."""
+        lifecycle = AsyncMock()
+        lifecycle.provision_sandbox.return_value = "sandbox-abc"
+        MockLifecycle.return_value = lifecycle
+
+        mock_run_cmd.return_value = _make_command_result()
+        mock_stage_inputs.return_value = []
+        mock_stage_inline.return_value = [{"path": "/workspace/skill/python/skill.py", "size_bytes": 12}]
+        mock_collect.return_value = []
+
+        cost_svc = AsyncMock()
+        cost_svc.calculate_actual.return_value = 0.01
+        MockCostSvc.return_value = cost_svc
+        MockAuditSvc.return_value = MagicMock()
+        MockArtifactSvc.return_value = AsyncMock()
+
+        job = _make_job(input_manifest_json={
+            "commands": ["python3 /workspace/skill/python/skill.py"],
+            "inline_files": [{"path": "/workspace/skill/python/skill.py", "content_base64": "cHJpbnQoJ29rJykK"}],
+            "output_paths": [],
+        })
+        profile = _make_profile()
+        mock_task = MagicMock()
+
+        with patch("app.workers.sandbox_job_worker._load_job", return_value=job), \
+             patch("app.workers.sandbox_job_worker._load_profile", return_value=profile), \
+             patch("app.workers.sandbox_job_worker._get_db_session") as mock_get_db, \
+             patch("app.workers.sandbox_job_worker._update_job_status"):
+            mock_get_db.return_value.__aenter__ = AsyncMock(return_value=AsyncMock())
+            mock_get_db.return_value.__aexit__ = AsyncMock(return_value=None)
+
+            result = await _execute_sandbox_job_async(mock_task, "job-123")
+
+        assert result["status"] == "completed"
+        mock_stage_inline.assert_called_once()
+        args = mock_stage_inline.call_args.args
+        assert args[1] == "sandbox-abc"
+        assert args[2] == [{"path": "/workspace/skill/python/skill.py", "content_base64": "cHJpbnQoJ29rJykK"}]
 
     @pytest.mark.asyncio
     @patch("app.workers.sandbox_job_worker.SandboxCostService")
@@ -201,11 +264,13 @@ class TestWorkerErrorHandling:
     @pytest.mark.asyncio
     @patch("app.workers.sandbox_job_worker.SandboxAuditService")
     @patch("app.workers.sandbox_job_worker.SandboxLifecycleManager")
-    async def test_destroys_sandbox_on_failure(self, MockLifecycle, MockAuditSvc):
+    @patch("app.workers.sandbox_job_worker.OpenSandboxClient")
+    async def test_destroys_sandbox_on_failure(self, MockClient, MockLifecycle, MockAuditSvc):
         """If execution fails, sandbox is still destroyed (cleanup in finally block)."""
         lifecycle = AsyncMock()
         lifecycle.provision_sandbox.return_value = "sandbox-abc"
         MockLifecycle.return_value = lifecycle
+        MockClient.return_value = AsyncMock()
 
         audit_svc = MagicMock()
         MockAuditSvc.return_value = audit_svc
@@ -304,3 +369,75 @@ class TestWorkerSessionReuse:
         lifecycle.provision_sandbox.assert_called_once()
         # Three commands executed
         assert mock_run_cmd.call_count == 3
+
+    @pytest.mark.asyncio
+    @patch("app.workers.sandbox_job_worker.SandboxCostService")
+    @patch("app.workers.sandbox_job_worker.SandboxAuditService")
+    @patch("app.workers.sandbox_job_worker.SandboxArtifactService")
+    @patch("app.workers.sandbox_job_worker.collect_outputs")
+    @patch("app.workers.sandbox_job_worker.stage_inputs")
+    @patch("app.workers.sandbox_job_worker.run_command_via_docker_bridge")
+    @patch("app.workers.sandbox_job_worker.run_command")
+    @patch("app.workers.sandbox_job_worker.SandboxLifecycleManager")
+    @patch("app.workers.sandbox_job_worker.OpenSandboxClient")
+    async def test_lifecycle_only_fallback_runs_commands_via_docker_bridge(
+        self,
+        MockClient,
+        MockLifecycle,
+        mock_run_cmd,
+        mock_bridge_run_cmd,
+        mock_stage,
+        mock_collect,
+        MockArtifactSvc,
+        MockAuditSvc,
+        MockCostSvc,
+    ):
+        """When /commands is unavailable, worker uses docker bridge fallback."""
+        lifecycle = AsyncMock()
+        lifecycle.provision_sandbox.return_value = "sandbox-abc"
+        MockLifecycle.return_value = lifecycle
+
+        client = AsyncMock()
+        MockClient.return_value = client
+
+        mock_run_cmd.side_effect = SandboxAPIError(
+            404,
+            "OpenSandbox server endpoint unavailable for 'run_command'. This server appears to expose lifecycle APIs only.",
+        )
+        mock_bridge_run_cmd.side_effect = [
+            _make_command_result(exit_code=0, stdout="step1", stderr=""),
+            _make_command_result(exit_code=0, stdout="step2", stderr=""),
+        ]
+        mock_stage.return_value = []
+        mock_collect.return_value = []
+
+        cost_svc = AsyncMock()
+        cost_svc.calculate_actual.return_value = 0.01
+        MockCostSvc.return_value = cost_svc
+        MockAuditSvc.return_value = MagicMock()
+        MockArtifactSvc.return_value = AsyncMock()
+
+        job = _make_job(
+            input_manifest_json={
+                "commands": ["echo step1", "echo step2"],
+                "output_paths": [],
+            }
+        )
+        profile = _make_profile()
+        mock_task = MagicMock()
+
+        with patch("app.workers.sandbox_job_worker._load_job", return_value=job), \
+             patch("app.workers.sandbox_job_worker._load_profile", return_value=profile), \
+             patch("app.workers.sandbox_job_worker._get_db_session") as mock_get_db, \
+             patch("app.workers.sandbox_job_worker._update_job_status"):
+
+            mock_get_db.return_value.__aenter__ = AsyncMock(return_value=AsyncMock())
+            mock_get_db.return_value.__aexit__ = AsyncMock(return_value=None)
+
+            result = await _execute_sandbox_job_async(mock_task, "job-123")
+
+        assert result["status"] == "completed"
+        # First attempt tries /commands once, then switches to docker bridge mode.
+        assert mock_run_cmd.call_count == 1
+        # Two commands executed in the same sandbox via docker bridge fallback.
+        assert mock_bridge_run_cmd.call_count == 2

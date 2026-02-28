@@ -39,7 +39,7 @@ class PatchProposal:
     skill_name: str
     created_at_iso: str
     rationale: str
-    unified_diff: str
+    patch_payload: str  # JSON map of {filepath: full_file_content}
 
 
 # ── Creation models (ISC v0.4.0) ───────────────────────────────────────────────

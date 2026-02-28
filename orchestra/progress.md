@@ -1,16 +1,22 @@
 # Orchestra Progress
 
-## Session: 2026-02-24 — Mobile Layout Redesign
+## Session: 2026-02-24 — Import Google Slides + PowerPoint (Feasibility Study)
 
-[COMPLETE] wave-1-frontend — MobileDrawerPanel created, MobileBottomSheet collapsible, PresentationEditor simplified toolbar + hamburger, index.ts export added. Build: ✓ built in 17.87s
+### Status: RESEARCH COMPLETE — Awaiting user decision on proceed to deep-plan
 
-[COMPLETE] wave-2-quality-gate — npm run build passed (0 errors)
+### Completed
+- [x] Task analysis + classification (scope: large, risk: high)
+- [x] Wave 1 Research: Internal schema + DB model analysis
+- [x] Wave 2 Research: Library capabilities + API feasibility
 
-## Session: 2026-02-24 — Chat Mobile Sidebar Fix
+### Key findings
+- FEASIBILITY: CONFIRMED — all infrastructure prerequisites already exist in codebase
+- DB tables (presentationSourceAttachments, presentationConversionRecords) already designed for this
+- Google OAuth + google_content_extractor.py already in python-backend
+- python-pptx (MIT, v1.0.2) is the clear choice for PPTX parsing
+- Coordinate systems: EMU (PPTX) and pt (Google Slides) both convertible to canvas px
 
-[COMPLETE] Fix Chat.tsx mobile sidebar — replaced undefined `MessageCircle` with `Menu` icon, converted conditional-render sidebar to always-in-DOM CSS slide-in (`-translate-x-full` → `translate-x-0`) with `transition-transform duration-300`. Build: ✓ built in 18.00s
-
-## Summary
-- Files changed: 5 (1 new, 4 modified)
-- Security gate: skipped (low risk, UI only)
-- All waves complete
+### Pending
+- [ ] User decision: proceed to /deep-plan or not
+- [ ] Spec creation at specs/feature/024-ImportPresentations/spec.md
+- [ ] Implementation (via /deep-plan + /deep-implement)

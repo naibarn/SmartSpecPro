@@ -61,6 +61,11 @@ class AgencyMessage(Base):
         default=lambda: datetime.now(timezone.utc),
     )
 
+    # Chat Bridge channel metadata (nullable, added by migration 009)
+    source_channel = Column(String(20), nullable=True)
+    source_connection_id = Column(String(36), nullable=True)
+    external_source_id = Column(String(64), nullable=True)
+
     __table_args__ = (
         Index("agency_messages_conv_idx", "conversation_id"),
         Index("agency_messages_created_idx", "created_at"),
@@ -81,6 +86,9 @@ class AgencyMessage(Base):
             "parentMessageId": self.parent_message_id,
             "piiRedacted": self.pii_redacted,
             "createdAt": self.created_at.isoformat() if self.created_at else None,
+            "sourceChannel": self.source_channel,
+            "sourceConnectionId": self.source_connection_id,
+            "externalSourceId": self.external_source_id,
         }
 
 

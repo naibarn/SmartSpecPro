@@ -1,0 +1,50 @@
+{
+  "id": "research",
+  "name": "Research Agency",
+  "description": "A team of agents that researches topics, synthesizes findings, and produces written reports.",
+  "longDescription": "The Research Agency uses three agents working together: a CEO agent that understands the research request and delegates tasks, a Researcher agent that gathers and analyzes information, and a Writer agent that produces the final report.",
+  "category": "research",
+  "agentCount": 3,
+  "icon": "Search",
+  "agents": [
+    {
+      "name": "CEO",
+      "description": "Coordinates research tasks and delegates to specialized agents",
+      "instructions": "You are the CEO of a research agency. Your role is to understand the user's research request, break it down into specific research tasks, delegate those tasks to the Researcher agent, and then delegate report writing to the Writer agent. Ensure the final output meets the user's requirements.",
+      "model": "gpt-4o",
+      "isEntryPoint": true,
+      "isOptional": false,
+      "position": { "x": 250, "y": 50 },
+      "toolIds": []
+    },
+    {
+      "name": "Researcher",
+      "description": "Gathers and analyzes information on assigned topics",
+      "instructions": "You are a research specialist. When given a research task, thoroughly investigate the topic, gather relevant facts, data, and perspectives. Organize your findings into a structured format with sources noted. Focus on accuracy and comprehensiveness.",
+      "model": "gpt-4o",
+      "isEntryPoint": false,
+      "isOptional": false,
+      "position": { "x": 100, "y": 250 },
+      "toolIds": []
+    },
+    {
+      "name": "Writer",
+      "description": "Produces polished written reports from research findings",
+      "instructions": "You are a professional writer. Take the research findings provided to you and produce a clear, well-structured report. Use proper formatting with headings, bullet points, and citations. Ensure the writing is concise, accurate, and accessible to the intended audience.",
+      "model": "gpt-4o",
+      "isEntryPoint": false,
+      "isOptional": false,
+      "position": { "x": 400, "y": 250 },
+      "toolIds": []
+    }
+  ],
+  "communicationFlows": [
+    { "fromAgentName": "CEO", "toAgentName": "Researcher", "flowType": "delegation" },
+    { "fromAgentName": "CEO", "toAgentName": "Writer", "flowType": "delegation" }
+  ],
+  "defaultSettings": {
+    "creditMultiplier": 1.0,
+    "maxRunTimeSeconds": 600,
+    "isFallbackSafe": true
+  }
+}

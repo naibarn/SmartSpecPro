@@ -228,3 +228,192 @@ class TestAgencyCreditFailure:
             payload = call_kwargs.kwargs.get("json") or call_kwargs[1].get("json")
             # Markup = 2.0 * 1.5 - 2.0 = 1.0
             assert payload["markupAmount"] == pytest.approx(1.0)
+
+
+class TestSettleCreatorFee:
+    """Tests for AgencyCreditManager.settle_creator_fee()."""
+
+    async def test_settle_skips_when_fee_zero(self):
+        """settle_creator_fee does nothing when fee is 0."""
+        from app.services.agency_credits import AgencyCreditManager
+
+        mgr = AgencyCreditManager(
+            gateway_url="http://localhost:3000",
+            gateway_token="test-token",
+        )
+
+        with patch("app.services.agency_credits.httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value = mock_client
+
+            await mgr.settle_creator_fee(
+                run_id="run-001",
+                agency_id="agency-001",
+                user_id=10,
+                creator_id=20,
+                creator_fee_credits=0,
+                platform_share_pct=20,
+                tenant_id="tenant-001",
+            )
+
+            # No HTTP call made
+            mock_client.post.assert_not_called()
+
+    async def test_settle_skips_when_runner_is_creator(self):
+        """settle_creator_fee does nothing when runner === creator."""
+        from app.services.agency_credits import AgencyCreditManager
+
+        mgr = AgencyCreditManager(
+            gateway_url="http://localhost:3000",
+            gateway_token="test-token",
+        )
+
+        with patch("app.services.agency_credits.httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value = mock_client
+
+            await mgr.settle_creator_fee(
+                run_id="run-001",
+                agency_id="agency-001",
+                user_id=42,
+                creator_id=42,  # same as user
+                creator_fee_credits=100,
+                platform_share_pct=20,
+                tenant_id="tenant-001",
+            )
+
+            mock_client.post.assert_not_called()
+
+    async def test_settle_skips_when_gateway_not_configured(self):
+        """settle_creator_fee logs warning when gateway URL not set."""
+        from app.services.agency_credits import AgencyCreditManager
+
+        mgr = AgencyCreditManager(gateway_url="", gateway_token="")
+
+        # Should not raise
+        await mgr.settle_creator_fee(
+            run_id="run-001",
+            agency_id="agency-001",
+            user_id=10,
+            creator_id=20,
+            creator_fee_credits=100,
+            platform_share_pct=20,
+            tenant_id="tenant-001",
+        )
+
+    async def test_settle_calls_node_endpoint_with_correct_payload(self):
+        """settle_creator_fee POSTs to creator-fee-settle with correct data."""
+        from app.services.agency_credits import AgencyCreditManager
+
+        mgr = AgencyCreditManager(
+            gateway_url="http://localhost:3000",
+            gateway_token="test-token",
+        )
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "status": "completed",
+            "actualCharged": 100,
+            "creatorShare": 80,
+            "platformShare": 20,
+        }
+
+        with patch("app.services.agency_credits.httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client.post = AsyncMock(return_value=mock_response)
+            mock_client_cls.return_value = mock_client
+
+            await mgr.settle_creator_fee(
+                run_id="run-001",
+                agency_id="agency-001",
+                user_id=10,
+                creator_id=20,
+                creator_fee_credits=100,
+                platform_share_pct=20,
+                tenant_id="tenant-001",
+            )
+
+            mock_client.post.assert_called_once()
+            call_args = mock_client.post.call_args
+            url = call_args.args[0] if call_args.args else call_args.kwargs.get("url")
+            assert url == "http://localhost:3000/api/internal/credits/creator-fee-settle"
+
+            payload = call_args.kwargs.get("json") or call_args[1].get("json")
+            assert payload["runId"] == "run-001"
+            assert payload["agencyId"] == "agency-001"
+            assert payload["userId"] == 10
+            assert payload["creatorId"] == 20
+            assert payload["creatorFeeCredits"] == 100
+            assert payload["platformSharePct"] == 20
+            assert payload["tenantId"] == "tenant-001"
+
+            # Check auth header
+            headers = call_args.kwargs.get("headers") or call_args[1].get("headers")
+            assert headers["Authorization"] == "Bearer test-token"
+
+    async def test_settle_failure_does_not_raise(self):
+        """settle_creator_fee logs error but does not raise on HTTP failure."""
+        from app.services.agency_credits import AgencyCreditManager
+
+        mgr = AgencyCreditManager(
+            gateway_url="http://localhost:3000",
+            gateway_token="test-token",
+        )
+
+        with patch("app.services.agency_credits.httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client.post = AsyncMock(
+                side_effect=httpx.ConnectError("Connection refused")
+            )
+            mock_client_cls.return_value = mock_client
+
+            # Should not raise
+            await mgr.settle_creator_fee(
+                run_id="run-001",
+                agency_id="agency-001",
+                user_id=10,
+                creator_id=20,
+                creator_fee_credits=100,
+                platform_share_pct=20,
+                tenant_id="tenant-001",
+            )
+
+    async def test_settle_non_200_status_logs_error(self):
+        """settle_creator_fee logs error on non-200 response."""
+        from app.services.agency_credits import AgencyCreditManager
+
+        mgr = AgencyCreditManager(
+            gateway_url="http://localhost:3000",
+            gateway_token="test-token",
+        )
+
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.text = "Internal Server Error"
+
+        with patch("app.services.agency_credits.httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client.post = AsyncMock(return_value=mock_response)
+            mock_client_cls.return_value = mock_client
+
+            # Should not raise
+            await mgr.settle_creator_fee(
+                run_id="run-001",
+                agency_id="agency-001",
+                user_id=10,
+                creator_id=20,
+                creator_fee_credits=100,
+                platform_share_pct=20,
+                tenant_id="tenant-001",
+            )

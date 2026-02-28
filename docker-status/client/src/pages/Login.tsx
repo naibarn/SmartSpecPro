@@ -30,7 +30,7 @@ export default function Login() {
     }
   }, [isAuthLoading, isCheckingAuth, user, setLocation]);
 
-  // Redirect to SmartSpec Web login page
+  // Redirect to SmartAIHub Web login page
   const hostname = window.location.hostname;
 
   // Determine the main site URL based on current hostname
@@ -137,7 +137,7 @@ export default function Login() {
             <div className="space-y-4">
               <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
                 <p className="text-yellow-300 text-sm text-center">
-                  <strong>Note:</strong> Make sure you're logged in to SmartSpec Web with an admin account.
+                  <strong>Note:</strong> Make sure you're logged in to SmartAIHub Web with an admin account.
                 </p>
               </div>
 
@@ -184,7 +184,7 @@ export default function Login() {
           <div className="space-y-6">
             <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
               <p className="text-blue-300 text-sm text-center mb-2">
-                Redirecting to SmartSpec login...
+                Redirecting to SmartAIHub login...
               </p>
               <div className="flex justify-center">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
@@ -203,7 +203,7 @@ export default function Login() {
           {/* Info */}
           <div className="mt-6 text-center">
             <p className="text-gray-500 text-xs">
-              You will be redirected to the main SmartSpec login page.
+              You will be redirected to the main SmartAIHub login page.
               <br />
               After logging in, you'll return here automatically.
             </p>

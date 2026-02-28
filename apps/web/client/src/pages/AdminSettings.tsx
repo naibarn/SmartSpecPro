@@ -57,6 +57,7 @@ import {
   RefreshCw,
   AlertTriangle,
   Server,
+  Zap,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -71,6 +72,8 @@ import {
 import { defaultMenuItems, type MenuItem as SharedMenuItem, type UserRole } from "@smartspec/shared";
 import StorageSettingsPanel from "@/components/admin/StorageSettingsPanel";
 import InfrastructureSettingsPanel from "@/components/admin/InfrastructureSettingsPanel";
+import AgencyAdminPanel from "@/components/admin/AgencyAdminPanel";
+import TelegramConnectionsPanel from "@/components/admin/TelegramConnectionsPanel";
 
 interface StripeSettings {
   secretKey?: string;
@@ -601,6 +604,7 @@ export default function AdminSettings() {
     { key: "vectordb", label: "Vector Database", sublabel: "RAG & Embeddings", icon: Database },
     { key: "storage", label: "Storage", sublabel: "Local / R2 / S3", icon: Cloud },
     { key: "infrastructure", label: "Infrastructure", sublabel: "GCP / Redis / Tasks", icon: Server },
+    { key: "agencies", label: "Agencies", sublabel: "Multi-Agent Swarm", icon: Zap },
     { key: "menu", label: "Main Menu", sublabel: "Visibility Control", icon: Menu },
   ];
 
@@ -1726,6 +1730,11 @@ export default function AdminSettings() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Telegram Connections Management */}
+            <div className="mt-6">
+              <TelegramConnectionsPanel />
+            </div>
           </TabsContent>
 
           {/* Registration Settings Tab */}
@@ -2815,6 +2824,10 @@ export default function AdminSettings() {
 
           <TabsContent value="infrastructure">
             <InfrastructureSettingsPanel />
+          </TabsContent>
+
+          <TabsContent value="agencies">
+            <AgencyAdminPanel />
           </TabsContent>
 
           <TabsContent value="menu">

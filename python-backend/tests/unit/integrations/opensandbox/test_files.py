@@ -1,4 +1,5 @@
 """Tests for OpenSandbox file staging and collection."""
+import base64
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -6,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 @pytest.mark.unit
 @pytest.mark.sandbox
 class TestSandboxFiles:
-    """Tests for stage_inputs and collect_outputs."""
+    """Tests for stage_inputs, stage_inline_files, and collect_outputs."""
 
     async def test_stage_inputs_uploads_each_file_from_manifest(self):
         """stage_inputs() downloads each S3 object and uploads into sandbox."""
@@ -107,3 +108,40 @@ class TestSandboxFiles:
         await cleanup_sandbox_files(mock_client, "sb-1", paths)
         # Should call run_command to remove files
         mock_client.run_command.assert_called()
+
+    async def test_stage_inline_files_writes_decoded_content(self):
+        """stage_inline_files() decodes base64 and writes each file to sandbox."""
+        from app.integrations.opensandbox.files import stage_inline_files
+
+        mock_client = AsyncMock()
+        mock_client.write_file = AsyncMock(return_value=None)
+
+        payload = base64.b64encode(b"print('hello')\n").decode("ascii")
+        manifest = [{"path": "/workspace/skill/python/skill.py", "content_base64": payload}]
+
+        staged = await stage_inline_files(mock_client, "sb-1", manifest)
+
+        assert len(staged) == 1
+        mock_client.write_file.assert_called_once_with(
+            "sb-1",
+            "/workspace/skill/python/skill.py",
+            b"print('hello')\n",
+        )
+
+    async def test_stage_inline_files_uses_docker_bridge_on_lifecycle_only(self):
+        """When /files API is unavailable, stage_inline_files falls back to docker bridge."""
+        from app.integrations.opensandbox.files import stage_inline_files
+
+        mock_client = AsyncMock()
+        mock_client.write_file = AsyncMock(side_effect=Exception("lifecycle APIs only"))
+        payload = base64.b64encode(b"{}").decode("ascii")
+        manifest = [{"path": "/workspace/skill/input.json", "content_base64": payload}]
+
+        with patch(
+            "app.integrations.opensandbox.files.write_file_via_docker_bridge",
+            new_callable=AsyncMock,
+        ) as mock_bridge_write:
+            staged = await stage_inline_files(mock_client, "sb-1", manifest)
+
+        assert len(staged) == 1
+        mock_bridge_write.assert_called_once_with("sb-1", "/workspace/skill/input.json", b"{}")

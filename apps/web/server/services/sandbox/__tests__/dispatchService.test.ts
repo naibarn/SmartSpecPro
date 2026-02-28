@@ -71,6 +71,11 @@ describe("shouldUseSandbox", () => {
     process.env.OPENSANDBOX_ENABLED = "true";
     expect(shouldUseSandbox("sandbox-file")).toBe(true);
   });
+
+  it("returns true for sandbox-python when enabled", () => {
+    process.env.OPENSANDBOX_ENABLED = "true";
+    expect(shouldUseSandbox("sandbox-python")).toBe(true);
+  });
 });
 
 describe("dispatchToSandbox", () => {

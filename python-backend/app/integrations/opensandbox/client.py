@@ -2,7 +2,6 @@
 from typing import Any, Optional
 
 import httpx
-import pybreaker
 import structlog
 from tenacity import (
     retry,
@@ -11,10 +10,22 @@ from tenacity import (
     wait_exponential,
 )
 
+try:
+    import pybreaker
+except ModuleNotFoundError:  # pragma: no cover - fallback for lean worker images
+    pybreaker = None
+
 from .config import OpenSandboxSettings, opensandbox_settings
 from .models import CommandResult, FileEntry, SandboxConfig, SandboxStatus
 
 logger = structlog.get_logger(__name__)
+
+
+class _NoopCircuitBreaker:
+    """Fallback breaker when pybreaker is unavailable in runtime image."""
+
+    async def call_async(self, fn):
+        return await fn()
 
 
 class SandboxAPIError(Exception):
@@ -48,16 +59,75 @@ class OpenSandboxClient:
 
     def __init__(self, config: Optional[OpenSandboxSettings] = None):
         self._config = config or opensandbox_settings
+        self._api_prefix_candidates = self._build_api_prefix_candidates(
+            self._config.OPENSANDBOX_API_PREFIX
+        )
+        self._active_api_prefix: Optional[str] = None
         self._http_client = httpx.AsyncClient(
             base_url=self._config.OPENSANDBOX_BASE_URL,
             limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
             timeout=httpx.Timeout(self._config.OPENSANDBOX_REQUEST_TIMEOUT_SECONDS),
         )
-        self._breaker = pybreaker.CircuitBreaker(
-            fail_max=5,
-            reset_timeout=30,
-            name="opensandbox",
-        )
+        if pybreaker is not None:
+            self._breaker = pybreaker.CircuitBreaker(
+                fail_max=5,
+                reset_timeout=30,
+                name="opensandbox",
+            )
+        else:
+            logger.warning("opensandbox_pybreaker_missing_fallback_noop")
+            self._breaker = _NoopCircuitBreaker()
+
+    @staticmethod
+    def _normalize_prefix(prefix: str) -> str:
+        if not prefix:
+            return ""
+        normalized = prefix.strip()
+        if not normalized:
+            return ""
+        if not normalized.startswith("/"):
+            normalized = f"/{normalized}"
+        return normalized.rstrip("/")
+
+    @classmethod
+    def _build_api_prefix_candidates(cls, configured: str) -> tuple[str, ...]:
+        """Build ordered unique prefix candidates for route compatibility."""
+        candidates = [
+            cls._normalize_prefix(configured),
+            "/v1",
+            "/api/v1",
+            "",
+        ]
+        unique: list[str] = []
+        for candidate in candidates:
+            if candidate not in unique:
+                unique.append(candidate)
+        return tuple(unique)
+
+    @staticmethod
+    def _join_prefix(prefix: str, path: str) -> str:
+        normalized_path = path if path.startswith("/") else f"/{path}"
+        if not prefix:
+            return normalized_path
+        return f"{prefix}{normalized_path}"
+
+    def _iter_prefixes(self) -> tuple[str, ...]:
+        if self._active_api_prefix is not None:
+            return (self._active_api_prefix,)
+        return self._api_prefix_candidates
+
+    @staticmethod
+    def _rethrow_feature_not_supported(exc: SandboxAPIError, feature: str) -> None:
+        """Raise a clearer message when server does not expose legacy exec APIs."""
+        if exc.status_code != 404:
+            raise exc
+        raise SandboxAPIError(
+            404,
+            (
+                f"OpenSandbox server endpoint unavailable for '{feature}'. "
+                "This server appears to expose lifecycle APIs only."
+            ),
+        ) from exc
 
     @retry(
         stop=stop_after_attempt(3),
@@ -78,6 +148,9 @@ class OpenSandboxClient:
         """Send an HTTP request with circuit breaker and retry."""
         headers = {}
         if self._config.OPENSANDBOX_API_KEY:
+            # New lifecycle API uses OPEN-SANDBOX-API-KEY; keep X-API-Key for
+            # backward compatibility with older deployments/proxies.
+            headers["OPEN-SANDBOX-API-KEY"] = self._config.OPENSANDBOX_API_KEY
             headers["X-API-Key"] = self._config.OPENSANDBOX_API_KEY
 
         request_timeout = timeout or self._config.OPENSANDBOX_REQUEST_TIMEOUT_SECONDS
@@ -116,85 +189,152 @@ class OpenSandboxClient:
 
         return response
 
+    async def _request_with_prefix_fallback(
+        self,
+        method: str,
+        path: str,
+        *,
+        json: Optional[dict[str, Any]] = None,
+        content: Optional[bytes] = None,
+        params: Optional[dict[str, str]] = None,
+        timeout: Optional[int] = None,
+    ) -> httpx.Response:
+        """Request API path, probing known prefixes until one works."""
+        last_error: Optional[SandboxAPIError] = None
+        for prefix in self._iter_prefixes():
+            url = self._join_prefix(prefix, path)
+            try:
+                response = await self._request(
+                    method=method,
+                    url=url,
+                    json=json,
+                    content=content,
+                    params=params,
+                    timeout=timeout,
+                )
+                if self._active_api_prefix is None:
+                    self._active_api_prefix = prefix
+                return response
+            except SandboxAPIError as exc:
+                # Only probe alternate prefixes when no prefix has been learned.
+                if self._active_api_prefix is None and exc.status_code == 404:
+                    last_error = exc
+                    continue
+                raise
+        if last_error is not None:
+            raise last_error
+        raise SandboxAPIError(404, f"No OpenSandbox route matched path: {path}")
+
     async def create_sandbox(self, config: SandboxConfig) -> str:
-        """POST /api/v1/sandboxes. Returns sandbox_id."""
-        response = await self._request(
-            method="POST",
-            url="/api/v1/sandboxes",
-            json=config.model_dump(),
-        )
+        """POST /v1/sandboxes (or compatible prefix). Returns sandbox_id."""
+        response: httpx.Response
+        try:
+            response = await self._request_with_prefix_fallback(
+                method="POST",
+                path="/sandboxes",
+                json=config.to_create_payload(),
+            )
+        except SandboxAPIError as exc:
+            # Backward compatibility for older custom schema in legacy servers.
+            if exc.status_code != 422:
+                raise
+            response = await self._request_with_prefix_fallback(
+                method="POST",
+                path="/sandboxes",
+                json=config.model_dump(),
+            )
         data = response.json()
-        sandbox_id = data["id"]
+        sandbox_id = data.get("id") or data.get("sandboxId") or data.get("sandbox_id")
+        if not sandbox_id:
+            raise SandboxAPIError(
+                response.status_code,
+                f"Missing sandbox id in create response: {str(data)[:200]}",
+            )
         logger.info("sandbox_created", sandbox_id=sandbox_id)
         return sandbox_id
 
     async def get_sandbox_status(self, sandbox_id: str) -> SandboxStatus:
-        """GET /api/v1/sandboxes/{sandbox_id}. Returns SandboxStatus."""
-        response = await self._request(
+        """GET /v1/sandboxes/{sandbox_id}. Returns SandboxStatus."""
+        response = await self._request_with_prefix_fallback(
             method="GET",
-            url=f"/api/v1/sandboxes/{sandbox_id}",
+            path=f"/sandboxes/{sandbox_id}",
         )
         return SandboxStatus.model_validate(response.json())
 
     async def destroy_sandbox(self, sandbox_id: str) -> None:
-        """DELETE /api/v1/sandboxes/{sandbox_id}."""
-        await self._request(
+        """DELETE /v1/sandboxes/{sandbox_id}."""
+        await self._request_with_prefix_fallback(
             method="DELETE",
-            url=f"/api/v1/sandboxes/{sandbox_id}",
+            path=f"/sandboxes/{sandbox_id}",
         )
         logger.info("sandbox_destroyed", sandbox_id=sandbox_id)
 
     async def run_command(
         self, sandbox_id: str, command: str, timeout: int = 30
     ) -> CommandResult:
-        """POST /api/v1/sandboxes/{sandbox_id}/commands. Returns CommandResult."""
-        response = await self._request(
-            method="POST",
-            url=f"/api/v1/sandboxes/{sandbox_id}/commands",
-            json={"command": command, "timeout": timeout},
-            timeout=timeout + 5,
-        )
+        """POST /v1/sandboxes/{sandbox_id}/commands. Returns CommandResult."""
+        try:
+            response = await self._request_with_prefix_fallback(
+                method="POST",
+                path=f"/sandboxes/{sandbox_id}/commands",
+                json={"command": command, "timeout": timeout},
+                timeout=timeout + 5,
+            )
+        except SandboxAPIError as exc:
+            self._rethrow_feature_not_supported(exc, "run_command")
         return CommandResult.model_validate(response.json())
 
     async def write_file(
         self, sandbox_id: str, path: str, content: bytes
     ) -> None:
-        """POST /api/v1/sandboxes/{sandbox_id}/files. Upload file content."""
-        await self._request(
-            method="POST",
-            url=f"/api/v1/sandboxes/{sandbox_id}/files",
-            json={"path": path, "content": content.hex()},
-        )
+        """POST /v1/sandboxes/{sandbox_id}/files. Upload file content."""
+        try:
+            await self._request_with_prefix_fallback(
+                method="POST",
+                path=f"/sandboxes/{sandbox_id}/files",
+                json={"path": path, "content": content.hex()},
+            )
+        except SandboxAPIError as exc:
+            self._rethrow_feature_not_supported(exc, "write_file")
 
     async def read_file(self, sandbox_id: str, path: str) -> bytes:
-        """GET /api/v1/sandboxes/{sandbox_id}/files. Download file content."""
-        response = await self._request(
-            method="GET",
-            url=f"/api/v1/sandboxes/{sandbox_id}/files",
-            params={"path": path},
-        )
+        """GET /v1/sandboxes/{sandbox_id}/files. Download file content."""
+        try:
+            response = await self._request_with_prefix_fallback(
+                method="GET",
+                path=f"/sandboxes/{sandbox_id}/files",
+                params={"path": path},
+            )
+        except SandboxAPIError as exc:
+            self._rethrow_feature_not_supported(exc, "read_file")
         return response.content
 
     async def list_files(
         self, sandbox_id: str, path: str = "/"
     ) -> list[FileEntry]:
-        """GET /api/v1/sandboxes/{sandbox_id}/files/list."""
-        response = await self._request(
-            method="GET",
-            url=f"/api/v1/sandboxes/{sandbox_id}/files/list",
-            params={"path": path},
-        )
+        """GET /v1/sandboxes/{sandbox_id}/files/list."""
+        try:
+            response = await self._request_with_prefix_fallback(
+                method="GET",
+                path=f"/sandboxes/{sandbox_id}/files/list",
+                params={"path": path},
+            )
+        except SandboxAPIError as exc:
+            self._rethrow_feature_not_supported(exc, "list_files")
         return [FileEntry.model_validate(entry) for entry in response.json()]
 
     async def execute_code(
         self, sandbox_id: str, code: str, language: str = "python"
     ) -> CommandResult:
-        """POST /api/v1/sandboxes/{sandbox_id}/code. Execute via code interpreter."""
-        response = await self._request(
-            method="POST",
-            url=f"/api/v1/sandboxes/{sandbox_id}/code",
-            json={"code": code, "language": language},
-        )
+        """POST /v1/sandboxes/{sandbox_id}/code. Execute via code interpreter."""
+        try:
+            response = await self._request_with_prefix_fallback(
+                method="POST",
+                path=f"/sandboxes/{sandbox_id}/code",
+                json={"code": code, "language": language},
+            )
+        except SandboxAPIError as exc:
+            self._rethrow_feature_not_supported(exc, "execute_code")
         return CommandResult.model_validate(response.json())
 
     async def close(self) -> None:

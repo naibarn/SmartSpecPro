@@ -52,7 +52,7 @@ async function getSmtpConfig(): Promise<SmtpConfig | null> {
       secure: map.secure === "true",
       user: map.user,
       pass: map.pass,
-      fromName: map.from_name || "SmartSpec Pro",
+      fromName: map.from_name || "SmartAIHub",
       fromEmail: map.from_email || map.user,
     };
     cacheTime = Date.now();
@@ -113,7 +113,7 @@ export async function sendVerificationEmail(to: string, code: string, name?: str
     await transporter.sendMail({
       from: `"${config.fromName}" <${config.fromEmail}>`,
       to,
-      subject: "Verify your email — SmartSpec Pro",
+      subject: "Verify your email — SmartAIHub",
       html: `
         <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
           <h2 style="color: #7c3aed;">Verify Your Email</h2>
@@ -125,7 +125,7 @@ export async function sendVerificationEmail(to: string, code: string, name?: str
           <p style="color: #666; font-size: 14px;">This code expires in 15 minutes.</p>
           <p style="color: #666; font-size: 14px;">If you didn't create an account, you can ignore this email.</p>
           <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-          <p style="color: #999; font-size: 12px;">SmartSpec Pro</p>
+          <p style="color: #999; font-size: 12px;">SmartAIHub</p>
         </div>
       `,
     });
@@ -159,7 +159,7 @@ export async function sendPasswordResetEmail(to: string, code: string, name?: st
     await transporter.sendMail({
       from: `"${config.fromName}" <${config.fromEmail}>`,
       to,
-      subject: "Reset your password — SmartSpec Pro",
+      subject: "Reset your password — SmartAIHub",
       html: `
         <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
           <h2 style="color: #7c3aed;">Reset Your Password</h2>
@@ -171,7 +171,7 @@ export async function sendPasswordResetEmail(to: string, code: string, name?: st
           <p style="color: #666; font-size: 14px;">This code expires in 15 minutes.</p>
           <p style="color: #666; font-size: 14px;">If you didn't request a password reset, you can ignore this email.</p>
           <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-          <p style="color: #999; font-size: 12px;">SmartSpec Pro</p>
+          <p style="color: #999; font-size: 12px;">SmartAIHub</p>
         </div>
       `,
     });

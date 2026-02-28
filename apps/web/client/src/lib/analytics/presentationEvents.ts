@@ -23,17 +23,29 @@ export interface AutosaveResultPayload {
   mode: "manual" | "autosave";
 }
 
-type EventEmitter = (event: PresentationAnalyticsEvent, payload: Record<string, unknown>) => void;
+type PresentationAnalyticsEventPayloadMap = {
+  "presentation_mobile_mode_switch": MobileModeSwitchPayload;
+  "presentation_mobile_accidental_transform_cancelled": MobileAccidentalTransformPayload;
+  "presentation_autosave_result": AutosaveResultPayload;
+};
+
+type EventEmitter = <E extends PresentationAnalyticsEvent>(
+  event: E,
+  payload: PresentationAnalyticsEventPayloadMap[E],
+) => void;
 
 let testEmitter: EventEmitter | null = null;
 
-function emitEvent(event: PresentationAnalyticsEvent, payload: Record<string, unknown>): void {
+function emitEvent<E extends PresentationAnalyticsEvent>(
+  event: E,
+  payload: PresentationAnalyticsEventPayloadMap[E],
+): void {
   if (testEmitter) {
     testEmitter(event, payload);
   }
 
   const posthog = getPostHog();
-  posthog?.capture(event, payload);
+  posthog?.capture(event, payload as unknown as Record<string, unknown>);
 }
 
 export function setPresentationEventEmitterForTests(emitter: EventEmitter | null): void {

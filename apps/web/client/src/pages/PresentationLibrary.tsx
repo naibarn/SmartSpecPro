@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { formatRelativeTime } from "@smartspec/shared";
 import type { LucideIcon } from "lucide-react";
-import { ChevronLeft, FileStack, LayoutTemplate, Presentation, Search, Trash2 } from "lucide-react";
+import { ChevronLeft, FileStack, LayoutTemplate, Loader2, Plus, Presentation, Search, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -376,6 +376,8 @@ export default function PresentationLibrary() {
   );
   const useTemplateMutation = trpc.presentation.useTemplate.useMutation();
   const deleteItemMutation = trpc.library.deleteItem.useMutation();
+  const createItemMutation = trpc.library.createItem.useMutation();
+  const createDeckMutation = trpc.presentation.createDeck.useMutation();
 
   const presentationItems = useMemo(() => {
     const rows = Array.isArray(listQuery.data?.results) ? listQuery.data.results : [];
@@ -455,6 +457,42 @@ export default function PresentationLibrary() {
     }
   }
 
+  const isCreating = createItemMutation.isPending || createDeckMutation.isPending;
+
+  async function handleCreateNewPresentation() {
+    try {
+      const now = new Date();
+      const title = `New Presentation ${now.toLocaleString()}`;
+      const createResult = await createItemMutation.mutateAsync({
+        itemType: "presentation",
+        source: "presentation_library",
+        title,
+        description: "Presentation deck",
+        status: "ready",
+        visibility: "private",
+        metadata: {
+          extension: "presentation",
+          source_type: "presentation_document",
+        },
+      });
+
+      try {
+        await createDeckMutation.mutateAsync({
+          libraryItemId: createResult.item.id,
+          title: createResult.item.title || title,
+        });
+      } catch {
+        // Non-fatal — editor will auto-init deck if needed
+      }
+
+      await trpcUtils.library.listDocuments.invalidate();
+      toast.success("New presentation created.");
+      setLocation(`/presentation-editor/${createResult.item.id}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to create presentation.");
+    }
+  }
+
   if (authLoading || (!isAuthenticated && !user)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-50">
@@ -484,6 +522,16 @@ export default function PresentationLibrary() {
               </div>
             </div>
           </div>
+          <Button
+            onClick={handleCreateNewPresentation}
+            disabled={isCreating}
+            size="sm"
+            className="gap-1.5"
+            aria-label="Create new presentation"
+          >
+            {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            New Presentation
+          </Button>
         </div>
       </header>
 

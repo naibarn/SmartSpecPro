@@ -9,43 +9,26 @@ class ValidationResult:
     errors: List[str]
     warnings: List[str]
 
-_DIFF_PLUS = re.compile(r"^\+\+\+\s+(?P<path>\S+)")
-_DIFF_MINUS = re.compile(r"^---\s+(?P<path>\S+)")
-
-def _norm(p: str) -> str:
-    if p.startswith("a/") or p.startswith("b/"):
-        return p[2:]
-    return p
-
-def extract_paths(unified_diff: str) -> List[str]:
-    paths=[]
-    for ln in unified_diff.splitlines():
-        m = _DIFF_PLUS.match(ln) or _DIFF_MINUS.match(ln)
-        if not m:
-            continue
-        p=_norm(m.group("path"))
-        if p == "/dev/null":
-            continue
-        paths.append(p)
-    seen=set(); out=[]
-    for p in paths:
-        if p in seen:
-            continue
-        seen.add(p); out.append(p)
-    return out
+import json
 
 def validate_patch(
     skill_name: str,
-    unified_diff: str,
+    patch_payload: str,
     restrict_under_skills: bool = True,
     disallow_new_deps_in_skill_py: bool = True,
     require_respond_signature: bool = True,
 ) -> ValidationResult:
     errors=[]; warnings=[]
-    if not unified_diff.strip():
-        return ValidationResult(True, [], ["empty diff"])
+    if not patch_payload.strip():
+        return ValidationResult(True, [], ["empty patch"])
 
-    paths = extract_paths(unified_diff)
+    try:
+        data = json.loads(patch_payload)
+    except Exception as e:
+        return ValidationResult(False, [f"Invalid JSON patch: {e}"], [])
+
+    paths = list(data.keys())
+    
     if restrict_under_skills:
         for p in paths:
             if not p.startswith(f"skills/{skill_name}/"):
@@ -55,14 +38,16 @@ def validate_patch(
         if p.endswith("tests.json"):
             warnings.append("Patch edits tests.json (ensure user-approved for test expansion).")
 
-    if disallow_new_deps_in_skill_py:
-        banned = ["requests","numpy","pandas","torch","tensorflow","openai","anthropic"]
-        for b in banned:
-            if re.search(rf"^\+\s*import\s+{re.escape(b)}\b", unified_diff, re.MULTILINE) or                re.search(rf"^\+\s*from\s+{re.escape(b)}\b", unified_diff, re.MULTILINE):
-                errors.append(f"New external dependency not allowed in skill.py: {b}")
+        content = data[p]
+        if disallow_new_deps_in_skill_py and p.endswith("skill.py"):
+            banned = ["requests","numpy","pandas","torch","tensorflow","openai","anthropic"]
+            for b in banned:
+                if re.search(rf"^\s*import\s+{re.escape(b)}\b", content, re.MULTILINE) or \
+                   re.search(rf"^\s*from\s+{re.escape(b)}\b", content, re.MULTILINE):
+                    errors.append(f"New external dependency not allowed in skill.py: {b}")
 
-    if require_respond_signature:
-        if re.search(r"^\-\s*def\s+respond\s*\(", unified_diff, re.MULTILINE):
-            warnings.append("respond() signature modified/removed; verify it still matches required API.")
+        if require_respond_signature and p.endswith("skill.py"):
+            if not re.search(r"def\s+respond\s*\(", content):
+                errors.append("respond() signature missing; it must still match the required API.")
 
     return ValidationResult(len(errors)==0, errors, warnings)

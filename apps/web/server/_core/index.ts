@@ -17,8 +17,11 @@ import { serveStatic, setupVite } from "./vite";
 import { registerLLMRoutes } from "./llmRoutes";
 import { registerMCPRoutes } from "./mcpRoutes";
 import { registerMediaJobRoutes } from "../routers/mediaJobs";
+import { registerAgencyStreamRoutes } from "./agencyStreamProxy";
 
 import { createWebhookRouter } from "../routes/webhooks";
+import { createTelegramWebhookRouter } from "../routes/telegramWebhook";
+import "../services/telegramLinkService"; // Register /start link handler
 import { createSlideRenderRouter } from "../routes/slideRender";
 import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
 import { registerServicesRoutes } from "../routers/services";
@@ -37,6 +40,7 @@ import { auditMiddleware } from "../middleware/auditMiddleware";
 import { correlationIdMiddleware } from "../middleware/correlationId";
 // BullMQ scheduler/queue init removed — migrated to Cloud Tasks (Section 05)
 import { initializeTelegramQueue, shutdownTelegramWorker } from "../services/telegramService";
+import { initDeliveryQueue, closeDeliveryQueue } from "../services/deliveryQueue";
 import { initializeTrashPurgeJob, shutdownTrashPurgeWorker } from "../jobs/purgeOldTrashItems";
 import { initializeGDriveCleanupJob, shutdownGDriveCleanupWorker } from "../jobs/gdriveSessionCleanup";
 import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
@@ -221,7 +225,9 @@ const csrfCheck = (req: any, res: any, next: any) => {
     req.path === "/v1/media/callback/kie-ai" ||
     req.originalUrl === "/api/v1/media/callback/kie-ai" ||
     req.path.startsWith("/webhooks/gdrive") ||
-    req.originalUrl.startsWith("/api/webhooks/gdrive")
+    req.originalUrl.startsWith("/api/webhooks/gdrive") ||
+    req.path.startsWith("/webhooks/telegram/") ||
+    req.originalUrl.startsWith("/webhooks/telegram/")
   ) {
     return next();
   }
@@ -326,8 +332,12 @@ app.get("/api/storage/files/*", async (req, res) => {
 // Internal slide render route — localhost-only, JWT-gated, for Playwright screenshots
 app.use("/internal", createSlideRenderRouter());
 
-// Webhook routes (before CSRF-protected routes, Google Drive sends raw POSTs)
+// Webhook routes (before CSRF-protected routes, external services send raw POSTs)
 app.use("/api/webhooks", createWebhookRouter());
+
+// Telegram Bot API webhook (Telegram sends POSTs with secret-token header, no Origin)
+// Tighter body limit than global 10MB — Telegram updates are small JSON payloads
+app.use("/webhooks/telegram", express.json({ limit: "1mb" }), createTelegramWebhookRouter());
 
 // Cloud Tasks handler routes (called by Cloud Tasks with OIDC auth)
 // Mounted at /_internal/tasks to avoid conflict with the frontend /tasks SPA route
@@ -337,6 +347,7 @@ app.use("/_internal/tasks", createTasksRouter());
 registerLLMRoutes(app);
 registerMCPRoutes(app);
 registerMediaJobRoutes(app);
+registerAgencyStreamRoutes(app);
 
 // Proxy remote images through same-origin endpoint so browser canvas operations
 // (split/crop preview) work even when source host doesn't expose CORS headers.
@@ -362,7 +373,7 @@ app.get("/api/media/image-proxy", async (req, res) => {
 const VALID_SOURCE_TYPES = new Set([
   "chat", "skill", "media_image", "media_video", "media_audio",
   "indexing", "rag", "stt", "translation", "brainstorm",
-  "scheduler", "admin", "other",
+  "scheduler", "admin", "agency", "other",
 ]);
 
 // Helper: derive sourceType from service tag when not explicitly provided
@@ -430,6 +441,115 @@ app.post("/api/internal/credits/charge", async (req, res) => {
   } catch (err: any) {
     const status = err.message?.includes("Insufficient credits") ? 402 : 500;
     return res.status(status).json({ success: false, error: err.message });
+  }
+});
+
+// Internal agency multiplier markup endpoint (Python backend -> Node.js)
+app.post("/api/internal/credits/agency-markup", async (req, res) => {
+  const authHeader = req.headers.authorization || "";
+  if (!authHeader.startsWith("Bearer ") || !ENV.webGatewayToken) {
+    return res.status(401).json({ success: false, error: "Unauthorized" });
+  }
+  const token = authHeader.slice(7);
+  if (token !== ENV.webGatewayToken) {
+    return res.status(401).json({ success: false, error: "Unauthorized" });
+  }
+
+  try {
+    const { userId, agencyId, markupAmount, sourceType } = req.body;
+
+    if (typeof userId !== "number" || !Number.isFinite(userId) || userId <= 0) {
+      return res.status(400).json({ success: false, error: "userId must be a positive number" });
+    }
+    if (typeof agencyId !== "string" || !agencyId) {
+      return res.status(400).json({ success: false, error: "agencyId is required" });
+    }
+    if (typeof markupAmount !== "number" || !Number.isFinite(markupAmount) || markupAmount <= 0) {
+      return res.status(400).json({ success: false, error: "markupAmount must be a positive number" });
+    }
+
+    const { deductCredits } = await import("../services/creditService");
+
+    const result = await deductCredits({
+      userId,
+      amount: markupAmount,
+      description: `Agency multiplier markup for agency ${agencyId}`,
+      sourceType: "agency",
+      metadata: {
+        agencyId,
+        markupAmount,
+        sourceType: sourceType ?? "agency",
+        service: "agency.multiplier_markup",
+      },
+    });
+
+    return res.json({
+      success: true,
+      markupCharged: markupAmount,
+      creditsUsed: result.creditsUsed,
+      transactionId: result.transactionId,
+    });
+  } catch (err: any) {
+    const status = err.message?.includes("Insufficient credits") ? 402 : 500;
+    return res.status(status).json({ success: false, error: err.message });
+  }
+});
+
+// Internal creator fee settlement endpoint (Python backend -> Node.js)
+app.post("/api/internal/credits/creator-fee-settle", async (req, res) => {
+  const authHeader = req.headers.authorization || "";
+  if (!authHeader.startsWith("Bearer ") || !ENV.webGatewayToken) {
+    return res.status(401).json({ success: false, error: "Unauthorized" });
+  }
+  const token = authHeader.slice(7);
+  if (token !== ENV.webGatewayToken) {
+    return res.status(401).json({ success: false, error: "Unauthorized" });
+  }
+
+  try {
+    const { runId, agencyId, userId, creatorId, creatorFeeCredits, platformSharePct, tenantId } = req.body;
+
+    if (typeof runId !== "string" || !runId) {
+      return res.status(400).json({ success: false, error: "runId is required" });
+    }
+    if (typeof agencyId !== "string" || !agencyId) {
+      return res.status(400).json({ success: false, error: "agencyId is required" });
+    }
+    if (typeof userId !== "number" || !Number.isFinite(userId) || userId <= 0) {
+      return res.status(400).json({ success: false, error: "userId must be a positive number" });
+    }
+    if (typeof creatorId !== "number" || !Number.isFinite(creatorId) || creatorId <= 0) {
+      return res.status(400).json({ success: false, error: "creatorId must be a positive number" });
+    }
+    if (typeof creatorFeeCredits !== "number" || !Number.isFinite(creatorFeeCredits) || creatorFeeCredits < 0) {
+      return res.status(400).json({ success: false, error: "creatorFeeCredits must be a non-negative number" });
+    }
+    if (typeof platformSharePct !== "number" || !Number.isFinite(platformSharePct) || platformSharePct < 0 || platformSharePct > 100) {
+      return res.status(400).json({ success: false, error: "platformSharePct must be between 0 and 100" });
+    }
+    if (typeof tenantId !== "string" || !tenantId) {
+      return res.status(400).json({ success: false, error: "tenantId is required" });
+    }
+
+    const { settleCreatorFee } = await import("../services/creatorRevenueService");
+
+    const result = await settleCreatorFee({
+      runId,
+      entityType: "agency",
+      entityId: agencyId,
+      runnerId: userId,
+      creatorId,
+      tenantId,
+      totalFee: creatorFeeCredits,
+      platformSharePct,
+    });
+
+    return res.json({
+      success: true,
+      ...result,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -679,6 +799,13 @@ async function main() {
     console.error("[Startup] Failed to initialize Telegram queue:", error);
   }
 
+  // Initialize Chat Bridge delivery queue (BullMQ)
+  try {
+    await initDeliveryQueue();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize delivery queue:", error);
+  }
+
   // Initialize provider health circuit breaker from DB state
   try {
     await initFromDb();
@@ -762,6 +889,7 @@ process.on("SIGTERM", async () => {
   await shutdownGDriveCleanupWorker().catch(() => {});
   await shutdownTrashPurgeWorker().catch(() => {});
   await shutdownTelegramWorker().catch(() => {});
+  await closeDeliveryQueue().catch(() => {});
 
   // 4. Flush PostHog event batch
   try {
@@ -804,6 +932,7 @@ process.on("SIGINT", async () => {
   await shutdownGDriveCleanupWorker().catch(() => {});
   await shutdownTrashPurgeWorker().catch(() => {});
   await shutdownTelegramWorker().catch(() => {});
+  await closeDeliveryQueue().catch(() => {});
 
   try {
     const redis = getRedisClient();

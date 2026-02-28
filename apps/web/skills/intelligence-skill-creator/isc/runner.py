@@ -52,9 +52,9 @@ def iterate_improve(project_root: Path, skill_name: str, mode: str="auto", round
             except Exception:
                 proposal = HeuristicImprover().propose_patch(skill_name, report)
         proposals.append(proposal)
-        if not proposal.unified_diff.strip():
+        if not proposal.patch_payload.strip():
             break
-        apply_diff(ws, proposal.unified_diff)
+        apply_diff(ws, proposal.patch_payload)
         report = evaluate_from_path(skill_dir)
 
     return RunResult(ws, report, proposals)

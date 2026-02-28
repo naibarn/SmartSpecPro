@@ -22,7 +22,7 @@ class TestOpenSandboxClient:
         return OpenSandboxSettings(_env_file=None, **defaults)
 
     async def test_create_sandbox_sends_correct_request(self):
-        """create_sandbox() POSTs to /api/v1/sandboxes with correct body."""
+        """create_sandbox() POSTs to /v1/sandboxes with correct body."""
         from app.integrations.opensandbox.client import OpenSandboxClient
         from app.integrations.opensandbox.models import SandboxConfig
 
@@ -32,7 +32,7 @@ class TestOpenSandboxClient:
         mock_response = httpx.Response(
             200,
             json={"id": "sb-new-123"},
-            request=httpx.Request("POST", "http://sandbox.test:8080/api/v1/sandboxes"),
+            request=httpx.Request("POST", "http://sandbox.test:8080/v1/sandboxes"),
         )
 
         with patch.object(client._http_client, "request", new_callable=AsyncMock) as mock_req:
@@ -42,7 +42,7 @@ class TestOpenSandboxClient:
             mock_req.assert_called_once()
             call_kwargs = mock_req.call_args
             assert call_kwargs.kwargs["method"] == "POST"
-            assert "/api/v1/sandboxes" in call_kwargs.kwargs["url"]
+            assert "/v1/sandboxes" in call_kwargs.kwargs["url"]
 
         await client.close()
 
@@ -57,7 +57,7 @@ class TestOpenSandboxClient:
         mock_response = httpx.Response(
             200,
             json={"id": "sb-abc-456"},
-            request=httpx.Request("POST", "http://sandbox.test:8080/api/v1/sandboxes"),
+            request=httpx.Request("POST", "http://sandbox.test:8080/v1/sandboxes"),
         )
 
         with patch.object(client._http_client, "request", new_callable=AsyncMock) as mock_req:
@@ -69,7 +69,7 @@ class TestOpenSandboxClient:
         await client.close()
 
     async def test_get_sandbox_status_returns_status_model(self):
-        """get_sandbox_status() GETs /api/v1/sandboxes/{id} and returns SandboxStatus."""
+        """get_sandbox_status() GETs /v1/sandboxes/{id} and returns SandboxStatus."""
         from app.integrations.opensandbox.client import OpenSandboxClient
         from app.integrations.opensandbox.models import SandboxStatus
 
@@ -79,7 +79,7 @@ class TestOpenSandboxClient:
         mock_response = httpx.Response(
             200,
             json={"id": "sb-123", "status": "running", "metadata": {}},
-            request=httpx.Request("GET", "http://sandbox.test:8080/api/v1/sandboxes/sb-123"),
+            request=httpx.Request("GET", "http://sandbox.test:8080/v1/sandboxes/sb-123"),
         )
 
         with patch.object(client._http_client, "request", new_callable=AsyncMock) as mock_req:
@@ -91,7 +91,7 @@ class TestOpenSandboxClient:
         await client.close()
 
     async def test_destroy_sandbox_sends_delete(self):
-        """destroy_sandbox() DELETEs /api/v1/sandboxes/{id}."""
+        """destroy_sandbox() DELETEs /v1/sandboxes/{id}."""
         from app.integrations.opensandbox.client import OpenSandboxClient
 
         config = self._make_settings()
@@ -99,7 +99,7 @@ class TestOpenSandboxClient:
 
         mock_response = httpx.Response(
             204,
-            request=httpx.Request("DELETE", "http://sandbox.test:8080/api/v1/sandboxes/sb-123"),
+            request=httpx.Request("DELETE", "http://sandbox.test:8080/v1/sandboxes/sb-123"),
         )
 
         with patch.object(client._http_client, "request", new_callable=AsyncMock) as mock_req:
@@ -120,7 +120,7 @@ class TestOpenSandboxClient:
         mock_response = httpx.Response(
             200,
             json={"exit_code": 0, "stdout": "hello\n", "stderr": ""},
-            request=httpx.Request("POST", "http://sandbox.test:8080/api/v1/sandboxes/sb-1/commands"),
+            request=httpx.Request("POST", "http://sandbox.test:8080/v1/sandboxes/sb-1/commands"),
         )
 
         with patch.object(client._http_client, "request", new_callable=AsyncMock) as mock_req:
@@ -128,6 +128,27 @@ class TestOpenSandboxClient:
             result = await client.run_command("sb-1", "echo hello", timeout=10)
             assert result.exit_code == 0
             assert result.stdout == "hello\n"
+
+        await client.close()
+
+    async def test_run_command_404_has_clear_feature_message(self):
+        """404 from /commands endpoint reports lifecycle-only deployment clearly."""
+        from app.integrations.opensandbox.client import OpenSandboxClient, SandboxAPIError
+
+        config = self._make_settings()
+        client = OpenSandboxClient(config)
+
+        mock_response = httpx.Response(
+            404,
+            json={"detail": "Not Found"},
+            request=httpx.Request("POST", "http://sandbox.test:8080/v1/sandboxes/sb-1/commands"),
+        )
+
+        with patch.object(client._http_client, "request", new_callable=AsyncMock) as mock_req:
+            mock_req.return_value = mock_response
+            with pytest.raises(SandboxAPIError) as exc_info:
+                await client.run_command("sb-1", "echo hello", timeout=10)
+            assert "lifecycle APIs only" in str(exc_info.value)
 
         await client.close()
 
@@ -141,7 +162,7 @@ class TestOpenSandboxClient:
         mock_response = httpx.Response(
             200,
             json={"success": True},
-            request=httpx.Request("POST", "http://sandbox.test:8080/api/v1/sandboxes/sb-1/files"),
+            request=httpx.Request("POST", "http://sandbox.test:8080/v1/sandboxes/sb-1/files"),
         )
 
         with patch.object(client._http_client, "request", new_callable=AsyncMock) as mock_req:
@@ -161,7 +182,7 @@ class TestOpenSandboxClient:
         mock_response = httpx.Response(
             200,
             content=b"file content here",
-            request=httpx.Request("GET", "http://sandbox.test:8080/api/v1/sandboxes/sb-1/files"),
+            request=httpx.Request("GET", "http://sandbox.test:8080/v1/sandboxes/sb-1/files"),
         )
 
         with patch.object(client._http_client, "request", new_callable=AsyncMock) as mock_req:
@@ -184,7 +205,7 @@ class TestOpenSandboxClient:
                 {"name": "file1.py", "path": "/workspace/file1.py", "size": 100, "is_directory": False},
                 {"name": "data", "path": "/workspace/data", "size": 0, "is_directory": True},
             ],
-            request=httpx.Request("GET", "http://sandbox.test:8080/api/v1/sandboxes/sb-1/files/list"),
+            request=httpx.Request("GET", "http://sandbox.test:8080/v1/sandboxes/sb-1/files/list"),
         )
 
         with patch.object(client._http_client, "request", new_callable=AsyncMock) as mock_req:
@@ -232,17 +253,17 @@ class TestOpenSandboxClient:
             httpx.Response(
                 503,
                 json={"error": "unavailable"},
-                request=httpx.Request("POST", "http://sandbox.test:8080/api/v1/sandboxes"),
+                request=httpx.Request("POST", "http://sandbox.test:8080/v1/sandboxes"),
             ),
             httpx.Response(
                 503,
                 json={"error": "unavailable"},
-                request=httpx.Request("POST", "http://sandbox.test:8080/api/v1/sandboxes"),
+                request=httpx.Request("POST", "http://sandbox.test:8080/v1/sandboxes"),
             ),
             httpx.Response(
                 200,
                 json={"id": "sb-retry-ok"},
-                request=httpx.Request("POST", "http://sandbox.test:8080/api/v1/sandboxes"),
+                request=httpx.Request("POST", "http://sandbox.test:8080/v1/sandboxes"),
             ),
         ]
 
@@ -265,7 +286,7 @@ class TestOpenSandboxClient:
         mock_response = httpx.Response(
             400,
             json={"error": "bad request"},
-            request=httpx.Request("POST", "http://sandbox.test:8080/api/v1/sandboxes"),
+            request=httpx.Request("POST", "http://sandbox.test:8080/v1/sandboxes"),
         )
 
         with patch.object(client._http_client, "request", new_callable=AsyncMock) as mock_req:
@@ -277,7 +298,7 @@ class TestOpenSandboxClient:
         await client.close()
 
     async def test_api_key_sent_in_header(self):
-        """All requests include X-API-Key header."""
+        """All requests include OPEN-SANDBOX-API-KEY header."""
         from app.integrations.opensandbox.client import OpenSandboxClient
         from app.integrations.opensandbox.models import SandboxConfig
 
@@ -287,7 +308,7 @@ class TestOpenSandboxClient:
         mock_response = httpx.Response(
             200,
             json={"id": "sb-header-test"},
-            request=httpx.Request("POST", "http://sandbox.test:8080/api/v1/sandboxes"),
+            request=httpx.Request("POST", "http://sandbox.test:8080/v1/sandboxes"),
         )
 
         with patch.object(client._http_client, "request", new_callable=AsyncMock) as mock_req:
@@ -295,6 +316,7 @@ class TestOpenSandboxClient:
             await client.create_sandbox(SandboxConfig())
             call_kwargs = mock_req.call_args
             headers = call_kwargs.kwargs.get("headers", {})
+            assert headers.get("OPEN-SANDBOX-API-KEY") == "my-secret-key"
             assert headers.get("X-API-Key") == "my-secret-key"
 
         await client.close()

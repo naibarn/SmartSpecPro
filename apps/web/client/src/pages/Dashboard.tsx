@@ -1,5 +1,5 @@
 /**
- * Dashboard Page - SmartSpec Pro
+ * Dashboard Page - SmartAIHub
  * User dashboard after login
  */
 
@@ -285,7 +285,7 @@ export default function Dashboard() {
               <Sparkles className="w-5 h-5 text-white" />
             </div>
           )}
-          <span className="text-xl font-bold text-gray-900">{tenant?.name || 'SmartSpec'}</span>
+          <span className="text-xl font-bold text-gray-900">{tenant?.name || 'SmartAIHub'}</span>
         </div>
 
         <nav className="flex-1 overflow-y-auto px-6 space-y-1">
@@ -394,24 +394,24 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+          className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8"
         >
           {stats.map((stat, index) => (
             <div
               key={index}
-              className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 p-6 shadow-lg shadow-purple-500/5"
+              className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 p-4 sm:p-6 shadow-lg shadow-purple-500/5"
             >
-              <div className="flex items-center justify-between mb-4">
-                <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center`}>
-                  <stat.icon className={`w-5 h-5 ${stat.color}`} />
+              <div className="flex items-center justify-between mb-2 sm:mb-4">
+                <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${stat.bg} flex items-center justify-center`}>
+                  <stat.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${stat.color}`} />
                 </div>
-                <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                <span className="text-xs font-medium text-gray-500 bg-gray-100 px-1.5 sm:px-2 py-1 rounded-full">
                   {user.plan.toUpperCase()}
                 </span>
               </div>
-              <div className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</div>
+              <div className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">{stat.value}</div>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500">{stat.label}</span>
+                <span className="text-xs sm:text-sm text-gray-500">{stat.label}</span>
                 {'sub' in stat && stat.sub && (
                   <span className="text-xs font-medium text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
                     {stat.sub}

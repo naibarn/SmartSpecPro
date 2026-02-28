@@ -167,7 +167,7 @@ export function registerDeviceAuthRoutes(app: Express) {
    * Desktop direct login — email/password → JWT tokens
    * POST /auth/desktop/login
    *
-   * Same user database as SmartSpecWeb, returns JWT (not cookie).
+   * Same user database as SmartAIHubWeb, returns JWT (not cookie).
    */
   app.post("/auth/desktop/login", loginLimiter, async (req: Request, res: Response) => {
     const { email, password } = req.body || {};

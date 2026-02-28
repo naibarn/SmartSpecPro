@@ -54,7 +54,7 @@ const SERVICE_CONFIGS: ServiceConfig[] = [
 
   // Applications (can be Docker or host processes)
   {
-    id: 'smartspec-web', name: 'smartspec-web', displayName: 'SmartSpec Web',
+    id: 'smartspec-web', name: 'smartspec-web', displayName: 'SmartAIHub Web',
     ports: ['3000'], type: 'host', checkPort: 3000,
     description: 'Frontend & tRPC API (Node.js)'
   },
@@ -876,7 +876,7 @@ export function registerServicesRoutes(app: Express) {
           }
           break;
         case 'host':
-          logs = `Host process logs are not available from web UI.\n\nView logs in the terminal where the process is running, or check:\n- SmartSpec Web: terminal running 'bash dev-local.sh web'\n- Python Backend: terminal running 'bash dev-local.sh backend'`;
+          logs = `Host process logs are not available from web UI.\n\nView logs in the terminal where the process is running, or check:\n- SmartAIHub Web: terminal running 'bash dev-local.sh web'\n- Python Backend: terminal running 'bash dev-local.sh backend'`;
           break;
         case 'systemd':
           if (config.systemdName) {

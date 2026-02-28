@@ -23,13 +23,9 @@ export type TemplateAssetPolicyRejectReason =
   | "byte_size_invalid"
   | "byte_size_exceeded";
 
-export interface TemplateAssetPolicyResult {
-  ok: boolean;
-  byteSize?: number;
-  mimeType?: string | null;
-  extension?: string | null;
-  reason?: TemplateAssetPolicyRejectReason;
-}
+export type TemplateAssetPolicyResult =
+  | { ok: true; byteSize: number; mimeType: string | null; extension: string | null }
+  | { ok: false; reason: TemplateAssetPolicyRejectReason; mimeType?: string | null; extension?: string | null };
 
 function normalizeString(value: unknown): string | null {
   if (typeof value !== "string") {

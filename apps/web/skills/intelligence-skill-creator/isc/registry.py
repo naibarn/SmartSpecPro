@@ -16,7 +16,9 @@ def list_skills() -> List[str]:
         return []
     out = []
     for p in SKILLS_DIR.iterdir():
-        if p.is_dir() and (p / "manifest.json").exists() and (p / "skill.py").exists():
+        if p.is_dir() and (p / "skill.md").exists() and (
+            (p / "python" / "skill.py").exists() or (p / "js" / "skill.js").exists()
+        ):
             out.append(p.name)
     return sorted(out)
 

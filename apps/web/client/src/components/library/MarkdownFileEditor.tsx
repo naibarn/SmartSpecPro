@@ -43,6 +43,7 @@ interface MarkdownFileEditorProps {
   onChange: (value: string) => void;
   onSave: () => void;
   onVersionRestore?: () => void;
+  onEnterEditMode?: () => void;
   disabled?: boolean;
   isSaving?: boolean;
   updatedAt?: string;
@@ -57,6 +58,7 @@ export default function MarkdownFileEditor({
   onChange,
   onSave,
   onVersionRestore,
+  onEnterEditMode,
   disabled,
   isSaving,
   updatedAt,
@@ -314,7 +316,11 @@ export default function MarkdownFileEditor({
               type="button"
               variant={isEditMode ? "outline" : "default"}
               size="sm"
-              onClick={() => setIsEditMode(!isEditMode)}
+              onClick={() => {
+                const next = !isEditMode;
+                setIsEditMode(next);
+                if (next) onEnterEditMode?.();
+              }}
             >
               {isEditMode ? (
                 <>
@@ -573,7 +579,7 @@ export default function MarkdownFileEditor({
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={() => setIsEditMode(true)}
+                onClick={() => { setIsEditMode(true); onEnterEditMode?.(); }}
               >
                 <Edit3 className="mr-1 h-4 w-4" />
                 Edit

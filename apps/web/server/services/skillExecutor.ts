@@ -40,6 +40,27 @@ const RATE_LIMITS: Record<string, number> = {
   "audio-generation": 10,
 };
 const DEFAULT_RATE_LIMIT = 20;
+const SANDBOX_SKILL_ROOT = "/workspace/skill";
+const SANDBOX_INPUT_PATH = "/workspace/skill-input.json";
+const SANDBOX_MAX_INLINE_FILE_BYTES = 2 * 1024 * 1024; // 2MB per file
+const SANDBOX_MAX_INLINE_TOTAL_BYTES = 8 * 1024 * 1024; // 8MB total
+const SKILL_SKIP_DIRS = new Set([".git", "__pycache__", "node_modules", ".venv", "venv"]);
+const SKILL_SKIP_SUFFIXES = [".pyc", ".pyo"];
+
+interface PythonSkillPaths {
+  skillDir: string;
+  scriptPath: string;
+}
+
+interface SandboxInlineFile {
+  path: string;
+  contentBase64: string;
+}
+
+interface PreparedPythonSandboxPayload {
+  executionMode: "sandbox-python";
+  metadata: Record<string, unknown>;
+}
 
 function checkRateLimit(userId: number, skillType: string): boolean {
   const key = `${userId}:${skillType}`;
@@ -54,6 +75,135 @@ function checkRateLimit(userId: number, skillType: string): boolean {
   if (entry.count >= limit) return false;
   entry.count++;
   return true;
+}
+
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\"'\"'`)}'`;
+}
+
+function resolvePythonSkillPaths(skill: SkillDefinition): PythonSkillPaths | null {
+  const candidateDirs: string[] = [];
+
+  if (skill.skillFilePath) {
+    const relativeDir = path.dirname(skill.skillFilePath);
+    if (path.isAbsolute(relativeDir)) {
+      candidateDirs.push(relativeDir);
+    } else {
+      candidateDirs.push(path.resolve(process.cwd(), relativeDir));
+      candidateDirs.push(path.resolve(process.cwd(), "..", "..", relativeDir));
+    }
+  }
+
+  const rootCandidates = [
+    path.resolve(process.cwd(), "skills"),
+    path.resolve(process.cwd(), "apps", "web", "skills"),
+    path.resolve(process.cwd(), "..", "..", "apps", "web", "skills"),
+  ];
+  for (const root of rootCandidates) {
+    candidateDirs.push(path.join(root, skill.id));
+  }
+
+  const deduped = Array.from(new Set(candidateDirs));
+  for (const skillDir of deduped) {
+    const scriptPath = path.join(skillDir, "python", "skill.py");
+    if (fs.existsSync(scriptPath)) {
+      return { skillDir, scriptPath };
+    }
+  }
+
+  return null;
+}
+
+function collectSkillInlineFiles(skillDir: string): SandboxInlineFile[] {
+  const inlineFiles: SandboxInlineFile[] = [];
+  let totalBytes = 0;
+
+  const walk = (dirPath: string) => {
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        if (SKILL_SKIP_DIRS.has(entry.name)) {
+          continue;
+        }
+        walk(path.join(dirPath, entry.name));
+        continue;
+      }
+
+      if (!entry.isFile()) {
+        continue;
+      }
+
+      if (SKILL_SKIP_SUFFIXES.some((suffix) => entry.name.endsWith(suffix))) {
+        continue;
+      }
+
+      const fullPath = path.join(dirPath, entry.name);
+      const content = fs.readFileSync(fullPath);
+      if (content.length > SANDBOX_MAX_INLINE_FILE_BYTES) {
+        throw new Error(
+          `Skill file too large for sandbox inline transfer: ${fullPath} (${content.length} bytes)`,
+        );
+      }
+
+      totalBytes += content.length;
+      if (totalBytes > SANDBOX_MAX_INLINE_TOTAL_BYTES) {
+        throw new Error(
+          `Skill package exceeds sandbox inline transfer limit (${totalBytes} bytes)`,
+        );
+      }
+
+      const relativePath = path.relative(skillDir, fullPath).split(path.sep).join("/");
+      inlineFiles.push({
+        path: `${SANDBOX_SKILL_ROOT}/${relativePath}`,
+        contentBase64: content.toString("base64"),
+      });
+    }
+  };
+
+  walk(skillDir);
+  return inlineFiles;
+}
+
+function preparePythonSandboxPayload(
+  skill: SkillDefinition,
+  params: SkillExecutionParams,
+  userToken: string,
+): PreparedPythonSandboxPayload {
+  const paths = resolvePythonSkillPaths(skill);
+  if (!paths) {
+    throw new Error(`Python skill script not found for sandbox dispatch: ${skill.id}`);
+  }
+
+  const inlineFiles = collectSkillInlineFiles(paths.skillDir);
+  const inputPayload = JSON.stringify({
+    skill_name: skill.id,
+    prompt: params.prompt,
+    params: params.extraParams ?? {},
+    context: {
+      publicUrl: params.publicUrl ?? "",
+      userToken,
+    },
+  });
+
+  inlineFiles.push({
+    path: SANDBOX_INPUT_PATH,
+    contentBase64: Buffer.from(inputPayload, "utf-8").toString("base64"),
+  });
+
+  const scriptPathInSandbox = `${SANDBOX_SKILL_ROOT}/python/skill.py`;
+  const command = `python3 ${shellQuote(scriptPathInSandbox)} < ${shellQuote(SANDBOX_INPUT_PATH)}`;
+
+  return {
+    executionMode: "sandbox-python",
+    metadata: {
+      skillSlug: skill.id,
+      skillName: skill.name,
+      prompt: params.prompt,
+      extraParams: params.extraParams,
+      commands: [command],
+      inlineFiles,
+    },
+  };
 }
 
 export interface SkillExecutionParams {
@@ -114,7 +264,8 @@ export async function executeSkill(
   skill: SkillDefinition,
   params: SkillExecutionParams,
   userId: number,
-  userToken: string
+  userToken: string,
+  tenantId?: string,
 ): Promise<SkillExecutionResult> {
   console.log(`[SkillExecutor] Executing skill:`, {
     id: skill.id,
@@ -152,12 +303,22 @@ export async function executeSkill(
   // Sandbox execution modes — dispatch to OpenSandbox when enabled
   if (
     executionMode?.startsWith("sandbox-") ||
-    (executionMode === "media-generate" && isSandboxEnabled())
+    (executionMode === "media-generate" && isSandboxEnabled()) ||
+    (executionMode === "python" && isSandboxEnabled())
   ) {
+    const sandboxMode =
+      executionMode === "python" ? "sandbox-python" : (executionMode || "sandbox-code");
     try {
-      if (shouldUseSandboxForFeature("skill", executionMode || "sandbox-code")) {
-        console.log(`[SkillExecutor] Routing to sandbox dispatch (mode: ${executionMode})`);
-        return await executeSandboxSkill(skill, params, userId);
+      if (shouldUseSandboxForFeature("skill", sandboxMode)) {
+        console.log(`[SkillExecutor] Routing to sandbox dispatch (mode: ${sandboxMode})`);
+        return await executeSandboxSkill(
+          skill,
+          params,
+          userId,
+          userToken,
+          sandboxMode,
+          tenantId,
+        );
       }
     } catch (err) {
       // shouldUseSandboxForFeature throws when required but disabled
@@ -540,21 +701,43 @@ async function executeSandboxSkill(
   skill: SkillDefinition,
   params: SkillExecutionParams,
   userId: number,
+  userToken: string = "",
+  executionModeOverride?: string,
+  tenantId?: string,
 ): Promise<SkillExecutionResult> {
+  if (!tenantId) {
+    return {
+      success: false,
+      skillId: skill.id,
+      type: "text",
+      error: "Tenant context required for secure sandbox execution.",
+    };
+  }
+
+  const dispatchExecutionMode = executionModeOverride || skill.executionMode || "sandbox-code";
   try {
+    const defaultMetadata: Record<string, unknown> = {
+      skillSlug: skill.id,
+      skillName: skill.name,
+      prompt: params.prompt,
+      extraParams: params.extraParams,
+    };
+    const dispatchPayload =
+      dispatchExecutionMode === "sandbox-python"
+        ? preparePythonSandboxPayload(skill, params, userToken)
+        : {
+            executionMode: dispatchExecutionMode,
+            metadata: defaultMetadata,
+          };
+
     const result = await sandboxDispatch({
       featureType: "skill",
-      executionMode: (skill.executionMode || "sandbox-code") as any,
-      tenantId: "default",
+      executionMode: dispatchPayload.executionMode as any,
+      tenantId,
       userId,
       inputFiles: [],
       profileOverride: skill.sandboxProfileSlug,
-      metadata: {
-        skillSlug: skill.id,
-        skillName: skill.name,
-        prompt: params.prompt,
-        extraParams: params.extraParams,
-      },
+      metadata: dispatchPayload.metadata,
     });
 
     return {
@@ -570,9 +753,9 @@ async function executeSandboxSkill(
     console.error(`[SkillExecutor] Sandbox dispatch failed for skill '${skill.id}':`, errMsg);
 
     // Fall back to legacy python subprocess if dispatch mode is optional
-    if (getDispatchMode() !== "required" && skill.executionMode !== "sandbox-media") {
+    if (getDispatchMode() !== "required" && dispatchExecutionMode !== "sandbox-media") {
       console.warn(`[SkillExecutor] Falling back to legacy python subprocess for '${skill.id}'`);
-      return await executePythonSkill(skill, params, "");
+      return await executePythonSkill(skill, params, userToken);
     }
 
     return {
@@ -605,19 +788,13 @@ async function executePythonSkill(
   params: SkillExecutionParams,
   userToken: string = ""
 ): Promise<SkillExecutionResult> {
-  // Resolve skill directory from skillFilePath or derive from skill id
-  const skillsDir = path.resolve(path.join(process.cwd(), "skills"));
-  const skillDir = skill.skillFilePath
-    ? path.dirname(skill.skillFilePath)
-    : path.join(skillsDir, skill.id);
-
-  const scriptPath = path.join(skillDir, "python", "skill.py");
-  if (!fs.existsSync(scriptPath)) {
+  const paths = resolvePythonSkillPaths(skill);
+  if (!paths) {
     return {
       success: false,
       skillId: skill.id,
       type: "text",
-      error: `Python skill script not found: ${scriptPath}`,
+      error: `Python skill script not found for skill: ${skill.id}`,
     };
   }
 
@@ -636,12 +813,12 @@ async function executePythonSkill(
     },
   });
 
-  console.log(`[SkillExecutor] Running Python skill (async): ${scriptPath}`);
+  console.log(`[SkillExecutor] Running Python skill (async): ${paths.scriptPath}`);
 
   const TIMEOUT_MS = 600_000; // 10 minutes
 
   return new Promise<SkillExecutionResult>((resolve) => {
-    const child = spawn(pythonBin, [scriptPath], { stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn(pythonBin, [paths.scriptPath], { stdio: ["pipe", "pipe", "pipe"] });
 
     let stdout = "";
     let stderr = "";

@@ -1,5 +1,5 @@
 """
-Intelligence Skill Creator (ISC) — SmartSpecPro entry point v0.4.0
+Intelligence Skill Creator (ISC) — SmartAIHub entry point v0.4.0
 
 Two primary modes:
   create   — Multi-agent pipeline creates a FULL skill on disk:
@@ -130,7 +130,7 @@ def _get_llm_client(inp: dict, context: Any = None):
     """Build OpenAICompatibleClient from flat UI fields, system gateway, or nested llm object.
 
     When llm_gateway_mode == 'system' (default), uses:
-      - base_url: context.publicUrl + '/v1'  (SmartSpecPro system gateway)
+      - base_url: context.publicUrl + '/v1'  (SmartAIHub system gateway)
       - api_key:  context.userToken          (JWT; gateway tracks credits automatically)
       - model:    inp['llm_model_search']    (selected from system model list)
 
@@ -396,7 +396,7 @@ def _improve_skill(inp: dict, context: Any = None) -> str:
 
 def _convert_workflow_skill(inp: dict, context: Any = None) -> str:
     """
-    Convert a Virtual Workflow JSON to a complete SmartSpecPro skill.
+    Convert a Virtual Workflow JSON to a complete SmartAIHub skill.
     Parses the workflow nodes/edges and drives the ISC creation pipeline with
     a workflow-derived description.
     """
@@ -564,7 +564,7 @@ def _help_response() -> str:
             "### LLM Gateway\n"
             "| `llm_gateway_mode` | How it works |\n"
             "|--------------------|-------------|\n"
-            "| `system` (default) | Uses the SmartSpecPro gateway — credits deducted automatically. "
+            "| `system` (default) | Uses the SmartAIHub gateway — credits deducted automatically. "
             "Set `llm_model_search` to choose the model. |\n"
             "| `custom` | Provide your own `llm_base_url` (OpenAI-compatible) and set "
             "`ISC_LLM_API_KEY` env var. Use `llm_model` to specify the model. |\n\n"
@@ -589,11 +589,11 @@ def _help_response() -> str:
 
 def respond(input: Any, context: Any = None) -> str:
     """
-    SmartSpecPro skill entry point.
+    SmartAIHub skill entry point.
 
     Args:
         input:   dict (UI form) or JSON string or legacy {prompt, params} dict
-        context: SmartSpecPro context dict — {userToken, publicUrl, user: {id, ...}}
+        context: SmartAIHub context dict — {userToken, publicUrl, user: {id, ...}}
                  Used by system gateway mode to authenticate LLM requests.
 
     Returns:

@@ -1,0 +1,82 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/026-OpenSandbox-integrate/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/026-OpenSandbox-integrate/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-docker-foundation",
+    "section-02-database-schema",
+    "section-03-python-sdk-client",
+    "section-04-python-services",
+    "section-05-nodejs-router-services",
+    "section-06-media-pipeline-migration",
+    "section-07-skill-workflow-migration",
+    "section-08-router-modifications",
+    "section-09-hetzner-setup",
+    "section-10-admin-observability",
+    "section-11-config-feature-flags",
+    "section-12-production-hardening"
+  ],
+  "sections_state": {
+    "section-01-docker-foundation": {
+      "status": "complete",
+      "commit_hash": "04237ae"
+    },
+    "section-02-database-schema": {
+      "status": "complete",
+      "commit_hash": "08566a7"
+    },
+    "section-03-python-sdk-client": {
+      "status": "complete",
+      "commit_hash": "f864e27"
+    },
+    "section-04-python-services": {
+      "status": "complete",
+      "commit_hash": "75a46b6"
+    },
+    "section-05-nodejs-router-services": {
+      "status": "complete",
+      "commit_hash": "5b983f3"
+    },
+    "section-06-media-pipeline-migration": {
+      "status": "complete",
+      "commit_hash": "2e7e5a1"
+    },
+    "section-11-config-feature-flags": {
+      "status": "complete",
+      "commit_hash": "84111a9"
+    },
+    "section-07-skill-workflow-migration": {
+      "status": "complete",
+      "commit_hash": "0878c85"
+    },
+    "section-09-hetzner-setup": {
+      "status": "complete",
+      "commit_hash": "0288a70"
+    },
+    "section-08-router-modifications": {
+      "status": "complete",
+      "commit_hash": "98fc868"
+    },
+    "section-10-admin-observability": {
+      "status": "complete",
+      "commit_hash": "d4aba40"
+    },
+    "section-12-production-hardening": {
+      "status": "complete",
+      "commit_hash": "f5d7e80"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-02-26T11:38:20.363120+00:00"
+}

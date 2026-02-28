@@ -9,12 +9,12 @@ import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 import { getRedisClient, isRedisAvailable } from "./redis";
 import { getTraceId } from "./traceContext";
 
-export type TransactionType = "purchase" | "usage" | "bonus" | "refund" | "adjustment" | "subscription";
+export type TransactionType = "purchase" | "usage" | "bonus" | "refund" | "adjustment" | "subscription" | "creator_fee";
 
 export type CreditSourceType =
   | "chat" | "skill" | "media_image" | "media_video" | "media_audio"
   | "indexing" | "rag" | "stt" | "translation" | "brainstorm"
-  | "scheduler" | "admin" | "agency" | "other";
+  | "scheduler" | "admin" | "agency" | "creator_revenue" | "other";
 
 export class BudgetExceededError extends Error {
   public readonly monthlyLimit: number;

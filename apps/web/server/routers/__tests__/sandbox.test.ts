@@ -79,7 +79,7 @@ vi.mock("drizzle-orm", () => ({
   inArray: vi.fn(),
 }));
 
-import { sandboxRouter } from "../sandbox";
+import { sandboxRouter, canAccessSandboxJob } from "../sandbox";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -94,5 +94,37 @@ describe("sandboxRouter", () => {
     expect(sandboxRouter.getJobTranscript).toBeDefined();
     expect(sandboxRouter.listJobs).toBeDefined();
     expect(sandboxRouter.getProfiles).toBeDefined();
+  });
+
+  it("allows access for the job owner in the same tenant", () => {
+    const allowed = canAccessSandboxJob(
+      { tenantId: "tenant-001", userId: 7 },
+      { tenantId: "tenant-001", userId: 7, role: "user" },
+    );
+    expect(allowed).toBe(true);
+  });
+
+  it("denies access for different user in the same tenant", () => {
+    const allowed = canAccessSandboxJob(
+      { tenantId: "tenant-001", userId: 7 },
+      { tenantId: "tenant-001", userId: 8, role: "user" },
+    );
+    expect(allowed).toBe(false);
+  });
+
+  it("denies access for owner user in different tenant", () => {
+    const allowed = canAccessSandboxJob(
+      { tenantId: "tenant-001", userId: 7 },
+      { tenantId: "tenant-002", userId: 7, role: "user" },
+    );
+    expect(allowed).toBe(false);
+  });
+
+  it("allows admin access across tenants", () => {
+    const allowed = canAccessSandboxJob(
+      { tenantId: "tenant-001", userId: 7 },
+      { tenantId: "tenant-999", userId: 55, role: "admin" },
+    );
+    expect(allowed).toBe(true);
   });
 });

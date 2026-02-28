@@ -47,6 +47,7 @@ import { skills as skillsTable, userSkillVisibility } from "../../drizzle/schema
 import { eq, and, like } from "drizzle-orm";
 import { checkRateLimit } from "../middleware/distributedRateLimit";
 import { auditLogger } from "../services/auditLogger";
+import { checkAbuseGuard, hashPrompt } from "../services/abuseGuard";
 
 // ── Security: forbidden patterns in LLM-generated skillContent ───────────────
 const ISC_FORBIDDEN_PATTERNS = [
@@ -655,6 +656,19 @@ export const chatRouter = router({
         });
       }
 
+      // Abuse guard: detect duplicate/burst/loop patterns
+      const abuseResult = await checkAbuseGuard({
+        userId: ctx.user.id,
+        namespace: "chat",
+        promptHash: hashPrompt(input.content),
+      });
+      if (!abuseResult.allowed) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Request blocked: ${abuseResult.reason}. Retry after ${abuseResult.retryAfter}s.`,
+        });
+      }
+
       // Create user message
       const userMessage = await createMessage({
         conversationId: input.conversationId,
@@ -737,6 +751,30 @@ export const chatRouter = router({
         skillArgs: input.skillArgs,
         error: input.error,
       });
+
+      // --- Channel bridge fan-out (section-08) ---
+      try {
+        const { channelGateway } = await import("../services/channelGateway");
+        const hasChannels = await channelGateway.hasActiveChannels(
+          input.conversationId,
+          "chat",
+        );
+        if (hasChannels) {
+          await channelGateway.emitEgress({
+            eventId: crypto.randomUUID(),
+            conversationId: String(input.conversationId),
+            conversationType: "chat",
+            messageId: String(message.id),
+            tenantId: String(ctx.user.currentTenantId ?? ""),
+            targets: [],
+            rendering: {
+              plainText: input.content,
+            },
+          });
+        }
+      } catch (err) {
+        debugError("Chat", "emitEgress failed for saveAssistantMessage", err);
+      }
 
       return {
         id: message.id,
@@ -1176,6 +1214,19 @@ export const chatRouter = router({
         });
       }
 
+      // Abuse guard: detect duplicate/burst/loop patterns
+      const skillAbuseResult = await checkAbuseGuard({
+        userId: ctx.user.id,
+        namespace: "skill",
+        promptHash: hashPrompt(input.prompt || input.skillId, input.skillId),
+      });
+      if (!skillAbuseResult.allowed) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Request blocked: ${skillAbuseResult.reason}. Retry after ${skillAbuseResult.retryAfter}s.`,
+        });
+      }
+
       // Use getSkillByIdOrType to support both skill IDs and skill types
       const skill = getSkillByIdOrType(input.skillId);
 
@@ -1576,7 +1627,8 @@ export const chatRouter = router({
           publicUrl: ctx.publicUrl ?? undefined,
         },
         ctx.user.id,
-        userToken
+        userToken,
+        ctx.tenantId ?? undefined,
       );
 
       // Handle sandbox job result -- return job ID for client polling

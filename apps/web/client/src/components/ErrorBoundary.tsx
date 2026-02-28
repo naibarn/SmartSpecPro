@@ -19,6 +19,16 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   static getDerivedStateFromError(error: Error): State {
+    const isChunkError =
+      /Failed to fetch dynamically imported module|Loading chunk \d+ failed/i.test(
+        error.message
+      );
+    if (isChunkError && !sessionStorage.getItem("chunk_reload_attempted")) {
+      sessionStorage.setItem("chunk_reload_attempted", "1");
+      window.location.reload();
+      // Return hasError: false so the blank screen is not shown while reloading
+      return { hasError: false, error: null };
+    }
     return { hasError: true, error };
   }
 

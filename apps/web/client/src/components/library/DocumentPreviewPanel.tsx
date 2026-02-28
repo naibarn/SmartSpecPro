@@ -30,6 +30,7 @@ interface DocumentPreviewPanelProps {
   onMarkdownChange?: (value: string) => void;
   onMarkdownSave?: () => void;
   onVersionRestore?: () => void;
+  onEnterEditMode?: () => void;
   onRenameTitle?: (title: string) => Promise<void> | void;
 }
 
@@ -48,6 +49,7 @@ export default function DocumentPreviewPanel({
   onMarkdownChange,
   onMarkdownSave,
   onVersionRestore,
+  onEnterEditMode,
   onRenameTitle,
 }: DocumentPreviewPanelProps) {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -244,6 +246,7 @@ export default function DocumentPreviewPanel({
             onChange={(value) => onMarkdownChange?.(value)}
             onSave={() => onMarkdownSave?.()}
             onVersionRestore={onVersionRestore}
+            onEnterEditMode={onEnterEditMode}
             updatedAt={markdownUpdatedAt}
             isSaving={isMarkdownSaving}
             errorMessage={markdownError}

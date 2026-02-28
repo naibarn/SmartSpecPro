@@ -1,5 +1,5 @@
 /**
- * Token and scope utilities for SmartSpec Web
+ * Token and scope utilities for SmartAIHub Web
  * Handles authorization scopes for MCP and other features
  */
 

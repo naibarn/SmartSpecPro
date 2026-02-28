@@ -19,18 +19,15 @@ services:
   # Communicates with Docker via socket to spawn isolated containers.
   # ============================================
   opensandbox-server:
-    image: registry.cn-hangzhou.aliyuncs.com/opensandbox/server:latest
+    image: opensandbox/server:latest
     container_name: smartspec-opensandbox
     ports:
       - "127.0.0.1:8080:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./config/opensandbox/config.toml:/etc/opensandbox/config.toml:ro
     environment:
-      - OPENSANDBOX_API_KEY=${OPENSANDBOX_API_KEY:-dev-sandbox-key-change-me}
-      - OPENSANDBOX_RUNTIME=docker
-      - OPENSANDBOX_DOCKER_NETWORK=opensandbox-exec
-      - OPENSANDBOX_DEFAULT_TIMEOUT=600
-      - OPENSANDBOX_MAX_SANDBOXES=20
+      - SANDBOX_CONFIG_PATH=/etc/opensandbox/config.toml
     deploy:
       resources:
         limits:
@@ -40,7 +37,7 @@ services:
           cpus: '0.5'
           memory: 512M
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"]
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8080/health\", timeout=3).read()' >/dev/null 2>&1 || exit 1"]
       interval: 15s
       timeout: 5s
       start_period: 30s

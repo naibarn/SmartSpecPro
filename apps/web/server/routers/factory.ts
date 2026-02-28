@@ -68,7 +68,7 @@ export const factoryRouter = router({
     maxIterations: z.number().int().min(1).max(50).default(8),
   })).mutation(async ({ input }) => {
     // Orchestrator is localhost-only by default. For web deployments, run orchestrator as a server-side job.
-    // This endpoint is provided for dev/staging where SmartSpecWeb server can reach orchestrator.
+    // This endpoint is provided for dev/staging where SmartAIHubWeb server can reach orchestrator.
     const headers: Record<string, string> = { "content-type": "application/json" };
     if (env.ORCHESTRATOR_KEY) headers["x-orchestrator-key"] = env.ORCHESTRATOR_KEY;
 

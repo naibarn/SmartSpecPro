@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://smartaihub.app/isc/input.schema.json",
   "title": "Intelligence Skill Creator Input Schema",
-  "description": "Create new SmartSpecPro skills from scratch, or iteratively improve existing ones",
+  "description": "Create new SmartAIHub skills from scratch, or iteratively improve existing ones",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -97,7 +97,7 @@
       "default": "system",
       "description": "LLM gateway mode: 'system' uses the platform's built-in gateway (credits tracked), 'custom' uses a user-provided API key and base URL",
       "enumDescriptions": {
-        "system": "Use the SmartSpecPro system gateway — LLM costs deducted from user credits automatically",
+        "system": "Use the SmartAIHub system gateway — LLM costs deducted from user credits automatically",
         "custom": "Provide your own API key and base URL for an OpenAI-compatible endpoint"
       }
     },

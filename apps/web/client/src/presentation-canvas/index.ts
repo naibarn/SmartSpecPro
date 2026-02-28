@@ -11,6 +11,8 @@ export { MobileDrawerPanel } from "./components/MobileDrawerPanel";
 export { AssetLibraryPanel } from "./components/AssetLibraryPanel";
 export type { MobileBottomSheetTab } from "./components/MobileBottomSheet";
 export type { AssetLibraryTab, CanvasLibraryAsset } from "./components/AssetLibraryPanel";
+export { GraphicsPanel } from "./components/GraphicsPanel";
+export type { SvgGraphic } from "./components/GraphicsPanel";
 export { SelectionEngine } from "./selection/SelectionEngine";
 export { computeSnapPosition } from "./snap/SnapEngine";
 export { CommandBus } from "./commands/CommandBus";

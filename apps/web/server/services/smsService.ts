@@ -144,14 +144,14 @@ async function sendSms(to: string, body: string): Promise<boolean> {
  * Send verification code SMS
  */
 export async function sendVerificationSms(to: string, code: string): Promise<boolean> {
-  return sendSms(to, `Your SmartSpec Pro verification code is: ${code}. Valid for 15 minutes.`);
+  return sendSms(to, `Your SmartAIHub verification code is: ${code}. Valid for 15 minutes.`);
 }
 
 /**
  * Send password reset code SMS
  */
 export async function sendPasswordResetSms(to: string, code: string): Promise<boolean> {
-  return sendSms(to, `Your SmartSpec Pro password reset code is: ${code}. Valid for 15 minutes.`);
+  return sendSms(to, `Your SmartAIHub password reset code is: ${code}. Valid for 15 minutes.`);
 }
 
 /**
@@ -168,7 +168,7 @@ export async function testSmsConnection(config: {
       fromNumber: config.fromNumber,
     };
 
-    const body = "SmartSpec Pro SMS test message. If you received this, SMS is configured correctly!";
+    const body = "SmartAIHub SMS test message. If you received this, SMS is configured correctly!";
 
     if (smsConfig.provider === "twilio") {
       await sendViaTwilio(smsConfig, testNumber, body);

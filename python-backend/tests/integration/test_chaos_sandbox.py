@@ -44,7 +44,7 @@ class TestChaosOpenSandboxDown:
         client._breaker.call_async = AsyncMock(return_value=mock_response)
 
         with pytest.raises(RetryableHTTPError):
-            await client._request("POST", "/api/v1/sandboxes", json={})
+            await client._request("POST", "/v1/sandboxes", json={})
 
         await client.close()
 
