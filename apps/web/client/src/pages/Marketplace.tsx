@@ -290,7 +290,7 @@ function SkillCard({ skill, onClick }: { skill: any; onClick: () => void }) {
                 {skill.commentCount}
               </span>
             </div>
-            <span>{skill.author || "SmartSpec"}</span>
+            <span>{skill.author || "SmartAIHub"}</span>
           </div>
         </CardContent>
       </Card>
@@ -404,7 +404,7 @@ function SkillDetailDialog({
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     <Badge variant="secondary">{categoryLabel}</Badge>
                     <span className="text-xs text-gray-400">v{skill.version}</span>
-                    <span className="text-xs text-gray-400">by {skill.author || "SmartSpec"}</span>
+                    <span className="text-xs text-gray-400">by {skill.author || "SmartAIHub"}</span>
                   </div>
                 </div>
               </div>

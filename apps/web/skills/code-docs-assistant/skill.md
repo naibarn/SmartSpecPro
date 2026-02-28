@@ -4,7 +4,7 @@ description: |
   Fetches up-to-date library documentation using Context7 and answers coding questions with current API references. Use when users ask about specific libraries, frameworks, or APIs.
 category: code_assistant
 version: 1.0.0
-author: SmartSpec Team
+author: SmartAIHub Team
 icon: book-open
 tags: ["code", "docs", "context7", "documentation", "library", "api"]
 auto_trigger: true

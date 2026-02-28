@@ -1,5 +1,5 @@
 /**
- * Media History Page - SmartSpec Pro
+ * Media History Page - SmartAIHub
  * View and manage media generation tasks
  */
 
@@ -53,6 +53,7 @@ import {
   Info,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import ExpiredMediaPlaceholder from '@/components/media/ExpiredMediaPlaceholder';
 import {
   buildTaskLibraryErrorState,
   buildTaskLibraryStateFromAddResult,
@@ -260,6 +261,15 @@ export default function MediaHistory() {
   const [isFetchingResult, setIsFetchingResult] = useState(false);
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
   const [taskLibraryState, setTaskLibraryState] = useState<Record<string, TaskLibraryUIState>>({});
+  const [expiredUrls, setExpiredUrls] = useState<Set<string>>(() => new Set());
+  const markExpired = useCallback((url: string) => {
+    setExpiredUrls((prev) => {
+      if (prev.has(url)) return prev;
+      const next = new Set(prev);
+      next.add(url);
+      return next;
+    });
+  }, []);
   const trpcUtils = trpc.useUtils();
 
   // Fetch tasks from API - only last 12 days
@@ -721,20 +731,20 @@ export default function MediaHistory() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+          className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8"
         >
           {stats.map((stat, index) => {
             const StatIcon = stat.icon || FileImage;
             return (
             <div
               key={index}
-              className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 p-6 shadow-lg shadow-purple-500/5"
+              className="bg-white/70 backdrop-blur-xl rounded-2xl border border-white/50 p-4 sm:p-6 shadow-lg shadow-purple-500/5"
             >
-              <div className={`w-12 h-12 rounded-xl ${stat.bgColor} flex items-center justify-center mb-4`}>
-                <StatIcon className={`w-6 h-6 ${stat.color}`} />
+              <div className={`w-9 h-9 sm:w-12 sm:h-12 rounded-xl ${stat.bgColor} flex items-center justify-center mb-2 sm:mb-4`}>
+                <StatIcon className={`w-4 h-4 sm:w-6 sm:h-6 ${stat.color}`} />
               </div>
-              <div className="text-3xl font-bold text-gray-900 mb-1">{stat.value}</div>
-              <div className="text-sm text-gray-500">{stat.label}</div>
+              <div className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">{stat.value}</div>
+              <div className="text-xs sm:text-sm text-gray-500">{stat.label}</div>
             </div>
             );
           })}
@@ -859,6 +869,145 @@ export default function MediaHistory() {
               </p>
             </div>
           ) : (
+            <>
+              {/* Mobile card list — hidden on sm+ */}
+              <div className="sm:hidden divide-y divide-gray-100">
+                {tasks.map((task) => {
+                  const typeConfig = getMediaTypeMeta(task.mediaType);
+                  const status = getStatusMeta(task.status);
+                  const StatusIcon = status?.icon || AlertCircle;
+                  const TypeIcon = typeConfig?.icon || FileImage;
+                  const canAddToLibrary = isMediaTaskEligibleForLibraryAdd(task);
+                  const libraryState = taskLibraryState[task.id];
+                  const libraryStatusMeta = getLibraryItemStatusMeta(libraryState?.status);
+                  return (
+                    <div key={task.id} className="flex gap-3 p-4">
+                      {/* Preview */}
+                      <div className="flex-shrink-0">
+                        {task.status === 'completed' && task.resultUrl ? (
+                          expiredUrls.has(task.resultUrl) ? (
+                            <ExpiredMediaPlaceholder
+                              mediaType={task.mediaType}
+                              compact
+                              className="w-14 h-14"
+                            />
+                          ) : task.mediaType === 'image' ? (
+                            <img
+                              src={task.resultUrl}
+                              alt="Preview"
+                              className="w-14 h-14 rounded-lg object-cover border cursor-pointer hover:opacity-80"
+                              onError={() => markExpired(task.resultUrl!)}
+                              onClick={() => handleViewDetails(task)}
+                            />
+                          ) : task.mediaType === 'video' ? (
+                            <div
+                              className="w-14 h-14 rounded-lg bg-blue-100 flex items-center justify-center cursor-pointer"
+                              onClick={() => handleViewDetails(task)}
+                            >
+                              <Play className="w-5 h-5 text-blue-600" />
+                            </div>
+                          ) : (
+                            <div
+                              className="w-14 h-14 rounded-lg bg-green-100 flex items-center justify-center cursor-pointer"
+                              onClick={() => handleViewDetails(task)}
+                            >
+                              <Music className="w-5 h-5 text-green-600" />
+                            </div>
+                          )
+                        ) : (
+                          <div className="w-14 h-14 rounded-lg bg-gray-100 flex items-center justify-center">
+                            <TypeIcon className={`w-5 h-5 ${typeConfig.color}`} />
+                          </div>
+                        )}
+                      </div>
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                          <Badge variant="outline" className="gap-1 text-xs">
+                            <TypeIcon className={`w-3 h-3 ${typeConfig.color}`} />
+                            {typeConfig.label}
+                          </Badge>
+                          <Badge className={`gap-1 text-xs ${status.color}`}>
+                            <StatusIcon className={`w-3 h-3 ${task.status === 'processing' ? 'animate-spin' : ''}`} />
+                            {status.label}
+                          </Badge>
+                          {canAddToLibrary && libraryState?.action !== 'adding' && libraryState?.action !== 'error' && (
+                            <Badge className={`text-xs ${libraryStatusMeta.className}`}>
+                              {libraryStatusMeta.label}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs font-mono text-gray-500 truncate mb-0.5">{task.model}</p>
+                        <p className="text-xs text-gray-600 line-clamp-2 mb-1">{task.prompt}</p>
+                        <div className="flex items-center gap-3 text-xs text-gray-400">
+                          {task.creditsUsed ? (
+                            <span className="flex items-center gap-0.5">
+                              <Zap className="w-3 h-3 text-yellow-500" />
+                              {task.creditsUsed}
+                            </span>
+                          ) : null}
+                          <span>{new Date(task.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                        </div>
+                      </div>
+                      {/* Actions */}
+                      <div className="flex flex-col gap-1 flex-shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewDetails(task)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        {task.status === 'completed' && task.resultUrl && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleAddToLibrary(task)}
+                              disabled={libraryState?.action === 'adding'}
+                              className={`h-8 w-8 p-0 ${libraryState?.action === 'added' ? 'text-emerald-600' : 'text-indigo-600'}`}
+                            >
+                              {libraryState?.action === 'adding' ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : libraryState?.action === 'added' ? (
+                                <CheckCircle className="w-4 h-4" />
+                              ) : (
+                                <ImagePlus className="w-4 h-4" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDownload(task.resultUrl!)}
+                              className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
+                            >
+                              <Download className="w-4 h-4" />
+                            </Button>
+                          </>
+                        )}
+                        {(task.status === 'failed' || task.status === 'cancelled' || task.status === 'processing' || task.status === 'pending') && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteTask(task.id)}
+                            disabled={deleteTaskMutation.isPending}
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                          >
+                            {deleteTaskMutation.isPending ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Desktop table — hidden on mobile */}
+              <div className="hidden sm:block">
             <Table>
               <TableHeader>
                 <TableRow className="bg-gray-50/50">
@@ -903,11 +1052,18 @@ export default function MediaHistory() {
                       </TableCell>
                       <TableCell>
                         {task.status === 'completed' && task.resultUrl ? (
-                          task.mediaType === 'image' ? (
+                          expiredUrls.has(task.resultUrl) ? (
+                            <ExpiredMediaPlaceholder
+                              mediaType={task.mediaType}
+                              compact
+                              className="w-12 h-12"
+                            />
+                          ) : task.mediaType === 'image' ? (
                             <img
                               src={task.resultUrl}
                               alt="Preview"
                               className="w-12 h-12 rounded-lg object-cover border cursor-pointer hover:opacity-80"
+                              onError={() => markExpired(task.resultUrl!)}
                               onClick={() => handleViewDetails(task)}
                             />
                           ) : task.mediaType === 'video' ? (
@@ -1106,6 +1262,8 @@ export default function MediaHistory() {
                 })}
               </TableBody>
             </Table>
+              </div>
+            </>
           )}
         </motion.div>
       </main>
@@ -1141,20 +1299,32 @@ export default function MediaHistory() {
               {/* Preview */}
               {selectedTask.status === 'completed' && selectedTask.resultUrl && (
                 <div className="flex justify-center">
-                  {selectedTask.mediaType === 'image' ? (
+                  {expiredUrls.has(selectedTask.resultUrl) ? (
+                    <ExpiredMediaPlaceholder
+                      mediaType={selectedTask.mediaType}
+                      className="w-full max-w-sm h-48"
+                    />
+                  ) : selectedTask.mediaType === 'image' ? (
                     <img
                       src={selectedTask.resultUrl}
                       alt="Generated"
                       className="max-h-[400px] rounded-lg border shadow-lg"
+                      onError={() => markExpired(selectedTask.resultUrl!)}
                     />
                   ) : selectedTask.mediaType === 'video' ? (
                     <video
                       src={selectedTask.resultUrl}
                       controls
                       className="max-h-[400px] rounded-lg border shadow-lg"
+                      onError={() => markExpired(selectedTask.resultUrl!)}
                     />
                   ) : (
-                    <audio src={selectedTask.resultUrl} controls className="w-full" />
+                    <audio
+                      src={selectedTask.resultUrl}
+                      controls
+                      className="w-full"
+                      onError={() => markExpired(selectedTask.resultUrl!)}
+                    />
                   )}
                 </div>
               )}

@@ -364,7 +364,7 @@ export function MemoryPanel({ onClose, conversationId, onNewChatFromProject }: M
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Name</label>
                     <Input
-                      placeholder="e.g., 'coding style', 'SmartSpec project'"
+                      placeholder="e.g., 'coding style', 'SmartAIHub project'"
                       value={newMemory.entityName}
                       onChange={(e) =>
                         setNewMemory({ ...newMemory, entityName: e.target.value })

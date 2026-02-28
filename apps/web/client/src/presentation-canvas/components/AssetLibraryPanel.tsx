@@ -1,11 +1,11 @@
-import type { ComponentType, DragEvent, ReactNode } from "react";
-import { Clapperboard, ImageIcon, Layers3, Search } from "lucide-react";
+import { type ComponentType, type DragEvent, type ReactNode, useState } from "react";
+import { Clapperboard, ImageIcon, Layers3, Search, Shapes } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-export type AssetLibraryTab = "slides" | "photos" | "videos";
+export type AssetLibraryTab = "slides" | "photos" | "videos" | "graphics";
 
 export interface CanvasLibraryAsset {
   id: number;
@@ -23,6 +23,7 @@ interface AssetLibraryPanelProps {
   assets: CanvasLibraryAsset[];
   isLoading: boolean;
   slidesPanel: ReactNode;
+  graphicsPanel?: ReactNode;
   onInsertAsset: (asset: CanvasLibraryAsset) => void;
   onDragAssetStart: (event: DragEvent<HTMLElement>, asset: CanvasLibraryAsset) => void;
 }
@@ -32,10 +33,66 @@ const TABS: Array<{
   label: string;
   icon: ComponentType<{ className?: string }>;
 }> = [
-  { id: "slides", label: "Slides", icon: Layers3 },
-  { id: "photos", label: "Photos", icon: ImageIcon },
-  { id: "videos", label: "Videos", icon: Clapperboard },
-];
+    { id: "slides", label: "Slides", icon: Layers3 },
+    { id: "photos", label: "Photos", icon: ImageIcon },
+    { id: "videos", label: "Videos", icon: Clapperboard },
+    { id: "graphics", label: "Graphics", icon: Shapes },
+  ];
+
+function AssetThumbnail({ asset }: { asset: CanvasLibraryAsset }) {
+  const [failed, setFailed] = useState(false);
+
+  const placeholder = (
+    <div
+      className="grid h-full w-full place-items-center text-xs text-slate-400"
+      data-testid={`asset-thumb-placeholder-${asset.kind}-${asset.id}`}
+    >
+      {asset.kind === "video" ? (
+        <Clapperboard className="h-5 w-5 text-slate-500" />
+      ) : (
+        <ImageIcon className="h-5 w-5 text-slate-500" />
+      )}
+    </div>
+  );
+
+  return (
+    <div className="relative aspect-video w-full bg-slate-800">
+      {failed ? (
+        placeholder
+      ) : asset.kind === "video" ? (
+        <video
+          src={asset.sourceUrl}
+          poster={asset.thumbnailUrl || undefined}
+          className="h-full w-full object-cover"
+          preload="metadata"
+          muted
+          autoPlay
+          loop
+          playsInline
+          onError={() => setFailed(true)}
+          data-testid={`asset-video-thumb-${asset.id}`}
+        />
+      ) : asset.thumbnailUrl ? (
+        <img
+          src={asset.thumbnailUrl}
+          alt={asset.title}
+          className="h-full w-full object-cover"
+          loading="lazy"
+          draggable={false}
+          onError={() => setFailed(true)}
+          data-testid={`asset-thumb-${asset.kind}-${asset.id}`}
+        />
+      ) : (
+        placeholder
+      )}
+      {asset.kind === "video" ? (
+        <div className="absolute left-2 top-2 rounded bg-black/65 px-1.5 py-0.5 text-[10px] tracking-wide text-white">
+          VIDEO
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export function AssetLibraryPanel({
   activeTab,
@@ -45,12 +102,13 @@ export function AssetLibraryPanel({
   assets,
   isLoading,
   slidesPanel,
+  graphicsPanel,
   onInsertAsset,
   onDragAssetStart,
 }: AssetLibraryPanelProps) {
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 text-slate-100">
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-1.5">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const active = activeTab === tab.id;
@@ -60,11 +118,10 @@ export function AssetLibraryPanel({
               type="button"
               size="sm"
               variant="ghost"
-              className={`h-auto gap-1 rounded-md border px-2 py-2 text-xs ${
-                active
+              className={`h-auto gap-1 rounded-md border px-2 py-2 text-xs ${active
                   ? "border-sky-400/70 bg-sky-500/20 text-sky-100"
                   : "border-slate-700 text-slate-300 hover:border-slate-500 hover:bg-slate-800"
-              }`}
+                }`}
               onClick={() => onTabChange(tab.id)}
             >
               <Icon className="h-3.5 w-3.5" />
@@ -77,6 +134,10 @@ export function AssetLibraryPanel({
       {activeTab === "slides" ? (
         <div className="min-h-0 flex-1 overflow-hidden">
           {slidesPanel}
+        </div>
+      ) : activeTab === "graphics" ? (
+        <div className="min-h-0 flex-1 overflow-hidden">
+          {graphicsPanel}
         </div>
       ) : (
         <>
@@ -112,42 +173,7 @@ export function AssetLibraryPanel({
                       }
                     }}
                   >
-                    <div className="relative aspect-video w-full bg-slate-800">
-                      {asset.kind === "video" ? (
-                        <video
-                          src={asset.sourceUrl}
-                          poster={asset.thumbnailUrl || undefined}
-                          className="h-full w-full object-cover"
-                          preload="auto"
-                          muted
-                          autoPlay
-                          loop
-                          playsInline
-                          data-testid={`asset-video-thumb-${asset.id}`}
-                        />
-                      ) : asset.thumbnailUrl ? (
-                        <img
-                          src={asset.thumbnailUrl}
-                          alt={asset.title}
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                          draggable={false}
-                          data-testid={`asset-thumb-${asset.kind}-${asset.id}`}
-                        />
-                      ) : (
-                        <div
-                          className="grid h-full w-full place-items-center text-xs text-slate-400"
-                          data-testid={`asset-thumb-placeholder-${asset.kind}-${asset.id}`}
-                        >
-                          {asset.kind === "video" ? "VIDEO" : "IMAGE"}
-                        </div>
-                      )}
-                      {asset.kind === "video" ? (
-                        <div className="absolute left-2 top-2 rounded bg-black/65 px-1.5 py-0.5 text-[10px] tracking-wide text-white">
-                          VIDEO
-                        </div>
-                      ) : null}
-                    </div>
+                    <AssetThumbnail asset={asset} />
                     <div className="space-y-1 p-2">
                       <p className="truncate text-xs text-slate-200">{asset.title}</p>
                       <Button

@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { protectedProcedure, router } from "../_core/trpc";
+import { createRateLimitMiddleware } from "../_core/rateLimitedProcedure";
 import {
   PRESENTATION_EDITOR_ROUTE_BASE,
   PRESENTATION_ERROR_CODE,
@@ -222,6 +223,7 @@ export const presentationRouter = router({
 
   ai: router({
     generateDraft: protectedProcedure
+      .use(createRateLimitMiddleware({ namespace: "ai-draft-gen", limit: 5, windowMs: 60_000 }))
       .input(GenerateAIDraftInputSchema)
       .mutation(async ({ input, ctx }) => {
         try {
@@ -229,6 +231,11 @@ export const presentationRouter = router({
           ensureAIGenerationEnabled();
 
           const actor = toPresentationActor(ctx);
+          const userToken = ctx.userToken;
+          if (!userToken) {
+            throw new TRPCError({ code: "UNAUTHORIZED", message: "Missing auth token" });
+          }
+
           const redis = getRedisClient();
           const taskId = crypto.randomUUID();
 
@@ -236,9 +243,9 @@ export const presentationRouter = router({
           const lockResult = await redis.set(
             `ai_draft_lock:${actor.userId}`,
             taskId,
-            "NX",
             "EX",
             300,
+            "NX",
           );
           if (lockResult === null) {
             throw new TRPCError({
@@ -265,9 +272,11 @@ export const presentationRouter = router({
           );
 
           // Fire-and-forget pipeline
-          generateAIDraft(input, actor, ctx.userToken!, taskId).catch(
+          generateAIDraft(input, actor, userToken, taskId).catch(
             async (err) => {
               try {
+                const errMsg = err instanceof Error ? err.message : "Unknown error";
+                const safeMsg = errMsg.replace(/https?:\/\/[^\s]+/g, "[redacted]").slice(0, 200);
                 await redis.set(
                   `ai_draft_progress:${taskId}`,
                   JSON.stringify({
@@ -275,7 +284,7 @@ export const presentationRouter = router({
                     completed: true,
                     error: {
                       code: "AI_GENERATION_FAILED",
-                      message: (err as Error).message,
+                      message: safeMsg,
                     },
                   }),
                   "EX",
@@ -299,21 +308,60 @@ export const presentationRouter = router({
 
     getDraftProgress: protectedProcedure
       .input(z.object({ taskId: z.string().min(1).max(128) }))
-      .query(async ({ input }) => {
+      .query(async ({ input, ctx }): Promise<{
+        phase: number;
+        phaseLabel: string;
+        slidesCompleted: number;
+        totalSlides: number;
+        slidePreview: Array<{ title: string; imageStatus: string }>;
+        completed: boolean;
+        cancelled?: boolean;
+        error?: { code: string; message: string };
+        result?: { slidesAdded: number; newDeckVersion: number; articlePreview: string; warnings: string[] };
+      }> => {
         const redis = getRedisClient();
+        const notFoundResponse = {
+          phase: 0,
+          phaseLabel: "Unknown",
+          slidesCompleted: 0,
+          totalSlides: 0,
+          slidePreview: [] as Array<{ title: string; imageStatus: string }>,
+          completed: false,
+          error: { code: "not_found", message: "Draft progress not found" },
+        };
+
         const raw = await redis.get(`ai_draft_progress:${input.taskId}`);
         if (!raw) {
-          return {
-            phase: 0,
-            phaseLabel: "Unknown",
-            slidesCompleted: 0,
-            totalSlides: 0,
-            slidePreview: [],
-            completed: false,
-            error: { code: "not_found", message: "Draft progress not found" },
-          };
+          return notFoundResponse;
         }
-        return JSON.parse(raw);
+
+        let parsed: Record<string, unknown>;
+        try {
+          const result = JSON.parse(raw);
+          if (typeof result !== "object" || result === null) {
+            return notFoundResponse;
+          }
+          parsed = result as Record<string, unknown>;
+        } catch {
+          return notFoundResponse;
+        }
+
+        // IDOR check — don't reveal existence of other users' tasks
+        if (parsed.userId && parsed.userId !== ctx.user.id) {
+          return notFoundResponse;
+        }
+
+        return {
+          phase: typeof parsed.phase === "number" ? parsed.phase : 0,
+          phaseLabel: typeof parsed.phaseLabel === "string" ? parsed.phaseLabel : "Unknown",
+          slidesCompleted: typeof parsed.slidesCompleted === "number" ? parsed.slidesCompleted : 0,
+          totalSlides: typeof parsed.totalSlides === "number" ? parsed.totalSlides : 0,
+          slidePreview: Array.isArray(parsed.slidePreview) ? parsed.slidePreview : [],
+          completed: typeof parsed.completed === "boolean" ? parsed.completed : false,
+          cancelled: typeof parsed.cancelled === "boolean" ? parsed.cancelled : undefined,
+          error: parsed.error && typeof parsed.error === "object" ? parsed.error as { code: string; message: string } : undefined,
+          result: parsed.result && typeof parsed.result === "object" ? parsed.result as { slidesAdded: number; newDeckVersion: number; articlePreview: string; warnings: string[] } : undefined,
+        };
       }),
 
     cancelDraft: protectedProcedure
@@ -324,7 +372,18 @@ export const presentationRouter = router({
         if (!raw) {
           return { success: false };
         }
-        const progress = JSON.parse(raw);
+
+        let progress: Record<string, unknown>;
+        try {
+          const result = JSON.parse(raw);
+          if (typeof result !== "object" || result === null) {
+            return { success: false };
+          }
+          progress = result as Record<string, unknown>;
+        } catch {
+          return { success: false };
+        }
+
         if (progress.completed) {
           return { success: false };
         }

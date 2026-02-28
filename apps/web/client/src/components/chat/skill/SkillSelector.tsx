@@ -228,7 +228,7 @@ export function SkillSelector({ open, onClose, onSelect }: SkillSelectorProps) {
         </div>
 
         {/* Skills List */}
-        <ScrollArea className="flex-1 px-6 min-h-0">
+        <div className="flex-1 min-h-0 px-6 pb-6 overflow-y-auto">
           {isLoadingSkills ? (
             <div className="flex items-center justify-center h-32">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -265,7 +265,7 @@ export function SkillSelector({ open, onClose, onSelect }: SkillSelectorProps) {
               ))}
             </div>
           )}
-        </ScrollArea>
+        </div>
 
         {/* Footer Help */}
         <div className="px-6 py-3 border-t bg-muted/30 text-xs text-muted-foreground shrink-0">

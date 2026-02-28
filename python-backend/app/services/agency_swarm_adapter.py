@@ -64,6 +64,10 @@ class AgencyConfig(BaseModel):
     user_id: int
     conversation_id: str
     max_run_time_seconds: int = 600
+    credit_multiplier: float = 1.0
+    creator_fee_credits: int = 0
+    platform_share_pct: int = 20
+    creator_id: int | None = None
 
 
 class RunResult(BaseModel):
@@ -342,6 +346,45 @@ class AgencySwarmAdapter:
             tenant_id=tenant_id,
         )
         return agency.get_response_stream(message=message)
+
+    def create_tool_class(
+        self,
+        tool_name: str,
+        tool_description: str,
+        run_func: Callable[..., str],
+    ) -> type:
+        """Create an agency-swarm BaseTool subclass.
+
+        Wraps a run function into a BaseTool-conforming class that agency-swarm
+        can accept as a tool for Agent construction.
+
+        This keeps all agency-swarm imports isolated to this adapter.
+
+        Args:
+            tool_name: Name of the tool (used as class name).
+            tool_description: Description for the agent.
+            run_func: The function to call when the tool runs.
+                      Receives the tool instance as argument.
+
+        Returns:
+            A BaseTool subclass (class, not instance).
+        """
+        from agency_swarm.tools import BaseTool
+        from pydantic import Field as PydField
+
+        captured_run = run_func
+
+        class _ToolBridge(BaseTool):
+            query: str = PydField(default="", description="Input for the tool")
+
+            def run(self) -> str:
+                return captured_run(self)
+
+        _ToolBridge.__name__ = f"SSPTool_{tool_name}"
+        _ToolBridge.__qualname__ = f"SSPTool_{tool_name}"
+        _ToolBridge.__doc__ = tool_description
+
+        return _ToolBridge
 
     def _is_transient_error(self, error: Exception) -> bool:
         """Classify whether an error is transient (retryable).

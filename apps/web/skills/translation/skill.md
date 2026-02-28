@@ -4,7 +4,7 @@ description: Translate text between English and your preferred language using a 
 category: translation
 icon: Languages
 version: "1.0.0"
-author: SmartSpec
+author: SmartAIHub
 isAutoTrigger: false
 enabledByDefault: true
 priority: 50

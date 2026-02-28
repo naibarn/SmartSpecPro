@@ -46,3 +46,44 @@ export async function setFeatureFlag(
   const redis = getRedisClient();
   await redis.set(`feature-flag:${flagName}`, value ? "true" : "false");
 }
+
+/**
+ * Read a tenant-scoped feature flag value.
+ *
+ * Checks Redis key `feature-flag:{flagName}:{tenantId}` first.
+ * Falls back to the global flag if no tenant-specific override exists.
+ */
+export async function getTenantFeatureFlag(
+  flagName: string,
+  tenantId: string,
+): Promise<boolean> {
+  try {
+    const redis = getRedisClient();
+    const value = await redis.get(`feature-flag:${flagName}:${tenantId}`);
+    if (value !== null) {
+      return value === "true";
+    }
+  } catch {
+    // Redis unavailable, fall through to global flag
+  }
+
+  // Fall back to global flag
+  return getFeatureFlag(flagName);
+}
+
+/**
+ * Write a tenant-scoped feature flag value to Redis.
+ *
+ * Sets Redis key `feature-flag:{flagName}:{tenantId}` to "true" or "false".
+ */
+export async function setTenantFeatureFlag(
+  flagName: string,
+  tenantId: string,
+  value: boolean,
+): Promise<void> {
+  const redis = getRedisClient();
+  await redis.set(
+    `feature-flag:${flagName}:${tenantId}`,
+    value ? "true" : "false",
+  );
+}

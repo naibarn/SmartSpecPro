@@ -1,0 +1,77 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/028-Chat-Bridge/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/028-Chat-Bridge/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-schema-migration",
+    "section-02-webhook-handler",
+    "section-03-i18n-types",
+    "section-04-link-flow",
+    "section-05-channel-gateway",
+    "section-06-delivery-queue",
+    "section-07-server-side-chat",
+    "section-08-pipeline-hooks",
+    "section-09-telegram-commands",
+    "section-10-router-extensions",
+    "section-11-integration-tests"
+  ],
+  "sections_state": {
+    "section-01-schema-migration": {
+      "status": "complete",
+      "commit_hash": "515ee84"
+    },
+    "section-02-webhook-handler": {
+      "status": "complete",
+      "commit_hash": "739d779"
+    },
+    "section-03-i18n-types": {
+      "status": "complete",
+      "commit_hash": "739d779"
+    },
+    "section-04-link-flow": {
+      "status": "complete",
+      "commit_hash": "b6e9463"
+    },
+    "section-05-channel-gateway": {
+      "status": "complete",
+      "commit_hash": "a8a8d8b"
+    },
+    "section-06-delivery-queue": {
+      "status": "complete",
+      "commit_hash": "45ad633"
+    },
+    "section-07-server-side-chat": {
+      "status": "complete",
+      "commit_hash": "f4ab5d7"
+    },
+    "section-08-pipeline-hooks": {
+      "status": "complete",
+      "commit_hash": "fbe1dab"
+    },
+    "section-09-telegram-commands": {
+      "status": "complete",
+      "commit_hash": "6b9735b"
+    },
+    "section-10-router-extensions": {
+      "status": "complete",
+      "commit_hash": "17dbb02"
+    },
+    "section-11-integration-tests": {
+      "status": "complete",
+      "commit_hash": "a5165cd"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-02-27T13:33:50.583619+00:00"
+}

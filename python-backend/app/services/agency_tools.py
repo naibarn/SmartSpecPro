@@ -6,9 +6,15 @@ Tool routing by risk level:
 - medium: allowed only if whitelisted, direct HTTP call
 - high: allowed only if whitelisted, dispatch to OpenSandbox
 
+Tool classes are created via AgencySwarmAdapter.create_tool_class() to maintain
+the adapter isolation pattern (only the adapter imports from agency-swarm).
+
 Whitelist enforcement returns a user-friendly error string (not exception)
 so the agent can gracefully explain the denial.
 """
+
+import ipaddress
+from urllib.parse import urlparse
 
 import httpx
 import structlog
@@ -17,7 +23,59 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Any
 
+from app.services.agency_audit import log_agency_event
+
 logger = structlog.get_logger(__name__)
+
+# ── SSRF Protection ──────────────────────────────────────────────────────
+
+_BLOCKED_HOSTS = {
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+    "::1",
+    "[::1]",
+    "169.254.169.254",  # Cloud metadata
+    "metadata.google.internal",
+}
+
+_BLOCKED_NETWORKS = [
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("169.254.0.0/16"),
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fc00::/7"),
+    ipaddress.ip_network("fe80::/10"),
+]
+
+
+def _validate_tool_url(url: str) -> None:
+    """Validate that a tool endpoint URL is safe (no SSRF).
+
+    Raises ValueError if the URL targets a private/internal address.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(f"Unsupported URL scheme: {parsed.scheme}")
+
+    hostname = parsed.hostname or ""
+    if hostname in _BLOCKED_HOSTS:
+        raise ValueError(f"Blocked host: {hostname}")
+
+    # Check if hostname resolves to a private IP
+    try:
+        addr = ipaddress.ip_address(hostname)
+        for network in _BLOCKED_NETWORKS:
+            if addr in network:
+                raise ValueError(f"Blocked private IP: {hostname}")
+    except ValueError as exc:
+        if "Blocked" in str(exc):
+            raise
+        # Not an IP literal — hostname. Allow it (DNS could resolve to
+        # private IP, but we block the known dangerous hostnames above.
+        # Full DNS resolution check would require the async SSRFGuard).
 
 
 class ToolConfig(BaseModel):
@@ -31,117 +89,174 @@ class ToolConfig(BaseModel):
     config: dict[str, Any] = {}
 
 
+def _make_run_func(tool_config: ToolConfig, whitelist: set[str]):
+    """Create a run function closure for a tool bridge."""
+    captured_config = tool_config
+    captured_whitelist = whitelist
+
+    def run_func(tool_instance) -> str:
+        config = captured_config
+
+        # Whitelist check for medium and high risk
+        if config.risk_level in ("medium", "high"):
+            if config.tool_id not in captured_whitelist:
+                logger.warning(
+                    "agency_tool_blocked",
+                    tool_id=config.tool_id,
+                    risk_level=config.risk_level,
+                )
+                log_agency_event(
+                    "agency_tool_failed",
+                    tool_name=config.tool_id,
+                    risk_level=config.risk_level,
+                    metadata={"reason": "not_in_whitelist"},
+                )
+                return (
+                    f"Tool '{config.tool_id}' is not authorized for this agency. "
+                    f"Only whitelisted tools can be used."
+                )
+
+        # Audit: tool called
+        log_agency_event(
+            "agency_tool_called",
+            tool_name=config.tool_id,
+            risk_level=config.risk_level,
+        )
+
+        query = getattr(tool_instance, "query", "")
+
+        # Route based on risk level
+        if config.risk_level == "high":
+            result = _execute_sandbox(config, query)
+        else:
+            result = _execute_http(config, query)
+
+        # Audit: log tool failure if result indicates error
+        if result.startswith("Tool execution failed") or result.startswith("Sandbox execution failed"):
+            log_agency_event(
+                "agency_tool_failed",
+                tool_name=config.tool_id,
+                risk_level=config.risk_level,
+                error_message=result[:200],
+            )
+
+        return result
+
+    return run_func
+
+
+def _execute_http(config: ToolConfig, query: str) -> str:
+    """Execute via direct HTTP call to service endpoint."""
+    if not config.endpoint_url:
+        return f"Tool '{config.tool_id}' has no endpoint configured."
+
+    try:
+        _validate_tool_url(config.endpoint_url)
+    except ValueError as exc:
+        logger.warning("agency_tool_ssrf_blocked", tool_id=config.tool_id, url=config.endpoint_url, reason=str(exc))
+        return f"Tool '{config.tool_id}' has an invalid or blocked endpoint URL."
+
+    try:
+        with httpx.Client(timeout=30.0) as client:
+            resp = client.post(
+                config.endpoint_url,
+                json={"query": query, **config.config},
+            )
+            if resp.status_code == 200:
+                return resp.text
+            return f"Tool error (HTTP {resp.status_code}): {resp.text[:200]}"
+    except Exception as exc:
+        logger.error(
+            "agency_tool_http_error",
+            tool_id=config.tool_id,
+            error=str(exc),
+        )
+        return f"Tool execution failed: {str(exc)[:200]}"
+
+
+def _execute_sandbox(config: ToolConfig, query: str) -> str:
+    """Execute via OpenSandbox dispatch."""
+    if not config.endpoint_url:
+        return f"Tool '{config.tool_id}' has no sandbox endpoint configured."
+
+    try:
+        _validate_tool_url(config.endpoint_url)
+    except ValueError as exc:
+        logger.warning("agency_tool_ssrf_blocked", tool_id=config.tool_id, url=config.endpoint_url, reason=str(exc))
+        return f"Tool '{config.tool_id}' has an invalid or blocked endpoint URL."
+
+    try:
+        with httpx.Client(timeout=60.0) as client:
+            resp = client.post(
+                config.endpoint_url,
+                json={
+                    "tool_id": config.tool_id,
+                    "input": query,
+                    **config.config,
+                },
+            )
+            if resp.status_code == 200:
+                return resp.text
+            return f"Sandbox error (HTTP {resp.status_code}): {resp.text[:200]}"
+    except Exception as exc:
+        logger.error(
+            "agency_tool_sandbox_error",
+            tool_id=config.tool_id,
+            error=str(exc),
+        )
+        return f"Sandbox execution failed: {str(exc)[:200]}"
+
+
 def create_tool_bridge(
     tool_config: ToolConfig,
     whitelist: set[str],
+    adapter=None,
 ) -> type:
-    """Create an SSPToolBridge subclass for agency-swarm.
+    """Create a tool bridge class for agency-swarm.
 
-    agency-swarm expects tool CLASSES (not instances) to be passed to Agent.
-    This factory creates a dynamic subclass with the tool config baked in
-    via closure variables (not class attributes, to avoid Pydantic conflicts).
+    If an adapter is provided, uses adapter.create_tool_class() which returns
+    a proper BaseTool subclass. Otherwise falls back to a plain BaseModel
+    (for testing without agency-swarm installed).
 
     Args:
         tool_config: Tool configuration.
         whitelist: Set of allowed tool IDs for this agency.
+        adapter: Optional AgencySwarmAdapter instance.
 
     Returns:
-        A new class (subclass of BaseModel) that agency-swarm can use as a tool.
+        A tool class for agency-swarm.
     """
-    # Capture in closure -- accessed by methods, not as class attributes
-    captured_config = tool_config
-    captured_whitelist = whitelist
+    run_func = _make_run_func(tool_config, whitelist)
     safe_name = tool_config.tool_id.replace("-", "_").replace(".", "_")
 
-    class _SSPToolBridge(BaseModel):
-        """SmartSpecPro tool bridge for agency-swarm."""
+    if adapter is not None:
+        tool_cls = adapter.create_tool_class(
+            tool_name=safe_name,
+            tool_description=f"SSP Tool: {tool_config.tool_id}",
+            run_func=run_func,
+        )
+    else:
+        # Fallback for testing: plain BaseModel with run()
+        class _FallbackTool(BaseModel):
+            query: str = Field(default="", description="Input for the tool")
 
-        query: str = Field(default="", description="Input for the tool")
+            def run(self) -> str:
+                return run_func(self)
 
-        def run(self) -> str:
-            """Execute the tool with risk-level routing and whitelist enforcement."""
-            config = captured_config
+        _FallbackTool.__name__ = f"SSPTool_{safe_name}"
+        _FallbackTool.__qualname__ = f"SSPTool_{safe_name}"
+        tool_cls = _FallbackTool
 
-            # Whitelist check for medium and high risk
-            if config.risk_level in ("medium", "high"):
-                if config.tool_id not in captured_whitelist:
-                    logger.warning(
-                        "agency_tool_blocked",
-                        tool_id=config.tool_id,
-                        risk_level=config.risk_level,
-                    )
-                    return (
-                        f"Tool '{config.tool_id}' is not authorized for this agency. "
-                        f"Only whitelisted tools can be used."
-                    )
-
-            # Route based on risk level
-            if config.risk_level == "high":
-                return self._execute_sandbox()
-            else:
-                return self._execute_http()
-
-        def _execute_http(self) -> str:
-            """Execute via direct HTTP call to service endpoint."""
-            if not captured_config.endpoint_url:
-                return f"Tool '{captured_config.tool_id}' has no endpoint configured."
-
-            try:
-                with httpx.Client(timeout=30.0) as client:
-                    resp = client.post(
-                        captured_config.endpoint_url,
-                        json={"query": self.query, **captured_config.config},
-                    )
-                    if resp.status_code == 200:
-                        return resp.text
-                    return f"Tool error (HTTP {resp.status_code}): {resp.text[:200]}"
-            except Exception as exc:
-                logger.error(
-                    "agency_tool_http_error",
-                    tool_id=captured_config.tool_id,
-                    error=str(exc),
-                )
-                return f"Tool execution failed: {str(exc)[:200]}"
-
-        def _execute_sandbox(self) -> str:
-            """Execute via OpenSandbox dispatch."""
-            if not captured_config.endpoint_url:
-                return f"Tool '{captured_config.tool_id}' has no sandbox endpoint configured."
-
-            try:
-                with httpx.Client(timeout=60.0) as client:
-                    resp = client.post(
-                        captured_config.endpoint_url,
-                        json={
-                            "tool_id": captured_config.tool_id,
-                            "input": self.query,
-                            **captured_config.config,
-                        },
-                    )
-                    if resp.status_code == 200:
-                        return resp.text
-                    return f"Sandbox error (HTTP {resp.status_code}): {resp.text[:200]}"
-            except Exception as exc:
-                logger.error(
-                    "agency_tool_sandbox_error",
-                    tool_id=captured_config.tool_id,
-                    error=str(exc),
-                )
-                return f"Sandbox execution failed: {str(exc)[:200]}"
-
-    # Set a descriptive class name for agency-swarm
-    _SSPToolBridge.__name__ = f"SSPTool_{safe_name}"
-    _SSPToolBridge.__qualname__ = f"SSPTool_{safe_name}"
-    # Store config as accessible attribute for tests
-    _SSPToolBridge._tool_config = captured_config  # type: ignore[attr-defined]
-
-    return _SSPToolBridge
+    # Store config as accessible attribute for introspection/tests
+    tool_cls._tool_config = tool_config  # type: ignore[attr-defined]
+    return tool_cls
 
 
 async def resolve_tools_for_agent(
     db: AsyncSession,
     agent_id: str,
     agency_whitelist: set[str],
+    adapter=None,
 ) -> list[type]:
     """Resolve and construct tool bridges for a specific agent.
 
@@ -152,10 +267,10 @@ async def resolve_tools_for_agent(
         db: Database session.
         agent_id: The agent's ID.
         agency_whitelist: Set of tool IDs allowed for this agency.
+        adapter: Optional AgencySwarmAdapter for creating BaseTool subclasses.
 
     Returns:
-        List of tool bridge classes (not instances -- agency-swarm
-        expects tool classes, not instances).
+        List of tool bridge classes (not instances).
     """
     query = text("""
         SELECT
@@ -176,14 +291,21 @@ async def resolve_tools_for_agent(
 
     tool_classes: list[type] = []
     for row in rows:
+        # Extract endpoint_url from config JSON if present
+        raw_config = row.config or {}
+        endpoint_url = None
+        if isinstance(raw_config, dict):
+            endpoint_url = raw_config.pop("endpoint_url", None)
+
         config = ToolConfig(
             tool_id=row.tool_id,
             tool_type=row.tool_type or "builtin",
             risk_level=row.risk_level or "low",
             requires_approval=bool(row.requires_approval),
-            config=row.config or {},
+            endpoint_url=endpoint_url,
+            config=raw_config if isinstance(raw_config, dict) else {},
         )
-        tool_cls = create_tool_bridge(config, agency_whitelist)
+        tool_cls = create_tool_bridge(config, agency_whitelist, adapter=adapter)
         tool_classes.append(tool_cls)
 
     logger.info(

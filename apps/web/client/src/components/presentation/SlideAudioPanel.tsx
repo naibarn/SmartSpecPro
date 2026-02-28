@@ -42,6 +42,8 @@ export interface SlideAudioPanelProps {
   deckVersion: number;
   /** Current project-wide audio track on the deck, or null. */
   deckAudioTrack: ProjectAudioTrackWithTitle | null;
+  /** Called after audio is successfully saved or removed, to refresh parent data. */
+  onAudioChanged?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -252,6 +254,7 @@ export function SlideAudioPanel({
   deckId,
   deckVersion,
   deckAudioTrack,
+  onAudioChanged,
 }: SlideAudioPanelProps) {
   // Picker state
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -312,10 +315,20 @@ export function SlideAudioPanel({
   // Mutations
   const setSlideAudioMutation = trpc.presentation.setSlideAudio.useMutation({
     onError: onSlideAudioError,
+    onSuccess: (_data, variables) => {
+      toast.success(variables.audioTrack ? "Slide audio saved." : "Slide audio removed.");
+      onAudioChanged?.();
+    },
   });
 
   const setDeckAudioMutation = trpc.presentation.setDeckAudio.useMutation({
     onError: onDeckAudioError,
+    onSuccess: (_data, variables) => {
+      toast.success(
+        variables.projectAudioTrack ? "Project audio saved." : "Project audio removed.",
+      );
+      onAudioChanged?.();
+    },
   });
 
   // H3: helper to compute endAtMs — guards against accidental endAtMs: 0
@@ -346,33 +359,35 @@ export function SlideAudioPanel({
   }
 
   // Handlers — per-slide
+  // NOTE: expectedVersion must be deckVersion (not slideVersion) because the
+  // backend's updateSlideAudioTrack calls ensureExpectedDeckVersion(deck, ...).
   function handleSlideAudioSelect(libraryItemId: number, _title: string) {
-    if (slideId == null || slideVersion == null) return;
+    if (slideId == null) return;
     setSlideAudioMutation.mutate({
       slideId,
       deckId,
       audioTrack: buildSlideAudioTrackInput(libraryItemId),
-      expectedVersion: slideVersion,
+      expectedVersion: deckVersion,
     });
   }
 
   function handleRemoveSlideAudio() {
-    if (slideId == null || slideVersion == null) return;
+    if (slideId == null) return;
     setSlideAudioMutation.mutate({
       slideId,
       deckId,
       audioTrack: null,
-      expectedVersion: slideVersion,
+      expectedVersion: deckVersion,
     });
   }
 
   function handleSaveSlideAudio() {
-    if (slideId == null || slideVersion == null || slideAudioTrack == null) return;
+    if (slideId == null || slideAudioTrack == null) return;
     setSlideAudioMutation.mutate({
       slideId,
       deckId,
       audioTrack: buildSlideAudioTrackInput(slideAudioTrack.libraryItemId),
-      expectedVersion: slideVersion,
+      expectedVersion: deckVersion,
     });
   }
 

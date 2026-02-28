@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import fs from "fs";
 
 // Mock the sandbox module before importing skillExecutor
 vi.mock("../sandbox", () => ({
@@ -91,12 +92,15 @@ describe("skillExecutor sandbox dispatch", () => {
     vi.mocked(dispatchToSandbox).mockResolvedValue({ jobId: "job-123" });
 
     const skill = makeSkill({ executionMode: "sandbox-code" });
-    const result = await executeSkill(skill, defaultParams, 1, "token");
+    const result = await executeSkill(skill, defaultParams, 1, "token", "tenant-001");
 
     expect(result.type).toBe("sandbox-job");
     expect(result.jobId).toBe("job-123");
     expect(result.success).toBe(true);
     expect(result.isAsync).toBe(true);
+    expect(dispatchToSandbox).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: "tenant-001",
+    }));
   });
 
   it("dispatches sandbox-command to sandbox when enabled", async () => {
@@ -105,7 +109,7 @@ describe("skillExecutor sandbox dispatch", () => {
     vi.mocked(dispatchToSandbox).mockResolvedValue({ jobId: "job-456" });
 
     const skill = makeSkill({ executionMode: "sandbox-command" });
-    const result = await executeSkill(skill, defaultParams, 1, "token");
+    const result = await executeSkill(skill, defaultParams, 1, "token", "tenant-001");
 
     expect(result.type).toBe("sandbox-job");
     expect(result.jobId).toBe("job-456");
@@ -117,7 +121,7 @@ describe("skillExecutor sandbox dispatch", () => {
     vi.mocked(dispatchToSandbox).mockResolvedValue({ jobId: "job-789" });
 
     const skill = makeSkill({ executionMode: "sandbox-browser" });
-    const result = await executeSkill(skill, defaultParams, 1, "token");
+    const result = await executeSkill(skill, defaultParams, 1, "token", "tenant-001");
     expect(result.type).toBe("sandbox-job");
   });
 
@@ -127,8 +131,20 @@ describe("skillExecutor sandbox dispatch", () => {
     vi.mocked(dispatchToSandbox).mockResolvedValue({ jobId: "job-media" });
 
     const skill = makeSkill({ executionMode: "sandbox-media" });
-    const result = await executeSkill(skill, defaultParams, 1, "token");
+    const result = await executeSkill(skill, defaultParams, 1, "token", "tenant-001");
     expect(result.type).toBe("sandbox-job");
+  });
+
+  it("returns error when sandbox dispatch lacks tenant context", async () => {
+    vi.mocked(isSandboxEnabled).mockReturnValue(true);
+    vi.mocked(shouldUseSandboxForFeature).mockReturnValue(true);
+
+    const skill = makeSkill({ executionMode: "sandbox-code" });
+    const result = await executeSkill(skill, defaultParams, 1, "token");
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Tenant context required");
+    expect(dispatchToSandbox).not.toHaveBeenCalled();
   });
 
   it("falls back to legacy when sandbox disabled for sandbox-code", async () => {
@@ -161,7 +177,7 @@ describe("skillExecutor sandbox dispatch", () => {
     vi.mocked(dispatchToSandbox).mockResolvedValue({ jobId: "job-shape-test" });
 
     const skill = makeSkill({ executionMode: "sandbox-code" });
-    const result = await executeSkill(skill, defaultParams, 1, "token");
+    const result = await executeSkill(skill, defaultParams, 1, "token", "tenant-001");
 
     expect(result).toHaveProperty("success");
     expect(result).toHaveProperty("skillId");
@@ -177,7 +193,62 @@ describe("skillExecutor sandbox dispatch", () => {
     vi.mocked(dispatchToSandbox).mockResolvedValue({ jobId: "job-media-migrate" });
 
     const skill = makeSkill({ executionMode: "media-generate", type: "image-generation" });
-    const result = await executeSkill(skill, defaultParams, 1, "token");
+    const result = await executeSkill(skill, defaultParams, 1, "token", "tenant-001");
     expect(result.type).toBe("sandbox-job");
+  });
+
+  it("routes executionMode=python to sandbox-python when enabled", async () => {
+    vi.mocked(isSandboxEnabled).mockReturnValue(true);
+    vi.mocked(shouldUseSandboxForFeature).mockReturnValue(true);
+    vi.mocked(dispatchToSandbox).mockResolvedValue({ jobId: "job-python-1" });
+
+    const skillRoot = "/virtual/python-skill";
+    const existsSpy = vi.spyOn(fs, "existsSync").mockImplementation((targetPath) => {
+      const normalized = String(targetPath).replace(/\\/g, "/");
+      return normalized === `${skillRoot}/python/skill.py`;
+    });
+    const readdirSpy = vi.spyOn(fs, "readdirSync").mockImplementation((targetPath: any) => {
+      const normalized = String(targetPath).replace(/\\/g, "/");
+      if (normalized === skillRoot) {
+        return [{
+          name: "python",
+          isDirectory: () => true,
+          isFile: () => false,
+        }] as any;
+      }
+      if (normalized === `${skillRoot}/python`) {
+        return [{
+          name: "skill.py",
+          isDirectory: () => false,
+          isFile: () => true,
+        }] as any;
+      }
+      return [] as any;
+    });
+    const readSpy = vi.spyOn(fs, "readFileSync").mockImplementation((targetPath: any) => {
+      const normalized = String(targetPath).replace(/\\/g, "/");
+      if (normalized === `${skillRoot}/python/skill.py`) {
+        return Buffer.from("print('ok')\n", "utf-8") as any;
+      }
+      throw new Error(`Unexpected readFileSync path: ${normalized}`);
+    });
+
+    try {
+      const skill = makeSkill({
+        executionMode: "python" as any,
+        skillFilePath: `${skillRoot}/skill.md`,
+      });
+      const result = await executeSkill(skill, defaultParams, 1, "token-abc", "tenant-001");
+
+      expect(result.type).toBe("sandbox-job");
+      expect(result.jobId).toBe("job-python-1");
+      expect(dispatchToSandbox).toHaveBeenCalledWith(expect.objectContaining({
+        executionMode: "sandbox-python",
+      }));
+    } finally {
+      existsSpy.mockRestore();
+      readdirSpy.mockRestore();
+      readSpy.mockRestore();
+    }
   });
 });

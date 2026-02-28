@@ -33,15 +33,15 @@ class TestSecretHygiene:
     """Verify no secrets leak into sandbox environments."""
 
     def test_client_sends_api_key_via_header_not_body(self):
-        """OpenSandboxClient sends API key as X-API-Key header, not in request body."""
+        """OpenSandboxClient sends API key as OPEN-SANDBOX-API-KEY header, not in request body."""
         source = inspect.getsource(
             __import__(
                 "app.integrations.opensandbox.client", fromlist=["OpenSandboxClient"]
             )
         )
-        assert "X-API-Key" in source
+        assert "OPEN-SANDBOX-API-KEY" in source
         # API key should be in headers, not in json body
-        assert 'headers["X-API-Key"]' in source or "headers['X-API-Key']" in source
+        assert 'headers["OPEN-SANDBOX-API-KEY"]' in source or "headers['OPEN-SANDBOX-API-KEY']" in source
 
     def test_sandbox_client_does_not_forward_database_url(self):
         """OpenSandboxClient source does not reference DATABASE_URL."""

@@ -1,0 +1,347 @@
+================================================================================
+AGENCY-SWARM INTEGRATION: ARCHITECTURE SUMMARY
+================================================================================
+
+1. LAYERS & COMPONENTS
+================================================================================
+
+REACT FRONTEND (Section-08: TODO)
+  └─ Agency page: selector, chat UI, streaming display, run history
+      ↓ (tRPC call)
+
+NODE.JS / EXPRESS (Sections-01, 05: DONE)
+  ├─ agency router (CRUD + conversations)
+  │   ├─ list(status?, limit, offset)
+  │   ├─ getById(id)
+  │   ├─ create(name, slug, agents[], flows[])
+  │   ├─ update(id, {...})
+  │   ├─ delete(id) → soft delete
+  │   ├─ listConversations(agencyId, limit, offset)
+  │   ├─ createConversation(agencyId, title)
+  │   ├─ sendMessage(agencyId, conversationId, message) ← KEY ENDPOINT
+  │   ├─ adminListAgencies(tenantId?, status?, limit, offset)
+  │   ├─ adminToggleTenant(tenantId, enabled)
+  │   └─ adminKillRun(agencyId, runId)
+  │
+  ├─ agencyBridge service (HTTP client to Python)
+  │   ├─ executeRun(params) → POST /api/v1/agencies/{id}/run
+  │   ├─ cancelRun(agencyId, runId, token)
+  │   ├─ listRuns(agencyId, token, filters)
+  │   └─ getRunDetails(agencyId, runId, token)
+  │
+  ├─ LLM Gateway (/api/llm/v2)
+  │   ├─ Route LLM calls to providers
+  │   └─ Deduct credits per call
+  │
+  └─ Feature flag: AGENCY_SWARM_ENABLED (gated on all endpoints)
+      ↓ (HTTP POST with user token)
+
+PYTHON / FASTAPI (Sections-02-05: DONE)
+  ├─ agencies router (5 endpoints)
+  │   ├─ POST /{agency_id}/run
+  │   ├─ POST /{agency_id}/stream (SSE)
+  │   ├─ GET /{agency_id}/runs
+  │   ├─ GET /{agency_id}/runs/{run_id}
+  │   └─ POST /{agency_id}/runs/{run_id}/cancel
+  │
+  ├─ AgencyService (orchestration)
+  │   ├─ execute_run() → 11-step lifecycle
+  │   ├─ execute_run_stream() → async generator
+  │   ├─ load_agency() → load config from Node tables
+  │   ├─ _load_agents() → load agent defs
+  │   ├─ _load_flows() → load communication flows
+  │   ├─ list_runs()
+  │   ├─ get_run()
+  │   └─ cancel_run()
+  │
+  ├─ AgencySwarmAdapter (isolation layer)
+  │   ├─ _create_model() → OpenAIChatCompletionsModel (routes to Node gateway)
+  │   ├─ create_agent() → Agent
+  │   ├─ create_agency() → Agency
+  │   ├─ run() → RunResult (with retry logic: 3x, exponential backoff)
+  │   ├─ run_stream() → StreamingRunResponse
+  │   └─ create_tool_class() → BaseTool subclass
+  │
+  ├─ AgencyCreditManager
+  │   ├─ pre_check() → GET /api/internal/credits/balance (Node.js)
+  │   ├─ apply_multiplier_markup() → POST /api/internal/credits/agency-markup (Node.js)
+  │   └─ estimate_run_cost() → float
+  │
+  ├─ AgencyTools (tool resolution + bridging)
+  │   ├─ resolve_tools_for_agent() → list of tool classes
+  │   ├─ create_tool_bridge() → type (BaseTool subclass)
+  │   ├─ _execute_http() → POST to endpoint_url
+  │   └─ _execute_sandbox() → POST to sandbox dispatcher
+  │
+  └─ Models
+      ├─ AgencyMessage (message history)
+      ├─ AgencyRun (execution record)
+      └─ RunContext (user/tenant/conv context)
+          ↓ (SQL + callbacks)
+
+POSTGRESQL (Section-02: DONE)
+  ├─ DRIZZLE-OWNED (Node.js migrations)
+  │   ├─ agencies
+  │   ├─ agencyAgents
+  │   ├─ agencyTools
+  │   ├─ agencyAgentTools
+  │   ├─ agencyCommunicationFlows
+  │   └─ agencyConversations
+  │
+  └─ SQLALCHEMY-OWNED (Python migrations)
+      ├─ agency_messages (message history, PII redaction)
+      └─ agency_runs (execution records, status tracking)
+
+
+2. KEY ENDPOINTS & DATA FLOW
+================================================================================
+
+USER MESSAGE FLOW (sendMessage):
+──────────────────────────────
+
+Client: POST /trpc/agency.sendMessage
+  ├─ agencyId, conversationId, message
+  ├─ Auth: JWT token
+
+→ Node.js router.sendMessage()
+  ├─ Validate: conversation belongs to user
+  ├─ Call: agencyBridge.executeRun()
+  │   └─ headers: Authorization (Bearer), X-Tenant-Id, X-User-Id
+
+→ Python POST /api/v1/agencies/{agencyId}/run
+  ├─ Authenticate: get_current_user from Bearer token
+  ├─ Check: AGENCY_SWARM_ENABLED flag
+  ├─ AgencyService.execute_run()
+  │   1. Load agency config (Node.js tables, no FK)
+  │   2. Load agents + communication flows
+  │   3. Pre-check credits (→ Node.js gateway)
+  │   4. Resolve tools for each agent
+  │   5. Create persistence hooks (load/save callbacks)
+  │   6. Construct agents via adapter
+  │   7. Construct agency via adapter
+  │   8. Create agency_runs record (status: running)
+  │   9. Execute adapter.run() with timeout + retry
+  │      └─ agency.get_response(message)
+  │         └─ Agent LLM calls (routed via Node.js /api/llm/v2)
+  │            └─ Gateway: deduct credits per call
+  │  10. Apply multiplier markup (→ Node.js gateway)
+  │  11. Update agency_runs (status: completed, duration_ms, step_count)
+  │
+  └─ Return: AgencyRunResponse {run_id, status, output, credits_used, duration_ms}
+
+← Node.js: Parse response, return to client
+← Client: Display response
+
+
+CREDIT DEDUCTION FLOW:
+──────────────────────
+
+Pre-check (Python → Node):
+  GET /api/internal/credits/balance?userId={user_id}
+  ← balance: float
+  ├─ If balance < estimated_cost: raise HTTP 402
+  └─ Optimistic (True) if gateway unavailable
+
+Per-call (during Agent LLM calls):
+  Agent calls LLM via gateway (/api/llm/v2)
+  ├─ Gateway: Call provider
+  ├─ Gateway: Calculate cost
+  ├─ Gateway: Deduct from credits_transactions
+  └─ Gateway: Record in provider_usage_log (traceId, cost, etc.)
+
+Post-run (Python → Node):
+  POST /api/internal/credits/agency-markup
+  Body: {userId, agencyId, markupAmount, sourceType: "agency"}
+  ├─ Markup = (total_gateway_cost * multiplier) - total_gateway_cost
+  ├─ If multiplier = 1.0: no-op
+  └─ Failure logged but doesn't raise (post-deduct pattern)
+
+
+3. DATABASE SCHEMA (35 columns total)
+================================================================================
+
+AGENCIES TABLE (7 indexes, soft-delete via status)
+──────────────
+  id (PK), tenantId (FK), slug, name, description, systemPrompt,
+  creditMultiplier (1-10x), maxAgents, maxRunTimeSeconds,
+  status (draft|published|archived), isFallbackSafe, isPublished,
+  createdBy (FK users), createdAt, updatedAt
+
+AGENCY_AGENTS TABLE (unique name per agency)
+──────────────────
+  id (PK), agencyId (FK), name, description, instructions, model,
+  modelSettings (JSON: max_tokens, temperature, top_p),
+  isEntryPoint (exactly 1 required per agency), isOptional,
+  position (JSON: x, y for visual builder), createdAt, updatedAt
+
+AGENCY_TOOLS TABLE (unique name per tenant)
+─────────────────
+  id (PK), tenantId (FK), name, description, toolType, config (JSON),
+  riskLevel (low|medium|high), requiresApproval, createdAt
+
+AGENCY_AGENT_TOOLS TABLE (junction: agent ↔ tool)
+──────────────────────────
+  id (PK), agentId (FK), toolId (FK), createdAt
+
+AGENCY_COMMUNICATION_FLOWS TABLE (unique from→to per agency)
+─────────────────────────────────
+  id (PK), agencyId (FK), fromAgentId (FK), toAgentId (FK),
+  flowType (delegation|handoff), createdAt
+
+AGENCY_CONVERSATIONS TABLE (user's chat sessions)
+──────────────────────────
+  id (PK), agencyId (FK), userId (FK), title, totalCreditsUsed,
+  messageCount, isArchived, createdAt, updatedAt
+
+AGENCY_MESSAGES TABLE (message history, auto-incrementing)
+──────────────────────
+  id (BigInteger PK, auto), conversation_id, agent_name, role,
+  content, input_tokens, output_tokens, credits_used, tool_calls (JSON),
+  parent_message_id, pii_redacted, created_at
+
+AGENCY_RUNS TABLE (execution records with full lifecycle)
+──────────────────
+  id (PK), conversation_id, user_id, agency_id, tenant_id,
+  status (queued|running|completed|failed|cancelled),
+  total_gateway_cost, multiplier_markup, total_credits_used,
+  started_at, completed_at, duration_ms, error_type, error_message,
+  step_count, retry_count, metadata (JSON)
+
+
+4. MULTI-TENANCY & SECURITY
+================================================================================
+
+Isolation:
+  • Database: agencies.tenantId + query filter
+  • Request: X-Tenant-Id header + user_id in context
+  • Runtime: user_context dict in Agency instance
+  • Tools: whitelist per agency
+
+Tool Authorization (risk levels):
+  • low: Always allowed, direct HTTP call
+  • medium: Whitelisted per agency, direct HTTP call
+  • high: Whitelisted per agency, dispatched to OpenSandbox
+
+Error Handling:
+  • Transient (retry): ConnectionError, HTTP 429/502/503/504
+    └─ Exponential backoff: 1s, 2s, 4s (max 3 retries)
+  • Permanent (fail fast): Auth failure, validation, insufficient credits
+  • Optional (skip): Agent marked optional=true
+
+Feature Flag:
+  • AGENCY_SWARM_ENABLED check in code (fast path)
+  • Fallback to system_settings table (DB override)
+  • Returns 404 (hidden feature) if disabled
+  • Checked on: Node router, Python router, admin endpoints
+
+
+5. DESIGN PATTERNS
+================================================================================
+
+Pattern 1: Adapter Isolation
+  • Only agency_swarm_adapter.py imports from agency-swarm library
+  • All other modules use adapter methods
+  • Upgrade-safe: library update only affects adapter.py
+
+Pattern 2: Per-Request Instantiation
+  • Fresh Agent instance per agent per run
+  • Fresh Agency instance per run
+  • Discarded after run (garbage collected)
+  • Zero state leakage between requests
+
+Pattern 3: Callback-Based Persistence
+  • Agency-swarm calls load_cb() to read message history
+  • Agency-swarm calls save_cb() to persist new messages
+  • Callbacks read/write to agency_messages table
+  • Agent-to-agent communication tracked in DB
+
+Pattern 4: Error Classification
+  • Retry on transient errors (connection, 429/5xx)
+  • Fail fast on permanent errors (auth, validation, credits)
+  • Optional agents degrade gracefully on failure
+
+Pattern 5: Feature Flag Gating
+  • AGENCY_SWARM_ENABLED controls visibility
+  • Hidden (404) not disabled (403) when feature off
+  • Gradual rollout to beta users
+
+
+6. COMPLETION STATUS
+================================================================================
+
+DONE (5 sections):
+  ✓ Section-01: Discovery & alignment (spec complete)
+  ✓ Section-02: Database schema (Drizzle + SQLAlchemy tables)
+  ✓ Section-03: Python adapter (isolation + gateway routing)
+  ✓ Section-04: Python service (full lifecycle orchestration)
+  ✓ Section-05: Python router (5 FastAPI endpoints)
+
+TODO (7 sections):
+  ○ Section-06: Cost reconciliation (accuracy of total_gateway_cost)
+  ○ Section-07: SSE streaming optimization (heartbeat, disconnection)
+  ○ Section-08: Frontend chat UI (agency selector, message input)
+  ○ Section-09: Visual builder (ReactFlow for agencies)
+  ○ Section-10: Workflow integration (LangGraph agency node)
+  ○ Section-11: Admin observability (runs dashboard, cost audit)
+  ○ Section-12: Agency templates (Customer Support, Content Creation, etc.)
+
+Blockers for Section-06:
+  • None — cost reconciliation can start immediately
+  • Dependencies: provider_usage_log must track traceId per call
+
+
+7. KEY RISKS & MITIGATIONS
+================================================================================
+
+Risk: Agency-swarm library crash → Blocks all multi-agent features
+  Mitigation: Version isolation (adapter pattern), full error handling,
+              circuit breaker on gateway
+
+Risk: Infinite loop in agent communication → Runaway costs
+  Mitigation: maxRunTimeSeconds (30–3600s), step_count tracking,
+              test harness with controlled agents
+
+Risk: Tool-based privilege escalation → Agent escapes agency scope
+  Mitigation: Tool whitelist per agency, sandbox isolation for high-risk,
+              callbacks limit agent to conversation context
+
+Risk: Agent prompt injection via message → Model compromise
+  Mitigation: Input validation (50k char limit), guardrails (TODO),
+              system prompt control per agency
+
+Risk: Credit exhaustion mid-run → User charged unexpectedly
+  Mitigation: Pre-check (advisory), per-call gateway deduction,
+              multiplier applied only for marked-up costs
+
+Risk: Tenant data leakage in tool outputs → Privacy violation
+  Mitigation: Tool whitelist enforced, callback persistence scoped,
+              tenant_id in all queries, audit logging (TODO)
+
+
+8. FILE LOCATIONS
+================================================================================
+
+Node.js:
+  apps/web/server/routers/agency.ts
+  apps/web/server/services/agencyBridge.ts
+  apps/web/server/routers/__tests__/agency.test.ts
+  apps/web/server/services/__tests__/agencyBridge.test.ts
+  apps/web/drizzle/schema.ts (lines 3906–4034)
+
+Python:
+  python-backend/app/api/agencies.py
+  python-backend/app/services/agency_swarm_adapter.py
+  python-backend/app/services/agency_service.py
+  python-backend/app/services/agency_credits.py
+  python-backend/app/services/agency_tools.py
+  python-backend/app/services/agency_persistence.py
+  python-backend/app/models/agency.py
+
+Tests:
+  apps/web/server/routers/__tests__/agency.test.ts
+  apps/web/server/services/__tests__/agencyBridge.test.ts
+  python-backend/tests/ (TODO)
+
+================================================================================
+END ARCHITECTURE SUMMARY
+================================================================================

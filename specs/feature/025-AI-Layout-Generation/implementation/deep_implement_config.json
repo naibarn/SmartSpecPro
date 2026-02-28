@@ -1,0 +1,62 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/025-AI-Layout-Generation/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/025-AI-Layout-Generation/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-shared-types-presets",
+    "section-02-callllm-structured",
+    "section-03-layout-engine",
+    "section-04-error-codes-feature-flag",
+    "section-05-built-in-skills",
+    "section-06-orchestrator",
+    "section-07-trpc-router",
+    "section-08-frontend-modal"
+  ],
+  "sections_state": {
+    "section-01-shared-types-presets": {
+      "status": "complete",
+      "commit_hash": "7ba9c2d"
+    },
+    "section-02-callllm-structured": {
+      "status": "complete",
+      "commit_hash": "4a7e8a9"
+    },
+    "section-03-layout-engine": {
+      "status": "complete",
+      "commit_hash": "0ea8663"
+    },
+    "section-04-error-codes-feature-flag": {
+      "status": "complete",
+      "commit_hash": "3487c22"
+    },
+    "section-05-built-in-skills": {
+      "status": "complete",
+      "commit_hash": "5ae37ef"
+    },
+    "section-06-orchestrator": {
+      "status": "complete",
+      "commit_hash": "d03ad5f"
+    },
+    "section-07-trpc-router": {
+      "status": "complete",
+      "commit_hash": "3f47a58"
+    },
+    "section-08-frontend-modal": {
+      "status": "complete",
+      "commit_hash": "3ab0706"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-02-26T06:21:36.901249+00:00"
+}

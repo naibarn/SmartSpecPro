@@ -1,0 +1,72 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/024-ImportPresentations/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/024-ImportPresentations/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-db-migration",
+    "section-02-pptx-importer",
+    "section-03-gslides-importer",
+    "section-04-celery-fastapi",
+    "section-05-trpc-router",
+    "section-06-service-callback",
+    "section-07-import-dialog",
+    "section-08-editor-integration",
+    "section-09-tests",
+    "section-10-security-qa"
+  ],
+  "sections_state": {
+    "section-01-db-migration": {
+      "status": "complete",
+      "commit_hash": "8cb172d"
+    },
+    "section-02-pptx-importer": {
+      "status": "complete",
+      "commit_hash": "82235b5"
+    },
+    "section-03-gslides-importer": {
+      "status": "complete",
+      "commit_hash": "33680b8"
+    },
+    "section-04-celery-fastapi": {
+      "status": "complete",
+      "commit_hash": "bf26545"
+    },
+    "section-05-trpc-router": {
+      "status": "complete",
+      "commit_hash": "48fcc62"
+    },
+    "section-06-service-callback": {
+      "status": "complete",
+      "commit_hash": "632939c"
+    },
+    "section-07-import-dialog": {
+      "status": "complete",
+      "commit_hash": "52200e6"
+    },
+    "section-08-editor-integration": {
+      "status": "complete",
+      "commit_hash": "5700ec4739331c2608ecfa6a8ccd94ac61737505"
+    },
+    "section-09-tests": {
+      "status": "complete",
+      "commit_hash": "18fb73d"
+    },
+    "section-10-security-qa": {
+      "status": "complete",
+      "commit_hash": "2af8773"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-02-24T12:57:52.852523+00:00"
+}

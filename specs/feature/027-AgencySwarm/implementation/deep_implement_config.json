@@ -1,0 +1,82 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/027-AgencySwarm/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/027-AgencySwarm/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-pre-validation",
+    "section-02-database-schema",
+    "section-03-python-adapter",
+    "section-04-python-services",
+    "section-05-python-router",
+    "section-06-nodejs-integration",
+    "section-07-sse-streaming",
+    "section-08-frontend-chat",
+    "section-09-frontend-builder",
+    "section-10-workflow-integration",
+    "section-11-admin-observability",
+    "section-12-templates-rollout"
+  ],
+  "sections_state": {
+    "section-01-pre-validation": {
+      "status": "complete",
+      "commit_hash": "2aaaee5"
+    },
+    "section-02-database-schema": {
+      "status": "complete",
+      "commit_hash": "784c958"
+    },
+    "section-03-python-adapter": {
+      "status": "complete",
+      "commit_hash": "0d1b290"
+    },
+    "section-04-python-services": {
+      "status": "complete",
+      "commit_hash": "9105854"
+    },
+    "section-05-python-router": {
+      "status": "complete",
+      "commit_hash": "ebc5a43"
+    },
+    "section-06-nodejs-integration": {
+      "status": "complete",
+      "commit_hash": "4b04484"
+    },
+    "section-07-sse-streaming": {
+      "status": "complete",
+      "commit_hash": "eb59ceb"
+    },
+    "section-08-frontend-chat": {
+      "status": "complete",
+      "commit_hash": "04c5b68"
+    },
+    "section-09-frontend-builder": {
+      "status": "complete",
+      "commit_hash": "711eb33"
+    },
+    "section-10-workflow-integration": {
+      "status": "complete",
+      "commit_hash": "91ed9c5"
+    },
+    "section-11-admin-observability": {
+      "status": "complete",
+      "commit_hash": "b9c4336"
+    },
+    "section-12-templates-rollout": {
+      "status": "complete",
+      "commit_hash": "169e9f1"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-02-27T07:41:44.605056+00:00"
+}

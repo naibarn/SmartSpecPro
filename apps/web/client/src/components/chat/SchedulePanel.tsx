@@ -47,6 +47,9 @@ import {
   FileText,
   Plus,
   AlarmClock,
+  Settings,
+  AlertTriangle,
+  CalendarPlus,
 } from "lucide-react";
 import { Calendar as CalendarWidget } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
@@ -67,6 +70,7 @@ export function SchedulePanel({ onNavigateToChat, initialDmUserId, initialDmUser
   const [editPrompt, setEditPrompt] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editCron, setEditCron] = useState("");
+  const [editDynamicParams, setEditDynamicParams] = useState("");
 
   // Quick Reminder form state
   const [showQuickReminder, setShowQuickReminder] = useState(false);
@@ -112,10 +116,14 @@ export function SchedulePanel({ onNavigateToChat, initialDmUserId, initialDmUser
   const updateMutation = trpc.scheduledMessages.update.useMutation({
     onSuccess: () => {
       utils.scheduledMessages.list.invalidate();
+      utils.scheduledMessages.getUrgentReminders.invalidate();
       toast.success("Schedule updated");
       setEditingId(null);
+      setEditDynamicParams("");
     },
-    onError: (err) => toast.error(err.message),
+    onError: (err) => {
+      toast.error(`Update failed: ${err.message}`);
+    }
   });
 
   const createReminderMutation = trpc.scheduledMessages.create.useMutation({
@@ -235,14 +243,30 @@ export function SchedulePanel({ onNavigateToChat, initialDmUserId, initialDmUser
     setEditPrompt(item.prompt);
     setEditDescription(item.description || "");
     setEditCron(item.cronExpression || "");
+    try {
+      setEditDynamicParams(item.dynamicParams ? JSON.stringify(item.dynamicParams, null, 2) : "");
+    } catch {
+      setEditDynamicParams("");
+    }
   };
 
   const saveEdit = (id: number) => {
+    let parsedParams = undefined;
+    if (editDynamicParams.trim()) {
+      try {
+        parsedParams = JSON.parse(editDynamicParams);
+      } catch (e) {
+        toast.error("Invalid JSON format for dynamic parameters");
+        return;
+      }
+    }
+
     updateMutation.mutate({
       id,
       prompt: editPrompt,
       description: editDescription || undefined,
       cronExpression: editCron || undefined,
+      dynamicParams: parsedParams,
     });
   };
 
@@ -291,6 +315,16 @@ export function SchedulePanel({ onNavigateToChat, initialDmUserId, initialDmUser
           >
             <AlarmClock className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Remind</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-[11px] gap-1 text-blue-500 hover:text-blue-400"
+            title="Schedule a Skill run"
+            onClick={() => window.dispatchEvent(new CustomEvent('open-skill-selector'))}
+          >
+            <CalendarPlus className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Skill</span>
           </Button>
           <Button
             variant="ghost"
@@ -416,240 +450,271 @@ export function SchedulePanel({ onNavigateToChat, initialDmUserId, initialDmUser
       )}
 
       {viewMode === "list" ? (
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="p-2 space-y-2">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : items.length === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              <Bell className="h-8 w-8 mx-auto mb-2 opacity-30" />
-              <p>No scheduled alerts yet</p>
-              <p className="text-xs mt-1">
-                Type a scheduling request in chat, e.g.<br />
-                "Every day at 8 AM, find IT news"<br />
-                "แจ้งฉัน ทุกวันตอนแปดโมงเช้า"
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3 text-xs gap-1"
-                onClick={() => setShowQuickReminder(true)}
-              >
-                <AlarmClock className="h-3.5 w-3.5" />
-                Create Reminder
-              </Button>
-            </div>
-          ) : (
-            items.map((item) => {
-              const isExpanded = expandedId === item.id;
-              const isEditing = editingId === item.id;
-
-              return (
-                <div
-                  key={item.id}
-                  id={`schedule-item-${item.id}`}
-                  className={cn(
-                    "rounded-lg border transition-colors",
-                    isExpanded ? "bg-card shadow-sm" : "hover:bg-muted/50",
-                    highlightId === item.id && "ring-2 ring-primary/50 animate-pulse"
-                  )}
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="p-2 space-y-2">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : items.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">
+                <Bell className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                <p>No scheduled alerts yet</p>
+                <p className="text-xs mt-1">
+                  Type a scheduling request in chat, e.g.<br />
+                  "Every day at 8 AM, find IT news"<br />
+                  "แจ้งฉัน ทุกวันตอนแปดโมงเช้า"
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 text-xs gap-1"
+                  onClick={() => setShowQuickReminder(true)}
                 >
-                  {/* Header - always visible, clickable to expand */}
+                  <AlarmClock className="h-3.5 w-3.5" />
+                  Create Reminder
+                </Button>
+              </div>
+            ) : (
+              items.map((item) => {
+                const isExpanded = expandedId === item.id;
+                const isEditing = editingId === item.id;
+
+                return (
                   <div
-                    className="flex items-start gap-2 p-3 cursor-pointer"
-                    onClick={() => { setExpandedId(isExpanded ? null : item.id); if (editingId && editingId !== item.id) setEditingId(null); }}
+                    key={item.id}
+                    id={`schedule-item-${item.id}`}
+                    className={cn(
+                      "rounded-lg border transition-colors",
+                      isExpanded ? "bg-card shadow-sm" : "hover:bg-muted/50",
+                      highlightId === item.id && "ring-2 ring-primary/50 animate-pulse"
+                    )}
                   >
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm leading-snug">
-                        {item.description || item.prompt.slice(0, 80)}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                        <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", statusColor(item.status))}>
-                          {item.status}
-                        </Badge>
-                        {(item as any).isSimpleReminder && (
-                          <Badge variant="outline" className="text-[9px] px-1 py-0 border-purple-400 text-purple-500">
-                            <AlarmClock className="h-2.5 w-2.5 mr-0.5" />
-                            Reminder
+                    {/* Header - always visible, clickable to expand */}
+                    <div
+                      className="flex items-start gap-2 p-3 cursor-pointer"
+                      onClick={() => { setExpandedId(isExpanded ? null : item.id); if (editingId && editingId !== item.id) setEditingId(null); }}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm leading-snug">
+                          {item.description || item.prompt.slice(0, 80)}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                          <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", statusColor(item.status))}>
+                            {item.status}
                           </Badge>
-                        )}
-                        <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {formatScheduleTime(item)}
-                        </span>
-                        {item.emailNotify && (
-                          <Mail className="h-3 w-3 text-muted-foreground" />
+                          {(item as any).isSimpleReminder && (
+                            <Badge variant="outline" className="text-[9px] px-1 py-0 border-purple-400 text-purple-500">
+                              <AlarmClock className="h-2.5 w-2.5 mr-0.5" />
+                              Reminder
+                            </Badge>
+                          )}
+                          {item.skillId && item.skillId !== "chat-alert" && (
+                            <Badge variant="outline" className="text-[9px] px-1 py-0 border-blue-400 text-blue-500">
+                              <Settings className="h-2.5 w-2.5 mr-0.5" />
+                              {item.skillId}
+                            </Badge>
+                          )}
+                          <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {formatScheduleTime(item)}
+                          </span>
+                          {item.emailNotify && (
+                            <Mail className="h-3 w-3 text-muted-foreground" />
+                          )}
+                        </div>
+                        {item.nextRunAt && item.status === "active" && (
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            Next: {new Date(item.nextRunAt).toLocaleString()}
+                          </p>
                         )}
                       </div>
-                      {item.nextRunAt && item.status === "active" && (
-                        <p className="text-[10px] text-muted-foreground mt-1">
-                          Next: {new Date(item.nextRunAt).toLocaleString()}
-                        </p>
-                      )}
+                      <div className="shrink-0 mt-0.5">
+                        {isExpanded ? (
+                          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
                     </div>
-                    <div className="shrink-0 mt-0.5">
-                      {isExpanded ? (
-                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </div>
-                  </div>
 
-                  {/* Expanded details */}
-                  {isExpanded && (
-                    <div className="border-t px-3 pb-3 space-y-3">
-                      {/* Action buttons */}
-                      <div className="flex items-center gap-1.5 pt-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-xs gap-1"
-                          onClick={(e) => { e.stopPropagation(); togglePause.mutate({ id: item.id }); }}
-                          disabled={item.status === "completed" || item.status === "failed" || togglePause.isPending}
-                        >
-                          {item.status === "active" ? (
-                            <><Pause className="h-3 w-3" /> Pause</>
-                          ) : (
-                            <><Play className="h-3 w-3" /> Resume</>
-                          )}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-xs gap-1"
-                          onClick={(e) => { e.stopPropagation(); startEdit(item); }}
-                        >
-                          <Edit2 className="h-3 w-3" /> Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-xs gap-1 text-destructive hover:text-destructive"
-                          onClick={(e) => { e.stopPropagation(); setDeleteId(item.id); }}
-                        >
-                          <Trash2 className="h-3 w-3" /> Delete
-                        </Button>
-                        {item.conversationId && onNavigateToChat && (
+                    {/* Expanded details */}
+                    {isExpanded && (
+                      <div className="border-t px-3 pb-3 space-y-3">
+                        {/* Action buttons */}
+                        <div className="flex items-center gap-1.5 pt-2">
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-7 text-xs gap-1 ml-auto"
-                            onClick={(e) => { e.stopPropagation(); onNavigateToChat(item.conversationId!); }}
+                            className="h-7 text-xs gap-1"
+                            onClick={(e) => { e.stopPropagation(); togglePause.mutate({ id: item.id }); }}
+                            disabled={item.status === "completed" || item.status === "failed" || togglePause.isPending}
                           >
-                            <MessageCircle className="h-3 w-3" /> View Chat
+                            {item.status === "active" ? (
+                              <><Pause className="h-3 w-3" /> Pause</>
+                            ) : (
+                              <><Play className="h-3 w-3" /> Resume</>
+                            )}
                           </Button>
-                        )}
-                      </div>
-
-                      {/* Edit form */}
-                      {isEditing && (
-                        <div className="space-y-2 bg-muted/50 rounded-md p-2.5">
-                          <div>
-                            <label className="text-[10px] font-medium text-muted-foreground block mb-1">Description</label>
-                            <Input
-                              value={editDescription}
-                              onChange={(e) => setEditDescription(e.target.value)}
-                              placeholder="Short description..."
-                              className="h-7 text-xs"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[10px] font-medium text-muted-foreground block mb-1">Prompt</label>
-                            <Textarea
-                              value={editPrompt}
-                              onChange={(e) => setEditPrompt(e.target.value)}
-                              className="text-xs min-h-[60px]"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[10px] font-medium text-muted-foreground block mb-1">
-                              Cron Expression {editCron && <span className="text-muted-foreground font-normal">({formatCronOnly(editCron)})</span>}
-                            </label>
-                            <Input
-                              value={editCron}
-                              onChange={(e) => setEditCron(e.target.value)}
-                              placeholder="e.g. 0 8 * * *"
-                              className="h-7 text-xs font-mono"
-                            />
-                          </div>
-                          <div className="flex items-center gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs gap-1"
+                            onClick={(e) => { e.stopPropagation(); startEdit(item); }}
+                          >
+                            <Edit2 className="h-3 w-3" /> Edit
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs gap-1 text-destructive hover:text-destructive"
+                            onClick={(e) => { e.stopPropagation(); setDeleteId(item.id); }}
+                          >
+                            <Trash2 className="h-3 w-3" /> Delete
+                          </Button>
+                          {item.conversationId && onNavigateToChat && (
                             <Button
+                              variant="outline"
                               size="sm"
-                              className="h-7 text-xs gap-1"
-                              onClick={() => saveEdit(item.id)}
-                              disabled={updateMutation.isPending}
+                              className="h-7 text-xs gap-1 ml-auto"
+                              onClick={(e) => { e.stopPropagation(); onNavigateToChat(item.conversationId!); }}
                             >
-                              {updateMutation.isPending ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <Save className="h-3 w-3" />
-                              )}
-                              Save
+                              <MessageCircle className="h-3 w-3" /> View Chat
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 text-xs gap-1"
-                              onClick={() => setEditingId(null)}
-                            >
-                              <X className="h-3 w-3" /> Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Full prompt display */}
-                      {!isEditing && (
-                        <div className="bg-muted/50 rounded-md p-2">
-                          <div className="flex items-center gap-1 mb-1">
-                            <FileText className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-[10px] font-medium text-muted-foreground">Prompt</span>
-                          </div>
-                          <p className="text-xs whitespace-pre-wrap">{item.prompt}</p>
-                        </div>
-                      )}
-
-                      {/* Schedule info */}
-                      {!isEditing && (
-                        <div className="grid grid-cols-2 gap-2 text-[10px]">
-                          <div>
-                            <span className="text-muted-foreground">Schedule:</span>
-                            <span className="ml-1 font-mono">{item.cronExpression || (item.scheduledAt ? format(new Date(item.scheduledAt), "yyyy-MM-dd HH:mm") : "One-time")}</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Timezone:</span>
-                            <span className="ml-1">{(item as any).timezone || "Asia/Bangkok"}</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Email:</span>
-                            <span className="ml-1">{item.emailNotify ? "Yes" : "No"}</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Created:</span>
-                            <span className="ml-1">{new Date(item.createdAt).toLocaleDateString()}</span>
-                          </div>
-                          {item.lastRunAt && (
-                            <div className="col-span-2">
-                              <span className="text-muted-foreground">Last run:</span>
-                              <span className="ml-1">{new Date(item.lastRunAt).toLocaleString()}</span>
-                            </div>
                           )}
                         </div>
-                      )}
 
-                      {/* Execution logs */}
-                      <ScheduleLogs scheduleId={item.id} />
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
-        </div>
-      </ScrollArea>
+                        {/* Error details if failed */}
+                        {item.status === "failed" && (
+                          <div className="bg-destructive/10 text-destructive text-xs p-2 rounded-md mt-2 flex items-start gap-1.5 break-words">
+                            <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                            <div>
+                              <span className="font-semibold block mb-0.5">Execution Failed</span>
+                              <span className="opacity-90">Please check parameters and try again. Log execution details are stored securely.</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Edit form */}
+                        {isEditing && (
+                          <div className="space-y-2 bg-muted/50 rounded-md p-2.5">
+                            <div>
+                              <label className="text-[10px] font-medium text-muted-foreground block mb-1">Description</label>
+                              <Input
+                                value={editDescription}
+                                onChange={(e) => setEditDescription(e.target.value)}
+                                placeholder="Short description..."
+                                className="h-7 text-xs"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-medium text-muted-foreground block mb-1">Prompt</label>
+                              <Textarea
+                                value={editPrompt}
+                                onChange={(e) => setEditPrompt(e.target.value)}
+                                className="text-xs min-h-[60px]"
+                              />
+                            </div>
+                            {item.skillId && item.skillId !== "chat-alert" && (
+                              <div>
+                                <label className="text-[10px] font-medium text-muted-foreground block mb-1 flex justify-between">
+                                  <span>Dynamic Parameters (JSON)</span>
+                                  <span className="text-[9px] text-blue-500 font-normal">Skill Payload</span>
+                                </label>
+                                <Textarea
+                                  value={editDynamicParams}
+                                  onChange={(e) => setEditDynamicParams(e.target.value)}
+                                  className="text-xs min-h-[80px] font-mono whitespace-pre bg-slate-950/50"
+                                  placeholder="{}"
+                                />
+                              </div>
+                            )}
+                            <div>
+                              <label className="text-[10px] font-medium text-muted-foreground block mb-1">
+                                Cron Expression {editCron && <span className="text-muted-foreground font-normal">({formatCronOnly(editCron)})</span>}
+                              </label>
+                              <Input
+                                value={editCron}
+                                onChange={(e) => setEditCron(e.target.value)}
+                                placeholder="e.g. 0 8 * * *"
+                                className="h-7 text-xs font-mono"
+                              />
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <Button
+                                size="sm"
+                                className="h-7 text-xs gap-1"
+                                onClick={() => saveEdit(item.id)}
+                                disabled={updateMutation.isPending}
+                              >
+                                {updateMutation.isPending ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Save className="h-3 w-3" />
+                                )}
+                                Save
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 text-xs gap-1"
+                                onClick={() => setEditingId(null)}
+                              >
+                                <X className="h-3 w-3" /> Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Full prompt display */}
+                        {!isEditing && (
+                          <div className="bg-muted/50 rounded-md p-2">
+                            <div className="flex items-center gap-1 mb-1">
+                              <FileText className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-[10px] font-medium text-muted-foreground">Prompt</span>
+                            </div>
+                            <p className="text-xs whitespace-pre-wrap">{item.prompt}</p>
+                          </div>
+                        )}
+
+                        {/* Schedule info */}
+                        {!isEditing && (
+                          <div className="grid grid-cols-2 gap-2 text-[10px]">
+                            <div>
+                              <span className="text-muted-foreground">Schedule:</span>
+                              <span className="ml-1 font-mono">{item.cronExpression || (item.scheduledAt ? format(new Date(item.scheduledAt), "yyyy-MM-dd HH:mm") : "One-time")}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Timezone:</span>
+                              <span className="ml-1">{(item as any).timezone || "Asia/Bangkok"}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Email:</span>
+                              <span className="ml-1">{item.emailNotify ? "Yes" : "No"}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Created:</span>
+                              <span className="ml-1">{new Date(item.createdAt).toLocaleDateString()}</span>
+                            </div>
+                            {item.lastRunAt && (
+                              <div className="col-span-2">
+                                <span className="text-muted-foreground">Last run:</span>
+                                <span className="ml-1">{new Date(item.lastRunAt).toLocaleString()}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Execution logs */}
+                        <ScheduleLogs scheduleId={item.id} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </ScrollArea>
       ) : (
         <ScheduleCalendarView
           items={items}

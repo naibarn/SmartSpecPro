@@ -1,55 +1,38 @@
 # Orchestra Plan
 
 ## Task
-Redesign Presentation Editor mobile/tablet layout so canvas fills maximum screen space, with a collapsible bottom sheet (swipe-up gesture) and a slide-in drawer panel for slides/tools — no impact on desktop layout.
+Feasibility analysis for importing presentations from Google Slides and PowerPoint (.pptx)
+into the SmartSpecPro Presentation Editor.
 
-## Task Classification
-- Scope: medium
-- Risk: low
-- Affected domains: CMD-1 Frontend
-- Estimated file count: 6
-- Chosen route: multi-agent-waves
-- Bug route: false
-- Classification notes: All changes are frontend-only React/Tailwind UI. File count (~6) exceeds
-  the small-scope ceiling of 3. Involves gesture handling (pointer events for swipe-up),
-  new MobileDrawerPanel component, and significant rework of PresentationEditor mobile layout.
-  No API, auth, DB, or backend changes — risk is low.
+## Classification
+- scope: large
+- risk: high
+- affected_domains: [frontend, backend-node, backend-python, schema, external-api]
+- estimated_file_count: 20-28
+- chosen_route: research-first → feasibility confirmed → spec → deep-plan
+- task_summary: Add import capability for Google Slides (via native API) and PowerPoint (.pptx
+  via python-pptx) into the Presentation Editor, mapping external formats to the internal
+  PresentationSlideContent schema. The codebase already has DB tables, Google OAuth, and
+  compatibility service designed for exactly this purpose.
+- security_concerns: [Google OAuth2 scopes, file upload MIME validation, PPTX parsing sandbox,
+  S3/R2 image re-upload, cross-tenant isolation]
+- feasibility: CONFIRMED — all infrastructure prerequisites already exist
 
-## Wave Plan
+## Wave Plan (for when deep-plan executes)
+Wave 1: Schema + Python service layer
+  - DB migration (presentationImportJobs table if needed, or reuse presentationConversionRecords)
+  - python-pptx importer (pptx_importer.py)
+  - gslides_importer.py (extends google_content_extractor.py)
+  - Celery task (presentation_import_tasks.py)
 
-### Wave 1 — Frontend: Mobile Layout Redesign (ssp-frontend)
+Wave 2: Node.js backend
+  - tRPC router (presentationImport.ts)
+  - Import service (presentationImportService.ts)
 
-**Agent:** ssp-frontend
-**Files owned:**
-1. `apps/web/client/src/presentation-canvas/components/MobileBottomSheet.tsx`
-   — Add collapsible state (collapsed by default), swipe-up pointer gesture, expand/collapse toggle
-2. `apps/web/client/src/presentation-canvas/components/MobileQuickActions.tsx`
-   — Already simplified (icons only); review and ensure it is minimal (mode toggle + nudge + delete)
-3. `apps/web/client/src/presentation-canvas/components/MobileDrawerPanel.tsx` ← NEW
-   — Left slide-in drawer: Slides panel + Add-element grid + Snap toggle; triggered by hamburger button
-4. `apps/web/client/src/presentation-canvas/CanvasShell.tsx`
-   — No structural changes needed (already flex h-full); may need to remove canvasFooter overlap
-5. `apps/web/client/src/pages/PresentationEditor.tsx`
-   — Simplify mobile canvasToolbar to just MobileQuickActions (no add-element grid)
-   — Add hamburger (☰) button in header when isMobileViewport
-   — Wire MobileDrawerPanel with open/close state
-   — Remove add-element buttons from mobile canvasToolbar (they are in the drawer now)
-6. `apps/web/client/src/presentation-canvas/index.ts`
-   — Export MobileDrawerPanel
+Wave 3: Frontend
+  - Import dialog UI (ImportPresentationDialog.tsx)
+  - PresentationEditor integration (import button in toolbar)
 
-**Design contract:**
-- MobileDrawerPanel: `{ isOpen: boolean; onClose: () => void; slidesPanel: ReactNode; onAddElement: (type) => void; snapLockEnabled: boolean; onToggleSnapLock: () => void }`
-- MobileBottomSheet: adds `isCollapsed` internal state; tab click expands; drag handle toggles
-- MobileQuickActions: unchanged from last session (already correct)
-- Desktop layout (useStudioLayout=true path in CanvasShell): MUST NOT be modified
-
-### Wave 2 — Quality Gate
-- TypeScript check: `cd apps/web && pnpm check`
-- Expected: 0 errors
-
-## Route Status
-route: multi-agent-waves
-waves_completed: 0
-agents_dispatched: []
-quality_gates: pending
-security_gate: skipped (low risk, UI only)
+Wave 4: QA + Security
+  - Python tests, TypeScript types check
+  - Security review (file upload validation, OAuth scope check)

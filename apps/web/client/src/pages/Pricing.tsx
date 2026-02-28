@@ -111,7 +111,7 @@ const agencyFeatures = [
 const faqs = [
   {
     question: 'What are credits and how do they work?',
-    answer: 'Credits are the currency used for AI operations in SmartSpec. Different operations consume different amounts of credits. For example, generating code uses 1 credit, while generating images uses 1-2 credits depending on quality. Unused credits roll over to the next month for paid plans.'
+    answer: 'Credits are the currency used for AI operations in SmartAIHub. Different operations consume different amounts of credits. For example, generating code uses 1 credit, while generating images uses 1-2 credits depending on quality. Unused credits roll over to the next month for paid plans.'
   },
   {
     question: 'Can I upgrade or downgrade my plan?',
@@ -135,7 +135,7 @@ const faqs = [
   },
   {
     question: 'What is the Agency (White Label) plan?',
-    answer: 'The Agency plan is designed for businesses who want to offer SmartSpec under their own brand. It includes custom domain support, white label branding, and domain admin features to manage and allocate credits to your users.'
+    answer: 'The Agency plan is designed for businesses who want to offer SmartAIHub under their own brand. It includes custom domain support, white label branding, and domain admin features to manage and allocate credits to your users.'
   }
 ];
 

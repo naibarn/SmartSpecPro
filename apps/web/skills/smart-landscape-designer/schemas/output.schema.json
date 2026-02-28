@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/smart-landscape-designer/output.schema.json",
+  "title": "SmartLandscapeDesignerSinglePromptOutput",
+  "type": "string",
+  "minLength": 1,
+  "description": "A single copy-ready image generation prompt. Return only the raw prompt string, with no JSON object, no array, no labels, no code fences, and no extra commentary."
+}

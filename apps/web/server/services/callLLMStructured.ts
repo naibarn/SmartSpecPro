@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { Message } from "../_core/llm";
 import { executeWithFallback } from "./llmRouter";
 import { deductCreditsForModel } from "./creditService";
 import { auditLogger } from "./auditLogger";
@@ -73,7 +74,7 @@ The JSON must strictly conform to the expected schema.`;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const isRetry = attempt > 0;
 
-    const messages = [
+    const messages: Message[] = [
       { role: "system", content: augmentedSystemPrompt },
       {
         role: "user",

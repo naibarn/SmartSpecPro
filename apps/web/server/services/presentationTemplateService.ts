@@ -107,7 +107,7 @@ function throwPermissionDenied(
 function throwPolicyFailure(
   actor: PresentationActor,
   input: ApplyTemplateAssetToDeckInput,
-  policyResult: TemplateAssetPolicyResult,
+  policyResult: Extract<TemplateAssetPolicyResult, { ok: false }>,
   recordLog: (event: string, payload: Record<string, unknown>) => void,
   recordFailureMetric: (errorCode: string) => void,
 ): never {
@@ -151,8 +151,14 @@ export async function applyTemplateAssetToDeck(
   }
 
   const policyResult = deps.validateTemplateAsset(templateItem);
-  if (!policyResult.ok || !Number.isFinite(policyResult.byteSize)) {
+  if (!policyResult.ok) {
     throwPolicyFailure(actor, input, policyResult, deps.recordLog, deps.recordFailureMetric);
+  }
+  if (!Number.isFinite(policyResult.byteSize)) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
+      `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: template asset byte_size is not finite`,
+    );
   }
 
   const existingAssets = await deps.listAssetsForDeck(

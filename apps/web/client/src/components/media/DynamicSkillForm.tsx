@@ -100,7 +100,7 @@ const iconMap: Record<string, LucideIcon> = {
 // Schema Types
 export interface SkillInputField {
   id: string;
-  type: "text" | "textarea" | "select" | "multiselect" | "number" | "slider" | "boolean" | "image" | "images" | "imageUpload" | "model-search" | "workflow-selector";
+  type: "text" | "textarea" | "select" | "multiselect" | "number" | "slider" | "boolean" | "image" | "images" | "imageUpload" | "file" | "files" | "model-search" | "workflow-selector" | "array";
   label: string;
   labelTh?: string;
   placeholder?: string;
@@ -121,10 +121,15 @@ export interface SkillInputField {
   max?: number;
   step?: number;
   rows?: number;
+  maxItems?: number;
+  minItems?: number;
+  itemLabel?: string;
+  itemFields?: SkillInputField[];
   maxImages?: number;
   maxCount?: number;
   multiple?: boolean;
   accept?: string;
+  readOnly?: boolean;
   searchable?: boolean;
   dependsOn?: {
     field: string;
@@ -333,7 +338,7 @@ function WorkflowSelectorField({
       setSelectedId(numericId);
       onChange(JSON.stringify(wf.workflowJson, null, 2));
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workflows, isLoading]);
 
   return (
@@ -502,7 +507,7 @@ export default function DynamicSkillForm({
       [sectionId]: !prev[sectionId],
     }));
   };
-  
+
   // Reset dependent field values when parent changes (for cascading selects)
   useEffect(() => {
     schema.sections.forEach((section) => {
@@ -510,11 +515,11 @@ export default function DynamicSkillForm({
         if (field.optionGroups && field.dependsOn) {
           const parentValue = values[field.dependsOn.field];
           const currentValue = values[field.id];
-          
+
           // If parent changed, check if current value is still valid
           const validOptions = field.optionGroups[parentValue] || [];
           const isValid = validOptions.some((opt) => opt.value === currentValue);
-          
+
           if (!isValid && currentValue) {
             // Reset to empty
             onChange({ ...values, [field.id]: '' });
@@ -544,20 +549,20 @@ export default function DynamicSkillForm({
   const isFieldVisible = (field: SkillInputField): boolean => {
     if (!field.dependsOn) return true;
     const dependentValue = values[field.dependsOn.field];
-    
+
     // Handle notEmpty condition
     if (field.dependsOn.notEmpty) {
       return !!dependentValue && dependentValue !== '';
     }
-    
+
     // Handle value condition
     if (field.dependsOn.value !== undefined) {
       return dependentValue === field.dependsOn.value;
     }
-    
+
     return true;
   };
-  
+
   // Get select options, handling optionGroups for cascading selects
   const getSelectOptions = (field: SkillInputField) => {
     // If field has optionGroups and dependsOn, filter by parent value
@@ -678,7 +683,7 @@ export default function DynamicSkillForm({
       case "select":
         const selectOptions = getSelectOptions(field);
         const isDisabled = field.optionGroups && field.dependsOn && selectOptions.length === 0;
-        
+
         return (
           <div key={field.id} className="space-y-1.5">
             <Label htmlFor={field.id} className="flex items-center gap-1.5">
@@ -703,12 +708,12 @@ export default function DynamicSkillForm({
               disabled={isDisabled}
             >
               <SelectTrigger id={field.id}>
-                <SelectValue 
+                <SelectValue
                   placeholder={
-                    isDisabled 
-                      ? `Select ${field.dependsOn?.field} first` 
+                    isDisabled
+                      ? `Select ${field.dependsOn?.field} first`
                       : (placeholder || "Select...")
-                  } 
+                  }
                 />
               </SelectTrigger>
               <SelectContent className="max-h-[300px]">
@@ -859,6 +864,149 @@ export default function DynamicSkillForm({
           </div>
         );
 
+      case "array":
+        const items = Array.isArray(value) ? value : [];
+        const minItems = field.minItems ?? 0;
+        const maxItems = field.maxItems ?? 5;
+
+        return (
+          <div key={field.id} className="space-y-3 p-4 border rounded-lg bg-muted/20">
+            <div className="flex items-center justify-between">
+              <Label className="flex items-center gap-1.5 font-semibold">
+                {label} ({items.length}/{maxItems})
+                {field.required && <span className="text-red-500">*</span>}
+              </Label>
+              {items.length < maxItems && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const newItem: Record<string, any> = {};
+                    field.itemFields?.forEach(f => {
+                      newItem[f.id] = f.default ?? f.defaultValue ?? "";
+                    });
+                    updateValue(field.id, [...items, newItem]);
+                  }}
+                >
+                  Add {field.itemLabel || "Item"}
+                </Button>
+              )}
+            </div>
+
+            {description && (
+              <p className="text-xs text-muted-foreground">{description}</p>
+            )}
+
+            <div className="space-y-4">
+              {items.map((item, index) => (
+                <div key={index} className="relative p-4 border rounded-md bg-background shadow-sm space-y-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">{field.itemLabel || "Item"} {index + 1}</span>
+                    {items.length > minItems && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-destructive absolute top-2 right-2"
+                        onClick={() => {
+                          const newItems = [...items];
+                          newItems.splice(index, 1);
+                          updateValue(field.id, newItems);
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+
+                  {field.itemFields?.map(subField => {
+                    // Create a sub-updater for this specific array item
+                    const updateSubValue = (val: any) => {
+                      const newItems = [...items];
+                      newItems[index] = { ...newItems[index], [subField.id]: val };
+                      updateValue(field.id, newItems);
+                    };
+
+                    // Recursively render the field, intercepting the value and onChange
+                    // For nested file uploads, we need to pass a custom handler
+                    if (subField.type === "file" || subField.type === "image") {
+                      return (
+                        <div key={`${field.id}-${index}-${subField.id}`} className="space-y-1.5">
+                          <Label className="text-sm">{subField.label}</Label>
+                          <div className="flex items-center gap-3">
+                            {item[subField.id] ? (
+                              <div className="relative group">
+                                <img src={item[subField.id]} alt="Uploaded" className="h-16 w-16 object-cover border rounded-md" />
+                                <button
+                                  onClick={() => updateSubValue("")}
+                                  className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                className="h-16 w-16"
+                                disabled={isUploading}
+                                onClick={() => {
+                                  const input = document.createElement("input");
+                                  input.type = "file";
+                                  input.accept = subField.accept || "image/*";
+                                  input.onchange = async (e) => {
+                                    const files = (e.target as HTMLInputElement).files;
+                                    if (files && files.length > 0 && onImageUpload) {
+                                      const urls = await onImageUpload(files);
+                                      if (urls.length > 0) {
+                                        updateSubValue(urls[0]);
+                                      }
+                                    }
+                                  };
+                                  input.click();
+                                }}
+                              >
+                                {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
+                              </Button>
+                            )}
+                          </div>
+                          {subField.helpText && <p className="text-xs text-muted-foreground">{subField.helpText}</p>}
+                        </div>
+                      )
+                    }
+
+                    // For text/other inputs, render basic version inline to avoid complex context passing
+                    if (subField.type === "text" || subField.type === "textarea") {
+                      return (
+                        <div key={`${field.id}-${index}-${subField.id}`} className="space-y-1.5">
+                          <Label className="text-sm">{subField.label}</Label>
+                          {subField.type === "textarea" ? (
+                            <Textarea
+                              value={item[subField.id] || ""}
+                              onChange={e => updateSubValue(e.target.value)}
+                              readOnly={subField.readOnly as boolean}
+                              className={subField.readOnly ? "bg-muted/50" : ""}
+                            />
+                          ) : (
+                            <Input
+                              value={item[subField.id] || ""}
+                              onChange={e => updateSubValue(e.target.value)}
+                              readOnly={subField.readOnly as boolean}
+                              className={subField.readOnly ? "bg-muted/50" : ""}
+                            />
+                          )}
+                          {subField.helpText && <p className="text-xs text-muted-foreground">{subField.helpText}</p>}
+                        </div>
+                      )
+                    }
+
+                    return <div key={`${field.id}-${index}-${subField.id}`} className="text-xs text-red-500">Sub-field type {subField.type} not supported in inline arrays yet</div>;
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+
+      case "file":
       case "image":
         return (
           <div key={field.id} className="space-y-1.5">
@@ -912,6 +1060,7 @@ export default function DynamicSkillForm({
           </div>
         );
 
+      case "files":
       case "images":
       case "imageUpload":
         const imageUrls: string[] = Array.isArray(value) ? value : [];

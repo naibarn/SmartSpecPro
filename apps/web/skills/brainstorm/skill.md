@@ -5,7 +5,7 @@ description: Multi-model collaborative brainstorming with debate rounds and synt
 category: chat_assistant
 icon: Lightbulb
 version: "1.0.0"
-author: SmartSpec
+author: SmartAIHub
 isAutoTrigger: false
 enabledByDefault: true
 priority: 40

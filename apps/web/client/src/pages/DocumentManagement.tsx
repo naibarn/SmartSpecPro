@@ -126,7 +126,7 @@ export default function DocumentManagement() {
   const [markdownError, setMarkdownError] = useState<string | undefined>(undefined);
   const [previewText, setPreviewText] = useState<string | undefined>(undefined);
   const [isLibraryPanelOpen, setIsLibraryPanelOpen] = useState(true);
-  const [isMarkdownPreviewPanelOpen, setIsMarkdownPreviewPanelOpen] = useState(true);
+  const [isMarkdownPreviewPanelOpen, setIsMarkdownPreviewPanelOpen] = useState(false);
   const [isEditorPanelCollapsed, setIsEditorPanelCollapsed] = useState(false);
   const [isPreviewExpanded, setIsPreviewExpanded] = useState(false);
   const [isDesktopLayout, setIsDesktopLayout] = useState(() => {
@@ -137,7 +137,7 @@ export default function DocumentManagement() {
   const [previewPanelWidth, setPreviewPanelWidth] = useState(430);
   const [importingDriveFileId, setImportingDriveFileId] = useState<string | null>(null);
   const [mobileTab, setMobileTab] = useState<"library" | "editor" | "preview">("library");
-  const [isLibraryHeaderCollapsed, setIsLibraryHeaderCollapsed] = useState(false);
+  const [isLibraryHeaderCollapsed, setIsLibraryHeaderCollapsed] = useState(true);
   const [openEditorTabs, setOpenEditorTabs] = useState<DocumentEditorTab[]>(() => {
     if (typeof window === "undefined") {
       return [];
@@ -1390,7 +1390,11 @@ export default function DocumentManagement() {
               className="flex flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-4 shadow-md transition-all duration-300 xl:min-h-0 xl:shrink-0"
               style={isDesktopLayout ? { width: `${libraryPanelWidth}px` } : undefined}
             >
-              <div className="mb-4 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                className="mb-2 flex w-full items-center justify-between gap-2 text-left"
+                onClick={() => setIsLibraryHeaderCollapsed((p) => !p)}
+              >
                 <div>
                   <div className="text-base font-semibold text-slate-900">Library</div>
                   <div className="text-xs text-slate-500">
@@ -1402,25 +1406,33 @@ export default function DocumentManagement() {
                   <Badge variant="outline" className="rounded-full border-slate-300 bg-slate-50 text-[11px]">
                     {getCurrentScopeLabel(queryState.scope)}
                   </Badge>
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 text-slate-400 transition-transform duration-200",
+                      isLibraryHeaderCollapsed ? "-rotate-90" : "rotate-0",
+                    )}
+                  />
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 rounded-full hover:bg-slate-100 transition-colors"
-                    onClick={() => setIsLibraryPanelOpen(false)}
+                    onClick={(e) => { e.stopPropagation(); setIsLibraryPanelOpen(false); }}
                     title="Collapse library panel"
                   >
                     <ChevronsLeft className="h-4 w-4" />
                   </Button>
                 </div>
-              </div>
+              </button>
 
-              <div className="mb-4">
-                <DocumentLibraryTabs
-                  value={queryState.scope}
-                  onChange={(scope) => setQueryState((prev) => ({ ...prev, scope }))}
-                />
-              </div>
+              {!isLibraryHeaderCollapsed && (
+                <div className="mb-4">
+                  <DocumentLibraryTabs
+                    value={queryState.scope}
+                    onChange={(scope) => setQueryState((prev) => ({ ...prev, scope }))}
+                  />
+                </div>
+              )}
 
               {queryState.scope === "trash" ? (
                 <div className="min-h-[200px] max-h-[50vh] overflow-y-auto xl:max-h-none xl:min-h-0 xl:flex-1">
@@ -1654,6 +1666,7 @@ export default function DocumentManagement() {
                 }}
                 onMarkdownSave={handleSaveMarkdown}
                 onVersionRestore={handleVersionRestore}
+                onEnterEditMode={() => setIsMarkdownPreviewPanelOpen(true)}
                 onRenameTitle={handleRenameDocument}
               />
               {!selectedItem && selectedItemQuery.isLoading ? (

@@ -1,6 +1,8 @@
 from __future__ import annotations
 import importlib.util
 import json
+import subprocess
+import tempfile
 from pathlib import Path
 from typing import List
 
@@ -68,10 +70,14 @@ def evaluate_from_path(skill_dir: Path) -> EvaluationReport:
         for t in raw_tests
     ]
 
+    # Check if this is a JS skill
+    js_path = skill_dir / "js" / "skill.js"
+    if js_path.exists():
+        return _evaluate_javascript(skill_name, js_path, tests, skill_dir)
+
     # Locate and load Python skill module
     py_path = skill_dir / "python" / "skill.py"
     if not py_path.exists():
-        # JS skills cannot be directly executed from Python evaluator
         return EvaluationReport(
             skill_name=skill_name,
             total=len(tests),
@@ -81,7 +87,7 @@ def evaluate_from_path(skill_dir: Path) -> EvaluationReport:
                 TestResult(
                     test_id=t.id,
                     passed=False,
-                    output="JS skills require Node.js runner — skipping Python evaluation",
+                    output="Skill code not found (neither python/skill.py nor js/skill.js)",
                     missing=t.expected_contains,
                 )
                 for t in tests
@@ -134,3 +140,103 @@ def report_to_json_dict(rep: EvaluationReport) -> dict:
             for r in rep.results
         ]
     }
+
+def _evaluate_javascript(skill_name: str, js_path: Path, tests: List[TestCase], skill_dir: Path) -> EvaluationReport:
+    # Build a temporary test runner to execute the JavaScript skill via Node.js
+    test_data = [
+        {"id": t.id, "input": t.input, "context": t.context, "expected_contains": t.expected_contains}
+        for t in tests
+    ]
+    
+    runner_code = f"""
+const skill = require({json.dumps(str(js_path))});
+const tests = {json.dumps(test_data)};
+
+async function run() {{
+    const results = [];
+    let passedCount = 0;
+    
+    for (const test of tests) {{
+        try {{
+            const output = await skill.respond(test.input, test.context || {{}});
+            const outStr = typeof output === 'string' ? output : JSON.stringify(output);
+            
+            const missing = test.expected_contains.filter(s => !outStr.includes(s));
+            const passed = missing.length === 0;
+            if (passed) passedCount++;
+            
+            results.push({{
+                test_id: test.id,
+                passed,
+                output: outStr,
+                missing
+            }});
+        }} catch (e) {{
+            results.push({{
+                test_id: test.id,
+                passed: false,
+                output: "Error: " + e.message,
+                missing: test.expected_contains
+            }});
+        }}
+    }}
+    
+    console.log(JSON.stringify({{ passed: passedCount, results }}));
+}}
+
+run().catch(e => console.error(JSON.stringify({{ error: e.message }})));
+"""
+    
+    # Run the tests via Node.js
+    with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False) as f:
+        f.write(runner_code)
+        tmp_path = f.name
+        
+    try:
+        # Run node script from the skill's workspace so imports/requires work correctly
+        proc = subprocess.run(
+            ["node", tmp_path], 
+            capture_output=True, 
+            text=True, 
+            timeout=30,
+            cwd=str(skill_dir)
+        )
+        stdout = proc.stdout.strip()
+        stderr = proc.stderr.strip()
+        
+        # Parse the JSON from stdout (look at the last non-empty line)
+        try:
+            lines = [line for line in stdout.splitlines() if line.strip()]
+            output_data = json.loads(lines[-1] if lines else "{}")
+            if "error" in output_data:
+                raise Exception(output_data["error"])
+                
+            passed_count = output_data.get("passed", 0)
+            res_list = []
+            for r in output_data.get("results", []):
+                res_list.append(TestResult(
+                    test_id=r["test_id"],
+                    passed=r["passed"],
+                    output=r["output"],
+                    missing=r["missing"]
+                ))
+            
+            total = len(tests)
+            return EvaluationReport(
+                skill_name=skill_name,
+                total=total,
+                passed=passed_count,
+                pass_rate=(passed_count / total) if total else 0.0,
+                results=res_list
+            )
+            
+        except Exception as parse_err:
+             error_msg = f"Failed to parse JS output: {parse_err}. Stdout: {stdout}. Stderr: {stderr}"
+             results = [
+                 TestResult(test_id=t.id, passed=False, output=error_msg[:500], missing=t.expected_contains) 
+                 for t in tests
+             ]
+             return EvaluationReport(skill_name=skill_name, total=len(tests), passed=0, pass_rate=0.0, results=results)
+             
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)

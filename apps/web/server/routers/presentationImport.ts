@@ -155,7 +155,7 @@ export const presentationImportRouter = router({
               source_library_item_id: input.sourceLibraryItemId ?? null,
               slides_url: input.slidesUrl ?? null,
               user_id: actor.userId,
-              tenant_id: parseInt(tenantId, 10),
+              tenant_id: tenantId,
             }),
           },
         );

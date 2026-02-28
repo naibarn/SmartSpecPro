@@ -53,9 +53,32 @@ def plan_research_topics(
     max_topics: int = 10,
     llm: Optional[OpenAICompatibleClient] = None,
 ) -> List[str]:
-    manifest = load_manifest(skill_name)
-    skill_code = read_text(skill_name, "skill.py")
-    tests = read_text(skill_name, "tests.json")
+    try:
+        manifest = read_text(skill_name, "skill.md")
+    except FileNotFoundError:
+        try:
+            manifest = read_text(skill_name, "manifest.json")
+        except FileNotFoundError:
+            manifest = "Manifest missing."
+
+    try:
+        skill_code = read_text(skill_name, "python/skill.py")
+    except FileNotFoundError:
+        try:
+            skill_code = read_text(skill_name, "js/skill.js")
+        except FileNotFoundError:
+            try:
+                skill_code = read_text(skill_name, "skill.py")
+            except FileNotFoundError:
+                skill_code = "Code missing."
+
+    try:
+        tests = read_text(skill_name, "tests/tests.json")
+    except FileNotFoundError:
+        try:
+            tests = read_text(skill_name, "tests.json")
+        except FileNotFoundError:
+            tests = "Tests missing."
     failed = [r for r in report.results if not r.passed]
     failure_summary = "\n".join([
         f"- {r.test_id}: missing={r.missing} output={r.output[:160].replace(chr(10),' ')}"
@@ -66,8 +89,8 @@ def plan_research_topics(
         prompt = f"""Return up to {max_topics} web search queries (one per line, short, specific).
 Only include queries truly necessary to improve correctness vs tests.
 
-Skill: {manifest.description}
-Tags: {manifest.tags}
+Skill manifest:
+{manifest[:500]}
 
 Failing tests summary:
 {failure_summary}
@@ -95,7 +118,7 @@ Tests:
                 break
         if uniq:
             return uniq
-    return _heuristic_topics(manifest.description, failure_summary, max_topics)
+    return _heuristic_topics(str(manifest), failure_summary, max_topics)
 
 def run_research(topics: List[str], max_results_per_topic: int = 3) -> List[ResearchHit]:
     hits: List[ResearchHit] = []

@@ -9,13 +9,14 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { trpc } from '@/lib/trpc';
 import { SkillSelector } from '@/components/chat/skill/SkillSelector';
 import { ChatDynamicSkillForm } from '@/components/chat/skill/ChatDynamicSkillForm';
+import { ScheduleSkillDialog, ScheduleData } from '@/components/chat/skill/ScheduleSkillDialog';
 import { SkillInputSchema } from '@/components/media/DynamicSkillForm';
 import { useSkillForm } from '@/components/chat/skill/hooks/useSkillForm';
 import { useSkillExecution } from '@/components/chat/skill/hooks/useSkillExecution';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Minimize2, X, Settings, Loader2 } from 'lucide-react';
+import { Minimize2, X, Settings, Loader2, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 export interface SkillFormState {
@@ -32,21 +33,21 @@ export interface UseChatSkillFormReturn {
   isFormOpen: boolean;
   hasFormChanges: boolean;
   isLoadingSchema: boolean;
-  
+
   // UI Controls
   showSkillSelector: boolean;
   setShowSkillSelector: (show: boolean) => void;
-  
+
   // Actions
   openSkillForm: (skillId: string, initialValues?: Record<string, any>) => Promise<void>;
   closeSkillForm: () => void;
   minimizeSkillForm: () => void;
   restoreSkillForm: () => void;
-  
+
   // Form Submission
   handleSkillFormSubmit: (conversationId: number, prompt?: string) => Promise<void>;
   isSubmitting: boolean;
-  
+
   // Render helpers
   renderSkillForm: () => React.ReactNode;
   renderSkillChip: () => React.ReactNode;
@@ -62,24 +63,37 @@ export function useChatSkillForm(
   const [showSkillSelector, setShowSkillSelector] = useState(false);
   const [isLoadingSchema, setIsLoadingSchema] = useState(false);
   const [pendingPrefill, setPendingPrefill] = useState<Record<string, any> | null>(null);
-  
+  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false);
+
   const utils = trpc.useUtils();
-  
+
   // Form state management
-  const { 
-    values, 
-    setValue, 
-    validate, 
-    reset: resetForm, 
+  const {
+    values,
+    setValue,
+    validate,
+    reset: resetForm,
     errors,
-    hasChanges 
+    hasChanges
   } = useSkillForm({
     schema: skillFormState?.schema || { title: '', sections: [] },
   });
-  
+
   // Skill execution
   const { execute, isLoading: isSubmitting, error: executionError } = useSkillExecution({
     conversationId,
+  });
+
+  // Schedule mutation
+  const createScheduleMutation = trpc.scheduledMessages.create.useMutation({
+    onSuccess: () => {
+      utils.scheduledMessages.list.invalidate();
+      toast.success('Skill scheduled successfully');
+      setSkillFormState(null);
+      setIsFormOpen(false);
+      resetForm();
+    },
+    onError: (err) => toast.error(err.message),
   });
 
   // Apply pending prefill values once the form schema has loaded and the form is open
@@ -97,7 +111,7 @@ export function useChatSkillForm(
     try {
       // Check if skill has schema
       const schemaData = await utils.skills.getInputSchema.fetch({ skillId });
-      
+
       if (schemaData.hasSchema) {
         // Try to get skill details - first try by slug, then use schema data
         let skillName = skillId;
@@ -110,7 +124,7 @@ export function useChatSkillForm(
             skillName = schemaData.schema.title;
           }
         }
-        
+
         // Open form
         setSkillFormState({
           skillId,
@@ -150,57 +164,86 @@ export function useChatSkillForm(
     setSkillFormState(prev => prev ? { ...prev, isMinimized: false } : null);
   }, []);
 
-  // Handle form submission
-  const handleSkillFormSubmit = useCallback(async (
-    conversationId: number,
-    prompt?: string
-  ) => {
-    if (!skillFormState) return;
-    
-    // Validate form
+  const getMappedValuesAndPrompt = () => {
+    if (!skillFormState) return null;
     const isValid = validate();
     if (!isValid) {
       toast.error('Please fill in all required fields');
-      return;
+      return null;
     }
-    
-    // Apply outputMapping if exists
     const mappedValues = skillFormState.schema.outputMapping
       ? Object.entries(skillFormState.schema.outputMapping).reduce(
-          (acc, [fieldId, apiKey]) => {
-            acc[apiKey] = values[fieldId];
-            return acc;
-          },
-          {} as Record<string, any>
-        )
+        (acc, [fieldId, apiKey]) => {
+          acc[apiKey] = values[fieldId];
+          return acc;
+        },
+        {} as Record<string, any>
+      )
       : values;
-    
-    // Get prompt from form values if not provided directly
-    // Check common prompt field names; fallback to skill name (backend requires non-empty string)
-    const promptValue = prompt
-      || values.prompt
+
+    const promptValue = values.prompt
       || values.input
       || values.message
       || values.description
       || values.text
       || `Use ${skillFormState.skillName}`;
 
+    return { mappedValues, promptValue };
+  };
+
+  const handleSchedule = useCallback((scheduleData: ScheduleData) => {
+    if (!skillFormState) return;
+    const formVals = getMappedValuesAndPrompt();
+    if (!formVals) return;
+
+    createScheduleMutation.mutate({
+      prompt: formVals.promptValue,
+      description: `Run ${skillFormState.skillName}`,
+      skillId: skillFormState.skillId,
+      dynamicParams: formVals.mappedValues,
+      ...scheduleData
+    });
+  }, [skillFormState, values, validate, createScheduleMutation]);
+
+  // Handle form submission
+  const handleSkillFormSubmit = useCallback(async (
+    conversationId: number,
+    prompt?: string
+  ) => {
+    if (!skillFormState) return;
+
+    // Validate form
+    const isValid = validate();
+    if (!isValid) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    const formVals = getMappedValuesAndPrompt();
+    if (!formVals) return;
+
+    // Get prompt from form values if not provided directly
+    const formValsPrompt = Object.entries(formVals.mappedValues).find(([k]) => ['prompt', 'input', 'message', 'description', 'text'].includes(k))?.[1]
+      || `Use ${skillFormState.skillName}`;
+
+    const promptValue = prompt || formValsPrompt;
+
     try {
       const result = await execute({
         skillId: skillFormState.skillId,
         prompt: promptValue,
-        dynamicParams: mappedValues,
+        dynamicParams: formVals.mappedValues,
       });
-      
+
       if (result?.success) {
         // Send context message if needed
         if (onSendMessage) {
           onSendMessage(
             `[Using ${skillFormState.skillName}]`,
-            { skillId: skillFormState.skillId, params: mappedValues }
+            { skillId: skillFormState.skillId, params: formVals.mappedValues }
           );
         }
-        
+
         closeSkillForm();
         toast.success('Skill executed successfully');
       } else {
@@ -216,99 +259,119 @@ export function useChatSkillForm(
     if (!skillFormState?.isOpen || skillFormState.isMinimized) return null;
 
     return (
-      <Card className="mb-4 flex flex-col relative" style={{ maxHeight: '70vh' }}>
-        {/* Execution overlay */}
-        {isSubmitting && (
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm rounded-lg">
-            <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
-            <p className="text-sm font-medium text-foreground">
-              กำลังประมวลผล {skillFormState.skillName}...
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              ระบบกำลังเรียกใช้ AI กรุณารอสักครู่
-            </p>
-          </div>
-        )}
-        <CardHeader className="flex flex-row items-center justify-between py-3 shrink-0">
-          <CardTitle className="text-base flex items-center gap-2">
-            {isSubmitting ? (
-              <Loader2 className="h-4 w-4 animate-spin text-primary" />
-            ) : (
-              <Settings className="h-4 w-4" />
-            )}
-            {skillFormState.skillName}
-            {isSubmitting && (
-              <span className="text-xs font-normal text-muted-foreground ml-1">
-                (กำลังทำงาน)
-              </span>
-            )}
-          </CardTitle>
-          <div className="flex gap-1">
+      <>
+        <Card className="mb-4 flex flex-col relative" style={{ maxHeight: '70vh' }}>
+          {/* Execution overlay */}
+          {isSubmitting && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm rounded-lg">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+              <p className="text-sm font-medium text-foreground">
+                กำลังประมวลผล {skillFormState.skillName}...
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                ระบบกำลังเรียกใช้ AI กรุณารอสักครู่
+              </p>
+            </div>
+          )}
+          <CardHeader className="flex flex-row items-center justify-between py-3 shrink-0">
+            <CardTitle className="text-base flex items-center gap-2">
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              ) : (
+                <Settings className="h-4 w-4" />
+              )}
+              {skillFormState.skillName}
+              {isSubmitting && (
+                <span className="text-xs font-normal text-muted-foreground ml-1">
+                  (กำลังทำงาน)
+                </span>
+              )}
+            </CardTitle>
+            <div className="flex gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={minimizeSkillForm}
+                disabled={isSubmitting}
+              >
+                <Minimize2 className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={closeSkillForm}
+                disabled={isSubmitting}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="flex-1 overflow-y-auto px-6" style={{ minHeight: 0, maxHeight: 'calc(70vh - 140px)' }}>
+            <ChatDynamicSkillForm
+              schema={skillFormState.schema}
+              values={values}
+              onChange={(newValues) => {
+                // Update form values
+                Object.entries(newValues).forEach(([key, value]) => {
+                  if (values[key] !== value) {
+                    setValue(key, value);
+                  }
+                });
+              }}
+              error={executionError?.message || null}
+            />
+          </CardContent>
+          <CardFooter className="flex justify-end gap-2 shrink-0 border-t pt-4">
+            <Button variant="ghost" onClick={closeSkillForm} disabled={isSubmitting || createScheduleMutation.isPending}>
+              Cancel
+            </Button>
+            <div className="flex-1" />
             <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={minimizeSkillForm}
-              disabled={isSubmitting}
+              variant="outline"
+              onClick={() => setIsScheduleDialogOpen(true)}
+              disabled={isSubmitting || createScheduleMutation.isPending}
+              className="gap-2"
             >
-              <Minimize2 className="h-4 w-4" />
+              <Clock className="w-4 h-4" />
+              Schedule
             </Button>
             <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={closeSkillForm}
-              disabled={isSubmitting}
+              onClick={() => handleSkillFormSubmit(conversationId)}
+              disabled={isSubmitting || createScheduleMutation.isPending}
             >
-              <X className="h-4 w-4" />
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  กำลังประมวลผล...
+                </>
+              ) : (
+                'Execute'
+              )}
             </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="flex-1 overflow-y-auto px-6" style={{ minHeight: 0, maxHeight: 'calc(70vh - 140px)' }}>
-          <ChatDynamicSkillForm
-            schema={skillFormState.schema}
-            values={values}
-            onChange={(newValues) => {
-              // Update form values
-              Object.entries(newValues).forEach(([key, value]) => {
-                if (values[key] !== value) {
-                  setValue(key, value);
-                }
-              });
-            }}
-            error={executionError?.message || null}
+          </CardFooter>
+        </Card>
+
+        {skillFormState && (
+          <ScheduleSkillDialog
+            open={isScheduleDialogOpen}
+            onOpenChange={setIsScheduleDialogOpen}
+            skillName={skillFormState.skillName}
+            onSchedule={handleSchedule}
           />
-        </CardContent>
-        <CardFooter className="flex justify-end gap-2 shrink-0 border-t pt-4">
-          <Button variant="outline" onClick={closeSkillForm} disabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button
-            onClick={() => handleSkillFormSubmit(conversationId)}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                กำลังประมวลผล...
-              </>
-            ) : (
-              'Execute'
-            )}
-          </Button>
-        </CardFooter>
-      </Card>
+        )}
+      </>
     );
-  }, [skillFormState, values, executionError, isSubmitting, minimizeSkillForm, closeSkillForm, handleSkillFormSubmit, conversationId, setValue]);
+  }, [skillFormState, values, executionError, isSubmitting, minimizeSkillForm, closeSkillForm, handleSkillFormSubmit, conversationId, setValue, isScheduleDialogOpen, handleSchedule, createScheduleMutation.isPending]);
 
   // Render minimized chip
   const renderSkillChip = useCallback(() => {
     if (!skillFormState?.isMinimized) return null;
 
     return (
-      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm mb-3 ${
-        isSubmitting ? 'bg-primary/20 border border-primary/30' : 'bg-primary/10'
-      }`}>
+      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm mb-3 ${isSubmitting ? 'bg-primary/20 border border-primary/30' : 'bg-primary/10'
+        }`}>
         {isSubmitting ? (
           <Loader2 className="h-3.5 w-3.5 text-primary animate-spin" />
         ) : (

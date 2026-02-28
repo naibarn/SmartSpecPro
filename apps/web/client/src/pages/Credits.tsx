@@ -1,5 +1,5 @@
 /**
- * Credits Page - SmartSpec Pro
+ * Credits Page - SmartAIHub
  * Credit management and purchase interface
  */
 
@@ -39,6 +39,7 @@ import {
   Bell,
   Shield,
   Eye,
+  Coins,
 } from 'lucide-react';
 
 /** Source type display labels and colors */
@@ -55,6 +56,8 @@ const SOURCE_LABELS: Record<string, { label: string; color: string; icon: typeof
   brainstorm:  { label: "Brainstorm", color: "bg-amber-100 text-amber-700",  icon: Lightbulb },
   scheduler:   { label: "Alert",      color: "bg-yellow-100 text-yellow-700", icon: Bell },
   admin:       { label: "Admin",      color: "bg-gray-100 text-gray-700",    icon: Shield },
+  agency:      { label: "Agency",     color: "bg-violet-100 text-violet-700", icon: Eye },
+  creator_revenue: { label: "Creator Revenue", color: "bg-amber-100 text-amber-700", icon: Coins },
   other:       { label: "Other",      color: "bg-slate-100 text-slate-700",  icon: Zap },
 };
 
@@ -152,31 +155,31 @@ export default function Credits() {
       {/* Header */}
       <header className="bg-white/70 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-10">
         <div className="px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2 sm:gap-4">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setLocation('/dashboard')}
-                className="text-gray-600"
+                className="text-gray-600 px-2 sm:px-3"
               >
                 <ChevronLeft className="w-5 h-5 mr-1" />
-                Back
+                <span className="hidden sm:inline">Back</span>
               </Button>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
-                  <CreditCard className="w-5 h-5 text-white" />
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center flex-shrink-0">
+                  <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-gray-900">Credits</h1>
-                  <p className="text-sm text-gray-500">Manage your credit balance</p>
+                  <h1 className="text-lg sm:text-xl font-bold text-gray-900">Credits</h1>
+                  <p className="text-xs sm:text-sm text-gray-500 hidden sm:block">Manage your credit balance</p>
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2 bg-yellow-50 px-4 py-2 rounded-lg">
+            <div className="flex items-center gap-1.5 sm:gap-2 bg-yellow-50 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg flex-shrink-0">
               <Zap className="w-4 h-4 text-yellow-500" />
-              <span className="font-semibold text-gray-900">{user.credits ?? 0}</span>
-              <span className="text-sm text-gray-500">credits</span>
+              <span className="font-semibold text-gray-900 text-sm sm:text-base">{user.credits ?? 0}</span>
+              <span className="text-xs sm:text-sm text-gray-500">credits</span>
             </div>
           </div>
         </div>
@@ -340,23 +343,26 @@ export default function Credits() {
           </motion.div>
         </motion.div>
 
+        {/* Creator Earnings */}
+        <CreatorEarningsSection />
+
         {/* Transaction History */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
             <div className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-gray-400" />
               <h2 className="text-xl font-bold text-gray-900">Transaction History</h2>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
               {/* Source type filter */}
               <select
                 value={sourceFilter}
                 onChange={(e) => { setSourceFilter(e.target.value as CreditSourceType | ""); setPage(0); }}
-                className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-400"
+                className="flex-1 sm:flex-none text-sm border border-gray-200 rounded-lg px-3 py-1.5 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-400"
               >
                 <option value="">All Sources</option>
                 {Object.entries(SOURCE_LABELS).map(([key, { label }]) => (
@@ -364,8 +370,8 @@ export default function Credits() {
                 ))}
               </select>
               <Button variant="outline" size="sm" onClick={() => refetchHistory()}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh
+                <RefreshCw className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Refresh</span>
               </Button>
             </div>
           </div>
@@ -381,226 +387,269 @@ export default function Credits() {
                 <p className="text-gray-500">No transactions yet</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50/50 border-b border-gray-100">
-                    <tr>
-                      <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                        Type
-                      </th>
-                      <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                        Source
-                      </th>
-                      <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                        Description
-                      </th>
-                      <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                        Details
-                      </th>
-                      <th className="px-4 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                        Credits
-                      </th>
-                      <th className="px-4 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                        Balance
-                      </th>
-                      <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                        Date
-                      </th>
-                      <th className="px-4 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                        Audit
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {history.map((transaction: any) => {
-                      const srcInfo = transaction.sourceType ? SOURCE_LABELS[transaction.sourceType] : null;
-                      const SrcIcon = srcInfo?.icon ?? Zap;
-                      const dateStr = transaction.createdAt
-                        ? new Date(transaction.createdAt).toISOString().slice(0, 10)
-                        : undefined;
-
-                      return (
-                      <tr key={transaction.id} className="hover:bg-gray-50/50 transition-colors">
-                        {/* Type */}
-                        <td className="px-4 py-3">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                              transaction.type === 'purchase' || transaction.type === 'bonus'
-                                ? 'bg-green-100 text-green-700'
-                                : transaction.type === 'usage'
-                                ? 'bg-blue-100 text-blue-700'
-                                : transaction.type === 'refund'
-                                ? 'bg-yellow-100 text-yellow-700'
-                                : 'bg-gray-100 text-gray-700'
-                            }`}
-                          >
-                            {transaction.type === 'purchase' ? (
-                              <><CreditCard className="w-3 h-3" /> Purchase</>
-                            ) : transaction.type === 'usage' ? (
-                              <><Zap className="w-3 h-3" /> Usage</>
-                            ) : transaction.type === 'bonus' ? (
-                              <><Sparkles className="w-3 h-3" /> Bonus</>
-                            ) : (
-                              <><Package className="w-3 h-3" /> {transaction.type}</>
-                            )}
-                          </span>
-                        </td>
-
-                        {/* Source */}
-                        <td className="px-4 py-3">
-                          {srcInfo ? (
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${srcInfo.color}`}>
-                              <SrcIcon className="w-3 h-3" />
-                              {srcInfo.label}
+              <>
+                {/* ── Mobile card list (hidden on sm+) ── */}
+                <div className="sm:hidden divide-y divide-gray-100">
+                  {history.map((transaction: any) => {
+                    const srcInfo = transaction.sourceType ? SOURCE_LABELS[transaction.sourceType] : null;
+                    const SrcIcon = srcInfo?.icon ?? Zap;
+                    const dateStr = transaction.createdAt
+                      ? new Date(transaction.createdAt).toISOString().slice(0, 10)
+                      : undefined;
+                    const typeBadgeClass =
+                      transaction.type === 'purchase' || transaction.type === 'bonus'
+                        ? 'bg-green-100 text-green-700'
+                        : transaction.type === 'usage'
+                        ? 'bg-blue-100 text-blue-700'
+                        : transaction.type === 'refund'
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : 'bg-gray-100 text-gray-700';
+                    return (
+                      <div key={transaction.id} className="px-4 py-3 hover:bg-gray-50/50 transition-colors">
+                        {/* Row 1: badges + amount */}
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${typeBadgeClass}`}>
+                              {transaction.type === 'purchase' ? <><CreditCard className="w-3 h-3" /> Purchase</>
+                                : transaction.type === 'usage' ? <><Zap className="w-3 h-3" /> Usage</>
+                                : transaction.type === 'bonus' ? <><Sparkles className="w-3 h-3" /> Bonus</>
+                                : <><Package className="w-3 h-3" /> {transaction.type}</>}
                             </span>
-                          ) : (
-                            <span className="text-xs text-gray-400">&mdash;</span>
-                          )}
-                        </td>
-
-                        {/* Description + Conversation + Skill */}
-                        <td className="px-4 py-3 max-w-[280px]">
-                          <span className="text-sm font-medium text-gray-900 block truncate">
-                            {transaction.description}
+                            {srcInfo && (
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${srcInfo.color}`}>
+                                <SrcIcon className="w-3 h-3" />
+                                {srcInfo.label}
+                              </span>
+                            )}
+                          </div>
+                          <span className={`text-base font-bold flex-shrink-0 ${transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {transaction.amount > 0 ? '+' : ''}{transaction.amount}
                           </span>
-                          {transaction.conversationTitle && (
-                            <a
-                              href={`/chat/${transaction.conversationId}`}
-                              className="text-xs text-purple-600 hover:text-purple-800 mt-0.5 flex items-center gap-1 truncate"
-                            >
-                              <MessageCircle className="w-3 h-3 flex-shrink-0" />
-                              <span className="truncate">{transaction.conversationTitle}</span>
-                            </a>
-                          )}
-                          {transaction.skillSlug && !transaction.metadata?.skill && (
-                            <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
-                              <Sparkles className="w-3 h-3 flex-shrink-0" />
-                              {transaction.skillSlug}
-                            </div>
-                          )}
-                        </td>
+                        </div>
+                        {/* Row 2: description */}
+                        <div className="text-sm font-medium text-gray-900 truncate mb-1">
+                          {transaction.description}
+                        </div>
+                        {/* Row 3: date + balance + audit */}
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <span>{formatDateTime(transaction.createdAt)}</span>
+                          <div className="flex items-center gap-2">
+                            {transaction.balanceAfter != null && (
+                              <span>bal: {transaction.balanceAfter}</span>
+                            )}
+                            {transaction.traceId ? (
+                              <TransactionDetailDialog
+                                traceId={transaction.traceId}
+                                txId={transaction.id}
+                                date={dateStr}
+                              />
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
 
-                        {/* Details */}
-                        <td className="px-4 py-3">
-                          {transaction.metadata && (
-                            <div className="text-xs text-gray-500 space-y-0.5">
-                              {transaction.metadata.provider && (
-                                <div className="flex items-center gap-1">
-                                  <span className="font-medium">Provider:</span>
-                                  <span className="text-gray-700 font-semibold">{String(transaction.metadata.provider)}</span>
-                                </div>
-                              )}
-                              {transaction.metadata.model && (
-                                <div className="flex items-center gap-1">
-                                  <span className="font-medium">Model:</span>
-                                  <span className="text-gray-700">{String(transaction.metadata.model).split('/').pop()}</span>
-                                </div>
-                              )}
-                              {(transaction.metadata.inputTokens || transaction.metadata.tokensUsed) && (
-                                <div className="flex items-center gap-1">
-                                  <span className="font-medium">Tokens:</span>
-                                  <span className="text-gray-700">
-                                    {transaction.metadata.inputTokens && transaction.metadata.outputTokens
-                                      ? `${transaction.metadata.inputTokens}\u2192${transaction.metadata.outputTokens}`
-                                      : transaction.metadata.tokensUsed}
-                                  </span>
-                                </div>
-                              )}
-                              {transaction.metadata.skill && (
-                                <div className="flex items-center gap-1">
-                                  <span className="font-medium">Skill:</span>
-                                  <span className="text-gray-700">{String(transaction.metadata.skill)}</span>
-                                </div>
-                              )}
-                              {transaction.metadata.referenceImageCount > 0 && (
-                                <div className="flex items-center gap-1">
-                                  <span className="font-medium">Images:</span>
-                                  <span className="text-gray-700">{transaction.metadata.referenceImageCount}</span>
-                                </div>
-                              )}
-                              {transaction.metadata.mediaType && (
-                                <div className="flex items-center gap-1">
-                                  <span className="font-medium">Media:</span>
-                                  <span className="text-gray-700">{String(transaction.metadata.mediaType)}</span>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </td>
-
-                        {/* Credits */}
-                        <td className="px-4 py-3 text-right">
-                          <span
-                            className={`text-sm font-semibold ${
-                              transaction.amount > 0 ? 'text-green-600' : 'text-red-600'
-                            }`}
-                          >
-                            {transaction.amount > 0 ? '+' : ''}
-                            {transaction.amount}
-                          </span>
-                        </td>
-
-                        {/* Balance After */}
-                        <td className="px-4 py-3 text-right">
-                          <span className="text-sm text-gray-900">
-                            {transaction.balanceAfter}
-                          </span>
-                        </td>
-
-                        {/* Date */}
-                        <td className="px-4 py-3">
-                          <span className="text-sm text-gray-500">
-                            {formatDateTime(transaction.createdAt)}
-                          </span>
-                        </td>
-
-                        {/* Audit Trail Button */}
-                        <td className="px-4 py-3 text-center">
-                          {transaction.traceId ? (
-                            <TransactionDetailDialog
-                              traceId={transaction.traceId}
-                              txId={transaction.id}
-                              date={dateStr}
-                            />
-                          ) : (
-                            <span className="text-xs text-gray-300">&mdash;</span>
-                          )}
-                        </td>
+                {/* ── Desktop table (hidden on mobile) ── */}
+                <div className="hidden sm:block overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50/50 border-b border-gray-100">
+                      <tr>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Source</th>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Description</th>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Details</th>
+                        <th className="px-4 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Credits</th>
+                        <th className="px-4 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Balance</th>
+                        <th className="px-4 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
+                        <th className="px-4 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Audit</th>
                       </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {history.map((transaction: any) => {
+                        const srcInfo = transaction.sourceType ? SOURCE_LABELS[transaction.sourceType] : null;
+                        const SrcIcon = srcInfo?.icon ?? Zap;
+                        const dateStr = transaction.createdAt
+                          ? new Date(transaction.createdAt).toISOString().slice(0, 10)
+                          : undefined;
+                        return (
+                          <tr key={transaction.id} className="hover:bg-gray-50/50 transition-colors">
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                                transaction.type === 'purchase' || transaction.type === 'bonus' ? 'bg-green-100 text-green-700'
+                                  : transaction.type === 'usage' ? 'bg-blue-100 text-blue-700'
+                                  : transaction.type === 'refund' ? 'bg-yellow-100 text-yellow-700'
+                                  : 'bg-gray-100 text-gray-700'
+                              }`}>
+                                {transaction.type === 'purchase' ? <><CreditCard className="w-3 h-3" /> Purchase</>
+                                  : transaction.type === 'usage' ? <><Zap className="w-3 h-3" /> Usage</>
+                                  : transaction.type === 'bonus' ? <><Sparkles className="w-3 h-3" /> Bonus</>
+                                  : <><Package className="w-3 h-3" /> {transaction.type}</>}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              {srcInfo ? (
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${srcInfo.color}`}>
+                                  <SrcIcon className="w-3 h-3" />{srcInfo.label}
+                                </span>
+                              ) : <span className="text-xs text-gray-400">&mdash;</span>}
+                            </td>
+                            <td className="px-4 py-3 max-w-[280px]">
+                              <span className="text-sm font-medium text-gray-900 block truncate">{transaction.description}</span>
+                              {transaction.conversationTitle && (
+                                <a href={`/chat/${transaction.conversationId}`} className="text-xs text-purple-600 hover:text-purple-800 mt-0.5 flex items-center gap-1 truncate">
+                                  <MessageCircle className="w-3 h-3 flex-shrink-0" />
+                                  <span className="truncate">{transaction.conversationTitle}</span>
+                                </a>
+                              )}
+                              {transaction.skillSlug && !transaction.metadata?.skill && (
+                                <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                                  <Sparkles className="w-3 h-3 flex-shrink-0" />{transaction.skillSlug}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              {transaction.metadata && (
+                                <div className="text-xs text-gray-500 space-y-0.5">
+                                  {transaction.metadata.provider && <div className="flex items-center gap-1"><span className="font-medium">Provider:</span><span className="text-gray-700 font-semibold">{String(transaction.metadata.provider)}</span></div>}
+                                  {transaction.metadata.model && <div className="flex items-center gap-1"><span className="font-medium">Model:</span><span className="text-gray-700">{String(transaction.metadata.model).split('/').pop()}</span></div>}
+                                  {(transaction.metadata.inputTokens || transaction.metadata.tokensUsed) && (
+                                    <div className="flex items-center gap-1">
+                                      <span className="font-medium">Tokens:</span>
+                                      <span className="text-gray-700">{transaction.metadata.inputTokens && transaction.metadata.outputTokens ? `${transaction.metadata.inputTokens}\u2192${transaction.metadata.outputTokens}` : transaction.metadata.tokensUsed}</span>
+                                    </div>
+                                  )}
+                                  {transaction.metadata.skill && <div className="flex items-center gap-1"><span className="font-medium">Skill:</span><span className="text-gray-700">{String(transaction.metadata.skill)}</span></div>}
+                                  {transaction.metadata.referenceImageCount > 0 && <div className="flex items-center gap-1"><span className="font-medium">Images:</span><span className="text-gray-700">{transaction.metadata.referenceImageCount}</span></div>}
+                                  {transaction.metadata.mediaType && <div className="flex items-center gap-1"><span className="font-medium">Media:</span><span className="text-gray-700">{String(transaction.metadata.mediaType)}</span></div>}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <span className={`text-sm font-semibold ${transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {transaction.amount > 0 ? '+' : ''}{transaction.amount}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <span className="text-sm text-gray-900">{transaction.balanceAfter}</span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="text-sm text-gray-500">{formatDateTime(transaction.createdAt)}</span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              {transaction.traceId ? (
+                                <TransactionDetailDialog traceId={transaction.traceId} txId={transaction.id} date={dateStr} />
+                              ) : <span className="text-xs text-gray-300">&mdash;</span>}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
 
                 {/* Pagination */}
-                <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
+                <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-t border-gray-100">
                   <div className="text-sm text-gray-500">
-                    Page {page + 1} • Showing {history?.length || 0} items
+                    Page {page + 1} • {history?.length || 0} items
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage(Math.max(0, page - 1))}
-                      disabled={page === 0}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}>
                       Previous
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage(page + 1)}
-                      disabled={!history || history.length < pageSize}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => setPage(page + 1)} disabled={!history || history.length < pageSize}>
                       Next
                     </Button>
                   </div>
                 </div>
-              </div>
+              </>
             )}
           </div>
         </motion.div>
       </main>
     </div>
+  );
+}
+
+function CreatorEarningsSection() {
+  const { data: dashboard, isLoading } = (trpc as any).agency.getCreatorDashboard.useQuery(
+    undefined,
+    { staleTime: 60_000 },
+  );
+
+  if (isLoading || !dashboard || dashboard.totalSettlements === 0) {
+    return null;
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.15 }}
+      className="mb-8"
+    >
+      <div className="flex items-center gap-2 mb-4">
+        <Coins className="w-5 h-5 text-amber-500" />
+        <h2 className="text-xl font-bold text-gray-900">Creator Earnings</h2>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="rounded-lg border bg-white p-4">
+          <p className="text-sm text-muted-foreground">Total Earned</p>
+          <p className="text-2xl font-bold text-amber-600">
+            {formatNumber(dashboard.totalEarned)} credits
+          </p>
+        </div>
+        <div className="rounded-lg border bg-white p-4">
+          <p className="text-sm text-muted-foreground">Last 30 Days</p>
+          <p className="text-2xl font-bold text-green-600">
+            {formatNumber(dashboard.last30Days.earned)} credits
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {dashboard.last30Days.count} runs
+          </p>
+        </div>
+        <div className="rounded-lg border bg-white p-4">
+          <p className="text-sm text-muted-foreground">Total Runs</p>
+          <p className="text-2xl font-bold">
+            {formatNumber(dashboard.totalSettlements)}
+          </p>
+        </div>
+      </div>
+      {dashboard.byEntity.length > 0 && (
+        <div className="mt-4 rounded-lg border bg-white">
+          <div className="border-b px-4 py-2">
+            <p className="text-sm font-medium text-muted-foreground">
+              Earnings by Entity
+            </p>
+          </div>
+          <div className="divide-y">
+            {dashboard.byEntity.slice(0, 5).map((e: any) => (
+              <div
+                key={`${e.entityType}-${e.entityId}`}
+                className="flex items-center justify-between px-4 py-2 text-sm"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="capitalize text-muted-foreground">
+                    {e.entityType}
+                  </span>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {e.entityId.slice(0, 8)}...
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="font-medium text-amber-600">
+                    {formatNumber(e.totalEarned)} credits
+                  </span>
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    ({e.runCount} runs)
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </motion.div>
   );
 }

@@ -5,7 +5,7 @@ category: video_generation
 execution_mode: media-generate
 icon: video
 version: "1.0.0"
-author: SmartSpec
+author: SmartAIHub
 isAutoTrigger: true
 enabledByDefault: true
 priority: 80

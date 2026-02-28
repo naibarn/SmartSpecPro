@@ -10,7 +10,7 @@ Agency objects are instantiated per-request (never reused).
 import uuid
 import time
 from datetime import datetime, timezone
-from typing import AsyncIterator
+from typing import AsyncGenerator
 
 import structlog
 from pydantic import BaseModel
@@ -28,6 +28,7 @@ from app.services.agency_swarm_adapter import (
 from app.services.agency_credits import AgencyCreditManager
 from app.services.agency_persistence import create_persistence_hooks
 from app.services.agency_tools import resolve_tools_for_agent
+from app.services.agency_audit import log_agency_event, reconcile_credits
 
 logger = structlog.get_logger(__name__)
 
@@ -45,6 +46,10 @@ class AgencyPermissionError(Exception):
 
 class InsufficientCreditsError(Exception):
     """Raised when user lacks credits for estimated run cost."""
+
+
+class AgencyDisabledError(Exception):
+    """Raised when agency or feature is disabled."""
 
 
 # ── Run Context ────────────────────────────────────────────────────
@@ -77,7 +82,7 @@ class AgencyService:
         """Load agency definition from PostgreSQL via read-only queries.
 
         Raises:
-            AgencyNotFoundError: If agency does not exist.
+            AgencyNotFoundError: If agency does not exist or is not active.
             AgencyPermissionError: If agency belongs to different tenant.
         """
         result = await self.db.execute(
@@ -86,6 +91,9 @@ class AgencyService:
                        "systemPrompt" as system_prompt,
                        "creditMultiplier" as credit_multiplier,
                        "maxRunTimeSeconds" as max_run_time_seconds,
+                       "creatorFeeCredits" as creator_fee_credits,
+                       "platformSharePct" as platform_share_pct,
+                       "createdBy" as creator_id,
                        status
                 FROM agencies
                 WHERE id = :agency_id
@@ -103,13 +111,16 @@ class AgencyService:
                 f"not {tenant_id}"
             )
 
-        # Load agents
-        agents_data = await self._load_agents(agency_id)
+        # Check agency status
+        if row.status not in ("active", "draft"):
+            raise AgencyNotFoundError(
+                f"Agency {agency_id} is not available (status: {row.status})"
+            )
 
         # Load communication flows
         flows_data = await self._load_flows(agency_id)
 
-        config = AgencyConfig(
+        return AgencyConfig(
             agency_id=row.id,
             name=row.name,
             system_prompt=row.system_prompt or "",
@@ -118,10 +129,11 @@ class AgencyService:
             user_id=0,  # Set by caller from RunContext
             conversation_id="",  # Set by caller from RunContext
             max_run_time_seconds=row.max_run_time_seconds or 600,
+            credit_multiplier=float(row.credit_multiplier or "1.00"),
+            creator_fee_credits=int(row.creator_fee_credits or 0),
+            platform_share_pct=int(row.platform_share_pct or 20),
+            creator_id=int(row.creator_id) if row.creator_id else None,
         )
-        # Store multiplier on config for use during run (avoids extra DB query)
-        config._credit_multiplier = float(row.credit_multiplier or "1.00")  # type: ignore[attr-defined]
-        return config
 
     async def _load_agents(self, agency_id: str) -> list[dict]:
         """Load agent definitions for an agency."""
@@ -146,6 +158,19 @@ class AgencyService:
             }
             for row in result.all()
         ]
+
+    async def _load_tool_whitelist(self, agency_id: str) -> set[str]:
+        """Load all tool IDs assigned to any agent in this agency."""
+        result = await self.db.execute(
+            text("""
+                SELECT DISTINCT aat."toolId"
+                FROM agency_agent_tools aat
+                JOIN agency_agents aa ON aa.id = aat."agentId"
+                WHERE aa."agencyId" = :agency_id
+            """),
+            {"agency_id": agency_id},
+        )
+        return {row[0] for row in result.all()}
 
     async def _load_flows(self, agency_id: str) -> list[tuple[str, str]]:
         """Load communication flows as (from_name, to_name) tuples."""
@@ -174,12 +199,12 @@ class AgencyService:
         run_id = str(uuid.uuid4())
         start_time = time.monotonic()
 
-        # 1. Load agency config
+        # 1. Load agency config (includes flows)
         agency_config = await self.load_agency(agency_id, context.tenant_id)
         agency_config.user_id = context.user_id
         agency_config.conversation_id = context.conversation_id
 
-        # 2. Load agent definitions
+        # 2. Load agent definitions (separate query, not duplicated from load_agency)
         agents_data = await self._load_agents(agency_id)
 
         # 3. Pre-check credits
@@ -196,12 +221,14 @@ class AgencyService:
             )
 
         # 4. Resolve tools for each agent
+        agency_whitelist = await self._load_tool_whitelist(agency_id)
         agent_tools: dict[str, list[type]] = {}
         for agent_data in agents_data:
             tools = await resolve_tools_for_agent(
                 db=self.db,
                 agent_id=agent_data["id"],
-                agency_whitelist=set(),  # TODO: load whitelist from agency config
+                agency_whitelist=agency_whitelist,
+                adapter=self.adapter,
             )
             agent_tools[agent_data["id"]] = tools
 
@@ -255,6 +282,16 @@ class AgencyService:
         )
         await self.db.commit()
 
+        # Audit: run started
+        log_agency_event(
+            "agency_run_started",
+            run_id=run_id,
+            agency_id=agency_id,
+            tenant_id=context.tenant_id,
+            user_id=context.user_id,
+            metadata={"agent_count": len(agents_data)},
+        )
+
         try:
             # 9. Execute agency
             result = await self.adapter.run(
@@ -267,14 +304,16 @@ class AgencyService:
 
             elapsed_ms = int((time.monotonic() - start_time) * 1000)
 
-            # 10. Apply multiplier markup (stored from load_agency)
-            multiplier = getattr(agency_config, "_credit_multiplier", 1.0)
-
+            # 10. Apply multiplier markup
+            # NOTE: total_gateway_cost is 0.0 here because per-call costs are
+            # tracked by the Node.js gateway. The reconciliation endpoint
+            # (section-06) will sum costs by run_id for accurate markup.
+            # TODO(section-06): Replace 0.0 with actual gateway cost from reconciliation.
             await self.credit_manager.apply_multiplier_markup(
                 user_id=context.user_id,
                 agency_id=agency_id,
-                total_gateway_cost=0.0,  # Tracked by gateway per-call
-                multiplier=multiplier,
+                total_gateway_cost=0.0,
+                multiplier=agency_config.credit_multiplier,
             )
 
             # 11. Update run record (status: completed)
@@ -304,6 +343,36 @@ class AgencyService:
                 duration_ms=elapsed_ms,
             )
 
+            # Audit: run completed
+            log_agency_event(
+                "agency_run_completed",
+                run_id=run_id,
+                agency_id=agency_id,
+                tenant_id=context.tenant_id,
+                user_id=context.user_id,
+                duration_ms=elapsed_ms,
+                step_count=result.step_count,
+            )
+
+            # Credit reconciliation (gateway cost is 0.0 until reconciliation endpoint is wired)
+            await reconcile_credits(
+                run_id=run_id,
+                gateway_total=0.0,
+                run_total_credits=0.0,
+            )
+
+            # 12. Settle creator fee (post-run, fire-and-forget)
+            if agency_config.creator_fee_credits > 0 and agency_config.creator_id:
+                await self.credit_manager.settle_creator_fee(
+                    run_id=run_id,
+                    agency_id=agency_id,
+                    user_id=context.user_id,
+                    creator_id=agency_config.creator_id,
+                    creator_fee_credits=agency_config.creator_fee_credits,
+                    platform_share_pct=agency_config.platform_share_pct,
+                    tenant_id=context.tenant_id,
+                )
+
             return result
 
         except Exception as exc:
@@ -332,6 +401,18 @@ class AgencyService:
             except Exception:
                 logger.error("agency_run_record_update_failed", run_id=run_id)
 
+            # Audit: run failed
+            log_agency_event(
+                "agency_run_failed",
+                run_id=run_id,
+                agency_id=agency_id,
+                tenant_id=context.tenant_id,
+                user_id=context.user_id,
+                duration_ms=elapsed_ms,
+                error_type=type(exc).__name__,
+                error_message=str(exc)[:500],
+            )
+
             raise
 
     async def execute_run_stream(
@@ -339,11 +420,13 @@ class AgencyService:
         agency_id: str,
         message: str,
         context: RunContext,
-    ) -> AsyncIterator[dict]:
+    ) -> AsyncGenerator[dict, None]:
         """Streaming variant: yields SSE-formatted event dicts.
 
-        Event types: run_started, agent_switch, token, tool_call,
-        tool_result, run_finished, run_error, heartbeat.
+        Event types: run_started, token, run_finished, run_error.
+
+        Note: Heartbeat, credit pre-check, and run records for streaming
+        are implemented in the SSE router layer (section-07).
         """
         run_id = str(uuid.uuid4())
 
@@ -355,12 +438,14 @@ class AgencyService:
 
             agents_data = await self._load_agents(agency_id)
 
+            agency_whitelist = await self._load_tool_whitelist(agency_id)
             agent_tools: dict[str, list[type]] = {}
             for agent_data in agents_data:
                 tools = await resolve_tools_for_agent(
                     db=self.db,
                     agent_id=agent_data["id"],
-                    agency_whitelist=set(),
+                    agency_whitelist=agency_whitelist,
+                    adapter=self.adapter,
                 )
                 agent_tools[agent_data["id"]] = tools
 
@@ -406,6 +491,18 @@ class AgencyService:
 
             yield {"event": "run_finished", "data": {"run_id": run_id}}
 
+            # Settle creator fee (post-run, fire-and-forget)
+            if agency_config.creator_fee_credits > 0 and agency_config.creator_id:
+                await self.credit_manager.settle_creator_fee(
+                    run_id=run_id,
+                    agency_id=agency_id,
+                    user_id=context.user_id,
+                    creator_id=agency_config.creator_id,
+                    creator_fee_credits=agency_config.creator_fee_credits,
+                    platform_share_pct=agency_config.platform_share_pct,
+                    tenant_id=context.tenant_id,
+                )
+
         except Exception as exc:
             logger.error(
                 "agency_service_stream_failed",
@@ -415,5 +512,167 @@ class AgencyService:
             )
             yield {
                 "event": "run_error",
-                "data": {"error_type": type(exc).__name__, "message": str(exc)[:500]},
+                "data": {
+                    "error_type": type(exc).__name__,
+                    "message": "An error occurred during the agency run.",
+                },
             }
+
+    async def list_runs(
+        self,
+        agency_id: str,
+        tenant_id: str,
+        limit: int = 20,
+        offset: int = 0,
+        status_filter: str | None = None,
+    ) -> dict:
+        """List runs for an agency filtered by tenant.
+
+        Returns dict with 'runs' list and 'total' count.
+        status_filter is pre-validated as AgencyRunStatus enum at the API layer.
+        """
+        params: dict = {
+            "agency_id": agency_id,
+            "tenant_id": tenant_id,
+            "limit": limit,
+            "offset": offset,
+        }
+
+        # Use a single parameterized query with optional status filter.
+        # The :status_filter param is always bound; NULL means "no filter".
+        status_value = status_filter.value if hasattr(status_filter, "value") else status_filter
+        params["status_filter"] = status_value
+
+        # Count
+        count_result = await self.db.execute(
+            text(
+                "SELECT count(*) FROM agency_runs "
+                "WHERE agency_id = :agency_id AND tenant_id = :tenant_id "
+                "AND (:status_filter IS NULL OR status = :status_filter)"
+            ),
+            params,
+        )
+        total = count_result.scalar() or 0
+
+        # Fetch
+        result = await self.db.execute(
+            text(
+                "SELECT id, status, "
+                "       COALESCE(total_credits_used, 0) as total_credits_used, "
+                "       started_at, completed_at, duration_ms, "
+                "       error_type, error_message, "
+                "       COALESCE(step_count, 0) as step_count "
+                "FROM agency_runs "
+                "WHERE agency_id = :agency_id AND tenant_id = :tenant_id "
+                "AND (:status_filter IS NULL OR status = :status_filter) "
+                "ORDER BY started_at DESC NULLS LAST "
+                "LIMIT :limit OFFSET :offset"
+            ),
+            params,
+        )
+
+        runs = [
+            {
+                "id": row.id,
+                "status": row.status,
+                "total_credits_used": float(row.total_credits_used),
+                "started_at": row.started_at.isoformat() if row.started_at else None,
+                "completed_at": row.completed_at.isoformat() if row.completed_at else None,
+                "duration_ms": row.duration_ms,
+                "error_type": row.error_type,
+                "error_message": row.error_message,
+                "step_count": row.step_count,
+            }
+            for row in result.all()
+        ]
+
+        return {"runs": runs, "total": total}
+
+    async def get_run(
+        self,
+        run_id: str,
+        agency_id: str,
+        tenant_id: str,
+    ) -> dict:
+        """Get a single run by ID, scoped to agency and tenant.
+
+        Raises AgencyNotFoundError if not found or wrong tenant.
+        """
+        result = await self.db.execute(
+            text("""
+                SELECT id, status,
+                       COALESCE(total_credits_used, 0) as total_credits_used,
+                       started_at, completed_at, duration_ms,
+                       error_type, error_message,
+                       COALESCE(step_count, 0) as step_count
+                FROM agency_runs
+                WHERE id = :run_id
+                  AND agency_id = :agency_id
+                  AND tenant_id = :tenant_id
+            """),
+            {"run_id": run_id, "agency_id": agency_id, "tenant_id": tenant_id},
+        )
+        row = result.first()
+        if not row:
+            raise AgencyNotFoundError(f"Run {run_id} not found")
+
+        return {
+            "id": row.id,
+            "status": row.status,
+            "total_credits_used": float(row.total_credits_used),
+            "started_at": row.started_at.isoformat() if row.started_at else None,
+            "completed_at": row.completed_at.isoformat() if row.completed_at else None,
+            "duration_ms": row.duration_ms,
+            "error_type": row.error_type,
+            "error_message": row.error_message,
+            "step_count": row.step_count,
+        }
+
+    async def cancel_run(
+        self,
+        run_id: str,
+        agency_id: str,
+        tenant_id: str,
+    ) -> dict:
+        """Cancel a running agency run.
+
+        Raises AgencyNotFoundError if run not found or wrong tenant.
+        """
+        result = await self.db.execute(
+            text("""
+                SELECT id, status FROM agency_runs
+                WHERE id = :run_id
+                  AND agency_id = :agency_id
+                  AND tenant_id = :tenant_id
+            """),
+            {"run_id": run_id, "agency_id": agency_id, "tenant_id": tenant_id},
+        )
+        row = result.first()
+        if not row:
+            raise AgencyNotFoundError(f"Run {run_id} not found")
+
+        if row.status in ("completed", "failed", "cancelled"):
+            return {"run_id": run_id, "status": row.status}
+
+        await self.db.execute(
+            text("""
+                UPDATE agency_runs
+                SET status = 'cancelled',
+                    completed_at = :completed_at
+                WHERE id = :run_id
+            """),
+            {
+                "run_id": run_id,
+                "completed_at": datetime.now(timezone.utc),
+            },
+        )
+        await self.db.commit()
+
+        logger.info(
+            "agency_run_cancelled",
+            run_id=run_id,
+            agency_id=agency_id,
+            tenant_id=tenant_id,
+        )
+
+        return {"run_id": run_id, "status": "cancelled"}

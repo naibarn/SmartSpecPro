@@ -87,6 +87,10 @@ const BlogPost = lazy(() => import("./pages/BlogPost"));
 const DomainBlogAdmin = lazy(() => import("./pages/DomainBlogAdmin"));
 const UsageAnalytics = lazy(() => import("./pages/UsageAnalytics"));
 const TaskQueueMonitor = lazy(() => import("./pages/TaskQueueMonitor"));
+const AgencyBrowser = lazy(() => import("./pages/AgencyBrowser"));
+const AgencyChat = lazy(() => import("./pages/AgencyChat"));
+const AgencyBuilder = lazy(() => import("./pages/AgencyBuilder"));
+const AgencyTemplates = lazy(() => import("./pages/AgencyTemplates"));
 const Workflows = lazy(() => import("./pages/Workflows"));
 const WorkflowEditor = lazy(() => import("./pages/WorkflowEditor"));
 const WorkflowGallery = lazy(() => import("./pages/WorkflowGallery"));
@@ -159,6 +163,10 @@ function Router() {
         <Route path="/signup" component={Signup} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/chat" component={Chat} />
+        <Route path="/agencies" component={AgencyBrowser} />
+        <Route path="/agencies/templates" component={AgencyTemplates} />
+        <Route path="/agencies/:id/edit" component={AgencyBuilder} />
+        <Route path="/agencies/:id" component={AgencyChat} />
         <Route path="/workflows" component={Workflows} />
         <Route path="/workflows/editor" component={WorkflowEditor} />
         <Route path="/workflows/gallery" component={WorkflowGallery} />
