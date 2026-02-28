@@ -91,6 +91,9 @@ class AgencyService:
                        "systemPrompt" as system_prompt,
                        "creditMultiplier" as credit_multiplier,
                        "maxRunTimeSeconds" as max_run_time_seconds,
+                       "creatorFeeCredits" as creator_fee_credits,
+                       "platformSharePct" as platform_share_pct,
+                       "createdBy" as creator_id,
                        status
                 FROM agencies
                 WHERE id = :agency_id
@@ -127,6 +130,9 @@ class AgencyService:
             conversation_id="",  # Set by caller from RunContext
             max_run_time_seconds=row.max_run_time_seconds or 600,
             credit_multiplier=float(row.credit_multiplier or "1.00"),
+            creator_fee_credits=int(row.creator_fee_credits or 0),
+            platform_share_pct=int(row.platform_share_pct or 20),
+            creator_id=int(row.creator_id) if row.creator_id else None,
         )
 
     async def _load_agents(self, agency_id: str) -> list[dict]:
@@ -355,6 +361,18 @@ class AgencyService:
                 run_total_credits=0.0,
             )
 
+            # 12. Settle creator fee (post-run, fire-and-forget)
+            if agency_config.creator_fee_credits > 0 and agency_config.creator_id:
+                await self.credit_manager.settle_creator_fee(
+                    run_id=run_id,
+                    agency_id=agency_id,
+                    user_id=context.user_id,
+                    creator_id=agency_config.creator_id,
+                    creator_fee_credits=agency_config.creator_fee_credits,
+                    platform_share_pct=agency_config.platform_share_pct,
+                    tenant_id=context.tenant_id,
+                )
+
             return result
 
         except Exception as exc:
@@ -473,6 +491,18 @@ class AgencyService:
 
             yield {"event": "run_finished", "data": {"run_id": run_id}}
 
+            # Settle creator fee (post-run, fire-and-forget)
+            if agency_config.creator_fee_credits > 0 and agency_config.creator_id:
+                await self.credit_manager.settle_creator_fee(
+                    run_id=run_id,
+                    agency_id=agency_id,
+                    user_id=context.user_id,
+                    creator_id=agency_config.creator_id,
+                    creator_fee_credits=agency_config.creator_fee_credits,
+                    platform_share_pct=agency_config.platform_share_pct,
+                    tenant_id=context.tenant_id,
+                )
+
         except Exception as exc:
             logger.error(
                 "agency_service_stream_failed",
@@ -482,7 +512,10 @@ class AgencyService:
             )
             yield {
                 "event": "run_error",
-                "data": {"error_type": type(exc).__name__, "message": str(exc)[:500]},
+                "data": {
+                    "error_type": type(exc).__name__,
+                    "message": "An error occurred during the agency run.",
+                },
             }
 
     async def list_runs(
@@ -496,6 +529,7 @@ class AgencyService:
         """List runs for an agency filtered by tenant.
 
         Returns dict with 'runs' list and 'total' count.
+        status_filter is pre-validated as AgencyRunStatus enum at the API layer.
         """
         params: dict = {
             "agency_id": agency_id,
@@ -504,31 +538,36 @@ class AgencyService:
             "offset": offset,
         }
 
-        where_clause = "WHERE agency_id = :agency_id AND tenant_id = :tenant_id"
-        if status_filter:
-            where_clause += " AND status = :status"
-            params["status"] = status_filter
+        # Use a single parameterized query with optional status filter.
+        # The :status_filter param is always bound; NULL means "no filter".
+        status_value = status_filter.value if hasattr(status_filter, "value") else status_filter
+        params["status_filter"] = status_value
 
         # Count
         count_result = await self.db.execute(
-            text(f"SELECT count(*) FROM agency_runs {where_clause}"),
+            text(
+                "SELECT count(*) FROM agency_runs "
+                "WHERE agency_id = :agency_id AND tenant_id = :tenant_id "
+                "AND (:status_filter IS NULL OR status = :status_filter)"
+            ),
             params,
         )
         total = count_result.scalar() or 0
 
         # Fetch
         result = await self.db.execute(
-            text(f"""
-                SELECT id, status,
-                       COALESCE(total_credits_used, 0) as total_credits_used,
-                       started_at, completed_at, duration_ms,
-                       error_type, error_message,
-                       COALESCE(step_count, 0) as step_count
-                FROM agency_runs
-                {where_clause}
-                ORDER BY started_at DESC NULLS LAST
-                LIMIT :limit OFFSET :offset
-            """),
+            text(
+                "SELECT id, status, "
+                "       COALESCE(total_credits_used, 0) as total_credits_used, "
+                "       started_at, completed_at, duration_ms, "
+                "       error_type, error_message, "
+                "       COALESCE(step_count, 0) as step_count "
+                "FROM agency_runs "
+                "WHERE agency_id = :agency_id AND tenant_id = :tenant_id "
+                "AND (:status_filter IS NULL OR status = :status_filter) "
+                "ORDER BY started_at DESC NULLS LAST "
+                "LIMIT :limit OFFSET :offset"
+            ),
             params,
         )
 

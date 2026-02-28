@@ -13,6 +13,9 @@ Whitelist enforcement returns a user-friendly error string (not exception)
 so the agent can gracefully explain the denial.
 """
 
+import ipaddress
+from urllib.parse import urlparse
+
 import httpx
 import structlog
 from pydantic import BaseModel, Field
@@ -23,6 +26,56 @@ from typing import Any
 from app.services.agency_audit import log_agency_event
 
 logger = structlog.get_logger(__name__)
+
+# ── SSRF Protection ──────────────────────────────────────────────────────
+
+_BLOCKED_HOSTS = {
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+    "::1",
+    "[::1]",
+    "169.254.169.254",  # Cloud metadata
+    "metadata.google.internal",
+}
+
+_BLOCKED_NETWORKS = [
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("169.254.0.0/16"),
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fc00::/7"),
+    ipaddress.ip_network("fe80::/10"),
+]
+
+
+def _validate_tool_url(url: str) -> None:
+    """Validate that a tool endpoint URL is safe (no SSRF).
+
+    Raises ValueError if the URL targets a private/internal address.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(f"Unsupported URL scheme: {parsed.scheme}")
+
+    hostname = parsed.hostname or ""
+    if hostname in _BLOCKED_HOSTS:
+        raise ValueError(f"Blocked host: {hostname}")
+
+    # Check if hostname resolves to a private IP
+    try:
+        addr = ipaddress.ip_address(hostname)
+        for network in _BLOCKED_NETWORKS:
+            if addr in network:
+                raise ValueError(f"Blocked private IP: {hostname}")
+    except ValueError as exc:
+        if "Blocked" in str(exc):
+            raise
+        # Not an IP literal — hostname. Allow it (DNS could resolve to
+        # private IP, but we block the known dangerous hostnames above.
+        # Full DNS resolution check would require the async SSRFGuard).
 
 
 class ToolConfig(BaseModel):
@@ -98,6 +151,12 @@ def _execute_http(config: ToolConfig, query: str) -> str:
         return f"Tool '{config.tool_id}' has no endpoint configured."
 
     try:
+        _validate_tool_url(config.endpoint_url)
+    except ValueError as exc:
+        logger.warning("agency_tool_ssrf_blocked", tool_id=config.tool_id, url=config.endpoint_url, reason=str(exc))
+        return f"Tool '{config.tool_id}' has an invalid or blocked endpoint URL."
+
+    try:
         with httpx.Client(timeout=30.0) as client:
             resp = client.post(
                 config.endpoint_url,
@@ -119,6 +178,12 @@ def _execute_sandbox(config: ToolConfig, query: str) -> str:
     """Execute via OpenSandbox dispatch."""
     if not config.endpoint_url:
         return f"Tool '{config.tool_id}' has no sandbox endpoint configured."
+
+    try:
+        _validate_tool_url(config.endpoint_url)
+    except ValueError as exc:
+        logger.warning("agency_tool_ssrf_blocked", tool_id=config.tool_id, url=config.endpoint_url, reason=str(exc))
+        return f"Tool '{config.tool_id}' has an invalid or blocked endpoint URL."
 
     try:
         with httpx.Client(timeout=60.0) as client:

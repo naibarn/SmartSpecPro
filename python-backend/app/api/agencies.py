@@ -20,6 +20,7 @@ from app.core.database import get_db
 from app.models.user import User
 
 _bearer_scheme = HTTPBearer()
+from app.models.agency import AgencyRunStatus
 from app.services.agency_service import (
     AgencyNotFoundError,
     AgencyPermissionError,
@@ -279,10 +280,23 @@ async def stream_agency(
                 yield f"event: {event_type}\ndata: {event_data}\n\n"
         except Exception as exc:
             err_type = classify_error(exc)
+            # Log full error details server-side only
+            logger.error(
+                "agency_run_sse_error",
+                agency_id=agency_id,
+                error_type=err_type,
+                error=str(exc)[:500],
+            )
+            # Return safe user-facing message (never expose internal details)
+            safe_messages = {
+                AgencyErrorType.TRANSIENT: "A temporary error occurred. Please try again.",
+                AgencyErrorType.OPTIONAL_SKIP: "An optional step was skipped.",
+                AgencyErrorType.PERMANENT: "The request could not be processed.",
+            }
             error_data = json.dumps(
                 {
                     "error_type": err_type,
-                    "message": str(exc)[:500],
+                    "message": safe_messages.get(err_type, "An unexpected error occurred."),
                     "retryable": err_type == AgencyErrorType.TRANSIENT,
                 }
             )
@@ -307,7 +321,7 @@ async def list_runs(
     _flag: None = Depends(require_agency_feature),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
-    status: Optional[str] = Query(default=None),
+    status: Optional[AgencyRunStatus] = Query(default=None),
 ) -> AgencyRunListResponse:
     """List runs for an agency, filtered by tenant."""
     service = AgencyService(db=db)
