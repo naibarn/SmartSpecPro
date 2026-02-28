@@ -10,6 +10,7 @@
 import crypto from "crypto";
 import { eq, and } from "drizzle-orm";
 import { db } from "../db";
+import { auditLogger } from "./auditLogger";
 import {
   telegramConnections,
   conversationChannels,
@@ -191,7 +192,7 @@ async function ingest(event: ChatIngressEvent): Promise<IngestResult> {
 
         return { ok: true, responseMessageId: result.runId };
       } catch (err) {
-        console.error("[ChannelGateway] Agency pipeline error:", err);
+        auditLogger.log({ eventType: "channel_gateway_agency_error", metadata: { conversationId: channel.agencyConversationId, error: String(err) } });
         return { ok: false, error: "Agency processing failed", errorCode: "pipeline_error" };
       }
     } else {
@@ -202,7 +203,7 @@ async function ingest(event: ChatIngressEvent): Promise<IngestResult> {
       };
     }
   } catch (err) {
-    console.error("[ChannelGateway] Ingest error:", err);
+    auditLogger.log({ eventType: "channel_gateway_ingest_error", metadata: { error: String(err) } });
     return {
       ok: false,
       error: "An internal error occurred",
@@ -226,7 +227,7 @@ async function emitEgress(event: ChatEgressEvent): Promise<void> {
     // 2. For each Telegram binding, create channel_messages record and enqueue
     for (const binding of bindings) {
       if (!binding.channelRefId) {
-        console.warn("[ChannelGateway] Skipping binding with null channelRefId:", binding.id);
+        auditLogger.log({ eventType: "channel_gateway_skip_null_ref", metadata: { bindingId: binding.id } });
         continue;
       }
 
@@ -263,7 +264,7 @@ async function emitEgress(event: ChatEgressEvent): Promise<void> {
     }
   } catch (err) {
     // Log but don't propagate — failed delivery should not break the web UI
-    console.error("[ChannelGateway] emitEgress error:", err);
+    auditLogger.log({ eventType: "channel_gateway_egress_error", metadata: { conversationId: event.conversationId, error: String(err) } });
   }
 }
 
@@ -272,7 +273,7 @@ async function queryActiveBindings(event: ChatEgressEvent) {
   if (event.conversationType === "chat") {
     const convId = parseInt(event.conversationId, 10);
     if (isNaN(convId)) {
-      console.error("[ChannelGateway] Invalid chat conversationId:", event.conversationId);
+      auditLogger.log({ eventType: "channel_gateway_invalid_conversation_id", metadata: { conversationId: event.conversationId } });
       return [];
     }
     return db
@@ -407,7 +408,7 @@ async function processMessageServerSide(
 
     // 6. Handle result
     if (result.type === "error") {
-      console.error("[ChannelGateway] LLM pipeline error:", result.error);
+      auditLogger.log({ eventType: "channel_gateway_llm_error", metadata: { conversationId: params.conversationId, error: result.error } });
       // Save generic error as assistant message — don't expose internal error details
       await createMessage({
         conversationId: params.conversationId,
@@ -468,7 +469,7 @@ async function processMessageServerSide(
       creditsUsed,
     };
   } catch (err) {
-    console.error("[ChannelGateway] processMessageServerSide error:", err);
+    auditLogger.log({ eventType: "channel_gateway_chat_error", metadata: { conversationId: params.conversationId, error: String(err) } });
     return {
       success: false,
       error: err instanceof Error ? err.message : "Unknown error",

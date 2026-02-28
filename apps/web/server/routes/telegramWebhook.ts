@@ -19,6 +19,7 @@ import { decrypt } from "../services/crypto";
 import { systemSettings, telegramUpdates } from "../../drizzle/schema";
 import { sendTelegramMessage } from "../services/telegramService";
 import { getMessage } from "../services/telegramI18n";
+import { auditLogger } from "../services/auditLogger";
 import {
   handleResume,
   handleUnlink,
@@ -132,7 +133,7 @@ async function replyToChat(
   try {
     await sendTelegramMessage(botToken, chatId, text, "HTML");
   } catch (err) {
-    console.error("[TelegramWebhook] Failed to send reply:", chatId, err);
+    auditLogger.log({ eventType: "telegram_webhook_reply_failed", metadata: { chatId, error: String(err) } });
   }
 }
 
@@ -204,7 +205,7 @@ export function createTelegramWebhookRouter(): Router {
     const secretValue =
       typeof secretHeader === "string" ? secretHeader : "";
     if (!secretValue || !timingSafeCompare(secretValue, webhookSecret)) {
-      console.warn("[TelegramWebhook] Secret validation failed for botId:", botId);
+      auditLogger.log({ eventType: "telegram_webhook_secret_invalid", metadata: { botId } });
       res.sendStatus(403);
       return;
     }
@@ -233,7 +234,7 @@ export function createTelegramWebhookRouter(): Router {
       }
     } catch (err) {
       // Redis unavailable — continue processing (accept risk of rare duplicate)
-      console.warn("[TelegramWebhook] Redis dedupe check failed, continuing:", err);
+      auditLogger.log({ eventType: "telegram_webhook_dedupe_failed", metadata: { botId, updateId, error: String(err) } });
     }
 
     // Step 5: Return 200 immediately — all further processing is async
@@ -255,7 +256,7 @@ export function createTelegramWebhookRouter(): Router {
         processingStatus: "accepted",
       });
     } catch (err) {
-      console.error("[TelegramWebhook] Failed to insert audit record:", updateId, err);
+      auditLogger.log({ eventType: "telegram_webhook_audit_failed", metadata: { botId, updateId, error: String(err) } });
     }
 
     try {
@@ -376,7 +377,7 @@ export function createTelegramWebhookRouter(): Router {
         }
       }
     } catch (err) {
-      console.error("[TelegramWebhook] Processing error:", updateId, err);
+      auditLogger.log({ eventType: "telegram_webhook_processing_error", metadata: { botId, updateId, error: String(err) } });
     }
   });
 
