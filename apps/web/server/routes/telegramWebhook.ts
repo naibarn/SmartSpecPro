@@ -13,7 +13,7 @@
 import { Router } from "express";
 import crypto from "crypto";
 import { eq } from "drizzle-orm";
-import { getDb } from "../db";
+import { getDb, type DrizzleDB } from "../db";
 import { getCacheClient } from "../services/redisClients";
 import { decrypt } from "../services/crypto";
 import { systemSettings, telegramUpdates } from "../../drizzle/schema";
@@ -66,7 +66,7 @@ export interface WebhookContext {
   chatId: string;
   telegramUserId: string;
   languageCode: string | undefined;
-  db: any;
+  db: DrizzleDB;
   botToken: string;
 }
 
@@ -91,47 +91,35 @@ registerWebhookHandler("help", handleHelp);
 registerWebhookHandler("start", handleStartNoToken);
 registerWebhookHandler("callback_query", handleCallbackQuery);
 
-// ── In-process rate limiter ──────────────────────────────────────────────
+// ── Redis rate limiter ───────────────────────────────────────────────────
 
-const rateLimitMap = new Map<
-  string,
-  { count: number; windowStart: number }
->();
 const RATE_LIMIT_MAX = 30;
-const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_WINDOW_SECS = 60;
 
-function checkInboundRateLimit(userId: string): boolean {
-  const now = Date.now();
-  const entry = rateLimitMap.get(userId);
-  if (!entry || now - entry.windowStart >= RATE_LIMIT_WINDOW_MS) {
-    rateLimitMap.set(userId, { count: 1, windowStart: now });
+async function checkInboundRateLimit(userId: string): Promise<boolean> {
+  try {
+    const redis = getCacheClient();
+    const key = `tg:rl:${userId}`;
+    const count = await redis.incr(key);
+    if (count === 1) await redis.expire(key, RATE_LIMIT_WINDOW_SECS);
+    return count <= RATE_LIMIT_MAX;
+  } catch {
+    // Redis unavailable — allow request to avoid blocking all users
     return true;
   }
-  if (entry.count >= RATE_LIMIT_MAX) return false;
-  entry.count++;
-  return true;
 }
-
-// Clean stale entries periodically (every 2 minutes)
-setInterval(
-  () => {
-    const now = Date.now();
-    for (const [key, entry] of rateLimitMap) {
-      if (now - entry.windowStart > RATE_LIMIT_WINDOW_MS * 2) {
-        rateLimitMap.delete(key);
-      }
-    }
-  },
-  2 * 60_000,
-).unref();
 
 // ── Secret comparison helper ─────────────────────────────────────────────
 
 function timingSafeCompare(a: string, b: string): boolean {
   const bufA = Buffer.from(a);
   const bufB = Buffer.from(b);
-  if (bufA.length !== bufB.length) return false;
-  return crypto.timingSafeEqual(bufA, bufB);
+  const len = Math.max(bufA.length, bufB.length);
+  const paddedA = Buffer.alloc(len);
+  const paddedB = Buffer.alloc(len);
+  bufA.copy(paddedA);
+  bufB.copy(paddedB);
+  return crypto.timingSafeEqual(paddedA, paddedB) && bufA.length === bufB.length;
 }
 
 // ── Reply helper ─────────────────────────────────────────────────────────
@@ -158,7 +146,7 @@ export function createTelegramWebhookRouter(): Router {
     const update = req.body as TelegramUpdate;
 
     // Step 1: Load bot settings
-    let db: any;
+    let db: DrizzleDB | null;
     try {
       db = await getDb();
     } catch {
@@ -175,8 +163,8 @@ export function createTelegramWebhookRouter(): Router {
       .from(systemSettings)
       .where(eq(systemSettings.category, "telegram"));
 
-    const settingsMap = new Map(
-      settings.map((s: any) => [s.key, s.value]),
+    const settingsMap = new Map<string, string>(
+      settings.map((s: { key: string; value: string | null }) => [s.key, s.value ?? ""]),
     );
 
     const enabled = settingsMap.get("enabled");
@@ -202,7 +190,16 @@ export function createTelegramWebhookRouter(): Router {
       return;
     }
 
-    // Step 2: Validate secret token
+    // Step 2a: Validate botId matches configured bot (timing-safe)
+    const configuredBotUsername = settingsMap.get("bot_username") ?? "";
+    // Use random fallback when no username configured to prevent timing leak
+    const compareTarget = configuredBotUsername || crypto.randomBytes(16).toString("hex");
+    if (!configuredBotUsername || !timingSafeCompare(botId, compareTarget)) {
+      res.sendStatus(403);
+      return;
+    }
+
+    // Step 2b: Validate secret token
     const secretHeader = req.headers["x-telegram-bot-api-secret-token"];
     const secretValue =
       typeof secretHeader === "string" ? secretHeader : "";
@@ -292,7 +289,7 @@ export function createTelegramWebhookRouter(): Router {
       const languageCode = message.from?.language_code;
 
       // Rate limiting
-      if (!checkInboundRateLimit(telegramUserId)) {
+      if (!(await checkInboundRateLimit(telegramUserId))) {
         await replyToChat(
           botToken,
           chatId,

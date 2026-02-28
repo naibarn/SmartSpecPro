@@ -21,7 +21,7 @@ interface RunParams {
   userId: number;
 }
 
-interface RunResult {
+export interface RunResult {
   runId: string;
   status: string;
   response: string;
@@ -67,45 +67,61 @@ function makeHeadersWithMeta(
   };
 }
 
+// Safe error messages — never expose internal Python error details to client
+const ERROR_MAP: Record<number, string> = {
+  400: "Invalid request to agency service",
+  401: "Authentication failed with agency service",
+  402: "Insufficient credits for this operation",
+  403: "Access denied to agency resource",
+  404: "Agency resource not found",
+  409: "Conflict — resource is already in the requested state",
+  429: "Rate limit exceeded — please try again later",
+  500: "Agency service internal error",
+  502: "Agency service temporarily unavailable",
+  503: "Agency service temporarily unavailable",
+};
+
 async function handleResponse<T>(response: Response, context: string): Promise<T> {
   if (response.ok) {
     return response.json() as Promise<T>;
   }
 
-  let detail = "";
+  // Log full error details server-side for debugging
+  let rawDetail = "";
   try {
     const body = await response.json();
-    detail = body.detail || body.error || JSON.stringify(body);
+    rawDetail = body.detail || body.error || JSON.stringify(body);
   } catch {
-    detail = `HTTP ${response.status}`;
+    rawDetail = `HTTP ${response.status}`;
   }
+  console.error(`[AgencyBridge] ${context} error (${response.status}):`, rawDetail);
 
-  if (response.status === 402) {
-    throw new Error(`Insufficient credits: ${detail}`);
-  }
-  if (response.status === 404) {
-    throw new Error(`Not found: ${detail}`);
-  }
-  if (response.status === 429) {
-    throw new Error(`Rate limit exceeded: ${detail}`);
-  }
-
-  throw new Error(`Agency bridge ${context} failed (${response.status}): ${detail}`);
+  // Return safe user-facing message (never expose raw Python error details)
+  const safeMessage = ERROR_MAP[response.status] ?? `Agency service error (${response.status})`;
+  throw new Error(safeMessage);
 }
 
 export class AgencyBridge {
   async executeRun(params: RunParams): Promise<RunResult> {
     const url = `${PYTHON_BACKEND_URL}/api/v1/agencies/${params.agencyId}/run`;
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: makeHeadersWithMeta(params.userToken, params.tenantId, params.userId),
-      body: JSON.stringify({
-        conversation_id: params.conversationId,
-        message: params.message,
-      }),
-      signal: AbortSignal.timeout(RUN_TIMEOUT_MS),
-    });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers: makeHeadersWithMeta(params.userToken, params.tenantId, params.userId),
+        body: JSON.stringify({
+          conversation_id: params.conversationId,
+          message: params.message,
+        }),
+        signal: AbortSignal.timeout(RUN_TIMEOUT_MS),
+      });
+    } catch (err: any) {
+      if (err.name === "AbortError" || err.name === "TimeoutError") {
+        throw new Error("Agency run timed out. Please try again with a simpler request.");
+      }
+      throw err;
+    }
 
     const data = await handleResponse<any>(response, "executeRun");
 

@@ -17,15 +17,23 @@ import {
   agencyAgentTools,
   agencyCommunicationFlows,
   agencyConversations,
+  agencyTools,
   systemSettings,
 } from "../../drizzle/schema";
 import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import { agencyBridge } from "../services/agencyBridge";
+import type { RunResult } from "../services/agencyBridge";
 import { getTenantFeatureFlag, setTenantFeatureFlag } from "../services/featureFlags";
 import crypto from "crypto";
 
 // Feature flag guard (tenant-scoped)
 async function assertAgencyEnabled(tenantId: string): Promise<void> {
+  // Always enable in non-production environments for local development
+  // OR if explicitly enabled via environment variable
+  if (process.env.NODE_ENV !== "production" || process.env.AGENCY_SWARM_ENABLED === "true") {
+    return;
+  }
+
   const enabled = await getTenantFeatureFlag("AGENCY_SWARM_ENABLED", tenantId);
   if (!enabled) {
     throw new TRPCError({ code: "NOT_FOUND", message: "Not found" });
@@ -74,6 +82,141 @@ export const agencyRouter = router({
       return { agencies: result };
     }),
 
+  listTemplates: protectedProcedure
+    .query(async ({ ctx }) => {
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      await assertAgencyEnabled(tenantId);
+
+      const { agencyTemplates } = await import("../../drizzle/schema");
+
+      const templates = await db
+        .select()
+        .from(agencyTemplates)
+        .where(eq(agencyTemplates.isActive, true))
+        .orderBy(desc(agencyTemplates.createdAt));
+
+      return { templates };
+    }),
+
+  listAgentTemplates: protectedProcedure
+    .input(z.object({ agencyTemplateId: z.string().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      await assertAgencyEnabled(tenantId);
+
+      const { agentTemplates } = await import("../../drizzle/schema");
+
+      const conditions: any[] = [];
+      if (input?.agencyTemplateId) {
+        conditions.push(eq(agentTemplates.agencyTemplateId, input.agencyTemplateId));
+      } else {
+        conditions.push(sql`${agentTemplates.agencyTemplateId} IS NULL`);
+      }
+
+      const templates = await db
+        .select()
+        .from(agentTemplates)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(agentTemplates.createdAt));
+
+      return { agentTemplates: templates };
+    }),
+
+  listTools: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(100).default(50),
+        offset: z.number().min(0).default(0),
+      }).optional().default({ limit: 50, offset: 0 })
+    )
+    .query(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      await assertAgencyEnabled(tenantId);
+
+      // Default built-in tools that Agency Swarm agents can use
+      const builtinTools = [
+        {
+          id: "builtin-web-search",
+          name: "Web Search",
+          description: "Search the internet for real-time information",
+          toolType: "builtin",
+          riskLevel: "low",
+          requiresApproval: false,
+        },
+        {
+          id: "builtin-code-interpreter",
+          name: "Code Interpreter",
+          description: "Execute Python code in a secure sandbox",
+          toolType: "sandbox",
+          riskLevel: "medium",
+          requiresApproval: false,
+        },
+        {
+          id: "builtin-file-reader",
+          name: "File Reader",
+          description: "Read files from the agent workspace",
+          toolType: "builtin",
+          riskLevel: "low",
+          requiresApproval: false,
+        },
+        {
+          id: "builtin-file-writer",
+          name: "File Writer",
+          description: "Create or modify files in the workspace",
+          toolType: "builtin",
+          riskLevel: "medium",
+          requiresApproval: false,
+        },
+        {
+          id: "builtin-rag-knowledge",
+          name: "Knowledge Base Reader",
+          description: "Read documents and knowledge uploaded to the library and search for relevant information.",
+          toolType: "builtin",
+          riskLevel: "low",
+          requiresApproval: false,
+        },
+        {
+          id: "builtin-skill-executor",
+          name: "Skill Executor",
+          description: "Execute previously created agency skills and custom tools securely in the OpenSandbox environment.",
+          toolType: "sandbox",
+          riskLevel: "medium",
+          requiresApproval: false,
+        },
+        {
+          id: "builtin-cmd-executor",
+          name: "Command Executor",
+          description: "Run shell commands",
+          toolType: "sandbox",
+          riskLevel: "high",
+          requiresApproval: true,
+        },
+      ];
+
+      // Custom tools assigned in the database
+      const dbTools = await db
+        .select()
+        .from(agencyTools)
+        .where(eq(agencyTools.tenantId, tenantId))
+        .orderBy(desc(agencyTools.createdAt))
+        .limit(input.limit)
+        .offset(input.offset);
+
+      const dbToolsFormatted = dbTools.map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        description: t.description ?? undefined,
+        toolType: t.toolType ?? "custom",
+        riskLevel: "low", // Custom tools default to low unless specified otherwise
+        requiresApproval: false,
+      }));
+
+      // Combine and filter if searching or paginating (simple combined array)
+      const combined = [...builtinTools, ...dbToolsFormatted];
+
+      return { tools: combined };
+    }),
+
   getById: protectedProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ ctx, input }) => {
@@ -106,12 +249,57 @@ export const agencyRouter = router({
       const agentIds = agents.map((a: { id: string }) => a.id);
       const toolAssignments = agentIds.length > 0
         ? await db
-            .select()
-            .from(agencyAgentTools)
-            .where(inArray(agencyAgentTools.agentId, agentIds))
+          .select()
+          .from(agencyAgentTools)
+          .where(inArray(agencyAgentTools.agentId, agentIds))
         : [];
 
       return { ...agency, agents, communicationFlows: flows, agentToolAssignments: toolAssignments };
+    }),
+
+  createFromTemplate: agencyCreateProcedure
+    .input(z.object({ agencyTemplateId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const userId = ctx.user!.id;
+      await assertAgencyEnabled(tenantId);
+
+      const { agencyTemplates, agentTemplates } = await import("../../drizzle/schema");
+
+      const [template] = await db.select().from(agencyTemplates).where(eq(agencyTemplates.id, input.agencyTemplateId));
+      if (!template) throw new TRPCError({ code: "NOT_FOUND", message: "Template not found" });
+
+      const newAgencyId = crypto.randomUUID();
+      const slug = `${template.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${crypto.randomBytes(4).toString("hex")}`;
+
+      await db.insert(agencies).values({
+        id: newAgencyId,
+        tenantId,
+        name: template.name,
+        slug,
+        description: template.description,
+        systemPrompt: template.systemPrompt,
+        status: "draft",
+        createdBy: userId,
+      });
+
+      const templateAgents = await db.select().from(agentTemplates).where(eq(agentTemplates.agencyTemplateId, template.id));
+
+      if (templateAgents.length > 0) {
+        const inserts = templateAgents.map((ta: any) => ({
+          id: crypto.randomUUID(),
+          agencyId: newAgencyId,
+          name: ta.name,
+          description: ta.description,
+          instructions: ta.instructions,
+          model: ta.defaultModel,
+          isEntryPoint: ta.isEntryPoint,
+          position: ta.position as any,
+        }));
+        await db.insert(agencyAgents).values(inserts);
+      }
+
+      return { id: newAgencyId, slug };
     }),
 
   create: agencyCreateProcedure
@@ -125,13 +313,14 @@ export const agencyRouter = router({
         maxAgents: z.number().min(1).max(20).default(10),
         maxRunTimeSeconds: z.number().min(30).max(3600).default(600),
         isFallbackSafe: z.boolean().default(false),
+        creatorFeeCredits: z.number().int().min(0).max(1000).default(0),
         agents: z
           .array(
             z.object({
               name: z.string().min(1).max(100),
               description: z.string().optional(),
-              instructions: z.string(),
-              model: z.string().max(100),
+              instructions: z.string().max(50000),
+              model: z.string().max(100).regex(/^[a-zA-Z0-9._\/-]+$/, "Invalid model identifier"),
               modelSettings: z
                 .object({
                   max_tokens: z.number().optional(),
@@ -145,7 +334,8 @@ export const agencyRouter = router({
               toolIds: z.array(z.string().uuid()).optional(),
             }),
           )
-          .min(1),
+          .min(1)
+          .max(20),
         communicationFlows: z
           .array(
             z.object({
@@ -161,6 +351,37 @@ export const agencyRouter = router({
       const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
       await assertAgencyEnabled(tenantId);
       const userId = ctx.user!.id;
+
+      // Quota enforcement: check tenant agency limit
+      const quotaRows = await db
+        .select()
+        .from(systemSettings)
+        .where(
+          and(
+            eq(systemSettings.category, "agency_quotas"),
+            eq(systemSettings.key, `tenant_${tenantId}_maxAgencies`),
+          ),
+        );
+      if (quotaRows.length > 0 && quotaRows[0].value) {
+        const maxAgencies = parseInt(quotaRows[0].value, 10);
+        if (!isNaN(maxAgencies) && maxAgencies > 0) {
+          const [{ count: existingCount }] = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(agencies)
+            .where(
+              and(
+                eq(agencies.tenantId, tenantId),
+                sql`${agencies.status} != 'archived'`,
+              ),
+            );
+          if (Number(existingCount) >= maxAgencies) {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: `Agency limit of ${maxAgencies} reached for this tenant`,
+            });
+          }
+        }
+      }
 
       // Validate exactly one entry point
       const entryPoints = input.agents.filter((a) => a.isEntryPoint);
@@ -186,6 +407,7 @@ export const agencyRouter = router({
           maxAgents: input.maxAgents,
           maxRunTimeSeconds: input.maxRunTimeSeconds,
           isFallbackSafe: input.isFallbackSafe,
+          creatorFeeCredits: input.creatorFeeCredits,
           status: "draft",
           createdBy: userId,
         });
@@ -258,6 +480,7 @@ export const agencyRouter = router({
         creditMultiplier: z.number().min(1).max(10).optional(),
         maxRunTimeSeconds: z.number().min(30).max(3600).optional(),
         isFallbackSafe: z.boolean().optional(),
+        creatorFeeCredits: z.number().int().min(0).max(1000).optional(),
         status: z.enum(["draft", "published", "archived"]).optional(),
       }),
     )
@@ -292,6 +515,8 @@ export const agencyRouter = router({
       if (updateFields.maxRunTimeSeconds !== undefined)
         setValues.maxRunTimeSeconds = updateFields.maxRunTimeSeconds;
       if (updateFields.isFallbackSafe !== undefined) setValues.isFallbackSafe = updateFields.isFallbackSafe;
+      if (updateFields.creatorFeeCredits !== undefined)
+        setValues.creatorFeeCredits = updateFields.creatorFeeCredits;
       if (updateFields.status !== undefined) {
         setValues.status = updateFields.status;
         if (updateFields.status === "published") setValues.isPublished = true;
@@ -317,8 +542,8 @@ export const agencyRouter = router({
           z.object({
             name: z.string().min(1).max(100),
             description: z.string().optional(),
-            instructions: z.string(),
-            model: z.string().max(100),
+            instructions: z.string().max(50000),
+            model: z.string().max(100).regex(/^[a-zA-Z0-9._\/-]+$/, "Invalid model identifier"),
             modelSettings: z
               .object({
                 max_tokens: z.number().optional(),
@@ -331,7 +556,7 @@ export const agencyRouter = router({
             position: z.object({ x: z.number(), y: z.number() }).optional(),
             toolIds: z.array(z.string().uuid()).optional(),
           }),
-        ).min(1),
+        ).min(1).max(20),
         communicationFlows: z
           .array(
             z.object({
@@ -372,6 +597,14 @@ export const agencyRouter = router({
       }
 
       await db.transaction(async (tx) => {
+        // Re-verify ownership with row lock inside transaction (defense-in-depth)
+        const lockResult = await tx.execute(
+          sql`SELECT id FROM agencies WHERE id = ${input.id} AND "tenantId" = ${tenantId} FOR UPDATE`,
+        );
+        if (!lockResult.rows?.length) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+        }
+
         // Update agency metadata
         const setValues: Record<string, any> = {};
         if (input.name !== undefined) setValues.name = input.name;
@@ -965,129 +1198,49 @@ export const agencyRouter = router({
       return { alerts };
     }),
 
-  // --- Templates ---
 
-  listTemplates: protectedProcedure.query(async ({ ctx }) => {
-    const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
-    await assertAgencyEnabled(tenantId);
-    const templatesEnabled = await getTenantFeatureFlag(
-      "AGENCY_TEMPLATES_ENABLED",
-      tenantId,
-    );
-    if (!templatesEnabled) {
-      throw new TRPCError({ code: "NOT_FOUND", message: "Not found" });
-    }
 
-    const { getTemplates } = await import(
-      "../../skills/agency-templates/index"
-    );
-    return getTemplates().map((t) => ({
-      id: t.id,
-      name: t.name,
-      description: t.description,
-      longDescription: t.longDescription,
-      category: t.category,
-      agentCount: t.agentCount,
-      icon: t.icon,
-      agents: t.agents.map((a) => ({
-        name: a.name,
-        description: a.description,
-        model: a.model,
-        isEntryPoint: a.isEntryPoint,
-        isOptional: a.isOptional,
-      })),
-      communicationFlows: t.communicationFlows,
-    }));
-  }),
+  // --- Creator Revenue ---
 
-  createFromTemplate: agencyTemplateProcedure
+  getCreatorEarnings: protectedProcedure
     .input(
       z.object({
-        templateId: z.string(),
-        name: z.string().min(1).max(255).optional(),
+        entityType: z.enum(["agency", "workflow", "skill"]).optional(),
+        limit: z.number().min(1).max(100).default(50),
+        offset: z.number().min(0).default(0),
+        startDate: z.date().optional(),
+        endDate: z.date().optional(),
       }),
     )
-    .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
-      await assertAgencyEnabled(tenantId);
-      const templatesEnabled = await getTenantFeatureFlag(
-        "AGENCY_TEMPLATES_ENABLED",
-        tenantId,
-      );
-      if (!templatesEnabled) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Not found" });
-      }
-
-      const { getTemplateById } = await import(
-        "../../skills/agency-templates/index"
-      );
-      const template = getTemplateById(input.templateId);
-      if (!template) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Template not found",
-        });
-      }
-
-      const userId = ctx.user!.id;
-      const name = input.name || template.name;
-      const slug = `${template.id}-${crypto.randomUUID().slice(0, 8)}`;
-      const agencyId = crypto.randomUUID();
-
-      await db.transaction(async (tx) => {
-        await tx.insert(agencies).values({
-          id: agencyId,
-          tenantId,
-          slug,
-          name,
-          description: template.description,
-          systemPrompt: null,
-          creditMultiplier: String(template.defaultSettings.creditMultiplier),
-          maxAgents: template.agentCount,
-          maxRunTimeSeconds: template.defaultSettings.maxRunTimeSeconds,
-          isFallbackSafe: template.defaultSettings.isFallbackSafe,
-          status: "draft",
-          createdBy: userId,
-        });
-
-        const agentNameToId: Record<string, string> = {};
-
-        for (const agent of template.agents) {
-          const agentId = crypto.randomUUID();
-          agentNameToId[agent.name] = agentId;
-
-          await tx.insert(agencyAgents).values({
-            id: agentId,
-            agencyId,
-            name: agent.name,
-            description: agent.description,
-            instructions: agent.instructions,
-            model: agent.model,
-            isEntryPoint: agent.isEntryPoint,
-            isOptional: agent.isOptional,
-            position: agent.position,
-          });
-        }
-
-        for (const flow of template.communicationFlows) {
-          const fromId = agentNameToId[flow.fromAgentName];
-          const toId = agentNameToId[flow.toAgentName];
-          if (!fromId || !toId) {
-            throw new TRPCError({
-              code: "INTERNAL_SERVER_ERROR",
-              message: `Invalid template: agent name "${!fromId ? flow.fromAgentName : flow.toAgentName}" not found`,
-            });
-          }
-          await tx.insert(agencyCommunicationFlows).values({
-            id: crypto.randomUUID(),
-            agencyId,
-            fromAgentId: fromId,
-            toAgentId: toId,
-            flowType: flow.flowType,
-          });
-        }
+    .query(async ({ ctx, input }) => {
+      const { getCreatorEarnings } = await import("../services/creatorRevenueService");
+      const settlements = await getCreatorEarnings(ctx.user!.id, {
+        entityType: input.entityType as any,
+        limit: input.limit,
+        offset: input.offset,
+        startDate: input.startDate,
+        endDate: input.endDate,
       });
+      return { settlements };
+    }),
 
-      return { agencyId };
+  getCreatorDashboard: protectedProcedure.query(async ({ ctx }) => {
+    const { getCreatorDashboard } = await import("../services/creatorRevenueService");
+    return getCreatorDashboard(ctx.user!.id);
+  }),
+
+  adminGetRevenueStats: adminProcedure
+    .input(
+      z.object({
+        tenantId: z.string().optional(),
+        windowDays: z.number().min(1).max(365).default(30),
+      }),
+    )
+    .query(async ({ input }) => {
+      const { getAdminRevenueStats } = await import("../services/creatorRevenueService");
+      return getAdminRevenueStats({
+        tenantId: input.tenantId,
+        windowDays: input.windowDays,
+      });
     }),
 });
