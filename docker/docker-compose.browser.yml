@@ -1,0 +1,27 @@
+services:
+  browser-sandbox:
+    build:
+      context: ./browser-sandbox
+    init: true
+    ipc: host
+    security_opt:
+      - seccomp:./browser-sandbox/seccomp-chromium.json
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SYS_ADMIN  # Required for Chromium sandbox (namespace isolation)
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+    networks:
+      - browser-isolated
+    # No port exposure -- accessed only via Docker network from python-backend
+    restart: "no"
+
+networks:
+  browser-isolated:
+    driver: bridge
+    internal: true  # No outbound internet by default

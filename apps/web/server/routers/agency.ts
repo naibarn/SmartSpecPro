@@ -498,6 +498,47 @@ export const agencyRouter = router({
             },
           },
         },
+        {
+          id: "builtin-browser",
+          name: "Browser Automation",
+          description:
+            "Navigate web pages, extract text, take screenshots, and interact with elements in a secure sandbox",
+          toolType: "sandbox",
+          riskLevel: "high",
+          requiresApproval: true,
+          configSchema: {
+            fields: [
+              {
+                key: "maxPageLoads",
+                label: "Max Page Loads",
+                type: "select",
+                options: [1, 3, 5, 10],
+                default: 5,
+              },
+              {
+                key: "timeout",
+                label: "Session Timeout (seconds)",
+                type: "select",
+                options: [60, 120, 180, 300],
+                default: 300,
+              },
+              {
+                key: "screenshotQuality",
+                label: "Screenshot Quality",
+                type: "select",
+                options: ["low", "medium", "high"],
+                default: "medium",
+              },
+              {
+                key: "allowedDomains",
+                label: "Allowed Domains (comma-separated, empty = DENY ALL)",
+                type: "text",
+                required: false,
+                placeholder: "example.com,docs.example.com",
+              },
+            ],
+          },
+        },
       ];
 
       // Custom tools assigned in the database

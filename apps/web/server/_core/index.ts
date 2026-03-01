@@ -23,6 +23,7 @@ import { createWebhookRouter } from "../routes/webhooks";
 import { createTelegramWebhookRouter } from "../routes/telegramWebhook";
 import { createChannelWebhookRouter } from "../routes/channelWebhook";
 import { createVoiceSessionRouter, handleVoiceUpgrade, shutdownVoiceGateway } from "../routes/voiceGateway";
+import browserToolRouter from "../routes/browserTool";
 import "../services/telegramLinkService"; // Register /start link handler
 import "../services/channelAdapters/telegram"; // Register Telegram adapter
 import { adapterRegistry } from "../services/channelAdapters/registry";
@@ -354,6 +355,7 @@ app.use("/webhooks/telegram", express.json({ limit: "1mb" }), createTelegramWebh
 
 // Voice gateway: session token + consent endpoints
 app.use("/api/voice", createVoiceSessionRouter());
+app.use(browserToolRouter);
 
 // Cloud Tasks handler routes (called by Cloud Tasks with OIDC auth)
 // Mounted at /_internal/tasks to avoid conflict with the frontend /tasks SPA route

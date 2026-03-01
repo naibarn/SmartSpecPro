@@ -65,6 +65,7 @@ _BUILTIN_ENDPOINTS: dict[str, str] = {
     "builtin-slack-message": "/api/internal/tools/slack-message",
     "builtin-document-search": "/api/internal/tools/document-search",
     "builtin-voice": "/api/internal/tools/voice",
+    "builtin-browser": "/api/internal/tools/browser",
 }
 
 _BUILTIN_RISK_LEVELS: dict[str, str] = {
@@ -77,6 +78,7 @@ _BUILTIN_RISK_LEVELS: dict[str, str] = {
     "builtin-slack-message": "low",
     "builtin-document-search": "low",
     "builtin-voice": "medium",
+    "builtin-browser": "high",
 }
 
 

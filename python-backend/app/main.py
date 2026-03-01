@@ -67,6 +67,7 @@ from app.api import (
     agencies,  # Agency-Swarm multi-agent endpoints
     agency_creator,  # AI Agency Creator task endpoints
     stt,  # Internal STT/TTS voice endpoints
+    browser,  # Browser automation API
  )
 from app.api.v1 import (
     skills,
@@ -309,6 +310,7 @@ app.include_router(internal_sandbox.router, tags=["Internal Sandbox"])
 app.include_router(stt.router, tags=["Internal STT/TTS"])
 app.include_router(agencies.router, tags=["Agencies"])
 app.include_router(agency_creator.router, prefix="/api/v1/agency-creator", tags=["Agency Creator"])
+app.include_router(browser.router, tags=["Browser Automation"])
 
 @app.get("/")
 async def root():
