@@ -16,6 +16,8 @@ import {
 import { debugLog, debugError } from "./logger";
 import { handleChatWithRouter, handleStreamWithRouter } from "../services/llmRoutesHandler";
 import { auditLogger } from "../services/auditLogger";
+import { getTraceId } from "../services/traceContext";
+import { logRequest as logCostRequest } from "../services/costTracker";
 
 // --- Provider-specific Rate Limiter with Queue System ---
 // Uses Bottleneck with Redis for distributed rate limiting when available
@@ -1137,6 +1139,9 @@ async function proxyChatWithCredits(
             await updateConversationCredits(conversationId, creditsUsed);
           }
 
+          // Get traceId for cost correlation
+          const traceId = getTraceId();
+
           const message = await createMessage({
             conversationId,
             role: "assistant",
@@ -1146,7 +1151,23 @@ async function proxyChatWithCredits(
             creditsUsed: creditsUsed.toString(),
             modelUsed: model || conversation.model || undefined,
             skillUsed,
+            traceId,
           });
+
+          // Log to providerUsageLog for cost correlation
+          logCostRequest({
+            userId,
+            providerId: provider.providerId,
+            modelUsed: model,
+            inputTokens,
+            outputTokens,
+            costUsd: providerCostUsd,
+            creditsCharged: creditsUsed,
+            responseTimeMs: 0,
+            statusCode: 200,
+            wasFallback: false,
+            traceId,
+          }).catch((err: any) => debugError("LLM", "Failed to log streaming request:", err.message));
 
           debugLog("LLM", "Message saved after streaming", { messageId: message.id, creditsUsed });
 

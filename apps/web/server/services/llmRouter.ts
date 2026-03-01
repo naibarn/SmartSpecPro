@@ -5,6 +5,7 @@ import { isAvailable, recordSuccess, recordFailure } from "./providerHealth";
 import { logRequest, calculateCost, type CostMethod } from "./costTracker";
 import { auditLogger } from "./auditLogger";
 import { decrypt } from "./crypto";
+import { getTraceId } from "./traceContext";
 import type { Message } from "../_core/llm";
 
 // --- Types ---
@@ -309,6 +310,7 @@ export async function executeWithFallback(params: {
           statusCode: 200,
           wasFallback: i > 0,
           fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
+          traceId: getTraceId(),
         }).catch((err) => console.error("[AuditLog] Failed to log request:", err.message));
 
         // Log LLM response to JSONL audit trail (with full payload for transparency)
@@ -360,6 +362,7 @@ export async function executeWithFallback(params: {
         errorType: `http_${statusCode}`,
         wasFallback: i > 0,
         fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
+        traceId: getTraceId(),
       }).catch((err) => console.error("[AuditLog] Failed to log request:", err.message));
 
       // Log LLM error to JSONL audit trail
@@ -414,6 +417,7 @@ export async function executeWithFallback(params: {
         errorType: "network_error",
         wasFallback: i > 0,
         fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
+        traceId: getTraceId(),
       }).catch((err) => console.error("[AuditLog] Failed to log request:", err.message));
 
       // Check free->paid boundary

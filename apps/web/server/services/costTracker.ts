@@ -22,6 +22,7 @@ export async function logRequest(params: {
   errorType?: string;
   wasFallback: boolean;
   fallbackFromProviderId?: number;
+  traceId?: string;
 }): Promise<void> {
   const db = await getDb();
   if (!db) return;
@@ -39,6 +40,7 @@ export async function logRequest(params: {
     errorType: params.errorType ?? null,
     wasFallback: params.wasFallback,
     fallbackFromProviderId: params.fallbackFromProviderId ?? null,
+    traceId: params.traceId ?? null,
   });
 }
 

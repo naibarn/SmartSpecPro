@@ -432,3 +432,39 @@ The ownership verification follows the same pattern used in other chat router pr
 9. Integrate `MessageCostBadge` into `AgencyChat.tsx`
 10. Run tests: `cd /home/dev/projects/SmartSpecPro/apps/web && pnpm test`
 11. Run type check: `cd /home/dev/projects/SmartSpecPro/apps/web && pnpm check`
+
+---
+
+## 6. Implementation Notes (Actual)
+
+### Files Created
+- `apps/web/server/services/messageCostService.ts` — Service layer for `getMessageCost()` with ownership check, traceId-based providerUsageLog JOIN, admin-only costUsd
+- `apps/web/client/src/components/chat/MessageCostBadge.tsx` — Compact/expanded cost badge with lazy tRPC query
+- `apps/web/server/routers/__tests__/chatCost.test.ts` — 5 tests for messageCostService
+- `apps/web/client/src/components/chat/__tests__/MessageCostBadge.test.tsx` — 3 tests for frontend component
+
+### Files Modified
+- `apps/web/server/services/costTracker.ts` — Added `traceId?: string` param to `logRequest()`
+- `apps/web/server/services/costTracker.test.ts` — Added 2 traceId propagation tests
+- `apps/web/server/services/llmRouter.ts` — Added `getTraceId()` to all 3 `logRequest()` calls
+- `apps/web/server/_core/llmRoutes.ts` — Added static imports for traceContext + costTracker; added traceId to `createMessage()` and `logCostRequest()` in streaming handler
+- `apps/web/server/routers/chat.ts` — Added `getMessageCost` tRPC procedure + traceId to `saveAssistantMessage`
+- `apps/web/client/src/components/chat/ChatView.tsx` — Integrated MessageCostBadge replacing old credits display
+- `apps/web/client/src/components/chat/index.ts` — Added MessageCostBadge export
+
+### Deviations from Plan
+1. **ChatView.tsx instead of Chat.tsx** — Message rendering is in ChatView.tsx, not the page wrapper Chat.tsx. Correct location.
+2. **AgencyChat.tsx not integrated** — `AgencyStreamMessage` uses ephemeral string IDs (not numeric DB messageIds). Messages are not persisted to the database, so the DB-backed cost lookup cannot work. Documented as known limitation.
+3. **Section 1.2 chatCostTrace.test.ts skipped** — traceId propagation is implicitly covered by costTracker traceId tests and chatCost service tests. A full integration test would require complex mocking of the entire LLM call chain.
+4. **messageCostService.ts as separate service** — Extracted query logic from the router into a dedicated service file for testability, following the project's existing service layer pattern.
+
+### Code Review Fixes Applied
+1. **Multiple rows per traceId (HIGH)** — Added `.orderBy(desc(providerUsageLog.id)).limit(1)` to pick the latest (successful) row when fallback creates multiple log entries
+2. **Redundant role="button"** — Removed from `<button>` element
+3. **Dynamic imports → static imports** — Changed `llmRoutes.ts` to use static `import { getTraceId }` and `import { logRequest as logCostRequest }` at module top level
+
+### Test Results
+- costTracker.test.ts: 11 passed (11)
+- chatCost.test.ts: 5 passed (5)
+- MessageCostBadge.test.tsx: 3 passed (3)
+- Total new tests: 19

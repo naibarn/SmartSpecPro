@@ -91,6 +91,55 @@ describe("logRequest", () => {
       })
     );
   });
+
+  it("accepts and stores traceId in providerUsageLog", async () => {
+    const valuesFn = vi.fn().mockResolvedValue(undefined);
+    mockInsert.mockReturnValue({ values: valuesFn });
+
+    await logRequest({
+      userId: 1,
+      providerId: 2,
+      modelUsed: "gpt-4o",
+      inputTokens: 100,
+      outputTokens: 50,
+      costUsd: 0.001,
+      creditsCharged: 1,
+      responseTimeMs: 500,
+      statusCode: 200,
+      wasFallback: false,
+      traceId: "abc12345678901234567890123456789",
+    });
+
+    expect(valuesFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        traceId: "abc12345678901234567890123456789",
+      })
+    );
+  });
+
+  it("stores null traceId when not provided", async () => {
+    const valuesFn = vi.fn().mockResolvedValue(undefined);
+    mockInsert.mockReturnValue({ values: valuesFn });
+
+    await logRequest({
+      userId: 1,
+      providerId: 2,
+      modelUsed: "gpt-4o",
+      inputTokens: 100,
+      outputTokens: 50,
+      costUsd: 0.001,
+      creditsCharged: 1,
+      responseTimeMs: 500,
+      statusCode: 200,
+      wasFallback: false,
+    });
+
+    expect(valuesFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        traceId: null,
+      })
+    );
+  });
 });
 
 describe("calculateCost", () => {

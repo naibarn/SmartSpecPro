@@ -1,6 +1,7 @@
 export { ChatSidebar } from "./ChatSidebar";
 export { ChatView } from "./ChatView";
 export { MemoryPanel } from "./MemoryPanel";
+export { MessageCostBadge } from "./MessageCostBadge";
 export { SkillSettings } from "./settings/SkillSettings";
 
 // Media components

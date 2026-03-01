@@ -63,6 +63,7 @@ import { ScheduleConfirmCard } from "./ScheduleConfirmCard";
 import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { FallbackConsent } from "./FallbackConsent";
+import { MessageCostBadge } from "./MessageCostBadge";
 import { formatModelCost, getCheapestProvider, type AvailableModel, type ModelProvider } from "@/lib/modelPricing";
 import {
   appendLibraryContextToMessage,
@@ -2188,24 +2189,25 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                     ) : (
                       renderUserContent(m)
                     )}
-                    {m.role === "assistant" && (m.creditsUsed || m.skillUsed) && (
+                    {m.role === "assistant" && m.skillUsed && m.skillUsed !== "brainstorm" && (
                       <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                        {m.skillUsed && m.skillUsed !== "brainstorm" && (
-                          <Badge variant="outline" className="gap-1 text-xs">
-                            {(() => {
-                              const SkillIcon = skillIconMap[m.skillUsed] || Sparkles;
-                              return <SkillIcon className="h-3 w-3" />;
-                            })()}
-                            {m.skillUsed.replace(/-/g, " ")}
-                          </Badge>
-                        )}
-                        {m.creditsUsed && Number(m.creditsUsed) > 0 && (
-                          <span>
-                            {Number(m.creditsUsed)} credit{Number(m.creditsUsed) !== 1 ? 's' : ''}
-                            {m.modelUsed && m.skillUsed !== "brainstorm" && ` — ${m.modelUsed}`}
-                          </span>
-                        )}
+                        <Badge variant="outline" className="gap-1 text-xs">
+                          {(() => {
+                            const SkillIcon = skillIconMap[m.skillUsed] || Sparkles;
+                            return <SkillIcon className="h-3 w-3" />;
+                          })()}
+                          {m.skillUsed.replace(/-/g, " ")}
+                        </Badge>
                       </div>
+                    )}
+                    {m.role === "assistant" && (
+                      <MessageCostBadge
+                        messageId={m.id}
+                        model={m.modelUsed}
+                        inputTokens={m.inputTokens ?? 0}
+                        outputTokens={m.outputTokens ?? 0}
+                        creditsUsed={m.creditsUsed}
+                      />
                     )}
                   </div>
                 );

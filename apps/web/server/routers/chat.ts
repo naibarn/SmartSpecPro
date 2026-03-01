@@ -623,6 +623,32 @@ export const chatRouter = router({
     }),
 
   /**
+   * Get per-response cost data for a message.
+   * Returns token usage, credits, latency, and provider info.
+   * Admins additionally see costUsd.
+   */
+  getMessageCost: protectedProcedure
+    .input(z.object({ messageId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const { getMessageCost } = await import("../services/messageCostService");
+      try {
+        return await getMessageCost({
+          messageId: input.messageId,
+          userId: ctx.user.id,
+          userRole: ctx.user.role,
+        });
+      } catch (err: any) {
+        if (err.message === "FORBIDDEN") {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
+        }
+        if (err.message === "NOT_FOUND") {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Message not found" });
+        }
+        throw err;
+      }
+    }),
+
+  /**
    * Send a message (non-streaming, returns full response)
    * For streaming, use the SSE endpoint at /api/chat/stream
    */
@@ -736,8 +762,9 @@ export const chatRouter = router({
         await updateConversationCredits(input.conversationId, creditsUsed);
       }
 
-      // Create assistant message
+      // Create assistant message with traceId for cost correlation
       debugLog("Chat", "Creating assistant message...");
+      const { getTraceId } = await import("../services/traceContext");
       const message = await createMessage({
         conversationId: input.conversationId,
         role: "assistant",
@@ -750,6 +777,7 @@ export const chatRouter = router({
         skillUsed: input.skillUsed,
         skillArgs: input.skillArgs,
         error: input.error,
+        traceId: getTraceId(),
       });
 
       // --- Channel bridge fan-out (section-08) ---
