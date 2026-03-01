@@ -68,6 +68,7 @@ import { presentationImportRouter } from "./routers/presentationImport";
 import { sandboxRouter } from "./routers/sandbox";
 import { agencyRouter } from "./routers/agency";
 import { personaRouter } from "./routers/persona";
+import { artifactRouter } from "./routers/artifact";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -1345,6 +1346,9 @@ export const appRouter = router({
 
   // Chat system (conversations, messages, memory)
   chat: chatRouter,
+
+  // Canvas / AI Artifacts (versioned, interactive artifacts)
+  artifact: artifactRouter,
 
   // Memory system (entity memories, summaries, context)
   memory: memoryRouter,

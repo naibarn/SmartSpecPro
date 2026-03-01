@@ -1249,7 +1249,7 @@ export const messages = pgTable("messages", {
   /** Artifacts extracted from response (code, markdown, media) */
   artifacts: json("artifacts").$type<Array<{
     id: string;
-    type: "code" | "markdown" | "image" | "video" | "pdf" | "file" | "slideshow" | "chart" | "table";
+    type: "code" | "markdown" | "image" | "video" | "pdf" | "file" | "slideshow" | "chart" | "table" | "mermaid" | "svg" | "react" | "html";
     title?: string;
     content: string | string[];
     language?: string;

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Artifact Sandbox</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; }
+    #root { padding: 8px; }
+    .error { color: #dc2626; padding: 16px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    (function() {
+      const ALLOWED_ORIGIN = 'https://smartaihub.app';
+      const root = document.getElementById('root');
+
+      window.addEventListener('message', function(event) {
+        // Validate origin — only accept messages from the main app
+        if (event.origin !== ALLOWED_ORIGIN) {
+          return;
+        }
+
+        const data = event.data;
+        if (!data || data.type !== 'render') return;
+
+        try {
+          root.innerHTML = '';
+
+          if (data.artifactType === 'html') {
+            root.innerHTML = data.content;
+          } else if (data.artifactType === 'react') {
+            // For React artifacts, wrap in a basic execution context
+            root.innerHTML = '<div id="react-root"></div>';
+            const script = document.createElement('script');
+            script.textContent = data.content;
+            document.body.appendChild(script);
+          } else {
+            root.textContent = data.content;
+          }
+
+          // Report rendered height back to validated parent origin
+          requestAnimationFrame(function() {
+            event.source.postMessage({
+              type: 'rendered',
+              height: document.body.scrollHeight,
+            }, event.origin);
+          });
+        } catch (err) {
+          root.innerHTML = '<div class="error">Error: ' + (err.message || 'Unknown error') + '</div>';
+          event.source.postMessage({
+            type: 'error',
+            message: err.message || 'Rendering failed',
+          }, event.origin);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

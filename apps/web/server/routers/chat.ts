@@ -201,7 +201,7 @@ const attachmentSchema = z.object({
 
 const artifactSchema = z.object({
   id: z.string(),
-  type: z.enum(["code", "markdown", "image", "video", "pdf", "file", "slideshow", "chart", "table"]),
+  type: z.enum(["code", "markdown", "image", "video", "pdf", "file", "slideshow", "chart", "table", "mermaid", "svg", "react", "html"]),
   title: z.string().optional(),
   content: z.union([z.string(), z.array(z.string())]),
   language: z.string().optional(),

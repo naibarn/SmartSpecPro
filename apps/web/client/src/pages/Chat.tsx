@@ -3,12 +3,13 @@ import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
 import { ChatSidebar, ChatView, MemoryPanel, SkillSettings, ArtifactPanel, MediaGenerationPanel, SchedulePanel, type Artifact } from "@/components/chat";
+import { CanvasPane } from "@/components/chat/canvas/CanvasPane";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, PanelLeftClose, Brain, Wand2, Layers, Sparkles, Bell, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 
-type RightPanel = "none" | "memory" | "skills" | "artifacts" | "generate" | "schedule";
+type RightPanel = "none" | "memory" | "skills" | "artifacts" | "generate" | "schedule" | "canvas";
 
 export default function Chat() {
   const { isLoading, isAuthenticated } = useAuth();
@@ -341,6 +342,12 @@ export default function Chat() {
           {rightPanel === "artifacts" && (
             <ArtifactPanel
               artifacts={artifacts}
+              onClose={() => setRightPanel("none")}
+            />
+          )}
+          {rightPanel === "canvas" && selectedConversationId && (
+            <CanvasPane
+              conversationId={selectedConversationId}
               onClose={() => setRightPanel("none")}
             />
           )}

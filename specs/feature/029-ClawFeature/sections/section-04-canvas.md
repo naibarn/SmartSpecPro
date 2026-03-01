@@ -472,3 +472,49 @@ The existing `conversations` table (line 1121 of schema.ts) does NOT yet have a 
 10. Create `CanvasPane.tsx` and integrate into Chat page
 11. Add artifact chips to ChatView message rendering
 12. Configure Nginx sandbox domain and create `sandbox.html`
+
+## Section 6. Implementation Notes (Actual)
+
+### Files Created
+- `apps/web/server/services/artifactParser.ts` — Regex-based artifact block parser
+- `apps/web/server/services/artifactStorageService.ts` — Dual-store routing (JSONB vs table)
+- `apps/web/server/routers/artifact.ts` — tRPC router with 3 endpoints
+- `apps/web/server/services/__tests__/artifactParser.test.ts` — 6 tests
+- `apps/web/server/services/__tests__/artifactStorage.test.ts` — 4 tests
+- `apps/web/server/routers/__tests__/artifact.test.ts` — 3 tests
+- `apps/web/client/src/components/chat/canvas/CanvasPane.tsx` — Main canvas container
+- `apps/web/client/src/components/chat/canvas/ArtifactSandbox.tsx` — Sandboxed iframe renderer
+- `apps/web/client/src/components/chat/canvas/renderers/CodeRenderer.tsx`
+- `apps/web/client/src/components/chat/canvas/renderers/ChartRenderer.tsx`
+- `apps/web/client/src/components/chat/canvas/renderers/MarkdownRenderer.tsx`
+- `apps/web/client/src/components/chat/canvas/renderers/MermaidRenderer.tsx`
+- `apps/web/client/src/components/chat/canvas/renderers/SvgRenderer.tsx`
+- `apps/web/client/src/components/chat/canvas/renderers/TableRenderer.tsx`
+- `apps/web/public/sandbox.html` — Minimal HTML shell for sandbox domain
+- `nginx/conf.d/sandbox.conf` — Nginx config for sandbox.smartaihub.app
+
+### Files Modified
+- `apps/web/server/routers.ts` — Registered artifactRouter
+- `apps/web/server/routers/chat.ts` — Extended artifactSchema Zod type enum with mermaid, svg, react, html
+- `apps/web/drizzle/schema.ts` — Extended messages.artifacts type union
+- `apps/web/server/services/chatService.ts` — Added canvas artifact format injection in buildChatContext()
+- `apps/web/client/src/pages/Chat.tsx` — Added "canvas" to RightPanel type, integrated CanvasPane
+- `apps/web/package.json` — Added mermaid dependency
+
+### Deviations from Plan
+1. **Artifact chips in ChatView (planned step 11) — Deferred**: ChatView.tsx is a large, heavily-used component. Inline artifact chips are a UX enhancement deferred to a future iteration. The CanvasPane right panel provides artifact browsing instead.
+2. **parseArtifactBlocks/storeArtifacts integration into message flow (planned step 6) — Deferred**: Integration with the SSE chat stream handler is complex. The parsing and storage functions are implemented and tested independently. Integration will follow when the stream handler is refactored.
+3. **artifactId validation** — Used `z.string()` instead of `z.string().uuid()` because invalid UUIDs return NOT_FOUND from DB query (safe behavior).
+4. **Nginx sandbox listens on port 80** — SSL termination handled by upstream reverse proxy, not directly by sandbox.conf.
+
+### Review Fixes Applied
+1. **postMessage wildcard origins (CRITICAL)** — Changed to use `SANDBOX_ORIGIN` and `event.origin` instead of `"*"`
+2. **localhost bypass removed (HIGH)** — Removed blob: and localhost origin bypasses from production code
+3. **createArtifactVersion ownership validation (HIGH)** — Added conversation ownership check with userId and tenantId
+4. **MermaidRenderer DOMPurify sanitization (MEDIUM)** — Added SVG sanitization consistent with SvgRenderer
+5. **Mermaid Date.now() ID replaced with useId() (LOW)** — Stable React-managed IDs
+6. **X-Frame-Options ALLOWALL removed (LOW)** — Invalid value per RFC 7034, CSP handles framing
+
+### Test Results
+- 13 tests passing across 3 test files (6 parser + 4 storage + 3 router)
+- All tests run in <1s

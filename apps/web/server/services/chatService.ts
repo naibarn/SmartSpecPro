@@ -17,6 +17,7 @@ import {
   InsertConversationSummary,
   EntityMemory,
   InsertEntityMemory,
+  tenants,
 } from "../../drizzle/schema";
 
 // ==================== Google Drive Integration ====================
@@ -725,6 +726,35 @@ export async function buildChatContext(
         "Use these tools when the user asks about their Google Drive files, wants to find documents, or needs content from their Drive.",
       ].join("\n"),
     });
+  }
+
+  // 2c. Add canvas artifact format instruction if feature flag enabled
+  try {
+    const convTenantId = tenantId;
+    if (convTenantId) {
+      const db = await getDb();
+      if (db) {
+        const [tenant] = await db
+          .select({ settings: tenants.settings })
+          .from(tenants)
+          .where(eq(tenants.id, convTenantId))
+          .limit(1);
+        const featureFlags = (tenant?.settings as any)?.featureFlags;
+        if (featureFlags?.canvas) {
+          context.push({
+            role: "system",
+            content: `When generating charts, tables, code, or interactive content, use the artifact format:
+\`\`\`artifact:TYPE title="Title" language="lang"
+content
+\`\`\`
+Supported types: code, markdown, mermaid, svg, react, html, chart, table.
+Use 'react' for interactive React components, 'chart' for data visualizations (JSON format), 'table' for structured data.`,
+          });
+        }
+      }
+    }
+  } catch {
+    // Canvas feature flag check failed — continue without canvas instruction
   }
 
   // 3. Add summaries
