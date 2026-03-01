@@ -7,7 +7,7 @@
  */
 
 import { z } from "zod";
-import { router, protectedProcedure, adminProcedure } from "../_core/trpc";
+import { router, protectedProcedure, adminProcedure, publicProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { createRateLimitMiddleware } from "../_core/rateLimitedProcedure";
 import { db } from "../db";
@@ -18,13 +18,19 @@ import {
   agencyCommunicationFlows,
   agencyConversations,
   agencyTools,
+  agencyVersions,
+  agencyPermissions,
+  userGroups,
+  users,
   systemSettings,
 } from "../../drizzle/schema";
-import { eq, and, desc, inArray, sql } from "drizzle-orm";
+import { eq, and, desc, asc, inArray, sql, getTableColumns, count } from "drizzle-orm";
 import { agencyBridge } from "../services/agencyBridge";
 import type { RunResult } from "../services/agencyBridge";
 import { getTenantFeatureFlag, setTenantFeatureFlag } from "../services/featureFlags";
 import crypto from "crypto";
+import { generateAgencySvg } from "../lib/agencySvgGenerator";
+import { createNotification } from "../services/notificationService";
 
 // Feature flag guard (tenant-scoped)
 async function assertAgencyEnabled(tenantId: string): Promise<void> {
@@ -103,15 +109,177 @@ export const agencyRouter = router({
         conditions.push(eq(agencies.status, input.status));
       }
 
+      const userId = ctx.user!.id;
+      const isAdmin = ctx.user!.role === "admin";
+
       const result = await db
-        .select()
+        .select({
+          ...getTableColumns(agencies),
+          agentCount: sql<number>`(SELECT count(*)::int FROM agency_agents WHERE "agencyId" = ${agencies.id})`.as("agentCount"),
+          ownerName: users.name,
+          ownerEmail: users.email,
+          sharedGroupCount: sql<number>`(SELECT count(*)::int FROM agency_permissions WHERE "agencyId" = ${agencies.id})`.as("sharedGroupCount"),
+        })
         .from(agencies)
+        .leftJoin(users, eq(agencies.createdBy, users.id))
         .where(and(...conditions))
         .orderBy(desc(agencies.createdAt))
         .limit(input.limit)
         .offset(input.offset);
 
-      return { agencies: result };
+      return {
+        agencies: result.map((a) => ({
+          ...a,
+          canEdit: a.createdBy === userId || isAdmin,
+        })),
+      };
+    }),
+
+  // --- Sharing / Permissions ---
+
+  listAgencyGroups: protectedProcedure
+    .input(z.object({ agencyId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      await assertAgencyEnabled(tenantId);
+
+      const userId = ctx.user!.id;
+      const isAdmin = ctx.user!.role === "admin";
+
+      // Verify agency exists and user has permission
+      const [agency] = await db
+        .select({ id: agencies.id, createdBy: agencies.createdBy })
+        .from(agencies)
+        .where(and(eq(agencies.id, input.agencyId), eq(agencies.tenantId, tenantId)));
+
+      if (!agency) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      }
+      if (agency.createdBy !== userId && !isAdmin) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only the owner or admin can view sharing settings" });
+      }
+
+      const rows = await db
+        .select({
+          id: userGroups.id,
+          name: userGroups.name,
+          description: userGroups.description,
+        })
+        .from(agencyPermissions)
+        .innerJoin(userGroups, eq(agencyPermissions.groupId, userGroups.id))
+        .where(eq(agencyPermissions.agencyId, input.agencyId))
+        .orderBy(asc(userGroups.name));
+
+      return { groups: rows };
+    }),
+
+  shareAgencyWithGroups: protectedProcedure
+    .input(z.object({
+      agencyId: z.string(),
+      groupIds: z.array(z.number()).min(1).max(50),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      await assertAgencyEnabled(tenantId);
+
+      const userId = ctx.user!.id;
+      const isAdmin = ctx.user!.role === "admin";
+
+      // Verify agency ownership
+      const [agency] = await db
+        .select({ id: agencies.id, createdBy: agencies.createdBy, visibility: agencies.visibility })
+        .from(agencies)
+        .where(and(eq(agencies.id, input.agencyId), eq(agencies.tenantId, tenantId)));
+
+      if (!agency) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      }
+      if (agency.createdBy !== userId && !isAdmin) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only the owner or admin can share" });
+      }
+
+      // Verify groups exist in this tenant
+      const validGroups = await db
+        .select({ id: userGroups.id })
+        .from(userGroups)
+        .where(and(
+          inArray(userGroups.id, input.groupIds),
+          eq(userGroups.tenantId, tenantId),
+        ));
+
+      const validIds = validGroups.map((g) => g.id);
+      if (validIds.length === 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No valid groups found" });
+      }
+
+      // Insert permissions (ignore conflicts)
+      await db
+        .insert(agencyPermissions)
+        .values(validIds.map((gId) => ({
+          agencyId: input.agencyId,
+          groupId: gId,
+          grantedByUserId: userId,
+        })))
+        .onConflictDoNothing();
+
+      // Update visibility to "shared" if currently "private"
+      if (agency.visibility === "private") {
+        await db
+          .update(agencies)
+          .set({ visibility: "shared", updatedAt: new Date() })
+          .where(eq(agencies.id, input.agencyId));
+      }
+
+      return { success: true, sharedCount: validIds.length };
+    }),
+
+  unshareAgencyGroup: protectedProcedure
+    .input(z.object({
+      agencyId: z.string(),
+      groupId: z.number(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      await assertAgencyEnabled(tenantId);
+
+      const userId = ctx.user!.id;
+      const isAdmin = ctx.user!.role === "admin";
+
+      // Verify agency ownership
+      const [agency] = await db
+        .select({ id: agencies.id, createdBy: agencies.createdBy })
+        .from(agencies)
+        .where(and(eq(agencies.id, input.agencyId), eq(agencies.tenantId, tenantId)));
+
+      if (!agency) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      }
+      if (agency.createdBy !== userId && !isAdmin) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Only the owner or admin can manage sharing" });
+      }
+
+      // Remove the permission
+      await db
+        .delete(agencyPermissions)
+        .where(and(
+          eq(agencyPermissions.agencyId, input.agencyId),
+          eq(agencyPermissions.groupId, input.groupId),
+        ));
+
+      // Check remaining permissions — revert to private if none left
+      const [remaining] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(agencyPermissions)
+        .where(eq(agencyPermissions.agencyId, input.agencyId));
+
+      if (remaining.count === 0) {
+        await db
+          .update(agencies)
+          .set({ visibility: "private", updatedAt: new Date() })
+          .where(eq(agencies.id, input.agencyId));
+      }
+
+      return { success: true };
     }),
 
   listTemplates: protectedProcedure
@@ -174,6 +342,7 @@ export const agencyRouter = router({
           toolType: "builtin",
           riskLevel: "low",
           requiresApproval: false,
+          configSchema: null,
         },
         {
           id: "builtin-code-interpreter",
@@ -182,6 +351,7 @@ export const agencyRouter = router({
           toolType: "sandbox",
           riskLevel: "medium",
           requiresApproval: false,
+          configSchema: null,
         },
         {
           id: "builtin-file-reader",
@@ -190,6 +360,7 @@ export const agencyRouter = router({
           toolType: "builtin",
           riskLevel: "low",
           requiresApproval: false,
+          configSchema: null,
         },
         {
           id: "builtin-file-writer",
@@ -198,6 +369,7 @@ export const agencyRouter = router({
           toolType: "builtin",
           riskLevel: "medium",
           requiresApproval: false,
+          configSchema: null,
         },
         {
           id: "builtin-rag-knowledge",
@@ -206,6 +378,12 @@ export const agencyRouter = router({
           toolType: "builtin",
           riskLevel: "low",
           requiresApproval: false,
+          configSchema: {
+            fields: [
+              { key: "collectionId", label: "Collection", type: "collection_select", required: true },
+              { key: "topK", label: "Top K results", type: "select", options: [1, 3, 5, 10, 20], default: 5 },
+            ],
+          },
         },
         {
           id: "builtin-skill-executor",
@@ -214,6 +392,12 @@ export const agencyRouter = router({
           toolType: "sandbox",
           riskLevel: "medium",
           requiresApproval: false,
+          configSchema: {
+            fields: [
+              { key: "skillId", label: "Skill", type: "skill_select", required: true },
+              { key: "skillSlug", label: "Skill slug", type: "text", readonly: true },
+            ],
+          },
         },
         {
           id: "builtin-cmd-executor",
@@ -222,6 +406,97 @@ export const agencyRouter = router({
           toolType: "sandbox",
           riskLevel: "high",
           requiresApproval: true,
+          configSchema: null,
+        },
+        // 5 new tools
+        {
+          id: "builtin-http-request",
+          name: "HTTP / REST API",
+          description: "Make HTTP requests to external REST APIs",
+          toolType: "builtin",
+          riskLevel: "medium",
+          requiresApproval: false,
+          configSchema: {
+            fields: [
+              { key: "url", label: "URL", type: "text", required: true, placeholder: "https://api.example.com/endpoint" },
+              { key: "method", label: "Method", type: "select", options: ["GET", "POST", "PUT", "PATCH", "DELETE"], default: "GET" },
+              { key: "headers", label: "Headers (JSON)", type: "json", placeholder: '{"Authorization": "Bearer ..."}' },
+            ],
+          },
+        },
+        {
+          id: "builtin-email-notify",
+          name: "Email Notification",
+          description: "Send email notifications",
+          toolType: "builtin",
+          riskLevel: "low",
+          requiresApproval: false,
+          configSchema: {
+            fields: [
+              { key: "toTemplate", label: "To (template)", type: "text", required: true, placeholder: "user@example.com" },
+              { key: "subjectTemplate", label: "Subject template", type: "text", required: true },
+            ],
+          },
+        },
+        {
+          id: "builtin-webhook",
+          name: "Webhook Trigger",
+          description: "Send data to a webhook URL",
+          toolType: "builtin",
+          riskLevel: "medium",
+          requiresApproval: false,
+          configSchema: {
+            fields: [
+              { key: "webhookUrl", label: "Webhook URL", type: "text", required: true, placeholder: "https://hooks.example.com/..." },
+            ],
+          },
+        },
+        {
+          id: "builtin-slack-message",
+          name: "Slack Message",
+          description: "Send messages to a Slack channel",
+          toolType: "builtin",
+          riskLevel: "low",
+          requiresApproval: false,
+          configSchema: {
+            fields: [
+              { key: "channelId", label: "Channel ID", type: "text", required: true, placeholder: "C0123456789" },
+            ],
+          },
+        },
+        {
+          id: "builtin-document-search",
+          name: "Document Search",
+          description: "Search across multiple document collections",
+          toolType: "builtin",
+          riskLevel: "low",
+          requiresApproval: false,
+          configSchema: {
+            fields: [
+              { key: "collectionIds", label: "Collections", type: "collection_multiselect", required: true },
+            ],
+          },
+        },
+        {
+          id: "builtin-voice",
+          name: "Voice",
+          description: "Speech-to-text and text-to-speech capabilities",
+          toolType: "builtin",
+          riskLevel: "medium",
+          requiresApproval: false,
+          configSchema: {
+            type: "object",
+            properties: {
+              allowedModes: {
+                type: "array",
+                items: { type: "string", enum: ["stt", "tts"] },
+                default: ["stt", "tts"],
+              },
+              defaultVoice: { type: "string", default: "alloy" },
+              maxAudioDurationSec: { type: "number", default: 60, maximum: 300 },
+              maxTextLength: { type: "number", default: 5000, maximum: 10000 },
+            },
+          },
         },
       ];
 
@@ -255,15 +530,25 @@ export const agencyRouter = router({
       const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
       await assertAgencyEnabled(tenantId);
 
+      const userId = ctx.user!.id;
+      const isAdmin = ctx.user!.role === "admin";
+
+      // Lookup by ID first, then verify tenant access
       const [agency] = await db
         .select()
         .from(agencies)
-        .where(and(eq(agencies.id, input.id), eq(agencies.tenantId, tenantId)))
+        .where(eq(agencies.id, input.id))
         .limit(1);
 
       if (!agency) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
       }
+      // Allow same-tenant users or admins
+      if (agency.tenantId !== tenantId && !isAdmin) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      }
+
+      const canEdit = agency.createdBy === userId || isAdmin;
 
       // Fetch agents
       const agents = await db
@@ -286,7 +571,7 @@ export const agencyRouter = router({
           .where(inArray(agencyAgentTools.agentId, agentIds))
         : [];
 
-      return { ...agency, agents, communicationFlows: flows, agentToolAssignments: toolAssignments };
+      return { ...agency, canEdit, agents, communicationFlows: flows, agentToolAssignments: toolAssignments };
     }),
 
   createFromTemplate: agencyCreateProcedure
@@ -351,8 +636,12 @@ export const agencyRouter = router({
             z.object({
               name: z.string().min(1).max(100),
               description: z.string().optional(),
-              instructions: z.string().max(50000),
-              model: z.string().max(100).regex(/^[a-zA-Z0-9._\/-]+$/, "Invalid model identifier"),
+              nodeType: z.enum([
+                "agent", "supervisor", "router", "aggregator",
+                "knowledge_base", "skill_call", "human_approval",
+              ]).default("agent"),
+              instructions: z.string().max(50000).optional(),
+              model: z.string().max(100).regex(/^[a-zA-Z0-9._\/-]+$/, "Invalid model identifier").optional(),
               modelSettings: z
                 .object({
                   max_tokens: z.number().optional(),
@@ -363,7 +652,9 @@ export const agencyRouter = router({
               isEntryPoint: z.boolean().default(false),
               isOptional: z.boolean().default(false),
               position: z.object({ x: z.number(), y: z.number() }).optional(),
-              toolIds: z.array(z.string().uuid()).optional(),
+              toolIds: z.array(z.string().min(1).max(100)).optional(),
+              toolConfigs: z.record(z.string(), z.record(z.unknown())).optional(),
+              nodeConfig: z.record(z.unknown()).optional(),
             }),
           )
           .min(1)
@@ -373,7 +664,7 @@ export const agencyRouter = router({
             z.object({
               fromAgentName: z.string(),
               toAgentName: z.string(),
-              flowType: z.enum(["delegation", "handoff"]),
+              flowType: z.enum(["delegation", "handoff", "parallel"]),
             }),
           )
           .optional(),
@@ -457,8 +748,10 @@ export const agencyRouter = router({
             agencyId,
             name: agent.name,
             description: agent.description ?? null,
-            instructions: agent.instructions,
-            model: agent.model,
+            nodeType: agent.nodeType ?? "agent",
+            nodeConfig: (agent.nodeConfig ?? null) as any,
+            instructions: agent.instructions ?? null,
+            model: agent.model ?? null,
             modelSettings: agent.modelSettings ?? null,
             isEntryPoint: agent.isEntryPoint,
             isOptional: agent.isOptional,
@@ -468,10 +761,12 @@ export const agencyRouter = router({
           // Insert tool assignments
           if (agent.toolIds?.length) {
             for (const toolId of agent.toolIds) {
+              const toolConfig = agent.toolConfigs?.[toolId] ?? null;
               await tx.insert(agencyAgentTools).values({
                 id: crypto.randomUUID(),
                 agentId,
                 toolId,
+                toolConfig: toolConfig as any,
               });
             }
           }
@@ -479,15 +774,6 @@ export const agencyRouter = router({
 
         // Insert communication flows
         if (input.communicationFlows?.length) {
-          // Q-1: Detect circular flows
-          const cycleNode = detectFlowCycle(input.communicationFlows);
-          if (cycleNode) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: `Circular communication flow detected involving agent "${cycleNode}"`,
-            });
-          }
-
           for (const flow of input.communicationFlows) {
             const fromId = agentNameToId[flow.fromAgentName];
             const toId = agentNameToId[flow.toAgentName];
@@ -518,6 +804,7 @@ export const agencyRouter = router({
         name: z.string().min(1).max(255).optional(),
         description: z.string().optional(),
         systemPrompt: z.string().optional(),
+        defaultModel: z.string().max(100).optional(),
         creditMultiplier: z.number().min(1).max(10).optional(),
         maxRunTimeSeconds: z.number().min(30).max(3600).optional(),
         isFallbackSafe: z.boolean().optional(),
@@ -531,17 +818,19 @@ export const agencyRouter = router({
       const userId = ctx.user!.id;
       const isAdmin = ctx.user!.role === "admin";
 
-      // Fetch existing agency
+      // Fetch existing agency by ID, then verify access
       const [agency] = await db
         .select()
         .from(agencies)
-        .where(and(eq(agencies.id, input.id), eq(agencies.tenantId, tenantId)))
+        .where(eq(agencies.id, input.id))
         .limit(1);
 
       if (!agency) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
       }
-
+      if (agency.tenantId !== tenantId && !isAdmin) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      }
       if (agency.createdBy !== userId && !isAdmin) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Not authorized to update this agency" });
       }
@@ -551,6 +840,7 @@ export const agencyRouter = router({
       if (updateFields.name !== undefined) setValues.name = updateFields.name;
       if (updateFields.description !== undefined) setValues.description = updateFields.description;
       if (updateFields.systemPrompt !== undefined) setValues.systemPrompt = updateFields.systemPrompt;
+      if (updateFields.defaultModel !== undefined) setValues.defaultModel = updateFields.defaultModel;
       if (updateFields.creditMultiplier !== undefined)
         setValues.creditMultiplier = String(updateFields.creditMultiplier);
       if (updateFields.maxRunTimeSeconds !== undefined)
@@ -565,7 +855,7 @@ export const agencyRouter = router({
       }
 
       if (Object.keys(setValues).length > 0) {
-        await db.update(agencies).set(setValues).where(and(eq(agencies.id, id), eq(agencies.tenantId, tenantId)));
+        await db.update(agencies).set(setValues).where(eq(agencies.id, id));
       }
 
       return { success: true };
@@ -579,12 +869,18 @@ export const agencyRouter = router({
         name: z.string().min(1).max(255).optional(),
         description: z.string().optional(),
         systemPrompt: z.string().optional(),
+        defaultModel: z.string().max(100).nullish(),
+        changeDescription: z.string().max(500).optional(),
         agents: z.array(
           z.object({
             name: z.string().min(1).max(100),
             description: z.string().optional(),
-            instructions: z.string().max(50000),
-            model: z.string().max(100).regex(/^[a-zA-Z0-9._\/-]+$/, "Invalid model identifier"),
+            nodeType: z.enum([
+              "agent", "supervisor", "router", "aggregator",
+              "knowledge_base", "skill_call", "human_approval",
+            ]).default("agent"),
+            instructions: z.string().max(50000).optional(),
+            model: z.string().max(100).regex(/^[a-zA-Z0-9._\/-]+$/, "Invalid model identifier").optional(),
             modelSettings: z
               .object({
                 max_tokens: z.number().optional(),
@@ -595,7 +891,36 @@ export const agencyRouter = router({
             isEntryPoint: z.boolean().default(false),
             isOptional: z.boolean().default(false),
             position: z.object({ x: z.number(), y: z.number() }).optional(),
-            toolIds: z.array(z.string().uuid()).optional(),
+            toolIds: z.array(z.string().min(1).max(100)).optional(),
+            toolConfigs: z.record(z.string(), z.record(z.unknown())).optional(),
+            nodeConfig: z.record(z.unknown()).optional(),
+          }).superRefine((data, ctx) => {
+            if (["agent", "supervisor"].includes(data.nodeType)) {
+              if (!data.model) ctx.addIssue({ code: "custom", path: ["model"], message: "model is required for agent/supervisor" });
+              if (!data.instructions) ctx.addIssue({ code: "custom", path: ["instructions"], message: "instructions are required for agent/supervisor" });
+            }
+            if (data.nodeType === "router" && !(data.nodeConfig as any)?.routes?.length) {
+              ctx.addIssue({ code: "custom", path: ["nodeConfig"], message: "router requires at least 1 route" });
+            }
+            if (data.isEntryPoint && !["agent", "supervisor"].includes(data.nodeType)) {
+              ctx.addIssue({ code: "custom", path: ["isEntryPoint"], message: `Only agent/supervisor nodes can be entry points, not ${data.nodeType}` });
+            }
+            // Validate knowledgeBase config
+            const kb = (data.nodeConfig as any)?.knowledgeBase;
+            if (kb && ["agent", "supervisor"].includes(data.nodeType)) {
+              if (kb.documentIds && kb.documentIds.length > 20) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "knowledgeBase"], message: "Maximum 20 KB documents per agent" });
+              }
+              if (kb.topK !== undefined && (kb.topK < 1 || kb.topK > 20)) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "knowledgeBase"], message: "topK must be between 1 and 20" });
+              }
+              if (kb.scoreThreshold !== undefined && (kb.scoreThreshold < 0 || kb.scoreThreshold > 1)) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "knowledgeBase"], message: "scoreThreshold must be between 0 and 1" });
+              }
+              if (kb.maxContextTokens !== undefined && (kb.maxContextTokens < 100 || kb.maxContextTokens > 32000)) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "knowledgeBase"], message: "maxContextTokens must be between 100 and 32000" });
+              }
+            }
           }),
         ).min(1).max(20),
         communicationFlows: z
@@ -603,7 +928,7 @@ export const agencyRouter = router({
             z.object({
               fromAgentName: z.string(),
               toAgentName: z.string(),
-              flowType: z.enum(["delegation", "handoff"]),
+              flowType: z.enum(["delegation", "handoff", "parallel"]),
             }),
           )
           .optional(),
@@ -615,34 +940,56 @@ export const agencyRouter = router({
       const userId = ctx.user!.id;
       const isAdmin = ctx.user!.role === "admin";
 
+      // Look up agency by ID first, then verify tenant access
       const [agency] = await db
         .select()
         .from(agencies)
-        .where(and(eq(agencies.id, input.id), eq(agencies.tenantId, tenantId)))
+        .where(eq(agencies.id, input.id))
         .limit(1);
 
       if (!agency) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
       }
+
+      // Verify tenant access — agency must belong to the user's tenant (or user is admin)
+      if (agency.tenantId !== tenantId && !isAdmin) {
+        console.error(`[saveBuilder] TENANT MISMATCH: agency.tenantId=${agency.tenantId} !== ctx.tenantId=${tenantId}`);
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      }
+
+      // Verify ownership — only creator or admin can edit
       if (agency.createdBy !== userId && !isAdmin) {
+        console.error(`[saveBuilder] OWNER MISMATCH: agency.createdBy=${agency.createdBy} !== userId=${userId}`);
         throw new TRPCError({ code: "FORBIDDEN", message: "Not authorized" });
       }
 
-      // Validate exactly one entry point
+      // Validate exactly one entry point (must be agent or supervisor)
       const entryPoints = input.agents.filter((a) => a.isEntryPoint);
       if (entryPoints.length !== 1) {
         throw new TRPCError({
           code: "BAD_REQUEST",
-          message: `Exactly one entry point agent is required, found ${entryPoints.length}`,
+          message: `Exactly one entry point is required, found ${entryPoints.length}`,
         });
       }
 
+      // Detect cycles in communication flows (prevent infinite-loop agent graphs)
+      if (input.communicationFlows?.length) {
+        const cycleNode = detectFlowCycle(input.communicationFlows);
+        if (cycleNode) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `Communication flow contains a cycle starting at agent "${cycleNode}"`,
+          });
+        }
+      }
+
       await db.transaction(async (tx) => {
-        // Re-verify ownership with row lock inside transaction (defense-in-depth)
+        // Row lock inside transaction (defense-in-depth)
         const lockResult = await tx.execute(
-          sql`SELECT id FROM agencies WHERE id = ${input.id} AND "tenantId" = ${tenantId} FOR UPDATE`,
+          sql`SELECT id FROM agencies WHERE id = ${input.id} AND "tenantId" = ${agency.tenantId} FOR UPDATE`,
         );
-        if (!lockResult.rows?.length) {
+        // postgres-js driver returns an array directly (no .rows property)
+        if (!lockResult || (lockResult as unknown[]).length === 0) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
         }
 
@@ -651,6 +998,7 @@ export const agencyRouter = router({
         if (input.name !== undefined) setValues.name = input.name;
         if (input.description !== undefined) setValues.description = input.description;
         if (input.systemPrompt !== undefined) setValues.systemPrompt = input.systemPrompt;
+        if (input.defaultModel !== undefined) setValues.defaultModel = input.defaultModel;
         if (Object.keys(setValues).length > 0) {
           await tx.update(agencies).set(setValues).where(eq(agencies.id, input.id));
         }
@@ -679,8 +1027,10 @@ export const agencyRouter = router({
             agencyId: input.id,
             name: agent.name,
             description: agent.description ?? null,
-            instructions: agent.instructions,
-            model: agent.model,
+            nodeType: agent.nodeType,
+            nodeConfig: (agent.nodeConfig ?? null) as any,
+            instructions: agent.instructions ?? null,
+            model: agent.model ?? null,
             modelSettings: agent.modelSettings ?? null,
             isEntryPoint: agent.isEntryPoint,
             isOptional: agent.isOptional,
@@ -689,10 +1039,12 @@ export const agencyRouter = router({
 
           if (agent.toolIds?.length) {
             for (const toolId of agent.toolIds) {
+              const toolConfig = agent.toolConfigs?.[toolId] ?? null;
               await tx.insert(agencyAgentTools).values({
                 id: crypto.randomUUID(),
                 agentId,
                 toolId,
+                toolConfig: toolConfig as any,
               });
             }
           }
@@ -700,15 +1052,6 @@ export const agencyRouter = router({
 
         // Re-insert communication flows
         if (input.communicationFlows?.length) {
-          // Q-1: Detect circular flows
-          const cycleNode = detectFlowCycle(input.communicationFlows);
-          if (cycleNode) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: `Circular communication flow detected involving agent "${cycleNode}"`,
-            });
-          }
-
           for (const flow of input.communicationFlows) {
             const fromId = agentNameToId[flow.fromAgentName];
             const toId = agentNameToId[flow.toAgentName];
@@ -727,6 +1070,55 @@ export const agencyRouter = router({
             });
           }
         }
+
+        // Save version snapshot (deduped by SHA-256 content hash, cap at 50)
+        const snapshotJson = { nodes: input.agents, edges: input.communicationFlows ?? [], name: input.name ?? (agency as any).name };
+        const contentHash = crypto.createHash("sha256").update(JSON.stringify(snapshotJson)).digest("hex");
+
+        // Only insert if content has changed since last version
+        const [lastVersion] = await tx
+          .select({ contentHash: agencyVersions.contentHash, versionNumber: agencyVersions.versionNumber })
+          .from(agencyVersions)
+          .where(eq(agencyVersions.agencyId, input.id))
+          .orderBy(desc(agencyVersions.createdAt))
+          .limit(1);
+
+        if (!lastVersion || lastVersion.contentHash !== contentHash) {
+          const nextVersionNum = (lastVersion?.versionNumber ?? 0) + 1;
+          await tx.insert(agencyVersions).values({
+            agencyId: input.id,
+            tenantId,
+            versionNumber: nextVersionNum,
+            snapshotJson: snapshotJson as any,
+            contentHash,
+            changeDescription: input.changeDescription ?? null,
+            createdByUserId: userId,
+          });
+
+          // Prune to max 50 versions
+          await tx.execute(sql`
+            DELETE FROM agency_versions
+            WHERE "agencyId" = ${input.id}
+              AND id NOT IN (
+                SELECT id FROM agency_versions WHERE "agencyId" = ${input.id}
+                ORDER BY "createdAt" DESC LIMIT 50
+              )
+          `);
+        }
+
+        // Generate SVG preview from current agents + flows
+        const svgAgents = await tx
+          .select({ id: agencyAgents.id, name: agencyAgents.name, nodeType: agencyAgents.nodeType, position: agencyAgents.position })
+          .from(agencyAgents)
+          .where(eq(agencyAgents.agencyId, input.id));
+
+        const svgFlows = await tx
+          .select({ fromAgentId: agencyCommunicationFlows.fromAgentId, toAgentId: agencyCommunicationFlows.toAgentId })
+          .from(agencyCommunicationFlows)
+          .where(eq(agencyCommunicationFlows.agencyId, input.id));
+
+        const previewSvg = generateAgencySvg(svgAgents, svgFlows);
+        await tx.update(agencies).set({ previewSvg, updatedAt: new Date() }).where(eq(agencies.id, input.id));
       });
 
       return { success: true };
@@ -743,13 +1135,15 @@ export const agencyRouter = router({
       const [agency] = await db
         .select()
         .from(agencies)
-        .where(and(eq(agencies.id, input.id), eq(agencies.tenantId, tenantId)))
+        .where(eq(agencies.id, input.id))
         .limit(1);
 
       if (!agency) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
       }
-
+      if (agency.tenantId !== tenantId && !isAdmin) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      }
       if (agency.createdBy !== userId && !isAdmin) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Not authorized to delete this agency" });
       }
@@ -1062,11 +1456,132 @@ export const agencyRouter = router({
 
   // --- Admin: Tool Whitelists ---
 
+  // --- Version History ---
+
+  listVersions: protectedProcedure
+    .input(z.object({ agencyId: z.string().uuid(), limit: z.number().min(1).max(50).default(30) }))
+    .query(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      await assertAgencyEnabled(tenantId);
+
+      const [agency] = await db
+        .select({ id: agencies.id })
+        .from(agencies)
+        .where(and(eq(agencies.id, input.agencyId), eq(agencies.tenantId, tenantId)))
+        .limit(1);
+      if (!agency) throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+
+      const versions = await db
+        .select({
+          id: agencyVersions.id,
+          versionNumber: agencyVersions.versionNumber,
+          contentHash: agencyVersions.contentHash,
+          changeDescription: agencyVersions.changeDescription,
+          createdByUserId: agencyVersions.createdByUserId,
+          createdAt: agencyVersions.createdAt,
+        })
+        .from(agencyVersions)
+        .where(eq(agencyVersions.agencyId, input.agencyId))
+        .orderBy(desc(agencyVersions.createdAt))
+        .limit(input.limit);
+
+      return { versions };
+    }),
+
+  restoreVersion: protectedProcedure
+    .input(z.object({ versionId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      await assertAgencyEnabled(tenantId);
+      const userId = ctx.user!.id;
+      const isAdmin = ctx.user!.role === "admin";
+
+      const [version] = await db
+        .select()
+        .from(agencyVersions)
+        .where(eq(agencyVersions.id, input.versionId))
+        .limit(1);
+      if (!version) throw new TRPCError({ code: "NOT_FOUND", message: "Version not found" });
+
+      // Verify agency ownership
+      const [agency] = await db
+        .select()
+        .from(agencies)
+        .where(and(eq(agencies.id, version.agencyId), eq(agencies.tenantId, tenantId)))
+        .limit(1);
+      if (!agency) throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      if ((agency as any).createdBy !== userId && !isAdmin) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Not authorized" });
+      }
+
+      const snapshot = version.snapshotJson as any;
+      // Reconstruct saveBuilder input from snapshot and call the builder save logic
+      // This is done by directly applying the snapshot to the DB
+      await db.transaction(async (tx) => {
+        const existingAgents = await tx
+          .select({ id: agencyAgents.id })
+          .from(agencyAgents)
+          .where(eq(agencyAgents.agencyId, version.agencyId));
+        const existingAgentIds = existingAgents.map((a) => a.id);
+
+        if (existingAgentIds.length > 0) {
+          await tx.delete(agencyAgentTools).where(inArray(agencyAgentTools.agentId, existingAgentIds));
+        }
+        await tx.delete(agencyCommunicationFlows).where(eq(agencyCommunicationFlows.agencyId, version.agencyId));
+        await tx.delete(agencyAgents).where(eq(agencyAgents.agencyId, version.agencyId));
+
+        const nameToId: Record<string, string> = {};
+        for (const node of (snapshot.nodes ?? [])) {
+          const agentId = crypto.randomUUID();
+          nameToId[node.name] = agentId;
+          await tx.insert(agencyAgents).values({
+            id: agentId,
+            agencyId: version.agencyId,
+            name: node.name,
+            description: node.description ?? null,
+            nodeType: node.nodeType ?? "agent",
+            nodeConfig: node.nodeConfig ?? null,
+            instructions: node.instructions ?? null,
+            model: node.model ?? null,
+            modelSettings: node.modelSettings ?? null,
+            isEntryPoint: node.isEntryPoint ?? false,
+            isOptional: node.isOptional ?? false,
+            position: node.position ?? null,
+          });
+          if (node.toolIds?.length) {
+            for (const toolId of node.toolIds) {
+              await tx.insert(agencyAgentTools).values({
+                id: crypto.randomUUID(),
+                agentId,
+                toolId,
+                toolConfig: node.toolConfigs?.[toolId] ?? null,
+              });
+            }
+          }
+        }
+        for (const edge of (snapshot.edges ?? [])) {
+          const fromId = nameToId[edge.fromAgentName];
+          const toId = nameToId[edge.toAgentName];
+          if (fromId && toId) {
+            await tx.insert(agencyCommunicationFlows).values({
+              id: crypto.randomUUID(),
+              agencyId: version.agencyId,
+              fromAgentId: fromId,
+              toAgentId: toId,
+              flowType: edge.flowType ?? "delegation",
+            });
+          }
+        }
+      });
+
+      return { success: true };
+    }),
+
   adminSetToolWhitelist: adminProcedure
     .input(
       z.object({
         agencyId: z.string().uuid(),
-        toolIds: z.array(z.string().uuid()),
+        toolIds: z.array(z.string().min(1).max(100)),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -1196,7 +1711,7 @@ export const agencyRouter = router({
         WHERE ${whereClause}
       `);
 
-      const row = (result as any).rows?.[0] ?? {};
+      const row = (result as unknown[])?.[0] as Record<string, unknown> ?? {};
       const totalRuns = Number(row.total_runs ?? 0);
       const failedRuns = Number(row.failed_runs ?? 0);
       const completedRuns = Number(row.completed_runs ?? 0);
@@ -1245,7 +1760,7 @@ export const agencyRouter = router({
         threshold: number;
       }> = [];
 
-      for (const row of (result as any).rows ?? []) {
+      for (const row of (result as unknown as Record<string, unknown>[]) ?? []) {
         const total = Number(row.total);
         const failed = Number(row.failed);
         const successRate = total > 0 ? (total - failed) / total : 1;
@@ -1294,6 +1809,114 @@ export const agencyRouter = router({
     return getCreatorDashboard(ctx.user!.id);
   }),
 
+  // --- AI Agency Creator ---
+
+  /**
+   * Submit agency creation to queue. Returns taskId immediately.
+   * Frontend polls autoCreateStatus for phase updates.
+   */
+  autoCreate: protectedProcedure
+    .use(createRateLimitMiddleware({ namespace: "agency-create", limit: 5, windowMs: 60_000 }))
+    .input(
+      z.object({
+        requirement: z.string().min(10).max(10000),
+        specFileBase64: z.string().max(10_000_000).optional(),
+        model: z.string().max(100).optional().default("gpt-4o"),
+        skipInterview: z.boolean().default(false),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { ENV } = await import("../_core/env");
+      const pythonBackendUrl = (ENV.pythonBackendUrl || "http://localhost:8000").replace(/\/+$/, "");
+
+      const response = await fetch(`${pythonBackendUrl}/api/v1/agency-creator/start`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${ctx.userToken ?? ""}`,
+        },
+        body: JSON.stringify({
+          requirement: input.requirement,
+          spec_file_base64: input.specFileBase64 ?? null,
+          model: input.model,
+          skip_interview: input.skipInterview,
+          user_id: ctx.user!.id,
+          tenant_id: ctx.tenantId ?? String(ctx.user!.currentTenantId ?? ""),
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
+        throw new TRPCError({ code: "BAD_REQUEST", message: err.detail || "Failed to start agency creator" });
+      }
+
+      const data = await response.json();
+      return { taskId: data.task_id as string };
+    }),
+
+  /**
+   * Poll agency creator task status.
+   */
+  autoCreateStatus: protectedProcedure
+    .input(z.object({ taskId: z.string().regex(/^agcreate-[a-f0-9]{12}$/) }))
+    .query(async ({ ctx, input }) => {
+      const { ENV } = await import("../_core/env");
+      const pythonBackendUrl = (ENV.pythonBackendUrl || "http://localhost:8000").replace(/\/+$/, "");
+
+      const response = await fetch(
+        `${pythonBackendUrl}/api/v1/agency-creator/status/${encodeURIComponent(input.taskId)}`,
+        {
+          headers: { "Authorization": `Bearer ${ctx.userToken ?? ""}` },
+        },
+      );
+
+      if (!response.ok) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
+      }
+
+      const data = await response.json();
+      return data as {
+        status: "queued" | "processing" | "awaiting_answers" | "completed" | "failed";
+        phase?: string;
+        message?: string;
+        questions?: Array<{ id: string; question: string; type: string }>;
+        previewJson?: unknown;
+        agencyId?: string;
+        guide?: string;
+        error?: string;
+      };
+    }),
+
+  /**
+   * Submit interview answers — resumes design task.
+   */
+  autoCreateAnswer: protectedProcedure
+    .input(
+      z.object({
+        taskId: z.string().regex(/^agcreate-[a-f0-9]{12}$/),
+        answers: z.record(z.string(), z.string()),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const { ENV } = await import("../_core/env");
+      const pythonBackendUrl = (ENV.pythonBackendUrl || "http://localhost:8000").replace(/\/+$/, "");
+
+      const response = await fetch(`${pythonBackendUrl}/api/v1/agency-creator/answer`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${ctx.userToken ?? ""}`,
+        },
+        body: JSON.stringify({ task_id: input.taskId, answers: input.answers }),
+      });
+
+      if (!response.ok) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Failed to submit answers" });
+      }
+
+      return { ok: true };
+    }),
+
   adminGetRevenueStats: adminProcedure
     .input(
       z.object({
@@ -1307,5 +1930,409 @@ export const agencyRouter = router({
         tenantId: input.tenantId,
         windowDays: input.windowDays,
       });
+    }),
+
+  // --- Marketplace (public) ---
+
+  listMarketplace: publicProcedure
+    .input(
+      z.object({
+        search: z.string().max(200).optional(),
+        limit: z.number().min(1).max(100).default(24),
+        offset: z.number().min(0).default(0),
+      }),
+    )
+    .query(async ({ input }) => {
+      const conditions: any[] = [
+        eq(agencies.isPublished, true),
+        eq(agencies.visibility, "public"),
+        eq(agencies.status, "published"),
+      ];
+
+      if (input.search) {
+        const searchPattern = `%${input.search}%`;
+        conditions.push(
+          sql`(${agencies.name} ILIKE ${searchPattern} OR ${agencies.description} ILIKE ${searchPattern})`,
+        );
+      }
+
+      const whereClause = and(...conditions);
+
+      const items = await db
+        .select({
+          id: agencies.id,
+          name: agencies.name,
+          description: agencies.description,
+          creatorFeeCredits: agencies.creatorFeeCredits,
+          ownerName: users.name,
+          agentCount: sql<number>`(SELECT count(*)::int FROM agency_agents WHERE "agencyId" = ${agencies.id})`.as("agentCount"),
+          createdAt: agencies.createdAt,
+        })
+        .from(agencies)
+        .leftJoin(users, eq(agencies.createdBy, users.id))
+        .where(whereClause)
+        .orderBy(desc(agencies.createdAt))
+        .limit(input.limit)
+        .offset(input.offset);
+
+      const [countResult] = await db
+        .select({ cnt: count() })
+        .from(agencies)
+        .where(whereClause);
+
+      return { items, total: countResult.cnt };
+    }),
+
+  getMarketplaceAgency: publicProcedure
+    .input(z.object({ id: z.string() }))
+    .query(async ({ input }) => {
+      const [agency] = await db
+        .select({
+          id: agencies.id,
+          name: agencies.name,
+          description: agencies.description,
+          previewSvg: agencies.previewSvg,
+          creatorFeeCredits: agencies.creatorFeeCredits,
+          ownerName: users.name,
+          createdAt: agencies.createdAt,
+        })
+        .from(agencies)
+        .leftJoin(users, eq(agencies.createdBy, users.id))
+        .where(
+          and(
+            eq(agencies.id, input.id),
+            eq(agencies.isPublished, true),
+            eq(agencies.visibility, "public"),
+            eq(agencies.status, "published"),
+          ),
+        )
+        .limit(1);
+
+      if (!agency) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      }
+
+      // Sanitize SVG
+      let safeSvg = agency.previewSvg;
+      if (safeSvg && /<script/i.test(safeSvg)) {
+        console.error("[Security] Rejected poisoned previewSvg from DB, agencyId:", input.id);
+        safeSvg = null;
+      }
+
+      // Get agents (public info only — no instructions/prompts)
+      const agents = await db
+        .select({
+          id: agencyAgents.id,
+          name: agencyAgents.name,
+          nodeType: agencyAgents.nodeType,
+          isEntryPoint: agencyAgents.isEntryPoint,
+        })
+        .from(agencyAgents)
+        .where(eq(agencyAgents.agencyId, input.id))
+        .orderBy(desc(agencyAgents.isEntryPoint), asc(agencyAgents.name));
+
+      return { ...agency, previewSvg: safeSvg, agents };
+    }),
+
+  useMarketplaceAgency: protectedProcedure
+    .input(z.object({ agencyId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const userId = ctx.user!.id;
+
+      // Verify source agency is published + public
+      const [source] = await db
+        .select()
+        .from(agencies)
+        .where(
+          and(
+            eq(agencies.id, input.agencyId),
+            eq(agencies.isPublished, true),
+            eq(agencies.visibility, "public"),
+            eq(agencies.status, "published"),
+          ),
+        )
+        .limit(1);
+
+      if (!source) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found or not public" });
+      }
+
+      const newAgencyId = crypto.randomUUID();
+      const slug = `${source.slug}-copy-${Date.now()}`;
+
+      await db.transaction(async (tx) => {
+        // Clone agency record
+        await tx.insert(agencies).values({
+          id: newAgencyId,
+          tenantId,
+          slug,
+          name: `${source.name} (Copy)`,
+          description: source.description,
+          systemPrompt: source.systemPrompt,
+          creditMultiplier: source.creditMultiplier,
+          defaultModel: source.defaultModel,
+          maxAgents: source.maxAgents,
+          maxRunTimeSeconds: source.maxRunTimeSeconds,
+          status: "draft",
+          isPublished: false,
+          visibility: "private",
+          previewSvg: source.previewSvg,
+          createdBy: userId,
+        });
+
+        // Clone agents
+        const sourceAgents = await tx
+          .select()
+          .from(agencyAgents)
+          .where(eq(agencyAgents.agencyId, input.agencyId));
+
+        const agentIdMap = new Map<string, string>();
+        for (const agent of sourceAgents) {
+          const newAgentId = crypto.randomUUID();
+          agentIdMap.set(agent.id, newAgentId);
+
+          await tx.insert(agencyAgents).values({
+            id: newAgentId,
+            agencyId: newAgencyId,
+            name: agent.name,
+            description: agent.description,
+            nodeType: agent.nodeType,
+            nodeConfig: agent.nodeConfig as any,
+            instructions: agent.instructions,
+            model: agent.model,
+            modelSettings: agent.modelSettings as any,
+            isEntryPoint: agent.isEntryPoint,
+            isOptional: agent.isOptional,
+            position: agent.position as any,
+          });
+
+          // Clone agent tools
+          const agentTools = await tx
+            .select()
+            .from(agencyAgentTools)
+            .where(eq(agencyAgentTools.agentId, agent.id));
+
+          for (const tool of agentTools) {
+            await tx.insert(agencyAgentTools).values({
+              id: crypto.randomUUID(),
+              agentId: newAgentId,
+              toolId: tool.toolId,
+              toolConfig: tool.toolConfig as any,
+            });
+          }
+        }
+
+        // Clone communication flows
+        const sourceFlows = await tx
+          .select()
+          .from(agencyCommunicationFlows)
+          .where(eq(agencyCommunicationFlows.agencyId, input.agencyId));
+
+        for (const flow of sourceFlows) {
+          const newFromId = agentIdMap.get(flow.fromAgentId);
+          const newToId = agentIdMap.get(flow.toAgentId);
+          if (newFromId && newToId) {
+            await tx.insert(agencyCommunicationFlows).values({
+              id: crypto.randomUUID(),
+              agencyId: newAgencyId,
+              fromAgentId: newFromId,
+              toAgentId: newToId,
+              flowType: flow.flowType,
+            });
+          }
+        }
+      });
+
+      return { agencyId: newAgencyId };
+    }),
+
+  // --- Publish Request / Approval Flow ---
+
+  requestPublish: protectedProcedure
+    .input(z.object({ agencyId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const userId = ctx.user!.id;
+      const isAdmin = ctx.user!.role === "admin";
+
+      const [agency] = await db
+        .select({ id: agencies.id, name: agencies.name, createdBy: agencies.createdBy, tenantId: agencies.tenantId, status: agencies.status, visibility: agencies.visibility })
+        .from(agencies)
+        .where(and(eq(agencies.id, input.agencyId), eq(agencies.tenantId, tenantId)))
+        .limit(1);
+
+      if (!agency) throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      if (agency.createdBy !== userId && !isAdmin) throw new TRPCError({ code: "FORBIDDEN", message: "Only the creator can request publish" });
+      if (agency.status !== "published") throw new TRPCError({ code: "BAD_REQUEST", message: "Agency must be in 'published' status first (not draft/archived)" });
+      if (agency.visibility === "public") throw new TRPCError({ code: "BAD_REQUEST", message: "Agency is already public" });
+      if (agency.visibility === "pending_approval") throw new TRPCError({ code: "BAD_REQUEST", message: "A publish request is already pending" });
+
+      // Must have at least 1 agent
+      const [agentCount] = await db.select({ cnt: count() }).from(agencyAgents).where(eq(agencyAgents.agencyId, input.agencyId));
+      if (!agentCount || agentCount.cnt === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "Agency must have at least 1 agent" });
+
+      await db.update(agencies).set({
+        visibility: "pending_approval",
+        requestedPublishAt: new Date(),
+        rejectionReason: null,
+        updatedAt: new Date(),
+      }).where(eq(agencies.id, input.agencyId));
+
+      // Notify all admins in the tenant
+      const admins = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(eq(users.currentTenantId, tenantId), eq(users.role, "admin")));
+
+      for (const admin of admins) {
+        await createNotification({
+          db,
+          userId: admin.id,
+          type: "system",
+          title: "Agency Publish Request",
+          content: `Agency "${agency.name}" has been submitted for public publishing review.`,
+          priority: "normal",
+        });
+      }
+
+      return { success: true };
+    }),
+
+  cancelPublishRequest: protectedProcedure
+    .input(z.object({ agencyId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const userId = ctx.user!.id;
+
+      const [agency] = await db
+        .select({ id: agencies.id, createdBy: agencies.createdBy, visibility: agencies.visibility })
+        .from(agencies)
+        .where(and(eq(agencies.id, input.agencyId), eq(agencies.tenantId, tenantId)))
+        .limit(1);
+
+      if (!agency) throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      if (agency.createdBy !== userId) throw new TRPCError({ code: "FORBIDDEN", message: "Only the creator can cancel" });
+      if (agency.visibility !== "pending_approval") throw new TRPCError({ code: "BAD_REQUEST", message: "No pending request to cancel" });
+
+      await db.update(agencies).set({
+        visibility: "private",
+        requestedPublishAt: null,
+        updatedAt: new Date(),
+      }).where(eq(agencies.id, input.agencyId));
+
+      return { success: true };
+    }),
+
+  adminApproveAgency: adminProcedure
+    .input(z.object({ agencyId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const adminId = ctx.user!.id;
+
+      const [agency] = await db
+        .select({ id: agencies.id, name: agencies.name, createdBy: agencies.createdBy, visibility: agencies.visibility })
+        .from(agencies)
+        .where(eq(agencies.id, input.agencyId))
+        .limit(1);
+
+      if (!agency) throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      if (agency.visibility !== "pending_approval") throw new TRPCError({ code: "BAD_REQUEST", message: "Agency is not pending approval" });
+
+      await db.update(agencies).set({
+        visibility: "public",
+        isPublished: true,
+        approvedBy: adminId,
+        approvedAt: new Date(),
+        rejectionReason: null,
+        updatedAt: new Date(),
+      }).where(eq(agencies.id, input.agencyId));
+
+      // Notify creator
+      if (agency.createdBy) {
+        await createNotification({
+          db,
+          userId: agency.createdBy,
+          type: "system",
+          title: "Agency Approved!",
+          content: `Your agency "${agency.name}" has been approved and is now public on the Marketplace.`,
+          priority: "normal",
+        });
+      }
+
+      return { success: true };
+    }),
+
+  adminRejectAgency: adminProcedure
+    .input(z.object({
+      agencyId: z.string(),
+      reason: z.string().max(1000).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const [agency] = await db
+        .select({ id: agencies.id, name: agencies.name, createdBy: agencies.createdBy, visibility: agencies.visibility })
+        .from(agencies)
+        .where(eq(agencies.id, input.agencyId))
+        .limit(1);
+
+      if (!agency) throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
+      if (agency.visibility !== "pending_approval") throw new TRPCError({ code: "BAD_REQUEST", message: "Agency is not pending approval" });
+
+      await db.update(agencies).set({
+        visibility: "rejected",
+        approvedBy: null,
+        approvedAt: null,
+        rejectionReason: input.reason ?? null,
+        updatedAt: new Date(),
+      }).where(eq(agencies.id, input.agencyId));
+
+      // Notify creator
+      if (agency.createdBy) {
+        const reasonText = input.reason ? ` Reason: ${input.reason}` : "";
+        await createNotification({
+          db,
+          userId: agency.createdBy,
+          type: "system",
+          title: "Agency Publish Request Rejected",
+          content: `Your agency "${agency.name}" was not approved for public publishing.${reasonText}`,
+          priority: "normal",
+        });
+      }
+
+      return { success: true };
+    }),
+
+  adminListPendingAgencies: adminProcedure
+    .input(z.object({
+      limit: z.number().min(1).max(100).default(50),
+      offset: z.number().min(0).default(0),
+    }))
+    .query(async ({ input }) => {
+      const conditions = [eq(agencies.visibility, "pending_approval")];
+
+      const items = await db
+        .select({
+          id: agencies.id,
+          name: agencies.name,
+          description: agencies.description,
+          creatorFeeCredits: agencies.creatorFeeCredits,
+          platformSharePct: agencies.platformSharePct,
+          requestedPublishAt: agencies.requestedPublishAt,
+          ownerName: users.name,
+          ownerEmail: users.email,
+          agentCount: sql<number>`(SELECT count(*)::int FROM agency_agents WHERE "agencyId" = ${agencies.id})`.as("agentCount"),
+        })
+        .from(agencies)
+        .leftJoin(users, eq(agencies.createdBy, users.id))
+        .where(and(...conditions))
+        .orderBy(asc(agencies.requestedPublishAt))
+        .limit(input.limit)
+        .offset(input.offset);
+
+      const [countResult] = await db
+        .select({ cnt: count() })
+        .from(agencies)
+        .where(and(...conditions));
+
+      return { items, total: countResult.cnt };
     }),
 });

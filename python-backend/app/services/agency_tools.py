@@ -14,6 +14,7 @@ so the agent can gracefully explain the denial.
 """
 
 import ipaddress
+import os
 from urllib.parse import urlparse
 
 import httpx
@@ -51,11 +52,44 @@ _BLOCKED_NETWORKS = [
 ]
 
 
+_INTERNAL_SERVICE_URL = os.getenv("SMARTSPEC_INTERNAL_URL", "http://127.0.0.1:3000")
+
+# Builtin tool ID → internal endpoint path suffix
+_BUILTIN_ENDPOINTS: dict[str, str] = {
+    "builtin-rag-knowledge": "/api/internal/tools/rag-knowledge",
+    "builtin-skill-executor": "/api/internal/tools/skill-executor",
+    "builtin-web-search": "/api/internal/tools/web-search",
+    "builtin-http-request": "/api/internal/tools/http-request",
+    "builtin-email-notify": "/api/internal/tools/email-notify",
+    "builtin-webhook": "/api/internal/tools/webhook",
+    "builtin-slack-message": "/api/internal/tools/slack-message",
+    "builtin-document-search": "/api/internal/tools/document-search",
+    "builtin-voice": "/api/internal/tools/voice",
+}
+
+_BUILTIN_RISK_LEVELS: dict[str, str] = {
+    "builtin-web-search": "medium",
+    "builtin-http-request": "medium",
+    "builtin-skill-executor": "medium",
+    "builtin-webhook": "medium",
+    "builtin-rag-knowledge": "low",
+    "builtin-email-notify": "low",
+    "builtin-slack-message": "low",
+    "builtin-document-search": "low",
+    "builtin-voice": "medium",
+}
+
+
 def _validate_tool_url(url: str) -> None:
     """Validate that a tool endpoint URL is safe (no SSRF).
 
     Raises ValueError if the URL targets a private/internal address.
+    Internal service URLs (SMARTSPEC_INTERNAL_URL) are always allowed.
     """
+    # Allow the configured internal service URL explicitly
+    if url.startswith(_INTERNAL_SERVICE_URL):
+        return
+
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
         raise ValueError(f"Unsupported URL scheme: {parsed.scheme}")
@@ -260,8 +294,9 @@ async def resolve_tools_for_agent(
 ) -> list[type]:
     """Resolve and construct tool bridges for a specific agent.
 
-    Queries agency_agent_tools and agency_tools to get tool configs,
-    then creates tool bridge classes for each tool.
+    Queries agency_agent_tools (LEFT JOIN agency_tools) to get tool configs.
+    Builtin tools may not have a row in agency_tools — LEFT JOIN handles that.
+    Per-agent toolConfig (instance_config) is merged over the base tool config.
 
     Args:
         db: Database session.
@@ -274,15 +309,14 @@ async def resolve_tools_for_agent(
     """
     query = text("""
         SELECT
-            t.id as tool_id,
-            t.name,
-            t.description,
-            t."toolType" as tool_type,
-            t."riskLevel" as risk_level,
-            t."requiresApproval" as requires_approval,
-            t.config
+            aat."toolId" as tool_id,
+            COALESCE(t."toolType", 'builtin') as tool_type,
+            COALESCE(t."riskLevel", 'low') as risk_level,
+            COALESCE(t."requiresApproval", false) as requires_approval,
+            t.config as base_config,
+            aat."toolConfig" as instance_config
         FROM agency_agent_tools aat
-        JOIN agency_tools t ON t.id = aat."toolId"
+        LEFT JOIN agency_tools t ON t.id = aat."toolId"
         WHERE aat."agentId" = :agent_id
     """)
 
@@ -291,19 +325,30 @@ async def resolve_tools_for_agent(
 
     tool_classes: list[type] = []
     for row in rows:
-        # Extract endpoint_url from config JSON if present
-        raw_config = row.config or {}
-        endpoint_url = None
-        if isinstance(raw_config, dict):
-            endpoint_url = raw_config.pop("endpoint_url", None)
+        tool_id: str = row.tool_id
+
+        # Merge base config (from agency_tools) with instance config (per-agent toolConfig).
+        # Instance config takes priority — it carries runtime overrides like collectionId,
+        # skillSlug, webhookUrl, etc. set in AgentPropertyPanel's ToolPicker.
+        base_config: dict[str, Any] = row.base_config if isinstance(row.base_config, dict) else {}
+        instance_config: dict[str, Any] = row.instance_config if isinstance(row.instance_config, dict) else {}
+        merged_config = {**base_config, **instance_config}
+
+        # endpoint_url may live in config or be derived from the builtin tool ID
+        endpoint_url: str | None = merged_config.pop("endpoint_url", None)
+        if endpoint_url is None and tool_id in _BUILTIN_ENDPOINTS:
+            endpoint_url = _INTERNAL_SERVICE_URL + _BUILTIN_ENDPOINTS[tool_id]
+
+        # For builtin tools not in agency_tools, infer risk level from our table
+        risk_level: str = row.risk_level or _BUILTIN_RISK_LEVELS.get(tool_id, "low")
 
         config = ToolConfig(
-            tool_id=row.tool_id,
+            tool_id=tool_id,
             tool_type=row.tool_type or "builtin",
-            risk_level=row.risk_level or "low",
+            risk_level=risk_level,
             requires_approval=bool(row.requires_approval),
             endpoint_url=endpoint_url,
-            config=raw_config if isinstance(raw_config, dict) else {},
+            config=merged_config,
         )
         tool_cls = create_tool_bridge(config, agency_whitelist, adapter=adapter)
         tool_classes.append(tool_cls)

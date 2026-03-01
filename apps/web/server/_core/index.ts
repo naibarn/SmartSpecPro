@@ -22,6 +22,7 @@ import { registerAgencyStreamRoutes } from "./agencyStreamProxy";
 import { createWebhookRouter } from "../routes/webhooks";
 import { createTelegramWebhookRouter } from "../routes/telegramWebhook";
 import { createChannelWebhookRouter } from "../routes/channelWebhook";
+import { createVoiceSessionRouter, handleVoiceUpgrade, shutdownVoiceGateway } from "../routes/voiceGateway";
 import "../services/telegramLinkService"; // Register /start link handler
 import "../services/channelAdapters/telegram"; // Register Telegram adapter
 import { adapterRegistry } from "../services/channelAdapters/registry";
@@ -350,6 +351,9 @@ app.use("/webhooks", express.json({ limit: "1mb" }), createChannelWebhookRouter(
 // Telegram Bot API webhook (legacy route — kept for backward compat with existing bot webhook URLs)
 // Tighter body limit than global 10MB — Telegram updates are small JSON payloads
 app.use("/webhooks/telegram", express.json({ limit: "1mb" }), createTelegramWebhookRouter());
+
+// Voice gateway: session token + consent endpoints
+app.use("/api/voice", createVoiceSessionRouter());
 
 // Cloud Tasks handler routes (called by Cloud Tasks with OIDC auth)
 // Mounted at /_internal/tasks to avoid conflict with the frontend /tasks SPA route
@@ -946,6 +950,14 @@ async function main() {
   const server = createServer(app);
   httpServer = server;
 
+  // Voice gateway: handle WebSocket upgrade for /api/voice/stream
+  server.on("upgrade", (req, socket, head) => {
+    const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
+    if (url.pathname === "/api/voice/stream") {
+      handleVoiceUpgrade(req, socket as any, head);
+    }
+  });
+
   // Initialize skill registry - auto-sync skills from folder to database
   try {
     await initializeSkillRegistry();
@@ -1134,6 +1146,7 @@ process.on("SIGTERM", async () => {
   await shutdownTrashPurgeWorker().catch(() => {});
   await shutdownTelegramWorker().catch(() => {});
   await closeDeliveryQueue().catch(() => {});
+  await shutdownVoiceGateway().catch(() => {});
 
   // 3b. Shut down channel adapters
   await Promise.all(
@@ -1184,6 +1197,7 @@ process.on("SIGINT", async () => {
   await shutdownTrashPurgeWorker().catch(() => {});
   await shutdownTelegramWorker().catch(() => {});
   await closeDeliveryQueue().catch(() => {});
+  await shutdownVoiceGateway().catch(() => {});
   await Promise.all(
     adapterRegistry.getAll()
       .filter((a) => typeof a.shutdown === "function")

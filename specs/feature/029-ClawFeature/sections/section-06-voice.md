@@ -747,3 +747,43 @@ Per the project's target scale (single server, limited RAM/CPU):
 14. Create VoiceExecutor workflow node (Python)
 15. Run all tests and verify passing
 16. Verify feature flag gating at all entry points (tRPC, Express route, UI)
+
+---
+
+## As Built (Implementation Notes)
+
+### Deviations from Plan
+
+- **`costTracker.ts` not modified**: Credit integration was implemented directly in `dispatchSTT` via `creditService.deductCredits()` instead of through `costTracker.ts`, which has a different interface optimized for LLM/token costs.
+- **VoiceExecutor workflow node**: Not implemented in this section — deferred (Python orchestrator changes are complex and out of scope for Voice Chat section).
+- **`Chat.tsx` integration**: `VoiceChat.tsx` component was created but not integrated into an existing chat page — that integration point depends on section-07 (Browser) or the specific chat UI which was not part of this section's scope.
+- **Consent endpoints via Express (not tRPC)**: Placed in `voiceGateway.ts` Express router rather than tRPC procedures. Existing auth middleware applies to all routes.
+- **`sttService.ts` `provider` field**: `STTResult` extended with optional `provider` field to track which provider was actually used (for correct credit calculation in `dispatchSTT`).
+
+### Code Review Fixes Applied
+
+- **H1**: Added `getTenantFeatureFlag("voiceChat", tenantId)` check at `POST /session` (returns 403 if disabled)
+- **H2**: `dispatchSTT` now accepts `tenantId`, calls `deductCredits({ sourceType: "stt" })` after successful transcription (non-blocking)
+- **H3**: Restored `detectFlowCycle` call in `saveBuilder` before `db.transaction()` (was accidentally removed)
+- **M3**: Rate limiter now increments warnings on every over-rate event (not just once per 10s window)
+- **M7**: `stt.py` `ImportError` handlers now raise `HTTPException(503)` instead of returning fake transcripts/silence
+- **M8**: Moved `transcribe`/`calculateSTTCredits` to static imports in `voiceGateway.ts`
+- **L1**: `useVoiceChat` accepts `UseVoiceChatOptions` with `onTranscript`/`onResponse`; `VoiceChat.tsx` passes props through
+- **L2**: Removed `console.log('[Voice] System:', ...)` from `handleTextMessage`
+- **L5**: `TTSRequest.text` now has `Field(min_length=1)` validator
+
+### Actual Files Created
+
+- `apps/web/server/services/sttService.ts` — STT abstraction (Groq free/OpenAI paid, auto-fallback)
+- `apps/web/server/services/ttsService.ts` — TTS abstraction (OpenAI/ElevenLabs)
+- `apps/web/server/routes/voiceGateway.ts` — Session token API + WebSocket server
+- `apps/web/client/src/hooks/useVoiceChat.ts` — Voice session lifecycle hook
+- `apps/web/client/src/components/chat/VoiceChat.tsx` — Floating mic + consent modal
+- `python-backend/app/api/stt.py` — FastAPI STT/TTS endpoints
+- 4 TypeScript test files (30 tests total)
+- `python-backend/tests/unit/test_stt_endpoint.py` (9 tests)
+
+### Test Results
+
+- TypeScript: **30 passed** (sttService: 9, ttsService: 8, voiceCreditIntegration: 6, voiceGateway: 7)
+- Python: **9 passed**
