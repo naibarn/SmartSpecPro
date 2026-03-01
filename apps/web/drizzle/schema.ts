@@ -44,6 +44,7 @@ export const templateStatusEnum = pgEnum("template_status", [
   "pending_review",
   "published",
   "archived",
+  "rejected",
 ]);
 
 // Skill visibility enum
@@ -111,6 +112,11 @@ export const creditSourceTypeEnum = pgEnum("credit_source_type", [
   "agency",
   "creator_revenue",
   "other",
+  // ClawFeature additions
+  "tts",
+  "browser_automation",
+  "widget_chat",
+  "webhook_chat",
 ]);
 
 // Settlement status for creator revenue sharing
@@ -227,6 +233,13 @@ export const users = pgTable("users", {
   twoFactorEnabled: boolean("twoFactorEnabled").default(false).notNull(),
   twoFactorSecret: text("twoFactorSecret"), // encrypted TOTP secret (base32)
   recoveryCodes: json("recoveryCodes").$type<string[]>().default([]), // bcrypt-hashed one-time codes
+
+  /** Default AI persona for this user */
+  defaultPersonaId: varchar("defaultPersonaId", { length: 36 })
+    .references((): AnyPgColumn => personaTemplates.id, { onDelete: "set null" }),
+
+  /** PDPA/GDPR voice consent: NULL = not consented, timestamp = when consent was given */
+  voiceConsentGrantedAt: timestamp("voiceConsentGrantedAt", { withTimezone: true }),
 
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
@@ -787,6 +800,13 @@ export const tenants = pgTable("tenants", {
   /** Owner/Admin user ID */
   ownerId: integer("ownerId").references((): AnyPgColumn => users.id),
 
+  /** Default AI persona for this tenant */
+  defaultPersonaId: varchar("defaultPersonaId", { length: 36 })
+    .references((): AnyPgColumn => personaTemplates.id, { onDelete: "set null" }),
+
+  /** Feature flags for this tenant */
+  featureFlags: json("featureFlags").$type<Record<string, boolean>>(),
+
   /** Tenant status (from Python backend) */
   status: varchar("status", { length: 20 }).notNull().default("ACTIVE"),
 
@@ -1172,9 +1192,17 @@ export const conversations = pgTable("conversations", {
   /** Default policy for attaching external channels to this conversation */
   defaultChannelPolicy: varchar("defaultChannelPolicy", { length: 20 }).default("allow_attach"),
 
+  /** Tenant this conversation belongs to (for multi-tenant isolation) */
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+
+  /** AI persona used for this conversation */
+  personaId: varchar("personaId", { length: 36 }).references((): AnyPgColumn => personaTemplates.id, { onDelete: "set null" }),
+
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [
+  index("idx_conversations_tenant").on(t.tenantId),
+]);
 
 export type Conversation = typeof conversations.$inferSelect;
 export type InsertConversation = typeof conversations.$inferInsert;
@@ -1252,9 +1280,13 @@ export const messages = pgTable("messages", {
   /** External platform message ID (e.g., Telegram message_id) */
   externalSourceId: varchar("externalSourceId", { length: 64 }),
 
+  /** Trace ID for cost correlation with providerUsageLog */
+  traceId: varchar("traceId", { length: 32 }),
+
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index("messages_created_at_idx").on(t.createdAt),
+  index("idx_messages_traceid").on(t.traceId),
 ]);
 
 export type Message = typeof messages.$inferSelect;
@@ -1711,6 +1743,8 @@ export const libraryContentVersions = pgTable("library_content_versions", {
   contentType: varchar("content_type", { length: 32 }).notNull().default("markdown_source"),
   contentSizeBytes: integer("content_size_bytes").notNull(),
   changeDescription: text("change_description"),
+  // S3/storage key of archived file for binary file versions (null for markdown versions)
+  snapshotObjectKey: varchar("snapshot_object_key", { length: 512 }),
   createdByUserId: integer("created_by_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
@@ -2280,6 +2314,15 @@ export const skills = pgTable("skills", {
   /** Default model for this skill */
   defaultModel: varchar("defaultModel", { length: 128 }),
 
+  /** Canonical routed LLM model id for text-generation skills */
+  llmModelId: varchar("llmModelId", { length: 128 }),
+
+  /** Preferred provider pin for this skill (optional) */
+  preferredProviderId: integer("preferredProviderId").references(() => llmProviders.id),
+
+  /** Enforce provider pin without fallback when true */
+  strictProviderPin: boolean("strictProviderPin").default(false).notNull(),
+
   /** Execution mode: llm-only (text response), media-generate (LLM→prompt→media API) */
   executionMode: varchar("executionMode", { length: 50 }).default("llm-only").notNull(),
 
@@ -2341,6 +2384,9 @@ export const skills = pgTable("skills", {
 
   /** Reason for rejection (if visibility = 'rejected') */
   rejectionReason: text("rejectionReason"),
+
+  /** When an admin set this skill to pending_approval (for admin review queue ordering) */
+  requestedPublishAt: timestamp("requestedPublishAt", { withTimezone: true }),
 
   /** Sandbox profile slug for skills that require sandbox execution */
   sandboxProfileSlug: varchar("sandboxProfileSlug", { length: 64 }),
@@ -3176,6 +3222,15 @@ export const workflowTemplates = pgTable("workflow_templates", {
    */
   templateKey: varchar("templateKey", { length: 50 }).unique(),
 
+  /** When the creator requested gallery publishing */
+  requestedPublishAt: timestamp("requestedPublishAt", { withTimezone: true }),
+  /** Admin who approved/rejected the publish request */
+  approvedBy: integer("approvedBy").references(() => users.id, { onDelete: "set null" }),
+  /** When admin approved the publish request */
+  approvedAt: timestamp("approvedAt", { withTimezone: true }),
+  /** Reason for rejection (shown to creator) */
+  rejectionReason: text("rejectionReason"),
+
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
@@ -3936,11 +3991,25 @@ export const agencies = pgTable("agencies", {
   creatorFeeCredits: integer("creatorFeeCredits").default(0).notNull(),
   /** Platform share percentage of creator fee (default 20% — creator gets 80%) */
   platformSharePct: integer("platformSharePct").default(20).notNull(),
+  /** Default LLM model for new agents & fallback when agent model is unset */
+  defaultModel: varchar("defaultModel", { length: 100 }),
   maxAgents: integer("maxAgents").default(10),
   maxRunTimeSeconds: integer("maxRunTimeSeconds").default(600),
   status: varchar("status", { length: 20 }).default("draft").notNull(),
   isFallbackSafe: boolean("isFallbackSafe").default(false).notNull(),
   isPublished: boolean("isPublished").default(false).notNull(),
+  /** Visibility: private (owner only), shared (specific groups), public (all tenant users) */
+  visibility: varchar("visibility", { length: 20 }).default("private").notNull(),
+  /** Pre-generated SVG topology diagram for marketplace preview */
+  previewSvg: text("previewSvg"),
+  /** When the creator requested public publishing */
+  requestedPublishAt: timestamp("requestedPublishAt", { withTimezone: true }),
+  /** Admin who approved/rejected the publish request */
+  approvedBy: integer("approvedBy").references(() => users.id, { onDelete: "set null" }),
+  /** When admin approved the publish request */
+  approvedAt: timestamp("approvedAt", { withTimezone: true }),
+  /** Reason for rejection (shown to creator) */
+  rejectionReason: text("rejectionReason"),
   createdBy: integer("createdBy").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
@@ -3952,6 +4021,28 @@ export const agencies = pgTable("agencies", {
 
 export type Agency = typeof agencies.$inferSelect;
 export type InsertAgency = typeof agencies.$inferInsert;
+
+/**
+ * Agency Permissions — controls which groups can access a shared agency.
+ * Mirrors the skillPermissions pattern.
+ */
+export const agencyPermissions = pgTable("agency_permissions", {
+  id: serial("id").primaryKey(),
+  agencyId: varchar("agencyId", { length: 36 }).notNull()
+    .references(() => agencies.id, { onDelete: "cascade" }),
+  groupId: integer("groupId").notNull()
+    .references(() => userGroups.id, { onDelete: "cascade" }),
+  grantedByUserId: integer("grantedByUserId")
+    .references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("agency_permissions_unique").on(t.agencyId, t.groupId),
+  index("agency_permissions_group_idx").on(t.groupId),
+  index("agency_permissions_agency_idx").on(t.agencyId),
+]);
+
+export type AgencyPermission = typeof agencyPermissions.$inferSelect;
+export type InsertAgencyPermission = typeof agencyPermissions.$inferInsert;
 
 /**
  * Agency Agents -- Individual AI agents within an agency.
@@ -3972,6 +4063,45 @@ export const agencyAgents = pgTable("agency_agents", {
   isEntryPoint: boolean("isEntryPoint").default(false).notNull(),
   isOptional: boolean("isOptional").default(false).notNull(),
   position: json("position").$type<{ x: number; y: number }>(),
+  nodeType: varchar("nodeType", { length: 30 }).default("agent").notNull(),
+  nodeConfig: json("nodeConfig").$type<{
+    // supervisor
+    maxRounds?: number;
+    routingStrategy?: "llm" | "round_robin" | "broadcast";
+    // router
+    routingMode?: "keyword" | "regex" | "llm_classify";
+    routes?: Array<{ condition: string; targetNodeId: string; label?: string }>;
+    defaultTargetNodeId?: string;
+    // aggregator
+    aggregationMode?: "first_wins" | "majority_vote" | "llm_merge" | "concatenate";
+    minResponses?: number;
+    mergeInstructions?: string;
+    // knowledge_base (node-level)
+    collectionId?: string;
+    topK?: number;
+    searchMode?: "hybrid" | "vector" | "keyword";
+    scoreThreshold?: number;
+    outputFormat?: "formatted_context" | "documents_array" | "first_only";
+    // agent/supervisor — attached knowledge base documents
+    knowledgeBase?: {
+      documentIds?: string[];
+      searchMode?: "hybrid" | "vector" | "keyword";
+      topK?: number;
+      scoreThreshold?: number;
+      maxContextTokens?: number;
+    };
+    // skill_call
+    skillId?: string;
+    skillSlug?: string;
+    inputMapping?: Record<string, string>;
+    passInputThrough?: boolean;
+    // human_approval
+    approvalMessage?: string;
+    approvers?: string[];
+    timeoutHours?: number;
+    onTimeout?: "auto_approve" | "auto_reject" | "escalate";
+    requireAllApprovers?: boolean;
+  }>(),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
@@ -4056,7 +4186,28 @@ export type InsertAgencyTool = typeof agencyTools.$inferInsert;
 export const agencyAgentTools = pgTable("agency_agent_tools", {
   id: varchar("id", { length: 36 }).primaryKey(),
   agentId: varchar("agentId", { length: 36 }).notNull().references(() => agencyAgents.id, { onDelete: "cascade" }),
-  toolId: varchar("toolId", { length: 36 }).notNull().references(() => agencyTools.id, { onDelete: "cascade" }),
+  toolId: varchar("toolId", { length: 100 }).notNull(),
+  toolConfig: json("toolConfig").$type<{
+    // rag
+    collectionId?: string;
+    topK?: number;
+    // skill_executor
+    skillId?: string;
+    skillSlug?: string;
+    // http
+    url?: string;
+    method?: string;
+    headers?: Record<string, string>;
+    // email
+    toTemplate?: string;
+    subjectTemplate?: string;
+    // webhook
+    webhookUrl?: string;
+    // slack
+    channelId?: string;
+    // document search
+    collectionIds?: string[];
+  }>(),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   uniqueIndex("agency_agent_tools_agent_tool_idx").on(t.agentId, t.toolId),
@@ -4104,6 +4255,28 @@ export const agencyConversations = pgTable("agency_conversations", {
 
 export type AgencyConversation = typeof agencyConversations.$inferSelect;
 export type InsertAgencyConversation = typeof agencyConversations.$inferInsert;
+
+/**
+ * Agency Versions -- Immutable snapshots of an agency graph for version history.
+ * Max 50 versions per agency (oldest pruned on insert).
+ */
+export const agencyVersions = pgTable("agency_versions", {
+  id: serial("id").primaryKey(),
+  agencyId: varchar("agencyId", { length: 36 }).notNull().references(() => agencies.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+  versionNumber: integer("versionNumber").notNull(),
+  snapshotJson: json("snapshotJson").$type<{ nodes: unknown[]; edges: unknown[]; name: string }>().notNull(),
+  contentHash: varchar("contentHash", { length: 64 }).notNull(),
+  changeDescription: text("changeDescription"),
+  createdByUserId: integer("createdByUserId").notNull().references(() => users.id),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("av_agency_version_unique").on(t.agencyId, t.versionNumber),
+  index("av_agency_created_idx").on(t.agencyId, t.createdAt),
+]);
+
+export type AgencyVersion = typeof agencyVersions.$inferSelect;
+export type InsertAgencyVersion = typeof agencyVersions.$inferInsert;
 
 // ─── Chat Bridge Tables ─────────────────────────────────────────────────────
 
@@ -4331,3 +4504,244 @@ export const creatorSettlements = pgTable("creator_settlements", {
 
 export type CreatorSettlement = typeof creatorSettlements.$inferSelect;
 export type InsertCreatorSettlement = typeof creatorSettlements.$inferInsert;
+
+// ==========================================
+// ClawFeature: Persona Templates
+// ==========================================
+
+/**
+ * Persona Templates -- AI persona definitions for customizing chat behavior.
+ * Scope hierarchy: platform > tenant > user (4-level resolution chain).
+ */
+export const personaTemplates = pgTable("persona_templates", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  systemPromptPrefix: text("systemPromptPrefix").notNull(),
+  tone: text("tone"),
+  language: text("language").default("auto"),
+  responseStyle: jsonb("responseStyle").default({}),
+  restrictions: text("restrictions").array().default(sql`'{}'`),
+  scope: text("scope").notNull(),
+  isDefault: boolean("isDefault").default(false),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("persona_templates_tenant_scope_idx").on(t.tenantId, t.scope),
+  index("persona_templates_user_idx").on(t.userId),
+  check("persona_templates_tone_check", sql`"tone" IN ('formal','casual','friendly','technical','creative') OR "tone" IS NULL`),
+  check("persona_templates_scope_check", sql`"scope" IN ('platform','tenant','user')`),
+]);
+
+export type PersonaTemplate = typeof personaTemplates.$inferSelect;
+export type InsertPersonaTemplate = typeof personaTemplates.$inferInsert;
+
+// ==========================================
+// ClawFeature: Channel Infrastructure
+// ==========================================
+
+/**
+ * Channel Connections -- Generalizes telegramConnections to support
+ * multiple channel types (Telegram, WhatsApp, LINE, Slack, Discord).
+ */
+export const channelConnections = pgTable("channel_connections", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  channelType: text("channelType").notNull(),
+  externalUserId: text("externalUserId").notNull(),
+  externalChatId: text("externalChatId"),
+  connectionConfig: jsonb("connectionConfig").default({}),
+  status: text("status").notNull().default("pending"),
+  activeChannelId: varchar("activeChannelId", { length: 36 }),
+  linkedAt: timestamp("linkedAt", { withTimezone: true }).defaultNow().notNull(),
+  linkedBy: varchar("linkedBy", { length: 20 }),
+  revokedAt: timestamp("revokedAt", { withTimezone: true }),
+  revokedBy: varchar("revokedBy", { length: 36 }),
+}, (t) => [
+  uniqueIndex("channel_connections_tenant_type_user_unique").on(t.tenantId, t.channelType, t.externalUserId),
+  index("channel_connections_tenant_type_status_idx").on(t.tenantId, t.channelType, t.status),
+  index("channel_connections_tenant_user_idx").on(t.tenantId, t.userId),
+  check("channel_connections_type_check", sql`"channelType" IN ('telegram','whatsapp','line','slack','discord')`),
+  check("channel_connections_status_check", sql`"status" IN ('active','revoked','pending','blocked')`),
+]);
+
+export type ChannelConnection = typeof channelConnections.$inferSelect;
+export type InsertChannelConnection = typeof channelConnections.$inferInsert;
+
+/**
+ * Channel Credentials -- Admin-configured per-tenant channel secrets
+ * (bot tokens, API keys, webhook secrets). Encrypted via crypto.ts.
+ */
+export const channelCredentials = pgTable("channel_credentials", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  channelType: text("channelType").notNull(),
+  credentialsEncrypted: text("credentialsEncrypted").notNull(),
+  webhookUrl: text("webhookUrl"),
+  webhookSecretEncrypted: text("webhookSecretEncrypted"),
+  isActive: boolean("isActive").default(true),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("channel_credentials_tenant_type_unique").on(t.tenantId, t.channelType),
+  check("channel_credentials_type_check", sql`"channelType" IN ('telegram','whatsapp','line','slack','discord')`),
+]);
+
+export type ChannelCredential = typeof channelCredentials.$inferSelect;
+export type InsertChannelCredential = typeof channelCredentials.$inferInsert;
+
+// ==========================================
+// ClawFeature: Chat Widget & Artifacts
+// ==========================================
+
+/**
+ * Chat Widgets -- Embeddable chat widget configurations per tenant.
+ */
+export const chatWidgets = pgTable("chat_widgets", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  targetType: text("targetType"),
+  targetAgencyId: varchar("targetAgencyId", { length: 36 }).references(() => agencies.id, { onDelete: "set null" }),
+  defaultPersonaId: varchar("defaultPersonaId", { length: 36 }).references(() => personaTemplates.id, { onDelete: "set null" }),
+  theme: jsonb("theme"),
+  allowedOrigins: text("allowedOrigins").array().default(sql`'{}'`),
+  rateLimitPerMinute: integer("rateLimitPerMinute").default(10),
+  maxConversationLength: integer("maxConversationLength").default(100),
+  requireEmail: boolean("requireEmail").default(false),
+  creditSource: text("creditSource"),
+  monthlyCreditBudget: integer("monthlyCreditBudget"),
+  maxCreditsPerVisitorSession: integer("maxCreditsPerVisitorSession").default(50),
+  maxCreditsPerVisitorDay: integer("maxCreditsPerVisitorDay").default(100),
+  isActive: boolean("isActive").default(true),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("chat_widgets_tenant_active_idx").on(t.tenantId, t.isActive),
+  check("chat_widgets_target_type_check", sql`"targetType" IN ('chat','agency') OR "targetType" IS NULL`),
+  check("chat_widgets_credit_source_check", sql`"creditSource" IN ('tenant','visitor') OR "creditSource" IS NULL`),
+]);
+
+export type ChatWidget = typeof chatWidgets.$inferSelect;
+export type InsertChatWidget = typeof chatWidgets.$inferInsert;
+
+/**
+ * Conversation Artifacts -- Versioned AI-generated artifacts
+ * (code, charts, tables, React components, HTML) stored per conversation.
+ */
+export const conversationArtifacts = pgTable("conversation_artifacts", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: integer("conversationId").notNull().references(() => conversations.id, { onDelete: "cascade" }),
+  messageId: integer("messageId").notNull().references(() => messages.id, { onDelete: "cascade" }),
+  artifactType: text("artifactType").notNull(),
+  title: text("title"),
+  content: text("content").notNull(),
+  language: text("language"),
+  version: integer("version").default(1),
+  parentArtifactId: varchar("parentArtifactId", { length: 36 })
+    .references((): AnyPgColumn => conversationArtifacts.id, { onDelete: "set null" }),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("conversation_artifacts_conversation_idx").on(t.conversationId),
+  index("conversation_artifacts_message_idx").on(t.messageId),
+  check("conversation_artifacts_type_check", sql`"artifactType" IN ('code','react','chart','table','mermaid','html','markdown','svg')`),
+]);
+
+export type ConversationArtifact = typeof conversationArtifacts.$inferSelect;
+export type InsertConversationArtifact = typeof conversationArtifacts.$inferInsert;
+
+// ==========================================
+// ClawFeature: Webhooks & Routing
+// ==========================================
+
+/**
+ * Webhook Triggers -- Inbound webhook endpoints for external integrations.
+ * Auth secrets are AES-256-GCM encrypted via crypto.ts.
+ */
+export const webhookTriggers = pgTable("webhook_triggers", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  authType: text("authType").notNull().default("token"),
+  authSecretEncrypted: text("authSecretEncrypted").notNull(),
+  targetType: text("targetType").notNull(),
+  targetConversationId: integer("targetConversationId").references(() => conversations.id, { onDelete: "set null" }),
+  targetAgencyId: varchar("targetAgencyId", { length: 36 }).references(() => agencies.id, { onDelete: "set null" }),
+  targetWorkflowId: integer("targetWorkflowId").references(() => workflows.id, { onDelete: "set null" }),
+  payloadTemplate: jsonb("payloadTemplate").default({}),
+  rateLimitPerMinute: integer("rateLimitPerMinute").default(10),
+  monthlyTriggerBudget: integer("monthlyTriggerBudget"),
+  isActive: boolean("isActive").default(true),
+  totalTriggers: integer("totalTriggers").default(0),
+  lastTriggeredAt: timestamp("lastTriggeredAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("webhook_triggers_tenant_active_idx").on(t.tenantId, t.isActive),
+  check("webhook_triggers_auth_type_check", sql`"authType" IN ('token','hmac_sha256')`),
+  check("webhook_triggers_target_type_check", sql`"targetType" IN ('chat','agency','workflow')`),
+]);
+
+export type WebhookTrigger = typeof webhookTriggers.$inferSelect;
+export type InsertWebhookTrigger = typeof webhookTriggers.$inferInsert;
+
+/**
+ * Webhook Trigger Logs -- Append-heavy log of webhook invocations.
+ */
+export const webhookTriggerLogs = pgTable("webhook_trigger_logs", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  triggerId: varchar("triggerId", { length: 36 }).notNull().references(() => webhookTriggers.id, { onDelete: "cascade" }),
+  requestMethod: text("requestMethod"),
+  requestHeadersSafe: jsonb("requestHeadersSafe"),
+  requestBodyHash: varchar("requestBodyHash", { length: 64 }),
+  requestBodySize: integer("requestBodySize"),
+  extractedVariables: jsonb("extractedVariables"),
+  sourceIpMasked: text("sourceIpMasked"),
+  status: text("status").notNull(),
+  targetExecutionId: text("targetExecutionId"),
+  creditsConsumed: numeric("creditsConsumed", { precision: 12, scale: 4 }).default("0"),
+  errorMessage: text("errorMessage"),
+  processingTimeMs: integer("processingTimeMs"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("webhook_trigger_logs_trigger_created_idx").on(t.triggerId, t.createdAt),
+  check("webhook_trigger_logs_status_check", sql`"status" IN ('success','auth_failed','rate_limited','target_error','credit_insufficient')`),
+]);
+
+export type WebhookTriggerLog = typeof webhookTriggerLogs.$inferSelect;
+export type InsertWebhookTriggerLog = typeof webhookTriggerLogs.$inferInsert;
+
+/**
+ * Channel Routing Rules -- Priority-ordered rules for routing inbound
+ * channel messages to agencies, conversations, or workflows.
+ */
+export const channelRoutingRules = pgTable("channel_routing_rules", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  priority: integer("priority").default(50),
+  isActive: boolean("isActive").default(true),
+  conditions: jsonb("conditions").notNull(),
+  targetType: text("targetType").notNull(),
+  targetAgencyId: varchar("targetAgencyId", { length: 36 }).references(() => agencies.id, { onDelete: "set null" }),
+  targetPersonaId: varchar("targetPersonaId", { length: 36 }).references(() => personaTemplates.id, { onDelete: "set null" }),
+  targetWorkflowId: integer("targetWorkflowId").references(() => workflows.id, { onDelete: "set null" }),
+  totalMatches: integer("totalMatches").default(0),
+  lastMatchedAt: timestamp("lastMatchedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("channel_routing_rules_tenant_active_priority_idx").on(t.tenantId, t.isActive, t.priority),
+  check("channel_routing_rules_target_type_check", sql`"targetType" IN ('agency','chat','workflow')`),
+])
+
+export type ChannelRoutingRule = typeof channelRoutingRules.$inferSelect;
+export type InsertChannelRoutingRule = typeof channelRoutingRules.$inferInsert;

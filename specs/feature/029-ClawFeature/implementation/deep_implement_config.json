@@ -1,0 +1,36 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/029-ClawFeature/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/029-ClawFeature/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-database",
+    "section-02-persona",
+    "section-03-cost-display",
+    "section-04-canvas",
+    "section-05-channel-adapter",
+    "section-06-voice",
+    "section-07-browser",
+    "section-08-cross-agency",
+    "section-09-whatsapp-line",
+    "section-10-widget",
+    "section-11-webhooks",
+    "section-12-channel-router",
+    "section-13-slack-discord",
+    "section-14-feature-flags",
+    "section-15-security-infra"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-03-01T13:47:25.393132+00:00"
+}
