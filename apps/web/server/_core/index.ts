@@ -21,7 +21,10 @@ import { registerAgencyStreamRoutes } from "./agencyStreamProxy";
 
 import { createWebhookRouter } from "../routes/webhooks";
 import { createTelegramWebhookRouter } from "../routes/telegramWebhook";
+import { createChannelWebhookRouter } from "../routes/channelWebhook";
 import "../services/telegramLinkService"; // Register /start link handler
+import "../services/channelAdapters/telegram"; // Register Telegram adapter
+import { adapterRegistry } from "../services/channelAdapters/registry";
 import { createSlideRenderRouter } from "../routes/slideRender";
 import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
 import { registerServicesRoutes } from "../routers/services";
@@ -43,6 +46,7 @@ import { initializeTelegramQueue, shutdownTelegramWorker } from "../services/tel
 import { initDeliveryQueue, closeDeliveryQueue } from "../services/deliveryQueue";
 import { initializeTrashPurgeJob, shutdownTrashPurgeWorker } from "../jobs/purgeOldTrashItems";
 import { initializeGDriveCleanupJob, shutdownGDriveCleanupWorker } from "../jobs/gdriveSessionCleanup";
+import { initializePendingApprovalAlertJob } from "../jobs/pendingApprovalAlert";
 import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
 import { startHistoryCollection } from "../services/llmQueue";
 import { createTasksRouter } from "../routes/tasks";
@@ -227,7 +231,10 @@ const csrfCheck = (req: any, res: any, next: any) => {
     req.path.startsWith("/webhooks/gdrive") ||
     req.originalUrl.startsWith("/api/webhooks/gdrive") ||
     req.path.startsWith("/webhooks/telegram/") ||
-    req.originalUrl.startsWith("/webhooks/telegram/")
+    req.originalUrl.startsWith("/webhooks/telegram/") ||
+    // Generalized channel webhooks (platform callbacks: WhatsApp, Slack, Discord, etc.)
+    /^\/webhooks\/[a-z]+\/[a-z0-9-]+$/.test(req.path) ||
+    /^\/webhooks\/[a-z]+\/[a-z0-9-]+$/.test(req.originalUrl)
   ) {
     return next();
   }
@@ -335,7 +342,12 @@ app.use("/internal", createSlideRenderRouter());
 // Webhook routes (before CSRF-protected routes, external services send raw POSTs)
 app.use("/api/webhooks", createWebhookRouter());
 
-// Telegram Bot API webhook (Telegram sends POSTs with secret-token header, no Origin)
+// Generalized channel webhook router (all adapters: WhatsApp, Slack, Discord, LINE, etc.)
+// Must be registered BEFORE the legacy Telegram route so /webhooks/:channelType/:connectionId
+// is handled by the generalized router.
+app.use("/webhooks", express.json({ limit: "1mb" }), createChannelWebhookRouter());
+
+// Telegram Bot API webhook (legacy route — kept for backward compat with existing bot webhook URLs)
 // Tighter body limit than global 10MB — Telegram updates are small JSON payloads
 app.use("/webhooks/telegram", express.json({ limit: "1mb" }), createTelegramWebhookRouter());
 
@@ -610,6 +622,170 @@ app.post("/api/internal/google-drive/cleanup", async (req, res) => {
 // Internal presentation import callback (Python backend -> Node.js)
 app.post("/api/internal/presentation-import/callback", presentationImportCallbackHandler);
 
+// Internal agency creation endpoint (Python AI Creator task -> Node.js)
+// Auth: user Bearer JWT (same token that started the creation task)
+app.post("/api/internal/agency/create", async (req, res) => {
+  let user: Awaited<ReturnType<typeof sdk.authenticateRequest>> | null = null;
+  try {
+    user = await sdk.authenticateRequest(req);
+  } catch {
+    // Fallback: accept Bearer token as session token (for internal service calls from Python/Celery)
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.slice(7);
+      // Inject as cookie so authenticateRequest works
+      req.headers.cookie = `app_session_id=${token}`;
+      try {
+        user = await sdk.authenticateRequest(req);
+      } catch { /* still unauthorized */ }
+    }
+  }
+  if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+  try {
+    const {
+      agencies: agenciesTable,
+      agencyAgents,
+      agencyCommunicationFlows,
+      agencyAgentTools,
+    } = await import("../../drizzle/schema");
+    const drizzleDb = await getDb();
+    if (!drizzleDb) return res.status(503).json({ error: "Database unavailable" });
+    const cryptoModule = await import("crypto");
+    const tenantReq = req as any;
+    // Prefer explicit tenantId from request body (passed by Celery task from the user's tRPC context),
+    // then fall back to tenant middleware, then user's currentTenantId
+    const tenantId: string = req.body.tenantId || tenantReq.tenant?.id || String(user.currentTenantId ?? "");
+
+    const {
+      name,
+      description,
+      agents = [],
+      communicationFlows = [],
+    } = req.body as {
+      name: string;
+      description?: string;
+      agents: Array<{
+        id: string; // spec-level ID used in communicationFlows
+        name: string;
+        description?: string;
+        instructions?: string;
+        model?: string;
+        nodeType?: string;
+        nodeConfig?: Record<string, unknown>;
+        isEntryPoint?: boolean;
+        isOptional?: boolean;
+        position?: { x: number; y: number };
+        toolIds?: string[];
+        toolConfigs?: Record<string, Record<string, unknown>>;
+      }>;
+      communicationFlows: Array<{
+        fromAgentId: string; // spec-level ID
+        toAgentId: string;
+        flowType?: string;
+      }>;
+    };
+
+    if (!name?.trim()) {
+      return res.status(400).json({ error: "name is required" });
+    }
+    if (!agents.length) {
+      return res.status(400).json({ error: "at least 1 agent is required" });
+    }
+
+    const agencyId = cryptoModule.default.randomUUID();
+    // Map spec-level agent IDs → new DB UUIDs
+    const specIdToDbId: Record<string, string> = {};
+    const agentRows = agents.map((a, idx) => {
+      const dbId = cryptoModule.default.randomUUID();
+      specIdToDbId[a.id] = dbId;
+      return {
+        id: dbId,
+        agencyId,
+        name: String(a.name || "Agent").slice(0, 100),
+        description: a.description ? String(a.description).slice(0, 500) : null,
+        instructions: a.instructions ? String(a.instructions).slice(0, 50000) : null,
+        model: a.model ? String(a.model).slice(0, 100) : null,
+        nodeType: (a.nodeType ?? "agent") as any,
+        nodeConfig: (a.nodeConfig ?? {}) as any,
+        isEntryPoint: Boolean(a.isEntryPoint),
+        isOptional: Boolean(a.isOptional),
+        position: a.position ?? { x: 400, y: 80 + idx * 200 },
+      };
+    });
+
+    const slug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 100) || `agency-${Date.now()}`;
+
+    await drizzleDb.transaction(async (tx) => {
+      await tx.insert(agenciesTable).values({
+        id: agencyId,
+        tenantId,
+        slug,
+        name: String(name).slice(0, 255),
+        description: description ? String(description).slice(0, 500) : null,
+        creditMultiplier: "1",
+        maxAgents: 20,
+        maxRunTimeSeconds: 600,
+        isFallbackSafe: false,
+        creatorFeeCredits: 0,
+        status: "draft",
+        createdBy: user!.id,
+      });
+
+      if (agentRows.length > 0) {
+        await tx.insert(agencyAgents).values(agentRows);
+      }
+
+      const flowRows = communicationFlows
+        .map((f) => ({
+          id: cryptoModule.default.randomUUID(),
+          agencyId,
+          fromAgentId: specIdToDbId[f.fromAgentId] ?? null,
+          toAgentId: specIdToDbId[f.toAgentId] ?? null,
+          flowType: (f.flowType ?? "delegation") as any,
+        }))
+        .filter((f) => f.fromAgentId && f.toAgentId);
+
+      if (flowRows.length > 0) {
+        await tx.insert(agencyCommunicationFlows).values(flowRows);
+      }
+
+      // Insert tool assignments for agents
+      const toolRows: Array<{
+        id: string;
+        agentId: string;
+        toolId: string;
+        toolConfig: any;
+      }> = [];
+      for (const agent of agents) {
+        const dbAgentId = specIdToDbId[agent.id];
+        if (!dbAgentId || !agent.toolIds?.length) continue;
+        for (const toolId of agent.toolIds) {
+          if (!toolId || typeof toolId !== "string") continue;
+          toolRows.push({
+            id: cryptoModule.default.randomUUID(),
+            agentId: dbAgentId,
+            toolId: String(toolId).slice(0, 100),
+            toolConfig: agent.toolConfigs?.[toolId] ?? {},
+          });
+        }
+      }
+      if (toolRows.length > 0) {
+        await tx.insert(agencyAgentTools).values(toolRows);
+      }
+    });
+
+    return res.status(201).json({ id: agencyId });
+  } catch (err: any) {
+    console.error("[internal/agency/create] error:", err?.message ?? err);
+    return res.status(500).json({ error: err?.message ?? "Internal server error" });
+  }
+});
+
 // Device auth routes (for desktop app)
 registerDeviceAuthRoutes(app);
 
@@ -806,6 +982,17 @@ async function main() {
     console.error("[Startup] Failed to initialize delivery queue:", error);
   }
 
+  // Initialize channel adapters (call optional initialize() hook on each)
+  try {
+    await Promise.all(
+      adapterRegistry.getAll()
+        .filter((a) => typeof a.initialize === "function")
+        .map((a) => a.initialize!()),
+    );
+  } catch (error) {
+    console.error("[Startup] Failed to initialize channel adapters:", error);
+  }
+
   // Initialize provider health circuit breaker from DB state
   try {
     await initFromDb();
@@ -826,6 +1013,13 @@ async function main() {
     await initializeTrashPurgeJob();
   } catch (error) {
     console.error("[Startup] Failed to initialize trash purge job:", error);
+  }
+
+  // Initialize pending approval daily alert (9 AM)
+  try {
+    await initializePendingApprovalAlertJob();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize approval alert job:", error);
   }
 
   // Initialize Google Drive edit session cleanup (every 6h)
@@ -869,6 +1063,13 @@ async function main() {
     await initializeTrashPurgeJob();
   } catch (error) {
     console.error("[Startup] Failed to initialize trash purge job:", error);
+  }
+
+  // Initialize pending approval daily alert (9 AM)
+  try {
+    await initializePendingApprovalAlertJob();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize approval alert job:", error);
   }
 
   // Initialize Google Drive edit session cleanup (every 6h)
@@ -934,6 +1135,13 @@ process.on("SIGTERM", async () => {
   await shutdownTelegramWorker().catch(() => {});
   await closeDeliveryQueue().catch(() => {});
 
+  // 3b. Shut down channel adapters
+  await Promise.all(
+    adapterRegistry.getAll()
+      .filter((a) => typeof a.shutdown === "function")
+      .map((a) => a.shutdown!().catch(() => {})),
+  );
+
   // 4. Flush PostHog event batch
   try {
     const { shutdownPostHog } = await import("../services/posthog");
@@ -976,6 +1184,11 @@ process.on("SIGINT", async () => {
   await shutdownTrashPurgeWorker().catch(() => {});
   await shutdownTelegramWorker().catch(() => {});
   await closeDeliveryQueue().catch(() => {});
+  await Promise.all(
+    adapterRegistry.getAll()
+      .filter((a) => typeof a.shutdown === "function")
+      .map((a) => a.shutdown!().catch(() => {})),
+  );
 
   try {
     const redis = getRedisClient();

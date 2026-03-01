@@ -12,6 +12,7 @@ import {
   telegramLinkTokens,
   telegramConnections,
   conversationChannels,
+  channelConnections,
   users,
 } from "../../drizzle/schema";
 import { sendTelegramMessage } from "./telegramService";
@@ -136,6 +137,24 @@ async function handleStartLink(ctx: WebhookContext): Promise<void> {
         linkedBy: "deep_link",
       });
 
+      // Dual-write: also register in channel_connections for generic channel routing
+      try {
+        await tx.insert(channelConnections).values({
+          id: connectionId,
+          tenantId,
+          userId: tokenRecord.userId,
+          channelType: "telegram",
+          externalUserId: telegramUserId,
+          externalChatId: chatId,
+          connectionConfig: { botId },
+          status: "active",
+          linkedAt: now,
+          linkedBy: "deep_link",
+        });
+      } catch {
+        // Non-critical — channel_connections dual-write failure must not break the link flow
+      }
+
       // Optional conversation binding
       if (
         tokenRecord.targetChatConversationId ||
@@ -157,11 +176,20 @@ async function handleStartLink(ctx: WebhookContext): Promise<void> {
           state: "active",
         });
 
-        // Set activeChannelId on connection
+        // Set activeChannelId on connection (both tables)
         await tx
           .update(telegramConnections)
           .set({ activeChannelId: channelId })
           .where(eq(telegramConnections.id, connectionId));
+
+        try {
+          await tx
+            .update(channelConnections)
+            .set({ activeChannelId: channelId })
+            .where(eq(channelConnections.id, connectionId));
+        } catch {
+          // Non-critical — channel_connections update failure must not break the link flow
+        }
       }
 
       // Dual-write legacy user fields

@@ -10,15 +10,15 @@ import type { Job } from "bullmq";
 import { eq, and } from "drizzle-orm";
 import type { DeliveryJob } from "@shared/channelTypes";
 import { getRealtimeClient } from "./redisClients";
-import { sendTelegramMessage } from "./telegramService";
 import { decrypt } from "./crypto";
 import { getDb } from "../db";
 import { channelMessages, conversationChannels, systemSettings } from "../../drizzle/schema";
+import { adapterRegistry } from "./channelAdapters/registry";
 
 // ── Constants ────────────────────────────────────────────────────────────
 
-const QUEUE_NAME = "telegram-delivery";
-const DLQ_NAME = "telegram-delivery-dlq";
+const QUEUE_NAME = "channel-delivery";
+const DLQ_NAME = "channel-delivery-dlq";
 const MAX_ATTEMPTS = 5;
 
 // ── Module state ─────────────────────────────────────────────────────────
@@ -27,12 +27,12 @@ let deliveryQueue: Queue<DeliveryJob> | null = null;
 let dlq: Queue<DeliveryJob> | null = null;
 let deliveryWorker: Worker<DeliveryJob> | null = null;
 
-// Cache bot token to avoid re-reading settings on every job
+// Cache bot token to avoid re-reading settings on every job (Telegram backward compat)
 let cachedBotToken: string | null = null;
 let botTokenCacheExpiry = 0;
 const BOT_TOKEN_CACHE_TTL = 60_000; // 1 minute
 
-// ── Bot token resolution ─────────────────────────────────────────────────
+// ── Bot token resolution (Telegram backward compat) ──────────────────────
 
 async function resolveBotToken(): Promise<string | null> {
   const now = Date.now();
@@ -67,6 +67,45 @@ async function resolveBotToken(): Promise<string | null> {
   }
 }
 
+// ── Channel config resolution ────────────────────────────────────────────
+
+async function resolveChannelConfig(
+  channelType: string,
+  tenantId: string,
+): Promise<Record<string, unknown> | null> {
+  // Telegram: backward compat via system_settings
+  if (channelType === "telegram") {
+    const botToken = await resolveBotToken();
+    return botToken ? { botToken } : null;
+  }
+
+  // Generic channels: lookup from channel_credentials table
+  // (channel_credentials table created by section-01)
+  // IMPORTANT: must filter by tenantId to prevent cross-tenant credential leakage
+  const db = await getDb();
+  if (!db) return null;
+
+  try {
+    const { channelCredentials } = await import("../../drizzle/schema");
+    const [cred] = await db
+      .select()
+      .from(channelCredentials)
+      .where(
+        and(
+          eq(channelCredentials.channelType, channelType),
+          eq(channelCredentials.tenantId, tenantId),
+          eq(channelCredentials.isActive, true),
+        ),
+      )
+      .limit(1);
+
+    if (!cred) return null;
+    return JSON.parse(decrypt(cred.credentialsEncrypted));
+  } catch {
+    return null;
+  }
+}
+
 // ── Permanent error detection ────────────────────────────────────────────
 
 const PERMANENT_ERROR_PATTERNS = [
@@ -89,11 +128,19 @@ function isPermanentError(err: any): boolean {
 // ── Worker processor ─────────────────────────────────────────────────────
 
 async function processDeliveryJob(job: Job<DeliveryJob>): Promise<void> {
-  const { channelMessageId, chatId, text, parseMode } = job.data;
+  const { channelMessageId, chatId, text, parseMode, tenantId } = job.data;
+  const channelType = job.data.channelType ?? "telegram"; // backward compat
 
-  const botToken = await resolveBotToken();
-  if (!botToken) {
-    throw new UnrecoverableError("Bot token not available");
+  // Resolve adapter
+  const adapter = adapterRegistry.get(channelType);
+  if (!adapter) {
+    throw new UnrecoverableError(`No adapter for channel type: ${channelType}`);
+  }
+
+  // Resolve channel credentials
+  const config = await resolveChannelConfig(channelType, tenantId);
+  if (!config) {
+    throw new UnrecoverableError(`Channel credentials not available for: ${channelType}`);
   }
 
   const db = await getDb();
@@ -135,11 +182,8 @@ async function processDeliveryJob(job: Job<DeliveryJob>): Promise<void> {
   }
 
   try {
-    const result = await sendTelegramMessage(botToken, chatId, text, parseMode);
-    const externalMessageId =
-      result && typeof result === "object" && "messageId" in result
-        ? String((result as any).messageId)
-        : null;
+    const result = await adapter.sendMessage(config, chatId, text, { parseMode });
+    const externalMessageId = result.externalMessageId ?? null;
 
     // Success: update channel_messages
     if (db) {
@@ -292,7 +336,7 @@ export async function enqueueDelivery(job: DeliveryJob): Promise<void> {
   }
 
   await deliveryQueue.add("deliver", job, {
-    jobId: `tg-deliver-${job.channelMessageId}`,
+    jobId: `ch-deliver-${job.channelMessageId}`,
   });
 }
 

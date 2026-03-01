@@ -11,6 +11,8 @@ const {
   mockGetDb,
   mockDbUpdate,
   mockDbSelect,
+  mockAdapterGet,
+  mockAdapterSendMessage,
 } = vi.hoisted(() => ({
   mockQueueAdd: vi.fn().mockResolvedValue(undefined),
   mockQueueClose: vi.fn().mockResolvedValue(undefined),
@@ -23,6 +25,10 @@ const {
   mockGetDb: vi.fn(),
   mockDbUpdate: vi.fn(),
   mockDbSelect: vi.fn(),
+  mockAdapterGet: vi.fn(),
+  mockAdapterSendMessage: vi
+    .fn()
+    .mockResolvedValue({ ok: true, externalMessageId: "456" }),
 }));
 
 let capturedProcessor: any = null;
@@ -53,6 +59,12 @@ vi.mock("../redisClients", () => ({
   })),
 }));
 
+vi.mock("../channelAdapters/registry", () => ({
+  adapterRegistry: {
+    get: mockAdapterGet,
+  },
+}));
+
 vi.mock("../telegramService", () => ({
   sendTelegramMessage: mockSendTelegramMessage,
 }));
@@ -66,8 +78,9 @@ vi.mock("../../db", () => ({
 }));
 
 vi.mock("../../../drizzle/schema", () => ({
-  channelMessages: { id: "cm.id" },
+  channelMessages: { id: "cm.id", deliveryStatus: "cm.deliveryStatus", conversationChannelId: "cm.conversationChannelId" },
   systemSettings: { category: "ss.category" },
+  conversationChannels: { id: "cc.id", state: "cc.state" },
 }));
 
 vi.mock("drizzle-orm", () => ({
@@ -83,6 +96,7 @@ function makeJob(overrides: Partial<DeliveryJob> = {}): DeliveryJob {
     chatId: "123",
     text: "<b>Hello</b>",
     parseMode: "HTML",
+    channelType: "telegram",
     conversationId: "conv-1",
     tenantId: "tenant-1",
     ...overrides,
@@ -104,14 +118,30 @@ function setupMockDb() {
   });
   mockDbUpdate.mockReturnValue({ set: setFn });
 
-  const settings = [
+  const telegramSettings = [
     { key: "enabled", value: "true" },
     { key: "bot_token", value: "enc_token" },
   ];
-  const fromFn = vi.fn().mockReturnValue({
-    where: vi.fn().mockResolvedValue(settings),
-  });
-  mockDbSelect.mockReturnValue({ from: fromFn });
+
+  // Branch by table argument: channelMessages vs systemSettings
+  mockDbSelect.mockImplementation(() => ({
+    from: vi.fn().mockImplementation((table: any) => {
+      // channelMessages table
+      if (table && table.id === "cm.id") {
+        return {
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([
+              { id: "cm-1", deliveryStatus: "pending", conversationChannelId: null },
+            ]),
+          }),
+        };
+      }
+      // systemSettings or anything else
+      return {
+        where: vi.fn().mockResolvedValue(telegramSettings),
+      };
+    }),
+  }));
 
   const db = {
     update: mockDbUpdate,
@@ -125,6 +155,10 @@ describe("deliveryQueue", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     capturedProcessor = null;
+    // Default adapter mock: Telegram adapter with sendMessage
+    mockAdapterGet.mockReturnValue({
+      sendMessage: mockAdapterSendMessage,
+    });
   });
 
   describe("initDeliveryQueue", () => {
@@ -141,7 +175,7 @@ describe("deliveryQueue", () => {
 
       // Worker should have concurrency and limiter
       const workerCall = (Worker as any).mock.calls[0];
-      expect(workerCall[0]).toBe("telegram-delivery");
+      expect(workerCall[0]).toBe("channel-delivery");
       expect(workerCall[2]).toMatchObject({
         concurrency: 10,
         limiter: { max: 25, duration: 1000 },
@@ -162,7 +196,7 @@ describe("deliveryQueue", () => {
       await enqueueDelivery(job);
 
       expect(mockQueueAdd).toHaveBeenCalledWith("deliver", job, {
-        jobId: "tg-deliver-cm-1",
+        jobId: "ch-deliver-cm-1",
       });
 
       await closeDeliveryQueue();
@@ -192,11 +226,11 @@ describe("deliveryQueue", () => {
       const job = makeBullMQJob(makeJob());
       await capturedProcessor(job);
 
-      expect(mockSendTelegramMessage).toHaveBeenCalledWith(
-        "dec_token",
+      expect(mockAdapterSendMessage).toHaveBeenCalledWith(
+        { botToken: "dec_token" },
         "123",
         "<b>Hello</b>",
-        "HTML",
+        { parseMode: "HTML" },
       );
 
       expect(mockDbUpdate).toHaveBeenCalled();
@@ -206,7 +240,7 @@ describe("deliveryQueue", () => {
 
     it("throws UnrecoverableError for 403 (bot blocked)", async () => {
       setupMockDb();
-      mockSendTelegramMessage.mockRejectedValueOnce(
+      mockAdapterSendMessage.mockRejectedValueOnce(
         Object.assign(new Error("Forbidden: bot was blocked by the user"), {
           statusCode: 403,
           blocked: true,
@@ -228,7 +262,7 @@ describe("deliveryQueue", () => {
 
     it("throws UnrecoverableError for chat not found", async () => {
       setupMockDb();
-      mockSendTelegramMessage.mockRejectedValueOnce(
+      mockAdapterSendMessage.mockRejectedValueOnce(
         Object.assign(new Error("Bad Request: chat not found"), {
           statusCode: 400,
         }),
@@ -247,7 +281,7 @@ describe("deliveryQueue", () => {
 
     it("re-throws transient errors for BullMQ retry", async () => {
       setupMockDb();
-      mockSendTelegramMessage.mockRejectedValueOnce(
+      mockAdapterSendMessage.mockRejectedValueOnce(
         Object.assign(new Error("Internal Server Error"), {
           statusCode: 500,
         }),
@@ -261,6 +295,25 @@ describe("deliveryQueue", () => {
       const job = makeBullMQJob(makeJob());
       await expect(capturedProcessor(job)).rejects.toThrow(
         "Internal Server Error",
+      );
+
+      await closeDeliveryQueue();
+    });
+  });
+
+  describe("processDeliveryJob (no adapter)", () => {
+    it("throws UnrecoverableError when adapter not found for channel type", async () => {
+      setupMockDb();
+      mockAdapterGet.mockReturnValue(undefined); // No adapter registered
+
+      const { initDeliveryQueue, closeDeliveryQueue } = await import(
+        "../deliveryQueue"
+      );
+      await initDeliveryQueue();
+
+      const job = makeBullMQJob(makeJob({ channelType: "whatsapp" }));
+      await expect(capturedProcessor(job)).rejects.toThrow(
+        "No adapter for channel type: whatsapp",
       );
 
       await closeDeliveryQueue();

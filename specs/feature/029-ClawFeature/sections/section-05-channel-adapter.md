@@ -801,3 +801,46 @@ After implementation, verify:
 6. Row counts match between `telegramConnections` and `channel_connections` (telegram rows)
 7. All existing tests pass with no regressions
 8. New tests pass for adapter registry, telegram adapter, and webhook router
+
+---
+
+## As Built (Implementation Deviations)
+
+### Code Review Fixes Applied
+
+The following changes were made during the code review interview, deviating from the original plan:
+
+**H1 — CSRF regex anchored:** Added `$` end anchor to CSRF bypass regex in `_core/index.ts`:
+```typescript
+/^\/webhooks\/[a-z]+\/[a-z0-9-]+$/.test(req.path)
+```
+
+**H2 — tenantId filter added:** `resolveChannelConfig()` now filters `channelCredentials` by `tenantId` to prevent cross-tenant credential leakage.
+
+**M1 — Missing test added:** Added `processDeliveryJob (no adapter)` test to `deliveryQueue.test.ts`.
+
+**M2 — Early return for empty conversationId:** `channelWebhook.ts` now returns early when `activeChannelId` is null, logging an audit event instead of passing empty string to gateway.
+
+**M3 — Lifecycle hooks wired:** `_core/index.ts` now calls `adapter.initialize()` for all registered adapters at startup and `adapter.shutdown()` in SIGTERM/SIGINT handlers.
+
+**M4 — Migration columns added:** `migrate-telegram-to-channel-connections.ts` now includes `lastSeenAt` and `metadata` in the INSERT.
+
+**M5 — Dual-write implemented:** `telegramLinkService.ts` now dual-writes new connections to `channel_connections` inside the same transaction. Failure is non-critical (wrapped in try/catch) so it cannot break the link flow.
+
+**L1 — Dead try/catch removed:** `registry.register()` no longer has a try/catch around `Map.prototype.set()` (which never throws).
+
+**L2 — Explanatory comment added:** `ParsedInboundEvent` in `types.ts` has a comment explaining why it's intentionally narrower than `ChatIngressEvent`.
+
+### Queue Drain Risk Accepted
+
+Queue renamed `telegram-delivery` → `channel-delivery`. No drain script implemented. User accepted this as dev-only risk.
+
+### Actual Test Count
+
+- `channelAdapterRegistry.test.ts`: 6 tests
+- `telegramAdapter.test.ts`: (tests for webhook validation, inbound parsing, sendMessage)
+- `channelWebhook.test.ts`: 7 tests
+- `channelGateway.test.ts`: updated (4 new multi-adapter tests added)
+- `deliveryQueue.test.ts`: 12 tests (1 new: adapter-not-found case)
+
+Total new/updated tests: 63 passing

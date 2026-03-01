@@ -13,6 +13,7 @@ import { db } from "../db";
 import { auditLogger } from "./auditLogger";
 import {
   telegramConnections,
+  channelConnections,
   conversationChannels,
   channelMessages,
 } from "../../drizzle/schema";
@@ -25,6 +26,7 @@ import { enqueueDelivery } from "./deliveryQueue";
 import { sendTelegramMessage } from "./telegramService";
 import { getMessage } from "./telegramI18n";
 import { renderForTelegram } from "./telegramRendering";
+import { adapterRegistry } from "./channelAdapters/registry";
 import { inArray } from "drizzle-orm";
 import {
   createMessage,
@@ -79,17 +81,36 @@ async function ingest(event: ChatIngressEvent): Promise<IngestResult> {
       return { ok: false, error: "Missing connectionId", errorCode: "no_connection" };
     }
 
-    // 1. Validate connection (scoped to tenant for defense-in-depth)
-    const [connection] = await db
+    // 1. Validate connection — try channel_connections first, then telegramConnections (backward compat)
+    let connection: any = null;
+
+    const [channelConn] = await db
       .select()
-      .from(telegramConnections)
+      .from(channelConnections)
       .where(
         and(
-          eq(telegramConnections.id, connectionId),
-          eq(telegramConnections.tenantId, event.tenantId),
+          eq(channelConnections.id, connectionId),
+          eq(channelConnections.tenantId, event.tenantId),
         ),
       )
       .limit(1);
+
+    if (channelConn) {
+      connection = channelConn;
+    } else {
+      // Fallback to legacy telegramConnections during dual-write period
+      const [legacyConn] = await db
+        .select()
+        .from(telegramConnections)
+        .where(
+          and(
+            eq(telegramConnections.id, connectionId),
+            eq(telegramConnections.tenantId, event.tenantId),
+          ),
+        )
+        .limit(1);
+      connection = legacyConn ?? null;
+    }
 
     if (!connection) {
       return { ok: false, error: "Connection not found", errorCode: "no_connection" };
@@ -233,6 +254,16 @@ async function emitEgress(event: ChatEgressEvent): Promise<void> {
 
       const channelMessageId = crypto.randomUUID();
 
+      // Use adapter registry for message formatting per channel type
+      const adapter = adapterRegistry.get(binding.channelType);
+      if (!adapter) {
+        auditLogger.log({
+          eventType: "channel_gateway_no_adapter",
+          metadata: { channelType: binding.channelType, bindingId: binding.id },
+        });
+        continue;
+      }
+
       // Create tracking record
       await db.insert(channelMessages).values({
         id: channelMessageId,
@@ -240,14 +271,14 @@ async function emitEgress(event: ChatEgressEvent): Promise<void> {
         conversationChannelId: binding.id,
         messageId: event.messageId,
         messageType: event.conversationType,
-        channelType: "telegram",
+        channelType: binding.channelType,
         externalChatId: binding.channelRefId,
         deliveryStatus: "pending",
       });
 
-      // Render and split message for Telegram
+      // Format and split message using adapter
       const text = event.rendering.plainText;
-      const chunks = renderForTelegram(text);
+      const chunks = adapter.formatMessage(text);
 
       for (let i = 0; i < chunks.length; i++) {
         const job: DeliveryJob = {
@@ -255,6 +286,7 @@ async function emitEgress(event: ChatEgressEvent): Promise<void> {
           chatId: binding.channelRefId,
           text: chunks[i],
           parseMode: "HTML",
+          channelType: binding.channelType,
           conversationId: event.conversationId,
           tenantId: event.tenantId,
         };
@@ -268,7 +300,7 @@ async function emitEgress(event: ChatEgressEvent): Promise<void> {
   }
 }
 
-/** Query conversation_channels for active Telegram bindings with syncMode filter */
+/** Query conversation_channels for all active channel bindings with syncMode filter */
 async function queryActiveBindings(event: ChatEgressEvent) {
   if (event.conversationType === "chat") {
     const convId = parseInt(event.conversationId, 10);
@@ -282,7 +314,6 @@ async function queryActiveBindings(event: ChatEgressEvent) {
       .where(
         and(
           eq(conversationChannels.chatConversationId, convId),
-          eq(conversationChannels.channelType, "telegram"),
           eq(conversationChannels.state, "active"),
           eq(conversationChannels.tenantId, event.tenantId),
           inArray(conversationChannels.syncMode, ["two_way", "notify_only"]),
@@ -295,7 +326,6 @@ async function queryActiveBindings(event: ChatEgressEvent) {
       .where(
         and(
           eq(conversationChannels.agencyConversationId, event.conversationId),
-          eq(conversationChannels.channelType, "telegram"),
           eq(conversationChannels.state, "active"),
           eq(conversationChannels.tenantId, event.tenantId),
           inArray(conversationChannels.syncMode, ["two_way", "notify_only"]),
@@ -499,7 +529,6 @@ async function hasActiveChannels(
       .where(
         and(
           condition,
-          eq(conversationChannels.channelType, "telegram"),
           eq(conversationChannels.state, "active"),
         ),
       )

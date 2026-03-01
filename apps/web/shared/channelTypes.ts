@@ -32,7 +32,7 @@ export interface ChatIngressEvent {
   conversationType: "chat" | "agency";
   /** Channel metadata */
   channel: {
-    type: "web" | "telegram";
+    type: "web" | "telegram" | "whatsapp" | "line" | "slack" | "discord" | "widget";
     connectionId?: string;
     externalChatId?: string;
     externalMessageId?: string;
@@ -75,7 +75,7 @@ export interface ChatEgressEvent {
 }
 
 export interface ChatEgressTarget {
-  channelType: "web" | "telegram";
+  channelType: "web" | "telegram" | "whatsapp" | "line" | "slack" | "discord" | "widget";
   /** External reference (e.g., Telegram chat_id) */
   channelRefId: string;
   /** Delivery mode for this binding */
@@ -83,18 +83,20 @@ export interface ChatEgressTarget {
 }
 
 /**
- * Data payload for a BullMQ job in the telegram-delivery queue.
+ * Data payload for a BullMQ job in the channel-delivery queue.
  * Created by channelGateway, processed by the delivery worker.
  */
 export interface DeliveryJob {
   /** channel_messages.id — used for status tracking */
   channelMessageId: string;
-  /** Telegram chat_id for delivery */
+  /** External chat_id for delivery */
   chatId: string;
   /** HTML-formatted message content */
   text: string;
-  /** Always "HTML" for Telegram */
+  /** Parse mode for the channel */
   parseMode: "HTML";
+  /** Channel adapter routing key (e.g., "telegram", "whatsapp") */
+  channelType: string;
   /** Optional: for threading replies */
   replyToMessageId?: string;
   /** For logging and tracing */

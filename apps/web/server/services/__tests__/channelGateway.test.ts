@@ -16,6 +16,8 @@ const {
   mockHasEnoughCredits,
   mockDeductCreditsForModel,
   mockCalculateCreditsForLLM,
+  mockAdapterGet,
+  mockAgencyBridgeExecuteRun,
 } = vi.hoisted(() => ({
   mockSelect: vi.fn(),
   mockInsert: vi.fn(),
@@ -35,6 +37,24 @@ const {
   mockHasEnoughCredits: vi.fn().mockResolvedValue(true),
   mockDeductCreditsForModel: vi.fn().mockResolvedValue({ creditsUsed: 5, wasFree: false }),
   mockCalculateCreditsForLLM: vi.fn().mockReturnValue(5),
+  mockAdapterGet: vi.fn(),
+  mockAgencyBridgeExecuteRun: vi.fn().mockResolvedValue({ response: "Agency response", runId: "run-1" }),
+}));
+
+// Mock adapter registry — returns a Telegram-like adapter for known channelTypes
+vi.mock("../channelAdapters/registry", () => ({
+  adapterRegistry: {
+    get: mockAdapterGet,
+    register: vi.fn(),
+    getAll: vi.fn(() => []),
+    _reset: vi.fn(),
+  },
+}));
+
+vi.mock("../agencyBridge", () => ({
+  agencyBridge: {
+    executeRun: mockAgencyBridgeExecuteRun,
+  },
 }));
 
 vi.mock("../../db", () => ({
@@ -75,7 +95,20 @@ vi.mock("../creditService", () => ({
 }));
 
 vi.mock("../../../drizzle/schema", () => ({
-  telegramConnections: { id: "tc.id", status: "tc.status", activeChannelId: "tc.activeChannelId" },
+  telegramConnections: {
+    id: "tc.id",
+    status: "tc.status",
+    activeChannelId: "tc.activeChannelId",
+    tenantId: "tc.tenantId",
+    userId: "tc.userId",
+  },
+  channelConnections: {
+    id: "chconn.id",
+    status: "chconn.status",
+    activeChannelId: "chconn.activeChannelId",
+    tenantId: "chconn.tenantId",
+    userId: "chconn.userId",
+  },
   conversationChannels: {
     id: "cc.id",
     chatConversationId: "cc.chatConversationId",
@@ -84,8 +117,12 @@ vi.mock("../../../drizzle/schema", () => ({
     state: "cc.state",
     channelRefId: "cc.channelRefId",
     conversationType: "cc.conversationType",
+    syncMode: "cc.syncMode",
+    tenantId: "cc.tenantId",
   },
   channelMessages: { id: "cm.id" },
+  agencyConversations: { id: "ac.id", agencyId: "ac.agencyId" },
+  agencies: { id: "ag.id" },
 }));
 
 vi.mock("drizzle-orm", () => ({
@@ -164,6 +201,16 @@ function mockDbInsertChain() {
 describe("channelGateway", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: Telegram adapter available with simple formatMessage
+    mockAdapterGet.mockImplementation((channelType: string) => {
+      if (channelType === "telegram") {
+        return {
+          channelType: "telegram",
+          formatMessage: (text: string) => [text],
+        };
+      }
+      return undefined;
+    });
   });
 
   afterEach(() => {
@@ -286,6 +333,7 @@ describe("channelGateway", () => {
             limit: () => {
               callCount++;
               if (callCount === 1) {
+                // channel_connections lookup
                 return Promise.resolve([
                   {
                     id: "conn-1",
@@ -296,16 +344,21 @@ describe("channelGateway", () => {
                   },
                 ]);
               }
-              return Promise.resolve([
-                {
-                  id: "ch-1",
-                  conversationType: "agency",
-                  chatConversationId: null,
-                  agencyConversationId: "agency-conv-1",
-                  state: "active",
-                  channelRefId: "12345",
-                },
-              ]);
+              if (callCount === 2) {
+                // conversationChannels lookup
+                return Promise.resolve([
+                  {
+                    id: "ch-1",
+                    conversationType: "agency",
+                    chatConversationId: null,
+                    agencyConversationId: "agency-conv-1",
+                    state: "active",
+                    channelRefId: "12345",
+                  },
+                ]);
+              }
+              // callCount === 3: agencyConversations lookup
+              return Promise.resolve([{ agencyId: "agency-1" }]);
             },
           }),
         }),
@@ -316,6 +369,9 @@ describe("channelGateway", () => {
       );
 
       expect(result.ok).toBe(true);
+      expect(mockAgencyBridgeExecuteRun).toHaveBeenCalledWith(
+        expect.objectContaining({ agencyId: "agency-1", conversationId: "agency-conv-1" }),
+      );
     });
 
     it("rejects event with missing connectionId", async () => {
@@ -570,6 +626,97 @@ describe("channelGateway", () => {
       expect(result.success).toBe(false);
       // Should still save an error message for conversation consistency
       expect(mockCreateMessage).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  // --- Multi-adapter: emitEgress ---
+
+  describe("emitEgress (multi-adapter)", () => {
+    it("queries bindings for all channel types, not just telegram", async () => {
+      // After refactor, the WHERE clause should NOT include channelType="telegram" filter
+      mockDbSelectArray([]);
+
+      await channelGateway.emitEgress(makeEgressEvent());
+
+      // Verify adapter registry is consulted (would be called per binding)
+      // No bindings returned, so adapter.get not called
+      expect(mockEnqueueDelivery).not.toHaveBeenCalled();
+    });
+
+    it("uses adapter registry for message formatting per channel type", async () => {
+      const mockWhatsappFormatMessage = vi.fn((text: string) => [`[WA] ${text}`]);
+      mockAdapterGet.mockImplementation((channelType: string) => {
+        if (channelType === "whatsapp") {
+          return { channelType: "whatsapp", formatMessage: mockWhatsappFormatMessage };
+        }
+        return undefined;
+      });
+
+      mockDbSelectArray([
+        {
+          id: "cc-1",
+          channelRefId: "wa-phone-1",
+          channelType: "whatsapp",
+          state: "active",
+        },
+      ]);
+      mockDbInsertChain();
+
+      await channelGateway.emitEgress(makeEgressEvent());
+
+      expect(mockWhatsappFormatMessage).toHaveBeenCalledWith("Hello!");
+      expect(mockEnqueueDelivery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          text: "[WA] Hello!",
+          channelType: "whatsapp",
+          chatId: "wa-phone-1",
+        }),
+      );
+    });
+
+    it("skips bindings when adapter not found for channel type", async () => {
+      // No adapter registered for "unknown_channel"
+      mockAdapterGet.mockReturnValue(undefined);
+
+      mockDbSelectArray([
+        {
+          id: "cc-1",
+          channelRefId: "ref-1",
+          channelType: "unknown_channel",
+          state: "active",
+        },
+      ]);
+      mockDbInsertChain();
+
+      await channelGateway.emitEgress(makeEgressEvent());
+
+      // Should skip — no delivery enqueued
+      expect(mockEnqueueDelivery).not.toHaveBeenCalled();
+    });
+
+    it("includes channelType in DeliveryJob", async () => {
+      mockAdapterGet.mockImplementation((channelType: string) => {
+        if (channelType === "telegram") {
+          return { channelType: "telegram", formatMessage: (text: string) => [text] };
+        }
+        return undefined;
+      });
+
+      mockDbSelectArray([
+        {
+          id: "cc-1",
+          channelRefId: "12345",
+          channelType: "telegram",
+          state: "active",
+        },
+      ]);
+      mockDbInsertChain();
+
+      await channelGateway.emitEgress(makeEgressEvent());
+
+      expect(mockEnqueueDelivery).toHaveBeenCalledWith(
+        expect.objectContaining({ channelType: "telegram" }),
+      );
     });
   });
 });
