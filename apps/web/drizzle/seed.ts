@@ -4,7 +4,7 @@
  */
 
 import { getDb } from "../server/db";
-import { llmProviders, modelProviderMap, routingRules } from "./schema";
+import { llmProviders, modelProviderMap, routingRules, personaTemplates } from "./schema";
 import { eq } from "drizzle-orm";
 
 interface ModelMapping {
@@ -314,4 +314,101 @@ export async function seedZenProvider(): Promise<void> {
 
   console.log(`[Seed] Routing rules seeded`);
   console.log(`[Seed] Done!`);
+}
+
+/**
+ * Seed platform-scope persona templates.
+ * Idempotent — ON CONFLICT DO NOTHING.
+ */
+export async function seedPersonaTemplates(): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Seed] Database not available — skipping persona seeds");
+    return;
+  }
+
+  const personas = [
+    {
+      id: "00000000-0000-0000-0000-000000000001",
+      name: "SmartSpec Default",
+      description: "Helpful, concise, markdown-friendly general assistant",
+      systemPromptPrefix: "You are a friendly, helpful AI assistant. Provide clear, concise, and well-formatted responses using markdown when appropriate.",
+      tone: "friendly",
+      language: "auto",
+      scope: "platform",
+      isDefault: true,
+    },
+    {
+      id: "00000000-0000-0000-0000-000000000002",
+      name: "Professional Advisor",
+      description: "Business-appropriate, structured responses",
+      systemPromptPrefix: "You are a professional business advisor. Provide structured, formal responses with clear recommendations. Use bullet points and headers for organization.",
+      tone: "formal",
+      language: "auto",
+      scope: "platform",
+      isDefault: false,
+    },
+    {
+      id: "00000000-0000-0000-0000-000000000003",
+      name: "Creative Partner",
+      description: "Imaginative, expressive, explorative",
+      systemPromptPrefix: "You are a creative partner. Think outside the box, offer imaginative suggestions, and explore unconventional ideas. Be expressive and inspiring.",
+      tone: "creative",
+      language: "auto",
+      scope: "platform",
+      isDefault: false,
+    },
+    {
+      id: "00000000-0000-0000-0000-000000000004",
+      name: "Technical Expert",
+      description: "Precise, code-heavy, documentation-oriented",
+      systemPromptPrefix: "You are a technical expert. Provide precise, detailed answers with code examples when relevant. Include references to documentation and best practices.",
+      tone: "technical",
+      language: "auto",
+      scope: "platform",
+      isDefault: false,
+    },
+    {
+      id: "00000000-0000-0000-0000-000000000005",
+      name: "Thai Assistant",
+      description: "Always responds in Thai regardless of input language",
+      systemPromptPrefix: "คุณเป็นผู้ช่วย AI ที่เป็นมิตร กรุณาตอบเป็นภาษาไทยเสมอ ไม่ว่าผู้ใช้จะพิมพ์ภาษาใด ให้คำตอบที่ชัดเจนและเข้าใจง่าย",
+      tone: "friendly",
+      language: "th",
+      scope: "platform",
+      isDefault: false,
+    },
+    {
+      id: "00000000-0000-0000-0000-000000000006",
+      name: "Concise Bot",
+      description: "Ultra-short answers, minimal formatting",
+      systemPromptPrefix: "Be extremely concise. Answer in the fewest words possible. No unnecessary formatting, headers, or bullet points unless specifically requested.",
+      tone: "casual",
+      language: "auto",
+      scope: "platform",
+      isDefault: false,
+    },
+  ];
+
+  for (const persona of personas) {
+    await db
+      .insert(personaTemplates)
+      .values({
+        id: persona.id,
+        tenantId: null,
+        userId: null,
+        name: persona.name,
+        description: persona.description,
+        systemPromptPrefix: persona.systemPromptPrefix,
+        tone: persona.tone,
+        language: persona.language,
+        responseStyle: {},
+        restrictions: [],
+        scope: persona.scope,
+        isDefault: persona.isDefault,
+      })
+      .onConflictDoNothing();
+  }
+
+  console.log(`[Seed] ${personas.length} platform persona templates seeded`);
 }

@@ -29,6 +29,7 @@ from app.services.agency_credits import AgencyCreditManager
 from app.services.agency_persistence import create_persistence_hooks
 from app.services.agency_tools import resolve_tools_for_agent
 from app.services.agency_audit import log_agency_event, reconcile_credits
+from app.services.agency_orchestrator import AgencyOrchestrator, should_use_orchestrator
 
 logger = structlog.get_logger(__name__)
 
@@ -136,11 +137,14 @@ class AgencyService:
         )
 
     async def _load_agents(self, agency_id: str) -> list[dict]:
-        """Load agent definitions for an agency."""
+        """Load agent definitions for an agency (includes nodeType + nodeConfig)."""
         result = await self.db.execute(
             text("""
-                SELECT id, name, instructions, model, "modelSettings" as model_settings,
-                       "isEntryPoint" as is_entry_point
+                SELECT id, name, instructions, model,
+                       "modelSettings" as model_settings,
+                       "isEntryPoint" as is_entry_point,
+                       "nodeType" as node_type,
+                       "nodeConfig" as node_config
                 FROM agency_agents
                 WHERE "agencyId" = :agency_id
                 ORDER BY "createdAt" ASC
@@ -155,6 +159,8 @@ class AgencyService:
                 "model": row.model or "gpt-4o-mini",
                 "model_settings": row.model_settings,
                 "is_entry_point": row.is_entry_point,
+                "node_type": row.node_type or "agent",
+                "node_config": row.node_config or {},
             }
             for row in result.all()
         ]
@@ -173,7 +179,7 @@ class AgencyService:
         return {row[0] for row in result.all()}
 
     async def _load_flows(self, agency_id: str) -> list[tuple[str, str]]:
-        """Load communication flows as (from_name, to_name) tuples."""
+        """Load communication flows as (from_name, to_name) tuples (for AgencySwarmAdapter)."""
         result = await self.db.execute(
             text("""
                 SELECT fa.name as from_agent_name, ta.name as to_agent_name
@@ -185,6 +191,27 @@ class AgencyService:
             {"agency_id": agency_id},
         )
         return [(row.from_agent_name, row.to_agent_name) for row in result.all()]
+
+    async def _load_flows_full(self, agency_id: str) -> list[dict]:
+        """Load full edge data for AgencyOrchestrator (includes flowType + node IDs)."""
+        result = await self.db.execute(
+            text("""
+                SELECT cf."fromAgentId" as from_node_id,
+                       cf."toAgentId" as to_node_id,
+                       cf."flowType" as flow_type
+                FROM agency_communication_flows cf
+                WHERE cf."agencyId" = :agency_id
+            """),
+            {"agency_id": agency_id},
+        )
+        return [
+            {
+                "from_node_id": row.from_node_id,
+                "to_node_id": row.to_node_id,
+                "flow_type": row.flow_type or "delegation",
+            }
+            for row in result.all()
+        ]
 
     async def execute_run(
         self,
@@ -207,7 +234,36 @@ class AgencyService:
         # 2. Load agent definitions (separate query, not duplicated from load_agency)
         agents_data = await self._load_agents(agency_id)
 
-        # 3. Pre-check credits
+        # 2b. If agency contains non-agent nodes → use AgencyOrchestrator (backward-compatible)
+        if should_use_orchestrator(agents_data):
+            logger.info(
+                "agency_run_orchestrator_path",
+                agency_id=agency_id,
+                node_count=len(agents_data),
+            )
+            edges_data = await self._load_flows_full(agency_id)
+            orchestrator = AgencyOrchestrator(
+                nodes=agents_data,
+                edges=edges_data,
+                adapter=self.adapter,
+                db=self.db,
+                agency_config=agency_config,
+            )
+            response_text = await orchestrator.run(
+                message=message,
+                user_token=context.user_token,
+                tenant_id=context.tenant_id,
+                user_id=context.user_id,
+            )
+            elapsed = time.monotonic() - start_time
+            return RunResult(
+                response=response_text,
+                run_id=run_id,
+                agent_name="orchestrator",
+                duration_ms=int(elapsed * 1000),
+            )
+
+        # 3. Pre-check credits (agent-only agencies — original path)
         estimate = self.credit_manager.estimate_run_cost(
             agent_count=max(len(agents_data), 1),
         )
@@ -238,13 +294,27 @@ class AgencyService:
             db_session_factory=AsyncSessionLocal,
         )
 
-        # 6. Construct agents via adapter
+        # 6. Construct agents via adapter (with agent-level KB retrieval)
         agents = []
         for agent_data in agents_data:
+            agent_instructions = agent_data["instructions"]
+            node_config = agent_data.get("node_config") or {}
+            if node_config.get("knowledgeBase", {}).get("documentIds"):
+                from app.services.agent_knowledge import retrieve_agent_knowledge
+
+                kb_context = await retrieve_agent_knowledge(
+                    node_config=node_config,
+                    query=message,
+                    tenant_id=context.tenant_id,
+                    user_id=context.user_id,
+                )
+                if kb_context:
+                    agent_instructions = agent_instructions + kb_context
+
             agent = self.adapter.create_agent(
                 config=AgentConfig(
                     name=agent_data["name"],
-                    instructions=agent_data["instructions"],
+                    instructions=agent_instructions,
                     model=agent_data["model"],
                     model_settings=agent_data["model_settings"],
                     tools=agent_tools.get(agent_data["id"], []),
@@ -420,6 +490,8 @@ class AgencyService:
         agency_id: str,
         message: str,
         context: RunContext,
+        model_override: str | None = None,
+        persona_prefix: str | None = None,
     ) -> AsyncGenerator[dict, None]:
         """Streaming variant: yields SSE-formatted event dicts.
 
@@ -437,6 +509,28 @@ class AgencyService:
             agency_config.conversation_id = context.conversation_id
 
             agents_data = await self._load_agents(agency_id)
+
+            # Orchestrator path for non-agent nodes (streaming: emit as single token event)
+            if should_use_orchestrator(agents_data):
+                logger.info("agency_run_stream_orchestrator_path", agency_id=agency_id)
+                yield {"event": "run_started", "data": {"run_id": run_id}}
+                edges_data = await self._load_flows_full(agency_id)
+                orchestrator = AgencyOrchestrator(
+                    nodes=agents_data,
+                    edges=edges_data,
+                    adapter=self.adapter,
+                    db=self.db,
+                    agency_config=agency_config,
+                )
+                response_text = await orchestrator.run(
+                    message=message,
+                    user_token=context.user_token,
+                    tenant_id=context.tenant_id,
+                    user_id=context.user_id,
+                )
+                yield {"event": "token", "data": {"token": response_text}}
+                yield {"event": "run_finished", "data": {"run_id": run_id, "response": response_text}}
+                return
 
             agency_whitelist = await self._load_tool_whitelist(agency_id)
             agent_tools: dict[str, list[type]] = {}
@@ -456,16 +550,32 @@ class AgencyService:
 
             agents = []
             for agent_data in agents_data:
+                agent_instructions = agent_data["instructions"]
+                node_config = agent_data.get("node_config") or {}
+                if node_config.get("knowledgeBase", {}).get("documentIds"):
+                    from app.services.agent_knowledge import retrieve_agent_knowledge
+
+                    kb_context = await retrieve_agent_knowledge(
+                        node_config=node_config,
+                        query=message,
+                        tenant_id=context.tenant_id,
+                        user_id=context.user_id,
+                    )
+                    if kb_context:
+                        agent_instructions = agent_instructions + kb_context
+
+                run_config = {"persona_prefix": persona_prefix} if persona_prefix else None
                 agent = self.adapter.create_agent(
                     config=AgentConfig(
                         name=agent_data["name"],
-                        instructions=agent_data["instructions"],
-                        model=agent_data["model"],
+                        instructions=agent_instructions,
+                        model=model_override or agent_data["model"],
                         model_settings=agent_data["model_settings"],
                         tools=agent_tools.get(agent_data["id"], []),
                         is_entry_point=agent_data["is_entry_point"],
                     ),
                     user_token=context.user_token,
+                    run_config=run_config,
                 )
                 agents.append(agent)
 
@@ -485,9 +595,90 @@ class AgencyService:
                 tenant_id=context.tenant_id,
             )
 
-            # Iterate stream events
-            for event in stream:
-                yield {"event": "token", "data": {"delta": str(event)}}
+            # Iterate stream events (StreamingRunResponse is an async iterable)
+            current_agent_name = ""
+            event_count = 0
+            token_count = 0
+            async for event in stream:
+                event_count += 1
+                etype = getattr(event, "type", "")
+
+                # Debug: log every event type for diagnosis
+                if isinstance(event, dict):
+                    logger.info(
+                        "agency_stream_event_dict",
+                        event_num=event_count,
+                        keys=list(event.keys()),
+                        event_type=event.get("type", "?"),
+                    )
+                else:
+                    logger.info(
+                        "agency_stream_event",
+                        event_num=event_count,
+                        event_type=etype,
+                        event_class=type(event).__name__,
+                    )
+
+                if etype == "raw_response_event":
+                    # Extract text delta from OpenAI response stream events
+                    raw = event.data
+                    raw_type = getattr(raw, "type", "")
+                    logger.info(
+                        "agency_raw_event",
+                        raw_type=raw_type,
+                        raw_class=type(raw).__name__,
+                        has_delta=hasattr(raw, "delta"),
+                    )
+                    if raw_type == "response.output_text.delta":
+                        delta = getattr(raw, "delta", "")
+                        if delta:
+                            token_count += 1
+                            yield {"event": "token", "data": {"token": delta, "agent_name": current_agent_name}}
+
+                elif etype == "run_item_stream_event":
+                    item_name = getattr(event, "name", "")
+                    logger.info("agency_run_item_event", item_name=item_name)
+                    if item_name == "handoff_occured":
+                        # Agent handoff — extract target agent name
+                        item = getattr(event, "item", None)
+                        target = getattr(item, "target_agent", None)
+                        agent_name = getattr(target, "name", "") if target else ""
+                        if agent_name:
+                            current_agent_name = agent_name
+                            yield {"event": "agent_switch", "data": {"agent_name": agent_name}}
+                    elif item_name == "tool_called":
+                        item = getattr(event, "item", None)
+                        tool_name = getattr(item, "name", "") if item else ""
+                        yield {"event": "tool_call", "data": {"tool_name": tool_name, "agent_name": current_agent_name}}
+                    elif item_name == "tool_output":
+                        item = getattr(event, "item", None)
+                        output = getattr(item, "output", "") if item else ""
+                        yield {"event": "tool_result", "data": {"result": str(output)[:500], "agent_name": current_agent_name}}
+                    elif item_name == "message_output_created":
+                        # Final message output — may contain the complete text
+                        item = getattr(event, "item", None)
+                        if item:
+                            raw_item = getattr(item, "raw_item", None)
+                            if raw_item:
+                                content_parts = getattr(raw_item, "content", [])
+                                for part in content_parts:
+                                    text = getattr(part, "text", "")
+                                    if text and token_count == 0:
+                                        # Only use message_output if we got no deltas
+                                        yield {"event": "token", "data": {"token": text, "agent_name": current_agent_name}}
+
+                elif etype == "agent_updated_stream_event":
+                    new_agent = getattr(event, "new_agent", None)
+                    agent_name = getattr(new_agent, "name", "") if new_agent else ""
+                    if agent_name and agent_name != current_agent_name:
+                        current_agent_name = agent_name
+                        yield {"event": "agent_switch", "data": {"agent_name": agent_name}}
+
+            logger.info(
+                "agency_stream_completed",
+                total_events=event_count,
+                tokens_yielded=token_count,
+            )
 
             yield {"event": "run_finished", "data": {"run_id": run_id}}
 

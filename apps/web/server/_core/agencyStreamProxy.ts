@@ -70,7 +70,7 @@ export function registerAgencyStreamRoutes(app: Express): void {
     }
 
     // Step 3: Extract and validate request body
-    const { agencyId, conversationId, message } = req.body || {};
+    const { agencyId, conversationId, message, modelOverride } = req.body || {};
     if (!agencyId || !message) {
       return res
         .status(400)
@@ -134,6 +134,42 @@ export function registerAgencyStreamRoutes(app: Express): void {
       cleanup();
     });
 
+    // Resolve persona prefix for this agency conversation
+    let personaPrefix: string | undefined;
+    try {
+      const { resolvePersona, buildPersonaPromptSegments } = await import("../services/personaService");
+      const { getDb } = await import("../db");
+      const { conversations: convTable } = await import("../../drizzle/schema");
+      const { eq } = await import("drizzle-orm");
+
+      const pdb = await getDb();
+      if (pdb && conversationId) {
+        // Try to load conversation persona context
+        const convResult = await pdb
+          .select({ personaId: convTable.personaId, tenantId: convTable.tenantId })
+          .from(convTable)
+          .where(eq(convTable.id, Number(conversationId) || 0))
+          .limit(1);
+
+        const conv = convResult[0];
+        if (conv) {
+          const persona = await resolvePersona(
+            { personaId: conv.personaId || null, tenantId: conv.tenantId || null },
+            { id: userId, defaultPersonaId: null },
+            { id: conv.tenantId || "", defaultPersonaId: null },
+          );
+          if (persona) {
+            personaPrefix = buildPersonaPromptSegments(persona).prefix;
+          }
+        }
+      }
+    } catch (err) {
+      // Persona resolution failed — continue without persona
+      if (err instanceof Error && !err.message?.includes("not enabled")) {
+        debugError("[agencyStreamProxy] Persona resolution failed:", err);
+      }
+    }
+
     try {
       const upstream = await fetch(
         `${PY_BACKEND}/api/v1/agencies/${encodeURIComponent(agencyId)}/stream`,
@@ -148,6 +184,8 @@ export function registerAgencyStreamRoutes(app: Express): void {
           body: JSON.stringify({
             message,
             conversation_id: conversationId,
+            ...(modelOverride && typeof modelOverride === "string" ? { model_override: modelOverride } : {}),
+            ...(personaPrefix ? { persona_prefix: personaPrefix } : {}),
           }),
           signal: controller.signal,
         },

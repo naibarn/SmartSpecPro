@@ -23,7 +23,12 @@
     "section-14-feature-flags",
     "section-15-security-infra"
   ],
-  "sections_state": {},
+  "sections_state": {
+    "section-01-database": {
+      "status": "complete",
+      "commit_hash": "7198bd59055af2bdc963ed35169122f44b444233"
+    }
+  },
   "pre_commit": {
     "present": false,
     "type": "none",

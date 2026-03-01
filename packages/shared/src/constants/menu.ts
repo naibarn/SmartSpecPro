@@ -38,12 +38,14 @@ export const defaultMenuItems: MenuItem[] = [
   { id: 'video-editor',  label: 'Video Editor',    labelTh: 'ตัดต่อวีดีโอ',   icon: 'Film',            path: '/video-editor',   platforms: ['web', 'desktop'], group: 'main', sortOrder: 8.5 },
   { id: 'credits',       label: 'Credits',         labelTh: 'เครดิต',        icon: 'CreditCard',      path: '/credits',        platforms: ['web', 'desktop'], group: 'main', sortOrder: 9 },
   { id: 'usage-analytics', label: 'Usage Analytics', labelTh: 'สถิติการใช้งาน', icon: 'BarChart3',       path: '/usage',          platforms: ['web', 'desktop'], group: 'main', sortOrder: 9.5 },
+  { id: 'settings-personas', label: 'Personas',      labelTh: 'เพอร์โซนา',     icon: 'UserCircle',      path: '/settings/personas', platforms: ['web', 'desktop'], group: 'main', sortOrder: 98, requiresFeature: 'AI_PERSONA_ENABLED' },
   { id: 'settings',      label: 'Settings',        labelTh: 'ตั้งค่า',       icon: 'Settings',        path: '/settings',       platforms: ['web', 'desktop'], group: 'main', sortOrder: 99 },
 
   // === Admin group ===
   { id: 'admin-overview',       label: 'Admin Overview',    labelTh: 'ภาพรวมระบบ',     icon: 'LayoutDashboard', path: '/admin/dashboard',      platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 18 },
   { id: 'admin-ops',            label: 'Ops Dashboard',     labelTh: 'ระบบปฏิบัติการ', icon: 'Activity',    path: '/admin/ops',                platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 19 },
   { id: 'admin-funnel',         label: 'Funnel Analytics',  labelTh: 'วิเคราะห์ Funnel', icon: 'TrendingUp', path: '/admin/funnel',             platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 19.5, requiresFeature: 'FUNNEL_DASHBOARD' },
+  { id: 'admin-approvals',      label: 'Approvals',         labelTh: 'อนุมัติ',        icon: 'ClipboardCheck', path: '/admin/approvals',       platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 19.8 },
   { id: 'admin-tenants',        label: 'Tenants',           icon: 'Building2',   path: '/admin/tenants',            platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 20 },
   { id: 'admin-services',       label: 'Services',          icon: 'Server',      path: '/admin/services',           platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 21 },
   { id: 'admin-queues',         label: 'Queue Dashboard',   icon: 'Gauge',       path: '/admin/queues',             platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 21.5 },
@@ -58,6 +60,8 @@ export const defaultMenuItems: MenuItem[] = [
   { id: 'admin-media-models',   label: 'Media AI Models',   icon: 'Sparkles',    path: '/admin/media-models',       platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 27 },
   { id: 'admin-skills',         label: 'Skills',            icon: 'Wand2',       path: '/admin/skills',             platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 28 },
   { id: 'admin-skill-repos',    label: 'Skill Repos',       icon: 'GitBranch',   path: '/admin/skill-repositories', platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 29 },
+  { id: 'admin-personas',       label: 'Personas',          icon: 'UserCircle',  path: '/admin/personas',           platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 30.5, requiresFeature: 'AI_PERSONA_ENABLED' },
+  { id: 'admin-agencies',       label: 'Agencies',          icon: 'Bot',         path: '/admin/agencies',           platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 30 },
   { id: 'admin-gallery',        label: 'Gallery Admin',     icon: 'Images',      path: '/admin/gallery',            platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 31 },
   { id: 'admin-settings',       label: 'Platform Settings', icon: 'Settings',    path: '/admin/settings',           platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 32 },
 

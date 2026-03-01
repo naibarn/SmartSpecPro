@@ -87,35 +87,60 @@ class RunResult(BaseModel):
 class AgencySwarmAdapter:
     """Version-isolated interface to agency-swarm v1.8.0."""
 
+    @staticmethod
+    def _normalize_model_name(model_name: str) -> str:
+        """Strip provider prefixes (e.g. 'openai/gpt-5.2' → 'gpt-5.2').
+
+        The SmartSpecPro LLM gateway resolves models by internal modelId
+        (e.g. 'gpt-5.2'), not by provider-prefixed names. Some frontends
+        store the prefixed form, so we strip it here.
+        """
+        if "/" in model_name:
+            return model_name.split("/", 1)[1]
+        return model_name
+
     def _create_model(
         self, model_name: str, user_token: str
     ) -> OpenAIChatCompletionsModel:
         """Create an OpenAIChatCompletionsModel pointing to the Node.js gateway.
 
         The AsyncOpenAI client uses:
-        - base_url: NODEJS_INTERNAL_URL/api/llm/v2 (gateway endpoint)
+        - base_url: NODEJS_INTERNAL_URL/v1 (OpenAI-compatible gateway endpoint)
         - api_key: user_token (JWT for credit attribution)
+
+        The OpenAI SDK appends /chat/completions to base_url, so we point to
+        /v1 to hit the registered route at /v1/chat/completions.
         """
+        model_name = self._normalize_model_name(model_name)
         base_url = os.environ.get("NODEJS_INTERNAL_URL", "http://localhost:3000")
         client = AsyncOpenAI(
             api_key=user_token,
-            base_url=f"{base_url}/api/llm/v2",
+            base_url=f"{base_url}/v1",
         )
         return OpenAIChatCompletionsModel(model=model_name, openai_client=client)
 
-    def create_agent(self, config: AgentConfig, user_token: str) -> Agent:
+    def create_agent(
+        self,
+        config: AgentConfig,
+        user_token: str,
+        run_config: dict[str, Any] | None = None,
+    ) -> Agent:
         """Construct an Agent with SmartSpecPro's gateway-routed LLM model.
 
         Returns an agency-swarm Agent instance with:
-        - name and instructions from config
+        - name and instructions from config (with optional persona_prefix prepended)
         - model routed through Node.js gateway
         - tools attached
         """
         model = self._create_model(config.model, user_token)
 
+        instructions = config.instructions
+        if run_config and run_config.get("persona_prefix"):
+            instructions = f"{run_config['persona_prefix']}\n\n{instructions}"
+
         agent_kwargs: dict[str, Any] = {
             "name": config.name,
-            "instructions": config.instructions,
+            "instructions": instructions,
             "model": model,
             "tools": list(config.tools),
         }

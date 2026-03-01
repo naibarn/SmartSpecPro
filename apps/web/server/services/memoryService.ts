@@ -674,6 +674,7 @@ export async function buildChatContext(
     currentUserMessage?: string;  // for relevance scoring
     memoryMode?: "full" | "no_long" | "off";  // memory toggle
     projectId?: string;           // for cross-session project summaries
+    tenantId?: string;            // for persona resolution
   }
 ): Promise<ChatContext> {
   const estimateTokens = (text: string) => Math.ceil(text.length / 4);
@@ -682,8 +683,45 @@ export async function buildChatContext(
 
   let used = 0;
 
+  // 0. Resolve persona and prepend to system prompt
+  let effectiveSystemPrompt = systemPrompt;
+  try {
+    const { resolvePersona, buildPersonaPromptSegments } = await import("./personaService");
+    const db = await getDb();
+    if (db) {
+      const convResult = await db
+        .select({ personaId: conversations.personaId, tenantId: conversations.tenantId })
+        .from(conversations)
+        .where(eq(conversations.id, conversationId))
+        .limit(1);
+
+      const conv = convResult[0];
+      const convTenantId = conv?.tenantId || options?.tenantId || null;
+
+      const persona = await resolvePersona(
+        { personaId: conv?.personaId || null, tenantId: convTenantId },
+        { id: userId, defaultPersonaId: null },
+        { id: convTenantId || "", defaultPersonaId: null },
+      );
+
+      if (persona) {
+        const segments = buildPersonaPromptSegments(persona);
+        const parts: string[] = [segments.prefix];
+        if (segments.styleInstructions) parts.push(segments.styleInstructions);
+        if (segments.restrictionsBulletPoints) parts.push(segments.restrictionsBulletPoints);
+        if (effectiveSystemPrompt) parts.push(effectiveSystemPrompt);
+        effectiveSystemPrompt = parts.join("\n\n");
+      }
+    }
+  } catch (err) {
+    // Persona system disabled or unavailable — continue without persona
+    if (err instanceof Error && !err.message.includes("not enabled")) {
+      console.warn("[memoryService] Persona resolution failed:", err.message);
+    }
+  }
+
   // System prompt (never trimmed)
-  if (systemPrompt) used += estimateTokens(systemPrompt);
+  if (effectiveSystemPrompt) used += estimateTokens(effectiveSystemPrompt);
 
   let entityContext: string | null = null;
 
@@ -717,7 +755,7 @@ export async function buildChatContext(
       for (const entity of rankedEntities) {
         const entityText = `[${entity.entityType}:${entity.entityName}] ${entity.facts.slice(0, 3).join("; ")}`;
         const cost = estimateTokens(entityText);
-        if (used + cost > entityBudget + (systemPrompt ? estimateTokens(systemPrompt) : 0)) break;
+        if (used + cost > entityBudget + (effectiveSystemPrompt ? estimateTokens(effectiveSystemPrompt) : 0)) break;
         includedEntities.push(entity);
         used += cost;
       }
@@ -762,7 +800,7 @@ export async function buildChatContext(
   const includedSummaries: string[] = [];
   for (const s of allSummaries.reverse()) {
     const cost = estimateTokens(s.summary);
-    if (used + cost > summaryBudget + (systemPrompt ? estimateTokens(systemPrompt) : 0)) break;
+    if (used + cost > summaryBudget + (effectiveSystemPrompt ? estimateTokens(effectiveSystemPrompt) : 0)) break;
     includedSummaries.push(s.summary);
     used += cost;
   }
@@ -788,7 +826,7 @@ export async function buildChatContext(
   }
 
   return {
-    systemPrompt,
+    systemPrompt: effectiveSystemPrompt,
     entityContext,
     summaryContext,
     bufferMessages,

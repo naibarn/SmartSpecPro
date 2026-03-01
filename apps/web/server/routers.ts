@@ -67,6 +67,7 @@ import { presentationRouter } from "./routers/presentation";
 import { presentationImportRouter } from "./routers/presentationImport";
 import { sandboxRouter } from "./routers/sandbox";
 import { agencyRouter } from "./routers/agency";
+import { personaRouter } from "./routers/persona";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -1755,6 +1756,7 @@ export const appRouter = router({
   search: searchRouter,
   adminOps: adminOpsRouter,
   funnelAnalytics: funnelAnalyticsRouter,
+  persona: personaRouter,
 });
 
 export type AppRouter = typeof appRouter;

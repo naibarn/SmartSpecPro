@@ -454,3 +454,43 @@ export const personaRouter = router({
 5. **Feature flag graceful degradation.** When `AI_PERSONA_ENABLED` is false (or not set), all persona-related code paths are skipped silently. The `buildChatContext` functions behave exactly as they do today. The tRPC router endpoints should return a 403 with a clear message.
 
 6. **Widget persona resolution.** The `chat_widgets` table (created in section-01-database, migration 4) has a `defaultPersonaId` column. The `resolvePersona` function accepts an optional `widgetId` parameter. If a widgetId is provided and the widget has a `defaultPersonaId`, it takes priority over user/tenant defaults but not over a conversation-level explicit persona.
+
+---
+
+## 5. Implementation Notes (Post-Build)
+
+### What Was Actually Built
+
+All planned files were created and modified as specified. Total: **33 tests** (30 TypeScript via Vitest, 3 Python via pytest), all passing.
+
+### Deviations from Plan
+
+1. **Python-side persona_prefix sanitization added (not in original plan).** Code review identified that the Python backend accepted `persona_prefix` without any validation. A `safe_persona_prefix` property was added to `AgencyRunRequest` in `agencies.py` with the same blocklist patterns (`[SYSTEM]`, `[INST]`, `<<SYS>>`, `</s>`, `[/INST]`). The stream endpoint now uses `request.safe_persona_prefix` instead of the raw value. This was a defense-in-depth addition approved during the code review interview.
+
+2. **setUserDefault/setTenantDefault validation added.** Original plan did not specify validating that a persona exists and is accessible before setting it as default. Code review flagged this as HIGH severity. Both procedures now query the persona and verify tenant isolation before updating.
+
+3. **Update sanitization gate broadened.** The `update` mutation's sanitization gate originally only re-ran sanitization when `systemPromptPrefix` changed. Post-review fix expanded this to also trigger when `restrictions` change, since restrictions can also contain injection payloads.
+
+4. **Admin menu `requiresFeature` flag added.** The `admin-personas` menu item was missing the `AI_PERSONA_ENABLED` feature flag gating, allowing the menu to appear even when the feature is disabled. Fixed post-review.
+
+5. **Bare catch blocks improved.** Catch blocks in chatService, memoryService, and agencyStreamProxy persona resolution were originally empty. Post-review fix added `console.error` logging for debugging.
+
+6. **Python test approach.** The `test_agency_persona.py` tests patch `Agent` class directly rather than just `_create_model`, because agency-swarm validates the `model` parameter type. Assertions use `MockAgent.call_args[1]` to verify instructions content.
+
+### Acknowledged Limitations (Deferred)
+
+- **user/tenant defaultPersonaId not loaded from DB in buildChatContext.** The resolution falls back to platform default when user/tenant defaults are not passed by callers. This is acceptable because callers don't currently have full user/tenant objects available. Will be addressed when callers are refactored.
+- **Duplicated resolution logic** in chatService and memoryService (both call resolvePersona independently). Can be extracted in a future refactor.
+- **Non-streaming execute_run** in agency service does not pass persona_prefix. Persona support can be added when that code path is actively used.
+
+### Test Summary
+
+| Test File | Count | Type |
+|-----------|-------|------|
+| personaService.test.ts | 8 | Resolution chain + tenant isolation |
+| personaSanitization.test.ts | 8 | Prompt injection mitigation |
+| personaChatContext.test.ts | 5 | buildPersonaPromptSegments |
+| persona.test.ts (router) | 7 | RBAC logic |
+| agencyStreamPersona.test.ts | 2 | Persona passthrough to Python |
+| test_agency_persona.py | 3 | Python persona_prefix injection |
+| **Total** | **33** | |

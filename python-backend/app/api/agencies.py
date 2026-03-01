@@ -36,6 +36,9 @@ logger = structlog.get_logger(__name__)
 # ── Request / Response Models ──────────────────────────────────
 
 
+_PERSONA_BLOCKED_PATTERNS = ["[SYSTEM]", "[INST]", "<<SYS>>", "</s>", "[/INST]"]
+
+
 class AgencyRunRequest(BaseModel):
     """Request body for POST /run and POST /stream."""
 
@@ -43,6 +46,24 @@ class AgencyRunRequest(BaseModel):
     conversation_id: Optional[str] = Field(
         None, description="Existing conversation ID to continue"
     )
+    model_override: Optional[str] = Field(
+        None, max_length=200, description="Override model for all agents in this run"
+    )
+    persona_prefix: Optional[str] = Field(
+        None, max_length=3000, description="Persona prompt prefix to prepend to agent instructions"
+    )
+
+    @property
+    def safe_persona_prefix(self) -> Optional[str]:
+        """Return persona_prefix after sanitization, or None if blocked."""
+        if not self.persona_prefix:
+            return None
+        upper = self.persona_prefix.upper()
+        for pattern in _PERSONA_BLOCKED_PATTERNS:
+            if pattern.upper() in upper:
+                logger.warning("persona_prefix_blocked", pattern=pattern)
+                return None
+        return self.persona_prefix
 
 
 class AgencyRunResponse(BaseModel):
@@ -273,7 +294,9 @@ async def stream_agency(
         """Wrap agency service streaming with error boundary."""
         try:
             async for event in service.execute_run_stream(
-                agency_id, request.message, context
+                agency_id, request.message, context,
+                model_override=request.model_override,
+                persona_prefix=request.safe_persona_prefix,
             ):
                 event_type = event.get("event", "message")
                 event_data = json.dumps(event.get("data", {}))

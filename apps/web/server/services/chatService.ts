@@ -647,13 +647,52 @@ export async function updateSkillPreference(
 export async function buildChatContext(
   conversationId: number,
   userId: number,
-  systemPrompt?: string
+  systemPrompt?: string,
+  tenantId?: string
 ): Promise<Array<{ role: "system" | "user" | "assistant"; content: string }>> {
   const context: Array<{ role: "system" | "user" | "assistant"; content: string }> = [];
 
+  // 0. Resolve persona and prepend to system prompt
+  let effectiveSystemPrompt = systemPrompt;
+  try {
+    const { resolvePersona, buildPersonaPromptSegments } = await import("./personaService");
+    const db = await getDb();
+    if (db) {
+      // Load conversation to get personaId
+      const convResult = await db
+        .select({ personaId: conversations.personaId, tenantId: conversations.tenantId })
+        .from(conversations)
+        .where(eq(conversations.id, conversationId))
+        .limit(1);
+
+      const conv = convResult[0];
+      const convTenantId = conv?.tenantId || tenantId || null;
+
+      const persona = await resolvePersona(
+        { personaId: conv?.personaId || null, tenantId: convTenantId },
+        { id: userId, defaultPersonaId: null },
+        { id: convTenantId || "", defaultPersonaId: null },
+      );
+
+      if (persona) {
+        const segments = buildPersonaPromptSegments(persona);
+        const parts: string[] = [segments.prefix];
+        if (segments.styleInstructions) parts.push(segments.styleInstructions);
+        if (segments.restrictionsBulletPoints) parts.push(segments.restrictionsBulletPoints);
+        if (effectiveSystemPrompt) parts.push(effectiveSystemPrompt);
+        effectiveSystemPrompt = parts.join("\n\n");
+      }
+    }
+  } catch (err) {
+    // Persona system disabled or unavailable — continue without persona
+    if (err instanceof Error && !err.message.includes("not enabled")) {
+      console.warn("[chatService] Persona resolution failed:", err.message);
+    }
+  }
+
   // 1. Add system prompt
-  if (systemPrompt) {
-    context.push({ role: "system", content: systemPrompt });
+  if (effectiveSystemPrompt) {
+    context.push({ role: "system", content: effectiveSystemPrompt });
   }
 
   // 2. Add entity memories

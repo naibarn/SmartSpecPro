@@ -38,6 +38,8 @@ const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const Gallery = lazy(() => import("./pages/Gallery"));
 const Marketplace = lazy(() => import("./pages/Marketplace"));
 const DeviceAuth = lazy(() => import("./pages/DeviceAuth"));
+const AdminAgencies = lazy(() => import("./pages/AdminAgencies"));
+const AdminApprovals = lazy(() => import("./pages/AdminApprovals"));
 const AdminGallery = lazy(() => import("./pages/AdminGallery"));
 const AdminUsers = lazy(() => import("./pages/AdminUsers"));
 const AdminPackages = lazy(() => import("./pages/AdminPackages"));
@@ -91,6 +93,9 @@ const AgencyBrowser = lazy(() => import("./pages/AgencyBrowser"));
 const AgencyChat = lazy(() => import("./pages/AgencyChat"));
 const AgencyBuilder = lazy(() => import("./pages/AgencyBuilder"));
 const AgencyTemplates = lazy(() => import("./pages/AgencyTemplates"));
+const AgencyMarketplace = lazy(() => import("./pages/AgencyMarketplace"));
+const PersonaSettings = lazy(() => import("./pages/PersonaSettings"));
+const AdminPersonas = lazy(() => import("./pages/AdminPersonas"));
 const Workflows = lazy(() => import("./pages/Workflows"));
 const WorkflowEditor = lazy(() => import("./pages/WorkflowEditor"));
 const WorkflowGallery = lazy(() => import("./pages/WorkflowGallery"));
@@ -141,6 +146,9 @@ function Router() {
         <Route path="/admin/media-providers" component={AdminMediaProviders} />
         <Route path="/admin/media-models" component={AdminMediaModels} />
         <Route path="/admin/skills" component={AdminSkills} />
+        <Route path="/admin/personas" component={AdminPersonas} />
+        <Route path="/admin/agencies" component={AdminAgencies} />
+        <Route path="/admin/approvals" component={AdminApprovals} />
         <Route path="/admin/skill-repositories" component={AdminSkillRepositories} />
         <Route path="/admin/storage-settings"><Redirect to="/admin/settings" /></Route>
         <Route path="/admin/services" component={AdminServices} />
@@ -165,6 +173,7 @@ function Router() {
         <Route path="/chat" component={Chat} />
         <Route path="/agencies" component={AgencyBrowser} />
         <Route path="/agencies/templates" component={AgencyTemplates} />
+        <Route path="/agencies/marketplace" component={AgencyMarketplace} />
         <Route path="/agencies/:id/edit" component={AgencyBuilder} />
         <Route path="/agencies/:id" component={AgencyChat} />
         <Route path="/workflows" component={Workflows} />
@@ -183,6 +192,7 @@ function Router() {
         <Route path="/groups/:groupId" component={GroupDetailPanel} />
         <Route path="/document-management" component={DocumentManagement} />
         <Route path="/settings" component={Settings} />
+        <Route path="/settings/personas" component={PersonaSettings} />
         <Route path="/settings/skills" component={SkillBrowser} />
         <Route path="/profile" component={Profile} />
         <Route path="/terms" component={Terms} />
