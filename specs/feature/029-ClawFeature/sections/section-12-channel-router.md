@@ -1,5 +1,3 @@
-I now have everything needed. Let me produce the section content.
-
 # Section 12: F10 -- Channel Router
 
 ## Overview
@@ -599,3 +597,41 @@ These constraints are critical to prevent the routing evaluation from becoming a
 10. Add route in `App.tsx` and menu entry for channel router admin page
 11. Run full test suite: `cd /home/dev/projects/SmartSpecPro/apps/web && pnpm test`
 12. Run type check: `cd /home/dev/projects/SmartSpecPro/apps/web && pnpm check`
+
+---
+
+## Actual Implementation (2026-03-02)
+
+### Files Created/Modified
+
+| File | Action | Notes |
+|------|--------|-------|
+| `apps/web/server/services/__tests__/channelRouterService.test.ts` | CREATED | 13 tests — all passing |
+| `apps/web/server/services/channelRouterService.ts` | CREATED | Core routing engine |
+| `apps/web/server/routers/channelRouter.ts` | CREATED | tRPC CRUD + testRule |
+| `apps/web/server/routers/__tests__/channelRouter.test.ts` | CREATED | 12 tests — Zod + logic |
+| `apps/web/server/services/channelGateway.ts` | MODIFIED | Step 3.5 router integration |
+| `apps/web/server/services/auditLogger.ts` | MODIFIED | Added 9 new event types |
+| `apps/web/server/routers.ts` | MODIFIED | Registered channelRouterRouter |
+| `apps/web/client/src/pages/AdminChannelRouter.tsx` | CREATED | Full admin UI |
+| `apps/web/client/src/App.tsx` | MODIFIED | Added `/admin/channel-router` route |
+
+### Deviations from Plan
+
+1. **DB schema deviation**: The plan described an `action: JSONB` column, but the actual schema (from section-01) uses separate columns: `targetType`, `targetAgencyId`, `targetPersonaId`, `targetWorkflowId`. The service was implemented against the actual schema.
+
+2. **targetType restricted to `agency` only**: After code review, `workflow` and `chat` target types were found to be no-ops in the gateway integration. Per user decision, `targetTypeSchema = z.literal("agency")` — workflow/chat removed from Zod schema to keep the API honest about what's implemented.
+
+3. **HTML5 native drag-and-drop**: The plan mentioned `@dnd-kit/core`, which is not installed in the project. Used native browser drag events (`draggable`, `onDragStart`, `onDragOver`, `onDrop`) with optimistic local state reorder.
+
+4. **totalMatches SQL `+1`**: The plan described a client-side increment. Implemented using SQL `"totalMatches" + 1` to prevent race conditions under concurrent traffic.
+
+5. **testRule does NOT invalidate cache**: The plan implied `testRule` would bypass cache; the implementation evaluates via the normal `evaluateRules` path (which uses the 30s TTL cache) without clearing it first. This avoids flushing production cache on every admin test run.
+
+6. **Admin cross-tenant update**: `update` procedure uses `tenantId = null` for admin role, building `WHERE id = $1` only; domain_admin gets `WHERE id = $1 AND tenantId = $2`. This enables admin to update any tenant's rule without NOT_FOUND errors.
+
+### Test Coverage
+
+- **channelRouterService.test.ts**: 13 tests — operators, AND semantics, priority order, regex rejection, Redis cache hit/miss, cache invalidation
+- **channelRouter.test.ts**: 12 tests — Zod schema validation (operator allowlist, target type restriction), tenant resolution logic, cache invalidation assertions
+- **Total**: 25 tests, all passing

@@ -45,6 +45,8 @@ import {
   agencies,
   agencyConversations,
 } from "../../drizzle/schema";
+import { evaluateRules } from "./channelRouterService";
+import { getTenantFeatureFlag } from "./featureFlags";
 
 // ── Result types ──────────────────────────────────────────────────────────
 
@@ -147,6 +149,54 @@ async function ingest(event: ChatIngressEvent): Promise<IngestResult> {
         error: "Channel binding not active",
         errorCode: "no_channel",
       };
+    }
+
+    // 3.5 Channel Router evaluation (F10) — override routing target when enabled
+    const channelRouterEnabled = await getTenantFeatureFlag("channelRouter", event.tenantId).catch(() => false);
+    if (channelRouterEnabled) {
+      const routeResult = await evaluateRules(event, event.tenantId).catch(() => null);
+      if (routeResult) {
+        auditLogger.log({
+          eventType: "channel_router_match",
+          metadata: {
+            ruleId: routeResult.rule.id,
+            ruleName: routeResult.rule.name,
+            targetType: routeResult.targetType,
+            targetId: routeResult.targetId,
+            tenantId: event.tenantId,
+          },
+        });
+        // When a routing rule matches, redirect to the specified agency
+        // Other target types (chat, workflow) use the existing channel binding as-is
+        if (routeResult.targetType === "agency" && routeResult.targetId) {
+          // Override: route to the specified agency regardless of channel binding
+          try {
+            const result = await agencyBridge.executeRun({
+              agencyId: routeResult.targetId,
+              conversationId: channel.agencyConversationId ?? routeResult.targetId,
+              message: event.message.text,
+              userToken: "",
+              tenantId: connection.tenantId,
+              userId: connection.userId,
+            });
+            if (result.response) {
+              await emitEgress({
+                eventId: crypto.randomUUID(),
+                conversationId: channel.agencyConversationId ?? routeResult.targetId,
+                conversationType: "agency",
+                messageId: result.runId,
+                tenantId: connection.tenantId,
+                targets: [],
+                rendering: { plainText: result.response, html: result.response },
+              });
+            }
+            return { ok: true, responseMessageId: result.runId };
+          } catch (err) {
+            auditLogger.log({ eventType: "channel_router_agency_error", metadata: { ruleId: routeResult.rule.id, error: String(err) } });
+            // Fall through to normal routing on error
+          }
+        }
+      }
     }
 
     // 4. Route by conversation type

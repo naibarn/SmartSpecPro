@@ -100,6 +100,7 @@ const Workflows = lazy(() => import("./pages/Workflows"));
 const WorkflowEditor = lazy(() => import("./pages/WorkflowEditor"));
 const WorkflowGallery = lazy(() => import("./pages/WorkflowGallery"));
 const WebhookTriggers = lazy(() => import("./pages/WebhookTriggers"));
+const AdminChannelRouter = lazy(() => import("./pages/AdminChannelRouter"));
 
 function PostHogPageViewTracker() {
   const [location] = useLocation();
@@ -160,6 +161,7 @@ function Router() {
         <Route path="/admin/ops" component={AdminOpsDashboard} />
         <Route path="/admin/dashboard" component={AdminOverviewDashboard} />
         <Route path="/admin/funnel" component={AdminFunnelDashboard} />
+        <Route path="/admin/channel-router" component={AdminChannelRouter} />
         <Route path="/admin/sandbox" component={AdminSandbox} />
         <Route path="/admin/tenants" component={AdminTenants} />
         <Route path="/domain-admin" component={DomainAdmin} />

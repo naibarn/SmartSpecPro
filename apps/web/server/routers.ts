@@ -71,6 +71,7 @@ import { personaRouter } from "./routers/persona";
 import { artifactRouter } from "./routers/artifact";
 import { widgetRouter } from "./routers/widget";
 import { webhookTriggersRouter } from "./routers/webhookTriggers";
+import { channelRouterRouter } from "./routers/channelRouter";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -1362,6 +1363,9 @@ export const appRouter = router({
 
   // Inbound webhook trigger management
   webhookTriggers: webhookTriggersRouter,
+
+  // Channel routing rules (F10)
+  channelRouter: channelRouterRouter,
 
   // Memory system (entity memories, summaries, context)
   memory: memoryRouter,
