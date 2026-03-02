@@ -142,11 +142,10 @@ export async function checkWebhookRateLimit(
   const key = `webhook:ratelimit:${triggerId}:${minuteBucket}`;
   // Use pipeline to INCR + EXPIRE atomically, preventing race where two concurrent
   // first-requests both increment to 1+ and neither sets the TTL (key lives forever).
-  const [count] = await redis
-    .pipeline()
-    .incr(key)
-    .expire(key, RATE_LIMIT_WINDOW_SECONDS)
-    .exec() as [number, number];
+  // IORedis pipeline exec() returns Array<[Error | null, unknown]> — each element is
+  // a [error, result] tuple, not a flat array of results.
+  const results = await redis.pipeline().incr(key).expire(key, RATE_LIMIT_WINDOW_SECONDS).exec();
+  const count = (results?.[0]?.[1] as number) ?? 0;
   return count > limitPerMinute;
 }
 

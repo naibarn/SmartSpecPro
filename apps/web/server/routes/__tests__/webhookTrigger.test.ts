@@ -236,20 +236,20 @@ describe("webhookTriggerService — rate limiting", () => {
   });
 
   it("allows request when under rate limit", async () => {
-    // pipeline().exec() returns [count, expireResult]
-    mockRedisPipelineExec.mockResolvedValue([1, 1]);
+    // IORedis pipeline exec() returns Array<[Error | null, unknown]> — tuple per command
+    mockRedisPipelineExec.mockResolvedValue([[null, 1], [null, 1]]);
     const result = await checkWebhookRateLimit("trigger-1", 10);
     expect(result).toBe(false); // not rate-limited
   });
 
   it("blocks request when at rate limit", async () => {
-    mockRedisPipelineExec.mockResolvedValue([11, 1]); // count 11 exceeds limit of 10
+    mockRedisPipelineExec.mockResolvedValue([[null, 11], [null, 1]]); // count 11 exceeds limit of 10
     const result = await checkWebhookRateLimit("trigger-1", 10);
     expect(result).toBe(true); // rate-limited
   });
 
   it("rate limit key uses pipeline to avoid race condition", async () => {
-    mockRedisPipelineExec.mockResolvedValue([1, 1]);
+    mockRedisPipelineExec.mockResolvedValue([[null, 1], [null, 1]]);
     await checkWebhookRateLimit("trigger-rate-test", 5);
     // Pipeline exec is called once, guaranteeing INCR+EXPIRE are atomic
     expect(mockRedisPipelineExec).toHaveBeenCalledTimes(1);
