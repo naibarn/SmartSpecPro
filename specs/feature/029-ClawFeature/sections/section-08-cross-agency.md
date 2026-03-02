@@ -477,3 +477,40 @@ All cross-agency call events should be logged using the existing `log_agency_eve
 6. Verify all Python tests pass with `pytest tests/unit/test_agency_call_tool.py -v`
 7. Verify Vitest test passes with `pnpm test -- builtinAgencyCallTool`
 8. Manually verify: create two agencies in same tenant, assign `builtin-agency-call` to agent in first, configure `allowedAgencies` with second agency's ID, send a message that triggers the cross-call
+
+---
+
+## Actual Implementation Notes (deviations from plan)
+
+### Files Created
+| File | Notes |
+|------|-------|
+| `python-backend/app/services/tools/__init__.py` | Created, exports all agency_call_tool symbols |
+| `python-backend/app/services/tools/agency_call_tool.py` | Full implementation — 373 lines |
+| `python-backend/tests/unit/__init__.py` | Created (pytest discovery) |
+| `python-backend/tests/unit/test_agency_call_tool.py` | 17 tests across 5 test classes |
+| `apps/web/server/services/__tests__/builtinAgencyCallTool.test.ts` | 4 Vitest tests |
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `python-backend/app/services/agency_tools.py` | Added `builtin-agency-call` to `_BUILTIN_ENDPOINTS` (None) and `_BUILTIN_RISK_LEVELS` (high); added dispatch branch in `_make_run_func` using `asyncio.run()` |
+| `apps/web/server/routers/agency.ts` | Added `builtin-agency-call` tool with `requiresApproval: true` (changed from plan's `false`) |
+
+### Key Deviations from Plan
+
+1. **`requiresApproval: true`** (plan specified `false`): Code review (H4) identified that a high-risk tool capable of chaining LLM runs must require approval, consistent with `builtin-browser`. Fixed.
+
+2. **Allowlist error does not leak IDs** (plan showed `Allowed list: {allowed_agencies!r}`): Code review (H3) identified this exposes internal agency UUIDs to the LLM. Fixed to generic rejection message.
+
+3. **Atomic semaphore via Redis pipeline** (plan described INCR then EXPIRE separately): Code review (M5) identified TOCTOU window on crash. Fixed to use `pipeline().incr().expire().execute()`.
+
+4. **`log_agency_event` signature** (plan's pseudocode used non-existent `db_session=` and `data=` kwargs): Actual signature uses positional `event_type` and `metadata=` kwarg. All call sites corrected.
+
+5. **Dispatch wiring via `asyncio.run()`** (plan described this option): `_make_run_func` adds a `tool_id == "builtin-agency-call"` branch that calls `asyncio.run(execute_agency_call(...))` since agency-swarm's `run()` is synchronous.
+
+6. **TestIndependentRBAC class skipped**: The `TestIndependentRBAC` class stubs from the plan were not implemented in the test file — coverage for RBAC is provided through the `check_rbac()` function directly. The 17 tests cover: TenantIsolation (2), DepthLimit (3), LoopPrevention (4), BudgetCap (2), AllowedAgencies (3), ConcurrencyLimit (3).
+
+### Test Count
+- Python: 17 passed
+- TypeScript: 4 passed

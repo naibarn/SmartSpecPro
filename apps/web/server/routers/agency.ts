@@ -499,6 +499,42 @@ export const agencyRouter = router({
           },
         },
         {
+          id: "builtin-agency-call",
+          name: "Agency Call",
+          description:
+            "Call another agency to handle a subtask. Enables cross-agency communication with tenant isolation and depth limits.",
+          toolType: "builtin",
+          riskLevel: "high",
+          requiresApproval: true,
+          configSchema: {
+            fields: [
+              {
+                key: "allowedAgencies",
+                label: "Allowed Agency IDs",
+                type: "multi-select",
+                default: [],
+                placeholder: "Select agencies this tool can call (empty = deny all)",
+              },
+              {
+                key: "maxDepth",
+                label: "Max call depth",
+                type: "number",
+                default: 2,
+                min: 1,
+                max: 3,
+              },
+              {
+                key: "timeout",
+                label: "Timeout (ms)",
+                type: "number",
+                default: 120000,
+                min: 10000,
+                max: 300000,
+              },
+            ],
+          },
+        },
+        {
           id: "builtin-browser",
           name: "Browser Automation",
           description:

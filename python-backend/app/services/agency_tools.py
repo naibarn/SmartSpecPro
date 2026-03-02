@@ -66,6 +66,7 @@ _BUILTIN_ENDPOINTS: dict[str, str] = {
     "builtin-document-search": "/api/internal/tools/document-search",
     "builtin-voice": "/api/internal/tools/voice",
     "builtin-browser": "/api/internal/tools/browser",
+    "builtin-agency-call": None,  # No HTTP endpoint -- handled internally via execute_agency_call()
 }
 
 _BUILTIN_RISK_LEVELS: dict[str, str] = {
@@ -79,6 +80,7 @@ _BUILTIN_RISK_LEVELS: dict[str, str] = {
     "builtin-document-search": "low",
     "builtin-voice": "medium",
     "builtin-browser": "high",
+    "builtin-agency-call": "high",
 }
 
 
@@ -162,7 +164,40 @@ def _make_run_func(tool_config: ToolConfig, whitelist: set[str]):
         query = getattr(tool_instance, "query", "")
 
         # Route based on risk level
-        if config.risk_level == "high":
+        if config.tool_id == "builtin-agency-call":
+            # Cross-agency calls are handled internally — not via HTTP sandbox.
+            # execute_agency_call() requires async context; this sync wrapper
+            # runs it via asyncio.run() since agency-swarm calls run() synchronously.
+            import asyncio as _asyncio
+            from app.services.tools.agency_call_tool import execute_agency_call, AgencyCallError as _AgencyCallError
+            _tool_config_dict = config.config or {}
+            _parent_run_id = _tool_config_dict.get("parentRunId", "unknown")
+            _current_depth = int(_tool_config_dict.get("currentDepth", 0))
+            _caller_tenant_id = _tool_config_dict.get("tenantId", "")
+            _caller_user_id = int(_tool_config_dict.get("userId", 0))
+            _caller_user_token = _tool_config_dict.get("userToken", "")
+            _target_agency_id = _tool_config_dict.get("targetAgencyId", query.strip())
+            _message = _tool_config_dict.get("message", query)
+            try:
+                result = _asyncio.run(
+                    execute_agency_call(
+                        target_agency_id=_target_agency_id,
+                        message=_message,
+                        caller_tenant_id=_caller_tenant_id,
+                        caller_user_id=_caller_user_id,
+                        caller_user_token=_caller_user_token,
+                        parent_run_id=_parent_run_id,
+                        current_depth=_current_depth,
+                        config=_tool_config_dict,
+                        db_session=None,
+                        redis=None,
+                    )
+                )
+            except _AgencyCallError as _exc:
+                result = f"Cross-agency call denied: {_exc}"
+            except Exception as _exc:
+                result = f"Cross-agency call failed: {_exc}"
+        elif config.risk_level == "high":
             result = _execute_sandbox(config, query)
         else:
             result = _execute_http(config, query)
