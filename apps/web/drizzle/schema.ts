@@ -117,6 +117,7 @@ export const creditSourceTypeEnum = pgEnum("credit_source_type", [
   "browser_automation",
   "widget_chat",
   "webhook_chat",
+  "webhook_trigger",
 ]);
 
 // Settlement status for creator revenue sharing
@@ -1658,6 +1659,8 @@ export const libraryItems = pgTable("library_items", {
   id: serial("id").primaryKey(),
   tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
   ownerUserId: integer("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  // null = root-level; non-null = inside a folder (itemType="folder")
+  parentId: integer("parent_id").references((): AnyPgColumn => libraryItems.id, { onDelete: "cascade" }),
   itemType: varchar("item_type", { length: 32 }).notNull(),
   source: varchar("source", { length: 64 }).notNull(),
   title: varchar("title", { length: 255 }).notNull(),
@@ -1684,6 +1687,7 @@ export const libraryItems = pgTable("library_items", {
   index("library_items_source_item_type_idx").on(t.source, t.itemType),
   index("library_items_deleted_at_idx").on(t.deletedAt),
   index("library_items_allowed_scopes_gin_idx").using("gin", t.allowedScopes),
+  index("library_items_parent_id_idx").on(t.parentId),
 ]);
 
 export type LibraryItem = typeof libraryItems.$inferSelect;

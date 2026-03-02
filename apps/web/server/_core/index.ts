@@ -30,6 +30,8 @@ import "../services/telegramLinkService"; // Register /start link handler
 import "../services/channelAdapters/telegram"; // Register Telegram adapter
 import "../services/channelAdapters/whatsapp"; // Register WhatsApp adapter
 import "../services/channelAdapters/line"; // Register LINE adapter
+import "../services/channelAdapters/slack"; // Register Slack adapter
+import "../services/channelAdapters/discord"; // Register Discord adapter
 import { adapterRegistry } from "../services/channelAdapters/registry";
 import { createSlideRenderRouter } from "../routes/slideRender";
 import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
