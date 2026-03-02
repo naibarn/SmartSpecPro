@@ -63,6 +63,7 @@ export const defaultMenuItems: MenuItem[] = [
   { id: 'admin-skill-repos',    label: 'Skill Repos',       icon: 'GitBranch',   path: '/admin/skill-repositories', platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 29 },
   { id: 'admin-personas',       label: 'Personas',          icon: 'UserCircle',  path: '/admin/personas',           platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 30.5, requiresFeature: 'AI_PERSONA_ENABLED' },
   { id: 'admin-agencies',       label: 'Agencies',          icon: 'Bot',         path: '/admin/agencies',           platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 30 },
+  { id: 'admin-channel-router', label: 'Channel Router',    labelTh: 'ตัวกำหนดเส้นทาง', icon: 'GitFork', path: '/admin/channel-router', platforms: ['web', 'desktop'], roles: ['admin', 'domain_admin'], group: 'admin', sortOrder: 30.2, requiresFeature: 'channelRouter' },
   { id: 'admin-gallery',        label: 'Gallery Admin',     icon: 'Images',      path: '/admin/gallery',            platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 31 },
   { id: 'admin-settings',       label: 'Platform Settings', icon: 'Settings',    path: '/admin/settings',           platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 32 },
 

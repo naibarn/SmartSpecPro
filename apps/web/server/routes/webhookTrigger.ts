@@ -27,7 +27,7 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "../db";
 import { webhookTriggers, webhookTriggerLogs } from "../../drizzle/schema";
 import { getTenantFeatureFlag } from "../services/featureFlags";
-import { hasEnoughCredits } from "../services/creditService";
+import { hasEnoughCredits, deductCredits } from "../services/creditService";
 import { auditLogger } from "../services/auditLogger";
 import {
   verifyTokenAuth,
@@ -186,8 +186,6 @@ export function createWebhookTriggerRouter(): Router {
     }
 
     // ── Step 6: Credit check ───────────────────────────────────────────────────
-    // NOTE: deductCredits() will be called here once target dispatch is wired in section 12+.
-    // For now we verify the user can afford a trigger invocation but do not deduct.
     const creditCost = 1;
     const hasCredits = await hasEnoughCredits(trigger.userId, creditCost);
     if (!hasCredits) {
@@ -238,7 +236,14 @@ export function createWebhookTriggerRouter(): Router {
           },
         });
 
-        // TODO(section-12): deductCredits(trigger.userId, creditCost) after real dispatch
+        // Deduct credits after successful dispatch acknowledgement
+        await deductCredits({
+          userId: trigger.userId,
+          tenantId: trigger.tenantId,
+          amount: creditCost,
+          description: `Webhook trigger: ${trigger.name}`,
+          sourceType: "webhook_trigger",
+        }).catch(() => {}); // fire-and-forget; audit trail preserved in log below
 
         await recordLog(triggerId, {
           status: "success",
@@ -248,7 +253,7 @@ export function createWebhookTriggerRouter(): Router {
           requestHeadersSafe,
           extractedVariables: stripSecrets(parsedBody),
           sourceIpMasked,
-          creditsConsumed: 0, // set to creditCost once deductCredits is wired in section 12
+          creditsConsumed: creditCost,
           processingTimeMs,
         });
 

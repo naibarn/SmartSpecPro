@@ -15,7 +15,7 @@ export type CreditSourceType =
   | "chat" | "skill" | "media_image" | "media_video" | "media_audio"
   | "indexing" | "rag" | "stt" | "translation" | "brainstorm"
   | "scheduler" | "admin" | "agency" | "creator_revenue" | "other"
-  | "tts" | "browser_automation" | "widget_chat" | "webhook_chat";
+  | "tts" | "browser_automation" | "widget_chat" | "webhook_chat" | "webhook_trigger";
 
 export class BudgetExceededError extends Error {
   public readonly monthlyLimit: number;
