@@ -642,3 +642,44 @@ The tests verify:
 - Module channel routing (LINE)
 - Token refresh behavior (LINE)
 - Proper error handling and audit logging
+
+---
+
+## Actual Implementation Notes (deviations from plan)
+
+### Files Created
+| File | Notes |
+|------|-------|
+| `apps/web/server/services/channelAdapters/whatsapp.ts` | WhatsAppAdapter — Meta Cloud API v21.0 |
+| `apps/web/server/services/channelAdapters/line.ts` | LINEAdapter — Reply/Push with try/catch |
+| `apps/web/server/services/channelAdapters/__tests__/whatsapp.test.ts` | 11 Vitest tests |
+| `apps/web/server/services/channelAdapters/__tests__/line.test.ts` | 10 Vitest tests |
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `apps/web/server/_core/index.ts` | Added import for whatsapp and line adapters; added rawBody capture via express.json verify callback |
+| `apps/web/server/routes/channelWebhook.ts` | Threaded req.rawBody through to adapter.validateWebhook() |
+
+### Key Deviations from Plan
+
+1. **`ChannelCapabilities` fields**: Actual interface has `supportsButtons`, `supportsRichText`, `supportsAttachments`, `rateLimitPerSecond` — NOT the extended fields from the plan spec. Adapters use actual interface.
+
+2. **`sendMessage` signature**: Actual interface is `sendMessage(config, externalChatId, text, options?)` — different from plan's `sendMessage(connectionId, text, options?)`.
+
+3. **rawBody capture**: Added `verify` callback on `express.json` middleware for /webhooks route; channelWebhook.ts threads `(req as any).rawBody` to adapter. Critical fix — without this, HMAC always fails.
+
+4. **WhatsApp API version**: Updated from planned v18.0 to v21.0 (v18.0 is deprecated/EOL).
+
+5. **Template fallback**: Returns `{ ok: false }` when no `templateName` configured (vs hardcoded 'hello_world' guess that would fail on production WABA).
+
+6. **Timing-safe comparison**: Uses padding approach (Math.max + Buffer.alloc) matching Telegram adapter pattern, not naive length-check early return.
+
+7. **Token refresh skipped**: LINE token refresh not implemented in v1 — deferred. The `lastInboundAt` 24h window check validates timestamps (rejects future timestamps).
+
+8. **Module channel routing**: LINE `destination` field routing deferred — URL-based connectionId routing used instead.
+
+### Test Count
+- WhatsApp: 11 tests (4 validateWebhook, 3 parseInbound, 2 formatMessage, 2 sendMessage)
+- LINE: 10 tests (3 validateWebhook, 3 parseInbound, 2 formatMessage, 2 sendMessage)
+- Total: 21 Vitest tests, all passing

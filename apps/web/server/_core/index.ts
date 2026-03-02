@@ -26,6 +26,8 @@ import { createVoiceSessionRouter, handleVoiceUpgrade, shutdownVoiceGateway } fr
 import browserToolRouter from "../routes/browserTool";
 import "../services/telegramLinkService"; // Register /start link handler
 import "../services/channelAdapters/telegram"; // Register Telegram adapter
+import "../services/channelAdapters/whatsapp"; // Register WhatsApp adapter
+import "../services/channelAdapters/line"; // Register LINE adapter
 import { adapterRegistry } from "../services/channelAdapters/registry";
 import { createSlideRenderRouter } from "../routes/slideRender";
 import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
@@ -347,7 +349,17 @@ app.use("/api/webhooks", createWebhookRouter());
 // Generalized channel webhook router (all adapters: WhatsApp, Slack, Discord, LINE, etc.)
 // Must be registered BEFORE the legacy Telegram route so /webhooks/:channelType/:connectionId
 // is handled by the generalized router.
-app.use("/webhooks", express.json({ limit: "1mb" }), createChannelWebhookRouter());
+// The verify callback captures the raw body buffer so adapters can perform HMAC verification.
+app.use(
+  "/webhooks",
+  express.json({
+    limit: "1mb",
+    verify: (req: any, _res, buf) => {
+      req.rawBody = buf;
+    },
+  }),
+  createChannelWebhookRouter(),
+);
 
 // Telegram Bot API webhook (legacy route — kept for backward compat with existing bot webhook URLs)
 // Tighter body limit than global 10MB — Telegram updates are small JSON payloads

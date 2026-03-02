@@ -47,7 +47,10 @@ export function createChannelWebhookRouter(): Router {
         headers: req.headers as Record<string, string | string[] | undefined>,
         body: req.body,
         params: req.params,
-      });
+        // rawBody is populated by the express.json verify callback in index.ts
+        // and used by HMAC-based adapters (WhatsApp, LINE) for signature verification
+        rawBody: (req as any).rawBody,
+      } as any);
     } catch {
       valid = false;
     }
