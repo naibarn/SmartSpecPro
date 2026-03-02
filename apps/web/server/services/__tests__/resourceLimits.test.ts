@@ -76,38 +76,49 @@ describe("Resource Limits — Redis Semaphore Pattern", () => {
   });
 
   it("releases semaphore slot correctly on session end", async () => {
-    mockEval.mockResolvedValue(1);
-    mockExists.mockResolvedValue(1); // Key still exists
+    mockEval.mockResolvedValue(1); // acquire INCR+EXPIRE returns 1
 
     const handle = await acquireSemaphore(mockRedis as never, "test:key", 3, 60);
     expect(handle).not.toBeNull();
 
+    mockEval.mockResolvedValue(null); // release DECR_IF_EXISTS returns nil
     await handle!.release();
 
-    expect(mockExists).toHaveBeenCalledWith("test:key");
-    expect(mockDecr).toHaveBeenCalledWith("test:key");
+    // Release uses atomic Lua (DECR_IF_EXISTS) — no separate EXISTS or DECR calls
+    expect(mockEval).toHaveBeenCalledWith(
+      expect.stringContaining("DECR"),
+      1,
+      "test:key",
+    );
+    expect(mockExists).not.toHaveBeenCalled();
+    expect(mockDecr).not.toHaveBeenCalled();
   });
 
   it("release is idempotent (safe to call multiple times)", async () => {
     mockEval.mockResolvedValue(1);
-    mockExists.mockResolvedValue(1);
 
     const handle = await acquireSemaphore(mockRedis as never, "test:key", 3, 60);
     await handle!.release();
     await handle!.release(); // Second call must be a no-op
 
-    expect(mockDecr).toHaveBeenCalledTimes(1);
+    // eval called twice: once for acquire (INCR+EXPIRE), once for first release (DECR_IF_EXISTS)
+    expect(mockEval).toHaveBeenCalledTimes(2);
   });
 
   it("release skips DECR when key has already expired (TTL guard)", async () => {
     mockEval.mockResolvedValue(1);
-    mockExists.mockResolvedValue(0); // Key was deleted by TTL
 
     const handle = await acquireSemaphore(mockRedis as never, "test:key", 3, 60);
     await handle!.release();
 
-    // Should NOT decrement an expired key (would create key at -1)
+    // Lua DECR_IF_EXISTS handles expiry atomically — no separate EXISTS or DECR round-trips
+    expect(mockExists).not.toHaveBeenCalled();
     expect(mockDecr).not.toHaveBeenCalled();
+    expect(mockEval).toHaveBeenCalledWith(
+      expect.stringContaining("DECR"),
+      1,
+      "test:key",
+    );
   });
 
   it("semaphore keys have TTL via Lua script (atomic INCR+EXPIRE)", async () => {

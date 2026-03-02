@@ -34,6 +34,18 @@ return current
 `;
 
 /**
+ * Lua script for atomic DECR-if-EXISTS.
+ *
+ * Prevents the TOCTOU race between EXISTS and DECR that would create a
+ * key at value -1 if the TTL expires between the two round-trips.
+ */
+const DECR_IF_EXISTS_SCRIPT = `
+if redis.call('EXISTS', KEYS[1]) == 1 then
+  redis.call('DECR', KEYS[1])
+end
+`;
+
+/**
  * Try to acquire a semaphore slot.
  *
  * Uses an atomic Lua script (INCR + conditional EXPIRE) so the
@@ -63,11 +75,13 @@ export async function acquireSemaphore(
     async release(): Promise<void> {
       if (released) return;
       released = true;
-      // Guard against decrementing a TTL-expired key (would create key at -1).
-      const exists = await redis.exists(key);
-      if (exists) {
-        await redis.decr(key);
-      }
+      // Atomic: only decrement if key still exists (prevents key at -1 on TTL expiry).
+      // Single Lua round-trip eliminates the TOCTOU race between EXISTS and DECR.
+      await (redis as Redis & { eval(...args: unknown[]): Promise<unknown> }).eval(
+        DECR_IF_EXISTS_SCRIPT,
+        1,
+        key,
+      );
     },
   };
 }

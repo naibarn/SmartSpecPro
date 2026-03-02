@@ -29,6 +29,8 @@ import { webhookTriggers, webhookTriggerLogs } from "../../drizzle/schema";
 import { getTenantFeatureFlag } from "../services/featureFlags";
 import { hasEnoughCredits, deductCredits } from "../services/creditService";
 import { auditLogger } from "../services/auditLogger";
+import { channelGateway } from "../services/channelGateway";
+import { agencyBridge } from "../services/agencyBridge";
 import {
   verifyTokenAuth,
   verifyHmacAuth,
@@ -225,16 +227,47 @@ export function createWebhookTriggerRouter(): Router {
     setImmediate(async () => {
       const processingTimeMs = Date.now() - startTime;
       try {
-        // Dispatch to target — stub until section 12+ wires chat/agency/workflow dispatch
-        auditLogger.log({
-          eventType: "webhook_dispatch_stub" as any,
-          userId: trigger.userId,
-          metadata: {
-            triggerId,
-            targetType: trigger.targetType,
-            payloadKeys: Object.keys(substitutedPayload),
-          },
-        });
+        // Extract the dispatch message text from the substituted payload, with fallbacks
+        const dispatchMessage: string =
+          typeof (substitutedPayload as any).message === "string"
+            ? (substitutedPayload as any).message
+            : typeof (substitutedPayload as any).text === "string"
+            ? (substitutedPayload as any).text
+            : JSON.stringify(substitutedPayload);
+
+        // Dispatch to configured target
+        if (trigger.targetType === "agency" && trigger.targetAgencyId) {
+          await agencyBridge.executeRun({
+            agencyId: trigger.targetAgencyId,
+            conversationId: trigger.targetAgencyId, // agencyId as server-side conv fallback
+            message: dispatchMessage,
+            userToken: "", // server-side dispatch — no user session token
+            tenantId: trigger.tenantId,
+            userId: trigger.userId,
+          });
+        } else if (trigger.targetType === "chat" && trigger.targetConversationId) {
+          await channelGateway.processMessageServerSide({
+            conversationId: trigger.targetConversationId,
+            userId: trigger.userId,
+            tenantId: trigger.tenantId,
+            content: dispatchMessage,
+            connectionId: `webhook_${triggerId}`,
+          });
+        } else {
+          // Workflow dispatch not yet implemented; log for observability
+          auditLogger.log({
+            eventType: "webhook_dispatch_stub" as any,
+            userId: trigger.userId,
+            metadata: {
+              triggerId,
+              targetType: trigger.targetType,
+              reason:
+                trigger.targetType === "workflow"
+                  ? "workflow_dispatch_not_implemented"
+                  : "no_target_configured",
+            },
+          });
+        }
 
         // Deduct credits after successful dispatch acknowledgement
         await deductCredits({
