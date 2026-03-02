@@ -64,7 +64,11 @@ import { getUploadStaticHeaders } from "../services/uploadContentSafety";
 import { ImageProxySafetyError, proxyImageFromUrl } from "../services/imageProxySafety";
 import { getDb } from "../db";
 import { getRedisClient } from "../services/redis";
-import { sql } from "drizzle-orm";
+import { sql, eq, and } from "drizzle-orm";
+import crypto from "crypto";
+import { channelGateway } from "../services/channelGateway";
+import { channelConnections } from "../../drizzle/schema";
+import type { ChatIngressEvent } from "@shared/channelTypes";
 import { COOKIE_NAME } from "@shared/const";
 
 /** Shared database adapter (implements @smartspec/db DbAdapter) */
@@ -418,7 +422,9 @@ app.get("/api/media/image-proxy", async (req, res) => {
 const VALID_SOURCE_TYPES = new Set([
   "chat", "skill", "media_image", "media_video", "media_audio",
   "indexing", "rag", "stt", "translation", "brainstorm",
-  "scheduler", "admin", "agency", "other",
+  "scheduler", "admin", "agency", "creator_revenue", "other",
+  // ClawFeature additions
+  "tts", "browser_automation", "widget_chat", "webhook_chat", "webhook_trigger",
 ]);
 
 // Helper: derive sourceType from service tag when not explicitly provided
@@ -1036,6 +1042,57 @@ async function main() {
     console.error("[Startup] Failed to initialize channel adapters:", error);
   }
 
+  // Wire Discord Gateway ingest callback so inbound Gateway events reach channelGateway.
+  // Discord uses WebSocket (not HTTP webhooks) so the adapter self-routes via this callback.
+  const discordAdapter = adapterRegistry.get("discord");
+  if (discordAdapter && "setIngestCallback" in discordAdapter) {
+    (discordAdapter as { setIngestCallback: Function }).setIngestCallback(
+      async (guildId: string, externalChannelId: string, text: string) => {
+        try {
+          const dbConn = await getDb();
+          if (!dbConn) return;
+
+          const [connection] = await dbConn
+            .select()
+            .from(channelConnections)
+            .where(
+              and(
+                eq(channelConnections.channelType, "discord"),
+                eq(channelConnections.externalUserId, guildId),
+                eq(channelConnections.status, "active"),
+              ),
+            )
+            .limit(1);
+
+          if (!connection || !connection.activeChannelId) return;
+
+          const event: ChatIngressEvent = {
+            eventId: crypto.randomUUID(),
+            eventType: "user_message",
+            tenantId: connection.tenantId,
+            userId: connection.userId,
+            conversationId: connection.activeChannelId,
+            conversationType: "chat",
+            channel: {
+              type: "discord" as ChatIngressEvent["channel"]["type"],
+              connectionId: connection.id,
+              externalChatId: externalChannelId,
+            },
+            message: { text, attachments: [] },
+            idempotencyKey: `discord_${guildId}_${externalChannelId}_${Date.now()}`,
+          };
+
+          await channelGateway.ingest(event);
+        } catch (err) {
+          auditLogger.log({
+            eventType: "channel_webhook_ingest_error" as any,
+            metadata: { channelType: "discord", guildId, error: String(err) },
+          });
+        }
+      },
+    );
+  }
+
   // Initialize provider health circuit breaker from DB state
   try {
     await initFromDb();
@@ -1070,28 +1127,6 @@ async function main() {
     await initializeGDriveCleanupJob();
   } catch (error) {
     console.error("[Startup] Failed to initialize GDrive cleanup job:", error);
-  }
-
-  // Initialize Telegram notification queue
-  try {
-    const db = await getDb();
-    if (db) {
-      await initializeTelegramQueue(db, {
-        host: process.env.REDIS_HOST || "localhost",
-        port: parseInt(process.env.REDIS_PORT || "6379"),
-        password: process.env.REDIS_PASSWORD,
-      });
-    }
-  } catch (error) {
-    console.error("[Startup] Failed to initialize Telegram queue:", error);
-  }
-
-  // Initialize provider health circuit breaker from DB state
-  try {
-    await initFromDb();
-    startPeriodicPersistence();
-  } catch (error) {
-    console.error("[Startup] Failed to initialize provider health:", error);
   }
 
   // Initialize LLM queue system (BullMQ workers for background tasks)
