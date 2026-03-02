@@ -1,5 +1,3 @@
-Now I have enough context to write the section. Let me compile all the information.
-
 # Section 15: Security Checklist, Resource Optimization, and Nginx Configuration
 
 This section covers three cross-cutting concerns that apply to the entire ClawFeature implementation: a comprehensive security checklist that must be verified before and during implementation, resource optimization strategies for the constrained server environment, and Nginx configuration changes required by multiple features (voice WebSocket, widget WebSocket, sandbox subdomain, channel webhooks).
@@ -569,3 +567,32 @@ After all feature sections (02-14) are implemented, run this verification pass:
 - **section-10-widget**: Widget gateway must exist for widget WebSocket Nginx route.
 - **section-11-webhooks**: Webhook HMAC and template handling must be implemented for checklist items A1/A2.
 - **section-14-feature-flags**: Feature flag allowlist must be implemented for checklist item A2.
+
+---
+
+## What Was Actually Built
+
+### Deviations from Plan
+
+1. **redisSemaphore.ts uses atomic Lua INCR+EXPIRE** instead of two separate redis calls. The plan showed a non-atomic INCR then EXPIRE. Code review identified a crash window between the two calls; fixed with a Lua script that atomically increments and conditionally sets TTL. Also added TTL-expiry guard in `release()` (`redis.exists()` before `redis.decr()`) to avoid creating key at -1 when session runs to full TTL.
+
+2. **nginx port-80 voice WebSocket ordering fixed**. The initial placement of `/api/voice/stream` was after `/api/` in the port-80 block (Nginx prefix matching would route to Python backend). Corrected during code review to place voice WS before the Python `/api/` block.
+
+3. **X-Frame-Options ALLOW-FROM removed from sandbox block**. This header has been unsupported by modern browsers since 2015/2019. CSP `frame-ancestors` provides the actual framing restriction.
+
+4. **/widget/v1/ blocks updated**. Both port-80 and port-443 `/widget/v1/` static asset blocks now include `proxy_http_version 1.1` and `proxy_set_header X-Forwarded-Proto $scheme` to match all other location blocks.
+
+5. **securityChecklist.test.ts uses it.todo() for manual-audit items**. Tests requiring grep-based static analysis of adapter files use `it.todo()` rather than `expect(true).toBe(true)` to accurately signal pending manual verification. The HMAC reference implementation tests the actual pattern behavior (length mismatch handling, correct vs tampered signatures) rather than a trivial `typeof` check.
+
+### Actual Files Created/Modified
+
+| File | Action |
+|------|--------|
+| `apps/web/server/services/redisSemaphore.ts` | Created |
+| `apps/web/server/services/__tests__/securityChecklist.test.ts` | Created |
+| `apps/web/server/services/__tests__/resourceLimits.test.ts` | Created |
+| `apps/web/server/services/__tests__/nginxConfig.test.ts` | Created |
+| `nginx/conf.d/dev-host.conf` | Modified — added voice WS, webhooks, widget WS (443), sandbox server blocks |
+
+### Test Results
+- 35 passing, 3 todo (manual audit items for secrets encryption and adapter HMAC usage)
