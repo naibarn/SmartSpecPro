@@ -61,6 +61,9 @@ function dbSkillToDefinition(dbSkill: {
   priority: number;
   availableModels: string[] | null;
   defaultModel: string | null;
+  llmModelId?: string | null;
+  preferredProviderId?: number | null;
+  strictProviderPin?: boolean | null;
   systemPrompt: string | null;
   skillContent: string | null;
   folderPath: string | null;
@@ -78,6 +81,7 @@ function dbSkillToDefinition(dbSkill: {
   // Get models for media skills if not explicitly set
   let models = dbSkill.availableModels || undefined;
   let defaultModel = dbSkill.defaultModel || undefined;
+  const llmModelId = dbSkill.llmModelId || undefined;
 
   if (mediaType && (!models || models.length === 0)) {
     const modelIds = getModelIdsByType(mediaType);
@@ -103,6 +107,9 @@ function dbSkillToDefinition(dbSkill: {
     priority: dbSkill.priority,
     models,
     defaultModel,
+    llmModelId: llmModelId || defaultModel,
+    preferredProviderId: dbSkill.preferredProviderId ?? undefined,
+    strictProviderPin: dbSkill.strictProviderPin ?? undefined,
     systemPrompt: dbSkill.systemPrompt || undefined,
     skillContent: dbSkill.skillContent || undefined,
     skillFilePath: dbSkill.folderPath ? `${dbSkill.folderPath}/skill.md` : undefined,
@@ -113,6 +120,32 @@ function dbSkillToDefinition(dbSkill: {
     requiresBrowser: dbSkill.requiresBrowser ?? undefined,
     maxRuntimeSeconds: dbSkill.maxRuntimeSeconds ?? undefined,
     maxInputMb: dbSkill.maxInputMb ?? undefined,
+  };
+}
+
+function getFrontmatterRoutingConfig(metadata: SkillMetadata): {
+  llmModelId?: string;
+  preferredProviderId?: number;
+  strictProviderPin?: boolean;
+} {
+  const meta = metadata as SkillMetadata & {
+    llmModelId?: string;
+    llm_model_id?: string;
+    preferredProviderId?: number | string;
+    preferred_provider_id?: number | string;
+    strictProviderPin?: boolean;
+    strict_provider_pin?: boolean;
+  };
+
+  const rawProviderId = meta.preferredProviderId ?? meta.preferred_provider_id;
+  const parsedProviderId = typeof rawProviderId === "string"
+    ? Number.parseInt(rawProviderId, 10)
+    : rawProviderId;
+
+  return {
+    llmModelId: meta.llmModelId ?? meta.llm_model_id,
+    preferredProviderId: Number.isFinite(parsedProviderId as number) ? parsedProviderId as number : undefined,
+    strictProviderPin: meta.strictProviderPin ?? meta.strict_provider_pin,
   };
 }
 
@@ -214,6 +247,7 @@ export async function autoSyncSkillsFromFolder(): Promise<{
       const content = fs.readFileSync(folder.skillMdPath, "utf-8");
       const parsed = parseSkillFile(content);
       const metadata: SkillMetadata = { ...parsed.metadata, name: parsed.metadata.name ?? folder.slug };
+      const routingConfig = getFrontmatterRoutingConfig(metadata);
 
       const skillData = {
         name: metadata.name || folder.slug,
@@ -234,6 +268,9 @@ export async function autoSyncSkillsFromFolder(): Promise<{
         configJson: metadata.config,
         executionMode: metadata.executionMode ?? metadata.execution_mode ?? "llm-only",
         defaultModel: metadata.defaultModel ?? metadata.default_model ?? null,
+        llmModelId: routingConfig.llmModelId ?? null,
+        preferredProviderId: routingConfig.preferredProviderId ?? null,
+        strictProviderPin: routingConfig.strictProviderPin ?? false,
         importSource: "folder" as const,
       };
 
@@ -250,6 +287,9 @@ export async function autoSyncSkillsFromFolder(): Promise<{
           const filePriority = metadata.priority ?? undefined;
           const fileIsAutoTrigger = metadata.isAutoTrigger ?? metadata.auto_trigger ?? undefined;
           const fileCreditMultiplier = metadata.creditMultiplier ?? metadata.credit_multiplier ?? undefined;
+          const fileLlmModelId = routingConfig.llmModelId;
+          const filePreferredProviderId = routingConfig.preferredProviderId;
+          const fileStrictProviderPin = routingConfig.strictProviderPin;
           await db.update(skillsTable).set({
             skillContent: parsed.content,
             systemPrompt: parsed.content,
@@ -261,6 +301,9 @@ export async function autoSyncSkillsFromFolder(): Promise<{
             ...(filePriority !== undefined ? { priority: filePriority } : {}),
             ...(fileIsAutoTrigger !== undefined ? { isAutoTrigger: fileIsAutoTrigger } : {}),
             ...(fileCreditMultiplier !== undefined ? { creditMultiplier: String(fileCreditMultiplier) } : {}),
+            ...(fileLlmModelId !== undefined ? { llmModelId: fileLlmModelId } : {}),
+            ...(filePreferredProviderId !== undefined ? { preferredProviderId: filePreferredProviderId } : {}),
+            ...(fileStrictProviderPin !== undefined ? { strictProviderPin: fileStrictProviderPin } : {}),
           }).where(eq(skillsTable.slug, folder.slug));
           result.synced.push(folder.slug);
           console.log(`[SkillRegistry] Updated skill content (hash changed): ${folder.slug}`);
@@ -339,6 +382,7 @@ export async function syncSingleSkillIfChanged(slug: string): Promise<{ synced: 
     // Parse skill.md
     const parsed = parseSkillFile(rawContent);
     const metadata: SkillMetadata = { ...parsed.metadata, name: parsed.metadata.name ?? slug };
+    const routingConfig = getFrontmatterRoutingConfig(metadata);
 
     const updateData = {
       skillContent: parsed.content,
@@ -349,6 +393,9 @@ export async function syncSingleSkillIfChanged(slug: string): Promise<{ synced: 
       // Include category to allow category changes via skill.md
       ...(metadata.category ? { category: mapCategoryToEnum(metadata.category) as any } : {}),
       ...(metadata.defaultModel ?? metadata.default_model ? { defaultModel: metadata.defaultModel ?? metadata.default_model } : {}),
+      ...(routingConfig.llmModelId !== undefined ? { llmModelId: routingConfig.llmModelId } : {}),
+      ...(routingConfig.preferredProviderId !== undefined ? { preferredProviderId: routingConfig.preferredProviderId } : {}),
+      ...(routingConfig.strictProviderPin !== undefined ? { strictProviderPin: routingConfig.strictProviderPin } : {}),
       ...(metadata.triggerPatterns ?? metadata.trigger_patterns ? { triggerPatterns: metadata.triggerPatterns ?? metadata.trigger_patterns } : {}),
       ...(metadata.priority !== undefined ? { priority: metadata.priority } : {}),
       ...(metadata.isAutoTrigger ?? metadata.auto_trigger !== undefined ? { isAutoTrigger: metadata.isAutoTrigger ?? metadata.auto_trigger } : {}),
@@ -382,6 +429,9 @@ export async function syncSingleSkillIfChanged(slug: string): Promise<{ synced: 
         configJson: metadata.config,
         executionMode: metadata.executionMode ?? metadata.execution_mode ?? "llm-only",
         defaultModel: metadata.defaultModel ?? metadata.default_model ?? null,
+        llmModelId: routingConfig.llmModelId ?? null,
+        preferredProviderId: routingConfig.preferredProviderId ?? null,
+        strictProviderPin: routingConfig.strictProviderPin ?? false,
         importSource: "folder" as const,
       };
       await db.insert(skillsTable).values(skillData);

@@ -148,6 +148,47 @@ services:
       - smartspec-network
 
   # ============================================
+  # CELERY PRESENTATION EXPORT WORKER
+  # Handles: render_presentation (PNG/JPG/PDF/MP4 export)
+  # Uses Playwright + FFmpeg + R2 upload; isolated for stability
+  # ============================================
+  celery-presentation:
+    image: smartspecpro-celery-media
+    container_name: smartspec-celery-presentation
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2 -Q presentation_export -n presentation@%h
+    env_file:
+      - ./python-backend/.env
+    environment:
+      - CELERY_BROKER_URL=redis://smartspec-redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://smartspec-redis:6379/0
+      - REDIS_URL=redis://smartspec-redis:6379/0
+      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec123@smartspec-postgres:5432/smartspec
+      # Presentation renderer runs in Docker; use host gateway to reach web server
+      - INTERNAL_RENDER_BASE_URL=http://host.docker.internal:3000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./python-backend:/app
+      - ./python-backend/media_storage:/app/media_storage
+    deploy:
+      resources:
+        limits:
+          cpus: '3.0'
+          memory: 6G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.core.celery_app inspect ping -d presentation@$$HOSTNAME || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - smartspec-network
+
+  # ============================================
   # CELERY SANDBOX WORKER
   # Handles: execute_sandbox_job (OpenSandbox orchestration)
   # Manages sandbox lifecycle: provision, execute, collect, destroy
@@ -239,6 +280,7 @@ services:
       - celery-media
       - celery-video
       - celery-import
+      - celery-presentation
     deploy:
       resources:
         limits:

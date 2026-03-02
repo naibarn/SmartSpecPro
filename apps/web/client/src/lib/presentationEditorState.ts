@@ -144,6 +144,12 @@ export function createElement(
         rotation: 0,
         src: "",
         alt: "Image",
+        imageFit: "contain",
+        imagePositionX: 50,
+        imagePositionY: 50,
+        imageZoom: 1,
+        imagePrompt: "",
+        imageReferenceUrls: [],
       };
     case "video":
       return {

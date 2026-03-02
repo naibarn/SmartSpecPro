@@ -81,12 +81,16 @@ celery_app.conf.update(
         "onedrive.renew_subscriptions": {"queue": "media"},
         "onedrive.cleanup_edit_sessions": {"queue": "media"},
         "onedrive.disconnect_cleanup": {"queue": "media"},
+        "poll_onedrive_changes": {"queue": "media"},
         # Approval timeout checker -> celery queue (lightweight, periodic)
         "app.tasks.approval_timeout_tasks.check_expired_approvals": {"queue": "celery"},
         # Presentation headless rendering (CPU + Playwright + FFmpeg)
         "app.tasks.presentation_render.render_presentation": {"queue": "presentation_export"},
         # Presentation import (PPTX/Google Slides -> slides JSON)
         "tasks.import_presentation": {"queue": "presentation_import"},
+        # Agency creator (LLM call) -> media queue (network-bound, like workflow gen)
+        "app.tasks.agency_creator_task.create_agency_discover_task": {"queue": "media"},
+        "app.tasks.agency_creator_task.create_agency_design_task": {"queue": "media"},
         # Sandbox job execution -> sandbox queue (isolated, resource-intensive)
         "app.workers.sandbox_job_worker.execute_sandbox_job": {"queue": "sandbox"},
         # Sandbox maintenance tasks
@@ -143,6 +147,10 @@ celery_app.conf.beat_schedule = {
     "cleanup-onedrive-edit-sessions": {
         "task": "onedrive.cleanup_edit_sessions",
         "schedule": crontab(minute=0, hour="*"),  # Every hour - expire stale OneDrive edit sessions
+    },
+    "poll-onedrive-changes": {
+        "task": "poll_onedrive_changes",
+        "schedule": crontab(minute="*/15"),
     },
     "check-expired-approvals": {
         "task": "app.tasks.approval_timeout_tasks.check_expired_approvals",

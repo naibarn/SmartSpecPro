@@ -1,22 +1,30 @@
-import { memo } from "react";
-import { getBezierPath, EdgeLabelRenderer, MarkerType } from "reactflow";
+import { memo, useState } from "react";
+import { getBezierPath, EdgeLabelRenderer, useReactFlow } from "reactflow";
 import type { EdgeProps } from "reactflow";
 import { cn } from "@/lib/utils";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export interface CommunicationEdgeData {
-  flowType: "delegation" | "handoff";
+  flowType: "delegation" | "handoff" | "parallel";
 }
 
 const EDGE_COLORS: Record<string, string> = {
-  delegation: "#6366f1", // indigo-500
-  handoff: "#8b5cf6", // violet-500
+  delegation: "#6366f1",  // indigo-500
+  handoff: "#8b5cf6",     // violet-500
+  parallel: "#0891b2",    // cyan-600
 };
 
 const LABEL_STYLES: Record<string, string> = {
-  delegation: "bg-indigo-100 text-indigo-800 border-indigo-200 border",
-  handoff: "bg-violet-100 text-violet-800 border-violet-200 border",
+  delegation: "bg-indigo-100 text-indigo-800 border-indigo-300",
+  handoff: "bg-violet-100 text-violet-800 border-violet-300",
+  parallel: "bg-cyan-100 text-cyan-800 border-cyan-300",
 };
+
+const FLOW_OPTIONS: Array<{ value: "delegation" | "handoff" | "parallel"; label: string; desc: string }> = [
+  { value: "delegation", label: "Delegation", desc: "Assigns a subtask and waits for the result" },
+  { value: "handoff", label: "Handoff", desc: "Transfers conversation entirely, does not wait" },
+  { value: "parallel", label: "Parallel", desc: "Sends to both agents simultaneously" },
+];
 
 export const CommunicationEdge = memo(function CommunicationEdge({
   id,
@@ -30,6 +38,8 @@ export const CommunicationEdge = memo(function CommunicationEdge({
   style = {},
   markerEnd,
 }: EdgeProps<CommunicationEdgeData>) {
+  const { setEdges } = useReactFlow();
+  const [open, setOpen] = useState(false);
   const flowType = data?.flowType ?? "delegation";
   const color = EDGE_COLORS[flowType] ?? EDGE_COLORS.delegation;
 
@@ -42,11 +52,20 @@ export const CommunicationEdge = memo(function CommunicationEdge({
     targetPosition,
   });
 
+  const handleChangeFlowType = (newType: "delegation" | "handoff" | "parallel") => {
+    setEdges((eds) =>
+      eds.map((e) =>
+        e.id === id ? { ...e, data: { ...e.data, flowType: newType } } : e,
+      ),
+    );
+    setOpen(false);
+  };
+
   return (
     <>
       <path
         id={id}
-        className="react-flow__edge-path group-hover:stroke-indigo-600 transition-colors"
+        className="react-flow__edge-path transition-colors"
         d={edgePath}
         style={{
           ...style,
@@ -59,31 +78,44 @@ export const CommunicationEdge = memo(function CommunicationEdge({
         <div
           className="nodrag nopan"
           style={{
-            position: 'absolute',
+            position: "absolute",
             transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-            pointerEvents: 'auto',
+            pointerEvents: "auto",
           }}
         >
-          <TooltipProvider delayDuration={100}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  "border rounded px-2 py-0.5 text-[10px] uppercase tracking-wider font-semibold shadow-sm transition-transform hover:scale-105 cursor-pointer",
+                  LABEL_STYLES[flowType],
+                )}
+                data-testid={`edge-label-${id}`}
+              >
+                {flowType}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-52 p-1.5" align="center" side="top">
+              <p className="text-[10px] uppercase tracking-wider font-bold text-slate-400 px-1.5 pb-1">
+                Change flow type
+              </p>
+              {FLOW_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => handleChangeFlowType(opt.value)}
                   className={cn(
-                    "cursor-pointer rounded px-2 py-0.5 text-[10px] uppercase tracking-wider font-semibold shadow-sm transition-transform hover:scale-105",
-                    LABEL_STYLES[flowType],
+                    "flex flex-col w-full rounded-md px-2 py-1.5 text-left transition-colors hover:bg-slate-100",
+                    flowType === opt.value && "bg-slate-100",
                   )}
-                  data-testid={`edge-label-${id}`}
                 >
-                  {flowType}
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="max-w-[200px] text-xs leading-relaxed z-50">
-                {flowType === "delegation"
-                  ? "Delegation: The source agent assigns a task to the target agent and WAITS for the result to continue its own work."
-                  : "Handoff: The source agent transfers the conversation entirely to the target agent and DOES NOT wait for a reply."}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+                  <span className="text-xs font-medium text-slate-800">{opt.label}</span>
+                  <span className="text-[10px] text-slate-500">{opt.desc}</span>
+                </button>
+              ))}
+            </PopoverContent>
+          </Popover>
         </div>
       </EdgeLabelRenderer>
     </>

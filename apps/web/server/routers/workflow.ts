@@ -6,10 +6,10 @@
  */
 
 import { z } from "zod";
-import { router, protectedProcedure, publicProcedure } from "../_core/trpc";
+import { router, protectedProcedure, publicProcedure, adminProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { db } from "../db";
-import { workflows, workflowTemplates, templateCategories, workflowVersions } from "@db/schema";
+import { workflows, workflowTemplates, templateCategories, workflowVersions, users } from "@db/schema";
 import { eq, and, desc, sql, count, asc, max, inArray, type SQL } from "drizzle-orm";
 import { createRateLimitMiddleware } from "../_core/rateLimitedProcedure";
 import { createHash } from "crypto";
@@ -1640,5 +1640,285 @@ export const workflowRouter = router({
       });
 
       return { workflowId: wf.id, restoredVersionNumber: version.versionNumber };
+    }),
+
+  // ──────────────────────────────────────────────────────────────
+  //  Publish Request & Admin Approval for Workflow Templates
+  // ──────────────────────────────────────────────────────────────
+
+  /**
+   * User requests their workflow be published to the public Gallery.
+   * Creates (or updates) a workflowTemplate with status = "pending_review".
+   */
+  requestPublishTemplate: protectedProcedure
+    .input(z.object({ workflowId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user!.id;
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+
+      // Verify ownership
+      const [wf] = await db
+        .select()
+        .from(workflows)
+        .where(and(eq(workflows.id, input.workflowId), eq(workflows.userId, userId)))
+        .limit(1);
+
+      if (!wf) throw new TRPCError({ code: "NOT_FOUND", message: "Workflow not found" });
+
+      const wfJson = wf.workflowJson as { nodes?: any[]; edges?: any[] } | null;
+      if (!wfJson?.nodes?.length) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Workflow must have at least 1 node" });
+      }
+
+      // Generate preview SVG
+      let previewSvg: string | null = null;
+      try {
+        const { generateWorkflowSvg } = await import("../lib/workflowSvgGenerator");
+        previewSvg = generateWorkflowSvg(wfJson.nodes || [], wfJson.edges || []);
+      } catch (_) { /* non-fatal */ }
+
+      // Upsert: find existing template from this workflow or create new
+      const [existing] = await db
+        .select({ id: workflowTemplates.id, status: workflowTemplates.status })
+        .from(workflowTemplates)
+        .where(and(eq(workflowTemplates.authorId, userId), eq(workflowTemplates.name, wf.name || "Untitled")))
+        .limit(1);
+
+      let templateId: number;
+
+      if (existing) {
+        if (existing.status === "pending_review") {
+          throw new TRPCError({ code: "CONFLICT", message: "This workflow already has a pending publish request" });
+        }
+        // Update existing template
+        const [updated] = await db
+          .update(workflowTemplates)
+          .set({
+            description: wf.description,
+            workflowJson: wf.workflowJson,
+            status: "pending_review",
+            isPublic: false,
+            requestedPublishAt: new Date(),
+            rejectionReason: null,
+            approvedBy: null,
+            approvedAt: null,
+            previewSvg,
+            stepCount: wfJson.nodes?.length ?? 0,
+            updatedAt: new Date(),
+          })
+          .where(eq(workflowTemplates.id, existing.id))
+          .returning({ id: workflowTemplates.id });
+        templateId = updated.id;
+      } else {
+        // Create new template
+        const [created] = await db
+          .insert(workflowTemplates)
+          .values({
+            name: wf.name || "Untitled Workflow",
+            description: wf.description,
+            workflowJson: wf.workflowJson,
+            authorId: userId,
+            tenantId,
+            status: "pending_review",
+            isPublic: false,
+            requestedPublishAt: new Date(),
+            previewSvg,
+            stepCount: wfJson.nodes?.length ?? 0,
+          })
+          .returning({ id: workflowTemplates.id });
+        templateId = created.id;
+      }
+
+      // Notify all admins
+      try {
+        const { createNotification } = await import("../services/notificationService");
+        const admins = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin"));
+        for (const admin of admins) {
+          await createNotification({
+            db,
+            userId: admin.id,
+            type: "system",
+            title: "Workflow Template Publish Request",
+            content: `User requested to publish workflow "${wf.name}" to the Gallery.`,
+            priority: "normal",
+          });
+        }
+      } catch (_) { /* non-fatal */ }
+
+      return { success: true, templateId };
+    }),
+
+  /**
+   * User cancels their pending publish request.
+   */
+  cancelPublishRequest: protectedProcedure
+    .input(z.object({ templateId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user!.id;
+
+      const [tpl] = await db
+        .select({ id: workflowTemplates.id, authorId: workflowTemplates.authorId, status: workflowTemplates.status })
+        .from(workflowTemplates)
+        .where(eq(workflowTemplates.id, input.templateId))
+        .limit(1);
+
+      if (!tpl) throw new TRPCError({ code: "NOT_FOUND", message: "Template not found" });
+      if (tpl.authorId !== userId) throw new TRPCError({ code: "FORBIDDEN", message: "Not the template author" });
+      if (tpl.status !== "pending_review") throw new TRPCError({ code: "BAD_REQUEST", message: "Template is not pending review" });
+
+      await db
+        .update(workflowTemplates)
+        .set({ status: "draft", requestedPublishAt: null, updatedAt: new Date() })
+        .where(eq(workflowTemplates.id, input.templateId));
+
+      return { success: true };
+    }),
+
+  /**
+   * Admin approves a pending workflow template for public gallery.
+   */
+  adminApproveTemplate: adminProcedure
+    .input(z.object({ templateId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const [tpl] = await db
+        .select({ id: workflowTemplates.id, authorId: workflowTemplates.authorId, name: workflowTemplates.name, status: workflowTemplates.status })
+        .from(workflowTemplates)
+        .where(eq(workflowTemplates.id, input.templateId))
+        .limit(1);
+
+      if (!tpl) throw new TRPCError({ code: "NOT_FOUND", message: "Template not found" });
+      if (tpl.status !== "pending_review") throw new TRPCError({ code: "BAD_REQUEST", message: "Template is not pending review" });
+
+      await db
+        .update(workflowTemplates)
+        .set({
+          status: "published",
+          isPublic: true,
+          approvedBy: ctx.user!.id,
+          approvedAt: new Date(),
+          rejectionReason: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(workflowTemplates.id, input.templateId));
+
+      // Notify creator
+      try {
+        if (tpl.authorId) {
+          const { createNotification } = await import("../services/notificationService");
+          await createNotification({
+            db,
+            userId: tpl.authorId,
+            type: "system",
+            title: "Workflow Template Approved!",
+            content: `Your workflow "${tpl.name}" has been approved and is now visible in the Gallery.`,
+            priority: "normal",
+          });
+        }
+      } catch (_) { /* non-fatal */ }
+
+      return { success: true };
+    }),
+
+  /**
+   * Admin rejects a pending workflow template.
+   */
+  adminRejectTemplate: adminProcedure
+    .input(z.object({
+      templateId: z.number(),
+      reason: z.string().max(1000).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const [tpl] = await db
+        .select({ id: workflowTemplates.id, authorId: workflowTemplates.authorId, name: workflowTemplates.name, status: workflowTemplates.status })
+        .from(workflowTemplates)
+        .where(eq(workflowTemplates.id, input.templateId))
+        .limit(1);
+
+      if (!tpl) throw new TRPCError({ code: "NOT_FOUND", message: "Template not found" });
+      if (tpl.status !== "pending_review") throw new TRPCError({ code: "BAD_REQUEST", message: "Template is not pending review" });
+
+      await db
+        .update(workflowTemplates)
+        .set({
+          status: "rejected",
+          rejectionReason: input.reason?.trim() || null,
+          approvedBy: null,
+          approvedAt: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(workflowTemplates.id, input.templateId));
+
+      // Notify creator
+      try {
+        if (tpl.authorId) {
+          const { createNotification } = await import("../services/notificationService");
+          const reasonText = input.reason?.trim() ? ` Reason: ${input.reason.trim()}` : "";
+          await createNotification({
+            db,
+            userId: tpl.authorId,
+            type: "system",
+            title: "Workflow Template Rejected",
+            content: `Your workflow "${tpl.name}" was not approved for the Gallery.${reasonText}`,
+            priority: "normal",
+          });
+        }
+      } catch (_) { /* non-fatal */ }
+
+      return { success: true };
+    }),
+
+  /**
+   * Returns the current user's template submissions with their approval status.
+   * Allows users to see pending/approved/rejected templates.
+   */
+  getMyTemplateSubmissions: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.user!.id;
+    const items = await db
+      .select({
+        id: workflowTemplates.id,
+        name: workflowTemplates.name,
+        status: workflowTemplates.status,
+        requestedPublishAt: workflowTemplates.requestedPublishAt,
+        approvedAt: workflowTemplates.approvedAt,
+        rejectionReason: workflowTemplates.rejectionReason,
+      })
+      .from(workflowTemplates)
+      .where(eq(workflowTemplates.authorId, userId))
+      .orderBy(desc(workflowTemplates.requestedPublishAt));
+    return items;
+  }),
+
+  /**
+   * Admin lists all pending workflow template approval requests.
+   */
+  adminListPendingTemplates: adminProcedure
+    .input(z.object({
+      limit: z.number().min(1).max(100).default(50),
+      offset: z.number().min(0).default(0),
+    }))
+    .query(async ({ input }) => {
+      const [totalRow] = await db
+        .select({ cnt: count() })
+        .from(workflowTemplates)
+        .where(eq(workflowTemplates.status, "pending_review"));
+
+      const items = await db
+        .select({
+          id: workflowTemplates.id,
+          name: workflowTemplates.name,
+          description: workflowTemplates.description,
+          stepCount: workflowTemplates.stepCount,
+          requestedPublishAt: workflowTemplates.requestedPublishAt,
+          ownerName: users.name,
+          ownerEmail: users.email,
+        })
+        .from(workflowTemplates)
+        .leftJoin(users, eq(workflowTemplates.authorId, users.id))
+        .where(eq(workflowTemplates.status, "pending_review"))
+        .orderBy(asc(workflowTemplates.requestedPublishAt))
+        .limit(input.limit)
+        .offset(input.offset);
+
+      return { items, total: Number(totalRow?.cnt ?? 0) };
     }),
 });

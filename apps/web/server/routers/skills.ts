@@ -73,6 +73,12 @@ export interface SkillMetadata {
   credit_multiplier?: number;
   priority?: number;
   enabled_by_default?: boolean;
+  llmModelId?: string;
+  llm_model_id?: string;
+  preferredProviderId?: number;
+  preferred_provider_id?: number;
+  strictProviderPin?: boolean;
+  strict_provider_pin?: boolean;
   config?: Record<string, any>;
 }
 
@@ -1133,28 +1139,46 @@ export const skillsRouter = router({
 
       try {
         const [skill] = await db
-          .select({
-            id: skills.id,
-            slug: skills.slug,
-            name: skills.name,
-            defaultModel: skills.defaultModel,
-            availableModels: skills.availableModels,
-          })
+        .select({
+          id: skills.id,
+          slug: skills.slug,
+          name: skills.name,
+          defaultModel: skills.defaultModel,
+          llmModelId: skills.llmModelId,
+          preferredProviderId: skills.preferredProviderId,
+          strictProviderPin: skills.strictProviderPin,
+          availableModels: skills.availableModels,
+        })
           .from(skills)
           .where(eq(skills.slug, input.skillId))
           .limit(1);
 
         if (!skill) {
-          return { defaultModel: "openai/gpt-4o", availableModels: null };
+          return {
+            defaultModel: "openai/gpt-4o",
+            llmModelId: "openai/gpt-4o",
+            preferredProviderId: null,
+            strictProviderPin: false,
+            availableModels: null,
+          };
         }
 
         return {
           defaultModel: skill.defaultModel || "openai/gpt-4o",
+          llmModelId: skill.llmModelId || skill.defaultModel || "openai/gpt-4o",
+          preferredProviderId: skill.preferredProviderId ?? null,
+          strictProviderPin: skill.strictProviderPin ?? false,
           availableModels: skill.availableModels,
         };
       } catch (error) {
         console.error("[Skills] Error fetching skill config:", error);
-        return { defaultModel: "openai/gpt-4o", availableModels: null };
+        return {
+          defaultModel: "openai/gpt-4o",
+          llmModelId: "openai/gpt-4o",
+          preferredProviderId: null,
+          strictProviderPin: false,
+          availableModels: null,
+        };
       }
     }),
 
@@ -1868,6 +1892,9 @@ export const skillsRouter = router({
           priority: skills.priority,
           availableModels: skills.availableModels,
           defaultModel: skills.defaultModel,
+          llmModelId: skills.llmModelId,
+          preferredProviderId: skills.preferredProviderId,
+          strictProviderPin: skills.strictProviderPin,
           systemPrompt: skills.systemPrompt,
           skillContent: skills.skillContent,
           knowledgebase: skills.knowledgebase,
@@ -1884,12 +1911,13 @@ export const skillsRouter = router({
           approvedBy: skills.approvedBy,
           approvedAt: skills.approvedAt,
           rejectionReason: skills.rejectionReason,
+          requestedPublishAt: skills.requestedPublishAt,
           ownerName: usersTable.name,
         })
         .from(skills)
         .leftJoin(usersTable, eq(skills.createdBy, usersTable.id))
         .where(eq(skills.visibility, "pending_approval"))
-        .orderBy(desc(skills.updatedAt), desc(skills.createdAt));
+        .orderBy(asc(skills.requestedPublishAt), desc(skills.createdAt));
 
       return rows.map((skill) => ({
         ...skill,
@@ -1929,6 +1957,28 @@ export const skillsRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: `Skill with id ${input.skillId} not found` });
       }
 
+      // Notify the skill creator
+      try {
+        const [skillInfo] = await dbInstance
+          .select({ createdBy: skills.createdBy, name: skills.name })
+          .from(skills)
+          .where(eq(skills.id, input.skillId))
+          .limit(1);
+        if (skillInfo?.createdBy) {
+          const { createNotification } = await import("../services/notificationService");
+          await createNotification({
+            db: dbInstance,
+            userId: skillInfo.createdBy,
+            type: "system",
+            title: "Skill Approved!",
+            content: `Your skill "${skillInfo.name}" has been approved and is now public.`,
+            priority: "normal",
+          });
+        }
+      } catch (_notifErr) {
+        // Non-fatal — approval still succeeds
+      }
+
       await refreshSkillCache();
       return { success: true, skillId: updated.id, visibility: updated.visibility };
     }),
@@ -1961,6 +2011,29 @@ export const skillsRouter = router({
 
       if (!updated) {
         throw new TRPCError({ code: "NOT_FOUND", message: `Skill with id ${input.skillId} not found` });
+      }
+
+      // Notify the skill creator
+      try {
+        const [skillInfo] = await dbInstance
+          .select({ createdBy: skills.createdBy, name: skills.name })
+          .from(skills)
+          .where(eq(skills.id, input.skillId))
+          .limit(1);
+        if (skillInfo?.createdBy) {
+          const { createNotification } = await import("../services/notificationService");
+          const reasonText = input.reason?.trim() ? ` Reason: ${input.reason.trim()}` : "";
+          await createNotification({
+            db: dbInstance,
+            userId: skillInfo.createdBy,
+            type: "system",
+            title: "Skill Publish Request Rejected",
+            content: `Your skill "${skillInfo.name}" was not approved for public visibility.${reasonText}`,
+            priority: "normal",
+          });
+        }
+      } catch (_notifErr) {
+        // Non-fatal — rejection still succeeds
       }
 
       await refreshSkillCache();
@@ -2133,11 +2206,34 @@ export const skillsRouter = router({
         knowledgebase: z.string().optional(),
         configJson: z.record(z.any()).optional(),
         visibility: z.enum(["private", "pending_approval", "public", "rejected"]).optional(),
+        llmModelId: z.string().nullable().optional(),
+        preferredProviderId: z.number().int().positive().nullable().optional(),
+        strictProviderPin: z.boolean().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
       const dbInstance = await getDb();
       if (!dbInstance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      if (input.strictProviderPin && !input.preferredProviderId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "strictProviderPin requires preferredProviderId",
+        });
+      }
+      if (input.preferredProviderId) {
+        const [provider] = await dbInstance
+          .select({ id: llmProviders.id })
+          .from(llmProviders)
+          .where(eq(llmProviders.id, input.preferredProviderId))
+          .limit(1);
+        if (!provider) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `LLM provider ${input.preferredProviderId} not found`,
+          });
+        }
+      }
 
       // Check if slug already exists
       const [existing] = await dbInstance
@@ -2175,10 +2271,14 @@ export const skillsRouter = router({
           skillContent: input.skillContent,
           marketplaceContent: input.marketplaceContent || generateMarketplaceContent(input.skillContent || "", { name: input.name, description: input.description }),
           knowledgebase: input.knowledgebase,
+          llmModelId: input.llmModelId ?? null,
+          preferredProviderId: input.preferredProviderId ?? null,
+          strictProviderPin: input.strictProviderPin ?? false,
           configJson: input.configJson,
           importSource: "manual",
           createdBy: ctx.user?.id,
           visibility: input.visibility ?? "private",
+          ...(input.visibility === "pending_approval" ? { requestedPublishAt: new Date() } : {}),
         })
         .returning();
 
@@ -2210,6 +2310,9 @@ export const skillsRouter = router({
         creditMultiplier: z.number().min(0).max(100).optional(),
         priority: z.number().min(0).max(100).optional(),
         defaultModel: z.string().nullable().optional(),
+        llmModelId: z.string().nullable().optional(),
+        preferredProviderId: z.number().int().positive().nullable().optional(),
+        strictProviderPin: z.boolean().optional(),
         executionMode: z.enum(["llm-only", "media-generate", "enhance-prompt", "python"]).optional(),
         systemPrompt: z.string().nullable().optional(),
         skillContent: z.string().nullable().optional(),
@@ -2224,6 +2327,48 @@ export const skillsRouter = router({
       if (!dbInstance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
       const { id, ...updateData } = input;
+
+      const [currentSkill] = await dbInstance
+        .select({ preferredProviderId: skills.preferredProviderId })
+        .from(skills)
+        .where(eq(skills.id, id))
+        .limit(1);
+      if (!currentSkill) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `Skill with id ${id} not found`,
+        });
+      }
+
+      if (updateData.strictProviderPin === true && updateData.preferredProviderId === null) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "strictProviderPin requires preferredProviderId",
+        });
+      }
+      if (
+        updateData.strictProviderPin === true
+        && updateData.preferredProviderId === undefined
+        && currentSkill.preferredProviderId == null
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "strictProviderPin requires preferredProviderId",
+        });
+      }
+      if (updateData.preferredProviderId !== undefined && updateData.preferredProviderId !== null) {
+        const [provider] = await dbInstance
+          .select({ id: llmProviders.id })
+          .from(llmProviders)
+          .where(eq(llmProviders.id, updateData.preferredProviderId))
+          .limit(1);
+        if (!provider) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `LLM provider ${updateData.preferredProviderId} not found`,
+          });
+        }
+      }
 
       // Build update object
       const updateObj: Record<string, any> = { updatedAt: new Date() };
@@ -2243,13 +2388,26 @@ export const skillsRouter = router({
       if (updateData.creditMultiplier !== undefined) updateObj.creditMultiplier = String(updateData.creditMultiplier);
       if (updateData.priority !== undefined) updateObj.priority = updateData.priority;
       if (updateData.defaultModel !== undefined) updateObj.defaultModel = updateData.defaultModel;
+      if (updateData.llmModelId !== undefined) updateObj.llmModelId = updateData.llmModelId;
+      if (updateData.preferredProviderId !== undefined) {
+        updateObj.preferredProviderId = updateData.preferredProviderId;
+        if (updateData.preferredProviderId === null && updateData.strictProviderPin === undefined) {
+          updateObj.strictProviderPin = false;
+        }
+      }
+      if (updateData.strictProviderPin !== undefined) updateObj.strictProviderPin = updateData.strictProviderPin;
       if (updateData.executionMode !== undefined) updateObj.executionMode = updateData.executionMode;
       if (updateData.systemPrompt !== undefined) updateObj.systemPrompt = updateData.systemPrompt;
       if (updateData.skillContent !== undefined) updateObj.skillContent = updateData.skillContent;
       if (updateData.marketplaceContent !== undefined) updateObj.marketplaceContent = updateData.marketplaceContent;
       if (updateData.knowledgebase !== undefined) updateObj.knowledgebase = updateData.knowledgebase;
       if (updateData.configJson !== undefined) updateObj.configJson = updateData.configJson;
-      if (updateData.visibility !== undefined) updateObj.visibility = updateData.visibility;
+      if (updateData.visibility !== undefined) {
+        updateObj.visibility = updateData.visibility;
+        if (updateData.visibility === "pending_approval") {
+          updateObj.requestedPublishAt = new Date();
+        }
+      }
 
       const [updated] = await dbInstance
         .update(skills)
@@ -2697,6 +2855,9 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
           enabledByDefault: metadata.enabled_by_default ?? false,
           creditMultiplier: String(metadata.credit_multiplier ?? 1.0),
           priority: metadata.priority ?? 50,
+          llmModelId: metadata.llmModelId ?? metadata.llm_model_id ?? null,
+          preferredProviderId: metadata.preferredProviderId ?? metadata.preferred_provider_id ?? null,
+          strictProviderPin: metadata.strictProviderPin ?? metadata.strict_provider_pin ?? false,
           systemPrompt: systemPrompt || undefined,
           skillContent,
           marketplaceContent: generateMarketplaceContent(skillContent, { name: skillName, description: skillDescription }),

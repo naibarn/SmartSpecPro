@@ -68,60 +68,6 @@ function validateCronExpression(cron: string): { valid: boolean; error?: string 
   return { valid: true };
 }
 
-/**
- * Validates cron expression for security and rate limiting
- * Enforces minimum 15-minute interval to prevent resource exhaustion
- */
-function validateCronExpression(cron: string): { valid: boolean; error?: string } {
-  const parts = cron.trim().split(/\s+/);
-  if (parts.length !== 5) return { valid: false, error: "Cron must have exactly 5 fields (min hour dom mon dow)" };
-
-  const [min, hour] = parts;
-
-  // Block every-minute patterns
-  if (min === "*" && hour === "*") return { valid: false, error: "Cron runs too frequently (every minute). Minimum interval is 15 minutes." };
-
-  // Block sub-15-minute intervals
-  if (min.startsWith("*/")) {
-    const interval = parseInt(min.slice(2), 10);
-    if (!isNaN(interval) && interval < 15 && hour === "*") {
-      return { valid: false, error: `Cron runs every ${interval} minutes. Minimum interval is 15 minutes.` };
-    }
-  }
-
-  // Validate field ranges
-  const ranges = [
-    { name: "minute", min: 0, max: 59 },
-    { name: "hour", min: 0, max: 23 },
-    { name: "day of month", min: 1, max: 31 },
-    { name: "month", min: 1, max: 12 },
-    { name: "day of week", min: 0, max: 7 },
-  ];
-
-  for (let i = 0; i < 5; i++) {
-    const field = parts[i];
-    if (field === "*") continue;
-    if (field.startsWith("*/")) {
-      const step = parseInt(field.slice(2), 10);
-      if (isNaN(step) || step < 1) return { valid: false, error: `Invalid step in ${ranges[i].name}: ${field}` };
-      continue;
-    }
-    // Allow ranges like "1-5", lists like "1,3,5", and single numbers
-    const segments = field.split(",");
-    for (const seg of segments) {
-      const rangeParts = seg.split("-");
-      for (const p of rangeParts) {
-        const n = parseInt(p, 10);
-        if (isNaN(n) || n < ranges[i].min || n > ranges[i].max) {
-          return { valid: false, error: `Invalid value in ${ranges[i].name}: ${p} (must be ${ranges[i].min}-${ranges[i].max})` };
-        }
-      }
-    }
-  }
-
-  return { valid: true };
-}
-
 export const scheduledMessagesRouter = router({
   /**
    * Create a new scheduled message

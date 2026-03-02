@@ -1821,6 +1821,8 @@ export type SlideAudioTrackJson = {
 export type DeckAudioTrackJson = {
   libraryItemId: number;
   volume: number;       // 0.0 – 1.0
+  startAtMs?: number;   // default 0
+  endAtMs?: number | null; // null = play to natural end
   loop: boolean;
   fadeOutMs: number | null;
 };

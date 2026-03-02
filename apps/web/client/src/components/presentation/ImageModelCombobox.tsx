@@ -20,6 +20,34 @@ interface ImageModelComboboxProps {
   disabled?: boolean;
 }
 
+interface ImageModelOption {
+  id: string;
+  name: string;
+  provider?: string;
+  creditCost?: number;
+  configJson?: unknown;
+}
+
+function normalizeGenerateType(configJson: unknown): string | null {
+  if (!configJson || typeof configJson !== "object") {
+    return null;
+  }
+  const raw = (configJson as { generateType?: unknown }).generateType;
+  if (typeof raw !== "string") {
+    return null;
+  }
+  const normalized = raw.trim().toLowerCase();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function isTextToImageModel(model: ImageModelOption): boolean {
+  const generateType = normalizeGenerateType(model.configJson);
+  if (!generateType) {
+    return true;
+  }
+  return ["text-to-image", "text2image", "txt2img", "t2i"].includes(generateType);
+}
+
 export function ImageModelCombobox({
   value,
   onValueChange,
@@ -34,8 +62,9 @@ export function ImageModelCombobox({
     { staleTime: 300_000 },
   );
 
-  const models = modelsQuery.data?.models ?? [];
-  const defaultModelId = modelsQuery.data?.defaults?.image ?? "flux-2.0";
+  const models = (modelsQuery.data?.models ?? []) as ImageModelOption[];
+  const compatibleModels = models.filter(isTextToImageModel);
+  const defaultModelId = compatibleModels[0]?.id || modelsQuery.data?.defaults?.image || "flux-2.0";
 
   useEffect(() => {
     if (open && triggerRef.current) {
@@ -98,49 +127,47 @@ export function ImageModelCombobox({
                 </div>
               )}
 
-              {models.map(
-                (model: {
-                  id: string;
-                  name: string;
-                  provider?: string;
-                  creditCost?: number;
-                }) => (
-                  <CommandItem
-                    key={model.id}
-                    value={model.name}
-                    onSelect={() => {
-                      onValueChange(model.id);
-                      setOpen(false);
-                    }}
-                  >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        value === model.id ? "opacity-100" : "opacity-0",
-                      )}
-                    />
-                    <div className="flex flex-1 items-center gap-2 overflow-hidden">
-                      <span className="truncate font-medium">{model.name}</span>
-                      {model.provider && (
-                        <Badge
-                          variant="outline"
-                          className="shrink-0 px-1.5 py-0 text-[10px]"
-                        >
-                          {model.provider}
-                        </Badge>
-                      )}
-                      {model.creditCost != null && (
-                        <Badge
-                          variant="secondary"
-                          className="shrink-0 px-1.5 py-0 text-[10px]"
-                        >
-                          <Zap className="mr-0.5 inline h-3 w-3" />
-                          {model.creditCost}
-                        </Badge>
-                      )}
-                    </div>
-                  </CommandItem>
-                ),
+              {compatibleModels.map((model) => (
+                <CommandItem
+                  key={model.id}
+                  value={model.name}
+                  onSelect={() => {
+                    onValueChange(model.id);
+                    setOpen(false);
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      value === model.id ? "opacity-100" : "opacity-0",
+                    )}
+                  />
+                  <div className="flex flex-1 items-center gap-2 overflow-hidden">
+                    <span className="truncate font-medium">{model.name}</span>
+                    {model.provider && (
+                      <Badge
+                        variant="outline"
+                        className="shrink-0 px-1.5 py-0 text-[10px]"
+                      >
+                        {model.provider}
+                      </Badge>
+                    )}
+                    {model.creditCost != null && (
+                      <Badge
+                        variant="secondary"
+                        className="shrink-0 px-1.5 py-0 text-[10px]"
+                      >
+                        <Zap className="mr-0.5 inline h-3 w-3" />
+                        {model.creditCost}
+                      </Badge>
+                    )}
+                  </div>
+                </CommandItem>
+              ))}
+              {compatibleModels.length < models.length && (
+                <div className="px-2 pb-2 pt-1 text-[11px] text-muted-foreground">
+                  Hidden incompatible models (image-to-image / edit only)
+                </div>
               )}
             </CommandGroup>
           </CommandList>

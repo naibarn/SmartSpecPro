@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { protectedProcedure, router } from "../_core/trpc";
 import { createRateLimitMiddleware } from "../_core/rateLimitedProcedure";
+import { signBearerToken } from "../_core/tokens";
 import {
   PRESENTATION_EDITOR_ROUTE_BASE,
   PRESENTATION_ERROR_CODE,
@@ -212,6 +213,33 @@ function toPresentationActor(ctx: {
   };
 }
 
+function createPresentationToken(userId: number, scopes: string[]): string {
+  return signBearerToken(
+    {
+      sub: String(userId),
+      type: "access",
+      scopes,
+      jti: `presentation_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
+    },
+    "15m",
+  );
+}
+
+function getPresentationToken(
+  ctx: {
+    req: { headers: { authorization?: string | string[] } };
+    userToken: string | null;
+    user: { id: number };
+  },
+  scopes: string[],
+): string {
+  const authHeader = ctx.req.headers.authorization;
+  if (typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
+    return authHeader.substring(7);
+  }
+  return createPresentationToken(ctx.user.id, scopes);
+}
+
 const deckIdSchema = z.object({
   deckId: z.number().int().positive(),
 });
@@ -231,23 +259,25 @@ export const presentationRouter = router({
           ensureAIGenerationEnabled();
 
           const actor = toPresentationActor(ctx);
-          const userToken = ctx.userToken;
-          if (!userToken) {
-            throw new TRPCError({ code: "UNAUTHORIZED", message: "Missing auth token" });
-          }
+          const userToken = getPresentationToken(ctx, ["media:generate"]);
 
           const redis = getRedisClient();
           const taskId = crypto.randomUUID();
+          const lockKey = `ai_draft_lock:${actor.userId}`;
 
           // Acquire per-user lock
           const lockResult = await redis.set(
-            `ai_draft_lock:${actor.userId}`,
+            lockKey,
             taskId,
             "EX",
             300,
             "NX",
           );
           if (lockResult === null) {
+            const existingTaskId = await redis.get(lockKey);
+            if (existingTaskId) {
+              return { taskId: existingTaskId, alreadyInProgress: true };
+            }
             throw new TRPCError({
               code: "TOO_MANY_REQUESTS",
               message: "AI draft already in progress for this user",
@@ -290,14 +320,17 @@ export const presentationRouter = router({
                   "EX",
                   300,
                 );
-                await redis.del(`ai_draft_lock:${actor.userId}`);
+                const owner = await redis.get(lockKey);
+                if (owner === taskId) {
+                  await redis.del(lockKey);
+                }
               } catch {
                 // best-effort cleanup
               }
             },
           );
 
-          return { taskId };
+          return { taskId, alreadyInProgress: false };
         } catch (err) {
           if (err instanceof PresentationServiceError) {
             throw mapPresentationServiceError(err);
@@ -493,7 +526,10 @@ export const presentationRouter = router({
       try {
         ensureFeatureEnabled();
         ensureExportWriteEnabled();
-        return await triggerPresentationExport(input, toPresentationActor(ctx));
+        const userToken = getPresentationToken(ctx, ["presentation:export"]);
+        return await triggerPresentationExport(input, toPresentationActor(ctx), {
+          userToken,
+        });
       } catch (error) {
         if (error instanceof PresentationServiceError) {
           throw mapPresentationServiceError(error);
@@ -509,7 +545,12 @@ export const presentationRouter = router({
     .query(async ({ input, ctx }) => {
       try {
         ensureFeatureEnabled();
-        return await getPresentationExportStatus(input.exportId, toPresentationActor(ctx));
+        const userToken = getPresentationToken(ctx, ["presentation:export"]);
+        return await getPresentationExportStatus(
+          input.exportId,
+          toPresentationActor(ctx),
+          userToken,
+        );
       } catch (error) {
         if (error instanceof PresentationServiceError) {
           throw mapPresentationServiceError(error);
@@ -524,7 +565,8 @@ export const presentationRouter = router({
       try {
         ensureFeatureEnabled();
         const actor = toPresentationActor(ctx);
-        return await cancelPresentationExport(input.exportId, actor);
+        const userToken = getPresentationToken(ctx, ["presentation:export"]);
+        return await cancelPresentationExport(input.exportId, actor, userToken);
       } catch (error) {
         if (error instanceof PresentationServiceError) {
           throw mapPresentationServiceError(error);

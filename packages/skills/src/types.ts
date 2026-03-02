@@ -68,6 +68,15 @@ export interface SkillDefinition {
   /** Default model if multiple available */
   defaultModel?: string;
 
+  /** Canonical routed LLM model id for text generation */
+  llmModelId?: string;
+
+  /** Optional pinned provider for this skill (llm_providers.id) */
+  preferredProviderId?: number;
+
+  /** If true, enforce preferredProviderId with no provider fallback */
+  strictProviderPin?: boolean;
+
   /** Whether skill is enabled by default */
   enabledByDefault: boolean;
 
@@ -145,6 +154,12 @@ export interface SkillMetadata {
   executionMode?: string;
   default_model?: string;
   defaultModel?: string;
+  llm_model_id?: string;
+  llmModelId?: string;
+  preferred_provider_id?: number;
+  preferredProviderId?: number;
+  strict_provider_pin?: boolean;
+  strictProviderPin?: boolean;
   config?: Record<string, unknown>;
   // Sandbox-related frontmatter fields
   sandbox_profile?: string;

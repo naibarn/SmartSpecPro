@@ -15,6 +15,19 @@ from app.llm_proxy.providers import KieAIProvider
 
 logger = structlog.get_logger()
 
+def _is_placeholder_key(value: Optional[str]) -> bool:
+    if not value:
+        return True
+    normalized = value.strip().lower()
+    return normalized in {
+        "",
+        "your-kie-ai-api-key",
+        "changeme",
+        "change-me",
+        "replace-me",
+        "your-api-key",
+    }
+
 
 class UnifiedLLMClient:
     """
@@ -175,7 +188,10 @@ class UnifiedLLMClient:
             logger.info("groq_initialized_from_db")
 
         elif provider_name == "kie_ai":
-            self.kie_ai_client = KieAIProvider(api_key=api_key, base_url=base_url or "https://kie.ai")
+            self.kie_ai_client = KieAIProvider(
+                api_key=api_key,
+                base_url=base_url or "https://api.kie.ai/api/v1",
+            )
             logger.info("kie_ai_initialized_from_db")
 
         elif provider_name == "ollama":
@@ -229,12 +245,15 @@ class UnifiedLLMClient:
             )
             logger.info("direct_anthropic_initialized")
 
-        if settings.KIE_AI_API_KEY:
+        if settings.KIE_AI_API_KEY and not _is_placeholder_key(settings.KIE_AI_API_KEY):
             self.kie_ai_client = KieAIProvider(
                 api_key=settings.KIE_AI_API_KEY,
-                base_url=settings.KIE_AI_BASE_URL or "https://kie.ai"
+                base_url=settings.KIE_AI_BASE_URL or "https://api.kie.ai/api/v1"
             )
             logger.info("kie_ai_client_initialized")
+        elif settings.KIE_AI_API_KEY:
+            # Placeholder env key should not mask DB-backed provider configuration.
+            logger.warning("kie_ai_env_key_ignored_placeholder")
     
     async def chat(
         self,
@@ -316,21 +335,11 @@ class UnifiedLLMClient:
         )
 
         # Step 2: Route to appropriate client
+        # Priority: OpenRouter (when requested) > Direct provider > Fallback
         try:
-            # If model's provider is in direct_providers, use direct even if use_openrouter=True
-            if provider_in_direct:
-                # Use direct provider (configured in database)
-                logger.info("using_direct_provider", provider=provider_name, model=model)
-                response = await self._chat_direct(
-                    model=model,
-                    messages=messages,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    provider_name=provider_name,
-                    **kwargs
-                )
-            elif use_openrouter and self.openrouter_client:
-                # Use OpenRouter (primary)
+            if use_openrouter and self.openrouter_client:
+                # Use OpenRouter (primary) — handles provider-prefixed models like "openai/gpt-4o"
+                logger.info("using_openrouter", model=model)
                 response = await self._chat_openrouter(
                     model=model,
                     messages=messages,
@@ -342,6 +351,17 @@ class UnifiedLLMClient:
                     temperature=temperature,
                     max_tokens=max_tokens,
                     budget_priority=budget_priority,
+                    **kwargs
+                )
+            elif provider_in_direct:
+                # Use direct provider (when OpenRouter not requested or not available)
+                logger.info("using_direct_provider", provider=provider_name, model=model)
+                response = await self._chat_direct(
+                    model=model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    provider_name=provider_name,
                     **kwargs
                 )
             else:
@@ -762,11 +782,10 @@ class UnifiedLLMClient:
 unified_client = UnifiedLLMClient()
 
 
-_unified_client_instance: Optional[UnifiedLLMClient] = None
-
 def get_unified_client() -> UnifiedLLMClient:
-    """Get singleton instance of UnifiedLLMClient"""
-    global _unified_client_instance
-    if _unified_client_instance is None:
-        _unified_client_instance = UnifiedLLMClient()
-    return _unified_client_instance
+    """Get the module-level singleton instance of UnifiedLLMClient.
+
+    This returns the same instance that is initialized at app startup via
+    ``main.py`` (which calls ``unified_client.initialize(db=session)``).
+    """
+    return unified_client

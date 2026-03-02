@@ -61,6 +61,8 @@ const MAX_STATUS_REGISTRY_ENTRIES = 5_000;
 const MAX_RESULT_REGISTRY_ENTRIES = 5_000;
 const MAX_THROTTLE_KEYS = 5_000;
 const MAX_THROTTLE_WINDOW_ENTRIES_PER_KEY = 120;
+const EXPORT_TASK_STALE_MS = 20 * 60_000;
+const DEFAULT_PYTHON_BACKEND_URL = "http://localhost:8000";
 
 interface PresentationExportStateRecord {
   exportId: number;
@@ -83,7 +85,9 @@ interface TriggerPresentationExportDependencies {
     renderSpec: PresentationRenderSpec,
     format: "png" | "jpg" | "pdf" | "mp4",
     quality?: "draft" | "standard" | "high",
+    userToken?: string,
   ) => Promise<{ jobId: string }>;
+  userToken?: string;
   now?: () => number;
   dedupeWindowMs?: number;
   throttleWindowMs?: number;
@@ -152,6 +156,37 @@ let exportIdSequence = 0;
 function nextExportId(): number {
   exportIdSequence += 1;
   return exportIdSequence;
+}
+
+function resolvePythonBackendBaseUrl(): string {
+  const candidate =
+    ENV.pythonBackendUrl?.trim()
+    || process.env.PYTHON_BACKEND_URL?.trim()
+    || process.env.VITE_PYTHON_BACKEND_URL?.trim()
+    || DEFAULT_PYTHON_BACKEND_URL;
+  return candidate.replace(/\/+$/, "");
+}
+
+function resolveRenderDimensions(input: BuildRenderSpecInput): { width: number; height: number } {
+  if (input.width && input.height) {
+    return { width: input.width, height: input.height };
+  }
+
+  // Prefer deck canvas size from the first slide (ordered) when explicit size is not provided.
+  const orderedSlides = [...input.slides].sort((a, b) => {
+    if (a.orderIndex === b.orderIndex) return a.id - b.id;
+    return a.orderIndex - b.orderIndex;
+  });
+  const firstSlideContent = orderedSlides[0]?.slideContent as Record<string, unknown> | undefined;
+  const canvas = firstSlideContent?.canvas as Record<string, unknown> | undefined;
+  const canvasWidth = Number(canvas?.width);
+  const canvasHeight = Number(canvas?.height);
+
+  if (Number.isFinite(canvasWidth) && Number.isFinite(canvasHeight) && canvasWidth > 0 && canvasHeight > 0) {
+    return { width: Math.round(canvasWidth), height: Math.round(canvasHeight) };
+  }
+
+  return { width: input.width ?? 1920, height: input.height ?? 1080 };
 }
 
 function pruneWindow(entries: number[], nowMs: number, windowMs: number): number[] {
@@ -321,12 +356,33 @@ function resolveDedupeKey(input: TriggerPresentationExportInput, actor: Presenta
   return `${actor.tenantId}:${actor.userId}:${input.deckId}:${input.format}:${key}`;
 }
 
+function isIdempotencyUniqueConstraintError(error: unknown): boolean {
+  const err = error as {
+    code?: string;
+    constraint?: string;
+    cause?: { code?: string; constraint?: string };
+  };
+  const code = err?.code ?? err?.cause?.code;
+  const constraint = err?.constraint ?? err?.cause?.constraint;
+  return code === "23505" && constraint === "presentation_exports_idempotency_key_unique";
+}
+
+function shouldMarkExportTaskStale(record: { updatedAt: Date }, pythonState: { state?: string; percent?: number; stage?: string }): boolean {
+  const state = pythonState.state?.toLowerCase();
+  const percent = typeof pythonState.percent === "number" ? pythonState.percent : 0;
+  const stage = typeof pythonState.stage === "string" ? pythonState.stage.trim() : "";
+  if (state !== "queued") return false;
+  if (percent > 0 || stage.length > 0) return false;
+  return Date.now() - record.updatedAt.getTime() >= EXPORT_TASK_STALE_MS;
+}
+
 function resolveDependencies(
   dependencies?: TriggerPresentationExportDependencies,
 ): Required<TriggerPresentationExportDependencies> {
   return {
     getDeckDetail: dependencies?.getDeckDetail ?? getPresentationDeckDetail,
     enqueueExportJob: dependencies?.enqueueExportJob ?? defaultEnqueueExportJob,
+    userToken: dependencies?.userToken,
     now: dependencies?.now ?? Date.now,
     dedupeWindowMs: dependencies?.dedupeWindowMs ?? DEDUPE_WINDOW_MS,
     throttleWindowMs: dependencies?.throttleWindowMs ?? THROTTLE_WINDOW_MS,
@@ -412,6 +468,8 @@ async function resolveAudioUrls(
         resolvedProjectAudioTrack = {
           url,
           volume: resolvedProjectAudioTrack.volume,
+          startAtMs: resolvedProjectAudioTrack.startAtMs,
+          endAtMs: resolvedProjectAudioTrack.endAtMs,
           loop: resolvedProjectAudioTrack.loop,
           fadeOutMs: resolvedProjectAudioTrack.fadeOutMs,
         } satisfies ResolvedProjectAudioTrack;
@@ -426,6 +484,7 @@ async function defaultEnqueueExportJob(
   renderSpec: PresentationRenderSpec,
   format: "png" | "jpg" | "pdf" | "mp4",
   quality?: "draft" | "standard" | "high",
+  userToken?: string,
 ): Promise<{ jobId: string }> {
   const db = await getDb();
   if (!db) {
@@ -441,12 +500,13 @@ async function defaultEnqueueExportJob(
     quality: quality ?? "standard",
   };
 
-  const token = signBearerToken(
+  const token = userToken?.trim() || signBearerToken(
     { sub: "internal-render-service", scopes: ["internal:render"] },
     "30m",
   );
 
-  const response = await fetch(`${ENV.pythonBackendUrl}/api/v1/presentations/export`, {
+  const pythonBackendBaseUrl = resolvePythonBackendBaseUrl();
+  const response = await fetch(`${pythonBackendBaseUrl}/api/v1/presentations/export`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -572,6 +632,8 @@ export async function buildPlayDeckPayload(
       resolvedProjectAudioTrack = {
         url,
         volume: dbProjectAudio.volume,
+        startAtMs: dbProjectAudio.startAtMs ?? 0,
+        endAtMs: dbProjectAudio.endAtMs ?? undefined,
         loop: dbProjectAudio.loop,
         fadeOutMs: dbProjectAudio.fadeOutMs ?? undefined,
       };
@@ -655,6 +717,8 @@ async function resolveSlideAudioData(
       resolvedProjectAudioTrack = {
         url,
         volume: dbProjectAudio.volume,
+        startAtMs: dbProjectAudio.startAtMs ?? 0,
+        endAtMs: dbProjectAudio.endAtMs ?? undefined,
         loop: dbProjectAudio.loop,
         fadeOutMs: dbProjectAudio.fadeOutMs ?? undefined,
       };
@@ -665,6 +729,7 @@ async function resolveSlideAudioData(
 }
 
 export function buildPresentationRenderSpec(input: BuildRenderSpecInput): PresentationRenderSpec {
+  const { width, height } = resolveRenderDimensions(input);
   const degraded = degradeSlidesForExport(input.slides, DEFAULT_DURATION_MS);
 
   // Enrich degraded slides with resolved audio tracks when available.
@@ -691,8 +756,8 @@ export function buildPresentationRenderSpec(input: BuildRenderSpecInput): Presen
     schemaVersion: PRESENTATION_RENDER_SCHEMA_VERSION,
     deckId: input.deck.id,
     format: input.format,
-    width: input.width ?? 1920,
-    height: input.height ?? 1080,
+    width,
+    height,
     fps: input.fps ?? 30,
     slides: slideshowPayload.slides,
     projectAudioTrack: slideshowPayload.projectAudioTrack,
@@ -720,7 +785,7 @@ export async function triggerPresentationExport(
   });
   try {
     const db = await getDb(); // resolved once and reused throughout this call
-    const dedupeKey = resolveDedupeKey(input, actor);
+    let dedupeKey = resolveDedupeKey(input, actor);
     const dedupeHit = dedupeRegistry.get(dedupeKey);
     if (dedupeHit && nowMs - dedupeHit.createdAtMs <= resolved.dedupeWindowMs) {
       const existing = statusRegistry.get(dedupeHit.exportId)?.value;
@@ -830,21 +895,53 @@ export async function triggerPresentationExport(
     let dbRecordId: number | null = null;
     {
       if (db) {
-        const record = await createExportRecord(
-          {
-            deckId: input.deckId,
-            userId: actor.userId,
-            tenantId: actor.tenantId,
-            format: input.format,
-            quality: input.quality,
-            width: input.width ?? 1920,
-            height: input.height ?? 1080,
-            idempotencyKey: dedupeKey,
-          },
-          db,
-        );
-        exportId = record.id;
-        dbRecordId = record.id;
+        const createRecordInput: CreateExportRecordInput = {
+          deckId: input.deckId,
+          userId: actor.userId,
+          tenantId: actor.tenantId,
+          format: input.format,
+          quality: input.quality,
+          width: renderSpec.width,
+          height: renderSpec.height,
+          idempotencyKey: dedupeKey,
+        };
+        try {
+          const record = await createExportRecord(createRecordInput, db);
+          exportId = record.id;
+          dbRecordId = record.id;
+        } catch (error) {
+          if (!isIdempotencyUniqueConstraintError(error)) {
+            throw error;
+          }
+
+          const existingRecord = await getExportRecordByIdempotencyKey(dedupeKey, db);
+          if (
+            existingRecord
+            && (existingRecord.status === "queued" || existingRecord.status === "processing")
+          ) {
+            return presentationExportResultSchema.parse({
+              schemaVersion: PRESENTATION_EXPORT_SCHEMA_VERSION,
+              exportId: existingRecord.id,
+              jobId: existingRecord.celeryTaskId ?? existingRecord.id.toString(),
+              deckId: input.deckId,
+              format: input.format,
+              deduped: true,
+              status: existingRecord.status,
+              message: "Duplicate export suppressed. Existing job is still active.",
+              renderSpec,
+              warnings: renderSpec.warnings,
+            });
+          }
+
+          // Reuse-safe retry key: terminal rows (cancelled/error/done) keep history immutable.
+          dedupeKey = `${dedupeKey}:retry:${crypto.randomUUID()}`;
+          const retryRecord = await createExportRecord(
+            { ...createRecordInput, idempotencyKey: dedupeKey },
+            db,
+          );
+          exportId = retryRecord.id;
+          dbRecordId = retryRecord.id;
+        }
       } else {
         exportId = nextExportId();
       }
@@ -852,7 +949,7 @@ export async function triggerPresentationExport(
 
     let queued: { jobId: string };
     try {
-      queued = await resolved.enqueueExportJob(renderSpec, input.format, input.quality);
+      queued = await resolved.enqueueExportJob(renderSpec, input.format, input.quality, resolved.userToken);
     } catch (enqueueError) {
       // Mark DB record as error if enqueue fails
       if (dbRecordId !== null && db) {
@@ -951,6 +1048,7 @@ export async function triggerPresentationExport(
 export async function getPresentationExportStatus(
   exportId: number,
   actor?: PresentationActor,
+  userToken?: string,
 ): Promise<PresentationExportStatusResult> {
   const defaults = getDefaultStateOptions(Date.now());
   compactExportState(defaults.nowMs, defaults);
@@ -977,12 +1075,13 @@ export async function getPresentationExportStatus(
     // Poll Python for live progress if the task is still in-flight
     if (record.celeryTaskId && (record.status === "queued" || record.status === "processing")) {
       try {
-        const token = signBearerToken(
+        const pythonBackendBaseUrl = resolvePythonBackendBaseUrl();
+        const token = userToken?.trim() || signBearerToken(
           { sub: "internal-render-service", scopes: ["internal:render"] },
           "30m",
         );
         const response = await fetch(
-          `${ENV.pythonBackendUrl}/api/v1/presentations/export/${record.celeryTaskId}`,
+          `${pythonBackendBaseUrl}/api/v1/presentations/export/${record.celeryTaskId}`,
           { headers: { Authorization: `Bearer ${token}` } },
         );
         if (response.ok) {
@@ -1004,6 +1103,16 @@ export async function getPresentationExportStatus(
             const updated = await updateExportRecord(
               record.id,
               { status: "error", errorMessage: json.error_message ?? "Task failed" },
+              db,
+            );
+            if (updated) current = updated;
+          } else if (shouldMarkExportTaskStale(record, json)) {
+            const updated = await updateExportRecord(
+              record.id,
+              {
+                status: "error",
+                errorMessage: "EXPORT_TASK_STALE: worker did not start task in time, please retry export",
+              },
               db,
             );
             if (updated) current = updated;
@@ -1082,6 +1191,7 @@ export function resetPresentationExportStateForTests(): void {
 export async function cancelPresentationExport(
   exportId: number,
   actor: PresentationActor,
+  userToken?: string,
 ): Promise<{ success: boolean; exportId: number; message?: string }> {
   const db = await getDb();
   if (!db) {
@@ -1118,12 +1228,13 @@ export async function cancelPresentationExport(
   // Attempt to revoke the Celery task. Non-fatal if Python is unavailable.
   if (record.celeryTaskId) {
     try {
-      const token = signBearerToken(
+      const pythonBackendBaseUrl = resolvePythonBackendBaseUrl();
+      const token = userToken?.trim() || signBearerToken(
         { sub: "internal-render-service", scopes: ["internal:render"] },
         "30m",
       );
       await fetch(
-        `${ENV.pythonBackendUrl}/api/v1/presentations/export/${record.celeryTaskId}/cancel`,
+        `${pythonBackendBaseUrl}/api/v1/presentations/export/${record.celeryTaskId}/cancel`,
         {
           method: "POST",
           headers: { Authorization: `Bearer ${token}` },

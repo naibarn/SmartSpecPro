@@ -70,6 +70,7 @@ import { agencyRouter } from "./routers/agency";
 import { personaRouter } from "./routers/persona";
 import { artifactRouter } from "./routers/artifact";
 import { widgetRouter } from "./routers/widget";
+import { webhookTriggersRouter } from "./routers/webhookTriggers";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -1358,6 +1359,9 @@ export const appRouter = router({
 
   // Embeddable chat widget management
   widget: widgetRouter,
+
+  // Inbound webhook trigger management
+  webhookTriggers: webhookTriggersRouter,
 
   // Memory system (entity memories, summaries, context)
   memory: memoryRouter,

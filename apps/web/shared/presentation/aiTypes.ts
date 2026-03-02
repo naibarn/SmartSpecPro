@@ -32,6 +32,16 @@ export const AI_STYLE_PRESET_IDS = [
   "warm-sunset",
 ] as const;
 
+export const MAX_AI_DRAFT_SLIDES = 30;
+
+const referenceImageUrlSchema = z
+  .string()
+  .min(1)
+  .max(2048)
+  .refine((value) => value.startsWith("/") || /^https?:\/\//i.test(value), {
+    message: "Reference URL must be a relative path or http(s) URL",
+  });
+
 // ── SlideStylePreset schemas ───────────────────────────────
 
 export const SlideStylePresetHeaderSchema = z.object({
@@ -40,6 +50,7 @@ export const SlideStylePresetHeaderSchema = z.object({
   backgroundColor: z.string(),
   logoPosition: z.enum(["left", "center", "right"]).optional(),
   showDeckTitle: z.boolean().optional(),
+  customTitle: z.string().max(200).optional(),
   titleFontSize: z.number().optional(),
   titleColor: z.string().optional(),
   borderBottom: z.string().optional(),
@@ -109,7 +120,7 @@ export type AIPresentationSlide = z.infer<typeof AIPresentationSlideSchema>;
 export const AIPresentationSchema = z
   .array(AIPresentationSlideSchema)
   .min(1)
-  .max(10);
+  .max(MAX_AI_DRAFT_SLIDES);
 
 // ── GenerateAIDraftInput schema (tRPC input) ───────────────
 
@@ -117,12 +128,17 @@ export const GenerateAIDraftInputSchema = z.object({
   deckId: z.number().int().positive(),
   expectedVersion: z.number().int().nonnegative(),
   prompt: z.string().min(3).max(1000),
-  numSlides: z.number().int().min(1).max(10).default(5),
+  numSlides: z.number().int().min(1).max(MAX_AI_DRAFT_SLIDES).default(5),
   language: z.enum(["auto", "en", "th"]).default("auto"),
   articleSkillId: z.string().min(1),
   imageSkillId: z.string().min(1).optional(),
   imageModel: z.string().min(1).optional(),
+  canvasWidth: z.number().int().positive().max(10_000).optional(),
+  canvasHeight: z.number().int().positive().max(10_000).optional(),
+  imagePromptContext: z.string().max(1000).optional(),
+  referenceImageUrls: z.array(referenceImageUrlSchema).max(5).optional(),
   stylePresetId: z.enum(AI_STYLE_PRESET_IDS).default("dark-professional"),
+  headerCustomText: z.string().max(200).optional(),
   footerCustomText: z.string().max(200).optional(),
   styleOverrides: z
     .object({
@@ -141,6 +157,7 @@ export type GenerateAIDraftInput = z.infer<typeof GenerateAIDraftInputSchema>;
 
 export const GenerateAIDraftOutputSchema = z.object({
   taskId: z.string().min(1),
+  alreadyInProgress: z.boolean().optional(),
 });
 
 export type GenerateAIDraftOutput = z.infer<typeof GenerateAIDraftOutputSchema>;

@@ -1,15 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { z } from "zod";
 
-const { mockExecuteWithFallback, mockDeductCreditsForModel } = vi.hoisted(
+const { mockExecuteWithFallback, mockResolveProviders, mockDeductCreditsForModel } = vi.hoisted(
   () => ({
     mockExecuteWithFallback: vi.fn(),
+    mockResolveProviders: vi.fn(),
     mockDeductCreditsForModel: vi.fn(),
   }),
 );
 
 vi.mock("../llmRouter", () => ({
   executeWithFallback: mockExecuteWithFallback,
+  resolveProviders: mockResolveProviders,
 }));
 
 vi.mock("../creditService", () => ({
@@ -33,6 +35,7 @@ const TestSchema = z.object({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockResolveProviders.mockResolvedValue([{ providerId: 1 }]);
   mockDeductCreditsForModel.mockResolvedValue({
     creditsUsed: 5,
     wasFree: false,

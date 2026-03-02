@@ -27,6 +27,42 @@
     "section-01-database": {
       "status": "complete",
       "commit_hash": "7198bd59055af2bdc963ed35169122f44b444233"
+    },
+    "section-02-persona": {
+      "status": "complete",
+      "commit_hash": "7870418"
+    },
+    "section-03-cost-display": {
+      "status": "complete",
+      "commit_hash": "c7cceff"
+    },
+    "section-04-canvas": {
+      "status": "complete",
+      "commit_hash": "040ae94"
+    },
+    "section-05-channel-adapter": {
+      "status": "complete",
+      "commit_hash": "a191414d1ff34e0a0902919477815639879f235b"
+    },
+    "section-06-voice": {
+      "status": "complete",
+      "commit_hash": "f967acc"
+    },
+    "section-07-browser": {
+      "status": "complete",
+      "commit_hash": "bdee7e8"
+    },
+    "section-08-cross-agency": {
+      "status": "complete",
+      "commit_hash": "3c922b2"
+    },
+    "section-09-whatsapp-line": {
+      "status": "complete",
+      "commit_hash": "face9eb"
+    },
+    "section-10-widget": {
+      "status": "complete",
+      "commit_hash": "5bcc0520ce79295384e2fea4e9f7aa9764205d14"
     }
   },
   "pre_commit": {

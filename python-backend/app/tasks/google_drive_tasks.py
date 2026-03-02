@@ -8,6 +8,7 @@ and Google Drive file indexing for RAG search.
 import asyncio
 import hashlib
 import logging
+import time
 from contextlib import contextmanager
 from datetime import datetime, timezone, timedelta
 from typing import Any, Optional
@@ -19,6 +20,35 @@ from app.core.celery_app import celery_app
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+def _execute_with_retry(request, max_retries: int = 3):
+    """Execute a Google API request with 429 rate-limit retry.
+
+    Uses exponential backoff + Retry-After header from the response.
+    """
+    for attempt in range(max_retries + 1):
+        try:
+            return request.execute()
+        except Exception as e:
+            status = getattr(e, "status_code", None)
+            if status is None and hasattr(e, "resp"):
+                status = int(e.resp.get("status", 0))
+            if status == 429 and attempt < max_retries:
+                retry_after = 60
+                if hasattr(e, "resp") and "retry-after" in (e.resp or {}):
+                    try:
+                        retry_after = int(e.resp["retry-after"])
+                    except (ValueError, TypeError):
+                        pass
+                wait = min(retry_after, 300)
+                logger.warning(
+                    "Google API 429 throttled (attempt %d/%d), retrying in %ds",
+                    attempt + 1, max_retries, wait,
+                )
+                time.sleep(wait)
+                continue
+            raise
 
 # How long to extend a session when the Drive file was recently modified
 EXTENSION_HOURS = 24
@@ -181,7 +211,7 @@ def _check_recently_modified(user_id: int, drive_file_id: str) -> bool:
 
         creds = Credentials(token=access_token)
         drive_svc = build("drive", "v3", credentials=creds)
-        file_meta = drive_svc.files().get(fileId=drive_file_id, fields="modifiedTime").execute()
+        file_meta = _execute_with_retry(drive_svc.files().get(fileId=drive_file_id, fields="modifiedTime"))
         modified_time = datetime.fromisoformat(file_meta["modifiedTime"].replace("Z", "+00:00"))
         threshold = datetime.now(timezone.utc) - timedelta(hours=RECENT_MODIFICATION_HOURS)
         return modified_time > threshold
@@ -210,7 +240,7 @@ def _delete_drive_file(user_id: int, drive_file_id: str) -> bool:
 
         creds = Credentials(token=access_token)
         drive_svc = build("drive", "v3", credentials=creds)
-        drive_svc.files().delete(fileId=drive_file_id).execute()
+        _execute_with_retry(drive_svc.files().delete(fileId=drive_file_id))
         return True
 
     except Exception as e:
@@ -251,10 +281,10 @@ def _fetch_drive_file_metadata(access_token: str, drive_file_id: str) -> dict:
 
     creds = Credentials(token=access_token)
     drive_svc = build("drive", "v3", credentials=creds)
-    return drive_svc.files().get(
+    return _execute_with_retry(drive_svc.files().get(
         fileId=drive_file_id,
         fields="id,name,mimeType,modifiedTime,md5Checksum,size",
-    ).execute()
+    ))
 
 
 async def process_google_drive_index_job(
@@ -400,7 +430,12 @@ async def process_google_drive_index_job(
             from app.core.vectordb import VectorCollection
             collection_name = f"library_tenant_{tenant_id}"
             collection = VectorCollection(collection_name)
-            collection.delete(ids=vector_ids)
+            # Delete ALL old vectors for this item (handles chunk count changes)
+            try:
+                collection.delete(where={"item_id": job.library_item_id})
+            except Exception:
+                # Fallback: delete by current IDs only
+                collection.delete(ids=vector_ids)
             collection.add(
                 ids=vector_ids,
                 documents=[chunk["content"] for chunk in chunks],
@@ -423,6 +458,9 @@ async def process_google_drive_index_job(
         # Delete existing chunks and insert new ones
         await db.execute(delete(LibraryChunk).where(LibraryChunk.library_item_id == item.id))
 
+        # Inherit allowed_scopes from parent item for permission-based RAG filtering
+        item_scopes = item.allowed_scopes or []
+
         created_at = datetime.utcnow()
         for chunk, vector_id in zip(chunks, vector_ids):
             db.add(
@@ -434,6 +472,7 @@ async def process_google_drive_index_job(
                     content_type=chunk.get("content_type") or "text",
                     token_count=chunk.get("token_count"),
                     vector_ref_id=vector_id,
+                    allowed_scopes=list(item_scopes),
                     metadata={
                         **(chunk.get("metadata") or {}),
                         "source": "google_drive",
@@ -687,7 +726,7 @@ async def _initial_drive_sync_async(user_id: int, tenant_id: str) -> dict:
             if page_token:
                 params["pageToken"] = page_token
 
-            result = drive.files().list(**params).execute()
+            result = _execute_with_retry(drive.files().list(**params))
             files = result.get("files", [])
             all_files.extend(files)
             page_token = result.get("nextPageToken")
@@ -793,15 +832,16 @@ async def _create_virtual_reference(db, tenant_id: str, user_id: int, file_meta:
 
     import json
 
-    # Check if already exists
+    # Check if already exists (scoped to tenant + owner for cross-user isolation)
     existing = await db.execute(
         text("""
             SELECT id FROM library_items
-            WHERE tenant_id = :tenant_id AND metadata_json->>'driveFileId' = :drive_id
+            WHERE tenant_id = :tenant_id AND owner_user_id = :user_id
+            AND metadata->>'driveFileId' = :drive_id
             AND deleted_at IS NULL
             LIMIT 1
         """),
-        {"tenant_id": tenant_id, "drive_id": drive_file_id},
+        {"tenant_id": tenant_id, "user_id": user_id, "drive_id": drive_file_id},
     )
     existing_row = existing.fetchone()
 
@@ -811,13 +851,13 @@ async def _create_virtual_reference(db, tenant_id: str, user_id: int, file_meta:
         await db.execute(
             text("""
                 UPDATE library_items
-                SET metadata_json = jsonb_set(
-                    jsonb_set(metadata_json, '{driveModifiedTime}', :mod_time::jsonb),
+                SET metadata = jsonb_set(
+                    jsonb_set(metadata, '{driveModifiedTime}', :mod_time::jsonb),
                     '{syncStatus}', '"pending"'::jsonb
                 ), status = 'pending', updated_at = NOW()
-                WHERE id = :id
+                WHERE id = :id AND owner_user_id = :user_id
             """),
-            {"mod_time": json.dumps(modified_time), "id": item_id},
+            {"mod_time": json.dumps(modified_time), "id": item_id, "user_id": user_id},
         )
         await db.commit()
         # Enqueue re-indexing
@@ -845,12 +885,15 @@ async def _create_virtual_reference(db, tenant_id: str, user_id: int, file_meta:
         "syncStatus": "pending",
     })
 
+    # Set initial allowed_scopes so owner can discover via RAG
+    initial_scopes = [f"u:{user_id}"]
+
     result = await db.execute(
         text("""
             INSERT INTO library_items (tenant_id, owner_user_id, title, item_type, source,
-                                        metadata_json, status, created_at, updated_at)
+                                        metadata, allowed_scopes, status, created_at, updated_at)
             VALUES (:tenant_id, :user_id, :title, :item_type, 'google_drive',
-                    :metadata::jsonb, 'pending', NOW(), NOW())
+                    :metadata::jsonb, :allowed_scopes::text[], 'pending', NOW(), NOW())
             ON CONFLICT DO NOTHING
             RETURNING id
         """),
@@ -860,6 +903,7 @@ async def _create_virtual_reference(db, tenant_id: str, user_id: int, file_meta:
             "title": name,
             "item_type": item_type,
             "metadata": metadata,
+            "allowed_scopes": initial_scopes,
         },
     )
     row = result.fetchone()
@@ -869,11 +913,39 @@ async def _create_virtual_reference(db, tenant_id: str, user_id: int, file_meta:
 
 
 def _enqueue_index_job(db, tenant_id: str, item_id: int):
-    """Enqueue an indexing job for a library item."""
+    """Create an index job record and enqueue the Celery task."""
+    from sqlalchemy import text as sa_text
+
     try:
-        process_google_drive_index_job_task.delay(item_id)
+        with get_sync_session() as session:
+            # Check if pending/processing job already exists
+            existing = session.execute(
+                sa_text("""
+                    SELECT id FROM library_index_jobs
+                    WHERE library_item_id = :item_id AND status IN ('pending', 'processing')
+                    LIMIT 1
+                """),
+                {"item_id": item_id},
+            )
+            if existing.fetchone():
+                return  # Already queued
+
+            result = session.execute(
+                sa_text("""
+                    INSERT INTO library_index_jobs (tenant_id, library_item_id, job_type, status,
+                                                    attempt_count, max_attempts, run_at, created_at, updated_at)
+                    VALUES (:tenant_id, :item_id, 'gdrive_index', 'pending',
+                            0, 5, NOW(), NOW(), NOW())
+                    RETURNING id
+                """),
+                {"tenant_id": tenant_id, "item_id": item_id},
+            )
+            row = result.fetchone()
+            if row:
+                process_google_drive_index_job_task.delay(row[0])
+                logger.info("Enqueued GDrive index job %d for item %d", row[0], item_id)
     except Exception as e:
-        logger.warning("Failed to enqueue index job for item %d: %s", item_id, str(e))
+        logger.warning("Failed to enqueue GDrive index job for item %d: %s", item_id, str(e))
 
 
 async def _process_drive_changes_async(user_id: int, tenant_id: str) -> dict:
@@ -935,11 +1007,11 @@ async def _process_drive_changes_async(user_id: int, tenant_id: str) -> dict:
         new_page_token = page_token
 
         while True:
-            result = drive.changes().list(
+            result = _execute_with_retry(drive.changes().list(
                 pageToken=new_page_token,
                 fields="changes(fileId,removed,file(id,name,mimeType,size,modifiedTime,parents)),newStartPageToken,nextPageToken",
                 pageSize=100,
-            ).execute()
+            ))
 
             changes = result.get("changes", [])
 
@@ -954,7 +1026,7 @@ async def _process_drive_changes_async(user_id: int, tenant_id: str) -> dict:
                             UPDATE library_items
                             SET deleted_at = NOW(), status = 'deleted', updated_at = NOW()
                             WHERE tenant_id = :tenant_id
-                              AND metadata_json->>'driveFileId' = :file_id
+                              AND metadata->>'driveFileId' = :file_id
                               AND deleted_at IS NULL
                         """),
                         {"tenant_id": tenant_id, "file_id": file_id},
@@ -1032,10 +1104,10 @@ async def _renew_drive_watch_channels_async() -> dict:
                 drive = build("drive", "v3", credentials=creds)
 
                 try:
-                    drive.channels().stop(body={
+                    _execute_with_retry(drive.channels().stop(body={
                         "id": old_channel_id,
                         "resourceId": old_resource_id,
-                    }).execute()
+                    }))
                 except Exception:
                     pass  # Old channel may already be expired
 
@@ -1123,7 +1195,11 @@ async def _estimate_sync_cost_impl(user_id: int, tenant_id: str) -> dict:
             return {"file_count": 0, "estimated_credits": 0, "estimated_size_mb": 0}
 
         token_svc = GoogleTokenService(db)
-        access_token = await token_svc.get_valid_access_token(user_id)
+        try:
+            access_token = await token_svc.get_valid_access_token(user_id)
+        except InvalidGrantError:
+            logger.warning("estimate_sync_cost_token_expired user_id=%d", user_id)
+            return {"file_count": 0, "estimated_credits": 0, "estimated_size_mb": 0, "error": "token_expired"}
 
         from google.oauth2.credentials import Credentials
         from googleapiclient.discovery import build
@@ -1143,7 +1219,7 @@ async def _estimate_sync_cost_impl(user_id: int, tenant_id: str) -> dict:
             }
             if page_token:
                 params["pageToken"] = page_token
-            result = drive.files().list(**params).execute()
+            result = _execute_with_retry(drive.files().list(**params))
             files = result.get("files", [])
             for f in files:
                 if should_index_file(f, sync_settings):
@@ -1400,7 +1476,7 @@ async def _delete_temp_drive_files(user_id: int, tenant_id: str, access_token: s
 
     for fid in file_ids:
         try:
-            drive.files().delete(fileId=fid).execute()
+            _execute_with_retry(drive.files().delete(fileId=fid))
             deleted += 1
         except Exception as e:
             logger.warning("disconnect_delete_file_failed file_id=%s error=%s", fid, str(e))
@@ -1431,7 +1507,7 @@ async def _stop_webhook_channel(user_id: int, tenant_id: str, access_token: str)
     try:
         creds = Credentials(token=access_token)
         drive = build("drive", "v3", credentials=creds)
-        drive.channels().stop(body={"id": channel_id, "resourceId": resource_id}).execute()
+        _execute_with_retry(drive.channels().stop(body={"id": channel_id, "resourceId": resource_id}))
         return True
     except Exception as e:
         logger.warning("disconnect_stop_channel_failed user_id=%d error=%s", user_id, str(e))

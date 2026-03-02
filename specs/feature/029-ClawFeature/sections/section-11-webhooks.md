@@ -497,4 +497,37 @@ Index: `(trigger_id, created_at DESC)`
 7. Create `apps/web/client/src/pages/WebhookTriggers.tsx` with the management UI
 8. Add the page route in `apps/web/client/src/App.tsx`
 9. Add menu entry in `apps/web/client/src/hooks/useMenuItems.ts`
+
+---
+
+## As-Built Notes (updated post code review)
+
+### Deviations from Plan
+
+- **`testTrigger` procedure**: Not implemented in this section (deferred). The tRPC router skeleton exists but the procedure is absent. This will be added in a future section once the test infrastructure is clearer.
+- **Credit deduction**: `hasEnoughCredits()` check implemented but `deductCredits()` deferred to section 12+ when target dispatch is wired. Credits logged as 0 until then; a TODO comment marks the deduction point.
+- **Target dispatch**: Stub only — logs the payload keys to audit log. Real dispatch (chat/agency/workflow) wired in section 12+.
+- **Soft-delete only**: `delete` procedure sets `is_active = false`, does not hard-delete. Log cascade-delete deferred.
+
+### Code Review Fixes Applied
+
+- **H1** — `verifyTokenAuth`: Fixed timing oracle. Rejects immediately on length mismatch (before `timingSafeEqual`), eliminating padding trick that leaked secret length.
+- **H2** — `verifyHmacAuth`: Added explicit 32-byte length check after hex decode for belt-and-suspenders validation.
+- **H3** — Dedup: For token-auth requests, dedup key always uses server-synthesized timestamp (ignores caller-supplied `X-Webhook-Timestamp`), preventing DoS/bypass via crafted dedup keys.
+- **H4** — `totalTriggers`: Fixed non-atomic read-modify-write. Now uses SQL expression `totalTriggers + 1` for safe concurrent increment.
+- **H5** — Fixed wrong audit `eventType`: was `webhook_ingest_error`, now `webhook_dispatch_stub`.
+- **H7** — CSRF bypass: Removed dead `req.path.startsWith('/webhooks/trigger/')` check (missing `/api` prefix). Only `req.originalUrl` check is correct.
+- **M2** — `requireTriggerOwnership` now accepts optional `userId`; all mutations pass caller's userId so users can only manage their own triggers.
+- **M3** — Feature flag gate added to `list` tRPC procedure (not just the Express route). Page shows a "Feature not enabled" placeholder for FORBIDDEN errors.
+- **M4** — Rate limit race fixed: uses Redis `pipeline()` with `INCR + EXPIRE` atomically instead of separate calls.
+- **M6** — `list` procedure excludes `authSecretEncrypted` using `getTableColumns()` destructuring (least-privilege).
+- **M7** — `stripSecrets` now recursively traverses nested objects and arrays.
+- **L1** — Delete confirmation uses Radix `AlertDialog` instead of `window.confirm()`.
+- **L2** — Regenerated secret shown in a modal dialog with a copyable `<Input>` field instead of a toast.
+
+### Final Test Count
+
+- `server/routes/__tests__/webhookTrigger.test.ts`: 25 tests (all pass)
+- `server/routers/__tests__/webhookTriggers.test.ts`: 12 tests (all pass)
+- Total: 37 tests
 10. Verify all tests pass with `cd /home/dev/projects/SmartSpecPro/apps/web && pnpm test`

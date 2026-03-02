@@ -102,6 +102,7 @@ import {
   deleteSelectionCommand,
   duplicateSelectionCommand,
   moveSelectionCommand,
+  patchElementByIdCommand,
   patchSelectedElementCommand,
   resizeSelectionCommand,
   rotateSelectionCommand,
@@ -136,6 +137,7 @@ type LibraryMediaKind = "image" | "video";
 const MIN_DESKTOP_ZOOM = 0.5;
 const MAX_DESKTOP_ZOOM = 2;
 const DESKTOP_ZOOM_STEP = 0.1;
+const MIN_SLIDE_DURATION_MS = 250;
 
 interface LibraryResultItemLike {
   id?: number;
@@ -522,6 +524,28 @@ function summarizeSlidePreview(slideContent: unknown): {
 
 const MIN_PREVIEW_LINE_HEIGHT = 2;
 
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function resolveImageDisplayConfig(element: PresentationSlideContent["elements"][number]): {
+  fit: "contain" | "cover" | "fill";
+  positionX: number;
+  positionY: number;
+  zoom: number;
+} {
+  if (element.type !== "image") {
+    return { fit: "contain", positionX: 50, positionY: 50, zoom: 1 };
+  }
+  const fit = (element.imageFit === "cover" || element.imageFit === "fill")
+    ? element.imageFit
+    : "contain";
+  const positionX = clampNumber(Number(element.imagePositionX ?? 50), 0, 100);
+  const positionY = clampNumber(Number(element.imagePositionY ?? 50), 0, 100);
+  const zoom = clampNumber(Number(element.imageZoom ?? 1), 0.5, 3);
+  return { fit, positionX, positionY, zoom };
+}
+
 function renderReadonlySlideElement(
   element: PresentationSlideContent["elements"][number],
   index: number,
@@ -569,10 +593,21 @@ function renderReadonlySlideElement(
   }
 
   if (element.type === "image") {
+    const imageConfig = resolveImageDisplayConfig(element);
     return (
       <div key={element.id || `play-${index}`} className="absolute overflow-hidden bg-slate-100" style={commonStyle}>
         {element.src ? (
-          <img src={element.src} alt={element.alt || "Image"} className="h-full w-full object-contain" />
+          <img
+            src={element.src}
+            alt={element.alt || "Image"}
+            className="h-full w-full"
+            style={{
+              objectFit: imageConfig.fit,
+              objectPosition: `${imageConfig.positionX}% ${imageConfig.positionY}%`,
+              transform: `scale(${imageConfig.zoom})`,
+              transformOrigin: `${imageConfig.positionX}% ${imageConfig.positionY}%`,
+            }}
+          />
         ) : null}
       </div>
     );
@@ -634,6 +669,22 @@ function resolveSlideDurationMs(content: PresentationSlideContent): number {
     return 3000;
   }
   return Math.round(duration);
+}
+
+function extractMetadataDurationSeconds(metadata: unknown): number | null {
+  if (!metadata || typeof metadata !== "object") {
+    return null;
+  }
+  const source = metadata as Record<string, unknown>;
+  const durationMs = source.durationMs;
+  if (typeof durationMs === "number" && Number.isFinite(durationMs) && durationMs > 0) {
+    return durationMs / 1000;
+  }
+  const durationSec = source.durationSeconds ?? source.durationSec ?? source.duration;
+  if (typeof durationSec === "number" && Number.isFinite(durationSec) && durationSec > 0) {
+    return durationSec;
+  }
+  return null;
 }
 
 export default function PresentationEditor() {
@@ -727,6 +778,8 @@ export default function PresentationEditor() {
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isAIDraftModalOpen, setIsAIDraftModalOpen] = useState(false);
+  const [timingDurationSecInput, setTimingDurationSecInput] = useState<string>("3");
+  const [timingApplyAllPending, setTimingApplyAllPending] = useState(false);
   const [libraryTab, setLibraryTab] = useState<AssetLibraryTab>("slides");
   const [librarySearchQuery, setLibrarySearchQuery] = useState("");
   const [selectedSavedVersionId, setSelectedSavedVersionId] = useState<number | null>(null);
@@ -737,6 +790,7 @@ export default function PresentationEditor() {
     offsetY: 0,
   });
   const [snapLockEnabled, setSnapLockEnabled] = useState(true);
+  const [showElementFrames, setShowElementFrames] = useState(false);
   const mobileGestures = useMobileGestures();
   const isExportsEnabled = import.meta.env.VITE_PRESENTATION_EXPORTS_ENABLED !== "false";
   const availabilityQuery = trpc.presentation.availability.useQuery();
@@ -822,6 +876,11 @@ export default function PresentationEditor() {
     () => slides.find((slide) => slide.id === selectedSlideId) || null,
     [slides, selectedSlideId],
   );
+  const selectedSlideAudioTrack = (selectedSlide as any)?.audioTrack ?? null;
+  const selectedSlideAudioItemQuery = trpc.library.getItem.useQuery(
+    { id: selectedSlideAudioTrack?.libraryItemId ?? 0 },
+    { enabled: Boolean(selectedSlideAudioTrack?.libraryItemId) },
+  );
   const draftContent = commandState.content;
   const selectedElementIds = commandState.selectedElementIds;
   const selectedElementId = selectedElementIds[0] ?? null;
@@ -829,11 +888,33 @@ export default function PresentationEditor() {
     () => buildDraftSignature(selectedSlide?.id ?? null, draftContent),
     [draftContent, selectedSlide?.id],
   );
+  const persistedSlideSignature = useMemo(
+    () => (selectedSlide
+      ? buildDraftSignature(selectedSlide.id, ensureSlideContent(selectedSlide.slideContent))
+      : null),
+    [selectedSlide?.id, selectedSlide?.version, selectedSlide?.slideContent],
+  );
+  const hasUnsavedSelectedSlideChanges = useMemo(() => (
+    Boolean(
+      draftSignature
+      && persistedSlideSignature
+      && draftSignature !== persistedSlideSignature,
+    )
+  ), [draftSignature, persistedSlideSignature]);
   const isMobilePanMode = isMobileViewport && mobileGestures.state.mode === "pan_mode";
   const selectedElement = useMemo(
     () => draftContent.elements.find((element) => element.id === selectedElementId) || null,
     [draftContent.elements, selectedElementId],
   );
+  const firstVideoSourceUrl = useMemo(() => {
+    const firstVideo = draftContent.elements.find((element) => element.type === "video");
+    if (!firstVideo || firstVideo.type !== "video") {
+      return null;
+    }
+    return (firstVideo.src || "").trim() || null;
+  }, [draftContent.elements]);
+  const [selectedSlideAudioDurationSec, setSelectedSlideAudioDurationSec] = useState<number | null>(null);
+  const [selectedSlideVideoDurationSec, setSelectedSlideVideoDurationSec] = useState<number | null>(null);
   const imageLibraryAssets = useMemo(
     () => normalizeLibraryMediaItems(imageLibraryQuery.data?.results, "image"),
     [imageLibraryQuery.data?.results],
@@ -1025,6 +1106,67 @@ export default function PresentationEditor() {
 
     setSelectedSlideId(slides[0].id);
   }, [selectedSlideId, slides]);
+
+  useEffect(() => {
+    const currentSeconds = resolveSlideDurationMs(draftContent) / 1000;
+    setTimingDurationSecInput(currentSeconds.toFixed(1).replace(/\.0$/, ""));
+  }, [draftContent.durationMs, selectedSlide?.id]);
+
+  useEffect(() => {
+    const metadataSeconds = extractMetadataDurationSeconds(selectedSlideAudioItemQuery.data?.metadata);
+    if (metadataSeconds != null) {
+      setSelectedSlideAudioDurationSec(metadataSeconds);
+      return;
+    }
+    const sourceUrl = selectedSlideAudioItemQuery.data?.sourceUrl;
+    if (!sourceUrl) {
+      setSelectedSlideAudioDurationSec(null);
+      return;
+    }
+    let cancelled = false;
+    const audio = new Audio();
+    audio.preload = "metadata";
+    audio.src = sourceUrl;
+    const onLoaded = () => {
+      if (cancelled) return;
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        setSelectedSlideAudioDurationSec(audio.duration);
+      } else {
+        setSelectedSlideAudioDurationSec(null);
+      }
+    };
+    audio.addEventListener("loadedmetadata", onLoaded);
+    return () => {
+      cancelled = true;
+      audio.removeEventListener("loadedmetadata", onLoaded);
+      audio.src = "";
+    };
+  }, [selectedSlideAudioItemQuery.data?.metadata, selectedSlideAudioItemQuery.data?.sourceUrl]);
+
+  useEffect(() => {
+    if (!firstVideoSourceUrl) {
+      setSelectedSlideVideoDurationSec(null);
+      return;
+    }
+    let cancelled = false;
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.src = firstVideoSourceUrl;
+    const onLoaded = () => {
+      if (cancelled) return;
+      if (Number.isFinite(video.duration) && video.duration > 0) {
+        setSelectedSlideVideoDurationSec(video.duration);
+      } else {
+        setSelectedSlideVideoDurationSec(null);
+      }
+    };
+    video.addEventListener("loadedmetadata", onLoaded);
+    return () => {
+      cancelled = true;
+      video.removeEventListener("loadedmetadata", onLoaded);
+      video.src = "";
+    };
+  }, [firstVideoSourceUrl]);
 
   useEffect(() => {
     if (!savedVersions.length) {
@@ -1335,7 +1477,10 @@ export default function PresentationEditor() {
         { selectedIds: selectedElementIds, activeId: selectedElementId },
         elementId,
       );
-      executeCommand(selectElementsCommand(toggled.selectedIds));
+      const nextSelectedIds = toggled.selectedIds.includes(elementId)
+        ? [elementId, ...toggled.selectedIds.filter((id) => id !== elementId)]
+        : toggled.selectedIds;
+      executeCommand(selectElementsCommand(nextSelectedIds));
       return;
     }
 
@@ -1348,6 +1493,13 @@ export default function PresentationEditor() {
     }
 
     executeCommand(patchSelectedElementCommand(patch));
+  }
+
+  function handlePatchElementById(
+    elementId: string,
+    patch: Parameters<typeof patchSelectedElementCommand>[0],
+  ) {
+    executeCommand(patchElementByIdCommand(elementId, patch));
   }
 
   function handleMoveSelection(deltaX: number, deltaY: number) {
@@ -1443,6 +1595,71 @@ export default function PresentationEditor() {
       deltaX: 12,
       deltaY: 8,
     });
+  }
+
+  function parseTimingDurationMsFromInput(): number | null {
+    const numericSeconds = Number.parseFloat(timingDurationSecInput);
+    if (!Number.isFinite(numericSeconds) || numericSeconds <= 0) {
+      return null;
+    }
+    return Math.max(MIN_SLIDE_DURATION_MS, Math.round(numericSeconds * 1000));
+  }
+
+  function applyDurationToSelectedDraft(durationMs: number) {
+    if (!selectedSlide) return;
+    syncCommandState({
+      ...commandState,
+      content: {
+        ...draftContent,
+        durationMs,
+      },
+    });
+  }
+
+  function handleApplySelectedSlideDuration() {
+    const durationMs = parseTimingDurationMsFromInput();
+    if (!durationMs) {
+      toast.error("Please enter a valid slide duration in seconds.");
+      return;
+    }
+    applyDurationToSelectedDraft(durationMs);
+  }
+
+  async function handleApplyDurationAllSlides() {
+    if (!deck || !slides.length || timingApplyAllPending) {
+      return;
+    }
+    const durationMs = parseTimingDurationMsFromInput();
+    if (!durationMs) {
+      toast.error("Please enter a valid slide duration in seconds.");
+      return;
+    }
+
+    setTimingApplyAllPending(true);
+    try {
+      for (const slide of slides) {
+        const baseContent = slide.id === selectedSlide?.id
+          ? draftContent
+          : ensureSlideContent(slide.slideContent);
+        await updateSlideMutation.mutateAsync({
+          deckId: deck.id,
+          slideId: slide.id,
+          expectedVersion: slide.version,
+          saveMode: "manual",
+          title: slide.title,
+          slideContent: {
+            ...baseContent,
+            durationMs,
+          },
+        });
+      }
+      await refreshDeck();
+      toast.success(`Applied ${(durationMs / 1000).toFixed(1).replace(/\.0$/, "")}s to all slides.`);
+    } catch (error) {
+      toast.error(`Failed to apply duration to all slides: ${String((error as Error)?.message || error)}`);
+    } finally {
+      setTimingApplyAllPending(false);
+    }
   }
 
   const performSave = useCallback(async (saveMode: SaveMode): Promise<"saved" | "skipped"> => {
@@ -2623,6 +2840,15 @@ export default function PresentationEditor() {
         >
           Snap Lock: {snapLockEnabled ? "On" : "Off"}
         </Button>
+        <Button
+          onClick={() => setShowElementFrames((previous) => !previous)}
+          aria-label={showElementFrames ? "Hide Element Borders" : "Show Element Borders"}
+          variant={showElementFrames ? "secondary" : "outline"}
+          size="sm"
+          className="gap-1 text-xs"
+        >
+          Element Borders: {showElementFrames ? "On" : "Off"}
+        </Button>
         <label className="ml-auto flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-900 px-2 py-0.5 text-xs text-slate-300">
           <Crop className="h-3 w-3" />
           <span>Canvas</span>
@@ -2700,6 +2926,9 @@ export default function PresentationEditor() {
       <span className="rounded bg-slate-100 px-2 py-0.5">
         Snap: {snapLockEnabled ? "Locked" : "Free"}
       </span>
+      <span className="rounded bg-slate-100 px-2 py-0.5">
+        Borders: {showElementFrames ? "Visible" : "Hidden"}
+      </span>
       {saveState === "conflict" ? (
         <Button
           variant="outline"
@@ -2726,6 +2955,23 @@ export default function PresentationEditor() {
       ) : null}
     </div>
   );
+  const autoDurationFromSlideAudioSec = useMemo(() => {
+    if (!selectedSlideAudioTrack) {
+      return null;
+    }
+    const startSec = Math.max(0, Number(selectedSlideAudioTrack.startAtMs ?? 0) / 1000);
+    if (selectedSlideAudioTrack.endAtMs != null) {
+      const endSec = Math.max(startSec, Number(selectedSlideAudioTrack.endAtMs) / 1000);
+      return Math.max(0.25, endSec - startSec);
+    }
+    if (selectedSlideAudioDurationSec != null) {
+      return Math.max(0.25, selectedSlideAudioDurationSec - startSec);
+    }
+    return null;
+  }, [selectedSlideAudioDurationSec, selectedSlideAudioTrack]);
+  const autoDurationFromVideoSec = selectedSlideVideoDurationSec != null
+    ? Math.max(0.25, selectedSlideVideoDurationSec)
+    : null;
   const propertyEditorPanel = (
     <div className="space-y-3">
       {!isMobileViewport ? (
@@ -2745,6 +2991,70 @@ export default function PresentationEditor() {
           </select>
         </label>
       ) : null}
+      <div className="rounded-md border border-slate-300 bg-white p-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Slide Timing</p>
+        <p className="mt-1 text-[11px] text-slate-500">
+          Set seconds per slide, apply to current slide, or apply to all slides.
+        </p>
+        <div className="mt-2 flex items-center gap-2">
+          <Input
+            type="number"
+            min={0.25}
+            step={0.1}
+            value={timingDurationSecInput}
+            onChange={(event) => setTimingDurationSecInput(event.target.value)}
+            aria-label="Slide duration seconds"
+            className="h-8 text-xs"
+          />
+          <span className="text-xs text-slate-500">sec</span>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <Button
+            size="sm"
+            variant="secondary"
+            className="h-7 text-xs"
+            onClick={handleApplySelectedSlideDuration}
+            disabled={!selectedSlide}
+          >
+            Apply This Slide
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            onClick={() => void handleApplyDurationAllSlides()}
+            disabled={!slides.length || timingApplyAllPending}
+          >
+            {timingApplyAllPending ? "Applying..." : "Apply All Slides"}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-xs"
+            disabled={autoDurationFromSlideAudioSec == null}
+            onClick={() => {
+              if (autoDurationFromSlideAudioSec == null) return;
+              setTimingDurationSecInput(autoDurationFromSlideAudioSec.toFixed(1).replace(/\.0$/, ""));
+              applyDurationToSelectedDraft(Math.round(autoDurationFromSlideAudioSec * 1000));
+            }}
+          >
+            Auto: Fit Audio
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-xs"
+            disabled={autoDurationFromVideoSec == null}
+            onClick={() => {
+              if (autoDurationFromVideoSec == null) return;
+              setTimingDurationSecInput(autoDurationFromVideoSec.toFixed(1).replace(/\.0$/, ""));
+              applyDurationToSelectedDraft(Math.round(autoDurationFromVideoSec * 1000));
+            }}
+          >
+            Auto: Fit Video
+          </Button>
+        </div>
+      </div>
       {!isMobileViewport ? (
         <div
           className="rounded-md border border-slate-300 bg-slate-200/70 p-2"
@@ -2764,7 +3074,9 @@ export default function PresentationEditor() {
       ) : null}
       <PropertyPanel
         selectedElement={selectedElement}
+        selectedElementCount={selectedElementIds.length}
         onPatchSelected={handlePatchSelectedElement}
+        onPatchElementById={handlePatchElementById}
       />
     </div>
   );
@@ -2886,6 +3198,15 @@ export default function PresentationEditor() {
               >
                 <Crop className="h-3.5 w-3.5" />
                 {snapLockEnabled ? "Snap On" : "Snap Off"}
+              </Button>
+              <Button
+                onClick={() => setShowElementFrames((p) => !p)}
+                size="sm"
+                variant={showElementFrames ? "default" : "outline"}
+                className="gap-1 text-xs"
+              >
+                <RectangleHorizontal className="h-3.5 w-3.5" />
+                {showElementFrames ? "Borders On" : "Borders Off"}
               </Button>
             </div>
           </div>
@@ -3119,6 +3440,7 @@ export default function PresentationEditor() {
               canvasSize={activeCanvasSize}
               selectedElementIds={selectedElementIds}
               snapGuides={commandState.snapGuides}
+              showElementFrames={showElementFrames}
               suppressTransformHandles={isMobilePanMode}
               showTransformDock={false}
               viewport={activeViewport}
@@ -3267,6 +3589,26 @@ export default function PresentationEditor() {
           open={isExportDialogOpen}
           onClose={() => setIsExportDialogOpen(false)}
           deckId={deck.id}
+          onBeforeExport={async () => {
+            if (!hasUnsavedSelectedSlideChanges) {
+              return true;
+            }
+
+            const saved = await handleSaveSlide({ silent: true });
+            if (!saved) {
+              const blockedReason = shouldBlockSaveAttempt(
+                normalizeConflictPolicy(conflictPolicyRef.current, Date.now()),
+                "manual",
+                Date.now(),
+              );
+              toast.error(
+                blockedReason === "stale_blocked"
+                  ? "Export blocked by version conflict. Reload latest and retry."
+                  : "Unable to save latest slide changes before export.",
+              );
+            }
+            return saved;
+          }}
         />
       )}
       {isImportDialogOpen && (
@@ -3277,8 +3619,10 @@ export default function PresentationEditor() {
           isOpen={isAIDraftModalOpen}
           onClose={() => setIsAIDraftModalOpen(false)}
           deckId={deck.id}
-          expectedVersion={expectedSlideVersion ?? 1}
+          expectedVersion={deck.version}
           currentSlideCount={slides.length}
+          canvasWidth={activeCanvasSize.width}
+          canvasHeight={activeCanvasSize.height}
         />
       )}
       {isMobileViewport && (

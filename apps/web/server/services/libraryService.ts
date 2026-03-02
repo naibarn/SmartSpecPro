@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { and, count, desc, eq, gt, inArray, isNotNull, isNull, or } from "drizzle-orm";
 
 import { getDb } from "../db";
-import { storagePut, storageDelete } from "../storage";
+import { storagePut, storageGet, storageDelete } from "../storage";
 import {
   validateLibraryUrl,
   type LibraryUrlRejectReason,
@@ -159,6 +159,20 @@ export interface UploadLibraryFileInput {
 export interface UploadLibraryFileResult {
   item: LibraryItemDto;
   indexJob: LibraryEnqueueResult;
+}
+
+export interface ReplaceLibraryFileInput {
+  itemId: number;
+  fileName: string;
+  fileType: string;
+  fileBase64: string;
+  changeDescription?: string;
+}
+
+export interface ReplaceLibraryFileResult {
+  item: LibraryItemDto;
+  indexJob: LibraryEnqueueResult;
+  versionNumber: number;
 }
 
 export interface LibrarySearchResultV1 {
@@ -1194,6 +1208,184 @@ export async function uploadLibraryFile(
   };
 }
 
+export async function replaceLibraryFile(
+  input: ReplaceLibraryFileInput,
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<ReplaceLibraryFileResult> {
+  const db = await resolveDb(dbClient);
+  const tenantId = normalizeLibraryTenantId(actor.tenantId);
+  const fileName = input.fileName.trim();
+  const fileType = (input.fileType || "application/octet-stream").trim().toLowerCase();
+
+  if (!fileName) {
+    throw new Error("File name is required");
+  }
+
+  // 1. Get existing item and check permissions
+  const existing = await getLibraryItemRowById(db, input.itemId, tenantId);
+  if (!existing) {
+    throw new Error("Library item not found");
+  }
+
+  const permissionLevel = await getUserPermissionLevel(db, existing.id, actor);
+  if (!canManageLibraryItem(existing, actor, permissionLevel)) {
+    throw new Error("You do not have permission to update this item");
+  }
+
+  // 2. Validate new file
+  const ext = extractFileExtension(fileName);
+  if (!isAllowedLibraryUploadMime(fileType) && !ALLOWED_LIBRARY_UPLOAD_EXTENSIONS.has(ext)) {
+    throw new Error("File type is not supported for library upload");
+  }
+  if (ext && !ALLOWED_LIBRARY_UPLOAD_EXTENSIONS.has(ext)) {
+    throw new Error(`File extension .${ext} is not allowed`);
+  }
+
+  const b64 = input.fileBase64.includes(",")
+    ? input.fileBase64.split(",", 2)[1]
+    : input.fileBase64;
+  let fileBuffer: Buffer<ArrayBufferLike> = Buffer.from(b64, "base64");
+
+  if (!fileBuffer.length) {
+    throw new Error("Uploaded file is empty");
+  }
+  if (fileBuffer.length > MAX_LIBRARY_UPLOAD_BYTES) {
+    throw new Error("File too large (max 50MB)");
+  }
+
+  const svgUpload = isSvgUpload(fileType, ext);
+  if (svgUpload) {
+    const sanitized = sanitizeUploadedSvg(fileBuffer);
+    if (!sanitized.safe) {
+      throw new Error("Unsafe SVG content is not allowed");
+    }
+    fileBuffer = sanitized.sanitizedBuffer;
+  }
+
+  // 3. Get current file's storage key
+  const currentLinks = await db
+    .select()
+    .from(libraryLinks)
+    .where(
+      and(
+        eq(libraryLinks.libraryItemId, existing.id),
+        eq(libraryLinks.linkType, "upload_key"),
+      ),
+    )
+    .limit(1);
+
+  const currentStorageKey = currentLinks[0]?.linkId ?? null;
+  const oldMetadata = (existing.metadata ?? {}) as Record<string, unknown>;
+
+  // 4. Archive current file as version snapshot
+  const snapshotContent = JSON.stringify({
+    file_name: oldMetadata.file_name ?? existing.title,
+    file_type: oldMetadata.file_type ?? "application/octet-stream",
+    file_size_bytes: oldMetadata.file_size_bytes ?? 0,
+    original_source_url: existing.sourceUrl ?? null,
+  });
+
+  const version = await createContentVersion(db, {
+    tenantId,
+    libraryItemId: existing.id,
+    content: snapshotContent,
+    contentType: "file_snapshot",
+    createdByUserId: actor.userId,
+    changeDescription: input.changeDescription || `Replaced with ${fileName}`,
+    snapshotObjectKey: currentStorageKey ?? undefined,
+  });
+
+  if (!version) {
+    throw new Error("Failed to create version snapshot before replacing file");
+  }
+  const versionNumber = version.versionNumber;
+
+  // 5. Upload new file
+  const fileId = crypto.randomUUID().replace(/-/g, "");
+  const newKey = `library/uploads/${tenantId}/${actor.userId}/${fileId}${ext ? `.${ext}` : ""}`;
+  const storage = await storagePut(newKey, fileBuffer, fileType);
+  const inferredItemType = inferLibraryItemType(fileType, ext);
+
+  // Steps 6-7 in a transaction so item + link updates are atomic
+  try {
+    const updated = await db.transaction(async (tx) => {
+      // 6. Update library item
+      const now = new Date();
+      const updatedRows = await tx
+        .update(libraryItems)
+        .set({
+          sourceUrl: storage.url,
+          thumbnailUrl: inferredItemType === "image" ? storage.url : existing.thumbnailUrl,
+          itemType: inferredItemType,
+          status: "indexing",
+          metadata: normalizeLibraryMetadata({
+            ...oldMetadata,
+            file_name: fileName,
+            file_type: fileType,
+            extension: ext || null,
+            file_size_bytes: fileBuffer.length,
+            svg_sanitized: svgUpload || undefined,
+          }),
+          updatedAt: now,
+        })
+        .where(and(eq(libraryItems.id, existing.id), eq(libraryItems.tenantId, tenantId)))
+        .returning();
+
+      const txUpdated = updatedRows[0];
+      if (!txUpdated) {
+        throw new Error("Failed to update library item");
+      }
+
+      // 7. Update library link
+      if (currentLinks[0]) {
+        await tx
+          .update(libraryLinks)
+          .set({ linkId: storage.key })
+          .where(eq(libraryLinks.id, currentLinks[0].id));
+      } else {
+        await tx.insert(libraryLinks).values({
+          libraryItemId: existing.id,
+          linkType: "upload_key",
+          linkId: storage.key,
+          tenantId,
+        });
+      }
+
+      return txUpdated;
+    });
+
+    // 8. Enqueue re-indexing (outside transaction — job queue insert)
+    const indexJob = await safeEnqueueLibraryIndexJob(
+      {
+        libraryItemId: existing.id,
+        tenantId,
+        jobType: "file_replace",
+        domain: "library",
+        operation: "index",
+        source: "library.replace_file",
+        sourceMetadata: {
+          ingestion: "file_replace",
+          fileType,
+          previousVersion: versionNumber,
+        },
+        allowThrottle: true,
+      },
+      db,
+    );
+
+    return {
+      item: toLibraryItemDto(updated),
+      indexJob,
+      versionNumber,
+    };
+  } catch (err) {
+    // Clean up the orphaned uploaded file
+    await storageDelete(newKey).catch(() => {});
+    throw err;
+  }
+}
+
 export async function getLibraryItemById(
   itemId: number,
   actor: LibraryActor,
@@ -1774,8 +1966,6 @@ export async function listLibraryDocuments(
   const groupIds = userGroupsList.map(g => String(g.id));
   const groupIdNums = userGroupsList.map(g => g.id);
 
-  console.log("[listLibraryDocuments] START", { actorTenantId, scope, sort, limit, offset, query, filters: input.filters, actor: { userId: actor.userId, role: actor.role } });
-
   const itemRows = await db
     .select()
     .from(libraryItems)
@@ -1829,24 +2019,19 @@ export async function listLibraryDocuments(
       ),
     );
 
-  console.log("[listLibraryDocuments] Permission rows found:", permissionRows.length);
-
   const afterFilters = itemRows.filter((item) => itemMatchesDocumentFilters(item, input.filters));
   const afterQuery = afterFilters.filter((item) => itemMatchesDocumentQuery(item, query));
-  console.log("[listLibraryDocuments] After filters:", afterFilters.length, "After query:", afterQuery.length);
 
   const visible = afterQuery
     .map((item) => {
       const permissionInfo = getPermissionLevelForItem(permissionRows, item.id, actor, groupIdNums);
       const canRead = canReadLibraryItem(item, actor, permissionInfo.effectivePermissionLevel);
       if (!canRead) {
-        console.log("[listLibraryDocuments] FILTERED OUT by canRead:", { id: item.id, title: item.title, ownerUserId: item.ownerUserId, actorUserId: actor.userId, permLevel: permissionInfo.effectivePermissionLevel });
         return null;
       }
 
       const accessSource = getDocumentAccessSource(item, actor, permissionInfo);
       if (!matchesDocumentScope(scope, accessSource)) {
-        console.log("[listLibraryDocuments] FILTERED OUT by scope:", { id: item.id, title: item.title, scope, accessSource });
         return null;
       }
 
@@ -1951,6 +2136,7 @@ async function createContentVersion(
     contentType: string;
     createdByUserId: number;
     changeDescription?: string;
+    snapshotObjectKey?: string;
   },
 ): Promise<LibraryContentVersion | null> {
   const contentHash = crypto
@@ -1972,19 +2158,22 @@ async function createContentVersion(
     : 1;
 
   // Check if identical content already exists (deduplication)
-  const existingWithHash = await db
-    .select({ id: libraryContentVersions.id })
-    .from(libraryContentVersions)
-    .where(
-      and(
-        eq(libraryContentVersions.libraryItemId, input.libraryItemId),
-        eq(libraryContentVersions.contentHash, contentHash),
-      ),
-    )
-    .limit(1);
+  // Skip dedup for file snapshots since different files can have same metadata
+  if (input.contentType !== "file_snapshot") {
+    const existingWithHash = await db
+      .select({ id: libraryContentVersions.id })
+      .from(libraryContentVersions)
+      .where(
+        and(
+          eq(libraryContentVersions.libraryItemId, input.libraryItemId),
+          eq(libraryContentVersions.contentHash, contentHash),
+        ),
+      )
+      .limit(1);
 
-  if (existingWithHash[0]) {
-    return null;
+    if (existingWithHash[0]) {
+      return null;
+    }
   }
 
   const [version] = await db
@@ -1998,6 +2187,7 @@ async function createContentVersion(
       contentType: input.contentType,
       contentSizeBytes,
       changeDescription: input.changeDescription,
+      snapshotObjectKey: input.snapshotObjectKey ?? null,
       createdByUserId: input.createdByUserId,
     })
     .returning();
@@ -2031,15 +2221,6 @@ export async function saveLibraryMarkdown(
 
   const normalizedContent = input.content.replace(/\r\n/g, "\n");
   const now = new Date();
-
-  // Debug log: track exactly what is being saved so we can diagnose data-loss issues.
-  console.log("[saveLibraryMarkdown]", {
-    itemId: existing.id,
-    contentLen: normalizedContent.length,
-    contentIsEmpty: normalizedContent.trim().length === 0,
-    contentPreview: normalizedContent.slice(0, 80).replace(/\n/g, "\\n"),
-    at: now.toISOString(),
-  });
 
   // Save current content as version before overwriting.
   // Filter by contentType="markdown_source" (not chunkIndex=0) so we don't
@@ -2159,7 +2340,12 @@ export async function getContentVersionHistory(
   return db
     .select()
     .from(libraryContentVersions)
-    .where(eq(libraryContentVersions.libraryItemId, itemId))
+    .where(
+      and(
+        eq(libraryContentVersions.libraryItemId, itemId),
+        eq(libraryContentVersions.tenantId, actorTenantId),
+      ),
+    )
     .orderBy(desc(libraryContentVersions.createdAt))
     .limit(limit)
     .offset(offset);
@@ -2205,6 +2391,40 @@ export async function getContentVersionById(
   return version;
 }
 
+export async function getVersionSnapshotDownloadUrl(
+  versionId: number,
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<{ url: string; fileName: string; fileType: string } | null> {
+  const version = await getContentVersionById(versionId, actor, dbClient);
+  if (!version) {
+    return null;
+  }
+  if (version.contentType !== "file_snapshot" || !version.snapshotObjectKey) {
+    return null;
+  }
+
+  let resolved: { key: string; url: string };
+  try {
+    resolved = await storageGet(version.snapshotObjectKey);
+  } catch {
+    throw new Error("The archived file could not be found in storage");
+  }
+
+  let meta: Record<string, unknown> = {};
+  try {
+    meta = JSON.parse(version.content);
+  } catch {
+    // ignore
+  }
+
+  return {
+    url: resolved.url,
+    fileName: (meta.file_name as string) || "download",
+    fileType: (meta.file_type as string) || "application/octet-stream",
+  };
+}
+
 export async function restoreContentVersion(
   versionId: number,
   actor: LibraryActor,
@@ -2232,6 +2452,130 @@ export async function restoreContentVersion(
     return null;
   }
 
+  // Handle file snapshot restore
+  if (version.contentType === "file_snapshot" && version.snapshotObjectKey) {
+    const oldMetadata = (existing.metadata ?? {}) as Record<string, unknown>;
+
+    // Resolve the snapshot key to a URL — verify the file still exists
+    let restoredUrl: { key: string; url: string };
+    try {
+      restoredUrl = await storageGet(version.snapshotObjectKey);
+    } catch {
+      throw new Error("The archived file could not be found in storage. It may have been deleted.");
+    }
+
+    // Restore file metadata from the version
+    let restoredMeta: Record<string, unknown> = {};
+    try {
+      restoredMeta = JSON.parse(version.content);
+    } catch {
+      restoredMeta = oldMetadata;
+    }
+
+    // Archive current file as a version before restoring (outside tx — same pattern as replaceLibraryFile)
+    const currentLinks = await db
+      .select()
+      .from(libraryLinks)
+      .where(
+        and(
+          eq(libraryLinks.libraryItemId, existing.id),
+          eq(libraryLinks.linkType, "upload_key"),
+        ),
+      )
+      .limit(1);
+
+    const currentStorageKey = currentLinks[0]?.linkId ?? null;
+    const currentSnapshotContent = JSON.stringify({
+      file_name: oldMetadata.file_name ?? existing.title,
+      file_type: oldMetadata.file_type ?? "application/octet-stream",
+      file_size_bytes: oldMetadata.file_size_bytes ?? 0,
+      original_source_url: existing.sourceUrl ?? null,
+    });
+
+    await createContentVersion(db, {
+      tenantId: actorTenantId,
+      libraryItemId: existing.id,
+      content: currentSnapshotContent,
+      contentType: "file_snapshot",
+      createdByUserId: actor.userId,
+      changeDescription: `Archived before restoring version ${version.versionNumber}`,
+      snapshotObjectKey: currentStorageKey ?? undefined,
+    });
+
+    // Item + link updates in a transaction for atomicity
+    const updated = await db.transaction(async (tx) => {
+      const now = new Date();
+      const updatedRows = await tx
+        .update(libraryItems)
+        .set({
+          sourceUrl: restoredUrl.url,
+          thumbnailUrl:
+            existing.itemType === "image" ? restoredUrl.url : existing.thumbnailUrl,
+          status: "indexing",
+          metadata: normalizeLibraryMetadata({
+            ...oldMetadata,
+            file_name: restoredMeta.file_name ?? oldMetadata.file_name,
+            file_type: restoredMeta.file_type ?? oldMetadata.file_type,
+            file_size_bytes: restoredMeta.file_size_bytes ?? oldMetadata.file_size_bytes,
+          }),
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(libraryItems.id, existing.id),
+            eq(libraryItems.tenantId, actorTenantId),
+          ),
+        )
+        .returning();
+
+      const txUpdated = updatedRows[0];
+      if (!txUpdated) {
+        throw new Error("Failed to restore file version");
+      }
+
+      // Update or insert library link to point to the restored key
+      if (currentLinks[0]) {
+        await tx
+          .update(libraryLinks)
+          .set({ linkId: version.snapshotObjectKey! })
+          .where(eq(libraryLinks.id, currentLinks[0].id));
+      } else {
+        await tx.insert(libraryLinks).values({
+          libraryItemId: existing.id,
+          linkType: "upload_key",
+          linkId: version.snapshotObjectKey!,
+          tenantId: actorTenantId,
+        });
+      }
+
+      return txUpdated;
+    });
+
+    // Re-enqueue indexing (outside transaction — job queue insert)
+    const indexJob = await safeEnqueueLibraryIndexJob(
+      {
+        libraryItemId: existing.id,
+        tenantId: actorTenantId,
+        jobType: "file_replace",
+        domain: "library",
+        operation: "index",
+        source: "library.restore_file_version",
+        sourceMetadata: {
+          ingestion: "file_version_restore",
+          restoredVersionNumber: version.versionNumber,
+        },
+        allowThrottle: true,
+      },
+      db,
+    );
+
+    return {
+      item: toLibraryItemDto(updated),
+      indexJob,
+    };
+  }
+
+  // Default: markdown version restore
   return saveLibraryMarkdown(
     {
       itemId: version.libraryItemId,

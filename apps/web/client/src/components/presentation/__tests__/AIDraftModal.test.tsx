@@ -9,8 +9,12 @@ const {
   mockAvailabilityData,
   mockSkillsData,
   mockInvalidateDeck,
+  mockInvalidateDeckByLibraryItem,
+  mockInvalidateVersions,
+  mockInvalidateSlideshow,
   mockGenerateDraftIsPending,
   mockCancelDraftIsPending,
+  mockUploadMutateAsync,
 } = vi.hoisted(() => ({
   mockGenerateDraftMutate: vi.fn(),
   mockCancelDraftMutate: vi.fn(),
@@ -26,8 +30,12 @@ const {
     } as unknown,
   },
   mockInvalidateDeck: vi.fn(),
+  mockInvalidateDeckByLibraryItem: vi.fn(),
+  mockInvalidateVersions: vi.fn(),
+  mockInvalidateSlideshow: vi.fn(),
   mockGenerateDraftIsPending: { current: false },
   mockCancelDraftIsPending: { current: false },
+  mockUploadMutateAsync: vi.fn(),
 }));
 
 vi.mock("@/lib/trpc", () => ({
@@ -58,6 +66,14 @@ vi.mock("@/lib/trpc", () => ({
         })),
       },
     },
+    ai: {
+      upload: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: mockUploadMutateAsync,
+          isPending: false,
+        })),
+      },
+    },
     skills: {
       getUserVisibleSkills: {
         useQuery: vi.fn(() => ({
@@ -66,7 +82,12 @@ vi.mock("@/lib/trpc", () => ({
       },
     },
     useUtils: vi.fn(() => ({
-      presentation: { getDeck: { invalidate: mockInvalidateDeck } },
+      presentation: {
+        getDeck: { invalidate: mockInvalidateDeck },
+        getDeckByLibraryItem: { invalidate: mockInvalidateDeckByLibraryItem },
+        listVersions: { invalidate: mockInvalidateVersions },
+        getSlideshow: { invalidate: mockInvalidateSlideshow },
+      },
     })),
   },
 }));
@@ -102,6 +123,8 @@ const defaultProps = {
   deckId: 42,
   expectedVersion: 1,
   currentSlideCount: 0,
+  canvasWidth: 1280,
+  canvasHeight: 720,
 };
 
 /** Helper to fill form and trigger generate so component enters progress mode */
@@ -144,6 +167,8 @@ describe("G.1 Modal Rendering", () => {
     render(<AIDraftModal {...defaultProps} />);
     expect(screen.getByPlaceholderText(/describe/i)).toBeInTheDocument();
     expect(screen.getByText(/Number of slides/i)).toBeInTheDocument();
+    const slideCountSlider = screen.getByRole("slider");
+    expect(slideCountSlider).toHaveAttribute("aria-valuemax", "30");
     expect(screen.getByText("Language")).toBeInTheDocument();
   });
 

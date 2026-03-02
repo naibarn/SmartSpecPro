@@ -173,7 +173,6 @@ describe("AudioTrackPlayer", () => {
     const player = new AudioTrackPlayer({ url: "https://cdn.example.com/bg.mp3", volume: 0.5, loop: true, fadeOutMs: null });
     player.onSlideEnter({ url: "https://cdn.example.com/slide.mp3", volume: 1.0, startAtMs: 0 });
     player.pause();
-    // Clear play call count from initial play()
     projectAudioMock.play.mockClear();
     slideAudioMock.play.mockClear();
     player.resume();
@@ -181,6 +180,26 @@ describe("AudioTrackPlayer", () => {
     expect(projectAudioMock.play).toHaveBeenCalledOnce();
     expect(slideAudioMock.play).toHaveBeenCalledOnce();
     player.destroy();
+  });
+
+  it("project audio honours startAtMs and endAtMs trim window", () => {
+    vi.useFakeTimers();
+    const player = new AudioTrackPlayer({
+      url: "https://cdn.example.com/bg.mp3",
+      volume: 0.5,
+      startAtMs: 1000,
+      endAtMs: 3000,
+      loop: false,
+      fadeOutMs: null,
+    });
+
+    expect(mockAudioInstance.currentTime).toBe(1);
+    player.resume();
+    vi.advanceTimersByTime(2000);
+    expect(mockAudioInstance.pause).toHaveBeenCalled();
+    expect(mockAudioInstance.currentTime).toBe(1);
+    player.destroy();
+    vi.useRealTimers();
   });
 
   it("resume() is a no-op when no audio is active", () => {

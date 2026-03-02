@@ -99,6 +99,7 @@ const AdminPersonas = lazy(() => import("./pages/AdminPersonas"));
 const Workflows = lazy(() => import("./pages/Workflows"));
 const WorkflowEditor = lazy(() => import("./pages/WorkflowEditor"));
 const WorkflowGallery = lazy(() => import("./pages/WorkflowGallery"));
+const WebhookTriggers = lazy(() => import("./pages/WebhookTriggers"));
 
 function PostHogPageViewTracker() {
   const [location] = useLocation();
@@ -180,6 +181,7 @@ function Router() {
         <Route path="/workflows/editor" component={WorkflowEditor} />
         <Route path="/workflows/gallery" component={WorkflowGallery} />
         <Route path="/workflows/editor/:id" component={WorkflowEditor} />
+        <Route path="/webhook-triggers" component={WebhookTriggers} />
         <Route path="/dashboard" component={Dashboard} />
         <Route path="/generate/:type?" component={Generate} />
         <Route path="/media-studio" component={MediaStudio} />

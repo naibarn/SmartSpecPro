@@ -6,7 +6,7 @@
  * quick insights tables, and navigation links.
  */
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
@@ -72,6 +72,21 @@ const JOB_STATUS_COLORS: Record<string, string> = {
   pending: "hsl(199, 89%, 48%)",
   failed: "hsl(0, 84%, 60%)",
   dead_letter: "hsl(0, 72%, 51%)",
+};
+
+const LLM_MODEL_COLORS = [
+  "hsl(221, 83%, 53%)",  // blue
+  "hsl(142, 71%, 45%)",  // green
+  "hsl(48, 96%, 53%)",   // yellow
+  "hsl(262, 83%, 58%)",  // purple
+  "hsl(24, 95%, 53%)",   // orange
+  "hsl(199, 89%, 48%)",  // cyan (Other)
+];
+
+const mediaUsageConfig: ChartConfig = {
+  image: { label: "Image", color: "hsl(221, 83%, 53%)" },
+  video: { label: "Video", color: "hsl(142, 71%, 45%)" },
+  audio: { label: "Audio", color: "hsl(262, 83%, 58%)" },
 };
 
 // --- Helpers ---
@@ -146,8 +161,58 @@ export default function AdminOverviewDashboard() {
   const systemHealth = trpc.infrastructure.getSystemHealth.useQuery(undefined, queryOpts);
   const redisHealth = trpc.infrastructure.getRedisHealth.useQuery(undefined, queryOpts);
   const monitoringStatus = trpc.infrastructure.getMonitoringStatus.useQuery(undefined, queryOpts);
-  const modelStats = trpc.queues.getModelStats.useQuery(undefined, queryOpts);
-  const mediaStats = trpc.queues.getMediaStats.useQuery(undefined, queryOpts);
+  const dailyLlmUsage = trpc.adminOps.dailyLlmUsage.useQuery({ days: 7 }, queryOpts);
+  const dailyMediaUsage = trpc.adminOps.dailyMediaUsage.useQuery({ days: 7 }, queryOpts);
+  const pendingApprovals = trpc.adminOps.pendingApprovalCounts.useQuery(undefined, queryOpts);
+
+  // --- Hooks: useMemo MUST be called before any early return (Rules of Hooks) ---
+
+  const llmModels = dailyLlmUsage.data?.topModels ?? [];
+
+  const llmChartData = useMemo(() => {
+    if (!dailyLlmUsage.data?.daily?.length) return [];
+    const byDate = new Map<string, Record<string, number | string>>();
+    for (const row of dailyLlmUsage.data.daily) {
+      if (!row.date || !row.model) continue;
+      const key = shortDate(row.date);
+      if (!byDate.has(key)) byDate.set(key, { date: key });
+      const entry = byDate.get(key)!;
+      entry[row.model] = (Number(entry[row.model]) || 0) + Number(row.requests);
+    }
+    return Array.from(byDate.values());
+  }, [dailyLlmUsage.data]);
+
+  const llmChartConfig: ChartConfig = useMemo(() => {
+    const config: ChartConfig = {};
+    for (let i = 0; i < llmModels.length; i++) {
+      const model = llmModels[i];
+      if (typeof model !== "string" || !model) continue;
+      const shortName = model.includes("/") ? model.split("/").pop()! : model;
+      config[model] = {
+        label: shortName,
+        color: LLM_MODEL_COLORS[i] ?? LLM_MODEL_COLORS[5],
+      };
+    }
+    if (llmChartData.some(d => "Other" in d)) {
+      config["Other"] = { label: "Other", color: LLM_MODEL_COLORS[5] };
+    }
+    return config;
+  }, [llmModels, llmChartData]);
+
+  const mediaChartData = useMemo(() => {
+    if (!dailyMediaUsage.data?.daily?.length) return [];
+    const byDate = new Map<string, Record<string, number | string>>();
+    for (const row of dailyMediaUsage.data.daily) {
+      if (!row.date || !row.mediaType) continue;
+      const key = shortDate(row.date);
+      if (!byDate.has(key)) byDate.set(key, { date: key });
+      const entry = byDate.get(key)!;
+      entry[row.mediaType] = (Number(entry[row.mediaType]) || 0) + Number(row.requests);
+    }
+    return Array.from(byDate.values());
+  }, [dailyMediaUsage.data]);
+
+  // --- Early returns (after all hooks) ---
 
   if (authLoading) {
     return (
@@ -269,7 +334,7 @@ export default function AdminOverviewDashboard() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => window.history.length > 1 ? window.history.back() : setLocation("/dashboard")}
+                onClick={() => setLocation("/dashboard")}
               >
                 <ArrowLeft className="h-4 w-4 mr-1" />
                 Back
@@ -310,6 +375,43 @@ export default function AdminOverviewDashboard() {
             </Card>
           ))}
         </div>
+
+        {/* Pending Approvals Banner */}
+        {(pendingApprovals.data?.total ?? 0) > 0 && (
+          <Card className="border-amber-300 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-700">
+            <CardContent className="py-3 px-4 flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900 flex items-center justify-center shrink-0">
+                  <Clock className="h-4.5 w-4.5 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                    {pendingApprovals.data!.total} items pending approval
+                  </p>
+                  <div className="flex gap-2 mt-0.5">
+                    {pendingApprovals.data!.skills > 0 && (
+                      <Badge variant="secondary" className="text-[10px] bg-amber-100 text-amber-700">{pendingApprovals.data!.skills} Skills</Badge>
+                    )}
+                    {pendingApprovals.data!.agencies > 0 && (
+                      <Badge variant="secondary" className="text-[10px] bg-amber-100 text-amber-700">{pendingApprovals.data!.agencies} Agencies</Badge>
+                    )}
+                    {pendingApprovals.data!.templates > 0 && (
+                      <Badge variant="secondary" className="text-[10px] bg-amber-100 text-amber-700">{pendingApprovals.data!.templates} Templates</Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+                onClick={() => setLocation("/admin/approvals")}
+              >
+                Review All
+                <ExternalLink className="ml-1.5 h-3 w-3" />
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Section B: Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -414,6 +516,90 @@ export default function AdminOverviewDashboard() {
           </Card>
         </div>
 
+        {/* Section B2: LLM & Media Usage Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Chart 4: LLM Usage per Day */}
+          <Card>
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <CardTitle className="text-sm font-medium">LLM Usage per Day (7d)</CardTitle>
+              <Button variant="ghost" size="sm" className="text-xs h-auto p-1" onClick={() => setLocation("/admin/queues/llm")}>
+                View all <ExternalLink className="h-3 w-3 ml-1" />
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {llmChartData.length > 0 ? (
+                <ChartContainer config={llmChartConfig} className="h-[200px] w-full aspect-auto">
+                  <BarChart data={llmChartData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="date" tickLine={false} axisLine={false} fontSize={11} />
+                    <YAxis tickLine={false} axisLine={false} fontSize={11} width={40} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    {llmModels.map((model, i) => (
+                      <Bar key={model} dataKey={model} stackId="a" fill={LLM_MODEL_COLORS[i] ?? LLM_MODEL_COLORS[5]} radius={[0, 0, 0, 0]} />
+                    ))}
+                    {llmChartData.some(d => "Other" in d) && (
+                      <Bar dataKey="Other" stackId="a" fill={LLM_MODEL_COLORS[5]} radius={[4, 4, 0, 0]} />
+                    )}
+                  </BarChart>
+                </ChartContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[200px] text-sm text-muted-foreground">
+                  {dailyLlmUsage.isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "No LLM data"}
+                </div>
+              )}
+              {llmChartData.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2 justify-center">
+                  {Object.entries(llmChartConfig).map(([key, conf]) => (
+                    <div key={key} className="flex items-center gap-1 text-xs">
+                      <div className="w-2 h-2 rounded-full" style={{ background: conf.color as string }} />
+                      <span className="text-muted-foreground truncate max-w-[100px]" title={key}>{String(conf.label ?? key)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Chart 5: Media Usage per Day */}
+          <Card>
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
+              <CardTitle className="text-sm font-medium">Media Usage per Day (7d)</CardTitle>
+              <Button variant="ghost" size="sm" className="text-xs h-auto p-1" onClick={() => setLocation("/admin/queues/media")}>
+                View all <ExternalLink className="h-3 w-3 ml-1" />
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {mediaChartData.length > 0 ? (
+                <ChartContainer config={mediaUsageConfig} className="h-[200px] w-full aspect-auto">
+                  <BarChart data={mediaChartData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="date" tickLine={false} axisLine={false} fontSize={11} />
+                    <YAxis tickLine={false} axisLine={false} fontSize={11} width={40} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="image" stackId="a" fill="var(--color-image)" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="video" stackId="a" fill="var(--color-video)" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="audio" stackId="a" fill="var(--color-audio)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ChartContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[200px] text-sm text-muted-foreground">
+                  {dailyMediaUsage.isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "No media data"}
+                </div>
+              )}
+              {mediaChartData.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2 justify-center">
+                  {Object.entries(mediaUsageConfig).map(([key, conf]) => (
+                    <div key={key} className="flex items-center gap-1 text-xs">
+                      <div className="w-2 h-2 rounded-full" style={{ background: conf.color as string }} />
+                      <span className="text-muted-foreground">{String(conf.label ?? key)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Section C: System Health Strip */}
         <Card className="p-4">
           <div className="flex items-center gap-2 mb-3">
@@ -435,65 +621,7 @@ export default function AdminOverviewDashboard() {
         </Card>
 
         {/* Section D: Quick Insights */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-          {/* Top LLM Models */}
-          <Card>
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm font-medium">Top LLM Models</CardTitle>
-              <Button variant="ghost" size="sm" className="text-xs h-auto p-1" onClick={() => setLocation("/admin/queues/llm")}>
-                View all <ExternalLink className="h-3 w-3 ml-1" />
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {modelStats.isLoading ? (
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto" />
-              ) : modelStats.data?.models?.length ? (
-                <div className="space-y-1.5">
-                  {modelStats.data.models.slice(0, 5).map((m: { model: string; requests: number; successRate: number }) => (
-                    <div key={m.model} className="flex items-center justify-between text-xs">
-                      <span className="truncate max-w-[140px]" title={m.model}>{m.model}</span>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-muted-foreground">{formatNumber(m.requests)}</span>
-                        <Badge variant="secondary" className="text-[10px] px-1 py-0">{formatPercent(m.successRate / 100)}</Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">No model data</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Top Media Models */}
-          <Card>
-            <CardHeader className="pb-2 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm font-medium">Top Media Models</CardTitle>
-              <Button variant="ghost" size="sm" className="text-xs h-auto p-1" onClick={() => setLocation("/admin/queues/media")}>
-                View all <ExternalLink className="h-3 w-3 ml-1" />
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {mediaStats.isLoading ? (
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-auto" />
-              ) : mediaStats.data?.models?.length ? (
-                <div className="space-y-1.5">
-                  {mediaStats.data.models.slice(0, 5).map((m: { model: string; mediaType: string; totalCreditsUsed: number }) => (
-                    <div key={m.model} className="flex items-center justify-between text-xs">
-                      <span className="truncate max-w-[120px]" title={m.model}>{m.model}</span>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Badge variant="outline" className="text-[10px] px-1 py-0">{m.mediaType}</Badge>
-                        <span className="text-muted-foreground">{formatNumber(m.totalCreditsUsed)} cr</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">No media data</p>
-              )}
-            </CardContent>
-          </Card>
-
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Recent Failures */}
           <Card>
             <CardHeader className="pb-2 flex flex-row items-center justify-between">

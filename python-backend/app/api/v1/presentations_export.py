@@ -6,14 +6,20 @@ GET  /api/v1/presentations/export/{id}     — poll task status
 """
 
 import json
+import mimetypes
+import os
+from datetime import datetime, timezone
 from typing import Any, Optional, Self
 
 import structlog
 from celery.result import AsyncResult
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import FileResponse
+from jose import JWTError, jwt
 from pydantic import BaseModel, field_validator, model_validator
 
 from app.core.auth import get_current_user
+from app.core.config import settings
 from app.models.user import User
 
 logger = structlog.get_logger(__name__)
@@ -205,6 +211,44 @@ async def cancel_presentation_export(
         logger.warning("presentation_export_cancel_failed", task_id=task_id, error=str(exc))
         # Return success=False but do not raise — Node.js will still mark DB as cancelled
         return {"success": False, "task_id": task_id, "message": str(exc)}
+
+
+@router.get("/export/files/{deck_id}/{filename}")
+async def download_local_export_file(
+    deck_id: int,
+    filename: str,
+    token: str = Query(..., min_length=16),
+):
+    """Serve a locally stored presentation export file (R2 fallback path)."""
+    if not settings.JWT_SECRET:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="JWT secret is not configured")
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
+    except JWTError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid download token") from exc
+    if payload.get("sub") != "presentation-export-download":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token subject")
+    if str(payload.get("deck_id")) != str(deck_id):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token deck mismatch")
+    if payload.get("filename") != filename:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token file mismatch")
+    exp = payload.get("exp")
+    if not isinstance(exp, int) or exp < int(datetime.now(timezone.utc).timestamp()):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Download token expired")
+
+    if not filename or "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid filename")
+
+    media_storage = os.getenv("MEDIA_STORAGE_PATH", "./media_storage")
+    base_dir = os.path.realpath(os.path.join(media_storage, "presentation_exports", str(deck_id)))
+    file_path = os.path.realpath(os.path.join(base_dir, filename))
+    if not file_path.startswith(base_dir + os.sep):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid file path")
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Export file not found")
+
+    media_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
+    return FileResponse(path=file_path, media_type=media_type, filename=filename)
 
 
 @router.get("/export/{celery_task_id}", response_model=PresentationExportStatusResponse)

@@ -6,6 +6,7 @@ and Drive API export/download for PDFs and binary formats.
 """
 
 import re
+import time
 import signal
 import logging
 import threading
@@ -114,6 +115,32 @@ class GoogleContentExtractor:
         self._sheets_service = None
         self._slides_service = None
 
+    @staticmethod
+    def _execute_with_retry(request, max_retries: int = 3):
+        """Execute a Google API request with 429 rate-limit retry."""
+        for attempt in range(max_retries + 1):
+            try:
+                return request.execute()
+            except Exception as e:
+                status_code = getattr(e, "status_code", None)
+                if status_code is None and hasattr(e, "resp"):
+                    status_code = int(e.resp.get("status", 0))
+                if status_code == 429 and attempt < max_retries:
+                    retry_after = 60
+                    if hasattr(e, "resp") and "retry-after" in (e.resp or {}):
+                        try:
+                            retry_after = int(e.resp["retry-after"])
+                        except (ValueError, TypeError):
+                            pass
+                    wait = min(retry_after, 300)
+                    logger.warning(
+                        "Google API 429 in extractor (attempt %d/%d), retrying in %ds",
+                        attempt + 1, max_retries, wait,
+                    )
+                    time.sleep(wait)
+                    continue
+                raise
+
     def _build_credentials(self):
         from google.oauth2.credentials import Credentials
         return Credentials(token=self._access_token)
@@ -210,9 +237,9 @@ class GoogleContentExtractor:
     def _check_file_size(self, file_id: str, max_size: int):
         """Check file size against the limit."""
         try:
-            meta = self._get_drive_service().files().get(
+            meta = self._execute_with_retry(self._get_drive_service().files().get(
                 fileId=file_id, fields="size"
-            ).execute()
+            ))
             size = int(meta.get("size", 0))
             if size > max_size:
                 raise FileTooLargeError(file_id, size, max_size)
@@ -230,7 +257,7 @@ class GoogleContentExtractor:
 
     def _extract_google_doc(self, file_id: str) -> tuple[str, dict]:
         """Extract text from a Google Doc using the Docs API."""
-        doc = self._get_docs_service().documents().get(documentId=file_id).execute()
+        doc = self._execute_with_retry(self._get_docs_service().documents().get(documentId=file_id))
         title = doc.get("title", "")
         body = doc.get("body", {})
         content = body.get("content", [])
@@ -274,9 +301,9 @@ class GoogleContentExtractor:
         sheets_svc = self._get_sheets_service()
 
         # Get sheet metadata
-        spreadsheet = sheets_svc.spreadsheets().get(
+        spreadsheet = self._execute_with_retry(sheets_svc.spreadsheets().get(
             spreadsheetId=file_id, fields="sheets.properties,properties.title"
-        ).execute()
+        ))
 
         ss_title = spreadsheet.get("properties", {}).get("title", "")
         sheets = spreadsheet.get("sheets", [])
@@ -302,9 +329,9 @@ class GoogleContentExtractor:
             sheet_names.append(sheet_name)
 
             # Fetch values
-            result = sheets_svc.spreadsheets().values().get(
+            result = self._execute_with_retry(sheets_svc.spreadsheets().values().get(
                 spreadsheetId=file_id, range=sheet_name
-            ).execute()
+            ))
             values = result.get("values", [])
 
             if not values:
@@ -322,9 +349,9 @@ class GoogleContentExtractor:
 
     def _extract_google_slides(self, file_id: str) -> tuple[str, dict]:
         """Extract text from Google Slides using the Slides API."""
-        presentation = self._get_slides_service().presentations().get(
+        presentation = self._execute_with_retry(self._get_slides_service().presentations().get(
             presentationId=file_id
-        ).execute()
+        ))
 
         title = presentation.get("title", "")
         slides = presentation.get("slides", [])
@@ -368,9 +395,9 @@ class GoogleContentExtractor:
 
     def _extract_via_export(self, file_id: str, export_mime: str) -> tuple[str, dict]:
         """Export a file using the Drive API."""
-        content = self._get_drive_service().files().export(
+        content = self._execute_with_retry(self._get_drive_service().files().export(
             fileId=file_id, mimeType=export_mime
-        ).execute()
+        ))
 
         if isinstance(content, bytes):
             text = content.decode("utf-8", errors="replace")
@@ -381,9 +408,9 @@ class GoogleContentExtractor:
 
     def _extract_plain_download(self, file_id: str) -> tuple[str, dict]:
         """Download a plain text file directly."""
-        content = self._get_drive_service().files().get_media(
+        content = self._execute_with_retry(self._get_drive_service().files().get_media(
             fileId=file_id
-        ).execute()
+        ))
 
         if isinstance(content, bytes):
             text = content.decode("utf-8", errors="replace")

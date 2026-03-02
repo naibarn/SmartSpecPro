@@ -9,6 +9,7 @@ import {
   AI_LAYOUT_TEMPLATE_IDS,
   AI_SVG_CATEGORIES,
   AI_STYLE_PRESET_IDS,
+  MAX_AI_DRAFT_SLIDES,
 } from "../aiTypes";
 
 describe("GenerateAIDraftInputSchema", () => {
@@ -35,10 +36,10 @@ describe("GenerateAIDraftInputSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects numSlides > 10", () => {
+  it("rejects numSlides > 30", () => {
     const result = GenerateAIDraftInputSchema.safeParse({
       ...validInput,
-      numSlides: 11,
+      numSlides: MAX_AI_DRAFT_SLIDES + 1,
     });
     expect(result.success).toBe(false);
   });
@@ -73,6 +74,37 @@ describe("GenerateAIDraftInputSchema", () => {
     const result = GenerateAIDraftInputSchema.safeParse({
       ...validInput,
       prompt: "x".repeat(1001),
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts imagePromptContext and referenceImageUrls", () => {
+    const result = GenerateAIDraftInputSchema.safeParse({
+      ...validInput,
+      canvasWidth: 1280,
+      canvasHeight: 720,
+      imagePromptContext: "Thai child, Thai family style, warm natural lighting",
+      referenceImageUrls: [
+        "https://cdn.example.com/reference-1.jpg",
+        "/uploads/reference-2.jpg",
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects invalid referenceImageUrls", () => {
+    const result = GenerateAIDraftInputSchema.safeParse({
+      ...validInput,
+      referenceImageUrls: ["ftp://example.com/file.jpg"],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects invalid canvas dimensions", () => {
+    const result = GenerateAIDraftInputSchema.safeParse({
+      ...validInput,
+      canvasWidth: 0,
+      canvasHeight: 12000,
     });
     expect(result.success).toBe(false);
   });
@@ -196,13 +228,13 @@ describe("AIPresentationSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects array with more than 10 slides", () => {
-    const slides = Array.from({ length: 11 }, () => validSlide);
+  it("rejects array with more than 30 slides", () => {
+    const slides = Array.from({ length: MAX_AI_DRAFT_SLIDES + 1 }, () => validSlide);
     const result = AIPresentationSchema.safeParse(slides);
     expect(result.success).toBe(false);
   });
 
-  it("accepts array with 1-10 valid slides", () => {
+  it("accepts array with 1-30 valid slides", () => {
     const result = AIPresentationSchema.safeParse([validSlide]);
     expect(result.success).toBe(true);
   });
@@ -211,6 +243,14 @@ describe("AIPresentationSchema", () => {
 describe("GenerateAIDraftOutputSchema", () => {
   it("accepts valid output with taskId", () => {
     const result = GenerateAIDraftOutputSchema.safeParse({ taskId: "abc-123" });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts valid output when resuming existing task", () => {
+    const result = GenerateAIDraftOutputSchema.safeParse({
+      taskId: "abc-123",
+      alreadyInProgress: true,
+    });
     expect(result.success).toBe(true);
   });
 

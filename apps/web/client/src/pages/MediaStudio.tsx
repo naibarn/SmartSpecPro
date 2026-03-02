@@ -3676,7 +3676,7 @@ export default function MediaStudio() {
                 </Badge>
               </div>
 
-              <ScrollArea className="h-[350px] pr-3">
+              <div className="pr-3">
                 {/* Completed tasks grid */}
                 <div className="grid grid-cols-3 gap-2 mb-4 pb-2">
                   {mediaHistory?.tasks
@@ -3941,7 +3941,7 @@ export default function MediaStudio() {
                       : "No history yet. Generate some images!"}
                   </p>
                 )}
-              </ScrollArea>
+              </div>
             </div>
           </div>
         </div>

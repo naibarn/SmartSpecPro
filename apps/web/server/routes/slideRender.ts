@@ -94,32 +94,301 @@ export function createSlideRenderRouter(): Router {
 <html>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=1920, height=1080">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link
+  href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kanit:wght@400;500;600;700&family=Prompt:wght@400;500;600;700&family=Sarabun:wght@400;500;600;700&display=swap"
+  rel="stylesheet"
+>
 <style>
-  body { margin: 0; overflow: hidden; background: #fff; }
-  #slide-canvas { width: 1920px; height: 1080px; position: relative; overflow: hidden; }
+  html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #fff;
+  }
+  #slide-viewport {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: #fff;
+  }
+  #slide-canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    overflow: hidden;
+    transform-origin: top left;
+  }
+  .slide-el {
+    position: absolute;
+    box-sizing: border-box;
+  }
 </style>
 </head>
 <body>
 <script id="slide-data" type="application/json">${slideContentJson}</script>
-<div id="slide-canvas"></div>
+<div id="slide-viewport">
+  <div id="slide-canvas"></div>
+</div>
 <script>
 window.__slideReady = false;
-document.fonts.ready.then(function() {
-  var imgs = document.querySelectorAll('img');
-  var checkInterval = setInterval(function() {
-    var allLoaded = Array.from(imgs).every(function(img) { return img.complete; });
-    if (allLoaded) {
-      clearInterval(checkInterval);
-      window.__slideReady = true;
+;(function() {
+  function asNumber(v, fallback) {
+    var n = Number(v);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function clamp(v, min, max) {
+    if (v < min) return min;
+    if (v > max) return max;
+    return v;
+  }
+
+  function resolveFontFamily(value) {
+    var fallback = "'Inter', 'Sarabun', 'Prompt', 'Kanit', 'Noto Sans Thai', 'Noto Sans', system-ui, sans-serif";
+    if (typeof value !== "string" || !value.trim()) {
+      return fallback;
     }
-  }, 50);
-  // Safety: set ready after 8s even if images haven't loaded (avoids Playwright timeout)
-  setTimeout(function() {
-    clearInterval(checkInterval);
+    return value + ", " + fallback;
+  }
+
+  var dataNode = document.getElementById("slide-data");
+  var slide = {};
+  try {
+    slide = JSON.parse((dataNode && dataNode.textContent) || "{}");
+  } catch (_err) {
+    slide = {};
+  }
+
+  var canvasWidth = asNumber(slide && slide.canvas && slide.canvas.width, 1920);
+  var canvasHeight = asNumber(slide && slide.canvas && slide.canvas.height, 1080);
+  var canvas = document.getElementById("slide-canvas");
+  var viewport = document.getElementById("slide-viewport");
+  if (!canvas || !viewport) {
     window.__slideReady = true;
-  }, 8000);
-});
+    return;
+  }
+
+  canvas.style.width = canvasWidth + "px";
+  canvas.style.height = canvasHeight + "px";
+
+  function fitCanvasToViewport() {
+    var vw = window.innerWidth || canvasWidth;
+    var vh = window.innerHeight || canvasHeight;
+    var scale = Math.min(vw / canvasWidth, vh / canvasHeight);
+    if (!Number.isFinite(scale) || scale <= 0) scale = 1;
+    var left = (vw - canvasWidth * scale) / 2;
+    var top = (vh - canvasHeight * scale) / 2;
+    canvas.style.transform = "translate(" + left + "px," + top + "px) scale(" + scale + ")";
+  }
+
+  function applyBaseStyle(node, el) {
+    node.className = "slide-el";
+    node.style.left = asNumber(el.x, 0) + "px";
+    node.style.top = asNumber(el.y, 0) + "px";
+    node.style.width = Math.max(0, asNumber(el.width, 0)) + "px";
+    node.style.height = Math.max(0, asNumber(el.height, 0)) + "px";
+    if (typeof el.opacity === "number") {
+      node.style.opacity = String(clamp(el.opacity, 0, 1));
+    }
+    var rotate = asNumber(el.rotation, 0);
+    if (rotate) {
+      node.style.transform = "rotate(" + rotate + "deg)";
+      node.style.transformOrigin = "center center";
+    }
+  }
+
+  function renderText(el) {
+    var node = document.createElement("div");
+    applyBaseStyle(node, el);
+    node.style.overflow = "hidden";
+    var p = document.createElement("p");
+    p.style.margin = "0";
+    p.style.width = "100%";
+    p.style.height = "100%";
+    p.style.padding = "8px";
+    p.style.boxSizing = "border-box";
+    p.style.whiteSpace = "pre-wrap";
+    p.style.wordBreak = "break-word";
+    p.style.color = typeof el.color === "string" ? el.color : "#111827";
+    p.style.background = typeof el.backgroundColor === "string" ? el.backgroundColor : "transparent";
+    p.style.fontSize = asNumber(el.fontSize, 48) + "px";
+    p.style.fontFamily = resolveFontFamily(el.fontFamily);
+    p.style.fontWeight = typeof el.fontWeight === "string" ? el.fontWeight : "600";
+    p.style.fontStyle = typeof el.fontStyle === "string" ? el.fontStyle : "normal";
+    p.style.textDecoration = typeof el.textDecoration === "string" ? el.textDecoration : "none";
+    p.style.textAlign = typeof el.textAlign === "string" ? el.textAlign : "left";
+    p.style.lineHeight = String(typeof el.lineHeight === "number" ? el.lineHeight : 1.25);
+    p.style.letterSpacing = asNumber(el.letterSpacing, 0) + "px";
+    if (typeof el.textShadow === "string") {
+      p.style.textShadow = el.textShadow;
+    }
+    if (typeof el.textStroke === "string") {
+      p.style.webkitTextStroke = el.textStroke;
+    }
+    p.textContent = typeof el.text === "string" ? el.text : "";
+    node.appendChild(p);
+    return node;
+  }
+
+  function renderImage(el) {
+    var wrapper = document.createElement("div");
+    applyBaseStyle(wrapper, el);
+    wrapper.style.overflow = "hidden";
+
+    var img = document.createElement("img");
+    img.alt = typeof el.alt === "string" ? el.alt : "";
+    img.style.width = "100%";
+    img.style.height = "100%";
+    img.style.display = "block";
+    // Keep default behavior aligned with editor canvas renderer.
+    img.style.objectFit = typeof el.imageFit === "string" ? el.imageFit : "contain";
+    var posX = clamp(asNumber(el.imagePositionX, 50), 0, 100);
+    var posY = clamp(asNumber(el.imagePositionY, 50), 0, 100);
+    img.style.objectPosition = posX + "% " + posY + "%";
+    var zoom = clamp(asNumber(el.imageZoom, 1), 0.5, 3);
+    if (zoom !== 1) {
+      img.style.transform = "scale(" + zoom + ")";
+      img.style.transformOrigin = posX + "% " + posY + "%";
+    }
+
+    if (typeof el.svgContent === "string" && el.svgContent.trim()) {
+      img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(el.svgContent);
+    } else {
+      img.src = typeof el.src === "string" ? el.src : "";
+    }
+
+    wrapper.appendChild(img);
+    return wrapper;
+  }
+
+  function renderVideo(el) {
+    if (typeof el.poster === "string" && el.poster.trim()) {
+      var asImage = {
+        x: el.x, y: el.y, width: el.width, height: el.height, opacity: el.opacity, rotation: el.rotation,
+        src: el.poster, alt: typeof el.title === "string" ? el.title : "video poster", imageFit: "cover",
+      };
+      return renderImage(asImage);
+    }
+    var node = document.createElement("div");
+    applyBaseStyle(node, el);
+    node.style.background = "#000";
+    return node;
+  }
+
+  function renderRect(el) {
+    var node = document.createElement("div");
+    applyBaseStyle(node, el);
+    node.style.background = typeof el.fill === "string" ? el.fill : "transparent";
+    if (typeof el.stroke === "string" && asNumber(el.strokeWidth, 0) > 0) {
+      node.style.border = asNumber(el.strokeWidth, 0) + "px solid " + el.stroke;
+    }
+    return node;
+  }
+
+  function renderLine(el) {
+    var node = document.createElement("div");
+    node.className = "slide-el";
+    var x = asNumber(el.x, 0);
+    var y = asNumber(el.y, 0);
+    var w = asNumber(el.width, 0);
+    var h = asNumber(el.height, 0);
+    var length = Math.sqrt(w * w + h * h);
+    var angle = (Math.atan2(h, w) * 180) / Math.PI;
+    var extraRotation = asNumber(el.rotation, 0);
+    node.style.left = x + "px";
+    node.style.top = y + "px";
+    node.style.width = Math.max(0, length) + "px";
+    node.style.height = Math.max(1, asNumber(el.strokeWidth, 1)) + "px";
+    node.style.background = typeof el.stroke === "string" ? el.stroke : "#000";
+    node.style.transformOrigin = "0 50%";
+    node.style.transform = "rotate(" + (angle + extraRotation) + "deg)";
+    if (typeof el.opacity === "number") {
+      node.style.opacity = String(clamp(el.opacity, 0, 1));
+    }
+    return node;
+  }
+
+  function renderElements() {
+    canvas.innerHTML = "";
+    var elements = Array.isArray(slide && slide.elements) ? slide.elements : [];
+    for (var i = 0; i < elements.length; i += 1) {
+      var el = elements[i] || {};
+      var node = null;
+      if (el.type === "text") node = renderText(el);
+      else if (el.type === "image") node = renderImage(el);
+      else if (el.type === "video") node = renderVideo(el);
+      else if (el.type === "rect") node = renderRect(el);
+      else if (el.type === "line") node = renderLine(el);
+      if (node) canvas.appendChild(node);
+    }
+  }
+
+  function markReady() {
+    window.__slideReady = true;
+  }
+
+  function waitForImagesThenReady() {
+    var imgs = canvas.querySelectorAll("img");
+    if (!imgs || imgs.length === 0) {
+      markReady();
+      return;
+    }
+    var remaining = imgs.length;
+    var done = function() {
+      remaining -= 1;
+      if (remaining <= 0) markReady();
+    };
+    for (var i = 0; i < imgs.length; i += 1) {
+      var img = imgs[i];
+      if (img.complete) {
+        done();
+      } else {
+        img.addEventListener("load", done, { once: true });
+        img.addEventListener("error", done, { once: true });
+      }
+    }
+  }
+
+  try {
+    renderElements();
+    fitCanvasToViewport();
+    window.addEventListener("resize", fitCanvasToViewport);
+  } catch (_err) {
+    markReady();
+    return;
+  }
+
+  var safetyTimeout = setTimeout(markReady, 8000);
+  var finishReady = function() {
+    waitForImagesThenReady();
+    var checker = setInterval(function() {
+      if (window.__slideReady === true) {
+        clearInterval(checker);
+        clearTimeout(safetyTimeout);
+      }
+    }, 50);
+  };
+
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(finishReady).catch(finishReady);
+  } else {
+    finishReady();
+  }
+})();
 </script>
 </body>
 </html>`;

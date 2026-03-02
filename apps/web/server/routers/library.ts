@@ -31,6 +31,8 @@ import {
   softDeleteLibraryItem,
   updateLibrarySharePermission,
   uploadLibraryFile,
+  replaceLibraryFile,
+  getVersionSnapshotDownloadUrl,
   updateLibraryItem,
 } from "../services/libraryService";
 
@@ -88,10 +90,13 @@ const documentFilterSchema = z.object({
   recentDays: recentDaysSchema.optional(),
 }).optional();
 
+// 50 MB binary → ~68 MB base64 (4/3 overhead + data URL prefix margin)
+const MAX_FILE_BASE64_LENGTH = 68_000_000;
+
 const uploadLibraryFileSchema = z.object({
   fileName: z.string().min(1).max(255),
   fileType: z.string().min(1).max(255),
-  fileBase64: z.string().min(1),
+  fileBase64: z.string().min(1).max(MAX_FILE_BASE64_LENGTH),
   title: z.string().min(1).max(255).optional(),
   visibility: visibilitySchema.optional(),
 });
@@ -259,6 +264,48 @@ export const libraryRouter = router({
           itemId: result.item.id,
           indexJobId: result.indexJob.jobId,
           indexJobCreated: result.indexJob.created,
+        },
+      });
+
+      return result;
+    }),
+
+  replaceFile: protectedProcedure
+    .input(
+      z.object({
+        itemId: z.number().int().positive(),
+        fileName: z.string().min(1).max(255),
+        fileType: z.string().min(1).max(255),
+        fileBase64: z.string().min(1).max(MAX_FILE_BASE64_LENGTH),
+        changeDescription: z.string().max(500).optional(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const actor = {
+        userId: ctx.user.id,
+        tenantId: tenantIdResolved,
+        role: ctx.user.role,
+      };
+
+      const result = await replaceLibraryFile(input, actor);
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.replaceFile",
+        requestType: "mutation",
+        requestPayload: {
+          tenantId: tenantIdResolved,
+          itemId: input.itemId,
+          fileName: input.fileName,
+          fileType: input.fileType,
+        },
+        responsePayload: {
+          itemId: result.item.id,
+          indexJobId: result.indexJob.jobId,
+          versionNumber: result.versionNumber,
         },
       });
 
@@ -804,6 +851,28 @@ export const libraryRouter = router({
       }
 
       return version;
+    }),
+
+  getVersionSnapshotUrl: protectedProcedure
+    .input(z.object({ versionId: z.number().int().positive() }))
+    .query(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const actor = {
+        userId: ctx.user.id,
+        tenantId: tenantIdResolved,
+        role: ctx.user.role,
+      };
+
+      const result = await getVersionSnapshotDownloadUrl(input.versionId, actor);
+      if (!result) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "File snapshot not found for this version",
+        });
+      }
+
+      return result;
     }),
 
   restoreVersion: protectedProcedure

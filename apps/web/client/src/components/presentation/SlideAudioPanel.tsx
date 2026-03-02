@@ -46,6 +46,145 @@ export interface SlideAudioPanelProps {
   onAudioChanged?: () => void;
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function formatDuration(seconds: number): string {
+  const safe = Math.max(0, Number.isFinite(seconds) ? seconds : 0);
+  const mins = Math.floor(safe / 60);
+  const secs = safe - mins * 60;
+  return `${mins}:${secs.toFixed(1).padStart(4, "0")}`;
+}
+
+function extractDurationSeconds(metadata: unknown): number | null {
+  if (!metadata || typeof metadata !== "object") {
+    return null;
+  }
+  const source = metadata as Record<string, unknown>;
+  const durationMs = source.durationMs;
+  if (typeof durationMs === "number" && Number.isFinite(durationMs) && durationMs > 0) {
+    return durationMs / 1000;
+  }
+  const durationSec = source.durationSeconds ?? source.durationSec ?? source.duration;
+  if (typeof durationSec === "number" && Number.isFinite(durationSec) && durationSec > 0) {
+    return durationSec;
+  }
+  return null;
+}
+
+function useMediaDurationSeconds(sourceUrl: string | null | undefined, fallbackSec: number | null): number | null {
+  const [durationSec, setDurationSec] = useState<number | null>(fallbackSec);
+
+  useEffect(() => {
+    setDurationSec(fallbackSec);
+  }, [fallbackSec, sourceUrl]);
+
+  useEffect(() => {
+    if (!sourceUrl) {
+      return;
+    }
+
+    let cancelled = false;
+    const media = new Audio();
+    media.preload = "metadata";
+    media.src = sourceUrl;
+
+    const handleLoadedMetadata = () => {
+      if (cancelled) return;
+      if (Number.isFinite(media.duration) && media.duration > 0) {
+        setDurationSec(media.duration);
+      }
+    };
+
+    media.addEventListener("loadedmetadata", handleLoadedMetadata);
+
+    return () => {
+      cancelled = true;
+      media.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      media.src = "";
+    };
+  }, [sourceUrl]);
+
+  return durationSec;
+}
+
+interface AudioTrimTimelineProps {
+  idPrefix: string;
+  durationSec: number | null;
+  startSec: number;
+  endSec: number;
+  playToEnd: boolean;
+  onStartSecChange: (next: number) => void;
+  onEndSecChange: (next: number) => void;
+  onPlayToEndChange: (next: boolean) => void;
+}
+
+function AudioTrimTimeline({
+  idPrefix,
+  durationSec,
+  startSec,
+  endSec,
+  playToEnd,
+  onStartSecChange,
+  onEndSecChange,
+  onPlayToEndChange,
+}: AudioTrimTimelineProps) {
+  const maxSec = Math.max(
+    0.5,
+    durationSec ?? 0,
+    startSec + 0.5,
+    endSec > 0 ? endSec : 0,
+  );
+  const boundedStart = clamp(startSec, 0, maxSec);
+  const boundedEnd = clamp(playToEnd ? maxSec : Math.max(endSec, boundedStart), boundedStart, maxSec);
+  const playDuration = Math.max(0, boundedEnd - boundedStart);
+
+  return (
+    <div className="space-y-2 rounded-md border border-slate-200 p-2">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs font-medium">Trim</Label>
+        <span className="text-[11px] text-muted-foreground">
+          {durationSec != null ? `Audio: ${formatDuration(durationSec)}` : "Audio: unknown length"}
+        </span>
+      </div>
+      <Slider
+        min={0}
+        max={maxSec}
+        step={0.1}
+        value={playToEnd ? [boundedStart] : [boundedStart, boundedEnd]}
+        onValueChange={(values) => {
+          if (!values.length) return;
+          if (playToEnd) {
+            onStartSecChange(clamp(values[0], 0, maxSec));
+            return;
+          }
+          const nextStart = clamp(values[0], 0, maxSec);
+          const nextEnd = clamp(values[1] ?? values[0], nextStart, maxSec);
+          onStartSecChange(nextStart);
+          onEndSecChange(nextEnd);
+        }}
+        aria-label={`${idPrefix}-trim-slider`}
+      />
+      <div className="flex items-center gap-2">
+        <Switch
+          checked={playToEnd}
+          onCheckedChange={onPlayToEndChange}
+          id={`${idPrefix}-play-to-end`}
+        />
+        <Label htmlFor={`${idPrefix}-play-to-end`} className="cursor-pointer text-xs">
+          Play to end
+        </Label>
+      </div>
+      <div className="grid grid-cols-3 gap-1 text-[11px]">
+        <span className="rounded bg-slate-100 px-1.5 py-0.5">Start {formatDuration(boundedStart)}</span>
+        <span className="rounded bg-slate-100 px-1.5 py-0.5">End {formatDuration(boundedEnd)}</span>
+        <span className="rounded bg-sky-100 px-1.5 py-0.5 text-sky-900">Play {formatDuration(playDuration)}</span>
+      </div>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // AudioPickerDialog — full browsable library with search + preview
 // ---------------------------------------------------------------------------
@@ -278,8 +417,40 @@ export function SlideAudioPanel({
   const [deckVolumePct, setDeckVolumePct] = useState<number>(
     Math.round((deckAudioTrack?.volume ?? 1) * 100),
   );
+  const [deckStartSec, setDeckStartSec] = useState<number>(
+    (deckAudioTrack?.startAtMs ?? 0) / 1000,
+  );
+  const [deckPlayToEnd, setDeckPlayToEnd] = useState<boolean>(
+    deckAudioTrack == null || deckAudioTrack.endAtMs == null,
+  );
+  const [deckEndSec, setDeckEndSec] = useState<number>(
+    (deckAudioTrack?.endAtMs ?? 0) / 1000,
+  );
   const [deckLoop, setDeckLoop] = useState<boolean>(deckAudioTrack?.loop ?? false);
   const [deckFadeMs, setDeckFadeMs] = useState<number>(deckAudioTrack?.fadeOutMs ?? 0);
+  const [previewTarget, setPreviewTarget] = useState<"slide" | "deck" | null>(null);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const previewStopTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const slideAudioItemQuery = trpc.library.getItem.useQuery(
+    { id: slideAudioTrack?.libraryItemId ?? 0 },
+    { enabled: Boolean(slideAudioTrack?.libraryItemId) },
+  );
+  const deckAudioItemQuery = trpc.library.getItem.useQuery(
+    { id: deckAudioTrack?.libraryItemId ?? 0 },
+    { enabled: Boolean(deckAudioTrack?.libraryItemId) },
+  );
+
+  const slideAudioSourceUrl = slideAudioItemQuery.data?.sourceUrl ?? null;
+  const deckAudioSourceUrl = deckAudioItemQuery.data?.sourceUrl ?? null;
+  const slideAudioDurationSec = useMediaDurationSeconds(
+    slideAudioSourceUrl,
+    extractDurationSeconds(slideAudioItemQuery.data?.metadata),
+  );
+  const deckAudioDurationSec = useMediaDurationSeconds(
+    deckAudioSourceUrl,
+    extractDurationSeconds(deckAudioItemQuery.data?.metadata),
+  );
 
   // M1: sync draft state when slideId or slideAudioTrack changes
   useEffect(() => {
@@ -291,9 +462,23 @@ export function SlideAudioPanel({
 
   useEffect(() => {
     setDeckVolumePct(Math.round((deckAudioTrack?.volume ?? 1) * 100));
+    setDeckStartSec((deckAudioTrack?.startAtMs ?? 0) / 1000);
+    setDeckPlayToEnd(deckAudioTrack == null || deckAudioTrack.endAtMs == null);
+    setDeckEndSec((deckAudioTrack?.endAtMs ?? 0) / 1000);
     setDeckLoop(deckAudioTrack?.loop ?? false);
     setDeckFadeMs(deckAudioTrack?.fadeOutMs ?? 0);
   }, [deckAudioTrack]);
+
+  useEffect(() => {
+    return () => {
+      if (previewStopTimerRef.current !== null) {
+        clearTimeout(previewStopTimerRef.current);
+        previewStopTimerRef.current = null;
+      }
+      previewAudioRef.current?.pause();
+      previewAudioRef.current = null;
+    };
+  }, []);
 
   // M3: Detect version conflict errors and offer clearer message
   function onSlideAudioError(err: { message: string; data?: { code?: string } | null }) {
@@ -334,8 +519,14 @@ export function SlideAudioPanel({
   // H3: helper to compute endAtMs — guards against accidental endAtMs: 0
   function computeSlideEndAtMs(): number | null {
     if (slidePlayToEnd) return null;
-    if (slideEndSec <= 0) return null; // H3: don't send 0 ms; treat as "play to end"
+    if (slideEndSec <= slideStartSec) return null;
     return Math.round(slideEndSec * 1000);
+  }
+
+  function computeDeckEndAtMs(): number | null {
+    if (deckPlayToEnd) return null;
+    if (deckEndSec <= deckStartSec) return null;
+    return Math.round(deckEndSec * 1000);
   }
 
   // H2: build slide AudioTrackInput WITHOUT title — schema is .strict()
@@ -353,9 +544,64 @@ export function SlideAudioPanel({
     return {
       libraryItemId,
       volume: deckVolumePct / 100,
+      startAtMs: Math.round(deckStartSec * 1000),
+      endAtMs: computeDeckEndAtMs(),
       loop: deckLoop,
       fadeOutMs: deckFadeMs > 0 ? deckFadeMs : null,
     };
+  }
+
+  function stopPreviewAudio() {
+    if (previewStopTimerRef.current !== null) {
+      clearTimeout(previewStopTimerRef.current);
+      previewStopTimerRef.current = null;
+    }
+    previewAudioRef.current?.pause();
+    previewAudioRef.current = null;
+    setPreviewTarget(null);
+  }
+
+  function togglePreviewAudio(
+    target: "slide" | "deck",
+    sourceUrl: string | null,
+    startSeconds: number,
+    endSeconds: number | null,
+    volumePercent: number,
+  ) {
+    if (!sourceUrl) {
+      toast.error("Audio source unavailable for preview.");
+      return;
+    }
+    if (previewTarget === target) {
+      stopPreviewAudio();
+      return;
+    }
+
+    stopPreviewAudio();
+    const audio = new Audio(sourceUrl);
+    audio.volume = clamp(volumePercent, 0, 100) / 100;
+    audio.currentTime = Math.max(0, startSeconds);
+    previewAudioRef.current = audio;
+    setPreviewTarget(target);
+
+    const playbackDurationMs =
+      endSeconds != null
+        ? Math.max(0, Math.round((endSeconds - startSeconds) * 1000))
+        : null;
+
+    if (playbackDurationMs != null && playbackDurationMs > 0) {
+      previewStopTimerRef.current = setTimeout(() => {
+        stopPreviewAudio();
+      }, playbackDurationMs);
+    }
+
+    audio.onended = () => {
+      stopPreviewAudio();
+    };
+    audio.play().catch(() => {
+      stopPreviewAudio();
+      toast.error("Unable to preview this audio.");
+    });
   }
 
   // Handlers — per-slide
@@ -468,8 +714,26 @@ export function SlideAudioPanel({
             <div className="flex items-center gap-2">
               <Music className="h-4 w-4 shrink-0 text-muted-foreground" />
               <span className="text-sm truncate flex-1">
-                {slideAudioTrack.title ?? `Audio #${slideAudioTrack.libraryItemId}`}
+                {slideAudioTrack.title
+                  ?? slideAudioItemQuery.data?.title
+                  ?? `Audio #${slideAudioTrack.libraryItemId}`}
               </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2 text-xs text-muted-foreground"
+                onClick={() => togglePreviewAudio(
+                  "slide",
+                  slideAudioSourceUrl,
+                  slideStartSec,
+                  slidePlayToEnd ? null : Math.max(slideEndSec, slideStartSec),
+                  slideVolumePct,
+                )}
+                title={previewTarget === "slide" ? "Stop preview" : "Preview current trim"}
+                aria-label={previewTarget === "slide" ? "Stop slide audio preview" : "Preview slide audio trim"}
+              >
+                {previewTarget === "slide" ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+              </Button>
               <Button
                 size="sm"
                 variant="ghost"
@@ -497,45 +761,16 @@ export function SlideAudioPanel({
               />
             </div>
 
-            {/* Start time */}
-            <div className="flex items-center gap-2">
-              <Label className="text-xs shrink-0">Start (s)</Label>
-              <Input
-                type="number"
-                min={0}
-                step={0.1}
-                value={slideStartSec}
-                onChange={(e) => setSlideStartSec(Number(e.target.value))}
-                className="h-7 text-xs"
-              />
-            </div>
-
-            {/* End time */}
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={slidePlayToEnd}
-                  onCheckedChange={setSlidePlayToEnd}
-                  id="slide-play-to-end"
-                />
-                <Label htmlFor="slide-play-to-end" className="text-xs cursor-pointer">
-                  Play to end
-                </Label>
-              </div>
-              {!slidePlayToEnd && (
-                <div className="flex items-center gap-2">
-                  <Label className="text-xs shrink-0">End (s)</Label>
-                  <Input
-                    type="number"
-                    min={0.1}
-                    step={0.1}
-                    value={slideEndSec}
-                    onChange={(e) => setSlideEndSec(Number(e.target.value))}
-                    className="h-7 text-xs"
-                  />
-                </div>
-              )}
-            </div>
+            <AudioTrimTimeline
+              idPrefix="slide-audio"
+              durationSec={slideAudioDurationSec}
+              startSec={slideStartSec}
+              endSec={slideEndSec}
+              playToEnd={slidePlayToEnd}
+              onStartSecChange={setSlideStartSec}
+              onEndSecChange={setSlideEndSec}
+              onPlayToEndChange={setSlidePlayToEnd}
+            />
 
             {/* Actions */}
             <div className="flex gap-2">
@@ -589,8 +824,26 @@ export function SlideAudioPanel({
             <div className="flex items-center gap-2">
               <Music className="h-4 w-4 shrink-0 text-muted-foreground" />
               <span className="text-sm truncate flex-1">
-                {deckAudioTrack.title ?? `Audio #${deckAudioTrack.libraryItemId}`}
+                {deckAudioTrack.title
+                  ?? deckAudioItemQuery.data?.title
+                  ?? `Audio #${deckAudioTrack.libraryItemId}`}
               </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2 text-xs text-muted-foreground"
+                onClick={() => togglePreviewAudio(
+                  "deck",
+                  deckAudioSourceUrl,
+                  deckStartSec,
+                  deckPlayToEnd ? null : Math.max(deckEndSec, deckStartSec),
+                  deckVolumePct,
+                )}
+                title={previewTarget === "deck" ? "Stop preview" : "Preview current trim"}
+                aria-label={previewTarget === "deck" ? "Stop project audio preview" : "Preview project audio trim"}
+              >
+                {previewTarget === "deck" ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+              </Button>
               <Button
                 size="sm"
                 variant="ghost"
@@ -617,6 +870,17 @@ export function SlideAudioPanel({
                 aria-label="Project audio volume"
               />
             </div>
+
+            <AudioTrimTimeline
+              idPrefix="deck-audio"
+              durationSec={deckAudioDurationSec}
+              startSec={deckStartSec}
+              endSec={deckEndSec}
+              playToEnd={deckPlayToEnd}
+              onStartSecChange={setDeckStartSec}
+              onEndSecChange={setDeckEndSec}
+              onPlayToEndChange={setDeckPlayToEnd}
+            />
 
             {/* Loop */}
             <div className="flex items-center gap-2">

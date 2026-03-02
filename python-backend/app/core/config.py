@@ -39,6 +39,17 @@ class Settings(BaseSettings):
     DATABASE_POOL_SIZE: int = 10
     DATABASE_MAX_OVERFLOW: int = 20
 
+    # Storage (S3 / Cloudflare R2)
+    S3_BUCKET: str = ""
+    S3_REGION: str = "us-east-1"
+    CLOUDFLARE_R2_ACCESS_KEY_ID: str = ""
+    CLOUDFLARE_R2_SECRET_ACCESS_KEY: str = ""
+    CLOUDFLARE_R2_BUCKET_NAME: str = ""
+    CLOUDFLARE_R2_ENDPOINT: str = ""
+    CLOUDFLARE_R2_PUBLIC_URL: str = ""
+    CLOUDFLARE_R2_CUSTOM_DOMAIN: str = ""
+    CLOUDFLARE_R2_REGION: str = "auto"
+
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
     REDIS_MAX_CONNECTIONS: int = 50

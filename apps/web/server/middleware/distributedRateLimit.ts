@@ -19,6 +19,7 @@ export interface RateLimitResult {
   allowed: boolean;
   remaining: number;
   retryAfter: number | null;
+  error?: "redis_unavailable";
 }
 
 // ─── Endpoint-specific rate limits ──────────────────────────────────────────
@@ -88,7 +89,7 @@ export async function checkRateLimit(
     // Fail closed: reject requests when Redis is unavailable to prevent bypass.
     // This is more conservative but prevents attackers from exploiting Redis downtime.
     console.error("[RateLimit] Redis error, failing closed:", (error as Error).message);
-    return { allowed: false, remaining: 0, retryAfter: 30 };
+    return { allowed: false, remaining: 0, retryAfter: 30, error: "redis_unavailable" };
   }
 }
 

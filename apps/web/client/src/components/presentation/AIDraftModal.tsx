@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -33,7 +33,10 @@ import {
   getBuiltInPreset,
 } from "@shared/presentation/aiStylePresets";
 import type { SlideStylePreset } from "@shared/presentation/aiTypes";
-import { AI_STYLE_PRESET_IDS } from "@shared/presentation/aiTypes";
+import {
+  AI_STYLE_PRESET_IDS,
+  MAX_AI_DRAFT_SLIDES,
+} from "@shared/presentation/aiTypes";
 import { SearchableCombobox } from "./SearchableCombobox";
 import { ImageModelCombobox } from "./ImageModelCombobox";
 import DynamicSkillForm from "@/components/media/DynamicSkillForm";
@@ -44,6 +47,9 @@ import {
   Check,
   AlertTriangle,
   X,
+  Upload,
+  Plus,
+  Trash2,
   Settings2,
   ChevronDown,
 } from "lucide-react";
@@ -55,6 +61,13 @@ interface AIDraftModalProps {
   deckId: number;
   expectedVersion: number;
   currentSlideCount: number;
+  canvasWidth: number;
+  canvasHeight: number;
+}
+
+interface ReferenceImageItem {
+  url: string;
+  name: string;
 }
 
 export function AIDraftModal({
@@ -63,6 +76,8 @@ export function AIDraftModal({
   deckId,
   expectedVersion,
   currentSlideCount,
+  canvasWidth,
+  canvasHeight,
 }: AIDraftModalProps) {
   // Config state
   const [topic, setTopic] = useState("");
@@ -71,17 +86,22 @@ export function AIDraftModal({
   const [selectedArticleSkill, setSelectedArticleSkill] = useState("");
   const [selectedImageSkill, setSelectedImageSkill] = useState("");
   const [imageModel, setImageModel] = useState("");
+  const [imagePromptContext, setImagePromptContext] = useState("");
+  const [referenceImages, setReferenceImages] = useState<ReferenceImageItem[]>([]);
+  const [referenceUrlInput, setReferenceUrlInput] = useState("");
   const [selectedPresetId, setSelectedPresetId] = useState("dark-professional");
+  const [headerTitleText, setHeaderTitleText] = useState("");
   const [footerText, setFooterText] = useState("");
+  const referenceFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Dynamic skill form params
   const [articleSkillParams, setArticleSkillParams] = useState<Record<string, any>>({});
 
-  // Advanced style overrides (undefined = use preset default)
-  const [headerEnabled, setHeaderEnabled] = useState<boolean | undefined>(undefined);
-  const [showDeckTitle, setShowDeckTitle] = useState<boolean | undefined>(undefined);
-  const [footerEnabled, setFooterEnabled] = useState<boolean | undefined>(undefined);
-  const [showPageNumber, setShowPageNumber] = useState<boolean | undefined>(undefined);
+  // Advanced style options default to OFF for this modal
+  const [headerEnabled, setHeaderEnabled] = useState(false);
+  const [showDeckTitle, setShowDeckTitle] = useState(false);
+  const [footerEnabled, setFooterEnabled] = useState(false);
+  const [showPageNumber, setShowPageNumber] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   // Progress state
@@ -138,6 +158,30 @@ export function AIDraftModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    const savedContext = localStorage.getItem("smartspec_aiDraft_imagePromptContext");
+    if (savedContext && !imagePromptContext) {
+      setImagePromptContext(savedContext);
+    }
+    const savedRefs = localStorage.getItem("smartspec_aiDraft_referenceImages");
+    if (savedRefs && referenceImages.length === 0) {
+      try {
+        const parsed = JSON.parse(savedRefs);
+        if (Array.isArray(parsed)) {
+          const normalized = parsed
+            .filter((item) => item && typeof item.url === "string" && typeof item.name === "string")
+            .slice(0, 5);
+          if (normalized.length > 0) {
+            setReferenceImages(normalized);
+          }
+        }
+      } catch {
+        // ignore corrupted localStorage payload
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Memoize skill lists for comboboxes
   const articleSkillItems = useMemo(
     () =>
@@ -174,6 +218,7 @@ export function AIDraftModal({
   // Mutations
   const generateDraft = trpc.presentation.ai.generateDraft.useMutation();
   const cancelDraft = trpc.presentation.ai.cancelDraft.useMutation();
+  const uploadReferenceMutation = trpc.ai.upload.useMutation();
 
   // Polling progress
   const progressQuery = trpc.presentation.ai.getDraftProgress.useQuery(
@@ -192,6 +237,15 @@ export function AIDraftModal({
     }
   }, [progress?.completed, completed]);
 
+  // Reset advanced options to modal defaults on each open
+  useEffect(() => {
+    if (!isOpen) return;
+    setHeaderEnabled(false);
+    setShowDeckTitle(false);
+    setFooterEnabled(false);
+    setShowPageNumber(false);
+  }, [isOpen]);
+
   const selectedPreset = getBuiltInPreset(selectedPresetId);
 
   const canGenerate =
@@ -199,14 +253,122 @@ export function AIDraftModal({
     selectedArticleSkill !== "" &&
     !generateDraft.isPending;
 
+  const isValidReferenceUrl = useCallback((value: string): boolean => {
+    const trimmed = value.trim();
+    return trimmed.startsWith("/") || /^https?:\/\//i.test(trimmed);
+  }, []);
+
+  const persistReferenceImages = useCallback((images: ReferenceImageItem[]) => {
+    if (images.length === 0) {
+      localStorage.removeItem("smartspec_aiDraft_referenceImages");
+      return;
+    }
+    localStorage.setItem("smartspec_aiDraft_referenceImages", JSON.stringify(images.slice(0, 5)));
+  }, []);
+
+  const handleAddReferenceUrl = useCallback(() => {
+    const url = referenceUrlInput.trim();
+    if (!url) {
+      return;
+    }
+    if (!isValidReferenceUrl(url)) {
+      toast.error("Reference URL must start with / or http(s)://");
+      return;
+    }
+    setReferenceImages((prev) => {
+      if (prev.some((item) => item.url === url)) {
+        toast.info("This reference image is already added.");
+        return prev;
+      }
+      if (prev.length >= 5) {
+        toast.error("Maximum 5 reference images");
+        return prev;
+      }
+      const next = [...prev, { url, name: `Reference ${prev.length + 1}` }];
+      persistReferenceImages(next);
+      return next;
+    });
+    setReferenceUrlInput("");
+  }, [referenceUrlInput, isValidReferenceUrl, persistReferenceImages]);
+
+  const handleRemoveReferenceImage = useCallback((url: string) => {
+    setReferenceImages((prev) => {
+      const next = prev.filter((item) => item.url !== url);
+      persistReferenceImages(next);
+      return next;
+    });
+  }, [persistReferenceImages]);
+
+  const handleReferenceFileUpload = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const files = event.target.files;
+      if (!files || files.length === 0) {
+        return;
+      }
+
+      const remainingSlots = Math.max(0, 5 - referenceImages.length);
+      if (remainingSlots === 0) {
+        toast.error("Maximum 5 reference images");
+        event.target.value = "";
+        return;
+      }
+
+      const filesToUpload = Array.from(files).slice(0, remainingSlots);
+      const nextImages: ReferenceImageItem[] = [];
+
+      for (const file of filesToUpload) {
+        if (!file.type.startsWith("image/")) {
+          continue;
+        }
+        try {
+          const fileBase64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result));
+            reader.onerror = () => reject(new Error("Failed to read file"));
+            reader.readAsDataURL(file);
+          });
+
+          const result = await uploadReferenceMutation.mutateAsync({
+            fileName: file.name,
+            fileType: file.type,
+            fileBase64,
+          });
+          nextImages.push({ url: result.url, name: file.name });
+        } catch (error) {
+          toast.error(
+            error instanceof Error
+              ? `Upload failed (${file.name}): ${error.message}`
+              : `Upload failed (${file.name})`,
+          );
+        }
+      }
+
+      if (nextImages.length > 0) {
+        setReferenceImages((prev) => {
+          const deduped = [...prev];
+          for (const img of nextImages) {
+            if (!deduped.some((existing) => existing.url === img.url) && deduped.length < 5) {
+              deduped.push(img);
+            }
+          }
+          persistReferenceImages(deduped);
+          return deduped;
+        });
+      }
+
+      event.target.value = "";
+    },
+    [referenceImages.length, uploadReferenceMutation, persistReferenceImages],
+  );
+
   const handleGenerate = useCallback(() => {
-    // Build style overrides (only include fields explicitly changed by user)
-    const overrides: Record<string, boolean> = {};
-    if (headerEnabled !== undefined) overrides.headerEnabled = headerEnabled;
-    if (showDeckTitle !== undefined) overrides.showDeckTitle = showDeckTitle;
-    if (footerEnabled !== undefined) overrides.footerEnabled = footerEnabled;
-    if (showPageNumber !== undefined) overrides.showPageNumber = showPageNumber;
-    const hasOverrides = Object.keys(overrides).length > 0;
+    // Always send explicit advanced style options from modal state
+    const overrides = {
+      headerEnabled,
+      showDeckTitle,
+      footerEnabled,
+      showPageNumber,
+    };
 
     generateDraft.mutate(
       {
@@ -221,9 +383,17 @@ export function AIDraftModal({
             ? selectedImageSkill
             : undefined,
         imageModel: imageModel || undefined,
+        canvasWidth,
+        canvasHeight,
+        imagePromptContext: imagePromptContext.trim() || undefined,
+        referenceImageUrls:
+          referenceImages.length > 0
+            ? referenceImages.map((img) => img.url)
+            : undefined,
         stylePresetId: selectedPresetId as (typeof AI_STYLE_PRESET_IDS)[number],
+        headerCustomText: headerTitleText.trim() || undefined,
         footerCustomText: footerText || undefined,
-        styleOverrides: hasOverrides ? overrides : undefined,
+        styleOverrides: overrides,
         articleSkillParams:
           Object.keys(articleSkillParams).length > 0
             ? articleSkillParams
@@ -233,6 +403,9 @@ export function AIDraftModal({
         onSuccess: (data) => {
           setTaskId(data.taskId);
           setCompleted(false);
+          if (data.alreadyInProgress) {
+            toast.info("Resuming your existing AI draft job");
+          }
         },
         onError: (err) => {
           toast.error(err.message || "Failed to start generation");
@@ -249,7 +422,12 @@ export function AIDraftModal({
     selectedArticleSkill,
     selectedImageSkill,
     imageModel,
+    canvasWidth,
+    canvasHeight,
+    imagePromptContext,
+    referenceImages,
     selectedPresetId,
+    headerTitleText,
     footerText,
     headerEnabled,
     showDeckTitle,
@@ -267,6 +445,9 @@ export function AIDraftModal({
   const handleClose = useCallback(() => {
     if (completed && progress?.result) {
       utils.presentation.getDeck.invalidate({ deckId });
+      utils.presentation.getDeckByLibraryItem.invalidate();
+      utils.presentation.listVersions.invalidate({ deckId });
+      utils.presentation.getSlideshow.invalidate({ deckId });
     }
     setTaskId(null);
     setCompleted(false);
@@ -277,11 +458,11 @@ export function AIDraftModal({
     setSelectedPresetId(id);
     const preset = getBuiltInPreset(id);
     setFooterText(preset?.footer?.customText ?? "");
-    // Reset overrides so they follow the new preset defaults
-    setHeaderEnabled(undefined);
-    setShowDeckTitle(undefined);
-    setFooterEnabled(undefined);
-    setShowPageNumber(undefined);
+    // Keep advanced options OFF by default even when preset changes
+    setHeaderEnabled(false);
+    setShowDeckTitle(false);
+    setFooterEnabled(false);
+    setShowPageNumber(false);
   }, []);
 
   const progressPercent = progress
@@ -299,15 +480,11 @@ export function AIDraftModal({
       )
     : 0;
 
-  // Computed effective values for advanced toggles
-  const effectiveHeaderEnabled =
-    headerEnabled ?? selectedPreset?.header?.enabled ?? false;
-  const effectiveShowDeckTitle =
-    showDeckTitle ?? selectedPreset?.header?.showDeckTitle ?? false;
-  const effectiveFooterEnabled =
-    footerEnabled ?? selectedPreset?.footer?.enabled ?? false;
-  const effectiveShowPageNumber =
-    showPageNumber ?? selectedPreset?.footer?.showPageNumber ?? false;
+  // Effective values for advanced toggles
+  const effectiveHeaderEnabled = headerEnabled;
+  const effectiveShowDeckTitle = showDeckTitle;
+  const effectiveFooterEnabled = footerEnabled;
+  const effectiveShowPageNumber = showPageNumber;
 
   // Config phase
   const configView = (
@@ -330,7 +507,7 @@ export function AIDraftModal({
         <Label>Number of slides: {numSlides}</Label>
         <Slider
           min={1}
-          max={10}
+          max={MAX_AI_DRAFT_SLIDES}
           step={1}
           value={[numSlides]}
           onValueChange={(v) => setNumSlides(v[0])}
@@ -399,9 +576,12 @@ export function AIDraftModal({
         />
       </div>
 
-      {/* Image model (searchable from DB) */}
+      {/* Media model (image generation) */}
       <div className="space-y-1.5">
-        <Label>Image Model (optional)</Label>
+        <Label>Media Model (Image, optional)</Label>
+        <p className="text-xs text-muted-foreground">
+          Choose the image model for this draft (text-to-image compatible models only).
+        </p>
         <ImageModelCombobox
           value={imageModel}
           onValueChange={(v) => {
@@ -413,6 +593,117 @@ export function AIDraftModal({
             }
           }}
         />
+      </div>
+
+      {/* Image prompt context */}
+      <div className="space-y-1.5">
+        <Label htmlFor="ai-image-prompt-context">
+          Image Prompt Context (optional)
+        </Label>
+        <p className="text-xs text-muted-foreground">
+          Add visual constraints to every slide image, for example: Thai child, Thai family, Thai environment.
+        </p>
+        <textarea
+          id="ai-image-prompt-context"
+          className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[70px] w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+          placeholder="Additional visual requirements..."
+          maxLength={1000}
+          value={imagePromptContext}
+          onChange={(e) => {
+            setImagePromptContext(e.target.value);
+            if (e.target.value.trim()) {
+              localStorage.setItem("smartspec_aiDraft_imagePromptContext", e.target.value);
+            } else {
+              localStorage.removeItem("smartspec_aiDraft_imagePromptContext");
+            }
+          }}
+        />
+      </div>
+
+      {/* Reference images */}
+      <div className="space-y-2">
+        <Label>Reference Images (optional)</Label>
+        <p className="text-xs text-muted-foreground">
+          Attach up to 5 images to guide character/style consistency for compatible models.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <input
+            ref={referenceFileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={handleReferenceFileUpload}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => referenceFileInputRef.current?.click()}
+            disabled={uploadReferenceMutation.isPending || referenceImages.length >= 5}
+          >
+            {uploadReferenceMutation.isPending ? (
+              <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Upload className="mr-1 h-3.5 w-3.5" />
+            )}
+            Upload Image
+          </Button>
+          <div className="flex min-w-[280px] flex-1 items-center gap-2">
+            <Input
+              placeholder="https://... or /uploads/..."
+              value={referenceUrlInput}
+              onChange={(e) => setReferenceUrlInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAddReferenceUrl();
+                }
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAddReferenceUrl}
+              disabled={!referenceUrlInput.trim() || referenceImages.length >= 5}
+            >
+              <Plus className="mr-1 h-3.5 w-3.5" />
+              Add URL
+            </Button>
+          </div>
+        </div>
+
+        {referenceImages.length > 0 && (
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {referenceImages.map((item) => (
+              <div key={item.url} className="rounded-md border p-2">
+                <div className="aspect-video overflow-hidden rounded bg-muted">
+                  <img
+                    src={item.url}
+                    alt={item.name}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+                <div className="mt-1 flex items-center justify-between gap-2">
+                  <div className="truncate text-xs text-muted-foreground">
+                    {item.name}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => handleRemoveReferenceImage(item.url)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Style preset selector */}
@@ -490,15 +781,34 @@ export function AIDraftModal({
               />
             </div>
             {effectiveHeaderEnabled && (
-              <div className="flex items-center justify-between pl-4">
-                <Label className="text-sm text-muted-foreground">
-                  Show Deck Title
-                </Label>
-                <Switch
-                  checked={effectiveShowDeckTitle}
-                  onCheckedChange={setShowDeckTitle}
-                />
-              </div>
+              <>
+                <div className="flex items-center justify-between pl-4">
+                  <Label className="text-sm text-muted-foreground">
+                    Show Deck Title
+                  </Label>
+                  <Switch
+                    checked={effectiveShowDeckTitle}
+                    onCheckedChange={setShowDeckTitle}
+                  />
+                </div>
+                {effectiveShowDeckTitle && (
+                  <div className="space-y-1 pl-4">
+                    <Label
+                      htmlFor="ai-header-title"
+                      className="text-sm text-muted-foreground"
+                    >
+                      Header Title Text
+                    </Label>
+                    <Input
+                      id="ai-header-title"
+                      placeholder="Enter header title..."
+                      maxLength={200}
+                      value={headerTitleText}
+                      onChange={(e) => setHeaderTitleText(e.target.value)}
+                    />
+                  </div>
+                )}
+              </>
             )}
 
             {/* Footer section */}

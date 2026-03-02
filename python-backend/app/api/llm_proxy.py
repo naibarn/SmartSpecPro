@@ -168,6 +168,53 @@ async def get_usage_stats(
     return llm_proxy.get_usage_stats()
 
 
+@router.post("/simple", status_code=status.HTTP_200_OK)
+async def simple_llm(
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Simplified LLM invocation for internal services.
+
+    Accepts: { model, system, message, max_tokens, response_format? }
+    Returns: { content }
+    """
+    # Build messages array for OpenRouter/chat-style APIs
+    messages = []
+    if body.get("system"):
+        messages.append({"role": "system", "content": body["system"]})
+    messages.append({"role": "user", "content": body.get("message", "")})
+
+    llm_request = LLMRequest(
+        prompt=body.get("message", ""),
+        system_prompt=body.get("system"),
+        preferred_model=body.get("model"),
+        max_tokens=body.get("max_tokens", 4000),
+        temperature=body.get("temperature", 0.7),
+        task_type="simple",
+        budget_priority="quality",
+        messages=messages,
+    )
+
+    try:
+        gateway = LLMGateway(db)
+        response = await gateway.invoke(llm_request, current_user)
+        return {
+            "content": response.content,
+            "model": response.model,
+            "provider": response.provider,
+            "tokens_used": response.tokens_used,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"LLM simple invocation failed: {str(e)[:200]}",
+        )
+
+
 @router.post("/test", status_code=status.HTTP_200_OK)
 async def test_llm(
     db: AsyncSession = Depends(get_db),

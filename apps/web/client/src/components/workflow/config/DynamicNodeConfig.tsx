@@ -254,7 +254,14 @@ function FormField({ input, value, isConnected, onChange, llmModels, llmModelsLo
         />
       )}
 
-      {input.ui_type === "select" && input.name === "skill_id" ? (
+      {input.ui_type === "select" && input.name === "agency_id" ? (
+        // Agency selector with search for workflow node
+        <AgencySelector
+          value={value || ""}
+          onChange={onChange}
+          placeholder={input.placeholder || "Search and select an agency..."}
+        />
+      ) : input.ui_type === "select" && input.name === "skill_id" ? (
         // Skill selector with search for workflow node
         <SkillSelector
           value={value || ""}
@@ -452,6 +459,180 @@ function FormField({ input, value, isConnected, onChange, llmModels, llmModelsLo
       <p className="text-xs text-gray-400">
         Type: <code>{input.data_type}</code>
       </p>
+    </div>
+  );
+}
+
+/**
+ * AgencySelector - Searchable dropdown for selecting agencies in workflow nodes.
+ */
+interface AgencySelectorProps {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}
+
+function AgencySelector({ value, onChange, placeholder }: AgencySelectorProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [agencies, setAgencies] = useState<Array<{ value: string; label: string; description?: string; status?: string }>>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch agencies from API
+  React.useEffect(() => {
+    const fetchAgencies = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch("/api/v1/workflows/agencies");
+        if (!response.ok) throw new Error("Failed to fetch agencies");
+        const data = await response.json();
+        let rawItems: any[] = [];
+        if (Array.isArray(data)) {
+          rawItems = data;
+        } else if (data && typeof data === "object") {
+          for (const key of Object.keys(data)) {
+            if (Array.isArray(data[key])) {
+              rawItems = data[key];
+              break;
+            }
+          }
+        }
+        setAgencies(
+          rawItems.map((item: any) => ({
+            value: String(item.value ?? item.id ?? ""),
+            label: String(item.label ?? item.name ?? ""),
+            description: item.description || "",
+            status: item.status || "draft",
+          }))
+        );
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Unknown error");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchAgencies();
+  }, []);
+
+  const selectedAgency = agencies.find((a) => a.value === value);
+
+  // Client-side filter by search query
+  const filtered = searchQuery
+    ? agencies.filter(
+        (a) =>
+          a.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (a.description || "").toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : agencies;
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  if (error) {
+    return (
+      <div className="w-full px-3 py-2 border border-red-300 rounded-md bg-red-50 text-sm text-red-600">
+        Error loading agencies: {error}
+      </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      {/* Selected value display / Trigger */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-left flex items-center justify-between bg-white"
+      >
+        <span className={selectedAgency ? "text-gray-900" : "text-gray-400"}>
+          {selectedAgency ? selectedAgency.label : placeholder || "Select an agency..."}
+        </span>
+        <span className="text-gray-400">▼</span>
+      </button>
+
+      {/* Dropdown */}
+      {isOpen && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-80 overflow-hidden">
+          {/* Search input */}
+          <div className="p-2 border-b border-gray-200">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search agencies..."
+                className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoFocus
+              />
+            </div>
+          </div>
+
+          {/* Agencies list */}
+          <div className="overflow-y-auto max-h-60">
+            {isLoading ? (
+              <div className="flex items-center justify-center p-4">
+                <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                <span className="ml-2 text-sm text-gray-500">Loading agencies...</span>
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="p-4 text-center text-sm text-gray-500">
+                {searchQuery ? "No agencies found matching your search" : "No agencies available"}
+              </div>
+            ) : (
+              <div className="py-1">
+                {filtered.map((agency) => (
+                  <button
+                    key={agency.value}
+                    type="button"
+                    onClick={() => {
+                      onChange(agency.value);
+                      setIsOpen(false);
+                      setSearchQuery("");
+                    }}
+                    className={`w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-gray-100 ${
+                      value === agency.value ? "bg-blue-50 border-l-2 border-blue-500" : ""
+                    }`}
+                  >
+                    <span className="text-lg">🤖</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-gray-900 truncate">
+                        {agency.label}
+                        {value === agency.value && <Check className="inline w-4 h-4 ml-1 text-blue-500" />}
+                      </div>
+                      {agency.description && (
+                        <div className="text-xs text-gray-500 truncate">{agency.description}</div>
+                      )}
+                    </div>
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${
+                      agency.status === "published"
+                        ? "bg-green-100 text-green-700"
+                        : "bg-yellow-100 text-yellow-700"
+                    }`}>
+                      {agency.status}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="p-2 border-t border-gray-200 bg-gray-50 text-xs text-gray-500">
+            {filtered.length} of {agencies.length} agencies
+          </div>
+        </div>
+      )}
     </div>
   );
 }

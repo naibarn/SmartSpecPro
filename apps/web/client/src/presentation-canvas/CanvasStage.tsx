@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   type DragEvent,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type WheelEvent as ReactWheelEvent,
 } from "react";
@@ -20,6 +21,7 @@ interface CanvasStageProps {
   canvasSize: PresentationCanvasSize;
   selectedElementIds: string[];
   snapGuides: SnapGuide[];
+  showElementFrames?: boolean;
   suppressTransformHandles?: boolean;
   showTransformDock?: boolean;
   viewport?: {
@@ -61,6 +63,7 @@ export function CanvasStage({
   canvasSize,
   selectedElementIds,
   snapGuides,
+  showElementFrames = true,
   suppressTransformHandles,
   showTransformDock: showTransformDockProp = true,
   viewport,
@@ -112,7 +115,8 @@ export function CanvasStage({
 
   const baseScaleX = fittedStageSize.width / canvasWidth;
   const baseScaleY = fittedStageSize.height / canvasHeight;
-  const interactionScale = Math.max(0.0001, baseScaleX * effectiveScale);
+  const baseRenderScale = Math.max(0.0001, Math.min(baseScaleX, baseScaleY));
+  const interactionScale = Math.max(0.0001, baseRenderScale * effectiveScale);
 
   useEffect(() => {
     const el = workspaceViewportRef.current;
@@ -297,8 +301,6 @@ export function CanvasStage({
     }
 
     const rect = event.currentTarget.getBoundingClientRect();
-    const baseScale = rect.width > 0 ? rect.width / canvasWidth : 1;
-    const interactionScale = Math.max(0.0001, baseScale * effectiveScale);
     const stageX = (event.clientX - rect.left - offsetX) / interactionScale;
     const stageY = (event.clientY - rect.top - offsetY) / interactionScale;
 
@@ -312,13 +314,18 @@ export function CanvasStage({
   function handlePanPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     const isLeftButton = event.button === 0;
     const isMiddleButton = event.button === 1;
-    if (!viewport || !onViewportChange || viewport.scale <= 1 || (!isLeftButton && !isMiddleButton)) {
+    const isRightButton = event.button === 2;
+    const isModifierPan = isLeftButton && event.altKey;
+    if (!viewport || !onViewportChange || viewport.scale <= 1) {
+      return;
+    }
+    if (!isLeftButton && !isMiddleButton && !isRightButton) {
       return;
     }
 
     const target = event.target as HTMLElement | null;
     const clickedCanvasObject = Boolean(target?.closest("[data-canvas-object='true']"));
-    if (isLeftButton && clickedCanvasObject) {
+    if (isLeftButton && clickedCanvasObject && !isModifierPan) {
       return;
     }
 
@@ -332,6 +339,12 @@ export function CanvasStage({
     panCaptureTargetRef.current = event.currentTarget;
     event.currentTarget.setPointerCapture?.(event.pointerId);
     event.preventDefault();
+  }
+
+  function handleCanvasContextMenu(event: ReactMouseEvent<HTMLDivElement>) {
+    if (effectiveScale > 1) {
+      event.preventDefault();
+    }
   }
 
   function handleCanvasWheel(event: ReactWheelEvent<HTMLDivElement>) {
@@ -459,6 +472,7 @@ export function CanvasStage({
                   data-testid="canvas-stage-layer-content"
                   className={`absolute inset-0 touch-none ${effectiveScale > 1 ? "cursor-grab active:cursor-grabbing" : ""}`}
                   onPointerDown={handlePanPointerDown}
+                  onContextMenu={handleCanvasContextMenu}
                   onDragEnter={handleDragEnter}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
@@ -468,7 +482,9 @@ export function CanvasStage({
                     data-testid="canvas-stage-pan-surface"
                     className="relative h-full w-full origin-top-left"
                     style={{
-                      transform: `translate(${offsetX}px, ${offsetY}px) scale(${effectiveScale})`,
+                      width: `${canvasWidth}px`,
+                      height: `${canvasHeight}px`,
+                      transform: `translate(${offsetX}px, ${offsetY}px) scale(${baseRenderScale * effectiveScale})`,
                     }}
                   >
                     <CanvasObjects
@@ -482,6 +498,7 @@ export function CanvasStage({
                       interactionScale={interactionScale}
                       canvasWidth={canvasWidth}
                       canvasHeight={canvasHeight}
+                      showElementFrames={showElementFrames}
                     />
                     {isDragOver ? (
                       <div className="pointer-events-none absolute inset-0 grid place-items-center border-2 border-dashed border-sky-400 bg-sky-500/15 text-sm font-medium text-sky-700">
@@ -498,7 +515,7 @@ export function CanvasStage({
                   <span className="sr-only">selection-guides</span>
                   {snapGuides.map((guide) => {
                     const isVertical = guide.axis === "x";
-                    const baseAxisScale = isVertical ? baseScaleX : baseScaleY;
+                    const baseAxisScale = baseRenderScale;
                     const targetPx = guide.target * baseAxisScale * effectiveScale;
                     const baseTarget = targetPx + (isVertical ? offsetX : offsetY);
                     const style = isVertical
@@ -546,7 +563,7 @@ export function CanvasStage({
 
         {effectiveScale > 1 ? (
           <p className="pointer-events-none absolute bottom-2 right-2 rounded bg-black/70 px-2 py-1 text-[11px] text-white">
-            Scroll to zoom. Drag empty area or middle-mouse drag to pan.
+            Scroll to zoom. Pan: drag empty area, Alt+drag, or right/middle-mouse drag.
           </p>
         ) : null}
       </div>

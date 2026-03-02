@@ -9,6 +9,14 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+# Limits to prevent memory explosion
+MAX_EXTRACTION_BYTES = 30 * 1024 * 1024  # 30 MB
+MAX_XLSX_ROWS_PER_SHEET = 10_000
+MAX_PDF_PAGES = 500
+
+# Legacy Office formats that cannot be parsed natively
+LEGACY_OFFICE_EXTENSIONS = (".doc", ".xls", ".ppt", ".wps", ".wks")
+
 
 class OneDriveContentExtractor:
     """Extracts text content from OneDrive file bytes."""
@@ -18,26 +26,50 @@ class OneDriveContentExtractor:
 
         Returns dict with keys: text, char_count, method
         """
+        # Size guard to prevent OOM
+        if len(content) > MAX_EXTRACTION_BYTES:
+            logger.warning(
+                "File too large for extraction: %s (%d bytes, limit %d)",
+                file_name, len(content), MAX_EXTRACTION_BYTES,
+            )
+            return {"text": "", "char_count": 0, "method": "too_large"}
+
         mime_lower = mime_type.lower()
+        name_lower = file_name.lower()
         text = ""
         method = "unknown"
 
         try:
+            # Legacy Office formats — not natively parseable
+            if name_lower.endswith(LEGACY_OFFICE_EXTENSIONS):
+                return {
+                    "text": "",
+                    "char_count": 0,
+                    "method": "legacy_unsupported",
+                }
+
             if "text/" in mime_lower or self._is_text_file(file_name):
                 text = content.decode("utf-8", errors="replace")
                 method = "text"
-            elif "pdf" in mime_lower or file_name.endswith(".pdf"):
+            elif "pdf" in mime_lower or name_lower.endswith(".pdf"):
                 text = self._extract_pdf(content)
                 method = "pdf"
-            elif "wordprocessingml" in mime_lower or file_name.endswith(".docx"):
+            elif "wordprocessingml" in mime_lower or name_lower.endswith(".docx"):
                 text = self._extract_docx(content)
                 method = "docx"
-            elif "presentationml" in mime_lower or file_name.endswith(".pptx"):
+            elif "presentationml" in mime_lower or name_lower.endswith(".pptx"):
                 text = self._extract_pptx(content)
                 method = "pptx"
-            elif "spreadsheetml" in mime_lower or file_name.endswith(".xlsx"):
+            elif "spreadsheetml" in mime_lower or name_lower.endswith(".xlsx"):
                 text = self._extract_xlsx(content)
                 method = "xlsx"
+            elif "msword" in mime_lower or "ms-excel" in mime_lower or "ms-powerpoint" in mime_lower:
+                # Legacy MIME types (application/msword, application/vnd.ms-excel, etc.)
+                return {
+                    "text": "",
+                    "char_count": 0,
+                    "method": "legacy_unsupported",
+                }
             else:
                 # Try as text fallback
                 try:
@@ -54,10 +86,10 @@ class OneDriveContentExtractor:
         return {"text": text, "char_count": len(text), "method": method}
 
     def _is_text_file(self, name: str) -> bool:
-        return name.endswith((
+        return name.lower().endswith((
             ".txt", ".md", ".csv", ".json", ".xml",
             ".yaml", ".yml", ".html", ".htm", ".log",
-            ".ini", ".cfg", ".toml",
+            ".ini", ".cfg", ".toml", ".rst", ".tex",
         ))
 
     def _extract_pdf(self, content: bytes) -> str:
@@ -65,7 +97,10 @@ class OneDriveContentExtractor:
 
         reader = PdfReader(io.BytesIO(content))
         texts = []
-        for page in reader.pages:
+        for i, page in enumerate(reader.pages):
+            if i >= MAX_PDF_PAGES:
+                texts.append(f"... (truncated at {MAX_PDF_PAGES} pages)")
+                break
             texts.append(page.extract_text() or "")
         return "\n".join(texts)
 
@@ -73,7 +108,17 @@ class OneDriveContentExtractor:
         from docx import Document
 
         doc = Document(io.BytesIO(content))
-        return "\n".join(p.text for p in doc.paragraphs)
+        parts = []
+        for p in doc.paragraphs:
+            if p.text.strip():
+                parts.append(p.text)
+        # Also extract tables
+        for table in doc.tables:
+            for row in table.rows:
+                row_text = "\t".join(cell.text for cell in row.cells)
+                if row_text.strip():
+                    parts.append(row_text)
+        return "\n".join(parts)
 
     def _extract_pptx(self, content: bytes) -> str:
         from pptx import Presentation
@@ -82,8 +127,14 @@ class OneDriveContentExtractor:
         texts = []
         for slide in prs.slides:
             for shape in slide.shapes:
-                if hasattr(shape, "text"):
+                if hasattr(shape, "text") and shape.text.strip():
                     texts.append(shape.text)
+                # Extract table content
+                if shape.has_table:
+                    for row in shape.table.rows:
+                        row_text = "\t".join(cell.text for cell in row.cells)
+                        if row_text.strip():
+                            texts.append(row_text)
         return "\n".join(texts)
 
     def _extract_xlsx(self, content: bytes) -> str:
@@ -93,9 +144,14 @@ class OneDriveContentExtractor:
         texts = []
         for ws in wb.worksheets:
             texts.append(f"--- Sheet: {ws.title} ---")
+            row_count = 0
             for row in ws.iter_rows(values_only=True):
                 row_text = "\t".join(str(c) if c is not None else "" for c in row)
                 if row_text.strip():
                     texts.append(row_text)
+                    row_count += 1
+                    if row_count >= MAX_XLSX_ROWS_PER_SHEET:
+                        texts.append(f"... (truncated at {MAX_XLSX_ROWS_PER_SHEET} rows)")
+                        break
         wb.close()
         return "\n".join(texts)

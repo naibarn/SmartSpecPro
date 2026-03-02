@@ -9,8 +9,7 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    cap_add:
-      - SYS_ADMIN  # Required for Chromium sandbox (namespace isolation)
+    # SYS_ADMIN intentionally NOT added -- use --disable-setuid-sandbox in Chromium flags
     deploy:
       resources:
         limits:

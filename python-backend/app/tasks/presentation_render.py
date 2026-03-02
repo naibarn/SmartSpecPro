@@ -9,9 +9,10 @@ Stages:
 Worker startup (limited concurrency to prevent OOM from Playwright):
   celery -A app.core.celery_app worker -Q presentation_export -c 2 --hostname=presentation@%h
 
-Environment variables required on the worker:
-  JWT_SECRET              — must match apps/web JWT_SECRET
-  INTERNAL_RENDER_BASE_URL — http://localhost:3000 or http://host.docker.internal:3000
+Worker configuration:
+  JWT secret is resolved from `JWT_SECRET` env var, then `settings.JWT_SECRET`.
+  INTERNAL_RENDER_BASE_URL should point to the web renderer
+  (http://localhost:3000 or http://host.docker.internal:3000).
 """
 
 import os
@@ -21,6 +22,7 @@ import tempfile
 import time
 import urllib.request
 import zipfile
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import jwt
@@ -31,6 +33,7 @@ from PIL import Image as PillowImage
 from playwright.sync_api import sync_playwright
 
 from app.core.celery_app import celery_app
+from app.core.config import settings
 from app.services.generation.r2_storage import get_r2_storage
 from app.tasks.media_tasks import _run_async  # H-3: import canonical implementation
 
@@ -152,7 +155,9 @@ def render_presentation(self, render_spec: dict, quality: str, format: str) -> d
 
 def _make_slide_token(deck_id: int, slide_index: int) -> str:
     """Generate a short-lived JWT for a single slide render request (5-minute TTL)."""
-    secret = os.environ["JWT_SECRET"]
+    secret = os.getenv("JWT_SECRET") or settings.JWT_SECRET
+    if not secret:
+        raise RuntimeError("JWT_SECRET is not configured for presentation export worker")
     return jwt.encode(
         {
             "sub": "internal-render",
@@ -160,6 +165,25 @@ def _make_slide_token(deck_id: int, slide_index: int) -> str:
             "deckId": deck_id,
             "slideIndex": slide_index,
             "exp": int(time.time()) + 300,
+        },
+        secret,
+        algorithm="HS256",
+    )
+
+
+def _make_export_download_token(deck_id: str, filename: str) -> str:
+    """Generate short-lived JWT for fallback local export download."""
+    secret = os.getenv("JWT_SECRET") or settings.JWT_SECRET
+    if not secret:
+        raise RuntimeError("JWT_SECRET is not configured for presentation export worker")
+    now = datetime.now(timezone.utc)
+    return jwt.encode(
+        {
+            "sub": "presentation-export-download",
+            "deck_id": deck_id,
+            "filename": filename,
+            "iat": int(now.timestamp()),
+            "exp": int((now + timedelta(hours=48)).timestamp()),
         },
         secret,
         algorithm="HS256",
@@ -582,19 +606,40 @@ def _upload_output(task_self, output_path: str, render_spec: dict, format: str) 
     content_type = content_type_map.get(format, "application/octet-stream")
 
     file_size = os.path.getsize(output_path)
-    r2 = get_r2_storage()
-    _run_async(r2.upload_file(output_path, key, content_type=content_type))
-
-    # H-2: Generate 48-hour presigned URL (172800 seconds) — not permanent public URL
-    presigned_url = _run_async(r2.generate_presigned_url(key, expires_in=172800))
-
-    if not presigned_url:
-        raise RuntimeError(f"R2 presigned URL generation returned no URL for key={key}")
-
-    logger.info("render_presentation_uploaded", deck_id=deck_id_safe, key=key, output_bytes=file_size)
+    output_url: str | None = None
+    try:
+        r2 = get_r2_storage()
+        _run_async(r2.upload_file(output_path, key, content_type=content_type))
+        # H-2: Generate 48-hour presigned URL (172800 seconds) — not permanent public URL
+        output_url = _run_async(r2.generate_presigned_url(key, expires_in=172800))
+        if not output_url:
+            raise RuntimeError(f"R2 presigned URL generation returned no URL for key={key}")
+        logger.info(
+            "render_presentation_uploaded_r2",
+            deck_id=deck_id_safe,
+            key=key,
+            output_bytes=file_size,
+        )
+    except Exception as exc:
+        # Dev-safe fallback: keep export usable even when R2 is misconfigured.
+        media_storage_path = os.getenv("MEDIA_STORAGE_PATH", "./media_storage")
+        export_dir = os.path.join(media_storage_path, "presentation_exports", deck_id_safe)
+        os.makedirs(export_dir, exist_ok=True)
+        fallback_name = f"{task_id}.{ext}"
+        fallback_path = os.path.join(export_dir, fallback_name)
+        shutil.copy2(output_path, fallback_path)
+        token = _make_export_download_token(deck_id_safe, fallback_name)
+        output_url = f"/api/v1/presentations/export/files/{deck_id_safe}/{fallback_name}?token={token}"
+        logger.warning(
+            "render_presentation_upload_fallback_local",
+            deck_id=deck_id_safe,
+            key=key,
+            local_path=fallback_path,
+            error=str(exc),
+        )
 
     task_self.update_state(
         state="PROGRESS",
         meta={"percent": 100, "stage": "Done"},
     )
-    return {"output_url": presigned_url, "output_bytes": file_size}
+    return {"output_url": output_url, "output_bytes": file_size}

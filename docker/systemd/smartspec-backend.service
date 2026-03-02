@@ -23,8 +23,8 @@ ExecStartPre=/bin/bash -c 'for i in $(seq 1 20); do ss -tlnp 2>/dev/null | grep 
 # Start backend directly (no wrapper scripts)
 ExecStart=/home/dev/projects/SmartSpecPro/python-backend/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
 
-# Verify backend is actually responding after startup
-ExecStartPost=/bin/bash -c 'for i in $(seq 1 15); do curl -sf http://localhost:8000/health >/dev/null 2>&1 && exit 0; sleep 1; done; echo "FATAL: health check failed after 15s"; exit 1'
+# Verify backend is actually responding after startup (30s — Python imports take ~15s on cold boot)
+ExecStartPost=/bin/bash -c 'for i in $(seq 1 30); do curl -sf http://localhost:8000/health >/dev/null 2>&1 && exit 0; sleep 1; done; echo "FATAL: health check failed after 30s"; exit 1'
 
 # Clean shutdown: SIGTERM to main, then SIGKILL entire cgroup after 15s
 KillMode=mixed

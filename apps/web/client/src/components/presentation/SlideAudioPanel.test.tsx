@@ -19,6 +19,7 @@ vi.mock("@/lib/trpc", () => ({
     },
     library: {
       search: { useQuery: vi.fn() },
+      getItem: { useQuery: vi.fn() },
     },
   },
 }));
@@ -44,6 +45,18 @@ function makeMutationMock(mutate?: ReturnType<typeof vi.fn>) {
 function makeSearchQueryMock(items: Array<{ item_id: number; title: string; item_type: string }> = []) {
   return {
     data: { results: items, total: items.length },
+    isLoading: false,
+    isError: false,
+  };
+}
+
+function makeGetItemQueryMock(overrides?: Partial<{ title: string; sourceUrl: string; metadata: Record<string, unknown> }>) {
+  return {
+    data: {
+      title: overrides?.title ?? "Audio item",
+      sourceUrl: overrides?.sourceUrl ?? "https://cdn.example.com/test.mp3",
+      metadata: overrides?.metadata ?? { durationSeconds: 12.5 },
+    },
     isLoading: false,
     isError: false,
   };
@@ -91,6 +104,9 @@ describe("SlideAudioPanel", () => {
     );
     vi.mocked(trpc.library.search.useQuery).mockReturnValue(
       makeSearchQueryMock() as any,
+    );
+    vi.mocked(trpc.library.getItem.useQuery).mockReturnValue(
+      makeGetItemQueryMock() as any,
     );
   });
 

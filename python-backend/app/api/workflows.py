@@ -2115,9 +2115,10 @@ async def list_agencies_for_workflow(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """List published agencies for workflow node dropdown.
+    """List agencies for workflow node dropdown.
 
-    Returns list of {value: agency_id, label: agency_name} for the select input.
+    Returns draft and published agencies (excludes archived).
+    Format: {value: agency_id, label: agency_name} for the select input.
     """
     from sqlalchemy import text as sa_text
     from app.core.config import settings as app_settings
@@ -2134,9 +2135,9 @@ async def list_agencies_for_workflow(
         return {"agencies": []}
 
     query = sa_text("""
-        SELECT id, name, description
+        SELECT id, name, description, status
         FROM agencies
-        WHERE status = 'published'
+        WHERE status IN ('draft', 'published')
           AND "tenantId" = :tenant_id
         ORDER BY name ASC
     """)
@@ -2149,6 +2150,7 @@ async def list_agencies_for_workflow(
                 "value": str(row["id"]),
                 "label": row["name"],
                 "description": row.get("description", ""),
+                "status": row.get("status", "draft"),
             }
             for row in rows
         ]

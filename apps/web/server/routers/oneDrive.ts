@@ -75,12 +75,16 @@ const syncRateLimit = createGDriveRateLimitMiddleware(onedriveSyncLimiter);
 const editRateLimit = createGDriveRateLimitMiddleware(onedriveEditLimiter);
 
 const PYTHON_BACKEND_URL =
-  process.env.PYTHON_BACKEND_URL ||
-  process.env.VITE_PYTHON_BACKEND_URL ||
-  "http://localhost:8000";
+  process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+
+const PROXY_TOKEN = process.env.SMARTSPEC_PROXY_TOKEN ?? "";
+if (!PROXY_TOKEN) {
+  console.warn("[oneDrive] SMARTSPEC_PROXY_TOKEN is not set — internal API calls will lack auth");
+}
 
 const PY_TIMEOUT_MS = 10_000;
 const PY_UPLOAD_TIMEOUT_MS = 30_000;
+const MAX_EDIT_FILE_BYTES = 50 * 1024 * 1024; // 50 MB
 
 function pyFetch(
   url: string,
@@ -208,14 +212,13 @@ export const oneDriveRouter = router({
       throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
     }
 
-    const proxyToken = process.env.SMARTSPEC_PROXY_TOKEN || "";
-    const resp = await pyFetch(
+        const resp = await pyFetch(
       `${PYTHON_BACKEND_URL}/api/internal/onedrive/disconnect`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-proxy-token": proxyToken,
+          "x-proxy-token": PROXY_TOKEN,
         },
         body: JSON.stringify({
           user_id: ctx.user.id,
@@ -345,7 +348,14 @@ export const oneDriveRouter = router({
       const storageInfo = await storageGet(item.sourceUrl);
       const fileResp = await fetch(storageInfo.url);
       if (!fileResp.ok) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to download file from storage" });
+      const contentLength = Number(fileResp.headers.get("content-length") ?? "0");
+      if (contentLength > MAX_EDIT_FILE_BYTES) {
+        throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "File too large for editing (max 50 MB)" });
+      }
       const fileBuffer = Buffer.from(await fileResp.arrayBuffer());
+      if (fileBuffer.length > MAX_EDIT_FILE_BYTES) {
+        throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "File too large for editing (max 50 MB)" });
+      }
 
       // Upload to OneDrive via Python backend
       const uploadResp = await pyFetch(`${PYTHON_BACKEND_URL}/api/internal/onedrive/upload`, {
@@ -422,11 +432,17 @@ export const oneDriveRouter = router({
         .limit(1);
       if (!session) throw new TRPCError({ code: "NOT_FOUND", message: "Active edit session not found" });
 
-      // Get library item to determine export format
+      // Get library item to determine export format (tenant + owner scoped)
       const [item] = await db
         .select()
         .from(libraryItems)
-        .where(eq(libraryItems.id, session.libraryItemId))
+        .where(
+          and(
+            eq(libraryItems.id, session.libraryItemId),
+            eq(libraryItems.tenantId, ctx.tenantId),
+            eq(libraryItems.ownerUserId, ctx.user.id),
+          ),
+        )
         .limit(1);
       if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "Library item not found" });
 
@@ -460,6 +476,9 @@ export const oneDriveRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "OneDrive export failed" });
       }
       const exportResult = await exportResp.json() as { content: string; size: number };
+      if (exportResult.size > MAX_EDIT_FILE_BYTES) {
+        throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Exported file exceeds maximum allowed size (50 MB)" });
+      }
       const fileBuffer = Buffer.from(exportResult.content, "base64");
 
       // Determine MIME type
@@ -475,11 +494,17 @@ export const oneDriveRouter = router({
       const newKey = `library/${ctx.tenantId}/${session.libraryItemId}/edited-${timestamp}.${ext}`;
       await storagePut(newKey, fileBuffer, exportMime);
 
-      // Update library item source URL
+      // Update library item source URL (tenant + owner scoped)
       await db
         .update(libraryItems)
         .set({ sourceUrl: newKey, updatedAt: new Date() })
-        .where(eq(libraryItems.id, session.libraryItemId));
+        .where(
+          and(
+            eq(libraryItems.id, session.libraryItemId),
+            eq(libraryItems.tenantId, ctx.tenantId),
+            eq(libraryItems.ownerUserId, ctx.user.id),
+          ),
+        );
 
       // Delete temp OneDrive file
       await pyFetch(`${PYTHON_BACKEND_URL}/api/internal/onedrive/files/${session.driveItemId}?user_id=${ctx.user.id}`, {
@@ -487,11 +512,17 @@ export const oneDriveRouter = router({
         headers: { Authorization: `Bearer ${token}` },
       }).catch(() => {}); // best-effort cleanup
 
-      // Mark session as saved_back
+      // Mark session as saved_back (scoped to owner)
       await db
         .update(onedriveEditSessions)
         .set({ status: "saved_back", updatedAt: new Date() })
-        .where(eq(onedriveEditSessions.id, session.id));
+        .where(
+          and(
+            eq(onedriveEditSessions.id, session.id),
+            eq(onedriveEditSessions.userId, ctx.user.id),
+            eq(onedriveEditSessions.tenantId, ctx.tenantId),
+          ),
+        );
 
       return { success: true, newSourceUrl: newKey };
     }),
@@ -526,11 +557,17 @@ export const oneDriveRouter = router({
         headers: { Authorization: `Bearer ${token}` },
       }).catch(() => {});
 
-      // Mark session as discarded
+      // Mark session as discarded (scoped to owner)
       await db
         .update(onedriveEditSessions)
         .set({ status: "discarded", updatedAt: new Date() })
-        .where(eq(onedriveEditSessions.id, session.id));
+        .where(
+          and(
+            eq(onedriveEditSessions.id, session.id),
+            eq(onedriveEditSessions.userId, ctx.user.id),
+            eq(onedriveEditSessions.tenantId, ctx.tenantId),
+          ),
+        );
 
       return { success: true };
     }),
@@ -602,12 +639,11 @@ export const oneDriveRouter = router({
     }
 
     // Trigger sync via Python backend
-    const proxyToken = process.env.SMARTSPEC_PROXY_TOKEN || "";
-    const pyResp = await pyFetch(`${PYTHON_BACKEND_URL}/api/internal/onedrive/start-sync`, {
+        const pyResp = await pyFetch(`${PYTHON_BACKEND_URL}/api/internal/onedrive/start-sync`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-proxy-token": proxyToken,
+        "x-proxy-token": PROXY_TOKEN,
       },
       body: JSON.stringify({ user_id: ctx.user.id, tenant_id: ctx.tenantId }),
     });
@@ -670,7 +706,13 @@ export const oneDriveRouter = router({
         await db
           .update(onedriveSyncState)
           .set(values)
-          .where(eq(onedriveSyncState.id, existing.id));
+          .where(
+            and(
+              eq(onedriveSyncState.id, existing.id),
+              eq(onedriveSyncState.tenantId, ctx.tenantId),
+              eq(onedriveSyncState.userId, ctx.user.id),
+            ),
+          );
       } else {
         await db.insert(onedriveSyncState).values({
           tenantId: ctx.tenantId,
@@ -689,12 +731,11 @@ export const oneDriveRouter = router({
     if (!ctx.tenantId)
       throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
 
-    const proxyToken = process.env.SMARTSPEC_PROXY_TOKEN || "";
-    const resp = await pyFetch(`${PYTHON_BACKEND_URL}/api/internal/onedrive/estimate-cost`, {
+        const resp = await pyFetch(`${PYTHON_BACKEND_URL}/api/internal/onedrive/estimate-cost`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-proxy-token": proxyToken,
+        "x-proxy-token": PROXY_TOKEN,
       },
       body: JSON.stringify({ user_id: ctx.user.id, tenant_id: ctx.tenantId }),
     });
@@ -987,7 +1028,7 @@ export const oneDriveRouter = router({
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            "x-proxy-token": process.env.SMARTSPEC_PROXY_TOKEN || "",
+            "x-proxy-token": PROXY_TOKEN,
           },
         },
       );
@@ -1023,15 +1064,14 @@ export const oneDriveRouter = router({
     .input(z.object({ itemId: driveItemIdSchema }))
     .mutation(async ({ ctx, input }) => {
       const token = createOneDriveToken(ctx.user.id);
-      const proxyToken = process.env.SMARTSPEC_PROXY_TOKEN || "";
-      const pyResp = await pyFetch(
+            const pyResp = await pyFetch(
         `${PYTHON_BACKEND_URL}/api/internal/onedrive/import-file`,
         {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
-            "x-proxy-token": proxyToken,
+            "x-proxy-token": PROXY_TOKEN,
           },
           body: JSON.stringify({
             item_id: input.itemId,
@@ -1100,15 +1140,14 @@ export const oneDriveRouter = router({
       assertLibraryEnabled(tenantId);
 
       const token = createOneDriveToken(ctx.user.id);
-      const proxyToken = process.env.SMARTSPEC_PROXY_TOKEN || "";
-      const pyResp = await pyFetch(
+            const pyResp = await pyFetch(
         `${PYTHON_BACKEND_URL}/api/internal/onedrive/import-file`,
         {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
-            "x-proxy-token": proxyToken,
+            "x-proxy-token": PROXY_TOKEN,
           },
           body: JSON.stringify({
             item_id: input.itemId,
@@ -1180,7 +1219,7 @@ export const oneDriveRouter = router({
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            "x-proxy-token": process.env.SMARTSPEC_PROXY_TOKEN || "",
+            "x-proxy-token": PROXY_TOKEN,
           },
         },
       );
@@ -1217,17 +1256,26 @@ export const oneDriveRouter = router({
       await db
         .update(libraryItems)
         .set({ status: "pending" as any, updatedAt: new Date() })
-        .where(eq(libraryItems.id, input.libraryItemId));
+        .where(
+          and(
+            eq(libraryItems.id, input.libraryItemId),
+            eq(libraryItems.tenantId, ctx.tenantId),
+            eq(libraryItems.ownerUserId, ctx.user.id),
+          ),
+        );
 
-      const proxyToken = process.env.SMARTSPEC_PROXY_TOKEN || "";
-      await pyFetch(`${PYTHON_BACKEND_URL}/api/internal/onedrive/start-sync`, {
+      // Trigger single-file re-index via Python backend
+      await pyFetch(`${PYTHON_BACKEND_URL}/api/internal/onedrive/reindex-item`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-proxy-token": proxyToken,
+          "x-proxy-token": PROXY_TOKEN,
         },
-        body: JSON.stringify({ user_id: ctx.user.id, tenant_id: ctx.tenantId }),
-      }).catch(() => {});
+        body: JSON.stringify({ library_item_id: input.libraryItemId, user_id: ctx.user.id, tenant_id: ctx.tenantId }),
+        timeoutMs: PY_TIMEOUT_MS,
+      }).catch((err) => {
+        console.warn("[oneDrive] reindex-item call failed:", err);
+      });
 
       return { success: true };
     }),
@@ -1255,10 +1303,32 @@ export const oneDriveRouter = router({
         .limit(1);
       if (!item) throw new TRPCError({ code: "NOT_FOUND", message: "File not found" });
 
+      // Soft delete (scoped to tenant + owner)
       await db
         .update(libraryItems)
         .set({ deletedAt: new Date(), deletedBy: ctx.user.id, updatedAt: new Date() })
-        .where(eq(libraryItems.id, input.libraryItemId));
+        .where(
+          and(
+            eq(libraryItems.id, input.libraryItemId),
+            eq(libraryItems.tenantId, ctx.tenantId),
+            eq(libraryItems.ownerUserId, ctx.user.id),
+          ),
+        );
+
+      // Clean up chunks
+      await db
+        .delete(libraryChunks)
+        .where(eq(libraryChunks.libraryItemId, input.libraryItemId));
+
+      // Clean up vectors via Python backend (best-effort)
+      await pyFetch(`${PYTHON_BACKEND_URL}/api/internal/onedrive/cleanup-vectors`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-proxy-token": PROXY_TOKEN,
+        },
+        body: JSON.stringify({ library_item_id: input.libraryItemId, tenant_id: ctx.tenantId }),
+      }).catch(() => {}); // best-effort
 
       return { success: true };
     }),

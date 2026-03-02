@@ -265,6 +265,62 @@ describe("presentationPlaybackExport", () => {
     });
   });
 
+  it("buildPresentationRenderSpec derives width/height from slide canvas when not explicitly provided", () => {
+    const deckDetail = buildDeckDetail({
+      slides: [
+        {
+          id: 1,
+          deckId: 101,
+          orderIndex: 0,
+          version: 1,
+          title: "Portrait canvas",
+          slideContent: { elements: [], canvas: { width: 720, height: 1280 } },
+          notes: null,
+          createdAt: new Date("2026-02-22T10:00:00.000Z"),
+          updatedAt: new Date("2026-02-22T10:00:00.000Z"),
+        },
+      ],
+    });
+
+    const renderSpec = buildPresentationRenderSpec({
+      deck: deckDetail.deck as any,
+      slides: deckDetail.slides as any,
+      format: "png",
+    });
+
+    expect(renderSpec.width).toBe(720);
+    expect(renderSpec.height).toBe(1280);
+  });
+
+  it("buildPresentationRenderSpec respects explicit width/height over slide canvas", () => {
+    const deckDetail = buildDeckDetail({
+      slides: [
+        {
+          id: 1,
+          deckId: 101,
+          orderIndex: 0,
+          version: 1,
+          title: "Portrait canvas",
+          slideContent: { elements: [], canvas: { width: 720, height: 1280 } },
+          notes: null,
+          createdAt: new Date("2026-02-22T10:00:00.000Z"),
+          updatedAt: new Date("2026-02-22T10:00:00.000Z"),
+        },
+      ],
+    });
+
+    const renderSpec = buildPresentationRenderSpec({
+      deck: deckDetail.deck as any,
+      slides: deckDetail.slides as any,
+      format: "png",
+      width: 1920,
+      height: 1080,
+    });
+
+    expect(renderSpec.width).toBe(1920);
+    expect(renderSpec.height).toBe(1080);
+  });
+
   it("dedupes duplicate export requests within the dedupe window", async () => {
     const enqueueExportJob = vi.fn().mockResolvedValue({ jobId: "job-1" });
     const deckDetail = buildDeckDetail({
@@ -506,6 +562,7 @@ describe("presentationPlaybackExport", () => {
       expect.objectContaining({ schemaVersion: "presentation_render_v1" }),
       "mp4",
       undefined,
+      undefined,
     );
     expect(result.status).toBe("queued");
   });
@@ -539,6 +596,69 @@ describe("presentationPlaybackExport", () => {
     expect(enqueueExportJob).toHaveBeenCalledTimes(1);
     expect(second.deduped).toBe(true);
     expect(second.exportId).toBe(first.exportId);
+  });
+
+  it("triggerPresentationExport recovers from idempotency unique-conflict race by returning existing in-flight export", async () => {
+    const deckDetail = buildDeckDetail();
+    const existingRecord = {
+      id: 501,
+      deckId: 101,
+      userId: 9,
+      tenantId: "tenant-1",
+      format: "png",
+      quality: null,
+      width: 1920,
+      height: 1080,
+      fps: null,
+      status: "processing",
+      progressPct: 25,
+      stage: "rendering",
+      errorMessage: null,
+      outputUrl: null,
+      outputStorageKey: null,
+      outputBytes: null,
+      celeryTaskId: "celery-race-1",
+      idempotencyKey: "tenant-1:9:101:png:race-key-1",
+      createdAt: new Date("2026-02-22T10:00:00.000Z"),
+      updatedAt: new Date("2026-02-22T10:00:01.000Z"),
+    };
+
+    const limit = vi.fn()
+      .mockResolvedValueOnce([]) // pre-insert idempotency lookup
+      .mockResolvedValueOnce([existingRecord]); // post-conflict lookup
+    const where = vi.fn().mockReturnValue({ limit });
+    const from = vi.fn().mockReturnValue({ where });
+    const selectFn = vi.fn().mockReturnValue({ from });
+
+    const duplicateError = Object.assign(new Error("duplicate"), {
+      code: "23505",
+      constraint: "presentation_exports_idempotency_key_unique",
+    });
+    const returning = vi.fn().mockRejectedValue(duplicateError);
+    const values = vi.fn().mockReturnValue({ returning });
+    const insertFn = vi.fn().mockReturnValue({ values });
+    const updateFn = vi.fn();
+    const mockDb = { select: selectFn, insert: insertFn, update: updateFn } as any;
+
+    const dbModule = await import("../db");
+    vi.spyOn(dbModule, "getDb").mockResolvedValue(mockDb);
+
+    const enqueueExportJob = vi.fn();
+    const result = await triggerPresentationExport(
+      { deckId: 101, format: "png", idempotencyKey: "race-key-1" },
+      actor,
+      {
+        getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
+        enqueueExportJob,
+        now: () => Date.parse("2026-02-22T10:00:05.000Z"),
+      },
+    );
+
+    expect(result.deduped).toBe(true);
+    expect(result.exportId).toBe(501);
+    expect(enqueueExportJob).not.toHaveBeenCalled();
+    expect(updateFn).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
   });
 
   it("throttle enforcement still applies to 'jpg' and 'pdf' formats", async () => {
@@ -822,6 +942,72 @@ describe("presentationPlaybackExport", () => {
 
     fetchSpy.mockRestore();
     vi.restoreAllMocks();
+  });
+
+  it("getPresentationExportStatus marks stale queued task as error when Python keeps returning queued", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-02-22T12:30:00.000Z"));
+      const dbRecord = {
+        id: 81,
+        deckId: 101,
+        userId: 9,
+        tenantId: "tenant-1",
+        format: "png",
+        quality: null,
+        width: 1920,
+        height: 1080,
+        fps: null,
+        status: "processing",
+        progressPct: 0,
+        stage: null,
+        errorMessage: null,
+        outputUrl: null,
+        outputStorageKey: null,
+        outputBytes: null,
+        celeryTaskId: "celery-stale-1",
+        idempotencyKey: "stale-key-1",
+        createdAt: new Date("2026-02-22T10:00:00.000Z"),
+        updatedAt: new Date("2026-02-22T10:00:00.000Z"),
+      };
+      const updatedRecord = {
+        ...dbRecord,
+        status: "error",
+        errorMessage: "EXPORT_TASK_STALE: worker did not start task in time, please retry export",
+      };
+
+      const limit = vi.fn().mockResolvedValue([dbRecord]);
+      const where = vi.fn().mockReturnValue({ limit });
+      const from = vi.fn().mockReturnValue({ where });
+      const selectFn = vi.fn().mockReturnValue({ from });
+      const returning = vi.fn().mockResolvedValue([updatedRecord]);
+      const updateWhere = vi.fn().mockReturnValue({ returning });
+      const setFn = vi.fn().mockReturnValue({ where: updateWhere });
+      const updateFn = vi.fn().mockReturnValue({ set: setFn });
+      const mockDb = { select: selectFn, update: updateFn } as any;
+
+      const dbModule = await import("../db");
+      vi.spyOn(dbModule, "getDb").mockResolvedValue(mockDb);
+
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+        ok: true,
+        json: async () => ({ state: "queued", percent: 0 }),
+      } as Response);
+
+      const result = await getPresentationExportStatus(81, actor);
+
+      expect(setFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: "error",
+          errorMessage: expect.stringContaining("EXPORT_TASK_STALE"),
+        }),
+      );
+      expect(result.status).toBe("error");
+      fetchSpy.mockRestore();
+      vi.restoreAllMocks();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("denies cross-tenant export status lookups and allows same-actor lookups", async () => {

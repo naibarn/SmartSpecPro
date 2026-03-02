@@ -81,6 +81,62 @@ describe("commands", () => {
     expect((bus.getState().content.elements[1] as any).text).toBe("Edited");
   });
 
+  it("broadcasts style patches across multi-selected elements of the same type", () => {
+    const bus = new CommandBus(
+      createCanvasCommandState({
+        elements: [
+          { id: "a", type: "text", x: 10, y: 10, width: 100, height: 40, text: "A", color: "#111827", fontSize: 32 },
+          { id: "b", type: "text", x: 10, y: 80, width: 100, height: 40, text: "B", color: "#111827", fontSize: 32 },
+          { id: "c", type: "rect", x: 200, y: 120, width: 80, height: 40, fill: "#93c5fd" },
+        ],
+      }, ["a", "b", "c"]),
+    );
+
+    bus.execute(patchSelectedElementCommand({ fontSize: 56, color: "#ef4444" }));
+    const next = bus.getState().content.elements;
+    const a = next.find((element) => element.id === "a");
+    const b = next.find((element) => element.id === "b");
+    const c = next.find((element) => element.id === "c");
+
+    expect(a).toMatchObject({ fontSize: 56, color: "#ef4444" });
+    expect(b).toMatchObject({ fontSize: 56, color: "#ef4444" });
+    expect(c).toMatchObject({ fill: "#93c5fd" });
+  });
+
+  it("does not broadcast text-content patches across multi-selected text elements", () => {
+    const bus = new CommandBus(
+      createCanvasCommandState({
+        elements: [
+          { id: "a", type: "text", x: 10, y: 10, width: 100, height: 40, text: "A", color: "#111827" },
+          { id: "b", type: "text", x: 10, y: 80, width: 100, height: 40, text: "B", color: "#111827" },
+        ],
+      }, ["a", "b"]),
+    );
+
+    bus.execute(patchSelectedElementCommand({ text: "Edited only first" }));
+    const next = bus.getState().content.elements;
+    expect(next.find((element) => element.id === "a")).toMatchObject({ text: "Edited only first" });
+    expect(next.find((element) => element.id === "b")).toMatchObject({ text: "B" });
+  });
+
+  it("scales multiple selected elements proportionally when resizing selection", () => {
+    const bus = new CommandBus(
+      createCanvasCommandState({
+        elements: [
+          { id: "a", type: "text", x: 10, y: 10, width: 100, height: 40, text: "A", color: "#111827" },
+          { id: "b", type: "rect", x: 200, y: 120, width: 60, height: 30, fill: "#93c5fd" },
+          { id: "c", type: "rect", x: 320, y: 180, width: 80, height: 20, fill: "#60a5fa" },
+        ],
+      }, ["a", "b", "c"]),
+    );
+
+    bus.execute(resizeSelectionCommand(150, 80));
+    const next = bus.getState().content.elements;
+    expect(next.find((element) => element.id === "a")).toMatchObject({ width: 150, height: 80 });
+    expect(next.find((element) => element.id === "b")).toMatchObject({ width: 90, height: 60 });
+    expect(next.find((element) => element.id === "c")).toMatchObject({ width: 120, height: 40 });
+  });
+
   it("uniformly scales and repositions canvas content while preserving visual focus", () => {
     const bus = new CommandBus(
       createCanvasCommandState({

@@ -505,6 +505,27 @@ describe("Edge Cases", () => {
     }
   });
 
+  it("uses short-edge typography scaling so portrait canvas text is not undersized", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({ templateId: "hero_center" }),
+      canvasWidth: 720,
+      canvasHeight: 1280,
+    }));
+
+    const title = result.slideContent.elements.find(
+      (e) => e.type === "text" && e.text === "Test Slide Title",
+    );
+    const body = result.slideContent.elements.find(
+      (e) => e.type === "text" && e.text === "First bullet point",
+    );
+    expect(title).toBeDefined();
+    expect(body).toBeDefined();
+    if (title?.type === "text" && body?.type === "text") {
+      expect(title.fontSize).toBeGreaterThanOrEqual(40);
+      expect(body.fontSize).toBeGreaterThanOrEqual(18);
+    }
+  });
+
   it("falls back to minimal slide when template rendering produces invalid content", () => {
     // Create a corrupt preset with missing color fields to force validation failure
     const corruptPreset = {

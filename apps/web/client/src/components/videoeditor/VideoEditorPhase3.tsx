@@ -660,77 +660,6 @@ export const VideoEditorPhase3: React.FC = () => {
         return prevProject;
       }
 
-      // Auto-snap on all tracks: snap to end/start of nearest clip
-      const otherClips = newTrack.clips.filter((c: Clip) => c.id !== clip!.id);
-      otherClips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
-
-      let snapped = newStartTime;
-      const SNAP_SECONDS = 0.3;
-
-      // Snap to end of each existing clip
-      for (const other of otherClips) {
-        const otherEnd = other.startTime + other.duration;
-        if (Math.abs(newStartTime - otherEnd) < SNAP_SECONDS) {
-          snapped = otherEnd;
-          break;
-        }
-        if (Math.abs(newStartTime - other.startTime) < SNAP_SECONDS) {
-          snapped = other.startTime;
-          break;
-        }
-      }
-      // Snap to timeline start
-      if (newStartTime < SNAP_SECONDS) {
-        snapped = 0;
-      }
-
-      // Overlap prevention: check if placing clip at snapped position would overlap
-      const clipEnd = snapped + clip.duration;
-      const hasOverlap = otherClips.some((other: Clip) => {
-        const otherEnd = other.startTime + other.duration;
-        return snapped < otherEnd && clipEnd > other.startTime;
-      });
-
-      if (hasOverlap) {
-        // Find the nearest non-overlapping position
-        // Try inserting after each clip
-        let bestPos = snapped;
-        let found = false;
-
-        // Try placing at end of each clip
-        for (const other of otherClips) {
-          const candidateStart = other.startTime + other.duration;
-          const candidateEnd = candidateStart + clip.duration;
-          const wouldOverlap = otherClips.some((o: Clip) => {
-            if (o.id === other.id) return false;
-            const oEnd = o.startTime + o.duration;
-            return candidateStart < oEnd && candidateEnd > o.startTime;
-          });
-          if (!wouldOverlap) {
-            // Pick the closest available slot
-            if (!found || Math.abs(candidateStart - newStartTime) < Math.abs(bestPos - newStartTime)) {
-              bestPos = candidateStart;
-              found = true;
-            }
-          }
-        }
-
-        // Also try placing at 0
-        if (otherClips.length === 0 || otherClips[0].startTime >= clip.duration) {
-          if (!found || Math.abs(0 - newStartTime) < Math.abs(bestPos - newStartTime)) {
-            bestPos = 0;
-            found = true;
-          }
-        }
-
-        snapped = found ? bestPos : snapped;
-      }
-
-      clip.startTime = Math.max(0, snapped);
-      clip.trackId = newTrackId;
-      newTrack.clips.push(clip);
-      newTrack.clips.sort((a: Clip, b: Clip) => a.startTime - b.startTime);
-
       if (rippleEditMode) {
         const compactTrack = (track: any) => {
           if (track.type === 'text') return;
@@ -1063,44 +992,6 @@ export const VideoEditorPhase3: React.FC = () => {
       addToHistory(historySnapshot);
     }
   }, [currentTime, addToHistory]);
-
-  // ========================================
-  // Clip Effects (filter, speed, etc.)
-  // ========================================
-
-  const handleEffectsChange = useCallback((clipId: string, effects: Effect[]) => {
-    setProject(prevProject => {
-      const newProject = JSON.parse(JSON.stringify(prevProject));
-
-      for (const track of newProject.timeline.tracks) {
-        const clip = track.clips.find((c: Clip) => c.id === clipId);
-        if (clip) {
-          clip.effects = effects;
-          break;
-        }
-      }
-
-      newProject.modifiedAt = new Date().toISOString();
-      addToHistory(newProject);
-      return newProject;
-    });
-  }, [addToHistory]);
-
-  const handleClipTransitionChange = useCallback((clipId: string, transition: ClipTransition | undefined) => {
-    setProject(prevProject => {
-      const newProject = JSON.parse(JSON.stringify(prevProject));
-      for (const track of newProject.timeline.tracks) {
-        const clip = track.clips.find((c: Clip) => c.id === clipId);
-        if (clip) {
-          clip.inTransition = transition;
-          break;
-        }
-      }
-      newProject.modifiedAt = new Date().toISOString();
-      addToHistory(newProject);
-      return newProject;
-    });
-  }, [addToHistory]);
 
   // ========================================
   // Clip Effects (filter, speed, etc.)

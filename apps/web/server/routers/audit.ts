@@ -20,6 +20,11 @@ import {
 import { eq, and, gte, lte, desc, sql, isNotNull } from "drizzle-orm";
 import { auditLogger } from "../services/auditLogger";
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
 export const auditRouter = router({
   /**
    * Search providerUsageLog + apiAuditEvents with filters
@@ -43,39 +48,49 @@ export const auditRouter = router({
       const db = await getDb();
       if (!db) return { usageLogs: [], auditEvents: [], total: 0 };
 
-      const conditions: any[] = [];
-      if (input.dateStart) conditions.push(gte(providerUsageLog.createdAt, new Date(input.dateStart)));
-      if (input.dateEnd) conditions.push(lte(providerUsageLog.createdAt, new Date(input.dateEnd)));
-      if (input.userId) conditions.push(eq(providerUsageLog.userId, input.userId));
-      if (input.providerId) conditions.push(eq(providerUsageLog.providerId, input.providerId));
-      if (input.model) conditions.push(eq(providerUsageLog.modelUsed, input.model));
-      if (input.traceId) conditions.push(eq(providerUsageLog.traceId, input.traceId));
-      if (input.errorOnly) conditions.push(isNotNull(providerUsageLog.errorType));
+      let usageLogs: any[] = [];
+      try {
+        const conditions: any[] = [];
+        if (input.dateStart) conditions.push(gte(providerUsageLog.createdAt, new Date(input.dateStart)));
+        if (input.dateEnd) conditions.push(lte(providerUsageLog.createdAt, new Date(input.dateEnd)));
+        if (input.userId) conditions.push(eq(providerUsageLog.userId, input.userId));
+        if (input.providerId) conditions.push(eq(providerUsageLog.providerId, input.providerId));
+        if (input.model) conditions.push(eq(providerUsageLog.modelUsed, input.model));
+        if (input.traceId) conditions.push(eq(providerUsageLog.traceId, input.traceId));
+        if (input.errorOnly) conditions.push(isNotNull(providerUsageLog.errorType));
 
-      const usageLogs = await db
-        .select()
-        .from(providerUsageLog)
-        .where(conditions.length > 0 ? and(...conditions) : undefined)
-        .orderBy(desc(providerUsageLog.createdAt))
-        .limit(input.limit)
-        .offset(input.offset);
+        usageLogs = await db
+          .select()
+          .from(providerUsageLog)
+          .where(conditions.length > 0 ? and(...conditions) : undefined)
+          .orderBy(desc(providerUsageLog.createdAt))
+          .limit(input.limit)
+          .offset(input.offset);
+      } catch (error) {
+        console.warn('[audit.search] provider_usage_log query failed', { error: getErrorMessage(error) });
+      }
 
       // Also search apiAuditEvents
-      const eventConditions: any[] = [];
-      if (input.dateStart) eventConditions.push(gte(apiAuditEvents.createdAt, new Date(input.dateStart)));
-      if (input.dateEnd) eventConditions.push(lte(apiAuditEvents.createdAt, new Date(input.dateEnd)));
-      if (input.userId) eventConditions.push(eq(apiAuditEvents.userId, input.userId));
-      if (input.traceId) eventConditions.push(eq(apiAuditEvents.traceId, input.traceId));
-      if (input.eventType) eventConditions.push(eq(apiAuditEvents.eventType, input.eventType));
-      if (input.errorOnly) eventConditions.push(isNotNull(apiAuditEvents.errorMessage));
+      let auditEvents: any[] = [];
+      try {
+        const eventConditions: any[] = [];
+        if (input.dateStart) eventConditions.push(gte(apiAuditEvents.createdAt, new Date(input.dateStart)));
+        if (input.dateEnd) eventConditions.push(lte(apiAuditEvents.createdAt, new Date(input.dateEnd)));
+        if (input.userId) eventConditions.push(eq(apiAuditEvents.userId, input.userId));
+        if (input.traceId) eventConditions.push(eq(apiAuditEvents.traceId, input.traceId));
+        if (input.eventType) eventConditions.push(eq(apiAuditEvents.eventType, input.eventType));
+        if (input.errorOnly) eventConditions.push(isNotNull(apiAuditEvents.errorMessage));
 
-      const auditEvents = await db
-        .select()
-        .from(apiAuditEvents)
-        .where(eventConditions.length > 0 ? and(...eventConditions) : undefined)
-        .orderBy(desc(apiAuditEvents.createdAt))
-        .limit(input.limit)
-        .offset(input.offset);
+        auditEvents = await db
+          .select()
+          .from(apiAuditEvents)
+          .where(eventConditions.length > 0 ? and(...eventConditions) : undefined)
+          .orderBy(desc(apiAuditEvents.createdAt))
+          .limit(input.limit)
+          .offset(input.offset);
+      } catch (error) {
+        console.warn('[audit.search] api_audit_events query failed', { error: getErrorMessage(error) });
+      }
 
       return { usageLogs, auditEvents };
     }),
@@ -111,31 +126,35 @@ export const auditRouter = router({
     )
     .query(async ({ input }) => {
       const db = await getDb();
-      if (!db) return { mismatches: [], total: 0 };
+      if (!db) return { entries: [], total: 0 };
 
       const since = new Date();
       since.setDate(since.getDate() - input.days);
 
-      // Find providerUsageLog entries with traceId that have credit transactions
-      const results = await db
-        .select({
-          traceId: providerUsageLog.traceId,
-          model: providerUsageLog.modelUsed,
-          costUsd: providerUsageLog.costUsd,
-          creditsCharged: providerUsageLog.creditsCharged,
-          createdAt: providerUsageLog.createdAt,
-        })
-        .from(providerUsageLog)
-        .where(
-          and(
-            gte(providerUsageLog.createdAt, since),
-            isNotNull(providerUsageLog.traceId)
+      try {
+        const results = await db
+          .select({
+            traceId: providerUsageLog.traceId,
+            model: providerUsageLog.modelUsed,
+            costUsd: providerUsageLog.costUsd,
+            creditsCharged: providerUsageLog.creditsCharged,
+            createdAt: providerUsageLog.createdAt,
+          })
+          .from(providerUsageLog)
+          .where(
+            and(
+              gte(providerUsageLog.createdAt, since),
+              isNotNull(providerUsageLog.traceId)
+            )
           )
-        )
-        .orderBy(desc(providerUsageLog.createdAt))
-        .limit(200);
+          .orderBy(desc(providerUsageLog.createdAt))
+          .limit(200);
 
-      return { entries: results, total: results.length };
+        return { entries: results, total: results.length };
+      } catch (error) {
+        console.warn('[audit.costAudit] provider_usage_log query failed', { error: getErrorMessage(error) });
+        return { entries: [], total: 0 };
+      }
     }),
 
   /**
@@ -148,54 +167,68 @@ export const auditRouter = router({
       })
     )
     .query(async ({ input }) => {
+      const emptyResult = {
+        totalRequests: 0,
+        errorRate: 0,
+        avgLatency: 0,
+        totalCost: 0,
+        topModels: [] as { model: string; count: number; totalCost: number }[],
+        requestsPerDay: [] as { date: string; count: number; errors: number }[],
+      };
+
       const db = await getDb();
-      if (!db) return { requestsPerDay: [], errorRate: 0, avgLatency: 0, topModels: [] };
+      if (!db) return emptyResult;
 
       const since = new Date();
       since.setDate(since.getDate() - input.days);
 
-      const [totals] = await db
-        .select({
-          totalRequests: sql<number>`count(*)::int`,
-          errorCount: sql<number>`count(*) filter (where ${providerUsageLog.errorType} is not null)::int`,
-          avgLatency: sql<number>`coalesce(avg(${providerUsageLog.responseTimeMs}), 0)::float`,
-          totalCost: sql<number>`coalesce(sum(${providerUsageLog.costUsd}::numeric), 0)::float`,
-        })
-        .from(providerUsageLog)
-        .where(gte(providerUsageLog.createdAt, since));
+      try {
+        const [totals] = await db
+          .select({
+            totalRequests: sql<number>`count(*)::int`,
+            errorCount: sql<number>`count(*) filter (where ${providerUsageLog.errorType} is not null)::int`,
+            avgLatency: sql<number>`coalesce(avg(${providerUsageLog.responseTimeMs}), 0)::float`,
+            totalCost: sql<number>`coalesce(sum(${providerUsageLog.costUsd}::numeric), 0)::float`,
+          })
+          .from(providerUsageLog)
+          .where(gte(providerUsageLog.createdAt, since));
 
-      const topModels = await db
-        .select({
-          model: providerUsageLog.modelUsed,
-          count: sql<number>`count(*)::int`,
-          totalCost: sql<number>`coalesce(sum(${providerUsageLog.costUsd}::numeric), 0)::float`,
-        })
-        .from(providerUsageLog)
-        .where(gte(providerUsageLog.createdAt, since))
-        .groupBy(providerUsageLog.modelUsed)
-        .orderBy(desc(sql`count(*)`))
-        .limit(10);
+        const topModels = await db
+          .select({
+            model: providerUsageLog.modelUsed,
+            count: sql<number>`count(*)::int`,
+            totalCost: sql<number>`coalesce(sum(${providerUsageLog.costUsd}::numeric), 0)::float`,
+          })
+          .from(providerUsageLog)
+          .where(gte(providerUsageLog.createdAt, since))
+          .groupBy(providerUsageLog.modelUsed)
+          .orderBy(desc(sql`count(*)`))
+          .limit(10);
 
-      const requestsPerDay = await db
-        .select({
-          date: sql<string>`date_trunc('day', ${providerUsageLog.createdAt})::date::text`,
-          count: sql<number>`count(*)::int`,
-          errors: sql<number>`count(*) filter (where ${providerUsageLog.errorType} is not null)::int`,
-        })
-        .from(providerUsageLog)
-        .where(gte(providerUsageLog.createdAt, since))
-        .groupBy(sql`date_trunc('day', ${providerUsageLog.createdAt})`)
-        .orderBy(sql`date_trunc('day', ${providerUsageLog.createdAt})`);
+        const requestsPerDay = await db
+          .select({
+            date: sql<string>`date_trunc('day', ${providerUsageLog.createdAt})::date::text`,
+            count: sql<number>`count(*)::int`,
+            errors: sql<number>`count(*) filter (where ${providerUsageLog.errorType} is not null)::int`,
+          })
+          .from(providerUsageLog)
+          .where(gte(providerUsageLog.createdAt, since))
+          .groupBy(sql`date_trunc('day', ${providerUsageLog.createdAt})`)
+          .orderBy(sql`date_trunc('day', ${providerUsageLog.createdAt})`);
 
-      const totalRequests = totals?.totalRequests ?? 0;
+        const totalRequests = totals?.totalRequests ?? 0;
 
-      return {
-        totalRequests,
-        errorRate: totalRequests > 0 ? (totals?.errorCount ?? 0) / totalRequests : 0,
-        avgLatency: totals?.avgLatency ?? 0,
-        totalCost: totals?.totalCost ?? 0,
-        topModels,
-        requestsPerDay,
-      };
+        return {
+          totalRequests,
+          errorRate: totalRequests > 0 ? (totals?.errorCount ?? 0) / totalRequests : 0,
+          avgLatency: totals?.avgLatency ?? 0,
+          totalCost: totals?.totalCost ?? 0,
+          topModels,
+          requestsPerDay,
+        };
+      } catch (error) {
+        console.warn('[audit.stats] provider_usage_log query failed, returning empty', { error: getErrorMessage(error) });
+        return emptyResult;
+      }
     }),
 });

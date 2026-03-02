@@ -89,6 +89,18 @@ describe("audio track and export contract schemas", () => {
     expect(result.success).toBe(true);
   });
 
+  it("projectAudioTrackInputSchema accepts start/end trim values", () => {
+    const result = projectAudioTrackInputSchema.safeParse({
+      libraryItemId: 1,
+      volume: 0.5,
+      startAtMs: 1500,
+      endAtMs: 7500,
+      loop: false,
+      fadeOutMs: null,
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("resolvedAudioTrackSchema accepts url field", () => {
     const result = resolvedAudioTrackSchema.safeParse({ url: "https://example.com/audio.mp3", volume: 0.8, startAtMs: 0 });
     expect(result.success).toBe(true);
@@ -150,6 +162,30 @@ describe("audio track and export contract schemas", () => {
       updatedAt: new Date(),
     });
     expect(result.success).toBe(true);
+  });
+
+  it("presentationExportStatusResultSchema accepts relative downloadUrl", () => {
+    const result = presentationExportStatusResultSchema.safeParse({
+      schemaVersion: PRESENTATION_EXPORT_SCHEMA_VERSION,
+      exportId: 8,
+      status: "done",
+      format: "png",
+      downloadUrl: "/api/v1/presentations/export/files/12/task.zip?token=abc",
+      updatedAt: new Date(),
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("presentationExportStatusResultSchema rejects non-url downloadUrl", () => {
+    const result = presentationExportStatusResultSchema.safeParse({
+      schemaVersion: PRESENTATION_EXPORT_SCHEMA_VERSION,
+      exportId: 9,
+      status: "done",
+      format: "pdf",
+      downloadUrl: "not-a-url",
+      updatedAt: new Date(),
+    });
+    expect(result.success).toBe(false);
   });
 
   it("presentationRenderSpecSchema accepts format jpg", () => {

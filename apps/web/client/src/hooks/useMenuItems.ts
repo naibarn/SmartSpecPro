@@ -8,6 +8,7 @@ import {
   Clock,
   CreditCard,
   Building2,
+  Webhook,
   Server,
   Activity,
   Users,
@@ -31,6 +32,8 @@ import {
   ExternalLink,
   Film,
   Gauge,
+  Bot,
+  ClipboardCheck,
 } from 'lucide-react';
 import {
   getMenuItemsByGroup,
@@ -72,6 +75,9 @@ const iconMap: Record<string, LucideIcon> = {
   ExternalLink,
   Film,
   Gauge,
+  Bot,
+  ClipboardCheck,
+  Webhook,
 };
 
 export interface ResolvedMenuItem extends MenuItem {

@@ -87,6 +87,9 @@ interface Skill {
   priority: number;
   availableModels: string[] | null;
   defaultModel: string | null;
+  llmModelId: string | null;
+  preferredProviderId: number | null;
+  strictProviderPin: boolean;
   systemPrompt: string | null;
   skillContent: string | null;
   knowledgebase: string | null;
@@ -222,6 +225,7 @@ export default function AdminSkills() {
 
   // Fetch vision-capable LLM models for default model selection
   const { data: visionModels } = trpc.skills.getVisionModels.useQuery();
+  const { data: llmProvidersData } = trpc.llmProviders.list.useQuery();
 
   // Fetch media models (image/video/audio) for media-generate skills
   const { data: imageModels } = trpc.mediaModels.list.useQuery({ type: "image" });
@@ -507,6 +511,9 @@ export default function AdminSkills() {
       creditMultiplier: editingSkill.creditMultiplier,
       priority: editingSkill.priority,
       defaultModel: editingSkill.defaultModel,
+      llmModelId: editingSkill.llmModelId ?? editingSkill.defaultModel,
+      preferredProviderId: editingSkill.preferredProviderId ?? null,
+      strictProviderPin: editingSkill.strictProviderPin ?? false,
       executionMode: editingSkill.executionMode || "llm-only",
       systemPrompt: editingSkill.systemPrompt,
       skillContent: editingSkill.skillContent,
@@ -1526,7 +1533,10 @@ export default function AdminSkills() {
                     setEditingSkill({
                       ...editingSkill,
                       executionMode: value as "llm-only" | "media-generate" | "enhance-prompt" | "python",
-                      defaultModel: null
+                      defaultModel: null,
+                      llmModelId: null,
+                      preferredProviderId: null,
+                      strictProviderPin: false,
                     })
                   }
                 >
@@ -1614,10 +1624,11 @@ export default function AdminSkills() {
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
-                          {editingSkill.defaultModel
+                          {(editingSkill.llmModelId || editingSkill.defaultModel)
                             ? (() => {
-                                const found = visionModels?.models?.find((m) => m.id === editingSkill.defaultModel);
-                                return found ? `${found.name} (${found.providerDisplayName})` : editingSkill.defaultModel;
+                                const selectedModel = editingSkill.llmModelId || editingSkill.defaultModel;
+                                const found = visionModels?.models?.find((m) => m.id === selectedModel);
+                                return found ? `${found.name} (${found.providerDisplayName})` : selectedModel;
                               })()
                             : <span className="text-muted-foreground">Use system default (openai/gpt-4o)</span>}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -1631,18 +1642,18 @@ export default function AdminSkills() {
                             <CommandGroup>
                               <CommandItem
                                 value="__system_default__"
-                                onSelect={() => setEditingSkill({ ...editingSkill, defaultModel: null })}
+                                onSelect={() => setEditingSkill({ ...editingSkill, defaultModel: null, llmModelId: null })}
                               >
-                                <Check className={`mr-2 h-4 w-4 ${!editingSkill.defaultModel ? "opacity-100" : "opacity-0"}`} />
+                                <Check className={`mr-2 h-4 w-4 ${!(editingSkill.llmModelId || editingSkill.defaultModel) ? "opacity-100" : "opacity-0"}`} />
                                 <span className="text-muted-foreground">Use system default (openai/gpt-4o)</span>
                               </CommandItem>
                               {visionModels?.models?.map((model) => (
                                 <CommandItem
                                   key={model.id}
                                   value={`${model.name} ${model.id} ${model.providerDisplayName}`}
-                                  onSelect={() => setEditingSkill({ ...editingSkill, defaultModel: model.id })}
+                                  onSelect={() => setEditingSkill({ ...editingSkill, defaultModel: model.id, llmModelId: model.id })}
                                 >
-                                  <Check className={`mr-2 h-4 w-4 ${editingSkill.defaultModel === model.id ? "opacity-100" : "opacity-0"}`} />
+                                  <Check className={`mr-2 h-4 w-4 ${(editingSkill.llmModelId || editingSkill.defaultModel) === model.id ? "opacity-100" : "opacity-0"}`} />
                                   <span>{model.name}</span>
                                   <span className="ml-1 text-xs text-muted-foreground">({model.providerDisplayName})</span>
                                   {model.isDefault && (
@@ -1658,6 +1669,48 @@ export default function AdminSkills() {
                     <p className="text-xs text-muted-foreground">
                       The LLM model used for Auto Prompt in Media Studio. Users can override in Advanced Mode.
                     </p>
+
+                    <div className="mt-3 space-y-2 rounded-md border p-3">
+                      <Label>Preferred LLM Provider (optional)</Label>
+                      <Select
+                        value={editingSkill.preferredProviderId ? String(editingSkill.preferredProviderId) : "__auto__"}
+                        onValueChange={(value) =>
+                          setEditingSkill({
+                            ...editingSkill,
+                            preferredProviderId: value === "__auto__" ? null : Number(value),
+                            ...(value === "__auto__" ? { strictProviderPin: false } : {}),
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Auto route (no provider pin)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__auto__">Auto route (no provider pin)</SelectItem>
+                          {(llmProvidersData || []).map((provider) => (
+                            <SelectItem key={provider.id} value={String(provider.id)}>
+                              {provider.displayName} ({provider.providerName})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      <div className="flex items-center justify-between pt-1">
+                        <div>
+                          <Label className="text-sm">Strict Provider Pin</Label>
+                          <p className="text-xs text-muted-foreground">
+                            If enabled, this skill will fail instead of falling back to another provider.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={editingSkill.strictProviderPin}
+                          onCheckedChange={(checked) =>
+                            setEditingSkill({ ...editingSkill, strictProviderPin: checked })
+                          }
+                          disabled={!editingSkill.preferredProviderId}
+                        />
+                      </div>
+                    </div>
                   </>
                 )}
               </div>

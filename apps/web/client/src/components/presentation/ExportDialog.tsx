@@ -27,6 +27,8 @@ interface ExportDialogProps {
   open: boolean;
   /** Called when the dialog is closed */
   onClose: () => void;
+  /** Optional callback to persist pending edits before starting export */
+  onBeforeExport?: () => Promise<boolean> | boolean;
 }
 
 type ExportFormat = "mp4" | "png" | "jpg" | "pdf";
@@ -66,11 +68,31 @@ const FORMAT_LABELS: Record<string, string> = {
   pdf: "PDF",
 };
 
+function formatExportCreatedAt(value: Date | string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(parsed);
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export function ExportDialog({ deckId, open, onClose }: ExportDialogProps) {
+export function ExportDialog({
+  deckId,
+  open,
+  onClose,
+  onBeforeExport,
+}: ExportDialogProps) {
   // Format and quality selection
   const [format, setFormat] = useState<ExportFormat>("mp4");
   const [quality, setQuality] = useState<ExportQuality>("standard");
@@ -80,6 +102,7 @@ export function ExportDialog({ deckId, open, onClose }: ExportDialogProps) {
 
   // Dialog phase
   const [dialogPhase, setDialogPhase] = useState<DialogPhase>("selecting");
+  const [isPreparingExport, setIsPreparingExport] = useState(false);
 
   // Stable idempotency key — reset on "Try Again"
   const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
@@ -98,13 +121,29 @@ export function ExportDialog({ deckId, open, onClose }: ExportDialogProps) {
     },
   });
 
-  function handleExport() {
-    triggerExportMutation.mutate({
-      deckId,
-      format,
-      quality,
-      idempotencyKey: idempotencyKeyRef.current,
-    });
+  async function handleExport() {
+    if (triggerExportMutation.isPending || isPreparingExport) {
+      return;
+    }
+
+    try {
+      setIsPreparingExport(true);
+      if (onBeforeExport) {
+        const canProceed = await onBeforeExport();
+        if (!canProceed) {
+          return;
+        }
+      }
+
+      triggerExportMutation.mutate({
+        deckId,
+        format,
+        quality,
+        idempotencyKey: idempotencyKeyRef.current,
+      });
+    } finally {
+      setIsPreparingExport(false);
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -132,11 +171,13 @@ export function ExportDialog({ deckId, open, onClose }: ExportDialogProps) {
     onSuccess(data) {
       if (data.success) {
         toast.info("Export cancelled.");
+        idempotencyKeyRef.current = crypto.randomUUID();
         setExportId(null);
         setDialogPhase("selecting");
         listExportsQuery.refetch();
       } else {
         toast.info(data.message ?? "Export could not be cancelled — it may have already finished.");
+        idempotencyKeyRef.current = crypto.randomUUID();
         setDialogPhase("selecting");
       }
     },
@@ -170,6 +211,7 @@ export function ExportDialog({ deckId, open, onClose }: ExportDialogProps) {
       idempotencyKeyRef.current = crypto.randomUUID();
       setExportId(null);
       setDialogPhase("selecting");
+      setIsPreparingExport(false);
       listExportsQuery.refetch();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -309,8 +351,11 @@ export function ExportDialog({ deckId, open, onClose }: ExportDialogProps) {
                         <span className="text-xs font-medium text-muted-foreground uppercase">
                           {FORMAT_LABELS[e.format] ?? e.format}
                         </span>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(e.createdAt).toLocaleDateString()}
+                        <span
+                          className="text-xs text-muted-foreground"
+                          data-testid={`recent-export-created-at-${e.exportId}`}
+                        >
+                          {formatExportCreatedAt(e.createdAt)}
                         </span>
                       </div>
                       <Button
@@ -335,10 +380,14 @@ export function ExportDialog({ deckId, open, onClose }: ExportDialogProps) {
           </Button>
           <Button
             onClick={handleExport}
-            disabled={triggerExportMutation.isPending}
+            disabled={triggerExportMutation.isPending || isPreparingExport}
             data-testid="export-button"
           >
-            {triggerExportMutation.isPending ? "Starting..." : "Export"}
+            {isPreparingExport
+              ? "Preparing..."
+              : triggerExportMutation.isPending
+                ? "Starting..."
+                : "Export"}
           </Button>
         </DialogFooter>
       </>

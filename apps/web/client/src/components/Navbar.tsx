@@ -4,29 +4,58 @@
  * Features: Sticky header, glass effect, smooth transitions
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'wouter';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Sparkles } from 'lucide-react';
+import { Menu, X, Sparkles, ChevronDown, Zap, Bot } from 'lucide-react';
 import { useTenant } from '@/contexts/TenantContext';
 
-const navLinks = [
+interface NavLink {
+  href: string;
+  label: string;
+}
+
+interface NavDropdown {
+  label: string;
+  items: Array<{ href: string; label: string; icon: typeof Zap; description: string }>;
+}
+
+type NavItem = NavLink | NavDropdown;
+
+function isDropdown(item: NavItem): item is NavDropdown {
+  return 'items' in item;
+}
+
+const navItems: NavItem[] = [
   { href: '/', label: 'Home' },
   { href: '/features', label: 'Features' },
   { href: '/workflows/gallery', label: 'Workflows' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/gallery', label: 'Gallery' },
-  { href: '/marketplace', label: 'Marketplace' },
+  {
+    label: 'Marketplace',
+    items: [
+      { href: '/marketplace', label: 'Skills', icon: Zap, description: 'Browse AI skills & prompts' },
+      { href: '/agencies/marketplace', label: 'Agencies', icon: Bot, description: 'Multi-agent team templates' },
+    ],
+  },
   { href: '/docs', label: 'Docs' },
   { href: '/blog', label: 'Blog' },
   { href: '/contact', label: 'Contact' },
 ];
 
+// Flatten for mobile menu
+const mobileLinks: NavLink[] = navItems.flatMap((item) =>
+  isDropdown(item) ? item.items.map((sub) => ({ href: sub.href, label: `${item.label} — ${sub.label}` })) : [item],
+);
+
 export function Navbar() {
   const [location] = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const { tenant } = useTenant();
 
   useEffect(() => {
@@ -35,6 +64,17 @@ export function Navbar() {
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // Hide navbar on auth pages
@@ -56,7 +96,7 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
           <Link href="/">
-            <motion.div 
+            <motion.div
               className="flex items-center gap-2 cursor-pointer"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -82,22 +122,83 @@ export function Navbar() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-1">
-            {navLinks.map((link) => (
-              <Link key={link.href} href={link.href}>
-                <motion.span
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                    location === link.href
-                      ? 'text-primary bg-primary/10'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                  }`}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  {link.label}
-                </motion.span>
-              </Link>
-            ))}
+          <div className="hidden lg:flex items-center gap-1" ref={dropdownRef}>
+            {navItems.map((item) => {
+              if (isDropdown(item)) {
+                const isActive = item.items.some((sub) => location === sub.href);
+                const isOpen = openDropdown === item.label;
+
+                return (
+                  <div key={item.label} className="relative">
+                    <motion.button
+                      className={`inline-flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                        isActive
+                          ? 'text-primary bg-primary/10'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      }`}
+                      onClick={() => setOpenDropdown(isOpen ? null : item.label)}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      {item.label}
+                      <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                    </motion.button>
+
+                    <AnimatePresence>
+                      {isOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute top-full left-0 mt-1 w-64 rounded-xl border bg-background/95 backdrop-blur-xl shadow-xl overflow-hidden"
+                        >
+                          {item.items.map((sub) => {
+                            const Icon = sub.icon;
+                            return (
+                              <Link key={sub.href} href={sub.href}>
+                                <div
+                                  className={`flex items-start gap-3 px-4 py-3 transition-colors cursor-pointer ${
+                                    location === sub.href
+                                      ? 'bg-primary/10 text-primary'
+                                      : 'hover:bg-muted/50'
+                                  }`}
+                                  onClick={() => setOpenDropdown(null)}
+                                >
+                                  <div className="mt-0.5 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                    <Icon className="h-4 w-4 text-primary" />
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-medium">{sub.label}</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">{sub.description}</p>
+                                  </div>
+                                </div>
+                              </Link>
+                            );
+                          })}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                );
+              }
+
+              return (
+                <Link key={item.href} href={item.href}>
+                  <motion.span
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
+                      location === item.href
+                        ? 'text-primary bg-primary/10'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    {item.label}
+                  </motion.span>
+                </Link>
+              );
+            })}
           </div>
 
           {/* CTA Buttons */}
@@ -108,8 +209,8 @@ export function Navbar() {
               </Button>
             </Link>
             <Link href="/signup">
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 className="bg-gradient-to-r from-violet-500 to-teal-400 hover:from-violet-600 hover:to-teal-500 text-white shadow-lg shadow-violet-500/25"
               >
                 Get Started Free
@@ -142,7 +243,7 @@ export function Navbar() {
             className="lg:hidden bg-background/95 backdrop-blur-xl border-b border-border/50"
           >
             <div className="container mx-auto px-4 py-4 space-y-2">
-              {navLinks.map((link) => (
+              {mobileLinks.map((link) => (
                 <Link key={link.href} href={link.href}>
                   <motion.div
                     className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
@@ -164,7 +265,7 @@ export function Navbar() {
                   </Button>
                 </Link>
                 <Link href="/signup">
-                  <Button 
+                  <Button
                     className="w-full bg-gradient-to-r from-violet-500 to-teal-400 text-white"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >

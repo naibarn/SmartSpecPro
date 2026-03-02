@@ -172,7 +172,7 @@ async def get_current_user(
             )
 
     if user is None:
-        logger.warning("token_user_not_found", user_id=user_id)
+        logger.warning("token_user_not_found", user_id=user_id_str, open_id=open_id)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",

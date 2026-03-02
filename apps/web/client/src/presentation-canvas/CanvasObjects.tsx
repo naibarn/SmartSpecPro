@@ -14,9 +14,33 @@ interface CanvasObjectsProps {
   interactionScale: number;
   canvasWidth: number;
   canvasHeight: number;
+  showElementFrames?: boolean;
 }
 
 const MIN_LINE_HEIGHT_PX = 2;
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function resolveImageRenderProps(element: PresentationElement): {
+  fit: "contain" | "cover" | "fill";
+  positionX: number;
+  positionY: number;
+  zoom: number;
+} {
+  if (element.type !== "image") {
+    return { fit: "contain", positionX: 50, positionY: 50, zoom: 1 };
+  }
+
+  const fit = (element.imageFit === "cover" || element.imageFit === "fill")
+    ? element.imageFit
+    : "contain";
+  const positionX = clamp(Number(element.imagePositionX ?? 50), 0, 100);
+  const positionY = clamp(Number(element.imagePositionY ?? 50), 0, 100);
+  const zoom = clamp(Number(element.imageZoom ?? 1), 0.5, 3);
+  return { fit, positionX, positionY, zoom };
+}
 
 function getElementDisplayText(element: PresentationElement): string {
   if (element.type === "text") {
@@ -38,10 +62,13 @@ function getElementAriaLabel(element: PresentationElement, index: number): strin
   return `Select canvas element ${index + 1}: ${getElementDisplayText(element)}`;
 }
 
-function getBaseElementClass(isSelected: boolean): string {
+function getBaseElementClass(isSelected: boolean, showElementFrames: boolean): string {
+  const idleFrameClass = showElementFrames
+    ? "border-slate-300 hover:border-slate-400"
+    : "border-transparent hover:border-transparent";
   return `absolute rounded border text-left transition ${isSelected
     ? "border-primary ring-2 ring-primary/40 shadow"
-    : "border-slate-300 hover:border-slate-400"
+    : idleFrameClass
     }`;
 }
 
@@ -91,6 +118,7 @@ function renderElementBody(element: PresentationElement): ReactElement {
 
   if (element.type === "image") {
     const hasSource = Boolean(element.src?.trim());
+    const imageRender = resolveImageRenderProps(element);
     // Inline SVG graphic — transparent background, color-tinted
     if (element.svgContent) {
       const color = element.svgColor || "#ffffff";
@@ -109,7 +137,13 @@ function renderElementBody(element: PresentationElement): ReactElement {
           <img
             src={element.src}
             alt={element.alt || "Image"}
-            className="h-full w-full object-contain"
+            className="h-full w-full"
+            style={{
+              objectFit: imageRender.fit,
+              objectPosition: `${imageRender.positionX}% ${imageRender.positionY}%`,
+              transform: `scale(${imageRender.zoom})`,
+              transformOrigin: `${imageRender.positionX}% ${imageRender.positionY}%`,
+            }}
             draggable={false}
           />
         ) : (
@@ -189,6 +223,7 @@ export function CanvasObjects({
   interactionScale,
   canvasWidth,
   canvasHeight,
+  showElementFrames = true,
 }: CanvasObjectsProps) {
   const dragStateRef = useRef<PointerDragState | null>(null);
   const stageScale = Math.max(0.0001, interactionScale);
@@ -281,7 +316,7 @@ export function CanvasObjects({
           key={element.id}
           type="button"
           data-canvas-object="true"
-          className={getBaseElementClass(selectedElementIds.includes(element.id))}
+          className={getBaseElementClass(selectedElementIds.includes(element.id), showElementFrames)}
           style={{
             left: `${(element.x / canvasWidth) * 100}%`,
             top: `${(element.y / canvasHeight) * 100}%`,
@@ -301,8 +336,16 @@ export function CanvasObjects({
             if (event.button !== 0) {
               return;
             }
+            if (event.altKey) {
+              return;
+            }
             event.stopPropagation();
-            onSelectElement(element.id, { additive: event.shiftKey });
+            const isAlreadySelected = selectedElementIds.includes(element.id);
+            if (event.shiftKey) {
+              onSelectElement(element.id, { additive: true });
+            } else if (!isAlreadySelected) {
+              onSelectElement(element.id);
+            }
             dragStateRef.current = {
               mode: "move",
               pointerId: event.pointerId,
@@ -317,9 +360,17 @@ export function CanvasObjects({
             event.preventDefault();
           }}
           onClick={(event) => {
+            if (event.altKey) {
+              return;
+            }
             event.stopPropagation();
             if (event.detail === 0) {
-              onSelectElement(element.id, { additive: event.shiftKey });
+              const isAlreadySelected = selectedElementIds.includes(element.id);
+              if (event.shiftKey) {
+                onSelectElement(element.id, { additive: true });
+              } else if (!isAlreadySelected) {
+                onSelectElement(element.id);
+              }
             }
           }}
           aria-label={getElementAriaLabel(element, index)}

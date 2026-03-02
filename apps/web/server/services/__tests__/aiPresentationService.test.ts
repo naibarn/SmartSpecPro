@@ -3,7 +3,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // ── Mock hoisting ────────────────────────────────────────────
 
 const {
-  mockInvokeLLM,
+  mockExecuteWithFallback,
+  mockResolveProviders,
   mockCallLLMStructured,
   mockGetSkillByIdAsync,
   mockGenerateImageAsync,
@@ -19,8 +20,10 @@ const {
   mockRedisDel,
   mockRedisExpire,
   mockDbTransaction,
+  mockGetModelsByTypeAsync,
 } = vi.hoisted(() => ({
-  mockInvokeLLM: vi.fn(),
+  mockExecuteWithFallback: vi.fn(),
+  mockResolveProviders: vi.fn(),
   mockCallLLMStructured: vi.fn(),
   mockGetSkillByIdAsync: vi.fn(),
   mockGenerateImageAsync: vi.fn(),
@@ -36,10 +39,12 @@ const {
   mockRedisDel: vi.fn(),
   mockRedisExpire: vi.fn(),
   mockDbTransaction: vi.fn(),
+  mockGetModelsByTypeAsync: vi.fn(),
 }));
 
-vi.mock("../../_core/llm", () => ({
-  invokeLLM: mockInvokeLLM,
+vi.mock("../llmRouter", () => ({
+  executeWithFallback: mockExecuteWithFallback,
+  resolveProviders: mockResolveProviders,
 }));
 
 vi.mock("../callLLMStructured", () => ({
@@ -81,6 +86,10 @@ vi.mock("../aiPresentationLayoutEngine", () => ({
   generateSlide: mockGenerateSlide,
 }));
 
+vi.mock("../modelRegistry", () => ({
+  getModelsByTypeAsync: mockGetModelsByTypeAsync,
+}));
+
 vi.mock("../redis", () => ({
   getRedisClient: () => ({
     set: mockRedisSet,
@@ -102,6 +111,7 @@ import {
   generateAIDraft,
   estimateCreditCost,
   buildArticlePrompt,
+  computeImagePollTimeoutMs,
 } from "../aiPresentationService";
 import type { GenerateAIDraftInput } from "@shared/presentation/aiTypes";
 import type { PresentationActor } from "../presentationService";
@@ -141,9 +151,25 @@ const MOCK_SLIDE_CONTENT = {
 };
 
 function setupHappyPath() {
+  mockResolveProviders.mockResolvedValue([
+    {
+      providerId: 1,
+      providerName: "test-provider",
+      baseUrl: "https://example.com",
+      apiKey: "test-key",
+      providerModelId: "claude-sonnet-4-6",
+      pricingInput: 0,
+      pricingOutput: 0,
+      isFree: true,
+      priority: 0,
+    },
+  ]);
   mockHasEnoughCredits.mockResolvedValue(true);
   mockRedisSet.mockResolvedValue("OK");
-  mockRedisGet.mockResolvedValue(null); // no cancellation
+  mockRedisGet.mockImplementation(async (key: string) => {
+    if (key.includes("ai_draft_lock:")) return "task-123";
+    return null; // no cancellation
+  });
   mockRedisDel.mockResolvedValue(1);
   mockRedisExpire.mockResolvedValue(1);
 
@@ -154,12 +180,17 @@ function setupHappyPath() {
     executionMode: "llm-only",
   });
 
-  mockInvokeLLM.mockResolvedValue({
-    id: "resp1",
-    created: Date.now(),
-    model: "claude-sonnet-4-6",
-    choices: [{ index: 0, message: { role: "assistant", content: MOCK_ARTICLE }, finish_reason: "stop" }],
-    usage: { prompt_tokens: 100, completion_tokens: 200 },
+  mockExecuteWithFallback.mockResolvedValue({
+    type: "success",
+    providerId: 1,
+    providerName: "test-provider",
+    response: {
+      id: "resp1",
+      created: Date.now(),
+      model: "claude-sonnet-4-6",
+      choices: [{ index: 0, message: { role: "assistant", content: MOCK_ARTICLE }, finish_reason: "stop" }],
+      usage: { prompt_tokens: 100, completion_tokens: 200 },
+    },
   });
 
   mockCallLLMStructured.mockResolvedValue({
@@ -180,7 +211,28 @@ function setupHappyPath() {
 
   mockPickRandomSvg.mockReturnValue(MOCK_SVG);
   mockGenerateSlide.mockReturnValue({ slideContent: MOCK_SLIDE_CONTENT, warnings: [] });
-  mockDbTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<void>) => fn({}));
+  mockGetModelsByTypeAsync.mockResolvedValue([
+    {
+      id: "flux-2.0",
+      type: "image",
+      name: "Flux 2.0",
+      provider: "kie.ai",
+      description: "Fast and creative image generation",
+      creditCost: 8,
+      isEnabled: true,
+      priority: 0,
+      configJson: { generateType: "text-to-image" },
+    },
+  ]);
+  mockDbTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<void>) => fn({
+    select: () => ({
+      from: () => ({
+        where: () => ({
+          limit: async () => [{ version: 0 }],
+        }),
+      }),
+    }),
+  }));
   mockAddSlideToDeck.mockResolvedValue({ id: 1, deckId: 1 });
 }
 
@@ -200,6 +252,16 @@ describe("estimateCreditCost", () => {
   it("calculates for 5 slides", () => {
     // (30 + 10 + 75*5 + 40*5) * 1.2 = (30 + 10 + 375 + 200) * 1.2 = 615 * 1.2 = 738
     expect(estimateCreditCost(5)).toBe(738);
+  });
+});
+
+describe("computeImagePollTimeoutMs", () => {
+  it("increases timeout when requested slide count increases", () => {
+    const timeoutForOneSlide = computeImagePollTimeoutMs(1);
+    const timeoutForThirtySlides = computeImagePollTimeoutMs(30);
+
+    expect(timeoutForOneSlide).toBeGreaterThanOrEqual(5000);
+    expect(timeoutForThirtySlides).toBeGreaterThan(timeoutForOneSlide);
   });
 });
 
@@ -227,7 +289,7 @@ describe("generateAIDraft - happy path", () => {
 
     // Phase 1: Article generation
     expect(mockGetSkillByIdAsync).toHaveBeenCalledWith("general-article-writer");
-    expect(mockInvokeLLM).toHaveBeenCalled();
+    expect(mockExecuteWithFallback).toHaveBeenCalled();
 
     // Phase 2: Split
     expect(mockCallLLMStructured).toHaveBeenCalled();
@@ -265,9 +327,32 @@ describe("generateAIDraft - Phase 1", () => {
     expect(mockGetSkillByIdAsync).toHaveBeenCalledWith("general-article-writer");
   });
 
-  it("fails immediately when invokeLLM throws", async () => {
+  it("uses skill defaultModel when calling text LLM", async () => {
     setupHappyPath();
-    mockInvokeLLM.mockRejectedValueOnce(new Error("LLM unavailable"));
+    mockGetSkillByIdAsync.mockResolvedValueOnce({
+      id: "general-article-writer",
+      name: "General Article Writer",
+      systemPrompt: "You are a versatile article writer.",
+      defaultModel: "gpt-4o-mini",
+      executionMode: "llm-only",
+    });
+
+    await generateAIDraft(buildMockInput(), buildMockActor(), "test-token", "task-123");
+
+    expect(mockExecuteWithFallback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "gpt-4o-mini",
+      }),
+    );
+  });
+
+  it("fails immediately when primary LLM call fails", async () => {
+    setupHappyPath();
+    mockExecuteWithFallback.mockResolvedValueOnce({
+      type: "error",
+      error: "LLM unavailable",
+      statusCode: 503,
+    });
 
     await generateAIDraft(buildMockInput(), buildMockActor(), "test-token", "task-123");
 
@@ -290,6 +375,7 @@ describe("generateAIDraft - Phase 2", () => {
     await generateAIDraft(buildMockInput(), buildMockActor(), "test-token", "task-123");
     expect(mockCallLLMStructured).toHaveBeenCalled();
     const callArgs = mockCallLLMStructured.mock.calls[0][0];
+    expect(callArgs.userMessage).toContain("Target slide count: 3");
     expect(callArgs.userMessage).toContain("Section One");
     expect(callArgs.userMessage).toContain("Section Two");
   });
@@ -310,6 +396,38 @@ describe("generateAIDraft - Phase 2", () => {
     const firstSlideCall = mockGenerateSlide.mock.calls[0][0];
     expect(firstSlideCall.slideData.templateId).toBe("hero_center");
   });
+
+  it("trims slides when structured output exceeds requested numSlides", async () => {
+    setupHappyPath();
+    await generateAIDraft(
+      buildMockInput({ numSlides: 2 }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    expect(mockGenerateSlide).toHaveBeenCalledTimes(2);
+    expect(mockAddSlideToDeck).toHaveBeenCalledTimes(2);
+  });
+
+  it("pads slides when structured output is lower than requested numSlides", async () => {
+    setupHappyPath();
+    mockCallLLMStructured.mockResolvedValueOnce({
+      data: MOCK_SLIDES.slice(0, 2),
+      tokensUsed: 300,
+      creditsUsed: 10,
+    });
+
+    await generateAIDraft(
+      buildMockInput({ numSlides: 4 }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    expect(mockGenerateSlide).toHaveBeenCalledTimes(4);
+    expect(mockAddSlideToDeck).toHaveBeenCalledTimes(4);
+  });
 });
 
 describe("generateAIDraft - Phase 3+4", () => {
@@ -324,14 +442,25 @@ describe("generateAIDraft - Phase 3+4", () => {
     setupHappyPath();
     const input = buildMockInput({ imageSkillId: "image-prompt-engineer" });
 
-    // First invokeLLM call succeeds (Phase 1 article), subsequent ones fail (image enhancement)
-    mockInvokeLLM
+    // First text-LLM call succeeds (Phase 1 article), subsequent ones fail (image enhancement)
+    mockExecuteWithFallback
       .mockResolvedValueOnce({
-        id: "resp1", created: Date.now(), model: "test",
-        choices: [{ index: 0, message: { role: "assistant", content: MOCK_ARTICLE }, finish_reason: "stop" }],
-        usage: { prompt_tokens: 100, completion_tokens: 200 },
+        type: "success",
+        providerId: 1,
+        providerName: "test-provider",
+        response: {
+          id: "resp1",
+          created: Date.now(),
+          model: "test",
+          choices: [{ index: 0, message: { role: "assistant", content: MOCK_ARTICLE }, finish_reason: "stop" }],
+          usage: { prompt_tokens: 100, completion_tokens: 200 },
+        },
       })
-      .mockRejectedValue(new Error("Image skill LLM failed"));
+      .mockResolvedValue({
+        type: "error",
+        error: "Image skill LLM failed",
+        statusCode: 503,
+      });
 
     await generateAIDraft(input, buildMockActor(), "test-token", "task-123");
 
@@ -348,6 +477,85 @@ describe("generateAIDraft - Phase 3+4", () => {
     // Layout engine should be called with null imageUrl
     const slideCall = mockGenerateSlide.mock.calls[0][0];
     expect(slideCall.imageUrl).toBeNull();
+  });
+
+  it("applies imagePromptContext and referenceImageUrls to image requests", async () => {
+    setupHappyPath();
+
+    await generateAIDraft(
+      buildMockInput({
+        imagePromptContext: "Thai child, Thai family style",
+        referenceImageUrls: ["/uploads/ref-1.jpg"],
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    expect(mockGenerateImageAsync).toHaveBeenCalled();
+    const firstCall = mockGenerateImageAsync.mock.calls[0][0];
+    expect(firstCall.prompt).toContain("Additional visual requirements:");
+    expect(firstCall.prompt).toContain("Thai child, Thai family style");
+    expect(firstCall.referenceImageUrls).toEqual(["/uploads/ref-1.jpg"]);
+  });
+
+  it("maps referenceImageUrls into extraParams when model declares image_urls input field", async () => {
+    setupHappyPath();
+    mockGetModelsByTypeAsync.mockResolvedValueOnce([
+      {
+        id: "google-banana-2",
+        type: "image",
+        name: "Google Banana 2",
+        provider: "kie.ai",
+        description: "Image model",
+        creditCost: 10,
+        isEnabled: true,
+        priority: 0,
+        configJson: {
+          generateType: "text-to-image",
+          inputFields: [
+            { key: "image_urls", type: "image_urls" },
+          ],
+        },
+      },
+    ]);
+
+    await generateAIDraft(
+      buildMockInput({
+        referenceImageUrls: ["/uploads/ref-1.jpg", "https://cdn.example.com/ref-2.jpg"],
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    expect(mockGenerateImageAsync).toHaveBeenCalled();
+    const firstCall = mockGenerateImageAsync.mock.calls[0][0];
+    expect(firstCall.extraParams).toMatchObject({
+      image_urls: ["/uploads/ref-1.jpg", "https://cdn.example.com/ref-2.jpg"],
+    });
+    expect(firstCall.referenceImageUrls).toEqual([
+      "/uploads/ref-1.jpg",
+      "https://cdn.example.com/ref-2.jpg",
+    ]);
+  });
+
+  it("uses canvas aspect ratio for image generation when provided", async () => {
+    setupHappyPath();
+
+    await generateAIDraft(
+      buildMockInput({
+        canvasWidth: 720,
+        canvasHeight: 1280,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    expect(mockGenerateImageAsync).toHaveBeenCalled();
+    const firstCall = mockGenerateImageAsync.mock.calls[0][0];
+    expect(firstCall.aspectRatio).toBe("9:16");
   });
 });
 
@@ -368,6 +576,69 @@ describe("generateAIDraft - Phase 6", () => {
     );
     expect(versions).toEqual([0, 1, 2]);
   });
+
+  it("stores canvas size in generated slide content", async () => {
+    setupHappyPath();
+    await generateAIDraft(
+      buildMockInput({
+        canvasWidth: 1024,
+        canvasHeight: 768,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const firstInsertPayload = mockAddSlideToDeck.mock.calls[0][0] as {
+      slideContent: { canvas?: { preset?: string; width: number; height: number } };
+    };
+    expect(firstInsertPayload.slideContent.canvas).toEqual({
+      preset: "4:3",
+      width: 1024,
+      height: 768,
+    });
+  });
+
+  it("stores image prompt and model id in generated image elements", async () => {
+    setupHappyPath();
+    mockGenerateSlide.mockImplementation(({ imageUrl }: { imageUrl?: string | null }) => ({
+      slideContent: {
+        elements: [
+          {
+            id: "img-1",
+            type: "image",
+            x: 0,
+            y: 0,
+            width: 640,
+            height: 360,
+            src: imageUrl || "https://cdn.example.com/fallback.jpg",
+            alt: "Generated image",
+          },
+        ],
+        background: { fill: "#000000" },
+      },
+      warnings: [],
+    }));
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 1,
+        referenceImageUrls: ["/uploads/reference-seed.jpg"],
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const firstInsertPayload = mockAddSlideToDeck.mock.calls[0][0] as {
+      slideContent: { elements: Array<Record<string, unknown>> };
+    };
+    const firstImage = firstInsertPayload.slideContent.elements.find((element) => element.type === "image");
+    expect(firstImage).toBeDefined();
+    expect(firstImage?.imagePrompt).toContain("test image 1");
+    expect(firstImage?.imageModelId).toBe("flux-2.0");
+    expect(firstImage?.imageReferenceUrls).toEqual(["/uploads/reference-seed.jpg"]);
+  });
 });
 
 describe("generateAIDraft - error handling", () => {
@@ -377,7 +648,7 @@ describe("generateAIDraft - error handling", () => {
 
     await generateAIDraft(buildMockInput(), buildMockActor(), "test-token", "task-123");
 
-    expect(mockInvokeLLM).not.toHaveBeenCalled();
+    expect(mockExecuteWithFallback).not.toHaveBeenCalled();
     expect(mockCallLLMStructured).not.toHaveBeenCalled();
 
     const progressCalls = mockRedisSet.mock.calls.filter(
@@ -385,6 +656,11 @@ describe("generateAIDraft - error handling", () => {
     );
     const lastProgress = JSON.parse(progressCalls[progressCalls.length - 1][1] as string);
     expect(lastProgress.error.code).toBe("PRESENTATION_AI_INSUFFICIENT_CREDITS");
+
+    const delCall = mockRedisDel.mock.calls.find(
+      (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("ai_draft_lock:"),
+    );
+    expect(delCall).toBeDefined();
   });
 });
 
@@ -410,35 +686,25 @@ describe("generateAIDraft - cancellation", () => {
 });
 
 describe("generateAIDraft - concurrency control", () => {
-  it("acquires Redis lock at start", async () => {
+  it("does not acquire Redis lock in service (router owns lock)", async () => {
     setupHappyPath();
     await generateAIDraft(buildMockInput(), buildMockActor(), "test-token", "task-123");
 
     const lockCall = mockRedisSet.mock.calls.find(
       (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("ai_draft_lock:"),
     );
-    expect(lockCall).toBeDefined();
+    expect(lockCall).toBeUndefined();
   });
 
-  it("rejects when lock already exists", async () => {
+  it("stores userId in progress payload for ownership checks", async () => {
     setupHappyPath();
-    // Lock acquisition returns null (already held)
-    mockRedisSet.mockImplementation(async (...args: unknown[]) => {
-      if (typeof args[0] === "string" && (args[0] as string).includes("ai_draft_lock:") && args[4] === "NX") {
-        return null;
-      }
-      return "OK";
-    });
-
     await generateAIDraft(buildMockInput(), buildMockActor(), "test-token", "task-123");
-
-    expect(mockInvokeLLM).not.toHaveBeenCalled();
 
     const progressCalls = mockRedisSet.mock.calls.filter(
       (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("ai_draft_progress"),
     );
     const lastProgress = JSON.parse(progressCalls[progressCalls.length - 1][1] as string);
-    expect(lastProgress.error).toBeDefined();
+    expect(lastProgress.userId).toBe(1);
   });
 
   it("releases lock on completion", async () => {
@@ -453,7 +719,11 @@ describe("generateAIDraft - concurrency control", () => {
 
   it("releases lock on error", async () => {
     setupHappyPath();
-    mockInvokeLLM.mockRejectedValueOnce(new Error("fail"));
+    mockExecuteWithFallback.mockResolvedValueOnce({
+      type: "error",
+      error: "fail",
+      statusCode: 500,
+    });
 
     await generateAIDraft(buildMockInput(), buildMockActor(), "test-token", "task-123");
 
@@ -461,6 +731,21 @@ describe("generateAIDraft - concurrency control", () => {
       (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("ai_draft_lock:"),
     );
     expect(delCall).toBeDefined();
+  });
+
+  it("does not release lock if another task owns it", async () => {
+    setupHappyPath();
+    mockRedisGet.mockImplementation(async (key: string) => {
+      if (key.includes("ai_draft_lock:")) return "task-other";
+      return null;
+    });
+
+    await generateAIDraft(buildMockInput(), buildMockActor(), "test-token", "task-123");
+
+    const delCall = mockRedisDel.mock.calls.find(
+      (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("ai_draft_lock:"),
+    );
+    expect(delCall).toBeUndefined();
   });
 });
 

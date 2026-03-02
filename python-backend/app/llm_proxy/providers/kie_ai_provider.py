@@ -5,7 +5,7 @@ import asyncio
 import time
 import structlog
 from typing import Dict, Any, Optional
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 
 logger = structlog.get_logger()
 
@@ -129,15 +129,67 @@ class KieAIProvider:
 
     BASE_URL = "https://api.kie.ai/api/v1"
 
+    @classmethod
+    def normalize_base_url(cls, base_url: Optional[str]) -> str:
+        """
+        Normalize Kie API base URL to a valid API host/path.
+
+        Handles common misconfigurations like:
+        - https://kie.ai/api/v1  -> https://api.kie.ai/api/v1
+        - https://api.kie.ai     -> https://api.kie.ai/api/v1
+        - https://api.kie.ai/api/v1/jobs -> https://api.kie.ai/api/v1
+        """
+        raw = (base_url or cls.BASE_URL).strip()
+        if not raw:
+            return cls.BASE_URL
+
+        # Ensure URL has scheme for urlparse to work predictably
+        if not raw.startswith(("http://", "https://")):
+            raw = f"https://{raw}"
+
+        parsed = urlparse(raw)
+        scheme = parsed.scheme or "https"
+        netloc = parsed.netloc
+        path = parsed.path or ""
+
+        # Handle values like "api.kie.ai/api/v1" that may end up in path
+        if not netloc and path:
+            parts = path.split("/", 1)
+            netloc = parts[0]
+            path = f"/{parts[1]}" if len(parts) > 1 else ""
+
+        lowered_host = netloc.lower()
+        if lowered_host in {"kie.ai", "www.kie.ai"}:
+            netloc = "api.kie.ai"
+
+        normalized_path = path.rstrip("/")
+        if normalized_path in {"", "/"}:
+            normalized_path = "/api/v1"
+        elif normalized_path == "/v1":
+            normalized_path = "/api/v1"
+        elif normalized_path == "/api/v1/jobs":
+            normalized_path = "/api/v1"
+        elif normalized_path.startswith("/api/v1/jobs/"):
+            normalized_path = f"/api/v1{normalized_path[len('/api/v1/jobs'):]}"
+
+        normalized = urlunparse((scheme, netloc, normalized_path, "", "", ""))
+        return normalized.rstrip("/")
+
     def __init__(self, api_key: str, base_url: str = None, callback_url: str = None):
         self.api_key = api_key
-        self.base_url = base_url or self.BASE_URL
-        # Remove trailing slash if present
-        self.base_url = self.base_url.rstrip("/")
+        raw_base_url = base_url or self.BASE_URL
+        self.base_url = self.normalize_base_url(raw_base_url)
         # Callback URL for async task completion notifications
         self.callback_url = callback_url
         # Increased timeout to 600s to handle longer generation times
         self.client = httpx.AsyncClient(timeout=600.0)
+
+        if raw_base_url and self.base_url != str(raw_base_url).rstrip("/"):
+            logger.warning(
+                "kie_ai_base_url_normalized",
+                raw_base_url=raw_base_url,
+                normalized_base_url=self.base_url,
+            )
 
         if callback_url:
             logger.info("kie_ai_callback_configured", callback_url=callback_url)

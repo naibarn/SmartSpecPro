@@ -25,6 +25,14 @@ from app.tasks.sandbox_maintenance_tasks import (
     cleanup_orphan_sandboxes,
     detect_stuck_sandbox_jobs,
 )
+from app.tasks.agency_creator_task import (
+    create_agency_discover_task,
+    create_agency_design_task,
+)
+try:
+    from app.tasks.presentation_render import render_presentation
+except ModuleNotFoundError:
+    render_presentation = None
 
 __all__ = [
     "generate_image_task",
@@ -44,4 +52,9 @@ __all__ = [
     "cleanup_expired_sandbox_jobs",
     "cleanup_orphan_sandboxes",
     "detect_stuck_sandbox_jobs",
+    "create_agency_discover_task",
+    "create_agency_design_task",
 ]
+
+if render_presentation is not None:
+    __all__.append("render_presentation")

@@ -208,6 +208,13 @@ export const presentationImageElementSchema = z.object({
   rotation: presentationElementRotationSchema.optional(),
   src: z.string().max(4_096),
   alt: z.string().max(512),
+  imageFit: z.enum(["contain", "cover", "fill"]).optional(),
+  imagePositionX: z.number().finite().min(0).max(100).optional(),
+  imagePositionY: z.number().finite().min(0).max(100).optional(),
+  imageZoom: z.number().finite().min(0.5).max(3).optional(),
+  imagePrompt: z.string().max(4_000).optional(),
+  imageModelId: z.string().max(256).optional(),
+  imageReferenceUrls: z.array(z.string().max(2_048)).max(5).optional(),
   svgContent: z.string().max(8_192).optional(),
   svgColor: z.string().max(32).optional(),
 }).strict();
@@ -278,6 +285,8 @@ export const resolvedAudioTrackSchema = z.object({
 export const projectAudioTrackInputSchema = z.object({
   libraryItemId: z.number().int().positive(),
   volume: z.number().finite().min(0).max(1),
+  startAtMs: z.number().int().min(0).optional(),
+  endAtMs: z.number().int().min(0).nullable().optional(),
   loop: z.boolean(),
   fadeOutMs: z.number().int().min(0).nullable().optional(),
 }).strict();
@@ -286,6 +295,8 @@ export const projectAudioTrackInputSchema = z.object({
 export const resolvedProjectAudioTrackSchema = z.object({
   url: z.string().url(),
   volume: z.number().finite().min(0).max(1),
+  startAtMs: z.number().int().min(0).optional(),
+  endAtMs: z.number().int().min(0).nullable().optional(),
   loop: z.boolean(),
   fadeOutMs: z.number().int().min(0).nullable().optional(),
 }).strict();
@@ -370,8 +381,8 @@ export const presentationExportStatusResultSchema = z.object({
   progressPct: z.number().int().min(0).max(100).default(0),
   /** Human-readable current stage, e.g. "Rendering slide 3 of 10" */
   stage: z.string().max(120).nullable().optional(),
-  /** Presigned HTTPS download URL. Only present when status is "done". */
-  downloadUrl: z.string().url().startsWith("https://").nullable().optional(),
+  /** Download URL (absolute presigned HTTPS/HTTP or relative app path). Only present when status is "done". */
+  downloadUrl: z.string().max(8_192).regex(/^(https?:\/\/|\/).+/).nullable().optional(),
   /** Error description. Only present when status is "error". */
   errorMessage: z.string().max(1000).nullable().optional(),
   /** Output file size in bytes. Only present when status is "done". */

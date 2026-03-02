@@ -11,6 +11,15 @@ import { JobCard } from '@/components/chat/JobCard';
 import { GalleryTemplateCard } from '@/components/workflow/GalleryTemplateCard';
 import { GalleryDetailDrawer } from '@/components/workflow/GalleryDetailDrawer';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { toast } from 'sonner';
+import {
   GitBranch,
   Plus,
   Search,
@@ -25,6 +34,11 @@ import {
   FileCode,
   Layers,
   Play,
+  Globe,
+  Loader2,
+  Send,
+  AlertTriangle,
+  X,
 } from 'lucide-react';
 
 type WorkflowStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
@@ -61,9 +75,36 @@ export default function Workflows() {
   const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
+  const [publishTarget, setPublishTarget] = useState<SavedWorkflow | null>(null);
+
+  const utils = trpc.useUtils();
+
+  const requestPublishMut = trpc.workflow.requestPublishTemplate.useMutation({
+    onSuccess: () => {
+      toast.success('Your workflow has been submitted for review');
+      setPublishTarget(null);
+      utils.workflow.getMyTemplateSubmissions.invalidate();
+    },
+    onError: (err) => {
+      toast.error(err.message);
+    },
+  });
+
+  const cancelPublishMut = trpc.workflow.cancelPublishRequest.useMutation({
+    onSuccess: () => {
+      toast.success('Publish request cancelled');
+      utils.workflow.getMyTemplateSubmissions.invalidate();
+    },
+    onError: (err) => {
+      toast.error(err.message);
+    },
+  });
 
   // Fetch saved workflows (user's drafts)
   const { data: savedWorkflows } = trpc.workflow.listSaved.useQuery({});
+
+  // Fetch user's template submissions (to show status on cards)
+  const { data: mySubmissions } = trpc.workflow.getMyTemplateSubmissions.useQuery();
 
   // Fetch recent executions
   const { data: executionsData } = trpc.workflow.list.useQuery({
@@ -78,6 +119,15 @@ export default function Workflows() {
   });
 
   const executions = executionsData?.workflows || [];
+
+  // Build template status lookup by name (matches requestPublishTemplate upsert logic)
+  const templateStatusMap = new Map<string, { id: number; status: string; rejectionReason: string | null }>();
+  for (const sub of mySubmissions ?? []) {
+    // Keep the most recent submission per name
+    if (!templateStatusMap.has(sub.name)) {
+      templateStatusMap.set(sub.name, { id: sub.id, status: sub.status, rejectionReason: sub.rejectionReason });
+    }
+  }
 
   // Filter saved workflows by search query
   const filteredSaved = (savedWorkflows || []).filter((w: SavedWorkflow) =>
@@ -174,6 +224,7 @@ export default function Workflows() {
                 const cfg = STATUS_CONFIG[wf.status] || STATUS_CONFIG.draft;
                 const StatusIcon = cfg.icon;
                 const nodeCount = wf.workflowJson?.nodes?.length ?? 0;
+                const tplStatus = templateStatusMap.get(wf.name);
 
                 return (
                   <article
@@ -193,11 +244,44 @@ export default function Workflows() {
                       <h3 className="font-semibold text-sm line-clamp-1 flex-1 pr-2">
                         {wf.name}
                       </h3>
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.bg} ${cfg.color}`}>
-                        <StatusIcon className="h-3 w-3" />
-                        {cfg.label}
-                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {/* Template publish status badge */}
+                        {tplStatus?.status === 'pending_review' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">
+                            <Clock className="h-2.5 w-2.5" />
+                            Pending
+                          </span>
+                        )}
+                        {tplStatus?.status === 'published' && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-700">
+                            <Globe className="h-2.5 w-2.5" />
+                            In Gallery
+                          </span>
+                        )}
+                        {tplStatus?.status === 'rejected' && (
+                          <span
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-700"
+                            title={tplStatus.rejectionReason ? `Rejected: ${tplStatus.rejectionReason}` : 'Rejected'}
+                          >
+                            <XCircle className="h-2.5 w-2.5" />
+                            Rejected
+                          </span>
+                        )}
+                        {/* Workflow build status */}
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.bg} ${cfg.color}`}>
+                          <StatusIcon className="h-3 w-3" />
+                          {cfg.label}
+                        </span>
+                      </div>
                     </div>
+
+                    {/* Rejection reason banner */}
+                    {tplStatus?.status === 'rejected' && tplStatus.rejectionReason && (
+                      <div className="flex items-start gap-1.5 mb-2 p-2 rounded-md bg-red-50 border border-red-200">
+                        <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0 mt-0.5" />
+                        <p className="text-[11px] text-red-700 line-clamp-2">{tplStatus.rejectionReason}</p>
+                      </div>
+                    )}
 
                     {wf.description && (
                       <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
@@ -210,7 +294,36 @@ export default function Workflows() {
                         <Layers className="h-3 w-3" />
                         {nodeCount} nodes
                       </span>
-                      <span>{formatDate(wf.updatedAt)}</span>
+                      <div className="flex items-center gap-2">
+                        {/* Pending → cancel button */}
+                        {tplStatus?.status === 'pending_review' && (
+                          <button
+                            title="Cancel publish request"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-red-100 text-red-500"
+                            disabled={cancelPublishMut.isPending}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              cancelPublishMut.mutate({ templateId: tplStatus.id });
+                            }}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        {/* No pending template + has nodes → publish button */}
+                        {nodeCount > 0 && tplStatus?.status !== 'pending_review' && tplStatus?.status !== 'published' && (
+                          <button
+                            title={tplStatus?.status === 'rejected' ? 'Re-submit for Review' : 'Publish to Gallery'}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-blue-100 text-blue-600"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPublishTarget(wf);
+                            }}
+                          >
+                            <Globe className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        <span>{formatDate(wf.updatedAt)}</span>
+                      </div>
                     </div>
                   </article>
                 );
@@ -325,6 +438,51 @@ export default function Workflows() {
           onClose={() => setSelectedTemplateId(null)}
         />
       </main>
+
+      {/* Publish to Gallery Dialog */}
+      <Dialog open={!!publishTarget} onOpenChange={(open) => { if (!open) setPublishTarget(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Globe className="h-5 w-5 text-blue-600" />
+              Publish to Gallery
+            </DialogTitle>
+            <DialogDescription>
+              Submit <strong>{publishTarget?.name}</strong> for admin review. Once approved,
+              it will be available in the public Workflow Gallery for all users.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border bg-blue-50/50 p-3 text-sm text-blue-800">
+            <p className="font-medium mb-1">What happens next:</p>
+            <ul className="list-disc list-inside space-y-0.5 text-xs">
+              <li>Your workflow will be submitted as a template</li>
+              <li>An admin will review it for quality and safety</li>
+              <li>You'll be notified when it's approved or if changes are needed</li>
+            </ul>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPublishTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              disabled={requestPublishMut.isPending}
+              onClick={() => {
+                if (publishTarget) {
+                  requestPublishMut.mutate({ workflowId: publishTarget.id });
+                }
+              }}
+            >
+              {requestPublishMut.isPending ? (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="mr-1.5 h-4 w-4" />
+              )}
+              Submit for Review
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

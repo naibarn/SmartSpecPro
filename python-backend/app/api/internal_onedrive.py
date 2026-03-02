@@ -10,6 +10,7 @@ Exposes endpoints for the Node.js backend to trigger sync operations:
   POST /api/internal/onedrive/import-file        -- download OneDrive file for library import
 """
 
+import asyncio
 import base64
 import logging
 import mimetypes
@@ -33,6 +34,25 @@ router = APIRouter(prefix="/api/internal/onedrive", tags=["Internal OneDrive"])
 GRAPH_BASE = "https://graph.microsoft.com/v1.0"
 FOLDER_MIME = "application/vnd.ms-folder"
 MAX_IMPORT_BYTES = 30 * 1024 * 1024
+
+
+async def _graph_get_with_retry(
+    client: httpx.AsyncClient, url: str, *, max_retries: int = 3, **kwargs
+) -> httpx.Response:
+    """GET request to Graph API with 429 rate-limit retry."""
+    for attempt in range(max_retries + 1):
+        resp = await client.get(url, **kwargs)
+        if resp.status_code == 429 and attempt < max_retries:
+            retry_after = int(resp.headers.get("Retry-After", "60"))
+            wait = min(retry_after, 300)
+            logger.warning(
+                "Graph API 429 (attempt %d/%d) url=%s, retrying in %ds",
+                attempt + 1, max_retries, url[:80], wait,
+            )
+            await asyncio.sleep(wait)
+            continue
+        return resp
+    return resp  # unreachable, but satisfies type checker
 
 
 # ── Auth ────────────────────────────────────────────────────────────────────
@@ -96,6 +116,17 @@ async def start_sync(
 ):
     """Enqueue initial OneDrive sync Celery task."""
     await _verify_proxy_token(x_proxy_token)
+
+    # Prevent duplicate sync tasks
+    import redis
+    lock_key = f"sync_lock:onedrive:{request.user_id}:{request.tenant_id}"
+    try:
+        r = redis.from_url(settings.REDIS_URL)
+        if not r.set(lock_key, "1", nx=True, ex=600):  # 10-minute lock
+            return {"status": "sync_already_in_progress", "task_id": None}
+    except Exception as e:
+        logger.warning("Redis lock check failed: %s", e)
+        # Continue without lock on Redis failure
 
     from app.tasks.onedrive_tasks import initial_onedrive_sync
 
@@ -201,8 +232,8 @@ async def list_onedrive_folders(
     }
 
     async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            url,
+        resp = await _graph_get_with_retry(
+            client, url,
             params=params,
             headers={"Authorization": f"Bearer {access_token}"},
             timeout=10.0,
@@ -272,7 +303,9 @@ async def list_onedrive_items(
             "$top": str(page_size),
         }
     elif page_token:
-        # Use the @odata.nextLink directly
+        # Validate that page_token is a legitimate Graph API URL (prevent SSRF)
+        if not page_token.startswith("https://graph.microsoft.com/"):
+            raise HTTPException(status_code=400, detail="Invalid page token")
         url = page_token
         params = {}
     else:
@@ -288,8 +321,8 @@ async def list_onedrive_items(
         }
 
     async with httpx.AsyncClient() as client:
-        resp = await client.get(
-            url,
+        resp = await _graph_get_with_retry(
+            client, url,
             params=params if params else None,
             headers={"Authorization": f"Bearer {access_token}"},
             timeout=15.0,
@@ -392,8 +425,8 @@ async def import_onedrive_file(
     meta_params = {"$select": "id,name,file,folder,size,lastModifiedDateTime,webUrl,parentReference"}
 
     async with httpx.AsyncClient() as client:
-        meta_resp = await client.get(
-            meta_url,
+        meta_resp = await _graph_get_with_retry(
+            client, meta_url,
             params=meta_params,
             headers={"Authorization": f"Bearer {access_token}"},
             timeout=15.0,
@@ -421,8 +454,8 @@ async def import_onedrive_file(
     download_url = f"{GRAPH_BASE}/me/drive/items/{request.item_id}/content"
 
     async with httpx.AsyncClient(follow_redirects=True) as client:
-        file_resp = await client.get(
-            download_url,
+        file_resp = await _graph_get_with_retry(
+            client, download_url,
             headers={"Authorization": f"Bearer {access_token}"},
             timeout=30.0,
         )
@@ -467,3 +500,84 @@ async def import_onedrive_file(
             "webUrl": metadata.get("webUrl"),
         },
     }
+
+
+class ReindexItemRequest(BaseModel):
+    library_item_id: int
+    user_id: int
+    tenant_id: str
+
+
+@router.post("/reindex-item")
+async def reindex_onedrive_item(
+    request: ReindexItemRequest,
+    x_proxy_token: Optional[str] = Header(None),
+    current_user=Depends(_get_current_user_flexible),
+    db: AsyncSession = Depends(get_db),
+):
+    """Re-index a single library item from OneDrive."""
+    if not current_user:
+        await _verify_proxy_token(x_proxy_token)
+
+    # Verify ownership of the library item
+    from sqlalchemy import text as sa_text
+    row = (await db.execute(
+        sa_text("""SELECT id FROM library_items
+            WHERE id = :item_id AND tenant_id = :tenant_id AND owner_user_id = :user_id
+            AND source = 'onedrive' AND deleted_at IS NULL LIMIT 1"""),
+        {"item_id": request.library_item_id, "tenant_id": request.tenant_id, "user_id": request.user_id},
+    )).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Library item not found or not owned by user")
+
+    from app.tasks.onedrive_tasks import _enqueue_onedrive_index_job
+
+    _enqueue_onedrive_index_job(request.tenant_id, request.library_item_id)
+    logger.info(
+        "reindex_onedrive_item enqueued library_item_id=%d tenant_id=%s",
+        request.library_item_id, request.tenant_id,
+    )
+    return {"status": "reindex_enqueued", "library_item_id": request.library_item_id}
+
+
+class CleanupVectorsRequest(BaseModel):
+    library_item_id: int
+    tenant_id: str
+
+
+@router.post("/cleanup-vectors")
+async def cleanup_onedrive_vectors(
+    request: CleanupVectorsRequest,
+    x_proxy_token: Optional[str] = Header(None),
+    current_user=Depends(_get_current_user_flexible),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete vectors for a removed library item."""
+    if not current_user:
+        await _verify_proxy_token(x_proxy_token)
+
+    # Verify the library item belongs to the specified tenant
+    from sqlalchemy import text as sa_text
+    row = (await db.execute(
+        sa_text("""SELECT id FROM library_items
+            WHERE id = :item_id AND tenant_id = :tenant_id AND source = 'onedrive' LIMIT 1"""),
+        {"item_id": request.library_item_id, "tenant_id": request.tenant_id},
+    )).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Library item not found")
+
+    try:
+        from app.core.vectordb import VectorCollection
+        collection_name = f"library_tenant_{request.tenant_id}"
+        collection = VectorCollection(collection_name)
+        try:
+            collection.delete(where={"item_id": request.library_item_id})
+        except Exception:
+            logger.warning(
+                "Vector cleanup by metadata failed for item %d",
+                request.library_item_id,
+            )
+    except Exception as e:
+        logger.warning("Vector cleanup failed for item %d: %s", request.library_item_id, e)
+
+    return {"status": "cleanup_done", "library_item_id": request.library_item_id}

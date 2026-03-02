@@ -493,4 +493,282 @@ export const adminOpsRouter = router({
         reason,
       };
     }),
+
+  /**
+   * Daily LLM Usage - Per-model request/cost breakdown from provider_usage_log
+   */
+  dailyLlmUsage: domainAdminProcedure
+    .input(z.object({
+      days: z.number().min(1).max(30).default(7),
+    }).optional())
+    .query(async ({ input }) => {
+      const days = input?.days ?? 7;
+      const { getDb } = await import('../db');
+      const db = await getDb();
+      if (!db) return { topModels: [], daily: [], totals: { requests: 0, cost: 0, inputTokens: 0, outputTokens: 0 } };
+
+      const { providerUsageLog } = await import('../../drizzle/schema');
+      const { sql, gte } = await import('drizzle-orm');
+
+      const since = new Date();
+      since.setDate(since.getDate() - days);
+
+      try {
+        // Step 1: Find top 5 models by request count
+        const topModelsResult = await db.select({
+          model: providerUsageLog.modelUsed,
+          cnt: sql<number>`count(*)::int`.as('cnt'),
+        })
+          .from(providerUsageLog)
+          .where(gte(providerUsageLog.createdAt, since))
+          .groupBy(providerUsageLog.modelUsed)
+          .orderBy(sql`count(*) DESC`)
+          .limit(5);
+
+        const topModels = topModelsResult.map(r => r.model);
+
+        // Step 2: Daily breakdown with top 5 models + "Other" bucket
+        const modelCaseExpr = topModels.length > 0
+          ? sql<string>`CASE WHEN ${providerUsageLog.modelUsed} IN (${sql.join(topModels.map(m => sql`${m}`), sql`, `)}) THEN ${providerUsageLog.modelUsed} ELSE 'Other' END`
+          : sql<string>`'Other'`;
+
+        const dailyRows = await db.select({
+          date: sql<string>`date_trunc('day', ${providerUsageLog.createdAt})::date::text`.as('date'),
+          model: modelCaseExpr.as('model'),
+          requests: sql<number>`count(*)::int`.as('requests'),
+          cost: sql<number>`coalesce(sum(${providerUsageLog.costUsd}::numeric), 0)::float`.as('cost'),
+          inputTokens: sql<number>`coalesce(sum(${providerUsageLog.inputTokens}), 0)::int`.as('input_tokens'),
+          outputTokens: sql<number>`coalesce(sum(${providerUsageLog.outputTokens}), 0)::int`.as('output_tokens'),
+        })
+          .from(providerUsageLog)
+          .where(gte(providerUsageLog.createdAt, since))
+          .groupBy(sql`date_trunc('day', ${providerUsageLog.createdAt})`, modelCaseExpr)
+          .orderBy(sql`date_trunc('day', ${providerUsageLog.createdAt})`);
+
+        const totals = dailyRows.reduce((acc, r) => ({
+          requests: acc.requests + r.requests,
+          cost: acc.cost + r.cost,
+          inputTokens: acc.inputTokens + r.inputTokens,
+          outputTokens: acc.outputTokens + r.outputTokens,
+        }), { requests: 0, cost: 0, inputTokens: 0, outputTokens: 0 });
+
+        return {
+          topModels,
+          daily: dailyRows.map(r => ({
+            date: r.date,
+            model: r.model,
+            requests: r.requests,
+            cost: Number(r.cost.toFixed(6)),
+            inputTokens: r.inputTokens,
+            outputTokens: r.outputTokens,
+          })),
+          totals: {
+            requests: totals.requests,
+            cost: Number(totals.cost.toFixed(6)),
+            inputTokens: totals.inputTokens,
+            outputTokens: totals.outputTokens,
+          },
+        };
+      } catch (error) {
+        const unavailable = isProviderUsageLogUnavailableError(error);
+        console.warn('[adminOps.dailyLlmUsage] falling back to empty', {
+          reason: unavailable ? 'provider_usage_log_unavailable' : 'query_failed',
+          error: getErrorMessage(error),
+        });
+        return { topModels: [], daily: [], totals: { requests: 0, cost: 0, inputTokens: 0, outputTokens: 0 } };
+      }
+    }),
+
+  /**
+   * Daily Media Usage - Per-mediaType request/cost breakdown from api_audit_events
+   */
+  dailyMediaUsage: domainAdminProcedure
+    .input(z.object({
+      days: z.number().min(1).max(30).default(7),
+    }).optional())
+    .query(async ({ input }) => {
+      const days = input?.days ?? 7;
+      const { getDb } = await import('../db');
+      const db = await getDb();
+      if (!db) return { daily: [], totals: { requests: 0, cost: 0, credits: 0, byType: {} } };
+
+      const { apiAuditEvents } = await import('../../drizzle/schema');
+      const { sql, gte, and, eq, isNotNull } = await import('drizzle-orm');
+
+      const since = new Date();
+      since.setDate(since.getDate() - days);
+
+      try {
+        const dailyRows = await db.select({
+          date: sql<string>`date_trunc('day', ${apiAuditEvents.createdAt})::date::text`.as('date'),
+          mediaType: apiAuditEvents.mediaType,
+          requests: sql<number>`count(*)::int`.as('requests'),
+          cost: sql<number>`coalesce(sum(${apiAuditEvents.costUsd}::numeric), 0)::float`.as('cost'),
+          credits: sql<number>`coalesce(sum(${apiAuditEvents.creditsCharged}), 0)::int`.as('credits'),
+        })
+          .from(apiAuditEvents)
+          .where(and(
+            eq(apiAuditEvents.eventType, 'media_response'),
+            isNotNull(apiAuditEvents.mediaType),
+            gte(apiAuditEvents.createdAt, since),
+          ))
+          .groupBy(sql`date_trunc('day', ${apiAuditEvents.createdAt})`, apiAuditEvents.mediaType)
+          .orderBy(sql`date_trunc('day', ${apiAuditEvents.createdAt})`);
+
+        const byType: Record<string, number> = {};
+        let totalRequests = 0;
+        let totalCost = 0;
+        let totalCredits = 0;
+
+        for (const r of dailyRows) {
+          const mt = r.mediaType || 'unknown';
+          byType[mt] = (byType[mt] || 0) + r.requests;
+          totalRequests += r.requests;
+          totalCost += r.cost;
+          totalCredits += r.credits;
+        }
+
+        return {
+          daily: dailyRows.map(r => ({
+            date: r.date,
+            mediaType: r.mediaType || 'unknown',
+            requests: r.requests,
+            cost: Number(r.cost.toFixed(6)),
+            credits: r.credits,
+          })),
+          totals: {
+            requests: totalRequests,
+            cost: Number(totalCost.toFixed(6)),
+            credits: totalCredits,
+            byType,
+          },
+        };
+      } catch (error) {
+        console.warn('[adminOps.dailyMediaUsage] falling back to empty', {
+          error: getErrorMessage(error),
+        });
+        return { daily: [], totals: { requests: 0, cost: 0, credits: 0, byType: {} } };
+      }
+    }),
+
+  // ──────────────────────────────────────────────────────────────
+  //  Centralized Pending Approval Counts & List
+  // ──────────────────────────────────────────────────────────────
+
+  pendingApprovalCounts: domainAdminProcedure.query(async () => {
+    try {
+      const { db: getDb } = await import('../db');
+      const { skills, agencies, workflowTemplates } = await import('@db/schema');
+      const { eq, count } = await import('drizzle-orm');
+
+      const [skillRow] = await getDb
+        .select({ cnt: count() })
+        .from(skills)
+        .where(eq(skills.visibility, 'pending_approval'));
+
+      const [agencyRow] = await getDb
+        .select({ cnt: count() })
+        .from(agencies)
+        .where(eq(agencies.visibility, 'pending_approval'));
+
+      const [templateRow] = await getDb
+        .select({ cnt: count() })
+        .from(workflowTemplates)
+        .where(eq(workflowTemplates.status, 'pending_review'));
+
+      const s = Number(skillRow?.cnt ?? 0);
+      const a = Number(agencyRow?.cnt ?? 0);
+      const t = Number(templateRow?.cnt ?? 0);
+      return { skills: s, agencies: a, templates: t, total: s + a + t };
+    } catch {
+      return { skills: 0, agencies: 0, templates: 0, total: 0 };
+    }
+  }),
+
+  pendingApprovalList: domainAdminProcedure
+    .input(z.object({
+      limit: z.number().min(1).max(100).default(50),
+      offset: z.number().min(0).default(0),
+      type: z.enum(['skill', 'agency', 'template']).optional(),
+    }))
+    .query(async ({ input }) => {
+      try {
+        const { db: getDb } = await import('../db');
+        const { skills, agencies, workflowTemplates, users } = await import('@db/schema');
+        const { eq, asc, sql } = await import('drizzle-orm');
+
+        type PendingItem = {
+          type: 'skill' | 'agency' | 'template';
+          id: string;
+          name: string;
+          description: string | null;
+          ownerName: string | null;
+          requestedAt: Date | null;
+        };
+
+        const items: PendingItem[] = [];
+
+        // Single-type queries: use DB-level sorting + pagination
+        if (input.type === 'skill') {
+          const rows = await getDb
+            .select({ id: skills.id, name: skills.name, description: skills.description, ownerName: users.name, requestedAt: skills.requestedPublishAt })
+            .from(skills).leftJoin(users, eq(skills.createdBy, users.id))
+            .where(eq(skills.visibility, 'pending_approval'))
+            .orderBy(asc(skills.requestedPublishAt))
+            .limit(input.limit).offset(input.offset);
+          const [cnt] = await getDb.select({ c: sql<number>`count(*)` }).from(skills).where(eq(skills.visibility, 'pending_approval'));
+          return { items: rows.map(r => ({ type: 'skill' as const, id: String(r.id), name: r.name || '', description: r.description, ownerName: r.ownerName, requestedAt: r.requestedAt })), total: Number(cnt?.c ?? 0) };
+        }
+
+        if (input.type === 'agency') {
+          const rows = await getDb
+            .select({ id: agencies.id, name: agencies.name, description: agencies.description, ownerName: users.name, requestedAt: agencies.requestedPublishAt })
+            .from(agencies).leftJoin(users, eq(agencies.createdBy, users.id))
+            .where(eq(agencies.visibility, 'pending_approval'))
+            .orderBy(asc(agencies.requestedPublishAt))
+            .limit(input.limit).offset(input.offset);
+          const [cnt] = await getDb.select({ c: sql<number>`count(*)` }).from(agencies).where(eq(agencies.visibility, 'pending_approval'));
+          return { items: rows.map(r => ({ type: 'agency' as const, id: r.id, name: r.name, description: r.description, ownerName: r.ownerName, requestedAt: r.requestedAt })), total: Number(cnt?.c ?? 0) };
+        }
+
+        if (input.type === 'template') {
+          const rows = await getDb
+            .select({ id: workflowTemplates.id, name: workflowTemplates.name, description: workflowTemplates.description, ownerName: users.name, requestedAt: workflowTemplates.requestedPublishAt })
+            .from(workflowTemplates).leftJoin(users, eq(workflowTemplates.authorId, users.id))
+            .where(eq(workflowTemplates.status, 'pending_review'))
+            .orderBy(asc(workflowTemplates.requestedPublishAt))
+            .limit(input.limit).offset(input.offset);
+          const [cnt] = await getDb.select({ c: sql<number>`count(*)` }).from(workflowTemplates).where(eq(workflowTemplates.status, 'pending_review'));
+          return { items: rows.map(r => ({ type: 'template' as const, id: String(r.id), name: r.name, description: r.description, ownerName: r.ownerName, requestedAt: r.requestedAt })), total: Number(cnt?.c ?? 0) };
+        }
+
+        // "All" tab: fetch from all 3 tables with DB-level sorting, merge + sort in memory
+        const [skillRows, agencyRows, templateRows] = await Promise.all([
+          getDb.select({ id: skills.id, name: skills.name, description: skills.description, ownerName: users.name, requestedAt: skills.requestedPublishAt })
+            .from(skills).leftJoin(users, eq(skills.createdBy, users.id))
+            .where(eq(skills.visibility, 'pending_approval'))
+            .orderBy(asc(skills.requestedPublishAt)),
+          getDb.select({ id: agencies.id, name: agencies.name, description: agencies.description, ownerName: users.name, requestedAt: agencies.requestedPublishAt })
+            .from(agencies).leftJoin(users, eq(agencies.createdBy, users.id))
+            .where(eq(agencies.visibility, 'pending_approval'))
+            .orderBy(asc(agencies.requestedPublishAt)),
+          getDb.select({ id: workflowTemplates.id, name: workflowTemplates.name, description: workflowTemplates.description, ownerName: users.name, requestedAt: workflowTemplates.requestedPublishAt })
+            .from(workflowTemplates).leftJoin(users, eq(workflowTemplates.authorId, users.id))
+            .where(eq(workflowTemplates.status, 'pending_review'))
+            .orderBy(asc(workflowTemplates.requestedPublishAt)),
+        ]);
+
+        for (const r of skillRows) items.push({ type: 'skill', id: String(r.id), name: r.name || '', description: r.description, ownerName: r.ownerName, requestedAt: r.requestedAt });
+        for (const r of agencyRows) items.push({ type: 'agency', id: r.id, name: r.name, description: r.description, ownerName: r.ownerName, requestedAt: r.requestedAt });
+        for (const r of templateRows) items.push({ type: 'template', id: String(r.id), name: r.name, description: r.description, ownerName: r.ownerName, requestedAt: r.requestedAt });
+
+        items.sort((a, b) => (a.requestedAt?.getTime() ?? 0) - (b.requestedAt?.getTime() ?? 0));
+
+        const total = items.length;
+        const paged = items.slice(input.offset, input.offset + input.limit);
+        return { items: paged, total };
+      } catch {
+        return { items: [], total: 0 };
+      }
+    }),
 });

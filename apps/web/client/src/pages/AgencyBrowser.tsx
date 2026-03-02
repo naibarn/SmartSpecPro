@@ -2,9 +2,35 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAgencyList } from "@/hooks/useAgencyQuery";
+import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Users,
   Plus,
@@ -12,6 +38,16 @@ import {
   Loader2,
   MessageSquare,
   Edit,
+  Trash2,
+  ChevronLeft,
+  Lock,
+  Globe,
+  Share2,
+  X,
+  Clock,
+  XCircle,
+  Send,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AgencyTemplateModal } from "@/components/agency/AgencyTemplateModal";
@@ -24,6 +60,13 @@ interface AgencyItem {
   agentCount?: number;
   creditMultiplier?: number;
   creatorFeeCredits?: number;
+  canEdit?: boolean;
+  ownerName?: string | null;
+  ownerEmail?: string | null;
+  visibility?: string;
+  sharedGroupCount?: number;
+  requestedPublishAt?: string | null;
+  rejectionReason?: string | null;
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -32,14 +75,234 @@ const STATUS_STYLES: Record<string, string> = {
   archived: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
 };
 
+const VISIBILITY_CONFIG: Record<string, { icon: typeof Lock; label: string; style: string }> = {
+  private: {
+    icon: Lock,
+    label: "Private",
+    style: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
+  },
+  shared: {
+    icon: Users,
+    label: "Shared",
+    style: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200",
+  },
+  public: {
+    icon: Globe,
+    label: "Public",
+    style: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200",
+  },
+  pending_approval: {
+    icon: Clock,
+    label: "Pending Approval",
+    style: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-200",
+  },
+  rejected: {
+    icon: XCircle,
+    label: "Rejected",
+    style: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200",
+  },
+};
+
+function AgencyShareDialog({
+  agencyId,
+  agencyName,
+  open,
+  onOpenChange,
+}: {
+  agencyId: string;
+  agencyName: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [groupSearch, setGroupSearch] = useState("");
+  const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
+
+  const utils = trpc.useUtils();
+
+  const { data: sharedData, isLoading: loadingShared } =
+    trpc.agency.listAgencyGroups.useQuery(
+      { agencyId },
+      { enabled: open },
+    );
+
+  const { data: groupsData, isLoading: loadingGroups } =
+    trpc.groups.list.useQuery(undefined, { enabled: open });
+
+  const shareMutation = trpc.agency.shareAgencyWithGroups.useMutation({
+    onSuccess: () => {
+      utils.agency.listAgencyGroups.invalidate({ agencyId });
+      utils.agency.list.invalidate();
+      setSelectedGroupIds([]);
+    },
+  });
+
+  const unshareMutation = trpc.agency.unshareAgencyGroup.useMutation({
+    onSuccess: () => {
+      utils.agency.listAgencyGroups.invalidate({ agencyId });
+      utils.agency.list.invalidate();
+    },
+  });
+
+  const sharedGroups = (sharedData?.groups ?? []) as { id: number; name: string; description?: string | null }[];
+  const sharedGroupIds = new Set(sharedGroups.map((g) => g.id));
+
+  // groups.list returns an array directly (not wrapped in { groups })
+  const allGroups = (Array.isArray(groupsData) ? groupsData : []) as { id: number; name: string; description?: string | null }[];
+  const availableGroups = allGroups.filter(
+    (g) =>
+      !sharedGroupIds.has(g.id) &&
+      (!groupSearch || g.name.toLowerCase().includes(groupSearch.toLowerCase())),
+  );
+
+  const toggleGroup = (id: number) => {
+    setSelectedGroupIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const handleShare = () => {
+    if (selectedGroupIds.length > 0) {
+      shareMutation.mutate({ agencyId, groupIds: selectedGroupIds });
+    }
+  };
+
+  const handleUnshare = (groupId: number) => {
+    unshareMutation.mutate({ agencyId, groupId });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Share Agency</DialogTitle>
+          <DialogDescription>
+            Share <strong>{agencyName}</strong> with groups so their members can use it.
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Currently shared groups */}
+        {loadingShared ? (
+          <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+          </div>
+        ) : sharedGroups.length > 0 ? (
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Shared with</p>
+            <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto">
+              {sharedGroups.map((g) => (
+                <Badge
+                  key={g.id}
+                  variant="secondary"
+                  className="gap-1 pr-1 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                >
+                  {g.name}
+                  <button
+                    className="ml-1 rounded-full p-0.5 hover:bg-blue-200 transition-colors"
+                    onClick={() => handleUnshare(g.id)}
+                    disabled={unshareMutation.isPending}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground py-1">Not shared with any groups yet.</p>
+        )}
+
+        {/* Add groups */}
+        <div className="space-y-2 border-t pt-3">
+          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Add groups</p>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={groupSearch}
+              onChange={(e) => setGroupSearch(e.target.value)}
+              placeholder="Search groups..."
+              className="pl-8 h-8 text-sm"
+            />
+          </div>
+
+          {loadingGroups ? (
+            <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading groups...
+            </div>
+          ) : availableGroups.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-2">
+              {allGroups.length === 0 ? "No groups available." : "No matching groups."}
+            </p>
+          ) : (
+            <div className="max-h-40 overflow-y-auto space-y-1 rounded-md border p-1">
+              {availableGroups.map((g) => (
+                <label
+                  key={g.id}
+                  className={cn(
+                    "flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer transition-colors",
+                    selectedGroupIds.includes(g.id) ? "bg-indigo-50" : "hover:bg-slate-50",
+                  )}
+                >
+                  <Checkbox
+                    checked={selectedGroupIds.includes(g.id)}
+                    onCheckedChange={() => toggleGroup(g.id)}
+                  />
+                  <span className="text-sm">{g.name}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+          <Button
+            size="sm"
+            disabled={selectedGroupIds.length === 0 || shareMutation.isPending}
+            onClick={handleShare}
+          >
+            {shareMutation.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+            Share with {selectedGroupIds.length} group{selectedGroupIds.length !== 1 ? "s" : ""}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function AgencyBrowser() {
   const { isLoading: authLoading, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [shareTarget, setShareTarget] = useState<{ id: string; name: string } | null>(null);
+  const [publishTarget, setPublishTarget] = useState<{ id: string; name: string; creatorFee?: number } | null>(null);
 
   // Feature flag is enforced server-side: agency.list throws NOT_FOUND
   // when AGENCY_SWARM_ENABLED is false
   const { data: agencies, isLoading, isError } = useAgencyList();
+  const utils = trpc.useUtils();
+  const deleteMutation = trpc.agency.delete.useMutation({
+    onSuccess: () => {
+      utils.agency.list.invalidate();
+      setDeleteTarget(null);
+    },
+  });
+
+  const requestPublishMutation = trpc.agency.requestPublish.useMutation({
+    onSuccess: () => {
+      utils.agency.list.invalidate();
+      setPublishTarget(null);
+    },
+  });
+
+  const cancelPublishMutation = trpc.agency.cancelPublishRequest.useMutation({
+    onSuccess: () => {
+      utils.agency.list.invalidate();
+    },
+  });
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -56,7 +319,7 @@ export default function AgencyBrowser() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="flex h-full items-center justify-center">
+      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/20">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -71,101 +334,360 @@ export default function AgencyBrowser() {
   );
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/20">
       <AgencyTemplateModal open={isModalOpen} onOpenChange={setIsModalOpen} />
 
-      {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Users className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">Agencies</h1>
-        </div>
-        <Button onClick={() => setIsModalOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Agency
-        </Button>
-      </div>
-
-      {/* Search */}
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search agencies..."
-          className="pl-9"
-        />
-      </div>
-
-      {/* Grid */}
-      {filtered.length === 0 ? (
-        <div className="py-16 text-center text-muted-foreground border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
-          <Users className="mx-auto mb-4 h-12 w-12 text-slate-300" />
-          <p className="text-lg font-medium text-slate-600">No agencies found</p>
-          <p className="text-sm mt-1 text-slate-500">
-            {search
-              ? "Try adjusting your search terms."
-              : "Create your first agency team to get started."}
-          </p>
-          {!search && (
-            <Button className="mt-6" variant="outline" onClick={() => setIsModalOpen(true)}>
-              Browse Templates
-            </Button>
-          )}
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((agency) => (
-            <div
-              key={agency.id}
-              className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-5 transition-all hover:border-indigo-300 hover:shadow-md hover:-translate-y-1"
-              onClick={() => setLocation(`/agencies/${agency.id}`)}
-            >
-              <div className="mb-3 flex items-start justify-between">
-                <h3 className="font-semibold text-slate-800 text-lg leading-tight">{agency.name}</h3>
-                <Badge
-                  variant="secondary"
-                  className={cn(
-                    "text-[10px] uppercase tracking-wider font-bold",
-                    STATUS_STYLES[agency.status || ""] || "",
-                  )}
-                >
-                  {agency.status || "draft"}
-                </Badge>
-              </div>
-
-              {agency.description && (
-                <p className="mb-4 line-clamp-2 text-sm text-slate-600 leading-relaxed">
-                  {agency.description}
-                </p>
-              )}
-
-              <div className="flex items-center justify-between mt-auto">
-                <div className="flex items-center gap-3 text-xs font-medium text-slate-500 bg-slate-50 px-2 py-1.5 rounded-md">
-                  <span className="flex items-center gap-1.5">
-                    <Users className="h-3.5 w-3.5" />
-                    {agency.agentCount ?? 0} agents
-                  </span>
+      {/* Sticky Header */}
+      <header className="bg-white/70 backdrop-blur-xl border-b border-gray-200/50 sticky top-0 z-10">
+        <div className="px-4 sm:px-6 lg:px-8 py-3">
+          <div className="flex items-center justify-between">
+            {/* Left: Back + Branding */}
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setLocation("/dashboard")}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Back
+              </Button>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-200/50">
+                  <Users className="h-5 w-5 text-white" />
                 </div>
-
-                <div className="flex gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    className="h-8 w-8 bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setLocation(`/agencies/${agency.id}/edit`);
-                    }}
-                  >
-                    <Edit className="h-3.5 w-3.5" />
-                  </Button>
+                <div>
+                  <h1 className="text-lg font-bold">Agencies</h1>
+                  <p className="text-xs text-muted-foreground">Manage AI agent teams</p>
                 </div>
               </div>
             </div>
-          ))}
+
+            {/* Right: Actions */}
+            <div className="flex items-center gap-3">
+              <Badge variant="secondary" className="gap-1 hidden sm:flex">
+                <Users className="h-3 w-3" />
+                {agencyList.length} teams
+              </Badge>
+              <Button
+                variant="outline"
+                onClick={() => setLocation("/agencies/marketplace")}
+              >
+                <Globe className="mr-2 h-4 w-4" />
+                Marketplace
+              </Button>
+              <Button onClick={() => setIsModalOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Agency
+              </Button>
+            </div>
+          </div>
         </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="px-4 sm:px-6 lg:px-8 py-6">
+        {/* Search */}
+        <div className="relative mb-6 max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search agencies..."
+            className="pl-9 bg-white/80"
+          />
+        </div>
+
+        {/* Grid */}
+        {filtered.length === 0 ? (
+          <div className="py-16 text-center text-muted-foreground border-2 border-dashed border-slate-200 rounded-xl bg-white/50">
+            <Users className="mx-auto mb-4 h-12 w-12 text-slate-300" />
+            <p className="text-lg font-medium text-slate-600">No agencies found</p>
+            <p className="text-sm mt-1 text-slate-500">
+              {search
+                ? "Try adjusting your search terms."
+                : "Create your first agency team to get started."}
+            </p>
+            {!search && (
+              <Button className="mt-6" variant="outline" onClick={() => setIsModalOpen(true)}>
+                Browse Templates
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {filtered.map((agency) => {
+              const vis = VISIBILITY_CONFIG[agency.visibility || "private"] ?? VISIBILITY_CONFIG.private;
+              const VisIcon = vis.icon;
+
+              return (
+                <div
+                  key={agency.id}
+                  className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-5 transition-all hover:border-indigo-300 hover:shadow-md hover:-translate-y-1"
+                  onClick={() => setLocation(agency.canEdit ? `/agencies/${agency.id}/edit` : `/agencies/${agency.id}`)}
+                >
+                  {/* Title + Status */}
+                  <div className="mb-1 flex items-start justify-between">
+                    <h3 className="font-semibold text-slate-800 text-lg leading-tight">{agency.name}</h3>
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        "text-[10px] uppercase tracking-wider font-bold shrink-0 ml-2",
+                        STATUS_STYLES[agency.status || ""] || "",
+                      )}
+                    >
+                      {agency.status || "draft"}
+                    </Badge>
+                  </div>
+
+                  {/* Owner */}
+                  <div className="flex items-center gap-1.5 mb-2">
+                    {agency.canEdit ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700">
+                        <Edit className="h-2.5 w-2.5" />
+                        Owner
+                      </span>
+                    ) : agency.ownerName ? (
+                      <span className="text-xs text-slate-400">By {agency.ownerName}</span>
+                    ) : null}
+                  </div>
+
+                  {/* Description */}
+                  {agency.description && (
+                    <p className="mb-3 line-clamp-2 text-sm text-slate-600 leading-relaxed">
+                      {agency.description}
+                    </p>
+                  )}
+
+                  {/* Visibility badge + rejection reason */}
+                  <div className="mb-3 flex flex-wrap items-center gap-1.5">
+                    <Badge
+                      variant="secondary"
+                      className={cn("text-[10px] gap-1 font-medium", vis.style)}
+                    >
+                      <VisIcon className="h-3 w-3" />
+                      {vis.label}
+                      {agency.visibility === "shared" && (agency.sharedGroupCount ?? 0) > 0 && (
+                        <span className="ml-0.5">{agency.sharedGroupCount} group{(agency.sharedGroupCount ?? 0) !== 1 ? "s" : ""}</span>
+                      )}
+                    </Badge>
+                    {agency.visibility === "rejected" && agency.rejectionReason && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex items-center gap-1 text-[10px] text-red-600 cursor-help">
+                              <AlertTriangle className="h-3 w-3" />
+                              View reason
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="max-w-xs">
+                            <p className="text-xs">{agency.rejectionReason}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
+
+                  {/* Publish CTA banner — prominent action for eligible agencies */}
+                  {agency.canEdit && agency.status === "published" && agency.visibility !== "public" && agency.visibility !== "pending_approval" && (
+                    <button
+                      className="w-full flex items-center gap-2 mb-3 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50/80 hover:bg-amber-100 transition-colors text-left"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPublishTarget({ id: agency.id, name: agency.name, creatorFee: agency.creatorFeeCredits ?? 0 });
+                      }}
+                    >
+                      <div className="w-7 h-7 rounded-full bg-amber-200/60 flex items-center justify-center shrink-0">
+                        <Send className="h-3.5 w-3.5 text-amber-700" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-amber-800">
+                          {agency.visibility === "rejected" ? "Re-submit for Approval" : "Request Public Publish"}
+                        </p>
+                        <p className="text-[10px] text-amber-600 leading-tight">Submit to Marketplace for admin review</p>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* Pending approval banner */}
+                  {agency.canEdit && agency.visibility === "pending_approval" && (
+                    <div className="flex items-center justify-between mb-3 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50/80">
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="h-3.5 w-3.5 text-amber-600 animate-spin" />
+                        <span className="text-xs font-medium text-amber-700">Awaiting admin review...</span>
+                      </div>
+                      <button
+                        className="text-[10px] font-medium text-amber-600 hover:text-amber-800 underline"
+                        disabled={cancelPublishMutation.isPending}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          cancelPublishMutation.mutate({ agencyId: agency.id });
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Footer: agent count + actions */}
+                  <div className="flex items-center justify-between mt-auto">
+                    <div className="flex items-center gap-3 text-xs font-medium text-slate-500 bg-slate-50 px-2 py-1.5 rounded-md">
+                      <span className="flex items-center gap-1.5">
+                        <Users className="h-3.5 w-3.5" />
+                        {agency.agentCount ?? 0} agents
+                      </span>
+                    </div>
+
+                    <div className="flex gap-1.5">
+                      {agency.status === "published" && (
+                        <Button
+                          variant="secondary"
+                          size="icon"
+                          className="h-8 w-8 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 hover:text-indigo-800"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLocation(`/agencies/${agency.id}`);
+                          }}
+                          title="Chat with agency"
+                        >
+                          <MessageSquare className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {agency.canEdit && (
+                        <>
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="h-8 w-8 bg-blue-50 hover:bg-blue-100 text-blue-600 hover:text-blue-700"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShareTarget({ id: agency.id, name: agency.name });
+                            }}
+                            title="Share agency"
+                          >
+                            <Share2 className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="h-8 w-8 bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLocation(`/agencies/${agency.id}/edit`);
+                            }}
+                            title="Edit agency"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="icon"
+                            className="h-8 w-8 bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-700"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteTarget({ id: agency.id, name: agency.name });
+                            }}
+                            title="Delete agency"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </main>
+
+      {/* Share dialog */}
+      {shareTarget && (
+        <AgencyShareDialog
+          agencyId={shareTarget.id}
+          agencyName={shareTarget.name}
+          open={!!shareTarget}
+          onOpenChange={(open) => { if (!open) setShareTarget(null); }}
+        />
       )}
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Agency</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{deleteTarget?.name}</strong>? This will archive the agency and it will no longer appear in your list.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={deleteMutation.isPending}
+              onClick={() => {
+                if (deleteTarget) {
+                  deleteMutation.mutate({ id: deleteTarget.id });
+                }
+              }}
+            >
+              {deleteMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-4 w-4" />
+              )}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Publish request confirmation dialog */}
+      <AlertDialog open={!!publishTarget} onOpenChange={(open) => { if (!open) setPublishTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Request Public Publishing</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Submit <strong>{publishTarget?.name}</strong> for admin review to be published on the public marketplace.
+                </p>
+                <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800 space-y-1.5">
+                  <p className="font-medium flex items-center gap-1.5">
+                    <AlertTriangle className="h-4 w-4" />
+                    What happens next:
+                  </p>
+                  <ul className="list-disc pl-5 space-y-0.5 text-xs">
+                    <li>An admin will review your agency for quality and compliance</li>
+                    <li>If approved, it will appear on the public Agencies Marketplace</li>
+                    <li>Creator fee: <strong>{publishTarget?.creatorFee ?? 0} credits</strong> per use</li>
+                    <li>You&apos;ll be notified of the decision</li>
+                  </ul>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={requestPublishMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+              disabled={requestPublishMutation.isPending}
+              onClick={() => {
+                if (publishTarget) {
+                  requestPublishMutation.mutate({ agencyId: publishTarget.id });
+                }
+              }}
+            >
+              {requestPublishMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="mr-2 h-4 w-4" />
+              )}
+              Submit for Review
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

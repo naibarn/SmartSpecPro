@@ -20,6 +20,7 @@ import { registerMediaJobRoutes } from "../routers/mediaJobs";
 import { registerAgencyStreamRoutes } from "./agencyStreamProxy";
 
 import { createWebhookRouter } from "../routes/webhooks";
+import { createWebhookTriggerRouter } from "../routes/webhookTrigger";
 import { createTelegramWebhookRouter } from "../routes/telegramWebhook";
 import { createChannelWebhookRouter } from "../routes/channelWebhook";
 import { createVoiceSessionRouter, handleVoiceUpgrade, shutdownVoiceGateway } from "../routes/voiceGateway";
@@ -237,6 +238,9 @@ const csrfCheck = (req: any, res: any, next: any) => {
     req.originalUrl.startsWith("/api/webhooks/gdrive") ||
     req.path.startsWith("/webhooks/telegram/") ||
     req.originalUrl.startsWith("/webhooks/telegram/") ||
+    // Inbound webhook triggers (external services sending events into SmartSpecPro)
+    // req.path includes the /api prefix at app-middleware level, so check originalUrl only.
+    req.originalUrl.startsWith("/api/webhooks/trigger/") ||
     // Generalized channel webhooks (platform callbacks: WhatsApp, Slack, Discord, etc.)
     /^\/webhooks\/[a-z]+\/[a-z0-9-]+$/.test(req.path) ||
     /^\/webhooks\/[a-z]+\/[a-z0-9-]+$/.test(req.originalUrl)
@@ -346,6 +350,10 @@ app.use("/internal", createSlideRenderRouter());
 
 // Webhook routes (before CSRF-protected routes, external services send raw POSTs)
 app.use("/api/webhooks", createWebhookRouter());
+
+// Inbound webhook trigger endpoints (external services → SmartSpecPro conversations/agencies/workflows)
+// Must be before CSRF middleware — these are server-to-server requests with their own auth
+app.use("/api/webhooks/trigger", express.json({ limit: "1mb" }), createWebhookTriggerRouter());
 
 // Generalized channel webhook router (all adapters: WhatsApp, Slack, Discord, LINE, etc.)
 // Must be registered BEFORE the legacy Telegram route so /webhooks/:channelType/:connectionId

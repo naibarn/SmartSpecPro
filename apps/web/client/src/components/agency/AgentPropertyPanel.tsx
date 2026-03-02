@@ -9,13 +9,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { ToolPicker } from "./ToolPicker";
 import { ModelPicker } from "./ModelPicker";
-import type { AgentNodeData } from "./AgentNode";
+import type { AgencyNodeData } from "./nodes/types";
 import { X, Wrench, ChevronDown, ChevronRight, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AgentPropertyPanelProps {
-  agent: AgentNodeData;
-  onChange: (updates: Partial<AgentNodeData>) => void;
+  agent: AgencyNodeData;
+  onChange: (updates: Partial<AgencyNodeData>) => void;
   onClose: () => void;
   onDelete: () => void;
 }
@@ -29,12 +29,12 @@ export function AgentPropertyPanel({
   const [toolPickerOpen, setToolPickerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const handleAddTool = (tool: { toolId: string; toolName: string }) => {
-    onChange({ tools: [...agent.tools, tool] });
+  const handleAddTool = (tool: { toolId: string; toolName: string; toolConfig?: Record<string, unknown> }) => {
+    onChange({ tools: [...(agent.tools ?? []), tool] });
   };
 
   const handleRemoveTool = (toolId: string) => {
-    onChange({ tools: agent.tools.filter((t) => t.toolId !== toolId) });
+    onChange({ tools: (agent.tools ?? []).filter((t) => t.toolId !== toolId) });
   };
 
   return (
@@ -78,18 +78,26 @@ export function AgentPropertyPanel({
             <Textarea
               id="agent-instructions"
               value={agent.instructions}
-              onChange={(e) => onChange({ instructions: e.target.value })}
+              onChange={(e) => {
+                if (e.target.value.length <= 10000) {
+                  onChange({ instructions: e.target.value });
+                }
+              }}
               placeholder="Agent system prompt / instructions"
               rows={5}
+              maxLength={10000}
               className="min-h-[120px] resize-y"
             />
+            <p className="text-xs text-muted-foreground text-right">
+              {(agent.instructions ?? "").length.toLocaleString()}/10,000
+            </p>
           </div>
 
           {/* Model */}
           <div className="space-y-1.5">
             <Label htmlFor="agent-model">Model</Label>
             <ModelPicker
-              value={agent.model}
+              value={agent.model ?? ""}
               onChange={(value) => onChange({ model: value })}
             />
           </div>
@@ -221,11 +229,11 @@ export function AgentPropertyPanel({
               </Button>
             </div>
 
-            {agent.tools.length === 0 ? (
+            {(agent.tools ?? []).length === 0 ? (
               <p className="text-xs text-muted-foreground">No tools assigned.</p>
             ) : (
               <div className="space-y-1">
-                {agent.tools.map((tool) => (
+                {(agent.tools ?? []).map((tool) => (
                   <div
                     key={tool.toolId}
                     className="flex items-center justify-between rounded border px-2 py-1"
@@ -264,7 +272,7 @@ export function AgentPropertyPanel({
         open={toolPickerOpen}
         onClose={() => setToolPickerOpen(false)}
         onSelect={handleAddTool}
-        excludeToolIds={agent.tools.map((t) => t.toolId)}
+        excludeToolIds={(agent.tools ?? []).map((t) => t.toolId)}
       />
     </div>
   );

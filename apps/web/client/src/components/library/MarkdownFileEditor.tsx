@@ -36,7 +36,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { trpc } from "@/lib/trpc";
 import CodeMirrorEditor, { useLineNumbersToggle, type CodeMirrorEditorMethods } from "./CodeMirrorEditor";
-import { MarkdownVersionHistory } from "./MarkdownVersionHistory";
+import { DocumentVersionHistory } from "./DocumentVersionHistory";
 
 interface MarkdownFileEditorProps {
   value: string;
@@ -565,7 +565,7 @@ export default function MarkdownFileEditor({
             />
 
             {documentId && (
-              <MarkdownVersionHistory
+              <DocumentVersionHistory
                 itemId={documentId}
                 onRestore={onVersionRestore}
               />

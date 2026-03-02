@@ -229,7 +229,7 @@ stop_screen_service() {
 # Docker media workers management
 # ============================================================
 start_media_workers() {
-    log_step "Starting Docker media workers (celery-media, celery-video, celery-import, celery-beat, flower)..."
+    log_step "Starting Docker media workers (celery-media, celery-video, celery-import, celery-presentation, celery-beat, flower)..."
 
     if ! docker network ls --format '{{.Name}}' | grep -q '^smartspec-network$'; then
         log_warn "Network smartspec-network not found — creating it"
@@ -457,7 +457,7 @@ cmd_start() {
     # Brief validation check
     sleep 3
     local failed_workers=0
-    for worker in smartspec-celery-media smartspec-celery-import smartspec-celery-sandbox smartspec-celery-beat; do
+    for worker in smartspec-celery-media smartspec-celery-import smartspec-celery-presentation smartspec-celery-sandbox smartspec-celery-beat; do
         if ! docker ps --format '{{.Names}}' | grep -q "^${worker}$"; then
             log_warn "${worker} is not running"
             ((failed_workers++))
@@ -641,7 +641,7 @@ cmd_status() {
     # 3. Background Workers
     echo -e "${BLUE}--- Celery Workers (Background Tasks) ---${NC}"
 
-    for worker in smartspec-celery-media smartspec-celery-video smartspec-celery-import smartspec-celery-sandbox smartspec-celery-beat smartspec-flower; do
+    for worker in smartspec-celery-media smartspec-celery-video smartspec-celery-import smartspec-celery-presentation smartspec-celery-sandbox smartspec-celery-beat smartspec-flower; do
         local worker_name=$(echo $worker | sed 's/smartspec-celery-//' | sed 's/smartspec-//')
         if docker ps --format '{{.Names}}' | grep -q "^${worker}$"; then
             local worker_health=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}ok{{end}}' "$worker" 2>/dev/null || echo "")
@@ -655,7 +655,7 @@ cmd_status() {
     # 4. Summary
     echo -e "${BLUE}--- Service Summary ---${NC}"
 
-    local total_services=11
+    local total_services=12
     local running_count=0
 
     docker ps --format '{{.Names}}' | grep -q '^smartspec-postgres$' && ((running_count++)) || true
@@ -666,6 +666,7 @@ cmd_status() {
     screen -list 2>/dev/null | grep -q "\.smartspec-docker-status" && ((running_count++)) || true
     docker ps --format '{{.Names}}' | grep -q '^smartspec-celery-media$' && ((running_count++)) || true
     docker ps --format '{{.Names}}' | grep -q '^smartspec-celery-import$' && ((running_count++)) || true
+    docker ps --format '{{.Names}}' | grep -q '^smartspec-celery-presentation$' && ((running_count++)) || true
     docker ps --format '{{.Names}}' | grep -q '^smartspec-celery-sandbox$' && ((running_count++)) || true
     docker ps --format '{{.Names}}' | grep -q '^smartspec-celery-beat$' && ((running_count++)) || true
     docker ps --format '{{.Names}}' | grep -q '^smartspec-flower$' && ((running_count++)) || true
@@ -721,6 +722,7 @@ cmd_attach() {
             echo "  docker logs -f smartspec-celery-media   # Media worker logs"
             echo "  docker logs -f smartspec-celery-video   # Video worker logs"
             echo "  docker logs -f smartspec-celery-import  # Import worker logs"
+            echo "  docker logs -f smartspec-celery-presentation # Presentation export worker logs"
             echo "  docker logs -f smartspec-celery-beat    # Beat scheduler logs"
             echo "  docker logs -f smartspec-flower         # Flower dashboard logs"
             echo "  http://localhost:5555                    # Flower web dashboard"
@@ -775,6 +777,9 @@ cmd_logs() {
             echo ""
             echo -e "${CYAN}=== celery-import (last 30 lines) ===${NC}"
             docker logs --tail 30 smartspec-celery-import 2>&1 || echo "  Container not running"
+            echo ""
+            echo -e "${CYAN}=== celery-presentation (last 30 lines) ===${NC}"
+            docker logs --tail 30 smartspec-celery-presentation 2>&1 || echo "  Container not running"
             echo ""
             echo -e "${CYAN}=== celery-beat (last 10 lines) ===${NC}"
             docker logs --tail 10 smartspec-celery-beat 2>&1 || echo "  Container not running"
@@ -858,7 +863,7 @@ cmd_help() {
     echo "  web       SmartSpec Web (systemd, auto-restart on crash)"
     echo "  backend   Python Backend (systemd, auto-restart on crash)"
     echo "  docker    Docker Status UI (screen session)"
-    echo "  media     Media Workers (Docker: celery-media, celery-video, celery-import, celery-beat, flower)"
+    echo "  media     Media Workers (Docker: celery-media, celery-video, celery-import, celery-presentation, celery-beat, flower)"
     echo "  sandbox   OpenSandbox execution plane (Docker, optional)"
     echo ""
     echo -e "${CYAN}Service Management:${NC}"

@@ -41,6 +41,15 @@ function normalizeElement(element: PresentationSlideElement): PresentationSlideE
       rotation: element.rotation,
       src: element.src,
       alt: element.alt,
+      imageFit: element.imageFit,
+      imagePositionX: element.imagePositionX,
+      imagePositionY: element.imagePositionY,
+      imageZoom: element.imageZoom,
+      imagePrompt: element.imagePrompt,
+      imageModelId: element.imageModelId,
+      imageReferenceUrls: element.imageReferenceUrls,
+      svgContent: element.svgContent,
+      svgColor: element.svgColor,
     };
   }
 

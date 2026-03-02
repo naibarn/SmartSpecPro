@@ -134,10 +134,16 @@ function ChartTooltipContent({
     const [item] = payload;
     const key = `${labelKey || item?.dataKey || item?.name || "value"}`;
     const itemConfig = getPayloadConfigFromPayload(config, item, key);
-    const value =
+    const rawValue =
       !labelKey && typeof label === "string"
         ? config[label as keyof typeof config]?.label || label
         : itemConfig?.label;
+
+    // Ensure value is a valid React child (not a plain object)
+    const value =
+      rawValue != null && typeof rawValue === "object" && !React.isValidElement(rawValue)
+        ? String(rawValue)
+        : rawValue;
 
     if (labelFormatter) {
       return (
@@ -229,7 +235,7 @@ function ChartTooltipContent({
                       <div className="grid gap-1.5">
                         {nestLabel ? tooltipLabel : null}
                         <span className="text-muted-foreground">
-                          {itemConfig?.label || item.name}
+                          {typeof (itemConfig?.label ?? item.name) === "object" ? String(itemConfig?.label ?? item.name) : (itemConfig?.label || item.name)}
                         </span>
                       </div>
                       {item.value && (

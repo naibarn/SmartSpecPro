@@ -2,7 +2,9 @@
 Description=SmartSpecPro Web Application
 Documentation=https://github.com/smartspecpro/smartspec
 After=smartspec-backend.service
-Requires=smartspec-backend.service
+# Wants= (soft dep) instead of Requires= so web still starts if backend's ExecStartPost
+# health check times out on cold boot (backend auto-restarts and web stays alive)
+Wants=smartspec-backend.service
 PartOf=smartspec.target
 
 [Service]

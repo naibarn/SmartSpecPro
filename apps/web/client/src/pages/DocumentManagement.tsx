@@ -278,6 +278,7 @@ export default function DocumentManagement() {
 
   const saveMarkdownMutation = trpc.library.saveMarkdown.useMutation();
   const uploadFileMutation = trpc.library.uploadFile.useMutation();
+  const replaceFileMutation = trpc.library.replaceFile.useMutation();
   const createItemMutation = trpc.library.createItem.useMutation();
   const createPresentationDeckMutation = trpc.presentation.createDeck.useMutation();
   const updateItemMutation = trpc.library.updateItem.useMutation();
@@ -669,6 +670,33 @@ export default function DocumentManagement() {
       delete next[selectedItem.id];
       return next;
     });
+  }
+
+  async function handleReplaceFile(file: File, changeDescription?: string) {
+    if (!selectedItem) return;
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error("File too large (max 50 MB)");
+      throw new Error("File too large");
+    }
+    try {
+      const fileBase64 = await fileToBase64(file);
+      await replaceFileMutation.mutateAsync({
+        itemId: selectedItem.id,
+        fileName: file.name,
+        fileType: file.type || "application/octet-stream",
+        fileBase64,
+        changeDescription,
+      });
+      toast.success("File version updated successfully.");
+      await Promise.all([
+        trpcUtils.library.listDocuments.invalidate(),
+        trpcUtils.library.getItem.invalidate({ id: selectedItem.id }),
+        trpcUtils.library.getVersionHistory.invalidate({ itemId: selectedItem.id }),
+      ]);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to replace file");
+      throw error; // re-throw so the dialog stays open on failure
+    }
   }
 
   async function handleDeleteItem(item: DocumentLibraryItem) {
@@ -1342,6 +1370,8 @@ export default function DocumentManagement() {
                     onMarkdownSave={handleSaveMarkdown}
                     onVersionRestore={handleVersionRestore}
                     onRenameTitle={handleRenameDocument}
+                    onReplaceFile={previewType !== "markdown" ? handleReplaceFile : undefined}
+                    isReplacingFile={replaceFileMutation.isPending}
                   />
                   {!selectedItem && selectedItemQuery.isLoading ? (
                     <div className="p-2 text-sm text-muted-foreground">Loading document...</div>
@@ -1668,6 +1698,8 @@ export default function DocumentManagement() {
                 onVersionRestore={handleVersionRestore}
                 onEnterEditMode={() => setIsMarkdownPreviewPanelOpen(true)}
                 onRenameTitle={handleRenameDocument}
+                onReplaceFile={previewType !== "markdown" ? handleReplaceFile : undefined}
+                isReplacingFile={replaceFileMutation.isPending}
               />
               {!selectedItem && selectedItemQuery.isLoading ? (
                 <div className="text-sm text-muted-foreground">

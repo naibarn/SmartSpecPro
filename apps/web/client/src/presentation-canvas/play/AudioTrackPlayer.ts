@@ -18,13 +18,24 @@ export class AudioTrackPlayer {
   private slideAudio: HTMLAudioElement | null = null;
   private projectAudio: HTMLAudioElement | null = null;
   private slideAudioEndTimer: ReturnType<typeof setTimeout> | null = null;
+  private projectAudioEndTimer: ReturnType<typeof setTimeout> | null = null;
+  private projectAudioStartAtSec: number = 0;
+  private projectAudioRemainingMs: number | null = null;
+  private projectAudioTimerStartedAt: number | null = null;
 
   constructor(projectAudioTrack: ResolvedProjectAudioTrack | null) {
     if (projectAudioTrack !== null) {
       const audio = new Audio(projectAudioTrack.url);
       audio.volume = projectAudioTrack.volume;
       audio.loop = projectAudioTrack.loop;
-      audio.play().catch(() => {});
+      this.projectAudioStartAtSec = Math.max(0, (projectAudioTrack.startAtMs ?? 0) / 1000);
+      audio.currentTime = this.projectAudioStartAtSec;
+      if (projectAudioTrack.endAtMs != null) {
+        const playDurationMs = projectAudioTrack.endAtMs - (projectAudioTrack.startAtMs ?? 0);
+        if (playDurationMs > 0) {
+          this.projectAudioRemainingMs = playDurationMs;
+        }
+      }
       this.projectAudio = audio;
     }
   }
@@ -96,6 +107,15 @@ export class AudioTrackPlayer {
    * Called when the engine transitions to PAUSED.
    */
   pause(): void {
+    if (this.projectAudioEndTimer !== null) {
+      clearTimeout(this.projectAudioEndTimer);
+      this.projectAudioEndTimer = null;
+      if (this.projectAudioTimerStartedAt !== null && this.projectAudioRemainingMs !== null) {
+        const elapsed = Date.now() - this.projectAudioTimerStartedAt;
+        this.projectAudioRemainingMs = Math.max(0, this.projectAudioRemainingMs - elapsed);
+      }
+      this.projectAudioTimerStartedAt = null;
+    }
     this.slideAudio?.pause();
     this.projectAudio?.pause();
   }
@@ -107,6 +127,23 @@ export class AudioTrackPlayer {
   resume(): void {
     this.slideAudio?.play().catch(() => {});
     this.projectAudio?.play().catch(() => {});
+    if (
+      this.projectAudio !== null
+      && this.projectAudioRemainingMs !== null
+      && this.projectAudioRemainingMs > 0
+      && this.projectAudioEndTimer === null
+    ) {
+      this.projectAudioTimerStartedAt = Date.now();
+      this.projectAudioEndTimer = setTimeout(() => {
+        this.projectAudioEndTimer = null;
+        this.projectAudioTimerStartedAt = null;
+        this.projectAudioRemainingMs = 0;
+        if (this.projectAudio) {
+          this.projectAudio.pause();
+          this.projectAudio.currentTime = this.projectAudioStartAtSec;
+        }
+      }, this.projectAudioRemainingMs);
+    }
   }
 
   /**
@@ -118,9 +155,15 @@ export class AudioTrackPlayer {
       clearTimeout(this.slideAudioEndTimer);
       this.slideAudioEndTimer = null;
     }
+    if (this.projectAudioEndTimer !== null) {
+      clearTimeout(this.projectAudioEndTimer);
+      this.projectAudioEndTimer = null;
+    }
     this.pause();
     this.slideAudio = null;
     this.projectAudio = null;
+    this.projectAudioRemainingMs = null;
+    this.projectAudioTimerStartedAt = null;
   }
 
 }

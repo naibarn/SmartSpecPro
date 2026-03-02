@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { Message } from "../_core/llm";
-import { executeWithFallback } from "./llmRouter";
+import { executeWithFallback, resolveProviders } from "./llmRouter";
 import { deductCreditsForModel } from "./creditService";
 import { auditLogger } from "./auditLogger";
 
@@ -10,6 +10,8 @@ export interface CallLLMStructuredParams<T> {
   systemPrompt: string;
   userMessage: string;
   model?: string;
+  preferredProviderId?: number;
+  strictProviderPin?: boolean;
   zodSchema: z.ZodType<T>;
   maxRetries?: number; // default 1
   userId: number;
@@ -55,6 +57,8 @@ export async function callLLMStructured<T>(
     systemPrompt,
     userMessage,
     model = DEFAULT_MODEL,
+    preferredProviderId,
+    strictProviderPin,
     zodSchema,
     maxRetries = 1,
     userId,
@@ -70,6 +74,14 @@ The JSON must strictly conform to the expected schema.`;
   let totalCredits = 0;
   let lastRawResponse = "";
   let lastZodError: z.ZodError | undefined;
+
+  if (strictProviderPin && preferredProviderId) {
+    const candidates = await resolveProviders(model).catch(() => []);
+    const providerMatched = candidates.some((c) => c.providerId === preferredProviderId);
+    if (!providerMatched) {
+      throw new Error(`No providers available for model: ${model} with preferred provider ${preferredProviderId}`);
+    }
+  }
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const isRetry = attempt > 0;
@@ -89,6 +101,7 @@ The JSON must strictly conform to the expected schema.`;
       messages,
       stream: false,
       userId,
+      preferredProvider: preferredProviderId,
     });
 
     if (result.type === "error") {

@@ -21,9 +21,11 @@ interface ModelPickerProps {
     value: string;
     onChange: (value: string) => void;
     className?: string;
+    /** Compact mode for toolbar — smaller height & text */
+    compact?: boolean;
 }
 
-export function ModelPicker({ value, onChange, className }: ModelPickerProps) {
+export function ModelPicker({ value, onChange, className, compact }: ModelPickerProps) {
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState("");
 
@@ -77,15 +79,19 @@ export function ModelPicker({ value, onChange, className }: ModelPickerProps) {
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
-                    className={cn("w-full justify-between font-normal", className)}
+                    className={cn(
+                        "w-full justify-between font-normal",
+                        compact && "h-7 text-xs px-2 border-0 bg-transparent hover:bg-accent/50",
+                        className,
+                    )}
                     disabled={isLoading}
                 >
                     {isLoading ? (
-                        <span className="text-muted-foreground truncate">Loading models...</span>
+                        <span className="text-muted-foreground truncate">Loading...</span>
                     ) : (
                         <span className="truncate">{selectedModelName}</span>
                     )}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    <ChevronsUpDown className={cn("ml-1 shrink-0 opacity-50", compact ? "h-3 w-3" : "h-4 w-4")} />
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-80 p-0" align="start">

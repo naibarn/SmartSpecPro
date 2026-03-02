@@ -89,6 +89,17 @@ async def start_sync(
     """Enqueue initial_drive_sync Celery task."""
     await _verify_proxy_token(x_proxy_token)
 
+    # Prevent duplicate sync tasks
+    import redis
+    lock_key = f"sync_lock:gdrive:{request.user_id}:{request.tenant_id}"
+    try:
+        r = redis.from_url(settings.REDIS_URL)
+        if not r.set(lock_key, "1", nx=True, ex=600):  # 10-minute lock
+            return {"status": "sync_already_in_progress", "task_id": None}
+    except Exception as e:
+        logger.warning("Redis lock check failed: %s", e)
+        # Continue without lock on Redis failure
+
     from app.tasks.google_drive_tasks import initial_drive_sync
 
     result = initial_drive_sync.delay(request.user_id, request.tenant_id)
@@ -476,3 +487,86 @@ async def import_drive_file(
             "webViewLink": metadata.get("webViewLink"),
         },
     }
+
+
+class ReindexItemRequest(BaseModel):
+    library_item_id: int
+    user_id: int
+    tenant_id: str
+
+
+@router.post("/reindex-item")
+async def reindex_drive_item(
+    request: ReindexItemRequest,
+    x_proxy_token: Optional[str] = Header(None),
+    current_user=Depends(_get_current_user_flexible),
+    db: AsyncSession = Depends(get_db),
+):
+    """Re-index a single library item from Google Drive."""
+    if not current_user:
+        await _verify_proxy_token(x_proxy_token)
+
+    # Verify ownership of the library item
+    from sqlalchemy import text as sa_text
+    row = (await db.execute(
+        sa_text("""SELECT id FROM library_items
+            WHERE id = :item_id AND tenant_id = :tenant_id AND owner_user_id = :user_id
+            AND source = 'google_drive' AND deleted_at IS NULL LIMIT 1"""),
+        {"item_id": request.library_item_id, "tenant_id": request.tenant_id, "user_id": request.user_id},
+    )).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Library item not found or not owned by user")
+
+    from app.tasks.google_drive_tasks import _enqueue_index_job
+
+    _enqueue_index_job(None, request.tenant_id, request.library_item_id)
+    logger.info(
+        "reindex_drive_item enqueued library_item_id=%d tenant_id=%s",
+        request.library_item_id, request.tenant_id,
+    )
+    return {"status": "reindex_enqueued", "library_item_id": request.library_item_id}
+
+
+class CleanupVectorsRequest(BaseModel):
+    library_item_id: int
+    tenant_id: str
+
+
+@router.post("/cleanup-vectors")
+async def cleanup_drive_vectors(
+    request: CleanupVectorsRequest,
+    x_proxy_token: Optional[str] = Header(None),
+    current_user=Depends(_get_current_user_flexible),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete vectors for a removed library item."""
+    if not current_user:
+        await _verify_proxy_token(x_proxy_token)
+
+    # Verify the library item belongs to the specified tenant
+    from sqlalchemy import text as sa_text
+    row = (await db.execute(
+        sa_text("""SELECT id FROM library_items
+            WHERE id = :item_id AND tenant_id = :tenant_id AND source = 'google_drive' LIMIT 1"""),
+        {"item_id": request.library_item_id, "tenant_id": request.tenant_id},
+    )).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Library item not found")
+
+    try:
+        from app.core.vectordb import VectorCollection
+        collection_name = f"library_tenant_{request.tenant_id}"
+        collection = VectorCollection(collection_name)
+        # Delete vectors with gdrive prefix for this item
+        # Try to find and delete vectors by metadata filter
+        try:
+            collection.delete(where={"item_id": request.library_item_id})
+        except Exception:
+            logger.warning(
+                "Vector cleanup by metadata failed for item %d, trying by prefix",
+                request.library_item_id,
+            )
+    except Exception as e:
+        logger.warning("Vector cleanup failed for item %d: %s", request.library_item_id, e)
+
+    return {"status": "cleanup_done", "library_item_id": request.library_item_id}

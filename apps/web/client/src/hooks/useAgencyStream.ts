@@ -32,6 +32,7 @@ export interface UseAgencyStreamReturn {
     agencyId: string;
     conversationId?: string;
     message: string;
+    modelOverride?: string;
   }) => void;
   disconnect: () => void;
 }
@@ -111,6 +112,7 @@ export function useAgencyStream(
       agencyId: string;
       conversationId?: string;
       message: string;
+      modelOverride?: string;
     }) => {
       // Reset state
       disconnect();
@@ -143,6 +145,7 @@ export function useAgencyStream(
               agencyId: params.agencyId,
               conversationId: params.conversationId,
               message: params.message,
+              ...(params.modelOverride ? { modelOverride: params.modelOverride } : {}),
             }),
             signal: controller.signal,
           });

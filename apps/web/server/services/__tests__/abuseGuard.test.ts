@@ -84,7 +84,7 @@ describe("Abuse Guard", () => {
       });
 
       expect(result.allowed).toBe(true);
-      expect(mockIncr).toHaveBeenCalledWith("abuse:dup:1:abc123");
+      expect(mockIncr).toHaveBeenCalledWith("abuse:dup:chat:1:abc123");
       expect(mockExpire).toHaveBeenCalled(); // Sets TTL on first increment
     });
 
@@ -125,7 +125,7 @@ describe("Abuse Guard", () => {
       });
 
       // expire should NOT be called when count > 1
-      expect(mockExpire).not.toHaveBeenCalledWith("abuse:dup:1:abc123", expect.any(Number));
+      expect(mockExpire).not.toHaveBeenCalledWith("abuse:dup:chat:1:abc123", expect.any(Number));
     });
   });
 
@@ -243,6 +243,24 @@ describe("Abuse Guard", () => {
       const result = await checkAbuseGuard({
         userId: 1,
         namespace: "media",
+        promptHash: "abc123",
+      });
+
+      expect(result.allowed).toBe(true);
+    });
+
+    it("allows request when burst limiter reports redis_unavailable", async () => {
+      mockIncr.mockResolvedValue(1);
+      mockCheckRateLimit.mockResolvedValue({
+        allowed: false,
+        remaining: 0,
+        retryAfter: 30,
+        error: "redis_unavailable",
+      });
+
+      const result = await checkAbuseGuard({
+        userId: 1,
+        namespace: "media:image",
         promptHash: "abc123",
       });
 

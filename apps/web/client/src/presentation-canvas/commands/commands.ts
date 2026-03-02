@@ -22,6 +22,30 @@ export interface CanvasCommandState {
   snapGuides: SnapGuide[];
 }
 
+const NON_BROADCAST_PATCH_FIELDS = new Set<string>([
+  "x",
+  "y",
+  "width",
+  "height",
+  "rotation",
+  "text",
+  "src",
+  "poster",
+  "title",
+  "alt",
+  "imagePrompt",
+  "imageModelId",
+  "imageReferenceUrls",
+]);
+
+function shouldBroadcastPatchToSelection(patch: PresentationElementPatch): boolean {
+  const keys = Object.keys(patch);
+  if (!keys.length) {
+    return false;
+  }
+  return keys.every((key) => !NON_BROADCAST_PATCH_FIELDS.has(key));
+}
+
 export function createCanvasCommandState(
   content: PresentationSlideContent,
   selectedElementIds: string[] = [],
@@ -71,12 +95,54 @@ export function patchSelectedElementCommand(
         return state;
       }
 
+      const primary = state.content.elements.find((element) => element.id === targetId);
+      if (!primary) {
+        return state;
+      }
+
+      const shouldBroadcast = state.selectedElementIds.length > 1 && shouldBroadcastPatchToSelection(patch);
+      if (!shouldBroadcast) {
+        return {
+          ...state,
+          content: updateElementById(state.content, targetId, patch),
+          snapGuides: [],
+        };
+      }
+
+      const selected = new Set(state.selectedElementIds);
+      const nextElements = state.content.elements.map((element) => {
+        if (!selected.has(element.id) || element.type !== primary.type) {
+          return element;
+        }
+        return {
+          ...element,
+          ...patch,
+        } as PresentationElement;
+      });
+
       return {
         ...state,
-        content: updateElementById(state.content, targetId, patch),
+        content: {
+          ...state.content,
+          elements: nextElements,
+        },
         snapGuides: [],
       };
     },
+  };
+}
+
+export function patchElementByIdCommand(
+  elementId: string,
+  patch: PresentationElementPatch,
+): CanvasCommand<CanvasCommandState> {
+  return {
+    id: "patch-element-by-id",
+    apply: (state) => ({
+      ...state,
+      content: updateElementById(state.content, elementId, patch),
+      snapGuides: [],
+    }),
   };
 }
 
@@ -169,9 +235,42 @@ export function resizeSelectionCommand(
         return state;
       }
 
+      const nextWidth = Math.max(0, width);
+      const nextHeight = Math.max(0, height);
+
+      if (state.selectedElementIds.length <= 1) {
+        return {
+          ...state,
+          content: resizeElementById(state.content, targetId, { width: nextWidth, height: nextHeight }),
+          snapGuides: [],
+        };
+      }
+
+      const primary = state.content.elements.find((element) => element.id === targetId);
+      if (!primary) {
+        return state;
+      }
+
+      const ratioX = nextWidth / Math.max(1, primary.width);
+      const ratioY = nextHeight / Math.max(1, primary.height);
+      const selected = new Set(state.selectedElementIds);
+      const nextElements = state.content.elements.map((element) => {
+        if (!selected.has(element.id)) {
+          return element;
+        }
+        return {
+          ...element,
+          width: Math.max(0, Math.round(element.width * ratioX)),
+          height: Math.max(0, Math.round(element.height * ratioY)),
+        } as PresentationElement;
+      });
+
       return {
         ...state,
-        content: resizeElementById(state.content, targetId, { width, height }),
+        content: {
+          ...state.content,
+          elements: nextElements,
+        },
         snapGuides: [],
       };
     },

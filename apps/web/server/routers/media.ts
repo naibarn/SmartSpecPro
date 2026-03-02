@@ -270,6 +270,7 @@ export const mediaRouter = router({
             supportsAspectRatios: mediaModels.aspectRatios,
             supportsSizes: mediaModels.sizes,
             supportsDurations: mediaModels.durations,
+            configJson: mediaModels.configJson,
           })
           .from(mediaModels)
           .where(and(...conditions))
@@ -372,7 +373,7 @@ export const mediaRouter = router({
       // Abuse guard: detect duplicate/burst/loop patterns
       const abuseResult = await checkAbuseGuard({
         userId: ctx.user.id,
-        namespace: "media",
+        namespace: "media:image",
         promptHash: hashPrompt(input.prompt, input.model),
       });
       if (!abuseResult.allowed) {
@@ -508,7 +509,7 @@ export const mediaRouter = router({
       // Abuse guard: detect duplicate/burst/loop patterns
       const abuseResult = await checkAbuseGuard({
         userId: ctx.user.id,
-        namespace: "media",
+        namespace: "media:video",
         promptHash: hashPrompt(input.prompt, input.model),
       });
       if (!abuseResult.allowed) {
@@ -609,7 +610,7 @@ export const mediaRouter = router({
       // Abuse guard: detect duplicate/burst/loop patterns
       const abuseResult = await checkAbuseGuard({
         userId: ctx.user.id,
-        namespace: "media",
+        namespace: "media:audio",
         promptHash: hashPrompt(input.text, input.model),
       });
       if (!abuseResult.allowed) {
@@ -703,7 +704,7 @@ export const mediaRouter = router({
       // Abuse guard: detect duplicate/burst/loop patterns
       const abuseResult = await checkAbuseGuard({
         userId: ctx.user.id,
-        namespace: "media",
+        namespace: "media:image_async",
         promptHash: hashPrompt(input.prompt, input.model),
       });
       if (!abuseResult.allowed) {
@@ -832,7 +833,7 @@ export const mediaRouter = router({
       // Abuse guard: detect duplicate/burst/loop patterns
       const abuseResult = await checkAbuseGuard({
         userId: ctx.user.id,
-        namespace: "media",
+        namespace: "media:video_async",
         promptHash: hashPrompt(input.prompt, input.model),
       });
       if (!abuseResult.allowed) {

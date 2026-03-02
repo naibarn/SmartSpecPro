@@ -1179,7 +1179,7 @@ async def process_library_index_job(
             correlation_id=f"library-index:{job.id}",
             tenant_id=job.tenant_id,
             library_item_id=job.library_item_id,
-            chunk_count=len(chunks),
+            chunk_count=len(child_chunks),
             attempt_count=job.attempt_count,
         )
         _safe_record_vector_audit_event(
@@ -1191,7 +1191,7 @@ async def process_library_index_job(
             domain=parsed_payload["domain"] if parsed_payload else "library",
             entity_id=parsed_payload["entity_id"] if parsed_payload else f"library:{job.library_item_id}",
             details={
-                "chunk_count": len(chunks),
+                "chunk_count": len(child_chunks),
                 "attempt_count": job.attempt_count,
                 "job_type": job.job_type,
                 "payload_version": parsed_payload["version"] if parsed_payload else "legacy",
@@ -1202,7 +1202,7 @@ async def process_library_index_job(
         service_tag = "library.save_reindex" if job.job_type == "reindex" else "library.upload_index"
         await charge_credits_post_deduct(
             user_id=item.owner_user_id,
-            chunk_count=len(chunks),
+            chunk_count=len(child_chunks),
             service=service_tag,
             idempotency_key=f"library-index:{job.id}",
             source_type="indexing",
@@ -1211,7 +1211,7 @@ async def process_library_index_job(
         return {
             "job_id": job.id,
             "status": COMPLETED_STATUS,
-            "chunks_written": len(chunks),
+            "chunks_written": len(child_chunks),
             "attempt_count": job.attempt_count,
             "provider_payload_version": parsed_payload["version"] if parsed_payload else "legacy",
         }

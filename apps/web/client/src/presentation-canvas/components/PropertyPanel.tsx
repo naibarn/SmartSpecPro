@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { PresentationElement, PresentationElementPatch } from "@/lib/presentationEditorState";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 import {
   Bold,
   Italic,
@@ -12,12 +14,16 @@ import {
   AlignRight,
   AlignJustify,
   ChevronDown,
+  Loader2,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface PropertyPanelProps {
   selectedElement: PresentationElement | null;
+  selectedElementCount?: number;
   onPatchSelected: (patch: PresentationElementPatch) => void;
+  onPatchElementById?: (elementId: string, patch: PresentationElementPatch) => void;
 }
 
 interface TextPresetDefinition {
@@ -111,9 +117,324 @@ const FONT_WEIGHTS = [
   { label: "Bold", value: "700" },
 ] as const;
 
+interface ImageModelOption {
+  id: string;
+  name: string;
+  provider?: string;
+  configJson?: unknown;
+}
+
+const COMMON_ASPECT_RATIOS = [
+  { value: "16:9", decimal: 16 / 9 },
+  { value: "9:16", decimal: 9 / 16 },
+  { value: "4:3", decimal: 4 / 3 },
+  { value: "3:4", decimal: 3 / 4 },
+  { value: "4:5", decimal: 4 / 5 },
+  { value: "5:4", decimal: 5 / 4 },
+  { value: "1:1", decimal: 1 },
+] as const;
+const MAX_IMAGE_REFERENCES = 5;
+const RETRY_AFTER_SECONDS_PATTERN = /retry after\s+(\d+)s/i;
+const TASK_POLL_INTERVAL_MS = 2000;
+const TASK_POLL_MAX_ATTEMPTS = 90;
+
+function normalizeGenerateType(configJson: unknown): string | null {
+  if (!configJson || typeof configJson !== "object") {
+    return null;
+  }
+  const raw = (configJson as { generateType?: unknown }).generateType;
+  if (typeof raw !== "string") {
+    return null;
+  }
+  const normalized = raw.trim().toLowerCase();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function isTextToImageModel(model: ImageModelOption): boolean {
+  const generateType = normalizeGenerateType(model.configJson);
+  if (!generateType) {
+    return true;
+  }
+  return ["text-to-image", "text2image", "txt2img", "t2i"].includes(generateType);
+}
+
+function resolveClosestAspectRatio(width: number, height: number): string {
+  const safeWidth = Math.max(1, Number.isFinite(width) ? width : 1);
+  const safeHeight = Math.max(1, Number.isFinite(height) ? height : 1);
+  const ratio = safeWidth / safeHeight;
+  let closest: (typeof COMMON_ASPECT_RATIOS)[number] = COMMON_ASPECT_RATIOS[0];
+  let minDelta = Math.abs(ratio - closest.decimal);
+  for (const candidate of COMMON_ASPECT_RATIOS) {
+    const delta = Math.abs(ratio - candidate.decimal);
+    if (delta < minDelta) {
+      minDelta = delta;
+      closest = candidate;
+    }
+  }
+  return closest.value;
+}
+
+function extractGeneratedImageUrl(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+  const rawData = (payload as { data?: unknown }).data;
+  if (!Array.isArray(rawData)) {
+    return null;
+  }
+  for (const entry of rawData) {
+    if (!entry || typeof entry !== "object") {
+      continue;
+    }
+    const url = (entry as { url?: unknown }).url;
+    if (typeof url === "string" && url.trim().length > 0) {
+      return url.trim();
+    }
+  }
+  return null;
+}
+
+function extractTaskResultUrl(task: unknown): string | null {
+  if (!task || typeof task !== "object") {
+    return null;
+  }
+  const data = task as {
+    resultUrl?: unknown;
+    resultData?: unknown;
+    data?: unknown;
+  };
+  if (typeof data.resultUrl === "string" && data.resultUrl.trim().length > 0) {
+    return data.resultUrl.trim();
+  }
+
+  const fromValue = (value: unknown): string | null => {
+    if (!value) {
+      return null;
+    }
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+        return trimmed;
+      }
+      return null;
+    }
+    if (Array.isArray(value)) {
+      for (const entry of value) {
+        const found = fromValue(entry);
+        if (found) {
+          return found;
+        }
+      }
+      return null;
+    }
+    if (typeof value !== "object") {
+      return null;
+    }
+    const obj = value as Record<string, unknown>;
+    const directKeys = ["url", "image_url", "imageUrl", "result_url", "resultUrl"];
+    for (const key of directKeys) {
+      const candidate = obj[key];
+      if (typeof candidate === "string" && candidate.trim().length > 0) {
+        const trimmed = candidate.trim();
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+          return trimmed;
+        }
+      }
+    }
+    return null;
+  };
+
+  const resultData = data.resultData;
+  if (resultData && typeof resultData === "object") {
+    const resultDataObj = resultData as Record<string, unknown>;
+    const candidates: unknown[] = [
+      resultDataObj,
+      resultDataObj.data,
+      resultDataObj.response,
+      resultDataObj.taskResult,
+      resultDataObj.resultJson,
+      resultDataObj.output,
+      resultDataObj.kie_ai_response,
+    ];
+    if (typeof resultDataObj.resultJson === "string") {
+      try {
+        candidates.push(JSON.parse(resultDataObj.resultJson));
+      } catch {
+        // Ignore invalid JSON and keep other candidates.
+      }
+    }
+    for (const candidate of candidates) {
+      const found = fromValue(candidate);
+      if (found) {
+        return found;
+      }
+    }
+  }
+
+  return fromValue(data.data);
+}
+
+function normalizeTaskStatus(task: unknown): string | null {
+  if (!task || typeof task !== "object") {
+    return null;
+  }
+  const raw = (task as { status?: unknown }).status;
+  if (typeof raw !== "string") {
+    return null;
+  }
+  const normalized = raw.trim().toLowerCase();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function extractTaskFailureMessage(task: unknown): string | null {
+  if (!task || typeof task !== "object") {
+    return null;
+  }
+  const direct = (task as { errorMessage?: unknown }).errorMessage;
+  if (typeof direct === "string" && direct.trim().length > 0) {
+    return direct.trim();
+  }
+  const resultData = (task as { resultData?: unknown }).resultData;
+  if (!resultData || typeof resultData !== "object") {
+    return null;
+  }
+  const candidates = ["error", "errorMessage", "message", "detail", "failMsg"] as const;
+  for (const key of candidates) {
+    const value = (resultData as Record<string, unknown>)[key];
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return null;
+}
+
+async function pollTaskUntilTerminal(
+  taskId: string,
+  fetchTask: (taskId: string) => Promise<unknown>,
+): Promise<unknown> {
+  for (let attempt = 0; attempt < TASK_POLL_MAX_ATTEMPTS; attempt += 1) {
+    const task = await fetchTask(taskId);
+    const status = normalizeTaskStatus(task);
+    if (status === "completed") {
+      return task;
+    }
+    if (status === "failed" || status === "cancelled") {
+      const errorMessage = extractTaskFailureMessage(task);
+      throw new Error(errorMessage || `Image generation ${status}.`);
+    }
+    await sleepMs(TASK_POLL_INTERVAL_MS);
+  }
+  throw new Error("Image generation timeout. Please try again.");
+}
+
+function isAllowedReferenceUrl(value: string): boolean {
+  return value.startsWith("/") || /^https?:\/\//i.test(value);
+}
+
+function normalizeReferenceUrls(urls: string[] | undefined): string[] {
+  if (!Array.isArray(urls) || urls.length === 0) {
+    return [];
+  }
+  const deduped: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of urls) {
+    if (typeof raw !== "string") {
+      continue;
+    }
+    const value = raw.trim();
+    if (!value || value.length > 2048 || !isAllowedReferenceUrl(value) || seen.has(value)) {
+      continue;
+    }
+    seen.add(value);
+    deduped.push(value);
+    if (deduped.length >= MAX_IMAGE_REFERENCES) {
+      break;
+    }
+  }
+  return deduped;
+}
+
+function applyReferenceImagesToExtraParams(
+  model: ImageModelOption | undefined,
+  referenceImageUrls: string[],
+): Record<string, unknown> | undefined {
+  if (!model || referenceImageUrls.length === 0 || !model.configJson || typeof model.configJson !== "object") {
+    return undefined;
+  }
+  const inputFields = Array.isArray((model.configJson as { inputFields?: unknown }).inputFields)
+    ? ((model.configJson as { inputFields?: unknown }).inputFields as unknown[])
+    : [];
+  const imageUrlsField = inputFields.find((field) => {
+    if (!field || typeof field !== "object") {
+      return false;
+    }
+    const type = (field as { type?: unknown }).type;
+    const key = (field as { key?: unknown }).key;
+    return type === "image_urls" && typeof key === "string" && key.trim().length > 0;
+  }) as { key: string } | undefined;
+
+  if (!imageUrlsField) {
+    return undefined;
+  }
+
+  return {
+    [imageUrlsField.key]: referenceImageUrls,
+  };
+}
+
+function hasImageUrlsField(model: ImageModelOption | undefined): boolean {
+  if (!model || !model.configJson || typeof model.configJson !== "object") {
+    return false;
+  }
+  const inputFields = Array.isArray((model.configJson as { inputFields?: unknown }).inputFields)
+    ? ((model.configJson as { inputFields?: unknown }).inputFields as unknown[])
+    : [];
+  return inputFields.some((field) => {
+    if (!field || typeof field !== "object") {
+      return false;
+    }
+    return (field as { type?: unknown }).type === "image_urls";
+  });
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (error && typeof error === "object" && "message" in error) {
+    const maybeMessage = (error as { message?: unknown }).message;
+    if (typeof maybeMessage === "string") {
+      return maybeMessage;
+    }
+  }
+  return "Failed to regenerate image";
+}
+
+function getRetryAfterSeconds(errorMessage: string): number | null {
+  const match = RETRY_AFTER_SECONDS_PATTERN.exec(errorMessage);
+  if (!match) {
+    return null;
+  }
+  const parsed = Number.parseInt(match[1] ?? "", 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+  return parsed;
+}
+
+function sleepMs(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 function parseNumberInput(value: string, fallback: number): number {
   const parsed = Number.parseFloat(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }
 
 function toColorInputValue(value: string, fallback: string): string {
@@ -199,9 +520,160 @@ function ToolbarButton({
   );
 }
 
-export function PropertyPanel({ selectedElement, onPatchSelected }: PropertyPanelProps) {
+export function PropertyPanel({
+  selectedElement,
+  selectedElementCount = 0,
+  onPatchSelected,
+  onPatchElementById,
+}: PropertyPanelProps) {
   const [fontDropdownOpen, setFontDropdownOpen] = useState(false);
   const [weightDropdownOpen, setWeightDropdownOpen] = useState(false);
+  const [isRegeneratingImage, setIsRegeneratingImage] = useState(false);
+  const trpcUtils = trpc.useUtils();
+  const imageModelsQuery = trpc.media.getModels.useQuery(
+    { type: "image" },
+    { staleTime: 300_000 },
+  );
+  const generateImageAsyncMutation = trpc.media.generateImageAsync.useMutation();
+
+  const imageModels = (imageModelsQuery.data?.models ?? []) as ImageModelOption[];
+  const compatibleImageModels = imageModels.filter(isTextToImageModel);
+  const defaultImageModelId = compatibleImageModels[0]?.id
+    || imageModelsQuery.data?.defaults?.image
+    || "";
+  const selectedImageModelId = selectedElement?.type === "image"
+    ? selectedElement.imageModelId?.trim() || defaultImageModelId
+    : defaultImageModelId;
+  const selectedImageModel = imageModels.find((model) => model.id === selectedImageModelId);
+  const selectedModelSupportsImageUrls = hasImageUrlsField(selectedImageModel);
+
+  const patchImageElementById = (elementId: string, patch: PresentationElementPatch) => {
+    if (onPatchElementById) {
+      onPatchElementById(elementId, patch);
+      return;
+    }
+    onPatchSelected(patch);
+  };
+
+  const handleUseCurrentImageAsReference = () => {
+    if (!selectedElement || selectedElement.type !== "image" || (selectedElement as any).svgContent) {
+      return;
+    }
+    const currentSource = (selectedElement.src ?? "").trim();
+    if (!currentSource) {
+      toast.error("Current image has no source URL to use as reference.");
+      return;
+    }
+    if (!isAllowedReferenceUrl(currentSource)) {
+      toast.error("Current image URL is not a valid reference URL.");
+      return;
+    }
+    const nextReferences = normalizeReferenceUrls([
+      ...(selectedElement.imageReferenceUrls ?? []),
+      currentSource,
+    ]);
+    onPatchSelected({
+      imageReferenceUrls: nextReferences,
+    } as PresentationElementPatch);
+    toast.success("Current image added to references.");
+  };
+
+  const handleRemoveReference = (url: string) => {
+    if (!selectedElement || selectedElement.type !== "image") {
+      return;
+    }
+    const nextReferences = normalizeReferenceUrls(
+      (selectedElement.imageReferenceUrls ?? []).filter((item) => item !== url),
+    );
+    onPatchSelected({
+      imageReferenceUrls: nextReferences,
+    } as PresentationElementPatch);
+  };
+
+  const handleClearReferences = () => {
+    if (!selectedElement || selectedElement.type !== "image") {
+      return;
+    }
+    onPatchSelected({
+      imageReferenceUrls: [],
+    } as PresentationElementPatch);
+  };
+
+  const handleRegenerateImage = async () => {
+    if (!selectedElement || selectedElement.type !== "image" || (selectedElement as any).svgContent) {
+      return;
+    }
+    if (isRegeneratingImage) {
+      return;
+    }
+    const imagePrompt = (selectedElement.imagePrompt ?? "").trim();
+    if (!imagePrompt) {
+      toast.error("Please enter an image prompt before regenerating.");
+      return;
+    }
+    const targetElementId = selectedElement.id;
+    const requestedModel = selectedElement.imageModelId?.trim() || undefined;
+    const aspectRatio = resolveClosestAspectRatio(selectedElement.width, selectedElement.height);
+    const referenceImageUrls = normalizeReferenceUrls(selectedElement.imageReferenceUrls);
+    const modelForRequest = imageModels.find((model) => model.id === (requestedModel || defaultImageModelId));
+    const modelSpecificExtraParams = applyReferenceImagesToExtraParams(modelForRequest, referenceImageUrls);
+    const requestPayload = {
+      prompt: imagePrompt,
+      model: requestedModel,
+      aspectRatio,
+      numImages: 1 as const,
+      ...(referenceImageUrls.length > 0 ? { referenceImageUrls } : {}),
+      ...(modelSpecificExtraParams ? { extraParams: modelSpecificExtraParams } : {}),
+    };
+    try {
+      setIsRegeneratingImage(true);
+      let taskResult;
+      try {
+        taskResult = await generateImageAsyncMutation.mutateAsync(requestPayload);
+      } catch (initialError) {
+        const initialMessage = getErrorMessage(initialError);
+        const retryAfterSeconds = getRetryAfterSeconds(initialMessage);
+        const isBurstAnomalyError = initialMessage.toLowerCase().includes("burst_anomaly");
+        if (!isBurstAnomalyError || !retryAfterSeconds) {
+          throw initialError;
+        }
+        toast.info(`Rate limit reached, retrying in ${retryAfterSeconds}s...`);
+        await sleepMs((retryAfterSeconds + 1) * 1000);
+        taskResult = await generateImageAsyncMutation.mutateAsync(requestPayload);
+      }
+      let generatedUrl =
+        extractTaskResultUrl(taskResult)
+        || extractGeneratedImageUrl(taskResult);
+      if (!generatedUrl) {
+        const createdTaskId = (taskResult as { id?: unknown; taskId?: unknown }).id;
+        const taskId = typeof createdTaskId === "string" && createdTaskId.trim().length > 0
+          ? createdTaskId.trim()
+          : null;
+        if (!taskId) {
+          throw new Error("Image generation started but task ID was not returned.");
+        }
+        const terminalTask = await pollTaskUntilTerminal(
+          taskId,
+          async (id) => trpcUtils.media.getTask.fetch({ taskId: id }),
+        );
+        generatedUrl = extractTaskResultUrl(terminalTask);
+      }
+      if (!generatedUrl) {
+        throw new Error("Image provider returned no URL");
+      }
+      patchImageElementById(targetElementId, {
+        src: generatedUrl,
+        imagePrompt,
+        imageModelId: requestedModel ?? (taskResult as { model?: string }).model ?? undefined,
+        ...(referenceImageUrls.length > 0 ? { imageReferenceUrls: referenceImageUrls } : {}),
+      } as PresentationElementPatch);
+      toast.success("Image regenerated and replaced.");
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setIsRegeneratingImage(false);
+    }
+  };
 
   if (!selectedElement) {
     return (
@@ -213,6 +685,7 @@ export function PropertyPanel({ selectedElement, onPatchSelected }: PropertyPane
 
   // Text-element specific derived values (safe to compute; guarded by type check below)
   const textEl = selectedElement.type === "text" ? selectedElement : null;
+  const isMultiSelection = selectedElementCount > 1;
   const currentFont = textEl?.fontFamily ?? "Inter, system-ui, sans-serif";
   const currentWeight = textEl?.fontWeight ?? "600";
   const currentFontLabel = FONT_FAMILIES.find((f) => f.value === currentFont)?.label ?? currentFont.split(",")[0];
@@ -266,8 +739,14 @@ export function PropertyPanel({ selectedElement, onPatchSelected }: PropertyPane
               aria-label="Text Content"
               className="min-h-[72px] resize-none bg-zinc-800 border-zinc-700 text-zinc-100 text-sm focus:ring-blue-500"
               value={selectedElement.text}
+              disabled={isMultiSelection}
               onChange={(e) => onPatchSelected({ text: e.target.value } as PresentationElementPatch)}
             />
+            {isMultiSelection ? (
+              <p className="mt-1 text-[11px] text-zinc-400">
+                Text editing is locked while multiple elements are selected.
+              </p>
+            ) : null}
           </Section>
 
           {/* Presets */}
@@ -765,6 +1244,198 @@ export function PropertyPanel({ selectedElement, onPatchSelected }: PropertyPane
                 <span className="text-[10px] text-zinc-400">Alt Text</span>
                 <input className="w-full rounded-md bg-zinc-800 border border-zinc-700 px-2 py-1.5 text-xs text-zinc-400 cursor-default" value={selectedElement.alt} readOnly aria-label="Image Alt Text" />
               </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] text-zinc-400">Image Prompt</span>
+                <Textarea
+                  aria-label="Image Prompt"
+                  className="min-h-[72px] resize-y bg-zinc-800 border-zinc-700 text-zinc-100 text-xs focus:ring-blue-500"
+                  placeholder="Describe the image you want to generate..."
+                  value={selectedElement.imagePrompt ?? ""}
+                  maxLength={2000}
+                  onChange={(event) => onPatchSelected({
+                    imagePrompt: event.target.value,
+                  } as PresentationElementPatch)}
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] text-zinc-400">Media Model</span>
+                <select
+                  aria-label="Image Model"
+                  className="w-full rounded-md bg-zinc-800 border border-zinc-700 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  value={selectedElement.imageModelId ?? ""}
+                  onChange={(event) => onPatchSelected({
+                    imageModelId: event.target.value || undefined,
+                  } as PresentationElementPatch)}
+                >
+                  <option value="">
+                    Default {defaultImageModelId ? `(${defaultImageModelId})` : "(auto)"}
+                  </option>
+                  {compatibleImageModels.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.name}{model.provider ? ` - ${model.provider}` : ""}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-[10px] text-zinc-500">
+                  {imageModelsQuery.isLoading
+                    ? "Loading image models..."
+                    : compatibleImageModels.length > 0
+                      ? "Only text-to-image compatible models are shown."
+                      : "No compatible image models found."}
+                </span>
+              </label>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-zinc-400">Image References</span>
+                  <span className="text-[10px] text-zinc-500">
+                    {(selectedElement.imageReferenceUrls ?? []).length}/{MAX_IMAGE_REFERENCES}
+                  </span>
+                </div>
+                <div className="flex gap-1.5">
+                  <button
+                    type="button"
+                    className="rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={handleUseCurrentImageAsReference}
+                    disabled={
+                      !(selectedElement.src ?? "").trim()
+                      || (selectedElement.imageReferenceUrls ?? []).length >= MAX_IMAGE_REFERENCES
+                    }
+                  >
+                    Use Current Image
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={handleClearReferences}
+                    disabled={(selectedElement.imageReferenceUrls ?? []).length === 0}
+                  >
+                    Clear
+                  </button>
+                </div>
+                {(selectedElement.imageReferenceUrls ?? []).length > 0 ? (
+                  <div className="flex flex-col gap-1">
+                    {(selectedElement.imageReferenceUrls ?? []).map((url) => (
+                      <div
+                        key={url}
+                        className="flex items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1"
+                      >
+                        <span className="truncate text-[10px] text-zinc-300">{url}</span>
+                        <button
+                          type="button"
+                          className="ml-auto rounded border border-zinc-700 px-1 py-0 text-[10px] text-zinc-300 hover:bg-zinc-700"
+                          onClick={() => handleRemoveReference(url)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-[10px] text-zinc-500">
+                    Add references to guide identity/style during regeneration.
+                  </span>
+                )}
+                <span className="text-[10px] text-zinc-500">
+                  {selectedModelSupportsImageUrls
+                    ? "Selected model supports image_urls input and references will also be mapped to model-specific fields."
+                    : "References will be sent via standard referenceImageUrls."}
+                </span>
+              </div>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] text-zinc-400">Fit Mode</span>
+                <select
+                  aria-label="Image Fit Mode"
+                  className="w-full rounded-md bg-zinc-800 border border-zinc-700 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  value={selectedElement.imageFit || "contain"}
+                  onChange={(e) => onPatchSelected({ imageFit: e.target.value as "contain" | "cover" | "fill" } as PresentationElementPatch)}
+                >
+                  <option value="contain">Contain</option>
+                  <option value="cover">Cover (Crop)</option>
+                  <option value="fill">Fill</option>
+                </select>
+              </label>
+
+              <div className="grid grid-cols-1 gap-2">
+                <label className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between text-[10px] text-zinc-400">
+                    <span>Zoom</span>
+                    <span className="tabular-nums">{(selectedElement.imageZoom ?? 1).toFixed(2)}x</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0.5}
+                    max={3}
+                    step={0.01}
+                    className="w-full accent-blue-500"
+                    value={selectedElement.imageZoom ?? 1}
+                    onChange={(e) => onPatchSelected({
+                      imageZoom: clampNumber(parseNumberInput(e.target.value, selectedElement.imageZoom ?? 1), 0.5, 3),
+                    } as PresentationElementPatch)}
+                  />
+                </label>
+
+                <label className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between text-[10px] text-zinc-400">
+                    <span>Focus X</span>
+                    <span className="tabular-nums">{Math.round(selectedElement.imagePositionX ?? 50)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={1}
+                    className="w-full accent-blue-500"
+                    value={selectedElement.imagePositionX ?? 50}
+                    onChange={(e) => onPatchSelected({
+                      imagePositionX: clampNumber(parseNumberInput(e.target.value, selectedElement.imagePositionX ?? 50), 0, 100),
+                    } as PresentationElementPatch)}
+                  />
+                </label>
+
+                <label className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between text-[10px] text-zinc-400">
+                    <span>Focus Y</span>
+                    <span className="tabular-nums">{Math.round(selectedElement.imagePositionY ?? 50)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={1}
+                    className="w-full accent-blue-500"
+                    value={selectedElement.imagePositionY ?? 50}
+                    onChange={(e) => onPatchSelected({
+                      imagePositionY: clampNumber(parseNumberInput(e.target.value, selectedElement.imagePositionY ?? 50), 0, 100),
+                    } as PresentationElementPatch)}
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  className="rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
+                  onClick={() => onPatchSelected({
+                    imageFit: "cover",
+                    imageZoom: 1,
+                    imagePositionX: 50,
+                    imagePositionY: 50,
+                  } as PresentationElementPatch)}
+                >
+                  Reset Crop
+                </button>
+                <button
+                  type="button"
+                  className="flex items-center justify-center gap-1 rounded-md border border-blue-600 bg-blue-700 px-2 py-1.5 text-xs font-medium text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:border-zinc-700 disabled:bg-zinc-700 disabled:text-zinc-300"
+                  onClick={() => void handleRegenerateImage()}
+                  disabled={isRegeneratingImage || generateImageAsyncMutation.isPending || !(selectedElement.imagePrompt ?? "").trim()}
+                >
+                  {isRegeneratingImage || generateImageAsyncMutation.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3.5 w-3.5" />
+                  )}
+                  Regenerate Image
+                </button>
+              </div>
             </Section>
           )}
         </>

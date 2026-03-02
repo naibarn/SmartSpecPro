@@ -34,7 +34,15 @@ export interface AbuseGuardResult {
 
 export interface AbuseGuardParams {
   userId: number;
-  namespace: "chat" | "skill" | "media";
+  namespace:
+    | "chat"
+    | "skill"
+    | "media"
+    | "media:image"
+    | "media:video"
+    | "media:audio"
+    | "media:image_async"
+    | "media:video_async";
   /** SHA-256 hash of the prompt/input content */
   promptHash: string;
 }
@@ -64,13 +72,14 @@ export function hashPrompt(content: string, extra?: string): string {
  */
 async function detectDuplicateRequest(
   userId: number,
+  namespace: string,
   promptHash: string,
 ): Promise<AbuseGuardResult> {
   try {
     const { getCacheClient } = await import("./redisClients");
     const redis = getCacheClient();
 
-    const key = `abuse:dup:${userId}:${promptHash}`;
+    const key = `abuse:dup:${namespace}:${userId}:${promptHash}`;
     const count = await redis.incr(key);
 
     // Set TTL only on first increment (INCR creates key with no expiry)
@@ -111,6 +120,10 @@ async function detectBurstAnomaly(
     // Short window: 30 requests per minute (default)
     const shortKey = `abuse:burst:${namespace}:short:${userId}`;
     const shortResult = await checkRateLimit(shortKey, BURST_SHORT_MAX, 60);
+    // Abuse guard must fail open when Redis rate-limit storage is unavailable.
+    if (shortResult.error === "redis_unavailable") {
+      return { allowed: true };
+    }
 
     if (!shortResult.allowed) {
       return {
@@ -123,6 +136,9 @@ async function detectBurstAnomaly(
     // Long window: 200 requests per hour (default)
     const longKey = `abuse:burst:${namespace}:long:${userId}`;
     const longResult = await checkRateLimit(longKey, BURST_LONG_MAX, 3600);
+    if (longResult.error === "redis_unavailable") {
+      return { allowed: true };
+    }
 
     if (!longResult.allowed) {
       return {
@@ -148,13 +164,14 @@ async function detectBurstAnomaly(
  */
 async function detectSequentialRepetition(
   userId: number,
+  namespace: string,
   promptHash: string,
 ): Promise<AbuseGuardResult> {
   try {
     const { getCacheClient } = await import("./redisClients");
     const redis = getCacheClient();
 
-    const key = `abuse:seq:${userId}`;
+    const key = `abuse:seq:${namespace}:${userId}`;
 
     // Push the current hash and trim to keep only last SEQ_MAX entries
     await redis.lpush(key, promptHash);
@@ -197,7 +214,7 @@ export async function checkAbuseGuard(
   const { userId, namespace, promptHash } = params;
 
   // Layer 1: Duplicate request detection
-  const dupResult = await detectDuplicateRequest(userId, promptHash);
+  const dupResult = await detectDuplicateRequest(userId, namespace, promptHash);
   if (!dupResult.allowed) {
     logAbuseEvent(userId, namespace, dupResult);
     return dupResult;
@@ -211,7 +228,7 @@ export async function checkAbuseGuard(
   }
 
   // Layer 3: Sequential repetition detection
-  const seqResult = await detectSequentialRepetition(userId, promptHash);
+  const seqResult = await detectSequentialRepetition(userId, namespace, promptHash);
   if (!seqResult.allowed) {
     logAbuseEvent(userId, namespace, seqResult);
     return seqResult;

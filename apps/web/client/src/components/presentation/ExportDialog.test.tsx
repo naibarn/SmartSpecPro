@@ -17,13 +17,15 @@ vi.mock("@/lib/trpc", () => ({
     presentation: {
       triggerExport: { useMutation: vi.fn() },
       getExportStatus: { useQuery: vi.fn() },
+      cancelExport: { useMutation: vi.fn() },
+      listExports: { useQuery: vi.fn() },
     },
   },
 }));
 
 // Mock sonner toast to avoid DOM side effects
 vi.mock("sonner", () => ({
-  toast: { error: vi.fn(), success: vi.fn() },
+  toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() },
 }));
 
 // ---------------------------------------------------------------------------
@@ -76,6 +78,15 @@ function makeQueryMock(data?: MockStatusData) {
   };
 }
 
+function makeListExportsQueryMock(items: Array<Record<string, unknown>> = []) {
+  return {
+    data: items,
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  };
+}
+
 const TRIGGER_SUCCESS_DATA = {
   schemaVersion: 1 as const,
   exportId: 99,
@@ -105,6 +116,12 @@ describe("ExportDialog", () => {
     );
     vi.mocked(trpc.presentation.getExportStatus.useQuery).mockReturnValue(
       makeQueryMock() as any,
+    );
+    vi.mocked(trpc.presentation.cancelExport.useMutation).mockReturnValue(
+      makeMutationMock() as any,
+    );
+    vi.mocked(trpc.presentation.listExports.useQuery).mockReturnValue(
+      makeListExportsQueryMock() as any,
     );
   });
 
@@ -173,6 +190,22 @@ describe("ExportDialog", () => {
     expect(callArg.idempotencyKey.length).toBeGreaterThan(0);
   });
 
+  it("does not start export when onBeforeExport returns false", async () => {
+    const mockMutate = vi.fn();
+    const onBeforeExport = vi.fn(async () => false);
+    vi.mocked(trpc.presentation.triggerExport.useMutation).mockReturnValue(
+      makeMutationMock({ mutate: mockMutate }) as any,
+    );
+
+    render(<ExportDialog {...DEFAULT_PROPS} onBeforeExport={onBeforeExport} />);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("export-button"));
+    });
+
+    expect(onBeforeExport).toHaveBeenCalledTimes(1);
+    expect(mockMutate).not.toHaveBeenCalled();
+  });
+
   // 7. Dialog transitions to in-progress after triggerExport resolves
   it("shows progress bar after triggerExport onSuccess fires with exportId", () => {
     let capturedOnSuccess: ((data: any) => void) | undefined;
@@ -216,8 +249,8 @@ describe("ExportDialog", () => {
     expect(progressBar.getAttribute("aria-valuenow")).toBe("42");
   });
 
-  // 9. Stage label renders for "rendering"
-  it("renders stage label 'Rendering slides...' when stage is 'rendering'", () => {
+  // 9. Stage label renders raw stage value
+  it("renders stage label 'rendering' when stage is 'rendering'", () => {
     let capturedOnSuccess: ((data: any) => void) | undefined;
     vi.mocked(trpc.presentation.triggerExport.useMutation).mockImplementation(
       (opts?: any) => {
@@ -230,11 +263,11 @@ describe("ExportDialog", () => {
     );
     render(<ExportDialog {...DEFAULT_PROPS} />);
     act(() => { capturedOnSuccess?.(TRIGGER_SUCCESS_DATA); });
-    expect(screen.getByText("Rendering slides...")).toBeDefined();
+    expect(screen.getByText("rendering")).toBeDefined();
   });
 
-  // 10. Stage label renders for "encoding"
-  it("renders stage label 'Encoding video...' when stage is 'encoding'", () => {
+  // 10. Stage label renders raw stage value
+  it("renders stage label 'encoding' when stage is 'encoding'", () => {
     let capturedOnSuccess: ((data: any) => void) | undefined;
     vi.mocked(trpc.presentation.triggerExport.useMutation).mockImplementation(
       (opts?: any) => {
@@ -247,11 +280,11 @@ describe("ExportDialog", () => {
     );
     render(<ExportDialog {...DEFAULT_PROPS} />);
     act(() => { capturedOnSuccess?.(TRIGGER_SUCCESS_DATA); });
-    expect(screen.getByText("Encoding video...")).toBeDefined();
+    expect(screen.getByText("encoding")).toBeDefined();
   });
 
-  // 11. Stage label renders for "uploading"
-  it("renders stage label 'Uploading file...' when stage is 'uploading'", () => {
+  // 11. Stage label renders raw stage value
+  it("renders stage label 'uploading' when stage is 'uploading'", () => {
     let capturedOnSuccess: ((data: any) => void) | undefined;
     vi.mocked(trpc.presentation.triggerExport.useMutation).mockImplementation(
       (opts?: any) => {
@@ -264,7 +297,7 @@ describe("ExportDialog", () => {
     );
     render(<ExportDialog {...DEFAULT_PROPS} />);
     act(() => { capturedOnSuccess?.(TRIGGER_SUCCESS_DATA); });
-    expect(screen.getByText("Uploading file...")).toBeDefined();
+    expect(screen.getByText("uploading")).toBeDefined();
   });
 
   // 12. Polling stops when status is "done"
@@ -400,5 +433,26 @@ describe("ExportDialog", () => {
     // Should be back at format selection — format picker visible again
     expect(screen.getByText("MP4")).toBeDefined();
     expect(screen.getByTestId("export-button")).toBeDefined();
+  });
+
+  it("renders recent export timestamp with time (not date only)", () => {
+    vi.mocked(trpc.presentation.listExports.useQuery).mockReturnValue(
+      makeListExportsQueryMock([
+        {
+          exportId: 501,
+          format: "png",
+          status: "done",
+          downloadUrl: "https://example.com/export.zip",
+          createdAt: "2026-03-01T22:17:00.000Z",
+          progressPct: 100,
+          errorMessage: null,
+        },
+      ]) as any,
+    );
+
+    render(<ExportDialog {...DEFAULT_PROPS} />);
+
+    const createdAtText = screen.getByTestId("recent-export-created-at-501");
+    expect(createdAtText.textContent ?? "").toMatch(/:\d{2}/);
   });
 });

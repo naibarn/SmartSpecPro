@@ -38,6 +38,7 @@ interface ContentArea {
 interface ScaleFactors {
   scaleX: number;
   scaleY: number;
+  typographyScale: number;
 }
 
 interface TemplateContext {
@@ -68,6 +69,28 @@ function fontWeightToString(
   if (weight >= 600) return "600";
   if (weight >= 500) return "500";
   return "normal";
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function estimateTextLineCount(text: string, width: number, fontSize: number): number {
+  if (!text.trim()) {
+    return 1;
+  }
+  const avgCharWidth = Math.max(1, fontSize * 0.56);
+  const charsPerLine = Math.max(8, Math.floor(width / avgCharWidth));
+  const estimated = Math.ceil(text.length / charsPerLine);
+  return clamp(estimated, 1, 4);
+}
+
+function scaleFontSize(
+  baseSize: number,
+  scale: ScaleFactors,
+  minSize: number = 8,
+): number {
+  return Math.max(minSize, Math.round(baseSize * scale.typographyScale));
 }
 
 function computeContentArea(
@@ -120,6 +143,10 @@ function makeImageElement(opts: {
   height: number;
   src: string;
   alt: string;
+  imageFit?: "contain" | "cover" | "fill";
+  imagePositionX?: number;
+  imagePositionY?: number;
+  imageZoom?: number;
   svgContent?: string;
   svgColor?: string;
 }): SlideElement {
@@ -133,6 +160,10 @@ function makeImageElement(opts: {
     src: opts.src,
     alt: opts.alt,
   };
+  if (opts.imageFit !== undefined) el.imageFit = opts.imageFit;
+  if (opts.imagePositionX !== undefined) el.imagePositionX = opts.imagePositionX;
+  if (opts.imagePositionY !== undefined) el.imagePositionY = opts.imagePositionY;
+  if (opts.imageZoom !== undefined) el.imageZoom = opts.imageZoom;
   if (opts.svgContent !== undefined) el.svgContent = opts.svgContent;
   if (opts.svgColor !== undefined) el.svgColor = opts.svgColor;
   return el as SlideElement;
@@ -191,9 +222,23 @@ function makeImageOrPlaceholder(
   width: number,
   height: number,
   alt: string,
+  renderOptions?: {
+    imageFit?: "contain" | "cover" | "fill";
+    imagePositionX?: number;
+    imagePositionY?: number;
+    imageZoom?: number;
+  },
 ): SlideElement {
   if (ctx.imageUrl) {
-    return makeImageElement({ x, y, width, height, src: ctx.imageUrl, alt });
+    return makeImageElement({
+      x,
+      y,
+      width,
+      height,
+      src: ctx.imageUrl,
+      alt,
+      ...renderOptions,
+    });
   }
   ctx.warnings.push(
     `Slide ${ctx.slideIndex}: Image generation failed, using placeholder`,
@@ -216,6 +261,12 @@ function buildHeroCenter(ctx: TemplateContext): SlideElement[] {
       contentArea.width,
       contentArea.height,
       slideData.title,
+      {
+        imageFit: "cover",
+        imagePositionX: 50,
+        imagePositionY: 42,
+        imageZoom: 1.08,
+      },
     ),
   );
 
@@ -231,7 +282,7 @@ function buildHeroCenter(ctx: TemplateContext): SlideElement[] {
   );
 
   // 3. Centered title
-  const titleFontSize = Math.max(8, Math.round(64 * scale.scaleX));
+  const titleFontSize = scaleFontSize(64, scale);
   const titleHeight = Math.round(80 * scale.scaleY);
   const titleY =
     contentArea.y + contentArea.height * 0.35;
@@ -251,7 +302,7 @@ function buildHeroCenter(ctx: TemplateContext): SlideElement[] {
   );
 
   // 4. Body text
-  const bodyFontSize = Math.max(8, Math.round(28 * scale.scaleX));
+  const bodyFontSize = scaleFontSize(28, scale);
   const bodyLineHeight = Math.round(44 * scale.scaleY);
   let bodyY = titleY + titleHeight + Math.round(20 * scale.scaleY);
   for (const line of slideData.body) {
@@ -309,15 +360,18 @@ function buildSplitRightImage(ctx: TemplateContext): SlideElement[] {
   }
 
   // 3. Title text
-  const titleFontSize = Math.max(8, Math.round(48 * scale.scaleX));
+  const titleFontSize = scaleFontSize(48, scale);
   const titleY =
     contentArea.y + Math.round(160 * scale.scaleY);
+  const titleWidth = halfWidth - Math.round(80 * scale.scaleX);
+  const titleLineCount = estimateTextLineCount(slideData.title, titleWidth, titleFontSize);
+  const titleHeight = Math.round((52 + (titleLineCount - 1) * 34) * scale.scaleY);
   elements.push(
     makeTextElement({
       x: contentArea.x + Math.round(40 * scale.scaleX),
       y: titleY,
-      width: halfWidth - Math.round(80 * scale.scaleX),
-      height: Math.round(60 * scale.scaleY),
+      width: titleWidth,
+      height: titleHeight,
       text: slideData.title,
       color: preset.colors.primary,
       fontSize: titleFontSize,
@@ -328,9 +382,9 @@ function buildSplitRightImage(ctx: TemplateContext): SlideElement[] {
   );
 
   // 4. Body text
-  const bodyFontSize = Math.max(8, Math.round(24 * scale.scaleX));
+  const bodyFontSize = scaleFontSize(24, scale);
   const bodyLineHeight = Math.round(40 * scale.scaleY);
-  let bodyY = titleY + Math.round(80 * scale.scaleY);
+  let bodyY = titleY + titleHeight + Math.round(24 * scale.scaleY);
   for (const line of slideData.body) {
     elements.push(
       makeTextElement({
@@ -358,6 +412,12 @@ function buildSplitRightImage(ctx: TemplateContext): SlideElement[] {
       halfWidth,
       contentArea.height,
       slideData.title,
+      {
+        imageFit: "cover",
+        imagePositionX: 52,
+        imagePositionY: 45,
+        imageZoom: 1.06,
+      },
     ),
   );
 
@@ -378,6 +438,12 @@ function buildSplitLeftImage(ctx: TemplateContext): SlideElement[] {
       halfWidth,
       contentArea.height,
       slideData.title,
+      {
+        imageFit: "cover",
+        imagePositionX: 48,
+        imagePositionY: 45,
+        imageZoom: 1.06,
+      },
     ),
   );
 
@@ -410,14 +476,17 @@ function buildSplitLeftImage(ctx: TemplateContext): SlideElement[] {
   }
 
   // 4. Title text on right
-  const titleFontSize = Math.max(8, Math.round(48 * scale.scaleX));
+  const titleFontSize = scaleFontSize(48, scale);
   const titleY = contentArea.y + Math.round(160 * scale.scaleY);
+  const titleWidth = halfWidth - Math.round(80 * scale.scaleX);
+  const titleLineCount = estimateTextLineCount(slideData.title, titleWidth, titleFontSize);
+  const titleHeight = Math.round((52 + (titleLineCount - 1) * 34) * scale.scaleY);
   elements.push(
     makeTextElement({
       x: contentArea.x + halfWidth + Math.round(40 * scale.scaleX),
       y: titleY,
-      width: halfWidth - Math.round(80 * scale.scaleX),
-      height: Math.round(60 * scale.scaleY),
+      width: titleWidth,
+      height: titleHeight,
       text: slideData.title,
       color: preset.colors.primary,
       fontSize: titleFontSize,
@@ -428,9 +497,9 @@ function buildSplitLeftImage(ctx: TemplateContext): SlideElement[] {
   );
 
   // 5. Body text on right
-  const bodyFontSize = Math.max(8, Math.round(24 * scale.scaleX));
+  const bodyFontSize = scaleFontSize(24, scale);
   const bodyLineHeight = Math.round(40 * scale.scaleY);
-  let bodyY = titleY + Math.round(80 * scale.scaleY);
+  let bodyY = titleY + titleHeight + Math.round(24 * scale.scaleY);
   for (const line of slideData.body) {
     elements.push(
       makeTextElement({
@@ -467,18 +536,27 @@ function buildFeatureBoxesRight(ctx: TemplateContext): SlideElement[] {
       leftWidth,
       contentArea.height,
       slideData.title,
+      {
+        imageFit: "cover",
+        imagePositionX: 45,
+        imagePositionY: 42,
+        imageZoom: 1.08,
+      },
     ),
   );
 
   // 2. Title on right
-  const titleFontSize = Math.max(8, Math.round(40 * scale.scaleX));
+  const titleFontSize = scaleFontSize(40, scale);
   const titleY = contentArea.y + Math.round(30 * scale.scaleY);
+  const titleWidth = rightWidth - Math.round(60 * scale.scaleX);
+  const titleLineCount = estimateTextLineCount(slideData.title, titleWidth, titleFontSize);
+  const titleHeight = Math.round((52 + (titleLineCount - 1) * 32) * scale.scaleY);
   elements.push(
     makeTextElement({
       x: contentArea.x + leftWidth + Math.round(30 * scale.scaleX),
       y: titleY,
-      width: rightWidth - Math.round(60 * scale.scaleX),
-      height: Math.round(60 * scale.scaleY),
+      width: titleWidth,
+      height: titleHeight,
       text: slideData.title,
       color: preset.colors.primary,
       fontSize: titleFontSize,
@@ -490,11 +568,14 @@ function buildFeatureBoxesRight(ctx: TemplateContext): SlideElement[] {
 
   // 3. Three feature cards
   const cardWidth = rightWidth - Math.round(60 * scale.scaleX);
-  const cardHeight = Math.round(
-    (contentArea.height - Math.round(130 * scale.scaleY)) / 3 -
-      Math.round(10 * scale.scaleY),
+  const cardHeight = Math.max(
+    Math.round(72 * scale.scaleY),
+    Math.round(
+      (contentArea.height - (titleHeight + Math.round(70 * scale.scaleY))) / 3 -
+        Math.round(10 * scale.scaleY),
+    ),
   );
-  let cardY = titleY + Math.round(80 * scale.scaleY);
+  let cardY = titleY + titleHeight + Math.round(20 * scale.scaleY);
 
   for (let i = 0; i < 3; i++) {
     const cardBgColor = preset.colors.cardBg[i] ?? preset.colors.cardBg[0];
@@ -513,7 +594,7 @@ function buildFeatureBoxesRight(ctx: TemplateContext): SlideElement[] {
     // Card text
     const bodyText = slideData.body[i] ?? "";
     if (bodyText) {
-      const cardTextFontSize = Math.max(8, Math.round(20 * scale.scaleX));
+      const cardTextFontSize = scaleFontSize(20, scale);
       elements.push(
         makeTextElement({
           x:
@@ -582,13 +663,17 @@ function buildHeaderElements(
   }
 
   // Deck title text
-  if (header.showDeckTitle && deckTitle) {
+  const headerTitle = (header.customTitle ?? deckTitle)?.trim();
+  if (header.showDeckTitle && headerTitle) {
+    const normalizedDeckTitle = headerTitle.replace(/\s+/g, " ").trim();
+    const compactDeckTitle = normalizedDeckTitle.length > 32
+      ? `${normalizedDeckTitle.slice(0, 31)}…`
+      : normalizedDeckTitle;
     let textX: number;
     let textAlign: "left" | "center" | "right" = "left";
     const textWidth = Math.round(400 * scale.scaleX);
-    const scaledFontSize = Math.round(
-      (header.titleFontSize ?? 18) * scale.scaleX,
-    );
+    const scaledFontSize = scaleFontSize(header.titleFontSize ?? 18, scale);
+    const verticalPadding = Math.round(6 * scale.scaleY);
 
     switch (header.logoPosition) {
       case "center":
@@ -607,12 +692,12 @@ function buildHeaderElements(
     elements.push(
       makeTextElement({
         x: textX,
-        y: Math.round((scaledHeaderHeight - scaledFontSize) / 2),
+        y: verticalPadding,
         width: textWidth,
-        height: Math.round(scaledHeaderHeight * 0.7),
-        text: deckTitle,
+        height: Math.max(Math.round(scaledHeaderHeight * 0.5), scaledHeaderHeight - verticalPadding * 2),
+        text: compactDeckTitle,
         color: header.titleColor ?? preset.colors.text,
-        fontSize: Math.max(8, scaledFontSize),
+        fontSize: scaledFontSize,
         fontFamily: preset.typography.titleFontFamily,
         fontWeight: fontWeightToString(preset.typography.titleFontWeight),
         textAlign,
@@ -666,10 +751,7 @@ function buildFooterElements(
     );
   }
 
-  const scaledFontSize = Math.max(
-    8,
-    Math.round((footer.fontSize ?? 14) * scale.scaleX),
-  );
+  const scaledFontSize = scaleFontSize(footer.fontSize ?? 14, scale);
   const textOffset = Math.round((scaledFooterHeight - scaledFontSize) / 2);
 
   // Page number
@@ -716,9 +798,11 @@ function buildFooterElements(
 export function generateSlide(input: LayoutEngineInput): LayoutEngineOutput {
   const canvasWidth = input.canvasWidth ?? 1920;
   const canvasHeight = input.canvasHeight ?? 1080;
+  const shortEdgeScale = Math.min(canvasWidth, canvasHeight) / 1080;
   const scale: ScaleFactors = {
     scaleX: canvasWidth / 1920,
     scaleY: canvasHeight / 1080,
+    typographyScale: clamp(shortEdgeScale, 0.45, 2),
   };
   const warnings: string[] = [];
 
@@ -838,7 +922,7 @@ export function generateSlide(input: LayoutEngineInput): LayoutEngineOutput {
           height: 100,
           text: input.slideData.title || "Slide",
           color: input.stylePreset.colors.text || "#ffffff",
-          fontSize: Math.max(8, Math.round(48 * scale.scaleX)),
+          fontSize: scaleFontSize(48, scale),
           fontFamily:
             input.stylePreset.typography.titleFontFamily || "Inter",
         }),
