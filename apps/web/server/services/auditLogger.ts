@@ -67,6 +67,9 @@ export type AuditEventType =
   | "channel_gateway_invalid_conversation_id"
   | "channel_gateway_llm_error"
   | "channel_gateway_chat_error"
+  | "widget_origin_rejected"
+  | "widget_init_error"
+  | "widget_ingest_error"
   | "error";
 
 export interface AuditLogEntry {

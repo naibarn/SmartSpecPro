@@ -23,6 +23,7 @@ import { createWebhookRouter } from "../routes/webhooks";
 import { createTelegramWebhookRouter } from "../routes/telegramWebhook";
 import { createChannelWebhookRouter } from "../routes/channelWebhook";
 import { createVoiceSessionRouter, handleVoiceUpgrade, shutdownVoiceGateway } from "../routes/voiceGateway";
+import { createWidgetInitRouter, handleWidgetUpgrade } from "../routes/widgetGateway";
 import browserToolRouter from "../routes/browserTool";
 import "../services/telegramLinkService"; // Register /start link handler
 import "../services/channelAdapters/telegram"; // Register Telegram adapter
@@ -367,6 +368,10 @@ app.use("/webhooks/telegram", express.json({ limit: "1mb" }), createTelegramWebh
 
 // Voice gateway: session token + consent endpoints
 app.use("/api/voice", createVoiceSessionRouter());
+
+// Widget gateway: init token endpoint
+app.use("/api/widget", express.json({ limit: "100kb" }), createWidgetInitRouter());
+
 app.use(browserToolRouter);
 
 // Cloud Tasks handler routes (called by Cloud Tasks with OIDC auth)
@@ -964,11 +969,13 @@ async function main() {
   const server = createServer(app);
   httpServer = server;
 
-  // Voice gateway: handle WebSocket upgrade for /api/voice/stream
+  // WebSocket upgrade routing
   server.on("upgrade", (req, socket, head) => {
     const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
     if (url.pathname === "/api/voice/stream") {
       handleVoiceUpgrade(req, socket as any, head);
+    } else if (url.pathname === "/widget/v1/ws") {
+      handleWidgetUpgrade(req, socket as any, head);
     }
   });
 

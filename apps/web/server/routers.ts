@@ -69,6 +69,7 @@ import { sandboxRouter } from "./routers/sandbox";
 import { agencyRouter } from "./routers/agency";
 import { personaRouter } from "./routers/persona";
 import { artifactRouter } from "./routers/artifact";
+import { widgetRouter } from "./routers/widget";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -258,6 +259,11 @@ export const appRouter = router({
         const user = await getUserByEmail(input.email);
 
         if (!user) {
+          throw new Error('Invalid email or password');
+        }
+
+        // Block login for widget system accounts (defense-in-depth)
+        if (/^widget-system@.+\.internal$/.test(input.email)) {
           throw new Error('Invalid email or password');
         }
 
@@ -1349,6 +1355,9 @@ export const appRouter = router({
 
   // Canvas / AI Artifacts (versioned, interactive artifacts)
   artifact: artifactRouter,
+
+  // Embeddable chat widget management
+  widget: widgetRouter,
 
   // Memory system (entity memories, summaries, context)
   memory: memoryRouter,
