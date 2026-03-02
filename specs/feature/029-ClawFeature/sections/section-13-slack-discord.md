@@ -1,5 +1,3 @@
-I now have all the context needed. Let me generate the section content.
-
 # Section 13: F01-C -- Slack + Discord Adapters
 
 ## Overview
@@ -709,3 +707,34 @@ Given the constrained server environment (single server, limited RAM/CPU):
 4. **Bot message filtering**: Both adapters MUST filter out messages from bots (including their own) to prevent infinite message loops.
 5. **Tenant isolation**: Slack team_id and Discord guild_id must be mapped to exactly one tenant. Cross-tenant access is prevented by the `channel_credentials.tenant_id` FK constraint.
 6. **Feature flag gating**: All Slack/Discord endpoints and event handlers must check `multiChannel` feature flag before processing.
+
+---
+
+## Actual Implementation (2026-03-02)
+
+### Files Created
+
+| File | Action | Notes |
+|------|--------|-------|
+| `apps/web/server/services/channelAdapters/slack.ts` | CREATED | HMAC-SHA256 webhook validation, Block Kit formatting, fetch-based API |
+| `apps/web/server/services/channelAdapters/discord.ts` | CREATED | discord.js Gateway, slash command registration, 2000-char splitting |
+| `apps/web/server/services/channelAdapters/__tests__/slack.test.ts` | CREATED | 14 tests |
+| `apps/web/server/services/channelAdapters/__tests__/discord.test.ts` | CREATED | 13 tests |
+
+### Deviations from Plan
+
+1. **`@slack/bolt` not installed**: Slack adapter uses native `crypto` + `fetch` (matches WhatsApp/LINE pattern). `@slack/bolt` is heavier and not needed for the current webhook-based approach.
+
+2. **Slack OAuth installationStore**: Phase 2. Stub methods added to `SlackAdapter` (`storeInstallation`, `fetchInstallation`, `deleteInstallation`) that throw clearly instead of silently no-oping. Current credentials are pre-configured via Admin UI.
+
+3. **Discord `initialize()`/`connect()` split**: Two-phase setup for Gateway. `initialize()` registers event handlers (idempotent via `handlersAttached` flag). `connect(botToken)` logs into the Gateway. `connected` flag is set by the `ClientReady` event.
+
+4. **Discord ingestCallback signature**: Changed to `(guildId, externalChannelId, text)` from the original `(connectionId, text, guildId)`. channelGateway uses guildId+channelType='discord' to look up `channel_connections` and get the real connectionId.
+
+5. **Slash command registration added**: `registerGuildCommands(botToken, guildId, clientId)` registers `/ask` (with required `message` option) and `/status` commands per-guild using `discord.js` REST + `SlashCommandBuilder`.
+
+### Test Coverage
+
+- **slack.test.ts**: 14 tests — HMAC verification (5), parsing + bot filter (5), Block Kit formatting (3), sendMessage (2)
+- **discord.test.ts**: 13 tests — initialize (3), shutdown (2), validateWebhook (1), parseInbound (1), formatMessage (3), sendMessage (2)
+- **Total**: 27 tests, all passing
