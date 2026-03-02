@@ -72,6 +72,7 @@ import { artifactRouter } from "./routers/artifact";
 import { widgetRouter } from "./routers/widget";
 import { webhookTriggersRouter } from "./routers/webhookTriggers";
 import { channelRouterRouter } from "./routers/channelRouter";
+import { tenantFeatureFlagsRouter } from "./routers/tenantFeatureFlags";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -1778,6 +1779,7 @@ export const appRouter = router({
   adminOps: adminOpsRouter,
   funnelAnalytics: funnelAnalyticsRouter,
   persona: personaRouter,
+  tenantFeatureFlags: tenantFeatureFlagsRouter,
 });
 
 export type AppRouter = typeof appRouter;

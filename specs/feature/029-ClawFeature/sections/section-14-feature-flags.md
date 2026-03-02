@@ -1,12 +1,21 @@
-I now have all the context I need. Let me generate the section content.
-
 # Section 14: Feature Flags & Tenant Configuration
 
 ## Overview
 
-This section implements a tenant-scoped feature flag system that gates all 10 Claw features (F01-F10). Feature flags are stored in the existing `tenants.settings` JSONB column under a `featureFlags` sub-key. A dedicated tRPC mutation with server-side allowlist validation ensures only recognized flag keys are persisted, preventing privilege escalation through arbitrary key injection. RBAC rules allow `domain_admin` to toggle flags for their own tenant, while `admin` can modify flags for any tenant. Enforcement happens at three levels: tRPC middleware, Express route guards, and conditional UI rendering.
+This section implements a tenant-scoped feature flag system that gates all 10 Claw features (F01-F10). Feature flags are stored in the `tenants.featureFlags` JSON column (dedicated column, not `settings` sub-key as originally planned — the schema already had this column). A dedicated tRPC mutation with server-side allowlist validation ensures only recognized flag keys are persisted, preventing privilege escalation through arbitrary key injection. RBAC rules allow `domain_admin` to toggle flags for their own tenant (verified via DB-backed `registeredDomain` check to prevent Host-header spoofing), while `admin` can modify flags for any tenant. Enforcement happens at three levels: tRPC middleware, Express route guards, and conditional UI rendering.
 
-**Depends on:** Section 01 (Database Foundation) -- the `tenants` table and its `settings` JSONB column must exist. No schema migration is needed for this section since `tenants.settings` already supports `[key: string]: any`.
+**Depends on:** Section 01 (Database Foundation) -- the `tenants` table and its `featureFlags` JSON column must exist.
+
+## Deviations from Plan
+
+1. **Storage location**: Flags are stored in `tenants.featureFlags` (dedicated JSON column) rather than `tenants.settings.featureFlags` sub-key. The schema already had this column.
+2. **Hook name**: Created `useTenantFeatureFlag.ts` instead of modifying `useFeatureFlag.ts` (existing hook serves a different purpose for UI rollout flags).
+3. **Type name**: `FeatureFlagKey` renamed to `TenantFeatureFlagKey` to avoid collision with existing `useFeatureFlag.ts` export.
+4. **RBAC strengthened**: domain_admin ownership verified via `user.registeredDomain` → `tenants.primaryDomain` DB lookup instead of trusting `ctx.tenantId` from HTTP Host header.
+5. **Transaction added**: `updateTenantFeatureFlags` wraps SELECT+UPDATE in a transaction to prevent race conditions.
+6. **Fail-closed middlewares**: Both tRPC and Express middlewares throw FORBIDDEN/503 when DB is unavailable (not silently pass).
+7. **tenant endpoint updated**: `/api/tenant/current` now includes `featureFlags` field so the React hook can read it.
+8. **Middleware export**: Added `export const middleware = t.middleware` to `_core/trpc.ts` to allow middleware composition without re-creating a tRPC instance.
 
 ---
 

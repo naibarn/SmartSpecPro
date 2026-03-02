@@ -36,6 +36,7 @@ export function registerTenantRoutes(app: Express) {
           seo,
           settings: req.tenant.settings || {},
           contactInfo: req.tenant.contactInfo || {},
+          featureFlags: (req.tenant.featureFlags as Record<string, boolean> | null) ?? {},
         },
       }));
     } catch (error) {

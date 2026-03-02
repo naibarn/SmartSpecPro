@@ -71,7 +71,11 @@ export function registerAdminTenantsRoutes(app: Express) {
   // Create tenant
   app.post('/api/admin/tenants', requireAdmin, async (req, res) => {
     try {
-      const { slug, name, primaryDomain, domains, logoUrl, websiteLogoUrl, faviconUrl, isActive, themeConfig, seoConfig, settings } = req.body;
+      const { slug, name, primaryDomain, domains, logoUrl, websiteLogoUrl, faviconUrl, isActive, themeConfig, seoConfig, settings: rawCreateSettings } = req.body;
+
+      // featureFlags must only be modified via the dedicated updateFeatureFlags mutation
+      // to enforce allowlist validation and prevent privilege escalation.
+      const { featureFlags: _strippedCreate, ...settings } = (rawCreateSettings ?? {});
 
       if (!slug || !name || !primaryDomain) {
         return res.status(400).json({ error: 'Missing required fields: slug, name, primaryDomain' });
@@ -125,7 +129,11 @@ export function registerAdminTenantsRoutes(app: Express) {
   app.put('/api/admin/tenants/:id', requireAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      const { slug, name, primaryDomain, domains, logoUrl, websiteLogoUrl, faviconUrl, isActive, themeConfig, seoConfig, settings } = req.body;
+      const { slug, name, primaryDomain, domains, logoUrl, websiteLogoUrl, faviconUrl, isActive, themeConfig, seoConfig, settings: rawSettings } = req.body;
+
+      // featureFlags must only be modified via the dedicated updateFeatureFlags mutation
+      // to enforce allowlist validation and prevent privilege escalation.
+      const { featureFlags: _stripped, ...settings } = (rawSettings ?? {});
 
       const dbInstance = await db.instance;
 
