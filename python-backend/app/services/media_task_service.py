@@ -3,6 +3,7 @@ Media Task Service
 Handles async media generation task management
 """
 
+import re
 import uuid
 from datetime import datetime, timedelta
 from typing import Optional, List
@@ -11,6 +12,46 @@ from sqlalchemy import select, and_
 
 from app.models.media_task import MediaTask, TaskStatus, MediaType
 from app.models.user import User
+
+MARKDOWN_FENCED_BLOCK_PATTERN = re.compile(
+    r"^\s*```(?:[A-Za-z0-9_-]+)?\s*([\s\S]*?)\s*```\s*$"
+)
+MARKDOWN_FENCED_BLOCK_GLOBAL_PATTERN = re.compile(
+    r"```(?:[A-Za-z0-9_-]+)?\s*([\s\S]*?)\s*```"
+)
+MARKDOWN_FENCE_LINE_PATTERN = re.compile(r"^\s*```[A-Za-z0-9_-]*\s*$", re.MULTILINE)
+LEADING_JSON_LABEL_PATTERN = re.compile(r"^json\s*\n([\s\S]*)$", re.IGNORECASE)
+
+
+def normalize_media_prompt(prompt: Optional[str]) -> str:
+    """Normalize prompt text by unwrapping markdown fenced blocks."""
+    if prompt is None:
+        return ""
+
+    normalized = str(prompt).replace("\r\n", "\n").strip()
+    # Unwrap up to 2 layers to handle nested wrapping from chained model output.
+    for _ in range(2):
+        match = MARKDOWN_FENCED_BLOCK_PATTERN.match(normalized)
+        if not match:
+            break
+        normalized = (match.group(1) or "").strip()
+
+    # If fenced blocks were embedded with extra text, unwrap each block in-place.
+    normalized = MARKDOWN_FENCED_BLOCK_GLOBAL_PATTERN.sub(
+        lambda match: (match.group(1) or "").strip(),
+        normalized,
+    )
+    # Remove leftover fence-only lines from malformed outputs.
+    normalized = MARKDOWN_FENCE_LINE_PATTERN.sub("", normalized).strip()
+
+    # Handle malformed outputs like "json\\n{...}" after fence removal.
+    json_label_match = LEADING_JSON_LABEL_PATTERN.match(normalized)
+    if json_label_match:
+        candidate = (json_label_match.group(1) or "").strip()
+        if candidate.startswith("{") or candidate.startswith("["):
+            normalized = candidate
+
+    return normalized
 
 
 class MediaTaskService:
@@ -28,6 +69,7 @@ class MediaTaskService:
         """Create a new media generation task"""
         # Convert enum to string value for database storage
         media_type_value = media_type.value if isinstance(media_type, MediaType) else str(media_type)
+        normalized_prompt = normalize_media_prompt(prompt) or str(prompt).strip()
 
         task = MediaTask(
             id=str(uuid.uuid4()),
@@ -35,7 +77,7 @@ class MediaTaskService:
             media_type=media_type_value,
             status=TaskStatus.PENDING.value,
             model=model,
-            prompt=prompt,
+            prompt=normalized_prompt,
             parameters=parameters or {},
         )
         db.add(task)

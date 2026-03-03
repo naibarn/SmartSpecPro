@@ -11,6 +11,11 @@ import os
 
 # Required queues — worker MUST consume from all of these
 REQUIRED_QUEUES = ["celery", "video", "media", "presentation_export", "presentation_import", "sandbox"]
+ONEDRIVE_SCHEDULE_REQUIRED_VARS = (
+    "MICROSOFT_CLIENT_ID",
+    "MICROSOFT_CLIENT_SECRET",
+    "MICROSOFT_ONEDRIVE_REDIRECT_URI",
+)
 
 # Create Celery app
 celery_app = Celery(
@@ -103,7 +108,7 @@ celery_app.conf.update(
 )
 
 # Periodic tasks
-celery_app.conf.beat_schedule = {
+beat_schedule = {
     "cleanup-expired-tasks": {
         "task": "app.tasks.media_tasks.cleanup_expired_tasks",
         "schedule": crontab(hour=3, minute=0),  # Daily at 3:00 AM UTC - deletes tasks older than 12 days
@@ -140,18 +145,6 @@ celery_app.conf.beat_schedule = {
         "task": "poll_drive_changes",
         "schedule": crontab(minute="*/15"),  # Every 15 min - fallback polling when webhook is down
     },
-    "renew-onedrive-subscriptions": {
-        "task": "onedrive.renew_subscriptions",
-        "schedule": crontab(minute=0, hour="*/6"),  # Every 6 hours - renew expiring OneDrive subscriptions
-    },
-    "cleanup-onedrive-edit-sessions": {
-        "task": "onedrive.cleanup_edit_sessions",
-        "schedule": crontab(minute=0, hour="*"),  # Every hour - expire stale OneDrive edit sessions
-    },
-    "poll-onedrive-changes": {
-        "task": "poll_onedrive_changes",
-        "schedule": crontab(minute="*/15"),
-    },
     "check-expired-approvals": {
         "task": "app.tasks.approval_timeout_tasks.check_expired_approvals",
         "schedule": 300.0,  # Every 5 minutes - auto-reject expired workflow approvals
@@ -170,6 +163,26 @@ celery_app.conf.beat_schedule = {
         "schedule": crontab(minute="*/5"),  # Every 5 minutes
     },
 }
+
+if all(os.getenv(var) for var in ONEDRIVE_SCHEDULE_REQUIRED_VARS):
+    beat_schedule.update(
+        {
+            "renew-onedrive-subscriptions": {
+                "task": "onedrive.renew_subscriptions",
+                "schedule": crontab(minute=0, hour="*/6"),  # Every 6 hours - renew expiring OneDrive subscriptions
+            },
+            "cleanup-onedrive-edit-sessions": {
+                "task": "onedrive.cleanup_edit_sessions",
+                "schedule": crontab(minute=0, hour="*"),  # Every hour - expire stale OneDrive edit sessions
+            },
+            "poll-onedrive-changes": {
+                "task": "poll_onedrive_changes",
+                "schedule": crontab(minute="*/15"),
+            },
+        }
+    )
+
+celery_app.conf.beat_schedule = beat_schedule
 
 # Auto-discover tasks
 celery_app.autodiscover_tasks(["app.tasks", "app.workers"])

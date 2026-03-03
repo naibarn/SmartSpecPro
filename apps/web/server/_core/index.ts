@@ -52,6 +52,7 @@ import { correlationIdMiddleware } from "../middleware/correlationId";
 // BullMQ scheduler/queue init removed — migrated to Cloud Tasks (Section 05)
 import { initializeTelegramQueue, shutdownTelegramWorker } from "../services/telegramService";
 import { initDeliveryQueue, closeDeliveryQueue } from "../services/deliveryQueue";
+import { initWebhookDispatchQueue, closeWebhookDispatchQueue } from "../services/webhookDispatchQueue";
 import { initializeTrashPurgeJob, shutdownTrashPurgeWorker } from "../jobs/purgeOldTrashItems";
 import { initializeGDriveCleanupJob, shutdownGDriveCleanupWorker } from "../jobs/gdriveSessionCleanup";
 import { initializePendingApprovalAlertJob } from "../jobs/pendingApprovalAlert";
@@ -1031,6 +1032,13 @@ async function main() {
     console.error("[Startup] Failed to initialize delivery queue:", error);
   }
 
+  // Initialize Webhook Dispatch queue (BullMQ — retry-safe agency/chat/workflow dispatch)
+  try {
+    await initWebhookDispatchQueue();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize webhook dispatch queue:", error);
+  }
+
   // Initialize channel adapters (call optional initialize() hook on each)
   try {
     await Promise.all(
@@ -1129,34 +1137,6 @@ async function main() {
     console.error("[Startup] Failed to initialize GDrive cleanup job:", error);
   }
 
-  // Initialize LLM queue system (BullMQ workers for background tasks)
-  try {
-    await initializeQueues();
-  } catch (error) {
-    console.error("[Startup] Failed to initialize LLM queues:", error);
-  }
-
-  // Initialize trash auto-purge job (daily at 2 AM)
-  try {
-    await initializeTrashPurgeJob();
-  } catch (error) {
-    console.error("[Startup] Failed to initialize trash purge job:", error);
-  }
-
-  // Initialize pending approval daily alert (9 AM)
-  try {
-    await initializePendingApprovalAlertJob();
-  } catch (error) {
-    console.error("[Startup] Failed to initialize approval alert job:", error);
-  }
-
-  // Initialize Google Drive edit session cleanup (every 6h)
-  try {
-    await initializeGDriveCleanupJob();
-  } catch (error) {
-    console.error("[Startup] Failed to initialize GDrive cleanup job:", error);
-  }
-
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
@@ -1212,6 +1192,7 @@ process.on("SIGTERM", async () => {
   await shutdownTrashPurgeWorker().catch(() => {});
   await shutdownTelegramWorker().catch(() => {});
   await closeDeliveryQueue().catch(() => {});
+  await closeWebhookDispatchQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
 
   // 3b. Shut down channel adapters
@@ -1263,6 +1244,7 @@ process.on("SIGINT", async () => {
   await shutdownTrashPurgeWorker().catch(() => {});
   await shutdownTelegramWorker().catch(() => {});
   await closeDeliveryQueue().catch(() => {});
+  await closeWebhookDispatchQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
   await Promise.all(
     adapterRegistry.getAll()

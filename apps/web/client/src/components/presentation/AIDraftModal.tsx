@@ -75,6 +75,32 @@ interface ReferenceImageItem {
   name: string;
 }
 
+const ARTICLE_TARGET_WORDS_MIN = 320;
+const ARTICLE_TARGET_WORDS_MAX = 3600;
+const ARTICLE_WORDS_PER_SLIDE_EN = 108;
+const ARTICLE_WORDS_PER_SLIDE_TH = 92;
+
+function clampInteger(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) {
+    return min;
+  }
+  return Math.max(min, Math.min(max, Math.round(value)));
+}
+
+function computeRecommendedWordsForLanguage(
+  language: "th" | "en",
+  numSlides: number,
+): number {
+  const perSlide = language === "th"
+    ? ARTICLE_WORDS_PER_SLIDE_TH
+    : ARTICLE_WORDS_PER_SLIDE_EN;
+  return clampInteger(
+    Math.max(1, numSlides) * perSlide,
+    ARTICLE_TARGET_WORDS_MIN,
+    ARTICLE_TARGET_WORDS_MAX,
+  );
+}
+
 export function AIDraftModal({
   isOpen,
   onClose,
@@ -151,9 +177,9 @@ export function AIDraftModal({
   const skillSchema = skillSchemaQuery.data?.hasSchema
     ? (skillSchemaQuery.data.schema as SkillInputSchema)
     : null;
-  const hasArticleWordCountOverrideHint = useMemo(() => {
+  const articleSkillFieldState = useMemo(() => {
     if (!skillSchema?.sections) {
-      return false;
+      return { hasLengthField: false, hasWordCountField: false };
     }
     const fieldIds = new Set(
       skillSchema.sections.flatMap((section) =>
@@ -167,8 +193,24 @@ export function AIDraftModal({
       || fieldIds.has("max_words")
       || fieldIds.has("maxWords")
     );
-    return hasLengthField && hasWordCountField;
+    return { hasLengthField, hasWordCountField };
   }, [skillSchema]);
+  const hasArticleWordCountOverrideHint = articleSkillFieldState.hasLengthField
+    && articleSkillFieldState.hasWordCountField;
+  const wordCountRecommendationHint = useMemo(() => {
+    if (!articleSkillFieldState.hasWordCountField) {
+      return null;
+    }
+    const slideLabel = numSlides === 1 ? "slide" : "slides";
+    if (language === "auto") {
+      const thaiMax = computeRecommendedWordsForLanguage("th", numSlides);
+      const englishMax = computeRecommendedWordsForLanguage("en", numSlides);
+      return `Recommended Maximum Words for ${numSlides} ${slideLabel}: Thai up to ${thaiMax} words, English up to ${englishMax} words.`;
+    }
+    const recommendedMax = computeRecommendedWordsForLanguage(language, numSlides);
+    const languageLabel = language === "th" ? "Thai" : "English";
+    return `Recommended Maximum Words for ${numSlides} ${slideLabel} (${languageLabel}): up to ${recommendedMax} words.`;
+  }, [articleSkillFieldState.hasWordCountField, language, numSlides]);
 
   // Restore saved selections from localStorage when skills load
   useEffect(() => {
@@ -758,6 +800,14 @@ export function AIDraftModal({
             excludeFields={["topic", "prompt", "subject"]}
             className="space-y-3"
           />
+          {wordCountRecommendationHint && (
+            <p
+              data-testid="word-count-recommendation-hint"
+              className="mt-2 text-xs text-muted-foreground"
+            >
+              {wordCountRecommendationHint}
+            </p>
+          )}
           {hasArticleWordCountOverrideHint && (
             <p
               data-testid="word-count-override-hint"

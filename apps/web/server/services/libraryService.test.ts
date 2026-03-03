@@ -81,6 +81,16 @@ describe("normalizeLibraryMetadata", () => {
       tags: ["video", "product"],
     });
   });
+
+  it("normalizes markdown-fenced prompt values", () => {
+    const normalized = normalizeLibraryMetadata({
+      prompt: "```json\n{\n  \"prompt\": \"A soft portrait\"\n}\n```",
+    });
+
+    expect(normalized).toEqual({
+      prompt: "{\n  \"prompt\": \"A soft portrait\"\n}",
+    });
+  });
 });
 
 describe("ACL helpers", () => {

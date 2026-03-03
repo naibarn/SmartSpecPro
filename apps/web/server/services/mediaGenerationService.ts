@@ -9,6 +9,7 @@ import {
   recordMediaUsage,
   type MediaType as RateLimiterMediaType,
 } from './llmRateLimiter';
+import { normalizeMediaPrompt } from "./mediaPromptNormalization";
 
 // ==================== Types ====================
 
@@ -38,6 +39,7 @@ export interface ModelMetadata {
   supportsVoices?: string[];
   creditCost: number;
 }
+export { normalizeMediaPrompt } from "./mediaPromptNormalization";
 
 const mediaModelResolutionCounters = {
   providerFromApiConfig: 0,
@@ -483,9 +485,10 @@ export class MediaGenerationService {
   ): Promise<MediaGenerationResponse> {
     const modelId = request.model || DEFAULT_MODELS.image;
     const provider = resolveProvider(modelId, request.apiConfig);
+    const normalizedPrompt = normalizeMediaPrompt(request.prompt) || request.prompt.trim();
 
     const payload: Record<string, unknown> = {
-      prompt: request.prompt,
+      prompt: normalizedPrompt,
       model: modelId,
       size: request.size,
       aspect_ratio: request.aspectRatio,
@@ -567,9 +570,10 @@ export class MediaGenerationService {
   ): Promise<MediaGenerationResponse> {
     const modelId = request.model || DEFAULT_MODELS.video;
     const provider = resolveProvider(modelId, request.apiConfig);
+    const normalizedPrompt = normalizeMediaPrompt(request.prompt) || request.prompt.trim();
 
     const payload: Record<string, unknown> = {
-      prompt: request.prompt,
+      prompt: normalizedPrompt,
       model: modelId,
       duration: request.duration,
       aspect_ratio: request.aspectRatio,
@@ -685,9 +689,10 @@ export class MediaGenerationService {
   ): Promise<MediaTask> {
     const modelId = request.model || DEFAULT_MODELS.image;
     const provider = resolveProvider(modelId, request.apiConfig);
+    const normalizedPrompt = normalizeMediaPrompt(request.prompt) || request.prompt.trim();
 
     const payload: Record<string, unknown> = {
-      prompt: request.prompt,
+      prompt: normalizedPrompt,
       model: modelId,
       size: request.size,
       aspect_ratio: request.aspectRatio,
@@ -757,9 +762,10 @@ export class MediaGenerationService {
   ): Promise<MediaTask> {
     const modelId = request.model || DEFAULT_MODELS.video;
     const provider = resolveProvider(modelId, request.apiConfig);
+    const normalizedPrompt = normalizeMediaPrompt(request.prompt) || request.prompt.trim();
 
     const payload: Record<string, unknown> = {
-      prompt: request.prompt,
+      prompt: normalizedPrompt,
       model: modelId,
       duration: request.duration,
       aspect_ratio: request.aspectRatio,
@@ -1068,7 +1074,7 @@ export class MediaGenerationService {
       mediaType: data.media_type as MediaType,
       status: data.status as TaskStatus,
       model: data.model as string,
-      prompt: data.prompt as string,
+      prompt: normalizeMediaPrompt(data.prompt),
       parameters: data.parameters as Record<string, unknown>,
       resultUrl: data.result_url as string,
       resultData: data.result_data as Record<string, unknown>,

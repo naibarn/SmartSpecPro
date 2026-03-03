@@ -390,6 +390,82 @@ describe("presentationPlaybackExport", () => {
     expect(renderSpec.height).toBe(1080);
   });
 
+  it("buildPresentationRenderSpec enables hasDynamicVideo for mp4 when a slide has video source", () => {
+    const deckDetail = buildDeckDetail({
+      slides: [
+        {
+          id: 1,
+          deckId: 101,
+          orderIndex: 0,
+          version: 1,
+          title: "Video slide",
+          slideContent: {
+            elements: [
+              {
+                id: "vid-1",
+                type: "video",
+                src: "/api/storage/files/videos/demo.mp4",
+                x: 0,
+                y: 0,
+                width: 640,
+                height: 360,
+              },
+            ],
+          },
+          notes: null,
+          createdAt: new Date("2026-02-22T10:00:00.000Z"),
+          updatedAt: new Date("2026-02-22T10:00:00.000Z"),
+        },
+      ],
+    });
+
+    const renderSpec = buildPresentationRenderSpec({
+      deck: deckDetail.deck as any,
+      slides: deckDetail.slides as any,
+      format: "mp4",
+    });
+
+    expect(renderSpec.hasDynamicVideo).toBe(true);
+  });
+
+  it("buildPresentationRenderSpec omits hasDynamicVideo for non-mp4 exports", () => {
+    const deckDetail = buildDeckDetail({
+      slides: [
+        {
+          id: 1,
+          deckId: 101,
+          orderIndex: 0,
+          version: 1,
+          title: "Video slide",
+          slideContent: {
+            elements: [
+              {
+                id: "vid-1",
+                type: "video",
+                src: "/api/storage/files/videos/demo.mp4",
+                x: 0,
+                y: 0,
+                width: 640,
+                height: 360,
+              },
+            ],
+          },
+          notes: null,
+          createdAt: new Date("2026-02-22T10:00:00.000Z"),
+          updatedAt: new Date("2026-02-22T10:00:00.000Z"),
+        },
+      ],
+    });
+
+    const renderSpec = buildPresentationRenderSpec({
+      deck: deckDetail.deck as any,
+      slides: deckDetail.slides as any,
+      format: "png",
+    });
+
+    expect("hasDynamicVideo" in renderSpec).toBe(false);
+  });
+
   it("dedupes duplicate export requests within the dedupe window", async () => {
     const enqueueExportJob = vi.fn().mockResolvedValue({ jobId: "job-1" });
     const deckDetail = buildDeckDetail({

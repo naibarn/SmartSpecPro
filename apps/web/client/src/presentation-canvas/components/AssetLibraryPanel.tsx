@@ -4,6 +4,7 @@ import { Clapperboard, ImageIcon, Layers3, Search, Shapes } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { normalizeMediaSourceUrl } from "@/lib/mediaUrl";
 
 export type AssetLibraryTab = "slides" | "photos" | "videos" | "graphics";
 type AssetSourceFilter = "all" | "history" | "library" | "shared";
@@ -50,6 +51,8 @@ const SOURCE_FILTERS: Array<{ id: AssetSourceFilter; label: string }> = [
 
 function AssetThumbnail({ asset }: { asset: CanvasLibraryAsset }) {
   const [failed, setFailed] = useState(false);
+  const normalizedSourceUrl = normalizeMediaSourceUrl(asset.sourceUrl);
+  const normalizedThumbnailUrl = normalizeMediaSourceUrl(asset.thumbnailUrl);
   const sourceBadgeLabel = asset.sourceType === "history"
     ? "History"
     : asset.sourceType === "shared"
@@ -75,8 +78,8 @@ function AssetThumbnail({ asset }: { asset: CanvasLibraryAsset }) {
         placeholder
       ) : asset.kind === "video" ? (
         <video
-          src={asset.sourceUrl}
-          poster={asset.thumbnailUrl || undefined}
+          src={normalizedSourceUrl}
+          poster={normalizedThumbnailUrl || undefined}
           className="h-full w-full object-cover"
           preload="metadata"
           muted
@@ -86,9 +89,9 @@ function AssetThumbnail({ asset }: { asset: CanvasLibraryAsset }) {
           onError={() => setFailed(true)}
           data-testid={`asset-video-thumb-${asset.id}`}
         />
-      ) : asset.thumbnailUrl ? (
+      ) : normalizedThumbnailUrl ? (
         <img
-          src={asset.thumbnailUrl}
+          src={normalizedThumbnailUrl}
           alt={asset.title}
           className="h-full w-full object-cover"
           loading="lazy"

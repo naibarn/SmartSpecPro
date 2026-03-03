@@ -118,11 +118,21 @@ def render_presentation(self, render_spec: dict, quality: str, format: str) -> d
     deck_id = render_spec.get("deckId")
     tmp_dir = tempfile.mkdtemp(prefix="pres_render_")
     try:
-        # Stage 1: Screenshots (0–75%)
-        screenshot_paths = _render_slides_to_screenshots(self, render_spec, tmp_dir)
-
-        # Stage 2: Format processing (75–90%)
-        output_path = _process_format(self, render_spec, format, quality, screenshot_paths, tmp_dir)
+        dynamic_video_mode = format == "mp4" and bool(render_spec.get("hasDynamicVideo"))
+        if dynamic_video_mode:
+            # Stage 1: Record each slide as a clip when the deck contains video elements.
+            video_clip_segments = _render_slides_to_video_clips(self, render_spec, tmp_dir)
+            # Stage 2: MP4 encode from dynamic clips (75–90%)
+            output_path = _build_mp4_from_clips(render_spec, quality, video_clip_segments, tmp_dir)
+            self.update_state(
+                state="PROGRESS",
+                meta={"percent": 90, "stage": "Uploading"},
+            )
+        else:
+            # Stage 1: Screenshots (0–75%)
+            screenshot_paths = _render_slides_to_screenshots(self, render_spec, tmp_dir)
+            # Stage 2: Format processing (75–90%)
+            output_path = _process_format(self, render_spec, format, quality, screenshot_paths, tmp_dir)
 
         # Stage 3: Upload (90–100%)
         result = _upload_output(self, output_path, render_spec, format)
@@ -260,6 +270,92 @@ def _render_slides_to_screenshots(task_self, render_spec: dict, tmp_dir: str) ->
     return screenshot_paths
 
 
+def _render_slides_to_video_clips(task_self, render_spec: dict, tmp_dir: str) -> list[dict]:
+    """
+    Record each slide as a short video clip for dynamic MP4 exports.
+
+    Unlike screenshot mode, this keeps `<video>` elements playing so exported MP4
+    contains real motion rather than a static first frame.
+    """
+    deck_id = render_spec["deckId"]
+    slides = render_spec["slides"]
+    width = render_spec.get("width", 1920)
+    height = render_spec.get("height", 1080)
+    total = len(slides)
+    base_url = os.getenv("INTERNAL_RENDER_BASE_URL", "http://localhost:3000")
+    clip_segments: list[dict] = []
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(args=[
+            "--no-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-gpu",
+        ])
+        try:
+            context = browser.new_context(
+                viewport={"width": width, "height": height},
+                record_video_dir=tmp_dir,
+                record_video_size={"width": width, "height": height},
+            )
+            try:
+                for idx, slide in enumerate(slides):
+                    token = _make_slide_token(deck_id, idx)
+                    url = f"{base_url}/internal/slide-render/{deck_id}/{idx}?mode=record"
+
+                    page = context.new_page()
+                    page.set_extra_http_headers({"X-Internal-Token": token})
+                    navigation_started_at = time.monotonic()
+                    page.goto(url, wait_until="domcontentloaded")
+
+                    ready = False
+                    for _ in range(_SLIDE_READY_POLL_ATTEMPTS):
+                        ready = page.evaluate("() => window.__slideReady === true")
+                        if ready:
+                            break
+                        page.wait_for_timeout(_SLIDE_READY_POLL_INTERVAL_MS)
+
+                    if not ready:
+                        logger.warning("slide_ready_timeout_record_mode", deck_id=deck_id, slide_index=idx)
+
+                    duration_ms = max(250, int(slide.get("durationMs", 3000)))
+                    ready_elapsed_ms = max(0, int((time.monotonic() - navigation_started_at) * 1000))
+                    page.wait_for_timeout(duration_ms)
+
+                    recorded_video = page.video
+                    page.close()
+
+                    if not recorded_video:
+                        raise RuntimeError(
+                            f"Playwright video recording unavailable for deck {deck_id} slide {idx}"
+                        )
+
+                    raw_path = recorded_video.path()
+                    clip_path = os.path.join(tmp_dir, f"slide_{idx:04d}.webm")
+                    if os.path.abspath(raw_path) != os.path.abspath(clip_path):
+                        if os.path.exists(clip_path):
+                            os.remove(clip_path)
+                        shutil.move(raw_path, clip_path)
+                    clip_segments.append(
+                        {
+                            "path": clip_path,
+                            "trim_start_ms": ready_elapsed_ms if ready else 0,
+                            "duration_ms": duration_ms,
+                        }
+                    )
+
+                    percent = int((idx + 1) / total * 75)
+                    task_self.update_state(
+                        state="PROGRESS",
+                        meta={"percent": percent, "stage": f"Rendering slide {idx + 1} of {total}"},
+                    )
+            finally:
+                context.close()
+        finally:
+            browser.close()
+
+    return clip_segments
+
+
 # ---------------------------------------------------------------------------
 # Stage 2: Format-specific processing
 # ---------------------------------------------------------------------------
@@ -302,6 +398,54 @@ def _write_concat_file(screenshot_paths: list[str], durations_ms: list[int], con
         f.write("\n".join(lines) + "\n")
 
 
+def _write_clip_concat_file(clip_paths: list[str], concat_path: str) -> None:
+    """Write an FFmpeg concat demuxer file for pre-trimmed slide clips."""
+    lines = [f"file '{path}'" for path in clip_paths]
+    with open(concat_path, "w") as f:
+        f.write("\n".join(lines) + "\n")
+
+
+def _trim_video_clip_segment(
+    segment: dict,
+    idx: int,
+    fps: int,
+    tmp_dir: str,
+    runner=None,
+) -> str:
+    """
+    Trim one recorded clip accurately via re-encode.
+
+    We avoid concat `inpoint/outpoint` on WebM because keyframe seeking can leave
+    visible pre-roll (white frames). Re-encoding guarantees frame-accurate trim.
+    """
+    input_path = str(segment.get("path", "")).strip()
+    if not input_path:
+        raise ValueError(f"clip segment {idx} missing path")
+    trim_start_ms = max(0, int(segment.get("trim_start_ms", 0)))
+    duration_ms = max(250, int(segment.get("duration_ms", 3000)))
+    trimmed_path = os.path.join(tmp_dir, f"slide_trim_{idx:04d}.mp4")
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", input_path,
+        "-ss", f"{trim_start_ms / 1000:.3f}",
+        "-t", f"{duration_ms / 1000:.3f}",
+        "-vf", f"fps={fps}",
+        "-c:v", "libx264",
+        "-pix_fmt", "yuv420p",
+        "-an",
+        "-preset", "veryfast",
+        "-crf", "23",
+        "-movflags", "+faststart",
+        trimmed_path,
+    ]
+    if runner:
+        runner.run_command_sync(cmd, check=True, timeout=540)
+    else:
+        subprocess.run(cmd, check=True, capture_output=True, timeout=540)
+    return trimmed_path
+
+
 def _download_audio(url: str, dest_dir: str, idx: int) -> str:
     """
     Download an audio file from a presigned URL to dest_dir/audio_{idx}.<ext>.
@@ -322,29 +466,52 @@ def _download_audio(url: str, dest_dir: str, idx: int) -> str:
 
 
 def _build_mp4(render_spec: dict, quality: str, screenshot_paths: list[str], tmp_dir: str, runner=None) -> str:
+    """Encode MP4 from per-slide screenshots (legacy/static export path)."""
+    slides = render_spec["slides"]
+    durations_ms = [s.get("durationMs", 3000) for s in slides]
+    concat_path = os.path.join(tmp_dir, "concat_list.txt")
+    _write_concat_file(screenshot_paths, durations_ms, concat_path)
+    video_input_args = ["-f", "concat", "-safe", "0", "-i", concat_path]
+    return _encode_mp4_with_optional_audio(render_spec, quality, video_input_args, tmp_dir, runner=runner)
+
+
+def _build_mp4_from_clips(
+    render_spec: dict,
+    quality: str,
+    clip_segments: list[dict],
+    tmp_dir: str,
+    runner=None,
+) -> str:
+    """Encode MP4 from recorded per-slide clips (dynamic video export path)."""
+    fps = _safe_fps(render_spec.get("fps", 30))
+    trimmed_paths = [
+        _trim_video_clip_segment(segment, idx, fps, tmp_dir, runner=runner)
+        for idx, segment in enumerate(clip_segments)
+    ]
+    concat_path = os.path.join(tmp_dir, "clip_concat_list.txt")
+    _write_clip_concat_file(trimmed_paths, concat_path)
+    video_input_args = ["-f", "concat", "-safe", "0", "-i", concat_path]
+    return _encode_mp4_with_optional_audio(render_spec, quality, video_input_args, tmp_dir, runner=runner)
+
+
+def _encode_mp4_with_optional_audio(
+    render_spec: dict,
+    quality: str,
+    video_input_args: list[str],
+    tmp_dir: str,
+    runner=None,
+) -> str:
     """
-    Encode slides to MP4 using FFmpeg concat demuxer.
+    Encode MP4 with optional project/slide audio mix.
 
-    Audio mixing strategy:
-    - Case A: No audio at all — video-only output (original behaviour).
-    - Case B: Project background audio only — mix via volume+apad filters.
-    - Case C: Per-slide audio tracks only — position each track with adelay/atrim, mix with amix.
-    - Case D: Both project audio + per-slide audio — mix all tracks with amix.
-
-    Audio download failures are treated as non-fatal: a warning is logged and the export
-    continues without that track.
+    Video input is provided by `video_input_args` and must map to input index 0.
     """
     slides = render_spec["slides"]
     fps = _safe_fps(render_spec.get("fps", 30))
     preset = QUALITY_PRESETS.get(quality, QUALITY_PRESETS["standard"])
     crf = preset["crf"]
     preset_name = preset["preset"]
-
-    durations_ms = [s.get("durationMs", 3000) for s in slides]
-    concat_path = os.path.join(tmp_dir, "concat_list.txt")
     output_path = os.path.join(tmp_dir, "output.mp4")
-
-    _write_concat_file(screenshot_paths, durations_ms, concat_path)
 
     # ------------------------------------------------------------------
     # Download project audio (background track)
@@ -367,35 +534,33 @@ def _build_mp4(render_spec: dict, quality: str, screenshot_paths: list[str], tmp
     # ------------------------------------------------------------------
     # Download per-slide audio tracks
     # ------------------------------------------------------------------
-    # slide_audio_tracks: list of {path, start_ms, end_ms|None, volume}
     slide_audio_tracks: list[dict] = []
     cumulative_ms = 0
 
     for i, slide in enumerate(slides):
         duration_ms = slide.get("durationMs", 3000)
-        if i < len(screenshot_paths):
-            audio_spec = slide.get("audioTrack")
-            if audio_spec and audio_spec.get("url"):
-                start_ms = cumulative_ms + audio_spec.get("startAtMs", 0)
-                end_ms_in_slide = audio_spec.get("endAtMs")
-                abs_end_ms = (cumulative_ms + end_ms_in_slide) if end_ms_in_slide is not None else None
-                try:
-                    # Use index i+1 so it never collides with the project audio (index 0)
-                    dl_path = _download_audio(audio_spec["url"], tmp_dir, i + 1)
-                    slide_audio_tracks.append(
-                        {
-                            "path": dl_path,
-                            "start_ms": start_ms,
-                            "end_ms": abs_end_ms,
-                            "volume": _safe_volume(audio_spec.get("volume", 1.0)),
-                        }
-                    )
-                except Exception as exc:
-                    logger.warning(
-                        "audio_download_failed_slide_track",
-                        slide_index=i,
-                        error=str(exc),
-                    )
+        audio_spec = slide.get("audioTrack")
+        if audio_spec and audio_spec.get("url"):
+            start_ms = cumulative_ms + audio_spec.get("startAtMs", 0)
+            end_ms_in_slide = audio_spec.get("endAtMs")
+            abs_end_ms = (cumulative_ms + end_ms_in_slide) if end_ms_in_slide is not None else None
+            try:
+                # Use index i+1 so it never collides with the project audio (index 0)
+                dl_path = _download_audio(audio_spec["url"], tmp_dir, i + 1)
+                slide_audio_tracks.append(
+                    {
+                        "path": dl_path,
+                        "start_ms": start_ms,
+                        "end_ms": abs_end_ms,
+                        "volume": _safe_volume(audio_spec.get("volume", 1.0)),
+                    }
+                )
+            except Exception as exc:
+                logger.warning(
+                    "audio_download_failed_slide_track",
+                    slide_index=i,
+                    error=str(exc),
+                )
         cumulative_ms += duration_ms
 
     has_project = project_audio_path is not None
@@ -408,7 +573,7 @@ def _build_mp4(render_spec: dict, quality: str, screenshot_paths: list[str], tmp
         # M-4: fps controlled by -vf filter only; removed duplicate hardcoded -r 30
         cmd = [
             "ffmpeg", "-y",
-            "-f", "concat", "-safe", "0", "-i", concat_path,
+            *video_input_args,
             "-vf", f"fps={fps}",
             "-c:v", "libx264",
             "-pix_fmt", "yuv420p",
@@ -427,19 +592,17 @@ def _build_mp4(render_spec: dict, quality: str, screenshot_paths: list[str], tmp
     # ------------------------------------------------------------------
     # Build FFmpeg inputs and filter_complex for audio cases B / C / D
     # ------------------------------------------------------------------
-    # Input 0 is always the video concat.
-    # Inputs 1..N are audio files in the order: [project_audio?, *slide_audios]
-    ffmpeg_inputs: list[str] = []
+    ffmpeg_audio_inputs: list[str] = []
     if has_project:
-        ffmpeg_inputs.append(project_audio_path)  # type: ignore[arg-type]
+        ffmpeg_audio_inputs.append(project_audio_path)  # type: ignore[arg-type]
     for track in slide_audio_tracks:
-        ffmpeg_inputs.append(track["path"])
+        ffmpeg_audio_inputs.append(track["path"])
 
     # Build filter_complex parts
     filter_parts: list[str] = []
     mix_labels: list[str] = []
 
-    audio_input_idx = 1  # 0 is the video concat
+    audio_input_idx = 1  # 0 is the video input
 
     if has_project:
         pa_label = "[pa]"
@@ -477,9 +640,9 @@ def _build_mp4(render_spec: dict, quality: str, screenshot_paths: list[str], tmp
 
     filter_complex = ";".join(filter_parts)
 
-    # Assemble inputs section: concat video + all audio files
-    input_args: list[str] = ["-f", "concat", "-safe", "0", "-i", concat_path]
-    for audio_path in ffmpeg_inputs:
+    # Assemble inputs section: video concat + all audio files
+    input_args: list[str] = list(video_input_args)
+    for audio_path in ffmpeg_audio_inputs:
         input_args += ["-i", audio_path]
 
     cmd = [

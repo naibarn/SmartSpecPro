@@ -24,6 +24,7 @@ interface MediaLibraryPanelProps {
 }
 
 type LibraryRecentDaysFilter = 'all' | 1 | 3 | 7 | 15 | 30;
+type LibrarySourceMode = 'generated' | 'library' | 'shared_group';
 
 // Type guards
 const isValidAsset = (asset: unknown): asset is MediaLibraryAsset => {
@@ -102,11 +103,11 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
   };
 
   // Library search state
-  const [sourceMode, setSourceMode] = useState<'generated' | 'library'>('generated');
+  const [sourceMode, setSourceMode] = useState<LibrarySourceMode>('generated');
   const [librarySearchQuery, setLibrarySearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [libraryTypeFilter, setLibraryTypeFilter] = useState<'all' | 'video' | 'audio' | 'image'>('all');
-  const [libraryRecentDays, setLibraryRecentDays] = useState<LibraryRecentDaysFilter>(7);
+  const [libraryRecentDays, setLibraryRecentDays] = useState<LibraryRecentDaysFilter>('all');
 
   // Debounce search input
   useEffect(() => {
@@ -116,9 +117,13 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
     return () => clearTimeout(timer);
   }, [librarySearchQuery]);
 
+  const isLibraryMode = sourceMode === 'library' || sourceMode === 'shared_group';
+  const libraryScope = sourceMode === 'shared_group' ? 'shared_groups' : 'my_library';
+
   // Library search query via tRPC
   const libraryQuery = trpc.library.listDocuments.useQuery(
     {
+      scope: libraryScope,
       query: debouncedSearch || undefined,
       limit: 50,
       offset: 0,
@@ -128,7 +133,7 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
         ...(libraryRecentDays === 'all' ? {} : { recentDays: libraryRecentDays }),
       },
     },
-    { enabled: sourceMode === 'library' }
+    { enabled: isLibraryMode }
   );
 
   // Map library items to MediaLibraryAsset format
@@ -945,6 +950,12 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
           >
             Library
           </button>
+          <button
+            className={`source-toggle-btn ${sourceMode === 'shared_group' ? 'active' : ''}`}
+            onClick={() => setSourceMode('shared_group')}
+          >
+            Shared Group
+          </button>
         </div>
 
         {/* Generated mode: type tabs */}
@@ -972,12 +983,12 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
         )}
 
         {/* Library mode: search bar + type filter */}
-        {sourceMode === 'library' && (
+        {isLibraryMode && (
           <div className="library-search-bar">
             <input
               type="text"
               className="library-search-input"
-              placeholder="Search library..."
+              placeholder={sourceMode === 'shared_group' ? 'Search shared group...' : 'Search library...'}
               value={librarySearchQuery}
               onChange={(e) => setLibrarySearchQuery(e.target.value)}
             />
@@ -1280,11 +1291,13 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
             ) : libraryMediaAssets.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-state-icon">🔍</div>
-                <div>No media found in library</div>
+                <div>{sourceMode === 'shared_group' ? 'No media found in shared group' : 'No media found in library'}</div>
                 <div style={{ fontSize: '11px', marginTop: '8px' }}>
                   {debouncedSearch
                     ? 'Try a different search term or filter'
-                    : 'Upload media files via Document Management'}
+                    : sourceMode === 'shared_group'
+                      ? 'No shared media found in your group library'
+                      : 'Upload media files via Document Management'}
                 </div>
               </div>
             ) : (
@@ -1292,6 +1305,7 @@ export const MediaLibraryPanel: React.FC<MediaLibraryPanelProps> = ({
                 <div className="library-result-count">
                   {Math.min(libraryQuery.data?.total ?? 0, 50)} / {libraryQuery.data?.total ?? 0} results
                   {debouncedSearch && ` for "${debouncedSearch}"`}
+                  {!debouncedSearch && sourceMode === 'shared_group' && ' from Shared Group'}
                 </div>
                 {libraryQuery.data?.has_more && (
                   <div

@@ -45,8 +45,21 @@ vi.mock("@/presentation-canvas/play/AudioTrackPlayer", () => ({
 // ---------------------------------------------------------------------------
 
 vi.mock("@/presentation-canvas", () => ({
-  CanvasStage: ({ elements }: { elements: unknown[] }) => (
-    <div data-testid="canvas-stage" data-element-count={elements.length} />
+  CanvasStage: ({
+    elements,
+    autoPlayVideos,
+    showVideoPlaybackToggle,
+  }: {
+    elements: unknown[];
+    autoPlayVideos?: boolean;
+    showVideoPlaybackToggle?: boolean;
+  }) => (
+    <div
+      data-testid="canvas-stage"
+      data-element-count={elements.length}
+      data-auto-play-videos={String(Boolean(autoPlayVideos))}
+      data-show-video-playback-toggle={String(showVideoPlaybackToggle ?? true)}
+    />
   ),
 }));
 
@@ -209,7 +222,10 @@ describe("PresentationPlayMode", () => {
 
   it("renders slide canvas when data is ready", () => {
     render(<PresentationPlayMode />);
-    expect(screen.getByTestId("canvas-stage")).toBeInTheDocument();
+    const stage = screen.getByTestId("canvas-stage");
+    expect(stage).toBeInTheDocument();
+    expect(stage).toHaveAttribute("data-auto-play-videos", "true");
+    expect(stage).toHaveAttribute("data-show-video-playback-toggle", "false");
   });
 
   it("pressing Space calls play when IDLE, pause when PLAYING", () => {

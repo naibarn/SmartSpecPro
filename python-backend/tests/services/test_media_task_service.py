@@ -5,7 +5,7 @@ Tests for MediaTaskService
 import pytest
 import uuid
 
-from app.services.media_task_service import MediaTaskService
+from app.services.media_task_service import MediaTaskService, normalize_media_prompt
 from app.models.media_task import MediaTask, TaskStatus, MediaType
 from app.models.user import User
 
@@ -41,6 +41,61 @@ class TestMediaTaskService:
         assert task.status == TaskStatus.PENDING
         assert task.model == "dalle-3"
         assert task.prompt == "A beautiful sunset"
+
+    def test_normalize_media_prompt_unwraps_fenced_json(self):
+        """Normalize helper should unwrap markdown fenced prompt blocks."""
+        raw = """```json
+{
+  "prompt": "A cinematic Thai nursery scene",
+  "duration": 5
+}
+```"""
+        expected = """{
+  "prompt": "A cinematic Thai nursery scene",
+  "duration": 5
+}"""
+        assert normalize_media_prompt(raw) == expected
+
+    def test_normalize_media_prompt_handles_json_label_prefix(self):
+        """Normalize helper should unwrap plain json-label prefixed outputs."""
+        raw = """json
+{
+  "prompt": "A clean image prompt"
+}"""
+        expected = """{
+  "prompt": "A clean image prompt"
+}"""
+        assert normalize_media_prompt(raw) == expected
+
+    @pytest.mark.asyncio
+    async def test_create_task_normalizes_fenced_prompt(self, test_db):
+        """create_task stores normalized prompt text instead of fenced markdown."""
+        user = User(
+            id=str(uuid.uuid4()),
+            email="test-normalize@example.com",
+            password_hash="hash",
+            credits_balance=1000
+        )
+        test_db.add(user)
+        await test_db.commit()
+
+        task = await MediaTaskService.create_task(
+            test_db,
+            user,
+            MediaType.VIDEO,
+            "sora-2",
+            """```json
+{
+  "prompt": "A cinematic scene",
+  "duration": 5
+}
+```"""
+        )
+
+        assert task.prompt == """{
+  "prompt": "A cinematic scene",
+  "duration": 5
+}"""
 
     @pytest.mark.asyncio
     async def test_get_task(self, test_db):

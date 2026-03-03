@@ -14,6 +14,7 @@ from app.services import library_indexing_service
 from app.services.library_indexing_service import (
     build_library_job_dedupe_key,
     enqueue_library_index_job,
+    extract_library_item_text,
     parse_library_index_job_payload,
     process_library_index_job,
     resolve_library_vector_provider,
@@ -86,6 +87,33 @@ async def _create_library_item(db: AsyncSession, tenant_id: str, title: str, met
 
 @pytest.mark.unit
 class TestLibraryIndexingService:
+    def test_extract_library_item_text_normalizes_media_task_prompt_fields(self):
+        item = LibraryItem(
+            tenant_id="tenant-300",
+            owner_user_id=1,
+            item_type="image",
+            source="media_task",
+            title="Media Task Prompt",
+            description="""```json
+{
+  "prompt": "A soft portrait"
+}
+```""",
+            metadata={
+                "prompt": """```json
+{
+  "prompt": "A vibrant studio image"
+}
+```""",
+            },
+            status="ready",
+            visibility="private",
+        )
+
+        extracted = extract_library_item_text(item)
+        assert "```" not in extracted
+        assert extracted.count('"prompt"') >= 2
+
     @pytest.mark.asyncio
     async def test_enqueue_and_success_pipeline_persists_chunks(self, indexing_db):
         item = await _create_library_item(

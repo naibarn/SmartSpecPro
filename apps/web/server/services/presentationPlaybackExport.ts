@@ -256,6 +256,26 @@ function resolveRenderDimensions(input: BuildRenderSpecInput): { width: number; 
   return { width: input.width ?? 1920, height: input.height ?? 1080 };
 }
 
+function hasRenderableVideoElements(slides: PresentationSlide[]): boolean {
+  for (const slide of slides) {
+    const content =
+      slide.slideContent && typeof slide.slideContent === "object" && !Array.isArray(slide.slideContent)
+        ? (slide.slideContent as Record<string, unknown>)
+        : null;
+    const elements = Array.isArray(content?.elements) ? content.elements : [];
+    for (const rawElement of elements) {
+      if (!rawElement || typeof rawElement !== "object") continue;
+      const element = rawElement as Record<string, unknown>;
+      if (String(element.type ?? "").toLowerCase() !== "video") continue;
+      const src = typeof element.src === "string" ? element.src.trim() : "";
+      if (src.length > 0) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 function pruneWindow(entries: number[], nowMs: number, windowMs: number): number[] {
   const floor = nowMs - windowMs;
   return entries.filter((ts) => ts > floor);
@@ -780,6 +800,7 @@ async function resolveSlideAudioData(
 export function buildPresentationRenderSpec(input: BuildRenderSpecInput): PresentationRenderSpec {
   const { width, height } = resolveRenderDimensions(input);
   const degraded = degradeSlidesForExport(input.slides, DEFAULT_DURATION_MS);
+  const hasDynamicVideo = input.format === "mp4" && hasRenderableVideoElements(input.slides);
 
   // Enrich degraded slides with resolved audio tracks when available.
   // The slideAudioMap is keyed by slideId and contains already-resolved tracks
@@ -809,6 +830,7 @@ export function buildPresentationRenderSpec(input: BuildRenderSpecInput): Presen
     height,
     fps: input.fps ?? 30,
     slides: slideshowPayload.slides,
+    ...(hasDynamicVideo ? { hasDynamicVideo: true } : {}),
     projectAudioTrack: slideshowPayload.projectAudioTrack,
     warnings: degraded.warnings,
   });

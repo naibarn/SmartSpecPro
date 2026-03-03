@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useLocation } from 'wouter';
+import { useLocation, useSearch } from 'wouter';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -52,13 +52,15 @@ import {
   ShieldOff,
   Send,
   Link2,
+  UserCog,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { GoogleDrivePanel } from '@/components/settings/GoogleDrivePanel';
 import { OneDrivePanel } from '@/components/settings/OneDrivePanel';
 import { BudgetPanel } from '@/components/settings/BudgetPanel';
+import { PersonasPanel } from '@/components/settings/PersonasPanel';
 
-type SettingsTab = 'profile' | 'account' | 'security' | 'preferences' | 'api' | 'billing' | 'integrations';
+type SettingsTab = 'profile' | 'account' | 'security' | 'preferences' | 'api' | 'billing' | 'integrations' | 'personas';
 
 type TwoFAStep = 'idle' | 'setup' | 'verify' | 'done' | 'disable' | 'regen';
 
@@ -350,7 +352,9 @@ function TwoFactorSection() {
 export default function Settings() {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
   const [, setLocation] = useLocation();
-  const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
+  const search = useSearch();
+  const initialTab = (new URLSearchParams(search).get('tab') as SettingsTab) || 'profile';
+  const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
   const [showPassword, setShowPassword] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -550,6 +554,7 @@ export default function Settings() {
     { id: 'api', label: 'API Keys', icon: Key },
     { id: 'billing', label: 'Billing', icon: CreditCard },
     { id: 'integrations', label: 'Integrations', icon: Link2 },
+    { id: 'personas', label: 'Personas', icon: UserCog },
   ];
 
   const handleSave = () => {
@@ -1494,6 +1499,9 @@ export default function Settings() {
                   <OneDrivePanel />
                 </div>
               )}
+
+              {/* Personas Tab */}
+              {activeTab === 'personas' && <PersonasPanel />}
             </div>
           </motion.div>
         </div>

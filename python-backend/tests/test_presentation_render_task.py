@@ -115,6 +115,45 @@ def _make_mock_playwright_pdf(pdf_bytes: bytes = MOCK_PDF_BYTES):
     return mock_sync_playwright, mock_page
 
 
+def _make_mock_playwright_video(tmp_dir: str, slide_ready: bool = True):
+    """
+    Build a mock playwright context manager for _render_slides_to_video_clips.
+
+    The mocked page exposes page.video.path() and writes a small .webm file on page.close().
+    """
+    raw_video_path = os.path.join(tmp_dir, "playwright_recorded_slide.webm")
+
+    mock_video = MagicMock()
+    mock_video.path.return_value = raw_video_path
+
+    mock_page = MagicMock()
+    mock_page.evaluate.return_value = slide_ready
+    mock_page.video = mock_video
+
+    def fake_close():
+        os.makedirs(os.path.dirname(raw_video_path), exist_ok=True)
+        with open(raw_video_path, "wb") as f:
+            f.write(b"webm")
+
+    mock_page.close.side_effect = fake_close
+
+    mock_context = MagicMock()
+    mock_context.new_page.return_value = mock_page
+
+    mock_browser = MagicMock()
+    mock_browser.new_context.return_value = mock_context
+
+    mock_pw_instance = MagicMock()
+    mock_pw_instance.chromium.launch.return_value = mock_browser
+
+    mock_cm = MagicMock()
+    mock_cm.__enter__ = MagicMock(return_value=mock_pw_instance)
+    mock_cm.__exit__ = MagicMock(return_value=None)
+
+    mock_sync_playwright = MagicMock(return_value=mock_cm)
+    return mock_sync_playwright, mock_page
+
+
 def _make_render_spec(num_slides: int = 2, fmt: str = "mp4") -> dict:
     """Build a minimal render spec with N slides."""
     return {
@@ -362,6 +401,67 @@ class TestSlideReadyTimeout:
         assert len(result) == 1
         # Screenshot was still taken
         assert mock_page.screenshot.called
+
+
+# ---------------------------------------------------------------------------
+# Tests: dynamic video MP4 path
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestDynamicVideoExportPath:
+    """MP4 exports with hasDynamicVideo use clip-recording path."""
+
+    def test_render_slides_to_video_clips_uses_record_mode_url(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("JWT_SECRET", "test-secret-key-for-unit-tests")
+        monkeypatch.setenv("INTERNAL_RENDER_BASE_URL", "http://localhost:3000")
+
+        mock_sync_playwright, mock_page = _make_mock_playwright_video(str(tmp_path))
+        task_self = _make_mock_task_self()
+        render_spec = _make_render_spec(num_slides=1, fmt="mp4")
+
+        with patch("app.tasks.presentation_render.sync_playwright", mock_sync_playwright):
+            from app.tasks.presentation_render import _render_slides_to_video_clips
+
+            result = _render_slides_to_video_clips(task_self, render_spec, str(tmp_path))
+
+        assert len(result) == 1
+        assert str(result[0]["path"]).endswith("slide_0000.webm")
+        assert os.path.exists(result[0]["path"])
+        assert result[0]["duration_ms"] == 3000
+        assert result[0]["trim_start_ms"] >= 0
+        goto_url = mock_page.goto.call_args[0][0]
+        assert "mode=record" in goto_url
+
+    def test_render_presentation_uses_dynamic_clip_path_for_mp4(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("JWT_SECRET", "test-secret-key-for-unit-tests")
+        task_self = _make_mock_task_self()
+        render_spec = _make_render_spec(num_slides=1, fmt="mp4")
+        render_spec["hasDynamicVideo"] = True
+
+        with (
+            patch("app.tasks.presentation_render._render_slides_to_video_clips") as mock_clips,
+            patch("app.tasks.presentation_render._render_slides_to_screenshots") as mock_screens,
+            patch("app.tasks.presentation_render._build_mp4_from_clips") as mock_build_mp4_from_clips,
+            patch("app.tasks.presentation_render._upload_output") as mock_upload,
+            patch("tempfile.mkdtemp", return_value=str(tmp_path)),
+            patch("shutil.rmtree"),
+        ):
+            clip_path = tmp_path / "slide_0000.webm"
+            clip_path.write_bytes(b"webm")
+            output_mp4 = tmp_path / "output.mp4"
+            output_mp4.write_bytes(b"mp4")
+            mock_clips.return_value = [{"path": str(clip_path), "trim_start_ms": 800, "duration_ms": 3000}]
+            mock_build_mp4_from_clips.return_value = str(output_mp4)
+            mock_upload.return_value = {"output_url": "https://presigned.example.com/out.mp4?token=x", "output_bytes": 120}
+            from app.tasks.presentation_render import render_presentation
+
+            result = render_presentation.run.__func__(task_self, render_spec, "standard", "mp4")
+
+        assert result["output_url"].startswith("https://presigned.example.com/")
+        mock_clips.assert_called_once()
+        mock_build_mp4_from_clips.assert_called_once()
+        mock_screens.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

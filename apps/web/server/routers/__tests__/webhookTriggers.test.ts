@@ -404,4 +404,97 @@ describe("webhookTriggersRouter", () => {
       expect(mockEncrypt).toHaveBeenCalled();
     });
   });
+
+  describe("testTrigger", () => {
+    const mockTrigger = {
+      id: "trig-1",
+      tenantId: "tenant-abc",
+      userId: 1,
+      name: "Test Hook",
+      targetType: "chat",
+      targetConversationId: 99,
+      targetAgencyId: null,
+      targetWorkflowId: null,
+      payloadTemplate: { message: "Event: {{event.type}}" },
+    };
+
+    beforeEach(() => {
+      mockDbSelect.mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([mockTrigger]),
+          }),
+        }),
+      });
+    });
+
+    it("substitutes template variables with sample payload", async () => {
+      const { mockChannelGateway } = vi.hoisted(() => ({ mockChannelGateway: vi.fn() }));
+      vi.doMock("../../services/channelGateway", () => ({
+        channelGateway: { processMessageServerSide: mockChannelGateway.mockResolvedValue(undefined) },
+      }));
+
+      const result = await callProcedure(webhookTriggersRouter.testTrigger, {
+        triggerId: "trig-1",
+        samplePayload: { type: "order.created" },
+      });
+
+      expect(result.ok).toBe(true);
+      // dispatchedMessage should have template substituted
+      expect(result.dispatchedMessage).toContain("order.created");
+    });
+
+    it("returns ok:true for chat target", async () => {
+      vi.doMock("../../services/channelGateway", () => ({
+        channelGateway: { processMessageServerSide: vi.fn().mockResolvedValue(undefined) },
+      }));
+
+      const result = await callProcedure(webhookTriggersRouter.testTrigger, {
+        triggerId: "trig-1",
+        samplePayload: {},
+      });
+
+      expect(result.ok).toBe(true);
+      expect(result.substitutedPayload).toBeDefined();
+    });
+
+    it("returns detail message when no valid target is configured", async () => {
+      // Trigger has no target conversation or agency
+      mockDbSelect.mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([{
+              ...mockTrigger,
+              targetConversationId: null,
+              targetAgencyId: null,
+              targetWorkflowId: null,
+            }]),
+          }),
+        }),
+      });
+
+      const result = await callProcedure(webhookTriggersRouter.testTrigger, {
+        triggerId: "trig-1",
+        samplePayload: {},
+      });
+
+      expect(result.ok).toBe(false);
+      expect(result.detail).toMatch(/no valid target/i);
+    });
+
+    it("does not require credits or modify totalTriggers", async () => {
+      vi.doMock("../../services/channelGateway", () => ({
+        channelGateway: { processMessageServerSide: vi.fn().mockResolvedValue(undefined) },
+      }));
+
+      await callProcedure(webhookTriggersRouter.testTrigger, {
+        triggerId: "trig-1",
+        samplePayload: { type: "test" },
+      });
+
+      // No DB insert or update should be triggered from testTrigger itself
+      expect(mockDbInsert).not.toHaveBeenCalled();
+      expect(mockDbUpdate).not.toHaveBeenCalled();
+    });
+  });
 });

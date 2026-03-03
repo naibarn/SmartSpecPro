@@ -9,13 +9,14 @@ interface DocumentLibraryTabsProps {
 }
 
 interface TabDef {
-  value: Exclude<DocumentScopeTab, "trash">;
+  value: DocumentScopeTab;
   label: string;
   icon: ComponentType<{ className?: string }>;
   activeClass: string;
+  baseClass?: string;
 }
 
-const PRIMARY_TABS: TabDef[] = [
+const TABS: TabDef[] = [
   {
     value: "my_library",
     label: "My Library",
@@ -46,47 +47,39 @@ const PRIMARY_TABS: TabDef[] = [
     icon: Users,
     activeClass: "border-indigo-300 bg-indigo-50 text-indigo-800 shadow-sm",
   },
+  {
+    value: "trash",
+    label: "Trash",
+    icon: Trash2,
+    activeClass: "border-red-300 bg-red-50 text-red-700 shadow-sm",
+    baseClass: "hover:border-red-300 hover:bg-red-50 hover:text-red-700",
+  },
 ];
 
 export default function DocumentLibraryTabs({ value, onChange }: DocumentLibraryTabsProps) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
-      <div className="flex flex-wrap items-stretch gap-2">
-        <div className="flex min-w-0 flex-1 flex-wrap gap-2">
-          {PRIMARY_TABS.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = value === tab.value;
-            return (
-              <button
-                key={tab.value}
-                type="button"
-                onClick={() => onChange(tab.value)}
-                className={cn(
-                  "inline-flex min-h-10 min-w-[140px] items-center justify-center rounded-xl border px-3 py-2 text-[13px] font-medium transition-colors",
-                  "border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-slate-100",
-                  isActive && tab.activeClass,
-                )}
-              >
-                <Icon className="mr-1 h-4 w-4 shrink-0" />
-                <span className="whitespace-nowrap">{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        <button
-          type="button"
-          onClick={() => onChange("trash")}
-          className={cn(
-            "inline-flex min-h-10 min-w-[110px] shrink-0 items-center justify-center rounded-xl border px-3 py-2 text-[13px] font-medium transition-colors",
-            "border-slate-200 bg-slate-50 text-slate-700 hover:border-red-300 hover:bg-red-50 hover:text-red-700",
-            value === "trash" && "border-red-300 bg-red-50 text-red-700 shadow-sm",
-          )}
-          title="Trash"
-        >
-          <Trash2 className="mr-1 h-4 w-4" />
-          Trash
-        </button>
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        {TABS.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = value === tab.value;
+          return (
+            <button
+              key={tab.value}
+              type="button"
+              onClick={() => onChange(tab.value)}
+              className={cn(
+                "inline-flex h-9 shrink-0 items-center justify-center rounded-full border px-3 text-xs font-medium transition-colors",
+                "border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-slate-100",
+                tab.baseClass,
+                isActive && tab.activeClass,
+              )}
+            >
+              <Icon className="mr-1 h-3.5 w-3.5 shrink-0" />
+              <span className="whitespace-nowrap">{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

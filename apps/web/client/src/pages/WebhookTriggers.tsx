@@ -53,7 +53,7 @@ import {
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, Plus, Pencil, Trash2, ChevronDown, ChevronRight, RefreshCw, Webhook, Lock } from "lucide-react";
+import { Copy, Plus, Pencil, Trash2, ChevronDown, ChevronRight, RefreshCw, Webhook, Lock, FlaskConical } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -64,6 +64,7 @@ interface TriggerRow {
   authType: string;
   targetType: string;
   rateLimitPerMinute: number | null;
+  monthlyTriggerBudget?: number | null;
   isActive: boolean | null;
   totalTriggers: number | null;
   lastTriggeredAt?: Date | string | null;
@@ -398,6 +399,103 @@ function TriggerFormDialog({
   );
 }
 
+// ── Test Trigger Modal ─────────────────────────────────────────────────────────
+
+function TestTriggerModal({
+  trigger,
+  onClose,
+}: {
+  trigger: TriggerRow;
+  onClose: () => void;
+}) {
+  const { toast } = useToast();
+  const [sampleJson, setSampleJson] = useState('{\n  "type": "test",\n  "message": "Hello from test"\n}');
+  const [result, setResult] = useState<{ ok: boolean; dispatchedMessage?: string; detail?: string; executionId?: string } | null>(null);
+  const [jsonError, setJsonError] = useState<string | null>(null);
+
+  const testMut = trpc.webhookTriggers.testTrigger.useMutation({
+    onSuccess: (data) => {
+      setResult(data as any);
+      toast({ title: "Test dispatched successfully" });
+    },
+    onError: (e) => {
+      toast({ title: "Test failed", description: e.message, variant: "destructive" });
+    },
+  });
+
+  function handleTest() {
+    setJsonError(null);
+    let parsed: Record<string, unknown> = {};
+    try {
+      parsed = JSON.parse(sampleJson);
+    } catch {
+      setJsonError("Invalid JSON — please fix before sending.");
+      return;
+    }
+    testMut.mutate({ triggerId: trigger.id, samplePayload: parsed });
+  }
+
+  return (
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FlaskConical className="h-5 w-5" />
+            Test Trigger: {trigger.name}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <div>
+            <Label className="mb-1 block text-sm">Sample Payload (JSON)</Label>
+            <Textarea
+              rows={6}
+              className="font-mono text-xs"
+              value={sampleJson}
+              onChange={(e) => setSampleJson(e.target.value)}
+              placeholder='{ "type": "order.created", "orderId": "123" }'
+            />
+            {jsonError && <p className="text-xs text-destructive mt-1">{jsonError}</p>}
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            This sends a test dispatch directly to the configured target. No credits are deducted
+            and the invocation count is not incremented.
+          </p>
+
+          {result && (
+            <div className="rounded border bg-muted/40 p-3 space-y-1">
+              <p className="text-sm font-medium">{result.ok ? "✓ Dispatched" : "✗ Not dispatched"}</p>
+              {result.executionId && (
+                <p className="text-xs text-muted-foreground">Execution ID: {result.executionId}</p>
+              )}
+              {result.dispatchedMessage && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Dispatch message:</p>
+                  <pre className="text-xs bg-background border rounded p-2 overflow-auto max-h-32 whitespace-pre-wrap">
+                    {result.dispatchedMessage}
+                  </pre>
+                </div>
+              )}
+              {result.detail && (
+                <p className="text-xs text-muted-foreground">{result.detail}</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Close</Button>
+          <Button onClick={handleTest} disabled={testMut.isPending}>
+            <FlaskConical className="h-4 w-4 mr-2" />
+            {testMut.isPending ? "Sending…" : "Send Test"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Main page component ────────────────────────────────────────────────────────
 
 // ── Secret reveal dialog ────────────────────────────────────────────────────────
@@ -450,6 +548,7 @@ export default function WebhookTriggers() {
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<TriggerRow | null>(null);
   const [newSecret, setNewSecret] = useState<string | null>(null);
+  const [testTrigger, setTestTrigger] = useState<TriggerRow | null>(null);
 
   const triggersQuery = trpc.webhookTriggers.list.useQuery();
   const triggers = (triggersQuery.data ?? []) as TriggerRow[];
@@ -557,8 +656,10 @@ export default function WebhookTriggers() {
                     )}
                     <div className="text-xs text-muted-foreground mt-1">
                       {trigger.totalTriggers ?? 0} invocations
+                      {trigger.monthlyTriggerBudget != null &&
+                        ` · Monthly: ${trigger.totalTriggers ?? 0}/${trigger.monthlyTriggerBudget}`}
                       {trigger.lastTriggeredAt &&
-                        ` · Last: ${new Date(trigger.lastTriggeredAt as string).toLocaleDateString()}`}
+                        ` · Last: ${new Date(trigger.lastTriggeredAt as string).toLocaleString()}`}
                       {" · "}Rate limit: {trigger.rateLimitPerMinute ?? 10}/min
                     </div>
                     <WebhookUrlDisplay triggerId={trigger.id} />
@@ -577,6 +678,14 @@ export default function WebhookTriggers() {
                       onClick={() => regenMut.mutate({ triggerId: trigger.id })}
                     >
                       <RefreshCw className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="Test trigger"
+                      onClick={() => setTestTrigger(trigger)}
+                    >
+                      <FlaskConical className="h-4 w-4" />
                     </Button>
                     <Button size="icon" variant="ghost" onClick={() => openEdit(trigger)}>
                       <Pencil className="h-4 w-4" />
@@ -652,6 +761,11 @@ export default function WebhookTriggers() {
       {/* L2: Secret reveal modal with copyable input */}
       {newSecret && (
         <SecretRevealDialog secret={newSecret} onClose={() => setNewSecret(null)} />
+      )}
+
+      {/* Test Trigger modal */}
+      {testTrigger && (
+        <TestTriggerModal trigger={testTrigger} onClose={() => setTestTrigger(null)} />
       )}
     </div>
   );

@@ -1699,16 +1699,22 @@ export const systemSettingsRouter = router({
   /**
    * Trigger full reindex of all library items
    */
-  triggerReindex: adminProcedure.mutation(async () => {
+  triggerReindex: adminProcedure.mutation(async ({ ctx }) => {
     const PY = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+    const proxyToken = process.env.SMARTSPEC_PROXY_TOKEN ?? "";
+    const token = createAdminBearerToken(ctx.user.id);
     try {
-      const res = await fetch(`${PY}/api/admin/vectordb/reindex`, {
+      const res = await fetch(`${PY}/api/internal/library/reindex`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          ...(proxyToken ? { "x-proxy-token": proxyToken } : {}),
+        },
       });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: res.statusText }));
-        return { status: "error", message: (err as any).detail || res.statusText };
+        const message = (await readPythonErrorDetail(res)) || res.statusText;
+        return { status: "error", message };
       }
       return await res.json() as { task_id: string; status: string; message: string };
     } catch (error: any) {
@@ -1719,16 +1725,24 @@ export const systemSettingsRouter = router({
   /**
    * Get reindex job status
    */
-  getReindexStatus: adminProcedure.query(async () => {
+  getReindexStatus: adminProcedure.query(async ({ ctx }) => {
     const PY = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+    const proxyToken = process.env.SMARTSPEC_PROXY_TOKEN ?? "";
+    const token = createAdminBearerToken(ctx.user.id);
     try {
-      const res = await fetch(`${PY}/api/admin/vectordb/reindex/status`);
+      const res = await fetch(`${PY}/api/internal/library/reindex/status`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(proxyToken ? { "x-proxy-token": proxyToken } : {}),
+        },
+      });
       if (!res.ok) {
-        return { status: "error", task_id: null, result: null };
+        const message = (await readPythonErrorDetail(res)) || res.statusText;
+        return { status: "error", task_id: null, result: { error: message } };
       }
       return await res.json() as { status: string; task_id: string | null; result: any };
     } catch (error: any) {
-      return { status: "error", task_id: null, result: null };
+      return { status: "error", task_id: null, result: { error: error.message || "Failed to fetch reindex status" } };
     }
   }),
 });

@@ -90,6 +90,7 @@ import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
 import { buildWrongEditorOpenGuard } from "@/lib/presentationRouting";
+import { normalizeMediaSourceUrl } from "@/lib/mediaUrl";
 import { toast } from "sonner";
 import {
   createElement,
@@ -577,6 +578,7 @@ function normalizeLibraryMediaItems(
       if (!sourceUrl) {
         return null;
       }
+      const normalizedSourceUrl = normalizeMediaSourceUrl(sourceUrl);
 
       const title = String(row.title || `${kind} #${id}`).trim() || `${kind} #${id}`;
       const thumbnailRaw = String(
@@ -595,8 +597,10 @@ function normalizeLibraryMediaItems(
         id,
         kind,
         title,
-        sourceUrl,
-        thumbnailUrl: thumbnailRaw || (kind === "image" ? sourceUrl : null),
+        sourceUrl: normalizedSourceUrl,
+        thumbnailUrl: normalizeMediaSourceUrl(
+          thumbnailRaw || (kind === "image" ? normalizedSourceUrl : null),
+        ) || null,
         sourceType: isSharedByAccessSource || isSharedByOwner ? "shared" : "library",
       } satisfies CanvasLibraryAsset;
     })
@@ -775,8 +779,8 @@ function normalizeMediaHistoryItems(
         id: stableTaskNumericId(row, kind),
         kind,
         title,
-        sourceUrl,
-        thumbnailUrl,
+        sourceUrl: normalizeMediaSourceUrl(sourceUrl),
+        thumbnailUrl: normalizeMediaSourceUrl(thumbnailUrl),
         sourceType: "history",
       } satisfies CanvasLibraryAsset;
     })
@@ -917,11 +921,29 @@ function renderReadonlySlideElement(
 
   if (element.type === "image") {
     const imageConfig = resolveImageDisplayConfig(element);
+    const normalizedSource = normalizeMediaSourceUrl(element.src);
+    const hasSource = Boolean(normalizedSource);
+    const hasInlineSvg = typeof element.svgContent === "string" && element.svgContent.trim().length > 0;
+    const svgColor = element.svgColor || "#ffffff";
+    const coloredSvg = hasInlineSvg
+      ? element.svgContent!.replace(/currentColor/g, svgColor)
+      : "";
     return (
-      <div key={element.id || `play-${index}`} className="absolute overflow-hidden bg-slate-100" style={commonStyle}>
-        {element.src ? (
+      <div
+        key={element.id || `play-${index}`}
+        className={`absolute overflow-hidden ${!hasSource && !hasInlineSvg ? "bg-slate-100" : ""}`}
+        style={commonStyle}
+      >
+        {hasInlineSvg ? (
+          <div
+            className="h-full w-full"
+            data-testid={`readonly-svg-image-${element.id || index}`}
+            style={{ color: svgColor }}
+            dangerouslySetInnerHTML={{ __html: coloredSvg }}
+          />
+        ) : hasSource ? (
           <img
-            src={element.src}
+            src={normalizedSource}
             alt={element.alt || "Image"}
             className="h-full w-full"
             style={{
@@ -937,15 +959,17 @@ function renderReadonlySlideElement(
   }
 
   if (element.type === "video") {
+    const normalizedSource = normalizeMediaSourceUrl(element.src);
+    const normalizedPoster = normalizeMediaSourceUrl(element.poster);
     return (
       <div key={element.id || `play-${index}`} className="absolute overflow-hidden bg-black" style={commonStyle}>
         <video
-          src={element.src}
-          poster={element.poster || undefined}
+          src={normalizedSource}
+          poster={normalizedPoster || undefined}
           className="h-full w-full object-contain"
-          preload="metadata"
+          preload="auto"
           autoPlay
-          muted={element.muted ?? true}
+          muted
           loop={element.loop ?? true}
           playsInline
         />
@@ -1093,6 +1117,11 @@ export default function PresentationEditor() {
   const commandBusRef = useRef(
     new CommandBus<CanvasCommandState>(createCanvasCommandState({ elements: [] })),
   );
+  // Stores pre/post states so the useEffect reset after refreshDeck() can restore undo history.
+  const pendingAutoLayoutUndoRef = useRef<{
+    preLayoutState: CanvasCommandState;
+    postLayoutState: CanvasCommandState;
+  } | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [expectedSlideVersion, setExpectedSlideVersion] = useState<number | null>(null);
   const [conflictPolicy, setConflictPolicy] = useState(() => createConflictPolicyState());
@@ -1249,9 +1278,9 @@ export default function PresentationEditor() {
     },
   );
 
-  const autoLayoutWatermarkQuery = trpc.library.listDocuments.useQuery(
+  const autoLayoutWatermarkListQuery = trpc.library.listDocuments.useQuery(
     {
-      query: debouncedAutoLayoutWatermarkSearchQuery || undefined,
+      query: undefined,
       scope: "all",
       sort: "updated_desc",
       limit: 50,
@@ -1265,7 +1294,28 @@ export default function PresentationEditor() {
         isAuthenticated
         && !authLoading
         && isAutoLayoutDialogOpen
-        && autoLayoutWatermarkEnabled,
+        && autoLayoutWatermarkEnabled
+        && debouncedAutoLayoutWatermarkSearchQuery.length === 0,
+      ),
+    },
+  );
+
+  const autoLayoutWatermarkSearchResultQuery = trpc.library.search.useQuery(
+    {
+      query: debouncedAutoLayoutWatermarkSearchQuery || undefined,
+      limit: 50,
+      offset: 0,
+      filters: {
+        itemType: "image",
+      },
+    },
+    {
+      enabled: Boolean(
+        isAuthenticated
+        && !authLoading
+        && isAutoLayoutDialogOpen
+        && autoLayoutWatermarkEnabled
+        && debouncedAutoLayoutWatermarkSearchQuery.length > 0,
       ),
     },
   );
@@ -1454,8 +1504,16 @@ export default function PresentationEditor() {
     ],
   );
   const autoLayoutWatermarkOptions = useMemo(
-    () => normalizeWatermarkLibraryOptions(autoLayoutWatermarkQuery.data?.results),
-    [autoLayoutWatermarkQuery.data?.results],
+    () => normalizeWatermarkLibraryOptions(
+      debouncedAutoLayoutWatermarkSearchQuery.length > 0
+        ? autoLayoutWatermarkSearchResultQuery.data?.results
+        : autoLayoutWatermarkListQuery.data?.results,
+    ),
+    [
+      autoLayoutWatermarkListQuery.data?.results,
+      autoLayoutWatermarkSearchResultQuery.data?.results,
+      debouncedAutoLayoutWatermarkSearchQuery,
+    ],
   );
   const autoLayoutWatermarkComboboxItems = useMemo(
     () => autoLayoutWatermarkOptions.map((option) => ({
@@ -1934,8 +1992,21 @@ export default function PresentationEditor() {
       : ensureSlideContent(selectedSlide.slideContent);
     const nextSelected = next.elements[0]?.id ? [next.elements[0].id] : [];
     const nextState = createCanvasCommandState(next, nextSelected);
-    commandBusRef.current.reset(nextState);
-    setCommandState(nextState);
+
+    // If auto layout just ran, restore undo history so the user can Ctrl+Z back to pre-layout state.
+    const pendingUndo = pendingAutoLayoutUndoRef.current;
+    if (pendingUndo) {
+      pendingAutoLayoutUndoRef.current = null;
+      commandBusRef.current.reset(pendingUndo.preLayoutState);
+      const restored = commandBusRef.current.execute({
+        id: "restore-post-auto-layout",
+        apply: () => pendingUndo.postLayoutState,
+      });
+      setCommandState(restored);
+    } else {
+      commandBusRef.current.reset(nextState);
+      setCommandState(nextState);
+    }
     setSaveState("idle");
     setExpectedSlideVersion(selectedSlide.version);
     setConflictPolicy(releaseStaleBlock());
@@ -2126,15 +2197,15 @@ export default function PresentationEditor() {
       type === "video"
         ? {
           ...created,
-          src: asset.sourceUrl,
-          poster: asset.thumbnailUrl || "",
+          src: normalizeMediaSourceUrl(asset.sourceUrl),
+          poster: normalizeMediaSourceUrl(asset.thumbnailUrl),
           title: asset.title,
           x: nextX,
           y: nextY,
         }
         : {
           ...created,
-          src: asset.sourceUrl,
+          src: normalizeMediaSourceUrl(asset.sourceUrl),
           alt: asset.title,
           x: nextX,
           y: nextY,
@@ -2839,6 +2910,8 @@ export default function PresentationEditor() {
     const warnings = new Set<string>();
     const failedSlides: string[] = [];
     let appliedCount = 0;
+    // Capture state before layout so undo can return to it after refreshDeck() resets command bus.
+    const preLayoutState = commandBusRef.current.getState();
 
     try {
       for (const [index, slide] of targetSlides.entries()) {
@@ -2892,6 +2965,13 @@ export default function PresentationEditor() {
                 snapGuides: [],
               }),
             });
+            // Schedule undo-stack restoration: refreshDeck() below triggers a version-change
+            // useEffect that resets the command bus, wiping the undo stack. We save pre/post
+            // states here so the useEffect can rebuild them afterwards.
+            pendingAutoLayoutUndoRef.current = {
+              preLayoutState,
+              postLayoutState: commandBusRef.current.getState(),
+            };
             autosaveController.markPersisted(buildDraftSignature(selectedId, nextContent));
           }
           const resultWarnings = Array.isArray((result as any)?.warnings)
@@ -5113,7 +5193,11 @@ export default function PresentationEditor() {
                         ? "No PNG/JPG image found in library"
                         : "Select watermark image"}
                       searchPlaceholder="Search watermark from Library..."
-                      emptyMessage={autoLayoutWatermarkQuery.isLoading
+                      emptyMessage={(
+                        debouncedAutoLayoutWatermarkSearchQuery.length > 0
+                          ? autoLayoutWatermarkSearchResultQuery.isLoading
+                          : autoLayoutWatermarkListQuery.isLoading
+                      )
                         ? "Loading watermark images..."
                         : "No matching PNG/JPG watermark found."}
                       searchValue={autoLayoutWatermarkSearchQuery}

@@ -23,6 +23,7 @@ import {
   PanelRightClose,
   PanelRightOpen,
   Plus,
+  RefreshCw,
   Search,
   Share2,
   Trash2,
@@ -40,6 +41,16 @@ import { TrashPanel } from "@/components/library/TrashPanel";
 import CreateFolderDialog from "@/components/library/CreateFolderDialog";
 import ShareLibraryDialog from "@/components/library/ShareLibraryDialog";
 import { SafeMarkdown } from "@/components/chat/SafeMarkdown";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -87,6 +98,11 @@ const MIN_PREVIEW_PANEL_WIDTH = 320;
 const MIN_EDITOR_PANEL_WIDTH = 420;
 const COLLAPSED_PANEL_WIDTH = 72;
 const RESIZE_HANDLE_WIDTH = 8;
+const QUICK_MEDIA_FILTERS = [
+  { value: "all", label: "All" },
+  { value: "image", label: "Images" },
+  { value: "video", label: "Videos" },
+] as const;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
@@ -94,6 +110,7 @@ function clamp(value: number, min: number, max: number): number {
 
 export default function DocumentManagement() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
+  const isAdmin = user?.role === "admin";
   const [, setLocation] = useLocation();
   const trpcUtils = trpc.useUtils();
   const imageInputRef = useRef<HTMLInputElement | null>(null);
@@ -148,8 +165,10 @@ export default function DocumentManagement() {
   const [selectedItemIds, setSelectedItemIds] = useState<Set<number>>(new Set());
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
   const [isShareLibraryOpen, setIsShareLibraryOpen] = useState(false);
+  const [isReindexConfirmOpen, setIsReindexConfirmOpen] = useState(false);
+  const [isReindexing, setIsReindexing] = useState(false);
   const [mobileTab, setMobileTab] = useState<"library" | "editor" | "preview">("library");
-  const [isLibraryHeaderCollapsed, setIsLibraryHeaderCollapsed] = useState(true);
+  const [isLibraryHeaderCollapsed, setIsLibraryHeaderCollapsed] = useState(false);
   const [openEditorTabs, setOpenEditorTabs] = useState<DocumentEditorTab[]>(() => {
     if (typeof window === "undefined") {
       return [];
@@ -298,6 +317,24 @@ export default function DocumentManagement() {
   const deleteItemMutation = trpc.library.deleteItem.useMutation();
   const deleteItemsMutation = trpc.library.deleteItems.useMutation();
   const importDriveFileMutation = trpc.googleDrive.importDriveFile.useMutation();
+  const triggerReindexMutation = trpc.systemSettings.triggerReindex.useMutation({
+    onSuccess: (data: any) => {
+      if (data?.status === "started" || data?.status === "already_running") {
+        toast.success(data?.message || "Reindex job started");
+        setIsReindexing(true);
+      } else {
+        toast.error(data?.message || "Failed to trigger reindex");
+      }
+    },
+    onError: (err: any) => toast.error(`Reindex failed: ${err.message}`),
+  });
+  const { data: reindexStatus } = trpc.systemSettings.getReindexStatus.useQuery(
+    undefined,
+    {
+      enabled: isAdmin && isReindexing,
+      refetchInterval: isReindexing ? 5000 : false,
+    },
+  );
 
   // Folder path / breadcrumb (only when inside a folder)
   const currentFolderId = queryState.folderId ?? null;
@@ -306,6 +343,33 @@ export default function DocumentManagement() {
     { enabled: currentFolderId != null },
   );
   const folderPath = folderPathQuery.data ?? [];
+
+  useEffect(() => {
+    if (!reindexStatus) return;
+    if (reindexStatus.status === "completed") {
+      if (isReindexing) {
+        toast.success("Reindex completed successfully");
+        trpcUtils.library.listDocuments.invalidate();
+      }
+      setIsReindexing(false);
+      return;
+    }
+    if (reindexStatus.status === "failed") {
+      if (isReindexing) {
+        toast.error("Reindex failed — please check server logs");
+      }
+      setIsReindexing(false);
+      return;
+    }
+    if (reindexStatus.status === "idle") {
+      setIsReindexing(false);
+    }
+  }, [isReindexing, reindexStatus, trpcUtils.library.listDocuments]);
+
+  async function handleConfirmReindex() {
+    setIsReindexConfirmOpen(false);
+    await triggerReindexMutation.mutateAsync();
+  }
 
   function isEditorTabDirty(tabId: number): boolean {
     const draft = markdownDraftByDocId[tabId];
@@ -1158,6 +1222,15 @@ export default function DocumentManagement() {
                   <DropdownMenuItem onClick={handleCreateNewPresentation} disabled={createItemMutation.isPending || createPresentationDeckMutation.isPending}>
                     <FilePlus2 className="mr-2 h-4 w-4" /> New Presentation
                   </DropdownMenuItem>
+                  {isAdmin ? (
+                    <DropdownMenuItem
+                      onClick={() => setIsReindexConfirmOpen(true)}
+                      disabled={triggerReindexMutation.isPending || isReindexing}
+                    >
+                      <RefreshCw className={cn("mr-2 h-4 w-4", isReindexing && "animate-spin")} />
+                      {isReindexing ? "Reindexing..." : "Reindex Library"}
+                    </DropdownMenuItem>
+                  ) : null}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -1208,6 +1281,17 @@ export default function DocumentManagement() {
                 <FilePlus2 className="mr-1 h-4 w-4" />
                 New Presentation
               </Button>
+              {isAdmin ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsReindexConfirmOpen(true)}
+                  disabled={triggerReindexMutation.isPending || isReindexing}
+                >
+                  <RefreshCw className={cn("mr-1 h-4 w-4", isReindexing && "animate-spin")} />
+                  {isReindexing ? "Reindexing..." : "Reindex"}
+                </Button>
+              ) : null}
             </div>
           </div>
         </div>
@@ -1263,6 +1347,30 @@ export default function DocumentManagement() {
         open={isShareLibraryOpen}
         onOpenChange={setIsShareLibraryOpen}
       />
+
+      <AlertDialog open={isReindexConfirmOpen} onOpenChange={setIsReindexConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reindex Library/RAG?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will queue re-indexing for all library documents and rebuild searchable RAG chunks.
+              The process may take several minutes depending on library size. Continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={triggerReindexMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void handleConfirmReindex();
+              }}
+              disabled={triggerReindexMutation.isPending}
+            >
+              {triggerReindexMutation.isPending ? "Starting..." : "Start Reindex"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <main className={cn(
         isDesktopLayout ? "px-4 py-6 sm:px-6 lg:px-8" : "flex-1 min-h-0 overflow-hidden px-3 pt-3 pb-14",
@@ -1425,6 +1533,28 @@ export default function DocumentManagement() {
                           value={queryState.query}
                           onChange={(event) => setQueryState((prev) => ({ ...prev, query: event.target.value }))}
                         />
+                      </div>
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+                        {QUICK_MEDIA_FILTERS.map((filter) => {
+                          const isActive = (queryState.itemType ?? "all") === filter.value;
+                          return (
+                            <button
+                              key={filter.value}
+                              type="button"
+                              className={cn(
+                                "inline-flex h-8 shrink-0 items-center rounded-full border px-3 text-xs font-medium transition-colors",
+                                "border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-100",
+                                isActive && "border-sky-400 bg-sky-50 text-sky-700",
+                              )}
+                              onClick={() => setQueryState((prev) => ({
+                                ...prev,
+                                itemType: filter.value === "all" ? undefined : filter.value,
+                              }))}
+                            >
+                              {filter.label}
+                            </button>
+                          );
+                        })}
                       </div>
                       <Select
                         value={queryState.sort}
@@ -1800,6 +1930,28 @@ export default function DocumentManagement() {
                         value={queryState.query}
                         onChange={(event) => setQueryState((prev) => ({ ...prev, query: event.target.value }))}
                       />
+                    </div>
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+                      {QUICK_MEDIA_FILTERS.map((filter) => {
+                        const isActive = (queryState.itemType ?? "all") === filter.value;
+                        return (
+                          <button
+                            key={filter.value}
+                            type="button"
+                            className={cn(
+                              "inline-flex h-8 shrink-0 items-center rounded-full border px-3 text-xs font-medium transition-colors",
+                              "border-slate-300 bg-white text-slate-700 hover:border-slate-400 hover:bg-slate-100",
+                              isActive && "border-sky-400 bg-sky-50 text-sky-700",
+                            )}
+                            onClick={() => setQueryState((prev) => ({
+                              ...prev,
+                              itemType: filter.value === "all" ? undefined : filter.value,
+                            }))}
+                          >
+                            {filter.label}
+                          </button>
+                        );
+                      })}
                     </div>
                     <Select
                       value={queryState.sort}

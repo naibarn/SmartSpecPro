@@ -646,6 +646,190 @@ describe("relayoutExistingSlide", () => {
     }
     expect(output.warnings.some((warning) => warning.includes("Applied watermark"))).toBe(true);
   });
+
+  it("preserves user-added media elements when running relayout", () => {
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({
+      slideContent: {
+        elements: [
+          { id: "img-main", type: "image", x: 0, y: 0, width: 900, height: 720, src: "https://cdn.example.com/bg.jpg", alt: "hero" },
+          { id: "title", type: "text", x: 72, y: 170, width: 520, height: 120, text: "Slide title", color: "#ffffff" },
+        ],
+      },
+      warnings: [],
+    });
+
+    const output = relayoutExistingSlide({
+      slideTitle: "Slide title",
+      deckTitle: "Deck",
+      slideIndex: 1,
+      totalSlides: 3,
+      includeSvg: true,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "img-main-old", type: "image", x: 0, y: 0, width: 1000, height: 720, src: "https://cdn.example.com/bg.jpg", alt: "main" },
+          { id: "user-image", type: "image", x: 980, y: 520, width: 240, height: 150, src: "https://cdn.example.com/user-added.png", alt: "user image" },
+          { id: "user-video", type: "video", x: 900, y: 80, width: 320, height: 180, src: "https://cdn.example.com/user-added.mp4", title: "user video", muted: true },
+          { id: "title", type: "text", x: 72, y: 170, width: 520, height: 120, text: "Slide title", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+      },
+    });
+
+    const preservedImage = output.slideContent.elements.find((element) => (
+      element.type === "image" && element.id === "user-image"
+    ));
+    const preservedVideo = output.slideContent.elements.find((element) => (
+      element.type === "video" && element.id === "user-video"
+    ));
+    expect(preservedImage).toBeTruthy();
+    expect(preservedVideo).toBeTruthy();
+    const titleIndex = output.slideContent.elements.findIndex((element) => element.id === "title");
+    const preservedImageIndex = output.slideContent.elements.findIndex((element) => element.id === "user-image");
+    const preservedVideoIndex = output.slideContent.elements.findIndex((element) => element.id === "user-video");
+    expect(preservedImageIndex).toBeGreaterThanOrEqual(0);
+    expect(preservedVideoIndex).toBeGreaterThanOrEqual(0);
+    expect(preservedImageIndex).toBeLessThan(titleIndex);
+    expect(preservedVideoIndex).toBeLessThan(titleIndex);
+    expect(output.warnings.some((warning) => warning.includes("Preserved 2 existing user element"))).toBe(true);
+  });
+
+  it("preserves large non-primary media by fitting them into generated drop zones", () => {
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({
+      slideContent: {
+        elements: [
+          { id: "img-main", type: "image", x: 0, y: 0, width: 900, height: 720, src: "https://cdn.example.com/bg.jpg", alt: "hero" },
+          { id: "slot-1", type: "rect", x: 930, y: 210, width: 320, height: 180, fill: "#31455a", opacity: 0.4 },
+          { id: "slot-2", type: "rect", x: 930, y: 410, width: 320, height: 180, fill: "#31455a", opacity: 0.4 },
+          { id: "title", type: "text", x: 72, y: 170, width: 520, height: 120, text: "Slide title", color: "#ffffff" },
+        ],
+      },
+      warnings: [],
+    });
+
+    const output = relayoutExistingSlide({
+      slideTitle: "Slide title",
+      deckTitle: "Deck",
+      slideIndex: 1,
+      totalSlides: 3,
+      includeSvg: true,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "img-main-old", type: "image", x: 0, y: 0, width: 1280, height: 720, src: "https://cdn.example.com/bg.jpg", alt: "main" },
+          { id: "large-secondary-image", type: "image", x: 40, y: 40, width: 900, height: 500, src: "https://cdn.example.com/secondary.jpg", alt: "secondary" },
+          { id: "large-secondary-video", type: "video", x: 120, y: 120, width: 760, height: 430, src: "https://cdn.example.com/secondary.mp4", title: "secondary video", muted: true },
+          { id: "title", type: "text", x: 72, y: 170, width: 520, height: 120, text: "Slide title", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+      },
+    });
+
+    const preservedLargeImage = output.slideContent.elements.find((element) => (
+      element.type === "image" && element.id === "large-secondary-image"
+    ));
+    const preservedLargeVideo = output.slideContent.elements.find((element) => (
+      element.type === "video" && element.id === "large-secondary-video"
+    ));
+    expect(preservedLargeImage).toBeTruthy();
+    expect(preservedLargeVideo).toBeTruthy();
+    if (preservedLargeImage && preservedLargeImage.type === "image") {
+      expect(preservedLargeImage.width).toBeLessThan(321);
+      expect(preservedLargeImage.height).toBeLessThan(181);
+      expect(preservedLargeImage.x).toBeGreaterThanOrEqual(930);
+      expect(preservedLargeImage.y).toBeGreaterThanOrEqual(210);
+    }
+    if (preservedLargeVideo && preservedLargeVideo.type === "video") {
+      expect(preservedLargeVideo.width).toBeLessThan(321);
+      expect(preservedLargeVideo.height).toBeLessThan(181);
+      expect(preservedLargeVideo.x).toBeGreaterThanOrEqual(930);
+      expect(preservedLargeVideo.y).toBeGreaterThanOrEqual(410);
+    }
+    expect(output.warnings.some((warning) => warning.includes("Preserved 2 existing user element"))).toBe(true);
+  });
+
+  it("preserves more than 12 user media elements during relayout", () => {
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({
+      slideContent: {
+        elements: [
+          { id: "img-main", type: "image", x: 0, y: 0, width: 900, height: 720, src: "https://cdn.example.com/bg.jpg", alt: "hero" },
+          { id: "title", type: "text", x: 72, y: 120, width: 520, height: 120, text: "Slide title", color: "#ffffff" },
+        ],
+      },
+      warnings: [],
+    });
+
+    const extraMedia: Array<Record<string, unknown>> = [];
+    for (let i = 0; i < 10; i += 1) {
+      extraMedia.push({
+        id: `user-image-${i}`,
+        type: "image",
+        x: 20 + (i * 8),
+        y: 340 + (i * 3),
+        width: 220,
+        height: 140,
+        src: `https://cdn.example.com/user-image-${i}.png`,
+        alt: `user image ${i}`,
+      });
+    }
+    for (let i = 0; i < 6; i += 1) {
+      extraMedia.push({
+        id: `user-video-${i}`,
+        type: "video",
+        x: 40 + (i * 10),
+        y: 420 + (i * 2),
+        width: 260,
+        height: 150,
+        src: `https://cdn.example.com/user-video-${i}.mp4`,
+        title: `user video ${i}`,
+        muted: true,
+      });
+    }
+
+    const output = relayoutExistingSlide({
+      slideTitle: "Slide title",
+      deckTitle: "Deck",
+      slideIndex: 1,
+      totalSlides: 3,
+      includeSvg: true,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "img-main-old", type: "image", x: 0, y: 0, width: 1280, height: 720, src: "https://cdn.example.com/bg.jpg", alt: "main" },
+          ...extraMedia,
+          { id: "title", type: "text", x: 72, y: 170, width: 520, height: 120, text: "Slide title", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+      },
+    });
+
+    const preservedIds = output.slideContent.elements
+      .map((element) => element.id)
+      .filter((id) => id.startsWith("user-image-") || id.startsWith("user-video-"));
+    expect(preservedIds.length).toBe(16);
+    expect(output.warnings.some((warning) => warning.includes("Preserved 16 existing user element"))).toBe(true);
+  });
 });
 
 describe("generateAIDraft - happy path", () => {

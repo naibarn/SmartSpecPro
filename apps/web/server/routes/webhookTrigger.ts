@@ -23,24 +23,22 @@
 
 import crypto from "crypto";
 import { Router, type Request, type Response } from "express";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and, gte } from "drizzle-orm";
 import { db } from "../db";
 import { webhookTriggers, webhookTriggerLogs } from "../../drizzle/schema";
 import { getTenantFeatureFlag } from "../services/featureFlags";
-import { hasEnoughCredits, deductCredits } from "../services/creditService";
+import { hasEnoughCredits } from "../services/creditService";
 import { auditLogger } from "../services/auditLogger";
-import { channelGateway } from "../services/channelGateway";
-import { agencyBridge } from "../services/agencyBridge";
 import {
   verifyTokenAuth,
   verifyHmacAuth,
   checkDedup,
   checkWebhookRateLimit,
-  stripSecrets,
   substituteTemplateObject,
   hashBody,
   maskIp,
 } from "../services/webhookTriggerService";
+import { enqueueWebhookDispatch } from "../services/webhookDispatchQueue";
 
 // Safe request headers to log (no auth headers)
 const SAFE_HEADERS = new Set(["content-type", "user-agent", "x-forwarded-for"]);
@@ -54,19 +52,18 @@ function extractSafeHeaders(headers: Record<string, string | string[] | undefine
   return safe;
 }
 
-async function recordLog(
+/** Record a pre-dispatch failure log (auth, rate-limit, credit, budget). */
+async function recordFailureLog(
   triggerId: string,
   data: {
-    status: "success" | "auth_failed" | "rate_limited" | "target_error" | "credit_insufficient";
+    status: "auth_failed" | "rate_limited" | "credit_insufficient";
     requestMethod: string;
     requestBodyHash: string;
     requestBodySize: number;
     requestHeadersSafe: Record<string, string>;
-    extractedVariables: Record<string, unknown>;
     sourceIpMasked: string;
-    creditsConsumed: number;
-    errorMessage?: string;
     processingTimeMs: number;
+    errorMessage?: string;
   },
 ) {
   try {
@@ -78,10 +75,10 @@ async function recordLog(
         requestBodyHash: data.requestBodyHash,
         requestBodySize: data.requestBodySize,
         requestHeadersSafe: data.requestHeadersSafe,
-        extractedVariables: stripSecrets(data.extractedVariables),
+        extractedVariables: {},
         sourceIpMasked: data.sourceIpMasked,
         status: data.status,
-        creditsConsumed: String(data.creditsConsumed),
+        creditsConsumed: "0",
         errorMessage: data.errorMessage ?? null,
         processingTimeMs: data.processingTimeMs,
       } as any);
@@ -140,15 +137,13 @@ export function createWebhookTriggerRouter(): Router {
 
     if (!authOk) {
       const processingTimeMs = Date.now() - startTime;
-      await recordLog(triggerId, {
+      await recordFailureLog(triggerId, {
         status: "auth_failed",
         requestMethod: req.method,
         requestBodyHash: bodyHash,
         requestBodySize: bodySize,
         requestHeadersSafe,
-        extractedVariables: {},
         sourceIpMasked,
-        creditsConsumed: 0,
         processingTimeMs,
       });
       return res.status(401).json({ error: "Authentication failed" });
@@ -173,18 +168,47 @@ export function createWebhookTriggerRouter(): Router {
     const isRateLimited = await checkWebhookRateLimit(triggerId, trigger.rateLimitPerMinute ?? 10);
     if (isRateLimited) {
       const processingTimeMs = Date.now() - startTime;
-      await recordLog(triggerId, {
+      await recordFailureLog(triggerId, {
         status: "rate_limited",
         requestMethod: req.method,
         requestBodyHash: bodyHash,
         requestBodySize: bodySize,
         requestHeadersSafe,
-        extractedVariables: {},
         sourceIpMasked,
-        creditsConsumed: 0,
         processingTimeMs,
       });
       return res.status(429).json({ error: "Rate limit exceeded" });
+    }
+
+    // ── Step 5b: Monthly budget check ─────────────────────────────────────────
+    if (trigger.monthlyTriggerBudget !== null && trigger.monthlyTriggerBudget !== undefined) {
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const [monthlyRow] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(webhookTriggerLogs)
+        .where(
+          and(
+            eq(webhookTriggerLogs.triggerId, triggerId),
+            eq(webhookTriggerLogs.status, "success"),
+            gte(webhookTriggerLogs.createdAt, startOfMonth),
+          ),
+        );
+      const monthlyCount = monthlyRow?.count ?? 0;
+      if (monthlyCount >= trigger.monthlyTriggerBudget) {
+        const processingTimeMs = Date.now() - startTime;
+        await recordFailureLog(triggerId, {
+          status: "rate_limited",
+          requestMethod: req.method,
+          requestBodyHash: bodyHash,
+          requestBodySize: bodySize,
+          requestHeadersSafe,
+          sourceIpMasked,
+          processingTimeMs,
+          errorMessage: `Monthly budget of ${trigger.monthlyTriggerBudget} triggers exceeded`,
+        });
+        return res.status(429).json({ error: "Monthly trigger budget exceeded" });
+      }
     }
 
     // ── Step 6: Credit check ───────────────────────────────────────────────────
@@ -192,15 +216,13 @@ export function createWebhookTriggerRouter(): Router {
     const hasCredits = await hasEnoughCredits(trigger.userId, creditCost);
     if (!hasCredits) {
       const processingTimeMs = Date.now() - startTime;
-      await recordLog(triggerId, {
+      await recordFailureLog(triggerId, {
         status: "credit_insufficient",
         requestMethod: req.method,
         requestBodyHash: bodyHash,
         requestBodySize: bodySize,
         requestHeadersSafe,
-        extractedVariables: {},
         sourceIpMasked,
-        creditsConsumed: 0,
         processingTimeMs,
       });
       return res.status(402).json({ error: "Insufficient credits" });
@@ -220,98 +242,34 @@ export function createWebhookTriggerRouter(): Router {
     const payloadTemplate = (trigger.payloadTemplate ?? {}) as Record<string, unknown>;
     const substitutedPayload = substituteTemplateObject(payloadTemplate, templateVars);
 
-    // ── Step 8: Acknowledge immediately, dispatch async ───────────────────────
+    const dispatchMessage: string =
+      typeof (substitutedPayload as any).message === "string"
+        ? (substitutedPayload as any).message
+        : typeof (substitutedPayload as any).text === "string"
+        ? (substitutedPayload as any).text
+        : JSON.stringify(substitutedPayload);
+
+    // ── Step 8: Acknowledge immediately, enqueue dispatch ─────────────────────
     res.status(200).json({ ok: true });
 
-    // Async dispatch (fires after response sent)
-    setImmediate(async () => {
-      const processingTimeMs = Date.now() - startTime;
-      try {
-        // Extract the dispatch message text from the substituted payload, with fallbacks
-        const dispatchMessage: string =
-          typeof (substitutedPayload as any).message === "string"
-            ? (substitutedPayload as any).message
-            : typeof (substitutedPayload as any).text === "string"
-            ? (substitutedPayload as any).text
-            : JSON.stringify(substitutedPayload);
-
-        // Dispatch to configured target
-        if (trigger.targetType === "agency" && trigger.targetAgencyId) {
-          await agencyBridge.executeRun({
-            agencyId: trigger.targetAgencyId,
-            conversationId: trigger.targetAgencyId, // agencyId as server-side conv fallback
-            message: dispatchMessage,
-            userToken: "", // server-side dispatch — no user session token
-            tenantId: trigger.tenantId,
-            userId: trigger.userId,
-          });
-        } else if (trigger.targetType === "chat" && trigger.targetConversationId) {
-          await channelGateway.processMessageServerSide({
-            conversationId: trigger.targetConversationId,
-            userId: trigger.userId,
-            tenantId: trigger.tenantId,
-            content: dispatchMessage,
-            connectionId: `webhook_${triggerId}`,
-          });
-        } else {
-          // Workflow dispatch not yet implemented; log for observability
-          auditLogger.log({
-            eventType: "webhook_dispatch_stub" as any,
-            userId: trigger.userId,
-            metadata: {
-              triggerId,
-              targetType: trigger.targetType,
-              reason:
-                trigger.targetType === "workflow"
-                  ? "workflow_dispatch_not_implemented"
-                  : "no_target_configured",
-            },
-          });
-        }
-
-        // Deduct credits after successful dispatch acknowledgement
-        await deductCredits({
-          userId: trigger.userId,
-          tenantId: trigger.tenantId,
-          amount: creditCost,
-          description: `Webhook trigger: ${trigger.name}`,
-          sourceType: "webhook_trigger",
-        }).catch(() => {}); // fire-and-forget; audit trail preserved in log below
-
-        await recordLog(triggerId, {
-          status: "success",
-          requestMethod: req.method,
-          requestBodyHash: bodyHash,
-          requestBodySize: bodySize,
-          requestHeadersSafe,
-          extractedVariables: stripSecrets(parsedBody),
-          sourceIpMasked,
-          creditsConsumed: creditCost,
-          processingTimeMs,
-        });
-
-        // Increment trigger counter atomically via SQL expression (avoids read-modify-write race)
-        await db
-          .update(webhookTriggers)
-          .set({
-            totalTriggers: sql`${webhookTriggers.totalTriggers} + 1`,
-            lastTriggeredAt: new Date(),
-          } as any)
-          .where(eq(webhookTriggers.id, triggerId));
-      } catch (err) {
-        await recordLog(triggerId, {
-          status: "target_error",
-          requestMethod: req.method,
-          requestBodyHash: bodyHash,
-          requestBodySize: bodySize,
-          requestHeadersSafe,
-          extractedVariables: {},
-          sourceIpMasked,
-          creditsConsumed: 0,
-          errorMessage: String(err),
-          processingTimeMs: Date.now() - startTime,
-        });
-      }
+    await enqueueWebhookDispatch({
+      triggerId,
+      userId: trigger.userId,
+      tenantId: trigger.tenantId,
+      targetType: trigger.targetType as "agency" | "chat" | "workflow",
+      targetAgencyId: trigger.targetAgencyId ?? undefined,
+      targetConversationId: trigger.targetConversationId ?? undefined,
+      targetWorkflowId: trigger.targetWorkflowId ?? undefined,
+      message: dispatchMessage,
+      payload: substitutedPayload,
+      creditCost,
+      startTime,
+      requestBodyHash: bodyHash,
+      requestMethod: req.method,
+      requestBodySize: bodySize,
+      requestHeadersSafe,
+      sourceIpMasked,
+      parsedBody,
     });
   });
 

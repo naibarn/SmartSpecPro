@@ -80,10 +80,10 @@ def cleanup_expired_sandbox_jobs() -> dict:
             result = session.execute(
                 text("""
                     DELETE FROM sandbox_artifacts
-                    WHERE sandbox_job_id IN (
+                    WHERE "sandboxJobId" IN (
                         SELECT id FROM sandbox_jobs
                         WHERE status IN ('completed', 'failed', 'timed_out', 'canceled')
-                        AND finished_at < :cutoff
+                        AND "finishedAt" < :cutoff
                     )
                 """),
                 {"cutoff": cutoff},
@@ -95,7 +95,7 @@ def cleanup_expired_sandbox_jobs() -> dict:
                 text("""
                     DELETE FROM sandbox_jobs
                     WHERE status IN ('completed', 'failed', 'timed_out', 'canceled')
-                    AND finished_at < :cutoff
+                    AND "finishedAt" < :cutoff
                 """),
                 {"cutoff": cutoff},
             )
@@ -169,9 +169,9 @@ def cleanup_orphan_sandboxes() -> dict:
             # Get all active (non-terminal) job sandbox IDs
             result = session.execute(
                 text("""
-                    SELECT opensandbox_id FROM sandbox_jobs
+                    SELECT "opensandboxId" FROM sandbox_jobs
                     WHERE status NOT IN ('completed', 'failed', 'timed_out', 'canceled')
-                    AND opensandbox_id IS NOT NULL
+                    AND "opensandboxId" IS NOT NULL
                 """)
             )
             active_job_sandbox_ids = {row[0] for row in result.fetchall()}
@@ -238,11 +238,11 @@ def detect_stuck_sandbox_jobs() -> dict:
             # Find non-terminal jobs that are past their timeout
             result = session.execute(
                 text("""
-                    SELECT j.id, j.status, j.created_at, j.started_at,
-                           j.opensandbox_id,
-                           COALESCE(p.timeout_seconds, 300) as timeout_seconds
+                    SELECT j.id, j.status, j."createdAt", j."startedAt",
+                           j."opensandboxId",
+                           COALESCE(p."timeoutSeconds", 300) as timeout_seconds
                     FROM sandbox_jobs j
-                    LEFT JOIN sandbox_profiles p ON j.sandbox_profile_id = p.id
+                    LEFT JOIN sandbox_profiles p ON j."sandboxProfileId" = p.id
                     WHERE j.status NOT IN ('completed', 'failed', 'timed_out', 'canceled')
                 """)
             )
@@ -282,8 +282,8 @@ def detect_stuck_sandbox_jobs() -> dict:
                     text("""
                         UPDATE sandbox_jobs
                         SET status = :new_status,
-                            status_reason = 'stuck_detected',
-                            finished_at = :now
+                            "statusReason" = 'stuck_detected',
+                            "finishedAt" = :now
                         WHERE id = :job_id
                         AND status NOT IN ('completed', 'failed', 'timed_out', 'canceled')
                     """),

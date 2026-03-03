@@ -263,6 +263,10 @@ describe("G.1 Modal Rendering", () => {
     };
 
     render(<AIDraftModal {...defaultProps} />);
+    const recommendation = await screen.findByTestId("word-count-recommendation-hint");
+    expect(recommendation).toHaveTextContent(/Recommended Maximum Words for 5 slides/i);
+    expect(recommendation).toHaveTextContent(/Thai up to/i);
+    expect(recommendation).toHaveTextContent(/English up to/i);
     const hint = await screen.findByTestId("word-count-override-hint");
     expect(hint).toHaveTextContent(/Maximum Words/i);
     expect(hint).toHaveTextContent(/overrides Length/i);

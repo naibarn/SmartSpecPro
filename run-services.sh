@@ -825,10 +825,10 @@ cmd_restart() {
                 start_screen_service "smartspec-docker-status" "cd docker-status && npm run dev"
                 ;;
             media)
-                log_step "Restarting Docker media workers..."
+                log_step "Recreating Docker media workers (apply latest compose config)..."
                 cd "$PROJECT_ROOT"
-                docker compose -p smartspecpro -f "$MEDIA_COMPOSE" restart
-                log_info "Docker media workers restarted"
+                docker compose -p smartspecpro -f "$MEDIA_COMPOSE" up -d --force-recreate celery-media celery-video celery-import celery-presentation celery-sandbox celery-beat flower
+                log_info "Docker media workers recreated"
                 ;;
             sandbox)
                 log_step "Restarting OpenSandbox..."

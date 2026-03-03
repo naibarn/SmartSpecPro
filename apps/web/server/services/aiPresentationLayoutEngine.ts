@@ -602,7 +602,7 @@ function buildHeroCenter(ctx: TemplateContext): SlideElement[] {
   const { contentArea, slideData, preset, scale, canvasWidth, canvasHeight } = ctx;
   const elements: SlideElement[] = [];
   const portrait = isPortraitCanvas(canvasWidth, canvasHeight);
-  const { subtitle, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 6 : 5);
+  const { subtitle, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 10 : 12);
   const thaiText = hasThaiCharacters(`${slideData.title}\n${subtitle ?? ""}\n${bodyLines.join("\n")}`);
   const titleLineHeight = getTitleLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLineHeightRatio = getBodyLineHeight(canvasWidth, canvasHeight, thaiText);
@@ -780,7 +780,7 @@ function buildSplitRightImage(ctx: TemplateContext): SlideElement[] {
   const elements: SlideElement[] = [];
   const halfWidth = contentArea.width * 0.5;
   const portrait = isPortraitCanvas(canvasWidth, canvasHeight);
-  const { subtitle, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 6 : 5);
+  const { subtitle, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 10 : 12);
   const thaiText = hasThaiCharacters(`${slideData.title}\n${subtitle ?? ""}\n${bodyLines.join("\n")}`);
   const titleLineHeight = getTitleLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLineHeightRatio = getBodyLineHeight(canvasWidth, canvasHeight, thaiText);
@@ -959,7 +959,7 @@ function buildSplitLeftImage(ctx: TemplateContext): SlideElement[] {
   const elements: SlideElement[] = [];
   const halfWidth = contentArea.width * 0.5;
   const portrait = isPortraitCanvas(canvasWidth, canvasHeight);
-  const { subtitle, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 6 : 5);
+  const { subtitle, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 10 : 12);
   const thaiText = hasThaiCharacters(`${slideData.title}\n${subtitle ?? ""}\n${bodyLines.join("\n")}`);
   const titleLineHeight = getTitleLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLineHeightRatio = getBodyLineHeight(canvasWidth, canvasHeight, thaiText);
@@ -1139,7 +1139,7 @@ function buildTopImageTextBottom(ctx: TemplateContext): SlideElement[] {
   const imageHeight = Math.round(contentArea.height * (portrait ? 0.52 : 0.56));
   const bottomY = contentArea.y + imageHeight;
   const bottomHeight = Math.max(120, contentArea.height - imageHeight);
-  const { subtitle, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 6 : 5);
+  const { subtitle, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 10 : 12);
   const thaiText = hasThaiCharacters(`${slideData.title}\n${subtitle ?? ""}\n${bodyLines.join("\n")}`);
   const titleLineHeight = getTitleLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLineHeightRatio = getBodyLineHeight(canvasWidth, canvasHeight, thaiText);
@@ -1313,7 +1313,7 @@ function buildBottomImageTextTop(ctx: TemplateContext): SlideElement[] {
   const imageHeight = Math.round(contentArea.height * (portrait ? 0.52 : 0.56));
   const topHeight = Math.max(120, contentArea.height - imageHeight);
   const imageY = contentArea.y + topHeight;
-  const { subtitle, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 6 : 5);
+  const { subtitle, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 10 : 12);
   const thaiText = hasThaiCharacters(`${slideData.title}\n${subtitle ?? ""}\n${bodyLines.join("\n")}`);
   const titleLineHeight = getTitleLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLineHeightRatio = getBodyLineHeight(canvasWidth, canvasHeight, thaiText);
@@ -1486,8 +1486,8 @@ function buildFeatureBoxesRight(ctx: TemplateContext): SlideElement[] {
   const leftWidth = contentArea.width * 0.55;
   const rightWidth = contentArea.width * 0.45;
   const portrait = isPortraitCanvas(canvasWidth, canvasHeight);
-  const cards = resolveSlideSections(slideData, portrait ? 4 : 5);
-  const fallbackCardLines = compactBodyLines(slideData.body, portrait ? 4 : 5);
+  const cards = resolveSlideSections(slideData, portrait ? 7 : 8);
+  const fallbackCardLines = compactBodyLines(slideData.body, portrait ? 7 : 8);
   const normalizedCards = cards.length > 0
     ? cards
     : fallbackCardLines.map((line) => ({ heading: line, details: [] }));

@@ -21,8 +21,14 @@ import { router, protectedProcedure } from "../_core/trpc";
 import { db } from "../db";
 import { webhookTriggers, webhookTriggerLogs } from "../../drizzle/schema";
 import { encrypt } from "../services/crypto";
-import { validateTemplate } from "../services/webhookTriggerService";
+import {
+  validateTemplate,
+  substituteTemplateObject,
+} from "../services/webhookTriggerService";
 import { getTenantFeatureFlag } from "../services/featureFlags";
+import { channelGateway } from "../services/channelGateway";
+import { agencyBridge } from "../services/agencyBridge";
+import { ENV } from "../_core/env";
 
 const WEBHOOK_BASE_URL = "https://smartaihub.app/api/webhooks/trigger";
 
@@ -84,7 +90,7 @@ const getLogsSchema = z.object({
 
 // ── Helper: require trigger ownership ────────────────────────────────────────
 
-async function requireTriggerOwnership(triggerId: string, tenantId: string, userId?: string) {
+async function requireTriggerOwnership(triggerId: string, tenantId: string, userId?: number | string) {
   const [trigger] = await db
     .select()
     .from(webhookTriggers)
@@ -99,7 +105,7 @@ async function requireTriggerOwnership(triggerId: string, tenantId: string, user
   }
   // Regular users can only manage their own triggers.
   // Passing userId=undefined skips user-level check (e.g. for admin callers).
-  if (userId !== undefined && trigger.userId !== userId) {
+  if (userId !== undefined && trigger.userId !== Number(userId)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
   }
   return trigger;
@@ -275,5 +281,109 @@ export const webhookTriggersRouter = router({
         .where(and(eq(webhookTriggers.id, input.triggerId), eq(webhookTriggers.tenantId, tenantId)));
 
       return { newSecret };
+    }),
+
+  /**
+   * Test-fire a webhook trigger with a sample payload.
+   * Owned by the caller, no credits deducted, not counted in totalTriggers.
+   */
+  testTrigger: protectedProcedure
+    .input(
+      z.object({
+        triggerId: z.string(),
+        samplePayload: z.record(z.unknown()).default({}),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      const userId = ctx.user!.id;
+      const trigger = await requireTriggerOwnership(input.triggerId, tenantId, userId);
+
+      // Build substituted payload (same logic as route handler)
+      const timestamp = String(Math.floor(Date.now() / 1000));
+      const templateVars = {
+        eventType: String((input.samplePayload as any)?.type ?? "test"),
+        eventData: input.samplePayload,
+        triggerName: trigger.name,
+        triggerId: trigger.id,
+        timestamp,
+      };
+      const payloadTemplate = (trigger.payloadTemplate ?? {}) as Record<string, unknown>;
+      const substitutedPayload = substituteTemplateObject(payloadTemplate, templateVars);
+
+      const dispatchMessage: string =
+        typeof (substitutedPayload as any).message === "string"
+          ? (substitutedPayload as any).message
+          : typeof (substitutedPayload as any).text === "string"
+          ? (substitutedPayload as any).text
+          : JSON.stringify(substitutedPayload);
+
+      // Dispatch test (direct, not via queue — we wait for result)
+      let dispatchResult: { ok: boolean; detail?: string; executionId?: string } = { ok: false };
+
+      try {
+        if (trigger.targetType === "agency" && trigger.targetAgencyId) {
+          const result = await agencyBridge.executeRun({
+            agencyId: trigger.targetAgencyId,
+            conversationId: trigger.targetAgencyId,
+            message: dispatchMessage,
+            userToken: "",
+            tenantId,
+            userId,
+          });
+          dispatchResult = { ok: true, executionId: result.runId };
+
+        } else if (trigger.targetType === "chat" && trigger.targetConversationId) {
+          await channelGateway.processMessageServerSide({
+            conversationId: trigger.targetConversationId,
+            userId,
+            tenantId,
+            content: dispatchMessage,
+            connectionId: `webhook_test_${trigger.id}`,
+          });
+          dispatchResult = { ok: true };
+
+        } else if (trigger.targetType === "workflow" && trigger.targetWorkflowId) {
+          const PYTHON_BACKEND_URL = (ENV.pythonBackendUrl || "http://localhost:8000").replace(/\/+$/, "");
+          const response = await fetch(
+            `${PYTHON_BACKEND_URL}/api/v1/workflows/internal/${trigger.targetWorkflowId}/webhook-trigger`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${ENV.webGatewayToken}`,
+              },
+              body: JSON.stringify({
+                input_data: substitutedPayload,
+                webhook_trigger_id: trigger.id,
+              }),
+              signal: AbortSignal.timeout(30_000),
+            },
+          );
+          if (!response.ok) {
+            const errText = await response.text().catch(() => "");
+            throw new Error(`Workflow dispatch: HTTP ${response.status} — ${errText.slice(0, 200)}`);
+          }
+          const data = await response.json() as { executionId?: string };
+          dispatchResult = { ok: true, executionId: data.executionId };
+
+        } else {
+          dispatchResult = {
+            ok: false,
+            detail: `No valid target configured for type=${trigger.targetType}`,
+          };
+        }
+      } catch (err) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Test dispatch failed: ${String(err)}`,
+        });
+      }
+
+      return {
+        ...dispatchResult,
+        dispatchedMessage: dispatchMessage,
+        substitutedPayload,
+      };
     }),
 });

@@ -346,7 +346,18 @@
       "WebFetch(domain:api.slack.com)",
       "Bash(/home/dev/projects/SmartSpecPro/specs/feature/029-ClawFeature/implementation/code_review/section-01-review.md:*)",
       "Bash(/home/dev/projects/SmartSpecPro/specs/feature/029-ClawFeature/implementation/code_review/section-01-interview.md:*)",
-      "Bash(screen -ls)"
+      "Bash(screen -ls)",
+      "Bash(./scripts/setup-glitchtip.sh)",
+      "Bash(openssl x509 -in /etc/nginx/ssl/smartaihub.app.crt -text -noout)",
+      "Bash(openssl x509 -in /home/dev/projects/SmartSpecPro/nginx/ssl/smartaihub.app.crt -text -noout)",
+      "Bash(/dev/null:*)",
+      "Bash(sudo sed -i '/# Catch-all rule \\(required\\)/i\\\\  # GlitchTip error tracking \\(self-hosted Sentry alternative\\)\\\\n  - hostname: glitchtip.smartaihub.app\\\\n    service: http://localhost:8084\\\\n' /etc/cloudflared/config.yml)",
+      "Bash(cloudflared tunnel route dns 191d047e-674a-48f4-b105-b37269c2dad6 glitchtip.smartaihub.app)",
+      "Bash(dig glitchtip.smartaihub.app +short)",
+      "Bash(dig glitchtip.smartaihub.app CNAME +short)",
+      "Bash(dig glitchtip.smartaihub.app ANY +short)",
+      "Bash(nslookup glitchtip.smartaihub.app)",
+      "Bash(nslookup glitchtip.smartaihub.app 1.1.1.1)"
     ],
     "deny": [
       "Bash(rm *)",

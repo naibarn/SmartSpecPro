@@ -14,6 +14,7 @@ import {
   type LibraryIndexDomain,
   type LibraryIndexOperation,
 } from "./libraryIndexJobContract";
+import { normalizeMediaPrompt } from "./mediaPromptNormalization";
 import { isSvgUpload, sanitizeUploadedSvg } from "./uploadContentSafety";
 import {
   libraryChunks,
@@ -476,6 +477,14 @@ export function normalizeLibraryMetadata(
 
     if (key === "tags") {
       output.tags = normalizeTagList(value);
+      continue;
+    }
+
+    if (key === "prompt" && typeof value === "string") {
+      const normalizedPrompt = normalizeMediaPrompt(value);
+      if (normalizedPrompt.length > 0) {
+        output.prompt = normalizedPrompt;
+      }
       continue;
     }
 

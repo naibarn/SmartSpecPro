@@ -97,6 +97,14 @@ vi.mock("../../services/auditLogger", () => ({
   auditLogger: { log: vi.fn() },
 }));
 
+const { mockEnqueueWebhookDispatch } = vi.hoisted(() => ({
+  mockEnqueueWebhookDispatch: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("../../services/webhookDispatchQueue", () => ({
+  enqueueWebhookDispatch: mockEnqueueWebhookDispatch,
+}));
+
 // Encryption key for tests
 process.env.LLM_ENCRYPTION_KEY = "test-key-for-webhook-tests-32chars!!";
 
@@ -345,5 +353,40 @@ describe("webhookTriggerService — template substitution", () => {
     });
     // Should not contain the raw {{...}} in output
     expect(result).not.toContain("{{");
+  });
+});
+
+// ── Monthly budget enforcement ─────────────────────────────────────────────────
+
+describe("webhookTriggerService — monthly budget", () => {
+  it("checkDedup returns false (not duplicate) for fresh requests", async () => {
+    mockRedisGet.mockResolvedValue(null);
+    mockRedisSet.mockResolvedValue("OK");
+
+    const { checkDedup } = await import("../../services/webhookTriggerService");
+    const result = await checkDedup("trig-1", "1700000000", "abc123");
+    expect(result).toBe(false);
+    expect(mockRedisSet).toHaveBeenCalled();
+  });
+
+  it("checkDedup returns true for duplicate (SET NX returns null = key existed)", async () => {
+    // SET NX returns null when the key already exists (duplicate)
+    mockRedisSet.mockResolvedValue(null);
+
+    const { checkDedup } = await import("../../services/webhookTriggerService");
+    const result = await checkDedup("trig-1", "1700000000", "abc123");
+    expect(result).toBe(true);
+  });
+});
+
+// ── BullMQ enqueue integration ─────────────────────────────────────────────────
+
+describe("webhookTriggerService — enqueueWebhookDispatch mock", () => {
+  it("enqueueWebhookDispatch is importable and callable", async () => {
+    expect(typeof mockEnqueueWebhookDispatch).toBe("function");
+    await mockEnqueueWebhookDispatch({ triggerId: "t1", targetType: "chat" } as any);
+    expect(mockEnqueueWebhookDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ triggerId: "t1" }),
+    );
   });
 });

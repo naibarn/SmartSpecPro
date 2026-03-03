@@ -226,4 +226,18 @@ describe("audio track and export contract schemas", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it("presentationRenderSpecSchema accepts optional hasDynamicVideo flag", () => {
+    const result = presentationRenderSpecSchema.safeParse({
+      schemaVersion: PRESENTATION_RENDER_SCHEMA_VERSION,
+      deckId: 1,
+      format: "mp4",
+      width: 1920,
+      height: 1080,
+      fps: 30,
+      hasDynamicVideo: true,
+      slides: [],
+    });
+    expect(result.success).toBe(true);
+  });
 });

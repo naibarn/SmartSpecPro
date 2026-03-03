@@ -1,5 +1,6 @@
 import { getDb } from "../db";
 import { MEDIA_MODELS, mediaGenerationService, type MediaTask } from "./mediaGenerationService";
+import { normalizeMediaPrompt } from "./mediaPromptNormalization";
 import { mediaModels } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import {
@@ -66,7 +67,7 @@ async function resolveModelProvider(task: MediaTask): Promise<string | null> {
 async function buildTaskMetadata(task: MediaTask): Promise<Record<string, unknown>> {
   const provider = await resolveModelProvider(task);
   return {
-    prompt: task.prompt,
+    prompt: normalizeMediaPrompt(task.prompt),
     model: task.model,
     provider,
     task_id: task.id,
@@ -149,6 +150,7 @@ export async function addMediaTaskToLibrary(
     throw new Error("Database not available");
   }
   const metadata = await buildTaskMetadata(task);
+  const normalizedPrompt = normalizeMediaPrompt(task.prompt);
 
   // Download the external provider URL into our own storage so it never expires
   // and can be served without CORS issues. Falls back to the original URL on failure.
@@ -168,7 +170,7 @@ export async function addMediaTaskToLibrary(
       itemType: task.mediaType,
       source: "media_task",
       title: input.title?.trim() || buildDefaultTitle(task),
-      description: task.prompt,
+      description: normalizedPrompt,
       status: "indexing",
       visibility: input.visibility || "private",
       metadata,

@@ -251,6 +251,46 @@ describe("GET /internal/slide-render/:deckId/:slideIndex", () => {
     expect(res.text).toContain("window.__slideReady = false");
   });
 
+  it("HTML response renders video elements with <video> tags (not black placeholder blocks)", async () => {
+    const app = await buildApp();
+    const token = makeValidToken();
+    const res = await request(app)
+      .get(`/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}`)
+      .set("X-Internal-Token", token);
+    expect(res.text).toContain("var video = document.createElement(\"video\")");
+    expect(res.text).toContain("video.autoplay = true");
+  });
+
+  it("HTML response waits for both image and video media before marking slide ready", async () => {
+    const app = await buildApp();
+    const token = makeValidToken();
+    const res = await request(app)
+      .get(`/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}`)
+      .set("X-Internal-Token", token);
+    expect(res.text).toContain("var videos = canvas.querySelectorAll(\"video\")");
+    expect(res.text).toContain("waitForMediaThenReady()");
+  });
+
+  it("HTML response supports record mode so videos are not paused at first frame", async () => {
+    const app = await buildApp();
+    const token = makeValidToken();
+    const res = await request(app)
+      .get(`/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}?mode=record`)
+      .set("X-Internal-Token", token);
+    expect(res.text).toContain("var renderMode = query.get(\"mode\") === \"record\" ? \"record\" : \"screenshot\"");
+    expect(res.text).toContain("if (mode === \"record\")");
+  });
+
+  it("HTML response normalizes media URLs and forces muted video autoplay for frame capture", async () => {
+    const app = await buildApp();
+    const token = makeValidToken();
+    const res = await request(app)
+      .get(`/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}`)
+      .set("X-Internal-Token", token);
+    expect(res.text).toContain("function normalizeMediaSrc(value)");
+    expect(res.text).toContain("video.muted = true");
+  });
+
   it("HTML response body contains inlined slideContent JSON (full element data)", async () => {
     const app = await buildApp();
     const token = makeValidToken();

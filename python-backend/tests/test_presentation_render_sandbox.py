@@ -67,3 +67,28 @@ class TestPresentationRenderSandbox:
             )
             _build_mp4(render_spec, "standard", screenshot_paths, "/tmp")
             mock_sub.assert_called()
+
+    def test_build_mp4_from_clips_no_audio_uses_runner(self, mock_runner, tmp_path):
+        """_build_mp4_from_clips routes ffmpeg through runner in dynamic mode."""
+        from app.tasks.presentation_render import _build_mp4_from_clips
+
+        clip_path = tmp_path / "slide_0000.webm"
+        clip_path.write_bytes(b"webm")
+        render_spec = {
+            "fps": 30,
+            "slides": [{"durationMs": 3000}],
+        }
+
+        with (
+            patch("app.tasks.presentation_render._trim_video_clip_segment", return_value=str(clip_path)),
+            patch("app.tasks.presentation_render._write_clip_concat_file"),
+        ):
+            _build_mp4_from_clips(
+                render_spec,
+                "standard",
+                [{"path": str(clip_path), "trim_start_ms": 500, "duration_ms": 3000}],
+                str(tmp_path),
+                runner=mock_runner,
+            )
+
+        mock_runner.run_command_sync.assert_called_once()

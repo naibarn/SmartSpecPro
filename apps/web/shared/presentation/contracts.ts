@@ -365,6 +365,8 @@ export const presentationRenderSpecSchema = z.object({
   /** Quality preset — only meaningful for mp4 and jpg formats */
   quality: z.enum(["draft", "standard", "high"]).optional(),
   slides: z.array(presentationSlideshowSlideSchema).max(500),
+  /** True when at least one slide contains a video element and MP4 needs dynamic capture. */
+  hasDynamicVideo: z.boolean().optional(),
   /** Resolved deck-level audio for mixing into the exported video */
   projectAudioTrack: resolvedProjectAudioTrackSchema.nullable().optional(),
   warnings: presentationExportWarningsSchema.default([]),

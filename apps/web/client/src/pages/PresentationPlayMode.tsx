@@ -291,6 +291,8 @@ export default function PresentationPlayMode() {
             selectedElementIds={[]}
             snapGuides={[]}
             showElementFrames={false}
+            autoPlayVideos={true}
+            showVideoPlaybackToggle={false}
             showTransformDock={false}
             suppressTransformHandles={true}
             onSelectElement={() => {}}

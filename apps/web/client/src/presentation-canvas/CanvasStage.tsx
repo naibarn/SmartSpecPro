@@ -22,6 +22,8 @@ interface CanvasStageProps {
   selectedElementIds: string[];
   snapGuides: SnapGuide[];
   showElementFrames?: boolean;
+  autoPlayVideos?: boolean;
+  showVideoPlaybackToggle?: boolean;
   suppressTransformHandles?: boolean;
   showTransformDock?: boolean;
   viewport?: {
@@ -96,6 +98,8 @@ export function CanvasStage({
   selectedElementIds,
   snapGuides,
   showElementFrames = true,
+  autoPlayVideos = false,
+  showVideoPlaybackToggle = true,
   suppressTransformHandles,
   showTransformDock: showTransformDockProp = true,
   viewport,
@@ -625,6 +629,8 @@ export function CanvasStage({
                       canvasWidth={canvasWidth}
                       canvasHeight={canvasHeight}
                       showElementFrames={showElementFrames}
+                      autoPlayVideos={autoPlayVideos}
+                      showVideoPlaybackToggle={showVideoPlaybackToggle}
                     />
                     {marqueeBounds ? (
                       <div

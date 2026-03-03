@@ -321,7 +321,7 @@ vi.mock("@/lib/trpc", () => ({
           data: queryState.deckByItem,
           isLoading: false,
           error: queryState.deckError,
-          refetch: vi.fn(),
+          refetch: vi.fn().mockResolvedValue({ data: queryState.deckByItem }),
         })),
       },
       availability: {
@@ -671,6 +671,32 @@ describe("PresentationEditor", () => {
     expect(within(sharedCard as HTMLElement).getByText("Shared")).toBeInTheDocument();
   });
 
+  it("applies Auto Layout with watermark payload from library image selection", async () => {
+    render(<PresentationEditor />);
+    fireEvent.click(screen.getByRole("button", { name: /auto layout slide/i }));
+
+    const watermarkTitle = screen.getByText("Watermark");
+    const watermarkRow = watermarkTitle.closest("div")?.parentElement as HTMLElement;
+    const watermarkSwitch = within(watermarkRow).getByRole("switch");
+    fireEvent.click(watermarkSwitch);
+
+    await waitFor(() => {
+      expect(screen.getByText("Clarity: 20%")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /apply auto layout/i }));
+
+    await waitFor(() => {
+      expect(mutationMocks.relayoutSlide).toHaveBeenCalled();
+    });
+    const payload = mutationMocks.relayoutSlide.mock.calls[0]?.[0];
+    expect(payload?.watermark).toEqual({
+      sourceUrl: "https://cdn.example.com/hero.png",
+      format: "png",
+      clarityPercent: 20,
+    });
+  });
+
   it("filters asset cards by source chip", async () => {
     queryState.libraryMediaList = {
       ...buildLibraryMediaList(),
@@ -720,6 +746,18 @@ describe("PresentationEditor", () => {
   });
 
   it("inserts video from library panel into canvas content", async () => {
+    const playSpy = vi
+      .spyOn(HTMLMediaElement.prototype, "play")
+      .mockImplementation(function thisPlay(this: HTMLMediaElement) {
+        this.dispatchEvent(new Event("play"));
+        return Promise.resolve();
+      });
+    const pauseSpy = vi
+      .spyOn(HTMLMediaElement.prototype, "pause")
+      .mockImplementation(function thisPause(this: HTMLMediaElement) {
+        this.dispatchEvent(new Event("pause"));
+      });
+
     render(<PresentationEditor />);
 
     fireEvent.click(screen.getByRole("button", { name: /open videos library/i }));
@@ -731,6 +769,18 @@ describe("PresentationEditor", () => {
       expect(screen.getByLabelText("Video src")).toHaveValue("https://cdn.example.com/teaser.mp4");
       expect(screen.getByLabelText("Video title")).toHaveValue("Teaser Clip");
     });
+
+    const playVideoButton = await screen.findByRole("button", { name: /play video element/i });
+    fireEvent.click(playVideoButton);
+    expect(playSpy).toHaveBeenCalled();
+    expect(await screen.findByRole("button", { name: /pause video element/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /pause video element/i }));
+    expect(pauseSpy).toHaveBeenCalled();
+    expect(await screen.findByRole("button", { name: /play video element/i })).toBeInTheDocument();
+
+    playSpy.mockRestore();
+    pauseSpy.mockRestore();
   });
 
   it("renders fallback video thumbnail in library when thumbnail_url is missing", async () => {
@@ -806,6 +856,47 @@ describe("PresentationEditor", () => {
     });
 
     expect(screen.getByRole("button", { name: /enter fullscreen/i })).toBeInTheDocument();
+  });
+
+  it("renders inline svg image elements in slideshow overlay instead of placeholder blocks", async () => {
+    queryState.deckByItem = {
+      ...buildDeckByItem(),
+      slides: [
+        {
+          id: 71,
+          deckId: 7,
+          orderIndex: 0,
+          version: 3,
+          title: "Intro",
+          slideContent: {
+            elements: [
+              {
+                id: "svg-1",
+                type: "image",
+                x: 120,
+                y: 120,
+                width: 260,
+                height: 180,
+                src: "",
+                alt: "Inline SVG",
+                svgColor: "#22c55e",
+                svgContent: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='currentColor' /></svg>",
+              },
+            ],
+          },
+          notes: null,
+        },
+      ],
+    } as any;
+
+    render(<PresentationEditor />);
+    fireEvent.click(screen.getByRole("button", { name: /play slideshow/i }));
+    await waitFor(() => {
+      expect(screen.getByTestId("slideshow-preview-overlay")).toBeInTheDocument();
+    });
+
+    const svgHost = screen.getByTestId("readonly-svg-image-svg-1");
+    expect(svgHost.querySelector("svg")).toBeInTheDocument();
   });
 
   it("renders presentation saved version history list", () => {

@@ -1,6 +1,8 @@
-import { useEffect, useRef, type ReactElement } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactElement } from "react";
+import { Pause, Play } from "lucide-react";
 
 import type { PresentationElement } from "@/lib/presentationEditorState";
+import { normalizeMediaSourceUrl } from "@/lib/mediaUrl";
 
 interface CanvasObjectsProps {
   elements: PresentationElement[];
@@ -15,6 +17,8 @@ interface CanvasObjectsProps {
   canvasWidth: number;
   canvasHeight: number;
   showElementFrames?: boolean;
+  autoPlayVideos?: boolean;
+  showVideoPlaybackToggle?: boolean;
 }
 
 const MIN_LINE_HEIGHT_PX = 2;
@@ -83,7 +87,19 @@ interface PointerDragState {
   baseHeight: number;
 }
 
-function renderElementBody(element: PresentationElement): ReactElement {
+interface RenderElementBodyOptions {
+  videoPlaybackMap: Record<string, boolean>;
+  onToggleVideoPlayback: (elementId: string) => void;
+  onVideoPlayStateChange: (elementId: string, isPlaying: boolean) => void;
+  setVideoRef: (elementId: string, node: HTMLVideoElement | null) => void;
+  autoPlayVideos: boolean;
+  showVideoPlaybackToggle: boolean;
+}
+
+function renderElementBody(
+  element: PresentationElement,
+  options: RenderElementBodyOptions,
+): ReactElement {
   if (element.type === "text") {
     const fontSize = Number.isFinite(element.fontSize) ? element.fontSize : 48;
     const lineHeight = Number.isFinite(element.lineHeight) ? element.lineHeight : 1.25;
@@ -121,7 +137,8 @@ function renderElementBody(element: PresentationElement): ReactElement {
   }
 
   if (element.type === "image") {
-    const hasSource = Boolean(element.src?.trim());
+    const resolvedSource = normalizeMediaSourceUrl(element.src);
+    const hasSource = Boolean(resolvedSource);
     const imageRender = resolveImageRenderProps(element);
     // Inline SVG graphic — transparent background, color-tinted
     if (element.svgContent) {
@@ -139,7 +156,7 @@ function renderElementBody(element: PresentationElement): ReactElement {
       <div className={`relative h-full w-full ${hasSource ? "" : "bg-slate-100"}`}>
         {hasSource ? (
           <img
-            src={element.src}
+            src={resolvedSource}
             alt={element.alt || "Image"}
             className="h-full w-full"
             style={{
@@ -172,28 +189,64 @@ function renderElementBody(element: PresentationElement): ReactElement {
   }
 
   if (element.type === "video") {
-    const hasPoster = Boolean(element.poster?.trim());
-    const hasSource = Boolean(element.src?.trim());
+    const resolvedSource = normalizeMediaSourceUrl(element.src);
+    const resolvedPoster = normalizeMediaSourceUrl(element.poster);
+    const hasSource = Boolean(resolvedSource);
+    const isPlaying = Boolean(options.videoPlaybackMap[element.id]);
     return (
       <div className="relative h-full w-full bg-black/85">
-        {hasPoster ? (
-          <img
-            src={element.poster}
-            alt={element.title || "Video poster"}
-            className="h-full w-full object-cover"
-            draggable={false}
-          />
-        ) : hasSource ? (
+        {hasSource ? (
           <video
-            src={element.src}
-            muted={element.muted ?? true}
+            ref={(node) => options.setVideoRef(element.id, node)}
+            src={resolvedSource}
+            poster={resolvedPoster || undefined}
+            muted={options.autoPlayVideos ? true : (element.muted ?? true)}
             loop={element.loop ?? false}
-            preload="metadata"
-            className="h-full w-full object-cover opacity-70"
+            preload={options.autoPlayVideos ? "auto" : "metadata"}
+            className="h-full w-full object-cover"
+            autoPlay={options.autoPlayVideos}
+            playsInline
+            onCanPlay={(event) => {
+              if (!options.autoPlayVideos) {
+                return;
+              }
+              const playPromise = event.currentTarget.play();
+              if (playPromise && typeof playPromise.catch === "function") {
+                playPromise.catch(() => {
+                  // Ignore autoplay failures (codec/policy).
+                });
+              }
+            }}
+            onPlay={() => options.onVideoPlayStateChange(element.id, true)}
+            onPause={() => options.onVideoPlayStateChange(element.id, false)}
+            onEnded={() => options.onVideoPlayStateChange(element.id, false)}
           />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-950" />
         )}
+        {hasSource && options.showVideoPlaybackToggle ? (
+          <span
+            role="button"
+            tabIndex={-1}
+            aria-label={isPlaying ? "Pause Video Element" : "Play Video Element"}
+            className="absolute right-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-full bg-black/65 text-white shadow hover:bg-black/80"
+            onPointerDown={(event) => {
+              event.stopPropagation();
+              event.preventDefault();
+            }}
+            onClick={(event) => {
+              event.stopPropagation();
+              event.preventDefault();
+              options.onToggleVideoPlayback(element.id);
+            }}
+          >
+            {isPlaying ? (
+              <Pause className="h-3.5 w-3.5" />
+            ) : (
+              <Play className="h-3.5 w-3.5" />
+            )}
+          </span>
+        ) : null}
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-1 text-xs text-white">
           <span className="truncate">{element.title || "Video"}</span>
         </div>
@@ -228,10 +281,86 @@ export function CanvasObjects({
   canvasWidth,
   canvasHeight,
   showElementFrames = true,
+  autoPlayVideos = false,
+  showVideoPlaybackToggle = true,
 }: CanvasObjectsProps) {
   const dragStateRef = useRef<PointerDragState | null>(null);
+  const videoRefsRef = useRef<Record<string, HTMLVideoElement | null>>({});
+  const [videoPlaybackMap, setVideoPlaybackMap] = useState<Record<string, boolean>>({});
   const stageScale = Math.max(0.0001, interactionScale);
   const selectedElement = elements.find((element) => element.id === selectedElementIds[0]) || null;
+
+  const setVideoRef = useCallback((elementId: string, node: HTMLVideoElement | null) => {
+    videoRefsRef.current[elementId] = node;
+  }, []);
+
+  const handleVideoPlayStateChange = useCallback((elementId: string, isPlaying: boolean) => {
+    setVideoPlaybackMap((prev) => {
+      if ((prev[elementId] ?? false) === isPlaying) {
+        return prev;
+      }
+      return {
+        ...prev,
+        [elementId]: isPlaying,
+      };
+    });
+  }, []);
+
+  const handleToggleVideoPlayback = useCallback((elementId: string) => {
+    const video = videoRefsRef.current[elementId];
+    if (!video) {
+      return;
+    }
+    const playingFromState = Boolean(videoPlaybackMap[elementId]);
+    const isPlaying = playingFromState || (!video.paused && !video.ended);
+    if (!isPlaying) {
+      const playPromise = video.play();
+      if (playPromise && typeof playPromise.catch === "function") {
+        playPromise.catch(() => {
+          // Ignore playback failures (e.g. codec unavailable in browser).
+        });
+      }
+      return;
+    }
+    video.pause();
+  }, [videoPlaybackMap]);
+
+  useEffect(() => {
+    const activeVideoIds = new Set(
+      elements
+        .filter((element) => element.type === "video")
+        .map((element) => element.id),
+    );
+    setVideoPlaybackMap((prev) => {
+      const nextEntries = Object.entries(prev).filter(([elementId]) => activeVideoIds.has(elementId));
+      if (nextEntries.length === Object.keys(prev).length) {
+        return prev;
+      }
+      return Object.fromEntries(nextEntries);
+    });
+    for (const elementId of Object.keys(videoRefsRef.current)) {
+      if (!activeVideoIds.has(elementId)) {
+        delete videoRefsRef.current[elementId];
+      }
+    }
+  }, [elements]);
+
+  useEffect(() => {
+    if (!autoPlayVideos) {
+      return;
+    }
+    for (const video of Object.values(videoRefsRef.current)) {
+      if (!video || !video.paused) {
+        continue;
+      }
+      const playPromise = video.play();
+      if (playPromise && typeof playPromise.catch === "function") {
+        playPromise.catch(() => {
+          // Ignore autoplay failures caused by browser policies.
+        });
+      }
+    }
+  }, [autoPlayVideos, elements]);
 
   useEffect(() => {
     function handlePointerMove(event: PointerEvent) {
@@ -381,7 +510,14 @@ export function CanvasObjects({
           title={`${index + 1}. ${getElementDisplayText(element)} (${element.type})`}
         >
           <span className="block h-full w-full overflow-hidden rounded-[inherit]">
-            {renderElementBody(element)}
+            {renderElementBody(element, {
+              videoPlaybackMap,
+              onToggleVideoPlayback: handleToggleVideoPlayback,
+              onVideoPlayStateChange: handleVideoPlayStateChange,
+              setVideoRef,
+              autoPlayVideos,
+              showVideoPlaybackToggle,
+            })}
           </span>
           {selectedElement?.id === element.id ? (
             <span

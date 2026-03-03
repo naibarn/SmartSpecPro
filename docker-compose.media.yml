@@ -26,7 +26,7 @@ services:
       context: ./python-backend
       dockerfile: Dockerfile
     container_name: smartspec-celery-media
-    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=4 -Q media -n media@%h
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2 --max-tasks-per-child=20 --max-memory-per-child=900000 -Q media -n media@%h
     env_file:
       - ./python-backend/.env
     environment:
@@ -72,7 +72,7 @@ services:
       context: ./python-backend
       dockerfile: Dockerfile
     container_name: smartspec-celery-video
-    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2 -Q video -n video@%h
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=1 --max-tasks-per-child=10 --max-memory-per-child=3000000 -Q video -n video@%h
     env_file:
       - ./python-backend/.env
     environment:
@@ -115,7 +115,7 @@ services:
       context: ./python-backend
       dockerfile: Dockerfile
     container_name: smartspec-celery-import
-    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=4 -Q presentation_import -n import@%h
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2 --max-tasks-per-child=20 --max-memory-per-child=700000 -Q presentation_import -n import@%h
     env_file:
       - ./python-backend/.env
     environment:
@@ -155,7 +155,7 @@ services:
   celery-presentation:
     image: smartspecpro-celery-media
     container_name: smartspec-celery-presentation
-    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2 -Q presentation_export -n presentation@%h
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=1 --max-tasks-per-child=10 --max-memory-per-child=2500000 -Q presentation_export -n presentation@%h
     env_file:
       - ./python-backend/.env
     environment:
@@ -201,7 +201,7 @@ services:
     container_name: smartspec-celery-sandbox
     group_add:
       - "${DOCKER_GID:-989}"
-    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2 -Q sandbox -n sandbox@%h
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=1 --max-tasks-per-child=10 --max-memory-per-child=1200000 -Q sandbox -n sandbox@%h
     env_file:
       - ./python-backend/.env
     environment:
@@ -256,6 +256,8 @@ services:
       resources:
         limits:
           cpus: '0.5'
+          memory: 1G
+        reservations:
           memory: 256M
     healthcheck:
       test: ["CMD-SHELL", "pgrep -f 'celery.*beat' > /dev/null || exit 1"]

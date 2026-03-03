@@ -16,7 +16,7 @@ import {
 } from "@shared/presentation/aiTypes";
 import { BUILT_IN_PRESETS, getBuiltInPreset } from "@shared/presentation/aiStylePresets";
 import { pickRandomSvgFromCategory } from "@shared/presentation/svgGraphicsCatalog";
-import { PRESENTATION_ERROR_CODE } from "@shared/presentation/constants";
+import { PRESENTATION_ERROR_CODE, PRESENTATION_LIMITS } from "@shared/presentation/constants";
 import {
   presentationSlideContentSchema,
   type PresentationSlideContent,
@@ -383,7 +383,7 @@ function extractSlideNarrative(slideTitle: string, slideContent: PresentationSli
       }
       seen.add(key);
       body.push(line);
-      if (body.length >= 8) {
+      if (body.length >= 15) {
         return { title: titleCandidate, body };
       }
     }
@@ -395,10 +395,505 @@ function extractSlideNarrative(slideTitle: string, slideContent: PresentationSli
   return { title: titleCandidate, body };
 }
 
+const WATERMARK_ID_PREFIX = "watermark__";
+const WATERMARK_ALT_PREFIX = "watermark:";
+
+function isWatermarkElement(element: SlideElement): boolean {
+  if (element.type !== "image") {
+    return false;
+  }
+  const alt = String(element.alt || "").trim().toLowerCase();
+  return element.id.startsWith(WATERMARK_ID_PREFIX) || alt.startsWith(WATERMARK_ALT_PREFIX);
+}
+
+function isCanvasBackgroundRect(
+  element: SlideElement,
+  canvas: { width: number; height: number },
+): boolean {
+  if (element.type !== "rect") {
+    return false;
+  }
+  const width = Math.max(0, Number(element.width) || 0);
+  const height = Math.max(0, Number(element.height) || 0);
+  return (
+    Math.abs((Number(element.x) || 0)) <= 1
+    && Math.abs((Number(element.y) || 0)) <= 1
+    && width >= (canvas.width - 2)
+    && height >= (canvas.height - 2)
+  );
+}
+
+function getElementAreaRatio(
+  element: SlideElement,
+  canvas: { width: number; height: number },
+): number {
+  const canvasArea = Math.max(1, canvas.width * canvas.height);
+  const area = Math.max(0, Number(element.width) || 0) * Math.max(0, Number(element.height) || 0);
+  return area / canvasArea;
+}
+
+function isNearFullCanvasElement(
+  element: SlideElement,
+  canvas: { width: number; height: number },
+): boolean {
+  const width = Math.max(0, Number(element.width) || 0);
+  const height = Math.max(0, Number(element.height) || 0);
+  const x = Number(element.x) || 0;
+  const y = Number(element.y) || 0;
+  const maxOffsetX = canvas.width * 0.08;
+  const maxOffsetY = canvas.height * 0.08;
+  return (
+    width >= (canvas.width * 0.88)
+    && height >= (canvas.height * 0.88)
+    && x <= maxOffsetX
+    && y <= maxOffsetY
+  );
+}
+
+function buildRelayoutPreservedElements(
+  sourceContent: PresentationSlideContent,
+  canvas: { width: number; height: number },
+  primaryImageSourceUrl: string | null,
+  primaryVideoSourceUrl?: string | null,
+): SlideElement[] {
+  const MAX_PRESERVED_MEDIA = Math.max(24, Math.min(PRESENTATION_LIMITS.maxElementsPerSlide, 220));
+  const MAX_PRESERVED_GRAPHICS = 3;
+  const MAX_RECT_AREA_RATIO = 0.08;
+  const MAX_LINE_SPAN_RATIO = 0.45;
+  const primarySrc = String(primaryImageSourceUrl || "").trim();
+  const primaryVideoSrc = String(primaryVideoSourceUrl || "").trim();
+  const preserved: SlideElement[] = [];
+  let preservedMediaCount = 0;
+  let preservedGraphicsCount = 0;
+  for (const element of sourceContent.elements) {
+    if (isWatermarkElement(element) || element.type === "text") {
+      continue;
+    }
+    if (element.type === "image") {
+      const src = String(element.src || "").trim();
+      if (primarySrc && src && src === primarySrc) {
+        continue;
+      }
+      if (!src && !element.svgContent) {
+        continue;
+      }
+      if (preservedMediaCount >= MAX_PRESERVED_MEDIA) {
+        continue;
+      }
+      preserved.push(element);
+      preservedMediaCount += 1;
+      continue;
+    }
+    if (element.type === "video") {
+      const src = String((element as any).src || "").trim();
+      if (!src) {
+        continue;
+      }
+      // Exclude the primary video — it's placed into the template zone instead.
+      if (primaryVideoSrc && src === primaryVideoSrc) {
+        continue;
+      }
+      if (preservedMediaCount >= MAX_PRESERVED_MEDIA) {
+        continue;
+      }
+      preserved.push(element);
+      preservedMediaCount += 1;
+      continue;
+    }
+    if (element.type === "rect") {
+      if (isCanvasBackgroundRect(element, canvas)) {
+        continue;
+      }
+      if (isNearFullCanvasElement(element, canvas)) {
+        continue;
+      }
+      if (getElementAreaRatio(element, canvas) > MAX_RECT_AREA_RATIO) {
+        continue;
+      }
+      if (preservedGraphicsCount >= MAX_PRESERVED_GRAPHICS) {
+        continue;
+      }
+      preserved.push(element);
+      preservedGraphicsCount += 1;
+      continue;
+    }
+    if (element.type === "line") {
+      const span = Math.max(Math.abs(element.width), Math.abs(element.height));
+      const maxCanvasSpan = Math.max(canvas.width, canvas.height);
+      if (span > (maxCanvasSpan * MAX_LINE_SPAN_RATIO)) {
+        continue;
+      }
+      if (preservedGraphicsCount >= MAX_PRESERVED_GRAPHICS) {
+        continue;
+      }
+      preserved.push(element);
+      preservedGraphicsCount += 1;
+    }
+  }
+  return preserved;
+}
+
+function clampElementToCanvas(
+  element: SlideElement,
+  canvas: { width: number; height: number },
+): SlideElement {
+  const width = clampInteger(Math.max(0, element.width), 0, canvas.width);
+  const minHeight = element.type === "line" ? 0 : 1;
+  const height = clampInteger(Math.max(minHeight, element.height), minHeight, canvas.height);
+  const maxX = Math.max(0, canvas.width - width);
+  const maxY = Math.max(0, canvas.height - height);
+  const x = clampInteger(element.x, 0, maxX);
+  const y = clampInteger(element.y, 0, maxY);
+  return {
+    ...element,
+    width,
+    height,
+    x,
+    y,
+  } as SlideElement;
+}
+
+function computeRectIntersectionArea(
+  a: { x: number; y: number; width: number; height: number },
+  b: { x: number; y: number; width: number; height: number },
+): number {
+  const left = Math.max(a.x, b.x);
+  const top = Math.max(a.y, b.y);
+  const right = Math.min(a.x + a.width, b.x + b.width);
+  const bottom = Math.min(a.y + a.height, b.y + b.height);
+  const width = Math.max(0, right - left);
+  const height = Math.max(0, bottom - top);
+  return width * height;
+}
+
+function findGeneratedMediaDropZones(
+  generatedElements: SlideElement[],
+  canvas: { width: number; height: number },
+): Array<{ x: number; y: number; width: number; height: number }> {
+  const textBounds = generatedElements
+    .filter((element): element is SlideTextElement => element.type === "text")
+    .map((element) => ({
+      x: element.x,
+      y: element.y,
+      width: element.width,
+      height: element.height,
+    }));
+  const canvasArea = Math.max(1, canvas.width * canvas.height);
+  const zones = generatedElements
+    .filter((element): element is SlideRectElement => element.type === "rect")
+    .filter((element) => !isCanvasBackgroundRect(element, canvas))
+    .map((element) => clampElementToCanvas(element, canvas))
+    .map((element) => ({
+      x: element.x,
+      y: element.y,
+      width: element.width,
+      height: element.height,
+    }))
+    .filter((zone) => {
+      const area = Math.max(1, zone.width * zone.height);
+      const areaRatio = area / canvasArea;
+      if (areaRatio < 0.025 || areaRatio > 0.42) {
+        return false;
+      }
+      const textOverlapArea = textBounds.reduce((sum, textBox) => (
+        sum + computeRectIntersectionArea(zone, textBox)
+      ), 0);
+      return textOverlapArea <= (area * 0.2);
+    })
+    .sort((a, b) => (b.width * b.height) - (a.width * a.height));
+  return zones;
+}
+
+function fitMediaElementIntoZone(
+  element: SlideElement,
+  zone: { x: number; y: number; width: number; height: number },
+  canvas: { width: number; height: number },
+): SlideElement {
+  const padding = Math.max(6, Math.round(Math.min(zone.width, zone.height) * 0.06));
+  const availableWidth = Math.max(24, zone.width - (padding * 2));
+  const availableHeight = Math.max(24, zone.height - (padding * 2));
+  const sourceWidth = Math.max(1, Number(element.width) || availableWidth);
+  const sourceHeight = Math.max(1, Number(element.height) || availableHeight);
+  const scale = Math.min(availableWidth / sourceWidth, availableHeight / sourceHeight);
+  const width = clampInteger(Math.round(sourceWidth * scale), 24, availableWidth);
+  const height = clampInteger(Math.round(sourceHeight * scale), 24, availableHeight);
+  const x = clampInteger(Math.round(zone.x + ((zone.width - width) / 2)), 0, Math.max(0, canvas.width - width));
+  const y = clampInteger(Math.round(zone.y + ((zone.height - height) / 2)), 0, Math.max(0, canvas.height - height));
+  if (element.type === "image") {
+    return {
+      ...element,
+      x,
+      y,
+      width,
+      height,
+      imageFit: element.imageFit ?? "cover",
+    } as SlideElement;
+  }
+  return {
+    ...element,
+    x,
+    y,
+    width,
+    height,
+  } as SlideElement;
+}
+
+function buildFallbackMediaGridZones(
+  count: number,
+  generatedElements: SlideElement[],
+  canvas: { width: number; height: number },
+): Array<{ x: number; y: number; width: number; height: number }> {
+  if (count <= 0) {
+    return [];
+  }
+
+  const gap = Math.max(10, Math.round(Math.min(canvas.width, canvas.height) * 0.018));
+  const targetWidth = clampInteger(Math.round(canvas.width * 0.17), 110, 280);
+  const maxColumnsByWidth = Math.max(1, Math.floor((canvas.width - gap) / (targetWidth + gap)));
+  let columns = Math.max(1, Math.min(maxColumnsByWidth, Math.ceil(Math.sqrt(count))));
+  let rows = Math.max(1, Math.ceil(count / columns));
+  let width = clampInteger(
+    Math.floor((canvas.width - ((columns + 1) * gap)) / columns),
+    96,
+    280,
+  );
+  let height = clampInteger(Math.round(width * 0.68), 72, 190);
+
+  while (
+    columns < maxColumnsByWidth
+    && (((rows * height) + (Math.max(0, rows - 1) * gap)) > (canvas.height - (gap * 2)))
+  ) {
+    columns += 1;
+    rows = Math.max(1, Math.ceil(count / columns));
+    width = clampInteger(
+      Math.floor((canvas.width - ((columns + 1) * gap)) / columns),
+      84,
+      280,
+    );
+    height = clampInteger(Math.round(width * 0.68), 64, 190);
+  }
+
+  const totalWidth = (columns * width) + ((columns - 1) * gap);
+  const totalHeight = (rows * height) + ((rows - 1) * gap);
+
+  const minX = gap;
+  const minY = gap;
+  const maxX = Math.max(gap, canvas.width - totalWidth - gap);
+  const maxY = Math.max(gap, canvas.height - totalHeight - gap);
+  const midX = clampInteger(Math.round((canvas.width - totalWidth) / 2), minX, maxX);
+  const midY = clampInteger(Math.round((canvas.height - totalHeight) / 2), minY, maxY);
+
+  const textElements = generatedElements.filter((element): element is SlideTextElement => element.type === "text");
+  const avgTextX = textElements.length > 0
+    ? textElements.reduce((sum, element) => sum + (element.x + (element.width / 2)), 0) / textElements.length
+    : canvas.width * 0.5;
+  const avgTextY = textElements.length > 0
+    ? textElements.reduce((sum, element) => sum + (element.y + (element.height / 2)), 0) / textElements.length
+    : canvas.height * 0.5;
+  const preferredCorner = {
+    x: avgTextX >= (canvas.width * 0.5) ? minX : maxX,
+    y: avgTextY >= (canvas.height * 0.5) ? minY : maxY,
+  };
+
+  const avoidZones = generatedElements
+    .filter((element) => (
+      element.type === "text"
+      || element.type === "image"
+      || element.type === "video"
+    ))
+    .map((element) => clampElementToCanvas(element, canvas))
+    .map((element) => ({
+      x: element.x,
+      y: element.y,
+      width: element.width,
+      height: Math.max(1, element.height),
+    }))
+    .filter((zone) => zone.width > 0 && zone.height > 0);
+
+  const candidateStarts = [
+    { x: minX, y: minY },
+    { x: maxX, y: minY },
+    { x: minX, y: maxY },
+    { x: maxX, y: maxY },
+    { x: midX, y: minY },
+    { x: midX, y: maxY },
+    { x: minX, y: midY },
+    { x: maxX, y: midY },
+    { x: midX, y: midY },
+  ];
+  const dedupedStarts = Array.from(
+    new Map(candidateStarts.map((candidate) => [`${candidate.x}:${candidate.y}`, candidate])).values(),
+  );
+
+  const buildZonesForStart = (start: { x: number; y: number }) => {
+    const zones: Array<{ x: number; y: number; width: number; height: number }> = [];
+    for (let index = 0; index < count; index += 1) {
+      const row = Math.floor(index / columns);
+      const column = index % columns;
+      zones.push({
+        x: start.x + (column * (width + gap)),
+        y: start.y + (row * (height + gap)),
+        width,
+        height,
+      });
+    }
+    return zones;
+  };
+
+  const scoreZones = (zones: Array<{ x: number; y: number; width: number; height: number }>): number => {
+    let overlapScore = 0;
+    for (const zone of zones) {
+      const zoneArea = Math.max(1, zone.width * zone.height);
+      for (const avoid of avoidZones) {
+        const overlap = computeRectIntersectionArea(zone, avoid);
+        if (overlap <= 0) {
+          continue;
+        }
+        overlapScore += overlap / zoneArea;
+      }
+    }
+    return overlapScore;
+  };
+
+  let bestZones: Array<{ x: number; y: number; width: number; height: number }> = [];
+  let bestScore = Number.POSITIVE_INFINITY;
+  for (const start of dedupedStarts) {
+    const zones = buildZonesForStart(start);
+    const overlapPenalty = scoreZones(zones);
+    const anchorDistance = Math.hypot(start.x - preferredCorner.x, start.y - preferredCorner.y)
+      / Math.max(1, Math.hypot(canvas.width, canvas.height));
+    const score = overlapPenalty + (anchorDistance * 0.1);
+    if (score < bestScore) {
+      bestScore = score;
+      bestZones = zones;
+    }
+    if (overlapPenalty <= 0.001) {
+      break;
+    }
+  }
+
+  if (bestZones.length > 0) {
+    return bestZones;
+  }
+
+  const fallback: Array<{ x: number; y: number; width: number; height: number }> = [];
+  for (let index = 0; index < count; index += 1) {
+    const row = Math.floor(index / columns);
+    const column = index % columns;
+    fallback.push({
+      x: minX + (column * (width + gap)),
+      y: minY + (row * (height + gap)),
+      width,
+      height,
+    });
+  }
+  return fallback;
+}
+
+function layoutPreservedMediaElements(
+  mediaElements: SlideElement[],
+  generatedElements: SlideElement[],
+  canvas: { width: number; height: number },
+): SlideElement[] {
+  if (mediaElements.length === 0) {
+    return [];
+  }
+
+  const dropZones = findGeneratedMediaDropZones(generatedElements, canvas);
+  const arranged: SlideElement[] = [];
+  let nextMediaIndex = 0;
+  for (const zone of dropZones) {
+    const media = mediaElements[nextMediaIndex];
+    if (!media) {
+      break;
+    }
+    arranged.push(fitMediaElementIntoZone(media, zone, canvas));
+    nextMediaIndex += 1;
+  }
+
+  const remaining = mediaElements.slice(nextMediaIndex);
+  if (remaining.length > 0) {
+    const fallbackZones = buildFallbackMediaGridZones(
+      remaining.length,
+      [...generatedElements, ...arranged],
+      canvas,
+    );
+    for (let i = 0; i < remaining.length; i += 1) {
+      const media = remaining[i]!;
+      const zone = fallbackZones[i];
+      if (!zone) {
+        arranged.push(media);
+        continue;
+      }
+      arranged.push(fitMediaElementIntoZone(media, zone, canvas));
+    }
+  }
+
+  return arranged;
+}
+
+function mergeRelayoutElementsWithPreserved(
+  generatedElements: SlideElement[],
+  preservedElements: SlideElement[],
+  canvas: { width: number; height: number },
+): SlideElement[] {
+  if (preservedElements.length === 0) {
+    return generatedElements;
+  }
+  const next = [...generatedElements];
+  const insertAt = next.findIndex((element) => element.type === "text");
+  const normalizedPreserved: SlideElement[] = [];
+  const usedIds = new Set(next.map((element) => element.id));
+  for (const preserved of preservedElements) {
+    const normalized = clampElementToCanvas(preserved, canvas);
+    let nextId = normalized.id;
+    if (usedIds.has(nextId)) {
+      nextId = `${normalized.type}_${randomBytes(4).toString("hex")}`;
+    }
+    usedIds.add(nextId);
+    normalizedPreserved.push({
+      ...normalized,
+      id: nextId,
+    } as SlideElement);
+  }
+  if (normalizedPreserved.length === 0) {
+    return next;
+  }
+  const mediaPreserved = normalizedPreserved.filter((element) => (
+    element.type === "image" || element.type === "video"
+  ));
+  const graphicPreserved = normalizedPreserved.filter((element) => (
+    element.type !== "image" && element.type !== "video"
+  ));
+  const arrangedPreserved = [
+    ...layoutPreservedMediaElements(mediaPreserved, next, canvas),
+    ...graphicPreserved,
+  ];
+  const availableSlots = Math.max(0, PRESENTATION_LIMITS.maxElementsPerSlide - next.length);
+  const clippedPreserved = arrangedPreserved.slice(0, availableSlots);
+  if (clippedPreserved.length === 0) {
+    return next;
+  }
+  if (insertAt < 0) {
+    next.push(...clippedPreserved);
+    return next;
+  }
+  next.splice(insertAt, 0, ...clippedPreserved);
+  return next;
+}
+
 function pickLargestImageElement(slideContent: PresentationSlideContent): SlideImageElement | null {
   const candidates = slideContent.elements
     .filter((element): element is SlideImageElement => element.type === "image")
     .filter((element) => Boolean(element.src && element.src.trim().length > 0))
+    .sort((a, b) => (b.width * b.height) - (a.width * a.height));
+  return candidates[0] ?? null;
+}
+
+function pickLargestVideoElement(slideContent: PresentationSlideContent): SlideVideoElement | null {
+  const candidates = slideContent.elements
+    .filter((element): element is SlideVideoElement => element.type === "video")
+    .filter((element) => Boolean((element as any).src && String((element as any).src).trim().length > 0))
     .sort((a, b) => (b.width * b.height) - (a.width * a.height));
   return candidates[0] ?? null;
 }
@@ -723,12 +1218,12 @@ function resolveRelayoutTemplateId(options: {
 
 function clampBodyLinesForTemplate(body: string[], templateId: LayoutTemplateId): string[] {
   const limits: Record<LayoutTemplateId, { min: number; max: number }> = {
-    hero_center: { min: 2, max: 4 },
-    split_left_image: { min: 3, max: 6 },
-    split_right_image: { min: 3, max: 6 },
-    top_image_text_bottom: { min: 3, max: 6 },
-    bottom_image_text_top: { min: 3, max: 6 },
-    feature_boxes_right: { min: 3, max: 5 },
+    hero_center: { min: 2, max: 12 },
+    split_left_image: { min: 3, max: 12 },
+    split_right_image: { min: 3, max: 12 },
+    top_image_text_bottom: { min: 3, max: 12 },
+    bottom_image_text_top: { min: 3, max: 12 },
+    feature_boxes_right: { min: 3, max: 8 },
   };
   const { min, max } = limits[templateId];
   const unique: string[] = [];
@@ -1510,6 +2005,16 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
   const canvas = resolveSlideCanvasDimensions(parsedContent);
   const narrative = extractSlideNarrative(input.slideTitle, parsedContent);
   const imageElement = pickLargestImageElement(parsedContent);
+  // When there is no static image but there is a video, incorporate the video into the
+  // template layout so it occupies a proper zone rather than floating at its old position.
+  const videoElement = imageElement ? null : pickLargestVideoElement(parsedContent);
+  const primaryMediaSrc = imageElement?.src ?? videoElement?.src ?? null;
+  const preservedElements = buildRelayoutPreservedElements(
+    parsedContent,
+    canvas,
+    imageElement?.src ?? null,
+    videoElement?.src ?? null,
+  );
   const combinedText = `${narrative.title}\n${narrative.body.join("\n")}`;
   const inheritedWatermark = extractWatermarkFromSlideContent(parsedContent);
   const watermark = normalizeWatermarkInput(input.watermark ?? inheritedWatermark, warnings);
@@ -1521,16 +2026,17 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
   const templateId = resolveRelayoutTemplateId({
     requestedTemplateId: input.templateId,
     bodyCount: narrative.body.length,
-    hasImage: Boolean(imageElement?.src),
+    hasImage: Boolean(primaryMediaSrc),
     canvasWidth: canvas.width,
     canvasHeight: canvas.height,
     seed: input.layoutSeed ?? Date.now(),
   });
 
+  const clampedBody = clampBodyLinesForTemplate(narrative.body, templateId);
   const slideData: AIPresentationSlide = {
     templateId,
     title: narrative.title.slice(0, 200),
-    body: clampBodyLinesForTemplate(narrative.body, templateId).map((line) => line.slice(0, 240)),
+    body: clampedBody.map((line) => line.slice(0, 240)),
     graphicCategory,
     imagePromptKeywords: combinedText.slice(0, 500) || narrative.title.slice(0, 500),
   };
@@ -1540,7 +2046,8 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
 
   const result = generateSlide({
     slideData,
-    imageUrl: imageElement?.src ?? null,
+    // If no static image, pass video src so the template allocates a proper media zone.
+    imageUrl: primaryMediaSrc,
     svgGraphic,
     stylePreset,
     deckTitle: input.deckTitle,
@@ -1557,17 +2064,38 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
     if (element.type !== "image") {
       return element;
     }
-    if (!element.src || !imageElement?.src || element.src !== imageElement.src) {
-      return element;
+    // Restore image metadata (prompt, model, reference URLs) on the generated image element.
+    if (imageElement?.src && element.src === imageElement.src) {
+      return {
+        ...element,
+        ...(imagePrompt ? { imagePrompt } : {}),
+        ...(imageModelId ? { imageModelId } : {}),
+        ...(Array.isArray(imageReferenceUrls) && imageReferenceUrls.length > 0
+          ? { imageReferenceUrls }
+          : {}),
+      };
     }
-    return {
-      ...element,
-      ...(imagePrompt ? { imagePrompt } : {}),
-      ...(imageModelId ? { imageModelId } : {}),
-      ...(Array.isArray(imageReferenceUrls) && imageReferenceUrls.length > 0
-        ? { imageReferenceUrls }
-        : {}),
-    };
+    // When the template placed the primary video src into an image element, replace it with
+    // a proper video element at the same template-determined position and size.
+    if (videoElement && element.src === videoElement.src) {
+      const vid = videoElement as any;
+      return {
+        id: element.id,
+        type: "video" as const,
+        x: element.x,
+        y: element.y,
+        width: element.width,
+        height: element.height,
+        src: vid.src as string,
+        poster: vid.poster ?? "",
+        title: vid.title ?? "Video",
+        muted: vid.muted ?? true,
+        loop: vid.loop ?? true,
+        ...(vid.autoplay !== undefined ? { autoplay: vid.autoplay } : {}),
+        ...(vid.objectFit !== undefined ? { objectFit: vid.objectFit } : {}),
+      } as SlideElement;
+    }
+    return element;
   });
   let appliedCropShape: Exclude<GeometricCropShapeId, "auto"> | null = null;
   if (input.includeGeometricCrop) {
@@ -1616,7 +2144,7 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
 
   let relayoutContent: PresentationSlideContent = {
     ...result.slideContent,
-    elements,
+    elements: mergeRelayoutElementsWithPreserved(elements, preservedElements, canvas),
     transition: parsedContent.transition,
     durationMs: parsedContent.durationMs,
     canvas: {
@@ -1635,6 +2163,9 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
   }
 
   warnings.push(...result.warnings);
+  if (preservedElements.length > 0) {
+    warnings.push(`Preserved ${preservedElements.length} existing user element(s) from the original slide.`);
+  }
   if (!imageElement?.src) {
     warnings.push("No reusable image found on this slide; used visual placeholder layout.");
   }

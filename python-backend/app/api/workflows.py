@@ -2155,3 +2155,116 @@ async def list_agencies_for_workflow(
             for row in rows
         ]
     }
+
+
+# ── Internal: Webhook-triggered workflow execution ────────────────────────────
+
+
+class InternalWebhookTriggerRequest(BaseModel):
+    """Request body for Node.js webhook trigger → workflow dispatch."""
+
+    input_data: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Webhook payload as workflow input",
+    )
+    webhook_trigger_id: Optional[str] = Field(
+        default=None,
+        description="Node.js webhook trigger UUID for audit trail",
+    )
+
+
+async def _verify_gateway_auth(authorization: Optional[str] = Header(None)) -> None:
+    """Verify SMARTSPEC_WEB_GATEWAY_TOKEN from Authorization: Bearer header."""
+    import secrets as _secrets
+    from app.core.config import settings
+
+    expected = settings.SMARTSPEC_WEB_GATEWAY_TOKEN
+    if not expected:
+        raise HTTPException(status_code=500, detail="Gateway token not configured")
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Missing authorization header")
+    provided = authorization[7:].strip()
+    if not _secrets.compare_digest(provided, expected):
+        raise HTTPException(status_code=401, detail="Invalid gateway token")
+
+
+# Node types considered webhook trigger entry points (case-insensitive match)
+_WEBHOOK_NODE_TYPES = {"webhook_trigger", "webhook", "trigger"}
+
+
+@router.post("/internal/{workflow_id}/webhook-trigger")
+async def internal_webhook_trigger(
+    workflow_id: int,
+    body: InternalWebhookTriggerRequest,
+    _auth: None = Depends(_verify_gateway_auth),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """
+    Internal endpoint: Node.js webhook trigger → Celery workflow dispatch.
+
+    Auth: Authorization: Bearer {SMARTSPEC_WEB_GATEWAY_TOKEN}
+
+    Smart node detection:
+    - If workflowJson has a webhook trigger node → dispatch with that nodeId
+    - If not → dispatch with nodeId="direct", payload exposed as both
+      webhook_request.body and webhook_request.input_data
+
+    Always returns immediately (Celery async). Returns task.id as executionId.
+    """
+    result = await db.execute(select(Workflow).where(Workflow.id == workflow_id))
+    workflow = result.scalar_one_or_none()
+    if not workflow:
+        raise HTTPException(status_code=404, detail=f"Workflow {workflow_id} not found")
+
+    # Smart detect: find the first webhook trigger node
+    workflow_json = workflow.workflowJson or {}
+    nodes: list[dict[str, Any]] = workflow_json.get("nodes", [])
+    webhook_node_id: Optional[str] = None
+    for node in nodes:
+        raw_type: str = (
+            node.get("type")
+            or node.get("data", {}).get("nodeType")
+            or node.get("data", {}).get("type")
+            or ""
+        ).lower()
+        if any(wt in raw_type for wt in _WEBHOOK_NODE_TYPES):
+            webhook_node_id = str(node.get("id") or node.get("data", {}).get("id") or "")
+            break
+
+    # Build webhook_request payload understood by execute_webhook_workflow task
+    webhook_request: dict[str, Any] = {
+        "method": "POST",
+        "headers": {"content-type": "application/json"},
+        "query": {},
+        "body": body.input_data,
+        "path": f"/api/webhooks/trigger/{body.webhook_trigger_id or 'internal'}",
+        # Also expose as input_data so generic (non-webhook-node) workflows can consume it
+        "input_data": body.input_data,
+    }
+
+    node_id = webhook_node_id or "direct"
+
+    from app.tasks.workflow_tasks import execute_webhook_workflow
+    task = execute_webhook_workflow.delay(
+        workflow_id=str(workflow_id),
+        node_id=node_id,
+        webhook_request=webhook_request,
+    )
+
+    logger.info(
+        "internal_webhook_workflow_triggered",
+        workflow_id=workflow_id,
+        node_id=node_id,
+        task_id=task.id,
+        webhook_trigger_id=body.webhook_trigger_id,
+        has_webhook_node=webhook_node_id is not None,
+    )
+
+    return {
+        "executionId": task.id,
+        "workflowId": workflow_id,
+        "nodeId": node_id,
+        "status": "triggered",
+        "hasWebhookTriggerNode": webhook_node_id is not None,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }

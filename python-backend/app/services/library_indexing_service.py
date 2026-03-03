@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from datetime import datetime, timedelta
 from typing import Any, Callable, Optional, Protocol
 
@@ -41,6 +42,14 @@ TRANSIENT_ERROR_MARKERS = (
     "unavailable",
     "reset by peer",
 )
+MARKDOWN_FENCED_BLOCK_PATTERN = re.compile(
+    r"^\s*```(?:[A-Za-z0-9_-]+)?\s*([\s\S]*?)\s*```\s*$"
+)
+MARKDOWN_FENCED_BLOCK_GLOBAL_PATTERN = re.compile(
+    r"```(?:[A-Za-z0-9_-]+)?\s*([\s\S]*?)\s*```"
+)
+MARKDOWN_FENCE_LINE_PATTERN = re.compile(r"^\s*```[A-Za-z0-9_-]*\s*$", re.MULTILINE)
+LEADING_JSON_LABEL_PATTERN = re.compile(r"^json\s*\n([\s\S]*)$", re.IGNORECASE)
 
 
 class VectorUpsertFn(Protocol):
@@ -185,12 +194,42 @@ def _stringify_metadata_value(value: Any) -> str:
     return ""
 
 
+def _normalize_prompt_like_text(value: str) -> str:
+    normalized = str(value).replace("\r\n", "\n").strip()
+
+    for _ in range(2):
+        match = MARKDOWN_FENCED_BLOCK_PATTERN.match(normalized)
+        if not match:
+            break
+        normalized = (match.group(1) or "").strip()
+
+    normalized = MARKDOWN_FENCED_BLOCK_GLOBAL_PATTERN.sub(
+        lambda match: (match.group(1) or "").strip(),
+        normalized,
+    )
+    normalized = MARKDOWN_FENCE_LINE_PATTERN.sub("", normalized).strip()
+
+    json_label_match = LEADING_JSON_LABEL_PATTERN.match(normalized)
+    if json_label_match:
+        candidate = (json_label_match.group(1) or "").strip()
+        if candidate.startswith("{") or candidate.startswith("["):
+            normalized = candidate
+
+    return normalized
+
+
 def extract_library_item_text(item: LibraryItem) -> str:
     """Extract indexable text from item core fields and metadata."""
     parts: list[str] = []
 
-    for value in (item.title, item.description):
+    for field_name, value in (("title", item.title), ("description", item.description)):
         text = _stringify_metadata_value(value)
+        if (
+            field_name == "description"
+            and getattr(item, "source", None) == "media_task"
+            and text
+        ):
+            text = _normalize_prompt_like_text(text)
         if text:
             parts.append(text)
 
@@ -210,6 +249,8 @@ def extract_library_item_text(item: LibraryItem) -> str:
     for key in priority_keys:
         if key in metadata:
             text = _stringify_metadata_value(metadata.get(key))
+            if key in {"prompt", "description"} and text:
+                text = _normalize_prompt_like_text(text)
             if text:
                 parts.append(text)
 
