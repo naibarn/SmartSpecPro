@@ -43,3 +43,27 @@ Create cross-stream guardrails so implementation can proceed safely across TypeS
 ## Done Criteria
 - All section prerequisites for streams 02-07 are documented and test-gated.
 - Compatibility/security gates are explicit and executable.
+
+## As-Built (2026-03-03)
+
+### Actual Files Changed
+- `specs/feature/030-PresentationEditAdditional/implementation-decision-log.md`
+- `specs/feature/030-PresentationEditAdditional/implementation-progress.md`
+- `specs/feature/030-PresentationEditAdditional/implementation-blocked-tasks.md`
+- `specs/feature/030-PresentationEditAdditional/reviews/section-01-review.md`
+- `specs/feature/030-PresentationEditAdditional/sections/section-01-foundation-guardrails.md`
+
+### Deviations from Plan
+- Test command adapted from pnpm to npm due local runtime policy.
+- `slideRender` route tests required elevated execution to allow local port binding in this environment.
+
+### Tests Added/Updated
+- No new tests added in this section run.
+- Executed baseline guardrail suites:
+  - `server/services/__tests__/aiPresentationService.test.ts`
+  - `server/routes/slideRender.test.ts`
+  - `server/services/presentationPlaybackExport.test.ts`
+  - `python-backend/tests/test_presentation_render_task.py`
+
+### Known Follow-ups
+- None.
