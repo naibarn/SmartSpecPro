@@ -42,3 +42,25 @@ Harden video autoplay and lifecycle transitions in Play Mode while preserving cu
 
 ## Done Criteria
 - Video lifecycle tests and export payload tests pass without regressions.
+
+## As-Built (2026-03-04)
+
+### Actual Files Changed
+- `apps/web/client/src/presentation-canvas/CanvasObjects.test.tsx`
+- `apps/web/client/src/pages/PresentationPlayMode.test.tsx`
+- `specs/feature/030-PresentationEditAdditional/reviews/section-04-review.md`
+- `specs/feature/030-PresentationEditAdditional/sections/section-04-stream-c-video-hardening.md`
+
+### Deviations from Plan
+- No production-code delta was required in this section run; existing implementation already satisfied muted autoplay fallback and lifecycle cleanup expectations.
+
+### Tests Added/Updated
+- Added blocked-autoplay resilience coverage in `client/src/presentation-canvas/CanvasObjects.test.tsx`.
+- Added play-mode audio lifecycle hook coverage in `client/src/pages/PresentationPlayMode.test.tsx`.
+- Executed section verification:
+  - `client/src/presentation-canvas/CanvasObjects.test.tsx`
+  - `client/src/pages/PresentationPlayMode.test.tsx`
+  - `server/services/presentationPlaybackExport.test.ts`
+
+### Known Follow-ups
+- None.

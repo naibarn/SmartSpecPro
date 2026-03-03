@@ -244,6 +244,46 @@ describe("PresentationPlayMode", () => {
     expect(mockEngineInstance.pause).toHaveBeenCalledTimes(1);
   });
 
+  it("applies slide enter/exit audio lifecycle hooks across playback state changes", () => {
+    queryState.playDeck = {
+      ...buildPlayDeck(),
+      slides: [
+        {
+          ...buildPlayDeck().slides[0],
+          audioTrack: null,
+        },
+        {
+          ...buildPlayDeck().slides[1],
+          audioTrack: {
+            url: "https://cdn.example.com/audio/agenda.mp3",
+            volume: 0.8,
+            startAtMs: 0,
+          },
+        },
+      ],
+    } as any;
+
+    render(<PresentationPlayMode />);
+
+    act(() => {
+      capturedOnStateChange?.("SLIDE_TRANSITIONING", 0);
+    });
+    expect(mockAudioInstance.onSlideExit).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      capturedOnStateChange?.("PLAYING", 1);
+    });
+    expect(mockAudioInstance.onSlideEnter).toHaveBeenCalledWith(
+      queryState.playDeck?.slides[1]?.audioTrack ?? null,
+    );
+    expect(mockAudioInstance.resume).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      capturedOnStateChange?.("PAUSED", 1);
+    });
+    expect(mockAudioInstance.pause).toHaveBeenCalledTimes(1);
+  });
+
   it("pressing ArrowRight advances to next slide", () => {
     render(<PresentationPlayMode />);
     fireEvent.keyDown(window, { key: "ArrowRight" });

@@ -44,3 +44,12 @@
 - decision_taken: rerun with elevated permissions
 - mode_used: auto
 - rationale: sandbox port-bind restriction caused repeat `listen EPERM`, while elevated run validated all targeted suites.
+
+## 2026-03-04 - Section 04 implementation scope
+- section_or_step: section-04-video-hardening
+- options_considered:
+  - force production-code refactor despite passing behavior
+  - add missing lifecycle/autoplay tests only and keep current implementation
+- decision_taken: add tests only; no production-code delta
+- mode_used: auto
+- rationale: low-impact, reversible decision that avoids churn while increasing regression protection around autoplay/lifecycle contracts.

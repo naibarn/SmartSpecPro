@@ -28,7 +28,7 @@
   - remaining: none
 
 ## Section 03 - stream-b-svg-parity
-- commit: pending
+- commit: `21aa0b4`
 - test_command_used: `npm --prefix apps/web test -- <target>`
 - pass_fail_summary:
   - `client/src/presentation-canvas/CanvasObjects.test.tsx`: pass (2/2)
@@ -38,6 +38,19 @@
 - notable_deviations:
   - Runtime SVG load failures are degraded to bounded placeholders in render paths; deterministic pre-export warning classification emits `W_SVG_*` codes based on slide payload shape.
   - Route tests required elevated permissions due sandbox port-bind restrictions.
+- blocked_tasks_resolved_remaining_summary:
+  - resolved: none
+  - remaining: none
+
+## Section 04 - stream-c-video-hardening
+- commit: pending
+- test_command_used: `npm --prefix apps/web test -- <target>`
+- pass_fail_summary:
+  - `client/src/presentation-canvas/CanvasObjects.test.tsx`: pass (3/3)
+  - `client/src/pages/PresentationPlayMode.test.tsx`: pass (13/13)
+  - `server/services/presentationPlaybackExport.test.ts`: pass (28/28)
+- notable_deviations:
+  - No production-code delta was required in this section run because validated autoplay/lifecycle behavior was already present in HEAD baseline.
 - blocked_tasks_resolved_remaining_summary:
   - resolved: none
   - remaining: none
