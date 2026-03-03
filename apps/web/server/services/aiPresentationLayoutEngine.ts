@@ -47,6 +47,11 @@ interface FittedBodyRow {
   height: number;
 }
 
+interface SlideSectionBlock {
+  heading: string;
+  details: string[];
+}
+
 interface TemplateContext {
   contentArea: ContentArea;
   slideData: AIPresentationSlide;
@@ -81,18 +86,42 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
+const THAI_COMBINING_MARK_REGEX = /[\u0e31\u0e34-\u0e3a\u0e47-\u0e4e]/g;
+const ZERO_WIDTH_CHAR_REGEX = /[\u200b-\u200d\ufeff]/g;
+
+function countVisualCharacters(text: string): number {
+  const normalized = text
+    .replace(THAI_COMBINING_MARK_REGEX, "")
+    .replace(ZERO_WIDTH_CHAR_REGEX, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!normalized) {
+    return 0;
+  }
+  return Array.from(normalized).length;
+}
+
 function estimateTextLineCount(
   text: string,
   width: number,
   fontSize: number,
   maxLines: number = 4,
 ): number {
-  if (!text.trim()) {
+  const cleaned = text.trim();
+  if (!cleaned) {
     return 1;
   }
-  const avgCharWidth = Math.max(1, fontSize * 0.56);
+  const thaiText = hasThaiCharacters(cleaned);
+  const visualCharCount = countVisualCharacters(cleaned);
+  if (visualCharCount <= 0) {
+    return 1;
+  }
+  const avgCharWidthFactor = thaiText ? 0.6 : 0.56;
+  const avgCharWidth = Math.max(1, fontSize * avgCharWidthFactor);
   const charsPerLine = Math.max(8, Math.floor(width / avgCharWidth));
-  const estimated = Math.ceil(text.length / charsPerLine);
+  const noWhitespaceThai = thaiText && !/\s/.test(cleaned);
+  const languagePenalty = noWhitespaceThai ? 1.08 : 1;
+  const estimated = Math.ceil((visualCharCount * languagePenalty) / charsPerLine);
   return clamp(estimated, 1, maxLines);
 }
 
@@ -176,6 +205,125 @@ function compactBodyLines(body: string[], maxLines: number): string[] {
     ? `${tail.slice(0, 219).trimEnd()}…`
     : tail;
   return [...head, compactTail];
+}
+
+function normalizeLayoutText(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function parseSectionFromBodyLine(line: string): SlideSectionBlock | null {
+  const normalized = normalizeLayoutText(line);
+  if (!normalized) {
+    return null;
+  }
+  const separators = [":", " - ", " — ", " – ", "|"];
+  for (const separator of separators) {
+    const index = normalized.indexOf(separator);
+    if (index <= 0) {
+      continue;
+    }
+    const heading = normalizeLayoutText(normalized.slice(0, index));
+    const detail = normalizeLayoutText(normalized.slice(index + separator.length));
+    if (heading.length < 3 || detail.length < 4) {
+      continue;
+    }
+    return {
+      heading: heading.slice(0, 180),
+      details: [detail.slice(0, 260)],
+    };
+  }
+  return null;
+}
+
+function deriveSectionsFromBodyLines(bodyLines: string[], maxSections: number): SlideSectionBlock[] {
+  const sections: SlideSectionBlock[] = [];
+  let index = 0;
+  while (index < bodyLines.length && sections.length < maxSections) {
+    const current = normalizeLayoutText(bodyLines[index] ?? "");
+    if (!current) {
+      index += 1;
+      continue;
+    }
+    const parsed = parseSectionFromBodyLine(current);
+    if (parsed) {
+      sections.push(parsed);
+      index += 1;
+      continue;
+    }
+    sections.push({ heading: current.slice(0, 180), details: [] });
+    index += 1;
+  }
+  return sections;
+}
+
+function resolveSlideSections(slideData: AIPresentationSlide, maxSections: number): SlideSectionBlock[] {
+  const explicit = (slideData.sections ?? [])
+    .map((section) => {
+      const heading = normalizeLayoutText(section.heading).slice(0, 180);
+      const details = section.details
+        .map((detail) => normalizeLayoutText(detail).slice(0, 260))
+        .filter((detail) => detail.length > 0)
+        .slice(0, 4);
+      if (!heading) {
+        return null;
+      }
+      return { heading, details };
+    })
+    .filter((section): section is SlideSectionBlock => Boolean(section))
+    .slice(0, maxSections);
+  if (explicit.length > 0) {
+    return explicit;
+  }
+  return deriveSectionsFromBodyLines(slideData.body, maxSections);
+}
+
+function resolveSlideSubtitleAndBodyLines(
+  slideData: AIPresentationSlide,
+  maxBodyLines: number,
+): { subtitle: string | null; bodyLines: string[] } {
+  const bodyLines = compactBodyLines(slideData.body, maxBodyLines);
+  const sections = resolveSlideSections(slideData, Math.max(10, maxBodyLines + 4));
+  if (sections.length === 0) {
+    return { subtitle: null, bodyLines };
+  }
+
+  const hasExplicitSections = Array.isArray(slideData.sections) && slideData.sections.length > 0;
+  const structuredFirstBody = parseSectionFromBodyLine(slideData.body[0] ?? "");
+  const allowSubtitleFromSections = hasExplicitSections || Boolean(structuredFirstBody);
+  const subtitleCandidate = sections[0]?.heading ? normalizeLayoutText(sections[0].heading) : "";
+  const titleKey = normalizeLayoutText(slideData.title).toLowerCase();
+  const subtitle = allowSubtitleFromSections && subtitleCandidate && subtitleCandidate.toLowerCase() !== titleKey
+    ? subtitleCandidate
+    : null;
+
+  const detailPool: string[] = [];
+  for (let i = 0; i < sections.length; i++) {
+    const section = sections[i]!;
+    const details = section.details.filter((detail) => detail.length > 0);
+    if (details.length === 0) {
+      if (i > 0 || !subtitle) {
+        detailPool.push(section.heading);
+      }
+      continue;
+    }
+    if (i === 0 && subtitle) {
+      detailPool.push(...details);
+      continue;
+    }
+    detailPool.push(`${section.heading}: ${details[0]}`);
+    if (details.length > 1) {
+      detailPool.push(...details.slice(1));
+    }
+  }
+
+  const deduped = detailPool
+    .map((line) => normalizeLayoutText(line))
+    .filter((line, index, arr) => line.length > 0 && arr.indexOf(line) === index);
+
+  return {
+    subtitle,
+    bodyLines: compactBodyLines(deduped.length > 0 ? deduped : bodyLines, maxBodyLines),
+  };
 }
 
 function fitTitleTypography(
@@ -454,8 +602,8 @@ function buildHeroCenter(ctx: TemplateContext): SlideElement[] {
   const { contentArea, slideData, preset, scale, canvasWidth, canvasHeight } = ctx;
   const elements: SlideElement[] = [];
   const portrait = isPortraitCanvas(canvasWidth, canvasHeight);
-  const bodyLines = compactBodyLines(slideData.body, portrait ? 6 : 5);
-  const thaiText = hasThaiCharacters(`${slideData.title}\n${bodyLines.join("\n")}`);
+  const { subtitle, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 6 : 5);
+  const thaiText = hasThaiCharacters(`${slideData.title}\n${subtitle ?? ""}\n${bodyLines.join("\n")}`);
   const titleLineHeight = getTitleLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLineHeightRatio = getBodyLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLetterSpacing = getBodyLetterSpacing(canvasWidth, canvasHeight, thaiText);
@@ -506,9 +654,25 @@ function buildHeroCenter(ctx: TemplateContext): SlideElement[] {
     titleFontSize * titleLineHeight * titleLineCount + Math.round(12 * scale.scaleY),
   );
   const titleY = contentArea.y + contentArea.height * (portrait ? 0.24 : 0.33);
+  const subtitleWidth = titleWidth;
+  const subtitleSizing = subtitle
+    ? fitTitleTypography(
+      subtitle,
+      subtitleWidth,
+      scaleBodyFontSize(portrait ? 34 : 30, scale, canvasWidth, canvasHeight),
+      scaleBodyFontSize(portrait ? 22 : 18, scale, canvasWidth, canvasHeight),
+      2,
+    )
+    : null;
+  const subtitleFontSize = subtitleSizing?.fontSize ?? 0;
+  const subtitleLineHeight = thaiText ? (portrait ? 1.34 : 1.28) : (portrait ? 1.2 : 1.16);
+  const subtitleHeight = subtitleSizing
+    ? Math.round(subtitleFontSize * subtitleLineHeight * subtitleSizing.lineCount + Math.round(6 * scale.scaleY))
+    : 0;
+  const subtitleGap = subtitle ? Math.round(12 * scale.scaleY) : 0;
   const bodyGap = Math.round((portrait ? 10 : 8) * scale.scaleY);
   const baseBodyFontSize = scaleBodyFontSize(portrait ? 32 : 28, scale, canvasWidth, canvasHeight);
-  const bodyTop = titleY + titleHeight + Math.round(18 * scale.scaleY);
+  const bodyTop = titleY + titleHeight + subtitleGap + subtitleHeight + Math.round(18 * scale.scaleY);
   const bodyBottomLimit = contentArea.y + contentArea.height - Math.round(40 * scale.scaleY);
   const availableBodyHeight = Math.max(
     Math.round(64 * scale.scaleY),
@@ -523,7 +687,7 @@ function buildHeroCenter(ctx: TemplateContext): SlideElement[] {
     lineHeightRatio: bodyLineHeightRatio,
     gapPx: bodyGap,
     availableHeightPx: availableBodyHeight,
-    maxLinesPerRow: 2,
+    maxLinesPerRow: thaiText ? 3 : 2,
   });
   const bodyFontSize = bodyFit.fontSize;
   const bodyRows = bodyFit.rows;
@@ -533,7 +697,7 @@ function buildHeroCenter(ctx: TemplateContext): SlideElement[] {
   const textPanelY = Math.max(contentArea.y, titleY - textPanelPaddingY);
   const textPanelHeight = Math.min(
     contentArea.height - Math.round(24 * scale.scaleY),
-    titleHeight + Math.round(18 * scale.scaleY) + bodyBlockHeight + (textPanelPaddingY * 2),
+    titleHeight + subtitleGap + subtitleHeight + Math.round(18 * scale.scaleY) + bodyBlockHeight + (textPanelPaddingY * 2),
   );
   elements.push(
     makeRectElement({
@@ -564,6 +728,26 @@ function buildHeroCenter(ctx: TemplateContext): SlideElement[] {
       textShadow: "0 8px 24px rgba(0,0,0,0.45)",
     }),
   );
+
+  if (subtitle && subtitleSizing) {
+    elements.push(
+      makeTextElement({
+        x: titleX,
+        y: titleY + titleHeight + subtitleGap,
+        width: subtitleWidth,
+        height: subtitleHeight,
+        text: subtitle,
+        color: preset.colors.text,
+        fontSize: subtitleFontSize,
+        fontFamily: preset.typography.titleFontFamily,
+        fontWeight: "600",
+        textAlign: "center",
+        lineHeight: subtitleLineHeight,
+        letterSpacing: thaiText ? 0 : -0.1,
+        textShadow: "0 4px 12px rgba(0,0,0,0.35)",
+      }),
+    );
+  }
 
   // 5. Body text
   let bodyY = bodyTop;
@@ -596,8 +780,8 @@ function buildSplitRightImage(ctx: TemplateContext): SlideElement[] {
   const elements: SlideElement[] = [];
   const halfWidth = contentArea.width * 0.5;
   const portrait = isPortraitCanvas(canvasWidth, canvasHeight);
-  const bodyLines = compactBodyLines(slideData.body, portrait ? 6 : 5);
-  const thaiText = hasThaiCharacters(`${slideData.title}\n${bodyLines.join("\n")}`);
+  const { subtitle, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 6 : 5);
+  const thaiText = hasThaiCharacters(`${slideData.title}\n${subtitle ?? ""}\n${bodyLines.join("\n")}`);
   const titleLineHeight = getTitleLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLineHeightRatio = getBodyLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLetterSpacing = getBodyLetterSpacing(canvasWidth, canvasHeight, thaiText);
@@ -647,6 +831,21 @@ function buildSplitRightImage(ctx: TemplateContext): SlideElement[] {
   const titleFontSize = titleSizing.fontSize;
   const titleLineCount = titleSizing.lineCount;
   const titleHeight = Math.round(titleFontSize * titleLineHeight * titleLineCount + Math.round(8 * scale.scaleY));
+  const subtitleSizing = subtitle
+    ? fitTitleTypography(
+      subtitle,
+      titleWidth,
+      scaleBodyFontSize(portrait ? 32 : 28, scale, canvasWidth, canvasHeight),
+      scaleBodyFontSize(portrait ? 24 : 20, scale, canvasWidth, canvasHeight),
+      2,
+    )
+    : null;
+  const subtitleFontSize = subtitleSizing?.fontSize ?? 0;
+  const subtitleLineHeight = thaiText ? (portrait ? 1.36 : 1.3) : (portrait ? 1.2 : 1.16);
+  const subtitleHeight = subtitleSizing
+    ? Math.round(subtitleFontSize * subtitleLineHeight * subtitleSizing.lineCount + Math.round(4 * scale.scaleY))
+    : 0;
+  const subtitleGap = subtitle ? Math.round(10 * scale.scaleY) : 0;
   elements.push(
     makeRectElement({
       x: titleX - Math.round(14 * scale.scaleX),
@@ -674,9 +873,28 @@ function buildSplitRightImage(ctx: TemplateContext): SlideElement[] {
     }),
   );
 
+  if (subtitle && subtitleSizing) {
+    elements.push(
+      makeTextElement({
+        x: titleX,
+        y: titleY + titleHeight + subtitleGap,
+        width: titleWidth,
+        height: subtitleHeight,
+        text: subtitle,
+        color: preset.colors.text,
+        fontSize: subtitleFontSize,
+        fontFamily: preset.typography.titleFontFamily,
+        fontWeight: "600",
+        textAlign: "left",
+        lineHeight: subtitleLineHeight,
+        letterSpacing: thaiText ? 0 : -0.08,
+      }),
+    );
+  }
+
   // 4. Body text
   const bodyGap = Math.round(8 * scale.scaleY);
-  const bodyTop = titleY + titleHeight + Math.round(24 * scale.scaleY);
+  const bodyTop = titleY + titleHeight + subtitleGap + subtitleHeight + Math.round(20 * scale.scaleY);
   const availableBodyHeight = Math.max(
     Math.round(52 * scale.scaleY),
     (contentArea.y + contentArea.height - Math.round(32 * scale.scaleY)) - bodyTop,
@@ -686,11 +904,11 @@ function buildSplitRightImage(ctx: TemplateContext): SlideElement[] {
     width: titleWidth,
     baseFontSize: scaleBodyFontSize(26, scale, canvasWidth, canvasHeight),
     minFontSize: portrait ? 20 : 16,
-    maxFontSize: portrait ? 38 : 30,
+    maxFontSize: portrait ? 34 : 24,
     lineHeightRatio: bodyLineHeightRatio,
     gapPx: bodyGap,
     availableHeightPx: availableBodyHeight,
-    maxLinesPerRow: 2,
+    maxLinesPerRow: thaiText ? 4 : 2,
   });
   const bodyFontSize = bodyFit.fontSize;
   const bodyRows = bodyFit.rows;
@@ -741,8 +959,8 @@ function buildSplitLeftImage(ctx: TemplateContext): SlideElement[] {
   const elements: SlideElement[] = [];
   const halfWidth = contentArea.width * 0.5;
   const portrait = isPortraitCanvas(canvasWidth, canvasHeight);
-  const bodyLines = compactBodyLines(slideData.body, portrait ? 6 : 5);
-  const thaiText = hasThaiCharacters(`${slideData.title}\n${bodyLines.join("\n")}`);
+  const { subtitle, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 6 : 5);
+  const thaiText = hasThaiCharacters(`${slideData.title}\n${subtitle ?? ""}\n${bodyLines.join("\n")}`);
   const titleLineHeight = getTitleLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLineHeightRatio = getBodyLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLetterSpacing = getBodyLetterSpacing(canvasWidth, canvasHeight, thaiText);
@@ -809,6 +1027,21 @@ function buildSplitLeftImage(ctx: TemplateContext): SlideElement[] {
   const titleFontSize = titleSizing.fontSize;
   const titleLineCount = titleSizing.lineCount;
   const titleHeight = Math.round(titleFontSize * titleLineHeight * titleLineCount + Math.round(8 * scale.scaleY));
+  const subtitleSizing = subtitle
+    ? fitTitleTypography(
+      subtitle,
+      titleWidth,
+      scaleBodyFontSize(portrait ? 32 : 28, scale, canvasWidth, canvasHeight),
+      scaleBodyFontSize(portrait ? 24 : 20, scale, canvasWidth, canvasHeight),
+      2,
+    )
+    : null;
+  const subtitleFontSize = subtitleSizing?.fontSize ?? 0;
+  const subtitleLineHeight = thaiText ? (portrait ? 1.36 : 1.3) : (portrait ? 1.2 : 1.16);
+  const subtitleHeight = subtitleSizing
+    ? Math.round(subtitleFontSize * subtitleLineHeight * subtitleSizing.lineCount + Math.round(4 * scale.scaleY))
+    : 0;
+  const subtitleGap = subtitle ? Math.round(10 * scale.scaleY) : 0;
   elements.push(
     makeRectElement({
       x: titleX - Math.round(14 * scale.scaleX),
@@ -836,9 +1069,28 @@ function buildSplitLeftImage(ctx: TemplateContext): SlideElement[] {
     }),
   );
 
+  if (subtitle && subtitleSizing) {
+    elements.push(
+      makeTextElement({
+        x: titleX,
+        y: titleY + titleHeight + subtitleGap,
+        width: titleWidth,
+        height: subtitleHeight,
+        text: subtitle,
+        color: preset.colors.text,
+        fontSize: subtitleFontSize,
+        fontFamily: preset.typography.titleFontFamily,
+        fontWeight: "600",
+        textAlign: "left",
+        lineHeight: subtitleLineHeight,
+        letterSpacing: thaiText ? 0 : -0.08,
+      }),
+    );
+  }
+
   // 5. Body text on right
   const bodyGap = Math.round(8 * scale.scaleY);
-  const bodyTop = titleY + titleHeight + Math.round(24 * scale.scaleY);
+  const bodyTop = titleY + titleHeight + subtitleGap + subtitleHeight + Math.round(20 * scale.scaleY);
   const availableBodyHeight = Math.max(
     Math.round(52 * scale.scaleY),
     (contentArea.y + contentArea.height - Math.round(32 * scale.scaleY)) - bodyTop,
@@ -848,11 +1100,11 @@ function buildSplitLeftImage(ctx: TemplateContext): SlideElement[] {
     width: titleWidth,
     baseFontSize: scaleBodyFontSize(26, scale, canvasWidth, canvasHeight),
     minFontSize: portrait ? 20 : 16,
-    maxFontSize: portrait ? 38 : 30,
+    maxFontSize: portrait ? 34 : 24,
     lineHeightRatio: bodyLineHeightRatio,
     gapPx: bodyGap,
     availableHeightPx: availableBodyHeight,
-    maxLinesPerRow: 2,
+    maxLinesPerRow: thaiText ? 4 : 2,
   });
   const bodyFontSize = bodyFit.fontSize;
   const bodyRows = bodyFit.rows;
@@ -887,8 +1139,8 @@ function buildTopImageTextBottom(ctx: TemplateContext): SlideElement[] {
   const imageHeight = Math.round(contentArea.height * (portrait ? 0.52 : 0.56));
   const bottomY = contentArea.y + imageHeight;
   const bottomHeight = Math.max(120, contentArea.height - imageHeight);
-  const bodyLines = compactBodyLines(slideData.body, portrait ? 6 : 5);
-  const thaiText = hasThaiCharacters(`${slideData.title}\n${bodyLines.join("\n")}`);
+  const { subtitle, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 6 : 5);
+  const thaiText = hasThaiCharacters(`${slideData.title}\n${subtitle ?? ""}\n${bodyLines.join("\n")}`);
   const titleLineHeight = getTitleLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLineHeightRatio = getBodyLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLetterSpacing = getBodyLetterSpacing(canvasWidth, canvasHeight, thaiText);
@@ -954,6 +1206,21 @@ function buildTopImageTextBottom(ctx: TemplateContext): SlideElement[] {
   const titleHeight = Math.round(
     titleFontSize * titleLineHeight * titleSizing.lineCount + Math.round(8 * scale.scaleY),
   );
+  const subtitleSizing = subtitle
+    ? fitTitleTypography(
+      subtitle,
+      titleWidth,
+      scaleBodyFontSize(portrait ? 32 : 28, scale, canvasWidth, canvasHeight),
+      scaleBodyFontSize(portrait ? 24 : 20, scale, canvasWidth, canvasHeight),
+      2,
+    )
+    : null;
+  const subtitleFontSize = subtitleSizing?.fontSize ?? 0;
+  const subtitleLineHeight = thaiText ? (portrait ? 1.36 : 1.3) : (portrait ? 1.2 : 1.16);
+  const subtitleHeight = subtitleSizing
+    ? Math.round(subtitleFontSize * subtitleLineHeight * subtitleSizing.lineCount + Math.round(4 * scale.scaleY))
+    : 0;
+  const subtitleGap = subtitle ? Math.round(10 * scale.scaleY) : 0;
   elements.push(
     makeRectElement({
       x: titleX - Math.round(12 * scale.scaleX),
@@ -981,19 +1248,38 @@ function buildTopImageTextBottom(ctx: TemplateContext): SlideElement[] {
     }),
   );
 
+  if (subtitle && subtitleSizing) {
+    elements.push(
+      makeTextElement({
+        x: titleX,
+        y: titleY + titleHeight + subtitleGap,
+        width: titleWidth,
+        height: subtitleHeight,
+        text: subtitle,
+        color: preset.colors.text,
+        fontSize: subtitleFontSize,
+        fontFamily: preset.typography.titleFontFamily,
+        fontWeight: "600",
+        textAlign: "left",
+        lineHeight: subtitleLineHeight,
+        letterSpacing: thaiText ? 0 : -0.08,
+      }),
+    );
+  }
+
   const bodyGap = Math.round(8 * scale.scaleY);
-  const bodyTop = titleY + titleHeight + Math.round(18 * scale.scaleY);
+  const bodyTop = titleY + titleHeight + subtitleGap + subtitleHeight + Math.round(14 * scale.scaleY);
   const availableBodyHeight = Math.max(56, (bottomY + bottomHeight - Math.round(26 * scale.scaleY)) - bodyTop);
   const bodyFit = fitBodyRowsToHeight({
     lines: bodyLines,
     width: titleWidth,
     baseFontSize: scaleBodyFontSize(26, scale, canvasWidth, canvasHeight),
     minFontSize: portrait ? 20 : 16,
-    maxFontSize: portrait ? 36 : 30,
+    maxFontSize: portrait ? 34 : 24,
     lineHeightRatio: bodyLineHeightRatio,
     gapPx: bodyGap,
     availableHeightPx: availableBodyHeight,
-    maxLinesPerRow: 2,
+    maxLinesPerRow: thaiText ? 4 : 2,
   });
 
   let bodyY = bodyTop;
@@ -1027,8 +1313,8 @@ function buildBottomImageTextTop(ctx: TemplateContext): SlideElement[] {
   const imageHeight = Math.round(contentArea.height * (portrait ? 0.52 : 0.56));
   const topHeight = Math.max(120, contentArea.height - imageHeight);
   const imageY = contentArea.y + topHeight;
-  const bodyLines = compactBodyLines(slideData.body, portrait ? 6 : 5);
-  const thaiText = hasThaiCharacters(`${slideData.title}\n${bodyLines.join("\n")}`);
+  const { subtitle, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 6 : 5);
+  const thaiText = hasThaiCharacters(`${slideData.title}\n${subtitle ?? ""}\n${bodyLines.join("\n")}`);
   const titleLineHeight = getTitleLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLineHeightRatio = getBodyLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLetterSpacing = getBodyLetterSpacing(canvasWidth, canvasHeight, thaiText);
@@ -1077,6 +1363,21 @@ function buildBottomImageTextTop(ctx: TemplateContext): SlideElement[] {
   const titleHeight = Math.round(
     titleFontSize * titleLineHeight * titleSizing.lineCount + Math.round(8 * scale.scaleY),
   );
+  const subtitleSizing = subtitle
+    ? fitTitleTypography(
+      subtitle,
+      titleWidth,
+      scaleBodyFontSize(portrait ? 32 : 28, scale, canvasWidth, canvasHeight),
+      scaleBodyFontSize(portrait ? 24 : 20, scale, canvasWidth, canvasHeight),
+      2,
+    )
+    : null;
+  const subtitleFontSize = subtitleSizing?.fontSize ?? 0;
+  const subtitleLineHeight = thaiText ? (portrait ? 1.36 : 1.3) : (portrait ? 1.2 : 1.16);
+  const subtitleHeight = subtitleSizing
+    ? Math.round(subtitleFontSize * subtitleLineHeight * subtitleSizing.lineCount + Math.round(4 * scale.scaleY))
+    : 0;
+  const subtitleGap = subtitle ? Math.round(10 * scale.scaleY) : 0;
   elements.push(
     makeRectElement({
       x: titleX - Math.round(12 * scale.scaleX),
@@ -1104,19 +1405,38 @@ function buildBottomImageTextTop(ctx: TemplateContext): SlideElement[] {
     }),
   );
 
+  if (subtitle && subtitleSizing) {
+    elements.push(
+      makeTextElement({
+        x: titleX,
+        y: titleY + titleHeight + subtitleGap,
+        width: titleWidth,
+        height: subtitleHeight,
+        text: subtitle,
+        color: preset.colors.text,
+        fontSize: subtitleFontSize,
+        fontFamily: preset.typography.titleFontFamily,
+        fontWeight: "600",
+        textAlign: "left",
+        lineHeight: subtitleLineHeight,
+        letterSpacing: thaiText ? 0 : -0.08,
+      }),
+    );
+  }
+
   const bodyGap = Math.round(8 * scale.scaleY);
-  const bodyTop = titleY + titleHeight + Math.round(18 * scale.scaleY);
+  const bodyTop = titleY + titleHeight + subtitleGap + subtitleHeight + Math.round(14 * scale.scaleY);
   const availableBodyHeight = Math.max(56, (contentArea.y + topHeight - Math.round(22 * scale.scaleY)) - bodyTop);
   const bodyFit = fitBodyRowsToHeight({
     lines: bodyLines,
     width: titleWidth,
     baseFontSize: scaleBodyFontSize(26, scale, canvasWidth, canvasHeight),
     minFontSize: portrait ? 20 : 16,
-    maxFontSize: portrait ? 36 : 30,
+    maxFontSize: portrait ? 34 : 24,
     lineHeightRatio: bodyLineHeightRatio,
     gapPx: bodyGap,
     availableHeightPx: availableBodyHeight,
-    maxLinesPerRow: 2,
+    maxLinesPerRow: thaiText ? 4 : 2,
   });
 
   let bodyY = bodyTop;
@@ -1166,8 +1486,14 @@ function buildFeatureBoxesRight(ctx: TemplateContext): SlideElement[] {
   const leftWidth = contentArea.width * 0.55;
   const rightWidth = contentArea.width * 0.45;
   const portrait = isPortraitCanvas(canvasWidth, canvasHeight);
-  const cardLines = compactBodyLines(slideData.body, portrait ? 4 : 5);
-  const thaiText = hasThaiCharacters(`${slideData.title}\n${cardLines.join("\n")}`);
+  const cards = resolveSlideSections(slideData, portrait ? 4 : 5);
+  const fallbackCardLines = compactBodyLines(slideData.body, portrait ? 4 : 5);
+  const normalizedCards = cards.length > 0
+    ? cards
+    : fallbackCardLines.map((line) => ({ heading: line, details: [] }));
+  const thaiText = hasThaiCharacters(
+    `${slideData.title}\n${normalizedCards.map((card) => `${card.heading}\n${card.details.join("\n")}`).join("\n")}`,
+  );
   const titleLineHeight = getTitleLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLineHeightRatio = getBodyLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLetterSpacing = getBodyLetterSpacing(canvasWidth, canvasHeight, thaiText);
@@ -1245,7 +1571,7 @@ function buildFeatureBoxesRight(ctx: TemplateContext): SlideElement[] {
   // 4. Flexible feature cards based on body line count
   const cardWidth = rightWidth - Math.round(60 * scale.scaleX);
   const cardGap = Math.round(12 * scale.scaleY);
-  const cardCount = Math.max(1, cardLines.length);
+  const cardCount = Math.max(1, normalizedCards.length);
   const cardHeight = Math.max(
     Math.round(80 * scale.scaleY),
     Math.round(
@@ -1269,39 +1595,92 @@ function buildFeatureBoxesRight(ctx: TemplateContext): SlideElement[] {
     );
 
     // Card text
-    const bodyText = cardLines[i] ?? "";
-    if (bodyText) {
+    const card = normalizedCards[i] ?? { heading: "", details: [] };
+    const headingText = card.heading || fallbackCardLines[i] || "";
+    const detailText = card.details.join(" ");
+    if (headingText) {
       const cardTextWidth = cardWidth - Math.round(40 * scale.scaleX);
-      const cardTextHeight = cardHeight - Math.round(30 * scale.scaleY);
-      const estimatedCardLineCount = estimateTextLineCount(bodyText, cardTextWidth, scaleBodyFontSize(22, scale, canvasWidth, canvasHeight), 4);
-      const cardTextFontSize = fitBodyFontSizeToHeight({
-        baseFontSize: scaleBodyFontSize(22, scale, canvasWidth, canvasHeight),
-        minFontSize: portrait ? 18 : 14,
-        maxFontSize: portrait ? 34 : 26,
-        lineCount: estimatedCardLineCount,
-        lineHeightRatio: bodyLineHeightRatio,
-        gapPx: Math.round(2 * scale.scaleY),
-        availableHeightPx: Math.max(20, cardTextHeight),
+      const cardInnerHeight = cardHeight - Math.round(20 * scale.scaleY);
+      const headingLineCount = estimateTextLineCount(
+        headingText,
+        cardTextWidth,
+        scaleBodyFontSize(24, scale, canvasWidth, canvasHeight),
+        3,
+      );
+      const headingFontSize = fitBodyFontSizeToHeight({
+        baseFontSize: scaleBodyFontSize(24, scale, canvasWidth, canvasHeight),
+        minFontSize: portrait ? 18 : 15,
+        maxFontSize: portrait ? 34 : 28,
+        lineCount: headingLineCount,
+        lineHeightRatio: thaiText ? 1.34 : 1.2,
+        gapPx: 0,
+        availableHeightPx: detailText ? Math.max(26, cardInnerHeight * 0.45) : Math.max(26, cardInnerHeight),
       });
+      const headingHeight = Math.max(
+        Math.round(headingFontSize * (thaiText ? 1.34 : 1.2) * headingLineCount),
+        Math.round(24 * scale.scaleY),
+      );
       elements.push(
         makeTextElement({
           x:
             contentArea.x +
             leftWidth +
             Math.round(50 * scale.scaleX),
-          y: cardY + Math.round(15 * scale.scaleY),
+          y: cardY + Math.round(10 * scale.scaleY),
           width: cardTextWidth,
-          height: cardTextHeight,
-          text: bodyText,
+          height: headingHeight,
+          text: headingText,
           color: preset.colors.text,
-          fontSize: cardTextFontSize,
-          fontFamily: preset.typography.bodyFontFamily,
-          fontWeight: fontWeightToString(preset.typography.bodyFontWeight),
+          fontSize: headingFontSize,
+          fontFamily: preset.typography.titleFontFamily,
+          fontWeight: "600",
           textAlign: "left",
-          lineHeight: bodyLineHeightRatio,
-          letterSpacing: bodyLetterSpacing,
+          lineHeight: thaiText ? 1.34 : 1.2,
+          letterSpacing: thaiText ? 0 : -0.08,
         }),
       );
+
+      if (detailText) {
+        const detailY = cardY + Math.round(14 * scale.scaleY) + headingHeight;
+        const detailHeight = Math.max(
+          20,
+          cardInnerHeight - (detailY - cardY),
+        );
+        const detailLineCount = estimateTextLineCount(
+          detailText,
+          cardTextWidth,
+          scaleBodyFontSize(20, scale, canvasWidth, canvasHeight),
+          4,
+        );
+        const detailFontSize = fitBodyFontSizeToHeight({
+          baseFontSize: scaleBodyFontSize(20, scale, canvasWidth, canvasHeight),
+          minFontSize: portrait ? 16 : 13,
+          maxFontSize: portrait ? 28 : 22,
+          lineCount: detailLineCount,
+          lineHeightRatio: bodyLineHeightRatio,
+          gapPx: 0,
+          availableHeightPx: detailHeight,
+        });
+        elements.push(
+          makeTextElement({
+            x:
+              contentArea.x +
+              leftWidth +
+              Math.round(50 * scale.scaleX),
+            y: detailY,
+            width: cardTextWidth,
+            height: detailHeight,
+            text: detailText,
+            color: preset.colors.text,
+            fontSize: detailFontSize,
+            fontFamily: preset.typography.bodyFontFamily,
+            fontWeight: fontWeightToString(preset.typography.bodyFontWeight),
+            textAlign: "left",
+            lineHeight: bodyLineHeightRatio,
+            letterSpacing: bodyLetterSpacing,
+          }),
+        );
+      }
     }
 
     cardY += cardHeight + cardGap;

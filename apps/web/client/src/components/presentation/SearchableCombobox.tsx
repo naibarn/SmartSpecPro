@@ -26,6 +26,8 @@ interface SearchableComboboxProps {
   searchPlaceholder?: string;
   emptyMessage?: string;
   disabled?: boolean;
+  searchValue?: string;
+  onSearchValueChange?: (value: string) => void;
 }
 
 export function SearchableCombobox({
@@ -36,6 +38,8 @@ export function SearchableCombobox({
   searchPlaceholder = "Search...",
   emptyMessage = "No results found.",
   disabled,
+  searchValue,
+  onSearchValueChange,
 }: SearchableComboboxProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -72,7 +76,11 @@ export function SearchableCombobox({
         align="start"
       >
         <Command>
-          <CommandInput placeholder={searchPlaceholder} />
+          <CommandInput
+            placeholder={searchPlaceholder}
+            value={searchValue}
+            onValueChange={onSearchValueChange}
+          />
           <CommandList>
             <CommandEmpty>{emptyMessage}</CommandEmpty>
             <CommandGroup>

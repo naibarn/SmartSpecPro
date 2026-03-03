@@ -34,6 +34,7 @@ import {
   Gauge,
   Bot,
   ClipboardCheck,
+  Bug,
 } from 'lucide-react';
 import {
   getMenuItemsByGroup,
@@ -78,6 +79,7 @@ const iconMap: Record<string, LucideIcon> = {
   Bot,
   ClipboardCheck,
   Webhook,
+  Bug,
 };
 
 export interface ResolvedMenuItem extends MenuItem {

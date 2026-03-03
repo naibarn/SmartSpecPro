@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -171,13 +172,11 @@ function AudioTrimTimeline({
           if (values.length < 2) return;
           const nextStart = clamp(values[0], 0, maxSec);
           const nextEnd = clamp(values[1], nextStart, maxSec);
-          if (playToEnd) {
-            onStartSecChange(nextStart);
-            onEndSecChange(maxSec);
-            return;
+          if (playToEnd && nextEnd < maxSec) {
+            onPlayToEndChange(false);
           }
           onStartSecChange(nextStart);
-          onEndSecChange(nextEnd);
+          onEndSecChange(playToEnd && nextEnd >= maxSec ? maxSec : nextEnd);
         }}
         aria-label={`${idPrefix}-trim-slider`}
       />
@@ -209,10 +208,10 @@ function AudioTrimTimeline({
             value={Number.isFinite(boundedEnd) ? boundedEnd.toFixed(1) : "0.0"}
             onChange={(event) => {
               const parsed = Number.parseFloat(event.target.value);
-              if (!Number.isFinite(parsed) || playToEnd) return;
+              if (!Number.isFinite(parsed)) return;
+              if (playToEnd) onPlayToEndChange(false);
               onEndSecChange(clamp(parsed, boundedStart, maxSec));
             }}
-            disabled={playToEnd}
             className="h-7 bg-white text-xs"
             aria-label={`${idPrefix}-trim-end-seconds`}
           />
@@ -230,7 +229,7 @@ function AudioTrimTimeline({
       </div>
       {playToEnd ? (
         <p className="text-[11px] text-slate-500">
-          End trim is locked to audio end while Play to end is enabled.
+          Playing to audio end. Edit End (s) or drag the end handle to set a custom end time.
         </p>
       ) : null}
       <div className="grid grid-cols-3 gap-1 text-[11px]">
@@ -253,6 +252,17 @@ interface AudioPickerDialogProps {
   onSelect: (libraryItemId: number, title: string) => void;
   /** Whether we're picking for the current slide or the whole project */
   target: "slide" | "deck";
+}
+
+interface AudioLibraryResultItemLike {
+  id: number;
+  title: string;
+  status?: string;
+  source_url?: string | null;
+  created_at?: string;
+  owner_user_id?: number | null;
+  access_source?: string | null;
+  metadata?: Record<string, unknown>;
 }
 
 function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialogProps) {
@@ -278,16 +288,19 @@ function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialo
     return () => window.clearTimeout(t);
   }, [query]);
 
-  const searchQuery = trpc.library.search.useQuery(
+  const listQuery = trpc.library.listDocuments.useQuery(
     {
       query: debouncedQuery || undefined,
-      filters: { itemType: "audio" },
+      scope: "all",
+      sort: "updated_desc",
       limit: 40,
+      offset: 0,
+      filters: { itemType: "audio" },
     },
     { enabled: open },
   );
 
-  const results = searchQuery.data?.results ?? [];
+  const results = (listQuery.data?.results ?? []) as AudioLibraryResultItemLike[];
 
   function handleTogglePlay(itemId: number, url: string) {
     if (playingId === itemId) {
@@ -327,6 +340,9 @@ function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialo
             Browse, search and preview audio files from your media library, then click Add.
           </DialogDescription>
         </DialogHeader>
+        <p className="text-xs text-muted-foreground">
+          Source includes your Library and files shared via Group.
+        </p>
 
         {/* Search input */}
         <div className="relative shrink-0">
@@ -343,35 +359,41 @@ function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialo
 
         {/* Results list */}
         <div className="overflow-y-auto flex-1 space-y-1.5 pr-0.5 min-h-0">
-          {searchQuery.isLoading && (
+          {listQuery.isLoading && (
             <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground">
               <RefreshCw className="h-4 w-4 animate-spin" />
               <span className="text-sm">Loading...</span>
             </div>
           )}
 
-          {!searchQuery.isLoading && results.length === 0 && (
+          {!listQuery.isLoading && results.length === 0 && (
             <div className="flex flex-col items-center justify-center py-10 gap-2">
               <Music className="h-8 w-8 text-muted-foreground/40" />
               <p className="text-sm text-muted-foreground">
-                {query ? "No audio files match your search." : "No audio files in your library yet."}
+                {query ? "No audio files match your search." : "No audio files in Library or Shared yet."}
               </p>
             </div>
           )}
 
           {results.map((item) => {
-            const isPlaying = playingId === item.item_id;
+            const isPlaying = playingId === item.id;
             const canPreview = !!item.source_url && item.status === "ready";
+            const accessSource = String(item.access_source || "").toLowerCase();
+            const sourceLabel = accessSource === "shared_group" || accessSource === "shared_direct"
+              ? "Shared"
+              : "Library";
             const subtitle = [
-              item.model_name ?? item.provider_name,
-              new Date(item.created_at).toLocaleDateString(),
+              item.metadata && typeof item.metadata === "object"
+                ? String((item.metadata.model_name ?? item.metadata.model ?? "") || "").trim()
+                : "",
+              item.created_at ? new Date(item.created_at).toLocaleDateString() : "",
             ]
               .filter(Boolean)
               .join(" · ");
 
             return (
               <div
-                key={item.item_id}
+                key={item.id}
                 className={cn(
                   "flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors",
                   isPlaying
@@ -391,7 +413,7 @@ function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialo
                     !canPreview && "cursor-not-allowed opacity-40",
                   )}
                   disabled={!canPreview}
-                  onClick={() => canPreview && handleTogglePlay(item.item_id, item.source_url!)}
+                  onClick={() => canPreview && handleTogglePlay(item.id, item.source_url!)}
                   aria-label={isPlaying ? "Pause preview" : "Play preview"}
                   title={canPreview ? (isPlaying ? "Pause" : "Preview") : "Preview unavailable"}
                 >
@@ -404,7 +426,20 @@ function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialo
 
                 {/* Title + metadata */}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium leading-tight">{item.title}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-medium leading-tight">{item.title}</p>
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        "h-5 rounded px-1.5 text-[10px] font-medium uppercase tracking-wide",
+                        sourceLabel === "Shared"
+                          ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                          : "border-slate-300 bg-slate-100 text-slate-700",
+                      )}
+                    >
+                      {sourceLabel}
+                    </Badge>
+                  </div>
                   {subtitle && (
                     <p className="truncate text-xs text-muted-foreground mt-0.5">{subtitle}</p>
                   )}
@@ -415,8 +450,8 @@ function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialo
                   size="sm"
                   variant="outline"
                   className="h-7 shrink-0 px-2.5 text-xs"
-                  onClick={() => handleAdd(item.item_id, item.title)}
-                  data-testid={`audio-picker-add-${item.item_id}`}
+                  onClick={() => handleAdd(item.id, item.title)}
+                  data-testid={`audio-picker-add-${item.id}`}
                 >
                   <Plus className="h-3 w-3 mr-1" />
                   Add
@@ -427,7 +462,7 @@ function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialo
         </div>
 
         {/* Footer — result count + hint */}
-        {!searchQuery.isLoading && results.length > 0 && (
+        {!listQuery.isLoading && results.length > 0 && (
           <p className="text-xs text-muted-foreground shrink-0">
             {results.length} result{results.length !== 1 ? "s" : ""}
             {" · "}Click <Play className="inline h-3 w-3" /> to preview, then{" "}

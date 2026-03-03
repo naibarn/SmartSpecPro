@@ -88,9 +88,10 @@ function renderElementBody(element: PresentationElement): ReactElement {
     const fontSize = Number.isFinite(element.fontSize) ? element.fontSize : 48;
     const lineHeight = Number.isFinite(element.lineHeight) ? element.lineHeight : 1.25;
     const letterSpacing = Number.isFinite(element.letterSpacing) ? element.letterSpacing : 0;
+    const hasThaiText = /[\u0e00-\u0e7f]/.test(String(element.text ?? ""));
     return (
       <div
-        className="h-full w-full overflow-hidden p-2"
+        className="h-full w-full overflow-hidden px-2 py-0.5"
         style={{ backgroundColor: element.backgroundColor || "transparent" }}
       >
         <p
@@ -98,7 +99,7 @@ function renderElementBody(element: PresentationElement): ReactElement {
           style={{
             display: "block",
             minHeight: "100%",
-            paddingBottom: "0.14em",
+            paddingBottom: hasThaiText ? "0.24em" : "0.14em",
             color: element.color || "#111827",
             fontSize,
             fontFamily: element.fontFamily || "Inter, system-ui, sans-serif",

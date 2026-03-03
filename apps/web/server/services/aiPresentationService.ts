@@ -122,6 +122,17 @@ const PROGRESS_TTL_SECONDS = (() => {
   return 3600;
 })();
 const HEARTBEAT_INTERVAL_MS = 30000;
+const SLIDE_SPLIT_MIN_WORDS = 2400;
+const SLIDE_SPLIT_MAX_WORDS = 6000;
+const ARTICLE_TARGET_WORDS_MIN = 320;
+const ARTICLE_TARGET_WORDS_MAX = 3600;
+const ARTICLE_WORDS_PER_SLIDE_EN = 108;
+const ARTICLE_WORDS_PER_SLIDE_TH = 92;
+const ARTICLE_WORD_PRESET_TARGETS: Record<string, number> = {
+  short: 400,
+  medium: 700,
+  long: 1200,
+};
 const MAX_IMAGE_CONCURRENCY = 3;
 const MEDIA_SUBMIT_TIMEOUT_MS = (() => {
   const raw = Number.parseInt(process.env.AI_DRAFT_MEDIA_SUBMIT_TIMEOUT_MS ?? "", 10);
@@ -1657,6 +1668,9 @@ For each slide, produce a JSON object with these fields:
 - templateId: one of ${JSON.stringify(AI_LAYOUT_TEMPLATE_IDS)}
 - title: a short, compelling title for the slide (max 200 chars)
 - body: an array of 1-10 bullet point strings summarizing the key points
+- sections (optional but strongly recommended): an array of section objects with:
+  - heading: medium-size subheading text (max 180 chars)
+  - details: array of 1-4 supporting detail lines (max 260 chars each)
 - graphicCategory: one of ${JSON.stringify(AI_SVG_CATEGORIES)} - pick the most relevant category for a decorative SVG icon
 - imagePromptKeywords: a descriptive prompt (max 500 chars) for generating a relevant background/hero image
 
@@ -1673,13 +1687,315 @@ Coverage and quality requirements:
   - hero_center: 2-4 body points
   - split_left_image / split_right_image / top_image_text_bottom / bottom_image_text_top: 3-6 body points
   - feature_boxes_right: 3-5 body points
-- Body points should be short, information-dense phrases (not full paragraphs).`;
+- Body points should be short, information-dense phrases (not full paragraphs).
+- Prefer 3-level readable hierarchy when possible:
+  - Level 1: title (largest)
+  - Level 2: sections[].heading (medium)
+  - Level 3: sections[].details[] (small detail text)`;
 
 function buildSlideSplitUserPrompt(articleText: string, requestedSlides: number): string {
   return `Target slide count: ${requestedSlides}
 
 Article:
 ${articleText}`;
+}
+
+function clampInteger(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, Math.round(value)));
+}
+
+function parsePositiveInteger(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return Math.round(value);
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    const parsed = Number.parseInt(trimmed, 10);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+  return null;
+}
+
+function inferArticleLanguage(language: string, topic: string): "th" | "en" {
+  if (language === "th") {
+    return "th";
+  }
+  if (language === "en") {
+    return "en";
+  }
+  return /[\u0e00-\u0e7f]/.test(topic) ? "th" : "en";
+}
+
+function computeSlideRecommendedWords(
+  language: "th" | "en",
+  numSlides: number,
+): number {
+  const wordsPerSlide = language === "th"
+    ? ARTICLE_WORDS_PER_SLIDE_TH
+    : ARTICLE_WORDS_PER_SLIDE_EN;
+  return clampInteger(
+    Math.max(1, numSlides) * wordsPerSlide,
+    ARTICLE_TARGET_WORDS_MIN,
+    ARTICLE_TARGET_WORDS_MAX,
+  );
+}
+
+function resolveExplicitWordCount(
+  skillParams?: Record<string, unknown>,
+): number | null {
+  if (!skillParams) {
+    return null;
+  }
+  const candidateKeys = [
+    "word_count",
+    "wordCount",
+    "max_words",
+    "maxWords",
+    "target_words",
+    "targetWords",
+  ];
+  for (const key of candidateKeys) {
+    const parsed = parsePositiveInteger(skillParams[key]);
+    if (parsed && parsed >= 120) {
+      return clampInteger(parsed, 120, 8000);
+    }
+  }
+  return null;
+}
+
+function resolveLengthPresetTarget(
+  skillParams?: Record<string, unknown>,
+): { preset: "short" | "medium" | "long"; words: number } | null {
+  const rawLength = typeof skillParams?.length === "string"
+    ? skillParams.length.trim().toLowerCase()
+    : "";
+  if (rawLength === "short" || rawLength === "medium" || rawLength === "long") {
+    return {
+      preset: rawLength,
+      words: ARTICLE_WORD_PRESET_TARGETS[rawLength],
+    };
+  }
+  return null;
+}
+
+function buildArticleWordPlan(
+  topic: string,
+  language: string,
+  numSlides: number,
+  skillParams?: Record<string, unknown>,
+): {
+  targetWords: number;
+  perSectionWords: number;
+  slideRecommendedWords: number;
+  hardMaxWords: number | null;
+  lengthPreset: "short" | "medium" | "long" | null;
+} {
+  const resolvedLanguage = inferArticleLanguage(language, topic);
+  const slideRecommendedWords = computeSlideRecommendedWords(resolvedLanguage, numSlides);
+  const explicitWordCount = resolveExplicitWordCount(skillParams);
+  const lengthPresetTarget = resolveLengthPresetTarget(skillParams);
+
+  let targetWords = slideRecommendedWords;
+  let hardMaxWords: number | null = null;
+  let lengthPreset: "short" | "medium" | "long" | null = null;
+
+  if (explicitWordCount) {
+    hardMaxWords = explicitWordCount;
+    targetWords = Math.min(slideRecommendedWords, explicitWordCount);
+  } else if (lengthPresetTarget) {
+    targetWords = lengthPresetTarget.words;
+    lengthPreset = lengthPresetTarget.preset;
+  }
+
+  const perSectionWords = clampInteger(
+    targetWords / Math.max(1, numSlides),
+    40,
+    180,
+  );
+
+  return {
+    targetWords,
+    perSectionWords,
+    slideRecommendedWords,
+    hardMaxWords,
+    lengthPreset,
+  };
+}
+
+function buildSlideSplitArticleExcerpt(
+  articleText: string,
+  requestedSlides: number,
+  warnings: string[],
+): string {
+  const tokens = articleText.split(/\s+/).filter((token) => token.trim().length > 0);
+  const dynamicLimit = Math.round(requestedSlides * 450);
+  const maxWords = Math.max(
+    SLIDE_SPLIT_MIN_WORDS,
+    Math.min(SLIDE_SPLIT_MAX_WORDS, dynamicLimit),
+  );
+  if (tokens.length <= maxWords) {
+    return tokens.join(" ");
+  }
+
+  const headCount = Math.max(1, Math.round(maxWords * 0.72));
+  const tailCount = Math.max(1, maxWords - headCount);
+  const excerpt = [
+    ...tokens.slice(0, headCount),
+    "[...continued summary context...]",
+    ...tokens.slice(Math.max(0, tokens.length - tailCount)),
+  ].join(" ");
+  warnings.push(
+    `Article is long (${tokens.length} words). Slide split used ${maxWords} words with head+tail sampling for better coverage.`,
+  );
+  return excerpt;
+}
+
+function splitWords(value: string): string[] {
+  return value
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 0);
+}
+
+function countApproxWords(value: string): number {
+  return splitWords(value).length;
+}
+
+function trimToMaxWords(value: string, maxWords: number): string {
+  const tokens = splitWords(value);
+  if (tokens.length <= maxWords) {
+    return value;
+  }
+  return tokens.slice(0, maxWords).join(" ");
+}
+
+function parseStructuredSectionFromLine(line: string): { heading: string; details: string[] } | null {
+  const normalized = normalizeCoverageText(line);
+  if (!normalized) {
+    return null;
+  }
+
+  const separators = [":", " - ", " — ", " – ", "|"];
+  for (const separator of separators) {
+    const index = normalized.indexOf(separator);
+    if (index <= 0) {
+      continue;
+    }
+    const heading = normalizeCoverageText(normalized.slice(0, index));
+    const detailText = normalizeCoverageText(normalized.slice(index + separator.length));
+    if (heading.length < 3 || detailText.length < 4) {
+      continue;
+    }
+    return { heading, details: [detailText] };
+  }
+
+  return null;
+}
+
+function buildSlideSectionsFromBody(
+  body: string[],
+  templateId: (typeof AI_LAYOUT_TEMPLATE_IDS)[number],
+): Array<{ heading: string; details: string[] }> {
+  const sections: Array<{ heading: string; details: string[] }> = [];
+  const maxSections = templateId === "hero_center" ? 2 : (templateId === "feature_boxes_right" ? 5 : 4);
+  let index = 0;
+
+  while (index < body.length && sections.length < maxSections) {
+    const current = normalizeCoverageText(body[index] ?? "");
+    if (!current) {
+      index += 1;
+      continue;
+    }
+
+    const parsed = parseStructuredSectionFromLine(current);
+    if (parsed) {
+      sections.push({
+        heading: parsed.heading.slice(0, 180),
+        details: parsed.details.map((detail) => detail.slice(0, 260)),
+      });
+      index += 1;
+      continue;
+    }
+
+    const next = normalizeCoverageText(body[index + 1] ?? "");
+    if (next.length >= 12 && next.toLowerCase() !== current.toLowerCase()) {
+      sections.push({
+        heading: current.slice(0, 180),
+        details: [next.slice(0, 260)],
+      });
+      index += 2;
+      continue;
+    }
+
+    sections.push({
+      heading: current.slice(0, 180),
+      details: [current.slice(0, 260)],
+    });
+    index += 1;
+  }
+
+  return sections;
+}
+
+function normalizeSlideHierarchy(slide: AIPresentationSlide): AIPresentationSlide {
+  const title = normalizeSlideText(slide.title).slice(0, 200) || "Key Insight";
+  const body = clampBodyLinesForTemplate(slide.body, slide.templateId)
+    .map((line) => normalizeSlideText(line).slice(0, 240))
+    .filter((line) => line.length > 0);
+  const maxSections = slide.templateId === "hero_center" ? 2 : 6;
+
+  const explicitSections = (slide.sections ?? [])
+    .map((section) => {
+      const heading = normalizeSlideText(section.heading).slice(0, 180);
+      const details = section.details
+        .map((detail) => normalizeSlideText(detail).slice(0, 260))
+        .filter((detail) => detail.length > 0)
+        .slice(0, 4);
+      if (!heading || details.length === 0) {
+        return null;
+      }
+      return { heading, details };
+    })
+    .filter((section): section is { heading: string; details: string[] } => Boolean(section))
+    .slice(0, maxSections);
+
+  const sectionKeys = new Set(
+    explicitSections.flatMap((section) => [
+      section.heading.toLowerCase(),
+      ...section.details.map((detail) => detail.toLowerCase()),
+    ]),
+  );
+  const uncoveredBodyLines = body.filter((line) => !sectionKeys.has(line.toLowerCase()));
+  const derivedFallback = buildSlideSectionsFromBody(uncoveredBodyLines, slide.templateId);
+  const mergedSections = [...explicitSections];
+  for (const candidate of derivedFallback) {
+    if (mergedSections.length >= maxSections) {
+      break;
+    }
+    const key = `${candidate.heading}||${candidate.details.join("||")}`.toLowerCase();
+    if (sectionKeys.has(candidate.heading.toLowerCase()) || sectionKeys.has(key)) {
+      continue;
+    }
+    mergedSections.push(candidate);
+    sectionKeys.add(candidate.heading.toLowerCase());
+    sectionKeys.add(key);
+  }
+
+  const sections = mergedSections.length > 0
+    ? mergedSections
+    : buildSlideSectionsFromBody(body, slide.templateId);
+
+  return {
+    ...slide,
+    title,
+    body: body.length > 0 ? body : ["Key point"],
+    ...(sections.length > 0 ? { sections } : {}),
+  };
 }
 
 function buildFallbackSlide(index: number, seed?: AIPresentationSlide): AIPresentationSlide {
@@ -1706,6 +2022,12 @@ function buildFallbackSlide(index: number, seed?: AIPresentationSlide): AIPresen
     templateId,
     title,
     body: body.length > 0 ? body : [`Key point ${index + 1}`],
+    sections: body.length > 0
+      ? buildSlideSectionsFromBody(body, templateId)
+      : [{
+          heading: `Key insight ${index + 1}`,
+          details: [`Key point ${index + 1}`],
+        }],
     graphicCategory: seed?.graphicCategory ?? "Business",
     imagePromptKeywords:
       seed?.imagePromptKeywords?.trim().slice(0, 500)
@@ -1822,9 +2144,12 @@ export function assessSlideCoverage(
     };
   }
 
-  const slideTokenSets = slides.map((slide) => new Set(
-    tokenizeCoverage(`${slide.title} ${slide.body.join(" ")}`),
-  ));
+  const slideTokenSets = slides.map((slide) => {
+    const sectionText = (slide.sections ?? [])
+      .map((section) => `${section.heading} ${section.details.join(" ")}`)
+      .join(" ");
+    return new Set(tokenizeCoverage(`${slide.title} ${slide.body.join(" ")} ${sectionText}`));
+  });
 
   let coveredPoints = 0;
   for (const point of coveragePoints) {
@@ -1977,11 +2302,31 @@ export function buildArticlePrompt(
     }
   }
 
+  const wordPlan = buildArticleWordPlan(topic, language, numSlides, skillParams);
+  const wordPlanLines = [
+    `- Slide-based recommendation (${numSlides} slides): around ${wordPlan.slideRecommendedWords} words total.`,
+    `- Target draft length: around ${wordPlan.targetWords} words.`,
+    `- Suggested section size: around ${wordPlan.perSectionWords} words per section.`,
+  ];
+  if (wordPlan.lengthPreset) {
+    wordPlanLines.push(
+      `- Length preset "${wordPlan.lengthPreset}" detected. Keep behavior consistent with this preset unless constraints conflict.`,
+    );
+  }
+  if (wordPlan.hardMaxWords) {
+    wordPlanLines.push(
+      `- STRICT LIMIT: The article MUST NOT exceed ${wordPlan.hardMaxWords} words.`,
+    );
+  }
+
   return `Write a well-structured article about: ${topic}
 
 ${langInstruction}
 
 The article will be split into approximately ${numSlides} presentation slides, so organize the content into ${numSlides} clearly numbered sections. Each section should cover one main idea and be 2-4 sentences long.
+
+Word planning instructions:
+${wordPlanLines.join("\n")}
 
 Include a clear, descriptive title at the top.${paramSection}`;
 }
@@ -2183,19 +2528,29 @@ export async function generateAIDraft(
       return;
     }
 
+    const explicitWordLimit = resolveExplicitWordCount(input.articleSkillParams);
+    if (explicitWordLimit) {
+      const originalWordCount = countApproxWords(articleText);
+      if (originalWordCount > explicitWordLimit) {
+        articleText = trimToMaxWords(articleText, explicitWordLimit);
+        warnings.push(
+          `Applied explicit article word limit: ${explicitWordLimit} words (original ${originalWordCount}).`,
+        );
+      }
+    }
+
     // ── Phase 2: Article to Slide Split ───────────────────
     if (await isCancelled()) { await setCancelled(); return; }
 
     await updateProgress({ phase: 2, phaseLabel: "Splitting into slides..." });
 
-    // Truncate article to prevent token overflow
-    const truncatedArticle = articleText.split(/\s+/).slice(0, 2000).join(" ");
+    const splitArticleExcerpt = buildSlideSplitArticleExcerpt(articleText, input.numSlides, warnings);
 
     let slides: AIPresentationSlide[];
     try {
       const splitResult = await callLLMStructured({
         systemPrompt: SLIDE_SPLIT_SYSTEM_PROMPT,
-        userMessage: buildSlideSplitUserPrompt(truncatedArticle, input.numSlides),
+        userMessage: buildSlideSplitUserPrompt(splitArticleExcerpt, input.numSlides),
         model: articleModel,
         preferredProviderId: articleSkill.preferredProviderId,
         strictProviderPin: articleSkill.strictProviderPin,
@@ -2203,7 +2558,8 @@ export async function generateAIDraft(
         userId: actor.userId,
         tenantId: actor.tenantId,
       });
-      slides = normalizeSlidesToRequestedCount(splitResult.data, input.numSlides, warnings);
+      slides = normalizeSlidesToRequestedCount(splitResult.data, input.numSlides, warnings)
+        .map((slide) => normalizeSlideHierarchy(slide));
     } catch (err) {
       await updateProgress({
         completed: true,
@@ -2217,13 +2573,14 @@ export async function generateAIDraft(
 
     // Force slide 1 to hero_center
     if (slides.length > 0 && slides[0].templateId !== "hero_center") {
-      slides[0] = { ...slides[0], templateId: "hero_center" };
+      slides[0] = normalizeSlideHierarchy({ ...slides[0], templateId: "hero_center" });
     }
 
-    const initialCoverage = assessSlideCoverage(truncatedArticle, slides);
+    const initialCoverage = assessSlideCoverage(articleText, slides);
     if (initialCoverage.score < 0.68 || initialCoverage.avgBulletsPerSlide < 2.2) {
-      const enrichedSlides = topUpSlideBodiesFromArticle(truncatedArticle, slides);
-      const enrichedCoverage = assessSlideCoverage(truncatedArticle, enrichedSlides);
+      const enrichedSlides = topUpSlideBodiesFromArticle(articleText, slides)
+        .map((slide) => normalizeSlideHierarchy(slide));
+      const enrichedCoverage = assessSlideCoverage(articleText, enrichedSlides);
       if (enrichedCoverage.score > initialCoverage.score
         || enrichedCoverage.avgBulletsPerSlide > initialCoverage.avgBulletsPerSlide) {
         slides = enrichedSlides;

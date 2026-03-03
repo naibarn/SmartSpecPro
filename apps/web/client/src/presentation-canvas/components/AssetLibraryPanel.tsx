@@ -1,4 +1,4 @@
-import { type ComponentType, type DragEvent, type ReactNode, useState } from "react";
+import { type ComponentType, type DragEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 import { Clapperboard, ImageIcon, Layers3, Search, Shapes } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 export type AssetLibraryTab = "slides" | "photos" | "videos" | "graphics";
+type AssetSourceFilter = "all" | "history" | "library" | "shared";
 
 export interface CanvasLibraryAsset {
   id: number;
@@ -13,6 +14,7 @@ export interface CanvasLibraryAsset {
   title: string;
   sourceUrl: string;
   thumbnailUrl: string | null;
+  sourceType?: "history" | "library" | "shared";
 }
 
 interface AssetLibraryPanelProps {
@@ -39,8 +41,20 @@ const TABS: Array<{
     { id: "graphics", label: "Graphics", icon: Shapes },
   ];
 
+const SOURCE_FILTERS: Array<{ id: AssetSourceFilter; label: string }> = [
+  { id: "all", label: "All" },
+  { id: "history", label: "History" },
+  { id: "library", label: "Library" },
+  { id: "shared", label: "Shared" },
+];
+
 function AssetThumbnail({ asset }: { asset: CanvasLibraryAsset }) {
   const [failed, setFailed] = useState(false);
+  const sourceBadgeLabel = asset.sourceType === "history"
+    ? "History"
+    : asset.sourceType === "shared"
+      ? "Shared"
+      : "Library";
 
   const placeholder = (
     <div
@@ -90,6 +104,9 @@ function AssetThumbnail({ asset }: { asset: CanvasLibraryAsset }) {
           VIDEO
         </div>
       ) : null}
+      <div className="absolute right-2 top-2 rounded bg-black/65 px-1.5 py-0.5 text-[10px] tracking-wide text-white">
+        {sourceBadgeLabel}
+      </div>
     </div>
   );
 }
@@ -106,6 +123,31 @@ export function AssetLibraryPanel({
   onInsertAsset,
   onDragAssetStart,
 }: AssetLibraryPanelProps) {
+  const [sourceFilter, setSourceFilter] = useState<AssetSourceFilter>("all");
+  const sourceFilterCounts = useMemo(() => {
+    const counts = { history: 0, library: 0, shared: 0 };
+    for (const asset of assets) {
+      const sourceType = asset.sourceType ?? "library";
+      counts[sourceType] += 1;
+    }
+    return counts;
+  }, [assets]);
+  const filteredAssets = useMemo(() => (
+    assets.filter((asset) => {
+      if (sourceFilter === "all") {
+        return true;
+      }
+      const sourceType = asset.sourceType ?? "library";
+      return sourceType === sourceFilter;
+    })
+  ), [assets, sourceFilter]);
+
+  useEffect(() => {
+    if (activeTab === "slides" || activeTab === "graphics") {
+      setSourceFilter("all");
+    }
+  }, [activeTab]);
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 text-slate-100">
       <div className="grid grid-cols-2 gap-1.5">
@@ -141,6 +183,28 @@ export function AssetLibraryPanel({
         </div>
       ) : (
         <>
+          <div className="flex flex-wrap gap-1">
+            {SOURCE_FILTERS.map((filter) => {
+              const count = filter.id === "all" ? assets.length : sourceFilterCounts[filter.id];
+              const active = sourceFilter === filter.id;
+              return (
+                <Button
+                  key={filter.id}
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  aria-label={`Filter source ${filter.label}`}
+                  className={`h-7 rounded-full border px-2 text-[11px] ${active
+                    ? "border-sky-400/70 bg-sky-500/20 text-sky-100"
+                    : "border-slate-700 text-slate-300 hover:border-slate-500 hover:bg-slate-800"
+                    }`}
+                  onClick={() => setSourceFilter(filter.id)}
+                >
+                  {filter.label} ({count})
+                </Button>
+              );
+            })}
+          </div>
           <div className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
@@ -152,10 +216,10 @@ export function AssetLibraryPanel({
           </div>
           <ScrollArea className="h-[calc(70vh-160px)] pr-1">
             {isLoading ? (
-              <p className="text-sm text-slate-400">Loading library...</p>
-            ) : assets.length ? (
+              <p className="text-sm text-slate-400">Loading media sources...</p>
+            ) : filteredAssets.length ? (
               <div className="grid grid-cols-2 gap-2">
-                {assets.map((asset) => (
+                {filteredAssets.map((asset) => (
                   <div
                     key={`${asset.kind}-${asset.id}`}
                     className="group overflow-hidden rounded-md border border-slate-700 bg-slate-950 text-left shadow-sm transition hover:border-sky-500/80"
@@ -192,7 +256,11 @@ export function AssetLibraryPanel({
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-slate-400">No media found in library.</p>
+              <p className="text-sm text-slate-400">
+                {sourceFilter === "all"
+                  ? "No media found in Media History or Library."
+                  : `No ${sourceFilter} media found for this search.`}
+              </p>
             )}
           </ScrollArea>
         </>

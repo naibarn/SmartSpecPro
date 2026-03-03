@@ -123,7 +123,8 @@ interface FormData {
 const SEARCH_DEBOUNCE_MS = 900;
 const MIN_SEARCH_LENGTH = 2;
 
-type InputFieldType = "select" | "text" | "number" | "boolean" | "image_urls" | "video_urls" | "audio_urls" | "array";
+type InputFieldType = "select" | "text" | "number" | "boolean" | "image_urls" | "video_urls" | "audio_urls" | "array" | "library_file";
+type SyncTarget = "none" | "reference_images" | "prompt" | "aspect_ratio";
 type MediaOperationType = "t2i" | "i2i" | "t2v" | "i2v" | "v2v" | "upscale" | "t2m" | "s2t" | "t2s" | "a2a" | "chat" | "other";
 
 interface InputFieldOptionDraft {
@@ -137,11 +138,13 @@ interface InputFieldDraft {
   key: string;
   label: string;
   type: InputFieldType;
+  syncWith: SyncTarget;
   defaultRaw: string;
   defaultBoolean: boolean;
   required: boolean;
   affectsPricing: boolean;
   options: InputFieldOptionDraft[];
+  allowedExtensions: string; // comma-separated, e.g. "png,jpg" — only used for library_file type
 }
 
 interface PricingTierDraft {
@@ -174,12 +177,22 @@ const MEDIA_OPERATION_OPTIONS: Array<{ value: MediaOperationType; label: string 
   { value: "other", label: "Other" },
 ];
 
+const SYNC_TARGET_OPTIONS: Array<{ value: SyncTarget; label: string }> = [
+  { value: "none", label: "No Sync" },
+  { value: "reference_images", label: "Reference Images" },
+  { value: "prompt", label: "Prompt" },
+  { value: "aspect_ratio", label: "Aspect Ratio" },
+];
+
+const VALID_SYNC_TARGETS = SYNC_TARGET_OPTIONS.map((o) => o.value);
+
 const INPUT_FIELD_TYPE_OPTIONS: Array<{ value: InputFieldType; label: string }> = [
   { value: "select", label: "Select" },
   { value: "text", label: "Text" },
   { value: "number", label: "Number" },
   { value: "boolean", label: "Boolean" },
   { value: "array", label: "Array (string[])" },
+  { value: "library_file", label: "Library File (picker)" },
   { value: "image_urls", label: "Image URLs" },
   { value: "video_urls", label: "Video URLs" },
   { value: "audio_urls", label: "Audio URLs" },
@@ -195,11 +208,13 @@ function createEmptyInputFieldDraft(): InputFieldDraft {
     key: "",
     label: "",
     type: "text",
+    syncWith: "none",
     defaultRaw: "",
     defaultBoolean: false,
     required: false,
     affectsPricing: false,
     options: [],
+    allowedExtensions: "",
   };
 }
 
@@ -231,16 +246,22 @@ function parseInputFieldDrafts(value: unknown): InputFieldDraft[] {
         label: String(optionRecord.label ?? optionRecord.value ?? ""),
       };
     });
+    const rawSyncWith = String(record.syncWith || "none");
+    const syncWith: SyncTarget = VALID_SYNC_TARGETS.includes(rawSyncWith as SyncTarget)
+      ? (rawSyncWith as SyncTarget)
+      : "none";
     return {
       id: createDraftId("field"),
       key: String(record.key ?? ""),
       label: String(record.label ?? record.key ?? ""),
       type,
+      syncWith,
       defaultRaw: record.default === undefined || record.default === null ? "" : String(record.default),
       defaultBoolean: Boolean(record.default),
       required: Boolean(record.required),
       affectsPricing: Boolean(record.affectsPricing),
       options,
+      allowedExtensions: typeof record.allowedExtensions === "string" ? record.allowedExtensions : "",
     };
   });
 }
@@ -295,6 +316,8 @@ function serializeInputFieldDrafts(drafts: InputFieldDraft[]): { fields: Record<
     if (draft.affectsPricing) {
       nextField.affectsPricing = true;
     }
+    // Always write syncWith so runtime can distinguish "explicitly none" from "legacy field (undefined)"
+    nextField.syncWith = draft.syncWith;
 
     if (draft.type === "select") {
       const options = draft.options
@@ -332,6 +355,12 @@ function serializeInputFieldDrafts(drafts: InputFieldDraft[]): { fields: Record<
       }
     } else if (draft.type === "array") {
       // No default — actual items are provided at runtime by the user
+    } else if (draft.type === "library_file") {
+      // No default — user picks from Library at runtime
+      const exts = draft.allowedExtensions.trim();
+      if (exts) {
+        nextField.allowedExtensions = exts;
+      }
     } else {
       const defaultValue = draft.defaultRaw.trim();
       if (defaultValue.length > 0) {
@@ -643,6 +672,8 @@ export default function AdminMediaModels() {
     }
   }, [user, authLoading, setLocation]);
 
+  const trpcUtils = trpc.useUtils();
+
   // Queries using tRPC hooks (use debounced search to prevent focus loss)
   const { data: models = [], isLoading, refetch } = trpc.mediaModels.adminList.useQuery(
     {
@@ -686,6 +717,7 @@ export default function AdminMediaModels() {
         description: `${data.name} has been added successfully.`,
       });
       refetch();
+      trpcUtils.mediaModels.list.invalidate();
     },
     onError: (error) => {
       toast.error("Failed to create model", {
@@ -702,6 +734,8 @@ export default function AdminMediaModels() {
         description: `${data.name} has been updated successfully.`,
       });
       refetch();
+      // Invalidate the public-facing list so Media Studio picks up the new config immediately
+      trpcUtils.mediaModels.list.invalidate();
     },
     onError: (error) => {
       toast.error("Failed to update model", {
@@ -715,6 +749,7 @@ export default function AdminMediaModels() {
       setDeleteConfirm(null);
       toast.success("Model deleted");
       refetch();
+      trpcUtils.mediaModels.list.invalidate();
     },
     onError: (error) => {
       toast.error("Failed to delete model", {
@@ -2135,6 +2170,25 @@ function ModelForm({
                       </div>
                     </div>
 
+                    <div className="grid gap-1">
+                      <Label className="text-xs text-muted-foreground">Sync with (auto-fill at runtime)</Label>
+                      <Select
+                        value={field.syncWith}
+                        onValueChange={(value) => updateInputFieldDraft(field.id, { syncWith: value as SyncTarget })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SYNC_TARGET_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
                     {field.type === "boolean" ? (
                       <div className="flex items-center justify-between rounded-md border px-3 py-2">
                         <span className="text-sm">Default Value</span>
@@ -2147,6 +2201,20 @@ function ModelForm({
                       <p className="text-xs text-muted-foreground italic">
                         Values are provided at runtime — no default needed.
                       </p>
+                    ) : field.type === "library_file" ? (
+                      <div className="grid gap-1">
+                        <Label className="text-xs text-muted-foreground">
+                          Allowed Extensions (comma-separated, e.g. <code>png,jpg,gif</code>)
+                        </Label>
+                        <Input
+                          value={field.allowedExtensions}
+                          onChange={(e) => updateInputFieldDraft(field.id, { allowedExtensions: e.target.value })}
+                          placeholder="png,jpg,gif  (leave blank to allow all)"
+                        />
+                        <p className="text-xs text-muted-foreground italic">
+                          User picks a file from the Library at runtime — no default needed.
+                        </p>
+                      </div>
                     ) : field.type === "select" ? (
                       <div className="space-y-2 rounded-md border border-slate-100 p-2">
                         <div className="flex items-center justify-between">

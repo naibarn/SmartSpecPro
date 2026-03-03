@@ -16,6 +16,7 @@ const {
   mockCancelDraftIsPending,
   mockUploadMutateAsync,
   mockLibraryImagesData,
+  mockSkillSchemaData,
 } = vi.hoisted(() => ({
   mockGenerateDraftMutate: vi.fn(),
   mockCancelDraftMutate: vi.fn(),
@@ -65,6 +66,9 @@ const {
         },
       ],
     } as unknown,
+  },
+  mockSkillSchemaData: {
+    current: { hasSchema: false } as unknown,
   },
 }));
 
@@ -128,7 +132,7 @@ vi.mock("@/lib/trpc", () => ({
       },
       getInputSchema: {
         useQuery: vi.fn(() => ({
-          data: { hasSchema: false },
+          data: mockSkillSchemaData.current,
         })),
       },
     },
@@ -213,6 +217,8 @@ beforeEach(() => {
   mockAvailabilityData.current = { enabled: true, aiGenerationEnabled: true };
   mockGenerateDraftIsPending.current = false;
   mockCancelDraftIsPending.current = false;
+  mockSkillSchemaData.current = { hasSchema: false };
+  localStorage.clear();
   mockSkillsData.current = {
     skills: [
       { id: 1, slug: "general-article-writer", name: "General Article Writer", description: "Write articles", category: "chat_assistant", executionMode: "llm-only" },
@@ -235,6 +241,31 @@ describe("G.1 Modal Rendering", () => {
   it("renders article skill dropdown populated from skills list", () => {
     render(<AIDraftModal {...defaultProps} />);
     expect(screen.getAllByText(/Article Skill/i).length).toBeGreaterThan(0);
+  });
+
+  it("shows word-count override hint when skill schema has both length and word_count", async () => {
+    localStorage.setItem("smartspec_aiDraft_articleSkill", "general-article-writer");
+    mockSkillSchemaData.current = {
+      hasSchema: true,
+      schema: {
+        title: "Test Article Schema",
+        sections: [
+          {
+            id: "style",
+            title: "Style",
+            fields: [
+              { id: "length", type: "select", label: "Length", options: [{ value: "medium", label: "Medium" }] },
+              { id: "word_count", type: "number", label: "Maximum Words", min: 120, max: 8000 },
+            ],
+          },
+        ],
+      },
+    };
+
+    render(<AIDraftModal {...defaultProps} />);
+    const hint = await screen.findByTestId("word-count-override-hint");
+    expect(hint).toHaveTextContent(/Maximum Words/i);
+    expect(hint).toHaveTextContent(/overrides Length/i);
   });
 
   it("renders image model input field", () => {

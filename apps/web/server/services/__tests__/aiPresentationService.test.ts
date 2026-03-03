@@ -307,6 +307,30 @@ describe("buildArticlePrompt", () => {
     const prompt = buildArticlePrompt("Test topic", "auto", 3);
     expect(prompt).toContain("Test topic");
   });
+
+  it("includes slide-based word planning guidance", () => {
+    const prompt = buildArticlePrompt("Newborn sleep", "en", 6);
+    expect(prompt).toContain("Word planning instructions");
+    expect(prompt).toContain("Slide-based recommendation (6 slides)");
+    expect(prompt).toContain("Suggested section size");
+  });
+
+  it("enforces explicit user word_count as strict maximum when provided", () => {
+    const prompt = buildArticlePrompt("พัฒนาการทารก", "th", 8, {
+      length: "long",
+      word_count: 900,
+    });
+    expect(prompt).toContain("STRICT LIMIT: The article MUST NOT exceed 900 words.");
+    expect(prompt).toContain("- word_count: 900");
+  });
+
+  it("keeps legacy length preset behavior when word_count is not provided", () => {
+    const prompt = buildArticlePrompt("Toddler behavior", "en", 5, {
+      length: "short",
+    });
+    expect(prompt).toContain("Length preset \"short\" detected");
+    expect(prompt).not.toContain("STRICT LIMIT:");
+  });
 });
 
 describe("assessSlideCoverage", () => {
@@ -760,6 +784,107 @@ describe("generateAIDraft - Phase 2", () => {
     expect(callArgs.userMessage).toContain("Target slide count: 3");
     expect(callArgs.userMessage).toContain("Section One");
     expect(callArgs.userMessage).toContain("Section Two");
+  });
+
+  it("enforces article word_count limit before split when user specifies it", async () => {
+    setupHappyPath();
+    const longWordArticle = Array.from({ length: 260 }, (_, i) => `zzword${String(i).padStart(3, "0")}`).join(" ");
+    mockExecuteWithFallback.mockResolvedValueOnce({
+      type: "success",
+      providerId: 1,
+      providerName: "test-provider",
+      response: {
+        id: "resp1",
+        created: Date.now(),
+        model: "claude-sonnet-4-6",
+        choices: [{ index: 0, message: { role: "assistant", content: longWordArticle }, finish_reason: "stop" }],
+        usage: { prompt_tokens: 100, completion_tokens: 200 },
+      },
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        articleSkillParams: {
+          word_count: 120,
+        },
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const callArgs = mockCallLLMStructured.mock.calls[0][0];
+    expect(callArgs.userMessage).toContain("zzword000");
+    expect(callArgs.userMessage).toContain("zzword119");
+    expect(callArgs.userMessage).not.toContain("zzword180");
+  });
+
+  it("passes structured sections into layout input for multi-level typography", async () => {
+    setupHappyPath();
+    mockCallLLMStructured.mockResolvedValueOnce({
+      data: [
+        {
+          templateId: "hero_center",
+          title: "บทนำ",
+          body: ["ประเด็นสำคัญ"],
+          sections: [{ heading: "ภาพรวม", details: ["สาระหลักของบทความ"] }],
+          graphicCategory: "Business",
+          imagePromptKeywords: "intro",
+        },
+        {
+          templateId: "split_right_image",
+          title: "เด็กที่มีพัฒนาการล่าช้าหรือมีความเสี่ยง",
+          body: ["สำรอง"],
+          sections: [
+            { heading: "เด็กคลอดก่อนกำหนด", details: ["ควรติดตามพัฒนาการอย่างใกล้ชิด"] },
+            { heading: "ปัญหากล้ามเนื้อ", details: ["ควรได้รับกายภาพบำบัด"] },
+          ],
+          graphicCategory: "Health",
+          imagePromptKeywords: "medical child care",
+        },
+        {
+          templateId: "feature_boxes_right",
+          title: "แนวทางช่วยเหลือ",
+          body: ["สำรอง"],
+          sections: [{ heading: "บำบัดตั้งแต่เนิ่น ๆ", details: ["ลดผลกระทบระยะยาว"] }],
+          graphicCategory: "Education",
+          imagePromptKeywords: "therapy",
+        },
+      ],
+      tokensUsed: 300,
+      creditsUsed: 10,
+    });
+
+    await generateAIDraft(buildMockInput(), buildMockActor(), "test-token", "task-123");
+    const secondSlideCall = mockGenerateSlide.mock.calls[1]?.[0];
+    expect(secondSlideCall).toBeDefined();
+    expect(secondSlideCall.slideData.sections).toBeDefined();
+    expect(secondSlideCall.slideData.sections[0].heading).toBe("เด็กคลอดก่อนกำหนด");
+  });
+
+  it("uses head+tail sampling for long article split input instead of hard 2000-word truncation", async () => {
+    setupHappyPath();
+    const beginning = "BEGIN_SECTION";
+    const ending = "END_SECTION";
+    const longArticle = `${beginning} ${Array.from({ length: 7000 }, (_, i) => `token${i}`).join(" ")} ${ending}`;
+    mockExecuteWithFallback.mockResolvedValueOnce({
+      type: "success",
+      providerId: 1,
+      providerName: "test-provider",
+      response: {
+        id: "resp1",
+        created: Date.now(),
+        model: "claude-sonnet-4-6",
+        choices: [{ index: 0, message: { role: "assistant", content: longArticle }, finish_reason: "stop" }],
+        usage: { prompt_tokens: 100, completion_tokens: 200 },
+      },
+    });
+
+    await generateAIDraft(buildMockInput(), buildMockActor(), "test-token", "task-123");
+    const callArgs = mockCallLLMStructured.mock.calls[0]?.[0];
+    expect(callArgs.userMessage).toContain("BEGIN_SECTION");
+    expect(callArgs.userMessage).toContain("END_SECTION");
+    expect(callArgs.userMessage).toContain("[...continued summary context...]");
   });
 
   it("forces slide 1 templateId to hero_center", async () => {

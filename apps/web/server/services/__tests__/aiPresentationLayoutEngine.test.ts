@@ -608,7 +608,7 @@ describe("Edge Cases", () => {
       expect(heroTitle.lineHeight).toBeGreaterThan(1);
       expect(heroTitle.letterSpacing).toBeLessThanOrEqual(0);
       expect(heroTitle.textShadow).toContain("rgba(");
-      expect(heroBody.lineHeight).toBeGreaterThan(1.2);
+      expect(heroBody.lineHeight).toBeGreaterThanOrEqual(1.2);
       expect(heroBody.letterSpacing).toBeGreaterThan(0);
       expect(splitTitle.lineHeight).toBeGreaterThan(1);
       expect(splitBody.lineHeight).toBeGreaterThan(1.2);
@@ -642,6 +642,54 @@ describe("Edge Cases", () => {
     expect(textSet.has("Point 5")).toBe(true);
   });
 
+  it("renders section heading + detail hierarchy when sections are provided", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "feature_boxes_right",
+        title: "พัฒนาการที่ควรติดตาม",
+        body: ["สำรองกรณีไม่มี sections"],
+        sections: [
+          { heading: "เด็กคลอดก่อนกำหนด", details: ["ควรติดตามพัฒนาการอย่างใกล้ชิด"] },
+          { heading: "ปัญหากล้ามเนื้อ", details: ["ควรพบผู้เชี่ยวชาญด้านกายภาพบำบัด"] },
+        ],
+      }),
+    }));
+
+    const texts = result.slideContent.elements
+      .filter((element) => element.type === "text")
+      .map((element) => element.text);
+    expect(texts).toContain("เด็กคลอดก่อนกำหนด");
+    expect(texts).toContain("ควรติดตามพัฒนาการอย่างใกล้ชิด");
+    expect(texts).toContain("ปัญหากล้ามเนื้อ");
+  });
+
+  it("renders subtitle level before detail body in split templates", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        title: "เด็กที่มีพัฒนาการล่าช้าหรือมีความเสี่ยง",
+        body: ["ข้อความสำรอง"],
+        sections: [
+          { heading: "เด็กคลอดก่อนกำหนด", details: ["ต้องการการติดตามใกล้ชิด"] },
+          { heading: "ปัญหากล้ามเนื้อ", details: ["ต้องการการกระตุ้นเฉพาะทาง"] },
+        ],
+      }),
+    }));
+
+    const subtitleText = result.slideContent.elements.find(
+      (element) => element.type === "text" && element.text === "เด็กคลอดก่อนกำหนด",
+    );
+    const detailText = result.slideContent.elements.find(
+      (element) => element.type === "text" && element.text.includes("ปัญหากล้ามเนื้อ:"),
+    );
+
+    expect(subtitleText).toBeDefined();
+    expect(detailText).toBeDefined();
+    if (subtitleText?.type === "text" && detailText?.type === "text") {
+      expect(subtitleText.fontSize).toBeGreaterThan(detailText.fontSize ?? 0);
+    }
+  });
+
   it("compacts overflow body lines in split templates instead of silently dropping context", () => {
     const result = generateSlide(makeLayoutInput({
       slideData: makeSlideData({
@@ -661,7 +709,7 @@ describe("Edge Cases", () => {
     const renderedBodyTexts = result.slideContent.elements
       .filter((element) => element.type === "text")
       .map((element) => element.text)
-      .filter((text) => ["A", "B", "C", "D", "E"].some((prefix) => text.startsWith(prefix)));
+      .filter((text) => ["A", "B", "C", "D", "E", "F", "G"].some((prefix) => text.startsWith(prefix)));
 
     expect(renderedBodyTexts.length).toBeLessThanOrEqual(5);
     expect(

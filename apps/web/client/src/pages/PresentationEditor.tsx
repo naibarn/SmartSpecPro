@@ -107,6 +107,7 @@ import { AudioTrackPlayer } from "@/presentation-canvas/play/AudioTrackPlayer";
 import { ExportDialog } from "@/components/presentation/ExportDialog";
 import { ImportPresentationDialog } from "@/components/presentation/ImportPresentationDialog";
 import { AIDraftModal } from "@/components/presentation/AIDraftModal";
+import { SearchableCombobox } from "@/components/presentation/SearchableCombobox";
 import { SlideAudioPanel } from "@/components/presentation/SlideAudioPanel";
 import { useAutosaveController } from "@/presentation-canvas/save/useAutosaveController";
 import {
@@ -138,7 +139,11 @@ import {
   getCanvasPresetById,
   normalizeCanvasSize,
 } from "@/presentation-canvas/constants";
-import { normalizeWatermarkLibraryOptions } from "@/lib/presentationWatermark";
+import {
+  inferWatermarkFormatFromSourceUrl,
+  normalizeWatermarkLibraryOptions,
+  type LibraryWatermarkOption,
+} from "@/lib/presentationWatermark";
 import {
   PRESENTATION_CONFLICT_SCHEMA_VERSION,
   PRESENTATION_EDITOR_ROUTE_BASE,
@@ -198,11 +203,26 @@ const UNSAVED_PRESENTATION_WARNING =
 
 interface LibraryResultItemLike {
   id?: number;
+  item_id?: number;
+  item_type?: string | null;
   title?: string | null;
   source_url?: string | null;
   thumbnail_url?: string | null;
   preview_url?: string | null;
   poster_url?: string | null;
+  owner_user_id?: number | null;
+  access_source?: string | null;
+}
+
+interface MediaHistoryTaskLike {
+  id?: string;
+  taskId?: string;
+  mediaType?: string;
+  status?: string;
+  model?: string | null;
+  prompt?: string | null;
+  resultUrl?: string | null;
+  resultData?: Record<string, unknown> | null;
 }
 
 interface PresentationSavedVersionLike {
@@ -532,6 +552,7 @@ function buildSlideContentSignature(content: PresentationSlideContent): string {
 function normalizeLibraryMediaItems(
   rows: unknown,
   kind: LibraryMediaKind,
+  currentUserId: number | null,
 ): CanvasLibraryAsset[] {
   if (!Array.isArray(rows)) {
     return [];
@@ -539,29 +560,244 @@ function normalizeLibraryMediaItems(
 
   return rows
     .map((row) => row as LibraryResultItemLike)
-    .filter((row) => typeof row.id === "number" && Number.isFinite(row.id))
+    .filter((row) => {
+      const id = Number(row.id ?? row.item_id);
+      if (!Number.isFinite(id)) {
+        return false;
+      }
+      const rowKind = String(row.item_type || "").toLowerCase();
+      if (rowKind === "image" || rowKind === "video") {
+        return rowKind === kind;
+      }
+      return true;
+    })
     .map((row) => {
+      const id = Number(row.id ?? row.item_id);
       const sourceUrl = String(row.source_url || "").trim();
       if (!sourceUrl) {
         return null;
       }
 
-      const title = String(row.title || `${kind} #${row.id}`).trim() || `${kind} #${row.id}`;
+      const title = String(row.title || `${kind} #${id}`).trim() || `${kind} #${id}`;
       const thumbnailRaw = String(
         row.thumbnail_url
         || row.preview_url
         || row.poster_url
         || "",
       ).trim();
+      const ownerUserId = Number(row.owner_user_id);
+      const accessSource = String(row.access_source || "").toLowerCase();
+      const isSharedByAccessSource = accessSource === "shared_group" || accessSource === "shared_direct";
+      const isSharedByOwner = Number.isFinite(ownerUserId)
+        && currentUserId !== null
+        && ownerUserId !== currentUserId;
       return {
-        id: row.id as number,
+        id,
         kind,
         title,
         sourceUrl,
         thumbnailUrl: thumbnailRaw || (kind === "image" ? sourceUrl : null),
+        sourceType: isSharedByAccessSource || isSharedByOwner ? "shared" : "library",
       } satisfies CanvasLibraryAsset;
     })
     .filter((value): value is CanvasLibraryAsset => Boolean(value));
+}
+
+function readFirstHttpUrl(value: unknown, visited = new WeakSet<object>()): string | null {
+  if (!value) {
+    return null;
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return /^https?:\/\//i.test(trimmed) ? trimmed : null;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = readFirstHttpUrl(item, visited);
+      if (found) {
+        return found;
+      }
+    }
+    return null;
+  }
+  if (typeof value !== "object") {
+    return null;
+  }
+  const record = value as Record<string, unknown>;
+  if (visited.has(record)) {
+    return null;
+  }
+  visited.add(record);
+
+  const prioritizedKeys = [
+    "url",
+    "video_url",
+    "image_url",
+    "audio_url",
+    "videoUrl",
+    "imageUrl",
+    "audioUrl",
+    "result_url",
+    "resultUrl",
+    "signed_url",
+    "signedUrl",
+    "src",
+  ];
+  for (const key of prioritizedKeys) {
+    const found = readFirstHttpUrl(record[key], visited);
+    if (found) {
+      return found;
+    }
+  }
+
+  for (const nestedValue of Object.values(record)) {
+    const found = readFirstHttpUrl(nestedValue, visited);
+    if (found) {
+      return found;
+    }
+  }
+  return null;
+}
+
+function extractMediaHistoryResultUrl(task: MediaHistoryTaskLike): string | null {
+  const directUrl = String(task.resultUrl || "").trim();
+  if (directUrl && /^https?:\/\//i.test(directUrl)) {
+    return directUrl;
+  }
+
+  const resultData = task.resultData;
+  if (!resultData || typeof resultData !== "object") {
+    return null;
+  }
+
+  const parsedResultJson = typeof resultData.resultJson === "string"
+    ? (() => {
+      try {
+        const parsed = JSON.parse(resultData.resultJson);
+        return parsed;
+      } catch {
+        return null;
+      }
+    })()
+    : null;
+
+  return (
+    readFirstHttpUrl(resultData.output)
+    || readFirstHttpUrl(resultData.result)
+    || readFirstHttpUrl(resultData.data)
+    || readFirstHttpUrl(resultData.response)
+    || readFirstHttpUrl(parsedResultJson)
+    || readFirstHttpUrl(resultData)
+  );
+}
+
+function extractMediaHistoryThumbnailUrl(task: MediaHistoryTaskLike): string | null {
+  const resultData = task.resultData;
+  if (!resultData || typeof resultData !== "object") {
+    return null;
+  }
+
+  const parsedResultJson = typeof resultData.resultJson === "string"
+    ? (() => {
+      try {
+        const parsed = JSON.parse(resultData.resultJson);
+        return parsed;
+      } catch {
+        return null;
+      }
+    })()
+    : null;
+
+  return (
+    readFirstHttpUrl(resultData.poster)
+    || readFirstHttpUrl(resultData.poster_url)
+    || readFirstHttpUrl(resultData.posterUrl)
+    || readFirstHttpUrl(resultData.thumbnail)
+    || readFirstHttpUrl(resultData.thumbnail_url)
+    || readFirstHttpUrl(resultData.thumbnailUrl)
+    || readFirstHttpUrl(parsedResultJson?.poster)
+    || readFirstHttpUrl(parsedResultJson?.thumbnail)
+    || null
+  );
+}
+
+function buildMediaHistoryTitle(task: MediaHistoryTaskLike, kind: LibraryMediaKind): string {
+  const prompt = String(task.prompt || "").trim();
+  const model = String(task.model || "").trim();
+  if (prompt) {
+    return prompt.length > 72 ? `${prompt.slice(0, 69)}...` : prompt;
+  }
+  if (model) {
+    return `${kind.toUpperCase()} - ${model}`;
+  }
+  const taskId = String(task.taskId || task.id || "").trim();
+  return taskId ? `${kind.toUpperCase()} - ${taskId}` : `${kind.toUpperCase()} from history`;
+}
+
+function stableTaskNumericId(task: MediaHistoryTaskLike, kind: LibraryMediaKind): number {
+  const seed = `${kind}:${task.id || task.taskId || ""}`;
+  let hash = 0;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash = ((hash * 31) + seed.charCodeAt(index)) | 0;
+  }
+  const positive = Math.abs(hash);
+  return positive > 0 ? -positive : -(Date.now() % 1_000_000);
+}
+
+function normalizeMediaHistoryItems(
+  rows: unknown,
+  kind: LibraryMediaKind,
+  query: string,
+): CanvasLibraryAsset[] {
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+
+  const normalizedQuery = query.trim().toLowerCase();
+  return rows
+    .map((row) => row as MediaHistoryTaskLike)
+    .filter((row) => String(row.status || "").toLowerCase() === "completed")
+    .filter((row) => String(row.mediaType || "").toLowerCase() === kind)
+    .map((row) => {
+      const sourceUrl = extractMediaHistoryResultUrl(row);
+      if (!sourceUrl) {
+        return null;
+      }
+      const title = buildMediaHistoryTitle(row, kind);
+      const searchable = `${title} ${row.model || ""} ${row.prompt || ""} ${row.id || ""} ${row.taskId || ""}`.toLowerCase();
+      if (normalizedQuery && !searchable.includes(normalizedQuery)) {
+        return null;
+      }
+      const thumbnailUrl = kind === "image"
+        ? sourceUrl
+        : extractMediaHistoryThumbnailUrl(row);
+      return {
+        id: stableTaskNumericId(row, kind),
+        kind,
+        title,
+        sourceUrl,
+        thumbnailUrl,
+        sourceType: "history",
+      } satisfies CanvasLibraryAsset;
+    })
+    .filter((value): value is CanvasLibraryAsset => Boolean(value));
+}
+
+function mergeLibraryAssets(
+  first: CanvasLibraryAsset[],
+  second: CanvasLibraryAsset[],
+): CanvasLibraryAsset[] {
+  const merged: CanvasLibraryAsset[] = [];
+  const seen = new Set<string>();
+  for (const asset of [...first, ...second]) {
+    const key = `${asset.kind}:${asset.sourceUrl.trim().toLowerCase()}`;
+    if (!asset.sourceUrl.trim() || seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    merged.push(asset);
+  }
+  return merged;
 }
 
 function summarizeSlidePreview(slideContent: unknown): {
@@ -775,7 +1011,7 @@ function extractMetadataDurationSeconds(metadata: unknown): number | null {
 }
 
 export default function PresentationEditor() {
-  const { isLoading: authLoading, isAuthenticated } = useAuth();
+  const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const trpcUtils = trpc.useUtils();
   const [, setLocation] = useLocation();
   const [, routeParams] = useRoute(`${PRESENTATION_EDITOR_ROUTE_BASE}/:docId`);
@@ -842,6 +1078,10 @@ export default function PresentationEditor() {
     }, 0)
   ), [slides]);
   const projectTitle = String(itemQuery.data?.title || deck?.title || (docId ? `Presentation ${docId}` : "Presentation"));
+  const currentUserId = useMemo(() => {
+    const parsed = Number(user?.id);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [user?.id]);
 
   const [selectedSlideId, setSelectedSlideId] = useState<number | null>(null);
   const [commandState, setCommandState] = useState<CanvasCommandState>(() =>
@@ -895,6 +1135,9 @@ export default function PresentationEditor() {
   const [autoLayoutWatermarkEnabled, setAutoLayoutWatermarkEnabled] = useState(false);
   const [autoLayoutWatermarkSourceUrl, setAutoLayoutWatermarkSourceUrl] = useState("");
   const [autoLayoutWatermarkClarityPercent, setAutoLayoutWatermarkClarityPercent] = useState(20);
+  const [autoLayoutWatermarkSearchQuery, setAutoLayoutWatermarkSearchQuery] = useState("");
+  const [debouncedAutoLayoutWatermarkSearchQuery, setDebouncedAutoLayoutWatermarkSearchQuery] = useState("");
+  const [autoLayoutWatermarkSelectionCache, setAutoLayoutWatermarkSelectionCache] = useState<LibraryWatermarkOption | null>(null);
   const [autoLayoutProgress, setAutoLayoutProgress] = useState<{ done: number; total: number } | null>(null);
   const [timingDurationSecInput, setTimingDurationSecInput] = useState<string>("3");
   const [timingApplyAllPending, setTimingApplyAllPending] = useState(false);
@@ -921,6 +1164,13 @@ export default function PresentationEditor() {
     }
     setProjectTitleDraft(projectTitle);
   }, [projectTitle, isProjectTitleEditing]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedAutoLayoutWatermarkSearchQuery(autoLayoutWatermarkSearchQuery.trim());
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [autoLayoutWatermarkSearchQuery]);
 
   const slideshowQuery = trpc.presentation.getSlideshow.useQuery(
     { deckId: deck?.id || 0 },
@@ -958,10 +1208,11 @@ export default function PresentationEditor() {
       staleTime: 30_000,
     },
   );
+  const trimmedLibrarySearchQuery = librarySearchQuery.trim();
 
   const imageLibraryQuery = trpc.library.listDocuments.useQuery(
     {
-      query: librarySearchQuery.trim() || undefined,
+      query: undefined,
       scope: "all",
       sort: "updated_desc",
       limit: 40,
@@ -974,14 +1225,54 @@ export default function PresentationEditor() {
       enabled: Boolean(
         isAuthenticated
         && !authLoading
-        && (libraryTab === "photos" || isAutoLayoutDialogOpen),
+        && (isAutoLayoutDialogOpen || (libraryTab === "photos" && trimmedLibrarySearchQuery.length === 0)),
+      ),
+    },
+  );
+
+  const imageLibrarySearchQuery = trpc.library.search.useQuery(
+    {
+      query: trimmedLibrarySearchQuery || undefined,
+      limit: 40,
+      offset: 0,
+      filters: {
+        itemType: "image",
+      },
+    },
+    {
+      enabled: Boolean(
+        isAuthenticated
+        && !authLoading
+        && libraryTab === "photos"
+        && trimmedLibrarySearchQuery.length > 0,
+      ),
+    },
+  );
+
+  const autoLayoutWatermarkQuery = trpc.library.listDocuments.useQuery(
+    {
+      query: debouncedAutoLayoutWatermarkSearchQuery || undefined,
+      scope: "all",
+      sort: "updated_desc",
+      limit: 50,
+      offset: 0,
+      filters: {
+        itemType: "image",
+      },
+    },
+    {
+      enabled: Boolean(
+        isAuthenticated
+        && !authLoading
+        && isAutoLayoutDialogOpen
+        && autoLayoutWatermarkEnabled,
       ),
     },
   );
 
   const videoLibraryQuery = trpc.library.listDocuments.useQuery(
     {
-      query: librarySearchQuery.trim() || undefined,
+      query: undefined,
       scope: "all",
       sort: "updated_desc",
       limit: 40,
@@ -994,8 +1285,66 @@ export default function PresentationEditor() {
       enabled: Boolean(
         isAuthenticated
         && !authLoading
+        && libraryTab === "videos"
+        && trimmedLibrarySearchQuery.length === 0,
+      ),
+    },
+  );
+
+  const videoLibrarySearchQuery = trpc.library.search.useQuery(
+    {
+      query: trimmedLibrarySearchQuery || undefined,
+      limit: 40,
+      offset: 0,
+      filters: {
+        itemType: "video",
+      },
+    },
+    {
+      enabled: Boolean(
+        isAuthenticated
+        && !authLoading
+        && libraryTab === "videos"
+        && trimmedLibrarySearchQuery.length > 0,
+      ),
+    },
+  );
+
+  const imageHistoryQuery = trpc.media.listTasks.useQuery(
+    {
+      mediaType: "image",
+      status: "completed",
+      limit: 80,
+      offset: 0,
+      daysAgo: 365,
+    },
+    {
+      enabled: Boolean(
+        isAuthenticated
+        && !authLoading
+        && libraryTab === "photos",
+      ),
+      refetchOnWindowFocus: false,
+      staleTime: 20_000,
+    },
+  );
+
+  const videoHistoryQuery = trpc.media.listTasks.useQuery(
+    {
+      mediaType: "video",
+      status: "completed",
+      limit: 80,
+      offset: 0,
+      daysAgo: 365,
+    },
+    {
+      enabled: Boolean(
+        isAuthenticated
+        && !authLoading
         && libraryTab === "videos",
       ),
+      refetchOnWindowFocus: false,
+      staleTime: 20_000,
     },
   );
 
@@ -1090,17 +1439,67 @@ export default function PresentationEditor() {
   const [selectedSlideAudioDurationSec, setSelectedSlideAudioDurationSec] = useState<number | null>(null);
   const [selectedSlideVideoDurationSec, setSelectedSlideVideoDurationSec] = useState<number | null>(null);
   const imageLibraryAssets = useMemo(
-    () => normalizeLibraryMediaItems(imageLibraryQuery.data?.results, "image"),
-    [imageLibraryQuery.data?.results],
+    () => normalizeLibraryMediaItems(
+      trimmedLibrarySearchQuery.length > 0
+        ? imageLibrarySearchQuery.data?.results
+        : imageLibraryQuery.data?.results,
+      "image",
+      currentUserId,
+    ),
+    [
+      currentUserId,
+      imageLibraryQuery.data?.results,
+      imageLibrarySearchQuery.data?.results,
+      trimmedLibrarySearchQuery,
+    ],
   );
   const autoLayoutWatermarkOptions = useMemo(
-    () => normalizeWatermarkLibraryOptions(imageLibraryQuery.data?.results),
-    [imageLibraryQuery.data?.results],
+    () => normalizeWatermarkLibraryOptions(autoLayoutWatermarkQuery.data?.results),
+    [autoLayoutWatermarkQuery.data?.results],
   );
+  const autoLayoutWatermarkComboboxItems = useMemo(
+    () => autoLayoutWatermarkOptions.map((option) => ({
+      value: option.sourceUrl,
+      label: option.label,
+      description: `.${option.format}`,
+    })),
+    [autoLayoutWatermarkOptions],
+  );
+  const resolveAutoLayoutWatermarkOption = useCallback((sourceUrl: string): LibraryWatermarkOption | null => {
+    const normalizedSourceUrl = sourceUrl.trim();
+    if (!normalizedSourceUrl) {
+      return null;
+    }
+    const fromCurrentQuery = autoLayoutWatermarkOptions.find((option) => option.sourceUrl === normalizedSourceUrl);
+    if (fromCurrentQuery) {
+      return fromCurrentQuery;
+    }
+    if (autoLayoutWatermarkSelectionCache?.sourceUrl === normalizedSourceUrl) {
+      return autoLayoutWatermarkSelectionCache;
+    }
+    const inferredFormat = inferWatermarkFormatFromSourceUrl(normalizedSourceUrl);
+    if (!inferredFormat) {
+      return null;
+    }
+    return {
+      id: -1,
+      label: normalizedSourceUrl.split("/").pop() || "Selected watermark",
+      sourceUrl: normalizedSourceUrl,
+      thumbnailUrl: normalizedSourceUrl,
+      format: inferredFormat,
+    };
+  }, [autoLayoutWatermarkOptions, autoLayoutWatermarkSelectionCache]);
   const selectedAutoLayoutWatermarkOption = useMemo(
-    () => autoLayoutWatermarkOptions.find((option) => option.sourceUrl === autoLayoutWatermarkSourceUrl) || null,
-    [autoLayoutWatermarkOptions, autoLayoutWatermarkSourceUrl],
+    () => resolveAutoLayoutWatermarkOption(autoLayoutWatermarkSourceUrl),
+    [resolveAutoLayoutWatermarkOption, autoLayoutWatermarkSourceUrl],
   );
+  const handleAutoLayoutWatermarkSourceChange = useCallback((sourceUrl: string) => {
+    setAutoLayoutWatermarkSourceUrl(sourceUrl);
+    const selected = autoLayoutWatermarkOptions.find((option) => option.sourceUrl === sourceUrl) || null;
+    if (selected) {
+      setAutoLayoutWatermarkSelectionCache(selected);
+    }
+  }, [autoLayoutWatermarkOptions]);
   const autoLayoutCanApplyWatermark = !autoLayoutWatermarkEnabled || selectedAutoLayoutWatermarkOption !== null;
   const autoLayoutApplyDisabled = !deck
     || !selectedSlide
@@ -1108,13 +1507,46 @@ export default function PresentationEditor() {
     || autoLayoutTargetCount <= 0
     || !autoLayoutCanApplyWatermark;
   const videoLibraryAssets = useMemo(
-    () => normalizeLibraryMediaItems(videoLibraryQuery.data?.results, "video"),
-    [videoLibraryQuery.data?.results],
+    () => normalizeLibraryMediaItems(
+      trimmedLibrarySearchQuery.length > 0
+        ? videoLibrarySearchQuery.data?.results
+        : videoLibraryQuery.data?.results,
+      "video",
+      currentUserId,
+    ),
+    [
+      currentUserId,
+      trimmedLibrarySearchQuery,
+      videoLibraryQuery.data?.results,
+      videoLibrarySearchQuery.data?.results,
+    ],
   );
-  const currentLibraryAssets = libraryTab === "videos" ? videoLibraryAssets : imageLibraryAssets;
-  const libraryLoading = libraryTab === "videos"
-    ? videoLibraryQuery.isLoading
-    : imageLibraryQuery.isLoading;
+  const imageHistoryAssets = useMemo(
+    () => normalizeMediaHistoryItems(imageHistoryQuery.data?.tasks, "image", trimmedLibrarySearchQuery),
+    [imageHistoryQuery.data?.tasks, trimmedLibrarySearchQuery],
+  );
+  const videoHistoryAssets = useMemo(
+    () => normalizeMediaHistoryItems(videoHistoryQuery.data?.tasks, "video", trimmedLibrarySearchQuery),
+    [trimmedLibrarySearchQuery, videoHistoryQuery.data?.tasks],
+  );
+  const mergedImageLibraryAssets = useMemo(
+    () => mergeLibraryAssets(imageHistoryAssets, imageLibraryAssets),
+    [imageHistoryAssets, imageLibraryAssets],
+  );
+  const mergedVideoLibraryAssets = useMemo(
+    () => mergeLibraryAssets(videoHistoryAssets, videoLibraryAssets),
+    [videoHistoryAssets, videoLibraryAssets],
+  );
+  const currentLibraryAssets = libraryTab === "videos" ? mergedVideoLibraryAssets : mergedImageLibraryAssets;
+  const imageLibraryLoading = (trimmedLibrarySearchQuery.length > 0
+    ? imageLibrarySearchQuery.isLoading
+    : imageLibraryQuery.isLoading)
+    || imageHistoryQuery.isLoading;
+  const videoLibraryLoading = (trimmedLibrarySearchQuery.length > 0
+    ? videoLibrarySearchQuery.isLoading
+    : videoLibraryQuery.isLoading)
+    || videoHistoryQuery.isLoading;
+  const libraryLoading = libraryTab === "videos" ? videoLibraryLoading : imageLibraryLoading;
   useEffect(() => {
     if (!autoLayoutWatermarkEnabled || autoLayoutWatermarkSourceUrl) {
       return;
@@ -1124,7 +1556,15 @@ export default function PresentationEditor() {
       return;
     }
     setAutoLayoutWatermarkSourceUrl(first.sourceUrl);
+    setAutoLayoutWatermarkSelectionCache(first);
   }, [autoLayoutWatermarkEnabled, autoLayoutWatermarkSourceUrl, autoLayoutWatermarkOptions]);
+  useEffect(() => {
+    if (isAutoLayoutDialogOpen) {
+      return;
+    }
+    setAutoLayoutWatermarkSearchQuery("");
+    setDebouncedAutoLayoutWatermarkSearchQuery("");
+  }, [isAutoLayoutDialogOpen]);
   const activeCanvasSize = useMemo(
     () => normalizeCanvasSize(draftContent.canvas),
     [draftContent.canvas],
@@ -2296,7 +2736,7 @@ export default function PresentationEditor() {
     const watermarkSourceUrl = (options?.watermarkSourceUrl ?? autoLayoutWatermarkSourceUrl).trim();
     const watermarkClarityPercent = options?.watermarkClarityPercent ?? autoLayoutWatermarkClarityPercent;
     const selectedWatermarkOption = watermarkEnabled
-      ? autoLayoutWatermarkOptions.find((option) => option.sourceUrl === watermarkSourceUrl) || null
+      ? resolveAutoLayoutWatermarkOption(watermarkSourceUrl)
       : null;
     const targetSlides = scope === "all" ? slides : [selectedSlide];
     const selectedId = selectedSlide.id;
@@ -4664,26 +5104,22 @@ export default function PresentationEditor() {
                 <div className="space-y-3">
                   <div className="space-y-1.5">
                     <Label>Watermark image</Label>
-                    <Select
+                    <SearchableCombobox
+                      items={autoLayoutWatermarkComboboxItems}
                       value={autoLayoutWatermarkSourceUrl}
-                      onValueChange={setAutoLayoutWatermarkSourceUrl}
+                      onValueChange={handleAutoLayoutWatermarkSourceChange}
                       disabled={autoLayoutBusy || autoLayoutWatermarkOptions.length === 0}
-                    >
-                      <SelectTrigger>
-                        <SelectValue
-                          placeholder={autoLayoutWatermarkOptions.length === 0
-                            ? "No PNG/JPG image found in library"
-                            : "Select watermark image"}
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {autoLayoutWatermarkOptions.map((option) => (
-                          <SelectItem key={`${option.id}-${option.sourceUrl}`} value={option.sourceUrl}>
-                            {option.label} ({option.format.toUpperCase()})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder={autoLayoutWatermarkOptions.length === 0
+                        ? "No PNG/JPG image found in library"
+                        : "Select watermark image"}
+                      searchPlaceholder="Search watermark from Library..."
+                      emptyMessage={autoLayoutWatermarkQuery.isLoading
+                        ? "Loading watermark images..."
+                        : "No matching PNG/JPG watermark found."}
+                      searchValue={autoLayoutWatermarkSearchQuery}
+                      onSearchValueChange={setAutoLayoutWatermarkSearchQuery}
+                    />
+                    <p className="text-[11px] text-slate-500">Search in Library (RAG) by image title or keyword.</p>
                   </div>
                   <div className="space-y-1.5">
                     <Label>Clarity: {autoLayoutWatermarkClarityPercent}%</Label>

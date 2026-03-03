@@ -145,6 +145,16 @@ export const AIPresentationSlideSchema = z.object({
   templateId: z.enum(AI_LAYOUT_TEMPLATE_IDS),
   title: z.string().min(1).max(200),
   body: z.array(z.string()).min(1).max(10),
+  sections: z
+    .array(
+      z.object({
+        heading: z.string().min(1).max(180),
+        details: z.array(z.string().min(1).max(260)).min(1).max(4),
+      }),
+    )
+    .min(1)
+    .max(6)
+    .optional(),
   graphicCategory: z.enum(AI_SVG_CATEGORIES),
   imagePromptKeywords: z.string().min(1).max(500),
 });

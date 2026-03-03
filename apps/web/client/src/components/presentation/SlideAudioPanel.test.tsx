@@ -18,7 +18,7 @@ vi.mock("@/lib/trpc", () => ({
       setDeckAudio: { useMutation: vi.fn() },
     },
     library: {
-      search: { useQuery: vi.fn() },
+      listDocuments: { useQuery: vi.fn() },
       getItem: { useQuery: vi.fn() },
     },
   },
@@ -42,7 +42,7 @@ function makeMutationMock(mutate?: ReturnType<typeof vi.fn>) {
   };
 }
 
-function makeSearchQueryMock(items: Array<{ item_id: number; title: string; item_type: string }> = []) {
+function makeLibraryDocumentsQueryMock(items: Array<Record<string, unknown>> = []) {
   return {
     data: { results: items, total: items.length },
     isLoading: false,
@@ -102,8 +102,8 @@ describe("SlideAudioPanel", () => {
     vi.mocked(trpc.presentation.setDeckAudio.useMutation).mockReturnValue(
       makeMutationMock() as any,
     );
-    vi.mocked(trpc.library.search.useQuery).mockReturnValue(
-      makeSearchQueryMock() as any,
+    vi.mocked(trpc.library.listDocuments.useQuery).mockReturnValue(
+      makeLibraryDocumentsQueryMock() as any,
     );
     vi.mocked(trpc.library.getItem.useQuery).mockReturnValue(
       makeGetItemQueryMock() as any,
@@ -210,10 +210,10 @@ describe("SlideAudioPanel", () => {
   // 8. Picker opens filtered to audio item type
   it("media library picker filters to audio item type when Add Audio is clicked", async () => {
     let capturedInput: any;
-    vi.mocked(trpc.library.search.useQuery).mockImplementation(
+    vi.mocked(trpc.library.listDocuments.useQuery).mockImplementation(
       (input: any) => {
         capturedInput = input;
-        return makeSearchQueryMock() as any;
+        return makeLibraryDocumentsQueryMock() as any;
       },
     );
 
@@ -222,11 +222,12 @@ describe("SlideAudioPanel", () => {
       fireEvent.click(screen.getByRole("button", { name: /add audio/i }));
     });
 
-    // AudioPickerDialog is now open, useQuery is called with audio filter
+    // AudioPickerDialog is now open, useQuery is called with audio filter/scope
     expect(capturedInput?.filters?.itemType).toBe("audio");
+    expect(capturedInput?.scope).toBe("all");
   });
 
-  it("end trim input unlocks when Play to end is turned off", () => {
+  it("end trim input is always enabled regardless of Play to end state", () => {
     render(
       <SlideAudioPanel
         {...PROPS_NO_AUDIO}
@@ -235,8 +236,28 @@ describe("SlideAudioPanel", () => {
     );
 
     const endInput = screen.getByLabelText("slide-audio-trim-end-seconds") as HTMLInputElement;
-    expect(endInput.disabled).toBe(true);
-    fireEvent.click(screen.getByRole("switch", { name: /play to end/i }));
+    // End input is always enabled — editing it auto-disables "Play to end"
     expect(endInput.disabled).toBe(false);
+  });
+
+  it("shows 'Shared' badge for audio files shared via group", () => {
+    vi.mocked(trpc.library.listDocuments.useQuery).mockReturnValue(
+      makeLibraryDocumentsQueryMock([
+        {
+          id: 99,
+          item_type: "audio",
+          title: "Shared Group Audio",
+          status: "ready",
+          source_url: "https://cdn.example.com/shared-group-audio.mp3",
+          access_source: "shared_group",
+          created_at: new Date().toISOString(),
+          metadata: {},
+        },
+      ]) as any,
+    );
+
+    render(<SlideAudioPanel {...PROPS_NO_AUDIO} />);
+    fireEvent.click(screen.getByRole("button", { name: /add audio/i }));
+    expect(screen.getByText("Shared")).toBeInTheDocument();
   });
 });

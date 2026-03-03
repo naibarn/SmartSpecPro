@@ -106,6 +106,33 @@ function buildLibraryMediaList() {
   };
 }
 
+function buildMediaHistoryTasks() {
+  return [
+    {
+      id: "hist-img-1",
+      mediaType: "image",
+      status: "completed",
+      model: "flux-2.0",
+      prompt: "History Hero",
+      resultUrl: "https://cdn.example.com/history-hero.png",
+      resultData: {},
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: "hist-video-1",
+      mediaType: "video",
+      status: "completed",
+      model: "veo-3-1",
+      prompt: "History Teaser",
+      resultUrl: "https://cdn.example.com/history-teaser.mp4",
+      resultData: {
+        poster: "https://cdn.example.com/history-teaser-poster.png",
+      },
+      createdAt: new Date().toISOString(),
+    },
+  ];
+}
+
 function buildPresentationVersions() {
   return [
     {
@@ -149,6 +176,7 @@ const queryState = {
     itemId: 42,
     editorRoute: "/presentation-editor/42",
   },
+  mediaHistoryTasks: buildMediaHistoryTasks(),
   deckByItem: buildDeckByItem(),
   deckError: null as Error | null,
   presentationVersions: buildPresentationVersions(),
@@ -204,6 +232,32 @@ vi.mock("@/lib/trpc", () => ({
               ...queryState.libraryMediaList,
               total: filteredResults.length,
               results: filteredResults,
+            },
+            isLoading: false,
+            error: null,
+          };
+        }),
+      },
+      search: {
+        useQuery: vi.fn((input?: any) => {
+          const itemType = input?.filters?.itemType;
+          const query = String(input?.query || "").trim().toLowerCase();
+          const filteredByType = queryState.libraryMediaList.results.filter((item: any) =>
+            itemType ? item.item_type === itemType : true,
+          );
+          const filteredByQuery = query
+            ? filteredByType.filter((item: any) =>
+              `${item.title || ""} ${item.description || ""}`.toLowerCase().includes(query))
+            : filteredByType;
+          return {
+            data: {
+              version: "library_search_v1",
+              query,
+              total: filteredByQuery.length,
+              limit: filteredByQuery.length,
+              offset: 0,
+              has_more: false,
+              results: filteredByQuery,
             },
             isLoading: false,
             error: null,
@@ -373,6 +427,26 @@ vi.mock("@/lib/trpc", () => ({
       cancelImport: { useMutation: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })) },
     },
     media: {
+      listTasks: {
+        useQuery: vi.fn((input?: any) => {
+          const mediaType = input?.mediaType;
+          const status = input?.status;
+          const filteredTasks = queryState.mediaHistoryTasks.filter((task: any) => (
+            (!mediaType || task.mediaType === mediaType)
+            && (!status || task.status === status)
+          ));
+          return {
+            data: {
+              tasks: filteredTasks,
+              total: filteredTasks.length,
+              limit: filteredTasks.length,
+              offset: 0,
+            },
+            isLoading: false,
+            error: null,
+          };
+        }),
+      },
       generateImageAsync: {
         useMutation: vi.fn(() => ({
           mutateAsync: mutationMocks.generateImageAsync,
@@ -473,6 +547,7 @@ describe("PresentationEditor", () => {
     queryState.itemLoading = false;
     queryState.guardLoading = false;
     queryState.libraryMediaList = buildLibraryMediaList();
+    queryState.mediaHistoryTasks = buildMediaHistoryTasks();
     queryState.deckByItem = buildDeckByItem();
     queryState.deckError = null;
     queryState.presentationVersions = buildPresentationVersions();
@@ -518,7 +593,9 @@ describe("PresentationEditor", () => {
     render(<PresentationEditor />);
 
     fireEvent.click(screen.getByRole("button", { name: /open photos library/i }));
-    fireEvent.click(screen.getByRole("button", { name: /^insert$/i }));
+    const heroCard = screen.getByText("Hero Image").closest("[role='button']");
+    expect(heroCard).toBeTruthy();
+    fireEvent.click(within(heroCard as HTMLElement).getByRole("button", { name: /^insert$/i }));
 
     await waitFor(() => {
       expect(screen.getByLabelText("Image URL")).toHaveValue("https://cdn.example.com/hero.png");
@@ -528,11 +605,127 @@ describe("PresentationEditor", () => {
     });
   });
 
+  it("inserts image from media history when available", async () => {
+    queryState.libraryMediaList = {
+      ...buildLibraryMediaList(),
+      results: buildLibraryMediaList().results.filter((item: any) => item.item_type !== "image"),
+    };
+    queryState.mediaHistoryTasks = [
+      {
+        id: "hist-img-99",
+        mediaType: "image",
+        status: "completed",
+        model: "flux-2.0",
+        prompt: "History Only Image",
+        resultUrl: "https://cdn.example.com/history-only-image.png",
+        resultData: {},
+        createdAt: new Date().toISOString(),
+      },
+    ] as any;
+
+    render(<PresentationEditor />);
+    fireEvent.click(screen.getByRole("button", { name: /open photos library/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^insert$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Image URL")).toHaveValue("https://cdn.example.com/history-only-image.png");
+      expect(screen.getByLabelText("Image Alt Text")).toHaveValue("History Only Image");
+    });
+  });
+
+  it("shows source badges on asset cards (History/Library/Shared)", async () => {
+    queryState.libraryMediaList = {
+      ...buildLibraryMediaList(),
+      results: [
+        {
+          ...buildLibraryMediaList().results[0],
+          id: 405,
+          title: "Shared Hero",
+          source_url: "https://cdn.example.com/shared-hero.png",
+          thumbnail_url: "https://cdn.example.com/shared-hero-thumb.png",
+          access_source: "shared_group",
+        },
+      ],
+    } as any;
+    queryState.mediaHistoryTasks = [
+      {
+        id: "hist-img-100",
+        mediaType: "image",
+        status: "completed",
+        model: "flux-2.0",
+        prompt: "History Badge Image",
+        resultUrl: "https://cdn.example.com/history-badge-image.png",
+        resultData: {},
+        createdAt: new Date().toISOString(),
+      },
+    ] as any;
+
+    render(<PresentationEditor />);
+    fireEvent.click(screen.getByRole("button", { name: /open photos library/i }));
+
+    const historyCard = screen.getByText("History Badge Image").closest("[role='button']");
+    const sharedCard = screen.getByText("Shared Hero").closest("[role='button']");
+    expect(historyCard).toBeTruthy();
+    expect(sharedCard).toBeTruthy();
+    expect(within(historyCard as HTMLElement).getByText("History")).toBeInTheDocument();
+    expect(within(sharedCard as HTMLElement).getByText("Shared")).toBeInTheDocument();
+  });
+
+  it("filters asset cards by source chip", async () => {
+    queryState.libraryMediaList = {
+      ...buildLibraryMediaList(),
+      results: [
+        {
+          ...buildLibraryMediaList().results[0],
+          id: 406,
+          title: "Library Hero",
+          source_url: "https://cdn.example.com/library-hero.png",
+          thumbnail_url: "https://cdn.example.com/library-hero-thumb.png",
+          access_source: "owner",
+        },
+        {
+          ...buildLibraryMediaList().results[0],
+          id: 407,
+          title: "Shared Hero",
+          source_url: "https://cdn.example.com/shared-hero.png",
+          thumbnail_url: "https://cdn.example.com/shared-hero-thumb.png",
+          access_source: "shared_group",
+        },
+      ],
+    } as any;
+    queryState.mediaHistoryTasks = [
+      {
+        id: "hist-img-101",
+        mediaType: "image",
+        status: "completed",
+        model: "flux-2.0",
+        prompt: "History Filter Image",
+        resultUrl: "https://cdn.example.com/history-filter-image.png",
+        resultData: {},
+        createdAt: new Date().toISOString(),
+      },
+    ] as any;
+
+    render(<PresentationEditor />);
+    fireEvent.click(screen.getByRole("button", { name: /open photos library/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: /filter source history/i }));
+    expect(screen.getByText("History Filter Image")).toBeInTheDocument();
+    expect(screen.queryByText("Library Hero")).not.toBeInTheDocument();
+    expect(screen.queryByText("Shared Hero")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /filter source shared/i }));
+    expect(screen.getByText("Shared Hero")).toBeInTheDocument();
+    expect(screen.queryByText("History Filter Image")).not.toBeInTheDocument();
+  });
+
   it("inserts video from library panel into canvas content", async () => {
     render(<PresentationEditor />);
 
     fireEvent.click(screen.getByRole("button", { name: /open videos library/i }));
-    fireEvent.click(screen.getByRole("button", { name: /^insert$/i }));
+    const teaserCard = screen.getByText("Teaser Clip").closest("[role='button']");
+    expect(teaserCard).toBeTruthy();
+    fireEvent.click(within(teaserCard as HTMLElement).getByRole("button", { name: /^insert$/i }));
 
     await waitFor(() => {
       expect(screen.getByLabelText("Video src")).toHaveValue("https://cdn.example.com/teaser.mp4");

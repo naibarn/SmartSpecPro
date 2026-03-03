@@ -31,6 +31,17 @@ function extensionFromUrl(url: string): string | null {
   return ext.length > 0 ? ext : null;
 }
 
+export function inferWatermarkFormatFromSourceUrl(sourceUrl: string): WatermarkFormat | null {
+  const sourceExt = extensionFromUrl(sourceUrl);
+  if (sourceExt === "png") {
+    return "png";
+  }
+  if (sourceExt === "jpg" || sourceExt === "jpeg") {
+    return "jpg";
+  }
+  return null;
+}
+
 function extensionFromTitle(title: string): string | null {
   const ext = title.slice(title.lastIndexOf(".") + 1).trim().toLowerCase();
   return ext.length > 0 ? ext : null;
@@ -68,12 +79,9 @@ export function inferWatermarkFormatFromLibraryImage(row: {
     return metadataFormat;
   }
 
-  const sourceExt = extensionFromUrl(row.sourceUrl);
-  if (sourceExt === "png") {
-    return "png";
-  }
-  if (sourceExt === "jpg" || sourceExt === "jpeg") {
-    return "jpg";
+  const sourceFormat = inferWatermarkFormatFromSourceUrl(row.sourceUrl);
+  if (sourceFormat) {
+    return sourceFormat;
   }
 
   const titleExt = extensionFromTitle(String(row.title ?? ""));

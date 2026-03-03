@@ -88,6 +88,13 @@
       ],
       "default": "medium"
     },
+    "word_count": {
+      "type": "integer",
+      "title": "Maximum words (optional)",
+      "description": "If provided, the article must not exceed this word count. Overrides length preset guidance.",
+      "minimum": 120,
+      "maximum": 8000
+    },
     "include_checklist": {
       "type": "boolean",
       "title": "Include checklist",

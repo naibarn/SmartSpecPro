@@ -189,6 +189,12 @@ describe("AIPresentationSlideSchema", () => {
       templateId: "hero_center",
       title: "Introduction",
       body: ["Point one", "Point two"],
+      sections: [
+        {
+          heading: "Overview",
+          details: ["Key context", "Expected outcome"],
+        },
+      ],
       graphicCategory: "Technology",
       imagePromptKeywords: "futuristic AI robot",
     });
@@ -200,6 +206,18 @@ describe("AIPresentationSlideSchema", () => {
       templateId: "unknown_template",
       title: "Title",
       body: ["text"],
+      graphicCategory: "Business",
+      imagePromptKeywords: "keywords",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects sections without heading/details", () => {
+    const result = AIPresentationSlideSchema.safeParse({
+      templateId: "hero_center",
+      title: "Title",
+      body: ["text"],
+      sections: [{ heading: "", details: [] }],
       graphicCategory: "Business",
       imagePromptKeywords: "keywords",
     });

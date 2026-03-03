@@ -120,6 +120,17 @@
             { "value": "medium", "label": "Medium (~700 words)", "labelTh": "กลาง (~700 คำ)" },
             { "value": "long", "label": "Long (~1,200 words)", "labelTh": "ยาว (~1,200 คำ)" }
           ]
+        },
+        {
+          "id": "word_count",
+          "type": "number",
+          "label": "Maximum Words (optional)",
+          "labelTh": "จำนวนคำสูงสุด (ไม่บังคับ)",
+          "helpText": "If set, the generated article must not exceed this number of words (overrides length preset).",
+          "helpTextTh": "หากกำหนด ระบบจะสร้างบทความไม่เกินจำนวนคำนี้ (มีผลเหนือกว่า preset ความยาว)",
+          "min": 120,
+          "max": 8000,
+          "step": 10
         }
       ]
     },
@@ -197,6 +208,7 @@
     "age_max": "age_max",
     "article_style": "article_style",
     "length": "length",
+    "word_count": "word_count",
     "include_checklist": "include_checklist",
     "include_red_flags": "include_red_flags",
     "show_references": "show_references",

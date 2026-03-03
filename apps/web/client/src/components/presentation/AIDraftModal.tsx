@@ -41,7 +41,11 @@ import { SearchableCombobox } from "./SearchableCombobox";
 import { ImageModelCombobox } from "./ImageModelCombobox";
 import DynamicSkillForm from "@/components/media/DynamicSkillForm";
 import type { SkillInputSchema } from "@/components/media/DynamicSkillForm";
-import { normalizeWatermarkLibraryOptions } from "@/lib/presentationWatermark";
+import {
+  inferWatermarkFormatFromSourceUrl,
+  normalizeWatermarkLibraryOptions,
+  type LibraryWatermarkOption,
+} from "@/lib/presentationWatermark";
 import {
   Sparkles,
   Loader2,
@@ -106,6 +110,9 @@ export function AIDraftModal({
   const [watermarkEnabled, setWatermarkEnabled] = useState(false);
   const [watermarkSourceUrl, setWatermarkSourceUrl] = useState("");
   const [watermarkClarityPercent, setWatermarkClarityPercent] = useState(20);
+  const [watermarkSearchQuery, setWatermarkSearchQuery] = useState("");
+  const [debouncedWatermarkSearchQuery, setDebouncedWatermarkSearchQuery] = useState("");
+  const [watermarkSelectionCache, setWatermarkSelectionCache] = useState<LibraryWatermarkOption | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   // Progress state
@@ -122,9 +129,10 @@ export function AIDraftModal({
   const skills = skillsQuery.data?.skills ?? [];
   const watermarkLibraryQuery = trpc.library.listDocuments.useQuery(
     {
+      query: debouncedWatermarkSearchQuery || undefined,
       scope: "all",
       sort: "updated_desc",
-      limit: 40,
+      limit: 50,
       offset: 0,
       filters: {
         itemType: "image",
@@ -143,6 +151,24 @@ export function AIDraftModal({
   const skillSchema = skillSchemaQuery.data?.hasSchema
     ? (skillSchemaQuery.data.schema as SkillInputSchema)
     : null;
+  const hasArticleWordCountOverrideHint = useMemo(() => {
+    if (!skillSchema?.sections) {
+      return false;
+    }
+    const fieldIds = new Set(
+      skillSchema.sections.flatMap((section) =>
+        section.fields.map((field) => String(field.id || "").trim()),
+      ),
+    );
+    const hasLengthField = fieldIds.has("length");
+    const hasWordCountField = (
+      fieldIds.has("word_count")
+      || fieldIds.has("wordCount")
+      || fieldIds.has("max_words")
+      || fieldIds.has("maxWords")
+    );
+    return hasLengthField && hasWordCountField;
+  }, [skillSchema]);
 
   // Restore saved selections from localStorage when skills load
   useEffect(() => {
@@ -255,9 +281,48 @@ export function AIDraftModal({
     [watermarkLibraryQuery.data?.results],
   );
   const selectedWatermarkOption = useMemo(
-    () => watermarkOptions.find((option) => option.sourceUrl === watermarkSourceUrl) || null,
-    [watermarkOptions, watermarkSourceUrl],
+    () => {
+      const sourceUrl = watermarkSourceUrl.trim();
+      if (!sourceUrl) {
+        return null;
+      }
+      const fromList = watermarkOptions.find((option) => option.sourceUrl === sourceUrl);
+      if (fromList) {
+        return fromList;
+      }
+      if (watermarkSelectionCache?.sourceUrl === sourceUrl) {
+        return watermarkSelectionCache;
+      }
+      const inferredFormat = inferWatermarkFormatFromSourceUrl(sourceUrl);
+      if (!inferredFormat) {
+        return null;
+      }
+      return {
+        id: -1,
+        label: sourceUrl.split("/").pop() || "Selected watermark",
+        sourceUrl,
+        thumbnailUrl: sourceUrl,
+        format: inferredFormat,
+      } satisfies LibraryWatermarkOption;
+    },
+    [watermarkOptions, watermarkSourceUrl, watermarkSelectionCache],
   );
+  const watermarkComboboxItems = useMemo(
+    () => watermarkOptions.map((option) => ({
+      value: option.sourceUrl,
+      label: option.label,
+      description: `.${option.format}`,
+    })),
+    [watermarkOptions],
+  );
+
+  const handleWatermarkSourceChange = useCallback((sourceUrl: string) => {
+    setWatermarkSourceUrl(sourceUrl);
+    const selected = watermarkOptions.find((option) => option.sourceUrl === sourceUrl) || null;
+    if (selected) {
+      setWatermarkSelectionCache(selected);
+    }
+  }, [watermarkOptions]);
 
   // Mutations
   const generateDraft = trpc.presentation.ai.generateDraft.useMutation();
@@ -332,6 +397,13 @@ export function AIDraftModal({
     lastProgressMarkerRef.current = "";
   }, [isOpen]);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedWatermarkSearchQuery(watermarkSearchQuery.trim());
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [watermarkSearchQuery]);
+
   // Reset advanced options to modal defaults on each open
   useEffect(() => {
     if (!isOpen) return;
@@ -341,6 +413,8 @@ export function AIDraftModal({
     setShowPageNumber(false);
     setWatermarkEnabled(false);
     setWatermarkClarityPercent(20);
+    setWatermarkSearchQuery("");
+    setDebouncedWatermarkSearchQuery("");
   }, [isOpen]);
 
   useEffect(() => {
@@ -352,6 +426,7 @@ export function AIDraftModal({
       return;
     }
     setWatermarkSourceUrl(first.sourceUrl);
+    setWatermarkSelectionCache(first);
   }, [watermarkEnabled, watermarkSourceUrl, watermarkOptions]);
 
   const selectedPreset = getBuiltInPreset(selectedPresetId);
@@ -636,6 +711,7 @@ export function AIDraftModal({
           step={1}
           value={[numSlides]}
           onValueChange={(v) => setNumSlides(v[0])}
+          className="[&_[data-slot=slider-track]]:h-2 [&_[data-slot=slider-track]]:rounded-full [&_[data-slot=slider-track]]:bg-gray-200 [&_[data-slot=slider-range]]:bg-teal-500 [&_[data-slot=slider-range]]:h-full [&_[data-slot=slider-thumb]]:size-5 [&_[data-slot=slider-thumb]]:border-2 [&_[data-slot=slider-thumb]]:border-teal-500 [&_[data-slot=slider-thumb]]:bg-white [&_[data-slot=slider-thumb]]:rounded-full"
         />
       </div>
 
@@ -682,6 +758,14 @@ export function AIDraftModal({
             excludeFields={["topic", "prompt", "subject"]}
             className="space-y-3"
           />
+          {hasArticleWordCountOverrideHint && (
+            <p
+              data-testid="word-count-override-hint"
+              className="mt-2 text-xs text-muted-foreground"
+            >
+              If both <span className="font-medium">Length</span> and <span className="font-medium">Maximum Words</span> are set, <span className="font-medium">Maximum Words</span> overrides Length.
+            </p>
+          )}
         </div>
       )}
 
@@ -1015,26 +1099,22 @@ export function AIDraftModal({
                 <div className="space-y-3 pl-4">
                   <div className="space-y-1">
                     <Label className="text-sm text-muted-foreground">Watermark image (PNG/JPG from Library)</Label>
-                    <Select
+                    <SearchableCombobox
+                      items={watermarkComboboxItems}
                       value={watermarkSourceUrl}
-                      onValueChange={setWatermarkSourceUrl}
+                      onValueChange={handleWatermarkSourceChange}
                       disabled={watermarkOptions.length === 0 || watermarkLibraryQuery.isLoading}
-                    >
-                      <SelectTrigger>
-                        <SelectValue
-                          placeholder={watermarkOptions.length === 0
-                            ? "No PNG/JPG image found in library"
-                            : "Select watermark image"}
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {watermarkOptions.map((option) => (
-                          <SelectItem key={`${option.id}-${option.sourceUrl}`} value={option.sourceUrl}>
-                            {option.label} ({option.format.toUpperCase()})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      placeholder={watermarkOptions.length === 0
+                        ? "No PNG/JPG image found in library"
+                        : "Select watermark image"}
+                      searchPlaceholder="Search watermark from Library..."
+                      emptyMessage={watermarkLibraryQuery.isLoading
+                        ? "Loading watermark images..."
+                        : "No matching PNG/JPG watermark found."}
+                      searchValue={watermarkSearchQuery}
+                      onSearchValueChange={setWatermarkSearchQuery}
+                    />
+                    <p className="text-[11px] text-muted-foreground">Search in Library (RAG) by image title or keyword.</p>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-sm text-muted-foreground">

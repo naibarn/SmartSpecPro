@@ -76,6 +76,7 @@ import {
   Crop,
   AlertCircle,
   Library,
+  Lock,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -95,6 +96,7 @@ import {
 } from "@/lib/libraryUi";
 
 import DynamicSkillForm, { type SkillInputSchema, type StyleAction } from "@/components/media/DynamicSkillForm";
+import { LibraryFilePicker } from "@/components/library/LibraryFilePicker";
 import {
   COMMON_GRIDS,
   detectGrid,
@@ -634,22 +636,36 @@ export default function MediaStudio() {
     }
   }, [selectedModel, activeTab, modelInitialized]);
 
-  // Reset dynamic model input values when model changes, populate with defaults
+  // Reset dynamic model input values when model changes, populate with defaults + current synced values
   useEffect(() => {
     if (!selectedModel || !mediaModels?.models) {
       setModelInputValues({});
       return;
     }
-    const model = mediaModels.models.find((m: any) => m.modelId === selectedModel);
+    const model = (mediaModels.models as any[]).find((m) => m.modelId === selectedModel);
     const config = model?.configJson as any;
     if (!config?.inputFields) {
       setModelInputValues({});
       return;
     }
     const defaults: Record<string, any> = {};
-    for (const field of config.inputFields) {
+    for (const field of (config.inputFields as any[])) {
+      // Seed from static default first
       if (field.default !== undefined) {
         defaults[field.key] = field.default;
+      }
+      // Synced fields get their initial value from the current runtime state.
+      // Legacy fallback: fields that pre-date syncWith use type to detect reference-image sync,
+      // but ONLY when syncWith is completely absent (undefined) — an explicit "none" means no sync.
+      const syncWith: string = field.syncWith ?? "none";
+      const isLegacyRefImg = field.syncWith === undefined &&
+        (field.type === "image_urls" || field.type === "video_urls" || field.type === "audio_urls");
+      if (syncWith === "prompt") {
+        defaults[field.key] = prompt;
+      } else if (syncWith === "reference_images" || isLegacyRefImg) {
+        defaults[field.key] = referenceImages.map((r: any) => r.url);
+      } else if (syncWith === "aspect_ratio") {
+        defaults[field.key] = aspectRatio;
       }
     }
     setModelInputValues(defaults);
@@ -666,6 +682,33 @@ export default function MediaStudio() {
       }
     }
   }, [selectedModel, mediaModels, activeTab, aspectRatio, setAspectRatio]);
+
+  // Keep modelInputValues in sync with runtime values for fields that declare syncWith targets.
+  // Runs whenever prompt / referenceImages / aspectRatio changes so the read-only display stays current.
+  useEffect(() => {
+    if (!selectedModel || !mediaModels?.models) return;
+    const model = (mediaModels.models as any[]).find((m) => m.modelId === selectedModel);
+    const config = model?.configJson as any;
+    if (!config?.inputFields) return;
+
+    const syncedValues: Record<string, any> = {};
+    for (const field of (config.inputFields as any[])) {
+      const syncWith: string = field.syncWith ?? "none";
+      const isLegacyRefImg = field.syncWith === undefined &&
+        (field.type === "image_urls" || field.type === "video_urls" || field.type === "audio_urls");
+      if (syncWith === "prompt") {
+        syncedValues[field.key] = prompt;
+      } else if (syncWith === "reference_images" || isLegacyRefImg) {
+        syncedValues[field.key] = referenceImages.map((r: any) => r.url);
+      } else if (syncWith === "aspect_ratio") {
+        syncedValues[field.key] = aspectRatio;
+      }
+    }
+    if (Object.keys(syncedValues).length > 0) {
+      setModelInputValues((prev: Record<string, any>) => ({ ...prev, ...syncedValues }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prompt, referenceImages, aspectRatio, selectedModel, mediaModels]);
 
   // Save aspect ratio to localStorage when changed (per-tab)
   useEffect(() => {
@@ -1432,23 +1475,41 @@ export default function MediaStudio() {
       if (modelConfig.apiPayloadFormat) apiConfig.payload_format = modelConfig.apiPayloadFormat;
       if (modelConfig.kieModelId) apiConfig.kie_model_id = modelConfig.kieModelId;
 
-      // Populate extraParams from dynamic input field values
-      for (const field of (modelConfig.inputFields || [])) {
+      // Populate extraParams — syncWith fields get their value from the live runtime state;
+      // unsynchronised fields get the value from modelInputValues (user's direct input).
+      for (const field of (modelConfig.inputFields as any[] | undefined ?? [])) {
+        const syncWith: string = field.syncWith ?? "none";
+
+        // Legacy reference-image sync: only when syncWith is absent entirely, not when explicitly "none"
+        const isLegacyRefImg = field.syncWith === undefined &&
+          (field.type === "image_urls" || field.type === "video_urls" || field.type === "audio_urls");
+        if (syncWith === "reference_images" || isLegacyRefImg) {
+          // Route reference images to this field's key instead of the standard referenceImageUrls param
+          if (referenceImages.length > 0) {
+            extraParams[field.key] = referenceImages.map((r: any) => r.url);
+            usedModelSpecificImageKey = true;
+          }
+          continue;
+        }
+
+        if (syncWith === "prompt") {
+          extraParams[field.key] = finalPrompt;
+          continue;
+        }
+
+        if (syncWith === "aspect_ratio") {
+          extraParams[field.key] = finalAspectRatio;
+          continue;
+        }
+
+        // Unsynchronised field: use user-entered value, skip standard-param duplicates
+        if (field.key === "aspect_ratio" || field.key === "aspect.ratio") continue;
+        if (field.key === "duration" && activeTab === "video") continue;
+
         const val = modelInputValues[field.key];
         if (val !== undefined && val !== null && val !== "") {
-          // Skip fields handled by standard params (aspect_ratio, aspect.ratio, duration)
-          if (field.key === "aspect_ratio" || field.key === "aspect.ratio") continue;
-          if (field.key === "duration" && activeTab === "video") continue;
           extraParams[field.key] = val;
         }
-      }
-
-      // Find inputField with type "image_urls" and add reference images with correct key
-      // This ensures KIE AI models receive images with the key they expect (e.g., "image_input")
-      const imageUrlsField = (modelConfig.inputFields || []).find((f: any) => f.type === "image_urls");
-      if (imageUrlsField && referenceImages.length > 0) {
-        extraParams[imageUrlsField.key] = referenceImages.map((r: any) => r.url);
-        usedModelSpecificImageKey = true;
       }
     }
 
@@ -2727,64 +2788,133 @@ export default function MediaStudio() {
 
                 {/* Dynamic Model Input Fields from configJson */}
                 {(() => {
-                  const modelData = mediaModels?.models?.find((m: any) => m.modelId === selectedModel);
+                  const modelData = (mediaModels?.models as any[] | undefined)?.find((m) => m.modelId === selectedModel);
                   const config = modelData?.configJson as any;
-                  const fields = config?.inputFields || [];
-                  // Filter out fields already handled by standard UI (aspect_ratio, duration for video)
-                  // Handle both aspect_ratio and aspect.ratio naming conventions
-                  const dynamicFields = fields.filter((f: any) => {
+                  const allFields: any[] = config?.inputFields ?? [];
+
+                  const SYNC_LABELS: Record<string, string> = {
+                    reference_images: "Reference Images",
+                    prompt: "Prompt",
+                    aspect_ratio: "Aspect Ratio",
+                  };
+
+                  // Synced fields: ONLY those with an explicit syncWith target (never guess from type).
+                  const syncedFields = allFields.filter((f) => {
+                    const sw: string = f.syncWith ?? "none";
+                    return sw !== "none";
+                  });
+
+                  // Editable fields: no explicit sync AND not a URL-array type AND not a standard-param key.
+                  // URL-array types (image_urls, video_urls, audio_urls) without explicit syncWith are hidden —
+                  // they're handled automatically in the payload builder (legacy compat) but not shown to the user.
+                  const editableFields = allFields.filter((f) => {
+                    const sw: string = f.syncWith ?? "none";
+                    if (sw !== "none") return false;
+                    if (f.type === "image_urls" || f.type === "video_urls" || f.type === "audio_urls") return false;
                     if (f.key === "aspect_ratio" || f.key === "aspect.ratio") return false;
                     if (f.key === "duration" && activeTab === "video") return false;
-                    if (f.type === "image_urls" || f.type === "video_urls" || f.type === "audio_urls") return false;
                     return true;
                   });
-                  if (dynamicFields.length === 0) return null;
-                  return dynamicFields.map((field: any) => (
-                    <div key={field.key} className="space-y-1">
-                      <label className="text-sm text-muted-foreground">
-                        {field.label}
-                        {field.affectsPricing && <span className="ml-1 text-xs text-amber-500">($)</span>}
-                      </label>
-                      {field.type === "select" && field.options ? (
-                        <Select
-                          value={String(modelInputValues[field.key] ?? field.default ?? field.options?.[0]?.value ?? "")}
-                          onValueChange={(v) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: v }))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {field.options.filter((opt: any) => opt.value != null && opt.value !== "").map((opt: any) => (
-                              <SelectItem key={String(opt.value)} value={String(opt.value)}>
-                                {opt.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : field.type === "boolean" ? (
-                        <div className="flex items-center gap-2 h-10">
-                          <Switch
-                            checked={!!modelInputValues[field.key]}
-                            onCheckedChange={(v) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: v }))}
-                          />
-                          <span className="text-sm">{modelInputValues[field.key] ? "On" : "Off"}</span>
+
+                  if (syncedFields.length === 0 && editableFields.length === 0) return null;
+
+                  return (
+                    <>
+                      {/* Synced (read-only) fields */}
+                      {syncedFields.map((field: any) => {
+                        const sw: string = field.syncWith;
+                        const syncLabel = SYNC_LABELS[sw] ?? "Synced";
+
+                        let preview = "—";
+                        if (sw === "reference_images") {
+                          preview = referenceImages.length === 0
+                            ? "No images selected"
+                            : `${referenceImages.length} image${referenceImages.length !== 1 ? "s" : ""} synced`;
+                        } else if (sw === "prompt") {
+                          const src = (enhancedPrompt || prompt).trim();
+                          preview = src.length === 0 ? "No prompt yet" : src.length > 60 ? src.slice(0, 60) + "…" : src;
+                        } else if (sw === "aspect_ratio") {
+                          preview = aspectRatio || "—";
+                        }
+
+                        return (
+                          <div key={field.key} className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <label className="text-sm text-muted-foreground">
+                                {field.label}
+                                {field.affectsPricing && <span className="ml-1 text-xs text-amber-500">($)</span>}
+                              </label>
+                              <Badge variant="secondary" className="flex items-center gap-1 px-1.5 py-0 text-[10px] font-normal">
+                                <Lock className="h-2.5 w-2.5" />
+                                {syncLabel}
+                              </Badge>
+                            </div>
+                            <div className="flex min-h-9 cursor-not-allowed items-center rounded-md border border-dashed bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground select-none">
+                              {preview}
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Editable fields */}
+                      {editableFields.map((field: any) => (
+                        <div key={field.key} className="space-y-1">
+                          <label className="text-sm text-muted-foreground">
+                            {field.label}
+                            {field.affectsPricing && <span className="ml-1 text-xs text-amber-500">($)</span>}
+                          </label>
+                          {field.type === "library_file" ? (
+                            <LibraryFilePicker
+                              value={String(modelInputValues[field.key] ?? "")}
+                              onValueChange={(url) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: url }))}
+                              allowedExtensions={
+                                field.allowedExtensions
+                                  ? String(field.allowedExtensions).split(",").map((e: string) => e.trim().replace(/^\./, "")).filter(Boolean)
+                                  : undefined
+                              }
+                            />
+                          ) : field.type === "select" && field.options ? (
+                            <Select
+                              value={String(modelInputValues[field.key] ?? field.default ?? field.options?.[0]?.value ?? "")}
+                              onValueChange={(v) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: v }))}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(field.options as any[]).filter((opt) => opt.value != null && opt.value !== "").map((opt) => (
+                                  <SelectItem key={String(opt.value)} value={String(opt.value)}>
+                                    {opt.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : field.type === "boolean" ? (
+                            <div className="flex items-center gap-2 h-10">
+                              <Switch
+                                checked={!!modelInputValues[field.key]}
+                                onCheckedChange={(v) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: v }))}
+                              />
+                              <span className="text-sm">{modelInputValues[field.key] ? "On" : "Off"}</span>
+                            </div>
+                          ) : field.type === "number" ? (
+                            <Input
+                              type="number"
+                              value={modelInputValues[field.key] ?? field.default ?? ""}
+                              onChange={(e) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: Number(e.target.value) }))}
+                            />
+                          ) : (
+                            <Input
+                              type="text"
+                              placeholder={field.label}
+                              value={modelInputValues[field.key] ?? ""}
+                              onChange={(e) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: e.target.value }))}
+                            />
+                          )}
                         </div>
-                      ) : field.type === "number" ? (
-                        <Input
-                          type="number"
-                          value={modelInputValues[field.key] ?? field.default ?? ""}
-                          onChange={(e) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: Number(e.target.value) }))}
-                        />
-                      ) : (
-                        <Input
-                          type="text"
-                          placeholder={field.label}
-                          value={modelInputValues[field.key] ?? ""}
-                          onChange={(e) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: e.target.value }))}
-                        />
-                      )}
-                    </div>
-                  ));
+                      ))}
+                    </>
+                  );
                 })()}
 
                 {/* Style Selection (not for audio) */}
