@@ -30,6 +30,49 @@ const originalResolveFilename = (Module as any)._resolveFilename;
   isMain: boolean,
   options: any,
 ) {
+  // Some transformed deps resolve absolute paths to root React 18 jsx runtime.
+  // Redirect those absolute runtime paths to apps/web React 19 runtime.
+  if (path.isAbsolute(request)) {
+    const normalized = request.replace(/\\/g, "/");
+    if (
+      normalized.includes("/node_modules/react/") &&
+      !normalized.includes("/apps/web/node_modules/react/") &&
+      (
+        normalized.endsWith("/jsx-runtime.js") ||
+        normalized.endsWith("/jsx-dev-runtime.js") ||
+        normalized.includes("/cjs/react-jsx-runtime.") ||
+        normalized.includes("/cjs/react-jsx-dev-runtime.")
+      )
+    ) {
+      const marker = "/node_modules/react/";
+      const suffix = normalized.split(marker)[1] ?? "";
+      const redirected = path.join(webNodeModules, "react", suffix);
+      return originalResolveFilename.call(
+        this,
+        redirected,
+        parent,
+        isMain,
+        options,
+      );
+    }
+
+    if (
+      normalized.includes("/node_modules/react-dom/") &&
+      !normalized.includes("/apps/web/node_modules/react-dom/")
+    ) {
+      const marker = "/node_modules/react-dom/";
+      const suffix = normalized.split(marker)[1] ?? "";
+      const redirected = path.join(webNodeModules, "react-dom", suffix);
+      return originalResolveFilename.call(
+        this,
+        redirected,
+        parent,
+        isMain,
+        options,
+      );
+    }
+  }
+
   if (overrides[request]) {
     return originalResolveFilename.call(
       this,

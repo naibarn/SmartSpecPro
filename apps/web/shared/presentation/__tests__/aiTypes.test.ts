@@ -11,6 +11,7 @@ import {
   AI_STYLE_PRESET_IDS,
   AI_GEOMETRIC_CROP_SHAPES,
   AI_GEOMETRIC_ACCENT_SHAPES,
+  AI_WATERMARK_FORMATS,
   MAX_AI_DRAFT_SLIDES,
 } from "../aiTypes";
 
@@ -109,6 +110,76 @@ describe("GenerateAIDraftInputSchema", () => {
       canvasHeight: 12000,
     });
     expect(result.success).toBe(false);
+  });
+
+  it("accepts watermark with png/jpg and clarityPercent", () => {
+    const result = GenerateAIDraftInputSchema.safeParse({
+      ...validInput,
+      watermark: {
+        sourceUrl: "/uploads/watermark-logo.png",
+        format: "png",
+        clarityPercent: 20,
+      },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("defaults watermark clarityPercent to 20 when omitted", () => {
+    const result = GenerateAIDraftInputSchema.safeParse({
+      ...validInput,
+      watermark: {
+        sourceUrl: "/uploads/watermark-logo.png",
+        format: "png",
+      },
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.watermark?.clarityPercent).toBe(20);
+    }
+  });
+
+  it("rejects watermark format outside png/jpg", () => {
+    const result = GenerateAIDraftInputSchema.safeParse({
+      ...validInput,
+      watermark: {
+        sourceUrl: "/uploads/watermark-logo.webp",
+        format: "webp",
+        clarityPercent: 20,
+      },
+    });
+    expect(result.success).toBe(false);
+
+    const wrongUrl = GenerateAIDraftInputSchema.safeParse({
+      ...validInput,
+      watermark: {
+        sourceUrl: "/uploads/watermark-logo.webp",
+        format: "jpg",
+        clarityPercent: 20,
+      },
+    });
+    expect(wrongUrl.success).toBe(false);
+  });
+
+  it("rejects watermark clarity outside 5-100 step 5", () => {
+    const tooLow = GenerateAIDraftInputSchema.safeParse({
+      ...validInput,
+      watermark: {
+        sourceUrl: "/uploads/watermark-logo.jpg",
+        format: "jpg",
+        clarityPercent: 0,
+      },
+    });
+    expect(tooLow.success).toBe(false);
+
+    const wrongStep = GenerateAIDraftInputSchema.safeParse({
+      ...validInput,
+      watermark: {
+        sourceUrl: "/uploads/watermark-logo.jpg",
+        format: "jpg",
+        clarityPercent: 19,
+      },
+    });
+    expect(wrongStep.success).toBe(false);
   });
 });
 
@@ -269,5 +340,9 @@ describe("geometric shape options", () => {
 
   it("defines accent shape choices", () => {
     expect(AI_GEOMETRIC_ACCENT_SHAPES).toEqual(["auto", "rect", "circle", "triangle"]);
+  });
+
+  it("defines watermark image formats", () => {
+    expect(AI_WATERMARK_FORMATS).toEqual(["png", "jpg"]);
   });
 });

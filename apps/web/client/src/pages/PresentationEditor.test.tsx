@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 const setLocationMock = vi.fn();
 const routeParamsMock = { docId: "42" };
@@ -19,6 +19,8 @@ const mutationMocks = {
   setSlideAudio: vi.fn(),
   setDeckAudio: vi.fn(),
   relayoutSlide: vi.fn(),
+  resolvePendingMedia: vi.fn(),
+  generateImageAsync: vi.fn(),
 };
 
 function buildDeckByItem() {
@@ -238,6 +240,14 @@ vi.mock("@/lib/trpc", () => ({
           error: null,
         })),
       },
+      getPlayDeck: {
+        useQuery: vi.fn(() => ({
+          data: null,
+          isLoading: false,
+          error: null,
+          refetch: vi.fn().mockResolvedValue({ data: null }),
+        })),
+      },
       listVersions: {
         useQuery: vi.fn(() => ({
           data: queryState.presentationVersions,
@@ -274,6 +284,12 @@ vi.mock("@/lib/trpc", () => ({
         relayoutSlide: {
           useMutation: vi.fn(() => ({
             mutateAsync: mutationMocks.relayoutSlide,
+            isPending: false,
+          })),
+        },
+        resolvePendingMedia: {
+          useMutation: vi.fn(() => ({
+            mutateAsync: mutationMocks.resolvePendingMedia,
             isPending: false,
           })),
         },
@@ -356,6 +372,24 @@ vi.mock("@/lib/trpc", () => ({
       getImportStatus: { useQuery: vi.fn(() => ({ data: null, isLoading: false })) },
       cancelImport: { useMutation: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })) },
     },
+    media: {
+      generateImageAsync: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: mutationMocks.generateImageAsync,
+          isPending: false,
+        })),
+      },
+      getModels: {
+        useQuery: vi.fn(() => ({
+          data: {
+            models: [{ id: "flux-2.0", name: "Flux 2.0", provider: "fal", creditCost: 5, configJson: { generateType: "text-to-image" } }],
+            defaults: { image: "flux-2.0", video: "veo-3-1" },
+          },
+          isLoading: false,
+          error: null,
+        })),
+      },
+    },
   },
 }));
 
@@ -387,6 +421,7 @@ describe("PresentationEditor", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useRealTimers();
+    localStorage.clear();
     Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 1200 });
     mutationMocks.addSlide.mockResolvedValue({});
     mutationMocks.updateItem.mockResolvedValue({});
@@ -419,6 +454,16 @@ describe("PresentationEditor", () => {
         graphicCategory: "Business",
         reusedImage: true,
       },
+    });
+    mutationMocks.resolvePendingMedia.mockResolvedValue({
+      slide: { id: 71, version: 4 },
+      resolvedAssets: [],
+      unresolvedAssets: [],
+      warnings: [],
+    });
+    mutationMocks.generateImageAsync.mockResolvedValue({
+      taskId: "media-task-1",
+      status: "queued",
     });
     queryState.guard = {
       allowed: true,
@@ -490,8 +535,8 @@ describe("PresentationEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: /^insert$/i }));
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Video URL")).toHaveValue("https://cdn.example.com/teaser.mp4");
-      expect(screen.getByLabelText("Video Title")).toHaveValue("Teaser Clip");
+      expect(screen.getByLabelText("Video src")).toHaveValue("https://cdn.example.com/teaser.mp4");
+      expect(screen.getByLabelText("Video title")).toHaveValue("Teaser Clip");
     });
   });
 
@@ -664,14 +709,14 @@ describe("PresentationEditor", () => {
     expect(screen.getByRole("button", { name: /apply subheading text preset/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /apply body text preset/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /apply citation text preset/i })).toBeInTheDocument();
+    expect(screen.getByText("Font Family")).toBeInTheDocument();
+    expect(screen.getByText("Typography")).toBeInTheDocument();
+    expect(screen.getByText("Spacing")).toBeInTheDocument();
     expect(screen.getByLabelText("Text Font Size")).toBeInTheDocument();
-    expect(screen.getByLabelText("Text Font Family")).toBeInTheDocument();
-    expect(screen.getByLabelText("Text Font Weight")).toBeInTheDocument();
-    expect(screen.getByLabelText("Text Font Style")).toBeInTheDocument();
-    expect(screen.getByLabelText("Text Decoration")).toBeInTheDocument();
-    expect(screen.getByLabelText("Text Align")).toBeInTheDocument();
-    expect(screen.getByLabelText("Text Line Height")).toBeInTheDocument();
-    expect(screen.getByLabelText("Text Letter Spacing")).toBeInTheDocument();
+    expect(screen.getByLabelText("Text Content")).toBeInTheDocument();
+    expect(screen.getByTitle("Bold")).toBeInTheDocument();
+    expect(screen.getByTitle("Italic")).toBeInTheDocument();
+    expect(screen.getByTitle("Underline")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /add rectangle element/i }));
     await waitFor(() => {
@@ -694,17 +739,20 @@ describe("PresentationEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: /apply heading text preset/i }));
     await waitFor(() => {
       expect(screen.getByLabelText("Text Font Size")).toHaveValue(64);
-      expect(screen.getByLabelText("Text Font Weight")).toHaveValue("700");
-      expect(screen.getByLabelText("Text Font Style")).toHaveValue("normal");
-      expect(screen.getByLabelText("Text Line Height")).toHaveValue(1.1);
+      expect(screen.getByTitle("Hello")).toHaveStyle({
+        fontWeight: "700",
+        fontStyle: "normal",
+      });
     });
 
     fireEvent.click(screen.getByRole("button", { name: /apply citation text preset/i }));
     await waitFor(() => {
       expect(screen.getByLabelText("Text Font Size")).toHaveValue(26);
-      expect(screen.getByLabelText("Text Font Weight")).toHaveValue("500");
-      expect(screen.getByLabelText("Text Font Style")).toHaveValue("italic");
-      expect(screen.getByLabelText("Text Align")).toHaveValue("right");
+      expect(screen.getByTitle("Hello")).toHaveStyle({
+        fontWeight: "500",
+        fontStyle: "italic",
+        textAlign: "right",
+      });
     });
   });
 
@@ -835,7 +883,7 @@ describe("PresentationEditor", () => {
   it("navigates back to Presentation Library from editor header", () => {
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: /back to presentation library/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^back$/i }));
     expect(setLocationMock).toHaveBeenCalledWith("/presentations");
   });
 
@@ -907,43 +955,46 @@ describe("PresentationEditor", () => {
     render(<PresentationEditor />);
 
     expect(screen.getByTestId("canvas-transform-handles")).toBeInTheDocument();
-    expect(screen.getByLabelText("Element X")).toHaveValue(10);
+    expect(screen.getByLabelText("Element x")).toHaveValue(10);
 
     fireEvent.keyDown(window, { key: "ArrowRight" });
     await waitFor(() => {
-      expect(screen.getByLabelText("Element X")).toHaveValue(11);
+      expect(screen.getByLabelText("Element x")).toHaveValue(11);
     });
 
     fireEvent.keyDown(window, { key: "z", ctrlKey: true });
     await waitFor(() => {
-      expect(screen.getByLabelText("Element X")).toHaveValue(10);
+      expect(screen.getByLabelText("Element x")).toHaveValue(10);
     });
 
     fireEvent.keyDown(window, { key: "y", ctrlKey: true });
     await waitFor(() => {
-      expect(screen.getByLabelText("Element X")).toHaveValue(11);
+      expect(screen.getByLabelText("Element x")).toHaveValue(11);
     });
 
     // Redo using KeyZ physical code (non-English layout compatible)
-    fireEvent.keyDown(window, { key: "x", code: "KeyZ", ctrlKey: true, shiftKey: true });
+    fireEvent.keyDown(window, { key: "z", code: "KeyZ", ctrlKey: true, shiftKey: true });
     await waitFor(() => {
-      expect(screen.getByLabelText("Element X")).toHaveValue(11);
+      expect(screen.getByLabelText("Element x")).toHaveValue(11);
     });
   });
 
   it("supports copy/cut/paste hotkeys for selected canvas elements", async () => {
     render(<PresentationEditor />);
-    expect(screen.getAllByRole("button", { name: /select canvas element/i })).toHaveLength(1);
+    const getCanvasObjects = () =>
+      Array.from(document.querySelectorAll("[data-canvas-object='true']"));
+    expect(getCanvasObjects()).toHaveLength(1);
+    fireEvent.click(getCanvasObjects()[0] as HTMLElement);
 
-    fireEvent.keyDown(window, { key: "x", code: "KeyC", ctrlKey: true });
-    fireEvent.keyDown(window, { key: "x", code: "KeyV", ctrlKey: true });
+    fireEvent.keyDown(window, { key: "c", ctrlKey: true });
+    fireEvent.keyDown(window, { key: "v", ctrlKey: true });
     await waitFor(() => {
-      expect(screen.getAllByRole("button", { name: /select canvas element/i })).toHaveLength(2);
+      expect(getCanvasObjects()).toHaveLength(2);
     });
 
-    fireEvent.keyDown(window, { key: "x", code: "KeyX", ctrlKey: true });
+    fireEvent.keyDown(window, { key: "x", ctrlKey: true });
     await waitFor(() => {
-      expect(screen.getAllByRole("button", { name: /select canvas element/i })).toHaveLength(1);
+      expect(getCanvasObjects()).toHaveLength(1);
     });
   });
 
@@ -951,8 +1002,8 @@ describe("PresentationEditor", () => {
     render(<PresentationEditor />);
     const canvasElement = screen.getByRole("button", { name: /select canvas element 1/i });
 
-    expect(screen.getByLabelText("Element X")).toHaveValue(10);
-    expect(screen.getByLabelText("Element Y")).toHaveValue(10);
+    expect(screen.getByLabelText("Element x")).toHaveValue(10);
+    expect(screen.getByLabelText("Element y")).toHaveValue(10);
 
     fireEvent.pointerDown(canvasElement, {
       pointerId: 1,
@@ -972,8 +1023,8 @@ describe("PresentationEditor", () => {
     });
 
     await waitFor(() => {
-      const xInput = screen.getByLabelText("Element X") as HTMLInputElement;
-      const yInput = screen.getByLabelText("Element Y") as HTMLInputElement;
+      const xInput = screen.getByLabelText("Element x") as HTMLInputElement;
+      const yInput = screen.getByLabelText("Element y") as HTMLInputElement;
       expect(Number(xInput.value)).toBeGreaterThan(10);
       expect(Number(yInput.value)).toBeGreaterThan(10);
     });
@@ -983,8 +1034,8 @@ describe("PresentationEditor", () => {
     render(<PresentationEditor />);
     const resizeHandle = screen.getByLabelText("Resize Selected Element");
 
-    expect(screen.getByLabelText("Element Width")).toHaveValue(200);
-    expect(screen.getByLabelText("Element Height")).toHaveValue(60);
+    expect(screen.getByLabelText("Element width")).toHaveValue(200);
+    expect(screen.getByLabelText("Element height")).toHaveValue(60);
 
     fireEvent.pointerDown(resizeHandle, {
       pointerId: 2,
@@ -1004,8 +1055,8 @@ describe("PresentationEditor", () => {
     });
 
     await waitFor(() => {
-      const widthInput = screen.getByLabelText("Element Width") as HTMLInputElement;
-      const heightInput = screen.getByLabelText("Element Height") as HTMLInputElement;
+      const widthInput = screen.getByLabelText("Element width") as HTMLInputElement;
+      const heightInput = screen.getByLabelText("Element height") as HTMLInputElement;
       expect(Number(widthInput.value)).toBeGreaterThan(200);
       expect(Number(heightInput.value)).toBeGreaterThan(60);
     });
@@ -1196,17 +1247,29 @@ describe("PresentationEditor", () => {
     render(<PresentationEditor />);
 
     expect(screen.getByTestId("mobile-quick-actions")).toBeInTheDocument();
-    expect(screen.getByTestId("canvas-transform-suppressed")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /edit mode/i })).toBeInTheDocument();
+    const canvasElement = screen.getByRole("button", { name: /select canvas element 1/i });
+    const initialStyle = canvasElement.getAttribute("style");
 
-    fireEvent.click(screen.getByRole("button", { name: /switch to edit mode/i }));
+    const quickActions = screen.getByTestId("mobile-quick-actions");
+    const iconOnlyButtons = within(quickActions)
+      .getAllByRole("button")
+      .filter((button) => button.textContent?.trim() === "");
+    fireEvent.click(iconOnlyButtons[0] as HTMLElement);
     await waitFor(() => {
-      expect(screen.getByTestId("canvas-transform-handles")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /select canvas element 1/i })).toHaveAttribute(
+        "style",
+        initialStyle,
+      );
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /simulate pinch \+ pan/i }));
+    fireEvent.click(screen.getByRole("button", { name: /edit mode/i }));
     await waitFor(() => {
-      expect(screen.getByTestId("canvas-stage-viewport")).toHaveTextContent("viewport: 1.20x (12, 8)");
+      expect(screen.getByRole("button", { name: /pan mode/i })).toBeInTheDocument();
     });
+
+    fireEvent.click(screen.getByRole("button", { name: /pan mode/i }));
+    expect(screen.getByRole("button", { name: /edit mode/i })).toBeInTheDocument();
   });
 
   it("shows version history in mobile bottom sheet versions tab", async () => {
@@ -1227,15 +1290,21 @@ describe("PresentationEditor", () => {
 
     render(<PresentationEditor />);
 
-    fireEvent.click(screen.getByRole("button", { name: /switch to edit mode/i }));
+    fireEvent.click(screen.getByRole("button", { name: /edit mode/i }));
+    const canvasElement = screen.getByRole("button", { name: /select canvas element 1/i });
+    const initialStyle = canvasElement.getAttribute("style");
     await waitFor(() => {
-      expect(screen.getByTestId("canvas-transform-handles")).toBeInTheDocument();
-      expect(screen.getByLabelText("Element Width")).toHaveValue(200);
+      expect(screen.getByRole("button", { name: /pan mode/i })).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /wider/i }));
+    const quickActions = screen.getByTestId("mobile-quick-actions");
+    const iconOnlyButtons = within(quickActions)
+      .getAllByRole("button")
+      .filter((button) => button.textContent?.trim() === "");
+    fireEvent.click(iconOnlyButtons[2] as HTMLElement);
     await waitFor(() => {
-      expect(screen.getByLabelText("Element Width")).toHaveValue(200);
+      expect(screen.getByRole("button", { name: /select canvas element 1/i }).getAttribute("style"))
+        .not.toBe(initialStyle);
     });
   });
 

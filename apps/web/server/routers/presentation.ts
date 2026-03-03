@@ -73,6 +73,7 @@ import {
   AI_GEOMETRIC_CROP_SHAPES,
   AI_LAYOUT_TEMPLATE_IDS,
   AI_STYLE_PRESET_IDS,
+  AIWatermarkSchema,
   GenerateAIDraftInputSchema,
 } from "@shared/presentation/aiTypes";
 
@@ -388,6 +389,7 @@ export const presentationRouter = router({
         geometricCropShape: z.enum(AI_GEOMETRIC_CROP_SHAPES).optional(),
         includeGeometricAccents: z.boolean().optional(),
         geometricAccentShape: z.enum(AI_GEOMETRIC_ACCENT_SHAPES).optional(),
+        watermark: AIWatermarkSchema.optional(),
         layoutSeed: z.number().int().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
@@ -424,6 +426,7 @@ export const presentationRouter = router({
             geometricCropShape: input.geometricCropShape,
             includeGeometricAccents: input.includeGeometricAccents,
             geometricAccentShape: input.geometricAccentShape,
+            watermark: input.watermark,
             layoutSeed: input.layoutSeed,
           });
 

@@ -177,8 +177,7 @@ const MOCK_SLIDES = [
 const MOCK_SVG = { id: "svg1", category: "Business", svgContent: "<svg></svg>", label: "test" };
 
 const MOCK_SLIDE_CONTENT = {
-  elements: [{ type: "text", id: "t1", x: 0, y: 0, width: 100, height: 50, text: "Test" }],
-  background: { fill: "#000000" },
+  elements: [{ type: "text", id: "t1", x: 0, y: 0, width: 100, height: 50, text: "Test", color: "#111827" }],
 };
 
 function setupHappyPath() {
@@ -573,6 +572,56 @@ describe("relayoutExistingSlide", () => {
     expect(accentIndexes.every((index) => index < titleIndex)).toBe(true);
     expect(output.warnings.some((warning) => warning.includes("Added geometric accents"))).toBe(true);
   });
+
+  it("applies watermark when provided", () => {
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({
+      slideContent: {
+        elements: [
+          { id: "img-main", type: "image", x: 0, y: 0, width: 900, height: 720, src: "https://cdn.example.com/bg.jpg", alt: "hero" },
+          { id: "title", type: "text", x: 72, y: 170, width: 520, height: 120, text: "Slide title", color: "#ffffff" },
+        ],
+      },
+      warnings: [],
+    });
+
+    const output = relayoutExistingSlide({
+      slideTitle: "Slide title",
+      deckTitle: "Deck",
+      slideIndex: 1,
+      totalSlides: 3,
+      includeSvg: true,
+      watermark: {
+        sourceUrl: "https://cdn.example.com/watermark.png",
+        format: "png",
+        clarityPercent: 20,
+      },
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "img", type: "image", x: 640, y: 0, width: 640, height: 720, src: "https://cdn.example.com/bg.jpg", alt: "bg" },
+          { id: "title", type: "text", x: 72, y: 170, width: 520, height: 120, text: "Slide title", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+      },
+    });
+
+    const watermark = output.slideContent.elements.find((element) => (
+      element.type === "image" && element.id.startsWith("watermark__")
+    ));
+    expect(watermark).toBeTruthy();
+    if (watermark && watermark.type === "image") {
+      expect(watermark.src).toBe("https://cdn.example.com/watermark.png");
+      expect(watermark.opacity).toBeCloseTo(0.2, 5);
+    }
+    expect(output.warnings.some((warning) => warning.includes("Applied watermark"))).toBe(true);
+  });
 });
 
 describe("generateAIDraft - happy path", () => {
@@ -613,6 +662,34 @@ describe("generateAIDraft - happy path", () => {
     const progress = JSON.parse(lastSetCall![1] as string);
     expect(progress.completed).toBe(true);
     expect(progress.result.slidesAdded).toBe(3);
+  });
+
+  it("attaches watermark to generated slides when watermark input is provided", async () => {
+    setupHappyPath();
+    await generateAIDraft(
+      buildMockInput({
+        watermark: {
+          sourceUrl: "https://cdn.example.com/wm.jpg",
+          format: "jpg",
+          clarityPercent: 25,
+        },
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const firstInsertCall = mockAddSlideToDeck.mock.calls[0]?.[0] as { slideContent?: { elements?: unknown[] } } | undefined;
+    expect(firstInsertCall).toBeTruthy();
+    const elements = Array.isArray(firstInsertCall?.slideContent?.elements)
+      ? firstInsertCall?.slideContent?.elements
+      : [];
+    const watermark = elements.find((element: any) => (
+      element?.type === "image" && typeof element?.id === "string" && element.id.startsWith("watermark__")
+    )) as any;
+    expect(watermark).toBeTruthy();
+    expect(watermark.src).toBe("https://cdn.example.com/wm.jpg");
+    expect(watermark.opacity).toBeCloseTo(0.25, 5);
   });
 
   it("tops up sparse slide bodies so split output is not overly thin", async () => {

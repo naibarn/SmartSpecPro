@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, within } from "@testing-library/react";
 
 const {
   mockGenerateDraftMutate,
@@ -15,6 +15,7 @@ const {
   mockGenerateDraftIsPending,
   mockCancelDraftIsPending,
   mockUploadMutateAsync,
+  mockLibraryImagesData,
 } = vi.hoisted(() => ({
   mockGenerateDraftMutate: vi.fn(),
   mockCancelDraftMutate: vi.fn(),
@@ -36,6 +37,35 @@ const {
   mockGenerateDraftIsPending: { current: false },
   mockCancelDraftIsPending: { current: false },
   mockUploadMutateAsync: vi.fn(),
+  mockLibraryImagesData: {
+    current: {
+      total: 2,
+      limit: 40,
+      offset: 0,
+      has_more: false,
+      scope: "all",
+      results: [
+        {
+          id: 201,
+          item_type: "image",
+          source: "media_task",
+          title: "Brand Mark",
+          source_url: "https://cdn.example.com/brand-mark.png",
+          thumbnail_url: "https://cdn.example.com/brand-mark-thumb.png",
+          metadata: { extension: "png", mimeType: "image/png" },
+        },
+        {
+          id: 202,
+          item_type: "image",
+          source: "media_task",
+          title: "Company Logo",
+          source_url: "https://cdn.example.com/company-logo.jpg",
+          thumbnail_url: "https://cdn.example.com/company-logo-thumb.jpg",
+          metadata: { extension: "jpg", mimeType: "image/jpeg" },
+        },
+      ],
+    } as unknown,
+  },
 }));
 
 vi.mock("@/lib/trpc", () => ({
@@ -74,10 +104,39 @@ vi.mock("@/lib/trpc", () => ({
         })),
       },
     },
+    media: {
+      getModels: {
+        useQuery: vi.fn(() => ({
+          data: {
+            models: [
+              { id: "flux-2.0", name: "Flux 2.0", provider: "fal", creditCost: 5, configJson: { generateType: "text-to-image" } },
+            ],
+            defaults: {
+              image: "flux-2.0",
+              video: "veo-3-1",
+            },
+          },
+          isLoading: false,
+        })),
+      },
+    },
     skills: {
       getUserVisibleSkills: {
         useQuery: vi.fn(() => ({
           data: mockSkillsData.current,
+        })),
+      },
+      getInputSchema: {
+        useQuery: vi.fn(() => ({
+          data: { hasSchema: false },
+        })),
+      },
+    },
+    library: {
+      listDocuments: {
+        useQuery: vi.fn(() => ({
+          data: mockLibraryImagesData.current,
+          isLoading: false,
         })),
       },
     },
@@ -113,6 +172,7 @@ vi.mock("@shared/presentation/aiStylePresets", () => {
 
 vi.mock("@shared/presentation/aiTypes", () => ({
   AI_STYLE_PRESET_IDS: ["dark-professional", "light-minimalist", "corporate-blue", "nature-green", "warm-sunset"],
+  MAX_AI_DRAFT_SLIDES: 30,
 }));
 
 import { AIDraftModal } from "../AIDraftModal";
@@ -174,12 +234,16 @@ describe("G.1 Modal Rendering", () => {
 
   it("renders article skill dropdown populated from skills list", () => {
     render(<AIDraftModal {...defaultProps} />);
-    expect(screen.getByText(/Article Skill/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Article Skill/i).length).toBeGreaterThan(0);
   });
 
   it("renders image model input field", () => {
     render(<AIDraftModal {...defaultProps} />);
-    expect(screen.getByPlaceholderText(/flux/i)).toBeInTheDocument();
+    expect(screen.getByText(/Media Model \(Image, optional\)/i)).toBeInTheDocument();
+    const mediaModelSection = screen.getByText(/Media Model \(Image, optional\)/i).closest("div");
+    const mediaModelCombobox = mediaModelSection?.querySelector("[role='combobox']");
+    expect(mediaModelCombobox).toBeInTheDocument();
+    expect(within(mediaModelCombobox as HTMLElement).getByText(/Default \(flux-2.0\)/i)).toBeInTheDocument();
   });
 
   it("renders 5 style preset cards", () => {
@@ -345,11 +409,14 @@ describe("G.5 Preset Selector", () => {
     expect(lmCard?.getAttribute("data-selected")).toBe("true");
   });
 
-  it("footer text input visible when selected preset has showCustomText", () => {
+  it("footer text input visible when footer switch is enabled", () => {
     render(<AIDraftModal {...defaultProps} />);
-    const cbCard = screen.getByText("Corporate Blue").closest("[data-preset-id]");
-    fireEvent.click(cbCard!);
-    expect(screen.getByPlaceholderText(/footer/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /advanced style options/i }));
+    const footerRow = screen.getByText("Show Footer").closest("div");
+    const footerSwitch = footerRow?.querySelector("[role='switch']") as HTMLElement | null;
+    expect(footerSwitch).toBeTruthy();
+    fireEvent.click(footerSwitch!);
+    expect(screen.getByPlaceholderText(/enter custom footer text/i)).toBeInTheDocument();
   });
 
   it("footer text input hidden when selected preset has no showCustomText", () => {
@@ -385,9 +452,9 @@ describe("G.7 Modal does not render when closed", () => {
 describe("G.8 Image model field", () => {
   it("renders image model input", () => {
     render(<AIDraftModal {...defaultProps} />);
-    const input = screen.getByPlaceholderText(/flux/i);
-    expect(input).toBeInTheDocument();
-    fireEvent.change(input, { target: { value: "flux-2.0" } });
-    expect(input).toHaveValue("flux-2.0");
+    const mediaModelSection = screen.getByText(/Media Model \(Image, optional\)/i).closest("div");
+    const combobox = mediaModelSection?.querySelector("[role='combobox']") as HTMLElement | null;
+    expect(combobox).toBeInTheDocument();
+    expect(within(combobox as HTMLElement).getByText(/Default \(flux-2.0\)/i)).toBeInTheDocument();
   });
 });

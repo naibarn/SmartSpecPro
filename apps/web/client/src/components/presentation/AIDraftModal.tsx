@@ -41,6 +41,7 @@ import { SearchableCombobox } from "./SearchableCombobox";
 import { ImageModelCombobox } from "./ImageModelCombobox";
 import DynamicSkillForm from "@/components/media/DynamicSkillForm";
 import type { SkillInputSchema } from "@/components/media/DynamicSkillForm";
+import { normalizeWatermarkLibraryOptions } from "@/lib/presentationWatermark";
 import {
   Sparkles,
   Loader2,
@@ -102,6 +103,9 @@ export function AIDraftModal({
   const [showDeckTitle, setShowDeckTitle] = useState(false);
   const [footerEnabled, setFooterEnabled] = useState(false);
   const [showPageNumber, setShowPageNumber] = useState(false);
+  const [watermarkEnabled, setWatermarkEnabled] = useState(false);
+  const [watermarkSourceUrl, setWatermarkSourceUrl] = useState("");
+  const [watermarkClarityPercent, setWatermarkClarityPercent] = useState(20);
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   // Progress state
@@ -116,6 +120,20 @@ export function AIDraftModal({
   // Fetch skills
   const skillsQuery = trpc.skills.getUserVisibleSkills.useQuery({ limit: 100 });
   const skills = skillsQuery.data?.skills ?? [];
+  const watermarkLibraryQuery = trpc.library.listDocuments.useQuery(
+    {
+      scope: "all",
+      sort: "updated_desc",
+      limit: 40,
+      offset: 0,
+      filters: {
+        itemType: "image",
+      },
+    },
+    {
+      enabled: isOpen,
+    },
+  );
 
   // Fetch skill input schema for dynamic form
   const skillSchemaQuery = trpc.skills.getInputSchema.useQuery(
@@ -232,6 +250,14 @@ export function AIDraftModal({
     (selectedMediaSkill as { category?: string } | null)?.category === "video_generation"
       ? "video"
       : "image";
+  const watermarkOptions = useMemo(
+    () => normalizeWatermarkLibraryOptions(watermarkLibraryQuery.data?.results),
+    [watermarkLibraryQuery.data?.results],
+  );
+  const selectedWatermarkOption = useMemo(
+    () => watermarkOptions.find((option) => option.sourceUrl === watermarkSourceUrl) || null,
+    [watermarkOptions, watermarkSourceUrl],
+  );
 
   // Mutations
   const generateDraft = trpc.presentation.ai.generateDraft.useMutation();
@@ -313,13 +339,27 @@ export function AIDraftModal({
     setShowDeckTitle(false);
     setFooterEnabled(false);
     setShowPageNumber(false);
+    setWatermarkEnabled(false);
+    setWatermarkClarityPercent(20);
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!watermarkEnabled || watermarkSourceUrl) {
+      return;
+    }
+    const first = watermarkOptions[0];
+    if (!first) {
+      return;
+    }
+    setWatermarkSourceUrl(first.sourceUrl);
+  }, [watermarkEnabled, watermarkSourceUrl, watermarkOptions]);
 
   const selectedPreset = getBuiltInPreset(selectedPresetId);
 
   const canGenerate =
     topic.length >= 3 &&
     selectedArticleSkill !== "" &&
+    (!watermarkEnabled || selectedWatermarkOption !== null) &&
     !generateDraft.isPending;
 
   const isValidReferenceUrl = useCallback((value: string): boolean => {
@@ -463,6 +503,14 @@ export function AIDraftModal({
         headerCustomText: headerTitleText.trim() || undefined,
         footerCustomText: footerText || undefined,
         styleOverrides: overrides,
+        watermark:
+          watermarkEnabled && selectedWatermarkOption
+            ? {
+              sourceUrl: selectedWatermarkOption.sourceUrl,
+              format: selectedWatermarkOption.format,
+              clarityPercent: watermarkClarityPercent,
+            }
+            : undefined,
         articleSkillParams:
           Object.keys(articleSkillParams).length > 0
             ? articleSkillParams
@@ -502,6 +550,9 @@ export function AIDraftModal({
     showDeckTitle,
     footerEnabled,
     showPageNumber,
+    watermarkEnabled,
+    selectedWatermarkOption,
+    watermarkClarityPercent,
     articleSkillParams,
   ]);
 
@@ -952,12 +1003,67 @@ export function AIDraftModal({
               </>
             )}
 
-            {/* Future: Logo, Watermark */}
-            <div className="flex items-center justify-between opacity-50">
-              <Label className="text-sm text-muted-foreground">
-                Logo / Watermark
-              </Label>
-              <span className="text-xs text-muted-foreground">Coming soon</span>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Watermark</Label>
+                <Switch
+                  checked={watermarkEnabled}
+                  onCheckedChange={setWatermarkEnabled}
+                />
+              </div>
+              {watermarkEnabled ? (
+                <div className="space-y-3 pl-4">
+                  <div className="space-y-1">
+                    <Label className="text-sm text-muted-foreground">Watermark image (PNG/JPG from Library)</Label>
+                    <Select
+                      value={watermarkSourceUrl}
+                      onValueChange={setWatermarkSourceUrl}
+                      disabled={watermarkOptions.length === 0 || watermarkLibraryQuery.isLoading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={watermarkOptions.length === 0
+                            ? "No PNG/JPG image found in library"
+                            : "Select watermark image"}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {watermarkOptions.map((option) => (
+                          <SelectItem key={`${option.id}-${option.sourceUrl}`} value={option.sourceUrl}>
+                            {option.label} ({option.format.toUpperCase()})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-sm text-muted-foreground">
+                      Clarity: {watermarkClarityPercent}%
+                    </Label>
+                    <Slider
+                      min={5}
+                      max={100}
+                      step={5}
+                      value={[watermarkClarityPercent]}
+                      onValueChange={(value) => setWatermarkClarityPercent(value[0] ?? 20)}
+                    />
+                  </div>
+                  {selectedWatermarkOption ? (
+                    <div className="flex items-center gap-2 rounded border border-muted p-2">
+                      <img
+                        src={selectedWatermarkOption.thumbnailUrl || selectedWatermarkOption.sourceUrl}
+                        alt={selectedWatermarkOption.label}
+                        className="h-10 w-16 rounded border object-contain"
+                        loading="lazy"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-medium">{selectedWatermarkOption.label}</p>
+                        <p className="text-[11px] text-muted-foreground">{selectedWatermarkOption.format.toUpperCase()}</p>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </div>
         </CollapsibleContent>

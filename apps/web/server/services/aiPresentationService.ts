@@ -2,10 +2,12 @@ import type {
   GenerateAIDraftInput,
   AIPresentationSlide,
   AIDraftProgress,
+  AIWatermark,
   SlideStylePreset,
 } from "@shared/presentation/aiTypes";
 import {
   AI_GEOMETRIC_ACCENT_SHAPES,
+  AIWatermarkSchema,
   AIPresentationSchema,
   AI_GEOMETRIC_CROP_SHAPES,
   AI_LAYOUT_TEMPLATE_IDS,
@@ -40,6 +42,10 @@ import { generateSlide } from "./aiPresentationLayoutEngine";
 import { executeWithFallback, resolveProviders } from "./llmRouter";
 import { llmProviders, modelProviderMap, presentationDecks } from "../../drizzle/schema";
 import { and, asc, eq } from "drizzle-orm";
+import {
+  applyWatermarkToSlideContent,
+  extractWatermarkFromSlideContent,
+} from "./presentationWatermarkService";
 
 // ── Constants ──────────────────────────────────────────────
 
@@ -198,6 +204,7 @@ interface RelayoutSlideInput {
   includeGeometricAccents?: boolean;
   geometricAccentShape?: GeometricAccentShapeId;
   layoutSeed?: number;
+  watermark?: AIWatermark;
 }
 
 interface RelayoutSlideOutput {
@@ -1245,34 +1252,115 @@ function normalizeReferenceImageUrls(referenceImageUrls?: string[]): string[] {
   return normalized;
 }
 
-function applyReferenceImagesToExtraParams(
+function inferWatermarkFileExtension(sourceUrl: string): string | null {
+  const trimmed = sourceUrl.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const withoutQuery = trimmed.split(/[?#]/, 1)[0] ?? "";
+  const ext = withoutQuery.slice(withoutQuery.lastIndexOf(".") + 1).toLowerCase();
+  return ext.length > 0 ? ext : null;
+}
+
+function normalizeWatermarkInput(
+  value: unknown,
+  warnings: string[],
+): AIWatermark | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = AIWatermarkSchema.safeParse(value);
+  if (!parsed.success) {
+    warnings.push("Invalid watermark input detected; skipping watermark.");
+    return null;
+  }
+
+  const normalized = parsed.data;
+  const extension = inferWatermarkFileExtension(normalized.sourceUrl);
+  if (extension !== "png" && extension !== "jpg" && extension !== "jpeg") {
+    warnings.push("Watermark must use PNG/JPG source URL; skipping watermark.");
+    return null;
+  }
+
+  const normalizedFormat = extension === "png" ? "png" : "jpg";
+  if (normalized.format !== normalizedFormat) {
+    warnings.push(
+      `Watermark format "${normalized.format}" mismatched source extension "${extension}". Using "${normalizedFormat}".`,
+    );
+  }
+
+  return {
+    sourceUrl: normalized.sourceUrl,
+    format: normalizedFormat,
+    clarityPercent: normalized.clarityPercent,
+  };
+}
+
+interface FieldSyncValues {
+  referenceImageUrls?: string[];
+  prompt?: string;
+  aspectRatio?: string;
+}
+
+/**
+ * Injects runtime context values into extraParams for fields that declare a syncWith target.
+ * Also handles the legacy `type === "image_urls"` convention for reference images.
+ */
+function applyFieldSyncTargets(
   baseExtraParams: Record<string, unknown> | undefined,
   model: ModelDefinition | undefined,
-  referenceImageUrls: string[],
+  syncValues: FieldSyncValues,
 ): Record<string, unknown> | undefined {
-  if (!model || referenceImageUrls.length === 0) {
+  if (!model) {
     return baseExtraParams;
   }
 
   const configJson = model.configJson as { inputFields?: unknown } | undefined;
-  const inputFields = Array.isArray(configJson?.inputFields) ? configJson.inputFields : [];
-  const imageUrlsField = inputFields.find((field) => {
-    if (!field || typeof field !== "object") {
-      return false;
-    }
-    const type = (field as { type?: unknown }).type;
-    const key = (field as { key?: unknown }).key;
-    return type === "image_urls" && typeof key === "string" && key.trim().length > 0;
-  }) as { key: string } | undefined;
-
-  if (!imageUrlsField) {
+  const inputFields = Array.isArray(configJson?.inputFields) ? (configJson.inputFields as Record<string, unknown>[]) : [];
+  if (inputFields.length === 0) {
     return baseExtraParams;
   }
 
-  const next = { ...(baseExtraParams ?? {}) };
-  if (next[imageUrlsField.key] === undefined || next[imageUrlsField.key] === null || next[imageUrlsField.key] === "") {
-    next[imageUrlsField.key] = referenceImageUrls;
+  let next: Record<string, unknown> | undefined = baseExtraParams;
+
+  for (const field of inputFields) {
+    if (!field || typeof field !== "object") continue;
+    const key = field.key;
+    if (typeof key !== "string" || key.trim().length === 0) continue;
+
+    const type = field.type;
+    const syncWith = field.syncWith;
+
+    // reference_images: explicit syncWith OR legacy type="image_urls"
+    if (
+      (syncWith === "reference_images" || type === "image_urls") &&
+      syncValues.referenceImageUrls &&
+      syncValues.referenceImageUrls.length > 0
+    ) {
+      next = next ?? {};
+      if (next[key] === undefined || next[key] === null || next[key] === "") {
+        next = { ...next, [key]: syncValues.referenceImageUrls };
+      }
+      continue;
+    }
+
+    if (syncWith === "prompt" && syncValues.prompt) {
+      next = next ?? {};
+      if (next[key] === undefined || next[key] === null || next[key] === "") {
+        next = { ...next, [key]: syncValues.prompt };
+      }
+      continue;
+    }
+
+    if (syncWith === "aspect_ratio" && syncValues.aspectRatio) {
+      next = next ?? {};
+      if (next[key] === undefined || next[key] === null || next[key] === "") {
+        next = { ...next, [key]: syncValues.aspectRatio };
+      }
+    }
   }
+
   return next;
 }
 
@@ -1407,10 +1495,13 @@ async function resolveRoutableTextModel(
 
 export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideOutput {
   const parsedContent = presentationSlideContentSchema.parse(input.slideContent);
+  const warnings: string[] = [];
   const canvas = resolveSlideCanvasDimensions(parsedContent);
   const narrative = extractSlideNarrative(input.slideTitle, parsedContent);
   const imageElement = pickLargestImageElement(parsedContent);
   const combinedText = `${narrative.title}\n${narrative.body.join("\n")}`;
+  const inheritedWatermark = extractWatermarkFromSlideContent(parsedContent);
+  const watermark = normalizeWatermarkInput(input.watermark ?? inheritedWatermark, warnings);
   const inferredStylePresetId = inferStylePresetIdFromSlide(parsedContent);
   const stylePresetId = input.stylePresetId ?? inferredStylePresetId;
   const baseStylePreset = getBuiltInPreset(stylePresetId) ?? getBuiltInPreset("dark-professional")!;
@@ -1512,7 +1603,7 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
     appliedAccentShape = accentResult.appliedShape;
   }
 
-  const relayoutContent: PresentationSlideContent = {
+  let relayoutContent: PresentationSlideContent = {
     ...result.slideContent,
     elements,
     transition: parsedContent.transition,
@@ -1523,8 +1614,16 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
       height: canvas.height,
     },
   };
+  if (watermark) {
+    const watermarkApplied = applyWatermarkToSlideContent(relayoutContent, watermark);
+    relayoutContent = watermarkApplied.slideContent;
+    warnings.push(...watermarkApplied.warnings);
+    if (watermarkApplied.applied) {
+      warnings.push(`Applied watermark (${watermark.format.toUpperCase()}, ${watermark.clarityPercent}%).`);
+    }
+  }
 
-  const warnings = [...result.warnings];
+  warnings.push(...result.warnings);
   if (!imageElement?.src) {
     warnings.push("No reusable image found on this slide; used visual placeholder layout.");
   }
@@ -1952,6 +2051,7 @@ export async function generateAIDraft(
     const sanitizedPrompt = input.prompt.replace(/[\x00-\x1f\x7f]/g, "").slice(0, 1000);
     const sanitizedImagePromptContext = sanitizePromptContext(input.imagePromptContext);
     const normalizedReferenceImageUrls = normalizeReferenceImageUrls(input.referenceImageUrls);
+    const normalizedWatermark = normalizeWatermarkInput(input.watermark, warnings);
     const canvasWidth = sanitizeCanvasDimension(input.canvasWidth) ?? DEFAULT_CANVAS_WIDTH;
     const canvasHeight = sanitizeCanvasDimension(input.canvasHeight) ?? DEFAULT_CANVAS_HEIGHT;
     const canvasAspectRatio = toAspectRatio(canvasWidth, canvasHeight);
@@ -2005,10 +2105,12 @@ export async function generateAIDraft(
         `${isVideoSkill ? "Video" : "Image"} model "${imageModelToUse}" does not list aspect ratio "${canvasAspectRatio}"; using "${imageAspectRatio}"`,
       );
     }
-    const mediaExtraParams = applyReferenceImagesToExtraParams(
+    // Base extra params: field defaults + reference_images + aspect_ratio sync targets.
+    // Prompt sync is applied per-slide (see below) since the prompt varies per slide.
+    const mediaExtraParams = applyFieldSyncTargets(
       buildImageExtraParams(selectedImageModel),
       selectedImageModel,
-      normalizedReferenceImageUrls,
+      { referenceImageUrls: normalizedReferenceImageUrls, aspectRatio: imageAspectRatio },
     );
     const selectedVideoDuration = isVideoSkill
       ? selectVideoDuration(selectedImageModel, mediaExtraParams)
@@ -2222,6 +2324,13 @@ export async function generateAIDraft(
         }
         imagePrompts[index] = imagePrompt;
 
+        // Apply per-slide prompt sync (fields with syncWith="prompt" receive the final prompt).
+        const slideExtraParams = applyFieldSyncTargets(
+          mediaExtraParams,
+          selectedImageModel,
+          { prompt: imagePrompt },
+        );
+
         // Phase 4: Media generation (image or video depending on skill type)
         let imageUrl: string | null = null;
         try {
@@ -2237,7 +2346,7 @@ export async function generateAIDraft(
                       ? { referenceImageUrls: normalizedReferenceImageUrls }
                       : {}),
                     ...(mediaApiConfig ? { apiConfig: mediaApiConfig } : {}),
-                    ...(mediaExtraParams ? { extraParams: mediaExtraParams } : {}),
+                    ...(slideExtraParams ? { extraParams: slideExtraParams } : {}),
                   },
                   userToken,
                 )
@@ -2250,7 +2359,7 @@ export async function generateAIDraft(
                       ? { referenceImageUrls: normalizedReferenceImageUrls }
                       : {}),
                     ...(mediaApiConfig ? { apiConfig: mediaApiConfig } : {}),
-                    ...(mediaExtraParams ? { extraParams: mediaExtraParams } : {}),
+                    ...(slideExtraParams ? { extraParams: slideExtraParams } : {}),
                   },
                   userToken,
                 ),
@@ -2366,7 +2475,7 @@ export async function generateAIDraft(
       }
     }
 
-    const compiledSlides: unknown[] = [];
+    const compiledSlides: PresentationSlideContent[] = [];
     for (let i = 0; i < slides.length; i++) {
       const svg = pickRandomSvgFromCategory(slides[i].graphicCategory);
       const { slideContent, warnings: layoutWarnings } = generateSlide({
@@ -2431,7 +2540,7 @@ export async function generateAIDraft(
           warnings.push(`Slide ${i + 1}: deferred media task could not find a target region on slide`);
         }
       }
-      const slideWithCanvas = {
+      let slideWithCanvas: PresentationSlideContent = {
         ...slideContent,
         elements: elementsWithImageMetadata,
         canvas: {
@@ -2441,6 +2550,11 @@ export async function generateAIDraft(
         },
         ...(pendingMediaJobs.length > 0 ? { pendingMediaJobs } : {}),
       };
+      if (normalizedWatermark) {
+        const watermarkApplied = applyWatermarkToSlideContent(slideWithCanvas, normalizedWatermark);
+        slideWithCanvas = watermarkApplied.slideContent;
+        warnings.push(...watermarkApplied.warnings.map((warning) => `Slide ${i + 1}: ${warning}`));
+      }
       compiledSlides.push(slideWithCanvas);
       if (mediaFailureReasons[i]) {
         warnings.push(

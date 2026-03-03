@@ -78,6 +78,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import {
   Select,
   SelectContent,
@@ -137,6 +138,7 @@ import {
   getCanvasPresetById,
   normalizeCanvasSize,
 } from "@/presentation-canvas/constants";
+import { normalizeWatermarkLibraryOptions } from "@/lib/presentationWatermark";
 import {
   PRESENTATION_CONFLICT_SCHEMA_VERSION,
   PRESENTATION_EDITOR_ROUTE_BASE,
@@ -890,6 +892,9 @@ export default function PresentationEditor() {
   const [autoLayoutCropShapeChoice, setAutoLayoutCropShapeChoice] = useState<AutoLayoutCropShapeChoice>("auto");
   const [autoLayoutIncludeGeometricAccents, setAutoLayoutIncludeGeometricAccents] = useState(false);
   const [autoLayoutAccentShapeChoice, setAutoLayoutAccentShapeChoice] = useState<AutoLayoutAccentShapeChoice>("auto");
+  const [autoLayoutWatermarkEnabled, setAutoLayoutWatermarkEnabled] = useState(false);
+  const [autoLayoutWatermarkSourceUrl, setAutoLayoutWatermarkSourceUrl] = useState("");
+  const [autoLayoutWatermarkClarityPercent, setAutoLayoutWatermarkClarityPercent] = useState(20);
   const [autoLayoutProgress, setAutoLayoutProgress] = useState<{ done: number; total: number } | null>(null);
   const [timingDurationSecInput, setTimingDurationSecInput] = useState<string>("3");
   const [timingApplyAllPending, setTimingApplyAllPending] = useState(false);
@@ -969,7 +974,7 @@ export default function PresentationEditor() {
       enabled: Boolean(
         isAuthenticated
         && !authLoading
-        && libraryTab === "photos",
+        && (libraryTab === "photos" || isAutoLayoutDialogOpen),
       ),
     },
   );
@@ -1045,10 +1050,6 @@ export default function PresentationEditor() {
   const autoLayoutTargetCount = autoLayoutScope === "all"
     ? slides.length
     : (selectedSlide ? 1 : 0);
-  const autoLayoutApplyDisabled = !deck
-    || !selectedSlide
-    || autoLayoutBusy
-    || autoLayoutTargetCount <= 0;
   const autoLayoutStyleOptions = useMemo(
     () => BUILT_IN_PRESETS.map((preset) => ({
       id: preset.id,
@@ -1092,6 +1093,20 @@ export default function PresentationEditor() {
     () => normalizeLibraryMediaItems(imageLibraryQuery.data?.results, "image"),
     [imageLibraryQuery.data?.results],
   );
+  const autoLayoutWatermarkOptions = useMemo(
+    () => normalizeWatermarkLibraryOptions(imageLibraryQuery.data?.results),
+    [imageLibraryQuery.data?.results],
+  );
+  const selectedAutoLayoutWatermarkOption = useMemo(
+    () => autoLayoutWatermarkOptions.find((option) => option.sourceUrl === autoLayoutWatermarkSourceUrl) || null,
+    [autoLayoutWatermarkOptions, autoLayoutWatermarkSourceUrl],
+  );
+  const autoLayoutCanApplyWatermark = !autoLayoutWatermarkEnabled || selectedAutoLayoutWatermarkOption !== null;
+  const autoLayoutApplyDisabled = !deck
+    || !selectedSlide
+    || autoLayoutBusy
+    || autoLayoutTargetCount <= 0
+    || !autoLayoutCanApplyWatermark;
   const videoLibraryAssets = useMemo(
     () => normalizeLibraryMediaItems(videoLibraryQuery.data?.results, "video"),
     [videoLibraryQuery.data?.results],
@@ -1100,6 +1115,16 @@ export default function PresentationEditor() {
   const libraryLoading = libraryTab === "videos"
     ? videoLibraryQuery.isLoading
     : imageLibraryQuery.isLoading;
+  useEffect(() => {
+    if (!autoLayoutWatermarkEnabled || autoLayoutWatermarkSourceUrl) {
+      return;
+    }
+    const first = autoLayoutWatermarkOptions[0];
+    if (!first) {
+      return;
+    }
+    setAutoLayoutWatermarkSourceUrl(first.sourceUrl);
+  }, [autoLayoutWatermarkEnabled, autoLayoutWatermarkSourceUrl, autoLayoutWatermarkOptions]);
   const activeCanvasSize = useMemo(
     () => normalizeCanvasSize(draftContent.canvas),
     [draftContent.canvas],
@@ -2250,6 +2275,9 @@ export default function PresentationEditor() {
     cropShapeChoice?: AutoLayoutCropShapeChoice;
     includeGeometricAccents?: boolean;
     accentShapeChoice?: AutoLayoutAccentShapeChoice;
+    watermarkEnabled?: boolean;
+    watermarkSourceUrl?: string;
+    watermarkClarityPercent?: number;
   }) {
     if (!deck || !selectedSlide) {
       toast.error("No active slide for auto layout.");
@@ -2264,10 +2292,20 @@ export default function PresentationEditor() {
     const accentShapeChoice = options?.accentShapeChoice ?? autoLayoutAccentShapeChoice;
     const templateChoice = options?.templateChoice ?? autoLayoutTemplateChoice;
     const styleChoice = options?.styleChoice ?? autoLayoutStyleChoice;
+    const watermarkEnabled = options?.watermarkEnabled ?? autoLayoutWatermarkEnabled;
+    const watermarkSourceUrl = (options?.watermarkSourceUrl ?? autoLayoutWatermarkSourceUrl).trim();
+    const watermarkClarityPercent = options?.watermarkClarityPercent ?? autoLayoutWatermarkClarityPercent;
+    const selectedWatermarkOption = watermarkEnabled
+      ? autoLayoutWatermarkOptions.find((option) => option.sourceUrl === watermarkSourceUrl) || null
+      : null;
     const targetSlides = scope === "all" ? slides : [selectedSlide];
     const selectedId = selectedSlide.id;
     if (targetSlides.length === 0) {
       toast.error("No slides available for auto layout.");
+      return;
+    }
+    if (watermarkEnabled && !selectedWatermarkOption) {
+      toast.error("Please select a PNG/JPG watermark image from library.");
       return;
     }
 
@@ -2378,6 +2416,15 @@ export default function PresentationEditor() {
             ...(includeGeometricCrop ? { geometricCropShape: cropShapeChoice } : {}),
             includeGeometricAccents,
             ...(includeGeometricAccents ? { geometricAccentShape: accentShapeChoice } : {}),
+            ...(selectedWatermarkOption
+              ? {
+                watermark: {
+                  sourceUrl: selectedWatermarkOption.sourceUrl,
+                  format: selectedWatermarkOption.format,
+                  clarityPercent: watermarkClarityPercent,
+                },
+              }
+              : {}),
             layoutSeed: Date.now() + index,
           });
           appliedCount += 1;
@@ -4601,6 +4648,70 @@ export default function PresentationEditor() {
                 </div>
               ) : null}
             </div>
+            <div className="space-y-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-900">Watermark</p>
+                  <p className="text-xs text-slate-500">Use PNG/JPG image from library and set visibility percentage.</p>
+                </div>
+                <Switch
+                  checked={autoLayoutWatermarkEnabled}
+                  onCheckedChange={setAutoLayoutWatermarkEnabled}
+                  disabled={autoLayoutBusy}
+                />
+              </div>
+              {autoLayoutWatermarkEnabled ? (
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label>Watermark image</Label>
+                    <Select
+                      value={autoLayoutWatermarkSourceUrl}
+                      onValueChange={setAutoLayoutWatermarkSourceUrl}
+                      disabled={autoLayoutBusy || autoLayoutWatermarkOptions.length === 0}
+                    >
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={autoLayoutWatermarkOptions.length === 0
+                            ? "No PNG/JPG image found in library"
+                            : "Select watermark image"}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {autoLayoutWatermarkOptions.map((option) => (
+                          <SelectItem key={`${option.id}-${option.sourceUrl}`} value={option.sourceUrl}>
+                            {option.label} ({option.format.toUpperCase()})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Clarity: {autoLayoutWatermarkClarityPercent}%</Label>
+                    <Slider
+                      min={5}
+                      max={100}
+                      step={5}
+                      value={[autoLayoutWatermarkClarityPercent]}
+                      onValueChange={(value) => setAutoLayoutWatermarkClarityPercent(value[0] ?? 20)}
+                      disabled={autoLayoutBusy}
+                    />
+                  </div>
+                  {selectedAutoLayoutWatermarkOption ? (
+                    <div className="flex items-center gap-2 rounded border border-slate-200 bg-white p-2">
+                      <img
+                        src={selectedAutoLayoutWatermarkOption.thumbnailUrl || selectedAutoLayoutWatermarkOption.sourceUrl}
+                        alt={selectedAutoLayoutWatermarkOption.label}
+                        className="h-10 w-16 rounded border border-slate-200 object-contain"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-medium text-slate-700">{selectedAutoLayoutWatermarkOption.label}</p>
+                        <p className="text-[11px] text-slate-500">{selectedAutoLayoutWatermarkOption.format.toUpperCase()}</p>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
             <p className="text-xs text-slate-500">
               Target slides: {autoLayoutTargetCount}
             </p>
@@ -4636,6 +4747,9 @@ export default function PresentationEditor() {
                 cropShapeChoice: autoLayoutCropShapeChoice,
                 includeGeometricAccents: autoLayoutIncludeGeometricAccents,
                 accentShapeChoice: autoLayoutAccentShapeChoice,
+                watermarkEnabled: autoLayoutWatermarkEnabled,
+                watermarkSourceUrl: autoLayoutWatermarkSourceUrl,
+                watermarkClarityPercent: autoLayoutWatermarkClarityPercent,
               })}
               disabled={autoLayoutApplyDisabled}
             >

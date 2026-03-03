@@ -36,6 +36,11 @@ export const AI_STYLE_PRESET_IDS = [
   "midnight-luxe",
 ] as const;
 
+export const AI_WATERMARK_FORMATS = [
+  "png",
+  "jpg",
+] as const;
+
 export const AI_GEOMETRIC_CROP_SHAPES = [
   "auto",
   "rect",
@@ -59,6 +64,17 @@ const referenceImageUrlSchema = z
   .refine((value) => value.startsWith("/") || /^https?:\/\//i.test(value), {
     message: "Reference URL must be a relative path or http(s) URL",
   });
+
+const watermarkImageUrlSchema = referenceImageUrlSchema.refine(
+  (value) => /\.(png|jpe?g)(?:[?#].*)?$/i.test(value),
+  { message: "Watermark URL must be PNG or JPG" },
+);
+
+export const AIWatermarkSchema = z.object({
+  sourceUrl: watermarkImageUrlSchema,
+  format: z.enum(AI_WATERMARK_FORMATS),
+  clarityPercent: z.number().int().min(5).max(100).multipleOf(5).default(20),
+}).strict();
 
 // ── SlideStylePreset schemas ───────────────────────────────
 
@@ -166,10 +182,12 @@ export const GenerateAIDraftInputSchema = z.object({
       showPageNumber: z.boolean().optional(),
     })
     .optional(),
+  watermark: AIWatermarkSchema.optional(),
   articleSkillParams: z.record(z.string(), z.any()).optional(),
 });
 
 export type GenerateAIDraftInput = z.infer<typeof GenerateAIDraftInputSchema>;
+export type AIWatermark = z.infer<typeof AIWatermarkSchema>;
 
 // ── GenerateAIDraftOutput schema ───────────────────────────
 
