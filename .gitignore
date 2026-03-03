@@ -6,8 +6,10 @@
 .env
 .env.*
 !.env.example
+!.env.glitchtip.example
 *.env
 *.env.*
+!.env.glitchtip.example
 
 # Actual secret/credential FILES (not source code about secrets)
 # Use specific file patterns — NOT wildcard *secret* which catches source code

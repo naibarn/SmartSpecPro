@@ -69,6 +69,7 @@ def init_sentry() -> None:
         release=getattr(settings, "RELEASE", None) or getattr(settings, "APP_VERSION", None),
         traces_sample_rate=0.05,
         integrations=[FastApiIntegration()],
+        auto_enabling_integrations=False,
         before_send=before_send,
     )
 

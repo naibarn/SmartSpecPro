@@ -1,0 +1,62 @@
+# GlitchTip — Self-hosted Sentry-compatible error tracking
+#
+# Prerequisites: Run ./scripts/setup-glitchtip.sh first (creates DB + .env.glitchtip)
+# Access: https://glitchtip.smartaihub.app
+#
+# Start: docker compose -f docker-compose.glitchtip.yml up -d
+# Stop:  docker compose -f docker-compose.glitchtip.yml down
+# Logs:  docker compose -f docker-compose.glitchtip.yml logs -f
+
+services:
+  glitchtip-web:
+    image: glitchtip/glitchtip:latest
+    container_name: smartspec-glitchtip-web
+    ports:
+      # Exposed for Cloudflare Tunnel (cloudflared → localhost:8084)
+      - "127.0.0.1:8084:8000"
+    env_file:
+      - .env.glitchtip
+    networks:
+      - smartspec-network
+    extra_hosts:
+      # Access host PostgreSQL and Redis from inside the container
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/ -o /dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+
+  glitchtip-worker:
+    image: glitchtip/glitchtip:latest
+    container_name: smartspec-glitchtip-worker
+    command: ./bin/run-celery-with-beat.sh
+    env_file:
+      - .env.glitchtip
+    networks:
+      - smartspec-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+
+networks:
+  smartspec-network:
+    external: true
