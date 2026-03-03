@@ -899,6 +899,46 @@ describe("PresentationEditor", () => {
     expect(svgHost.querySelector("svg")).toBeInTheDocument();
   });
 
+  it("falls back to svg placeholder tile when inline svg markup is invalid", async () => {
+    queryState.deckByItem = {
+      ...buildDeckByItem(),
+      slides: [
+        {
+          id: 71,
+          deckId: 7,
+          orderIndex: 0,
+          version: 3,
+          title: "Intro",
+          slideContent: {
+            elements: [
+              {
+                id: "svg-bad-1",
+                type: "image",
+                x: 120,
+                y: 120,
+                width: 260,
+                height: 180,
+                src: "",
+                alt: "Invalid inline SVG",
+                svgColor: "#22c55e",
+                svgContent: "<div>broken</div>",
+              },
+            ],
+          },
+          notes: null,
+        },
+      ],
+    } as any;
+
+    render(<PresentationEditor />);
+    fireEvent.click(screen.getByRole("button", { name: /play slideshow/i }));
+    await waitFor(() => {
+      expect(screen.getByTestId("slideshow-preview-overlay")).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId("readonly-svg-placeholder-svg-bad-1")).toBeInTheDocument();
+  });
+
   it("renders presentation saved version history list", () => {
     render(<PresentationEditor />);
 

@@ -171,6 +171,25 @@ window.__slideReady = false;
     return v;
   }
 
+  function isLikelySvgMarkup(value) {
+    var normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
+    return normalized.indexOf("<svg") >= 0 && normalized.indexOf("</svg>") >= 0;
+  }
+
+  function createSvgPlaceholder() {
+    var node = document.createElement("div");
+    node.style.width = "100%";
+    node.style.height = "100%";
+    node.style.display = "grid";
+    node.style.placeItems = "center";
+    node.style.background = "rgba(226, 232, 240, 0.82)";
+    node.style.color = "#475569";
+    node.style.fontSize = "11px";
+    node.style.fontWeight = "600";
+    node.textContent = "SVG unavailable";
+    return node;
+  }
+
   function normalizeMediaSrc(value) {
     var src = typeof value === "string" ? value.trim() : "";
     if (!src) return "";
@@ -283,6 +302,10 @@ window.__slideReady = false;
     wrapper.style.overflow = "hidden";
 
     if (typeof el.svgContent === "string" && el.svgContent.trim()) {
+      if (!isLikelySvgMarkup(el.svgContent)) {
+        wrapper.appendChild(createSvgPlaceholder());
+        return wrapper;
+      }
       var color = (typeof el.svgColor === "string" && el.svgColor.trim()) ? el.svgColor : "#ffffff";
       var svgNode = document.createElement("div");
       svgNode.style.width = "100%";
@@ -315,6 +338,14 @@ window.__slideReady = false;
     }
 
     img.src = src;
+    if (/\.svg(?:$|[?#])/i.test(src)) {
+      img.addEventListener("error", function() {
+        if (img.parentNode === wrapper) {
+          wrapper.removeChild(img);
+        }
+        wrapper.appendChild(createSvgPlaceholder());
+      }, { once: true });
+    }
 
     wrapper.appendChild(img);
     return wrapper;

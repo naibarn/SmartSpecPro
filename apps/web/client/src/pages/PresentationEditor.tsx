@@ -863,6 +863,11 @@ function resolveImageDisplayConfig(element: PresentationSlideContent["elements"]
   return { fit, positionX, positionY, zoom };
 }
 
+function isLikelySvgMarkup(value: string): boolean {
+  const normalized = value.trim().toLowerCase();
+  return normalized.includes("<svg") && normalized.includes("</svg>");
+}
+
 function renderReadonlySlideElement(
   element: PresentationSlideContent["elements"][number],
   index: number,
@@ -923,10 +928,12 @@ function renderReadonlySlideElement(
     const imageConfig = resolveImageDisplayConfig(element);
     const normalizedSource = normalizeMediaSourceUrl(element.src);
     const hasSource = Boolean(normalizedSource);
-    const hasInlineSvg = typeof element.svgContent === "string" && element.svgContent.trim().length > 0;
+    const inlineSvg = typeof element.svgContent === "string" ? element.svgContent.trim() : "";
+    const hasInlineSvg = inlineSvg.length > 0;
+    const hasValidInlineSvg = hasInlineSvg && isLikelySvgMarkup(inlineSvg);
     const svgColor = element.svgColor || "#ffffff";
-    const coloredSvg = hasInlineSvg
-      ? element.svgContent!.replace(/currentColor/g, svgColor)
+    const coloredSvg = hasValidInlineSvg
+      ? inlineSvg.replace(/currentColor/g, svgColor)
       : "";
     return (
       <div
@@ -934,13 +941,20 @@ function renderReadonlySlideElement(
         className={`absolute overflow-hidden ${!hasSource && !hasInlineSvg ? "bg-slate-100" : ""}`}
         style={commonStyle}
       >
-        {hasInlineSvg ? (
+        {hasValidInlineSvg ? (
           <div
             className="h-full w-full"
             data-testid={`readonly-svg-image-${element.id || index}`}
             style={{ color: svgColor }}
             dangerouslySetInnerHTML={{ __html: coloredSvg }}
           />
+        ) : hasInlineSvg ? (
+          <div
+            className="grid h-full w-full place-items-center bg-slate-200/80 text-center text-[11px] font-medium text-slate-600"
+            data-testid={`readonly-svg-placeholder-${element.id || index}`}
+          >
+            SVG unavailable
+          </div>
         ) : hasSource ? (
           <img
             src={normalizedSource}

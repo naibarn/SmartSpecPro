@@ -42,3 +42,35 @@ Ensure inline SVG and `.svg` file assets behave consistently across editor, play
 
 ## Done Criteria
 - SVG parity suite passes for inline and file-based assets.
+
+## As-Built (2026-03-04)
+
+### Actual Files Changed
+- `apps/web/client/src/presentation-canvas/CanvasObjects.tsx`
+- `apps/web/client/src/presentation-canvas/CanvasObjects.test.tsx`
+- `apps/web/client/src/pages/PresentationEditor.tsx`
+- `apps/web/client/src/pages/PresentationEditor.test.tsx`
+- `apps/web/server/routes/slideRender.ts`
+- `apps/web/server/routes/slideRender.test.ts`
+- `apps/web/shared/presentation/exportWarnings.ts`
+- `apps/web/server/services/presentationExportDegradation.ts`
+- `apps/web/server/services/presentationExportDegradation.test.ts`
+- `specs/feature/030-PresentationEditAdditional/reviews/section-03-review.md`
+- `specs/feature/030-PresentationEditAdditional/sections/section-03-stream-b-svg-parity.md`
+
+### Deviations from Plan
+- Implemented deterministic SVG warning classification at export-spec build time (`W_SVG_*` codes) rather than deferring warnings to runtime renderer-only telemetry.
+
+### Tests Added/Updated
+- Added `client/src/presentation-canvas/CanvasObjects.test.tsx` for invalid inline SVG placeholder behavior and `.svg` source parity.
+- Added slideshow overlay invalid-inline-SVG fallback test in `client/src/pages/PresentationEditor.test.tsx`.
+- Added route HTML contract assertion for SVG fallback logic in `server/routes/slideRender.test.ts`.
+- Expanded `server/services/presentationExportDegradation.test.ts` to cover SVG warning taxonomy output.
+- Executed targeted verification:
+  - `client/src/presentation-canvas/CanvasObjects.test.tsx`
+  - `client/src/pages/PresentationEditor.test.tsx`
+  - `server/routes/slideRender.test.ts`
+  - `server/services/presentationExportDegradation.test.ts`
+
+### Known Follow-ups
+- `W_SVG_LOAD_FAILED` is currently emitted from deterministic preflight classification only for explicit SVG-format missing-source conditions; runtime load failures are handled by bounded placeholder rendering.

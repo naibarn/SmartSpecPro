@@ -291,6 +291,17 @@ describe("GET /internal/slide-render/:deckId/:slideIndex", () => {
     expect(res.text).toContain("video.muted = true");
   });
 
+  it("HTML response includes svg validation and bounded placeholder fallback paths", async () => {
+    const app = await buildApp();
+    const token = makeValidToken();
+    const res = await request(app)
+      .get(`/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}`)
+      .set("X-Internal-Token", token);
+    expect(res.text).toContain("function isLikelySvgMarkup(value)");
+    expect(res.text).toContain("function createSvgPlaceholder()");
+    expect(res.text).toContain("img.addEventListener(\"error\", function()");
+  });
+
   it("HTML response body contains inlined slideContent JSON (full element data)", async () => {
     const app = await buildApp();
     const token = makeValidToken();

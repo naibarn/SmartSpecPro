@@ -16,6 +16,9 @@ describe("presentationExportDegradation", () => {
             elements: [
               { id: "e-1", type: "video" },
               { id: "e-2", type: "image", src: "" },
+              { id: "e-3", type: "image", src: "", imageFormat: "svg" },
+              { id: "e-4", type: "image", src: "uploads/icons/logo.svg" },
+              { id: "e-5", type: "image", src: "", svgContent: "<div>broken-svg</div>" },
             ],
             transition: "wipe",
             durationMs: "fast",
@@ -42,6 +45,10 @@ describe("presentationExportDegradation", () => {
       "SLIDE_DURATION_INVALID",
       "SLIDE_ELEMENT_UNSUPPORTED",
       "SLIDE_IMAGE_SOURCE_MISSING",
+      "W_SVG_LOAD_FAILED",
+      "W_SVG_PARSE_FAILED",
+      "W_SVG_RASTERIZED",
+      "W_SVG_PLACEHOLDER",
     ]);
   });
 });

@@ -10,6 +10,10 @@ const WARNING_PRECEDENCE: Record<PresentationExportWarning["code"], number> = {
   SLIDE_DURATION_INVALID: 2,
   SLIDE_ELEMENT_UNSUPPORTED: 3,
   SLIDE_IMAGE_SOURCE_MISSING: 4,
+  W_SVG_LOAD_FAILED: 5,
+  W_SVG_PARSE_FAILED: 6,
+  W_SVG_RASTERIZED: 7,
+  W_SVG_PLACEHOLDER: 8,
 };
 
 export interface DegradedSlideshowSlide {
@@ -76,6 +80,24 @@ function collectElementWarnings(
 
   let hasUnsupportedElement = false;
   let hasMissingImageSource = false;
+  let hasSvgLoadFailed = false;
+  let hasSvgParseFailed = false;
+  let hasSvgRasterized = false;
+  let hasSvgPlaceholder = false;
+
+  const isLikelySvgMarkup = (value: string): boolean => {
+    const normalized = value.trim().toLowerCase();
+    return normalized.includes("<svg") && normalized.includes("</svg>");
+  };
+
+  const isSvgSource = (value: string): boolean => {
+    const normalized = value.trim().toLowerCase();
+    return (
+      normalized.endsWith(".svg")
+      || normalized.includes(".svg?")
+      || normalized.startsWith("data:image/svg+xml")
+    );
+  };
 
   for (const element of rawElements) {
     if (!element || typeof element !== "object") {
@@ -90,9 +112,25 @@ function collectElementWarnings(
     }
 
     if (type === "image") {
+      const svgContent = String((element as any).svgContent || "").trim();
+      if (svgContent) {
+        if (!isLikelySvgMarkup(svgContent)) {
+          hasSvgParseFailed = true;
+          hasSvgPlaceholder = true;
+        }
+        continue;
+      }
       const src = String((element as any).src || "").trim();
       if (!src) {
         hasMissingImageSource = true;
+        if (String((element as any).imageFormat || "").toLowerCase() === "svg") {
+          hasSvgLoadFailed = true;
+          hasSvgPlaceholder = true;
+        }
+        continue;
+      }
+      if (isSvgSource(src)) {
+        hasSvgRasterized = true;
       }
     }
   }
@@ -106,6 +144,30 @@ function collectElementWarnings(
   if (hasMissingImageSource) {
     warnings.push({
       code: "SLIDE_IMAGE_SOURCE_MISSING",
+      slideId,
+    });
+  }
+  if (hasSvgLoadFailed) {
+    warnings.push({
+      code: "W_SVG_LOAD_FAILED",
+      slideId,
+    });
+  }
+  if (hasSvgParseFailed) {
+    warnings.push({
+      code: "W_SVG_PARSE_FAILED",
+      slideId,
+    });
+  }
+  if (hasSvgRasterized) {
+    warnings.push({
+      code: "W_SVG_RASTERIZED",
+      slideId,
+    });
+  }
+  if (hasSvgPlaceholder) {
+    warnings.push({
+      code: "W_SVG_PLACEHOLDER",
       slideId,
     });
   }

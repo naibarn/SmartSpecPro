@@ -27,6 +27,11 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
+function isLikelySvgMarkup(value: string): boolean {
+  const normalized = value.trim().toLowerCase();
+  return normalized.includes("<svg") && normalized.includes("</svg>");
+}
+
 function resolveImageRenderProps(element: PresentationElement): {
   fit: "contain" | "cover" | "fill";
   positionX: number;
@@ -140,14 +145,26 @@ function renderElementBody(
     const resolvedSource = normalizeMediaSourceUrl(element.src);
     const hasSource = Boolean(resolvedSource);
     const imageRender = resolveImageRenderProps(element);
+    const inlineSvg = typeof element.svgContent === "string" ? element.svgContent.trim() : "";
     // Inline SVG graphic — transparent background, color-tinted
-    if (element.svgContent) {
+    if (inlineSvg) {
       const color = element.svgColor || "#ffffff";
-      const coloredSvg = element.svgContent.replace(/currentColor/g, color);
+      if (!isLikelySvgMarkup(inlineSvg)) {
+        return (
+          <div
+            className="grid h-full w-full place-items-center bg-slate-200/80 text-center text-[11px] font-medium text-slate-600"
+            data-testid={`canvas-svg-placeholder-${element.id}`}
+          >
+            SVG unavailable
+          </div>
+        );
+      }
+      const coloredSvg = inlineSvg.replace(/currentColor/g, color);
       return (
         <div
           className="relative h-full w-full"
           style={{ color }}
+          data-testid={`canvas-inline-svg-${element.id}`}
           dangerouslySetInnerHTML={{ __html: coloredSvg }}
         />
       );
@@ -156,6 +173,7 @@ function renderElementBody(
       <div className={`relative h-full w-full ${hasSource ? "" : "bg-slate-100"}`}>
         {hasSource ? (
           <img
+            data-testid={`canvas-image-${element.id}`}
             src={resolvedSource}
             alt={element.alt || "Image"}
             className="h-full w-full"

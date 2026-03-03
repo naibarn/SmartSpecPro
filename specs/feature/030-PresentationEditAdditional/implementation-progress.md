@@ -16,13 +16,28 @@
   - remaining: none
 
 ## Section 02 - stream-a-auto-layout
-- commit: pending
+- commit: `7496035`
 - test_command_used: `npm --prefix apps/web test -- <target>`
 - pass_fail_summary:
   - `server/services/__tests__/aiPresentationService.test.ts`: pass (51/51)
   - `client/src/pages/PresentationEditor.test.tsx -t "applies Auto Layout with watermark payload from library image selection"`: pass (1/1 selected)
 - notable_deviations:
   - No net production-code delta was required in this section run because Stream A behavior was already present in HEAD baseline.
+- blocked_tasks_resolved_remaining_summary:
+  - resolved: none
+  - remaining: none
+
+## Section 03 - stream-b-svg-parity
+- commit: pending
+- test_command_used: `npm --prefix apps/web test -- <target>`
+- pass_fail_summary:
+  - `client/src/presentation-canvas/CanvasObjects.test.tsx`: pass (2/2)
+  - `client/src/pages/PresentationEditor.test.tsx`: pass (57/57)
+  - `server/routes/slideRender.test.ts`: pass (27/27)
+  - `server/services/presentationExportDegradation.test.ts`: pass (1/1)
+- notable_deviations:
+  - Runtime SVG load failures are degraded to bounded placeholders in render paths; deterministic pre-export warning classification emits `W_SVG_*` codes based on slide payload shape.
+  - Route tests required elevated permissions due sandbox port-bind restrictions.
 - blocked_tasks_resolved_remaining_summary:
   - resolved: none
   - remaining: none
