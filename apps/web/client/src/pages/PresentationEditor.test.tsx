@@ -18,6 +18,7 @@ const mutationMocks = {
   triggerExport: vi.fn(),
   setSlideAudio: vi.fn(),
   setDeckAudio: vi.fn(),
+  relayoutSlide: vi.fn(),
 };
 
 function buildDeckByItem() {
@@ -167,6 +168,7 @@ vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
+    info: vi.fn(),
   },
 }));
 
@@ -257,6 +259,24 @@ vi.mock("@/lib/trpc", () => ({
           error: queryState.deckError,
           refetch: vi.fn(),
         })),
+      },
+      availability: {
+        useQuery: vi.fn(() => ({
+          data: {
+            enabled: true,
+            aiGenerationEnabled: true,
+          },
+          isLoading: false,
+          error: null,
+        })),
+      },
+      ai: {
+        relayoutSlide: {
+          useMutation: vi.fn(() => ({
+            mutateAsync: mutationMocks.relayoutSlide,
+            isPending: false,
+          })),
+        },
       },
       addSlide: {
         useMutation: vi.fn(() => ({
@@ -390,6 +410,16 @@ describe("PresentationEditor", () => {
     });
     mutationMocks.setSlideAudio.mockResolvedValue({});
     mutationMocks.setDeckAudio.mockResolvedValue({});
+    mutationMocks.relayoutSlide.mockResolvedValue({
+      slide: { id: 71, version: 4 },
+      warnings: [],
+      applied: {
+        templateId: "split_right_image",
+        stylePresetId: "dark-professional",
+        graphicCategory: "Business",
+        reusedImage: true,
+      },
+    });
     queryState.guard = {
       allowed: true,
       itemId: 42,
@@ -892,6 +922,28 @@ describe("PresentationEditor", () => {
     fireEvent.keyDown(window, { key: "y", ctrlKey: true });
     await waitFor(() => {
       expect(screen.getByLabelText("Element X")).toHaveValue(11);
+    });
+
+    // Redo using KeyZ physical code (non-English layout compatible)
+    fireEvent.keyDown(window, { key: "x", code: "KeyZ", ctrlKey: true, shiftKey: true });
+    await waitFor(() => {
+      expect(screen.getByLabelText("Element X")).toHaveValue(11);
+    });
+  });
+
+  it("supports copy/cut/paste hotkeys for selected canvas elements", async () => {
+    render(<PresentationEditor />);
+    expect(screen.getAllByRole("button", { name: /select canvas element/i })).toHaveLength(1);
+
+    fireEvent.keyDown(window, { key: "x", code: "KeyC", ctrlKey: true });
+    fireEvent.keyDown(window, { key: "x", code: "KeyV", ctrlKey: true });
+    await waitFor(() => {
+      expect(screen.getAllByRole("button", { name: /select canvas element/i })).toHaveLength(2);
+    });
+
+    fireEvent.keyDown(window, { key: "x", code: "KeyX", ctrlKey: true });
+    await waitFor(() => {
+      expect(screen.getAllByRole("button", { name: /select canvas element/i })).toHaveLength(1);
     });
   });
 

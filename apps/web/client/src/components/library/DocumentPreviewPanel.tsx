@@ -16,7 +16,7 @@ import {
 import type { DocumentLibraryItem, DocumentPreviewType } from "@/lib/documentManagementUi";
 import { getOfficePreviewDecision } from "@/lib/previewHostSafety";
 import { trpc } from "@/lib/trpc";
-import { AlertTriangle, Check, ExternalLink, Loader2, Pencil, Upload, X } from "lucide-react";
+import { AlertTriangle, Check, Copy, ExternalLink, Loader2, Pencil, Upload, X } from "lucide-react";
 // Heavy viewer components — lazy-loaded so they don't bloat the initial DocumentManagement chunk
 const MarkdownFileEditor = lazy(() => import("./MarkdownFileEditor"));
 const CodeViewer = lazy(() => import("./CodeViewer"));
@@ -80,6 +80,7 @@ export default function DocumentPreviewPanel({
   const [isPdfLoading, setIsPdfLoading] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [replaceDialogOpen, setReplaceDialogOpen] = useState(false);
+  const [promptCopied, setPromptCopied] = useState(false);
   const [pendingReplaceFile, setPendingReplaceFile] = useState<File | null>(null);
   const [replaceDescription, setReplaceDescription] = useState("");
   const replaceFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -345,6 +346,34 @@ export default function DocumentPreviewPanel({
       {previewType === "audio" && sourceUrl ? (
         <div className="rounded-xl border bg-gradient-to-r from-slate-50 to-sky-50 p-4">
           <audio src={sourceUrl} controls className="w-full" />
+        </div>
+      ) : null}
+
+      {(previewType === "image" || previewType === "video" || previewType === "audio") && item.description ? (
+        <div className="rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50/60 to-violet-50/40 p-4">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-indigo-500">Prompt</span>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 gap-1.5 border-indigo-200 bg-white/80 px-2.5 text-xs text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
+              onClick={() => {
+                navigator.clipboard.writeText(item.description!).then(() => {
+                  setPromptCopied(true);
+                  setTimeout(() => setPromptCopied(false), 2000);
+                });
+              }}
+            >
+              {promptCopied ? (
+                <Check className="h-3.5 w-3.5" />
+              ) : (
+                <Copy className="h-3.5 w-3.5" />
+              )}
+              {promptCopied ? "Copied!" : "Copy Prompt"}
+            </Button>
+          </div>
+          <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{item.description}</p>
         </div>
       ) : null}
 

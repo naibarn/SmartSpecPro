@@ -63,8 +63,18 @@ import {
 } from "../services/presentationPlaybackExport";
 import { applyTemplateAssetToDeck } from "../services/presentationTemplateService";
 import { getRedisClient } from "../services/redis";
-import { generateAIDraft } from "../services/aiPresentationService";
-import { GenerateAIDraftInputSchema } from "@shared/presentation/aiTypes";
+import {
+  generateAIDraft,
+  relayoutExistingSlide,
+  resolvePendingMediaForDeck,
+} from "../services/aiPresentationService";
+import {
+  AI_GEOMETRIC_ACCENT_SHAPES,
+  AI_GEOMETRIC_CROP_SHAPES,
+  AI_LAYOUT_TEMPLATE_IDS,
+  AI_STYLE_PRESET_IDS,
+  GenerateAIDraftInputSchema,
+} from "@shared/presentation/aiTypes";
 
 const DOCUMENT_MANAGEMENT_ROUTE_BASE =
   "/document-management?scope=my_library&sort=updated_desc&mode=editor&doc=";
@@ -331,6 +341,110 @@ export const presentationRouter = router({
           );
 
           return { taskId, alreadyInProgress: false };
+        } catch (err) {
+          if (err instanceof PresentationServiceError) {
+            throw mapPresentationServiceError(err);
+          }
+          throw err;
+        }
+      }),
+
+    resolvePendingMedia: protectedProcedure
+      .input(z.object({
+        deckId: z.number().int().positive(),
+        maxJobs: z.number().int().positive().max(200).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        try {
+          ensureFeatureEnabled();
+          ensureAIGenerationEnabled();
+          const actor = toPresentationActor(ctx);
+          const userToken = getPresentationToken(ctx, ["media:generate"]);
+          return await resolvePendingMediaForDeck(
+            {
+              deckId: input.deckId,
+              maxJobs: input.maxJobs,
+            },
+            actor,
+            userToken,
+          );
+        } catch (err) {
+          if (err instanceof PresentationServiceError) {
+            throw mapPresentationServiceError(err);
+          }
+          throw err;
+        }
+      }),
+
+    relayoutSlide: protectedProcedure
+      .input(z.object({
+        deckId: z.number().int().positive(),
+        slideId: z.number().int().positive(),
+        expectedVersion: z.number().int().nonnegative(),
+        stylePresetId: z.enum(AI_STYLE_PRESET_IDS).optional(),
+        templateId: z.enum(AI_LAYOUT_TEMPLATE_IDS).optional(),
+        includeSvg: z.boolean().optional(),
+        includeGeometricCrop: z.boolean().optional(),
+        geometricCropShape: z.enum(AI_GEOMETRIC_CROP_SHAPES).optional(),
+        includeGeometricAccents: z.boolean().optional(),
+        geometricAccentShape: z.enum(AI_GEOMETRIC_ACCENT_SHAPES).optional(),
+        layoutSeed: z.number().int().optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        try {
+          ensureFeatureEnabled();
+          const actor = toPresentationActor(ctx);
+          const detail = await getPresentationDeckDetail(input.deckId, actor);
+          const slide = detail.slides.find((item) => item.id === input.slideId);
+          if (!slide) {
+            throw new PresentationServiceError(
+              PRESENTATION_ERROR_CODE.NOT_FOUND,
+              `${PRESENTATION_ERROR_CODE.NOT_FOUND}: slide ${input.slideId} not found`,
+            );
+          }
+          const parsed = presentationSlideContentSchema.safeParse(slide.slideContent);
+          if (!parsed.success) {
+            throw new PresentationServiceError(
+              PRESENTATION_ERROR_CODE.AI_INVALID_RESPONSE,
+              `${PRESENTATION_ERROR_CODE.AI_INVALID_RESPONSE}: existing slide content is invalid`,
+            );
+          }
+          const orderedSlides = [...detail.slides].sort((a, b) => a.orderIndex - b.orderIndex);
+          const slideIndex = Math.max(1, orderedSlides.findIndex((item) => item.id === slide.id) + 1);
+          const relayout = relayoutExistingSlide({
+            slideTitle: slide.title,
+            slideContent: parsed.data,
+            deckTitle: detail.deck.title ?? undefined,
+            slideIndex,
+            totalSlides: Math.max(1, orderedSlides.length),
+            stylePresetId: input.stylePresetId,
+            templateId: input.templateId,
+            includeSvg: input.includeSvg,
+            includeGeometricCrop: input.includeGeometricCrop,
+            geometricCropShape: input.geometricCropShape,
+            includeGeometricAccents: input.includeGeometricAccents,
+            geometricAccentShape: input.geometricAccentShape,
+            layoutSeed: input.layoutSeed,
+          });
+
+          const updatedSlide = await updateSlideInDeck(
+            {
+              deckId: input.deckId,
+              slideId: input.slideId,
+              expectedVersion: input.expectedVersion,
+              saveMode: "manual",
+              title: slide.title,
+              notes: slide.notes,
+              slideContent: relayout.slideContent,
+            },
+            actor,
+          );
+
+          return {
+            slide: updatedSlide,
+            warnings: relayout.warnings,
+            applied: relayout.applied,
+          };
         } catch (err) {
           if (err instanceof PresentationServiceError) {
             throw mapPresentationServiceError(err);

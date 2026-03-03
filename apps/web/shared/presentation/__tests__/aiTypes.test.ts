@@ -9,6 +9,8 @@ import {
   AI_LAYOUT_TEMPLATE_IDS,
   AI_SVG_CATEGORIES,
   AI_STYLE_PRESET_IDS,
+  AI_GEOMETRIC_CROP_SHAPES,
+  AI_GEOMETRIC_ACCENT_SHAPES,
   MAX_AI_DRAFT_SLIDES,
 } from "../aiTypes";
 
@@ -257,5 +259,15 @@ describe("GenerateAIDraftOutputSchema", () => {
   it("rejects empty taskId", () => {
     const result = GenerateAIDraftOutputSchema.safeParse({ taskId: "" });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("geometric shape options", () => {
+  it("defines crop shape choices", () => {
+    expect(AI_GEOMETRIC_CROP_SHAPES).toEqual(["auto", "rect", "circle", "triangle"]);
+  });
+
+  it("defines accent shape choices", () => {
+    expect(AI_GEOMETRIC_ACCENT_SHAPES).toEqual(["auto", "rect", "circle", "triangle"]);
   });
 });

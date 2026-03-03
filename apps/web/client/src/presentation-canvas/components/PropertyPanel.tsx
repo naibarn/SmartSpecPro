@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 interface PropertyPanelProps {
   selectedElement: PresentationElement | null;
   selectedElementCount?: number;
+  selectionHasMixedTypes?: boolean;
   onPatchSelected: (patch: PresentationElementPatch) => void;
   onPatchElementById?: (elementId: string, patch: PresentationElementPatch) => void;
 }
@@ -523,6 +524,7 @@ function ToolbarButton({
 export function PropertyPanel({
   selectedElement,
   selectedElementCount = 0,
+  selectionHasMixedTypes = false,
   onPatchSelected,
   onPatchElementById,
 }: PropertyPanelProps) {
@@ -686,6 +688,7 @@ export function PropertyPanel({
   // Text-element specific derived values (safe to compute; guarded by type check below)
   const textEl = selectedElement.type === "text" ? selectedElement : null;
   const isMultiSelection = selectedElementCount > 1;
+  const isMixedTypeSelection = isMultiSelection && selectionHasMixedTypes;
   const currentFont = textEl?.fontFamily ?? "Inter, system-ui, sans-serif";
   const currentWeight = textEl?.fontWeight ?? "600";
   const currentFontLabel = FONT_FAMILIES.find((f) => f.value === currentFont)?.label ?? currentFont.split(",")[0];
@@ -713,6 +716,7 @@ export function PropertyPanel({
                 type="number"
                 className="w-full rounded-md bg-zinc-800 border border-zinc-700 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 value={value}
+                disabled={isMixedTypeSelection}
                 onChange={(e) => onPatchSelected({ [field]: parseNumberInput(e.target.value, value) } as PresentationElementPatch)}
               />
             </label>
@@ -724,14 +728,22 @@ export function PropertyPanel({
               type="number"
               className="w-full rounded-md bg-zinc-800 border border-zinc-700 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
               value={selectedElement.rotation ?? 0}
+              disabled={isMixedTypeSelection}
               onChange={(e) => onPatchSelected({ rotation: parseNumberInput(e.target.value, selectedElement.rotation ?? 0) })}
             />
           </label>
         </div>
       </Section>
 
+      {isMixedTypeSelection ? (
+        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          Mixed object types selected. Property editing is disabled for safety.
+          Resize all selected objects directly on the canvas.
+        </div>
+      ) : null}
+
       {/* ── TEXT ELEMENT ── */}
-      {selectedElement.type === "text" && (
+      {!isMixedTypeSelection && selectedElement.type === "text" && (
         <>
           {/* Text Content */}
           <Section label="Content">
@@ -1187,7 +1199,7 @@ export function PropertyPanel({
       )}
 
       {/* ── IMAGE / SVG GRAPHIC ── */}
-      {selectedElement.type === "image" && (
+      {!isMixedTypeSelection && selectedElement.type === "image" && (
         <>
           {/* SVG Graphic color picker */}
           {(selectedElement as any).svgContent && (
@@ -1443,7 +1455,7 @@ export function PropertyPanel({
 
 
       {/* ── VIDEO ── */}
-      {selectedElement.type === "video" && (
+      {!isMixedTypeSelection && selectedElement.type === "video" && (
         <Section label="Video">
           {[
             { label: "Source URL", field: "src" as const, value: selectedElement.src },
@@ -1464,7 +1476,7 @@ export function PropertyPanel({
       )}
 
       {/* ── RECT ── */}
-      {selectedElement.type === "rect" && (
+      {!isMixedTypeSelection && selectedElement.type === "rect" && (
         <Section label="Rectangle">
           <ColorField label="Fill" textAriaLabel="Rectangle Fill" pickerAriaLabel="Rectangle Fill Picker" value={selectedElement.fill} fallback="#93c5fd" onChange={(v) => onPatchSelected({ fill: v } as PresentationElementPatch)} />
           <ColorField label="Stroke" textAriaLabel="Rectangle Border" pickerAriaLabel="Rectangle Border Picker" value={selectedElement.stroke || "#2563eb"} fallback="#2563eb" onChange={(v) => onPatchSelected({ stroke: v } as PresentationElementPatch)} />
@@ -1476,7 +1488,7 @@ export function PropertyPanel({
       )}
 
       {/* ── LINE ── */}
-      {selectedElement.type === "line" && (
+      {!isMixedTypeSelection && selectedElement.type === "line" && (
         <Section label="Line">
           <ColorField label="Fill" textAriaLabel="Line Fill" pickerAriaLabel="Line Fill Picker" value={selectedElement.fill || "transparent"} fallback="#ffffff" onChange={(v) => onPatchSelected({ fill: v } as PresentationElementPatch)} />
           <ColorField label="Stroke" textAriaLabel="Line Stroke" pickerAriaLabel="Line Stroke Picker" value={selectedElement.stroke} fallback="#1f2937" onChange={(v) => onPatchSelected({ stroke: v } as PresentationElementPatch)} />

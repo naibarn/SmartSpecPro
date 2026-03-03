@@ -225,4 +225,18 @@ describe("SlideAudioPanel", () => {
     // AudioPickerDialog is now open, useQuery is called with audio filter
     expect(capturedInput?.filters?.itemType).toBe("audio");
   });
+
+  it("end trim input unlocks when Play to end is turned off", () => {
+    render(
+      <SlideAudioPanel
+        {...PROPS_NO_AUDIO}
+        slideAudioTrack={SLIDE_AUDIO_TRACK}
+      />,
+    );
+
+    const endInput = screen.getByLabelText("slide-audio-trim-end-seconds") as HTMLInputElement;
+    expect(endInput.disabled).toBe(true);
+    fireEvent.click(screen.getByRole("switch", { name: /play to end/i }));
+    expect(endInput.disabled).toBe(false);
+  });
 });

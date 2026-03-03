@@ -12,12 +12,57 @@ import "./index.css";
 
 const CHUNK_RELOAD_MARKER = "__smartspec_chunk_reload_at__";
 const CHUNK_RELOAD_WINDOW_MS = 30_000;
+const SENTRY_EVENT_DEDUPE_WINDOW_MS = 30_000;
+const recentSentryEvents = new Map<string, number>();
 const CHUNK_ERROR_PATTERNS = [
   /Failed to fetch dynamically imported module/i,
   /Importing a module script failed/i,
   /Loading chunk [\w-]+ failed/i,
   /ChunkLoadError/i,
 ];
+
+function parseSampleRate(raw: unknown, fallback: number): number {
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return Math.min(1, Math.max(0, parsed));
+}
+
+function shouldDropDuplicateSentryEvent(event: Sentry.Event): boolean {
+  const exceptionValue = event.exception?.values?.[0]?.value || "";
+  const exceptionType = event.exception?.values?.[0]?.type || "";
+  const key = [
+    event.message || "",
+    exceptionType,
+    exceptionValue,
+    event.transaction || "",
+  ]
+    .join("|")
+    .trim();
+
+  if (!key) {
+    return false;
+  }
+
+  const now = Date.now();
+  const lastSeenAt = recentSentryEvents.get(key);
+  recentSentryEvents.set(key, now);
+  if (lastSeenAt != null && now - lastSeenAt < SENTRY_EVENT_DEDUPE_WINDOW_MS) {
+    return true;
+  }
+
+  // Guard against unbounded growth in long-lived tabs
+  if (recentSentryEvents.size > 500) {
+    for (const [existingKey, seenAt] of recentSentryEvents) {
+      if (now - seenAt > SENTRY_EVENT_DEDUPE_WINDOW_MS) {
+        recentSentryEvents.delete(existingKey);
+      }
+    }
+  }
+
+  return false;
+}
 
 function isChunkLoadError(error: unknown): boolean {
   if (error instanceof Error) {
@@ -65,23 +110,44 @@ if (typeof window !== "undefined") {
   });
 }
 
-// Initialize Sentry for frontend error tracking (only when DSN is configured)
-if (import.meta.env.VITE_SENTRY_DSN) {
-  Sentry.init({
-    dsn: import.meta.env.VITE_SENTRY_DSN,
-    environment: import.meta.env.MODE || "production",
-    release: import.meta.env.VITE_RELEASE || undefined,
-    tracesSampleRate: 0.05,
-    replaysSessionSampleRate: 0.01,
-    replaysOnErrorSampleRate: 1.0,
-    integrations: [
-      Sentry.browserTracingIntegration(),
+// Initialize Sentry for frontend error tracking (only when enabled + DSN configured)
+const isSentryEnabled = import.meta.env.VITE_SENTRY_ENABLED !== "false";
+const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
+const sentrySampleRate = parseSampleRate(import.meta.env.VITE_SENTRY_SAMPLE_RATE, 0.2);
+const sentryTraceSampleRate = parseSampleRate(import.meta.env.VITE_SENTRY_TRACES_SAMPLE_RATE, 0.02);
+const sentryReplaySessionSampleRate = parseSampleRate(import.meta.env.VITE_SENTRY_REPLAY_SESSION_SAMPLE_RATE, 0);
+const sentryReplayOnErrorSampleRate = parseSampleRate(import.meta.env.VITE_SENTRY_REPLAY_ON_ERROR_SAMPLE_RATE, 0.1);
+
+if (isSentryEnabled && sentryDsn) {
+  const integrations = [Sentry.browserTracingIntegration()];
+  if (sentryReplaySessionSampleRate > 0 || sentryReplayOnErrorSampleRate > 0) {
+    integrations.push(
       Sentry.replayIntegration({
         maskAllInputs: true,
         maskAllText: false,
       }),
+    );
+  }
+
+  Sentry.init({
+    dsn: sentryDsn,
+    environment: import.meta.env.MODE || "production",
+    release: import.meta.env.VITE_RELEASE || undefined,
+    sampleRate: sentrySampleRate,
+    tracesSampleRate: sentryTraceSampleRate,
+    replaysSessionSampleRate: sentryReplaySessionSampleRate,
+    replaysOnErrorSampleRate: sentryReplayOnErrorSampleRate,
+    integrations,
+    ignoreErrors: [
+      "Fullscreen API unavailable",
+      "ResizeObserver loop limit exceeded",
+      "ResizeObserver loop completed with undelivered notifications",
     ],
     beforeSend(event) {
+      if (shouldDropDuplicateSentryEvent(event)) {
+        return null;
+      }
+
       const scrubObj = (obj: Record<string, unknown>) => {
         for (const key of Object.keys(obj)) {
           if (/password|token|secret|apiKey/i.test(key)) {

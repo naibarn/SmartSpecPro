@@ -37,6 +37,10 @@ interface CanvasStageProps {
   onArrangeSelection: (direction: ArrangeDirection) => void;
   onDragEnd?: () => void;
   onDropAsset?: (payload: CanvasStageDropAssetPayload) => void;
+  onMarqueeSelect?: (
+    bounds: { x: number; y: number; width: number; height: number },
+    options?: { additive?: boolean },
+  ) => void;
 }
 
 export const CANVAS_LIBRARY_ASSET_DRAG_MIME = "application/x-smartspec-canvas-library-asset-v1";
@@ -58,6 +62,34 @@ const MAX_STAGE_ZOOM = 2;
 const STAGE_ZOOM_STEP = 0.1;
 const TRANSFORM_DOCK_WIDTH = 228;
 
+interface MarqueeDragState {
+  pointerId: number;
+  startCanvasX: number;
+  startCanvasY: number;
+  currentCanvasX: number;
+  currentCanvasY: number;
+  additive: boolean;
+  captureTarget: HTMLDivElement;
+}
+
+function normalizeMarqueeBounds(
+  startX: number,
+  startY: number,
+  endX: number,
+  endY: number,
+): { x: number; y: number; width: number; height: number } {
+  const left = Math.min(startX, endX);
+  const right = Math.max(startX, endX);
+  const top = Math.min(startY, endY);
+  const bottom = Math.max(startY, endY);
+  return {
+    x: left,
+    y: top,
+    width: Math.max(0, right - left),
+    height: Math.max(0, bottom - top),
+  };
+}
+
 export function CanvasStage({
   elements,
   canvasSize,
@@ -75,6 +107,7 @@ export function CanvasStage({
   onArrangeSelection,
   onDragEnd,
   onDropAsset,
+  onMarqueeSelect,
 }: CanvasStageProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [viewportSize, setViewportSize] = useState({ width: 1200, height: 680 });
@@ -88,6 +121,13 @@ export function CanvasStage({
     startOffsetY: number;
   } | null>(null);
   const panCaptureTargetRef = useRef<HTMLDivElement | null>(null);
+  const marqueeStateRef = useRef<MarqueeDragState | null>(null);
+  const [marqueeBounds, setMarqueeBounds] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
 
   const effectiveScale = viewport?.scale ?? 1;
   const offsetX = viewport?.offsetX ?? 0;
@@ -185,9 +225,40 @@ export function CanvasStage({
       }
     }
 
+    function clearMarqueeState(pointerId?: number) {
+      const marqueeState = marqueeStateRef.current;
+      if (marqueeState && (pointerId == null || marqueeState.pointerId === pointerId)) {
+        const captureTarget = marqueeState.captureTarget;
+        if (captureTarget && captureTarget.hasPointerCapture?.(marqueeState.pointerId)) {
+          captureTarget.releasePointerCapture?.(marqueeState.pointerId);
+        }
+        marqueeStateRef.current = null;
+      }
+      setMarqueeBounds(null);
+    }
+
     function handlePointerMove(event: PointerEvent) {
       const panState = panStateRef.current;
       if (!panState || panState.pointerId !== event.pointerId || !viewport || !onViewportChange) {
+        const marqueeState = marqueeStateRef.current;
+        if (!marqueeState || marqueeState.pointerId !== event.pointerId) {
+          return;
+        }
+        const point = toCanvasCoordinates(
+          marqueeState.captureTarget,
+          event.clientX,
+          event.clientY,
+        );
+        marqueeState.currentCanvasX = point.x;
+        marqueeState.currentCanvasY = point.y;
+        setMarqueeBounds(
+          normalizeMarqueeBounds(
+            marqueeState.startCanvasX,
+            marqueeState.startCanvasY,
+            marqueeState.currentCanvasX,
+            marqueeState.currentCanvasY,
+          ),
+        );
         return;
       }
 
@@ -206,6 +277,17 @@ export function CanvasStage({
     }
 
     function handlePointerUp(event: PointerEvent) {
+      const marqueeState = marqueeStateRef.current;
+      if (marqueeState && marqueeState.pointerId === event.pointerId) {
+        const bounds = normalizeMarqueeBounds(
+          marqueeState.startCanvasX,
+          marqueeState.startCanvasY,
+          marqueeState.currentCanvasX,
+          marqueeState.currentCanvasY,
+        );
+        clearMarqueeState(event.pointerId);
+        onMarqueeSelect?.(bounds, { additive: marqueeState.additive });
+      }
       clearPanState(event.pointerId);
     }
 
@@ -215,11 +297,12 @@ export function CanvasStage({
 
     return () => {
       clearPanState();
+      clearMarqueeState();
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
       window.removeEventListener("pointercancel", handlePointerUp);
     };
-  }, [onViewportChange, viewport]);
+  }, [canvasHeight, canvasWidth, interactionScale, offsetX, offsetY, onMarqueeSelect, onViewportChange, viewport]);
 
   function parseDroppedAsset(raw: string): CanvasStageDroppedAsset | null {
     if (!raw) {
@@ -245,6 +328,20 @@ export function CanvasStage({
     } catch {
       return null;
     }
+  }
+
+  function toCanvasCoordinates(
+    container: HTMLDivElement,
+    clientX: number,
+    clientY: number,
+  ): { x: number; y: number } {
+    const rect = container.getBoundingClientRect();
+    const x = (clientX - rect.left - offsetX) / interactionScale;
+    const y = (clientY - rect.top - offsetY) / interactionScale;
+    return {
+      x: Math.max(0, Math.min(canvasWidth, x)),
+      y: Math.max(0, Math.min(canvasHeight, y)),
+    };
   }
 
   function handleDragEnter(event: DragEvent<HTMLDivElement>) {
@@ -316,16 +413,45 @@ export function CanvasStage({
     const isMiddleButton = event.button === 1;
     const isRightButton = event.button === 2;
     const isModifierPan = isLeftButton && event.altKey;
-    if (!viewport || !onViewportChange || viewport.scale <= 1) {
-      return;
-    }
     if (!isLeftButton && !isMiddleButton && !isRightButton) {
       return;
     }
 
     const target = event.target as HTMLElement | null;
     const clickedCanvasObject = Boolean(target?.closest("[data-canvas-object='true']"));
-    if (isLeftButton && clickedCanvasObject && !isModifierPan) {
+    if (isLeftButton && clickedCanvasObject && !isModifierPan && !event.shiftKey) {
+      return;
+    }
+
+    if (
+      isLeftButton
+      && !clickedCanvasObject
+      && !isModifierPan
+      && onMarqueeSelect
+      && (!viewport || viewport.scale <= 1 || event.shiftKey)
+    ) {
+      const point = toCanvasCoordinates(event.currentTarget, event.clientX, event.clientY);
+      marqueeStateRef.current = {
+        pointerId: event.pointerId,
+        startCanvasX: point.x,
+        startCanvasY: point.y,
+        currentCanvasX: point.x,
+        currentCanvasY: point.y,
+        additive: event.shiftKey,
+        captureTarget: event.currentTarget,
+      };
+      setMarqueeBounds({
+        x: point.x,
+        y: point.y,
+        width: 0,
+        height: 0,
+      });
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+      event.preventDefault();
+      return;
+    }
+
+    if (!viewport || !onViewportChange || viewport.scale <= 1) {
       return;
     }
 
@@ -405,7 +531,7 @@ export function CanvasStage({
       <div className="mb-1 flex shrink-0 flex-wrap items-center justify-between gap-2 px-1 text-xs text-slate-600">
         {viewport ? (
           <p data-testid="canvas-stage-viewport">
-            viewport: {effectiveScale.toFixed(2)}x ({Math.round(offsetX)}, {Math.round(offsetY)})
+            viewport: {effectiveScale.toFixed(2)}x ({Math.round(offsetX)}, {Math.round(offsetY)}) · {Math.round(effectiveScale * 100)}%
           </p>
         ) : (
           <span />
@@ -500,6 +626,18 @@ export function CanvasStage({
                       canvasHeight={canvasHeight}
                       showElementFrames={showElementFrames}
                     />
+                    {marqueeBounds ? (
+                      <div
+                        data-testid="canvas-stage-marquee"
+                        className="pointer-events-none absolute border border-sky-500 bg-sky-400/20"
+                        style={{
+                          left: `${marqueeBounds.x}px`,
+                          top: `${marqueeBounds.y}px`,
+                          width: `${marqueeBounds.width}px`,
+                          height: `${marqueeBounds.height}px`,
+                        }}
+                      />
+                    ) : null}
                     {isDragOver ? (
                       <div className="pointer-events-none absolute inset-0 grid place-items-center border-2 border-dashed border-sky-400 bg-sky-500/15 text-sm font-medium text-sky-700">
                         Drop media to insert
@@ -563,7 +701,7 @@ export function CanvasStage({
 
         {effectiveScale > 1 ? (
           <p className="pointer-events-none absolute bottom-2 right-2 rounded bg-black/70 px-2 py-1 text-[11px] text-white">
-            Scroll to zoom. Pan: drag empty area, Alt+drag, or right/middle-mouse drag.
+            Scroll to zoom. Pan: drag empty area, Alt+drag, or right/middle-mouse drag. Select: Shift+drag marquee.
           </p>
         ) : null}
       </div>

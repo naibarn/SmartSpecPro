@@ -185,6 +185,88 @@ const warmSunset: SlideStylePreset = {
   },
 };
 
+const editorialClean: SlideStylePreset = {
+  id: "editorial-clean",
+  name: "Editorial Clean",
+  colors: {
+    background: "#f7f7f4",
+    backgroundAlt: "#ecebe5",
+    primary: "#101820",
+    secondary: "#6b705c",
+    text: "#1f2933",
+    textMuted: "#5f6c76",
+    cardBg: ["#ecebe5", "#e1e0d8", "#d8d7cc"],
+    overlay: "rgba(16,24,32,0.42)",
+  },
+  typography: {
+    titleFontFamily: "Plus Jakarta Sans",
+    bodyFontFamily: "Sarabun",
+    titleFontWeight: 700,
+    bodyFontWeight: 400,
+  },
+  header: {
+    enabled: true,
+    height: 54,
+    backgroundColor: "#f7f7f4",
+    showDeckTitle: true,
+    logoPosition: "left",
+    titleFontSize: 18,
+    titleColor: "#101820",
+    borderBottom: "2px solid #d8d7cc",
+  },
+  footer: {
+    enabled: true,
+    height: 34,
+    backgroundColor: "#f7f7f4",
+    showPageNumber: true,
+    showCustomText: false,
+    fontSize: 12,
+    textColor: "#5f6c76",
+    borderTop: "1px solid #d8d7cc",
+  },
+};
+
+const midnightLuxe: SlideStylePreset = {
+  id: "midnight-luxe",
+  name: "Midnight Luxe",
+  colors: {
+    background: "#0d1117",
+    backgroundAlt: "#161b22",
+    primary: "#f59e0b",
+    secondary: "#1f2937",
+    text: "#f3f4f6",
+    textMuted: "#9ca3af",
+    cardBg: ["#1f2937", "#273449", "#111827"],
+    overlay: "rgba(5,10,18,0.62)",
+  },
+  typography: {
+    titleFontFamily: "Plus Jakarta Sans",
+    bodyFontFamily: "Sarabun",
+    titleFontWeight: 700,
+    bodyFontWeight: 400,
+  },
+  header: {
+    enabled: true,
+    height: 58,
+    backgroundColor: "#111827",
+    showDeckTitle: true,
+    logoPosition: "left",
+    titleFontSize: 18,
+    titleColor: "#f3f4f6",
+    borderBottom: "2px solid #f59e0b",
+  },
+  footer: {
+    enabled: true,
+    height: 36,
+    backgroundColor: "#111827",
+    showPageNumber: true,
+    showCustomText: false,
+    fontSize: 12,
+    textColor: "#9ca3af",
+    borderTop: "1px solid #374151",
+  },
+};
+
 /** Record keyed by preset ID for fast lookup */
 export const PRESET_MAP: Record<
   (typeof AI_STYLE_PRESET_IDS)[number],
@@ -195,6 +277,8 @@ export const PRESET_MAP: Record<
   "corporate-blue": corporateBlue,
   "nature-green": natureGreen,
   "warm-sunset": warmSunset,
+  "editorial-clean": editorialClean,
+  "midnight-luxe": midnightLuxe,
 };
 
 /** Array form for UI listing */

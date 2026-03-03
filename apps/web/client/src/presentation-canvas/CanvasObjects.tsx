@@ -94,8 +94,11 @@ function renderElementBody(element: PresentationElement): ReactElement {
         style={{ backgroundColor: element.backgroundColor || "transparent" }}
       >
         <p
-          className="h-full w-full break-words whitespace-pre-wrap"
+          className="w-full break-words whitespace-pre-wrap"
           style={{
+            display: "block",
+            minHeight: "100%",
+            paddingBottom: "0.14em",
             color: element.color || "#111827",
             fontSize,
             fontFamily: element.fontFamily || "Inter, system-ui, sans-serif",

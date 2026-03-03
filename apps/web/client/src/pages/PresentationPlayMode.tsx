@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useRoute } from "wouter";
-import { Loader2, Maximize2, Pause, Play, SkipBack, SkipForward } from "lucide-react";
+import { ChevronLeft, Loader2, Maximize2, Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { PlaybackEngine, type PlaybackState } from "@/presentation-canvas/play/PlaybackEngine";
 import { AudioTrackPlayer } from "@/presentation-canvas/play/AudioTrackPlayer";
 import { CanvasStage } from "@/presentation-canvas";
 import { normalizeCanvasSize } from "@/presentation-canvas/constants";
+import { ensureSlideContent } from "@/lib/presentationEditorState";
+import { Button } from "@/components/ui/button";
 
 const PLAY_MODE_ROUTE = "/presentation/:itemId/play";
 
@@ -15,6 +17,13 @@ export default function PresentationPlayMode() {
   const [, routeParams] = useRoute(PLAY_MODE_ROUTE);
   const itemId = routeParams?.itemId ? parseInt(routeParams.itemId, 10) : null;
   const validItemId = itemId !== null && Number.isFinite(itemId) ? itemId : null;
+  const navigateBackToEditor = useCallback(() => {
+    if (validItemId) {
+      setLocation(`/presentation-editor/${validItemId}`);
+      return;
+    }
+    setLocation("/presentations");
+  }, [setLocation, validItemId]);
 
   // -------------------------------------------------------------------------
   // Data
@@ -24,6 +33,38 @@ export default function PresentationPlayMode() {
     { itemId: validItemId! },
     { enabled: Boolean(validItemId) },
   );
+  const deckDetailQuery = trpc.presentation.getDeckByLibraryItem.useQuery(
+    { libraryItemId: validItemId! },
+    { enabled: Boolean(validItemId) },
+  );
+
+  const playbackSlides = useMemo(() => {
+    if (!playDeck) {
+      return [];
+    }
+    const detailSlidesRaw = Array.isArray((deckDetailQuery.data as any)?.slides)
+      ? (deckDetailQuery.data as any).slides
+      : [];
+    const detailSlideMap = new Map<number, any>();
+    for (const detailSlide of detailSlidesRaw) {
+      const detailId = Number((detailSlide as any)?.id);
+      if (Number.isFinite(detailId) && detailId > 0) {
+        detailSlideMap.set(detailId, detailSlide);
+      }
+    }
+
+    return playDeck.slides.map((slide: any) => {
+      const resolvedSlideId = Number(slide.slideId ?? slide.id);
+      const detailSlide = Number.isFinite(resolvedSlideId)
+        ? detailSlideMap.get(resolvedSlideId)
+        : null;
+      return {
+        ...slide,
+        slideId: Number.isFinite(resolvedSlideId) ? resolvedSlideId : 0,
+        slideContent: detailSlide?.slideContent ?? slide.slideContent ?? { elements: [] },
+      };
+    });
+  }, [deckDetailQuery.data, playDeck]);
 
   // Detect feature-disabled errors (FORBIDDEN with FEATURE_DISABLED code)
   const isFeatureDisabled =
@@ -62,12 +103,12 @@ export default function PresentationPlayMode() {
   // -------------------------------------------------------------------------
 
   useEffect(() => {
-    if (!playDeck) return;
+    if (!playDeck || !playbackSlides.length) return;
 
     audioRef.current = new AudioTrackPlayer(playDeck.projectAudioTrack ?? null);
 
     engineRef.current = new PlaybackEngine(
-      playDeck.slides,
+      playbackSlides,
       (newState: PlaybackState, newIndex: number) => {
         setPlaybackState(newState);
         setCurrentIndex(newIndex);
@@ -77,7 +118,7 @@ export default function PresentationPlayMode() {
         }
         if (newState === "PLAYING") {
           // Enter the new slide (newIndex is now the new slide)
-          audioRef.current?.onSlideEnter((playDeck.slides[newIndex] as any)?.audioTrack ?? null);
+          audioRef.current?.onSlideEnter((playbackSlides[newIndex] as any)?.audioTrack ?? null);
           audioRef.current?.resume();
         }
         if (newState === "PAUSED") {
@@ -96,7 +137,7 @@ export default function PresentationPlayMode() {
       audioRef.current = null;
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     };
-  }, [playDeck, resetHideTimer]);
+  }, [playDeck, playbackSlides, resetHideTimer]);
 
   // -------------------------------------------------------------------------
   // Keyboard shortcuts
@@ -131,8 +172,7 @@ export default function PresentationPlayMode() {
           if (document.fullscreenElement) {
             document.exitFullscreen();
           } else {
-            // M2: navigate back when not in fullscreen
-            setLocation("/presentations");
+            navigateBackToEditor();
           }
           break;
       }
@@ -140,13 +180,13 @@ export default function PresentationPlayMode() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [playbackState, setLocation]);
+  }, [navigateBackToEditor, playbackState]);
 
   // -------------------------------------------------------------------------
   // Loading state
   // -------------------------------------------------------------------------
 
-  if (isLoading || (!playDeck && !isError && validItemId)) {
+  if (isLoading || deckDetailQuery.isLoading || (!playDeck && !isError && validItemId)) {
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center">
         <Loader2 className="h-12 w-12 text-white animate-spin" aria-label="Loading" role="status" />
@@ -165,7 +205,7 @@ export default function PresentationPlayMode() {
         <p className="text-gray-400 text-sm">This feature has not been enabled for your account.</p>
         <button
           className="text-white underline"
-          onClick={() => setLocation("/presentations")}
+          onClick={navigateBackToEditor}
           aria-label="Go back to presentations"
         >
           Go Back
@@ -174,13 +214,13 @@ export default function PresentationPlayMode() {
     );
   }
 
-  if (isError || !validItemId || !playDeck) {
+  if (isError || deckDetailQuery.isError || !validItemId || !playDeck) {
     return (
       <div className="fixed inset-0 bg-black flex flex-col items-center justify-center gap-4">
         <p className="text-white text-lg">Failed to load presentation.</p>
         <button
           className="text-white underline"
-          onClick={() => setLocation("/presentations")}
+          onClick={navigateBackToEditor}
           aria-label="Go back to presentations"
         >
           Go Back
@@ -193,7 +233,7 @@ export default function PresentationPlayMode() {
   // Empty slides
   // -------------------------------------------------------------------------
 
-  if (playDeck.slides.length === 0) {
+  if (playbackSlides.length === 0) {
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center">
         <p className="text-white">No slides in this presentation.</p>
@@ -205,8 +245,9 @@ export default function PresentationPlayMode() {
   // Render helpers
   // -------------------------------------------------------------------------
 
-  const currentSlide = playDeck.slides[currentIndex] ?? null;
-  const canvasSize = normalizeCanvasSize((currentSlide as any)?.slideContent?.canvas ?? null);
+  const currentSlide = playbackSlides[currentIndex] ?? null;
+  const normalizedSlideContent = ensureSlideContent((currentSlide as any)?.slideContent ?? { elements: [] });
+  const canvasSize = normalizeCanvasSize(normalizedSlideContent.canvas);
   // L1: respect slide transition type for CSS animation
   const transitionType = (currentSlide as any)?.transition ?? "fade";
   const isPlaying = playbackState === "PLAYING";
@@ -220,6 +261,18 @@ export default function PresentationPlayMode() {
       className="fixed inset-0 bg-black flex items-center justify-center"
       onMouseMove={resetHideTimer}
     >
+      <div className="fixed left-3 top-3 z-20">
+        <Button
+          size="sm"
+          variant="secondary"
+          className="gap-1 bg-black/60 text-white hover:bg-black/75"
+          onClick={navigateBackToEditor}
+          aria-label="Back to editor"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Back to Editor
+        </Button>
+      </div>
       {/* Slide canvas — key change triggers CSS fade on slide transition */}
       <div
         key={currentIndex}
@@ -229,21 +282,24 @@ export default function PresentationPlayMode() {
         )}
         style={{ opacity: playbackState === "SLIDE_TRANSITIONING" ? 0 : 1 }}
       >
-        {/* H2: showTransformDock=false + suppressTransformHandles=true for read-only play mode */}
-        {/* H3: no viewport prop — CanvasStage handles its own fit via ResizeObserver */}
-        <CanvasStage
-          elements={(currentSlide as any)?.slideContent?.elements ?? []}
-          canvasSize={canvasSize}
-          selectedElementIds={[]}
-          snapGuides={[]}
-          showTransformDock={false}
-          suppressTransformHandles={true}
-          onSelectElement={() => {}}
-          onMoveSelection={() => {}}
-          onResizeSelection={() => {}}
-          onRotateSelection={() => {}}
-          onArrangeSelection={() => {}}
-        />
+        <div className="h-full w-full p-3 md:p-5">
+          {/* H2: showTransformDock=false + suppressTransformHandles=true for read-only play mode */}
+          {/* H3: no viewport prop — CanvasStage handles its own fit via ResizeObserver */}
+          <CanvasStage
+            elements={normalizedSlideContent.elements}
+            canvasSize={canvasSize}
+            selectedElementIds={[]}
+            snapGuides={[]}
+            showElementFrames={false}
+            showTransformDock={false}
+            suppressTransformHandles={true}
+            onSelectElement={() => {}}
+            onMoveSelection={() => {}}
+            onResizeSelection={() => {}}
+            onRotateSelection={() => {}}
+            onArrangeSelection={() => {}}
+          />
+        </div>
       </div>
 
       {/* Controls overlay — auto-hides after 3s of inactivity */}
@@ -286,7 +342,7 @@ export default function PresentationPlayMode() {
 
         {/* Center: Slide counter */}
         <span className="text-white text-sm font-medium tabular-nums">
-          {currentIndex + 1} / {playDeck.slides.length}
+          {currentIndex + 1} / {playbackSlides.length}
         </span>
 
         {/* Right: Fullscreen toggle */}

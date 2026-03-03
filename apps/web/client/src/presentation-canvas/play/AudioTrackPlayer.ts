@@ -23,13 +23,35 @@ export class AudioTrackPlayer {
   private projectAudioRemainingMs: number | null = null;
   private projectAudioTimerStartedAt: number | null = null;
 
+  private seekAudioSafely(audio: HTMLAudioElement, timeSec: number): void {
+    const safeTimeSec = Math.max(0, Number.isFinite(timeSec) ? timeSec : 0);
+    const applySeek = () => {
+      try {
+        audio.currentTime = safeTimeSec;
+      } catch {
+        // Ignore seek failures before metadata is ready; listener below will retry.
+      }
+    };
+
+    applySeek();
+    if (Number.isFinite(audio.duration) && audio.duration > 0) {
+      return;
+    }
+    const handleLoadedMetadata = () => {
+      applySeek();
+    };
+    if (typeof audio.addEventListener === "function") {
+      audio.addEventListener("loadedmetadata", handleLoadedMetadata, { once: true });
+    }
+  }
+
   constructor(projectAudioTrack: ResolvedProjectAudioTrack | null) {
     if (projectAudioTrack !== null) {
       const audio = new Audio(projectAudioTrack.url);
       audio.volume = projectAudioTrack.volume;
       audio.loop = projectAudioTrack.loop;
       this.projectAudioStartAtSec = Math.max(0, (projectAudioTrack.startAtMs ?? 0) / 1000);
-      audio.currentTime = this.projectAudioStartAtSec;
+      this.seekAudioSafely(audio, this.projectAudioStartAtSec);
       if (projectAudioTrack.endAtMs != null) {
         const playDurationMs = projectAudioTrack.endAtMs - (projectAudioTrack.startAtMs ?? 0);
         if (playDurationMs > 0) {
@@ -63,7 +85,7 @@ export class AudioTrackPlayer {
 
     const audio = new Audio(slideAudioTrack.url);
     audio.volume = slideAudioTrack.volume;
-    audio.currentTime = slideAudioTrack.startAtMs / 1000;
+    this.seekAudioSafely(audio, slideAudioTrack.startAtMs / 1000);
     audio.play().catch(() => {});
     this.slideAudio = audio;
 

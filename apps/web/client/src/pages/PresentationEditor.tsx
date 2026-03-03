@@ -34,6 +34,7 @@ import {
   Type,
   Undo2,
   Upload,
+  WandSparkles,
   X,
   ZoomIn,
   ZoomOut,
@@ -67,7 +68,24 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
 import { buildWrongEditorOpenGuard } from "@/lib/presentationRouting";
@@ -75,13 +93,16 @@ import { toast } from "sonner";
 import {
   createElement,
   ensureSlideContent,
+  resizeCanvas,
   type ArrangeDirection,
+  type PresentationElement,
   type PresentationElementType,
   type PresentationSlideContent,
 } from "@/lib/presentationEditorState";
 import { SelectionEngine } from "@/presentation-canvas/selection/SelectionEngine";
 import { CommandBus } from "@/presentation-canvas/commands/CommandBus";
 import { useMobileGestures } from "@/presentation-canvas/mobile/useMobileGestures";
+import { AudioTrackPlayer } from "@/presentation-canvas/play/AudioTrackPlayer";
 import { ExportDialog } from "@/components/presentation/ExportDialog";
 import { ImportPresentationDialog } from "@/components/presentation/ImportPresentationDialog";
 import { AIDraftModal } from "@/components/presentation/AIDraftModal";
@@ -122,6 +143,13 @@ import {
   PRESENTATION_ERROR_CODE,
   PRESENTATION_ITEM_TYPE,
 } from "@shared/presentation/constants";
+import {
+  AI_GEOMETRIC_ACCENT_SHAPES,
+  AI_GEOMETRIC_CROP_SHAPES,
+  AI_LAYOUT_TEMPLATE_IDS,
+  AI_STYLE_PRESET_IDS,
+} from "@shared/presentation/aiTypes";
+import { BUILT_IN_PRESETS } from "@shared/presentation/aiStylePresets";
 import type { PresentationExportWarning } from "@shared/presentation/contracts";
 
 function parseDocId(value: string | undefined): number | null {
@@ -138,6 +166,33 @@ const MIN_DESKTOP_ZOOM = 0.5;
 const MAX_DESKTOP_ZOOM = 2;
 const DESKTOP_ZOOM_STEP = 0.1;
 const MIN_SLIDE_DURATION_MS = 250;
+type AutoLayoutScope = "current" | "all";
+type AutoLayoutTemplateChoice = "auto" | (typeof AI_LAYOUT_TEMPLATE_IDS)[number];
+type AutoLayoutStyleChoice = "auto" | (typeof AI_STYLE_PRESET_IDS)[number];
+type AutoLayoutCropShapeChoice = (typeof AI_GEOMETRIC_CROP_SHAPES)[number];
+type AutoLayoutAccentShapeChoice = (typeof AI_GEOMETRIC_ACCENT_SHAPES)[number];
+const AUTO_LAYOUT_TEMPLATE_LABELS: Record<(typeof AI_LAYOUT_TEMPLATE_IDS)[number], string> = {
+  hero_center: "Hero Center",
+  split_left_image: "Split Left Image",
+  split_right_image: "Split Right Image",
+  top_image_text_bottom: "Image Top / Text Bottom",
+  bottom_image_text_top: "Text Top / Image Bottom",
+  feature_boxes_right: "Feature Boxes Right",
+};
+const AUTO_LAYOUT_CROP_SHAPE_LABELS: Record<AutoLayoutCropShapeChoice, string> = {
+  auto: "Auto choose",
+  rect: "Rectangle",
+  circle: "Circle",
+  triangle: "Triangle",
+};
+const AUTO_LAYOUT_ACCENT_SHAPE_LABELS: Record<AutoLayoutAccentShapeChoice, string> = {
+  auto: "Auto choose",
+  rect: "Rectangle",
+  circle: "Circle",
+  triangle: "Triangle",
+};
+const UNSAVED_PRESENTATION_WARNING =
+  "คุณมีการแก้ไขสไลด์ที่ยังไม่ได้บันทึก หากออกตอนนี้ข้อมูลที่แก้ไขจะหายไป ต้องการออกจากโปรเจกต์หรือไม่?";
 
 interface LibraryResultItemLike {
   id?: number;
@@ -449,7 +504,27 @@ function buildDraftSignature(
     return null;
   }
 
-  return `${slideId}:${JSON.stringify(content)}`;
+  return `${slideId}:${buildSlideContentSignature(content)}`;
+}
+
+function sortValueForStableJson(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => sortValueForStableJson(item));
+  }
+  if (value && typeof value === "object") {
+    const objectValue = value as Record<string, unknown>;
+    const normalized: Record<string, unknown> = {};
+    for (const key of Object.keys(objectValue).sort()) {
+      normalized[key] = sortValueForStableJson(objectValue[key]);
+    }
+    return normalized;
+  }
+  return value;
+}
+
+function buildSlideContentSignature(content: PresentationSlideContent): string {
+  const normalized = ensureSlideContent(content);
+  return JSON.stringify(sortValueForStableJson(normalized));
 }
 
 function normalizeLibraryMediaItems(
@@ -551,6 +626,7 @@ function renderReadonlySlideElement(
   index: number,
   canvasWidth: number,
   canvasHeight: number,
+  renderScale: number,
 ): ReactElement {
   const commonStyle = {
     left: `${(element.x / canvasWidth) * 100}%`,
@@ -569,21 +645,30 @@ function renderReadonlySlideElement(
     const fontSize = Number.isFinite(element.fontSize) ? element.fontSize : 48;
     const lineHeight = Number.isFinite(element.lineHeight) ? element.lineHeight : 1.25;
     const letterSpacing = Number.isFinite(element.letterSpacing) ? element.letterSpacing : 0;
+    const scaledFontSize = Math.max(8, fontSize * Math.max(0.0001, renderScale));
+    const scaledPaddingPx = Math.max(1, Math.round(8 * Math.max(0.0001, renderScale)));
+    const scaledLetterSpacing = letterSpacing * Math.max(0.0001, renderScale);
     return (
       <div key={element.id || `play-${index}`} className="absolute overflow-hidden" style={commonStyle}>
         <p
-          className="h-full w-full whitespace-pre-wrap break-words p-2"
+          className="w-full whitespace-pre-wrap break-words"
           style={{
+            display: "block",
+            minHeight: "100%",
+            padding: `${scaledPaddingPx}px`,
+            paddingBottom: "0.14em",
             color: element.color || "#111827",
             backgroundColor: element.backgroundColor || "transparent",
-            fontSize,
+            fontSize: scaledFontSize,
             fontFamily: element.fontFamily || "Inter, system-ui, sans-serif",
             fontWeight: element.fontWeight || "600",
             fontStyle: element.fontStyle || "normal",
             textDecoration: element.textDecoration || "none",
             textAlign: element.textAlign || "left",
             lineHeight,
-            letterSpacing: `${letterSpacing}px`,
+            letterSpacing: `${scaledLetterSpacing}px`,
+            ...(element.textShadow ? { textShadow: element.textShadow } : {}),
+            ...(element.textStroke ? { WebkitTextStroke: element.textStroke } : {}),
           }}
         >
           {element.text || "Text"}
@@ -734,6 +819,8 @@ export default function PresentationEditor() {
   const updateSlideMutation = trpc.presentation.updateSlide.useMutation();
   const restoreVersionMutation = trpc.presentation.restoreVersion.useMutation();
   const triggerExportMutation = trpc.presentation.triggerExport.useMutation();
+  const relayoutSlideMutation = trpc.presentation.ai.relayoutSlide.useMutation();
+  const resolvePendingMediaMutation = trpc.presentation.ai.resolvePendingMedia.useMutation();
   const updateItemMutation = trpc.library.updateItem.useMutation();
 
   const deckData = deckQuery.data as any;
@@ -742,12 +829,25 @@ export default function PresentationEditor() {
     const raw = Array.isArray(deckData?.slides) ? deckData.slides : [];
     return [...raw].sort((a, b) => a.orderIndex - b.orderIndex);
   }, [deckData?.slides]);
+  const pendingMediaJobCount = useMemo(() => (
+    slides.reduce((count, slide) => {
+      try {
+        const normalized = ensureSlideContent(slide.slideContent);
+        return count + (normalized.pendingMediaJobs?.length ?? 0);
+      } catch {
+        return count;
+      }
+    }, 0)
+  ), [slides]);
   const projectTitle = String(itemQuery.data?.title || deck?.title || (docId ? `Presentation ${docId}` : "Presentation"));
 
   const [selectedSlideId, setSelectedSlideId] = useState<number | null>(null);
   const [commandState, setCommandState] = useState<CanvasCommandState>(() =>
     createCanvasCommandState({ elements: [] }),
   );
+  const slideDraftCacheRef = useRef<Map<number, PresentationSlideContent>>(new Map());
+  const elementClipboardRef = useRef<PresentationElement[]>([]);
+  const clipboardPasteCountRef = useRef(0);
   const commandBusRef = useRef(
     new CommandBus<CanvasCommandState>(createCanvasCommandState({ elements: [] })),
   );
@@ -763,6 +863,9 @@ export default function PresentationEditor() {
   const [lastExportId, setLastExportId] = useState<number | null>(null);
   const playbackOverlayRef = useRef<HTMLDivElement | null>(null);
   const playbackStageHostRef = useRef<HTMLDivElement | null>(null);
+  const previewAudioPlayerRef = useRef<AudioTrackPlayer | null>(null);
+  const previewAudioSlideIndexRef = useRef<number | null>(null);
+  const previewAudioDeckSignatureRef = useRef<string | null>(null);
   const [playbackStageHostSize, setPlaybackStageHostSize] = useState({ width: 0, height: 0 });
   const [isPlaybackFullscreen, setIsPlaybackFullscreen] = useState(false);
   const [projectTitleDraft, setProjectTitleDraft] = useState("");
@@ -778,8 +881,19 @@ export default function PresentationEditor() {
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isAIDraftModalOpen, setIsAIDraftModalOpen] = useState(false);
+  const [isAutoLayoutDialogOpen, setIsAutoLayoutDialogOpen] = useState(false);
+  const [autoLayoutScope, setAutoLayoutScope] = useState<AutoLayoutScope>("current");
+  const [autoLayoutTemplateChoice, setAutoLayoutTemplateChoice] = useState<AutoLayoutTemplateChoice>("auto");
+  const [autoLayoutStyleChoice, setAutoLayoutStyleChoice] = useState<AutoLayoutStyleChoice>("auto");
+  const [autoLayoutIncludeSvg, setAutoLayoutIncludeSvg] = useState(true);
+  const [autoLayoutIncludeGeometricCrop, setAutoLayoutIncludeGeometricCrop] = useState(false);
+  const [autoLayoutCropShapeChoice, setAutoLayoutCropShapeChoice] = useState<AutoLayoutCropShapeChoice>("auto");
+  const [autoLayoutIncludeGeometricAccents, setAutoLayoutIncludeGeometricAccents] = useState(false);
+  const [autoLayoutAccentShapeChoice, setAutoLayoutAccentShapeChoice] = useState<AutoLayoutAccentShapeChoice>("auto");
+  const [autoLayoutProgress, setAutoLayoutProgress] = useState<{ done: number; total: number } | null>(null);
   const [timingDurationSecInput, setTimingDurationSecInput] = useState<string>("3");
   const [timingApplyAllPending, setTimingApplyAllPending] = useState(false);
+  const [canvasApplyAllPending, setCanvasApplyAllPending] = useState(false);
   const [libraryTab, setLibraryTab] = useState<AssetLibraryTab>("slides");
   const [librarySearchQuery, setLibrarySearchQuery] = useState("");
   const [selectedSavedVersionId, setSelectedSavedVersionId] = useState<number | null>(null);
@@ -829,6 +943,14 @@ export default function PresentationEditor() {
     {
       enabled: Boolean(lastExportId),
       refetchInterval: 5000,
+    },
+  );
+  const playDeckPreviewQuery = trpc.presentation.getPlayDeck.useQuery(
+    { itemId: docId || 0 },
+    {
+      enabled: Boolean(docId),
+      refetchOnWindowFocus: false,
+      staleTime: 30_000,
     },
   );
 
@@ -901,11 +1023,62 @@ export default function PresentationEditor() {
       && draftSignature !== persistedSlideSignature,
     )
   ), [draftSignature, persistedSlideSignature]);
+  const unsavedCachedSlideIds = (() => {
+    const result: number[] = [];
+    for (const [slideId, cachedContent] of slideDraftCacheRef.current.entries()) {
+      if (slideId === selectedSlideId) {
+        continue;
+      }
+      const persistedSlide = slides.find((slide) => slide.id === slideId);
+      if (!persistedSlide) {
+        continue;
+      }
+      const persistedContent = ensureSlideContent(persistedSlide.slideContent);
+      if (buildSlideContentSignature(persistedContent) !== buildSlideContentSignature(cachedContent)) {
+        result.push(slideId);
+      }
+    }
+    return result;
+  })();
+  const hasUnsavedSlideChanges = hasUnsavedSelectedSlideChanges || unsavedCachedSlideIds.length > 0;
+  const autoLayoutBusy = autoLayoutProgress !== null || relayoutSlideMutation.isPending;
+  const autoLayoutTargetCount = autoLayoutScope === "all"
+    ? slides.length
+    : (selectedSlide ? 1 : 0);
+  const autoLayoutApplyDisabled = !deck
+    || !selectedSlide
+    || autoLayoutBusy
+    || autoLayoutTargetCount <= 0;
+  const autoLayoutStyleOptions = useMemo(
+    () => BUILT_IN_PRESETS.map((preset) => ({
+      id: preset.id,
+      label: preset.nameLocalized?.en?.trim() || preset.name,
+      colors: [
+        preset.colors.background,
+        preset.colors.primary,
+        preset.colors.secondary,
+      ],
+    })),
+    [],
+  );
+  const selectedAutoLayoutStyleOption = autoLayoutStyleOptions.find(
+    (option) => option.id === autoLayoutStyleChoice,
+  );
   const isMobilePanMode = isMobileViewport && mobileGestures.state.mode === "pan_mode";
   const selectedElement = useMemo(
     () => draftContent.elements.find((element) => element.id === selectedElementId) || null,
     [draftContent.elements, selectedElementId],
   );
+  const selectedElements = useMemo(
+    () => draftContent.elements.filter((element) => selectedElementIds.includes(element.id)),
+    [draftContent.elements, selectedElementIds],
+  );
+  const selectionHasMixedTypes = useMemo(() => {
+    if (selectedElements.length <= 1) {
+      return false;
+    }
+    return new Set(selectedElements.map((element) => element.type)).size > 1;
+  }, [selectedElements]);
   const firstVideoSourceUrl = useMemo(() => {
     const firstVideo = draftContent.elements.find((element) => element.type === "video");
     if (!firstVideo || firstVideo.type !== "video") {
@@ -1045,9 +1218,10 @@ export default function PresentationEditor() {
   );
   const playbackSlides = useMemo(() => {
     return slides.map((slide) => {
+      const cachedContent = slideDraftCacheRef.current.get(slide.id);
       const content = selectedSlideId === slide.id
         ? draftContent
-        : ensureSlideContent(slide.slideContent);
+        : cachedContent ?? ensureSlideContent(slide.slideContent);
       return {
         slideId: slide.id,
         title: slide.title,
@@ -1070,6 +1244,24 @@ export default function PresentationEditor() {
 
   function executeCommand(command: Parameters<CommandBus<CanvasCommandState>["execute"]>[0]) {
     syncCommandState(commandBusRef.current.execute(command));
+  }
+
+  function cacheSlideDraft(slideId: number | null, content: PresentationSlideContent) {
+    if (!slideId) return;
+    slideDraftCacheRef.current.set(slideId, ensureSlideContent(content));
+  }
+
+  function clearCachedSlideDraft(slideId: number | null) {
+    if (!slideId) return;
+    slideDraftCacheRef.current.delete(slideId);
+  }
+
+  function switchToSlide(nextSlideId: number) {
+    if (selectedSlideId === nextSlideId) {
+      return;
+    }
+    cacheSlideDraft(selectedSlideId, draftContent);
+    setSelectedSlideId(nextSlideId);
   }
 
   useEffect(() => {
@@ -1106,6 +1298,85 @@ export default function PresentationEditor() {
 
     setSelectedSlideId(slides[0].id);
   }, [selectedSlideId, slides]);
+
+  useEffect(() => {
+    if (!slides.length) {
+      slideDraftCacheRef.current.clear();
+      return;
+    }
+    const slidesById = new Map<number, (typeof slides)[number]>();
+    for (const slide of slides) {
+      slidesById.set(slide.id, slide);
+    }
+    for (const [slideId, cached] of slideDraftCacheRef.current.entries()) {
+      const persistedSlide = slidesById.get(slideId);
+      if (!persistedSlide) {
+        slideDraftCacheRef.current.delete(slideId);
+        continue;
+      }
+      const persistedContent = ensureSlideContent(persistedSlide.slideContent);
+      if (buildSlideContentSignature(persistedContent) === buildSlideContentSignature(cached)) {
+        slideDraftCacheRef.current.delete(slideId);
+      }
+    }
+  }, [slides]);
+
+  useEffect(() => {
+    if (!hasUnsavedSlideChanges || typeof window === "undefined") {
+      return;
+    }
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    const handleDocumentClick = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0) {
+        return;
+      }
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+        return;
+      }
+
+      const target = event.target as HTMLElement | null;
+      const anchor = target?.closest("a[href]") as HTMLAnchorElement | null;
+      if (!anchor) {
+        return;
+      }
+      if (anchor.target === "_blank" || anchor.hasAttribute("download")) {
+        return;
+      }
+
+      const href = anchor.getAttribute("href");
+      if (!href || href.startsWith("#")) {
+        return;
+      }
+
+      const currentUrl = new URL(window.location.href);
+      const nextUrl = new URL(anchor.href, window.location.href);
+      const sameRoute = nextUrl.origin === currentUrl.origin
+        && nextUrl.pathname === currentUrl.pathname
+        && nextUrl.search === currentUrl.search;
+      if (sameRoute) {
+        return;
+      }
+
+      const confirmed = window.confirm(UNSAVED_PRESENTATION_WARNING);
+      if (confirmed) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("click", handleDocumentClick, true);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("click", handleDocumentClick, true);
+    };
+  }, [hasUnsavedSlideChanges]);
 
   useEffect(() => {
     const currentSeconds = resolveSlideDurationMs(draftContent) / 1000;
@@ -1192,7 +1463,10 @@ export default function PresentationEditor() {
       return;
     }
 
-    const next = ensureSlideContent(selectedSlide.slideContent);
+    const cachedDraft = slideDraftCacheRef.current.get(selectedSlide.id);
+    const next = cachedDraft
+      ? ensureSlideContent(cachedDraft)
+      : ensureSlideContent(selectedSlide.slideContent);
     const nextSelected = next.elements[0]?.id ? [next.elements[0].id] : [];
     const nextState = createCanvasCommandState(next, nextSelected);
     commandBusRef.current.reset(nextState);
@@ -1203,8 +1477,15 @@ export default function PresentationEditor() {
   }, [selectedSlide?.id, selectedSlide?.version]);
 
   async function refreshDeck() {
+    const tasks: Array<Promise<unknown>> = [];
     if (typeof deckQuery.refetch === "function") {
-      await deckQuery.refetch();
+      tasks.push(deckQuery.refetch());
+    }
+    if (typeof playDeckPreviewQuery.refetch === "function") {
+      tasks.push(playDeckPreviewQuery.refetch());
+    }
+    if (tasks.length) {
+      await Promise.all(tasks);
     }
   }
 
@@ -1284,7 +1565,7 @@ export default function PresentationEditor() {
     if (created) {
       const createdSlideId = Number((created as any).id);
       if (Number.isFinite(createdSlideId) && createdSlideId > 0) {
-        setSelectedSlideId(createdSlideId);
+        switchToSlide(createdSlideId);
       }
       setLibraryTab("slides");
     }
@@ -1302,12 +1583,13 @@ export default function PresentationEditor() {
     ));
     const duplicatedSlideId = Number((duplicated as any)?.id);
     if (Number.isFinite(duplicatedSlideId) && duplicatedSlideId > 0) {
-      setSelectedSlideId(duplicatedSlideId);
+      switchToSlide(duplicatedSlideId);
     }
   }
 
   async function handleDeleteSlide() {
     if (!deck || !selectedSlide) return;
+    clearCachedSlideDraft(selectedSlide.id);
     await runDeckMutation(async (expectedVersion) => {
       await deleteSlideMutation.mutateAsync({
         deckId: deck.id,
@@ -1471,6 +1753,44 @@ export default function PresentationEditor() {
     );
   }
 
+  async function handleApplyCanvasPresetAllSlides(presetId: string) {
+    if (!deck || !slides.length || canvasApplyAllPending) {
+      return;
+    }
+    const preset = getCanvasPresetById(presetId);
+    if (!preset) {
+      toast.error("Invalid canvas preset.");
+      return;
+    }
+
+    setCanvasApplyAllPending(true);
+    try {
+      for (const slide of slides) {
+        const baseContent = slide.id === selectedSlide?.id
+          ? draftContent
+          : ensureSlideContent(slide.slideContent);
+        await updateSlideMutation.mutateAsync({
+          deckId: deck.id,
+          slideId: slide.id,
+          expectedVersion: slide.version,
+          saveMode: "manual",
+          title: slide.title,
+          slideContent: resizeCanvas(baseContent, {
+            preset: preset.id,
+            width: preset.width,
+            height: preset.height,
+          }),
+        });
+      }
+      await refreshDeck();
+      toast.success(`Applied canvas ${preset.label} to all slides.`);
+    } catch (error) {
+      toast.error(`Failed to apply canvas size to all slides: ${String((error as Error)?.message || error)}`);
+    } finally {
+      setCanvasApplyAllPending(false);
+    }
+  }
+
   function handleSelectElement(elementId: string, options?: { additive?: boolean }) {
     if (options?.additive) {
       const toggled = SelectionEngine.toggle(
@@ -1485,6 +1805,29 @@ export default function PresentationEditor() {
     }
 
     executeCommand(selectElementsCommand([elementId]));
+  }
+
+  function handleMarqueeSelect(
+    bounds: { x: number; y: number; width: number; height: number },
+    options?: { additive?: boolean },
+  ) {
+    const candidates = draftContent.elements.map((element) => ({
+      id: element.id,
+      x: element.x,
+      y: element.y,
+      width: element.width,
+      height: Math.max(2, element.height),
+    }));
+    const next = SelectionEngine.marquee(
+      { selectedIds: selectedElementIds, activeId: selectedElementId },
+      bounds,
+      candidates,
+      { additive: options?.additive },
+    );
+    const ordered = next.activeId && next.selectedIds.includes(next.activeId)
+      ? [next.activeId, ...next.selectedIds.filter((id) => id !== next.activeId)]
+      : next.selectedIds;
+    executeCommand(selectElementsCommand(ordered));
   }
 
   function handlePatchSelectedElement(patch: Parameters<typeof patchSelectedElementCommand>[0]) {
@@ -1572,6 +1915,60 @@ export default function PresentationEditor() {
     executeCommand(
       duplicateSelectionCommand((source) => nextElementId(source.type as PresentationElementType)),
     );
+  }
+
+  function cloneElementsForClipboard(elements: PresentationElement[]): PresentationElement[] {
+    return elements.map((element) => JSON.parse(JSON.stringify(element)) as PresentationElement);
+  }
+
+  function handleCopySelection() {
+    if (!selectedElementIds.length) {
+      return;
+    }
+    const selectedIdSet = new Set(selectedElementIds);
+    const ordered = draftContent.elements.filter((element) => selectedIdSet.has(element.id));
+    if (!ordered.length) {
+      return;
+    }
+    elementClipboardRef.current = cloneElementsForClipboard(ordered);
+    clipboardPasteCountRef.current = 0;
+  }
+
+  function handleCutSelection() {
+    if (!selectedElementIds.length) {
+      return;
+    }
+    handleCopySelection();
+    handleDeleteSelection();
+  }
+
+  function handlePasteSelection() {
+    const clipboardElements = elementClipboardRef.current;
+    if (!clipboardElements.length) {
+      return;
+    }
+    const offset = 16 * (clipboardPasteCountRef.current + 1);
+    executeCommand({
+      id: "paste-selection",
+      apply: (state) => {
+        const pasted = clipboardElements.map((source) => ({
+          ...source,
+          id: nextElementId(source.type as PresentationElementType),
+          x: source.x + offset,
+          y: source.y + offset,
+        }));
+        return {
+          ...state,
+          content: {
+            ...state.content,
+            elements: [...state.content.elements, ...pasted],
+          },
+          selectedElementIds: pasted.map((element) => element.id),
+          snapGuides: [],
+        };
+      },
+    });
+    clipboardPasteCountRef.current += 1;
   }
 
   function handleDeleteSelection() {
@@ -1700,6 +2097,7 @@ export default function PresentationEditor() {
           ? returnedVersion
           : fallbackVersion + 1,
       );
+      clearCachedSlideDraft(selectedSlide.id);
       setConflictPolicy(registerSaveSuccess());
       setSaveState("saved");
     };
@@ -1741,6 +2139,7 @@ export default function PresentationEditor() {
             && isConflictSlideContentEqualDraft(conflict, draftContent)
           ) {
             setExpectedSlideVersion(latestConflictVersion);
+            clearCachedSlideDraft(selectedSlide.id);
             setConflictPolicy(registerSaveSuccess());
             setSaveState("saved");
             return "saved";
@@ -1842,6 +2241,221 @@ export default function PresentationEditor() {
     return false;
   }
 
+  async function handleAutoRelayoutSlide(options?: {
+    scope?: AutoLayoutScope;
+    templateChoice?: AutoLayoutTemplateChoice;
+    styleChoice?: AutoLayoutStyleChoice;
+    includeSvg?: boolean;
+    includeGeometricCrop?: boolean;
+    cropShapeChoice?: AutoLayoutCropShapeChoice;
+    includeGeometricAccents?: boolean;
+    accentShapeChoice?: AutoLayoutAccentShapeChoice;
+  }) {
+    if (!deck || !selectedSlide) {
+      toast.error("No active slide for auto layout.");
+      return;
+    }
+
+    const scope = options?.scope ?? autoLayoutScope;
+    const includeSvg = options?.includeSvg ?? autoLayoutIncludeSvg;
+    const includeGeometricCrop = options?.includeGeometricCrop ?? autoLayoutIncludeGeometricCrop;
+    const cropShapeChoice = options?.cropShapeChoice ?? autoLayoutCropShapeChoice;
+    const includeGeometricAccents = options?.includeGeometricAccents ?? autoLayoutIncludeGeometricAccents;
+    const accentShapeChoice = options?.accentShapeChoice ?? autoLayoutAccentShapeChoice;
+    const templateChoice = options?.templateChoice ?? autoLayoutTemplateChoice;
+    const styleChoice = options?.styleChoice ?? autoLayoutStyleChoice;
+    const targetSlides = scope === "all" ? slides : [selectedSlide];
+    const selectedId = selectedSlide.id;
+    if (targetSlides.length === 0) {
+      toast.error("No slides available for auto layout.");
+      return;
+    }
+
+    if (hasUnsavedSelectedSlideChanges) {
+      const saved = await handleSaveSlide({ silent: true });
+      if (!saved) {
+        toast.error("Please resolve save conflicts before running auto layout.");
+        return;
+      }
+    }
+
+    const slideVersionById = new Map<number, number>(
+      slides.map((slide) => [slide.id, Number.isFinite(Number(slide.version)) ? Number(slide.version) : 0]),
+    );
+    if (typeof deckQuery.refetch === "function") {
+      const latest = await deckQuery.refetch();
+      const latestSlides = Array.isArray((latest.data as any)?.slides)
+        ? (latest.data as any).slides
+        : [];
+      for (const slide of latestSlides) {
+        const slideId = Number((slide as any)?.id);
+        const slideVersion = Number((slide as any)?.version);
+        if (Number.isFinite(slideId) && slideId > 0 && Number.isFinite(slideVersion) && slideVersion >= 0) {
+          slideVersionById.set(slideId, slideVersion);
+        }
+      }
+    }
+
+    if (scope === "all") {
+      const dirtyCachedSlides: Array<{ id: number; orderIndex: number; title: string; content: PresentationSlideContent }> = [];
+      for (const [slideId, cachedContent] of slideDraftCacheRef.current.entries()) {
+        if (slideId === selectedId) {
+          continue;
+        }
+        const slide = slides.find((item) => item.id === slideId);
+        if (!slide) {
+          continue;
+        }
+        const persisted = ensureSlideContent(slide.slideContent);
+        const cached = ensureSlideContent(cachedContent);
+        if (buildSlideContentSignature(persisted) === buildSlideContentSignature(cached)) {
+          clearCachedSlideDraft(slideId);
+          continue;
+        }
+        dirtyCachedSlides.push({
+          id: slide.id,
+          orderIndex: slide.orderIndex,
+          title: slide.title,
+          content: cached,
+        });
+      }
+
+      if (dirtyCachedSlides.length > 0) {
+        let savedDraftCount = 0;
+        const failedDraftSaves: string[] = [];
+        for (const draftSlide of dirtyCachedSlides) {
+          const expectedVersion = slideVersionById.get(draftSlide.id) ?? 0;
+          try {
+            const savedSlide = await updateSlideMutation.mutateAsync({
+              deckId: deck.id,
+              slideId: draftSlide.id,
+              expectedVersion,
+              saveMode: "manual",
+              title: draftSlide.title,
+              slideContent: draftSlide.content,
+            });
+            const savedVersion = Number((savedSlide as any)?.version);
+            slideVersionById.set(
+              draftSlide.id,
+              Number.isFinite(savedVersion) ? savedVersion : (expectedVersion + 1),
+            );
+            clearCachedSlideDraft(draftSlide.id);
+            savedDraftCount += 1;
+          } catch {
+            const orderNumber = Number(draftSlide.orderIndex) + 1;
+            failedDraftSaves.push(`#${Number.isFinite(orderNumber) ? orderNumber : draftSlide.id}`);
+          }
+        }
+
+        if (failedDraftSaves.length > 0) {
+          toast.error(`Failed to save pending edits for slides: ${failedDraftSaves.join(", ")}`);
+          return;
+        }
+        if (savedDraftCount > 0) {
+          toast.info(`Saved pending edits on ${savedDraftCount} slide(s) before auto layout.`);
+        }
+      }
+    }
+
+    setAutoLayoutProgress({ done: 0, total: targetSlides.length });
+    const warnings = new Set<string>();
+    const failedSlides: string[] = [];
+    let appliedCount = 0;
+
+    try {
+      for (const [index, slide] of targetSlides.entries()) {
+        const expectedVersion = slideVersionById.get(slide.id)
+          ?? (Number.isFinite(Number(slide.version)) ? Number(slide.version) : 0);
+        try {
+          const result = await relayoutSlideMutation.mutateAsync({
+            deckId: deck.id,
+            slideId: slide.id,
+            expectedVersion,
+            ...(styleChoice !== "auto" ? { stylePresetId: styleChoice } : {}),
+            ...(templateChoice !== "auto" ? { templateId: templateChoice } : {}),
+            includeSvg,
+            includeGeometricCrop,
+            ...(includeGeometricCrop ? { geometricCropShape: cropShapeChoice } : {}),
+            includeGeometricAccents,
+            ...(includeGeometricAccents ? { geometricAccentShape: accentShapeChoice } : {}),
+            layoutSeed: Date.now() + index,
+          });
+          appliedCount += 1;
+          const updatedSlide = (result as any)?.slide;
+          const nextVersion = Number(updatedSlide?.version);
+          if (Number.isFinite(nextVersion)) {
+            slideVersionById.set(slide.id, nextVersion);
+          } else {
+            slideVersionById.set(slide.id, expectedVersion + 1);
+          }
+          clearCachedSlideDraft(slide.id);
+
+          if (slide.id === selectedId && Number.isFinite(nextVersion)) {
+            setExpectedSlideVersion(nextVersion);
+          }
+          if (slide.id === selectedId && updatedSlide?.slideContent) {
+            const nextContent = ensureSlideContent(updatedSlide.slideContent as PresentationSlideContent);
+            const nextSelected = nextContent.elements[0]?.id ? [nextContent.elements[0].id] : [];
+            executeCommand({
+              id: "apply-auto-layout",
+              apply: (state) => ({
+                ...state,
+                content: nextContent,
+                selectedElementIds: nextSelected,
+                snapGuides: [],
+              }),
+            });
+            autosaveController.markPersisted(buildDraftSignature(selectedId, nextContent));
+          }
+          const resultWarnings = Array.isArray((result as any)?.warnings)
+            ? (result as any).warnings.filter((warning: unknown) => typeof warning === "string")
+            : [];
+          for (const warning of resultWarnings) {
+            warnings.add(warning as string);
+          }
+        } catch (error) {
+          const orderNumber = Number(slide.orderIndex) + 1;
+          failedSlides.push(`#${Number.isFinite(orderNumber) ? orderNumber : slide.id}`);
+          if (failedSlides.length === 1 && error instanceof Error) {
+            warnings.add(error.message);
+          }
+        } finally {
+          setAutoLayoutProgress({ done: index + 1, total: targetSlides.length });
+        }
+      }
+
+      if (appliedCount > 0) {
+        setSaveState("saved");
+        await Promise.all([
+          refreshDeck(),
+          trpcUtils.presentation.listVersions.invalidate(),
+        ]);
+      }
+
+      if (appliedCount > 0) {
+        toast.success(
+          scope === "all"
+            ? `Auto layout applied to ${appliedCount}/${targetSlides.length} slides.`
+            : "Auto layout applied to current slide.",
+        );
+      }
+      if (failedSlides.length > 0) {
+        toast.error(`Auto layout failed for slides: ${failedSlides.join(", ")}`);
+      }
+      if (warnings.size > 0) {
+        const [firstWarning] = Array.from(warnings);
+        if (firstWarning) {
+          toast.info(firstWarning);
+        }
+      }
+      if (appliedCount > 0 && failedSlides.length === 0) {
+        setIsAutoLayoutDialogOpen(false);
+      }
+    } finally {
+      setAutoLayoutProgress(null);
+    }
+  }
+
   async function handleSaveProjectTitle() {
     if (!docId) {
       return;
@@ -1914,6 +2528,35 @@ export default function PresentationEditor() {
     }
   }
 
+  async function handleResolvePendingMedia() {
+    if (!deck) {
+      return;
+    }
+    try {
+      const result = await resolvePendingMediaMutation.mutateAsync({
+        deckId: deck.id,
+        maxJobs: 60,
+      });
+      await refreshDeck();
+
+      if (result.jobsResolved > 0) {
+        toast.success(
+          `Resolved ${result.jobsResolved} pending media item(s). ${result.jobsRemaining} remaining.`,
+        );
+      } else if (result.jobsChecked > 0) {
+        toast.info(`Checked ${result.jobsChecked} pending media item(s). ${result.jobsRemaining} still pending.`);
+      } else {
+        toast.info("No pending media jobs found.");
+      }
+
+      if (Array.isArray(result.warnings) && result.warnings.length > 0) {
+        toast.warning(result.warnings[0]);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to fetch pending media.");
+    }
+  }
+
   async function handleRestoreSavedVersion(versionId: number) {
     if (!deck) {
       return;
@@ -1932,7 +2575,7 @@ export default function PresentationEditor() {
       setRestoreDialogVersionId(null);
       const restoredSlideId = Number((restored as any)?.restoredSlideId);
       if (Number.isFinite(restoredSlideId) && restoredSlideId > 0) {
-        setSelectedSlideId(restoredSlideId);
+        switchToSlide(restoredSlideId);
       }
       setConflictPolicy(releaseStaleBlock());
       setSaveState("saved");
@@ -1947,6 +2590,7 @@ export default function PresentationEditor() {
     setPlaybackState("idle");
     setPlaybackPaused(false);
     setPlaybackSlideIndex(0);
+    previewAudioDeckSignatureRef.current = null;
     if (typeof document !== "undefined") {
       const fullscreenDoc = document as FullscreenCapableDocument;
       if (getCurrentFullscreenElement(fullscreenDoc)) {
@@ -2004,8 +2648,25 @@ export default function PresentationEditor() {
     );
     setPlaybackSlideIndex(startIndex);
     setPlaybackPaused(false);
+    previewAudioDeckSignatureRef.current = null;
+    void playDeckPreviewQuery.refetch();
     setPlaybackState("playing");
     setExportMessage(`Playing slideshow preview with ${slideCount} slides.`);
+  }
+
+  function handleOpenPlayMode() {
+    if (!deck) {
+      return;
+    }
+    if (hasUnsavedSlideChanges && typeof window !== "undefined") {
+      const confirmed = window.confirm(
+        "Play Mode shows only saved content. Unsaved edits will not appear. Continue?",
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+    setLocation(`/presentation/${deck.libraryItemId}/play`);
   }
 
   async function handleExport(format: "png" | "mp4") {
@@ -2058,36 +2719,63 @@ export default function PresentationEditor() {
       const hasSelection = selectedElementIds.length > 0;
       const isPrimaryModifier = event.metaKey || event.ctrlKey;
       const key = event.key.toLowerCase();
+      const code = event.code;
+      const isCopyShortcut = isPrimaryModifier && (key === "c" || code === "KeyC");
+      const isCutShortcut = isPrimaryModifier && (key === "x" || code === "KeyX");
+      const isPasteShortcut = isPrimaryModifier && (key === "v" || code === "KeyV");
+      const isUndoShortcut = isPrimaryModifier
+        && !event.shiftKey
+        && (key === "z" || code === "KeyZ");
+      const isRedoShortcut = isPrimaryModifier
+        && (
+          ((key === "z" || code === "KeyZ") && event.shiftKey)
+          || key === "y"
+          || code === "KeyY"
+        );
 
-      if (isPrimaryModifier && (key === "=" || key === "+")) {
+      if (isCopyShortcut && hasSelection) {
+        event.preventDefault();
+        handleCopySelection();
+        return;
+      }
+
+      if (isCutShortcut && hasSelection) {
+        event.preventDefault();
+        handleCutSelection();
+        return;
+      }
+
+      if (isPasteShortcut) {
+        event.preventDefault();
+        handlePasteSelection();
+        return;
+      }
+
+      if (isPrimaryModifier && (key === "=" || key === "+" || code === "Equal" || code === "NumpadAdd")) {
         event.preventDefault();
         updateDesktopZoom(desktopViewport.scale + DESKTOP_ZOOM_STEP);
         return;
       }
 
-      if (isPrimaryModifier && key === "-") {
+      if (isPrimaryModifier && (key === "-" || code === "Minus" || code === "NumpadSubtract")) {
         event.preventDefault();
         updateDesktopZoom(desktopViewport.scale - DESKTOP_ZOOM_STEP);
         return;
       }
 
-      if (isPrimaryModifier && key === "0") {
+      if (isPrimaryModifier && (key === "0" || code === "Digit0" || code === "Numpad0")) {
         event.preventDefault();
         updateDesktopZoom(1);
         return;
       }
 
-      if (isPrimaryModifier && key === "z") {
+      if (isUndoShortcut) {
         event.preventDefault();
-        if (event.shiftKey) {
-          handleRedo();
-        } else {
-          handleUndo();
-        }
+        handleUndo();
         return;
       }
 
-      if (isPrimaryModifier && key === "y") {
+      if (isRedoShortcut) {
         event.preventDefault();
         handleRedo();
         return;
@@ -2129,7 +2817,20 @@ export default function PresentationEditor() {
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [desktopViewport.scale, isMobileViewport, playbackState, selectedElementIds, handleDeleteSelection, handleDuplicateSelection, handleMoveSelection, handleRedo, handleUndo]);
+  }, [
+    desktopViewport.scale,
+    isMobileViewport,
+    playbackState,
+    selectedElementIds,
+    handleCopySelection,
+    handleCutSelection,
+    handleDeleteSelection,
+    handleDuplicateSelection,
+    handleMoveSelection,
+    handlePasteSelection,
+    handleRedo,
+    handleUndo,
+  ]);
 
   useEffect(() => {
     if (playbackState !== "playing" || playbackPaused) {
@@ -2191,6 +2892,61 @@ export default function PresentationEditor() {
       window.removeEventListener("keydown", onPlaybackKeyDown);
     };
   }, [playbackState, playbackSlides.length]);
+
+  useEffect(() => {
+    if (playbackState !== "playing") {
+      previewAudioPlayerRef.current?.destroy();
+      previewAudioPlayerRef.current = null;
+      previewAudioSlideIndexRef.current = null;
+      previewAudioDeckSignatureRef.current = null;
+      return;
+    }
+
+    const playDeck = playDeckPreviewQuery.data;
+    if (!playDeck) {
+      return;
+    }
+
+    const nextAudioSignature = JSON.stringify({
+      projectAudioTrack: playDeck.projectAudioTrack ?? null,
+      slideAudioTracks: playDeck.slides.map((slide) => slide.audioTrack ?? null),
+    });
+    const shouldRecreatePlayer =
+      !previewAudioPlayerRef.current
+      || previewAudioDeckSignatureRef.current !== nextAudioSignature;
+    if (shouldRecreatePlayer) {
+      previewAudioPlayerRef.current?.destroy();
+      previewAudioPlayerRef.current = new AudioTrackPlayer(playDeck.projectAudioTrack ?? null);
+      previewAudioDeckSignatureRef.current = nextAudioSignature;
+      previewAudioSlideIndexRef.current = null;
+    }
+
+    const player = previewAudioPlayerRef.current;
+    if (!player) {
+      return;
+    }
+
+    if (previewAudioSlideIndexRef.current !== playbackSlideIndex) {
+      const audioTrack = (playDeck.slides[playbackSlideIndex] as any)?.audioTrack ?? null;
+      player.onSlideEnter(audioTrack);
+      previewAudioSlideIndexRef.current = playbackSlideIndex;
+    }
+
+    if (playbackPaused) {
+      player.pause();
+    } else {
+      player.resume();
+    }
+  }, [playDeckPreviewQuery.data, playbackPaused, playbackSlideIndex, playbackState]);
+
+  useEffect(() => {
+    return () => {
+      previewAudioPlayerRef.current?.destroy();
+      previewAudioPlayerRef.current = null;
+      previewAudioSlideIndexRef.current = null;
+      previewAudioDeckSignatureRef.current = null;
+    };
+  }, []);
 
   const deckNotFound = Boolean(deckQuery.error && isNotFoundError(deckQuery.error));
 
@@ -2272,10 +3028,17 @@ export default function PresentationEditor() {
   }, [playbackState, isPlaybackFullscreen]);
 
   function handleBackToPresentationLibrary() {
+    if (hasUnsavedSlideChanges && typeof window !== "undefined") {
+      const confirmed = window.confirm(UNSAVED_PRESENTATION_WARNING);
+      if (!confirmed) {
+        return;
+      }
+    }
     setLocation("/presentations");
   }
 
   async function handleReloadLatestSlide() {
+    clearCachedSlideDraft(selectedSlideId);
     await refreshDeck();
     setConflictPolicy(releaseStaleBlock());
     setSaveState("idle");
@@ -2391,8 +3154,11 @@ export default function PresentationEditor() {
     <div className="flex h-full min-h-0 flex-col">
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
         {slides.map((slide) => {
+          const cachedContent = slideDraftCacheRef.current.get(slide.id);
           const preview = summarizeSlidePreview(
-            selectedSlideId === slide.id ? draftContent : slide.slideContent,
+            selectedSlideId === slide.id
+              ? draftContent
+              : cachedContent ?? ensureSlideContent(slide.slideContent),
           );
           return (
             <button
@@ -2402,7 +3168,7 @@ export default function PresentationEditor() {
                 ? "border-sky-400 bg-sky-500/10 text-sky-800"
                 : "border-slate-300 bg-white hover:border-slate-400"
                 }`}
-              onClick={() => setSelectedSlideId(slide.id)}
+              onClick={() => switchToSlide(slide.id)}
               aria-label={`Select slide ${slide.orderIndex + 1}`}
               data-testid={`slide-preview-${slide.orderIndex + 1}`}
             >
@@ -2849,7 +3615,7 @@ export default function PresentationEditor() {
         >
           Element Borders: {showElementFrames ? "On" : "Off"}
         </Button>
-        <label className="ml-auto flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-900 px-2 py-0.5 text-xs text-slate-300">
+        <div className="ml-auto flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-900 px-2 py-0.5 text-xs text-slate-300">
           <Crop className="h-3 w-3" />
           <span>Canvas</span>
           <select
@@ -2864,7 +3630,18 @@ export default function PresentationEditor() {
               </option>
             ))}
           </select>
-        </label>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-6 border-slate-600 bg-slate-900 px-2 text-[11px] text-slate-100 hover:bg-slate-800"
+            onClick={() => void handleApplyCanvasPresetAllSlides(activeCanvasSize.preset)}
+            disabled={!slides.length || canvasApplyAllPending}
+            aria-label="Apply Canvas Aspect Ratio to All Slides"
+          >
+            {canvasApplyAllPending ? "Applying..." : "Apply All"}
+          </Button>
+        </div>
         <div className="flex items-center gap-0.5 rounded-md border border-slate-700 bg-slate-900 px-1 py-0.5">
           <Button
             variant="ghost"
@@ -2895,11 +3672,25 @@ export default function PresentationEditor() {
         </div>
       </div>
       <div className="flex flex-wrap gap-1.5 border-t border-slate-800 pt-1">
-        <Button onClick={handleUndo} aria-label="Undo Edit" variant="outline" size="sm" className="gap-1 text-xs">
+        <Button
+          onClick={handleUndo}
+          aria-label="Undo Edit"
+          title="Undo (Ctrl/Cmd+Z)"
+          variant="outline"
+          size="sm"
+          className="gap-1 text-xs"
+        >
           <Undo2 className="h-3.5 w-3.5" />
           Undo
         </Button>
-        <Button onClick={handleRedo} aria-label="Redo Edit" variant="outline" size="sm" className="gap-1 text-xs">
+        <Button
+          onClick={handleRedo}
+          aria-label="Redo Edit"
+          title="Redo (Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y)"
+          variant="outline"
+          size="sm"
+          className="gap-1 text-xs"
+        >
           <Redo2 className="h-3.5 w-3.5" />
           Redo
         </Button>
@@ -2955,7 +3746,7 @@ export default function PresentationEditor() {
       ) : null}
     </div>
   );
-  const autoDurationFromSlideAudioSec = useMemo(() => {
+  const autoDurationFromSlideAudioSec = (() => {
     if (!selectedSlideAudioTrack) {
       return null;
     }
@@ -2968,33 +3759,47 @@ export default function PresentationEditor() {
       return Math.max(0.25, selectedSlideAudioDurationSec - startSec);
     }
     return null;
-  }, [selectedSlideAudioDurationSec, selectedSlideAudioTrack]);
+  })();
   const autoDurationFromVideoSec = selectedSlideVideoDurationSec != null
     ? Math.max(0.25, selectedSlideVideoDurationSec)
     : null;
+  const autoDurationFromMediaSec = autoDurationFromSlideAudioSec ?? autoDurationFromVideoSec;
   const propertyEditorPanel = (
     <div className="space-y-3">
       {!isMobileViewport ? (
         <label className="flex items-center justify-between gap-2 rounded-md border border-slate-300 bg-white px-2 py-2 text-xs text-slate-700">
           <span className="font-medium">Canvas Size</span>
-          <select
-            aria-label="Canvas Aspect Ratio (Properties)"
-            className="rounded border border-slate-300 bg-white px-2 py-1 text-xs outline-none"
-            value={activeCanvasSize.preset}
-            onChange={(event) => handleChangeCanvasPreset(event.target.value)}
-          >
-            {PRESENTATION_CANVAS_PRESETS.map((preset) => (
-              <option key={preset.id} value={preset.id}>
-                {preset.label}
-              </option>
-            ))}
-          </select>
+          <div className="flex items-center gap-1.5">
+            <select
+              aria-label="Canvas Aspect Ratio (Properties)"
+              className="rounded border border-slate-300 bg-white px-2 py-1 text-xs outline-none"
+              value={activeCanvasSize.preset}
+              onChange={(event) => handleChangeCanvasPreset(event.target.value)}
+            >
+              {PRESENTATION_CANVAS_PRESETS.map((preset) => (
+                <option key={preset.id} value={preset.id}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-[11px]"
+              onClick={() => void handleApplyCanvasPresetAllSlides(activeCanvasSize.preset)}
+              disabled={!slides.length || canvasApplyAllPending}
+              aria-label="Apply Canvas Size to All Slides"
+            >
+              {canvasApplyAllPending ? "Applying..." : "Apply All"}
+            </Button>
+          </div>
         </label>
       ) : null}
       <div className="rounded-md border border-slate-300 bg-white p-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Slide Timing</p>
         <p className="mt-1 text-[11px] text-slate-500">
-          Set seconds per slide, apply to current slide, or apply to all slides.
+          Set seconds per slide, apply to current slide/all slides, or fit to media end.
         </p>
         <div className="mt-2 flex items-center gap-2">
           <Input
@@ -3026,6 +3831,19 @@ export default function PresentationEditor() {
             disabled={!slides.length || timingApplyAllPending}
           >
             {timingApplyAllPending ? "Applying..." : "Apply All Slides"}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-xs"
+            disabled={autoDurationFromMediaSec == null}
+            onClick={() => {
+              if (autoDurationFromMediaSec == null) return;
+              setTimingDurationSecInput(autoDurationFromMediaSec.toFixed(1).replace(/\.0$/, ""));
+              applyDurationToSelectedDraft(Math.round(autoDurationFromMediaSec * 1000));
+            }}
+          >
+            Auto: Play To End
           </Button>
           <Button
             size="sm"
@@ -3075,6 +3893,7 @@ export default function PresentationEditor() {
       <PropertyPanel
         selectedElement={selectedElement}
         selectedElementCount={selectedElementIds.length}
+        selectionHasMixedTypes={selectionHasMixedTypes}
         onPatchSelected={handlePatchSelectedElement}
         onPatchElementById={handlePatchElementById}
       />
@@ -3262,6 +4081,13 @@ export default function PresentationEditor() {
       height: Math.round(playbackCanvasSize.height * scale),
     };
   })();
+  const playbackRenderScale = Math.max(
+    0.0001,
+    Math.min(
+      playbackViewport.width / Math.max(1, playbackCanvasSize.width),
+      playbackViewport.height / Math.max(1, playbackCanvasSize.height),
+    ),
+  );
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-slate-950">
@@ -3358,7 +4184,7 @@ export default function PresentationEditor() {
             onClick={() => void handleSaveSlide()}
             aria-label="Save Slide"
             size="sm"
-            className="gap-1"
+            className="gap-1 bg-sky-600 text-white hover:bg-sky-500"
             disabled={!deck || !selectedSlide || saveState === "pending"}
           >
             <Save className="h-3.5 w-3.5" />
@@ -3369,13 +4195,19 @@ export default function PresentationEditor() {
             aria-label="Save to Template"
             variant="outline"
             size="sm"
-            className="gap-1"
+            className="gap-1 border-slate-600 bg-slate-900 text-slate-100 hover:bg-slate-800"
             disabled={!deck || saveAsTemplateMutation.isPending || isProjectTitleSaving}
           >
             <BookMarked className="h-3.5 w-3.5" />
             <span className="hidden lg:inline">Template</span>
           </Button>
-          <Button onClick={handlePlaySlideshow} aria-label="Play Slideshow" variant="secondary" size="sm" className="gap-1">
+          <Button
+            onClick={handlePlaySlideshow}
+            aria-label="Play Slideshow"
+            variant="secondary"
+            size="sm"
+            className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
+          >
             <Play className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Play</span>
           </Button>
@@ -3385,10 +4217,30 @@ export default function PresentationEditor() {
             title="Import a file to create a new presentation"
             variant="secondary"
             size="sm"
-            className="gap-1"
+            className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
           >
             <Upload className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Import</span>
+          </Button>
+          <Button
+            onClick={() => setIsAutoLayoutDialogOpen(true)}
+            aria-label="Auto Layout Slide"
+            title="Re-layout current slide using existing image"
+            variant="secondary"
+            size="sm"
+            className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
+            disabled={!deck || !selectedSlide || autoLayoutBusy}
+          >
+            {autoLayoutBusy ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <WandSparkles className="h-3.5 w-3.5" />
+            )}
+            <span className="hidden sm:inline">
+              {autoLayoutProgress
+                ? `Auto Layout ${autoLayoutProgress.done}/${autoLayoutProgress.total}`
+                : "Auto Layout"}
+            </span>
           </Button>
           {isAIGenerationEnabled && (
             <Button
@@ -3396,7 +4248,7 @@ export default function PresentationEditor() {
               aria-label="Draft with AI"
               variant="secondary"
               size="sm"
-              className="gap-1"
+              className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
               disabled={!deck}
             >
               <Sparkles className="h-3.5 w-3.5" />
@@ -3404,22 +4256,40 @@ export default function PresentationEditor() {
             </Button>
           )}
           <Button
+            onClick={() => void handleResolvePendingMedia()}
+            aria-label="Fetch Pending Media"
+            variant="secondary"
+            size="sm"
+            className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
+            disabled={!deck || pendingMediaJobCount <= 0 || resolvePendingMediaMutation.isPending}
+            title={pendingMediaJobCount > 0
+              ? `Fetch ${pendingMediaJobCount} pending media tasks`
+              : "No pending media tasks"}
+          >
+            {resolvePendingMediaMutation.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RotateCw className="h-3.5 w-3.5" />
+            )}
+            <span className="hidden sm:inline">Fetch Pending ({pendingMediaJobCount})</span>
+          </Button>
+          <Button
             onClick={() => setIsExportDialogOpen(true)}
             aria-label="Export"
             variant="secondary"
             size="sm"
-            className="gap-1"
+            className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
             disabled={!isExportsEnabled || !deck}
           >
             <Download className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Export</span>
           </Button>
           <Button
-            onClick={() => setLocation(`/presentation/${deck.libraryItemId}/play`)}
+            onClick={handleOpenPlayMode}
             aria-label="Play Mode"
             variant="secondary"
             size="sm"
-            className="gap-1"
+            className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
             disabled={!deck}
           >
             <Play className="h-3.5 w-3.5" />
@@ -3452,6 +4322,7 @@ export default function PresentationEditor() {
               onDragEnd={handleDragEnd}
               onArrangeSelection={handleArrangeSelection}
               onDropAsset={handleCanvasDropAsset}
+              onMarqueeSelect={handleMarqueeSelect}
             />
           )}
           canvasFooter={canvasFooter}
@@ -3542,11 +4413,238 @@ export default function PresentationEditor() {
                   index,
                   playbackCanvasSize.width,
                   playbackCanvasSize.height,
+                  playbackRenderScale,
                 ))}
             </div>
           </div>
         </div>
       ) : null}
+      <Dialog
+        open={isAutoLayoutDialogOpen}
+        onOpenChange={(open) => {
+          if (autoLayoutBusy) {
+            return;
+          }
+          setIsAutoLayoutDialogOpen(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Auto Layout</DialogTitle>
+            <DialogDescription>
+              Rearrange text blocks and composition without generating a new image.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Scope</Label>
+                <Select
+                  value={autoLayoutScope}
+                  onValueChange={(value) => setAutoLayoutScope(value as AutoLayoutScope)}
+                  disabled={autoLayoutBusy}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="current">Current slide</SelectItem>
+                    <SelectItem value="all">All slides</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Template</Label>
+                <Select
+                  value={autoLayoutTemplateChoice}
+                  onValueChange={(value) => setAutoLayoutTemplateChoice(value as AutoLayoutTemplateChoice)}
+                  disabled={autoLayoutBusy}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">Auto choose</SelectItem>
+                    {AI_LAYOUT_TEMPLATE_IDS.map((templateId) => (
+                      <SelectItem key={templateId} value={templateId}>
+                        {AUTO_LAYOUT_TEMPLATE_LABELS[templateId]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label>Style preset</Label>
+                <Select
+                  value={autoLayoutStyleChoice}
+                  onValueChange={(value) => setAutoLayoutStyleChoice(value as AutoLayoutStyleChoice)}
+                  disabled={autoLayoutBusy}
+                >
+                  <SelectTrigger>
+                    {autoLayoutStyleChoice === "auto" ? (
+                      <SelectValue />
+                    ) : (
+                      <div className="flex w-full items-center justify-between gap-2">
+                        <span className="truncate text-left">
+                          {selectedAutoLayoutStyleOption?.label ?? autoLayoutStyleChoice}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          {(selectedAutoLayoutStyleOption?.colors ?? []).map((color, index) => (
+                            <span
+                              key={`${selectedAutoLayoutStyleOption?.id ?? "preset"}-${index}`}
+                              className="h-3 w-3 rounded-full border border-slate-300"
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
+                        </span>
+                      </div>
+                    )}
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">Auto infer from current slide</SelectItem>
+                    {autoLayoutStyleOptions.map((preset) => (
+                      <SelectItem key={preset.id} value={preset.id}>
+                        <div className="flex w-full items-center justify-between gap-2">
+                          <span>{preset.label}</span>
+                          <span className="flex items-center gap-1">
+                            {preset.colors.map((color, index) => (
+                              <span
+                                key={`${preset.id}-color-${index}`}
+                                className="h-3 w-3 rounded-full border border-slate-300"
+                                style={{ backgroundColor: color }}
+                              />
+                            ))}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+              <div>
+                <p className="text-sm font-medium text-slate-900">Include decorative SVG</p>
+                <p className="text-xs text-slate-500">Adds supporting vector graphic accents when suitable.</p>
+              </div>
+              <Switch
+                checked={autoLayoutIncludeSvg}
+                onCheckedChange={setAutoLayoutIncludeSvg}
+                disabled={autoLayoutBusy}
+              />
+            </div>
+            <div className="space-y-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-900">Geometric image crop</p>
+                  <p className="text-xs text-slate-500">Crop the main image with a shape mask (rect, circle, triangle).</p>
+                </div>
+                <Switch
+                  checked={autoLayoutIncludeGeometricCrop}
+                  onCheckedChange={setAutoLayoutIncludeGeometricCrop}
+                  disabled={autoLayoutBusy}
+                />
+              </div>
+              {autoLayoutIncludeGeometricCrop ? (
+                <div className="space-y-1.5">
+                  <Label>Crop shape</Label>
+                  <Select
+                    value={autoLayoutCropShapeChoice}
+                    onValueChange={(value) => setAutoLayoutCropShapeChoice(value as AutoLayoutCropShapeChoice)}
+                    disabled={autoLayoutBusy}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AI_GEOMETRIC_CROP_SHAPES.map((shape) => (
+                        <SelectItem key={shape} value={shape}>
+                          {AUTO_LAYOUT_CROP_SHAPE_LABELS[shape]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
+            </div>
+            <div className="space-y-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-900">Geometric accents</p>
+                  <p className="text-xs text-slate-500">Add decorative shape overlays without cropping image content.</p>
+                </div>
+                <Switch
+                  checked={autoLayoutIncludeGeometricAccents}
+                  onCheckedChange={setAutoLayoutIncludeGeometricAccents}
+                  disabled={autoLayoutBusy}
+                />
+              </div>
+              {autoLayoutIncludeGeometricAccents ? (
+                <div className="space-y-1.5">
+                  <Label>Accent shape</Label>
+                  <Select
+                    value={autoLayoutAccentShapeChoice}
+                    onValueChange={(value) => setAutoLayoutAccentShapeChoice(value as AutoLayoutAccentShapeChoice)}
+                    disabled={autoLayoutBusy}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AI_GEOMETRIC_ACCENT_SHAPES.map((shape) => (
+                        <SelectItem key={shape} value={shape}>
+                          {AUTO_LAYOUT_ACCENT_SHAPE_LABELS[shape]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
+            </div>
+            <p className="text-xs text-slate-500">
+              Target slides: {autoLayoutTargetCount}
+            </p>
+            {autoLayoutScope === "all" && unsavedCachedSlideIds.length > 0 ? (
+              <p className="text-xs text-sky-600">
+                Pending edits on other slides will be saved automatically before Auto Layout runs.
+              </p>
+            ) : null}
+            {autoLayoutProgress ? (
+              <p className="text-xs text-slate-600">
+                Processing {autoLayoutProgress.done}/{autoLayoutProgress.total} slides...
+              </p>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsAutoLayoutDialogOpen(false)}
+              disabled={autoLayoutBusy}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="gap-1 bg-sky-600 text-white hover:bg-sky-500"
+              onClick={() => void handleAutoRelayoutSlide({
+                scope: autoLayoutScope,
+                templateChoice: autoLayoutTemplateChoice,
+                styleChoice: autoLayoutStyleChoice,
+                includeSvg: autoLayoutIncludeSvg,
+                includeGeometricCrop: autoLayoutIncludeGeometricCrop,
+                cropShapeChoice: autoLayoutCropShapeChoice,
+                includeGeometricAccents: autoLayoutIncludeGeometricAccents,
+                accentShapeChoice: autoLayoutAccentShapeChoice,
+              })}
+              disabled={autoLayoutApplyDisabled}
+            >
+              {autoLayoutBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <WandSparkles className="h-3.5 w-3.5" />}
+              Apply Auto Layout
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <AlertDialog
         open={Boolean(restoreDialogVersion)}
         onOpenChange={(open) => {

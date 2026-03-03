@@ -63,6 +63,26 @@
     "section-10-widget": {
       "status": "complete",
       "commit_hash": "5bcc0520ce79295384e2fea4e9f7aa9764205d14"
+    },
+    "section-11-webhooks": {
+      "status": "complete",
+      "commit_hash": "9a53ce22625794c5db61bd9daa73e0ee0609c2b7"
+    },
+    "section-12-channel-router": {
+      "status": "complete",
+      "commit_hash": "fef3bfe6386774b65434984be06608e4db965f0a"
+    },
+    "section-13-slack-discord": {
+      "status": "complete",
+      "commit_hash": "7efbf9c901c98c2321105db29e0974b89fc68a76"
+    },
+    "section-14-feature-flags": {
+      "status": "complete",
+      "commit_hash": "0be12fe"
+    },
+    "section-15-security-infra": {
+      "status": "complete",
+      "commit_hash": "4bcd82e"
     }
   },
   "pre_commit": {

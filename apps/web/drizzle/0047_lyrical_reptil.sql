@@ -1,0 +1,1 @@
+ALTER TABLE "agencies" ADD COLUMN "defaultModel" varchar(100);

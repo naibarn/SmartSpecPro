@@ -167,6 +167,73 @@ function resolvePythonBackendBaseUrl(): string {
   return candidate.replace(/\/+$/, "");
 }
 
+function extractStorageKeyFromSourceUrl(sourceUrl: string): string | null {
+  const trimmed = sourceUrl.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const decodeKey = (raw: string): string | null => {
+    const cleaned = raw.replace(/^\/+/, "").trim();
+    if (!cleaned) {
+      return null;
+    }
+    try {
+      return decodeURIComponent(cleaned);
+    } catch {
+      return cleaned;
+    }
+  };
+
+  if (trimmed.startsWith("/api/storage/files/")) {
+    return decodeKey(trimmed.slice("/api/storage/files/".length));
+  }
+  if (trimmed.startsWith("/uploads/")) {
+    return decodeKey(trimmed.slice("/uploads/".length));
+  }
+  if (trimmed.startsWith("/")) {
+    return null;
+  }
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      const parsed = new URL(trimmed);
+      if (parsed.pathname.startsWith("/api/storage/files/")) {
+        return decodeKey(parsed.pathname.slice("/api/storage/files/".length));
+      }
+      if (parsed.pathname.startsWith("/uploads/")) {
+        return decodeKey(parsed.pathname.slice("/uploads/".length));
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  return decodeKey(trimmed);
+}
+
+async function resolveAudioSourceUrl(sourceUrl: string | null): Promise<string | null> {
+  if (!sourceUrl) {
+    return null;
+  }
+  const trimmed = sourceUrl.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const key = extractStorageKeyFromSourceUrl(trimmed);
+  if (!key) {
+    return trimmed;
+  }
+
+  try {
+    const presigned = await storagePresignGet(key, 3600);
+    return presigned?.url ?? trimmed;
+  } catch {
+    return trimmed;
+  }
+}
+
 function resolveRenderDimensions(input: BuildRenderSpecInput): { width: number; height: number } {
   if (input.width && input.height) {
     return { width: input.width, height: input.height };
@@ -414,12 +481,6 @@ async function resolveAudioUrls(
   renderSpec: PresentationRenderSpec,
   db: DrizzleDB,
 ): Promise<PresentationRenderSpec> {
-  async function resolveUrl(sourceUrl: string | null): Promise<string | null> {
-    if (!sourceUrl) return null;
-    const presigned = await storagePresignGet(sourceUrl, 3600);
-    return presigned?.url ?? sourceUrl;
-  }
-
   const resolvedSlides = await Promise.all(
     renderSpec.slides.map(async (slide) => {
       if (!slide.audioTrack) return slide;
@@ -437,7 +498,7 @@ async function resolveAudioUrls(
         .from(libraryItems)
         .where(eq(libraryItems.id, libraryItemId))
         .limit(1);
-      const url = await resolveUrl(item?.sourceUrl ?? null);
+      const url = await resolveAudioSourceUrl(item?.sourceUrl ?? null);
       if (!url) return slide;
       const resolved: ResolvedAudioTrack = {
         url,
@@ -463,7 +524,7 @@ async function resolveAudioUrls(
         .from(libraryItems)
         .where(eq(libraryItems.id, libraryItemId))
         .limit(1);
-      const url = await resolveUrl(item?.sourceUrl ?? null);
+      const url = await resolveAudioSourceUrl(item?.sourceUrl ?? null);
       if (url) {
         resolvedProjectAudioTrack = {
           url,
@@ -577,12 +638,6 @@ export async function buildPlayDeckPayload(
     return presentationPlayDeckPayloadSchema.parse(slideshowPayload);
   }
 
-  async function resolveUrl(sourceUrl: string | null): Promise<string | null> {
-    if (!sourceUrl) return null;
-    const presigned = await storagePresignGet(sourceUrl, 3600);
-    return presigned?.url ?? sourceUrl;
-  }
-
   // Collect all distinct libraryItemIds needed (slides + deck project audio) in one batch query.
   const dbSlideMap = new Map(detail.slides.map((s) => [s.id, s]));
   const slideItemIds = detail.slides
@@ -603,7 +658,7 @@ export async function buildPlayDeckPayload(
   await Promise.all(
     allItemIds.map(async (id) => {
       const item = itemMap.get(id);
-      urlCache.set(id, await resolveUrl(item?.sourceUrl ?? null));
+      urlCache.set(id, await resolveAudioSourceUrl(item?.sourceUrl ?? null));
     }),
   );
 
@@ -663,12 +718,6 @@ async function resolveSlideAudioData(
   slideAudioMap: Map<number, ResolvedAudioTrack>;
   resolvedProjectAudioTrack: ResolvedProjectAudioTrack | null;
 }> {
-  async function resolveUrl(sourceUrl: string | null): Promise<string | null> {
-    if (!sourceUrl) return null;
-    const presigned = await storagePresignGet(sourceUrl, 3600);
-    return presigned?.url ?? sourceUrl;
-  }
-
   // Collect all distinct libraryItemIds needed in one batch query.
   const slideItemIds = detail.slides
     .map((s) => s.audioTrack?.libraryItemId)
@@ -689,7 +738,7 @@ async function resolveSlideAudioData(
   await Promise.all(
     allItemIds.map(async (id) => {
       const item = itemMap.get(id);
-      urlCache.set(id, await resolveUrl(item?.sourceUrl ?? null));
+      urlCache.set(id, await resolveAudioSourceUrl(item?.sourceUrl ?? null));
     }),
   );
 

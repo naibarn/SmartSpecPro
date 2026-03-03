@@ -107,6 +107,9 @@ export function AIDraftModal({
   // Progress state
   const [taskId, setTaskId] = useState<string | null>(null);
   const [completed, setCompleted] = useState(false);
+  const [stalledSeconds, setStalledSeconds] = useState(0);
+  const lastProgressAtRef = useRef<number>(Date.now());
+  const lastProgressMarkerRef = useRef<string>("");
 
   const utils = trpc.useUtils();
 
@@ -215,6 +218,21 @@ export function AIDraftModal({
     [skills],
   );
 
+  // Derive media type from selected image skill category
+  const selectedMediaSkill = useMemo(
+    () =>
+      selectedImageSkill && selectedImageSkill !== "__none__"
+        ? skills.find(
+            (s: { slug: string }) => s.slug === selectedImageSkill,
+          )
+        : null,
+    [skills, selectedImageSkill],
+  );
+  const mediaModelType: "image" | "video" =
+    (selectedMediaSkill as { category?: string } | null)?.category === "video_generation"
+      ? "video"
+      : "image";
+
   // Mutations
   const generateDraft = trpc.presentation.ai.generateDraft.useMutation();
   const cancelDraft = trpc.presentation.ai.cancelDraft.useMutation();
@@ -224,7 +242,7 @@ export function AIDraftModal({
   const progressQuery = trpc.presentation.ai.getDraftProgress.useQuery(
     { taskId: taskId! },
     {
-      enabled: taskId !== null && !completed,
+      enabled: isOpen && taskId !== null && !completed,
       refetchInterval: 2000,
     },
   );
@@ -236,6 +254,57 @@ export function AIDraftModal({
       setCompleted(true);
     }
   }, [progress?.completed, completed]);
+
+  useEffect(() => {
+    if (!isOpen || !taskId) {
+      lastProgressAtRef.current = Date.now();
+      lastProgressMarkerRef.current = "";
+      setStalledSeconds(0);
+      return;
+    }
+
+    const marker = progress
+      ? `${progress.phase}|${progress.phaseLabel}|${progress.slidesCompleted}|${progress.totalSlides}|${progress.completed ? 1 : 0}|${progress.error?.code ?? ""}`
+      : "pending";
+
+    if (marker !== lastProgressMarkerRef.current) {
+      lastProgressMarkerRef.current = marker;
+      lastProgressAtRef.current = Date.now();
+      setStalledSeconds(0);
+    }
+  }, [
+    isOpen,
+    taskId,
+    progress?.phase,
+    progress?.phaseLabel,
+    progress?.slidesCompleted,
+    progress?.totalSlides,
+    progress?.completed,
+    progress?.error?.code,
+  ]);
+
+  useEffect(() => {
+    if (!isOpen || !taskId || completed) {
+      setStalledSeconds(0);
+      return;
+    }
+    const timer = window.setInterval(() => {
+      const elapsed = Math.floor((Date.now() - lastProgressAtRef.current) / 1000);
+      setStalledSeconds(elapsed);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [isOpen, taskId, completed]);
+
+  useEffect(() => {
+    if (isOpen) {
+      return;
+    }
+    setTaskId(null);
+    setCompleted(false);
+    setStalledSeconds(0);
+    lastProgressAtRef.current = Date.now();
+    lastProgressMarkerRef.current = "";
+  }, [isOpen]);
 
   // Reset advanced options to modal defaults on each open
   useEffect(() => {
@@ -449,8 +518,6 @@ export function AIDraftModal({
       utils.presentation.listVersions.invalidate({ deckId });
       utils.presentation.getSlideshow.invalidate({ deckId });
     }
-    setTaskId(null);
-    setCompleted(false);
     onClose();
   }, [completed, progress, utils, deckId, onClose]);
 
@@ -479,6 +546,13 @@ export function AIDraftModal({
         ),
       )
     : 0;
+  const showStalledWarning = Boolean(
+    taskId
+    && progress
+    && !progress.completed
+    && !progress.error
+    && stalledSeconds >= 120,
+  );
 
   // Effective values for advanced toggles
   const effectiveHeaderEnabled = headerEnabled;
@@ -567,6 +641,31 @@ export function AIDraftModal({
           items={imageSkillItems}
           value={selectedImageSkill || "__none__"}
           onValueChange={(v) => {
+            // Detect if skill type changed; reset model to avoid cross-type mismatch
+            const prevSkill =
+              selectedImageSkill && selectedImageSkill !== "__none__"
+                ? skills.find(
+                    (s: { slug: string }) => s.slug === selectedImageSkill,
+                  )
+                : null;
+            const nextSkill =
+              v && v !== "__none__"
+                ? skills.find((s: { slug: string }) => s.slug === v)
+                : null;
+            const prevType =
+              (prevSkill as { category?: string } | null)?.category ===
+              "video_generation"
+                ? "video"
+                : "image";
+            const nextType =
+              (nextSkill as { category?: string } | null)?.category ===
+              "video_generation"
+                ? "video"
+                : "image";
+            if (prevType !== nextType) {
+              setImageModel("");
+              localStorage.removeItem("smartspec_aiDraft_imageModel");
+            }
             setSelectedImageSkill(v);
             localStorage.setItem("smartspec_aiDraft_imageSkill", v);
           }}
@@ -576,14 +675,19 @@ export function AIDraftModal({
         />
       </div>
 
-      {/* Media model (image generation) */}
+      {/* Media model (image/video generation) */}
       <div className="space-y-1.5">
-        <Label>Media Model (Image, optional)</Label>
+        <Label>
+          Media Model ({mediaModelType === "video" ? "Video" : "Image"}, optional)
+        </Label>
         <p className="text-xs text-muted-foreground">
-          Choose the image model for this draft (text-to-image compatible models only).
+          {mediaModelType === "video"
+            ? "Choose the video generation model for this draft."
+            : "Choose the image model for this draft (text-to-image compatible models only)."}
         </p>
         <ImageModelCombobox
           value={imageModel}
+          mediaType={mediaModelType}
           onValueChange={(v) => {
             setImageModel(v);
             if (v) {
@@ -880,6 +984,14 @@ export function AIDraftModal({
             Phase {progress.phase}/6: {progress.phaseLabel}
           </div>
           <Progress value={progressPercent} />
+          {showStalledWarning && (
+            <Alert className="border-amber-500">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <AlertDescription>
+                No progress update for {stalledSeconds}s. The media provider may be delayed or stuck. You can wait, or click Cancel and retry.
+              </AlertDescription>
+            </Alert>
+          )}
           {progress.slidePreview.length > 0 && (
             <div className="grid grid-cols-3 gap-2">
               {progress.slidePreview.map(

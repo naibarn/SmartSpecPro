@@ -5,7 +5,9 @@
  *
  * Security model (two layers):
  *   Layer 1 (primary):   Nginx `location /internal/ { deny all; }` blocks external access.
- *   Layer 2 (secondary): Application checks req.socket.remoteAddress is a loopback address.
+ *   Layer 2 (secondary): Application checks req.socket.remoteAddress is loopback or RFC 1918
+ *                        private range. Private ranges are needed for Docker Celery workers
+ *                        that connect via host.docker.internal (172.17.0.1 gateway).
  *   Layer 3 (content):   JWT in `X-Internal-Token` header encodes deckId + slideIndex + scope.
  *
  * The route returns a minimal self-contained HTML page with inlined slide data.
@@ -20,18 +22,30 @@ import { verifyBearerToken } from "../_core/tokens";
 
 const LOOPBACK_ADDRESSES = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
 
-function isLoopback(address: string | undefined): boolean {
-  return !!address && LOOPBACK_ADDRESSES.has(address);
+/** Accept loopback or RFC 1918 private addresses (Docker Celery workers use 172.17.x.x). */
+function isInternalAddress(address: string | undefined): boolean {
+  if (!address) return false;
+  if (LOOPBACK_ADDRESSES.has(address)) return true;
+  // Strip IPv6-mapped IPv4 prefix
+  const ip = address.startsWith("::ffff:") ? address.slice(7) : address;
+  const parts = ip.split(".").map(Number);
+  if (parts.length !== 4) return false;
+  const [a, b] = parts;
+  return (
+    a === 10 ||                          // 10.0.0.0/8
+    (a === 172 && b >= 16 && b <= 31) || // 172.16.0.0/12
+    (a === 192 && b === 168)             // 192.168.0.0/16
+  );
 }
 
 export function createSlideRenderRouter(): Router {
   const router = Router();
 
   router.get("/slide-render/:deckId/:slideIndex", async (req, res) => {
-    // --- Layer 2: Loopback-only enforcement ---
+    // --- Layer 2: Internal network enforcement ---
     const remoteAddress = req.socket?.remoteAddress;
-    if (!isLoopback(remoteAddress)) {
-      return res.status(403).json({ error: "Forbidden: localhost only" });
+    if (!isInternalAddress(remoteAddress)) {
+      return res.status(403).json({ error: "Forbidden: internal network only" });
     }
 
     // --- Layer 3: JWT header validation ---
@@ -218,8 +232,10 @@ window.__slideReady = false;
     var p = document.createElement("p");
     p.style.margin = "0";
     p.style.width = "100%";
-    p.style.height = "100%";
+    p.style.display = "block";
+    p.style.minHeight = "100%";
     p.style.padding = "8px";
+    p.style.paddingBottom = "0.14em";
     p.style.boxSizing = "border-box";
     p.style.whiteSpace = "pre-wrap";
     p.style.wordBreak = "break-word";

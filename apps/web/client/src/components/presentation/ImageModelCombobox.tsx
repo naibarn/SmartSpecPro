@@ -18,6 +18,7 @@ interface ImageModelComboboxProps {
   value: string;
   onValueChange: (modelId: string) => void;
   disabled?: boolean;
+  mediaType?: "image" | "video";
 }
 
 interface ImageModelOption {
@@ -52,19 +53,26 @@ export function ImageModelCombobox({
   value,
   onValueChange,
   disabled,
+  mediaType = "image",
 }: ImageModelComboboxProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [triggerWidth, setTriggerWidth] = useState<number>(0);
 
   const modelsQuery = trpc.media.getModels.useQuery(
-    { type: "image" },
+    { type: mediaType },
     { staleTime: 300_000 },
   );
 
   const models = (modelsQuery.data?.models ?? []) as ImageModelOption[];
-  const compatibleModels = models.filter(isTextToImageModel);
-  const defaultModelId = compatibleModels[0]?.id || modelsQuery.data?.defaults?.image || "flux-2.0";
+  const compatibleModels =
+    mediaType === "video" ? models : models.filter(isTextToImageModel);
+  const defaultModelId =
+    compatibleModels[0]?.id ||
+    (mediaType === "video"
+      ? modelsQuery.data?.defaults?.video
+      : modelsQuery.data?.defaults?.image) ||
+    (mediaType === "video" ? "veo-3-1" : "flux-2.0");
 
   useEffect(() => {
     if (open && triggerRef.current) {
@@ -167,6 +175,11 @@ export function ImageModelCombobox({
               {compatibleModels.length < models.length && (
                 <div className="px-2 pb-2 pt-1 text-[11px] text-muted-foreground">
                   Hidden incompatible models (image-to-image / edit only)
+                </div>
+              )}
+              {models.length === 0 && !modelsQuery.isLoading && (
+                <div className="px-2 pb-2 pt-1 text-[11px] text-muted-foreground">
+                  No {mediaType} models available.
                 </div>
               )}
             </CommandGroup>

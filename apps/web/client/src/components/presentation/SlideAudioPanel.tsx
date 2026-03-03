@@ -57,6 +57,19 @@ function formatDuration(seconds: number): string {
   return `${mins}:${secs.toFixed(1).padStart(4, "0")}`;
 }
 
+const AUDIO_SLIDER_CLASS = [
+  "h-6",
+  "[&_[data-slot=slider-track]]:h-2",
+  "[&_[data-slot=slider-track]]:rounded-full",
+  "[&_[data-slot=slider-track]]:border",
+  "[&_[data-slot=slider-track]]:border-slate-400/80",
+  "[&_[data-slot=slider-track]]:bg-slate-200",
+  "[&_[data-slot=slider-range]]:bg-sky-500",
+  "[&_[data-slot=slider-thumb]]:size-5",
+  "[&_[data-slot=slider-thumb]]:border-sky-500",
+  "[&_[data-slot=slider-thumb]]:bg-white",
+].join(" ");
+
 function extractDurationSeconds(metadata: unknown): number | null {
   if (!metadata || typeof metadata !== "object") {
     return null;
@@ -141,7 +154,7 @@ function AudioTrimTimeline({
   const playDuration = Math.max(0, boundedEnd - boundedStart);
 
   return (
-    <div className="space-y-2 rounded-md border border-slate-200 p-2">
+    <div className="space-y-3 rounded-lg border border-slate-300 bg-slate-50 p-3">
       <div className="flex items-center justify-between">
         <Label className="text-xs font-medium">Trim</Label>
         <span className="text-[11px] text-muted-foreground">
@@ -152,20 +165,59 @@ function AudioTrimTimeline({
         min={0}
         max={maxSec}
         step={0.1}
-        value={playToEnd ? [boundedStart] : [boundedStart, boundedEnd]}
+        className={AUDIO_SLIDER_CLASS}
+        value={[boundedStart, boundedEnd]}
         onValueChange={(values) => {
-          if (!values.length) return;
+          if (values.length < 2) return;
+          const nextStart = clamp(values[0], 0, maxSec);
+          const nextEnd = clamp(values[1], nextStart, maxSec);
           if (playToEnd) {
-            onStartSecChange(clamp(values[0], 0, maxSec));
+            onStartSecChange(nextStart);
+            onEndSecChange(maxSec);
             return;
           }
-          const nextStart = clamp(values[0], 0, maxSec);
-          const nextEnd = clamp(values[1] ?? values[0], nextStart, maxSec);
           onStartSecChange(nextStart);
           onEndSecChange(nextEnd);
         }}
         aria-label={`${idPrefix}-trim-slider`}
       />
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <Label className="text-[11px] text-muted-foreground">Start (s)</Label>
+          <Input
+            type="number"
+            min={0}
+            max={maxSec}
+            step={0.1}
+            value={Number.isFinite(boundedStart) ? boundedStart.toFixed(1) : "0.0"}
+            onChange={(event) => {
+              const parsed = Number.parseFloat(event.target.value);
+              if (!Number.isFinite(parsed)) return;
+              onStartSecChange(clamp(parsed, 0, maxSec));
+            }}
+            className="h-7 bg-white text-xs"
+            aria-label={`${idPrefix}-trim-start-seconds`}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-[11px] text-muted-foreground">End (s)</Label>
+          <Input
+            type="number"
+            min={boundedStart}
+            max={maxSec}
+            step={0.1}
+            value={Number.isFinite(boundedEnd) ? boundedEnd.toFixed(1) : "0.0"}
+            onChange={(event) => {
+              const parsed = Number.parseFloat(event.target.value);
+              if (!Number.isFinite(parsed) || playToEnd) return;
+              onEndSecChange(clamp(parsed, boundedStart, maxSec));
+            }}
+            disabled={playToEnd}
+            className="h-7 bg-white text-xs"
+            aria-label={`${idPrefix}-trim-end-seconds`}
+          />
+        </div>
+      </div>
       <div className="flex items-center gap-2">
         <Switch
           checked={playToEnd}
@@ -176,6 +228,11 @@ function AudioTrimTimeline({
           Play to end
         </Label>
       </div>
+      {playToEnd ? (
+        <p className="text-[11px] text-slate-500">
+          End trim is locked to audio end while Play to end is enabled.
+        </p>
+      ) : null}
       <div className="grid grid-cols-3 gap-1 text-[11px]">
         <span className="rounded bg-slate-100 px-1.5 py-0.5">Start {formatDuration(boundedStart)}</span>
         <span className="rounded bg-slate-100 px-1.5 py-0.5">End {formatDuration(boundedEnd)}</span>
@@ -529,6 +586,36 @@ export function SlideAudioPanel({
     return Math.round(deckEndSec * 1000);
   }
 
+  function handleSlidePlayToEndChange(next: boolean) {
+    setSlidePlayToEnd(next);
+    if (!next) {
+      setSlideEndSec((current) => {
+        const durationFallback = slideAudioDurationSec ?? 0;
+        const minEnd = slideStartSec + 0.5;
+        return Math.max(current, durationFallback, minEnd);
+      });
+      return;
+    }
+    if (slideAudioDurationSec != null) {
+      setSlideEndSec(slideAudioDurationSec);
+    }
+  }
+
+  function handleDeckPlayToEndChange(next: boolean) {
+    setDeckPlayToEnd(next);
+    if (!next) {
+      setDeckEndSec((current) => {
+        const durationFallback = deckAudioDurationSec ?? 0;
+        const minEnd = deckStartSec + 0.5;
+        return Math.max(current, durationFallback, minEnd);
+      });
+      return;
+    }
+    if (deckAudioDurationSec != null) {
+      setDeckEndSec(deckAudioDurationSec);
+    }
+  }
+
   // H2: build slide AudioTrackInput WITHOUT title — schema is .strict()
   function buildSlideAudioTrackInput(libraryItemId: number): AudioTrackInput {
     return {
@@ -710,7 +797,7 @@ export function SlideAudioPanel({
             </Button>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-3">
             <div className="flex items-center gap-2">
               <Music className="h-4 w-4 shrink-0 text-muted-foreground" />
               <span className="text-sm truncate flex-1">
@@ -752,6 +839,7 @@ export function SlideAudioPanel({
                 <span className="text-xs text-muted-foreground">{slideVolumePct}%</span>
               </div>
               <Slider
+                className={AUDIO_SLIDER_CLASS}
                 min={0}
                 max={100}
                 step={1}
@@ -767,9 +855,14 @@ export function SlideAudioPanel({
               startSec={slideStartSec}
               endSec={slideEndSec}
               playToEnd={slidePlayToEnd}
-              onStartSecChange={setSlideStartSec}
+              onStartSecChange={(next) => {
+                setSlideStartSec(next);
+                if (!slidePlayToEnd) {
+                  setSlideEndSec((current) => Math.max(current, next));
+                }
+              }}
               onEndSecChange={setSlideEndSec}
-              onPlayToEndChange={setSlidePlayToEnd}
+              onPlayToEndChange={handleSlidePlayToEndChange}
             />
 
             {/* Actions */}
@@ -820,7 +913,7 @@ export function SlideAudioPanel({
             </Button>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-3">
             <div className="flex items-center gap-2">
               <Music className="h-4 w-4 shrink-0 text-muted-foreground" />
               <span className="text-sm truncate flex-1">
@@ -862,6 +955,7 @@ export function SlideAudioPanel({
                 <span className="text-xs text-muted-foreground">{deckVolumePct}%</span>
               </div>
               <Slider
+                className={AUDIO_SLIDER_CLASS}
                 min={0}
                 max={100}
                 step={1}
@@ -877,9 +971,14 @@ export function SlideAudioPanel({
               startSec={deckStartSec}
               endSec={deckEndSec}
               playToEnd={deckPlayToEnd}
-              onStartSecChange={setDeckStartSec}
+              onStartSecChange={(next) => {
+                setDeckStartSec(next);
+                if (!deckPlayToEnd) {
+                  setDeckEndSec((current) => Math.max(current, next));
+                }
+              }}
               onEndSecChange={setDeckEndSec}
-              onPlayToEndChange={setDeckPlayToEnd}
+              onPlayToEndChange={handleDeckPlayToEndChange}
             />
 
             {/* Loop */}

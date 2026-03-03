@@ -12,8 +12,11 @@ import { resolveTenantIdVarchar } from "../services/tenantContext";
 import { federatedSearch } from "../services/federatedSearch";
 import {
   createLibraryItem,
+  createLibraryFolder,
   getContentVersionById,
   getContentVersionHistory,
+  getLibraryFolderAncestors,
+  getLibraryFolderChildCount,
   getLibraryMarkdownContent,
   getLibraryItemById,
   getLibraryItemShares,
@@ -28,7 +31,9 @@ import {
   saveLibraryMarkdown,
   searchLibraryItems,
   shareLibraryItem,
+  shareLibraryToGroup,
   softDeleteLibraryItem,
+  batchSoftDeleteLibraryItems,
   updateLibrarySharePermission,
   uploadLibraryFile,
   replaceLibraryFile,
@@ -99,6 +104,7 @@ const uploadLibraryFileSchema = z.object({
   fileBase64: z.string().min(1).max(MAX_FILE_BASE64_LENGTH),
   title: z.string().min(1).max(255).optional(),
   visibility: visibilitySchema.optional(),
+  parentId: z.number().int().positive().nullable().optional(),
 });
 
 async function resolveLibraryTenantId(
@@ -179,6 +185,7 @@ export const libraryRouter = router({
         limit: z.number().int().min(1).max(50).optional(),
         offset: z.number().int().min(0).optional(),
         filters: documentFilterSchema,
+        folderId: z.number().int().positive().nullable().optional(),
       }).optional(),
     )
     .query(async ({ input, ctx }) => {
@@ -198,6 +205,7 @@ export const libraryRouter = router({
           limit: input?.limit,
           offset: input?.offset,
           filters: input?.filters,
+          folderId: input?.folderId,
         },
         actor,
       );
@@ -412,6 +420,7 @@ export const libraryRouter = router({
         sourceUrl: z.string().max(2048).optional(),
         thumbnailUrl: z.string().max(2048).optional(),
         sourceLink: sourceLinkSchema.optional(),
+        parentId: z.number().int().positive().nullable().optional(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
@@ -939,6 +948,108 @@ export const libraryRouter = router({
       });
 
       return { success: true };
+    }),
+
+  // ─── Folder procedures ────────────────────────────────────────────────────
+
+  createFolder: protectedProcedure
+    .input(
+      z.object({
+        name: z.string().min(1).max(255),
+        parentId: z.number().int().positive().nullable().optional(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const actor = { userId: ctx.user.id, tenantId: tenantIdResolved, role: ctx.user.role };
+
+      const result = await createLibraryFolder(input, actor);
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.createFolder",
+        requestType: "mutation",
+        requestPayload: { tenantId: tenantIdResolved, name: input.name, parentId: input.parentId },
+        responsePayload: { itemId: result.item.id },
+      });
+
+      return result;
+    }),
+
+  getFolderPath: protectedProcedure
+    .input(z.object({ folderId: z.number().int().positive() }))
+    .query(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      return getLibraryFolderAncestors(input.folderId, tenantIdResolved);
+    }),
+
+  /** Returns number of non-deleted direct children in a folder. */
+  getFolderChildCount: protectedProcedure
+    .input(z.object({ folderId: z.number().int().positive() }))
+    .query(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const cnt = await getLibraryFolderChildCount(input.folderId, tenantIdResolved);
+      return { count: cnt };
+    }),
+
+  /** Batch soft-delete multiple items at once. */
+  deleteItems: protectedProcedure
+    .input(
+      z.object({
+        ids: z.array(z.number().int().positive()).min(1).max(200),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const actor = { userId: ctx.user.id, tenantId: tenantIdResolved, role: ctx.user.role };
+
+      const deleted = await batchSoftDeleteLibraryItems(input.ids, actor);
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.deleteItems",
+        requestType: "mutation",
+        requestPayload: { tenantId: tenantIdResolved, ids: input.ids },
+        responsePayload: { deleted },
+      });
+
+      return { deleted };
+    }),
+
+  /** Share all owned library items with a specific group. */
+  shareLibrary: protectedProcedure
+    .input(
+      z.object({
+        groupId: z.number().int().positive(),
+        permissionLevel: sharePermissionLevelSchema,
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      if (!shareOperationLimiter.isAllowed(`user:${ctx.user.id}`)) {
+        throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Too many share operations. Please try again later." });
+      }
+      const tenantIdResolved = await resolveLibraryTenantId(ctx);
+      assertLibraryEnabled(tenantIdResolved);
+      const actor = { userId: ctx.user.id, tenantId: tenantIdResolved, role: ctx.user.role };
+
+      const result = await shareLibraryToGroup(input, actor);
+
+      auditLogger.log({
+        eventType: "library_mutation",
+        userId: ctx.user.id,
+        endpoint: "library.shareLibrary",
+        requestType: "mutation",
+        requestPayload: { tenantId: tenantIdResolved, groupId: input.groupId, permissionLevel: input.permissionLevel },
+        responsePayload: { shared: result.shared },
+      });
+
+      return result;
     }),
 
   /**

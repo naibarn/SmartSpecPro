@@ -345,7 +345,8 @@
       "WebFetch(domain:www.speechmatics.com)",
       "WebFetch(domain:api.slack.com)",
       "Bash(/home/dev/projects/SmartSpecPro/specs/feature/029-ClawFeature/implementation/code_review/section-01-review.md:*)",
-      "Bash(/home/dev/projects/SmartSpecPro/specs/feature/029-ClawFeature/implementation/code_review/section-01-interview.md:*)"
+      "Bash(/home/dev/projects/SmartSpecPro/specs/feature/029-ClawFeature/implementation/code_review/section-01-interview.md:*)",
+      "Bash(screen -ls)"
     ],
     "deny": [
       "Bash(rm *)",

@@ -1,0 +1,1786 @@
+/**
+ * NodePropertyPanel — polymorphic property panel for all 7 agency node types.
+ *
+ * Dispatches to the appropriate form based on data.nodeType:
+ *   agent / supervisor   → AgentSupervisorForm
+ *   router               → RouterForm
+ *   aggregator           → AggregatorForm
+ *   knowledge_base       → KnowledgeBaseForm
+ *   skill_call           → SkillCallForm
+ *   human_approval       → HumanApprovalForm
+ */
+
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { cn } from "@/lib/utils";
+import { trpc } from "@/lib/trpc";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+} from "@/components/ui/command";
+import { ToolPicker } from "./ToolPicker";
+import { ModelPicker } from "./ModelPicker";
+import type { AgencyNodeData } from "./nodes/types";
+import {
+  X, Wrench, ChevronDown, ChevronRight, Trash2, Plus,
+  Search, Loader2, Zap, GripVertical, Check, ChevronsUpDown,
+  BookOpen,
+} from "lucide-react";
+
+const PANEL_MIN_W = 340;
+const PANEL_MAX_W = 700;
+const PANEL_DEFAULT_W = 400;
+const PANEL_STORAGE_KEY = "agency-panel-width";
+
+/** Minimal info about a sibling node — used for target dropdowns in Router etc. */
+export interface SiblingNode {
+  id: string;
+  name: string;
+  nodeType: string;
+}
+
+interface NodePropertyPanelProps {
+  node: AgencyNodeData;
+  /** Current node's ReactFlow ID — shown in the panel header */
+  nodeId?: string;
+  /** All other nodes in the canvas (for target dropdowns) */
+  siblingNodes?: SiblingNode[];
+  onChange: (updates: Partial<AgencyNodeData>) => void;
+  onClose: () => void;
+  onDelete: () => void;
+}
+
+// ── nodeConfig helpers ───────────────────────────────────────────────────────
+
+function ncGet<T>(node: AgencyNodeData, key: string, fallback: T): T {
+  return (node.nodeConfig?.[key] as T) ?? fallback;
+}
+
+function ncSet(node: AgencyNodeData, key: string, value: unknown): Partial<AgencyNodeData> {
+  return { nodeConfig: { ...(node.nodeConfig ?? {}), [key]: value } };
+}
+
+// ── Root dispatcher ──────────────────────────────────────────────────────────
+
+export function NodePropertyPanel({ node, nodeId, siblingNodes = [], onChange, onClose, onDelete }: NodePropertyPanelProps) {
+  const nodeType = node.nodeType ?? "agent";
+
+  // ── Resizable width ──────────────────────────────────────────────────────
+  const [width, setWidth] = useState(() => {
+    try {
+      const saved = localStorage.getItem(PANEL_STORAGE_KEY);
+      if (saved) {
+        const n = Number(saved);
+        if (n >= PANEL_MIN_W && n <= PANEL_MAX_W) return n;
+      }
+    } catch { /* ignore */ }
+    return PANEL_DEFAULT_W;
+  });
+  const dragging = useRef(false);
+  const startX = useRef(0);
+  const startW = useRef(width);
+
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    dragging.current = true;
+    startX.current = e.clientX;
+    startW.current = width;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  }, [width]);
+
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragging.current) return;
+    // Dragging left edge: moving pointer left = wider panel
+    const delta = startX.current - e.clientX;
+    const next = Math.min(PANEL_MAX_W, Math.max(PANEL_MIN_W, startW.current + delta));
+    setWidth(next);
+  }, []);
+
+  const onPointerUp = useCallback((e: React.PointerEvent) => {
+    if (!dragging.current) return;
+    dragging.current = false;
+    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    try { localStorage.setItem(PANEL_STORAGE_KEY, String(width)); } catch { /* ignore */ }
+  }, [width]);
+
+  const TITLES: Record<string, string> = {
+    agent: "Agent Properties",
+    supervisor: "Supervisor Properties",
+    router: "Router Properties",
+    aggregator: "Aggregator Properties",
+    knowledge_base: "Knowledge Base Properties",
+    skill_call: "Skill Call Properties",
+    human_approval: "Human Approval Properties",
+  };
+
+  return (
+    <div
+      className="relative flex h-full flex-col border-l bg-background"
+      style={{ width, minWidth: PANEL_MIN_W, maxWidth: PANEL_MAX_W, flexShrink: 0 }}
+    >
+      {/* Resize handle — left edge */}
+      <div
+        className="absolute inset-y-0 left-0 z-20 flex w-2 cursor-col-resize items-center justify-center hover:bg-primary/10 active:bg-primary/20 transition-colors -translate-x-1/2"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        title="Drag to resize"
+      >
+        <GripVertical className="h-5 w-3 text-muted-foreground/50" />
+      </div>
+
+      {/* Header */}
+      <div className="flex items-center justify-between border-b px-4 py-3 shrink-0">
+        <span className="text-sm font-medium truncate mr-2">{TITLES[nodeType] ?? "Node Properties"}</span>
+        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="space-y-4 p-4">
+          {(nodeType === "agent" || nodeType === "supervisor") && (
+            <AgentSupervisorForm node={node} onChange={onChange} />
+          )}
+          {nodeType === "router" && <RouterForm node={node} onChange={onChange} siblingNodes={siblingNodes} />}
+          {nodeType === "aggregator" && <AggregatorForm node={node} onChange={onChange} />}
+          {nodeType === "knowledge_base" && <KnowledgeBaseForm node={node} onChange={onChange} />}
+          {nodeType === "skill_call" && <SkillCallForm node={node} onChange={onChange} />}
+          {nodeType === "human_approval" && <HumanApprovalForm node={node} onChange={onChange} />}
+
+          <Separator />
+
+          <Button
+            variant="destructive"
+            size="sm"
+            className="w-full"
+            onClick={onDelete}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete Node
+          </Button>
+        </div>
+      </ScrollArea>
+    </div>
+  );
+}
+
+// ── Agent / Supervisor Form ──────────────────────────────────────────────────
+
+function AgentSupervisorForm({
+  node,
+  onChange,
+}: {
+  node: AgencyNodeData;
+  onChange: (updates: Partial<AgencyNodeData>) => void;
+}) {
+  const [toolPickerOpen, setToolPickerOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [kbOpen, setKbOpen] = useState(false);
+  const [kbDocPickerOpen, setKbDocPickerOpen] = useState(false);
+  const [kbSettingsOpen, setKbSettingsOpen] = useState(false);
+  const [kbDocTypeFilter, setKbDocTypeFilter] = useState<string>("all");
+  const isSupervisor = node.nodeType === "supervisor";
+
+  // Knowledge Base config from nodeConfig
+  const kbConfig = (node.nodeConfig?.knowledgeBase ?? {}) as {
+    documentIds?: string[];
+    searchMode?: string;
+    topK?: number;
+    scoreThreshold?: number;
+    maxContextTokens?: number;
+  };
+  const kbDocumentIds: string[] = kbConfig.documentIds ?? [];
+  const kbSearchMode = kbConfig.searchMode ?? "hybrid";
+  const kbTopK = kbConfig.topK ?? 5;
+  const kbScoreThreshold = kbConfig.scoreThreshold ?? 0.7;
+  const kbMaxContextTokens = kbConfig.maxContextTokens ?? 4000;
+
+  const { data: kbDocsData, isLoading: kbDocsLoading } = trpc.library.listDocuments.useQuery(
+    { limit: 50, filters: {} },
+    { enabled: kbOpen },
+  );
+  const kbDocs = (kbDocsData?.results ?? []) as Array<{ id: number; title: string; item_type?: string }>;
+
+  const kbDocTypes = Array.from(new Set(kbDocs.map((d) => (d.item_type ?? "doc").toLowerCase()))).sort();
+  const filteredKbDocs = kbDocTypeFilter === "all" ? kbDocs : kbDocs.filter((d) => (d.item_type ?? "doc").toLowerCase() === kbDocTypeFilter);
+
+  const updateKbConfig = (updates: Partial<typeof kbConfig>) => {
+    const current = (node.nodeConfig?.knowledgeBase ?? {}) as Record<string, unknown>;
+    onChange({
+      nodeConfig: {
+        ...(node.nodeConfig ?? {}),
+        knowledgeBase: { ...current, ...updates },
+      },
+    });
+  };
+
+  const handleAddTool = (tool: {
+    toolId: string;
+    toolName: string;
+    toolConfig?: Record<string, unknown>;
+  }) => {
+    onChange({ tools: [...(node.tools ?? []), tool] });
+  };
+
+  const handleRemoveTool = (toolId: string) => {
+    onChange({ tools: (node.tools ?? []).filter((t) => t.toolId !== toolId) });
+  };
+
+  return (
+    <>
+      <div className="space-y-1.5">
+        <Label>Name</Label>
+        <Input
+          value={node.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+          placeholder="Agent name"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Description</Label>
+        <Textarea
+          value={node.description}
+          onChange={(e) => onChange({ description: e.target.value })}
+          placeholder="Short description"
+          rows={2}
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Instructions</Label>
+        <Textarea
+          value={node.instructions}
+          onChange={(e) => {
+            if (e.target.value.length <= 10000) {
+              onChange({ instructions: e.target.value });
+            }
+          }}
+          placeholder="System prompt / instructions"
+          rows={5}
+          maxLength={10000}
+          className="min-h-[120px] resize-y"
+        />
+        <p className="text-xs text-muted-foreground text-right">
+          {(node.instructions ?? "").length.toLocaleString()}/10,000
+        </p>
+      </div>
+
+      {/* Knowledge Base */}
+      <Separator />
+      <div>
+        <button
+          type="button"
+          onClick={() => setKbOpen(!kbOpen)}
+          className="flex w-full items-center justify-between text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+        >
+          <span className="flex items-center gap-1.5">
+            <BookOpen className="h-3.5 w-3.5" />
+            Knowledge Base
+            {kbDocumentIds.length > 0 && (
+              <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-semibold">
+                {kbDocumentIds.length}
+              </span>
+            )}
+          </span>
+          {kbOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+
+        {kbOpen && (
+          <div className="mt-2 space-y-3">
+            <p className="text-[10px] text-muted-foreground">
+              Attach library documents for this agent to reference. Only relevant chunks are retrieved via RAG.
+            </p>
+
+            {/* Document multi-select picker */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Documents ({kbDocumentIds.length}/20)</Label>
+              {kbDocsLoading ? (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Loading documents...
+                </div>
+              ) : kbDocs.length === 0 ? (
+                <p className="text-xs text-amber-600 bg-amber-50 rounded px-2 py-1.5">
+                  No documents found. Upload documents in the Library first.
+                </p>
+              ) : (
+                <Popover open={kbDocPickerOpen} onOpenChange={setKbDocPickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={kbDocPickerOpen}
+                      className="w-full justify-between font-normal h-9 text-sm"
+                      disabled={kbDocumentIds.length >= 20}
+                    >
+                      <span className="text-muted-foreground">
+                        {kbDocumentIds.length >= 20 ? "Maximum 20 documents" : "Add documents..."}
+                      </span>
+                      <ChevronsUpDown className="ml-1 h-3.5 w-3.5 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[320px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search documents..." />
+                      {kbDocTypes.length > 1 && (
+                        <div className="flex flex-wrap gap-1 px-2 py-1.5 border-b">
+                          <button
+                            type="button"
+                            onClick={() => setKbDocTypeFilter("all")}
+                            className={cn(
+                              "px-1.5 py-0.5 rounded text-[10px] font-medium border transition-colors",
+                              kbDocTypeFilter === "all"
+                                ? "bg-slate-800 text-white border-slate-800"
+                                : "bg-white text-slate-500 border-slate-200 hover:border-slate-400",
+                            )}
+                          >
+                            All ({kbDocs.length})
+                          </button>
+                          {kbDocTypes.map((t) => {
+                            const count = kbDocs.filter((d) => (d.item_type ?? "doc").toLowerCase() === t).length;
+                            return (
+                              <button
+                                key={t}
+                                type="button"
+                                onClick={() => setKbDocTypeFilter(t)}
+                                className={cn(
+                                  "px-1.5 py-0.5 rounded text-[10px] font-medium border uppercase transition-colors",
+                                  kbDocTypeFilter === t
+                                    ? "bg-slate-800 text-white border-slate-800"
+                                    : "bg-white text-slate-500 border-slate-200 hover:border-slate-400",
+                                )}
+                              >
+                                {t} ({count})
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <CommandList className="max-h-[250px]">
+                        <CommandEmpty>No documents found.</CommandEmpty>
+                        <CommandGroup>
+                          {filteredKbDocs.map((doc) => {
+                            const docIdStr = String(doc.id);
+                            const isSelected = kbDocumentIds.includes(docIdStr);
+                            return (
+                              <CommandItem
+                                key={doc.id}
+                                value={`${doc.title} ${doc.item_type ?? ""}`}
+                                onSelect={() => {
+                                  if (isSelected) {
+                                    updateKbConfig({ documentIds: kbDocumentIds.filter((id) => id !== docIdStr) });
+                                  } else if (kbDocumentIds.length < 20) {
+                                    updateKbConfig({ documentIds: [...kbDocumentIds, docIdStr] });
+                                  }
+                                }}
+                                className="flex items-center gap-1.5"
+                              >
+                                <Check
+                                  className={cn("h-3.5 w-3.5 shrink-0", isSelected ? "opacity-100" : "opacity-0")}
+                                />
+                                <span className="text-[10px] bg-slate-100 px-1 rounded uppercase shrink-0">
+                                  {doc.item_type ?? "doc"}
+                                </span>
+                                <span className="truncate">{doc.title}</span>
+                              </CommandItem>
+                            );
+                          })}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              )}
+            </div>
+
+            {/* Selected documents list */}
+            {kbDocumentIds.length > 0 && (
+              <div className="space-y-1">
+                {kbDocumentIds.map((docId) => {
+                  const doc = kbDocs.find((d) => String(d.id) === docId);
+                  return (
+                    <div key={docId} className="flex items-center justify-between rounded border px-2 py-1">
+                      <span className="flex items-center gap-1.5 truncate text-xs">
+                        {doc && (
+                          <span className="text-[10px] bg-slate-100 px-1 rounded uppercase shrink-0">
+                            {doc.item_type ?? "doc"}
+                          </span>
+                        )}
+                        <span className="truncate">{doc ? doc.title : `Document #${docId}`}</span>
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 shrink-0"
+                        onClick={() => updateKbConfig({ documentIds: kbDocumentIds.filter((id) => id !== docId) })}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* RAG Settings (collapsible) */}
+            <button
+              type="button"
+              onClick={() => setKbSettingsOpen(!kbSettingsOpen)}
+              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-slate-700 transition-colors"
+            >
+              {kbSettingsOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+              RAG Settings
+            </button>
+            {kbSettingsOpen && (
+              <div className="space-y-3 pl-1">
+                <div className="space-y-1">
+                  <Label className="text-xs">Search Mode</Label>
+                  <Select value={kbSearchMode} onValueChange={(v) => updateKbConfig({ searchMode: v })}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hybrid">Hybrid (recommended)</SelectItem>
+                      <SelectItem value="vector">Vector only</SelectItem>
+                      <SelectItem value="keyword">Keyword only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Top K Results</Label>
+                  <Select value={String(kbTopK)} onValueChange={(v) => updateKbConfig({ topK: Number(v) })}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[1, 3, 5, 10, 15, 20].map((k) => (
+                        <SelectItem key={k} value={String(k)}>{k} results</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Score Threshold ({kbScoreThreshold})</Label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={kbScoreThreshold}
+                    onChange={(e) => updateKbConfig({ scoreThreshold: Number(e.target.value) })}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <span>0 (include all)</span>
+                    <span>1 (exact only)</span>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Max Context Tokens</Label>
+                  <Input
+                    type="number"
+                    min={100}
+                    max={32000}
+                    value={kbMaxContextTokens}
+                    onChange={(e) => updateKbConfig({ maxContextTokens: Math.max(100, Number(e.target.value) || 4000) })}
+                    className="h-8 text-xs"
+                    placeholder="4000"
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Maximum tokens to inject from KB. Reduce for smaller models.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Model</Label>
+        <ModelPicker value={node.model ?? ""} onChange={(v) => onChange({ model: v })} />
+      </div>
+
+      {/* Supervisor-only: maxRounds + routingStrategy */}
+      {isSupervisor && (
+        <>
+          <Separator />
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Max Rounds</Label>
+              <Input
+                type="number"
+                min={1}
+                max={20}
+                value={ncGet(node, "maxRounds", 5)}
+                onChange={(e) =>
+                  onChange(ncSet(node, "maxRounds", Math.max(1, Number(e.target.value) || 5)))
+                }
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Routing Strategy</Label>
+              <Select
+                value={ncGet(node, "routingStrategy", "llm")}
+                onValueChange={(v) => onChange(ncSet(node, "routingStrategy", v))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="llm">LLM — AI decides</SelectItem>
+                  <SelectItem value="round_robin">Round Robin — sequential order</SelectItem>
+                  <SelectItem value="broadcast">Broadcast — send to all</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </>
+      )}
+
+      <Separator />
+
+      {/* Advanced Settings */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setSettingsOpen(!settingsOpen)}
+          className="flex w-full items-center justify-between text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+        >
+          Advanced Settings
+          {settingsOpen ? (
+            <ChevronDown className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
+        </button>
+
+        {settingsOpen && (
+          <div className="mt-2 space-y-3">
+            <div className="space-y-1.5">
+              <Label>Max Tokens</Label>
+              <Input
+                type="number"
+                value={node.modelSettings?.max_tokens ?? ""}
+                onChange={(e) =>
+                  onChange({
+                    modelSettings: {
+                      ...node.modelSettings,
+                      max_tokens: e.target.value ? Number(e.target.value) : undefined,
+                    },
+                  })
+                }
+                placeholder="4096"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Temperature ({node.modelSettings?.temperature ?? 0.7})</Label>
+              <input
+                type="range"
+                min="0"
+                max="2"
+                step="0.1"
+                value={node.modelSettings?.temperature ?? 0.7}
+                onChange={(e) =>
+                  onChange({
+                    modelSettings: {
+                      ...node.modelSettings,
+                      temperature: Number(e.target.value),
+                    },
+                  })
+                }
+                className="w-full"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Top P ({node.modelSettings?.top_p ?? 1})</Label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={node.modelSettings?.top_p ?? 1}
+                onChange={(e) =>
+                  onChange({
+                    modelSettings: {
+                      ...node.modelSettings,
+                      top_p: Number(e.target.value),
+                    },
+                  })
+                }
+                className="w-full"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <Separator />
+
+      {/* Flags */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <Label>Entry Point</Label>
+          <Switch
+            checked={node.isEntryPoint}
+            onCheckedChange={(v) => onChange({ isEntryPoint: v })}
+          />
+        </div>
+        {/* Optional toggle hidden — not yet implemented in execution layer */}
+      </div>
+
+      <Separator />
+
+      {/* Tools */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="flex items-center gap-1">
+            <Wrench className="h-3.5 w-3.5" />
+            Tools
+          </Label>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => setToolPickerOpen(true)}
+          >
+            Add Tool
+          </Button>
+        </div>
+
+        {(node.tools ?? []).length === 0 ? (
+          <p className="text-xs text-muted-foreground">No tools assigned.</p>
+        ) : (
+          <div className="space-y-1">
+            {(node.tools ?? []).map((tool) => (
+              <div
+                key={tool.toolId}
+                className="flex items-center justify-between rounded border px-2 py-1"
+              >
+                <span className="truncate text-xs">{tool.toolName}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5 shrink-0"
+                  onClick={() => handleRemoveTool(tool.toolId)}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <ToolPicker
+        open={toolPickerOpen}
+        onClose={() => setToolPickerOpen(false)}
+        onSelect={handleAddTool}
+        excludeToolIds={(node.tools ?? []).map((t) => t.toolId)}
+      />
+    </>
+  );
+}
+
+// ── Router Form ──────────────────────────────────────────────────────────────
+
+type Route = { condition: string; targetNodeId: string; label?: string; handleId?: string };
+
+function RouterForm({
+  node,
+  onChange,
+  siblingNodes = [],
+}: {
+  node: AgencyNodeData;
+  onChange: (updates: Partial<AgencyNodeData>) => void;
+  siblingNodes?: SiblingNode[];
+}) {
+  const routingMode = ncGet<string>(node, "routingMode", "keyword");
+  const routes: Route[] = ncGet(node, "routes", []);
+
+  const updateRoute = (i: number, key: keyof Route, value: string) => {
+    const newRoutes = routes.map((r, idx) => (idx === i ? { ...r, [key]: value } : r));
+    onChange({ nodeConfig: { ...(node.nodeConfig ?? {}), routes: newRoutes } });
+  };
+
+  const conditionPlaceholder =
+    routingMode === "regex"
+      ? "Regex pattern (e.g. \\d{4})"
+      : routingMode === "llm_classify"
+        ? "Option label shown to the classifier"
+        : "Keyword to match in input";
+
+  // Resolve node names from siblingNodes
+  const nodeNameMap = new Map(siblingNodes.map((sn) => [sn.id, sn]));
+
+  // Node type icon prefix
+  const nodeTypeIcon: Record<string, string> = {
+    agent: "\uD83E\uDD16", supervisor: "\uD83D\uDC51", router: "\u2194\uFE0F",
+    aggregator: "\uD83D\uDD00", knowledge_base: "\uD83D\uDCDA", skill_call: "\u26A1",
+    human_approval: "\uD83D\uDC64",
+  };
+
+  // Handle badge styles
+  const handleBadge: Record<string, { bg: string; text: string; label: string }> = {
+    true: { bg: "bg-green-100 border-green-300", text: "text-green-700", label: "True" },
+    false: { bg: "bg-red-100 border-red-300", text: "text-red-600", label: "False" },
+    default: { bg: "bg-blue-100 border-blue-300", text: "text-blue-600", label: "Else" },
+  };
+
+  return (
+    <>
+      <div className="space-y-1.5">
+        <Label>Name</Label>
+        <Input
+          value={node.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+          placeholder="Router name"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Description</Label>
+        <Textarea
+          value={node.description}
+          onChange={(e) => onChange({ description: e.target.value })}
+          placeholder="Short description"
+          rows={2}
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Routing Mode</Label>
+        <Select
+          value={routingMode}
+          onValueChange={(v) => onChange(ncSet(node, "routingMode", v))}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="keyword">Keyword match</SelectItem>
+            <SelectItem value="regex">Regex pattern</SelectItem>
+            <SelectItem value="llm_classify">LLM classification</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {routingMode === "llm_classify" && (
+        <div className="space-y-1.5">
+          <Label>Classifier Model</Label>
+          <ModelPicker value={node.model ?? ""} onChange={(v) => onChange({ model: v })} />
+        </div>
+      )}
+
+      <Separator />
+
+      {/* Routes — auto-created from canvas edges */}
+      <div className="space-y-2">
+        <div>
+          <Label className="text-sm font-medium">Routes</Label>
+          <p className="text-[10px] text-muted-foreground mt-0.5">
+            Drag from <span className="text-green-600 font-semibold">True</span> (right),{" "}
+            <span className="text-red-500 font-semibold">False</span> (left), or{" "}
+            <span className="text-blue-500 font-semibold">Else</span> (bottom) handle to target nodes
+          </p>
+        </div>
+
+        {routes.length === 0 && (
+          <div className="rounded-md border border-dashed border-blue-200 bg-blue-50/50 p-3 text-center">
+            <p className="text-xs text-blue-600 font-medium">No routes yet</p>
+            <p className="text-[10px] text-blue-400 mt-0.5">
+              Drag from the <span className="text-green-600 font-bold">True</span> or <span className="text-red-500 font-bold">False</span> handle to another node
+            </p>
+          </div>
+        )}
+
+        {routes.map((route, i) => {
+          const targetNode = nodeNameMap.get(route.targetNodeId);
+          const icon = targetNode ? (nodeTypeIcon[targetNode.nodeType] ?? "") : "";
+          const targetLabel = targetNode ? `${icon} ${targetNode.name}` : route.targetNodeId;
+          const hid = route.handleId ?? "default";
+          const badge = handleBadge[hid] ?? handleBadge.default;
+
+          return (
+            <div
+              key={`${route.targetNodeId}-${hid}-${i}`}
+              className={`rounded border p-2.5 space-y-2 ${badge.bg}`}
+            >
+              {/* Handle badge + target node */}
+              <div className="flex items-center gap-2">
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${badge.bg} ${badge.text}`}>
+                  {badge.label}
+                </span>
+                <span className="text-[11px] text-slate-500">→</span>
+                <span className="text-xs font-semibold text-slate-700 truncate" title={route.targetNodeId}>
+                  {targetLabel}
+                </span>
+              </div>
+
+              {/* Condition input */}
+              <Input
+                value={route.condition}
+                onChange={(e) => updateRoute(i, "condition", e.target.value)}
+                placeholder={conditionPlaceholder}
+                className="h-7 text-xs bg-white/80"
+              />
+
+              {/* Optional label */}
+              <Input
+                value={route.label ?? ""}
+                onChange={(e) => updateRoute(i, "label", e.target.value)}
+                placeholder="Label (optional, shown on edge)"
+                className="h-7 text-xs bg-white/80"
+              />
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+// ── Aggregator Form ──────────────────────────────────────────────────────────
+
+function AggregatorForm({
+  node,
+  onChange,
+}: {
+  node: AgencyNodeData;
+  onChange: (updates: Partial<AgencyNodeData>) => void;
+}) {
+  const aggregationMode = ncGet<string>(node, "aggregationMode", "concatenate");
+  const minResponses = ncGet(node, "minResponses", 1);
+
+  return (
+    <>
+      <div className="space-y-1.5">
+        <Label>Name</Label>
+        <Input
+          value={node.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+          placeholder="Aggregator name"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Description</Label>
+        <Textarea
+          value={node.description}
+          onChange={(e) => onChange({ description: e.target.value })}
+          placeholder="Short description"
+          rows={2}
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Aggregation Mode</Label>
+        <Select
+          value={aggregationMode}
+          onValueChange={(v) => onChange(ncSet(node, "aggregationMode", v))}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="first_wins">First wins</SelectItem>
+            <SelectItem value="concatenate">Concatenate all</SelectItem>
+            <SelectItem value="majority_vote">Majority vote</SelectItem>
+            <SelectItem value="llm_merge">LLM merge</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {aggregationMode === "llm_merge" && (
+        <>
+          <div className="space-y-1.5">
+            <Label>Merge Model</Label>
+            <ModelPicker value={node.model ?? ""} onChange={(v) => onChange({ model: v })} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Merge Instructions</Label>
+            <Textarea
+              value={ncGet(node, "mergeInstructions", "")}
+              onChange={(e) => onChange(ncSet(node, "mergeInstructions", e.target.value))}
+              placeholder="How should the LLM synthesize the inputs?"
+              rows={3}
+            />
+          </div>
+        </>
+      )}
+
+      <div className="space-y-1.5">
+        <Label>Min Responses Before Aggregating</Label>
+        <Input
+          type="number"
+          min={1}
+          value={minResponses}
+          onChange={(e) =>
+            onChange(ncSet(node, "minResponses", Math.max(1, Number(e.target.value) || 1)))
+          }
+        />
+      </div>
+    </>
+  );
+}
+
+// ── Knowledge Base Form ──────────────────────────────────────────────────────
+
+function KnowledgeBaseForm({
+  node,
+  onChange,
+}: {
+  node: AgencyNodeData;
+  onChange: (updates: Partial<AgencyNodeData>) => void;
+}) {
+  const collectionId = ncGet(node, "collectionId", "");
+  const searchScope = ncGet<string>(node, "searchScope", "all"); // "all" | "specific"
+  const topK = ncGet(node, "topK", 5);
+  const searchMode = ncGet(node, "searchMode", "hybrid");
+  const scoreThreshold = ncGet(node, "scoreThreshold", 0.7);
+
+  // Fetch library documents for "specific" mode
+  const { data: docsData, isLoading: docsLoading } = trpc.library.listDocuments.useQuery(
+    { limit: 50, filters: {} },
+    { enabled: searchScope === "specific" },
+  );
+  const docs = docsData?.results ?? [];
+  const [docPickerOpen, setDocPickerOpen] = useState(false);
+  const [docTypeFilter, setDocTypeFilter] = useState<string>("all");
+
+  // Derive unique file types from docs
+  const docTypes = Array.from(new Set(docs.map((d: any) => (d.item_type ?? "doc").toLowerCase()))).sort();
+  const filteredDocs = docTypeFilter === "all" ? docs : docs.filter((d: any) => (d.item_type ?? "doc").toLowerCase() === docTypeFilter);
+
+  return (
+    <>
+      <div className="space-y-1.5">
+        <Label>Name</Label>
+        <Input
+          value={node.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+          placeholder="Knowledge base name"
+        />
+      </div>
+
+      <Separator />
+
+      {/* Search scope toggle */}
+      <div className="space-y-1.5">
+        <Label>Search Scope</Label>
+        <Select
+          value={searchScope}
+          onValueChange={(v) => {
+            const updates: Record<string, unknown> = { searchScope: v };
+            if (v === "all") updates.collectionId = ""; // clear specific selection
+            onChange({ nodeConfig: { ...(node.nodeConfig ?? {}), ...updates } });
+          }}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Search all documents</SelectItem>
+            <SelectItem value="specific">Specific document</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-[10px] text-muted-foreground">
+          {searchScope === "all"
+            ? "Searches across all documents in the library using vector search"
+            : "Searches within a specific document only"}
+        </p>
+      </div>
+
+      {/* Document picker — shown only in "specific" mode */}
+      {searchScope === "specific" && (
+        <div className="space-y-1.5">
+          <Label>Document</Label>
+          {docsLoading ? (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Loading documents...
+            </div>
+          ) : docs.length === 0 ? (
+            <p className="text-xs text-amber-600 bg-amber-50 rounded px-2 py-1.5">
+              No documents found. Upload documents in the Library first.
+            </p>
+          ) : (
+            <Popover open={docPickerOpen} onOpenChange={setDocPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={docPickerOpen}
+                  className="w-full justify-between font-normal h-9 text-sm"
+                >
+                  {collectionId ? (
+                    <span className="flex items-center gap-1.5 truncate">
+                      <span className="text-[10px] bg-slate-100 px-1 rounded uppercase shrink-0">
+                        {docs.find((d: any) => String(d.id) === collectionId)?.item_type ?? "doc"}
+                      </span>
+                      <span className="truncate">
+                        {docs.find((d: any) => String(d.id) === collectionId)?.title ?? "Unknown"}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">Select a document...</span>
+                  )}
+                  <ChevronsUpDown className="ml-1 h-3.5 w-3.5 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[320px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search documents..." />
+                  {/* File type filter chips */}
+                  {docTypes.length > 1 && (
+                    <div className="flex flex-wrap gap-1 px-2 py-1.5 border-b">
+                      <button
+                        type="button"
+                        onClick={() => setDocTypeFilter("all")}
+                        className={cn(
+                          "px-1.5 py-0.5 rounded text-[10px] font-medium border transition-colors",
+                          docTypeFilter === "all"
+                            ? "bg-slate-800 text-white border-slate-800"
+                            : "bg-white text-slate-500 border-slate-200 hover:border-slate-400",
+                        )}
+                      >
+                        All ({docs.length})
+                      </button>
+                      {docTypes.map((t) => {
+                        const count = docs.filter((d: any) => (d.item_type ?? "doc").toLowerCase() === t).length;
+                        return (
+                          <button
+                            key={t}
+                            type="button"
+                            onClick={() => setDocTypeFilter(t)}
+                            className={cn(
+                              "px-1.5 py-0.5 rounded text-[10px] font-medium border uppercase transition-colors",
+                              docTypeFilter === t
+                                ? "bg-slate-800 text-white border-slate-800"
+                                : "bg-white text-slate-500 border-slate-200 hover:border-slate-400",
+                            )}
+                          >
+                            {t} ({count})
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <CommandList className="max-h-[250px]">
+                    <CommandEmpty>No documents found.</CommandEmpty>
+                    <CommandGroup>
+                      {filteredDocs.map((doc: any) => (
+                        <CommandItem
+                          key={doc.id}
+                          value={`${doc.title} ${doc.item_type ?? ""}`}
+                          onSelect={() => {
+                            onChange(ncSet(node, "collectionId", String(doc.id)));
+                            setDocPickerOpen(false);
+                          }}
+                          className="flex items-center gap-1.5"
+                        >
+                          <Check
+                            className={cn(
+                              "h-3.5 w-3.5 shrink-0",
+                              String(doc.id) === collectionId ? "opacity-100" : "opacity-0",
+                            )}
+                          />
+                          <span className="text-[10px] bg-slate-100 px-1 rounded uppercase shrink-0">
+                            {doc.item_type ?? doc.source ?? "doc"}
+                          </span>
+                          <span className="truncate">{doc.title}</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          )}
+        </div>
+      )}
+
+      <Separator />
+
+      <div className="space-y-1.5">
+        <Label>Top K Results</Label>
+        <Select
+          value={String(topK)}
+          onValueChange={(v) => onChange(ncSet(node, "topK", Number(v)))}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {[1, 3, 5, 10, 20].map((k) => (
+              <SelectItem key={k} value={String(k)}>
+                {k} results
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Search Mode</Label>
+        <Select
+          value={searchMode}
+          onValueChange={(v) => onChange(ncSet(node, "searchMode", v))}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="hybrid">Hybrid (recommended)</SelectItem>
+            <SelectItem value="vector">Vector only</SelectItem>
+            <SelectItem value="keyword">Keyword only</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Score Threshold ({scoreThreshold})</Label>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.05"
+          value={scoreThreshold}
+          onChange={(e) => onChange(ncSet(node, "scoreThreshold", Number(e.target.value)))}
+          className="w-full"
+        />
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>0 (include all)</span>
+          <span>1 (exact only)</span>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Skill Call Form ──────────────────────────────────────────────────────────
+
+function SkillCallForm({
+  node,
+  onChange,
+}: {
+  node: AgencyNodeData;
+  onChange: (updates: Partial<AgencyNodeData>) => void;
+}) {
+  const skillSlug = ncGet<string>(node, "skillSlug", "");
+  const passInputThrough = ncGet(node, "passInputThrough", false);
+
+  const handleSkillChange = (newSlug: string, skillName?: string) => {
+    // Update slug + clear old skillInputs when switching skills
+    const updates: Record<string, unknown> = {
+      ...(node.nodeConfig ?? {}),
+      skillSlug: newSlug,
+      skillInputs: {},
+    };
+    onChange({
+      nodeConfig: updates,
+      ...(skillName ? { name: skillName } : {}),
+    });
+  };
+
+  const handleSkillInputChange = (fieldId: string, value: unknown) => {
+    const prev = (node.nodeConfig?.skillInputs as Record<string, unknown>) ?? {};
+    onChange(ncSet(node, "skillInputs", { ...prev, [fieldId]: value }));
+  };
+
+  return (
+    <>
+      <div className="space-y-1.5">
+        <Label>Name</Label>
+        <Input
+          value={node.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+          placeholder="Skill call name"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Skill</Label>
+        <SkillPicker
+          value={skillSlug}
+          onChange={handleSkillChange}
+        />
+      </div>
+
+      {/* Dynamic skill inputs based on skill's schema */}
+      {skillSlug && (
+        <AgencySkillInputs
+          skillSlug={skillSlug}
+          skillInputs={(node.nodeConfig?.skillInputs as Record<string, unknown>) ?? {}}
+          onFieldChange={handleSkillInputChange}
+        />
+      )}
+
+      <Separator />
+
+      <div className="flex items-center justify-between">
+        <div>
+          <Label>Pass Input Through</Label>
+          <p className="text-xs text-muted-foreground">Forward upstream input to the next node</p>
+        </div>
+        <Switch
+          checked={passInputThrough}
+          onCheckedChange={(v) => onChange(ncSet(node, "passInputThrough", v))}
+        />
+      </div>
+    </>
+  );
+}
+
+// ── Skill Picker (searchable dropdown) ──────────────────────────────────────
+
+function SkillPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (slug: string, name?: string) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const { data, isLoading } = (trpc as any).skills.listForWorkflow.useQuery(
+    { search: search || undefined, limit: 50 },
+    { enabled: true },
+  );
+
+  const skills: Array<{
+    slug: string;
+    name: string;
+    description?: string;
+    icon?: string;
+    category?: string;
+    creditMultiplier?: number;
+  }> = data?.skills ?? [];
+
+  const selected = skills.find((s) => s.slug === value);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background hover:bg-accent/50 transition-colors"
+      >
+        {selected ? (
+          <span className="flex items-center gap-2 truncate">
+            <Zap className="h-3.5 w-3.5 text-purple-500 shrink-0" />
+            <span className="truncate">{selected.name}</span>
+          </span>
+        ) : (
+          <span className="text-muted-foreground">Select a skill...</span>
+        )}
+        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg">
+          <div className="p-2 border-b">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search skills..."
+                className="w-full pl-7 pr-3 py-1.5 text-xs border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+                autoFocus
+              />
+            </div>
+          </div>
+
+          <div className="overflow-y-auto max-h-60 py-1">
+            {isLoading ? (
+              <div className="flex items-center justify-center gap-2 p-4">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Loading...</span>
+              </div>
+            ) : skills.length === 0 ? (
+              <p className="p-4 text-center text-xs text-muted-foreground">
+                {search ? "No skills match your search" : "No skills available"}
+              </p>
+            ) : (
+              skills.map((skill) => (
+                <button
+                  key={skill.slug}
+                  type="button"
+                  onClick={() => {
+                    onChange(skill.slug, skill.name);
+                    setOpen(false);
+                    setSearch("");
+                  }}
+                  className={`w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-accent/50 transition-colors ${
+                    value === skill.slug ? "bg-purple-50 dark:bg-purple-950/30" : ""
+                  }`}
+                >
+                  <Zap className="h-3.5 w-3.5 text-purple-500 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium truncate">{skill.name}</div>
+                    {skill.description && (
+                      <div className="text-[10px] text-muted-foreground truncate">{skill.description}</div>
+                    )}
+                  </div>
+                  {skill.creditMultiplier && skill.creditMultiplier !== 1 && (
+                    <span className="text-[10px] text-muted-foreground shrink-0">
+                      ×{skill.creditMultiplier}
+                    </span>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Dynamic Skill Inputs (schema-based form) ────────────────────────────────
+
+interface SkillSchemaSection {
+  id: string;
+  title: string;
+  titleTh?: string;
+  icon?: string;
+  collapsed?: boolean;
+  collapsible?: boolean;
+  fields: Array<{
+    id: string;
+    type: string;
+    label: string;
+    labelTh?: string;
+    placeholder?: string;
+    placeholderTh?: string;
+    helpText?: string;
+    helpTextTh?: string;
+    required?: boolean;
+    default?: unknown;
+    rows?: number;
+    options?: Array<{ value: string; label: string; labelTh?: string }>;
+    optionGroups?: Record<string, Array<{ value: string; label: string }>>;
+    dependsOn?: { field: string; value?: string; notEmpty?: boolean };
+  }>;
+}
+
+function AgencySkillInputs({
+  skillSlug,
+  skillInputs,
+  onFieldChange,
+}: {
+  skillSlug: string;
+  skillInputs: Record<string, unknown>;
+  onFieldChange: (fieldId: string, value: unknown) => void;
+}) {
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+
+  const { data: schemaData, isLoading } = (trpc as any).skills.getInputSchema.useQuery(
+    { skillId: skillSlug },
+    { enabled: !!skillSlug, staleTime: 5 * 60 * 1000 },
+  );
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-3">
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        <span className="text-xs text-muted-foreground">Loading skill inputs...</span>
+      </div>
+    );
+  }
+
+  const schema = schemaData?.schema as { sections?: SkillSchemaSection[] } | null;
+
+  // No schema — show JSON fallback
+  if (!schemaData?.hasSchema || !schema?.sections) {
+    return (
+      <div className="space-y-1.5">
+        <Label>Input Data (JSON)</Label>
+        <Textarea
+          value={
+            typeof skillInputs === "object" && Object.keys(skillInputs).length > 0
+              ? JSON.stringify(skillInputs, null, 2)
+              : ""
+          }
+          onChange={(e) => {
+            try {
+              const parsed = JSON.parse(e.target.value);
+              if (typeof parsed === "object" && parsed !== null) {
+                for (const [k, v] of Object.entries(parsed)) {
+                  onFieldChange(k, v);
+                }
+              }
+            } catch {
+              // Let user keep typing invalid JSON
+            }
+          }}
+          placeholder={'{"prompt": "your prompt here"}'}
+          rows={4}
+          className="font-mono text-xs"
+        />
+        <p className="text-xs text-muted-foreground">
+          This skill has no input schema. Enter raw JSON data.
+        </p>
+      </div>
+    );
+  }
+
+  const toggleSection = (sectionId: string) => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(sectionId)) next.delete(sectionId);
+      else next.add(sectionId);
+      return next;
+    });
+  };
+
+  return (
+    <div className="space-y-3">
+      <Label className="text-xs font-semibold text-purple-600 uppercase tracking-wider">
+        Skill Inputs
+      </Label>
+
+      {schema.sections.map((section) => {
+        // Filter fields hidden by dependsOn
+        const visibleFields = section.fields.filter((field) => {
+          if (!field.dependsOn) return true;
+          const depVal = skillInputs[field.dependsOn.field];
+          if (field.dependsOn.notEmpty) return !!depVal;
+          if (field.dependsOn.value !== undefined) return depVal === field.dependsOn.value;
+          return true;
+        });
+
+        if (visibleFields.length === 0) return null;
+
+        const isCollapsed =
+          section.collapsible !== false &&
+          (collapsedSections.has(section.id) || (section.collapsed && !collapsedSections.has(`open:${section.id}`)));
+
+        const actuallyCollapsed = collapsedSections.has(section.id)
+          ? true
+          : section.collapsed && !collapsedSections.has(`open:${section.id}`)
+            ? true
+            : false;
+
+        return (
+          <div key={section.id} className="rounded-md border border-purple-100 bg-purple-50/30">
+            {/* Section header */}
+            <button
+              type="button"
+              onClick={() => {
+                if (section.collapsible === false) return;
+                if (actuallyCollapsed) {
+                  setCollapsedSections((prev) => {
+                    const next = new Set(prev);
+                    next.delete(section.id);
+                    next.add(`open:${section.id}`);
+                    return next;
+                  });
+                } else {
+                  setCollapsedSections((prev) => {
+                    const next = new Set(prev);
+                    next.add(section.id);
+                    next.delete(`open:${section.id}`);
+                    return next;
+                  });
+                }
+              }}
+              className="flex w-full items-center justify-between px-3 py-2 text-xs font-semibold text-purple-700 hover:bg-purple-50 transition-colors"
+            >
+              {section.title}
+              {section.collapsible !== false && (
+                actuallyCollapsed
+                  ? <ChevronRight className="h-3.5 w-3.5" />
+                  : <ChevronDown className="h-3.5 w-3.5" />
+              )}
+            </button>
+
+            {/* Section fields */}
+            {!actuallyCollapsed && (
+              <div className="px-3 pb-3 space-y-3">
+                {visibleFields.map((field) => {
+                  const fieldValue = (skillInputs[field.id] ?? field.default ?? "") as string;
+
+                  // Resolve options for dependent selects
+                  let fieldOptions = field.options;
+                  if (field.optionGroups) {
+                    const depField = field.dependsOn?.field;
+                    const parentValue = depField ? (skillInputs[depField] as string) : "";
+                    fieldOptions = parentValue
+                      ? field.optionGroups[parentValue] ?? []
+                      : [];
+                  }
+
+                  return (
+                    <div key={field.id} className="space-y-1">
+                      <label className="block text-xs font-medium text-foreground">
+                        {field.label}
+                        {field.required && <span className="text-red-500 ml-0.5">*</span>}
+                      </label>
+
+                      {field.type === "text" && (
+                        <Input
+                          value={fieldValue}
+                          onChange={(e) => onFieldChange(field.id, e.target.value)}
+                          placeholder={field.placeholder}
+                          className="h-8 text-xs"
+                        />
+                      )}
+
+                      {field.type === "textarea" && (
+                        <Textarea
+                          value={fieldValue}
+                          onChange={(e) => onFieldChange(field.id, e.target.value)}
+                          placeholder={field.placeholder}
+                          rows={field.rows ?? 3}
+                          className="text-xs min-h-[60px] resize-y"
+                        />
+                      )}
+
+                      {field.type === "number" && (
+                        <Input
+                          type="number"
+                          value={fieldValue}
+                          onChange={(e) => {
+                            const parsed = parseFloat(e.target.value);
+                            onFieldChange(field.id, Number.isNaN(parsed) ? undefined : parsed);
+                          }}
+                          placeholder={field.placeholder}
+                          className="h-8 text-xs"
+                        />
+                      )}
+
+                      {field.type === "select" && fieldOptions && (
+                        <Select
+                          value={String(fieldValue)}
+                          onValueChange={(v) => onFieldChange(field.id, v)}
+                        >
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="-- Select --" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {fieldOptions.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+
+                      {field.type === "boolean" && (
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            checked={!!fieldValue}
+                            onCheckedChange={(v) => onFieldChange(field.id, v)}
+                          />
+                          <span className="text-xs text-muted-foreground">
+                            {fieldValue ? "Enabled" : "Disabled"}
+                          </span>
+                        </div>
+                      )}
+
+                      {field.type === "imageUpload" && (
+                        <Input
+                          value={fieldValue}
+                          onChange={(e) => onFieldChange(field.id, e.target.value)}
+                          placeholder={field.placeholder ?? "Image URL(s), comma-separated"}
+                          className="h-8 text-xs"
+                        />
+                      )}
+
+                      {field.helpText && (
+                        <p className="text-[10px] text-muted-foreground leading-tight">
+                          {field.helpText}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Human Approval Form ──────────────────────────────────────────────────────
+
+function HumanApprovalForm({
+  node,
+  onChange,
+}: {
+  node: AgencyNodeData;
+  onChange: (updates: Partial<AgencyNodeData>) => void;
+}) {
+  const approvalMessage = ncGet(node, "approvalMessage", "");
+  const timeoutHours = ncGet(node, "timeoutHours", 24);
+  const onTimeout = ncGet(node, "onTimeout", "auto_reject");
+  const requireAllApprovers = ncGet(node, "requireAllApprovers", false);
+  const approvers: string[] = ncGet(node, "approvers", []);
+  const [newApprover, setNewApprover] = useState("");
+
+  const addApprover = () => {
+    const trimmed = newApprover.trim();
+    if (!trimmed) return;
+    onChange(ncSet(node, "approvers", [...approvers, trimmed]));
+    setNewApprover("");
+  };
+
+  const removeApprover = (i: number) =>
+    onChange(ncSet(node, "approvers", approvers.filter((_, idx) => idx !== i)));
+
+  return (
+    <>
+      <div className="space-y-1.5">
+        <Label>Name</Label>
+        <Input
+          value={node.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+          placeholder="Approval step name"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Approval Message</Label>
+        <Textarea
+          value={approvalMessage}
+          onChange={(e) => onChange(ncSet(node, "approvalMessage", e.target.value))}
+          placeholder="Describe what approvers need to review..."
+          rows={3}
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Timeout</Label>
+        <Select
+          value={String(timeoutHours)}
+          onValueChange={(v) => onChange(ncSet(node, "timeoutHours", Number(v)))}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="1">1 hour</SelectItem>
+            <SelectItem value="4">4 hours</SelectItem>
+            <SelectItem value="24">24 hours</SelectItem>
+            <SelectItem value="48">48 hours</SelectItem>
+            <SelectItem value="72">72 hours</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>On Timeout</Label>
+        <Select
+          value={onTimeout}
+          onValueChange={(v) => onChange(ncSet(node, "onTimeout", v))}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="auto_approve">Auto approve</SelectItem>
+            <SelectItem value="auto_reject">Auto reject</SelectItem>
+            <SelectItem value="escalate">Escalate to next approver</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div>
+          <Label>Require All Approvers</Label>
+          <p className="text-xs text-muted-foreground">Off = any one approver is enough</p>
+        </div>
+        <Switch
+          checked={requireAllApprovers}
+          onCheckedChange={(v) => onChange(ncSet(node, "requireAllApprovers", v))}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>Approvers</Label>
+        <div className="flex gap-2">
+          <Input
+            value={newApprover}
+            onChange={(e) => setNewApprover(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addApprover();
+              }
+            }}
+            placeholder="Email or role name"
+            className="text-xs h-7"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs shrink-0"
+            onClick={addApprover}
+          >
+            Add
+          </Button>
+        </div>
+
+        {approvers.length === 0 && (
+          <p className="text-xs text-muted-foreground">No approvers added.</p>
+        )}
+
+        {approvers.map((a, i) => (
+          <div key={i} className="flex items-center justify-between rounded border px-2 py-1">
+            <span className="text-xs truncate">{a}</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-5 w-5 shrink-0"
+              onClick={() => removeApprover(i)}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}

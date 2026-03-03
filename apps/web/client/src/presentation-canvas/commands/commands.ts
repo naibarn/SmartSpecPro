@@ -253,15 +253,21 @@ export function resizeSelectionCommand(
 
       const ratioX = nextWidth / Math.max(1, primary.width);
       const ratioY = nextHeight / Math.max(1, primary.height);
+      const textScaleRatio = Math.max(0.1, Math.min(ratioX, ratioY));
       const selected = new Set(state.selectedElementIds);
       const nextElements = state.content.elements.map((element) => {
         if (!selected.has(element.id)) {
           return element;
         }
+        const isTextElement = element.type === "text";
+        const currentFontSize = isTextElement && Number.isFinite(element.fontSize)
+          ? Number(element.fontSize)
+          : 48;
         return {
           ...element,
           width: Math.max(0, Math.round(element.width * ratioX)),
           height: Math.max(0, Math.round(element.height * ratioY)),
+          ...(isTextElement ? { fontSize: Math.max(6, Math.round(currentFontSize * textScaleRatio)) } : {}),
         } as PresentationElement;
       });
 

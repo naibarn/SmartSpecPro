@@ -10,6 +10,7 @@ vi.mock("../_core/trpc", () => {
       query: (fn: Function) => fn,
       mutation: (fn: Function) => fn,
       input: () => proc,
+      use: () => proc,
     };
     return proc;
   };

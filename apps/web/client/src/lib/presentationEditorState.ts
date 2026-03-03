@@ -96,6 +96,7 @@ export function ensureSlideContent(input: unknown): PresentationSlideContent {
       canvas: normalizeCanvasSize(parsed.data.canvas),
       transition: parsed.data.transition,
       durationMs: parsed.data.durationMs,
+      pendingMediaJobs: parsed.data.pendingMediaJobs,
     };
   }
 
@@ -104,6 +105,7 @@ export function ensureSlideContent(input: unknown): PresentationSlideContent {
     canvas: DEFAULT_PRESENTATION_CANVAS_SIZE,
     transition: undefined,
     durationMs: undefined,
+    pendingMediaJobs: undefined,
   };
 }
 

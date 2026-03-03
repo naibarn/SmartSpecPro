@@ -69,6 +69,8 @@ describe("Template Rendering", () => {
     "hero_center",
     "split_right_image",
     "split_left_image",
+    "top_image_text_bottom",
+    "bottom_image_text_top",
     "feature_boxes_right",
   ] as const;
 
@@ -442,6 +444,8 @@ describe("Edge Cases", () => {
       "hero_center",
       "split_right_image",
       "split_left_image",
+      "top_image_text_bottom",
+      "bottom_image_text_top",
       "feature_boxes_right",
     ] as const) {
       const input = makeLayoutInput({
@@ -505,25 +509,165 @@ describe("Edge Cases", () => {
     }
   });
 
-  it("uses short-edge typography scaling so portrait canvas text is not undersized", () => {
-    const result = generateSlide(makeLayoutInput({
+  it("boosts portrait body font size so 9:16 content remains readable", () => {
+    const heroPortrait = generateSlide(makeLayoutInput({
       slideData: makeSlideData({ templateId: "hero_center" }),
       canvasWidth: 720,
       canvasHeight: 1280,
     }));
+    const heroLandscape = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({ templateId: "hero_center" }),
+      canvasWidth: 1280,
+      canvasHeight: 720,
+    }));
+    const splitPortrait = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({ templateId: "split_right_image" }),
+      canvasWidth: 720,
+      canvasHeight: 1280,
+    }));
+    const splitLandscape = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({ templateId: "split_right_image" }),
+      canvasWidth: 1280,
+      canvasHeight: 720,
+    }));
 
-    const title = result.slideContent.elements.find(
-      (e) => e.type === "text" && e.text === "Test Slide Title",
-    );
-    const body = result.slideContent.elements.find(
+    const heroBodyPortrait = heroPortrait.slideContent.elements.find(
       (e) => e.type === "text" && e.text === "First bullet point",
     );
-    expect(title).toBeDefined();
-    expect(body).toBeDefined();
-    if (title?.type === "text" && body?.type === "text") {
-      expect(title.fontSize).toBeGreaterThanOrEqual(40);
-      expect(body.fontSize).toBeGreaterThanOrEqual(18);
+    const heroBodyLandscape = heroLandscape.slideContent.elements.find(
+      (e) => e.type === "text" && e.text === "First bullet point",
+    );
+    const splitBodyPortrait = splitPortrait.slideContent.elements.find(
+      (e) => e.type === "text" && e.text === "First bullet point",
+    );
+    const splitBodyLandscape = splitLandscape.slideContent.elements.find(
+      (e) => e.type === "text" && e.text === "First bullet point",
+    );
+
+    expect(heroBodyPortrait).toBeDefined();
+    expect(heroBodyLandscape).toBeDefined();
+    expect(splitBodyPortrait).toBeDefined();
+    expect(splitBodyLandscape).toBeDefined();
+
+    if (
+      heroBodyPortrait?.type === "text"
+      && heroBodyLandscape?.type === "text"
+      && splitBodyPortrait?.type === "text"
+      && splitBodyLandscape?.type === "text"
+    ) {
+      expect(heroBodyPortrait.fontSize).toBeGreaterThanOrEqual(24);
+      expect(splitBodyPortrait.fontSize).toBeGreaterThanOrEqual(20);
+      expect(heroBodyPortrait.fontSize).toBeGreaterThan(heroBodyLandscape.fontSize ?? 0);
+      expect(splitBodyPortrait.fontSize).toBeGreaterThan(splitBodyLandscape.fontSize ?? 0);
     }
+  });
+
+  it("applies modern typography metadata and hero legibility panel", () => {
+    const hero = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({ templateId: "hero_center" }),
+      canvasWidth: 720,
+      canvasHeight: 1280,
+    }));
+    const split = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({ templateId: "split_right_image" }),
+    }));
+
+    const heroTitle = hero.slideContent.elements.find(
+      (e) => e.type === "text" && e.text === "Test Slide Title",
+    );
+    const heroBody = hero.slideContent.elements.find(
+      (e) => e.type === "text" && e.text === "First bullet point",
+    );
+    const splitTitle = split.slideContent.elements.find(
+      (e) => e.type === "text" && e.text === "Test Slide Title",
+    );
+    const splitBody = split.slideContent.elements.find(
+      (e) => e.type === "text" && e.text === "First bullet point",
+    );
+    const heroPanel = hero.slideContent.elements.find(
+      (e) =>
+        e.type === "rect"
+        && e.fill === getBuiltInPreset("dark-professional")!.colors.backgroundAlt
+        && e.opacity !== undefined
+        && e.opacity > 0
+        && e.width < 720,
+    );
+
+    expect(heroTitle).toBeDefined();
+    expect(heroBody).toBeDefined();
+    expect(splitTitle).toBeDefined();
+    expect(splitBody).toBeDefined();
+    expect(heroPanel).toBeDefined();
+
+    if (
+      heroTitle?.type === "text"
+      && heroBody?.type === "text"
+      && splitTitle?.type === "text"
+      && splitBody?.type === "text"
+    ) {
+      expect(heroTitle.lineHeight).toBeGreaterThan(1);
+      expect(heroTitle.letterSpacing).toBeLessThanOrEqual(0);
+      expect(heroTitle.textShadow).toContain("rgba(");
+      expect(heroBody.lineHeight).toBeGreaterThan(1.2);
+      expect(heroBody.letterSpacing).toBeGreaterThan(0);
+      expect(splitTitle.lineHeight).toBeGreaterThan(1);
+      expect(splitBody.lineHeight).toBeGreaterThan(1.2);
+    }
+  });
+
+  it("feature_boxes_right keeps more than 3 body points for better content coverage", () => {
+    const bodyLines = [
+      "Point 1",
+      "Point 2",
+      "Point 3",
+      "Point 4",
+      "Point 5",
+    ];
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "feature_boxes_right",
+        body: bodyLines,
+      }),
+    }));
+
+    const textSet = new Set(
+      result.slideContent.elements
+        .filter((element) => element.type === "text")
+        .map((element) => element.text),
+    );
+    expect(textSet.has("Point 1")).toBe(true);
+    expect(textSet.has("Point 2")).toBe(true);
+    expect(textSet.has("Point 3")).toBe(true);
+    expect(textSet.has("Point 4")).toBe(true);
+    expect(textSet.has("Point 5")).toBe(true);
+  });
+
+  it("compacts overflow body lines in split templates instead of silently dropping context", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_left_image",
+        body: [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E",
+          "F",
+          "G",
+        ],
+      }),
+    }));
+
+    const renderedBodyTexts = result.slideContent.elements
+      .filter((element) => element.type === "text")
+      .map((element) => element.text)
+      .filter((text) => ["A", "B", "C", "D", "E"].some((prefix) => text.startsWith(prefix)));
+
+    expect(renderedBodyTexts.length).toBeLessThanOrEqual(5);
+    expect(
+      renderedBodyTexts.some((text) => text.includes("•")),
+      "Overflow lines should be merged into a compact final bullet",
+    ).toBe(true);
   });
 
   it("falls back to minimal slide when template rendering produces invalid content", () => {

@@ -5,6 +5,8 @@ export const AI_LAYOUT_TEMPLATE_IDS = [
   "hero_center",
   "split_left_image",
   "split_right_image",
+  "top_image_text_bottom",
+  "bottom_image_text_top",
   "feature_boxes_right",
 ] as const;
 
@@ -30,6 +32,22 @@ export const AI_STYLE_PRESET_IDS = [
   "corporate-blue",
   "nature-green",
   "warm-sunset",
+  "editorial-clean",
+  "midnight-luxe",
+] as const;
+
+export const AI_GEOMETRIC_CROP_SHAPES = [
+  "auto",
+  "rect",
+  "circle",
+  "triangle",
+] as const;
+
+export const AI_GEOMETRIC_ACCENT_SHAPES = [
+  "auto",
+  "rect",
+  "circle",
+  "triangle",
 ] as const;
 
 export const MAX_AI_DRAFT_SLIDES = 30;

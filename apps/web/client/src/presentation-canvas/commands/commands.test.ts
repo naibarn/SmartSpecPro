@@ -123,7 +123,7 @@ describe("commands", () => {
     const bus = new CommandBus(
       createCanvasCommandState({
         elements: [
-          { id: "a", type: "text", x: 10, y: 10, width: 100, height: 40, text: "A", color: "#111827" },
+          { id: "a", type: "text", x: 10, y: 10, width: 100, height: 40, text: "A", color: "#111827", fontSize: 40 },
           { id: "b", type: "rect", x: 200, y: 120, width: 60, height: 30, fill: "#93c5fd" },
           { id: "c", type: "rect", x: 320, y: 180, width: 80, height: 20, fill: "#60a5fa" },
         ],
@@ -132,7 +132,7 @@ describe("commands", () => {
 
     bus.execute(resizeSelectionCommand(150, 80));
     const next = bus.getState().content.elements;
-    expect(next.find((element) => element.id === "a")).toMatchObject({ width: 150, height: 80 });
+    expect(next.find((element) => element.id === "a")).toMatchObject({ width: 150, height: 80, fontSize: 60 });
     expect(next.find((element) => element.id === "b")).toMatchObject({ width: 90, height: 60 });
     expect(next.find((element) => element.id === "c")).toMatchObject({ width: 120, height: 40 });
   });

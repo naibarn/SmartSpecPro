@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -55,7 +55,6 @@ import {
   Video,
   Music,
   Layers,
-  DollarSign,
   Check,
   X,
   ChevronLeft,
@@ -65,7 +64,6 @@ import {
   CheckCircle2,
   XCircle,
   Coins,
-  ArrowUpDown,
   GripVertical,
   Settings2,
   Code,
@@ -115,11 +113,479 @@ interface FormData {
   apiPayloadFormat: string;
   kieModelId: string;
   pricingFormula: string;
+  operationType: MediaOperationType;
   generateType: string;
   maxPromptLength: number;
-  inputFieldsJson: string;
-  pricingTiersJson: string;
+  inputFieldDrafts: InputFieldDraft[];
+  pricingTierDrafts: PricingTierDraft[];
 }
+
+const SEARCH_DEBOUNCE_MS = 900;
+const MIN_SEARCH_LENGTH = 2;
+
+type InputFieldType = "select" | "text" | "number" | "boolean" | "image_urls" | "video_urls" | "audio_urls" | "array";
+type MediaOperationType = "t2i" | "i2i" | "t2v" | "i2v" | "v2v" | "upscale" | "t2m" | "s2t" | "t2s" | "a2a" | "chat" | "other";
+
+interface InputFieldOptionDraft {
+  id: string;
+  value: string;
+  label: string;
+}
+
+interface InputFieldDraft {
+  id: string;
+  key: string;
+  label: string;
+  type: InputFieldType;
+  defaultRaw: string;
+  defaultBoolean: boolean;
+  required: boolean;
+  affectsPricing: boolean;
+  options: InputFieldOptionDraft[];
+}
+
+interface PricingTierDraft {
+  id: string;
+  key: string;
+  value: string;
+}
+
+interface ApiConfigPreset {
+  id: string;
+  label: string;
+  description: string;
+  pricingFormula: "flat" | "per_duration" | "matrix";
+  inputFields: Array<Record<string, unknown>>;
+  pricingTiers: Record<string, number>;
+}
+
+const MEDIA_OPERATION_OPTIONS: Array<{ value: MediaOperationType; label: string }> = [
+  { value: "t2i", label: "t2i (Text to Image)" },
+  { value: "i2i", label: "i2i (Image to Image)" },
+  { value: "t2v", label: "t2v (Text to Video)" },
+  { value: "i2v", label: "i2v (Image to Video)" },
+  { value: "v2v", label: "v2v (Video to Video)" },
+  { value: "upscale", label: "Upscale" },
+  { value: "t2m", label: "t2m (Text to Music)" },
+  { value: "s2t", label: "s2t (Speech to Text)" },
+  { value: "t2s", label: "t2s (Text to Speech)" },
+  { value: "a2a", label: "a2a (Audio to Audio)" },
+  { value: "chat", label: "Chat" },
+  { value: "other", label: "Other" },
+];
+
+const INPUT_FIELD_TYPE_OPTIONS: Array<{ value: InputFieldType; label: string }> = [
+  { value: "select", label: "Select" },
+  { value: "text", label: "Text" },
+  { value: "number", label: "Number" },
+  { value: "boolean", label: "Boolean" },
+  { value: "array", label: "Array (string[])" },
+  { value: "image_urls", label: "Image URLs" },
+  { value: "video_urls", label: "Video URLs" },
+  { value: "audio_urls", label: "Audio URLs" },
+];
+
+function createDraftId(prefix: string): string {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function createEmptyInputFieldDraft(): InputFieldDraft {
+  return {
+    id: createDraftId("field"),
+    key: "",
+    label: "",
+    type: "text",
+    defaultRaw: "",
+    defaultBoolean: false,
+    required: false,
+    affectsPricing: false,
+    options: [],
+  };
+}
+
+function createEmptyPricingTierDraft(defaultCost = 10): PricingTierDraft {
+  return {
+    id: createDraftId("tier"),
+    key: "default",
+    value: String(defaultCost),
+  };
+}
+
+function parseInputFieldDrafts(value: unknown): InputFieldDraft[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.map((item) => {
+    const record = (item && typeof item === "object") ? (item as Record<string, unknown>) : {};
+    const rawType = String(record.type || "text");
+    const type: InputFieldType = INPUT_FIELD_TYPE_OPTIONS.some((option) => option.value === rawType)
+      ? (rawType as InputFieldType)
+      : "text";
+    const rawOptions = Array.isArray(record.options) ? record.options : [];
+    const options: InputFieldOptionDraft[] = rawOptions.map((option) => {
+      const optionRecord = (option && typeof option === "object") ? (option as Record<string, unknown>) : {};
+      return {
+        id: createDraftId("opt"),
+        value: String(optionRecord.value ?? ""),
+        label: String(optionRecord.label ?? optionRecord.value ?? ""),
+      };
+    });
+    return {
+      id: createDraftId("field"),
+      key: String(record.key ?? ""),
+      label: String(record.label ?? record.key ?? ""),
+      type,
+      defaultRaw: record.default === undefined || record.default === null ? "" : String(record.default),
+      defaultBoolean: Boolean(record.default),
+      required: Boolean(record.required),
+      affectsPricing: Boolean(record.affectsPricing),
+      options,
+    };
+  });
+}
+
+function parsePricingTierDrafts(value: unknown, defaultCost = 10): PricingTierDraft[] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return [createEmptyPricingTierDraft(defaultCost)];
+  }
+
+  const tiers = Object.entries(value as Record<string, unknown>).map(([key, tierValue]) => ({
+    id: createDraftId("tier"),
+    key,
+    value: String(tierValue ?? ""),
+  }));
+  return tiers.length > 0 ? tiers : [createEmptyPricingTierDraft(defaultCost)];
+}
+
+function serializeInputFieldDrafts(drafts: InputFieldDraft[]): { fields: Record<string, unknown>[]; errors: string[] } {
+  const errors: string[] = [];
+  const seenKeys = new Set<string>();
+  const fields: Record<string, unknown>[] = [];
+
+  for (const draft of drafts) {
+    const key = draft.key.trim();
+    const label = draft.label.trim();
+    if (!key && !label) {
+      continue;
+    }
+    if (!key) {
+      errors.push("Each input field must have a key.");
+      continue;
+    }
+    if (!label) {
+      errors.push(`Input field "${key}" must have a label.`);
+      continue;
+    }
+    if (seenKeys.has(key)) {
+      errors.push(`Duplicate input field key "${key}".`);
+      continue;
+    }
+    seenKeys.add(key);
+
+    const nextField: Record<string, unknown> = {
+      key,
+      label,
+      type: draft.type,
+    };
+
+    if (draft.required) {
+      nextField.required = true;
+    }
+    if (draft.affectsPricing) {
+      nextField.affectsPricing = true;
+    }
+
+    if (draft.type === "select") {
+      const options = draft.options
+        .map((option) => ({
+          value: option.value.trim(),
+          label: option.label.trim(),
+        }))
+        .filter((option) => option.value.length > 0 || option.label.length > 0)
+        .map((option) => ({
+          value: option.value,
+          label: option.label || option.value,
+        }));
+      if (options.length === 0) {
+        errors.push(`Select field "${key}" must define at least one option.`);
+        continue;
+      }
+      nextField.options = options;
+
+      const defaultValue = draft.defaultRaw.trim();
+      if (defaultValue) {
+        nextField.default = defaultValue;
+      }
+    } else if (draft.type === "boolean") {
+      nextField.default = draft.defaultBoolean;
+    } else if (draft.type === "number") {
+      const defaultValue = draft.defaultRaw.trim();
+      if (defaultValue.length > 0) {
+        const parsed = Number(defaultValue);
+        if (Number.isFinite(parsed)) {
+          nextField.default = parsed;
+        } else {
+          errors.push(`Number field "${key}" has invalid default value "${defaultValue}".`);
+          continue;
+        }
+      }
+    } else if (draft.type === "array") {
+      // No default — actual items are provided at runtime by the user
+    } else {
+      const defaultValue = draft.defaultRaw.trim();
+      if (defaultValue.length > 0) {
+        nextField.default = defaultValue;
+      }
+    }
+
+    fields.push(nextField);
+  }
+
+  return { fields, errors };
+}
+
+function serializePricingTierDrafts(
+  drafts: PricingTierDraft[],
+  fallbackCost: number,
+): { tiers: Record<string, number>; errors: string[] } {
+  const errors: string[] = [];
+  const tiers: Record<string, number> = {};
+
+  for (const draft of drafts) {
+    const key = draft.key.trim();
+    const valueRaw = draft.value.trim();
+    if (!key && !valueRaw) {
+      continue;
+    }
+    if (!key) {
+      errors.push("Each pricing tier must have a key.");
+      continue;
+    }
+    const numericValue = Number(valueRaw);
+    if (!Number.isFinite(numericValue) || numericValue < 0) {
+      errors.push(`Pricing tier "${key}" must have a valid non-negative number.`);
+      continue;
+    }
+    tiers[key] = numericValue;
+  }
+
+  if (Object.keys(tiers).length === 0) {
+    tiers.default = Math.max(0, fallbackCost || 0);
+  }
+
+  return { tiers, errors };
+}
+
+function normalizeOperationType(value: unknown): MediaOperationType | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const normalized = value.trim().toLowerCase();
+  const direct = MEDIA_OPERATION_OPTIONS.find((item) => item.value === normalized);
+  if (direct) {
+    return direct.value;
+  }
+
+  const aliasMap: Record<string, MediaOperationType> = {
+    "text-to-image": "t2i",
+    "image-to-image": "i2i",
+    "text-to-video": "t2v",
+    "image-to-video": "i2v",
+    "video-to-video": "v2v",
+    "video-extend": "v2v",
+    "text-to-music": "t2m",
+    "speech-to-text": "s2t",
+    "text-to-speech": "t2s",
+    "audio-to-audio": "a2a",
+  };
+  return aliasMap[normalized] || null;
+}
+
+function inferOperationTypeFromModel(model: Pick<MediaModel, "modelType" | "modelId" | "configJson">): MediaOperationType {
+  const config = (model.configJson && typeof model.configJson === "object") ? model.configJson : {};
+  const fromConfig = normalizeOperationType((config as any).operationType);
+  if (fromConfig) {
+    return fromConfig;
+  }
+
+  const generateType = normalizeOperationType((config as any).generateType);
+  if (generateType) {
+    return generateType;
+  }
+
+  const modelId = String(model.modelId || "").toLowerCase();
+  if (modelId.includes("upscale")) {
+    return "upscale";
+  }
+  if (modelId.includes("speech-to-text") || modelId.includes("stt")) {
+    return "s2t";
+  }
+  if (modelId.includes("text-to-speech") || modelId.includes("tts")) {
+    return "t2s";
+  }
+
+  if (model.modelType === "image") {
+    const hasImageInput = Array.isArray((config as any).inputFields)
+      && ((config as any).inputFields as Array<any>).some((field) => String(field?.type || "").toLowerCase() === "image_urls");
+    return hasImageInput ? "i2i" : "t2i";
+  }
+  if (model.modelType === "video") {
+    const hasImageInput = Array.isArray((config as any).inputFields)
+      && ((config as any).inputFields as Array<any>).some((field) => String(field?.type || "").toLowerCase() === "image_urls");
+    const hasVideoInput = Array.isArray((config as any).inputFields)
+      && ((config as any).inputFields as Array<any>).some((field) => String(field?.type || "").toLowerCase() === "video_urls");
+    if (hasVideoInput) {
+      return "v2v";
+    }
+    if (hasImageInput) {
+      return "i2v";
+    }
+    return "t2v";
+  }
+  if (model.modelType === "audio") {
+    if (modelId.includes("music")) {
+      return "t2m";
+    }
+    if (modelId.includes("speech-to-text") || modelId.includes("stt")) {
+      return "s2t";
+    }
+    if (modelId.includes("text-to-speech") || modelId.includes("tts")) {
+      return "t2s";
+    }
+    if (modelId.includes("audio-to-audio")) {
+      return "a2a";
+    }
+    return "t2s";
+  }
+
+  return "other";
+}
+
+function getOperationTypeLabel(value: MediaOperationType): string {
+  return MEDIA_OPERATION_OPTIONS.find((item) => item.value === value)?.label || value;
+}
+
+const API_CONFIG_PRESETS: ApiConfigPreset[] = [
+  {
+    id: "sora2_text_video",
+    label: "Sora2 Text-to-Video",
+    description: "KIE Sora2 text-to-video with n_frames + aspect ratio + watermark controls.",
+    pricingFormula: "per_duration",
+    inputFields: [
+      {
+        key: "aspect_ratio",
+        label: "Aspect Ratio",
+        type: "select",
+        options: [
+          { value: "portrait", label: "Portrait" },
+          { value: "landscape", label: "Landscape" },
+        ],
+        default: "landscape",
+      },
+      {
+        key: "n_frames",
+        label: "Frame Count",
+        type: "select",
+        options: [
+          { value: "10", label: "10s" },
+          { value: "15", label: "15s" },
+        ],
+        default: "10",
+        affectsPricing: true,
+      },
+      {
+        key: "remove_watermark",
+        label: "Remove Watermark",
+        type: "boolean",
+        default: true,
+      },
+      {
+        key: "upload_method",
+        label: "Upload Method",
+        type: "select",
+        options: [
+          { value: "s3", label: "S3" },
+          { value: "oss", label: "OSS" },
+        ],
+        default: "s3",
+      },
+    ],
+    pricingTiers: {
+      "10": 75,
+      "15": 150,
+    },
+  },
+  {
+    id: "veo31_text_video",
+    label: "Veo 3.1 Text-to-Video",
+    description: "Simple Veo setup with aspect ratio selector and flat credits.",
+    pricingFormula: "flat",
+    inputFields: [
+      {
+        key: "aspect_ratio",
+        label: "Aspect Ratio",
+        type: "select",
+        options: [
+          { value: "16:9", label: "16:9" },
+          { value: "9:16", label: "9:16" },
+          { value: "1:1", label: "1:1" },
+        ],
+        default: "16:9",
+      },
+    ],
+    pricingTiers: {
+      default: 2000,
+    },
+  },
+  {
+    id: "kling_text_video",
+    label: "Kling Text-to-Video",
+    description: "Matrix pricing by resolution + duration with optional aspect ratio.",
+    pricingFormula: "matrix",
+    inputFields: [
+      {
+        key: "duration",
+        label: "Duration",
+        type: "select",
+        options: [
+          { value: "5", label: "5s" },
+          { value: "10", label: "10s" },
+        ],
+        default: "5",
+        affectsPricing: true,
+      },
+      {
+        key: "resolution",
+        label: "Resolution",
+        type: "select",
+        options: [
+          { value: "720p", label: "720p" },
+          { value: "1080p", label: "1080p" },
+        ],
+        default: "720p",
+        affectsPricing: true,
+      },
+      {
+        key: "aspect_ratio",
+        label: "Aspect Ratio",
+        type: "select",
+        options: [
+          { value: "16:9", label: "16:9" },
+          { value: "9:16", label: "9:16" },
+          { value: "1:1", label: "1:1" },
+        ],
+        default: "16:9",
+      },
+    ],
+    pricingTiers: {
+      "720p-5s": 100,
+      "720p-10s": 200,
+      "1080p-5s": 150,
+      "1080p-10s": 300,
+    },
+  },
+];
 
 const DEFAULT_FORM_DATA: FormData = {
   modelId: "",
@@ -140,10 +606,11 @@ const DEFAULT_FORM_DATA: FormData = {
   apiPayloadFormat: "market",
   kieModelId: "",
   pricingFormula: "flat",
+  operationType: "other",
   generateType: "",
   maxPromptLength: 2000,
-  inputFieldsJson: "[]",
-  pricingTiersJson: '{"default": 10}',
+  inputFieldDrafts: [],
+  pricingTierDrafts: [createEmptyPricingTierDraft(10)],
 };
 
 export default function AdminMediaModels() {
@@ -155,9 +622,14 @@ export default function AdminMediaModels() {
   const [activeTab, setActiveTab] = useState("basic");
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [operationFilter, setOperationFilter] = useState<string>("all");
 
-  // Debounce search query to prevent focus loss during typing
-  const debouncedSearch = useDebouncedValue(searchQuery, 300);
+  // Wait for the user to pause typing before querying to avoid per-character fetch churn.
+  const debouncedSearch = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS);
+  const normalizedSearch = debouncedSearch.trim();
+  const searchFilter = normalizedSearch.length >= MIN_SEARCH_LENGTH
+    ? normalizedSearch
+    : undefined;
 
   // Form state
   const [formData, setFormData] = useState<FormData>(DEFAULT_FORM_DATA);
@@ -174,7 +646,7 @@ export default function AdminMediaModels() {
   // Queries using tRPC hooks (use debounced search to prevent focus loss)
   const { data: models = [], isLoading, refetch } = trpc.mediaModels.adminList.useQuery(
     {
-      search: debouncedSearch || undefined,
+      search: searchFilter,
       type: typeFilter !== "all" ? (typeFilter as "image" | "video" | "audio") : undefined,
       includeDisabled: true,
     },
@@ -186,6 +658,13 @@ export default function AdminMediaModels() {
   const { data: stats } = trpc.mediaModels.stats.useQuery(undefined, {
     enabled: !!user && user.role === "admin",
   });
+
+  const visibleModels = useMemo(
+    () => models.filter((model: MediaModel) => (
+      operationFilter === "all" || inferOperationTypeFromModel(model) === operationFilter
+    )),
+    [models, operationFilter],
+  );
 
   const {
     data: runtimeCounters,
@@ -290,10 +769,11 @@ export default function AdminMediaModels() {
       apiPayloadFormat: cfg.apiPayloadFormat || "market",
       kieModelId: cfg.kieModelId || "",
       pricingFormula: cfg.pricingFormula || "flat",
+      operationType: inferOperationTypeFromModel(model),
       generateType: cfg.generateType || "",
       maxPromptLength: cfg.maxPromptLength || 2000,
-      inputFieldsJson: cfg.inputFields ? JSON.stringify(cfg.inputFields, null, 2) : "[]",
-      pricingTiersJson: cfg.pricingTiers ? JSON.stringify(cfg.pricingTiers, null, 2) : '{"default": 10}',
+      inputFieldDrafts: parseInputFieldDrafts(cfg.inputFields),
+      pricingTierDrafts: parsePricingTierDrafts(cfg.pricingTiers, model.creditCost),
     });
     setActiveTab("basic");
   };
@@ -323,10 +803,11 @@ export default function AdminMediaModels() {
       apiPayloadFormat: cfg.apiPayloadFormat || "market",
       kieModelId: cfg.kieModelId || "",
       pricingFormula: cfg.pricingFormula || "flat",
+      operationType: inferOperationTypeFromModel(model),
       generateType: cfg.generateType || "",
       maxPromptLength: cfg.maxPromptLength || 2000,
-      inputFieldsJson: cfg.inputFields ? JSON.stringify(cfg.inputFields, null, 2) : "[]",
-      pricingTiersJson: cfg.pricingTiers ? JSON.stringify(cfg.pricingTiers, null, 2) : '{"default": 10}',
+      inputFieldDrafts: parseInputFieldDrafts(cfg.inputFields),
+      pricingTierDrafts: parsePricingTierDrafts(cfg.pricingTiers, model.creditCost),
     });
     setActiveTab("basic");
     setIsCreateDialogOpen(true);
@@ -357,36 +838,13 @@ export default function AdminMediaModels() {
       .map((s) => s.trim())
       .filter(Boolean);
 
-    // Build configJson from structured fields
-    let inputFields: any[] = [];
-    let pricingTiers: Record<string, number> = {};
-    let parseErrors: string[] = [];
-
-    try {
-      const parsed = JSON.parse(formData.inputFieldsJson);
-      if (Array.isArray(parsed)) {
-        inputFields = parsed;
-      } else {
-        parseErrors.push("Input Fields must be a JSON array");
-      }
-    } catch (e: any) {
-      parseErrors.push(`Input Fields JSON error: ${e.message}`);
-    }
-
-    try {
-      const parsed = JSON.parse(formData.pricingTiersJson);
-      if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-        pricingTiers = parsed;
-      } else {
-        parseErrors.push("Pricing Tiers must be a JSON object");
-      }
-    } catch (e: any) {
-      parseErrors.push(`Pricing Tiers JSON error: ${e.message}`);
-    }
+    const serializedInputFields = serializeInputFieldDrafts(formData.inputFieldDrafts);
+    const serializedPricingTiers = serializePricingTierDrafts(formData.pricingTierDrafts, formData.creditCost);
+    const parseErrors = [...serializedInputFields.errors, ...serializedPricingTiers.errors];
 
     // Show validation errors and abort save
     if (parseErrors.length > 0) {
-      toast.error("JSON Validation Error", {
+      toast.error("Validation Error", {
         description: parseErrors.join(" | "),
         duration: 5000,
       });
@@ -399,10 +857,11 @@ export default function AdminMediaModels() {
       apiPayloadFormat: formData.apiPayloadFormat,
       kieModelId: formData.kieModelId || undefined,
       pricingFormula: formData.pricingFormula,
+      operationType: formData.operationType,
       generateType: formData.generateType || undefined,
       maxPromptLength: formData.maxPromptLength,
-      inputFields,
-      pricingTiers,
+      inputFields: serializedInputFields.fields,
+      pricingTiers: serializedPricingTiers.tiers,
     };
 
     if (editingModel) {
@@ -695,6 +1154,9 @@ export default function AdminMediaModels() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
               />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Search starts after you pause typing for ~0.9s (min 2 characters).
+              </p>
             </div>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger className="w-[180px]">
@@ -706,6 +1168,20 @@ export default function AdminMediaModels() {
                 <SelectItem value="image">Image</SelectItem>
                 <SelectItem value="video">Video</SelectItem>
                 <SelectItem value="audio">Audio</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={operationFilter} onValueChange={setOperationFilter}>
+              <SelectTrigger className="w-[220px]">
+                <Layers className="mr-2 h-4 w-4" />
+                <SelectValue placeholder="Filter by operation" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Operations</SelectItem>
+                {MEDIA_OPERATION_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -722,11 +1198,11 @@ export default function AdminMediaModels() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {models.length === 0 ? (
+          {visibleModels.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Sparkles className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p className="text-lg font-medium">No models configured</p>
-              <p className="text-sm">Add your first AI model to get started</p>
+              <p className="text-lg font-medium">No models found</p>
+              <p className="text-sm">Try changing your filters or add a new model</p>
               <Button className="mt-4" onClick={() => setIsCreateDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Model
@@ -739,6 +1215,7 @@ export default function AdminMediaModels() {
                   <TableHead className="w-[50px]">#</TableHead>
                   <TableHead>Model</TableHead>
                   <TableHead>Type</TableHead>
+                  <TableHead>Operation</TableHead>
                   <TableHead>Provider</TableHead>
                   <TableHead>Credits</TableHead>
                   <TableHead>Aliases</TableHead>
@@ -747,7 +1224,7 @@ export default function AdminMediaModels() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {models.map((model: any, index: number) => (
+                {visibleModels.map((model: any, index: number) => (
                   <TableRow key={model.id}>
                     <TableCell className="font-mono text-muted-foreground">
                       {index + 1}
@@ -768,6 +1245,11 @@ export default function AdminMediaModels() {
                     <TableCell>
                       <Badge className={getModelTypeBadgeColor(model.modelType)}>
                         {model.modelType}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {getOperationTypeLabel(inferOperationTypeFromModel(model))}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -950,6 +1432,154 @@ function ModelForm({
   activeTab: string;
   setActiveTab: (tab: string) => void;
 }) {
+  const [selectedPresetId, setSelectedPresetId] = useState<string>("none");
+  const [draggingFieldId, setDraggingFieldId] = useState<string | null>(null);
+  const [dragOverFieldId, setDragOverFieldId] = useState<string | null>(null);
+
+  const applyApiConfigPreset = () => {
+    if (selectedPresetId === "none") {
+      return;
+    }
+    const preset = API_CONFIG_PRESETS.find((item) => item.id === selectedPresetId);
+    if (!preset) {
+      return;
+    }
+    setFormData({
+      ...formData,
+      pricingFormula: preset.pricingFormula,
+      inputFieldDrafts: parseInputFieldDrafts(preset.inputFields),
+      pricingTierDrafts: parsePricingTierDrafts(preset.pricingTiers, formData.creditCost),
+    });
+    toast.success(`Applied preset: ${preset.label}`);
+  };
+
+  const reorderInputFieldDrafts = (fromId: string, toId: string) => {
+    if (fromId === toId) {
+      return;
+    }
+    const fromIndex = formData.inputFieldDrafts.findIndex((field) => field.id === fromId);
+    const toIndex = formData.inputFieldDrafts.findIndex((field) => field.id === toId);
+    if (fromIndex < 0 || toIndex < 0) {
+      return;
+    }
+    const next = [...formData.inputFieldDrafts];
+    const [moved] = next.splice(fromIndex, 1);
+    if (!moved) {
+      return;
+    }
+    next.splice(toIndex, 0, moved);
+    setFormData({
+      ...formData,
+      inputFieldDrafts: next,
+    });
+  };
+
+  const updateInputFieldDraft = (fieldId: string, patch: Partial<InputFieldDraft>) => {
+    setFormData({
+      ...formData,
+      inputFieldDrafts: formData.inputFieldDrafts.map((field) => (
+        field.id === fieldId ? { ...field, ...patch } : field
+      )),
+    });
+  };
+
+  const removeInputFieldDraft = (fieldId: string) => {
+    setFormData({
+      ...formData,
+      inputFieldDrafts: formData.inputFieldDrafts.filter((field) => field.id !== fieldId),
+    });
+  };
+
+  const addInputFieldDraft = () => {
+    setFormData({
+      ...formData,
+      inputFieldDrafts: [...formData.inputFieldDrafts, createEmptyInputFieldDraft()],
+    });
+  };
+
+  const addInputFieldOption = (fieldId: string) => {
+    setFormData({
+      ...formData,
+      inputFieldDrafts: formData.inputFieldDrafts.map((field) => (
+        field.id === fieldId
+          ? {
+              ...field,
+              type: field.type === "select" ? field.type : "select",
+              options: [...field.options, { id: createDraftId("opt"), value: "", label: "" }],
+            }
+          : field
+      )),
+    });
+  };
+
+  const updateInputFieldOption = (
+    fieldId: string,
+    optionId: string,
+    patch: Partial<InputFieldOptionDraft>,
+  ) => {
+    setFormData({
+      ...formData,
+      inputFieldDrafts: formData.inputFieldDrafts.map((field) => (
+        field.id === fieldId
+          ? {
+              ...field,
+              options: field.options.map((option) => (
+                option.id === optionId ? { ...option, ...patch } : option
+              )),
+            }
+          : field
+      )),
+    });
+  };
+
+  const removeInputFieldOption = (fieldId: string, optionId: string) => {
+    setFormData({
+      ...formData,
+      inputFieldDrafts: formData.inputFieldDrafts.map((field) => (
+        field.id === fieldId
+          ? {
+              ...field,
+              options: field.options.filter((option) => option.id !== optionId),
+            }
+          : field
+      )),
+    });
+  };
+
+  const updatePricingTierDraft = (tierId: string, patch: Partial<PricingTierDraft>) => {
+    setFormData({
+      ...formData,
+      pricingTierDrafts: formData.pricingTierDrafts.map((tier) => (
+        tier.id === tierId ? { ...tier, ...patch } : tier
+      )),
+    });
+  };
+
+  const removePricingTierDraft = (tierId: string) => {
+    setFormData({
+      ...formData,
+      pricingTierDrafts: formData.pricingTierDrafts.filter((tier) => tier.id !== tierId),
+    });
+  };
+
+  const addPricingTierDraft = () => {
+    setFormData({
+      ...formData,
+      pricingTierDrafts: [...formData.pricingTierDrafts, { id: createDraftId("tier"), key: "", value: "" }],
+    });
+  };
+
+  const inputFieldPreview = JSON.stringify(
+    serializeInputFieldDrafts(formData.inputFieldDrafts).fields,
+    null,
+    2,
+  );
+  const pricingTierPreview = JSON.stringify(
+    serializePricingTierDrafts(formData.pricingTierDrafts, formData.creditCost).tiers,
+    null,
+    2,
+  );
+
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
       <TabsList className="grid w-full grid-cols-4">
@@ -1292,38 +1922,334 @@ function ModelForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="pricingTiersJson">
-              Pricing Tiers (JSON)
-            </Label>
-            <Textarea
-              id="pricingTiersJson"
-              value={formData.pricingTiersJson}
-              onChange={(e) => setFormData({ ...formData, pricingTiersJson: e.target.value })}
-              placeholder='{"720p-5s": 350, "1080p-10s": 1050}'
-              rows={4}
-              className="font-mono text-sm"
-            />
+            <Label htmlFor="operationType">Operation Type</Label>
+            <Select
+              value={formData.operationType}
+              onValueChange={(value: MediaOperationType) => setFormData({ ...formData, operationType: value })}
+            >
+              <SelectTrigger className="w-[260px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {MEDIA_OPERATION_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <p className="text-xs text-muted-foreground">
-              Tier key → credit cost. Keys depend on pricing formula (e.g., "720p-5s" for matrix, "5s" for per_duration, "default" for flat).
+              Used for fast filtering and selecting the correct model capability (t2i/i2i/t2v/etc.).
+            </p>
+          </div>
+
+          <div className="grid gap-2 rounded-md border border-slate-200 p-3">
+            <Label className="flex items-center gap-2">
+              <Settings2 className="h-4 w-4 text-slate-600" />
+              Quick Presets
+            </Label>
+            <div className="flex flex-col gap-2 md:flex-row">
+              <Select value={selectedPresetId} onValueChange={setSelectedPresetId}>
+                <SelectTrigger className="md:flex-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Custom (no preset)</SelectItem>
+                  {API_CONFIG_PRESETS.map((preset) => (
+                    <SelectItem key={preset.id} value={preset.id}>
+                      {preset.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button type="button" variant="outline" onClick={applyApiConfigPreset} disabled={selectedPresetId === "none"}>
+                Apply Preset
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Apply a starter template for popular models. This replaces Input Fields and Pricing Tiers with preset values.
+            </p>
+            {selectedPresetId !== "none" ? (
+              <p className="text-xs text-slate-600">
+                {API_CONFIG_PRESETS.find((preset) => preset.id === selectedPresetId)?.description}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="grid gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <Label>Pricing Tiers</Label>
+              <Button type="button" size="sm" variant="outline" onClick={addPricingTierDraft}>
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                Add Tier
+              </Button>
+            </div>
+            <div className="space-y-2 rounded-md border border-slate-200 p-3">
+              {formData.pricingTierDrafts.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No pricing tiers. System will save a default tier automatically.</p>
+              ) : (
+                formData.pricingTierDrafts.map((tier) => (
+                  <div key={tier.id} className="grid grid-cols-1 gap-2 rounded-md border border-slate-100 p-2 md:grid-cols-[1fr_1fr_auto]">
+                    <Input
+                      value={tier.key}
+                      onChange={(e) => updatePricingTierDraft(tier.id, { key: e.target.value })}
+                      placeholder="Tier key (e.g., 720p-5s)"
+                    />
+                    <Input
+                      type="number"
+                      min={0}
+                      value={tier.value}
+                      onChange={(e) => updatePricingTierDraft(tier.id, { value: e.target.value })}
+                      placeholder="Credits"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removePricingTierDraft(tier.id)}
+                      aria-label="Remove pricing tier"
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Define tier key and credit cost. Example keys: "default", "5s", "720p-10s". Affects pricing is controlled by input fields.
             </p>
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="inputFieldsJson">
-              Input Fields (JSON)
-            </Label>
-            <Textarea
-              id="inputFieldsJson"
-              value={formData.inputFieldsJson}
-              onChange={(e) => setFormData({ ...formData, inputFieldsJson: e.target.value })}
-              placeholder='[{"key":"duration","label":"Duration","type":"select","options":[{"value":"5","label":"5s"}],"default":"5","affectsPricing":true}]'
-              rows={8}
-              className="font-mono text-sm"
-            />
+            <div className="flex items-center justify-between gap-2">
+              <Label>Input Fields</Label>
+              <Button type="button" size="sm" variant="outline" onClick={addInputFieldDraft}>
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                Add Field
+              </Button>
+            </div>
+            <div className="space-y-3 rounded-md border border-slate-200 p-3">
+              {formData.inputFieldDrafts.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No dynamic fields configured yet.</p>
+              ) : (
+                formData.inputFieldDrafts.map((field, fieldIndex) => (
+                  <div
+                    key={field.id}
+                    className={`space-y-3 rounded-md border p-3 ${dragOverFieldId === field.id ? "border-sky-400 bg-sky-50/50" : "border-slate-100"}`}
+                    onDragOver={(event) => {
+                      if (!draggingFieldId) {
+                        return;
+                      }
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = "move";
+                      if (dragOverFieldId !== field.id) {
+                        setDragOverFieldId(field.id);
+                      }
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      const sourceId = draggingFieldId || event.dataTransfer.getData("text/plain");
+                      if (sourceId) {
+                        reorderInputFieldDrafts(sourceId, field.id);
+                      }
+                      setDraggingFieldId(null);
+                      setDragOverFieldId(null);
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="cursor-grab active:cursor-grabbing"
+                          draggable
+                          onDragStart={(event) => {
+                            event.dataTransfer.effectAllowed = "move";
+                            event.dataTransfer.setData("text/plain", field.id);
+                            setDraggingFieldId(field.id);
+                          }}
+                          onDragEnd={() => {
+                            setDraggingFieldId(null);
+                            setDragOverFieldId(null);
+                          }}
+                          aria-label="Drag to reorder field"
+                        >
+                          <GripVertical className="h-4 w-4 text-slate-500" />
+                        </Button>
+                        <p className="text-sm font-medium">Field #{fieldIndex + 1}</p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeInputFieldDraft(field.id)}
+                        aria-label="Remove input field"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                      <Input
+                        value={field.key}
+                        onChange={(e) => updateInputFieldDraft(field.id, { key: e.target.value })}
+                        placeholder="key (e.g., duration)"
+                      />
+                      <Input
+                        value={field.label}
+                        onChange={(e) => updateInputFieldDraft(field.id, { label: e.target.value })}
+                        placeholder="label (e.g., Duration)"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                      <Select
+                        value={field.type}
+                        onValueChange={(value) => updateInputFieldDraft(field.id, { type: value as InputFieldType })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {INPUT_FIELD_TYPE_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                        <span className="text-sm">Required</span>
+                        <Switch
+                          checked={field.required}
+                          onCheckedChange={(checked) => updateInputFieldDraft(field.id, { required: checked })}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                        <span className="text-sm">Affects Pricing</span>
+                        <Switch
+                          checked={field.affectsPricing}
+                          onCheckedChange={(checked) => updateInputFieldDraft(field.id, { affectsPricing: checked })}
+                        />
+                      </div>
+                    </div>
+
+                    {field.type === "boolean" ? (
+                      <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                        <span className="text-sm">Default Value</span>
+                        <Switch
+                          checked={field.defaultBoolean}
+                          onCheckedChange={(checked) => updateInputFieldDraft(field.id, { defaultBoolean: checked })}
+                        />
+                      </div>
+                    ) : field.type === "array" ? (
+                      <p className="text-xs text-muted-foreground italic">
+                        Values are provided at runtime — no default needed.
+                      </p>
+                    ) : field.type === "select" ? (
+                      <div className="space-y-2 rounded-md border border-slate-100 p-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">Options</span>
+                          <Button type="button" size="sm" variant="outline" onClick={() => addInputFieldOption(field.id)}>
+                            <Plus className="mr-1 h-3.5 w-3.5" />
+                            Add Option
+                          </Button>
+                        </div>
+                        {field.options.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">No options yet.</p>
+                        ) : (
+                          field.options.map((option) => (
+                            <div key={option.id} className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_1fr_auto]">
+                              <Input
+                                value={option.value}
+                                onChange={(e) => updateInputFieldOption(field.id, option.id, { value: e.target.value })}
+                                placeholder="value (e.g., 10)"
+                              />
+                              <Input
+                                value={option.label}
+                                onChange={(e) => updateInputFieldOption(field.id, option.id, { label: e.target.value })}
+                                placeholder="label (e.g., 10s)"
+                              />
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeInputFieldOption(field.id, option.id)}
+                                aria-label="Remove option"
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          ))
+                        )}
+
+                        <div className="grid gap-1">
+                          <Label className="text-xs text-muted-foreground">Default Option</Label>
+                          <Select
+                            value={
+                              field.options.some(
+                                (option) => option.value === field.defaultRaw && option.value.trim().length > 0,
+                              )
+                                ? field.defaultRaw
+                                : "__none__"
+                            }
+                            onValueChange={(value) => updateInputFieldDraft(field.id, { defaultRaw: value === "__none__" ? "" : value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select default option" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">No default</SelectItem>
+                              {field.options
+                                .filter((option) => option.value.trim().length > 0)
+                                .map((option) => (
+                                <SelectItem key={option.id} value={option.value}>
+                                  {option.label.trim() || option.value}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid gap-1">
+                        <Label className="text-xs text-muted-foreground">Default Value</Label>
+                        <Input
+                          type={field.type === "number" ? "number" : "text"}
+                          value={field.defaultRaw}
+                          onChange={(e) => updateInputFieldDraft(field.id, { defaultRaw: e.target.value })}
+                          placeholder={field.type === "number" ? "0" : "Default value"}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
             <p className="text-xs text-muted-foreground">
-              Defines dynamic UI controls in Media Studio. Each field: key, label, type (select/boolean/number/text/image_urls), options, default, affectsPricing.
+              Fill fields in form mode, drag by the handle to reorder, and system converts everything to valid JSON automatically.
             </p>
           </div>
+
+          <Card className="bg-slate-50">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-sm">
+                <Code className="h-4 w-4" />
+                Generated JSON Preview (read-only)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid gap-1">
+                <Label className="text-xs text-muted-foreground">pricingTiers</Label>
+                <Textarea value={pricingTierPreview} readOnly rows={4} className="font-mono text-xs bg-white" />
+              </div>
+              <div className="grid gap-1">
+                <Label className="text-xs text-muted-foreground">inputFields</Label>
+                <Textarea value={inputFieldPreview} readOnly rows={8} className="font-mono text-xs bg-white" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </TabsContent>
     </Tabs>

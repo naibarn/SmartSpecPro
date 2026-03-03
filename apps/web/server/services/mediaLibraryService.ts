@@ -8,6 +8,7 @@ import {
   type LibraryActor,
   type LibraryVisibility,
 } from "./libraryService";
+import { storagePut } from "../storage";
 
 export interface AddMediaTaskToLibraryInput {
   mediaTaskId: string;
@@ -76,6 +77,56 @@ async function buildTaskMetadata(task: MediaTask): Promise<Record<string, unknow
   };
 }
 
+const MEDIA_TYPE_CONTENT_TYPE: Record<string, string> = {
+  image: "image/jpeg",
+  video: "video/mp4",
+  audio: "audio/mpeg",
+};
+
+function guessContentType(mediaType: string, url: string): string {
+  const ext = url.split("?")[0].split(".").pop()?.toLowerCase() ?? "";
+  const extMap: Record<string, string> = {
+    png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp",
+    gif: "image/gif", mp4: "video/mp4", webm: "video/webm", mov: "video/quicktime",
+    mp3: "audio/mpeg", wav: "audio/wav", m4a: "audio/mp4",
+  };
+  return extMap[ext] ?? MEDIA_TYPE_CONTENT_TYPE[mediaType] ?? "application/octet-stream";
+}
+
+/**
+ * Downloads an external media file (e.g. from kie.ai CDN) and stores it in our
+ * own storage so the URL never expires and CORS issues are avoided.
+ * Returns the internal proxy URL on success, or null if the download fails.
+ */
+async function downloadAndStore(
+  externalUrl: string,
+  mediaType: string,
+  taskId: string,
+  tenantId: string | number,
+): Promise<string | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60_000);
+    const response = await fetch(externalUrl, { signal: controller.signal });
+    clearTimeout(timeout);
+
+    if (!response.ok) return null;
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    if (buffer.length === 0) return null;
+
+    const contentType = guessContentType(mediaType, externalUrl);
+    const ext = contentType.split("/")[1]?.split(";")[0] ?? mediaType;
+    const key = `media-library/${tenantId}/${taskId}/original.${ext}`;
+
+    const stored = await storagePut(key, buffer, contentType);
+    return stored.url;
+  } catch {
+    return null;
+  }
+}
+
 function assertTaskEligible(task: MediaTask, actor: LibraryActor): void {
   if (String(task.userId) !== String(actor.userId) && actor.role !== "admin") {
     throw new Error("Media task not found");
@@ -99,6 +150,19 @@ export async function addMediaTaskToLibrary(
   }
   const metadata = await buildTaskMetadata(task);
 
+  // Download the external provider URL into our own storage so it never expires
+  // and can be served without CORS issues. Falls back to the original URL on failure.
+  let storedUrl: string | null = null;
+  if (task.resultUrl) {
+    storedUrl = await downloadAndStore(
+      task.resultUrl,
+      task.mediaType,
+      task.id,
+      actor.tenantId,
+    );
+  }
+  const resolvedSourceUrl = storedUrl ?? task.resultUrl ?? null;
+
   const created = await createLibraryItem(
     {
       itemType: task.mediaType,
@@ -108,8 +172,8 @@ export async function addMediaTaskToLibrary(
       status: "indexing",
       visibility: input.visibility || "private",
       metadata,
-      sourceUrl: task.resultUrl || null,
-      thumbnailUrl: task.mediaType === "image" ? task.resultUrl || null : null,
+      sourceUrl: resolvedSourceUrl,
+      thumbnailUrl: task.mediaType === "image" ? resolvedSourceUrl : null,
       sourceLink: {
         linkType: "media_task",
         linkId: task.id,

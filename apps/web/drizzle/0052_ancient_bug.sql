@@ -1,0 +1,1 @@
+ALTER TABLE "library_content_versions" ADD COLUMN "snapshot_object_key" varchar(512);

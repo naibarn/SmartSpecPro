@@ -80,6 +80,7 @@ vi.mock("@/contexts/AuthContext", () => ({
 
 const queryState = {
   playDeck: null as ReturnType<typeof buildPlayDeck> | null,
+  deckDetail: null as ReturnType<typeof buildDeckDetail> | null,
   isLoading: false,
   isError: false,
 };
@@ -90,6 +91,14 @@ vi.mock("@/lib/trpc", () => ({
       getPlayDeck: {
         useQuery: vi.fn(() => ({
           data: queryState.playDeck,
+          isLoading: queryState.isLoading,
+          isError: queryState.isError,
+          error: queryState.isError ? new Error("Not found") : null,
+        })),
+      },
+      getDeckByLibraryItem: {
+        useQuery: vi.fn(() => ({
+          data: queryState.deckDetail,
           isLoading: queryState.isLoading,
           isError: queryState.isError,
           error: queryState.isError ? new Error("Not found") : null,
@@ -111,22 +120,44 @@ function buildPlayDeck() {
     projectAudioTrack: null,
     slides: [
       {
-        id: 71,
+        slideId: 71,
         orderIndex: 0,
         title: "Intro",
         transition: "cut",
         durationMs: 3000,
-        slideContent: { elements: [] },
         audioTrack: null,
+      },
+      {
+        slideId: 72,
+        orderIndex: 1,
+        title: "Agenda",
+        transition: "fade",
+        durationMs: 3000,
+        audioTrack: null,
+      },
+    ],
+  };
+}
+
+function buildDeckDetail() {
+  return {
+    deck: {
+      id: 7,
+      libraryItemId: 42,
+      title: "Test Deck",
+    },
+    slides: [
+      {
+        id: 71,
+        orderIndex: 0,
+        title: "Intro",
+        slideContent: { elements: [] },
       },
       {
         id: 72,
         orderIndex: 1,
         title: "Agenda",
-        transition: "fade",
-        durationMs: 3000,
         slideContent: { elements: [] },
-        audioTrack: null,
       },
     ],
   };
@@ -147,6 +178,7 @@ describe("PresentationPlayMode", () => {
     vi.clearAllMocks();
     capturedOnStateChange = null;
     queryState.playDeck = buildPlayDeck();
+    queryState.deckDetail = buildDeckDetail();
     queryState.isLoading = false;
     queryState.isError = false;
 
@@ -233,10 +265,10 @@ describe("PresentationPlayMode", () => {
     expect(document.documentElement.requestFullscreen).toHaveBeenCalled();
   });
 
-  it("pressing Escape when not in fullscreen navigates back to /presentations", () => {
+  it("pressing Escape when not in fullscreen navigates back to editor route", () => {
     render(<PresentationPlayMode />);
     fireEvent.keyDown(window, { key: "Escape" });
-    expect(mockSetLocation).toHaveBeenCalledWith("/presentations");
+    expect(mockSetLocation).toHaveBeenCalledWith("/presentation-editor/42");
   });
 
   it("slide counter shows '1 / N' format", () => {

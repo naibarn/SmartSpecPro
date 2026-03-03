@@ -6,10 +6,14 @@ import {
   ChevronsRight,
   ChevronDown,
   ChevronLeft,
+  ChevronRight,
   Eye,
   FilePlus2,
   FileText,
+  Folder,
   FolderOpen,
+  FolderPlus,
+  Home,
   ImagePlus,
   Info,
   Maximize2,
@@ -20,6 +24,8 @@ import {
   PanelRightOpen,
   Plus,
   Search,
+  Share2,
+  Trash2,
   Upload,
   Video,
   X,
@@ -31,6 +37,8 @@ import DocumentPreviewPanel from "@/components/library/DocumentPreviewPanel";
 import GoogleDriveBrowser from "@/components/library/GoogleDriveBrowser";
 import OneDriveBrowser from "@/components/library/OneDriveBrowser";
 import { TrashPanel } from "@/components/library/TrashPanel";
+import CreateFolderDialog from "@/components/library/CreateFolderDialog";
+import ShareLibraryDialog from "@/components/library/ShareLibraryDialog";
 import { SafeMarkdown } from "@/components/chat/SafeMarkdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -136,6 +144,10 @@ export default function DocumentManagement() {
   const [libraryPanelWidth, setLibraryPanelWidth] = useState(440);
   const [previewPanelWidth, setPreviewPanelWidth] = useState(430);
   const [importingDriveFileId, setImportingDriveFileId] = useState<string | null>(null);
+  const [uploadingCount, setUploadingCount] = useState(0);
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<number>>(new Set());
+  const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
+  const [isShareLibraryOpen, setIsShareLibraryOpen] = useState(false);
   const [mobileTab, setMobileTab] = useState<"library" | "editor" | "preview">("library");
   const [isLibraryHeaderCollapsed, setIsLibraryHeaderCollapsed] = useState(true);
   const [openEditorTabs, setOpenEditorTabs] = useState<DocumentEditorTab[]>(() => {
@@ -243,7 +255,8 @@ export default function DocumentManagement() {
       itemType: queryState.itemType || undefined,
       status: queryState.status as any,
     },
-  }), [debouncedQuery, listScope, queryState.sort, queryState.itemType, queryState.status]);
+    folderId: listScope === "my_library" ? (queryState.folderId ?? null) : undefined,
+  }), [debouncedQuery, listScope, queryState.sort, queryState.itemType, queryState.status, queryState.folderId]);
 
   const { data: documentData, isLoading: listLoading, error: listError } = trpc.library.listDocuments.useQuery(listInput, {
     enabled: shouldListDocuments,
@@ -283,7 +296,16 @@ export default function DocumentManagement() {
   const createPresentationDeckMutation = trpc.presentation.createDeck.useMutation();
   const updateItemMutation = trpc.library.updateItem.useMutation();
   const deleteItemMutation = trpc.library.deleteItem.useMutation();
+  const deleteItemsMutation = trpc.library.deleteItems.useMutation();
   const importDriveFileMutation = trpc.googleDrive.importDriveFile.useMutation();
+
+  // Folder path / breadcrumb (only when inside a folder)
+  const currentFolderId = queryState.folderId ?? null;
+  const folderPathQuery = trpc.library.getFolderPath.useQuery(
+    { folderId: currentFolderId! },
+    { enabled: currentFolderId != null },
+  );
+  const folderPath = folderPathQuery.data ?? [];
 
   function isEditorTabDirty(tabId: number): boolean {
     const draft = markdownDraftByDocId[tabId];
@@ -323,6 +345,7 @@ export default function DocumentManagement() {
       id: Number(item?.id),
       item_type: String(item?.itemType ?? item?.item_type ?? "md"),
       title: String(item?.title ?? "Untitled"),
+      description: item?.description ?? null,
       source: String(item?.source ?? "document_management"),
       source_url: item?.sourceUrl ?? item?.source_url ?? null,
       thumbnail_url: item?.thumbnailUrl ?? item?.thumbnail_url ?? null,
@@ -757,24 +780,106 @@ export default function DocumentManagement() {
     }
   }
 
-  async function handleUploadFile(file: File) {
-    try {
-      const fileBase64 = await fileToBase64(file);
-      const result = await uploadFileMutation.mutateAsync({
-        fileName: file.name,
-        fileType: file.type || "application/octet-stream",
-        fileBase64,
-        title: file.name,
-      });
+  function handleFolderOpen(item: DocumentLibraryItem) {
+    setSelectedItemIds(new Set());
+    setSelectedId(null);
+    setQueryState((prev) => ({
+      ...prev,
+      folderId: item.id,
+      scope: "my_library",
+      docId: undefined,
+    }));
+  }
 
-      toast.success("File uploaded to library. Indexing started.");
-      setQueryState((prev) => ({ ...prev, scope: "my_library" }));
-      setPendingAutoSelectId(result.item.id);
-      setSelectedId(result.item.id);
-      setProvisionalSelectedItem(toProvisionalDocumentItem(result.item));
+  function navigateToFolder(folderId: number | null) {
+    setSelectedItemIds(new Set());
+    setSelectedId(null);
+    setQueryState((prev) => ({ ...prev, folderId, docId: undefined }));
+  }
+
+  async function handleDeleteItemWithFolderCheck(item: DocumentLibraryItem) {
+    if (item.item_type === "folder") {
+      // Check child count before deleting folder
+      try {
+        const result = await trpcUtils.client.library.getFolderChildCount.query({ folderId: item.id });
+        if (result.count > 0) {
+          const confirmed = window.confirm(
+            `The folder "${item.title}" contains ${result.count} item(s). Deleting this folder will also move all its contents to trash. Continue?`,
+          );
+          if (!confirmed) return;
+        }
+      } catch {
+        // fall through — let the delete proceed
+      }
+    }
+    handleDeleteItem(item);
+  }
+
+  async function handleBatchDelete() {
+    if (selectedItemIds.size === 0) return;
+    const confirmed = window.confirm(
+      `Move ${selectedItemIds.size} item(s) to trash?`,
+    );
+    if (!confirmed) return;
+
+    try {
+      const result = await deleteItemsMutation.mutateAsync({ ids: Array.from(selectedItemIds) });
+      toast.success(`${result.deleted} item(s) moved to trash.`);
+      setSelectedItemIds(new Set());
       await trpcUtils.library.listDocuments.invalidate();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Upload failed");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Batch delete failed");
+    }
+  }
+
+  async function handleUploadFiles(files: File[]) {
+    if (files.length === 0) return;
+    setUploadingCount((n) => n + files.length);
+
+    const results = await Promise.allSettled(
+      files.map(async (file) => {
+        try {
+          const fileBase64 = await fileToBase64(file);
+          return await uploadFileMutation.mutateAsync({
+            fileName: file.name,
+            fileType: file.type || "application/octet-stream",
+            fileBase64,
+            title: file.name,
+            parentId: currentFolderId,
+          });
+        } finally {
+          setUploadingCount((n) => Math.max(0, n - 1));
+        }
+      }),
+    );
+
+    const succeeded = results.filter(
+      (r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof uploadFileMutation.mutateAsync>>> =>
+        r.status === "fulfilled",
+    );
+    const failedCount = results.length - succeeded.length;
+
+    if (succeeded.length > 0) {
+      if (failedCount === 0) {
+        toast.success(
+          succeeded.length === 1
+            ? "File uploaded to library. Indexing started."
+            : `${succeeded.length} files uploaded to library. Indexing started.`,
+        );
+      } else {
+        toast.warning(`${succeeded.length} file(s) uploaded, ${failedCount} failed.`);
+      }
+      setQueryState((prev) => ({ ...prev, scope: "my_library" }));
+      if (files.length === 1) {
+        const result = succeeded[0].value;
+        setPendingAutoSelectId(result.item.id);
+        setSelectedId(result.item.id);
+        setProvisionalSelectedItem(toProvisionalDocumentItem(result.item));
+      }
+      await trpcUtils.library.listDocuments.invalidate();
+    } else {
+      const firstRejected = results[0] as PromiseRejectedResult;
+      toast.error(firstRejected.reason instanceof Error ? firstRejected.reason.message : "Upload failed");
     }
   }
 
@@ -1020,7 +1125,7 @@ export default function DocumentManagement() {
                   <FileText className="h-5 w-5 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <h1 className="text-base sm:text-lg font-bold truncate">Document Management</h1>
+                  <h1 className="text-base sm:text-lg font-bold truncate">Library / Document Management</h1>
                   <p className="hidden sm:block text-xs text-muted-foreground">
                     Manage personal and shared RAG files with preview and markdown editing.
                   </p>
@@ -1038,13 +1143,13 @@ export default function DocumentManagement() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => imageInputRef.current?.click()} disabled={uploadFileMutation.isPending}>
+                  <DropdownMenuItem onClick={() => imageInputRef.current?.click()} disabled={uploadingCount > 0}>
                     <ImagePlus className="mr-2 h-4 w-4" /> Upload Image
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => videoInputRef.current?.click()} disabled={uploadFileMutation.isPending}>
+                  <DropdownMenuItem onClick={() => videoInputRef.current?.click()} disabled={uploadingCount > 0}>
                     <Video className="mr-2 h-4 w-4" /> Upload Video
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => fileInputRef.current?.click()} disabled={uploadFileMutation.isPending}>
+                  <DropdownMenuItem onClick={() => fileInputRef.current?.click()} disabled={uploadingCount > 0}>
                     <Upload className="mr-2 h-4 w-4" /> Upload File
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleCreateNewDocument} disabled={createItemMutation.isPending || saveMarkdownMutation.isPending}>
@@ -1063,7 +1168,7 @@ export default function DocumentManagement() {
                 variant="outline"
                 size="sm"
                 onClick={() => imageInputRef.current?.click()}
-                disabled={uploadFileMutation.isPending}
+                disabled={uploadingCount > 0}
               >
                 <ImagePlus className="mr-1 h-4 w-4" />
                 Upload Image
@@ -1072,7 +1177,7 @@ export default function DocumentManagement() {
                 variant="outline"
                 size="sm"
                 onClick={() => videoInputRef.current?.click()}
-                disabled={uploadFileMutation.isPending}
+                disabled={uploadingCount > 0}
               >
                 <Video className="mr-1 h-4 w-4" />
                 Upload Video
@@ -1081,7 +1186,7 @@ export default function DocumentManagement() {
                 variant="outline"
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={uploadFileMutation.isPending}
+                disabled={uploadingCount > 0}
               >
                 <Upload className="mr-1 h-4 w-4" />
                 Upload File
@@ -1112,37 +1217,51 @@ export default function DocumentManagement() {
         ref={imageInputRef}
         type="file"
         accept="image/*"
+        multiple
         className="hidden"
         onChange={async (event) => {
-          const file = event.target.files?.[0];
+          const files = Array.from(event.target.files ?? []);
           event.target.value = "";
-          if (!file) return;
-          await handleUploadFile(file);
+          await handleUploadFiles(files);
         }}
       />
       <input
         ref={videoInputRef}
         type="file"
         accept="video/*"
+        multiple
         className="hidden"
         onChange={async (event) => {
-          const file = event.target.files?.[0];
+          const files = Array.from(event.target.files ?? []);
           event.target.value = "";
-          if (!file) return;
-          await handleUploadFile(file);
+          await handleUploadFiles(files);
         }}
       />
       <input
         ref={fileInputRef}
         type="file"
         accept=".pdf,.md,.markdown,.txt,.csv,.json,.html,.htm,.xml,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.mp3,.wav,.m4a,.ogg"
+        multiple
         className="hidden"
         onChange={async (event) => {
-          const file = event.target.files?.[0];
+          const files = Array.from(event.target.files ?? []);
           event.target.value = "";
-          if (!file) return;
-          await handleUploadFile(file);
+          await handleUploadFiles(files);
         }}
+      />
+
+      <CreateFolderDialog
+        open={isCreateFolderOpen}
+        onOpenChange={setIsCreateFolderOpen}
+        parentId={currentFolderId}
+        onCreated={(folderId) => {
+          // Optionally navigate into the new folder
+        }}
+      />
+
+      <ShareLibraryDialog
+        open={isShareLibraryOpen}
+        onOpenChange={setIsShareLibraryOpen}
       />
 
       <main className={cn(
@@ -1222,6 +1341,81 @@ export default function DocumentManagement() {
                   </div>
                 ) : (
                   <div className="flex flex-1 min-h-0 flex-col overflow-hidden p-3 gap-2">
+                    {/* Mobile folder breadcrumb + toolbar */}
+                    {queryState.scope === "my_library" && (
+                      <div className="shrink-0 space-y-1.5">
+                        <nav className="flex min-w-0 flex-wrap items-center gap-1 text-xs text-slate-600">
+                          <button
+                            type="button"
+                            className="flex items-center gap-1 rounded px-1 py-0.5 hover:bg-slate-100"
+                            onClick={() => navigateToFolder(null)}
+                          >
+                            <Home className="h-3 w-3" />
+                            <span>Library</span>
+                          </button>
+                          {folderPath.map((seg, idx) => (
+                            <span key={seg.id} className="flex items-center gap-1">
+                              <ChevronRight className="h-3 w-3 text-slate-400" />
+                              <button
+                                type="button"
+                                className={cn(
+                                  "truncate max-w-[100px] rounded px-1 py-0.5 hover:bg-slate-100",
+                                  idx === folderPath.length - 1 && "font-semibold text-slate-900",
+                                )}
+                                onClick={() => navigateToFolder(seg.id)}
+                              >
+                                {seg.title}
+                              </button>
+                            </span>
+                          ))}
+                        </nav>
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 gap-1 rounded-lg px-2 text-xs"
+                            onClick={() => setIsCreateFolderOpen(true)}
+                          >
+                            <FolderPlus className="h-3 w-3" />
+                            New Folder
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 gap-1 rounded-lg px-2 text-xs"
+                            onClick={() => setIsShareLibraryOpen(true)}
+                          >
+                            <Share2 className="h-3 w-3" />
+                            Share
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Mobile batch-delete bar */}
+                    {selectedItemIds.size > 0 && (
+                      <div className="shrink-0 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5">
+                        <span className="text-xs font-medium text-red-700">
+                          {selectedItemIds.size} selected
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setSelectedItemIds(new Set())}>
+                            Clear
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="h-6 gap-1 text-xs"
+                            onClick={handleBatchDelete}
+                            disabled={deleteItemsMutation.isPending}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            Trash
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="shrink-0 grid gap-2 rounded-xl border border-slate-200 bg-slate-50/80 p-2">
                       <div className="relative">
                         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -1244,6 +1438,34 @@ export default function DocumentManagement() {
                           <SelectItem value="created_desc">Newest created first</SelectItem>
                         </SelectContent>
                       </Select>
+                      <Select
+                        value={queryState.itemType ?? "all"}
+                        onValueChange={(value) =>
+                          setQueryState((prev) => ({ ...prev, itemType: value === "all" ? undefined : value }))
+                        }
+                      >
+                        <SelectTrigger
+                          className={cn(
+                            "h-10 rounded-xl border-slate-300 bg-white",
+                            queryState.itemType && "border-sky-400 bg-sky-50 text-sky-700",
+                          )}
+                        >
+                          <SelectValue placeholder="All file types" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All file types</SelectItem>
+                          <SelectItem value="image">Images</SelectItem>
+                          <SelectItem value="video">Videos</SelectItem>
+                          <SelectItem value="audio">Audio</SelectItem>
+                          <SelectItem value="md">Markdown</SelectItem>
+                          <SelectItem value="document">Documents</SelectItem>
+                          <SelectItem value="spreadsheet">Spreadsheets</SelectItem>
+                          <SelectItem value="presentation">Presentations</SelectItem>
+                          <SelectItem value="pdf">PDF</SelectItem>
+                          <SelectItem value="text">Text files</SelectItem>
+                          <SelectItem value="file">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="flex-1 overflow-y-auto">
                       {listError && (
@@ -1256,7 +1478,7 @@ export default function DocumentManagement() {
                         selectedId={selectedId}
                         isLoading={listLoading}
                         className="h-auto"
-                        emptyMessage="No documents match the selected scope and filters."
+                        emptyMessage={currentFolderId ? "This folder is empty." : "No documents match the selected scope and filters."}
                         onSelect={(item) => {
                           setPendingAutoSelectId(null);
                           setProvisionalSelectedItem(null);
@@ -1267,7 +1489,10 @@ export default function DocumentManagement() {
                           setProvisionalSelectedItem(null);
                           openEditorTab(item, { scope: queryState.scope });
                         }}
-                        onDelete={handleDeleteItem}
+                        onDelete={handleDeleteItemWithFolderCheck}
+                        onFolderOpen={handleFolderOpen}
+                        selectedIds={selectedItemIds}
+                        onSelectionChange={setSelectedItemIds}
                       />
                     </div>
                   </div>
@@ -1484,6 +1709,88 @@ export default function DocumentManagement() {
                 </div>
               ) : (
                 <>
+                  {/* Folder breadcrumb + toolbar */}
+                  {queryState.scope === "my_library" && (
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                      {/* Breadcrumb */}
+                      <nav className="flex min-w-0 flex-1 items-center gap-1 text-sm text-slate-600">
+                        <button
+                          type="button"
+                          className="flex items-center gap-1 rounded px-1 py-0.5 hover:bg-slate-100 hover:text-slate-900"
+                          onClick={() => navigateToFolder(null)}
+                        >
+                          <Home className="h-3.5 w-3.5" />
+                          <span>Library</span>
+                        </button>
+                        {folderPath.map((seg, idx) => (
+                          <span key={seg.id} className="flex items-center gap-1">
+                            <ChevronRight className="h-3 w-3 text-slate-400" />
+                            <button
+                              type="button"
+                              className={cn(
+                                "truncate rounded px-1 py-0.5 hover:bg-slate-100 hover:text-slate-900",
+                                idx === folderPath.length - 1 && "font-semibold text-slate-900",
+                              )}
+                              onClick={() => navigateToFolder(seg.id)}
+                            >
+                              {seg.title}
+                            </button>
+                          </span>
+                        ))}
+                      </nav>
+                      {/* Folder action buttons */}
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 gap-1.5 rounded-lg px-2.5 text-xs"
+                          onClick={() => setIsCreateFolderOpen(true)}
+                        >
+                          <FolderPlus className="h-3.5 w-3.5" />
+                          New Folder
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 gap-1.5 rounded-lg px-2.5 text-xs"
+                          onClick={() => setIsShareLibraryOpen(true)}
+                        >
+                          <Share2 className="h-3.5 w-3.5" />
+                          Share
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Batch-delete bar */}
+                  {selectedItemIds.size > 0 && (
+                    <div className="mb-3 flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-3 py-2">
+                      <span className="text-sm font-medium text-red-700">
+                        {selectedItemIds.size} item(s) selected
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs text-slate-600"
+                          onClick={() => setSelectedItemIds(new Set())}
+                        >
+                          Clear
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="h-7 gap-1.5 text-xs"
+                          onClick={handleBatchDelete}
+                          disabled={deleteItemsMutation.isPending}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Move to Trash
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="mb-4 grid gap-2 rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
                     <div className="relative">
                       <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -1506,6 +1813,34 @@ export default function DocumentManagement() {
                         <SelectItem value="created_desc">Newest created first</SelectItem>
                       </SelectContent>
                     </Select>
+                    <Select
+                      value={queryState.itemType ?? "all"}
+                      onValueChange={(value) =>
+                        setQueryState((prev) => ({ ...prev, itemType: value === "all" ? undefined : value }))
+                      }
+                    >
+                      <SelectTrigger
+                        className={cn(
+                          "h-11 rounded-xl border-slate-300 bg-white",
+                          queryState.itemType && "border-sky-400 bg-sky-50 text-sky-700",
+                        )}
+                      >
+                        <SelectValue placeholder="All file types" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All file types</SelectItem>
+                        <SelectItem value="image">Images</SelectItem>
+                        <SelectItem value="video">Videos</SelectItem>
+                        <SelectItem value="audio">Audio</SelectItem>
+                        <SelectItem value="md">Markdown</SelectItem>
+                        <SelectItem value="document">Documents</SelectItem>
+                        <SelectItem value="spreadsheet">Spreadsheets</SelectItem>
+                        <SelectItem value="presentation">Presentations</SelectItem>
+                        <SelectItem value="pdf">PDF</SelectItem>
+                        <SelectItem value="text">Text files</SelectItem>
+                        <SelectItem value="file">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="overflow-y-auto xl:h-[1000px]">
@@ -1519,7 +1854,7 @@ export default function DocumentManagement() {
                       selectedId={selectedId}
                       isLoading={listLoading}
                       className="h-auto"
-                      emptyMessage="No documents match the selected scope and filters."
+                      emptyMessage={currentFolderId ? "This folder is empty." : "No documents match the selected scope and filters."}
                       onSelect={(item) => {
                         setPendingAutoSelectId(null);
                         setProvisionalSelectedItem(null);
@@ -1530,7 +1865,10 @@ export default function DocumentManagement() {
                         setProvisionalSelectedItem(null);
                         openEditorTab(item, { scope: queryState.scope });
                       }}
-                      onDelete={handleDeleteItem}
+                      onDelete={handleDeleteItemWithFolderCheck}
+                      onFolderOpen={handleFolderOpen}
+                      selectedIds={selectedItemIds}
+                      onSelectionChange={setSelectedItemIds}
                     />
                   </div>
                 </>

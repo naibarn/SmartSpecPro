@@ -10,6 +10,8 @@ const {
   mockGenerateImageAsync,
   mockGetTask,
   mockAddSlideToDeck,
+  mockGetPresentationDeckDetail,
+  mockUpdateSlideInDeck,
   mockHasEnoughCredits,
   mockAuditLog,
   mockGetBuiltInPreset,
@@ -29,6 +31,8 @@ const {
   mockGenerateImageAsync: vi.fn(),
   mockGetTask: vi.fn(),
   mockAddSlideToDeck: vi.fn(),
+  mockGetPresentationDeckDetail: vi.fn(),
+  mockUpdateSlideInDeck: vi.fn(),
   mockHasEnoughCredits: vi.fn(),
   mockAuditLog: vi.fn(),
   mockGetBuiltInPreset: vi.fn(),
@@ -64,6 +68,8 @@ vi.mock("../mediaGenerationService", () => ({
 
 vi.mock("../presentationService", () => ({
   addSlideToDeck: mockAddSlideToDeck,
+  getPresentationDeckDetail: mockGetPresentationDeckDetail,
+  updateSlideInDeck: mockUpdateSlideInDeck,
 }));
 
 vi.mock("../creditService", () => ({
@@ -76,6 +82,28 @@ vi.mock("../auditLogger", () => ({
 
 vi.mock("@shared/presentation/aiStylePresets", () => ({
   getBuiltInPreset: mockGetBuiltInPreset,
+  BUILT_IN_PRESETS: [
+    {
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: {
+        background: "#1a1a2e",
+        backgroundAlt: "#16213e",
+        primary: "#e94560",
+        secondary: "#0f3460",
+        text: "#ffffff",
+        textMuted: "#a0a0b0",
+        cardBg: ["#16213e", "#1a1a3e", "#0f2460"],
+        overlay: "rgba(0,0,0,0.55)",
+      },
+      typography: {
+        titleFontFamily: "Inter",
+        bodyFontFamily: "Inter",
+        titleFontWeight: 700,
+        bodyFontWeight: 400,
+      },
+    },
+  ],
 }));
 
 vi.mock("@shared/presentation/svgGraphicsCatalog", () => ({
@@ -112,6 +140,9 @@ import {
   estimateCreditCost,
   buildArticlePrompt,
   computeImagePollTimeoutMs,
+  assessSlideCoverage,
+  relayoutExistingSlide,
+  resolvePendingMediaForDeck,
 } from "../aiPresentationService";
 import type { GenerateAIDraftInput } from "@shared/presentation/aiTypes";
 import type { PresentationActor } from "../presentationService";
@@ -279,6 +310,271 @@ describe("buildArticlePrompt", () => {
   });
 });
 
+describe("assessSlideCoverage", () => {
+  it("returns lower coverage score when major article points are missing from slides", () => {
+    const article = `
+      AI improves diagnosis accuracy.
+      AI automates repetitive tasks for doctors.
+      AI helps hospitals predict patient flow.
+    `;
+    const slides = [
+      {
+        templateId: "hero_center" as const,
+        title: "AI in Healthcare",
+        body: ["Diagnosis accuracy"],
+        graphicCategory: "Health" as const,
+        imagePromptKeywords: "medical AI",
+      },
+    ];
+
+    const result = assessSlideCoverage(article, slides);
+    expect(result.totalPoints).toBeGreaterThan(0);
+    expect(result.score).toBeLessThan(1);
+  });
+});
+
+describe("relayoutExistingSlide", () => {
+  it("reuses existing image url and preserves transition/duration", () => {
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({
+      slideContent: {
+        elements: [
+          { id: "new-image-1", type: "image", x: 0, y: 0, width: 1280, height: 720, src: "https://cdn.example.com/existing.jpg", alt: "cover" },
+          { id: "new-text-1", type: "text", x: 100, y: 100, width: 700, height: 120, text: "Relayout title", color: "#ffffff" },
+        ],
+      },
+      warnings: [],
+    });
+
+    const output = relayoutExistingSlide({
+      slideTitle: "Original title",
+      deckTitle: "Deck",
+      slideIndex: 1,
+      totalSlides: 5,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "img-1", type: "image", x: 0, y: 0, width: 1280, height: 720, src: "https://cdn.example.com/existing.jpg", alt: "hero", imagePrompt: "prompt", imageModelId: "flux-2.0" },
+          { id: "t-1", type: "text", x: 120, y: 110, width: 900, height: 130, text: "Original title", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+          { id: "t-2", type: "text", x: 120, y: 270, width: 900, height: 80, text: "Point one", color: "#ffffff", fontSize: 34 },
+        ],
+        transition: "fade",
+        durationMs: 5000,
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+      },
+      includeSvg: true,
+      layoutSeed: 2,
+    });
+
+    expect(mockGenerateSlide).toHaveBeenCalledWith(expect.objectContaining({
+      imageUrl: "https://cdn.example.com/existing.jpg",
+      canvasWidth: 1280,
+      canvasHeight: 720,
+    }));
+    expect(output.slideContent.transition).toBe("fade");
+    expect(output.slideContent.durationMs).toBe(5000);
+    expect(output.applied.reusedImage).toBe(true);
+  });
+
+  it("preserves multiline body text and adds Thai number spacing for readability", () => {
+    let capturedLayoutInput: any = null;
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockGenerateSlide.mockImplementation((input: unknown) => {
+      capturedLayoutInput = input;
+      return {
+        slideContent: {
+          elements: [],
+        },
+        warnings: [],
+      };
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+
+    relayoutExistingSlide({
+      slideTitle: "ลักษณะการขับถ่ายของทารกที่อายุเกิน1เดือน",
+      deckTitle: "Deck",
+      slideIndex: 1,
+      totalSlides: 5,
+      templateId: "split_right_image",
+      includeSvg: false,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "t-title", type: "text", x: 100, y: 90, width: 1000, height: 140, text: "ลักษณะการขับถ่ายของทารกที่อายุเกิน1เดือน", color: "#ffffff", fontSize: 64, fontWeight: "700" },
+          { id: "t-body", type: "text", x: 110, y: 280, width: 1000, height: 180, text: "ทารกอายุ1เดือนขึ้นไป\nถ่าย1ไม่ถ่าย1เสมอ\nหากถ่าย2วันไม่ถ่ายควรพบแพทย์", color: "#ffffff", fontSize: 28 },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+      },
+    });
+
+    expect(capturedLayoutInput).toBeTruthy();
+    expect(capturedLayoutInput.slideData.title).toContain("1 เดือน");
+    expect(capturedLayoutInput.slideData.body).toContain("ทารกอายุ 1 เดือนขึ้นไป");
+    expect(capturedLayoutInput.slideData.body).toContain("ถ่าย 1 ไม่ถ่าย 1 เสมอ");
+    expect(capturedLayoutInput.slideData.body).toContain("หากถ่าย 2 วันไม่ถ่ายควรพบแพทย์");
+  });
+
+  it("forces header/footer off for auto relayout to avoid adding chrome", () => {
+    let capturedLayoutInput: any = null;
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+      header: { enabled: true, height: 60, backgroundColor: "#101010", showDeckTitle: true },
+      footer: { enabled: true, height: 42, backgroundColor: "#101010", showPageNumber: true },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockImplementation((input: unknown) => {
+      capturedLayoutInput = input;
+      return {
+        slideContent: {
+          elements: [],
+        },
+        warnings: [],
+      };
+    });
+
+    relayoutExistingSlide({
+      slideTitle: "Slide title",
+      deckTitle: "Deck",
+      slideIndex: 2,
+      totalSlides: 5,
+      includeSvg: true,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "header-band", type: "rect", x: 0, y: 0, width: 1280, height: 60, fill: "#101010" },
+          { id: "footer-band", type: "rect", x: 0, y: 680, width: 1280, height: 40, fill: "#101010" },
+          { id: "img", type: "image", x: 640, y: 0, width: 640, height: 720, src: "https://cdn.example.com/bg.jpg", alt: "bg" },
+          { id: "title", type: "text", x: 72, y: 170, width: 520, height: 120, text: "Slide title", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+          { id: "body", type: "text", x: 72, y: 340, width: 520, height: 180, text: "Point one\nPoint two", color: "#ffffff", fontSize: 30 },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+      },
+    });
+
+    expect(capturedLayoutInput).toBeTruthy();
+    expect(capturedLayoutInput.stylePreset.header.enabled).toBe(false);
+    expect(capturedLayoutInput.stylePreset.footer.enabled).toBe(false);
+  });
+
+  it("applies geometric crop to the main relayout image when enabled", () => {
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+      header: { enabled: true, height: 60, backgroundColor: "#101010", showDeckTitle: true },
+      footer: { enabled: true, height: 42, backgroundColor: "#101010", showPageNumber: true },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({
+      slideContent: {
+        elements: [
+          { id: "img-main", type: "image", x: 0, y: 0, width: 900, height: 720, src: "https://cdn.example.com/bg.jpg", alt: "hero" },
+          { id: "img-deco", type: "image", x: 930, y: 20, width: 120, height: 120, src: "", alt: "deco", svgContent: "<svg></svg>" },
+        ],
+      },
+      warnings: [],
+    });
+
+    const output = relayoutExistingSlide({
+      slideTitle: "Slide title",
+      deckTitle: "Deck",
+      slideIndex: 2,
+      totalSlides: 5,
+      includeSvg: true,
+      includeGeometricCrop: true,
+      geometricCropShape: "circle",
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "img", type: "image", x: 640, y: 0, width: 640, height: 720, src: "https://cdn.example.com/bg.jpg", alt: "bg" },
+          { id: "title", type: "text", x: 72, y: 170, width: 520, height: 120, text: "Slide title", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+          { id: "body", type: "text", x: 72, y: 340, width: 520, height: 180, text: "Point one\nPoint two", color: "#ffffff", fontSize: 30 },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+      },
+    });
+
+    const croppedImage = output.slideContent.elements.find((element) => element.id === "img-main");
+    expect(croppedImage?.type).toBe("image");
+    expect((croppedImage as any)?.svgContent).toContain("<clipPath");
+    expect((croppedImage as any)?.svgContent).toContain("<circle");
+    expect(output.warnings.some((warning) => warning.includes("geometric image crop shape"))).toBe(true);
+  });
+
+  it("adds geometric accents without cropping when accents are enabled", () => {
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+      header: { enabled: true, height: 60, backgroundColor: "#101010", showDeckTitle: true },
+      footer: { enabled: true, height: 42, backgroundColor: "#101010", showPageNumber: true },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "img-main", type: "image", x: 0, y: 0, width: 900, height: 720, src: "https://cdn.example.com/bg.jpg", alt: "hero" },
+          { id: "title", type: "text", x: 72, y: 170, width: 520, height: 120, text: "Slide title", color: "#ffffff" },
+        ],
+      },
+      warnings: [],
+    });
+
+    const output = relayoutExistingSlide({
+      slideTitle: "Slide title",
+      deckTitle: "Deck",
+      slideIndex: 2,
+      totalSlides: 5,
+      includeSvg: true,
+      includeGeometricAccents: true,
+      geometricAccentShape: "triangle",
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "img", type: "image", x: 640, y: 0, width: 640, height: 720, src: "https://cdn.example.com/bg.jpg", alt: "bg" },
+          { id: "title", type: "text", x: 72, y: 170, width: 520, height: 120, text: "Slide title", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+      },
+    });
+
+    const accentImages = output.slideContent.elements.filter((element) => (
+      element.type === "image" && String(element.alt || "").toLowerCase().includes("geometric accent")
+    ));
+    expect(accentImages.length).toBeGreaterThanOrEqual(2);
+    expect(accentImages.every((element) => typeof (element as any).svgContent === "string")).toBe(true);
+    expect(accentImages.some((element) => String((element as any).svgContent).includes("<polygon"))).toBe(true);
+    const titleIndex = output.slideContent.elements.findIndex((element) => element.id === "title");
+    const mainImageIndex = output.slideContent.elements.findIndex((element) => element.id === "img-main");
+    const accentIndexes = output.slideContent.elements
+      .map((element, index) => ({ element, index }))
+      .filter(({ element }) => (
+        element.type === "image" && String(element.alt || "").toLowerCase().includes("geometric accent")
+      ))
+      .map(({ index }) => index);
+    expect(accentIndexes.every((index) => index > mainImageIndex)).toBe(true);
+    expect(accentIndexes.every((index) => index < titleIndex)).toBe(true);
+    expect(output.warnings.some((warning) => warning.includes("Added geometric accents"))).toBe(true);
+  });
+});
+
 describe("generateAIDraft - happy path", () => {
   it("completes full 6-phase pipeline", async () => {
     setupHappyPath();
@@ -317,6 +613,15 @@ describe("generateAIDraft - happy path", () => {
     const progress = JSON.parse(lastSetCall![1] as string);
     expect(progress.completed).toBe(true);
     expect(progress.result.slidesAdded).toBe(3);
+  });
+
+  it("tops up sparse slide bodies so split output is not overly thin", async () => {
+    setupHappyPath();
+    await generateAIDraft(buildMockInput(), buildMockActor(), "test-token", "task-123");
+
+    const firstLayoutCall = mockGenerateSlide.mock.calls[0]?.[0];
+    expect(firstLayoutCall).toBeDefined();
+    expect(firstLayoutCall.slideData.body.length).toBeGreaterThanOrEqual(2);
   });
 });
 
@@ -756,5 +1061,69 @@ describe("generateAIDraft - credit estimation", () => {
     await generateAIDraft(input, buildMockActor(), "test-token", "task-123");
 
     expect(mockHasEnoughCredits).toHaveBeenCalledWith(1, 738);
+  });
+});
+
+describe("resolvePendingMediaForDeck", () => {
+  it("replaces placeholder with resolved media and removes pending job", async () => {
+    const actor = buildMockActor();
+    mockGetPresentationDeckDetail.mockResolvedValue({
+      deck: { id: 1, version: 10 },
+      slides: [
+        {
+          id: 11,
+          deckId: 1,
+          orderIndex: 0,
+          version: 3,
+          title: "Slide A",
+          notes: null,
+          slideContent: {
+            elements: [
+              { id: "ph-1", type: "rect", x: 100, y: 120, width: 400, height: 260, fill: "#223" },
+            ],
+            pendingMediaJobs: [
+              {
+                id: "pmj-1",
+                mediaType: "image",
+                mediaTaskId: "task-1",
+                targetElementId: "ph-1",
+                targetX: 100,
+                targetY: 120,
+                targetWidth: 400,
+                targetHeight: 260,
+                status: "pending",
+                createdAt: "2026-03-02T12:00:00.000Z",
+              },
+            ],
+          },
+        },
+      ],
+      assets: [],
+    });
+    mockGetTask.mockResolvedValue({
+      id: "task-1",
+      status: "completed",
+      resultUrl: "https://cdn.example.com/resolved.jpg",
+    });
+    mockUpdateSlideInDeck.mockResolvedValue({ id: 11, version: 4 });
+
+    const result = await resolvePendingMediaForDeck(
+      { deckId: 1, maxJobs: 10 },
+      actor,
+      "test-token",
+    );
+
+    expect(result.jobsChecked).toBe(1);
+    expect(result.jobsResolved).toBe(1);
+    expect(result.jobsRemaining).toBe(0);
+    expect(mockUpdateSlideInDeck).toHaveBeenCalledTimes(1);
+
+    const payload = mockUpdateSlideInDeck.mock.calls[0]?.[0];
+    expect(payload.slideContent.pendingMediaJobs).toBeUndefined();
+    expect(payload.slideContent.elements[0]).toMatchObject({
+      id: "ph-1",
+      type: "image",
+      src: "https://cdn.example.com/resolved.jpg",
+    });
   });
 });

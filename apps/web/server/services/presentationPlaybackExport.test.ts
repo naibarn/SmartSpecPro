@@ -6,12 +6,15 @@ import { PRESENTATION_ERROR_CODE, PRESENTATION_EXPORT_SCHEMA_VERSION } from "@sh
 
 import { PresentationServiceError } from "./presentationService";
 import {
+  buildPlayDeckPayload,
   buildPresentationRenderSpec,
   buildSlideshowPayload,
   getPresentationExportStatus,
   resetPresentationExportStateForTests,
   triggerPresentationExport,
 } from "./presentationPlaybackExport";
+import { getDb } from "../db";
+import { storagePresignGet } from "../storage";
 
 // Default: no DB (same as real test environment without DATABASE_URL).
 // Individual tests can override getDb with vi.spyOn.
@@ -86,6 +89,8 @@ describe("presentationPlaybackExport", () => {
   beforeEach(() => {
     resetPresentationExportStateForTests();
     vi.clearAllMocks();
+    vi.mocked(getDb).mockResolvedValue(null);
+    vi.mocked(storagePresignGet).mockResolvedValue(null);
   });
 
   it("builds deterministic slideshow payload order and default durations", () => {
@@ -97,6 +102,70 @@ describe("presentationPlaybackExport", () => {
     expect(payload.slides.map((slide) => slide.slideId)).toEqual([1, 2]);
     expect(payload.slides.map((slide) => slide.durationMs)).toEqual([3000, 2500]);
     expect(payload.slides.map((slide) => slide.transition)).toEqual(["cut", "fade"]);
+  });
+
+  it("resolves /api/storage/files sourceUrl into a presigned audio URL for play deck payload", async () => {
+    const selectWhere = vi.fn().mockResolvedValue([
+      { id: 91, sourceUrl: "/api/storage/files/audio/project/theme.mp3" },
+    ]);
+    const selectFrom = vi.fn(() => ({ where: selectWhere }));
+    const dbMock = {
+      select: vi.fn(() => ({ from: selectFrom })),
+    } as any;
+    vi.mocked(getDb).mockResolvedValue(dbMock);
+    vi.mocked(storagePresignGet).mockResolvedValue({
+      key: "audio/project/theme.mp3",
+      url: "https://signed.example.com/audio/project/theme.mp3",
+    });
+
+    const detail = buildDeckDetail({
+      deck: {
+        ...buildDeckDetail().deck,
+        projectAudioTrack: {
+          libraryItemId: 91,
+          volume: 0.7,
+          startAtMs: 0,
+          endAtMs: null,
+          loop: false,
+          fadeOutMs: null,
+        },
+      },
+      slides: [
+        {
+          ...buildDeckDetail().slides[0],
+          id: 1,
+          orderIndex: 0,
+          audioTrack: {
+            libraryItemId: 91,
+            volume: 1,
+            startAtMs: 500,
+            endAtMs: 2500,
+          },
+        },
+      ],
+    });
+
+    const payload = await buildPlayDeckPayload(
+      detail as any,
+      {
+        schemaVersion: "presentation_slideshow_v1",
+        deckId: 101,
+        generatedAt: new Date("2026-02-22T10:00:00.000Z"),
+        slides: [
+          {
+            slideId: 1,
+            orderIndex: 0,
+            title: "First",
+            transition: "cut",
+            durationMs: 3000,
+          },
+        ],
+      } as any,
+    );
+
+    expect(storagePresignGet).toHaveBeenCalledWith("audio/project/theme.mp3", 3600);
+    expect(payload.slides[0]?.audioTrack?.url).toBe("https://signed.example.com/audio/project/theme.mp3");
+    expect(payload.projectAudioTrack?.url).toBe("https://signed.example.com/audio/project/theme.mp3");
   });
 
   it("degrades unsupported transition inputs and emits stable warning codes", async () => {

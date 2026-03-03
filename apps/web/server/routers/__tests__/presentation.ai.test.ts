@@ -2,11 +2,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const {
   mockGenerateAIDraft,
+  mockRelayoutExistingSlide,
+  mockResolvePendingMediaForDeck,
   mockRedisSet,
   mockRedisGet,
   mockRedisDel,
 } = vi.hoisted(() => ({
   mockGenerateAIDraft: vi.fn(),
+  mockRelayoutExistingSlide: vi.fn(),
+  mockResolvePendingMediaForDeck: vi.fn(),
   mockRedisSet: vi.fn(),
   mockRedisGet: vi.fn(),
   mockRedisDel: vi.fn(),
@@ -14,6 +18,8 @@ const {
 
 vi.mock("../../services/aiPresentationService", () => ({
   generateAIDraft: mockGenerateAIDraft,
+  relayoutExistingSlide: mockRelayoutExistingSlide,
+  resolvePendingMediaForDeck: mockResolvePendingMediaForDeck,
 }));
 
 vi.mock("../../services/redis", () => ({
@@ -41,6 +47,13 @@ beforeEach(() => {
   mockRedisGet.mockResolvedValue(null);
   mockRedisDel.mockResolvedValue(1);
   mockGenerateAIDraft.mockResolvedValue(undefined);
+  mockResolvePendingMediaForDeck.mockResolvedValue({
+    slidesUpdated: 0,
+    jobsChecked: 0,
+    jobsResolved: 0,
+    jobsRemaining: 0,
+    warnings: [],
+  });
   process.env.PRESENTATION_EDITOR_ENABLED = "true";
   process.env.PRESENTATION_AI_GENERATION_ENABLED = "true";
 });

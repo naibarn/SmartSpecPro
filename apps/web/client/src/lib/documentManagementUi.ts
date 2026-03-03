@@ -24,6 +24,7 @@ export interface DocumentLibraryItem {
   id: number;
   item_type: string;
   title: string;
+  description?: string | null;
   source: string;
   source_url: string | null;
   thumbnail_url?: string | null;
@@ -32,6 +33,7 @@ export interface DocumentLibraryItem {
   status: "draft" | "ready" | "indexing" | "archived" | "failed";
   updated_at: string;
   created_at: string;
+  parent_id?: number | null;
 }
 
 export interface DocumentQueryState {
@@ -42,6 +44,7 @@ export interface DocumentQueryState {
   itemType?: string;
   status?: string;
   docId?: number;
+  folderId?: number | null;
 }
 
 export const DEFAULT_DOCUMENT_QUERY_STATE: DocumentQueryState = {
@@ -57,11 +60,14 @@ export function parseDocumentQueryState(search: string): DocumentQueryState {
   const sort = params.get("sort");
   const mode = params.get("mode");
   const docIdRaw = params.get("doc");
+  const folderIdRaw = params.get("folder");
   const query = params.get("q") || "";
   const itemType = params.get("type") || undefined;
   const status = params.get("status") || undefined;
   const docIdParsed = docIdRaw ? Number.parseInt(docIdRaw, 10) : NaN;
   const docId = Number.isFinite(docIdParsed) && docIdParsed > 0 ? docIdParsed : undefined;
+  const folderIdParsed = folderIdRaw ? Number.parseInt(folderIdRaw, 10) : NaN;
+  const folderId = Number.isFinite(folderIdParsed) && folderIdParsed > 0 ? folderIdParsed : null;
 
   return {
     scope:
@@ -78,6 +84,7 @@ export function parseDocumentQueryState(search: string): DocumentQueryState {
     itemType,
     status,
     docId,
+    folderId,
   };
 }
 
@@ -99,6 +106,9 @@ export function buildDocumentQueryString(state: DocumentQueryState): string {
   }
   if (state.status) {
     params.set("status", state.status);
+  }
+  if (state.folderId != null) {
+    params.set("folder", String(state.folderId));
   }
   return params.toString();
 }

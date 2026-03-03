@@ -106,13 +106,31 @@ describe("GET /internal/slide-render/:deckId/:slideIndex", () => {
   // Access control — IP address checks
   // -------------------------------------------------------------------------
 
-  it("returns 403 for non-localhost remote address (simulate ::2)", async () => {
+  it("returns 403 for non-internal remote address (simulate ::2)", async () => {
     const app = await buildApp("::2");
     const token = makeValidToken();
     const res = await request(app)
       .get(`/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}`)
       .set("X-Internal-Token", token);
     expect(res.status).toBe(403);
+  });
+
+  it("accepts Docker bridge gateway address 172.17.0.1 (RFC 1918)", async () => {
+    const app = await buildApp("172.17.0.1");
+    const token = makeValidToken();
+    const res = await request(app)
+      .get(`/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}`)
+      .set("X-Internal-Token", token);
+    expect(res.status).toBe(200);
+  });
+
+  it("accepts 10.x.x.x private address (RFC 1918)", async () => {
+    const app = await buildApp("10.0.0.1");
+    const token = makeValidToken();
+    const res = await request(app)
+      .get(`/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}`)
+      .set("X-Internal-Token", token);
+    expect(res.status).toBe(200);
   });
 
   it("accepts req.socket.remoteAddress === '127.0.0.1' (IPv4 loopback)", async () => {

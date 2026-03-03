@@ -309,11 +309,30 @@ export const presentationSlideElementSchema = z.discriminatedUnion("type", [
   presentationLineElementSchema,
 ]);
 
+export const presentationPendingMediaJobSchema = z.object({
+  id: z.string().min(1).max(128),
+  mediaType: z.enum(["image", "video"]),
+  mediaTaskId: z.string().min(1).max(256),
+  providerTaskId: z.string().max(256).optional(),
+  targetElementId: z.string().max(128).optional(),
+  targetX: presentationElementCoordinateSchema,
+  targetY: presentationElementCoordinateSchema,
+  targetWidth: presentationElementSizeSchema,
+  targetHeight: presentationElementSizeSchema,
+  modelId: z.string().max(256).optional(),
+  prompt: z.string().max(4000).optional(),
+  status: z.enum(["pending", "processing", "failed"]).optional(),
+  reason: z.string().max(256).optional(),
+  createdAt: z.string().min(1).max(64),
+  lastCheckedAt: z.string().min(1).max(64).optional(),
+}).strict();
+
 export const presentationSlideContentSchema = z.object({
   elements: z.array(presentationSlideElementSchema).max(PRESENTATION_LIMITS.maxElementsPerSlide),
   canvas: presentationCanvasSizeSchema.optional(),
   transition: presentationTransitionSchema.optional(),
   durationMs: z.number().finite().min(250).max(120_000).optional(),
+  pendingMediaJobs: z.array(presentationPendingMediaJobSchema).max(32).optional(),
 }).strict();
 
 export const presentationSlideshowSlideSchema = z.object({
@@ -404,6 +423,7 @@ export type PresentationSlideshowPayload = z.infer<typeof presentationSlideshowP
 export type PresentationRenderSpec = z.infer<typeof presentationRenderSpecSchema>;
 export type PresentationTransition = z.infer<typeof presentationTransitionSchema>;
 export type PresentationSlideElement = z.infer<typeof presentationSlideElementSchema>;
+export type PresentationPendingMediaJob = z.infer<typeof presentationPendingMediaJobSchema>;
 export type PresentationSlideContent = z.infer<typeof presentationSlideContentSchema>;
 export type PresentationExportResult = z.infer<typeof presentationExportResultSchema>;
 export type PresentationExportStatusResult = z.infer<typeof presentationExportStatusResultSchema>;

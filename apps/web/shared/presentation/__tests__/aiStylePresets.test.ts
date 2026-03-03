@@ -6,7 +6,7 @@ import {
 import { SlideStylePresetSchema, AI_STYLE_PRESET_IDS } from "../aiTypes";
 
 describe("Built-in Style Presets", () => {
-  it("all 5 built-in presets pass SlideStylePresetSchema validation", () => {
+  it("all built-in presets pass SlideStylePresetSchema validation", () => {
     for (const preset of BUILT_IN_PRESETS) {
       const result = SlideStylePresetSchema.safeParse(preset);
       expect(result.success, `Preset '${preset.id}' failed validation`).toBe(
@@ -37,8 +37,8 @@ describe("Built-in Style Presets", () => {
     expect(new Set(backgrounds).size).toBe(backgrounds.length);
   });
 
-  it("BUILT_IN_PRESETS array contains exactly 5 entries", () => {
-    expect(BUILT_IN_PRESETS).toHaveLength(5);
+  it("BUILT_IN_PRESETS array contains all style IDs from AI_STYLE_PRESET_IDS", () => {
+    expect(BUILT_IN_PRESETS).toHaveLength(AI_STYLE_PRESET_IDS.length);
   });
 
   it("each preset.colors has all required fields", () => {

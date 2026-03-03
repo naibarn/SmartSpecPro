@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { TRPCError } from "@trpc/server";
-import { and, count, desc, eq, gt, inArray, isNotNull, isNull, or } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 
 import { getDb } from "../db";
 import { storagePut, storageGet, storageDelete } from "../storage";
@@ -69,6 +69,7 @@ export interface CreateLibraryItemInput {
   sourceUrl?: string | null;
   thumbnailUrl?: string | null;
   sourceLink?: LibrarySourceLinkInput;
+  parentId?: number | null;
 }
 
 export interface UpdateLibraryItemInput {
@@ -154,6 +155,7 @@ export interface UploadLibraryFileInput {
   fileBase64: string;
   title?: string;
   visibility?: LibraryVisibility;
+  parentId?: number | null;
 }
 
 export interface UploadLibraryFileResult {
@@ -229,6 +231,8 @@ export interface LibraryDocumentListInput {
   limit?: number;
   offset?: number;
   filters?: LibraryDocumentFilters;
+  /** null = root level, number = inside that folder. Only applied for my_library scope. */
+  folderId?: number | null;
 }
 
 export interface LibraryDocumentListItem {
@@ -242,6 +246,7 @@ export interface LibraryDocumentListItem {
   source_url: string | null;
   thumbnail_url: string | null;
   owner_user_id: number;
+  parent_id: number | null;
   metadata: Record<string, unknown>;
   access_source: LibraryDocumentAccessSource;
   permission_level: LibraryPermissionLevel;
@@ -960,6 +965,7 @@ export async function createLibraryItem(
     .values({
       tenantId: actorTenantId,
       ownerUserId: actor.userId,
+      parentId: input.parentId ?? null,
       itemType: input.itemType,
       source: input.source,
       title: input.title,
@@ -1166,6 +1172,7 @@ export async function uploadLibraryFile(
       description: null,
       status: "indexing",
       visibility: input.visibility ?? "private",
+      parentId: input.parentId ?? null,
       metadata: {
         file_name: fileName,
         file_type: fileType,
@@ -1966,10 +1973,21 @@ export async function listLibraryDocuments(
   const groupIds = userGroupsList.map(g => String(g.id));
   const groupIdNums = userGroupsList.map(g => g.id);
 
+  // For my_library scope, apply folder-level filtering (folderId: null = root, number = folder children)
+  const applyFolderFilter = (input.scope === "my_library" || input.scope === undefined || input.scope === "all")
+    && "folderId" in input;
+  const folderCondition = applyFolderFilter
+    ? (input.folderId == null ? isNull(libraryItems.parentId) : eq(libraryItems.parentId, input.folderId))
+    : undefined;
+
   const itemRows = await db
     .select()
     .from(libraryItems)
-    .where(and(eq(libraryItems.tenantId, actorTenantId), isNull(libraryItems.deletedAt)))
+    .where(and(
+      eq(libraryItems.tenantId, actorTenantId),
+      isNull(libraryItems.deletedAt),
+      folderCondition,
+    ))
     .orderBy(desc(libraryItems.updatedAt), desc(libraryItems.createdAt), desc(libraryItems.id));
 
   console.log("[listLibraryDocuments] DB rows found:", itemRows.length, itemRows.map(r => ({ id: r.id, title: r.title, ownerUserId: r.ownerUserId, tenantId: r.tenantId, visibility: r.visibility, status: r.status })));
@@ -2047,6 +2065,7 @@ export async function listLibraryDocuments(
         source_url: item.sourceUrl,
         thumbnail_url: item.thumbnailUrl,
         owner_user_id: item.ownerUserId,
+        parent_id: item.parentId ?? null,
         metadata,
         access_source: accessSource,
         permission_level: item.ownerUserId === actor.userId
@@ -3246,4 +3265,195 @@ export async function removeGoogleDriveData(
   }
 
   return { itemsDeleted: itemIds.length, chunksDeleted, linksDeleted };
+}
+
+// ─── Folder support ──────────────────────────────────────────────────────────
+
+export interface LibraryFolderAncestor {
+  id: number;
+  title: string;
+}
+
+/**
+ * Create a folder item (itemType="folder") in the library.
+ */
+export async function createLibraryFolder(
+  input: { name: string; parentId?: number | null },
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<CreateLibraryItemResult> {
+  return createLibraryItem(
+    {
+      itemType: "folder",
+      source: "document_management",
+      title: input.name.trim(),
+      description: null,
+      status: "ready",
+      visibility: "private",
+      parentId: input.parentId ?? null,
+      metadata: { source_type: "folder" },
+    },
+    actor,
+    dbClient,
+  );
+}
+
+/**
+ * Returns the number of non-deleted direct children inside a folder.
+ */
+export async function getLibraryFolderChildCount(
+  folderId: number,
+  tenantId: LibraryTenantId,
+  dbClient?: DbClient,
+): Promise<number> {
+  const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(tenantId);
+  const [row] = await db
+    .select({ cnt: count(libraryItems.id) })
+    .from(libraryItems)
+    .where(
+      and(
+        eq(libraryItems.tenantId, actorTenantId),
+        eq(libraryItems.parentId, folderId),
+        isNull(libraryItems.deletedAt),
+      ),
+    );
+  return Number(row?.cnt ?? 0);
+}
+
+/**
+ * Returns the ancestor chain from root to the given folder (for breadcrumb).
+ * The folder itself is included as the last element.
+ */
+export async function getLibraryFolderAncestors(
+  folderId: number,
+  tenantId: LibraryTenantId,
+  dbClient?: DbClient,
+): Promise<LibraryFolderAncestor[]> {
+  const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(tenantId);
+
+  const ancestors: LibraryFolderAncestor[] = [];
+  let currentId: number | null = folderId;
+
+  // Walk up the tree (max 20 levels to prevent runaway loops)
+  for (let depth = 0; depth < 20 && currentId != null; depth++) {
+    const idToFetch: number = currentId;
+    const rows: Array<{ id: number; title: string; parentId: number | null }> = await db
+      .select({ id: libraryItems.id, title: libraryItems.title, parentId: libraryItems.parentId })
+      .from(libraryItems)
+      .where(and(eq(libraryItems.id, idToFetch), eq(libraryItems.tenantId, actorTenantId)))
+      .limit(1);
+
+    const row = rows[0];
+    if (!row) break;
+    ancestors.unshift({ id: row.id, title: row.title });
+    currentId = row.parentId ?? null;
+  }
+
+  return ancestors;
+}
+
+/**
+ * Batch soft-delete multiple library items.
+ * Returns how many were successfully deleted.
+ */
+export async function batchSoftDeleteLibraryItems(
+  itemIds: number[],
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<number> {
+  if (itemIds.length === 0) return 0;
+  const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+  const now = new Date();
+
+  const result = await db
+    .update(libraryItems)
+    .set({ deletedAt: now, deletedBy: actor.userId, status: "archived", updatedAt: now })
+    .where(
+      and(
+        inArray(libraryItems.id, itemIds),
+        eq(libraryItems.tenantId, actorTenantId),
+        isNull(libraryItems.deletedAt),
+      ),
+    )
+    .returning({ id: libraryItems.id });
+
+  return result.length;
+}
+
+/**
+ * Share all items owned by the actor in the library with a specific group.
+ * Returns the number of items that were newly shared (or already had a share updated).
+ */
+export async function shareLibraryToGroup(
+  input: { groupId: number; permissionLevel: LibraryPermissionLevel },
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<{ shared: number }> {
+  const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+
+  // Verify group exists and belongs to same tenant
+  const [group] = await db
+    .select({ id: userGroups.id })
+    .from(userGroups)
+    .where(
+      and(
+        eq(userGroups.id, input.groupId),
+        eq(userGroups.tenantId, actorTenantId),
+        isNull(userGroups.deletedAt),
+      ),
+    )
+    .limit(1);
+
+  if (!group) {
+    throw new Error("Group not found or does not belong to this tenant");
+  }
+
+  // Fetch all owned non-deleted items (exclude folders themselves since folder access implies child access)
+  const ownedItems = await db
+    .select({ id: libraryItems.id })
+    .from(libraryItems)
+    .where(
+      and(
+        eq(libraryItems.tenantId, actorTenantId),
+        eq(libraryItems.ownerUserId, actor.userId),
+        isNull(libraryItems.deletedAt),
+      ),
+    );
+
+  if (ownedItems.length === 0) return { shared: 0 };
+
+  const subjectId = String(input.groupId);
+  const now = new Date();
+
+  // Upsert permission rows for each item
+  const BATCH = 100;
+  let shared = 0;
+  for (let i = 0; i < ownedItems.length; i += BATCH) {
+    const batch = ownedItems.slice(i, i + BATCH);
+    await db
+      .insert(libraryPermissions)
+      .values(
+        batch.map((item) => ({
+          tenantId: actorTenantId,
+          libraryItemId: item.id,
+          subjectType: "group" as const,
+          subjectId,
+          permissionLevel: input.permissionLevel,
+          grantedByUserId: actor.userId,
+          createdAt: now,
+          updatedAt: now,
+        })),
+      )
+      .onConflictDoUpdate({
+        target: [libraryPermissions.libraryItemId, libraryPermissions.subjectType, libraryPermissions.subjectId],
+        set: { permissionLevel: input.permissionLevel, updatedAt: now },
+      });
+    shared += batch.length;
+  }
+
+  return { shared };
 }
