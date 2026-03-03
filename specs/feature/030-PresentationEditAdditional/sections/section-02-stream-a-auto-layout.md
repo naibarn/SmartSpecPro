@@ -43,3 +43,22 @@ Stabilize relayout for dense-media slides using deterministic, degrade-first beh
 
 ## Done Criteria
 - Stream A tests pass and determinism criteria are met.
+
+## As-Built (2026-03-03)
+
+### Actual Files Changed
+- `specs/feature/030-PresentationEditAdditional/implementation-progress.md`
+- `specs/feature/030-PresentationEditAdditional/reviews/section-02-review.md`
+- `specs/feature/030-PresentationEditAdditional/sections/section-02-stream-a-auto-layout.md`
+
+### Deviations from Plan
+- No net production-code delta was required in this section run because Stream A implementation and tests were already present in the branch baseline.
+
+### Tests Added/Updated
+- No new tests added in this section run.
+- Executed Stream A verification:
+  - `server/services/__tests__/aiPresentationService.test.ts`
+  - `client/src/pages/PresentationEditor.test.tsx -t "applies Auto Layout with watermark payload from library image selection"`
+
+### Known Follow-ups
+- None.
