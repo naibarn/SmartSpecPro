@@ -116,3 +116,22 @@
 - decision_taken: create dedicated `release-gate-report.md` with docs-contract validation
 - mode_used: auto
 - rationale: keeps planning docs immutable while providing explicit, versioned implementation evidence with machine-checked requirements.
+
+## 2026-03-04 - Post-security hardening choice
+- section_or_step: post-implementation-hardening
+- options_considered:
+  - `plan_now`
+  - `fix_now`
+  - `defer`
+- decision_taken: `fix_now`
+- mode_used: asked
+- rationale: user selected `fix_now`; security re-review reported no critical/high findings, so no additional code-level hotfixes were applicable in this phase.
+
+## 2026-03-04 - Resume run completion detection
+- section_or_step: resume-section-detection
+- options_considered:
+  - rerun sections `01-08` despite completion artifacts
+  - trust completion artifacts and skip to closure checks
+- decision_taken: trust completion artifacts and skip section reimplementation
+- mode_used: auto
+- rationale: all section commits are present on the current branch and each section file includes As-Built updates reflected in `implementation-progress.md`; rerunning would be redundant churn.
