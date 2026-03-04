@@ -89,3 +89,12 @@
 - decision_taken: enforce runtime gate in `triggerPresentationExport`
 - mode_used: auto
 - rationale: this provides executable promotion blocking behavior and testable failure conditions for incomplete old/new reader-writer coverage.
+
+## 2026-03-04 - Section 07 rollout policy verification approach
+- section_or_step: section-07-runbook-verification
+- options_considered:
+  - document runbook text only
+  - enforce required runbook clauses via docs-contract tests
+- decision_taken: enforce required clauses via docs-contract tests
+- mode_used: auto
+- rationale: low-impact, reversible choice that prevents policy drift by making runbook requirements executable in CI.

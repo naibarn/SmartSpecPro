@@ -81,3 +81,14 @@
 - blocked_tasks_resolved_remaining_summary:
   - resolved: none
   - remaining: none
+
+## Section 07 - stream-f-rollout-runbook
+- commit: pending
+- test_command_used: `npm --prefix apps/web test -- server/services/presentationRolloutRunbook.test.ts`
+- pass_fail_summary:
+  - `server/services/presentationRolloutRunbook.test.ts`: pass (4/4)
+- notable_deviations:
+  - Runbook requirements are now enforced through a docs-contract test to keep rollout policy language and operational commands from drifting.
+- blocked_tasks_resolved_remaining_summary:
+  - resolved: none
+  - remaining: none

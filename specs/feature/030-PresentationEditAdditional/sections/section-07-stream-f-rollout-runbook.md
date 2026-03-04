@@ -40,3 +40,23 @@ Operationalize safe rollout with measurable promotion gates, representative cana
 
 ## Done Criteria
 - Runbook and rollout policy are complete, testable, and approved.
+
+## As-Built (2026-03-04)
+
+### Actual Files Changed
+- `specs/feature/030-PresentationEditAdditional/rollout-runbook.md`
+- `apps/web/server/services/presentationRolloutRunbook.test.ts`
+- `specs/feature/030-PresentationEditAdditional/reviews/section-07-review.md`
+- `specs/feature/030-PresentationEditAdditional/sections/section-07-stream-f-rollout-runbook.md`
+
+### Deviations from Plan
+- Implemented rollout policy validation as an executable docs-contract test against the runbook artifact, rather than a separate checklist-only document.
+
+### Tests Added/Updated
+- Added runbook contract suite:
+  - `server/services/presentationRolloutRunbook.test.ts`
+- Executed section verification:
+  - `npm --prefix apps/web test -- server/services/presentationRolloutRunbook.test.ts` (pass 4/4)
+
+### Known Follow-ups
+- Section 08 will add integrated release-gate evidence that references this runbook for staged promotion sign-off.
