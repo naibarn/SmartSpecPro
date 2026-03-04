@@ -98,3 +98,21 @@
 - decision_taken: enforce required clauses via docs-contract tests
 - mode_used: auto
 - rationale: low-impact, reversible choice that prevents policy drift by making runbook requirements executable in CI.
+
+## 2026-03-04 - Section 08 staged rollout simulation enforcement
+- section_or_step: section-08-rollout-simulation
+- options_considered:
+  - keep thresholds documented only in runbook/report
+  - add executable rollout gate evaluator with threshold checks
+- decision_taken: add executable rollout gate evaluator with threshold checks
+- mode_used: auto
+- rationale: low-impact additive implementation that turns release-stop conditions into deterministic, testable logic.
+
+## 2026-03-04 - Section 08 release evidence placement
+- section_or_step: section-08-release-evidence-artifact
+- options_considered:
+  - append evidence directly into `implementation-plan*.md`
+  - create dedicated `release-gate-report.md` and validate via docs-contract test
+- decision_taken: create dedicated `release-gate-report.md` with docs-contract validation
+- mode_used: auto
+- rationale: keeps planning docs immutable while providing explicit, versioned implementation evidence with machine-checked requirements.

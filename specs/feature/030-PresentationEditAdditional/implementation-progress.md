@@ -69,7 +69,7 @@
   - remaining: none
 
 ## Section 06 - stream-e-warning-contract
-- commit: pending
+- commit: `b3593c5`
 - test_command_used: `npm --prefix apps/web test -- server/services/presentationExportDegradation.test.ts server/services/presentationPlaybackExport.test.ts shared/presentation/exportWarnings.test.ts`
 - pass_fail_summary:
   - `server/services/presentationExportDegradation.test.ts`: pass (2/2)
@@ -83,12 +83,33 @@
   - remaining: none
 
 ## Section 07 - stream-f-rollout-runbook
-- commit: pending
+- commit: `5e8e033`
 - test_command_used: `npm --prefix apps/web test -- server/services/presentationRolloutRunbook.test.ts`
 - pass_fail_summary:
   - `server/services/presentationRolloutRunbook.test.ts`: pass (4/4)
 - notable_deviations:
   - Runbook requirements are now enforced through a docs-contract test to keep rollout policy language and operational commands from drifting.
+- blocked_tasks_resolved_remaining_summary:
+  - resolved: none
+  - remaining: none
+
+## Section 08 - system-integration-release-gates
+- commit: pending
+- test_command_used: command matrix (web + route + worker integration suites)
+- pass_fail_summary:
+  - `server/services/presentationReleaseReadiness.test.ts`: pass (16/16)
+  - `server/services/presentationIntegrationReleaseGates.test.ts`: pass (4/4)
+  - `server/services/__tests__/aiPresentationService.test.ts`: pass (51/51)
+  - `client/src/pages/PresentationEditor.test.tsx`: pass (57/57)
+  - `client/src/presentation-canvas/CanvasObjects.test.tsx`: pass (3/3)
+  - `client/src/pages/PresentationPlayMode.test.tsx`: pass (13/13)
+  - `server/routes/slideRender.test.ts`: pass (29/29)
+  - `server/services/presentationPlaybackExport.test.ts`: pass (29/29)
+  - `server/services/presentationExportDegradation.test.ts` + `shared/presentation/exportWarnings.test.ts`: pass (4/4)
+  - `python-backend/tests/test_presentation_render_task.py -k "SlideReadyTimeout"`: pass (2/2)
+- notable_deviations:
+  - Route integration suite required elevated execution path in this environment due sandbox listen restrictions (`listen EPERM` in sandbox mode).
+  - Release-gate evidence captured in dedicated artifact `release-gate-report.md` and enforced with a docs-contract test.
 - blocked_tasks_resolved_remaining_summary:
   - resolved: none
   - remaining: none
