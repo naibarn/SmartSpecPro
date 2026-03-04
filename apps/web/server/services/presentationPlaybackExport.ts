@@ -5,6 +5,7 @@ import {
   PRESENTATION_EXPORT_SCHEMA_VERSION,
   PRESENTATION_RENDER_SCHEMA_VERSION,
   PRESENTATION_SLIDESHOW_SCHEMA_VERSION,
+  PRESENTATION_WARNING_CONTRACT_VERSION,
 } from "@shared/presentation/constants";
 import {
   presentationExportResultSchema,
@@ -101,6 +102,10 @@ interface TriggerPresentationExportDependencies {
   maxThrottleKeys?: number;
   maxThrottleWindowEntriesPerKey?: number;
   acceptedRenderSchemaVersions?: string[];
+  warningCompatibilityMatrix?: {
+    oldReaderNewWriter: boolean;
+    newReaderOldWriter: boolean;
+  };
   recordMetric?: (metric: string, tags?: Record<string, string>) => void;
   recordLog?: (event: string, payload: Record<string, unknown>) => void;
 }
@@ -484,6 +489,10 @@ function resolveDependencies(
     maxThrottleWindowEntriesPerKey:
       dependencies?.maxThrottleWindowEntriesPerKey ?? MAX_THROTTLE_WINDOW_ENTRIES_PER_KEY,
     acceptedRenderSchemaVersions: dependencies?.acceptedRenderSchemaVersions ?? [PRESENTATION_RENDER_SCHEMA_VERSION],
+    warningCompatibilityMatrix: dependencies?.warningCompatibilityMatrix ?? {
+      oldReaderNewWriter: true,
+      newReaderOldWriter: true,
+    },
     recordMetric: dependencies?.recordMetric ?? ((metric: string) => incrementPresentationMetric(metric)),
     recordLog: dependencies?.recordLog ?? recordPresentationLog,
   };
@@ -620,6 +629,21 @@ function ensureRenderSchemaAccepted(
     {
       acceptedRenderSchemaVersions,
       schemaVersion: renderSpec.schemaVersion,
+    },
+  );
+}
+
+function ensureWarningCompatibilityMatrixComplete(
+  matrix: { oldReaderNewWriter: boolean; newReaderOldWriter: boolean },
+): void {
+  if (matrix.oldReaderNewWriter && matrix.newReaderOldWriter) {
+    return;
+  }
+  throw new PresentationServiceError(
+    PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
+    `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: warning compatibility matrix is incomplete`,
+    {
+      warningCompatibilityMatrix: matrix,
     },
   );
 }
@@ -824,6 +848,7 @@ export function buildPresentationRenderSpec(input: BuildRenderSpecInput): Presen
 
   return presentationRenderSpecSchema.parse({
     schemaVersion: PRESENTATION_RENDER_SCHEMA_VERSION,
+    warningContractVersion: PRESENTATION_WARNING_CONTRACT_VERSION,
     deckId: input.deck.id,
     format: input.format,
     width,
@@ -959,6 +984,7 @@ export async function triggerPresentationExport(
         warningCodes: renderSpec.warnings.map((warning) => warning.code),
       });
     }
+    ensureWarningCompatibilityMatrixComplete(resolved.warningCompatibilityMatrix);
     ensureRenderSchemaAccepted(renderSpec, resolved.acceptedRenderSchemaVersions);
 
     // Create DB record before enqueueing (so we have an ID to return)

@@ -71,3 +71,21 @@
 - decision_taken: add `window.__slideReadyState` metadata with explicit status and timeout code
 - mode_used: auto
 - rationale: low-impact reversible protocol extension that preserves backward compatibility while enabling deterministic worker fail/degrade branching.
+
+## 2026-03-04 - Section 06 warning-code compatibility model
+- section_or_step: section-06-warning-contract-schema
+- options_considered:
+  - keep warning code enum strict and fail unknown codes
+  - allow string warning codes with known-code taxonomy mapping
+- decision_taken: allow string warning codes with taxonomy mapping helper
+- mode_used: auto
+- rationale: additive backward-compatible change that enables tolerant readers for mixed-version deployments.
+
+## 2026-03-04 - Section 06 mixed-version promotion gate enforcement point
+- section_or_step: section-06-warning-compat-gate
+- options_considered:
+  - enforce matrix gate only in docs/process
+  - enforce matrix gate in `triggerPresentationExport` runtime path
+- decision_taken: enforce runtime gate in `triggerPresentationExport`
+- mode_used: auto
+- rationale: this provides executable promotion blocking behavior and testable failure conditions for incomplete old/new reader-writer coverage.

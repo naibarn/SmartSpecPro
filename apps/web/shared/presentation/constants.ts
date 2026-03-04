@@ -57,6 +57,7 @@ export const PRESENTATION_CONFLICT_SCHEMA_VERSION = "presentation_conflict_v1";
 export const PRESENTATION_COMPATIBILITY_SCHEMA_VERSION = "presentation_compatibility_v1";
 export const PRESENTATION_CONVERSION_SCHEMA_VERSION = "presentation_conversion_v1";
 export const PRESENTATION_RENDER_SCHEMA_VERSION = "presentation_render_v1";
+export const PRESENTATION_WARNING_CONTRACT_VERSION = "presentation_warning_contract_v1";
 export const PRESENTATION_SLIDESHOW_SCHEMA_VERSION = "presentation_slideshow_v1";
 export const PRESENTATION_EXPORT_SCHEMA_VERSION = "presentation_export_v1";
 

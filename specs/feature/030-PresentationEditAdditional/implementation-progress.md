@@ -56,7 +56,7 @@
   - remaining: none
 
 ## Section 05 - stream-d-ready-gate-worker
-- commit: pending
+- commit: `6553d67`
 - test_command_used: `npm --prefix apps/web test -- server/routes/slideRender.test.ts` and `DEBUG=false uv run --project python-backend pytest python-backend/tests/test_presentation_render_task.py -k "SlideReadyTimeout"`
 - pass_fail_summary:
   - `server/routes/slideRender.test.ts`: pass (29/29)
@@ -64,6 +64,20 @@
 - notable_deviations:
   - Route now emits `window.__slideReadyState` metadata for worker-side branch handling while keeping HTTP response behavior unchanged.
   - Worker polling upgraded to consume ready-state metadata and fail only on structural timeout signal (`E_SLIDE_READY_TIMEOUT`).
+- blocked_tasks_resolved_remaining_summary:
+  - resolved: none
+  - remaining: none
+
+## Section 06 - stream-e-warning-contract
+- commit: pending
+- test_command_used: `npm --prefix apps/web test -- server/services/presentationExportDegradation.test.ts server/services/presentationPlaybackExport.test.ts shared/presentation/exportWarnings.test.ts`
+- pass_fail_summary:
+  - `server/services/presentationExportDegradation.test.ts`: pass (2/2)
+  - `server/services/presentationPlaybackExport.test.ts`: pass (29/29)
+  - `shared/presentation/exportWarnings.test.ts`: pass (2/2)
+- notable_deviations:
+  - Warning code validation is now forward-compatible (`string`) with explicit category mapping for known codes.
+  - Export trigger now enforces mixed-version warning compatibility matrix coverage (`oldReaderNewWriter`, `newReaderOldWriter`) before queueing jobs.
 - blocked_tasks_resolved_remaining_summary:
   - resolved: none
   - remaining: none

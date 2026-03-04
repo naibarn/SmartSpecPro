@@ -3,9 +3,10 @@ import type {
   PresentationExportWarning,
   PresentationTransition,
 } from "@shared/presentation/contracts";
+import { categorizePresentationExportWarningCode } from "@shared/presentation/exportWarnings";
 
-const ALLOWED_ELEMENT_TYPES = new Set(["text", "image", "rect", "line"]);
-const WARNING_PRECEDENCE: Record<PresentationExportWarning["code"], number> = {
+const ALLOWED_ELEMENT_TYPES = new Set(["text", "image", "video", "rect", "line"]);
+const WARNING_PRECEDENCE: Record<string, number> = {
   SLIDE_TRANSITION_UNSUPPORTED: 1,
   SLIDE_DURATION_INVALID: 2,
   SLIDE_ELEMENT_UNSUPPORTED: 3,
@@ -14,6 +15,7 @@ const WARNING_PRECEDENCE: Record<PresentationExportWarning["code"], number> = {
   W_SVG_PARSE_FAILED: 6,
   W_SVG_RASTERIZED: 7,
   W_SVG_PLACEHOLDER: 8,
+  W_SLIDE_READY_TIMEOUT: 9,
 };
 
 export interface DegradedSlideshowSlide {
@@ -29,6 +31,20 @@ export interface DegradedSlideshowResult {
   warnings: PresentationExportWarning[];
 }
 
+function pushWarning(
+  warnings: PresentationExportWarning[],
+  code: string,
+  slideId: number,
+  detail?: string,
+): void {
+  warnings.push({
+    code,
+    slideId,
+    ...(detail ? { detail } : {}),
+    category: categorizePresentationExportWarningCode(code),
+  });
+}
+
 function normalizeTransition(
   raw: unknown,
   warnings: PresentationExportWarning[],
@@ -41,11 +57,7 @@ function normalizeTransition(
     return raw;
   }
 
-  warnings.push({
-    code: "SLIDE_TRANSITION_UNSUPPORTED",
-    slideId,
-    detail: `transition=${String(raw)}`,
-  });
+  pushWarning(warnings, "SLIDE_TRANSITION_UNSUPPORTED", slideId, `transition=${String(raw)}`);
   return "cut";
 }
 
@@ -60,11 +72,7 @@ function normalizeDurationMs(
   }
 
   if (raw !== undefined) {
-    warnings.push({
-      code: "SLIDE_DURATION_INVALID",
-      slideId,
-      detail: `durationMs=${String(raw)}`,
-    });
+    pushWarning(warnings, "SLIDE_DURATION_INVALID", slideId, `durationMs=${String(raw)}`);
   }
   return fallback;
 }
@@ -136,40 +144,22 @@ function collectElementWarnings(
   }
 
   if (hasUnsupportedElement) {
-    warnings.push({
-      code: "SLIDE_ELEMENT_UNSUPPORTED",
-      slideId,
-    });
+    pushWarning(warnings, "SLIDE_ELEMENT_UNSUPPORTED", slideId);
   }
   if (hasMissingImageSource) {
-    warnings.push({
-      code: "SLIDE_IMAGE_SOURCE_MISSING",
-      slideId,
-    });
+    pushWarning(warnings, "SLIDE_IMAGE_SOURCE_MISSING", slideId);
   }
   if (hasSvgLoadFailed) {
-    warnings.push({
-      code: "W_SVG_LOAD_FAILED",
-      slideId,
-    });
+    pushWarning(warnings, "W_SVG_LOAD_FAILED", slideId);
   }
   if (hasSvgParseFailed) {
-    warnings.push({
-      code: "W_SVG_PARSE_FAILED",
-      slideId,
-    });
+    pushWarning(warnings, "W_SVG_PARSE_FAILED", slideId);
   }
   if (hasSvgRasterized) {
-    warnings.push({
-      code: "W_SVG_RASTERIZED",
-      slideId,
-    });
+    pushWarning(warnings, "W_SVG_RASTERIZED", slideId);
   }
   if (hasSvgPlaceholder) {
-    warnings.push({
-      code: "W_SVG_PLACEHOLDER",
-      slideId,
-    });
+    pushWarning(warnings, "W_SVG_PLACEHOLDER", slideId);
   }
 }
 
@@ -207,7 +197,7 @@ export function degradeSlidesForExport(
     if (left.slideId !== right.slideId) {
       return left.slideId - right.slideId;
     }
-    return WARNING_PRECEDENCE[left.code] - WARNING_PRECEDENCE[right.code];
+    return (WARNING_PRECEDENCE[left.code] ?? 999) - (WARNING_PRECEDENCE[right.code] ?? 999);
   });
 
   return {

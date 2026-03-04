@@ -3,20 +3,19 @@
     {
       "code": "SLIDE_TRANSITION_UNSUPPORTED",
       "slideId": 11,
-      "detail": "transition=wipe"
+      "detail": "transition=wipe",
+      "category": "validation"
     },
     {
       "code": "SLIDE_DURATION_INVALID",
       "slideId": 11,
-      "detail": "durationMs=fast"
-    },
-    {
-      "code": "SLIDE_ELEMENT_UNSUPPORTED",
-      "slideId": 11
+      "detail": "durationMs=fast",
+      "category": "validation"
     },
     {
       "code": "SLIDE_IMAGE_SOURCE_MISSING",
-      "slideId": 11
+      "slideId": 11,
+      "category": "validation"
     }
   ],
   "slides": [

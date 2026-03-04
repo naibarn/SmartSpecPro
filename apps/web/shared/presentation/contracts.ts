@@ -10,6 +10,7 @@ import {
   PRESENTATION_LIMITS,
   PRESENTATION_RENDER_SCHEMA_VERSION,
   PRESENTATION_SLIDESHOW_SCHEMA_VERSION,
+  PRESENTATION_WARNING_CONTRACT_VERSION,
 } from "./constants";
 import {
   presentationExportWarningsSchema,
@@ -356,6 +357,7 @@ export const presentationSlideshowPayloadSchema = z.object({
 
 export const presentationRenderSpecSchema = z.object({
   schemaVersion: z.literal(PRESENTATION_RENDER_SCHEMA_VERSION),
+  warningContractVersion: z.literal(PRESENTATION_WARNING_CONTRACT_VERSION).optional(),
   deckId: z.number().int().positive(),
   /** Export format — png and jpg produce zip archives of per-slide images */
   format: z.enum(["png", "jpg", "pdf", "mp4"]),

@@ -314,6 +314,7 @@ describe("presentationPlaybackExport", () => {
     });
 
     expect(renderSpec.schemaVersion).toBe("presentation_render_v1");
+    expect(renderSpec.warningContractVersion).toBe("presentation_warning_contract_v1");
 
     await expect(
       triggerPresentationExport(
@@ -330,6 +331,31 @@ describe("presentationPlaybackExport", () => {
       return (
         error instanceof PresentationServiceError
         && error.code === PRESENTATION_ERROR_CODE.RENDER_SCHEMA_MISMATCH
+      );
+    });
+  });
+
+  it("blocks export promotion when warning compatibility matrix is incomplete", async () => {
+    const deckDetail = buildDeckDetail();
+
+    await expect(
+      triggerPresentationExport(
+        { deckId: 101, format: "mp4", idempotencyKey: "warn-matrix-1" },
+        actor,
+        {
+          getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
+          enqueueExportJob: vi.fn(),
+          now: () => Date.parse("2026-02-22T10:00:02.000Z"),
+          warningCompatibilityMatrix: {
+            oldReaderNewWriter: true,
+            newReaderOldWriter: false,
+          },
+        },
+      ),
+    ).rejects.toSatisfy((error: unknown) => {
+      return (
+        error instanceof PresentationServiceError
+        && error.code === PRESENTATION_ERROR_CODE.VALIDATION_FAILED
       );
     });
   });
