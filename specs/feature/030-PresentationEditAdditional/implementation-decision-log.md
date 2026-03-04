@@ -53,3 +53,21 @@
 - decision_taken: add tests only; no production-code delta
 - mode_used: auto
 - rationale: low-impact, reversible decision that avoids churn while increasing regression protection around autoplay/lifecycle contracts.
+
+## 2026-03-04 - Preflight continue on dirty workspace (rerun)
+- section_or_step: preflight-continue-dirty-worktree
+- options_considered:
+  - stop until workspace is clean
+  - continue implementation on top of existing changes
+- decision_taken: continue implementation on top of existing changes
+- mode_used: asked
+- rationale: User explicitly replied `continue` during preflight gate for this run.
+
+## 2026-03-04 - Section 05 ready-state contract shape
+- section_or_step: section-05-ready-gate-contract
+- options_considered:
+  - keep boolean-only `window.__slideReady`
+  - add `window.__slideReadyState` metadata with fail/degrade status and timeout code
+- decision_taken: add `window.__slideReadyState` metadata with explicit status and timeout code
+- mode_used: auto
+- rationale: low-impact reversible protocol extension that preserves backward compatibility while enabling deterministic worker fail/degrade branching.

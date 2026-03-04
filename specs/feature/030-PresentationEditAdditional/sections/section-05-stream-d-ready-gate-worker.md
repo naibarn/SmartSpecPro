@@ -42,3 +42,29 @@ Eliminate long white pre-roll by implementing a strict readiness contract betwee
 
 ## Done Criteria
 - Ready-gate contract is enforced end-to-end and worker tests pass.
+
+## As-Built (2026-03-04)
+
+### Actual Files Changed
+- `apps/web/server/routes/slideRender.ts`
+- `apps/web/server/routes/slideRender.test.ts`
+- `python-backend/app/tasks/presentation_render.py`
+- `python-backend/tests/test_presentation_render_task.py`
+- `specs/feature/030-PresentationEditAdditional/reviews/section-05-review.md`
+- `specs/feature/030-PresentationEditAdditional/sections/section-05-stream-d-ready-gate-worker.md`
+
+### Deviations from Plan
+- Route now publishes readiness metadata via `window.__slideReadyState` to allow worker-side explicit fail/degrade branching without changing route HTTP status semantics.
+- Worker timeout handling was centralized in a reusable poll helper (`_poll_slide_ready`) to keep screenshot and record-mode behavior consistent.
+
+### Tests Added/Updated
+- Added route HTML contract tests for ready-gate timing constants and ready-state/error-code exposure:
+  - `server/routes/slideRender.test.ts`
+- Added worker fail-branch timeout test for structural ready-gate failures:
+  - `python-backend/tests/test_presentation_render_task.py::TestSlideReadyTimeout::test_failed_ready_state_raises_timeout_error`
+- Executed section verification:
+  - `npm --prefix apps/web test -- server/routes/slideRender.test.ts` (pass 29/29)
+  - `DEBUG=false uv run --project python-backend pytest python-backend/tests/test_presentation_render_task.py -k "SlideReadyTimeout"` (pass 2/2)
+
+### Known Follow-ups
+- No blocked follow-ups in this section.

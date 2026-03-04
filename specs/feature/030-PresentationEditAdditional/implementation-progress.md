@@ -43,7 +43,7 @@
   - remaining: none
 
 ## Section 04 - stream-c-video-hardening
-- commit: pending
+- commit: `8b2d13c`
 - test_command_used: `npm --prefix apps/web test -- <target>`
 - pass_fail_summary:
   - `client/src/presentation-canvas/CanvasObjects.test.tsx`: pass (3/3)
@@ -51,6 +51,19 @@
   - `server/services/presentationPlaybackExport.test.ts`: pass (28/28)
 - notable_deviations:
   - No production-code delta was required in this section run because validated autoplay/lifecycle behavior was already present in HEAD baseline.
+- blocked_tasks_resolved_remaining_summary:
+  - resolved: none
+  - remaining: none
+
+## Section 05 - stream-d-ready-gate-worker
+- commit: pending
+- test_command_used: `npm --prefix apps/web test -- server/routes/slideRender.test.ts` and `DEBUG=false uv run --project python-backend pytest python-backend/tests/test_presentation_render_task.py -k "SlideReadyTimeout"`
+- pass_fail_summary:
+  - `server/routes/slideRender.test.ts`: pass (29/29)
+  - `python-backend/tests/test_presentation_render_task.py -k "SlideReadyTimeout"`: pass (2/2)
+- notable_deviations:
+  - Route now emits `window.__slideReadyState` metadata for worker-side branch handling while keeping HTTP response behavior unchanged.
+  - Worker polling upgraded to consume ready-state metadata and fail only on structural timeout signal (`E_SLIDE_READY_TIMEOUT`).
 - blocked_tasks_resolved_remaining_summary:
   - resolved: none
   - remaining: none

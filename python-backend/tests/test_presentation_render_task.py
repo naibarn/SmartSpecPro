@@ -402,6 +402,36 @@ class TestSlideReadyTimeout:
         # Screenshot was still taken
         assert mock_page.screenshot.called
 
+    def test_failed_ready_state_raises_timeout_error(self, monkeypatch, tmp_path):
+        """When route reports failed ready-state, worker raises E_SLIDE_READY_TIMEOUT."""
+        monkeypatch.setenv("JWT_SECRET", "test-secret-key-for-unit-tests")
+        monkeypatch.setenv("INTERNAL_RENDER_BASE_URL", "http://localhost:3000")
+
+        mock_sync_playwright, mock_page = _make_mock_playwright(slide_ready=False)
+        task_self = _make_mock_task_self()
+        render_spec = _make_render_spec(num_slides=1)
+
+        def evaluate_side_effect(script):
+            if "window.__slideReady === true" in script:
+                return False
+            if "window.__slideReadyState" in script:
+                return {
+                    "status": "failed",
+                    "code": "E_SLIDE_READY_TIMEOUT",
+                    "reason": "base_layout_missing",
+                }
+            return False
+
+        mock_page.evaluate.side_effect = evaluate_side_effect
+
+        with patch("app.tasks.presentation_render.sync_playwright", mock_sync_playwright):
+            with patch("app.tasks.presentation_render._SLIDE_READY_POLL_ATTEMPTS", 1):
+                from app.tasks.presentation_render import _render_slides_to_screenshots
+                with pytest.raises(RuntimeError, match="E_SLIDE_READY_TIMEOUT"):
+                    _render_slides_to_screenshots(task_self, render_spec, str(tmp_path))
+
+        assert not mock_page.screenshot.called
+
 
 # ---------------------------------------------------------------------------
 # Tests: dynamic video MP4 path

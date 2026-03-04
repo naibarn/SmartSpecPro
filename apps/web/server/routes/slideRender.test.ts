@@ -268,7 +268,29 @@ describe("GET /internal/slide-render/:deckId/:slideIndex", () => {
       .get(`/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}`)
       .set("X-Internal-Token", token);
     expect(res.text).toContain("var videos = canvas.querySelectorAll(\"video\")");
-    expect(res.text).toContain("waitForMediaThenReady()");
+    expect(res.text).toContain("waitForMediaThenReady(function(hadFallback)");
+  });
+
+  it("HTML response encodes ready-gate timing contract constants", async () => {
+    const app = await buildApp();
+    const token = makeValidToken();
+    const res = await request(app)
+      .get(`/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}`)
+      .set("X-Internal-Token", token);
+    expect(res.text).toContain("var READY_GATE_POLL_INTERVAL_MS = 200");
+    expect(res.text).toContain("var READY_GATE_SOFT_WAIT_MS = 5000");
+    expect(res.text).toContain("var READY_GATE_RETRY_DELAYS_MS = [750, 750]");
+    expect(res.text).toContain("var READY_GATE_HARD_TIMEOUT_MS = 8000");
+  });
+
+  it("HTML response exposes slide-ready state metadata and timeout error code", async () => {
+    const app = await buildApp();
+    const token = makeValidToken();
+    const res = await request(app)
+      .get(`/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}`)
+      .set("X-Internal-Token", token);
+    expect(res.text).toContain("window.__slideReadyState");
+    expect(res.text).toContain("E_SLIDE_READY_TIMEOUT");
   });
 
   it("HTML response supports record mode so videos are not paused at first frame", async () => {

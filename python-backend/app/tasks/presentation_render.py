@@ -49,9 +49,13 @@ QUALITY_PRESETS: dict[str, dict[str, Any]] = {
     "high":     {"crf": 18, "preset": "slow"},
 }
 
-# Polling config for window.__slideReady
-_SLIDE_READY_POLL_ATTEMPTS = 100   # 100 × 100ms = 10s maximum wait
-_SLIDE_READY_POLL_INTERVAL_MS = 100
+# Polling config for window.__slideReady / window.__slideReadyState
+_SLIDE_READY_POLL_INTERVAL_MS = 200
+_SLIDE_READY_POLL_ATTEMPTS = 40  # 40 × 200ms = 8000ms hard timeout budget
+_SLIDE_READY_SOFT_WAIT_MS = 5000
+_SLIDE_READY_RETRY_DELAYS_MS = (750, 750)
+_SLIDE_READY_HARD_TIMEOUT_MS = 8000
+_SLIDE_READY_FAIL_CODE = "E_SLIDE_READY_TIMEOUT"
 
 
 # ---------------------------------------------------------------------------
@@ -200,6 +204,82 @@ def _make_export_download_token(deck_id: str, filename: str) -> str:
     )
 
 
+def _read_slide_ready_state(page) -> dict[str, Any] | None:
+    """Read optional readiness metadata emitted by the slide-render route."""
+    try:
+        raw_state = page.evaluate("() => window.__slideReadyState || null")
+    except Exception:
+        return None
+    if isinstance(raw_state, dict):
+        return raw_state
+    return None
+
+
+def _poll_slide_ready(page, deck_id: int, slide_index: int, mode: str) -> dict[str, Any]:
+    """
+    Poll `window.__slideReady` and consume route-side readiness metadata.
+
+    Returns:
+      {
+        "ready": bool,
+        "elapsed_ms": int,
+        "state": dict | None,
+      }
+
+    Raises:
+      RuntimeError when route reports structural timeout failure (`E_SLIDE_READY_TIMEOUT`).
+    """
+    started_at = time.monotonic()
+    ready = False
+    retry_attempt = 0
+    next_retry_at_ms = _SLIDE_READY_SOFT_WAIT_MS
+    state: dict[str, Any] | None = None
+
+    for attempt in range(_SLIDE_READY_POLL_ATTEMPTS):
+        ready = bool(page.evaluate("() => window.__slideReady === true"))
+        if ready:
+            state = _read_slide_ready_state(page)
+            break
+
+        elapsed_ms = int((time.monotonic() - started_at) * 1000)
+        if (
+            retry_attempt < len(_SLIDE_READY_RETRY_DELAYS_MS)
+            and elapsed_ms >= next_retry_at_ms
+        ):
+            retry_attempt += 1
+            logger.info(
+                "slide_ready_retry_wait",
+                deck_id=deck_id,
+                slide_index=slide_index,
+                mode=mode,
+                retry_attempt=retry_attempt,
+                retry_delay_ms=_SLIDE_READY_RETRY_DELAYS_MS[retry_attempt - 1],
+            )
+            next_retry_at_ms += _SLIDE_READY_RETRY_DELAYS_MS[retry_attempt - 1]
+
+        if attempt < _SLIDE_READY_POLL_ATTEMPTS - 1:
+            page.wait_for_timeout(_SLIDE_READY_POLL_INTERVAL_MS)
+
+    elapsed_ms = int((time.monotonic() - started_at) * 1000)
+    if state is None:
+        state = _read_slide_ready_state(page)
+
+    status = str((state or {}).get("status", "")).strip().lower()
+    code = str((state or {}).get("code", "")).strip()
+    reason = str((state or {}).get("reason", "")).strip()
+    if status == "failed" and code == _SLIDE_READY_FAIL_CODE:
+        raise RuntimeError(
+            f"{_SLIDE_READY_FAIL_CODE}: deck {deck_id} slide {slide_index} "
+            f"reported structural ready-gate failure ({reason or 'unknown_reason'})"
+        )
+
+    return {
+        "ready": ready,
+        "elapsed_ms": min(elapsed_ms, _SLIDE_READY_HARD_TIMEOUT_MS),
+        "state": state,
+    }
+
+
 def _render_slides_to_screenshots(task_self, render_spec: dict, tmp_dir: str) -> list[str]:
     """
     Navigate Playwright to each slide's internal render URL and capture screenshots.
@@ -237,16 +317,20 @@ def _render_slides_to_screenshots(task_self, render_spec: dict, tmp_dir: str) ->
                     page.set_extra_http_headers({"X-Internal-Token": token})
                     page.goto(url, wait_until="domcontentloaded")
 
-                    # Poll window.__slideReady (up to _SLIDE_READY_POLL_ATTEMPTS × 100ms)
-                    ready = False
-                    for _ in range(_SLIDE_READY_POLL_ATTEMPTS):
-                        ready = page.evaluate("() => window.__slideReady === true")
-                        if ready:
-                            break
-                        page.wait_for_timeout(_SLIDE_READY_POLL_INTERVAL_MS)
-
+                    ready_result = _poll_slide_ready(page, deck_id, idx, mode="screenshot")
+                    ready = bool(ready_result["ready"])
+                    state = ready_result.get("state") if isinstance(ready_result, dict) else None
+                    state_status = str((state or {}).get("status", "")).strip().lower()
+                    state_code = str((state or {}).get("code", "")).strip()
                     if not ready:
                         logger.warning("slide_ready_timeout", deck_id=deck_id, slide_index=idx)
+                    elif state_status == "degraded":
+                        logger.warning(
+                            "slide_ready_degraded",
+                            deck_id=deck_id,
+                            slide_index=idx,
+                            code=state_code or "W_SLIDE_READY_TIMEOUT",
+                        )
 
                     out_path = os.path.join(tmp_dir, f"slide_{idx:04d}.png")
                     page.screenshot(
@@ -307,18 +391,25 @@ def _render_slides_to_video_clips(task_self, render_spec: dict, tmp_dir: str) ->
                     navigation_started_at = time.monotonic()
                     page.goto(url, wait_until="domcontentloaded")
 
-                    ready = False
-                    for _ in range(_SLIDE_READY_POLL_ATTEMPTS):
-                        ready = page.evaluate("() => window.__slideReady === true")
-                        if ready:
-                            break
-                        page.wait_for_timeout(_SLIDE_READY_POLL_INTERVAL_MS)
-
+                    ready_result = _poll_slide_ready(page, deck_id, idx, mode="record")
+                    ready = bool(ready_result["ready"])
+                    state = ready_result.get("state") if isinstance(ready_result, dict) else None
+                    state_status = str((state or {}).get("status", "")).strip().lower()
+                    state_code = str((state or {}).get("code", "")).strip()
                     if not ready:
                         logger.warning("slide_ready_timeout_record_mode", deck_id=deck_id, slide_index=idx)
+                    elif state_status == "degraded":
+                        logger.warning(
+                            "slide_ready_degraded_record_mode",
+                            deck_id=deck_id,
+                            slide_index=idx,
+                            code=state_code or "W_SLIDE_READY_TIMEOUT",
+                        )
 
                     duration_ms = max(250, int(slide.get("durationMs", 3000)))
-                    ready_elapsed_ms = max(0, int((time.monotonic() - navigation_started_at) * 1000))
+                    ready_elapsed_ms = int(ready_result.get("elapsed_ms", 0))
+                    if ready_elapsed_ms <= 0:
+                        ready_elapsed_ms = max(0, int((time.monotonic() - navigation_started_at) * 1000))
                     page.wait_for_timeout(duration_ms)
 
                     recorded_video = page.video
