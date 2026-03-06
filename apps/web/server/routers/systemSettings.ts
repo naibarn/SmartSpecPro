@@ -16,7 +16,7 @@ import { signBearerToken } from "../_core/tokens";
 // System Settings Router
 // ============================================================
 
-const settingCategorySchema = z.enum(["stripe", "invoice", "email", "general", "oauth", "ai", "telegram", "vectordb", "credit_pricing", "infrastructure"]);
+const settingCategorySchema = z.enum(["stripe", "invoice", "email", "general", "oauth", "ai", "telegram", "vectordb", "credit_pricing", "infrastructure", "tenant_automation"]);
 
 const stripeSettingsSchema = z.object({
   secretKey: z.string().optional(),
@@ -1699,22 +1699,16 @@ export const systemSettingsRouter = router({
   /**
    * Trigger full reindex of all library items
    */
-  triggerReindex: adminProcedure.mutation(async ({ ctx }) => {
+  triggerReindex: adminProcedure.mutation(async () => {
     const PY = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
-    const proxyToken = process.env.SMARTSPEC_PROXY_TOKEN ?? "";
-    const token = createAdminBearerToken(ctx.user.id);
     try {
-      const res = await fetch(`${PY}/api/internal/library/reindex`, {
+      const res = await fetch(`${PY}/api/admin/vectordb/reindex`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-          ...(proxyToken ? { "x-proxy-token": proxyToken } : {}),
-        },
+        headers: { "Content-Type": "application/json" },
       });
       if (!res.ok) {
-        const message = (await readPythonErrorDetail(res)) || res.statusText;
-        return { status: "error", message };
+        const err = await res.json().catch(() => ({ detail: res.statusText }));
+        return { status: "error", message: (err as any).detail || res.statusText };
       }
       return await res.json() as { task_id: string; status: string; message: string };
     } catch (error: any) {
@@ -1725,24 +1719,16 @@ export const systemSettingsRouter = router({
   /**
    * Get reindex job status
    */
-  getReindexStatus: adminProcedure.query(async ({ ctx }) => {
+  getReindexStatus: adminProcedure.query(async () => {
     const PY = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
-    const proxyToken = process.env.SMARTSPEC_PROXY_TOKEN ?? "";
-    const token = createAdminBearerToken(ctx.user.id);
     try {
-      const res = await fetch(`${PY}/api/internal/library/reindex/status`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          ...(proxyToken ? { "x-proxy-token": proxyToken } : {}),
-        },
-      });
+      const res = await fetch(`${PY}/api/admin/vectordb/reindex/status`);
       if (!res.ok) {
-        const message = (await readPythonErrorDetail(res)) || res.statusText;
-        return { status: "error", task_id: null, result: { error: message } };
+        return { status: "error", task_id: null, result: null };
       }
       return await res.json() as { status: string; task_id: string | null; result: any };
     } catch (error: any) {
-      return { status: "error", task_id: null, result: { error: error.message || "Failed to fetch reindex status" } };
+      return { status: "error", task_id: null, result: null };
     }
   }),
 });

@@ -209,9 +209,67 @@ async def list_templates(
 ):
     """List automation templates for a tenant.
 
-    Uses timestamp cursor pagination.
-    Templates DB table is implemented in section 12.
-    For now, returns an empty list (placeholder until DB table exists).
+    Uses timestamp cursor pagination (created_at DESC).
+    Returns both tenant-owned and public templates.
+    Falls back to an empty list if the table does not yet exist.
     """
-    # TODO: Query automation_templates table when section 12 is implemented
-    return {"templates": [], "next_cursor": None}
+    from sqlalchemy import text
+    from sqlalchemy.exc import ProgrammingError
+
+    from app.core.database import AsyncSessionLocal
+
+    try:
+        async with AsyncSessionLocal() as session:
+            params: dict = {"tenant_id": tenant_id, "limit": limit + 1}
+
+            cursor_clause = ""
+            if cursor:
+                cursor_clause = "AND created_at < :cursor"
+                params["cursor"] = cursor
+
+            query = text(
+                f"""
+                SELECT id, tenant_id, user_id, name, description,
+                       intent, scripts, thumbnail_url, is_public,
+                       usage_count, last_used_at, created_at, updated_at
+                FROM automation_templates
+                WHERE (tenant_id = :tenant_id OR is_public = true)
+                {cursor_clause}
+                ORDER BY created_at DESC
+                LIMIT :limit
+                """
+            )
+
+            result = await session.execute(query, params)
+            rows = result.mappings().all()
+
+    except ProgrammingError:
+        # Table does not exist yet — migration has not been applied.
+        logger.warning("automation_templates_table_missing", tenant_id=tenant_id)
+        return {"templates": [], "next_cursor": None}
+
+    templates = []
+    for row in rows[:limit]:
+        templates.append(
+            {
+                "id": str(row["id"]),
+                "tenant_id": row["tenant_id"],
+                "user_id": row["user_id"],
+                "name": row["name"],
+                "description": row["description"],
+                "intent": row["intent"],
+                "scripts": row["scripts"],
+                "thumbnail_url": row["thumbnail_url"],
+                "is_public": row["is_public"],
+                "usage_count": row["usage_count"],
+                "last_used_at": row["last_used_at"].isoformat() if row["last_used_at"] else None,
+                "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+                "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None,
+            }
+        )
+
+    has_more = len(rows) > limit
+    next_cursor = templates[-1]["created_at"] if has_more and templates else None
+
+    logger.info("automation_templates_listed", tenant_id=tenant_id, count=len(templates))
+    return {"templates": templates, "next_cursor": next_cursor}
