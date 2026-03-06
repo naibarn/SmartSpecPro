@@ -68,6 +68,7 @@ from app.api import (
     agency_creator,  # AI Agency Creator task endpoints
     stt,  # Internal STT/TTS voice endpoints
     browser,  # Browser automation API
+    automation_copilot,  # Automation Copilot API
  )
 from app.api.v1 import (
     skills,
@@ -311,6 +312,7 @@ app.include_router(stt.router, tags=["Internal STT/TTS"])
 app.include_router(agencies.router, tags=["Agencies"])
 app.include_router(agency_creator.router, prefix="/api/v1/agency-creator", tags=["Agency Creator"])
 app.include_router(browser.router, tags=["Browser Automation"])
+app.include_router(automation_copilot.router, prefix="/api/v1/automation-copilot", tags=["Automation Copilot"])
 
 @app.get("/")
 async def root():

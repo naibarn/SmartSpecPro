@@ -61,6 +61,7 @@ import { googleDriveRouter } from "./routers/googleDrive";
 import { oneDriveRouter } from "./routers/oneDrive";
 import { searchRouter } from "./routers/search";
 import { adminOpsRouter } from "./routers/adminOps";
+import { automationCopilotRouter } from "./routers/automationCopilot";
 import { funnelAnalyticsRouter } from "./routers/funnelAnalytics";
 import { infrastructureRouter } from "./routers/infrastructure";
 import { presentationRouter } from "./routers/presentation";
@@ -1780,6 +1781,7 @@ export const appRouter = router({
   funnelAnalytics: funnelAnalyticsRouter,
   persona: personaRouter,
   tenantFeatureFlags: tenantFeatureFlagsRouter,
+  automationCopilot: automationCopilotRouter,
 });
 
 export type AppRouter = typeof appRouter;
