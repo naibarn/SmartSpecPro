@@ -4751,3 +4751,27 @@ export const channelRoutingRules = pgTable("channel_routing_rules", {
 
 export type ChannelRoutingRule = typeof channelRoutingRules.$inferSelect;
 export type InsertChannelRoutingRule = typeof channelRoutingRules.$inferInsert;
+
+// ── Automation Copilot ────────────────────────────────────────────────
+
+export const automationTemplates = pgTable("automation_templates", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  intent: jsonb("intent").notNull(),
+  scripts: jsonb("scripts").notNull(),
+  thumbnailUrl: text("thumbnail_url"),
+  isPublic: boolean("is_public").default(false).notNull(),
+  usageCount: integer("usage_count").default(0).notNull(),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("automation_templates_tenant_idx").on(t.tenantId),
+  index("automation_templates_public_usage_idx").on(t.isPublic, t.usageCount),
+]);
+
+export type AutomationTemplate = typeof automationTemplates.$inferSelect;
+export type InsertAutomationTemplate = typeof automationTemplates.$inferInsert;

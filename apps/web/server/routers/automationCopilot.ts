@@ -292,4 +292,173 @@ export const automationCopilotRouter = router({
 
       return { cancelled: true };
     }),
+
+  /**
+   * Save a successful automation as a reusable template.
+   */
+  saveTemplate: protectedProcedure
+    .input(
+      z.object({
+        name: z.string().min(1).max(200),
+        description: z.string().max(2000).optional(),
+        intentJson: z.string().min(1),
+        scriptsJson: z.string().min(1),
+        isPublic: z.boolean().optional().default(false),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.user.tenantId;
+      if (!tenantId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No tenant context" });
+      }
+
+      const { getDb } = await import("../db");
+      const { automationTemplates } = await import("../../drizzle/schema");
+      const db = getDb();
+
+      const [row] = await db
+        .insert(automationTemplates)
+        .values({
+          tenantId,
+          userId: ctx.user.id,
+          name: input.name,
+          description: input.description ?? null,
+          intent: JSON.parse(input.intentJson),
+          scripts: JSON.parse(input.scriptsJson),
+          isPublic: input.isPublic,
+        })
+        .returning({ id: automationTemplates.id });
+
+      return { id: row.id };
+    }),
+
+  /**
+   * List automation templates (own + public).
+   */
+  listTemplates: protectedProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(50).optional().default(20),
+        cursor: z.string().optional(),
+        publicOnly: z.boolean().optional().default(false),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const tenantId = ctx.user.tenantId;
+      if (!tenantId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No tenant context" });
+      }
+
+      const { getDb } = await import("../db");
+      const { automationTemplates } = await import("../../drizzle/schema");
+      const { eq, or, lt, desc, and } = await import("drizzle-orm");
+      const db = getDb();
+
+      const conditions = input.publicOnly
+        ? [eq(automationTemplates.isPublic, true)]
+        : [
+            or(
+              eq(automationTemplates.tenantId, tenantId),
+              eq(automationTemplates.isPublic, true),
+            )!,
+          ];
+
+      if (input.cursor) {
+        conditions.push(lt(automationTemplates.createdAt, new Date(input.cursor)));
+      }
+
+      const rows = await db
+        .select()
+        .from(automationTemplates)
+        .where(and(...conditions))
+        .orderBy(desc(automationTemplates.createdAt))
+        .limit(input.limit + 1);
+
+      const hasMore = rows.length > input.limit;
+      const templates = hasMore ? rows.slice(0, input.limit) : rows;
+      const nextCursor = hasMore
+        ? templates[templates.length - 1].createdAt.toISOString()
+        : undefined;
+
+      return { templates, nextCursor };
+    }),
+
+  /**
+   * Use a template (increment usage count and return intent/scripts).
+   */
+  useTemplate: protectedProcedure
+    .input(z.object({ templateId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.user.tenantId;
+      if (!tenantId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No tenant context" });
+      }
+
+      const { getDb } = await import("../db");
+      const { automationTemplates } = await import("../../drizzle/schema");
+      const { eq, or, and, sql: sqlFn } = await import("drizzle-orm");
+      const db = getDb();
+
+      // Only allow access to own or public templates
+      const [template] = await db
+        .select()
+        .from(automationTemplates)
+        .where(
+          and(
+            eq(automationTemplates.id, input.templateId),
+            or(
+              eq(automationTemplates.tenantId, tenantId),
+              eq(automationTemplates.isPublic, true),
+            ),
+          ),
+        )
+        .limit(1);
+
+      if (!template) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Template not found" });
+      }
+
+      // Increment usage
+      await db
+        .update(automationTemplates)
+        .set({
+          usageCount: sqlFn`${automationTemplates.usageCount} + 1`,
+          lastUsedAt: new Date(),
+        })
+        .where(eq(automationTemplates.id, input.templateId));
+
+      return {
+        intent: template.intent,
+        scripts: template.scripts,
+        name: template.name,
+      };
+    }),
+
+  /**
+   * Delete a template (own templates only).
+   */
+  deleteTemplate: protectedProcedure
+    .input(z.object({ templateId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.user.tenantId;
+      if (!tenantId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No tenant context" });
+      }
+
+      const { getDb } = await import("../db");
+      const { automationTemplates } = await import("../../drizzle/schema");
+      const { eq, and } = await import("drizzle-orm");
+      const db = getDb();
+
+      const result = await db
+        .delete(automationTemplates)
+        .where(
+          and(
+            eq(automationTemplates.id, input.templateId),
+            eq(automationTemplates.tenantId, tenantId),
+          ),
+        );
+
+      return { deleted: true };
+    }),
 });
