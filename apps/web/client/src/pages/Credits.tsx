@@ -40,6 +40,7 @@ import {
   Shield,
   Eye,
   Coins,
+  Bot,
 } from 'lucide-react';
 
 /** Source type display labels and colors */
@@ -58,6 +59,7 @@ const SOURCE_LABELS: Record<string, { label: string; color: string; icon: typeof
   admin:       { label: "Admin",      color: "bg-gray-100 text-gray-700",    icon: Shield },
   agency:      { label: "Agency",     color: "bg-violet-100 text-violet-700", icon: Eye },
   creator_revenue: { label: "Creator Revenue", color: "bg-amber-100 text-amber-700", icon: Coins },
+  browser_automation: { label: "Automation", color: "bg-sky-100 text-sky-700", icon: Bot },
   other:       { label: "Other",      color: "bg-slate-100 text-slate-700",  icon: Zap },
 };
 
@@ -513,7 +515,35 @@ export default function Credits() {
                               {transaction.metadata && (
                                 <div className="text-xs text-gray-500 space-y-0.5">
                                   {transaction.metadata.provider && <div className="flex items-center gap-1"><span className="font-medium">Provider:</span><span className="text-gray-700 font-semibold">{String(transaction.metadata.provider)}</span></div>}
-                                  {transaction.metadata.model && <div className="flex items-center gap-1"><span className="font-medium">Model:</span><span className="text-gray-700">{String(transaction.metadata.model).split('/').pop()}</span></div>}
+                                  {(transaction.metadata.model || transaction.metadata.modelId) && (
+                                    <div className="flex items-center gap-1">
+                                      <span className="font-medium">Model:</span>
+                                      <span className="text-gray-700">{String(transaction.metadata.model || transaction.metadata.modelId).split('/').pop()}</span>
+                                    </div>
+                                  )}
+                                  {transaction.metadata.operation && <div className="flex items-center gap-1"><span className="font-medium">Op:</span><span className="text-gray-700">{String(transaction.metadata.operation)}</span></div>}
+                                  {(transaction.metadata.phase || transaction.metadata.stage) && (
+                                    <div className="flex items-center gap-1">
+                                      <span className="font-medium">Stage:</span>
+                                      <span className="text-gray-700">
+                                        {transaction.metadata.phase ? `P${transaction.metadata.phase}` : ""}
+                                        {transaction.metadata.phase && transaction.metadata.stage ? " / " : ""}
+                                        {transaction.metadata.stage ? String(transaction.metadata.stage) : ""}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {(transaction.metadata.deckId || transaction.metadata.slideNumber) && (
+                                    <div className="flex items-center gap-1">
+                                      <span className="font-medium">Job:</span>
+                                      <span className="text-gray-700">
+                                        {transaction.metadata.deckId ? `Deck #${transaction.metadata.deckId}` : ""}
+                                        {transaction.metadata.slideNumber ? ` • Slide ${transaction.metadata.slideNumber}` : ""}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {(transaction.metadata.taskId || transaction.metadata.mediaTaskId) && (
+                                    <div className="flex items-center gap-1"><span className="font-medium">Task:</span><span className="text-gray-700">{String(transaction.metadata.taskId || transaction.metadata.mediaTaskId)}</span></div>
+                                  )}
                                   {(transaction.metadata.inputTokens || transaction.metadata.tokensUsed) && (
                                     <div className="flex items-center gap-1">
                                       <span className="font-medium">Tokens:</span>
@@ -523,6 +553,15 @@ export default function Credits() {
                                   {transaction.metadata.skill && <div className="flex items-center gap-1"><span className="font-medium">Skill:</span><span className="text-gray-700">{String(transaction.metadata.skill)}</span></div>}
                                   {transaction.metadata.referenceImageCount > 0 && <div className="flex items-center gap-1"><span className="font-medium">Images:</span><span className="text-gray-700">{transaction.metadata.referenceImageCount}</span></div>}
                                   {transaction.metadata.mediaType && <div className="flex items-center gap-1"><span className="font-medium">Media:</span><span className="text-gray-700">{String(transaction.metadata.mediaType)}</span></div>}
+                                  {transaction.metadata.billingBasis && (
+                                    <div className="flex items-center gap-1"><span className="font-medium">Billing:</span><span className="text-gray-700">{String(transaction.metadata.billingBasis)}</span></div>
+                                  )}
+                                  {transaction.metadata.promptPreview && (
+                                    <div className="flex items-start gap-1">
+                                      <span className="font-medium mt-0.5">Prompt:</span>
+                                      <span className="text-gray-700 line-clamp-2">{String(transaction.metadata.promptPreview)}</span>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </td>

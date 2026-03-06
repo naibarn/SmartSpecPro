@@ -1,5 +1,7 @@
 /**
  * AutomationPage — Thin wrapper that opens AutomationChatModal as a full-page overlay.
+ * Guards access via a lightweight analyze call — if the feature flag is disabled,
+ * the backend will return FORBIDDEN and the user gets redirected.
  */
 
 import { useLocation } from "wouter";

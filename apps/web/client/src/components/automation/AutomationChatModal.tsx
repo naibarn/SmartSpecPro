@@ -7,15 +7,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
+  BookOpen,
   Bot,
   CheckCircle2,
   Loader2,
+  Save,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { AutomationPreviewPanel, type AutomationPlanSummary } from "./AutomationPreviewPanel";
 import { AutomationStepTracker, type AutomationExecutionStatus } from "./AutomationStepTracker";
+import { TemplateListPanel } from "./TemplateListPanel";
 
 type AutomationModalState =
   | "idle"
@@ -51,6 +54,10 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
   const [questions, setQuestions] = useState<ClarificationQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [showSaveForm, setShowSaveForm] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [templateDesc, setTemplateDesc] = useState("");
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollStartRef = useRef<number>(0);
@@ -59,6 +66,7 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
   const analyzeMutation = trpc.automationCopilot.analyze.useMutation();
   const executeMutation = trpc.automationCopilot.execute.useMutation();
   const cancelMutation = trpc.automationCopilot.cancel.useMutation();
+  const saveTemplateMutation = trpc.automationCopilot.saveTemplate.useMutation();
 
   const clearPolling = useCallback(() => {
     if (pollRef.current) {
@@ -78,6 +86,10 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
     setQuestions([]);
     setAnswers({});
     setErrorMessage(null);
+    setShowTemplates(false);
+    setShowSaveForm(false);
+    setTemplateName("");
+    setTemplateDesc("");
   }, [clearPolling]);
 
   // Cleanup on unmount or close
@@ -239,7 +251,7 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
         {/* Body */}
         <div className="max-h-[60vh] overflow-y-auto p-4">
           {/* Idle state */}
-          {state === "idle" && (
+          {state === "idle" && !showTemplates && (
             <div className="space-y-3">
               <p className="text-sm text-gray-500">
                 Describe what you want to automate in plain language.
@@ -259,7 +271,32 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
               >
                 Analyze
               </button>
+              <button
+                type="button"
+                onClick={() => setShowTemplates(true)}
+                className="flex w-full items-center justify-center gap-1.5 rounded-md border py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+              >
+                <BookOpen className="h-3.5 w-3.5" />
+                Browse Templates
+              </button>
             </div>
+          )}
+
+          {/* Templates browser */}
+          {state === "idle" && showTemplates && (
+            <TemplateListPanel
+              onSelectTemplate={(intent, scripts, name) => {
+                setPlanSummary({
+                  steps: ((intent as Record<string, unknown>)?.steps as AutomationPlanSummary["steps"]) ?? [],
+                  estimatedCredits: 25,
+                  estimatedDurationSeconds: 30,
+                });
+                setPrompt(name);
+                setShowTemplates(false);
+                setState("preview_ready");
+              }}
+              onBack={() => setShowTemplates(false)}
+            />
           )}
 
           {/* Analyzing state */}
@@ -350,13 +387,54 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
                 <span className="font-medium">Automation complete!</span>
               </div>
               <AutomationStepTracker status={executionStatus} />
-              <button
-                type="button"
-                onClick={() => toast.info("Template saving coming soon")}
-                className="w-full rounded-md border py-1.5 text-sm text-gray-600 hover:bg-gray-50"
-              >
-                Save as Template
-              </button>
+              {!showSaveForm ? (
+                <button
+                  type="button"
+                  onClick={() => setShowSaveForm(true)}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-md border py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+                >
+                  <Save className="h-3.5 w-3.5" />
+                  Save as Template
+                </button>
+              ) : (
+                <div className="space-y-2 rounded-md border p-3">
+                  <input
+                    type="text"
+                    value={templateName}
+                    onChange={(e) => setTemplateName(e.target.value)}
+                    placeholder="Template name (required)"
+                    className="w-full rounded border px-2 py-1.5 text-sm"
+                  />
+                  <textarea
+                    value={templateDesc}
+                    onChange={(e) => setTemplateDesc(e.target.value)}
+                    placeholder="Description (optional)"
+                    className="w-full rounded border px-2 py-1.5 text-sm"
+                    rows={2}
+                  />
+                  <button
+                    type="button"
+                    disabled={!templateName.trim() || saveTemplateMutation.isPending}
+                    onClick={async () => {
+                      try {
+                        await saveTemplateMutation.mutateAsync({
+                          name: templateName.trim(),
+                          description: templateDesc.trim() || undefined,
+                          intentJson: JSON.stringify(planSummary ?? {}),
+                          scriptsJson: JSON.stringify(executionStatus.extractedData ?? {}),
+                        });
+                        toast.success("Template saved");
+                        setShowSaveForm(false);
+                      } catch {
+                        toast.error("Failed to save template");
+                      }
+                    }}
+                    className="w-full rounded-md bg-blue-600 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {saveTemplateMutation.isPending ? "Saving..." : "Save Template"}
+                  </button>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={resetState}

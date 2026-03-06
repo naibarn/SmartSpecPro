@@ -90,9 +90,10 @@ export function getResolvedMenuItems(
   role: UserRole,
   group: MenuGroup,
   overrides?: Array<{ menuItemId: string; visible: boolean; sortOrder?: number }>,
+  enabledFeatures?: Record<string, boolean>,
 ): ResolvedMenuItem[] {
   const platform = detectPlatform();
-  const items = getMenuItemsByGroup(platform, role, group, overrides);
+  const items = getMenuItemsByGroup(platform, role, group, overrides, enabledFeatures);
   return items.map(item => ({
     ...item,
     IconComponent: iconMap[item.icon] || Sparkles,

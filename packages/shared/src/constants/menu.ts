@@ -83,11 +83,17 @@ export const defaultMenuItems: MenuItem[] = [
 export function getVisibleMenuItems(
   platform: Platform,
   role: UserRole,
-  overrides?: Array<{ menuItemId: string; visible: boolean; sortOrder?: number }>
+  overrides?: Array<{ menuItemId: string; visible: boolean; sortOrder?: number }>,
+  enabledFeatures?: Record<string, boolean>
 ): MenuItem[] {
   return defaultMenuItems
     .filter(item => item.platforms.includes(platform))
     .filter(item => !item.roles || item.roles.includes(role))
+    .filter(item => {
+      if (!item.requiresFeature) return true;
+      if (!enabledFeatures) return true; // No feature info = show all (backward compat)
+      return enabledFeatures[item.requiresFeature] === true;
+    })
     .map(item => {
       const override = overrides?.find(o => o.menuItemId === item.id);
       if (override) {
@@ -112,8 +118,9 @@ export function getMenuItemsByGroup(
   platform: Platform,
   role: UserRole,
   group: MenuGroup,
-  overrides?: Array<{ menuItemId: string; visible: boolean; sortOrder?: number }>
+  overrides?: Array<{ menuItemId: string; visible: boolean; sortOrder?: number }>,
+  enabledFeatures?: Record<string, boolean>
 ): MenuItem[] {
-  return getVisibleMenuItems(platform, role, overrides)
+  return getVisibleMenuItems(platform, role, overrides, enabledFeatures)
     .filter(item => item.group === group);
 }
