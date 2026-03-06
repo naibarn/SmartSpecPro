@@ -12,6 +12,7 @@ import { TenantProvider } from "./contexts/TenantContext";
 
 // Route-based code splitting — all page components are loaded lazily
 const NotFound = lazy(() => import("@/pages/NotFound"));
+const AutomationPage = lazy(() => import("@/pages/AutomationPage"));
 const DockerPage = lazy(() => import("@/pages/DockerPage"));
 const TerminalPage = lazy(() => import("@/pages/TerminalPage"));
 const CLIPage = lazy(() => import("@/pages/CLIPage"));
@@ -54,6 +55,7 @@ const AdminSettings = lazy(() => import("./pages/AdminSettings"));
 const AdminQueueDashboard = lazy(() => import("./pages/AdminQueueDashboard"));
 const AdminQueueLLM = lazy(() => import("./pages/AdminQueueLLM"));
 const AdminQueueMedia = lazy(() => import("./pages/AdminQueueMedia"));
+const AdminAuditLogs = lazy(() => import("./pages/AdminAuditLogs"));
 const AdminOpsDashboard = lazy(() => import("./pages/Admin/AdminOpsDashboard"));
 const AdminOverviewDashboard = lazy(() => import("./pages/Admin/AdminOverviewDashboard"));
 const AdminFunnelDashboard = lazy(() => import("./pages/AdminFunnelDashboard"));
@@ -158,6 +160,7 @@ function Router() {
         <Route path="/admin/queues" component={AdminQueueDashboard} />
         <Route path="/admin/queues/llm" component={AdminQueueLLM} />
         <Route path="/admin/queues/media" component={AdminQueueMedia} />
+        <Route path="/admin/audit-logs" component={AdminAuditLogs} />
         <Route path="/admin/ops" component={AdminOpsDashboard} />
         <Route path="/admin/dashboard" component={AdminOverviewDashboard} />
         <Route path="/admin/funnel" component={AdminFunnelDashboard} />
@@ -174,6 +177,7 @@ function Router() {
         <Route path="/signup" component={Signup} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/chat" component={Chat} />
+        <Route path="/automation" component={AutomationPage} />
         <Route path="/agencies" component={AgencyBrowser} />
         <Route path="/agencies/templates" component={AgencyTemplates} />
         <Route path="/agencies/marketplace" component={AgencyMarketplace} />

@@ -3870,6 +3870,65 @@ class NodeRegistry:
             )
         )
 
+        # Web Automation node
+        self.register_node_type(
+            NodeTypeSpec(
+                type="web_automation",
+                display_name="Web Automation",
+                description="Run browser automation via Automation Copilot",
+                icon="Bot",
+                color="indigo",
+                category="integrations",
+                inputs=[
+                    InputSpec(
+                        name="prompt",
+                        display_name="Prompt",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Describe what to automate...",
+                    ),
+                    InputSpec(
+                        name="url",
+                        display_name="URL",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="https://example.com",
+                    ),
+                    InputSpec(
+                        name="goal",
+                        display_name="Goal",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Extract product prices",
+                    ),
+                    InputSpec(
+                        name="vision_model",
+                        display_name="Vision Model",
+                        data_type="text",
+                        ui_type="select",
+                        required=False,
+                        accepts_connection=False,
+                        options_endpoint="/api/v1/models?capability=vision",
+                        placeholder="Use admin default",
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(
+                        name="extracted_data",
+                        display_name="Extracted Data",
+                        data_type="json",
+                    ),
+                ],
+                executor="app.orchestrator.node_executors.web_automation_executor.WebAutomationExecutor",
+            )
+        )
+
 
 # Helper function to get executor class by node type
 def get_executor(node_type: str):
