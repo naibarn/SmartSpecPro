@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import base64
+import json
 import logging
+import os
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
@@ -15,9 +17,25 @@ if TYPE_CHECKING:
     from playwright.async_api import BrowserContext, Page
 
     from app.services.browser_pool import BrowserPool
+    from app.services.llm_gateway_client import LLMGatewayClient
     from app.services.selector_cache import SelectorCache
 
 logger = logging.getLogger(__name__)
+
+_VISION_SYSTEM_PROMPT = """\
+You are a web page element identifier for browser automation.
+
+Given a screenshot of a web page with numbered overlays and a goal, identify the elements \
+that need to be interacted with to accomplish the goal.
+
+Return a JSON array of objects with these fields:
+- element_index: int, the overlay number on the screenshot
+- action_type: one of "click", "fill", "select", "extract_data", "hover", "scroll"
+- value: string or null, the value to fill/select (null for click/hover)
+- confidence: float 0.0-1.0
+- reasoning: brief explanation of why this element and action
+
+Return ONLY valid JSON array, no markdown fences or extra text."""
 
 # Numbered overlay injection script (system-authored, NEVER parameterized with user input)
 _OVERLAY_INJECTION_JS = """
@@ -85,9 +103,11 @@ class PlaywrightScriptGenerator:
         self,
         browser_pool: BrowserPool,
         selector_cache: SelectorCache,
+        gateway_client: LLMGatewayClient | None = None,
     ) -> None:
         self._browser_pool = browser_pool
         self._cache = selector_cache
+        self._gateway = gateway_client
 
     async def generate(
         self,
@@ -132,6 +152,7 @@ class PlaywrightScriptGenerator:
                     goal=goal,
                     vision_model=vision_model,
                     element_refs=element_refs,
+                    tenant_id=tenant_id,
                 )
 
                 # 6. Filter low confidence elements
@@ -234,16 +255,54 @@ class PlaywrightScriptGenerator:
         goal: str,
         vision_model: str,
         element_refs: list[dict],
+        tenant_id: str | None = None,
+        user_id: int | None = None,
     ) -> list[IdentifiedElement]:
         """Send screenshot + goal to Vision LLM, parse response.
 
         Override this method in tests. In production, this calls
         the LLM gateway with a vision-capable model.
         """
-        raise NotImplementedError(
-            "Production implementation calls the LLM gateway. "
-            "This method should be overridden in tests."
+        if self._gateway is None:
+            raise NotImplementedError("No gateway client configured")
+
+        if os.environ.get("AUTOMATION_LLM_ENABLED") == "false":
+            raise NotImplementedError("LLM calls disabled via AUTOMATION_LLM_ENABLED=false")
+
+        user_text = f"Goal: {goal}\n\nElement references: {json.dumps(element_refs)}"
+        messages = [
+            {"role": "system", "content": _VISION_SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": user_text},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/png;base64,{screenshot_b64}"},
+                    },
+                ],
+            },
+        ]
+        result = await self._gateway.chat_completion(
+            messages=messages,
+            model=vision_model,
+            user_id=user_id,
+            tenant_id=tenant_id,
         )
+
+        content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+        try:
+            parsed = json.loads(content)
+        except json.JSONDecodeError as exc:
+            raise ScriptGenerationError(
+                f"Vision LLM returned invalid JSON: {exc}",
+                details={"content_preview": content[:200]},
+            ) from exc
+
+        if not isinstance(parsed, list):
+            parsed = [parsed]
+
+        return [IdentifiedElement(**item) for item in parsed]
 
     def _build_selector_strategy(self, element_info: dict) -> list[str]:
         """Convert element info to multi-strategy selector list.

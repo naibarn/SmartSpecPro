@@ -30,12 +30,13 @@ class TestWebAutomationNode:
         assert spec is not None
         assert spec.executor == "app.orchestrator.node_executors.web_automation_executor.WebAutomationExecutor"
 
-    def test_executor_stub_raises_not_implemented(self):
+    def test_executor_returns_dict(self):
         from app.orchestrator.node_executors.web_automation_executor import WebAutomationExecutor
 
         executor = WebAutomationExecutor()
-        with pytest.raises(NotImplementedError):
-            import asyncio
-            asyncio.get_event_loop().run_until_complete(
-                executor.execute({"prompt": "test"}, {"tenant_id": "t1"})
-            )
+        import asyncio
+        result = asyncio.get_event_loop().run_until_complete(
+            executor.execute({"prompt": "test"}, {"tenant_id": "t1"})
+        )
+        assert isinstance(result, dict)
+        assert "status" in result

@@ -2,16 +2,34 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 from typing import TYPE_CHECKING, Any, Awaitable, Callable
 
 from pydantic import BaseModel
 
+from app.services.llm_gateway_client import GatewayUnavailableError
+
 if TYPE_CHECKING:
+    from app.services.llm_gateway_client import LLMGatewayClient
     from app.services.playwright_script_generator import PlaywrightScript, PlaywrightScriptGenerator
     from app.services.self_healing_executor import ExecutionResult, SelfHealingExecutor
 
 logger = logging.getLogger(__name__)
+
+_INTENT_ANALYSIS_SYSTEM_PROMPT = """\
+You are an automation intent analyzer. Given a user's request, determine the type of automation needed.
+
+Return a JSON object with these fields:
+- intent_type: one of "browser_rpa", "workflow", "agency", "hybrid"
+- confidence: float 0.0-1.0, how confident you are in the classification
+- is_ready: boolean, true if the request is clear enough to proceed
+- browser_tasks: array of {url, goal} objects (for browser_rpa type)
+- clarification_questions: array of strings if you need more info
+- plan_summary: brief description of what will be automated
+
+Return ONLY valid JSON, no markdown fences or extra text."""
 
 
 class AutomationIntent(BaseModel):
@@ -43,9 +61,11 @@ class AutomationCopilot:
         self,
         script_generator: PlaywrightScriptGenerator,
         executor: SelfHealingExecutor,
+        gateway_client: LLMGatewayClient | None = None,
     ) -> None:
         self._generator = script_generator
         self._executor = executor
+        self._gateway = gateway_client
         self._scripts: dict[str, list[Any]] = {}  # execution_id -> list of scripts
 
     async def analyze(
@@ -127,7 +147,67 @@ class AutomationCopilot:
         self, prompt: str, tenant_id: str, user_id: int
     ) -> AutomationIntent:
         """LLM-based intent analysis. Override in tests."""
-        raise NotImplementedError("Production calls the LLM gateway")
+        if self._gateway is None:
+            raise NotImplementedError("No gateway client configured")
+
+        if os.environ.get("AUTOMATION_LLM_ENABLED") == "false":
+            raise NotImplementedError("LLM calls disabled via AUTOMATION_LLM_ENABLED=false")
+
+        try:
+            result = await self._gateway.chat_completion(
+                messages=[
+                    {"role": "system", "content": _INTENT_ANALYSIS_SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt},
+                ],
+                model="gpt-4.1",
+                user_id=user_id,
+                tenant_id=tenant_id,
+                response_format={"type": "json_object"},
+            )
+
+            content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+            parsed = json.loads(content)
+
+            intent = AutomationIntent(
+                intent_type=parsed.get("intent_type", "unknown"),
+                confidence=float(parsed.get("confidence", 0.0)),
+                is_ready=parsed.get("is_ready", False),
+                browser_tasks=parsed.get("browser_tasks"),
+                plan_summary=parsed.get("plan_summary"),
+                ambiguities=parsed.get("clarification_questions"),
+            )
+
+            if intent.confidence < 0.5:
+                intent.is_ready = False
+                if not intent.ambiguities:
+                    intent.ambiguities = ["Could you describe what you'd like to automate?"]
+
+            return intent
+
+        except (json.JSONDecodeError, KeyError, IndexError, TypeError) as exc:
+            logger.warning("Failed to parse LLM intent response: %s", exc)
+            return AutomationIntent(
+                intent_type="unknown",
+                confidence=0.0,
+                is_ready=False,
+                ambiguities=["Could you describe what you'd like to automate?"],
+            )
+        except GatewayUnavailableError:
+            logger.warning("LLM gateway unavailable for intent analysis")
+            return AutomationIntent(
+                intent_type="unknown",
+                confidence=0.0,
+                is_ready=False,
+                ambiguities=["The AI service is temporarily unavailable. Please try again."],
+            )
+        except Exception as exc:
+            logger.error("Unexpected error in intent analysis: %s", exc)
+            return AutomationIntent(
+                intent_type="unknown",
+                confidence=0.0,
+                is_ready=False,
+                ambiguities=["Could you describe what you'd like to automate?"],
+            )
 
     def _build_workflow(self, intent: AutomationIntent) -> dict:
         """Thin wrapper: construct workflow definition from intent."""

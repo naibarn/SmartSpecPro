@@ -320,6 +320,28 @@ All 102 existing Feature 031 tests must continue to pass. The constructor change
 
 ---
 
+## Implementation Deviations from Plan
+
+1. **Model**: Used `gpt-4.1` instead of plan's `gpt-5.4` (aspirational model name; gpt-4.1 is real and available)
+2. **Vision calls use `chat_completion()` not `vision_call()`**: To include system prompts (`_VISION_SYSTEM_PROMPT`, `_DIAGNOSIS_SYSTEM_PROMPT`) as separate messages. `vision_call()` only supports a single user message. Both use the same underlying `/v1/chat/completions` endpoint.
+3. **`_vision_llm_call()` signature extended**: Added `tenant_id` and `user_id` optional params for proper billing attribution
+4. **`ScriptGenerationError` on bad JSON**: `_vision_llm_call()` now catches `JSONDecodeError` and raises `ScriptGenerationError` instead of propagating raw parse error
+5. **Sanitized error in `WebAutomationExecutor`**: Generic message for unexpected errors (security fix)
+6. **Resource lifecycle deferred**: `WebAutomationExecutor` instantiates per-call (no singleton/factory). Deferred to DI framework follow-up.
+7. **Tenant settings lookup deferred**: `vision_model` comes from `inputs` dict, not `system_settings` DB. Deferred to cross-cutting concern follow-up.
+8. **`test_web_automation_node.py` updated**: Changed `test_executor_stub_raises_not_implemented` to `test_executor_returns_dict` since stub was replaced.
+
+### Files Summary (Actual)
+
+| File | Action | Tests |
+|------|--------|-------|
+| `python-backend/app/services/automation_copilot.py` | Modified | 5 tests |
+| `python-backend/app/services/playwright_script_generator.py` | Modified | 7 tests |
+| `python-backend/app/services/self_healing_executor.py` | Modified | 5 tests |
+| `python-backend/app/orchestrator/node_executors/web_automation_executor.py` | Modified | 4 tests |
+| `python-backend/tests/test_web_automation_node.py` | Modified (existing test updated) | 3 tests |
+| Total new tests: 21, updated existing: 1 | | 34 pass |
+
 ## Verification Checklist
 
 After implementing this section:

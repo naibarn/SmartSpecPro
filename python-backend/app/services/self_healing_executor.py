@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import base64
+import json
 import logging
+import os
 from typing import TYPE_CHECKING, Any, Awaitable, Callable
 
 from pydantic import BaseModel
@@ -13,6 +15,7 @@ from app.services.automation_exceptions import (
     HealingExhaustedError,
     SelectorNotFoundError,
 )
+from app.services.llm_gateway_client import GatewayUnavailableError
 from app.services.playwright_script_generator import PlaywrightAction, PlaywrightScript
 
 if TYPE_CHECKING:
@@ -20,9 +23,27 @@ if TYPE_CHECKING:
     from playwright.async_api import Page
 
     from app.services.browser_pool import BrowserPool
+    from app.services.llm_gateway_client import LLMGatewayClient
     from app.services.selector_cache import SelectorCache
 
 logger = logging.getLogger(__name__)
+
+_DIAGNOSIS_SYSTEM_PROMPT = """\
+You are a browser automation failure diagnostician.
+
+Given a screenshot of the current page state, the failed action details, and the error message, \
+diagnose why the action failed and suggest a fix.
+
+Return a JSON object with:
+- root_cause: string explaining what went wrong
+- suggested_new_selector: object with "css" key containing a CSS/ARIA/data-testid selector, or null
+- confidence: float 0.0-1.0 in your diagnosis
+- action_type_still_valid: boolean, whether the same action type should be used
+
+Do NOT suggest JavaScript evaluate or page.evaluate selectors. Only suggest CSS selectors, \
+ARIA selectors, or data-testid selectors.
+
+Return ONLY valid JSON, no markdown fences or extra text."""
 
 
 class FailureDiagnosis(BaseModel):
@@ -55,12 +76,14 @@ class SelfHealingExecutor:
         vision_model: str = "gpt-4o",
         max_heal_attempts: int = 3,
         redis_client: aioredis.Redis | None = None,
+        gateway_client: LLMGatewayClient | None = None,
     ) -> None:
         self._browser_pool = browser_pool
         self._cache = selector_cache
         self._vision_model = vision_model
         self._max_heal_attempts = max_heal_attempts
         self._redis = redis_client
+        self._gateway = gateway_client
         self._credits_used = 0
 
     async def execute(
@@ -192,14 +215,66 @@ class SelfHealingExecutor:
         screenshot_bytes = await page.screenshot(type="png")
         screenshot_b64 = base64.b64encode(screenshot_bytes).decode()
 
-        # In production, this would call the LLM gateway
-        # For now, return a basic diagnosis
-        return FailureDiagnosis(
-            root_cause=f"Selector '{failed_action.selector_css}' failed: {error}",
-            suggested_new_selector=None,
-            confidence=0.0,
-            action_type_still_valid=False,
-        )
+        if self._gateway is None or os.environ.get("AUTOMATION_LLM_ENABLED") == "false":
+            return FailureDiagnosis(
+                root_cause=f"Selector '{failed_action.selector_css}' failed: {error}",
+                suggested_new_selector=None,
+                confidence=0.0,
+                action_type_still_valid=False,
+            )
+
+        try:
+            user_text = (
+                f"Failed action: {failed_action.action_type} on selector "
+                f"'{failed_action.selector_css}'\n"
+                f"Description: {failed_action.description}\n"
+                f"Error: {str(error)}"
+            )
+            messages = [
+                {"role": "system", "content": _DIAGNOSIS_SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": user_text},
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": f"data:image/png;base64,{screenshot_b64}"},
+                        },
+                    ],
+                },
+            ]
+
+            result = await self._gateway.chat_completion(
+                messages=messages,
+                model=self._vision_model,
+            )
+
+            content = result.get("choices", [{}])[0].get("message", {}).get("content", "")
+            parsed = json.loads(content)
+
+            return FailureDiagnosis(
+                root_cause=parsed.get("root_cause", "Unknown"),
+                suggested_new_selector=parsed.get("suggested_new_selector"),
+                confidence=float(parsed.get("confidence", 0.0)),
+                action_type_still_valid=parsed.get("action_type_still_valid", False),
+            )
+
+        except GatewayUnavailableError:
+            logger.warning("LLM gateway unavailable for failure diagnosis")
+            return FailureDiagnosis(
+                root_cause="LLM unavailable",
+                suggested_new_selector=None,
+                confidence=0.0,
+                action_type_still_valid=False,
+            )
+        except (json.JSONDecodeError, KeyError, TypeError) as exc:
+            logger.warning("Failed to parse diagnosis response: %s", exc)
+            return FailureDiagnosis(
+                root_cause=f"Parse error: {exc}",
+                suggested_new_selector=None,
+                confidence=0.0,
+                action_type_still_valid=False,
+            )
 
     async def regenerate_from_failure(
         self,
