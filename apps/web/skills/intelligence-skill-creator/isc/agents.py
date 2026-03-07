@@ -15,6 +15,8 @@ def triage_failures(report: EvaluationReport) -> TriageResult:
         if r.passed:
             continue
         miss = " ".join(r.missing).lower()
+        reasons = " ".join(r.reasons).lower()
+        reason_categories = set(r.categories)
         out = (r.output or "").lower()
         if any(k in miss for k in ["1.","2.","step","ขั้น","ขั้นตอน"]) or "ขั้น" in out:
             cats.add("formatting/steps")
@@ -22,7 +24,16 @@ def triage_failures(report: EvaluationReport) -> TriageResult:
         if any(ch.isdigit() for ch in miss):
             cats.add("numeric/correctness")
             hints.append("Ensure numeric answer appears exactly as expected.")
-        if "exception" in out or "traceback" in out or "error" in out:
+        if "contract/invalid-json" in reason_categories or "output is not valid json" in reasons:
+            cats.add("contract/json")
+            hints.append("Return valid JSON strings that match the skill contract.")
+        if "contract/schema" in reason_categories:
+            cats.add("contract/schema")
+            hints.append("Match the output schema and include all required output fields.")
+        if "contract/success-flag" in reason_categories:
+            cats.add("contract/success")
+            hints.append("Set success=true/false correctly for happy and error paths.")
+        if "runtime/exception" in reason_categories or "exception" in out or "traceback" in out or "error" in out:
             cats.add("runtime/exception")
             hints.append("Add guards to prevent exceptions.")
         if not out.strip():

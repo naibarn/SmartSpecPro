@@ -1,0 +1,1 @@
+Now let me see how the router is registered at the end.

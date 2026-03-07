@@ -192,6 +192,36 @@ async def initialize_kie_ai_client():
         return None
 
 
+async def initialize_uvoice_client():
+    """
+    Initialize the UVoice client by fetching API key from database.
+
+    Returns:
+        UVoiceProvider instance or None if not configured
+    """
+    from app.llm_proxy.providers import UVoiceProvider
+
+    provider_config = await get_media_provider_key("uvoice")
+
+    if not provider_config or not provider_config.get("apiKey"):
+        logger.warning("uvoice_not_configured", message="No API key found in media_providers table")
+        return None
+
+    api_key = provider_config["apiKey"]
+    base_url = provider_config.get("baseUrl") or "https://api.uvoice.ai"
+
+    try:
+        client = UVoiceProvider(
+            api_key=api_key,
+            base_url=base_url,
+        )
+        logger.info("uvoice_client_initialized", base_url=base_url)
+        return client
+    except Exception as e:
+        logger.error("uvoice_client_init_failed", error=str(e))
+        return None
+
+
 def clear_cache():
     """Clear the provider cache"""
     global _provider_cache, _last_fetch

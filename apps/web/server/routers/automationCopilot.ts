@@ -24,7 +24,7 @@ import { getTenantFeatureFlag } from "../services/featureFlags";
 
 const PY_URL =
   process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
-const PROXY_TOKEN = process.env.SMARTSPEC_PROXY_TOKEN ?? "";
+const PROXY_TOKEN = process.env.SMARTSPEC_PROXY_TOKEN || process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || "";
 const AUTOMATION_PREFIX = "/api/v1/automation-copilot";
 const CREDIT_RESERVE_AMOUNT = 100;
 const MIN_CREDITS_TO_START = 10;
@@ -76,7 +76,7 @@ export const automationCopilotRouter = router({
   analyze: protectedProcedure
     .input(analyzeInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.user.tenantId;
+      const tenantId = ctx.tenantId;
       if (!tenantId) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "No tenant context" });
       }
@@ -105,7 +105,7 @@ export const automationCopilotRouter = router({
           prompt: input.prompt,
           tenant_id: tenantId,
           user_id: ctx.user.id,
-          user_jwt: ctx.token ?? "",
+          user_jwt: ctx.userToken ?? "",
         },
       });
 
@@ -124,7 +124,7 @@ export const automationCopilotRouter = router({
   getStatus: protectedProcedure
     .input(getStatusInputSchema)
     .query(async ({ ctx, input }) => {
-      const tenantId = ctx.user.tenantId;
+      const tenantId = ctx.tenantId;
       if (!tenantId) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "No tenant context" });
       }
@@ -151,7 +151,7 @@ export const automationCopilotRouter = router({
   execute: protectedProcedure
     .input(executeInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.user.tenantId;
+      const tenantId = ctx.tenantId;
       if (!tenantId) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "No tenant context" });
       }
@@ -189,23 +189,25 @@ export const automationCopilotRouter = router({
         const { getDb } = await import("../db");
         const { systemSettings } = await import("../../drizzle/schema");
         const { eq, and } = await import("drizzle-orm");
-        const db = getDb();
-        const row = await db
-          .select({ value: systemSettings.value })
-          .from(systemSettings)
-          .where(
-            and(
-              eq(systemSettings.category, "tenant_automation"),
-              eq(systemSettings.key, `allowed_domains_${tenantId}`),
-            ),
-          )
-          .limit(1)
-          .then((rows) => rows[0]);
-        if (row?.value) {
-          allowedDomains = row.value
-            .split(",")
-            .map((d) => d.trim())
-            .filter(Boolean);
+        const db = await getDb();
+        if (db) {
+          const rows = await db
+            .select({ value: systemSettings.value })
+            .from(systemSettings)
+            .where(
+              and(
+                eq(systemSettings.category, "tenant_automation"),
+                eq(systemSettings.key, "allowed_domains"),
+              ),
+            )
+            .limit(1);
+          const row = rows[0];
+          if (row?.value) {
+            allowedDomains = row.value
+              .split(",")
+              .map((d: string) => d.trim())
+              .filter(Boolean);
+          }
         }
       } catch {
         // If system_settings query fails, use empty list (deny all)
@@ -217,20 +219,22 @@ export const automationCopilotRouter = router({
         const { getDb } = await import("../db");
         const { systemSettings } = await import("../../drizzle/schema");
         const { eq, and } = await import("drizzle-orm");
-        const db = getDb();
-        const row = await db
-          .select({ value: systemSettings.value })
-          .from(systemSettings)
-          .where(
-            and(
-              eq(systemSettings.category, "tenant_automation"),
-              eq(systemSettings.key, "automation_vision_model"),
-            ),
-          )
-          .limit(1)
-          .then((rows) => rows[0]);
-        if (row?.value) {
-          visionModel = row.value;
+        const db = await getDb();
+        if (db) {
+          const rows = await db
+            .select({ value: systemSettings.value })
+            .from(systemSettings)
+            .where(
+              and(
+                eq(systemSettings.category, "tenant_automation"),
+                eq(systemSettings.key, "automation_vision_model"),
+              ),
+            )
+            .limit(1);
+          const row = rows[0];
+          if (row?.value) {
+            visionModel = row.value;
+          }
         }
       } catch {
         // Use default
@@ -242,7 +246,7 @@ export const automationCopilotRouter = router({
           task_id: input.taskId,
           execution_id: input.executionId,
           intent_json: input.intentJson,
-          user_jwt: ctx.token ?? "",
+          user_jwt: ctx.userToken ?? "",
           tenant_id: tenantId,
           user_id: ctx.user.id,
           vision_model: visionModel,
@@ -272,7 +276,7 @@ export const automationCopilotRouter = router({
   cancel: protectedProcedure
     .input(cancelInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.user.tenantId;
+      const tenantId = ctx.tenantId;
       if (!tenantId) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "No tenant context" });
       }
@@ -307,14 +311,17 @@ export const automationCopilotRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.user.tenantId;
+      const tenantId = ctx.tenantId;
       if (!tenantId) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "No tenant context" });
       }
 
       const { getDb } = await import("../db");
       const { automationTemplates } = await import("../../drizzle/schema");
-      const db = getDb();
+      const db = await getDb();
+      if (!db) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      }
 
       const [row] = await db
         .insert(automationTemplates)
@@ -344,7 +351,7 @@ export const automationCopilotRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const tenantId = ctx.user.tenantId;
+      const tenantId = ctx.tenantId;
       if (!tenantId) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "No tenant context" });
       }
@@ -352,7 +359,10 @@ export const automationCopilotRouter = router({
       const { getDb } = await import("../db");
       const { automationTemplates } = await import("../../drizzle/schema");
       const { eq, or, lt, desc, and } = await import("drizzle-orm");
-      const db = getDb();
+      const db = await getDb();
+      if (!db) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      }
 
       const conditions = input.publicOnly
         ? [eq(automationTemplates.isPublic, true)]
@@ -389,7 +399,7 @@ export const automationCopilotRouter = router({
   useTemplate: protectedProcedure
     .input(z.object({ templateId: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.user.tenantId;
+      const tenantId = ctx.tenantId;
       if (!tenantId) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "No tenant context" });
       }
@@ -397,7 +407,10 @@ export const automationCopilotRouter = router({
       const { getDb } = await import("../db");
       const { automationTemplates } = await import("../../drizzle/schema");
       const { eq, or, and, sql: sqlFn } = await import("drizzle-orm");
-      const db = getDb();
+      const db = await getDb();
+      if (!db) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      }
 
       // Only allow access to own or public templates
       const [template] = await db
@@ -440,7 +453,7 @@ export const automationCopilotRouter = router({
   deleteTemplate: protectedProcedure
     .input(z.object({ templateId: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.user.tenantId;
+      const tenantId = ctx.tenantId;
       if (!tenantId) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "No tenant context" });
       }
@@ -448,7 +461,10 @@ export const automationCopilotRouter = router({
       const { getDb } = await import("../db");
       const { automationTemplates } = await import("../../drizzle/schema");
       const { eq, and } = await import("drizzle-orm");
-      const db = getDb();
+      const db = await getDb();
+      if (!db) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      }
 
       const result = await db
         .delete(automationTemplates)

@@ -88,6 +88,7 @@ function clamp(value: number, min: number, max: number): number {
 
 const THAI_COMBINING_MARK_REGEX = /[\u0e31\u0e34-\u0e3a\u0e47-\u0e4e]/g;
 const ZERO_WIDTH_CHAR_REGEX = /[\u200b-\u200d\ufeff]/g;
+const TEXT_BLOCK_VERTICAL_PADDING_EM = 0.22;
 
 function countVisualCharacters(text: string): number {
   const normalized = text
@@ -101,6 +102,68 @@ function countVisualCharacters(text: string): number {
   return Array.from(normalized).length;
 }
 
+function estimateParagraphLineCount(
+  text: string,
+  charsPerLine: number,
+  thaiText: boolean,
+): number {
+  const cleaned = text.trim();
+  if (!cleaned) {
+    return 1;
+  }
+
+  const visualCharCount = countVisualCharacters(cleaned);
+  if (visualCharCount <= 0) {
+    return 1;
+  }
+
+  const noWhitespaceThai = thaiText && !/\s/.test(cleaned);
+  if (noWhitespaceThai) {
+    return Math.ceil((visualCharCount * 1.08) / charsPerLine);
+  }
+
+  if (!/\s/.test(cleaned)) {
+    return Math.ceil(visualCharCount / charsPerLine);
+  }
+
+  const words = cleaned.split(/\s+/).filter(Boolean);
+  let lines = 1;
+  let currentLineChars = 0;
+
+  for (const word of words) {
+    const wordChars = countVisualCharacters(word);
+    if (wordChars <= 0) {
+      continue;
+    }
+
+    if (wordChars > charsPerLine) {
+      if (currentLineChars > 0) {
+        lines += 1;
+        currentLineChars = 0;
+      }
+
+      const wrappedLines = Math.ceil(wordChars / charsPerLine);
+      lines += wrappedLines - 1;
+      const remainder = wordChars % charsPerLine;
+      currentLineChars = remainder === 0 ? charsPerLine : remainder;
+      continue;
+    }
+
+    const nextLineChars = currentLineChars === 0
+      ? wordChars
+      : currentLineChars + 1 + wordChars;
+    if (nextLineChars <= charsPerLine) {
+      currentLineChars = nextLineChars;
+      continue;
+    }
+
+    lines += 1;
+    currentLineChars = wordChars;
+  }
+
+  return lines;
+}
+
 function estimateTextLineCount(
   text: string,
   width: number,
@@ -112,17 +175,25 @@ function estimateTextLineCount(
     return 1;
   }
   const thaiText = hasThaiCharacters(cleaned);
-  const visualCharCount = countVisualCharacters(cleaned);
-  if (visualCharCount <= 0) {
-    return 1;
-  }
   const avgCharWidthFactor = thaiText ? 0.6 : 0.56;
   const avgCharWidth = Math.max(1, fontSize * avgCharWidthFactor);
   const charsPerLine = Math.max(8, Math.floor(width / avgCharWidth));
-  const noWhitespaceThai = thaiText && !/\s/.test(cleaned);
-  const languagePenalty = noWhitespaceThai ? 1.08 : 1;
-  const estimated = Math.ceil((visualCharCount * languagePenalty) / charsPerLine);
+  const estimated = cleaned
+    .split(/\n+/)
+    .map((paragraph) => estimateParagraphLineCount(paragraph, charsPerLine, thaiText))
+    .reduce((sum, lineCount) => sum + lineCount, 0);
   return clamp(estimated, 1, maxLines);
+}
+
+function estimateTextBlockHeight(
+  fontSize: number,
+  lineHeightRatio: number,
+  lineCount: number,
+  extraPaddingPx: number = 0,
+): number {
+  const lineHeightPx = Math.max(1, Math.round(fontSize * lineHeightRatio));
+  const paddingPx = Math.max(2, Math.round(fontSize * TEXT_BLOCK_VERTICAL_PADDING_EM));
+  return Math.max(lineHeightPx, (lineCount * lineHeightPx) + paddingPx + Math.max(0, extraPaddingPx));
 }
 
 function scaleFontSize(
@@ -366,19 +437,20 @@ function fitBodyFontSizeToHeight(opts: {
   }
 
   const remainingHeight = Math.max(1, availableHeightPx - Math.max(0, (lineCount - 1) * gapPx));
-  const maxFontByHeight = Math.floor(remainingHeight / Math.max(0.8, lineCount * lineHeightRatio));
+  const maxFontByHeight = Math.floor(
+    remainingHeight / Math.max(0.8, (lineCount * lineHeightRatio) + TEXT_BLOCK_VERTICAL_PADDING_EM),
+  );
   const fitted = Math.min(baseFontSize, maxFontByHeight);
   return clamp(Math.round(fitted), minFontSize, maxFontSize);
 }
 
 function buildFittedRows(lines: string[], fontSize: number, width: number, lineHeightRatio: number, maxLinesPerRow: number): FittedBodyRow[] {
-  const lineHeightPx = Math.max(1, Math.round(fontSize * lineHeightRatio));
   return lines.map((text) => {
     const lineCount = estimateTextLineCount(text, width, fontSize, maxLinesPerRow);
     return {
       text,
       lineCount,
-      height: Math.max(lineHeightPx, lineCount * lineHeightPx),
+      height: estimateTextBlockHeight(fontSize, lineHeightRatio, lineCount),
     };
   });
 }
@@ -780,7 +852,7 @@ function buildSplitRightImage(ctx: TemplateContext): SlideElement[] {
   const elements: SlideElement[] = [];
   const halfWidth = contentArea.width * 0.5;
   const portrait = isPortraitCanvas(canvasWidth, canvasHeight);
-  const { subtitle, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 10 : 12);
+  const { subtitle, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 6 : 5);
   const thaiText = hasThaiCharacters(`${slideData.title}\n${subtitle ?? ""}\n${bodyLines.join("\n")}`);
   const titleLineHeight = getTitleLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLineHeightRatio = getBodyLineHeight(canvasWidth, canvasHeight, thaiText);
@@ -959,7 +1031,7 @@ function buildSplitLeftImage(ctx: TemplateContext): SlideElement[] {
   const elements: SlideElement[] = [];
   const halfWidth = contentArea.width * 0.5;
   const portrait = isPortraitCanvas(canvasWidth, canvasHeight);
-  const { subtitle, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 10 : 12);
+  const { subtitle, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 6 : 5);
   const thaiText = hasThaiCharacters(`${slideData.title}\n${subtitle ?? ""}\n${bodyLines.join("\n")}`);
   const titleLineHeight = getTitleLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLineHeightRatio = getBodyLineHeight(canvasWidth, canvasHeight, thaiText);
@@ -1540,7 +1612,12 @@ function buildFeatureBoxesRight(ctx: TemplateContext): SlideElement[] {
   const titleY = contentArea.y + Math.round(30 * scale.scaleY);
   const titleWidth = rightWidth - Math.round(60 * scale.scaleX);
   const titleLineCount = titleSizing.lineCount;
-  const titleHeight = Math.round(titleFontSize * titleLineHeight * titleLineCount + Math.round(10 * scale.scaleY));
+  const titleHeight = estimateTextBlockHeight(
+    titleFontSize,
+    titleLineHeight,
+    titleLineCount,
+    Math.round(2 * scale.scaleY),
+  );
   elements.push(
     makeTextElement({
       x: contentArea.x + leftWidth + Math.round(30 * scale.scaleX),
@@ -1617,7 +1694,7 @@ function buildFeatureBoxesRight(ctx: TemplateContext): SlideElement[] {
         availableHeightPx: detailText ? Math.max(26, cardInnerHeight * 0.45) : Math.max(26, cardInnerHeight),
       });
       const headingHeight = Math.max(
-        Math.round(headingFontSize * (thaiText ? 1.34 : 1.2) * headingLineCount),
+        estimateTextBlockHeight(headingFontSize, thaiText ? 1.34 : 1.2, headingLineCount),
         Math.round(24 * scale.scaleY),
       );
       elements.push(

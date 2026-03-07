@@ -89,4 +89,27 @@ describe("CanvasObjects SVG rendering", () => {
     expect(playSpy).toHaveBeenCalled();
     playSpy.mockRestore();
   });
+
+  it("uses Thai-safe text metrics in text elements to avoid clipped lower diacritics", () => {
+    renderCanvas([
+      {
+        id: "thai-text-1",
+        type: "text",
+        x: 20,
+        y: 20,
+        width: 360,
+        height: 200,
+        text: "ทดสอบสระอู อู อุ",
+        lineHeight: 1.1,
+      },
+    ]);
+
+    const paragraph = screen.getByTitle("ทดสอบสระอู อู อุ");
+    expect(paragraph).toHaveStyle({
+      lineHeight: "1.5",
+      paddingTop: "0.2em",
+      paddingBottom: "0.48em",
+    });
+    expect(paragraph.parentElement).toHaveClass("overflow-visible");
+  });
 });

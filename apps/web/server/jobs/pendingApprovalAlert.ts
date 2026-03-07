@@ -16,7 +16,7 @@ let intervalId: NodeJS.Timeout | null = null;
 let initialTimeoutId: NodeJS.Timeout | null = null;
 
 async function executePendingApprovalAlert(): Promise<void> {
-  const db = getDb();
+  const db = await getDb();
   if (!db) return;
 
   const [skillRow] = await db.select({ cnt: count() }).from(skills).where(eq(skills.visibility, "pending_approval"));

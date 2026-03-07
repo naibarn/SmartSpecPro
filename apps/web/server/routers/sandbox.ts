@@ -327,7 +327,7 @@ export const sandboxRouter = router({
         .limit(input.limit)
         .offset(input.offset);
 
-      return rows.map((job) => {
+      return rows.map((job: typeof rows[number]) => {
         const projection = projectStatus(job.status as SandboxInternalStatus);
         return {
           jobId: job.id,

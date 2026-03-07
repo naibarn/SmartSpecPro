@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useLocation, useRoute } from "wouter";
 import { ChevronLeft, Loader2, Maximize2, Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,115 @@ import { ensureSlideContent } from "@/lib/presentationEditorState";
 import { Button } from "@/components/ui/button";
 
 const PLAY_MODE_ROUTE = "/presentation/:itemId/play";
+const PLAY_TRANSITION_DURATION_MS = 700;
+
+type PlayTransitionType =
+  | "cut"
+  | "fade"
+  | "slide-left"
+  | "slide-right"
+  | "zoom-in"
+  | "zoom-out"
+  | "blur";
+
+function normalizePlayTransition(input: unknown): PlayTransitionType {
+  switch (input) {
+    case "cut":
+    case "fade":
+    case "slide-left":
+    case "slide-right":
+    case "zoom-in":
+    case "zoom-out":
+    case "blur":
+      return input;
+    default:
+      return "fade";
+  }
+}
+
+function getTransitionStyle(
+  transition: PlayTransitionType,
+  phase: "steady" | "exit" | "enter",
+): CSSProperties {
+  if (phase === "steady" || transition === "cut") {
+    return {
+      opacity: 1,
+      transform: "none",
+    };
+  }
+
+  if (phase === "enter") {
+    switch (transition) {
+      case "slide-left":
+        return {
+          opacity: 0,
+          transform: "translate3d(220px, 0, 0) scale(1)",
+        };
+      case "slide-right":
+        return {
+          opacity: 0,
+          transform: "translate3d(-220px, 0, 0) scale(1)",
+        };
+      case "zoom-in":
+        return {
+          opacity: 0,
+          transform: "translate3d(0, 0, 0) scale(1.2)",
+        };
+      case "zoom-out":
+        return {
+          opacity: 0,
+          transform: "translate3d(0, 0, 0) scale(0.8)",
+        };
+      case "blur":
+        return {
+          opacity: 0,
+          transform: "translate3d(0, 0, 0) scale(1)",
+          filter: "blur(20px)",
+        };
+      case "fade":
+      default:
+        return {
+          opacity: 0,
+          transform: "none",
+        };
+    }
+  }
+
+  switch (transition) {
+    case "slide-left":
+      return {
+        opacity: 0,
+        transform: "translate3d(-220px, 0, 0) scale(1)",
+      };
+    case "slide-right":
+      return {
+        opacity: 0,
+        transform: "translate3d(220px, 0, 0) scale(1)",
+      };
+    case "zoom-in":
+      return {
+        opacity: 0,
+        transform: "translate3d(0, 0, 0) scale(0.8)",
+      };
+    case "zoom-out":
+      return {
+        opacity: 0,
+        transform: "translate3d(0, 0, 0) scale(1.2)",
+      };
+    case "blur":
+      return {
+        opacity: 0,
+        transform: "translate3d(0, 0, 0) scale(1)",
+        filter: "blur(20px)",
+      };
+    case "fade":
+    default:
+      return {
+        opacity: 0,
+        transform: "none",
+      };
+  }
+}
 
 export default function PresentationPlayMode() {
   const [, setLocation] = useLocation();
@@ -76,6 +185,7 @@ export default function PresentationPlayMode() {
 
   const [playbackState, setPlaybackState] = useState<PlaybackState>("IDLE");
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [indexTransitioning, setIndexTransitioning] = useState(false);
 
   // -------------------------------------------------------------------------
   // Engine refs
@@ -83,6 +193,8 @@ export default function PresentationPlayMode() {
 
   const engineRef = useRef<PlaybackEngine | null>(null);
   const audioRef = useRef<AudioTrackPlayer | null>(null);
+  const lastIndexRef = useRef(0);
+  const transitionFrameRef = useRef<number | null>(null);
 
   // -------------------------------------------------------------------------
   // Control bar auto-hide
@@ -106,10 +218,36 @@ export default function PresentationPlayMode() {
     if (!playDeck || !playbackSlides.length) return;
 
     audioRef.current = new AudioTrackPlayer(playDeck.projectAudioTrack ?? null);
+    lastIndexRef.current = 0;
+    setIndexTransitioning(false);
+    if (transitionFrameRef.current != null) {
+      window.cancelAnimationFrame(transitionFrameRef.current);
+      transitionFrameRef.current = null;
+    }
 
     engineRef.current = new PlaybackEngine(
       playbackSlides,
       (newState: PlaybackState, newIndex: number) => {
+        const previousIndex = lastIndexRef.current;
+        const indexChanged = newIndex !== previousIndex;
+        if (indexChanged) {
+          if (transitionFrameRef.current != null) {
+            window.cancelAnimationFrame(transitionFrameRef.current);
+          }
+          setIndexTransitioning(true);
+          transitionFrameRef.current = window.requestAnimationFrame(() => {
+            setIndexTransitioning(false);
+            transitionFrameRef.current = null;
+          });
+        } else if (newState !== "PLAYING" && newState !== "SLIDE_TRANSITIONING") {
+          if (transitionFrameRef.current != null) {
+            window.cancelAnimationFrame(transitionFrameRef.current);
+            transitionFrameRef.current = null;
+          }
+          setIndexTransitioning(false);
+        }
+        lastIndexRef.current = newIndex;
+
         setPlaybackState(newState);
         setCurrentIndex(newIndex);
         if (newState === "SLIDE_TRANSITIONING") {
@@ -131,10 +269,15 @@ export default function PresentationPlayMode() {
     resetHideTimer();
 
     return () => {
+      if (transitionFrameRef.current != null) {
+        window.cancelAnimationFrame(transitionFrameRef.current);
+        transitionFrameRef.current = null;
+      }
       engineRef.current?.destroy();
       audioRef.current?.destroy();
       engineRef.current = null;
       audioRef.current = null;
+      setIndexTransitioning(false);
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     };
   }, [playDeck, playbackSlides, resetHideTimer]);
@@ -248,9 +391,15 @@ export default function PresentationPlayMode() {
   const currentSlide = playbackSlides[currentIndex] ?? null;
   const normalizedSlideContent = ensureSlideContent((currentSlide as any)?.slideContent ?? { elements: [] });
   const canvasSize = normalizeCanvasSize(normalizedSlideContent.canvas);
-  // L1: respect slide transition type for CSS animation
-  const transitionType = (currentSlide as any)?.transition ?? "fade";
+  const transitionType = normalizePlayTransition(
+    normalizedSlideContent.transition ?? (currentSlide as any)?.transition ?? "fade",
+  );
   const isPlaying = playbackState === "PLAYING";
+  const transitionPhase: "steady" | "exit" | "enter" = indexTransitioning
+    ? "enter"
+    : playbackState === "SLIDE_TRANSITIONING"
+      ? "exit"
+      : "steady";
 
   // -------------------------------------------------------------------------
   // Main render
@@ -276,11 +425,14 @@ export default function PresentationPlayMode() {
       {/* Slide canvas — key change triggers CSS fade on slide transition */}
       <div
         key={currentIndex}
+        data-testid="play-slide-transition-layer"
         className={cn(
-          "absolute inset-0 flex items-center justify-center transition-opacity ease-in-out",
-          transitionType === "cut" ? "duration-0" : "duration-300",
+          "absolute inset-0 flex items-center justify-center transition-[opacity,transform,filter] ease-in-out",
         )}
-        style={{ opacity: playbackState === "SLIDE_TRANSITIONING" ? 0 : 1 }}
+        style={{
+          ...getTransitionStyle(transitionType, transitionPhase),
+          transitionDuration: `${transitionType === "cut" ? 0 : PLAY_TRANSITION_DURATION_MS}ms`,
+        }}
       >
         <div className="h-full w-full p-3 md:p-5">
           {/* H2: showTransformDock=false + suppressTransformHandles=true for read-only play mode */}

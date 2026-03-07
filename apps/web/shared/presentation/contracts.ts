@@ -151,6 +151,11 @@ export const presentationConversionResultSchema = z.object({
 export const presentationTransitionSchema = z.enum([
   "cut",
   "fade",
+  "slide-left",
+  "slide-right",
+  "zoom-in",
+  "zoom-out",
+  "blur",
 ]);
 export const presentationCanvasPresetSchema = z.enum([
   "16:9",
@@ -216,6 +221,7 @@ export const presentationImageElementSchema = z.object({
   imagePrompt: z.string().max(4_000).optional(),
   imageModelId: z.string().max(256).optional(),
   imageReferenceUrls: z.array(z.string().max(2_048)).max(5).optional(),
+  imageExtraParams: z.record(z.unknown()).optional(),
   svgContent: z.string().max(8_192).optional(),
   svgColor: z.string().max(32).optional(),
 }).strict();
@@ -234,6 +240,14 @@ export const presentationVideoElementSchema = z.object({
   title: z.string().max(512).optional(),
   muted: z.boolean().optional(),
   loop: z.boolean().optional(),
+  videoPrompt: z.string().max(4_000).optional(),
+  videoModelId: z.string().max(256).optional(),
+  videoReferenceUrls: z.array(z.string().max(2_048)).max(5).optional(),
+  videoFit: z.enum(["contain", "cover", "fill"]).optional(),
+  videoPositionX: z.number().finite().min(0).max(100).optional(),
+  videoPositionY: z.number().finite().min(0).max(100).optional(),
+  videoZoom: z.number().finite().min(0.5).max(3).optional(),
+  videoExtraParams: z.record(z.unknown()).optional(),
 }).strict();
 
 export const presentationRectElementSchema = z.object({
@@ -328,12 +342,18 @@ export const presentationPendingMediaJobSchema = z.object({
   lastCheckedAt: z.string().min(1).max(64).optional(),
 }).strict();
 
+export const presentationSlideBackgroundSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("color"), value: z.string().min(1).max(64) }),
+  z.object({ type: z.literal("image"), url: z.string().min(1).max(500), libraryItemId: z.number().int().positive().optional() }),
+]);
+
 export const presentationSlideContentSchema = z.object({
   elements: z.array(presentationSlideElementSchema).max(PRESENTATION_LIMITS.maxElementsPerSlide),
   canvas: presentationCanvasSizeSchema.optional(),
   transition: presentationTransitionSchema.optional(),
   durationMs: z.number().finite().min(250).max(120_000).optional(),
   pendingMediaJobs: z.array(presentationPendingMediaJobSchema).max(32).optional(),
+  background: presentationSlideBackgroundSchema.optional(),
 }).strict();
 
 export const presentationSlideshowSlideSchema = z.object({
@@ -428,6 +448,7 @@ export type PresentationRenderSpec = z.infer<typeof presentationRenderSpecSchema
 export type PresentationTransition = z.infer<typeof presentationTransitionSchema>;
 export type PresentationSlideElement = z.infer<typeof presentationSlideElementSchema>;
 export type PresentationPendingMediaJob = z.infer<typeof presentationPendingMediaJobSchema>;
+export type PresentationSlideBackground = z.infer<typeof presentationSlideBackgroundSchema>;
 export type PresentationSlideContent = z.infer<typeof presentationSlideContentSchema>;
 export type PresentationExportResult = z.infer<typeof presentationExportResultSchema>;
 export type PresentationExportStatusResult = z.infer<typeof presentationExportStatusResultSchema>;

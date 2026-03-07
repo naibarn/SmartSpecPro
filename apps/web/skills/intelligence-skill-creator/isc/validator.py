@@ -10,6 +10,7 @@ class ValidationResult:
     warnings: List[str]
 
 import json
+from .proposals import normalize_relative_patch_path
 
 def validate_patch(
     skill_name: str,
@@ -28,11 +29,19 @@ def validate_patch(
         return ValidationResult(False, [f"Invalid JSON patch: {e}"], [])
 
     paths = list(data.keys())
-    
+
+    for p in paths:
+        try:
+            normalize_relative_patch_path(p)
+        except RuntimeError as e:
+            errors.append(str(e))
+
     if restrict_under_skills:
         for p in paths:
-            if not p.startswith(f"skills/{skill_name}/"):
-                errors.append(f"Disallowed path touched: {p}")
+            if p.startswith("skills/"):
+                errors.append(
+                    f"Patch path must be relative to skill '{skill_name}', not repo-root scoped: {p}"
+                )
 
     for p in paths:
         if p.endswith("tests.json"):

@@ -67,6 +67,22 @@ const DEFAULT_PROVIDERS = [
     priority: 10,
   },
   {
+    providerName: "uvoice",
+    displayName: "UVoice",
+    description: "Thai-focused text-to-speech provider with Standard/Natural/Premium voice tiers and configurable output format",
+    providerType: "audio",
+    baseUrl: "https://api.uvoice.ai",
+    defaultModel: "uvoice/tts-standard",
+    availableModels: [
+      { id: "uvoice/tts-standard", name: "UVoice TTS Standard", type: "audio", description: "Standard quality voices (max 5,000 chars)" },
+      { id: "uvoice/tts-natural", name: "UVoice TTS Natural", type: "audio", description: "Natural voices (max 1,500 chars)" },
+      { id: "uvoice/tts-premium", name: "UVoice TTS Premium", type: "audio", description: "Premium voices (max 1,500 chars)" },
+    ],
+    isEnabled: false,
+    isPrimary: false,
+    priority: 15,
+  },
+  {
     providerName: "replicate",
     displayName: "Replicate",
     description: "Run open-source AI models with a cloud API - supports thousands of community models",

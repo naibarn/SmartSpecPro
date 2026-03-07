@@ -3,7 +3,7 @@
  * View and manage media generation tasks
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,8 +28,11 @@ import {
 } from '@/components/ui/table';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogHeader,
+  DialogOverlay,
+  DialogPortal,
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
@@ -51,9 +54,17 @@ import {
   Trash2,
   ImagePlus,
   Info,
+  Copy,
+  Check,
+  LayoutGrid,
+  List,
+  Maximize2,
+  Share2,
+  Library,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ExpiredMediaPlaceholder from '@/components/media/ExpiredMediaPlaceholder';
+import { ShareDialog } from '@/components/library/ShareDialog';
 import {
   buildTaskLibraryErrorState,
   buildTaskLibraryStateFromAddResult,
@@ -61,11 +72,13 @@ import {
   getAddToLibrarySuccessMessage,
   getLibraryStatusMeta as getLibraryItemStatusMeta,
   isMediaTaskEligibleForLibraryAdd,
+  type LibrarySearchResultItem,
   type TaskLibraryUIState,
 } from '@/lib/libraryUi';
 
 type MediaType = 'image' | 'video' | 'audio';
 type TaskStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+type HistoryViewMode = 'list' | 'gallery';
 
 interface MediaTask {
   id: string;
@@ -116,6 +129,16 @@ function getStatusMeta(status: string | undefined) {
 
 function getMediaTypeMeta(mediaType: string | undefined) {
   return mediaTypeConfig[mediaType as MediaType] || fallbackMediaTypeConfig;
+}
+
+function getTaskLibraryDisplayLabel(state?: TaskLibraryUIState | null): string {
+  if (state?.action === 'adding') return 'Adding to Library';
+  if (state?.action === 'error') return 'Library Failed';
+
+  const status = getLibraryItemStatusMeta(state?.status);
+  if (status.label === 'Ready') return 'In Library';
+  if (status.label === 'Not Added') return 'Not in Library';
+  return `Library: ${status.label}`;
 }
 
 function extractTaskErrorInfo(task: MediaTask | null): {
@@ -251,6 +274,246 @@ function extractTaskDebugInfo(task: MediaTask | null): {
   return { traceId, providerHint, logFile };
 }
 
+function toRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
+}
+
+function pickString(...values: unknown[]): string | undefined {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  return undefined;
+}
+
+function buildFallbackApiUrl(providerHint: string | undefined, endpoint: string | undefined): string | undefined {
+  if (!endpoint) return undefined;
+  if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+    return endpoint;
+  }
+  const normalizedProvider = String(providerHint || '').trim().toLowerCase();
+  const baseUrl = normalizedProvider === 'uvoice'
+    ? 'https://api.uvoice.ai'
+    : 'https://api.kie.ai/api/v1';
+  return `${baseUrl}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
+}
+
+function sanitizeDebugPayload(value: unknown): unknown {
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeDebugPayload(item));
+  }
+  const obj = value as Record<string, unknown>;
+  const next: Record<string, unknown> = {};
+  for (const [key, raw] of Object.entries(obj)) {
+    const lower = key.toLowerCase();
+    if (
+      lower.includes('api_key')
+      || lower.includes('apikey')
+      || lower.includes('token')
+      || lower.includes('secret')
+      || lower.includes('authorization')
+      || lower.includes('password')
+    ) {
+      next[key] = '***redacted***';
+      continue;
+    }
+    next[key] = sanitizeDebugPayload(raw);
+  }
+  return next;
+}
+
+type TaskApiDebugInfo = {
+  providerHint?: string;
+  endpoint?: string;
+  requestUrl?: string;
+  method?: string;
+  requestModel?: string;
+  requestText?: string;
+  voiceId?: string;
+  requestPayload?: unknown;
+  responseStatus?: number;
+  responseMessage?: string;
+  responseBody?: string;
+  responseJson?: unknown;
+  providerMessage?: string;
+  providerDetail?: unknown;
+};
+
+function extractTaskApiDebugInfo(task: MediaTask | null): TaskApiDebugInfo | null {
+  if (!task) return null;
+
+  const resultData = toRecord(task.resultData) ?? {};
+  const parameters = toRecord(task.parameters) ?? {};
+  const debugObj = toRecord(resultData.debug) ?? {};
+  const apiDebug = toRecord(debugObj.api) ?? {};
+  const failureObj = toRecord(resultData.failure) ?? {};
+  const kieResponse = toRecord(resultData.kie_ai_response);
+  const providerDetail = toRecord(failureObj.provider_detail);
+  const providerDebug = toRecord(providerDetail?.debug);
+  const providerApi = toRecord(providerDebug?.api);
+
+  const apiConfigRaw = parameters.api_config ?? parameters.apiConfig;
+  const apiConfig = toRecord(apiConfigRaw) ?? {};
+  const extraParamsRaw = parameters.extra_params ?? parameters.extraParams;
+  const extraParams = toRecord(extraParamsRaw) ?? {};
+  const apiRequestPayload = toRecord(apiDebug.request_payload);
+  const providerRequestPayload = toRecord(providerApi?.request_payload);
+
+  const providerHint = pickString(
+    apiDebug.provider,
+    providerApi?.provider,
+    debugObj.provider_hint,
+    providerDebug?.provider_hint,
+    apiConfig.provider,
+  );
+  const endpoint = pickString(
+    apiDebug.endpoint,
+    providerApi?.endpoint,
+    apiConfig.endpoint,
+    apiConfig.api_endpoint,
+    apiConfig.apiEndpoint,
+  );
+  const requestUrl = pickString(
+    apiDebug.request_url,
+    apiDebug.api_url,
+    providerApi?.request_url,
+    providerApi?.api_url,
+    buildFallbackApiUrl(providerHint, endpoint),
+  );
+  const method = pickString(
+    apiDebug.method,
+    providerApi?.method,
+    'POST',
+  );
+  const voiceId = pickString(
+    apiDebug.voice_id,
+    apiDebug.selected_voice_id,
+    providerApi?.voice_id,
+    debugObj.selected_voice_id,
+    providerDebug?.selected_voice_id,
+    parameters.voice_id,
+    parameters.voiceId,
+    parameters.voice,
+    extraParams.voiceID,
+    extraParams.voiceId,
+    extraParams.voice_id,
+    extraParams.voice,
+  );
+  const requestModel = pickString(
+    apiDebug.model,
+    providerApi?.model,
+    apiRequestPayload?.model,
+    providerRequestPayload?.model,
+    parameters.model,
+    task.model,
+  );
+  const requestText = pickString(
+    apiDebug.request_text,
+    providerApi?.request_text,
+    apiRequestPayload?.text,
+    apiRequestPayload?.prompt,
+    apiRequestPayload?.input,
+    providerRequestPayload?.text,
+    providerRequestPayload?.prompt,
+    providerRequestPayload?.input,
+    task.prompt,
+  );
+  const fallbackRequestPayload = {
+    model: requestModel || task.model,
+    text: requestText || task.prompt,
+    voice_id: voiceId,
+    parameters,
+  };
+  const requestPayload = sanitizeDebugPayload(
+    apiDebug.request_payload
+    ?? providerApi?.request_payload
+    ?? (Object.keys(parameters).length > 0 ? fallbackRequestPayload : undefined)
+    ?? fallbackRequestPayload
+  );
+  const responseStatusRaw = (
+    apiDebug.response_status
+    ?? providerApi?.response_status
+    ?? failureObj.http_status_code
+    ?? kieResponse?.code
+    ?? resultData.status_code
+  );
+  const responseStatus = typeof responseStatusRaw === 'number'
+    ? responseStatusRaw
+    : (typeof responseStatusRaw === 'string' && responseStatusRaw.trim() ? Number(responseStatusRaw) : undefined);
+  const responseBody = pickString(
+    apiDebug.response_body,
+    providerApi?.response_body,
+  );
+  const responseJson = sanitizeDebugPayload(
+    apiDebug.response_json
+    ?? providerApi?.response_json
+    ?? failureObj.provider_response
+    ?? resultData.kie_ai_response
+    ?? resultData.raw_response
+    ?? resultData.response
+  );
+  const providerMessage = pickString(
+    failureObj.provider_message,
+    providerDetail?.message,
+    providerDetail?.detail,
+    providerDetail?.error,
+    resultData.failMsg,
+    kieResponse?.failMsg,
+    kieResponse?.errorMessage,
+    kieResponse?.msg,
+    kieResponse?.message,
+  );
+  const responseMessage = pickString(
+    apiDebug.response_message,
+    providerApi?.response_message,
+    apiDebug.message,
+    providerApi?.message,
+    resultData.message,
+    resultData.msg,
+    failureObj.message,
+    failureObj.error,
+    providerMessage,
+  );
+
+  if (
+    !providerHint
+    && !endpoint
+    && !requestUrl
+    && !requestModel
+    && !requestText
+    && !voiceId
+    && !requestPayload
+    && !responseBody
+    && !responseJson
+    && !responseMessage
+    && !providerMessage
+    && !responseStatus
+  ) {
+    return null;
+  }
+
+  return {
+    providerHint,
+    endpoint,
+    requestUrl,
+    method,
+    requestModel,
+    requestText,
+    voiceId,
+    requestPayload,
+    responseStatus: Number.isFinite(responseStatus as number) ? Number(responseStatus) : undefined,
+    responseMessage,
+    responseBody,
+    responseJson,
+    providerMessage,
+    providerDetail: sanitizeDebugPayload(failureObj.provider_detail),
+  };
+}
+
 export default function MediaHistory() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
@@ -260,7 +523,12 @@ export default function MediaHistory() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [isFetchingResult, setIsFetchingResult] = useState(false);
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<HistoryViewMode>('list');
   const [taskLibraryState, setTaskLibraryState] = useState<Record<string, TaskLibraryUIState>>({});
+  const [shareDialogTarget, setShareDialogTarget] = useState<{ itemId: number; title: string } | null>(null);
+  const [fullscreenTask, setFullscreenTask] = useState<MediaTask | null>(null);
+  const [copiedPromptTaskId, setCopiedPromptTaskId] = useState<string | null>(null);
+  const [copiedDebugTaskId, setCopiedDebugTaskId] = useState<string | null>(null);
   const [expiredUrls, setExpiredUrls] = useState<Set<string>>(() => new Set());
   const markExpired = useCallback((url: string) => {
     setExpiredUrls((prev) => {
@@ -284,6 +552,22 @@ export default function MediaHistory() {
     offset: 0,
     daysAgo: 12, // Only show tasks from last 12 days
   });
+  const tasks: MediaTask[] = tasksData?.tasks || [];
+  const totalTasks = tasksData?.total || 0;
+
+  const { data: recentLibraryData } = trpc.library.search.useQuery(
+    {
+      limit: 200,
+      filters: {
+        recentDays: 30,
+      },
+    },
+    {
+      enabled: tasks.length > 0,
+      staleTime: 30_000,
+    },
+  );
+  const recentLibraryResults = (recentLibraryData?.results || []) as LibrarySearchResultItem[];
 
   // Mutation for fetching task result from Kie.ai
   const fetchResultMutation = trpc.media.fetchTaskResult.useMutation({
@@ -326,6 +610,28 @@ export default function MediaHistory() {
 
   // State for tracking gallery import in progress
   const [importingTaskId, setImportingTaskId] = useState<string | null>(null);
+
+  const libraryItemsBySourceUrl = useMemo(() => {
+    const map = new Map<string, TaskLibraryUIState>();
+    for (const item of recentLibraryResults) {
+      const sourceUrl = item.source_url?.trim();
+      if (!sourceUrl) continue;
+      map.set(sourceUrl, {
+        action: 'added',
+        itemId: item.item_id,
+        status: item.status,
+      });
+    }
+    return map;
+  }, [recentLibraryResults]);
+
+  const getEffectiveTaskLibraryState = useCallback((task: MediaTask): TaskLibraryUIState | undefined => {
+    const localState = taskLibraryState[task.id];
+    if (localState) return localState;
+    const sourceUrl = task.resultUrl?.trim();
+    if (!sourceUrl) return undefined;
+    return libraryItemsBySourceUrl.get(sourceUrl);
+  }, [libraryItemsBySourceUrl, taskLibraryState]);
 
   const handleDeleteTask = async (taskId: string) => {
     if (confirm('Are you sure you want to delete this task?')) {
@@ -433,8 +739,11 @@ export default function MediaHistory() {
     }
   }, [authLoading, isAuthenticated, setLocation]);
 
-  const tasks: MediaTask[] = tasksData?.tasks || [];
-  const totalTasks = tasksData?.total || 0;
+  useEffect(() => {
+    if (viewMode === 'gallery') {
+      setSelectedTaskIds(new Set());
+    }
+  }, [viewMode]);
 
   // Check if all visible tasks are selected
   const allSelected = tasks.length > 0 && tasks.every(task => selectedTaskIds.has(task.id));
@@ -477,9 +786,11 @@ export default function MediaHistory() {
     },
   ];
 
-  const selectedTaskLibraryState = selectedTask ? taskLibraryState[selectedTask.id] : undefined;
+  const selectedTaskLibraryState = selectedTask ? getEffectiveTaskLibraryState(selectedTask) : undefined;
   const selectedTaskLibraryMeta = getLibraryItemStatusMeta(selectedTaskLibraryState?.status);
   const selectedTaskDebugInfo = extractTaskDebugInfo(selectedTask);
+  const selectedTaskApiDebugInfo = extractTaskApiDebugInfo(selectedTask);
+  const selectedTaskErrorInfo = extractTaskErrorInfo(selectedTask);
 
   // Format date for display - show both relative and absolute time
   // Automatically converts UTC to local timezone
@@ -565,6 +876,99 @@ export default function MediaHistory() {
 
   const handleDownload = (url: string) => {
     window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const writeClipboardText = async (text: string) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+    if (typeof document !== 'undefined') {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      return;
+    }
+    throw new Error('Clipboard API not available');
+  };
+
+  const handleCopyPrompt = async (task: MediaTask) => {
+    try {
+      await writeClipboardText(task.prompt || '');
+      setCopiedPromptTaskId(task.id);
+      window.setTimeout(() => {
+        setCopiedPromptTaskId((current) => (current === task.id ? null : current));
+      }, 2000);
+      toast.success('Prompt copied');
+    } catch (error) {
+      console.error('Copy prompt failed:', error);
+      toast.error('Failed to copy prompt');
+    }
+  };
+
+  const handleOpenShare = (task: MediaTask) => {
+    const state = getEffectiveTaskLibraryState(task);
+    if (!state?.itemId) {
+      toast.error('Add this item to Library before sharing.');
+      return;
+    }
+    setShareDialogTarget({
+      itemId: state.itemId,
+      title: task.prompt.slice(0, 80) || `${task.mediaType} - ${task.model}`,
+    });
+  };
+
+  const handleOpenFullscreenMedia = (task: MediaTask) => {
+    if ((task.mediaType !== 'image' && task.mediaType !== 'video') || !task.resultUrl || expiredUrls.has(task.resultUrl)) return;
+    setFullscreenTask(task);
+  };
+
+  const handleCopyDebugJson = async () => {
+    if (!selectedTask) return;
+
+    const payload = sanitizeDebugPayload({
+      exportedAt: new Date().toISOString(),
+      task: {
+        id: selectedTask.id,
+        taskId: selectedTask.taskId,
+        celeryTaskId: selectedTask.celeryTaskId,
+        mediaType: selectedTask.mediaType,
+        status: selectedTask.status,
+        model: selectedTask.model,
+        prompt: selectedTask.prompt,
+        parameters: selectedTask.parameters,
+        errorMessage: selectedTask.errorMessage,
+        resultUrl: selectedTask.resultUrl,
+        resultData: selectedTask.resultData,
+        createdAt: selectedTask.createdAt,
+        completedAt: selectedTask.completedAt,
+      },
+      extracted: {
+        debug: selectedTaskDebugInfo,
+        api: selectedTaskApiDebugInfo,
+        error: selectedTaskErrorInfo,
+      },
+    });
+
+    const text = JSON.stringify(payload, null, 2);
+    try {
+      await writeClipboardText(text);
+
+      setCopiedDebugTaskId(selectedTask.id);
+      window.setTimeout(() => {
+        setCopiedDebugTaskId((current) => (current === selectedTask.id ? null : current));
+      }, 2000);
+      toast.success('Copied debug JSON');
+    } catch (error) {
+      console.error('Copy debug JSON failed:', error);
+      toast.error('Failed to copy debug JSON');
+    }
   };
 
   const refreshLibraryStatus = useCallback(
@@ -823,8 +1227,30 @@ export default function MediaHistory() {
               </Select>
             </div>
 
-            <div className="ml-auto flex items-center gap-4">
-              {selectedTaskIds.size > 0 && (
+            <div className="ml-auto flex items-center gap-3">
+              <div className="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1">
+                <Button
+                  type="button"
+                  variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('list')}
+                  className="gap-2 rounded-lg px-3"
+                >
+                  <List className="w-4 h-4" />
+                  List
+                </Button>
+                <Button
+                  type="button"
+                  variant={viewMode === 'gallery' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('gallery')}
+                  className="gap-2 rounded-lg px-3"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                  Gallery
+                </Button>
+              </div>
+              {viewMode === 'list' && selectedTaskIds.size > 0 && (
                 <Button
                   variant="destructive"
                   size="sm"
@@ -868,6 +1294,218 @@ export default function MediaHistory() {
                   : 'Generate some images or videos to see them here'}
               </p>
             </div>
+          ) : viewMode === 'gallery' ? (
+            <div className="p-4 sm:p-6">
+              <div className="grid grid-cols-1 justify-items-center gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                {tasks.map((task) => {
+                  const typeConfig = getMediaTypeMeta(task.mediaType);
+                  const status = getStatusMeta(task.status);
+                  const StatusIcon = status?.icon || AlertCircle;
+                  const TypeIcon = typeConfig?.icon || FileImage;
+                  const canAddToLibrary = isMediaTaskEligibleForLibraryAdd(task);
+                  const libraryState = getEffectiveTaskLibraryState(task);
+                  const libraryStatusMeta = getLibraryItemStatusMeta(libraryState?.status);
+                  const canShare = Boolean(libraryState?.itemId);
+                  const canOpenFullscreen = (task.mediaType === 'image' || task.mediaType === 'video') && Boolean(task.resultUrl) && !expiredUrls.has(task.resultUrl || '');
+                  const createdDate = safeParseDate(task.createdAt);
+
+                  return (
+                    <div
+                      key={task.id}
+                      className="w-full max-w-sm overflow-hidden rounded-[28px] border border-white/70 bg-white/80 shadow-lg shadow-slate-300/25 backdrop-blur-sm"
+                    >
+                      <div className="relative">
+                        <div className="absolute left-3 top-3 z-10 flex flex-wrap gap-2">
+                          <Badge variant="outline" className="bg-white/90 text-slate-700 shadow-sm">
+                            <TypeIcon className={`mr-1 h-3 w-3 ${typeConfig.color}`} />
+                            {typeConfig.label}
+                          </Badge>
+                          <Badge className={`gap-1 shadow-sm ${status.color}`}>
+                            <StatusIcon className={`h-3 w-3 ${task.status === 'processing' ? 'animate-spin' : ''}`} />
+                            {status.label}
+                          </Badge>
+                        </div>
+                        {canAddToLibrary && (
+                          <div className="absolute right-3 top-3 z-10">
+                            <Badge className={`gap-1 shadow-sm ${libraryStatusMeta.className}`}>
+                              <Library className="h-3 w-3" />
+                              {getTaskLibraryDisplayLabel(libraryState)}
+                            </Badge>
+                          </div>
+                        )}
+
+                        {task.status === 'completed' && task.resultUrl ? (
+                          expiredUrls.has(task.resultUrl) ? (
+                            <ExpiredMediaPlaceholder
+                              mediaType={task.mediaType}
+                              className="aspect-square w-full rounded-none border-0"
+                            />
+                          ) : task.mediaType === 'image' ? (
+                            <button
+                              type="button"
+                              className="flex aspect-square w-full items-center justify-center bg-slate-100/80 p-3 text-left"
+                              onClick={() => handleOpenFullscreenMedia(task)}
+                            >
+                              <img
+                                src={task.resultUrl}
+                                alt={task.prompt || 'Generated image'}
+                                className="h-full w-full object-contain"
+                                onError={() => markExpired(task.resultUrl!)}
+                              />
+                            </button>
+                          ) : task.mediaType === 'video' ? (
+                            <button
+                              type="button"
+                              className="relative block w-full text-left"
+                              onClick={() => handleOpenFullscreenMedia(task)}
+                            >
+                              <video
+                                src={task.resultUrl}
+                                className="aspect-square w-full object-contain bg-slate-950"
+                                muted
+                                playsInline
+                                preload="metadata"
+                                onError={() => markExpired(task.resultUrl!)}
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                <div className="rounded-full bg-black/55 p-3 text-white">
+                                  <Play className="h-5 w-5" />
+                                </div>
+                              </div>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="flex aspect-square w-full items-center justify-center bg-emerald-50 text-emerald-700"
+                              onClick={() => handleViewDetails(task)}
+                            >
+                              <div className="text-center">
+                                <Music className="mx-auto mb-3 h-10 w-10" />
+                                <p className="text-sm font-medium">Audio Result</p>
+                              </div>
+                            </button>
+                          )
+                        ) : (
+                          <button
+                            type="button"
+                            className="flex aspect-square w-full items-center justify-center bg-slate-100 text-slate-500"
+                            onClick={() => handleViewDetails(task)}
+                          >
+                            <div className="text-center">
+                              <TypeIcon className={`mx-auto mb-3 h-10 w-10 ${typeConfig.color}`} />
+                              <p className="text-sm font-medium">{status.label}</p>
+                            </div>
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="space-y-4 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-900">{task.model}</p>
+                            <p className="text-xs text-slate-500">
+                              {createdDate ? createdDate.toLocaleString(undefined, {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: false,
+                              }) : 'Unknown date'}
+                            </p>
+                          </div>
+                          <Badge variant="outline" className="shrink-0">
+                            <Zap className="mr-1 h-3 w-3 text-yellow-500" />
+                            {task.creditsUsed || 0}
+                          </Badge>
+                        </div>
+
+                        <div className="rounded-2xl bg-slate-50 px-3 py-3">
+                          <p className="line-clamp-3 text-sm leading-6 text-slate-700">
+                            {task.prompt || 'No prompt available'}
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => task.resultUrl && handleDownload(task.resultUrl)}
+                            disabled={!task.resultUrl}
+                            className="justify-start gap-2"
+                          >
+                            <Download className="h-4 w-4" />
+                            Download
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleAddToLibrary(task)}
+                            disabled={!canAddToLibrary || libraryState?.action === 'adding'}
+                            className="justify-start gap-2"
+                          >
+                            {libraryState?.action === 'adding' ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : libraryState?.action === 'added' ? (
+                              <CheckCircle className="h-4 w-4 text-emerald-600" />
+                            ) : libraryState?.action === 'error' ? (
+                              <AlertCircle className="h-4 w-4 text-red-600" />
+                            ) : (
+                              <ImagePlus className="h-4 w-4" />
+                            )}
+                            {libraryState?.action === 'added' ? 'In Library' : 'Add Library'}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenShare(task)}
+                            disabled={!canShare}
+                            className="justify-start gap-2"
+                            title={canShare ? 'Share this library item' : 'Add to Library before sharing'}
+                          >
+                            <Share2 className="h-4 w-4" />
+                            Share
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleOpenFullscreenMedia(task)}
+                            disabled={!canOpenFullscreen}
+                            className="justify-start gap-2"
+                            title={canOpenFullscreen ? 'Open full media' : 'Available for images and videos only'}
+                          >
+                            <Maximize2 className="h-4 w-4" />
+                            Full
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewDetails(task)}
+                            className="justify-start gap-2"
+                          >
+                            <Eye className="h-4 w-4" />
+                            Details
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleCopyPrompt(task)}
+                            disabled={!task.prompt}
+                            className="justify-start gap-2"
+                          >
+                            {copiedPromptTaskId === task.id ? (
+                              <Check className="h-4 w-4 text-emerald-600" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                            {copiedPromptTaskId === task.id ? 'Copied' : 'Prompt'}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           ) : (
             <>
               {/* Mobile card list — hidden on sm+ */}
@@ -878,7 +1516,7 @@ export default function MediaHistory() {
                   const StatusIcon = status?.icon || AlertCircle;
                   const TypeIcon = typeConfig?.icon || FileImage;
                   const canAddToLibrary = isMediaTaskEligibleForLibraryAdd(task);
-                  const libraryState = taskLibraryState[task.id];
+                  const libraryState = getEffectiveTaskLibraryState(task);
                   const libraryStatusMeta = getLibraryItemStatusMeta(libraryState?.status);
                   return (
                     <div key={task.id} className="flex gap-3 p-4">
@@ -897,12 +1535,12 @@ export default function MediaHistory() {
                               alt="Preview"
                               className="w-14 h-14 rounded-lg object-cover border cursor-pointer hover:opacity-80"
                               onError={() => markExpired(task.resultUrl!)}
-                              onClick={() => handleViewDetails(task)}
+                              onClick={() => handleOpenFullscreenMedia(task)}
                             />
                           ) : task.mediaType === 'video' ? (
                             <div
                               className="w-14 h-14 rounded-lg bg-blue-100 flex items-center justify-center cursor-pointer"
-                              onClick={() => handleViewDetails(task)}
+                              onClick={() => handleOpenFullscreenMedia(task)}
                             >
                               <Play className="w-5 h-5 text-blue-600" />
                             </div>
@@ -933,7 +1571,7 @@ export default function MediaHistory() {
                           </Badge>
                           {canAddToLibrary && libraryState?.action !== 'adding' && libraryState?.action !== 'error' && (
                             <Badge className={`text-xs ${libraryStatusMeta.className}`}>
-                              {libraryStatusMeta.label}
+                              {getTaskLibraryDisplayLabel(libraryState)}
                             </Badge>
                           )}
                         </div>
@@ -1008,269 +1646,314 @@ export default function MediaHistory() {
               </div>
               {/* Desktop table — hidden on mobile */}
               <div className="hidden sm:block">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-gray-50/50">
-                  <TableHead className="w-[50px]">
-                    <Checkbox
-                      checked={allSelected}
-                      onCheckedChange={handleSelectAll}
-                      aria-label="Select all tasks"
-                      className={someSelected ? 'data-[state=checked]:bg-purple-500' : ''}
-                    />
-                  </TableHead>
-                  <TableHead className="w-[80px]">Preview</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Model</TableHead>
-                  <TableHead className="max-w-[200px]">Prompt</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>External ID</TableHead>
-                  <TableHead>Credits</TableHead>
-                  <TableHead>Library</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tasks.map((task) => {
-                  const typeConfig = getMediaTypeMeta(task.mediaType);
-                  const status = getStatusMeta(task.status);
-                  const StatusIcon = status?.icon || AlertCircle;
-                  const TypeIcon = typeConfig?.icon || FileImage;
-                  const canAddToLibrary = isMediaTaskEligibleForLibraryAdd(task);
-                  const libraryState = taskLibraryState[task.id];
-                  const libraryStatusMeta = getLibraryItemStatusMeta(libraryState?.status);
-
-                  return (
-                    <TableRow key={task.id} className="hover:bg-gray-50/50">
-                      <TableCell>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-gray-50/50">
+                      <TableHead className="w-[50px]">
                         <Checkbox
-                          checked={selectedTaskIds.has(task.id)}
-                          onCheckedChange={(checked) => handleSelectTask(task.id, checked === true)}
-                          aria-label={`Select task ${task.id}`}
+                          checked={allSelected}
+                          onCheckedChange={handleSelectAll}
+                          aria-label="Select all tasks"
+                          className={someSelected ? 'data-[state=checked]:bg-purple-500' : ''}
                         />
-                      </TableCell>
-                      <TableCell>
-                        {task.status === 'completed' && task.resultUrl ? (
-                          expiredUrls.has(task.resultUrl) ? (
-                            <ExpiredMediaPlaceholder
-                              mediaType={task.mediaType}
-                              compact
-                              className="w-12 h-12"
+                      </TableHead>
+                      <TableHead className="w-[80px]">Preview</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Model</TableHead>
+                      <TableHead className="max-w-[200px]">Prompt</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>External ID</TableHead>
+                      <TableHead>Credits</TableHead>
+                      <TableHead>Library</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tasks.map((task) => {
+                      const typeConfig = getMediaTypeMeta(task.mediaType);
+                      const status = getStatusMeta(task.status);
+                      const StatusIcon = status?.icon || AlertCircle;
+                      const TypeIcon = typeConfig?.icon || FileImage;
+                      const canAddToLibrary = isMediaTaskEligibleForLibraryAdd(task);
+                      const libraryState = getEffectiveTaskLibraryState(task);
+                      const libraryStatusMeta = getLibraryItemStatusMeta(libraryState?.status);
+
+                      return (
+                        <TableRow key={task.id} className="hover:bg-gray-50/50">
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedTaskIds.has(task.id)}
+                              onCheckedChange={(checked) => handleSelectTask(task.id, checked === true)}
+                              aria-label={`Select task ${task.id}`}
                             />
-                          ) : task.mediaType === 'image' ? (
-                            <img
-                              src={task.resultUrl}
-                              alt="Preview"
-                              className="w-12 h-12 rounded-lg object-cover border cursor-pointer hover:opacity-80"
-                              onError={() => markExpired(task.resultUrl!)}
-                              onClick={() => handleViewDetails(task)}
-                            />
-                          ) : task.mediaType === 'video' ? (
-                            <div
-                              className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center cursor-pointer hover:bg-blue-200"
-                              onClick={() => handleViewDetails(task)}
-                            >
-                              <Play className="w-5 h-5 text-blue-600" />
-                            </div>
-                          ) : (
-                            <div
-                              className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center cursor-pointer hover:bg-green-200"
-                              onClick={() => handleViewDetails(task)}
-                            >
-                              <Music className="w-5 h-5 text-green-600" />
-                            </div>
-                          )
-                        ) : (
-                          <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
-                            <TypeIcon className={`w-5 h-5 ${typeConfig.color}`} />
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="gap-1">
-                          <TypeIcon className={`w-3 h-3 ${typeConfig.color}`} />
-                          {typeConfig.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="font-mono text-sm">{task.model}</TableCell>
-                      <TableCell className="max-w-[200px]">
-                        <p className="truncate text-sm text-gray-600" title={task.prompt}>
-                          {task.prompt}
-                        </p>
-                        {task.status === 'failed' && (() => {
-                          const info = extractTaskErrorInfo(task);
-                          if (!info?.summary) return null;
-                          return (
-                            <p
-                              className="truncate text-xs text-red-600 mt-1"
-                              title={info.summary}
-                            >
-                              {info.summary}
+                          </TableCell>
+                          <TableCell>
+                            {task.status === 'completed' && task.resultUrl ? (
+                              expiredUrls.has(task.resultUrl) ? (
+                                <ExpiredMediaPlaceholder
+                                  mediaType={task.mediaType}
+                                  compact
+                                  className="w-12 h-12"
+                                />
+                              ) : task.mediaType === 'image' ? (
+                                <img
+                                  src={task.resultUrl}
+                                  alt="Preview"
+                                  className="w-12 h-12 rounded-lg object-cover border cursor-pointer hover:opacity-80"
+                                  onError={() => markExpired(task.resultUrl!)}
+                                  onClick={() => handleOpenFullscreenMedia(task)}
+                                />
+                              ) : task.mediaType === 'video' ? (
+                                <div
+                                  className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center cursor-pointer hover:bg-blue-200"
+                                  onClick={() => handleOpenFullscreenMedia(task)}
+                                >
+                                  <Play className="w-5 h-5 text-blue-600" />
+                                </div>
+                              ) : (
+                                <div
+                                  className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center cursor-pointer hover:bg-green-200"
+                                  onClick={() => handleViewDetails(task)}
+                                >
+                                  <Music className="w-5 h-5 text-green-600" />
+                                </div>
+                              )
+                            ) : (
+                              <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
+                                <TypeIcon className={`w-5 h-5 ${typeConfig.color}`} />
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="gap-1">
+                              <TypeIcon className={`w-3 h-3 ${typeConfig.color}`} />
+                              {typeConfig.label}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-mono text-sm">{task.model}</TableCell>
+                          <TableCell className="max-w-[200px]">
+                            <p className="truncate text-sm text-gray-600" title={task.prompt}>
+                              {task.prompt}
                             </p>
-                          );
-                        })()}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={`gap-1 ${status.color}`}>
-                          <StatusIcon className={`w-3 h-3 ${task.status === 'processing' ? 'animate-spin' : ''}`} />
-                          {status.label}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {task.taskId ? (
-                          <span className="font-mono text-xs text-gray-600" title={task.taskId}>
-                            {task.taskId.substring(0, 8)}...
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {task.creditsUsed ? (
-                          <span className="flex items-center gap-1 text-sm">
-                            <Zap className="w-3 h-3 text-yellow-500" />
-                            {task.creditsUsed}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {canAddToLibrary ? (
-                          libraryState?.action === 'adding' ? (
-                            <Badge className="gap-1 bg-amber-100 text-amber-800">
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                              Adding
+                            {task.status === 'failed' && (() => {
+                              const info = extractTaskErrorInfo(task);
+                              if (!info?.summary) return null;
+                              return (
+                                <p
+                                  className="truncate text-xs text-red-600 mt-1"
+                                  title={info.summary}
+                                >
+                                  {info.summary}
+                                </p>
+                              );
+                            })()}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={`gap-1 ${status.color}`}>
+                              <StatusIcon className={`w-3 h-3 ${task.status === 'processing' ? 'animate-spin' : ''}`} />
+                              {status.label}
                             </Badge>
-                          ) : libraryState?.action === 'error' ? (
-                            <Badge className="gap-1 bg-red-100 text-red-700">
-                              <AlertCircle className="w-3 h-3" />
-                              Failed
-                            </Badge>
-                          ) : (
-                            <Badge className={libraryStatusMeta.className}>
-                              {libraryStatusMeta.label}
-                            </Badge>
-                          )
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-500" title={formatDate(task.createdAt).relative}>
-                        {(() => {
-                          const date = safeParseDate(task.createdAt);
-                          if (!date) {
-                            return <span className="text-gray-400">Invalid date</span>;
-                          }
-                          return (
-                            <div className="flex flex-col">
-                              <span className="font-medium">
-                                {date.toLocaleDateString(undefined, {
-                                  month: 'short',
-                                  day: 'numeric'
-                                })}
+                          </TableCell>
+                          <TableCell>
+                            {task.taskId ? (
+                              <span className="font-mono text-xs text-gray-600" title={task.taskId}>
+                                {task.taskId.substring(0, 8)}...
                               </span>
-                              <span className="text-xs text-gray-400">
-                                {date.toLocaleTimeString(undefined, {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                  hour12: false
-                                })}
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {task.creditsUsed ? (
+                              <span className="flex items-center gap-1 text-sm">
+                                <Zap className="w-3 h-3 text-yellow-500" />
+                                {task.creditsUsed}
                               </span>
-                            </div>
-                          );
-                        })()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewDetails(task)}
-                            className="h-8 px-2"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          {task.status === 'completed' && task.resultUrl && (
-                            <>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {canAddToLibrary ? (
+                              libraryState?.action === 'adding' ? (
+                                <Badge className="gap-1 bg-amber-100 text-amber-800">
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                  Adding
+                                </Badge>
+                              ) : libraryState?.action === 'error' ? (
+                                <Badge className="gap-1 bg-red-100 text-red-700">
+                                  <AlertCircle className="w-3 h-3" />
+                                  Failed
+                                </Badge>
+                              ) : (
+                                <Badge className={libraryStatusMeta.className}>
+                                  {getTaskLibraryDisplayLabel(libraryState)}
+                                </Badge>
+                              )
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm text-gray-500" title={formatDate(task.createdAt).relative}>
+                            {(() => {
+                              const date = safeParseDate(task.createdAt);
+                              if (!date) {
+                                return <span className="text-gray-400">Invalid date</span>;
+                              }
+                              return (
+                                <div className="flex flex-col">
+                                  <span className="font-medium">
+                                    {date.toLocaleDateString(undefined, {
+                                      month: 'short',
+                                      day: 'numeric'
+                                    })}
+                                  </span>
+                                  <span className="text-xs text-gray-400">
+                                    {date.toLocaleTimeString(undefined, {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      hour12: false
+                                    })}
+                                  </span>
+                                </div>
+                              );
+                            })()}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleAddToLibrary(task)}
-                                disabled={libraryState?.action === 'adding'}
-                                className={`h-8 px-2 ${libraryState?.action === 'added' ? 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50' : 'text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50'}`}
-                                title={libraryStatusMeta.retryable ? 'Retry add to library' : 'Add to library'}
+                                onClick={() => handleViewDetails(task)}
+                                className="h-8 px-2"
                               >
-                                {libraryState?.action === 'adding' ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : libraryState?.action === 'added' ? (
-                                  <CheckCircle className="w-4 h-4" />
-                                ) : libraryState?.action === 'error' ? (
-                                  <AlertCircle className="w-4 h-4" />
-                                ) : (
-                                  <ImagePlus className="w-4 h-4" />
-                                )}
+                                <Eye className="w-4 h-4" />
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDownload(task.resultUrl!)}
-                                className="h-8 px-2 text-green-600 hover:text-green-700"
-                              >
-                                <Download className="w-4 h-4" />
-                              </Button>
-                              {/* Add to Gallery button - admin only */}
-                              {user?.role === 'admin' && (
+                              {task.status === 'completed' && task.resultUrl && (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleAddToLibrary(task)}
+                                    disabled={libraryState?.action === 'adding'}
+                                    className={`h-8 px-2 ${libraryState?.action === 'added' ? 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50' : 'text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50'}`}
+                                    title={libraryStatusMeta.retryable ? 'Retry add to library' : 'Add to library'}
+                                  >
+                                    {libraryState?.action === 'adding' ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : libraryState?.action === 'added' ? (
+                                      <CheckCircle className="w-4 h-4" />
+                                    ) : libraryState?.action === 'error' ? (
+                                      <AlertCircle className="w-4 h-4" />
+                                    ) : (
+                                      <ImagePlus className="w-4 h-4" />
+                                    )}
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDownload(task.resultUrl!)}
+                                    className="h-8 px-2 text-green-600 hover:text-green-700"
+                                  >
+                                    <Download className="w-4 h-4" />
+                                  </Button>
+                                  {/* Add to Gallery button - admin only */}
+                                  {user?.role === 'admin' && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleAddToGallery(task)}
+                                      disabled={importingTaskId === task.id}
+                                      className="h-8 px-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                                      title="Add to Gallery"
+                                    >
+                                      {importingTaskId === task.id ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                      ) : (
+                                        <ImagePlus className="w-4 h-4" />
+                                      )}
+                                    </Button>
+                                  )}
+                                </>
+                              )}
+                              {(task.status === 'failed' || task.status === 'cancelled' || task.status === 'processing' || task.status === 'pending') && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => handleAddToGallery(task)}
-                                  disabled={importingTaskId === task.id}
-                                  className="h-8 px-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                                  title="Add to Gallery"
+                                  onClick={() => handleDeleteTask(task.id)}
+                                  disabled={deleteTaskMutation.isPending}
+                                  className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  title="Delete task"
                                 >
-                                  {importingTaskId === task.id ? (
+                                  {deleteTaskMutation.isPending ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                   ) : (
-                                    <ImagePlus className="w-4 h-4" />
+                                    <Trash2 className="w-4 h-4" />
                                   )}
                                 </Button>
                               )}
-                            </>
-                          )}
-                          {(task.status === 'failed' || task.status === 'cancelled' || task.status === 'processing' || task.status === 'pending') && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteTask(task.id)}
-                              disabled={deleteTaskMutation.isPending}
-                              className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-                              title="Delete task"
-                            >
-                              {deleteTaskMutation.isPending ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="w-4 h-4" />
-                              )}
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
             </>
           )}
         </motion.div>
       </main>
 
+      <Dialog open={Boolean(fullscreenTask)} onOpenChange={(open) => !open && setFullscreenTask(null)}>
+        <DialogPortal>
+          <DialogOverlay className="bg-black/95" />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Fullscreen Media</DialogTitle>
+            </DialogHeader>
+            <DialogClose asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-3 top-3 z-10 h-11 w-11 rounded-md border border-cyan-500/70 bg-black/50 text-cyan-400 hover:bg-black/70 hover:text-cyan-300"
+              >
+                <span className="sr-only">Close fullscreen view</span>
+                <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6 6 18" />
+                  <path d="m6 6 12 12" />
+                </svg>
+              </Button>
+            </DialogClose>
+
+            {fullscreenTask?.resultUrl ? (
+              fullscreenTask.mediaType === 'video' ? (
+                <video
+                  src={fullscreenTask.resultUrl}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="block max-h-[calc(100vh-1rem)] max-w-[calc(100vw-1rem)] object-contain sm:max-h-[calc(100vh-2rem)] sm:max-w-[calc(100vw-2rem)]"
+                  onError={() => markExpired(fullscreenTask.resultUrl!)}
+                />
+              ) : (
+                <img
+                  src={fullscreenTask.resultUrl}
+                  alt={fullscreenTask.prompt || 'Fullscreen preview'}
+                  className="block max-h-[calc(100vh-1rem)] max-w-[calc(100vw-1rem)] object-contain sm:max-h-[calc(100vh-2rem)] sm:max-w-[calc(100vw-2rem)]"
+                  onError={() => markExpired(fullscreenTask.resultUrl!)}
+                />
+              )
+            ) : null}
+          </div>
+        </DialogPortal>
+      </Dialog>
+
       {/* Task Details Dialog */}
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[min(96vw,64rem)] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {selectedTask && (
@@ -1308,8 +1991,9 @@ export default function MediaHistory() {
                     <img
                       src={selectedTask.resultUrl}
                       alt="Generated"
-                      className="max-h-[400px] rounded-lg border shadow-lg"
+                      className="max-h-[400px] rounded-lg border shadow-lg cursor-zoom-in"
                       onError={() => markExpired(selectedTask.resultUrl!)}
+                      onClick={() => handleOpenFullscreenMedia(selectedTask)}
                     />
                   ) : selectedTask.mediaType === 'video' ? (
                     <video
@@ -1317,6 +2001,7 @@ export default function MediaHistory() {
                       controls
                       className="max-h-[400px] rounded-lg border shadow-lg"
                       onError={() => markExpired(selectedTask.resultUrl!)}
+                      onDoubleClick={() => handleOpenFullscreenMedia(selectedTask)}
                     />
                   ) : (
                     <audio
@@ -1352,25 +2037,25 @@ export default function MediaHistory() {
               )}
 
               {/* Details Grid */}
-              <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
-                <div className="col-span-2">
+              <div className="grid grid-cols-1 gap-4 p-4 bg-gray-50 rounded-lg sm:grid-cols-2">
+                <div className="sm:col-span-2">
                   <span className="text-sm text-gray-500">Internal Task ID</span>
                   <p className="font-mono text-xs break-all select-all bg-white p-2 rounded border mt-1">{selectedTask.id}</p>
                 </div>
                 {selectedTask.taskId && (
-                  <div className="col-span-2">
+                  <div className="sm:col-span-2">
                     <span className="text-sm text-gray-500">Provider Task ID</span>
                     <p className="font-mono text-xs break-all select-all bg-white p-2 rounded border mt-1">{selectedTask.taskId}</p>
                   </div>
                 )}
                 {selectedTask.celeryTaskId && (
-                  <div className="col-span-2">
+                  <div className="sm:col-span-2">
                     <span className="text-sm text-gray-500">Celery Task ID</span>
                     <p className="font-mono text-xs break-all select-all bg-white p-2 rounded border mt-1">{selectedTask.celeryTaskId}</p>
                   </div>
                 )}
                 {selectedTaskDebugInfo?.traceId && (
-                  <div className="col-span-2">
+                  <div className="sm:col-span-2">
                     <span className="text-sm text-gray-500">Debug Trace ID</span>
                     <p className="font-mono text-xs break-all select-all bg-white p-2 rounded border mt-1">{selectedTaskDebugInfo.traceId}</p>
                   </div>
@@ -1378,11 +2063,11 @@ export default function MediaHistory() {
                 {selectedTaskDebugInfo?.providerHint && (
                   <div>
                     <span className="text-sm text-gray-500">Provider Hint</span>
-                    <p className="font-mono text-sm">{selectedTaskDebugInfo.providerHint}</p>
+                    <p className="font-mono text-sm break-all">{selectedTaskDebugInfo.providerHint}</p>
                   </div>
                 )}
                 {selectedTaskDebugInfo?.logFile && (
-                  <div className="col-span-2">
+                  <div className="sm:col-span-2">
                     <span className="text-sm text-gray-500">Debug Log File</span>
                     <p className="font-mono text-xs break-all select-all bg-white p-2 rounded border mt-1">{selectedTaskDebugInfo.logFile}</p>
                   </div>
@@ -1408,7 +2093,7 @@ export default function MediaHistory() {
                       </Badge>
                     ) : (
                       <Badge className={`mt-1 ${selectedTaskLibraryMeta.className}`}>
-                        {selectedTaskLibraryMeta.label}
+                        {getTaskLibraryDisplayLabel(selectedTaskLibraryState)}
                       </Badge>
                     )
                   ) : (
@@ -1417,7 +2102,7 @@ export default function MediaHistory() {
                 </div>
                 <div>
                   <span className="text-sm text-gray-500">Model</span>
-                  <p className="font-mono text-sm">{selectedTask.model}</p>
+                  <p className="font-mono text-sm break-all">{selectedTask.model}</p>
                 </div>
                 <div>
                   <span className="text-sm text-gray-500">Credits Used</span>
@@ -1426,15 +2111,170 @@ export default function MediaHistory() {
                     {selectedTask.creditsUsed || 0}
                   </p>
                 </div>
-                <div className="col-span-2">
-                  <span className="text-sm text-gray-500">Prompt</span>
-                  <p className="text-sm mt-1 whitespace-pre-wrap">{selectedTask.prompt}</p>
+                <div className="sm:col-span-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm text-gray-500">Prompt</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCopyPrompt(selectedTask)}
+                      disabled={!selectedTask.prompt}
+                      className="gap-2"
+                    >
+                      {copiedPromptTaskId === selectedTask.id ? (
+                        <>
+                          <Check className="w-4 h-4" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4" />
+                          Copy Prompt
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-sm mt-2 whitespace-pre-wrap">{selectedTask.prompt}</p>
                 </div>
+                {(selectedTask.status === 'failed' || selectedTask.status === 'cancelled') && selectedTaskApiDebugInfo && (
+                  <div className="sm:col-span-2 rounded-lg border border-sky-200 bg-sky-50/70 p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium text-sky-700">API Debug</span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCopyDebugJson}
+                        className="h-7 px-2 text-xs"
+                      >
+                        {copiedDebugTaskId === selectedTask.id ? (
+                          <>
+                            <Check className="w-3 h-3 mr-1" />
+                            Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3 mr-1" />
+                            Copy Debug JSON
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {selectedTaskApiDebugInfo.providerHint && (
+                        <div>
+                          <span className="text-xs text-sky-700/80">Provider</span>
+                          <p className="font-mono text-xs break-all">{selectedTaskApiDebugInfo.providerHint}</p>
+                        </div>
+                      )}
+                      {selectedTaskApiDebugInfo.voiceId && (
+                        <div>
+                          <span className="text-xs text-sky-700/80">Voice ID</span>
+                          <p className="font-mono text-xs break-all">{selectedTaskApiDebugInfo.voiceId}</p>
+                        </div>
+                      )}
+                      {selectedTaskApiDebugInfo.method && (
+                        <div>
+                          <span className="text-xs text-sky-700/80">Method</span>
+                          <p className="font-mono text-xs">{selectedTaskApiDebugInfo.method}</p>
+                        </div>
+                      )}
+                      {selectedTaskApiDebugInfo.requestModel && (
+                        <div>
+                          <span className="text-xs text-sky-700/80">Request Model</span>
+                          <p className="font-mono text-xs break-all">{selectedTaskApiDebugInfo.requestModel}</p>
+                        </div>
+                      )}
+                      {selectedTaskApiDebugInfo.responseStatus !== undefined && (
+                        <div>
+                          <span className="text-xs text-sky-700/80">Response Status</span>
+                          <p className="font-mono text-xs">{selectedTaskApiDebugInfo.responseStatus}</p>
+                        </div>
+                      )}
+                    </div>
+                    {selectedTaskApiDebugInfo.endpoint && (
+                      <div>
+                        <span className="text-xs text-sky-700/80">Endpoint</span>
+                        <p className="font-mono text-xs break-all select-all bg-white p-2 rounded border mt-1">
+                          {selectedTaskApiDebugInfo.endpoint}
+                        </p>
+                      </div>
+                    )}
+                    {selectedTaskApiDebugInfo.requestUrl && (
+                      <div>
+                        <span className="text-xs text-sky-700/80">Request URL</span>
+                        <p className="font-mono text-xs break-all select-all bg-white p-2 rounded border mt-1">
+                          {selectedTaskApiDebugInfo.requestUrl}
+                        </p>
+                      </div>
+                    )}
+                    {selectedTaskApiDebugInfo.requestText && (
+                      <div>
+                        <span className="text-xs text-sky-700/80">Request Text</span>
+                        <p className="text-xs text-gray-700 whitespace-pre-wrap break-words mt-1 bg-white p-2 rounded border">
+                          {selectedTaskApiDebugInfo.requestText}
+                        </p>
+                      </div>
+                    )}
+                    {selectedTaskApiDebugInfo.responseMessage && (
+                      <div>
+                        <span className="text-xs text-sky-700/80">Response Message</span>
+                        <p className="text-xs text-sky-700 break-words mt-1">{selectedTaskApiDebugInfo.responseMessage}</p>
+                      </div>
+                    )}
+                    {selectedTaskApiDebugInfo.providerMessage && (
+                      <div>
+                        <span className="text-xs text-sky-700/80">Provider Message</span>
+                        <p className="text-xs text-sky-700 break-words mt-1">{selectedTaskApiDebugInfo.providerMessage}</p>
+                      </div>
+                    )}
+                    {selectedTaskApiDebugInfo.requestPayload !== undefined && (
+                      <details className="rounded border bg-white p-2">
+                        <summary className="cursor-pointer text-xs text-sky-700 select-none">
+                          Request Payload Sent to Provider
+                        </summary>
+                        <pre className="text-[11px] text-gray-700 mt-2 overflow-auto max-h-56 whitespace-pre-wrap break-words">
+                          {JSON.stringify(selectedTaskApiDebugInfo.requestPayload, null, 2)}
+                        </pre>
+                      </details>
+                    )}
+                    {selectedTaskApiDebugInfo.responseBody && (
+                      <details className="rounded border bg-white p-2">
+                        <summary className="cursor-pointer text-xs text-sky-700 select-none">
+                          Provider Raw Response Body
+                        </summary>
+                        <pre className="text-[11px] text-gray-700 mt-2 overflow-auto max-h-56 whitespace-pre-wrap break-words">
+                          {selectedTaskApiDebugInfo.responseBody}
+                        </pre>
+                      </details>
+                    )}
+                    {selectedTaskApiDebugInfo.responseJson !== undefined && (
+                      <details className="rounded border bg-white p-2">
+                        <summary className="cursor-pointer text-xs text-sky-700 select-none">
+                          Provider Response JSON
+                        </summary>
+                        <pre className="text-[11px] text-gray-700 mt-2 overflow-auto max-h-56 whitespace-pre-wrap break-words">
+                          {JSON.stringify(selectedTaskApiDebugInfo.responseJson, null, 2)}
+                        </pre>
+                      </details>
+                    )}
+                    {selectedTaskApiDebugInfo.providerDetail !== undefined && (
+                      <details className="rounded border bg-white p-2">
+                        <summary className="cursor-pointer text-xs text-sky-700 select-none">
+                          Provider Failure Detail
+                        </summary>
+                        <pre className="text-[11px] text-gray-700 mt-2 overflow-auto max-h-56 whitespace-pre-wrap break-words">
+                          {JSON.stringify(selectedTaskApiDebugInfo.providerDetail, null, 2)}
+                        </pre>
+                      </details>
+                    )}
+                  </div>
+                )}
                 {(selectedTask.status === 'failed' || selectedTask.status === 'cancelled') && (() => {
-                  const errorInfo = extractTaskErrorInfo(selectedTask);
+                  const errorInfo = selectedTaskErrorInfo;
                   if (!errorInfo) return null;
                   return (
-                    <div className="col-span-2 rounded-lg border border-red-200 bg-red-50/70 p-3">
+                    <div className="sm:col-span-2 rounded-lg border border-red-200 bg-red-50/70 p-3">
                       <span className="text-sm font-medium text-red-700">Error Summary</span>
                       <p className="text-sm text-red-700 mt-1">{errorInfo.summary}</p>
                       {(errorInfo.codeHint || errorInfo.stateHint) && (
@@ -1458,7 +2298,7 @@ export default function MediaHistory() {
                   );
                 })()}
                 {(selectedTask.status === 'failed' || selectedTask.status === 'cancelled') && selectedTask.resultData && (
-                  <div className="col-span-2">
+                  <div className="sm:col-span-2">
                     <details className="rounded border bg-white p-2">
                       <summary className="cursor-pointer text-xs text-gray-600 select-none">
                         Technical Error Payload
@@ -1509,7 +2349,20 @@ export default function MediaHistory() {
 
               {/* Actions */}
               {selectedTask.status === 'completed' && selectedTask.resultUrl && (
-                <div className="flex justify-end gap-2">
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleCopyPrompt(selectedTask)}
+                    disabled={!selectedTask.prompt}
+                    className="gap-2"
+                  >
+                    {copiedPromptTaskId === selectedTask.id ? (
+                      <Check className="w-4 h-4" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                    {copiedPromptTaskId === selectedTask.id ? 'Copied' : 'Copy Prompt'}
+                  </Button>
                   <Button
                     variant="outline"
                     onClick={() => handleAddToLibrary(selectedTask)}
@@ -1525,6 +2378,27 @@ export default function MediaHistory() {
                     )}
                     {selectedTaskLibraryState?.action === 'added' ? 'In Library' : 'Add to Library'}
                   </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleOpenShare(selectedTask)}
+                    disabled={!selectedTaskLibraryState?.itemId}
+                    className="gap-2"
+                    title={selectedTaskLibraryState?.itemId ? 'Share this library item' : 'Add to Library before sharing'}
+                  >
+                    <Share2 className="w-4 h-4" />
+                    Share
+                  </Button>
+                  {(selectedTask.mediaType === 'image' || selectedTask.mediaType === 'video') && (
+                    <Button
+                      variant="outline"
+                      onClick={() => handleOpenFullscreenMedia(selectedTask)}
+                      disabled={!selectedTask.resultUrl || expiredUrls.has(selectedTask.resultUrl)}
+                      className="gap-2"
+                    >
+                      <Maximize2 className="w-4 h-4" />
+                      Full
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     onClick={() => handleDownload(selectedTask.resultUrl!)}
@@ -1555,6 +2429,15 @@ export default function MediaHistory() {
           )}
         </DialogContent>
       </Dialog>
+
+      {shareDialogTarget ? (
+        <ShareDialog
+          itemId={shareDialogTarget.itemId}
+          itemTitle={shareDialogTarget.title}
+          isOpen={Boolean(shareDialogTarget)}
+          onClose={() => setShareDialogTarget(null)}
+        />
+      ) : null}
     </div>
   );
 }

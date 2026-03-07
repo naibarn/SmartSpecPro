@@ -18,8 +18,8 @@
           "type": "select",
           "label": "Mode",
           "labelTh": "โหมด",
-          "helpText": "Create a new skill from scratch, improve an existing ISC sandbox skill, or convert a Virtual Workflow to a skill",
-          "helpTextTh": "สร้าง Skill ใหม่จากศูนย์, ปรับปรุง Skill ที่มีอยู่ใน ISC sandbox, หรือแปลง Virtual Workflow เป็น Skill",
+          "helpText": "Create a new skill from scratch, improve an existing skill, or convert a Virtual Workflow to a skill",
+          "helpTextTh": "สร้าง Skill ใหม่จากศูนย์, ปรับปรุง Skill ที่มีอยู่, หรือแปลง Virtual Workflow เป็น Skill",
           "default": "create",
           "options": [
             { "value": "create",           "label": "Create New Skill",           "labelTh": "สร้าง Skill ใหม่" },

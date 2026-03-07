@@ -1,0 +1,89 @@
+{
+  "feature": "030-PresentationEditAdditional",
+  "generatedAt": "2026-03-04T01:29:05.310Z",
+  "decision": "go_staged_rollout",
+  "gateInput": {
+    "stage": "ramp_5",
+    "holdDurationHours": 30,
+    "exportsObserved": 1200,
+    "mediaHeavyPercent": 38,
+    "denseLayoutPercent": 26,
+    "lowComplexityBaselinePresent": true,
+    "successRateDropPercent": 0.4,
+    "slideReadyTimeoutPercent": 0.12,
+    "svgPlaceholderPercent": 0.21,
+    "exportLatencyP95RegressionPercent": 7.5,
+    "crashOomIncreasePercent": 0.03,
+    "rollbackRehearsalCompleted": true
+  },
+  "gateResult": {
+    "passed": true,
+    "shouldHalt": false,
+    "failedChecks": []
+  },
+  "commandEvidence": [
+    {
+      "id": "ai_presentation_service",
+      "command": "npm --prefix apps/web test -- server/services/__tests__/aiPresentationService.test.ts",
+      "status": "pass",
+      "testsPassed": 51,
+      "testsTotal": 51
+    },
+    {
+      "id": "presentation_editor",
+      "command": "npm --prefix apps/web test -- client/src/pages/PresentationEditor.test.tsx",
+      "status": "pass",
+      "testsPassed": 57,
+      "testsTotal": 57
+    },
+    {
+      "id": "canvas_objects",
+      "command": "npm --prefix apps/web test -- client/src/presentation-canvas/CanvasObjects.test.tsx",
+      "status": "pass",
+      "testsPassed": 3,
+      "testsTotal": 3
+    },
+    {
+      "id": "play_mode",
+      "command": "npm --prefix apps/web test -- client/src/pages/PresentationPlayMode.test.tsx",
+      "status": "pass",
+      "testsPassed": 13,
+      "testsTotal": 13
+    },
+    {
+      "id": "slide_render",
+      "command": "npm --prefix apps/web test -- server/routes/slideRender.test.ts",
+      "status": "pass",
+      "testsPassed": 29,
+      "testsTotal": 29
+    },
+    {
+      "id": "playback_export",
+      "command": "npm --prefix apps/web test -- server/services/presentationPlaybackExport.test.ts",
+      "status": "pass",
+      "testsPassed": 32,
+      "testsTotal": 32
+    },
+    {
+      "id": "degradation_and_warning",
+      "command": "npm --prefix apps/web test -- server/services/presentationExportDegradation.test.ts shared/presentation/exportWarnings.test.ts",
+      "status": "pass",
+      "testsPassed": 4,
+      "testsTotal": 4
+    },
+    {
+      "id": "python_slide_ready_timeout",
+      "command": "DEBUG=false uv run --project python-backend pytest python-backend/tests/test_presentation_render_task.py -k \"SlideReadyTimeout\"",
+      "status": "pass",
+      "testsPassed": 2,
+      "testsTotal": 2
+    },
+    {
+      "id": "release_gate_core",
+      "command": "npm --prefix apps/web test -- server/services/presentationReleaseReadiness.test.ts server/services/presentationRolloutRunbook.test.ts",
+      "status": "pass",
+      "testsPassed": 20,
+      "testsTotal": 20
+    }
+  ]
+}

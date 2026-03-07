@@ -31,6 +31,32 @@ describe("GenerateAIDraftInputSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts custom article mode without articleSkillId", () => {
+    const { articleSkillId, ...withoutArticleSkill } = validInput;
+    const result = GenerateAIDraftInputSchema.safeParse({
+      ...withoutArticleSkill,
+      useCustomArticle: true,
+      customArticleText: "Intro\n\nThis is a custom article provided by the user.",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects missing articleSkillId when custom article mode is disabled", () => {
+    const { articleSkillId, ...withoutArticleSkill } = validInput;
+    const result = GenerateAIDraftInputSchema.safeParse(withoutArticleSkill);
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects empty custom article text when custom article mode is enabled", () => {
+    const { articleSkillId, ...withoutArticleSkill } = validInput;
+    const result = GenerateAIDraftInputSchema.safeParse({
+      ...withoutArticleSkill,
+      useCustomArticle: true,
+      customArticleText: "   ",
+    });
+    expect(result.success).toBe(false);
+  });
+
   it("rejects prompt shorter than 3 chars", () => {
     const result = GenerateAIDraftInputSchema.safeParse({
       ...validInput,
@@ -65,6 +91,23 @@ describe("GenerateAIDraftInputSchema", () => {
     }
   });
 
+  it("defaults generateAudio to false", () => {
+    const result = GenerateAIDraftInputSchema.safeParse(validInput);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.generateAudio).toBe(false);
+    }
+  });
+
+  it("accepts generateAudio with audioModel", () => {
+    const result = GenerateAIDraftInputSchema.safeParse({
+      ...validInput,
+      generateAudio: true,
+      audioModel: "elevenlabs-tts",
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("rejects unknown stylePresetId", () => {
     const result = GenerateAIDraftInputSchema.safeParse({
       ...validInput,
@@ -91,6 +134,10 @@ describe("GenerateAIDraftInputSchema", () => {
         "https://cdn.example.com/reference-1.jpg",
         "/uploads/reference-2.jpg",
       ],
+      mediaModelExtraParams: {
+        quality: "high",
+        seed: 12345,
+      },
     });
     expect(result.success).toBe(true);
   });

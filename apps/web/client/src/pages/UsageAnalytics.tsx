@@ -298,6 +298,16 @@ export default function UsageAnalytics() {
                         <span className="text-sm font-semibold tabular-nums">{tx.creditsCharged ?? 0} cr</span>
                       </div>
                       <div className="text-xs text-muted-foreground font-mono truncate">{tx.model || "-"}</div>
+                      {tx.traceId && (
+                        <div className="text-[11px] text-muted-foreground font-mono truncate">
+                          trace: {tx.traceId}
+                        </div>
+                      )}
+                      {tx.errorMessage && (
+                        <div className="text-xs text-red-600 break-words">
+                          {tx.errorMessage}
+                        </div>
+                      )}
                       <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                         <span>{tx.providerName || "-"}</span>
                         <span>
@@ -347,6 +357,7 @@ export default function UsageAnalytics() {
                       <TableHead className="text-right">Tokens</TableHead>
                       <TableHead className="text-right">Latency</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Trace / Error</TableHead>
                       <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -388,11 +399,30 @@ export default function UsageAnalytics() {
                           : "-"}
                       </TableCell>
                       <TableCell>
-                        {tx.errorType ? (
-                          <XCircle className="h-4 w-4 text-red-500" />
-                        ) : (
-                          <CheckCircle className="h-4 w-4 text-green-500" />
-                        )}
+                        <div className="flex items-center gap-2">
+                          {tx.errorType ? (
+                            <XCircle className="h-4 w-4 text-red-500" />
+                          ) : (
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                          )}
+                          <span className="text-xs text-muted-foreground">
+                            {tx.statusCode ?? "-"}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-[280px]">
+                        <div className="space-y-1">
+                          <div className="text-[11px] text-muted-foreground font-mono truncate">
+                            {tx.traceId || "-"}
+                          </div>
+                          {tx.errorMessage ? (
+                            <div className="text-xs text-red-600 truncate" title={tx.errorMessage}>
+                              {tx.errorMessage}
+                            </div>
+                          ) : (
+                            <div className="text-xs text-muted-foreground">-</div>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <TransactionDetailDialog

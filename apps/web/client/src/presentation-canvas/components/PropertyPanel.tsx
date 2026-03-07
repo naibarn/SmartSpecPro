@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { PresentationElement, PresentationElementPatch } from "@/lib/presentationEditorState";
+import { LibraryFilePicker } from "@/components/library/LibraryFilePicker";
+import type { PresentationElement, PresentationElementPatch, PresentationSlideBackground } from "@/lib/presentationEditorState";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import {
@@ -16,6 +17,7 @@ import {
   ChevronDown,
   Loader2,
   Sparkles,
+  Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +27,8 @@ interface PropertyPanelProps {
   selectionHasMixedTypes?: boolean;
   onPatchSelected: (patch: PresentationElementPatch) => void;
   onPatchElementById?: (elementId: string, patch: PresentationElementPatch) => void;
+  slideBackground?: PresentationSlideBackground;
+  onSetSlideBackground?: (background: PresentationSlideBackground | undefined) => void;
 }
 
 interface TextPresetDefinition {
@@ -118,11 +122,29 @@ const FONT_WEIGHTS = [
   { label: "Bold", value: "700" },
 ] as const;
 
-interface ImageModelOption {
+interface MediaModelOption {
   id: string;
   name: string;
   provider?: string;
   configJson?: unknown;
+}
+
+interface ModelInputFieldOption {
+  value: string | number | boolean;
+  label: string;
+}
+
+type ModelInputSyncTarget = "none" | "reference_images" | "prompt" | "aspect_ratio";
+
+interface ModelInputField {
+  key: string;
+  label: string;
+  type: "select" | "text" | "number" | "boolean" | "image_urls" | "video_urls" | "audio_urls" | "library_file";
+  options?: ModelInputFieldOption[];
+  default?: unknown;
+  required?: boolean;
+  syncWith: ModelInputSyncTarget;
+  affectsPricing?: boolean;
 }
 
 const COMMON_ASPECT_RATIOS = [
@@ -135,6 +157,9 @@ const COMMON_ASPECT_RATIOS = [
   { value: "1:1", decimal: 1 },
 ] as const;
 const MAX_IMAGE_REFERENCES = 5;
+const LIBRARY_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif", "bmp", "svg"];
+const LIBRARY_VIDEO_EXTENSIONS = ["mp4", "webm", "mov", "m4v", "avi", "mkv"];
+const LIBRARY_AUDIO_EXTENSIONS = ["mp3", "wav", "m4a", "aac", "flac", "ogg"];
 const RETRY_AFTER_SECONDS_PATTERN = /retry after\s+(\d+)s/i;
 const TASK_POLL_INTERVAL_MS = 2000;
 const TASK_POLL_MAX_ATTEMPTS = 90;
@@ -151,12 +176,112 @@ function normalizeGenerateType(configJson: unknown): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
-function isTextToImageModel(model: ImageModelOption): boolean {
+function isTextToImageModel(model: MediaModelOption): boolean {
   const generateType = normalizeGenerateType(model.configJson);
   if (!generateType) {
     return true;
   }
   return ["text-to-image", "text2image", "txt2img", "t2i"].includes(generateType);
+}
+
+function isTextToVideoModel(model: MediaModelOption): boolean {
+  const generateType = normalizeGenerateType(model.configJson);
+  if (!generateType) {
+    return true;
+  }
+  return ["text-to-video", "text2video", "txt2video", "txt2vid", "t2v"].includes(generateType);
+}
+
+function parseModelInputFields(model: MediaModelOption | undefined): ModelInputField[] {
+  if (!model?.configJson || typeof model.configJson !== "object") {
+    return [];
+  }
+  const rawFields = Array.isArray((model.configJson as { inputFields?: unknown }).inputFields)
+    ? ((model.configJson as { inputFields?: unknown }).inputFields as unknown[])
+    : [];
+  const parsed: ModelInputField[] = [];
+  const inferSyncTarget = (
+    key: string,
+    type: ModelInputField["type"],
+    explicit: ModelInputSyncTarget | null,
+  ): ModelInputSyncTarget => {
+    if (explicit) {
+      return explicit;
+    }
+    if (type === "image_urls" || type === "video_urls" || type === "audio_urls") {
+      return "reference_images";
+    }
+    const normalizedKey = key.replace(/[^a-z0-9]/gi, "").toLowerCase();
+    if (normalizedKey === "prompt" || normalizedKey.endsWith("prompt")) {
+      return "prompt";
+    }
+    if (normalizedKey.includes("aspect") && normalizedKey.includes("ratio")) {
+      return "aspect_ratio";
+    }
+    if (
+      normalizedKey.includes("imageurls")
+      || normalizedKey.includes("imageurl")
+      || normalizedKey.includes("referenceimages")
+      || normalizedKey.includes("referenceimage")
+    ) {
+      return "reference_images";
+    }
+    return "none";
+  };
+  for (const field of rawFields) {
+    if (!field || typeof field !== "object") {
+      continue;
+    }
+    const record = field as Record<string, unknown>;
+    const rawKey = record.key;
+    if (typeof rawKey !== "string" || rawKey.trim().length === 0) {
+      continue;
+    }
+    const key = rawKey.trim();
+    const rawType = typeof record.type === "string" ? record.type.trim() : "text";
+    const type: ModelInputField["type"] = (
+      rawType === "select"
+      || rawType === "text"
+      || rawType === "number"
+      || rawType === "boolean"
+      || rawType === "image_urls"
+      || rawType === "video_urls"
+      || rawType === "audio_urls"
+      || rawType === "library_file"
+    )
+      ? rawType
+      : "text";
+    const rawSyncWith = typeof record.syncWith === "string" ? record.syncWith.trim() : "";
+    const explicitSyncWith: ModelInputSyncTarget | null = (
+      rawSyncWith === "none"
+      || rawSyncWith === "reference_images"
+      || rawSyncWith === "prompt"
+      || rawSyncWith === "aspect_ratio"
+    )
+      ? rawSyncWith
+      : null;
+    const options = Array.isArray(record.options)
+      ? (record.options as unknown[])
+          .filter((entry): entry is ModelInputFieldOption => (
+            Boolean(entry)
+            && typeof entry === "object"
+            && "value" in (entry as Record<string, unknown>)
+            && "label" in (entry as Record<string, unknown>)
+            && (typeof (entry as Record<string, unknown>).label === "string")
+          ))
+      : undefined;
+    parsed.push({
+      key,
+      label: (typeof record.label === "string" && record.label.trim().length > 0) ? record.label.trim() : key,
+      type,
+      options,
+      default: record.default,
+      required: Boolean(record.required),
+      syncWith: inferSyncTarget(key, type, explicitSyncWith),
+      affectsPricing: Boolean(record.affectsPricing),
+    });
+  }
+  return parsed;
 }
 
 function resolveClosestAspectRatio(width: number, height: number): string {
@@ -173,6 +298,47 @@ function resolveClosestAspectRatio(width: number, height: number): string {
     }
   }
   return closest.value;
+}
+
+function parseAspectRatioValue(value: string): number | null {
+  const parts = value.split(":").map((part) => Number.parseFloat(part));
+  if (parts.length !== 2) {
+    return null;
+  }
+  const [rawWidth, rawHeight] = parts;
+  if (!Number.isFinite(rawWidth) || !Number.isFinite(rawHeight) || rawWidth <= 0 || rawHeight <= 0) {
+    return null;
+  }
+  return rawWidth / rawHeight;
+}
+
+function calculateDimensionsForAspectRatio(
+  currentWidth: number,
+  currentHeight: number,
+  aspectRatio: string,
+): { width: number; height: number } | null {
+  const decimalRatio = parseAspectRatioValue(aspectRatio);
+  if (!decimalRatio) {
+    return null;
+  }
+  const safeWidth = Math.max(1, Number.isFinite(currentWidth) ? currentWidth : 1);
+  const safeHeight = Math.max(1, Number.isFinite(currentHeight) ? currentHeight : 1);
+  const baseArea = Math.max(1, safeWidth * safeHeight);
+  const nextWidth = Math.max(1, Math.round(Math.sqrt(baseArea * decimalRatio)));
+  const nextHeight = Math.max(1, Math.round(nextWidth / decimalRatio));
+  return {
+    width: nextWidth,
+    height: nextHeight,
+  };
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
 }
 
 function extractGeneratedImageUrl(payload: unknown): string | null {
@@ -232,7 +398,7 @@ function extractTaskResultUrl(task: unknown): string | null {
       return null;
     }
     const obj = value as Record<string, unknown>;
-    const directKeys = ["url", "image_url", "imageUrl", "result_url", "resultUrl"];
+    const directKeys = ["url", "image_url", "imageUrl", "video_url", "videoUrl", "result_url", "resultUrl"];
     for (const key of directKeys) {
       const candidate = obj[key];
       if (typeof candidate === "string" && candidate.trim().length > 0) {
@@ -312,7 +478,11 @@ function extractTaskFailureMessage(task: unknown): string | null {
 async function pollTaskUntilTerminal(
   taskId: string,
   fetchTask: (taskId: string) => Promise<unknown>,
+  options?: {
+    mediaLabel?: string;
+  },
 ): Promise<unknown> {
+  const mediaLabel = options?.mediaLabel ?? "Media";
   for (let attempt = 0; attempt < TASK_POLL_MAX_ATTEMPTS; attempt += 1) {
     const task = await fetchTask(taskId);
     const status = normalizeTaskStatus(task);
@@ -321,11 +491,11 @@ async function pollTaskUntilTerminal(
     }
     if (status === "failed" || status === "cancelled") {
       const errorMessage = extractTaskFailureMessage(task);
-      throw new Error(errorMessage || `Image generation ${status}.`);
+      throw new Error(errorMessage || `${mediaLabel} generation ${status}.`);
     }
     await sleepMs(TASK_POLL_INTERVAL_MS);
   }
-  throw new Error("Image generation timeout. Please try again.");
+  throw new Error(`${mediaLabel} generation timeout. Please try again.`);
 }
 
 function isAllowedReferenceUrl(value: string): boolean {
@@ -355,50 +525,153 @@ function normalizeReferenceUrls(urls: string[] | undefined): string[] {
   return deduped;
 }
 
-function applyReferenceImagesToExtraParams(
-  model: ImageModelOption | undefined,
-  referenceImageUrls: string[],
+function mergeExtraParams(
+  base: Record<string, unknown> | undefined,
+  override: Record<string, unknown> | undefined,
 ): Record<string, unknown> | undefined {
-  if (!model || referenceImageUrls.length === 0 || !model.configJson || typeof model.configJson !== "object") {
+  if (!base && !override) {
     return undefined;
   }
-  const inputFields = Array.isArray((model.configJson as { inputFields?: unknown }).inputFields)
-    ? ((model.configJson as { inputFields?: unknown }).inputFields as unknown[])
-    : [];
-  const imageUrlsField = inputFields.find((field) => {
-    if (!field || typeof field !== "object") {
-      return false;
-    }
-    const type = (field as { type?: unknown }).type;
-    const key = (field as { key?: unknown }).key;
-    return type === "image_urls" && typeof key === "string" && key.trim().length > 0;
-  }) as { key: string } | undefined;
-
-  if (!imageUrlsField) {
-    return undefined;
+  if (!base) {
+    return override;
   }
-
-  return {
-    [imageUrlsField.key]: referenceImageUrls,
-  };
+  if (!override) {
+    return base;
+  }
+  return { ...base, ...override };
 }
 
-function hasImageUrlsField(model: ImageModelOption | undefined): boolean {
-  if (!model || !model.configJson || typeof model.configJson !== "object") {
-    return false;
+function buildDefaultExtraParamsForModel(model: MediaModelOption | undefined): Record<string, unknown> | undefined {
+  const fields = parseModelInputFields(model);
+  if (!fields.length) {
+    return undefined;
   }
-  const inputFields = Array.isArray((model.configJson as { inputFields?: unknown }).inputFields)
-    ? ((model.configJson as { inputFields?: unknown }).inputFields as unknown[])
-    : [];
-  return inputFields.some((field) => {
-    if (!field || typeof field !== "object") {
-      return false;
+  const defaults: Record<string, unknown> = {};
+  for (const field of fields) {
+    if (field.default !== undefined) {
+      defaults[field.key] = field.default;
+      continue;
     }
-    return (field as { type?: unknown }).type === "image_urls";
+    if (field.required && field.type === "select" && field.options && field.options.length > 0) {
+      defaults[field.key] = field.options[0]?.value;
+    }
+  }
+  return Object.keys(defaults).length > 0 ? defaults : undefined;
+}
+
+function pickExtraParamsForModel(
+  model: MediaModelOption | undefined,
+  current: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+  if (!model || !current) {
+    return undefined;
+  }
+  const fieldKeys = new Set(parseModelInputFields(model).map((field) => field.key));
+  if (fieldKeys.size === 0) {
+    return undefined;
+  }
+  const next: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(current)) {
+    if (fieldKeys.has(key)) {
+      next[key] = value;
+    }
+  }
+  return Object.keys(next).length > 0 ? next : undefined;
+}
+
+function applyModelSyncTargets(
+  model: MediaModelOption | undefined,
+  baseExtraParams: Record<string, unknown> | undefined,
+  syncValues: {
+    prompt?: string;
+    aspectRatio?: string;
+    referenceImageUrls?: string[];
+  },
+): Record<string, unknown> | undefined {
+  const fields = parseModelInputFields(model);
+  if (!fields.length) {
+    return baseExtraParams;
+  }
+  const next: Record<string, unknown> = { ...(baseExtraParams ?? {}) };
+  for (const field of fields) {
+    const syncWith = field.syncWith;
+    if (syncWith === "prompt" && syncValues.prompt) {
+      next[field.key] = syncValues.prompt;
+      continue;
+    }
+    if (syncWith === "aspect_ratio" && syncValues.aspectRatio) {
+      next[field.key] = syncValues.aspectRatio;
+      continue;
+    }
+    if (
+      syncWith === "reference_images"
+      && syncValues.referenceImageUrls
+      && syncValues.referenceImageUrls.length > 0
+    ) {
+      next[field.key] = syncValues.referenceImageUrls;
+    }
+  }
+  return Object.keys(next).length > 0 ? next : undefined;
+}
+
+function hasReferenceImageSyncField(model: MediaModelOption | undefined): boolean {
+  return parseModelInputFields(model).some((field) => {
+    return field.syncWith === "reference_images";
   });
 }
 
-function getErrorMessage(error: unknown): string {
+function isMissingRequiredInputValue(value: unknown): boolean {
+  if (value === undefined || value === null) {
+    return true;
+  }
+  if (typeof value === "string") {
+    return value.trim().length === 0;
+  }
+  if (Array.isArray(value)) {
+    return value.length === 0;
+  }
+  return false;
+}
+
+function getMissingRequiredModelFields(
+  fields: ModelInputField[],
+  values: {
+    extraParams: Record<string, unknown> | undefined;
+    prompt?: string;
+    aspectRatio?: string;
+    referenceImageUrls?: string[];
+  },
+): string[] {
+  const missing: string[] = [];
+  for (const field of fields) {
+    if (!field.required) {
+      continue;
+    }
+    const syncWith = field.syncWith;
+    let value: unknown;
+    if (syncWith === "prompt") {
+      value = values.prompt;
+    } else if (syncWith === "aspect_ratio") {
+      value = values.aspectRatio;
+    } else if (syncWith === "reference_images") {
+      value = values.referenceImageUrls;
+    } else {
+      value = values.extraParams?.[field.key];
+      if (value === undefined) {
+        value = field.default;
+      }
+      if (value === undefined && field.type === "select" && field.options && field.options.length > 0) {
+        value = field.options[0]?.value;
+      }
+    }
+    if (isMissingRequiredInputValue(value)) {
+      missing.push(field.label);
+    }
+  }
+  return missing;
+}
+
+function getErrorMessage(error: unknown, fallback = "Failed to regenerate media"): string {
   if (error instanceof Error) {
     return error.message;
   }
@@ -408,7 +681,7 @@ function getErrorMessage(error: unknown): string {
       return maybeMessage;
     }
   }
-  return "Failed to regenerate image";
+  return fallback;
 }
 
 function getRetryAfterSeconds(errorMessage: string): number | null {
@@ -436,6 +709,19 @@ function parseNumberInput(value: string, fallback: number): number {
 
 function clampNumber(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+function getAllowedLibraryExtensionsForField(field: ModelInputField): string[] | undefined {
+  if (field.type === "image_urls") {
+    return LIBRARY_IMAGE_EXTENSIONS;
+  }
+  if (field.type === "video_urls") {
+    return LIBRARY_VIDEO_EXTENSIONS;
+  }
+  if (field.type === "audio_urls") {
+    return LIBRARY_AUDIO_EXTENSIONS;
+  }
+  return undefined;
 }
 
 function toColorInputValue(value: string, fallback: string): string {
@@ -527,27 +813,67 @@ export function PropertyPanel({
   selectionHasMixedTypes = false,
   onPatchSelected,
   onPatchElementById,
+  slideBackground,
+  onSetSlideBackground,
 }: PropertyPanelProps) {
   const [fontDropdownOpen, setFontDropdownOpen] = useState(false);
   const [weightDropdownOpen, setWeightDropdownOpen] = useState(false);
   const [isRegeneratingImage, setIsRegeneratingImage] = useState(false);
+  const [isRegeneratingVideo, setIsRegeneratingVideo] = useState(false);
+  const [showAdvancedModelInputs, setShowAdvancedModelInputs] = useState(false);
+  const [modelInputOptionSearchTerms, setModelInputOptionSearchTerms] = useState<Record<string, string>>({});
+  const [bgTab, setBgTab] = useState<"none" | "color" | "image">(() => slideBackground?.type ?? "none");
+  const [bgSearch, setBgSearch] = useState("");
   const trpcUtils = trpc.useUtils();
   const imageModelsQuery = trpc.media.getModels.useQuery(
     { type: "image" },
     { staleTime: 300_000 },
   );
+  const videoModelsQuery = trpc.media.getModels.useQuery(
+    { type: "video" },
+    { staleTime: 300_000 },
+  );
   const generateImageAsyncMutation = trpc.media.generateImageAsync.useMutation();
+  const generateVideoAsyncMutation = trpc.media.generateVideoAsync.useMutation();
+  const uploadReferenceMutation = trpc.ai.upload.useMutation();
+  const bgImageListQuery = trpc.library.listDocuments.useQuery(
+    { filters: { itemType: "image" }, limit: 30 },
+    { enabled: !selectedElement && bgTab === "image" && bgSearch.trim().length === 0, staleTime: 60_000 },
+  );
+  const bgImageSearchQuery = trpc.library.search.useQuery(
+    { query: bgSearch.trim(), filters: { itemType: "image" }, limit: 30 },
+    { enabled: !selectedElement && bgTab === "image" && bgSearch.trim().length > 0, staleTime: 30_000 },
+  );
 
-  const imageModels = (imageModelsQuery.data?.models ?? []) as ImageModelOption[];
+  const imageModels = (imageModelsQuery.data?.models ?? []) as MediaModelOption[];
+  const videoModels = (videoModelsQuery.data?.models ?? []) as MediaModelOption[];
   const compatibleImageModels = imageModels.filter(isTextToImageModel);
+  const compatibleVideoModels = videoModels.filter(isTextToVideoModel);
+  const displayVideoModels = compatibleVideoModels.length > 0 ? compatibleVideoModels : videoModels;
   const defaultImageModelId = compatibleImageModels[0]?.id
     || imageModelsQuery.data?.defaults?.image
+    || "";
+  const defaultVideoModelId = displayVideoModels[0]?.id
+    || videoModelsQuery.data?.defaults?.video
     || "";
   const selectedImageModelId = selectedElement?.type === "image"
     ? selectedElement.imageModelId?.trim() || defaultImageModelId
     : defaultImageModelId;
+  const selectedVideoModelId = selectedElement?.type === "video"
+    ? selectedElement.videoModelId?.trim() || defaultVideoModelId
+    : defaultVideoModelId;
   const selectedImageModel = imageModels.find((model) => model.id === selectedImageModelId);
-  const selectedModelSupportsImageUrls = hasImageUrlsField(selectedImageModel);
+  const selectedVideoModel = videoModels.find((model) => model.id === selectedVideoModelId);
+  const selectedImageModelSupportsReferenceSync = hasReferenceImageSyncField(selectedImageModel);
+  const selectedVideoModelSupportsReferenceSync = hasReferenceImageSyncField(selectedVideoModel);
+
+  useEffect(() => {
+    setModelInputOptionSearchTerms({});
+  }, [selectedImageModelId, selectedVideoModelId]);
+
+  useEffect(() => {
+    setShowAdvancedModelInputs(false);
+  }, [selectedElement?.id, selectedElement?.type]);
 
   const patchImageElementById = (elementId: string, patch: PresentationElementPatch) => {
     if (onPatchElementById) {
@@ -555,6 +881,84 @@ export function PropertyPanel({
       return;
     }
     onPatchSelected(patch);
+  };
+
+  const getSelectedElementExtraParams = (): Record<string, unknown> => {
+    if (!selectedElement) {
+      return {};
+    }
+    if (selectedElement.type === "image") {
+      return (selectedElement.imageExtraParams as Record<string, unknown> | undefined) ?? {};
+    }
+    if (selectedElement.type === "video") {
+      return (selectedElement.videoExtraParams as Record<string, unknown> | undefined) ?? {};
+    }
+    return {};
+  };
+
+  const updateSelectedElementExtraParams = (key: string, value: unknown) => {
+    if (!selectedElement) {
+      return;
+    }
+    const current = getSelectedElementExtraParams();
+    const next: Record<string, unknown> = { ...current };
+    if (value === undefined || value === null || value === "") {
+      delete next[key];
+    } else {
+      next[key] = value;
+    }
+    if (selectedElement.type === "image") {
+      onPatchSelected({
+        imageExtraParams: next,
+      } as PresentationElementPatch);
+      return;
+    }
+    if (selectedElement.type === "video") {
+      onPatchSelected({
+        videoExtraParams: next,
+      } as PresentationElementPatch);
+    }
+  };
+
+  const handleApplyAspectRatioToSelectedMedia = (aspectRatio: string) => {
+    if (!selectedElement || (selectedElement.type !== "image" && selectedElement.type !== "video")) {
+      return;
+    }
+    const nextDimensions = calculateDimensionsForAspectRatio(
+      selectedElement.width,
+      selectedElement.height,
+      aspectRatio,
+    );
+    if (!nextDimensions) {
+      return;
+    }
+    onPatchSelected(nextDimensions as PresentationElementPatch);
+  };
+
+  const handleAppendImageReferences = (incomingUrls: string[]) => {
+    if (!selectedElement || selectedElement.type !== "image") {
+      return;
+    }
+    const nextReferences = normalizeReferenceUrls([
+      ...(selectedElement.imageReferenceUrls ?? []),
+      ...incomingUrls,
+    ]);
+    onPatchSelected({
+      imageReferenceUrls: nextReferences,
+    } as PresentationElementPatch);
+  };
+
+  const handleAppendVideoReferences = (incomingUrls: string[]) => {
+    if (!selectedElement || selectedElement.type !== "video") {
+      return;
+    }
+    const nextReferences = normalizeReferenceUrls([
+      ...(selectedElement.videoReferenceUrls ?? []),
+      ...incomingUrls,
+    ]);
+    onPatchSelected({
+      videoReferenceUrls: nextReferences,
+    } as PresentationElementPatch);
   };
 
   const handleUseCurrentImageAsReference = () => {
@@ -570,17 +974,27 @@ export function PropertyPanel({
       toast.error("Current image URL is not a valid reference URL.");
       return;
     }
-    const nextReferences = normalizeReferenceUrls([
-      ...(selectedElement.imageReferenceUrls ?? []),
-      currentSource,
-    ]);
-    onPatchSelected({
-      imageReferenceUrls: nextReferences,
-    } as PresentationElementPatch);
+    handleAppendImageReferences([currentSource]);
     toast.success("Current image added to references.");
   };
 
-  const handleRemoveReference = (url: string) => {
+  const handleAddImageReferenceFromLibrary = (url: string) => {
+    const normalized = url.trim();
+    if (!normalized) {
+      return;
+    }
+    handleAppendImageReferences([normalized]);
+  };
+
+  const handleAddVideoReferenceFromLibrary = (url: string) => {
+    const normalized = url.trim();
+    if (!normalized) {
+      return;
+    }
+    handleAppendVideoReferences([normalized]);
+  };
+
+  const handleRemoveImageReference = (url: string) => {
     if (!selectedElement || selectedElement.type !== "image") {
       return;
     }
@@ -592,13 +1006,97 @@ export function PropertyPanel({
     } as PresentationElementPatch);
   };
 
-  const handleClearReferences = () => {
+  const handleClearImageReferences = () => {
     if (!selectedElement || selectedElement.type !== "image") {
       return;
     }
     onPatchSelected({
       imageReferenceUrls: [],
     } as PresentationElementPatch);
+  };
+
+  const handleRemoveVideoReference = (url: string) => {
+    if (!selectedElement || selectedElement.type !== "video") {
+      return;
+    }
+    const nextReferences = normalizeReferenceUrls(
+      (selectedElement.videoReferenceUrls ?? []).filter((item) => item !== url),
+    );
+    onPatchSelected({
+      videoReferenceUrls: nextReferences,
+    } as PresentationElementPatch);
+  };
+
+  const handleClearVideoReferences = () => {
+    if (!selectedElement || selectedElement.type !== "video") {
+      return;
+    }
+    onPatchSelected({
+      videoReferenceUrls: [],
+    } as PresentationElementPatch);
+  };
+
+  const handleReferenceFileUpload = async (
+    event: ChangeEvent<HTMLInputElement>,
+    target: "image" | "video",
+  ) => {
+    const files = event.target.files;
+    event.target.value = "";
+    if (!selectedElement || selectedElement.type !== target || !files || files.length === 0) {
+      return;
+    }
+
+    let currentReferences: string[];
+    if (target === "image") {
+      currentReferences = normalizeReferenceUrls(
+        (selectedElement as Extract<PresentationElement, { type: "image" }>).imageReferenceUrls,
+      );
+    } else {
+      currentReferences = normalizeReferenceUrls(
+        (selectedElement as Extract<PresentationElement, { type: "video" }>).videoReferenceUrls,
+      );
+    }
+    const remainingSlots = Math.max(0, MAX_IMAGE_REFERENCES - currentReferences.length);
+    if (remainingSlots === 0) {
+      toast.error("Maximum 5 reference images");
+      return;
+    }
+
+    const filesToUpload = Array.from(files).slice(0, remainingSlots);
+    const uploadedUrls: string[] = [];
+    for (const file of filesToUpload) {
+      if (!file.type.startsWith("image/")) {
+        toast.error(`Unsupported file type for ${file.name}`);
+        continue;
+      }
+      try {
+        const fileBase64 = await readFileAsDataUrl(file);
+        const result = await uploadReferenceMutation.mutateAsync({
+          fileName: file.name,
+          fileType: file.type,
+          fileBase64,
+        });
+        const uploadedUrl = String(result.url || "").trim();
+        if (uploadedUrl) {
+          uploadedUrls.push(uploadedUrl);
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? `Upload failed (${file.name}): ${error.message}`
+            : `Upload failed (${file.name})`,
+        );
+      }
+    }
+
+    if (uploadedUrls.length === 0) {
+      return;
+    }
+    if (target === "image") {
+      handleAppendImageReferences(uploadedUrls);
+      return;
+    }
+    handleAppendVideoReferences(uploadedUrls);
   };
 
   const handleRegenerateImage = async () => {
@@ -618,14 +1116,38 @@ export function PropertyPanel({
     const aspectRatio = resolveClosestAspectRatio(selectedElement.width, selectedElement.height);
     const referenceImageUrls = normalizeReferenceUrls(selectedElement.imageReferenceUrls);
     const modelForRequest = imageModels.find((model) => model.id === (requestedModel || defaultImageModelId));
-    const modelSpecificExtraParams = applyReferenceImagesToExtraParams(modelForRequest, referenceImageUrls);
+    const storedExtraParams = (selectedElement.imageExtraParams as Record<string, unknown> | undefined);
+    const mergedExtraParams = mergeExtraParams(
+      buildDefaultExtraParamsForModel(modelForRequest),
+      storedExtraParams,
+    );
+    const syncedExtraParams = applyModelSyncTargets(
+      modelForRequest,
+      mergedExtraParams,
+      {
+        prompt: imagePrompt,
+        aspectRatio,
+        referenceImageUrls,
+      },
+    );
+    const modelInputFields = parseModelInputFields(modelForRequest);
+    const missingRequiredFields = getMissingRequiredModelFields(modelInputFields, {
+      extraParams: syncedExtraParams,
+      prompt: imagePrompt,
+      aspectRatio,
+      referenceImageUrls,
+    });
+    if (missingRequiredFields.length > 0) {
+      toast.error(`Please fill required model inputs: ${missingRequiredFields.join(", ")}`);
+      return;
+    }
     const requestPayload = {
       prompt: imagePrompt,
       model: requestedModel,
       aspectRatio,
       numImages: 1 as const,
       ...(referenceImageUrls.length > 0 ? { referenceImageUrls } : {}),
-      ...(modelSpecificExtraParams ? { extraParams: modelSpecificExtraParams } : {}),
+      ...(syncedExtraParams ? { extraParams: syncedExtraParams } : {}),
     };
     try {
       setIsRegeneratingImage(true);
@@ -633,7 +1155,7 @@ export function PropertyPanel({
       try {
         taskResult = await generateImageAsyncMutation.mutateAsync(requestPayload);
       } catch (initialError) {
-        const initialMessage = getErrorMessage(initialError);
+        const initialMessage = getErrorMessage(initialError, "Failed to regenerate image");
         const retryAfterSeconds = getRetryAfterSeconds(initialMessage);
         const isBurstAnomalyError = initialMessage.toLowerCase().includes("burst_anomaly");
         if (!isBurstAnomalyError || !retryAfterSeconds) {
@@ -657,6 +1179,7 @@ export function PropertyPanel({
         const terminalTask = await pollTaskUntilTerminal(
           taskId,
           async (id) => trpcUtils.media.getTask.fetch({ taskId: id }),
+          { mediaLabel: "Image" },
         );
         generatedUrl = extractTaskResultUrl(terminalTask);
       }
@@ -668,19 +1191,314 @@ export function PropertyPanel({
         imagePrompt,
         imageModelId: requestedModel ?? (taskResult as { model?: string }).model ?? undefined,
         ...(referenceImageUrls.length > 0 ? { imageReferenceUrls: referenceImageUrls } : {}),
+        ...(syncedExtraParams ? { imageExtraParams: syncedExtraParams } : {}),
       } as PresentationElementPatch);
       toast.success("Image regenerated and replaced.");
     } catch (error) {
-      toast.error(getErrorMessage(error));
+      toast.error(getErrorMessage(error, "Failed to regenerate image"));
     } finally {
       setIsRegeneratingImage(false);
     }
   };
 
+  const handleRegenerateVideo = async () => {
+    if (!selectedElement || selectedElement.type !== "video") {
+      return;
+    }
+    if (isRegeneratingVideo) {
+      return;
+    }
+    const videoPrompt = (selectedElement.videoPrompt ?? "").trim();
+    if (!videoPrompt) {
+      toast.error("Please enter a video prompt before regenerating.");
+      return;
+    }
+
+    const targetElementId = selectedElement.id;
+    const requestedModel = selectedElement.videoModelId?.trim() || undefined;
+    const aspectRatio = resolveClosestAspectRatio(selectedElement.width, selectedElement.height);
+    const referenceImageUrls = normalizeReferenceUrls(selectedElement.videoReferenceUrls);
+    const modelForRequest = videoModels.find((model) => model.id === (requestedModel || defaultVideoModelId));
+    const storedExtraParams = (selectedElement.videoExtraParams as Record<string, unknown> | undefined);
+    const mergedExtraParams = mergeExtraParams(
+      buildDefaultExtraParamsForModel(modelForRequest),
+      storedExtraParams,
+    );
+    const syncedExtraParams = applyModelSyncTargets(
+      modelForRequest,
+      mergedExtraParams,
+      {
+        prompt: videoPrompt,
+        aspectRatio,
+        referenceImageUrls,
+      },
+    );
+    const modelInputFields = parseModelInputFields(modelForRequest);
+    const missingRequiredFields = getMissingRequiredModelFields(modelInputFields, {
+      extraParams: syncedExtraParams,
+      prompt: videoPrompt,
+      aspectRatio,
+      referenceImageUrls,
+    });
+    if (missingRequiredFields.length > 0) {
+      toast.error(`Please fill required model inputs: ${missingRequiredFields.join(", ")}`);
+      return;
+    }
+
+    const normalizedDuration = (() => {
+      const raw = syncedExtraParams?.duration;
+      const parsed = typeof raw === "number" ? raw : Number.parseInt(String(raw ?? ""), 10);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        return undefined;
+      }
+      return Math.min(60, Math.max(1, Math.round(parsed)));
+    })();
+    const normalizedResolution = (() => {
+      const raw = syncedExtraParams?.resolution;
+      if (typeof raw !== "string") {
+        return undefined;
+      }
+      const value = raw.trim();
+      return value.length > 0 ? value : undefined;
+    })();
+
+    const requestPayload = {
+      prompt: videoPrompt,
+      model: requestedModel,
+      aspectRatio,
+      ...(referenceImageUrls.length > 0 ? { referenceImageUrls } : {}),
+      ...(normalizedDuration ? { duration: normalizedDuration } : {}),
+      ...(normalizedResolution ? { resolution: normalizedResolution } : {}),
+      ...(syncedExtraParams ? { extraParams: syncedExtraParams } : {}),
+    };
+
+    try {
+      setIsRegeneratingVideo(true);
+      let taskResult;
+      try {
+        taskResult = await generateVideoAsyncMutation.mutateAsync(requestPayload);
+      } catch (initialError) {
+        const initialMessage = getErrorMessage(initialError, "Failed to regenerate video");
+        const retryAfterSeconds = getRetryAfterSeconds(initialMessage);
+        const isBurstAnomalyError = initialMessage.toLowerCase().includes("burst_anomaly");
+        if (!isBurstAnomalyError || !retryAfterSeconds) {
+          throw initialError;
+        }
+        toast.info(`Rate limit reached, retrying in ${retryAfterSeconds}s...`);
+        await sleepMs((retryAfterSeconds + 1) * 1000);
+        taskResult = await generateVideoAsyncMutation.mutateAsync(requestPayload);
+      }
+
+      let generatedUrl = extractTaskResultUrl(taskResult);
+      if (!generatedUrl) {
+        const createdTaskId = (taskResult as { id?: unknown; taskId?: unknown }).id;
+        const taskId = typeof createdTaskId === "string" && createdTaskId.trim().length > 0
+          ? createdTaskId.trim()
+          : null;
+        if (!taskId) {
+          throw new Error("Video generation started but task ID was not returned.");
+        }
+        const terminalTask = await pollTaskUntilTerminal(
+          taskId,
+          async (id) => trpcUtils.media.getTask.fetch({ taskId: id }),
+          { mediaLabel: "Video" },
+        );
+        generatedUrl = extractTaskResultUrl(terminalTask);
+      }
+      if (!generatedUrl) {
+        throw new Error("Video provider returned no URL");
+      }
+      patchImageElementById(targetElementId, {
+        src: generatedUrl,
+        videoPrompt,
+        videoModelId: requestedModel ?? (taskResult as { model?: string }).model ?? undefined,
+        ...(referenceImageUrls.length > 0 ? { videoReferenceUrls: referenceImageUrls } : {}),
+        ...(syncedExtraParams ? { videoExtraParams: syncedExtraParams } : {}),
+      } as PresentationElementPatch);
+      toast.success("Video regenerated and replaced.");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Failed to regenerate video"));
+    } finally {
+      setIsRegeneratingVideo(false);
+    }
+  };
+
   if (!selectedElement) {
+    const rawBgItems: Array<{ source_url?: string | null; thumbnail_url?: string | null; title?: string | null; id?: number; item_id?: number }> = bgSearch.trim().length > 0
+      ? ((bgImageSearchQuery.data?.results ?? []) as Array<{ source_url?: string | null; thumbnail_url?: string | null; title?: string | null; item_id?: number }>)
+      : ((bgImageListQuery.data?.results ?? []) as Array<{ source_url?: string | null; thumbnail_url?: string | null; title?: string | null; id?: number }>);
+    const bgLoading = bgSearch.trim().length > 0
+      ? bgImageSearchQuery.isLoading
+      : bgImageListQuery.isLoading;
+
+    const COLOR_PRESETS = [
+      "#ffffff", "#f1f5f9", "#e2e8f0", "#cbd5e1",
+      "#1e293b", "#0f172a", "#1e3a5f", "#312e81",
+      "#0d4f3c", "#166534", "#7f1d1d", "#78350f",
+    ];
+
     return (
-      <div className="flex flex-col items-center justify-center h-32 gap-2">
-        <p className="text-sm text-zinc-500">Select an element to edit</p>
+      <div className="space-y-4 text-sm p-1" data-testid="canvas-background-panel">
+        <span className="text-[10px] uppercase tracking-widest text-zinc-400 font-medium">Slide Background</span>
+
+        {/* Mode tabs: None / Color / Image */}
+        <div className="flex gap-1 rounded-md bg-zinc-900 p-1">
+          {(["none", "color", "image"] as const).map((mode) => (
+            <button
+              key={mode}
+              className={cn(
+                "flex-1 rounded px-2 py-1 text-xs font-medium transition-colors capitalize",
+                bgTab === mode ? "bg-zinc-700 text-zinc-100" : "text-zinc-400 hover:text-zinc-200",
+              )}
+              onClick={() => {
+                if (mode === "none") {
+                  setBgTab("none");
+                  onSetSlideBackground?.(undefined);
+                } else if (mode === "color") {
+                  setBgTab("color");
+                  onSetSlideBackground?.({
+                    type: "color",
+                    value: slideBackground?.type === "color" ? slideBackground.value : "#ffffff",
+                  });
+                } else {
+                  setBgTab("image");
+                  // Don't call onSetSlideBackground yet — user needs to pick an image
+                }
+              }}
+            >
+              {mode === "none" ? "None" : mode === "color" ? "Color" : "Image"}
+            </button>
+          ))}
+        </div>
+
+        {/* Color panel */}
+        {bgTab === "color" && (
+          <div className="space-y-3">
+            <ColorField
+              label="Background Color"
+              textAriaLabel="Slide background color"
+              pickerAriaLabel="Slide background color picker"
+              value={slideBackground?.type === "color" ? slideBackground.value : "#ffffff"}
+              fallback="#ffffff"
+              onChange={(v) => onSetSlideBackground?.({ type: "color", value: v })}
+            />
+            <div>
+              <span className="text-[10px] text-zinc-500 mb-1.5 block">Presets</span>
+              <div className="flex flex-wrap gap-1.5">
+                {COLOR_PRESETS.map((color) => (
+                  <button
+                    key={color}
+                    aria-label={`Set background to ${color}`}
+                    title={color}
+                    className="h-6 w-6 rounded border border-zinc-600 transition-transform hover:scale-110"
+                    style={{
+                      backgroundColor: color,
+                      outline: slideBackground?.type === "color" && slideBackground.value === color
+                        ? "2px solid #38bdf8"
+                        : "2px solid transparent",
+                      outlineOffset: "2px",
+                    }}
+                    onClick={() => onSetSlideBackground?.({ type: "color", value: color })}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Image panel */}
+        {bgTab === "image" && (
+          <div className="space-y-2">
+            {/* Current background image preview */}
+            {slideBackground?.type === "image" && (
+              <div className="relative rounded-md overflow-hidden border border-zinc-600" style={{ height: "64px" }}>
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    backgroundImage: `url(${slideBackground.url})`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                  }}
+                />
+                <button
+                  className="absolute top-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-zinc-200 hover:bg-black/80"
+                  onClick={() => {
+                    onSetSlideBackground?.(undefined);
+                    setBgTab("none");
+                  }}
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+
+            {/* Search input */}
+            <input
+              className="w-full rounded-md bg-zinc-800 border border-zinc-700 px-2 py-1.5 text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              placeholder="Search library images..."
+              value={bgSearch}
+              onChange={(e) => setBgSearch(e.target.value)}
+            />
+
+            {/* Loading */}
+            {bgLoading && (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-4 w-4 animate-spin text-zinc-500" />
+              </div>
+            )}
+
+            {/* Empty state */}
+            {!bgLoading && rawBgItems.length === 0 && (
+              <p className="text-center text-xs text-zinc-500 py-3">
+                {bgSearch.trim() ? "No images found" : "No images in library"}
+              </p>
+            )}
+
+            {/* Image grid */}
+            {!bgLoading && rawBgItems.length > 0 && (
+              <div className="grid grid-cols-3 gap-1.5 max-h-64 overflow-y-auto pr-0.5">
+                {rawBgItems.map((item) => {
+                  const itemUrl = String(item.source_url || "").trim();
+                  const thumbUrl = String(item.thumbnail_url || item.source_url || "").trim();
+                  const itemId = Number(item.id ?? item.item_id ?? 0);
+                  if (!itemUrl) return null;
+                  const isActive = slideBackground?.type === "image" && slideBackground.url === itemUrl;
+                  const itemTitle = String(item.title || "image");
+                  return (
+                    <button
+                      key={itemId || itemUrl}
+                      aria-label={`Set background to ${itemTitle}`}
+                      title={itemTitle}
+                      className={cn(
+                        "relative aspect-video overflow-hidden rounded border-2 transition-colors",
+                        isActive ? "border-blue-400" : "border-zinc-700 hover:border-zinc-500",
+                      )}
+                      onClick={() =>
+                        onSetSlideBackground?.({
+                          type: "image",
+                          url: itemUrl,
+                          ...(Number.isFinite(itemId) && itemId > 0 ? { libraryItemId: itemId } : {}),
+                        })
+                      }
+                    >
+                      {thumbUrl ? (
+                        <img
+                          src={thumbUrl}
+                          alt={String(item.title || "")}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-full w-full bg-zinc-700 flex items-center justify-center">
+                          <span className="text-[10px] text-zinc-400">IMG</span>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -693,6 +1511,233 @@ export function PropertyPanel({
   const currentWeight = textEl?.fontWeight ?? "600";
   const currentFontLabel = FONT_FAMILIES.find((f) => f.value === currentFont)?.label ?? currentFont.split(",")[0];
   const currentWeightLabel = FONT_WEIGHTS.find((w) => w.value === currentWeight)?.label ?? currentWeight;
+  const selectedImageInputFields = parseModelInputFields(selectedImageModel);
+  const selectedVideoInputFields = parseModelInputFields(selectedVideoModel);
+
+  const renderDynamicModelInputFields = (
+    model: MediaModelOption | undefined,
+    fields: ModelInputField[],
+    options: {
+      prompt: string;
+      aspectRatio: string;
+      referenceImageUrls?: string[];
+      extraParams: Record<string, unknown>;
+      onChange: (key: string, value: unknown) => void;
+      showReferenceSyncDescription?: boolean;
+    },
+  ) => {
+    if (!model || fields.length === 0) {
+      return null;
+    }
+
+    const syncedFields = fields.filter((field) => field.syncWith !== "none");
+    const editableFields = fields.filter((field) => field.syncWith === "none");
+
+    if (syncedFields.length === 0 && editableFields.length === 0) {
+      return null;
+    }
+
+    const SYNC_LABELS: Record<ModelInputSyncTarget, string> = {
+      none: "None",
+      prompt: "Prompt",
+      reference_images: "Reference Images",
+      aspect_ratio: "Aspect Ratio",
+    };
+
+    return (
+      <div className="space-y-2 rounded-md border border-zinc-700/70 bg-zinc-900/40 p-2">
+        <div className="text-[10px] uppercase tracking-widest text-zinc-400 font-semibold">
+          Model Inputs ({model.name})
+        </div>
+        {syncedFields.map((field) => {
+          const syncWith = field.syncWith;
+          let preview = "—";
+          if (syncWith === "prompt") {
+            preview = options.prompt.trim() || "No prompt yet";
+          } else if (syncWith === "aspect_ratio") {
+            preview = options.aspectRatio;
+          } else if (syncWith === "reference_images") {
+            const count = options.referenceImageUrls?.length ?? 0;
+            preview = count > 0 ? `${count} reference image${count === 1 ? "" : "s"}` : "No references";
+          }
+          return (
+            <label key={field.key} className="flex flex-col gap-1">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] text-zinc-300">{field.label}{field.required ? " *" : ""}</span>
+                <span className="rounded border border-zinc-600 px-1 py-0 text-[10px] text-zinc-400">
+                  Sync: {SYNC_LABELS[syncWith]}
+                </span>
+              </div>
+              <input
+                className="w-full rounded-md bg-zinc-800/80 border border-zinc-700 px-2 py-1.5 text-xs text-zinc-400"
+                value={preview}
+                readOnly
+              />
+            </label>
+          );
+        })}
+        {editableFields.map((field) => {
+          const value = options.extraParams[field.key] ?? field.default ?? "";
+          if (field.type === "select" && field.options && field.options.length > 0) {
+            const selectValue = String(value ?? field.options[0]?.value ?? "");
+            const searchKey = `${model.id}:${field.key}`;
+            const searchTerm = (modelInputOptionSearchTerms[searchKey] ?? "").trim().toLowerCase();
+            const selectedOption = field.options.find((option) => String(option.value) === selectValue);
+            const filteredOptions = searchTerm.length === 0
+              ? field.options
+              : field.options.filter((option) => {
+                const label = String(option.label || "").toLowerCase();
+                const optionValue = String(option.value ?? "").toLowerCase();
+                return label.includes(searchTerm) || optionValue.includes(searchTerm);
+              });
+            const visibleOptions = filteredOptions.length > 0
+              ? filteredOptions
+              : (selectedOption ? [selectedOption] : []);
+            return (
+              <label key={field.key} className="flex flex-col gap-1">
+                <span className="text-[10px] text-zinc-300">{field.label}{field.required ? " *" : ""}</span>
+                {field.options.length >= 8 ? (
+                  <input
+                    className="w-full rounded-md bg-zinc-800 border border-zinc-700 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    type="text"
+                    aria-label={`Search ${field.label}`}
+                    placeholder={`Search ${field.label.toLowerCase()}...`}
+                    value={modelInputOptionSearchTerms[searchKey] ?? ""}
+                    onChange={(event) => {
+                      const nextValue = event.target.value;
+                      setModelInputOptionSearchTerms((prev) => ({
+                        ...prev,
+                        [searchKey]: nextValue,
+                      }));
+                    }}
+                  />
+                ) : null}
+                <select
+                  className="w-full rounded-md bg-zinc-800 border border-zinc-700 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  value={selectValue}
+                  onChange={(event) => {
+                    const matched = field.options?.find(
+                      (option) => String(option.value) === event.target.value,
+                    );
+                    options.onChange(field.key, matched?.value ?? event.target.value);
+                  }}
+                >
+                  {visibleOptions.map((option) => (
+                    <option key={String(option.value)} value={String(option.value)}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                {searchTerm.length > 0 && filteredOptions.length === 0 ? (
+                  <span className="text-[10px] text-zinc-500">
+                    No matching options. Showing current selected value.
+                  </span>
+                ) : null}
+              </label>
+            );
+          }
+          if (field.type === "boolean") {
+            const checked = typeof value === "boolean"
+              ? value
+              : String(value).trim().toLowerCase() === "true";
+            return (
+              <label key={field.key} className="flex items-center justify-between rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200">
+                <span>{field.label}{field.required ? " *" : ""}</span>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(event) => options.onChange(field.key, event.target.checked)}
+                />
+              </label>
+            );
+          }
+          if (field.type === "number") {
+            return (
+              <label key={field.key} className="flex flex-col gap-1">
+                <span className="text-[10px] text-zinc-300">{field.label}{field.required ? " *" : ""}</span>
+                <Input
+                  type="number"
+                  value={value === "" ? "" : String(value)}
+                  onChange={(event) => {
+                    const raw = event.target.value;
+                    if (raw.trim() === "") {
+                      options.onChange(field.key, "");
+                      return;
+                    }
+                    const parsed = Number(raw);
+                    options.onChange(field.key, Number.isFinite(parsed) ? parsed : raw);
+                  }}
+                />
+              </label>
+            );
+          }
+          if (field.type === "library_file") {
+            return (
+              <label key={field.key} className="flex flex-col gap-1">
+                <span className="text-[10px] text-zinc-300">{field.label}{field.required ? " *" : ""}</span>
+                <LibraryFilePicker
+                  value={String(value ?? "")}
+                  onValueChange={(url) => options.onChange(field.key, url)}
+                />
+              </label>
+            );
+          }
+          if (field.type === "image_urls" || field.type === "video_urls" || field.type === "audio_urls") {
+            const currentUrls = Array.isArray(value)
+              ? value.filter((entry): entry is string => typeof entry === "string")
+              : [];
+            const urlList = currentUrls.join("\n");
+            return (
+              <label key={field.key} className="flex flex-col gap-1">
+                <span className="text-[10px] text-zinc-300">{field.label}{field.required ? " *" : ""}</span>
+                <Textarea
+                  className="min-h-[72px] resize-y bg-zinc-800 border-zinc-700 text-zinc-100 text-xs focus:ring-blue-500"
+                  placeholder="One URL per line"
+                  value={urlList}
+                  onChange={(event) => {
+                    const urls = event.target.value
+                      .split(/\r?\n/)
+                      .map((line) => line.trim())
+                      .filter(Boolean);
+                    options.onChange(field.key, urls.length > 0 ? urls : "");
+                  }}
+                />
+                <LibraryFilePicker
+                  value=""
+                  onValueChange={(url) => {
+                    const normalized = String(url || "").trim();
+                    if (!normalized) {
+                      return;
+                    }
+                    const deduped = Array.from(new Set([...currentUrls, normalized]));
+                    options.onChange(field.key, deduped);
+                  }}
+                  allowedExtensions={getAllowedLibraryExtensionsForField(field)}
+                />
+              </label>
+            );
+          }
+          return (
+            <label key={field.key} className="flex flex-col gap-1">
+              <span className="text-[10px] text-zinc-300">{field.label}{field.required ? " *" : ""}</span>
+              <Input
+                type="text"
+                value={String(value ?? "")}
+                onChange={(event) => options.onChange(field.key, event.target.value)}
+              />
+            </label>
+          );
+        })}
+        {options.showReferenceSyncDescription ? (
+          <span className="text-[10px] text-zinc-500">
+            {hasReferenceImageSyncField(model)
+              ? "Reference images are mapped to model-specific reference fields."
+              : "References are sent via standard referenceImageUrls."}
+          </span>
+        ) : null}
+      </div>
+    );
+  };
 
   return (
     <div
@@ -1274,10 +2319,23 @@ export function PropertyPanel({
                 <select
                   aria-label="Image Model"
                   className="w-full rounded-md bg-zinc-800 border border-zinc-700 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  value={selectedElement.imageModelId ?? ""}
-                  onChange={(event) => onPatchSelected({
-                    imageModelId: event.target.value || undefined,
-                  } as PresentationElementPatch)}
+                  value={selectedElement.imageModelId?.trim() ?? ""}
+                  onChange={(event) => {
+                    const nextModelId = event.target.value.trim() || undefined;
+                    const nextModel = imageModels.find((model) => model.id === (nextModelId || defaultImageModelId));
+                    const scopedCurrentExtraParams = pickExtraParamsForModel(
+                      nextModel,
+                      (selectedElement.imageExtraParams as Record<string, unknown> | undefined),
+                    );
+                    const nextExtraParams = mergeExtraParams(
+                      buildDefaultExtraParamsForModel(nextModel),
+                      scopedCurrentExtraParams,
+                    );
+                    onPatchSelected({
+                      imageModelId: nextModelId,
+                      imageExtraParams: nextExtraParams,
+                    } as PresentationElementPatch);
+                  }}
                 >
                   <option value="">
                     Default {defaultImageModelId ? `(${defaultImageModelId})` : "(auto)"}
@@ -1296,12 +2354,51 @@ export function PropertyPanel({
                       : "No compatible image models found."}
                 </span>
               </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] text-zinc-400">Aspect Ratio</span>
+                <select
+                  aria-label="Image Aspect Ratio"
+                  className="w-full rounded-md bg-zinc-800 border border-zinc-700 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  value={resolveClosestAspectRatio(selectedElement.width, selectedElement.height)}
+                  onChange={(event) => {
+                    handleApplyAspectRatioToSelectedMedia(event.target.value);
+                  }}
+                >
+                  {COMMON_ASPECT_RATIOS.map((ratio) => (
+                    <option key={ratio.value} value={ratio.value}>
+                      {ratio.value}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] text-zinc-400">Image References</span>
                   <span className="text-[10px] text-zinc-500">
                     {(selectedElement.imageReferenceUrls ?? []).length}/{MAX_IMAGE_REFERENCES}
                   </span>
+                </div>
+                <div className="grid grid-cols-1 gap-1.5">
+                  <LibraryFilePicker
+                    value=""
+                    onValueChange={(url) => handleAddImageReferenceFromLibrary(url)}
+                    allowedExtensions={LIBRARY_IMAGE_EXTENSIONS}
+                    disabled={(selectedElement.imageReferenceUrls ?? []).length >= MAX_IMAGE_REFERENCES}
+                  />
+                  <label className="inline-flex cursor-pointer items-center justify-center gap-1 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60">
+                    <Upload className="h-3.5 w-3.5" />
+                    Upload Reference
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      disabled={uploadReferenceMutation.isPending || (selectedElement.imageReferenceUrls ?? []).length >= MAX_IMAGE_REFERENCES}
+                      onChange={(event) => {
+                        void handleReferenceFileUpload(event, "image");
+                      }}
+                    />
+                  </label>
                 </div>
                 <div className="flex gap-1.5">
                   <button
@@ -1318,7 +2415,7 @@ export function PropertyPanel({
                   <button
                     type="button"
                     className="rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60"
-                    onClick={handleClearReferences}
+                    onClick={handleClearImageReferences}
                     disabled={(selectedElement.imageReferenceUrls ?? []).length === 0}
                   >
                     Clear
@@ -1335,7 +2432,7 @@ export function PropertyPanel({
                         <button
                           type="button"
                           className="ml-auto rounded border border-zinc-700 px-1 py-0 text-[10px] text-zinc-300 hover:bg-zinc-700"
-                          onClick={() => handleRemoveReference(url)}
+                          onClick={() => handleRemoveImageReference(url)}
                         >
                           Remove
                         </button>
@@ -1348,11 +2445,42 @@ export function PropertyPanel({
                   </span>
                 )}
                 <span className="text-[10px] text-zinc-500">
-                  {selectedModelSupportsImageUrls
+                  {selectedImageModelSupportsReferenceSync
                     ? "Selected model supports image_urls input and references will also be mapped to model-specific fields."
                     : "References will be sent via standard referenceImageUrls."}
                 </span>
               </div>
+              {selectedImageInputFields.length > 0 ? (
+                <>
+                  <label className="flex items-center justify-between rounded-md border border-zinc-700 bg-zinc-900/60 px-2 py-1.5 text-xs text-zinc-200">
+                    <span>Advanced Model Inputs</span>
+                    <input
+                      type="checkbox"
+                      aria-label="Image Advanced Mode"
+                      checked={showAdvancedModelInputs}
+                      onChange={(event) => setShowAdvancedModelInputs(event.target.checked)}
+                    />
+                  </label>
+                  {showAdvancedModelInputs
+                    ? renderDynamicModelInputFields(
+                      selectedImageModel,
+                      selectedImageInputFields,
+                      {
+                        prompt: selectedElement.imagePrompt ?? "",
+                        aspectRatio: resolveClosestAspectRatio(selectedElement.width, selectedElement.height),
+                        referenceImageUrls: normalizeReferenceUrls(selectedElement.imageReferenceUrls),
+                        extraParams: (selectedElement.imageExtraParams as Record<string, unknown> | undefined) ?? {},
+                        onChange: (key, value) => updateSelectedElementExtraParams(key, value),
+                        showReferenceSyncDescription: true,
+                      },
+                    )
+                    : (
+                      <span className="text-[10px] text-zinc-500">
+                        Turn on Advanced Model Inputs to edit model-specific parameters.
+                      </span>
+                    )}
+                </>
+              ) : null}
               <label className="flex flex-col gap-1">
                 <span className="text-[10px] text-zinc-400">Fit Mode</span>
                 <select
@@ -1470,8 +2598,288 @@ export function PropertyPanel({
                 value={value}
                 onChange={(e) => onPatchSelected({ [field]: e.target.value } as PresentationElementPatch)}
               />
+              {(field === "src" || field === "poster") ? (
+                <LibraryFilePicker
+                  value={value}
+                  onValueChange={(url) => onPatchSelected({ [field]: url } as PresentationElementPatch)}
+                  allowedExtensions={field === "src" ? LIBRARY_VIDEO_EXTENSIONS : LIBRARY_IMAGE_EXTENSIONS}
+                />
+              ) : null}
             </label>
           ))}
+
+          <label className="flex flex-col gap-1">
+            <span className="text-[10px] text-zinc-400">Video Prompt</span>
+            <Textarea
+              aria-label="Video Prompt"
+              className="min-h-[72px] resize-y bg-zinc-800 border-zinc-700 text-zinc-100 text-xs focus:ring-blue-500"
+              placeholder="Describe the video you want to generate..."
+              value={selectedElement.videoPrompt ?? ""}
+              maxLength={4000}
+              onChange={(event) => onPatchSelected({
+                videoPrompt: event.target.value,
+              } as PresentationElementPatch)}
+            />
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-[10px] text-zinc-400">Media Model</span>
+            <select
+              aria-label="Video Model"
+              className="w-full rounded-md bg-zinc-800 border border-zinc-700 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              value={selectedElement.videoModelId?.trim() ?? ""}
+              onChange={(event) => {
+                const nextModelId = event.target.value.trim() || undefined;
+                const nextModel = videoModels.find((model) => model.id === (nextModelId || defaultVideoModelId));
+                const scopedCurrentExtraParams = pickExtraParamsForModel(
+                  nextModel,
+                  (selectedElement.videoExtraParams as Record<string, unknown> | undefined),
+                );
+                const nextExtraParams = mergeExtraParams(
+                  buildDefaultExtraParamsForModel(nextModel),
+                  scopedCurrentExtraParams,
+                );
+                onPatchSelected({
+                  videoModelId: nextModelId,
+                  videoExtraParams: nextExtraParams,
+                } as PresentationElementPatch);
+              }}
+            >
+              <option value="">
+                Default {defaultVideoModelId ? `(${defaultVideoModelId})` : "(auto)"}
+              </option>
+              {displayVideoModels.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.name}{model.provider ? ` - ${model.provider}` : ""}
+                </option>
+              ))}
+            </select>
+            <span className="text-[10px] text-zinc-500">
+              {videoModelsQuery.isLoading
+                ? "Loading video models..."
+                : displayVideoModels.length > 0
+                  ? compatibleVideoModels.length > 0
+                    ? "Only text-to-video compatible models are shown."
+                    : "No text-to-video models detected; showing all video models."
+                  : "No video models found."}
+            </span>
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-[10px] text-zinc-400">Aspect Ratio</span>
+            <select
+              aria-label="Video Aspect Ratio"
+              className="w-full rounded-md bg-zinc-800 border border-zinc-700 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              value={resolveClosestAspectRatio(selectedElement.width, selectedElement.height)}
+              onChange={(event) => {
+                handleApplyAspectRatioToSelectedMedia(event.target.value);
+              }}
+            >
+              {COMMON_ASPECT_RATIOS.map((ratio) => (
+                <option key={ratio.value} value={ratio.value}>
+                  {ratio.value}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-zinc-400">Image References</span>
+              <span className="text-[10px] text-zinc-500">
+                {(selectedElement.videoReferenceUrls ?? []).length}/{MAX_IMAGE_REFERENCES}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 gap-1.5">
+              <LibraryFilePicker
+                value=""
+                onValueChange={(url) => handleAddVideoReferenceFromLibrary(url)}
+                allowedExtensions={LIBRARY_IMAGE_EXTENSIONS}
+                disabled={(selectedElement.videoReferenceUrls ?? []).length >= MAX_IMAGE_REFERENCES}
+              />
+              <label className="inline-flex cursor-pointer items-center justify-center gap-1 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60">
+                <Upload className="h-3.5 w-3.5" />
+                Upload Reference
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  disabled={uploadReferenceMutation.isPending || (selectedElement.videoReferenceUrls ?? []).length >= MAX_IMAGE_REFERENCES}
+                  onChange={(event) => {
+                    void handleReferenceFileUpload(event, "video");
+                  }}
+                />
+              </label>
+            </div>
+            <div className="flex gap-1.5">
+              <button
+                type="button"
+                className="rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={handleClearVideoReferences}
+                disabled={(selectedElement.videoReferenceUrls ?? []).length === 0}
+              >
+                Clear
+              </button>
+            </div>
+            {(selectedElement.videoReferenceUrls ?? []).length > 0 ? (
+              <div className="flex flex-col gap-1">
+                {(selectedElement.videoReferenceUrls ?? []).map((url) => (
+                  <div
+                    key={url}
+                    className="flex items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1"
+                  >
+                    <span className="truncate text-[10px] text-zinc-300">{url}</span>
+                    <button
+                      type="button"
+                      className="ml-auto rounded border border-zinc-700 px-1 py-0 text-[10px] text-zinc-300 hover:bg-zinc-700"
+                      onClick={() => handleRemoveVideoReference(url)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <span className="text-[10px] text-zinc-500">
+                Add references to guide style or identity during regeneration.
+              </span>
+            )}
+            <span className="text-[10px] text-zinc-500">
+              {selectedVideoModelSupportsReferenceSync
+                ? "Selected model supports image_urls input and references will also be mapped to model-specific fields."
+                : "References will be sent via standard referenceImageUrls."}
+            </span>
+          </div>
+
+          {selectedVideoInputFields.length > 0 ? (
+            <>
+              <label className="flex items-center justify-between rounded-md border border-zinc-700 bg-zinc-900/60 px-2 py-1.5 text-xs text-zinc-200">
+                <span>Advanced Model Inputs</span>
+                <input
+                  type="checkbox"
+                  aria-label="Video Advanced Mode"
+                  checked={showAdvancedModelInputs}
+                  onChange={(event) => setShowAdvancedModelInputs(event.target.checked)}
+                />
+              </label>
+              {showAdvancedModelInputs
+                ? renderDynamicModelInputFields(
+                  selectedVideoModel,
+                  selectedVideoInputFields,
+                  {
+                    prompt: selectedElement.videoPrompt ?? "",
+                    aspectRatio: resolveClosestAspectRatio(selectedElement.width, selectedElement.height),
+                    referenceImageUrls: normalizeReferenceUrls(selectedElement.videoReferenceUrls),
+                    extraParams: (selectedElement.videoExtraParams as Record<string, unknown> | undefined) ?? {},
+                    onChange: (key, value) => updateSelectedElementExtraParams(key, value),
+                  },
+                )
+                : (
+                  <span className="text-[10px] text-zinc-500">
+                    Turn on Advanced Model Inputs to edit model-specific parameters.
+                  </span>
+                )}
+            </>
+          ) : null}
+
+          <label className="flex flex-col gap-1">
+            <span className="text-[10px] text-zinc-400">Fit Mode</span>
+            <select
+              aria-label="Video Fit Mode"
+              className="w-full rounded-md bg-zinc-800 border border-zinc-700 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              value={selectedElement.videoFit || "cover"}
+              onChange={(event) => onPatchSelected({
+                videoFit: event.target.value as "contain" | "cover" | "fill",
+              } as PresentationElementPatch)}
+            >
+              <option value="contain">Contain</option>
+              <option value="cover">Cover (Crop)</option>
+              <option value="fill">Fill</option>
+            </select>
+          </label>
+
+          <div className="grid grid-cols-1 gap-2">
+            <label className="flex flex-col gap-1">
+              <div className="flex items-center justify-between text-[10px] text-zinc-400">
+                <span>Zoom</span>
+                <span className="tabular-nums">{(selectedElement.videoZoom ?? 1).toFixed(2)}x</span>
+              </div>
+              <input
+                type="range"
+                min={0.5}
+                max={3}
+                step={0.01}
+                className="w-full accent-blue-500"
+                value={selectedElement.videoZoom ?? 1}
+                onChange={(event) => onPatchSelected({
+                  videoZoom: clampNumber(parseNumberInput(event.target.value, selectedElement.videoZoom ?? 1), 0.5, 3),
+                } as PresentationElementPatch)}
+              />
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <div className="flex items-center justify-between text-[10px] text-zinc-400">
+                <span>Focus X</span>
+                <span className="tabular-nums">{Math.round(selectedElement.videoPositionX ?? 50)}%</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={1}
+                className="w-full accent-blue-500"
+                value={selectedElement.videoPositionX ?? 50}
+                onChange={(event) => onPatchSelected({
+                  videoPositionX: clampNumber(parseNumberInput(event.target.value, selectedElement.videoPositionX ?? 50), 0, 100),
+                } as PresentationElementPatch)}
+              />
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <div className="flex items-center justify-between text-[10px] text-zinc-400">
+                <span>Focus Y</span>
+                <span className="tabular-nums">{Math.round(selectedElement.videoPositionY ?? 50)}%</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={1}
+                className="w-full accent-blue-500"
+                value={selectedElement.videoPositionY ?? 50}
+                onChange={(event) => onPatchSelected({
+                  videoPositionY: clampNumber(parseNumberInput(event.target.value, selectedElement.videoPositionY ?? 50), 0, 100),
+                } as PresentationElementPatch)}
+              />
+            </label>
+
+            <button
+              type="button"
+              className="rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
+              onClick={() => onPatchSelected({
+                videoFit: "cover",
+                videoZoom: 1,
+                videoPositionX: 50,
+                videoPositionY: 50,
+              } as PresentationElementPatch)}
+            >
+              Reset Crop
+            </button>
+            <button
+              type="button"
+              className="flex items-center justify-center gap-1 rounded-md border border-blue-600 bg-blue-700 px-2 py-1.5 text-xs font-medium text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:border-zinc-700 disabled:bg-zinc-700 disabled:text-zinc-300"
+              onClick={() => void handleRegenerateVideo()}
+              disabled={isRegeneratingVideo || generateVideoAsyncMutation.isPending || !(selectedElement.videoPrompt ?? "").trim()}
+            >
+              {isRegeneratingVideo || generateVideoAsyncMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5" />
+              )}
+              Regenerate Video
+            </button>
+          </div>
         </Section>
       )}
 

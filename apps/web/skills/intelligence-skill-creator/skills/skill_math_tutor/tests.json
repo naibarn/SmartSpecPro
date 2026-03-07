@@ -3,6 +3,11 @@
     {
       "id": "t1",
       "input": "2+3 ได้เท่าไหร่",
+      "expected_success": true,
+      "expected_json_paths": {
+        "answer": 5
+      },
+      "expected_schema_valid": true,
       "expected_contains": [
         "5"
       ]
@@ -10,6 +15,11 @@
     {
       "id": "t2",
       "input": "ช่วยอธิบาย 10+7 เป็นขั้นตอน",
+      "expected_success": true,
+      "expected_json_paths": {
+        "answer": 17
+      },
+      "expected_schema_valid": true,
       "expected_contains": [
         "17",
         "1.",

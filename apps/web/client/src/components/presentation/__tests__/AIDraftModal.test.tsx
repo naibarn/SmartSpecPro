@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, act, within } from "@testing-library/react";
+import { render, screen, fireEvent, act, within, waitFor } from "@testing-library/react";
 
 const {
   mockGenerateDraftMutate,
@@ -17,6 +17,10 @@ const {
   mockUploadMutateAsync,
   mockLibraryImagesData,
   mockSkillSchemaData,
+  mockGetModelsData,
+  mockListModelFieldOptionsData,
+  mockListModelFieldOptionsIsLoading,
+  mockListModelFieldOptionsRefetch,
 } = vi.hoisted(() => ({
   mockGenerateDraftMutate: vi.fn(),
   mockCancelDraftMutate: vi.fn(),
@@ -70,6 +74,108 @@ const {
   mockSkillSchemaData: {
     current: { hasSchema: false } as unknown,
   },
+  mockGetModelsData: {
+    current: {
+      image: {
+        models: [
+          {
+            id: "flux-2.0",
+            name: "Flux 2.0",
+            provider: "fal",
+            creditCost: 5,
+            configJson: {
+              generateType: "text-to-image",
+              inputFields: [
+                { key: "prompt", label: "Prompt", type: "text" },
+                { key: "aspectRatio", label: "Aspect Ratio", type: "select", options: [{ value: "16:9", label: "16:9" }, { value: "9:16", label: "9:16" }] },
+                { key: "imageUrls", label: "imageUrls", type: "text" },
+                { key: "quality", label: "Quality", type: "select", default: "standard", options: [{ value: "standard", label: "Standard" }, { value: "pro", label: "Pro" }] },
+              ],
+            },
+          },
+        ],
+        defaults: {
+          image: "flux-2.0",
+          video: "veo-3-1",
+          audio: "elevenlabs-tts",
+        },
+      },
+      audio: {
+        models: [
+          {
+            id: "elevenlabs-tts",
+            name: "ElevenLabs TTS",
+            provider: "elevenlabs",
+            creditCost: 10,
+            configJson: {
+              generateType: "text-to-speech",
+              inputFields: [],
+            },
+          },
+          {
+            id: "uvoice/tts-natural",
+            name: "UVoice Natural",
+            provider: "uvoice",
+            creditCost: 150,
+            configJson: {
+              generateType: "text-to-speech",
+              inputFields: [
+                {
+                  key: "voiceID",
+                  label: "Voice ID",
+                  type: "select",
+                  searchable: true,
+                  options: [
+                    { value: "TH-NalineeNatural", label: "Nalinee Natural" },
+                  ],
+                },
+              ],
+            },
+          },
+          {
+            id: "uvoice/tts-premium",
+            name: "UVoice Premium",
+            provider: "uvoice",
+            creditCost: 250,
+            configJson: {
+              generateType: "text-to-speech",
+              inputFields: [
+                {
+                  key: "voiceID",
+                  label: "Voice ID",
+                  type: "select",
+                  searchable: true,
+                  options: [
+                    { value: "TH-BowkyPremiumHD", label: "Bowky Premium" },
+                  ],
+                },
+              ],
+            },
+          },
+        ],
+        defaults: {
+          image: "flux-2.0",
+          video: "veo-3-1",
+          audio: "elevenlabs-tts",
+        },
+      },
+      video: {
+        models: [],
+        defaults: {
+          image: "flux-2.0",
+          video: "veo-3-1",
+          audio: "elevenlabs-tts",
+        },
+      },
+    } as Record<string, unknown>,
+  },
+  mockListModelFieldOptionsData: {
+    current: {
+      options: [],
+    } as unknown,
+  },
+  mockListModelFieldOptionsIsLoading: { current: false },
+  mockListModelFieldOptionsRefetch: vi.fn(),
 }));
 
 vi.mock("@/lib/trpc", () => ({
@@ -110,17 +216,20 @@ vi.mock("@/lib/trpc", () => ({
     },
     media: {
       getModels: {
-        useQuery: vi.fn(() => ({
-          data: {
-            models: [
-              { id: "flux-2.0", name: "Flux 2.0", provider: "fal", creditCost: 5, configJson: { generateType: "text-to-image" } },
-            ],
-            defaults: {
-              image: "flux-2.0",
-              video: "veo-3-1",
-            },
-          },
+        useQuery: vi.fn((input?: { type?: "image" | "video" | "audio" }) => ({
+          data: (
+            mockGetModelsData.current[
+              input?.type && mockGetModelsData.current[input.type] ? input.type : "image"
+            ] ?? mockGetModelsData.current.image
+          ),
           isLoading: false,
+        })),
+      },
+      listModelFieldOptions: {
+        useQuery: vi.fn(() => ({
+          data: mockListModelFieldOptionsData.current,
+          isLoading: mockListModelFieldOptionsIsLoading.current,
+          refetch: mockListModelFieldOptionsRefetch,
         })),
       },
     },
@@ -179,7 +288,7 @@ vi.mock("@shared/presentation/aiTypes", () => ({
   MAX_AI_DRAFT_SLIDES: 30,
 }));
 
-import { AIDraftModal } from "../AIDraftModal";
+import { AIDraftModal, resolveAudioExtraParamsForModel } from "../AIDraftModal";
 
 const defaultProps = {
   isOpen: true,
@@ -213,11 +322,109 @@ function fillFormAndGenerate() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockGenerateDraftMutate.mockReset();
+  mockGenerateDraftMutate.mockImplementation(() => {});
   mockGetDraftProgressData.current = undefined;
   mockAvailabilityData.current = { enabled: true, aiGenerationEnabled: true };
   mockGenerateDraftIsPending.current = false;
   mockCancelDraftIsPending.current = false;
   mockSkillSchemaData.current = { hasSchema: false };
+  mockGetModelsData.current = {
+    image: {
+      models: [
+        {
+          id: "flux-2.0",
+          name: "Flux 2.0",
+          provider: "fal",
+          creditCost: 5,
+          configJson: {
+            generateType: "text-to-image",
+            inputFields: [
+              { key: "prompt", label: "Prompt", type: "text" },
+              { key: "aspectRatio", label: "Aspect Ratio", type: "select", options: [{ value: "16:9", label: "16:9" }, { value: "9:16", label: "9:16" }] },
+              { key: "imageUrls", label: "imageUrls", type: "text" },
+              { key: "quality", label: "Quality", type: "select", default: "standard", options: [{ value: "standard", label: "Standard" }, { value: "pro", label: "Pro" }] },
+            ],
+          },
+        },
+      ],
+      defaults: {
+        image: "flux-2.0",
+        video: "veo-3-1",
+        audio: "elevenlabs-tts",
+      },
+    },
+    audio: {
+      models: [
+        {
+          id: "elevenlabs-tts",
+          name: "ElevenLabs TTS",
+          provider: "elevenlabs",
+          creditCost: 10,
+          configJson: {
+            generateType: "text-to-speech",
+            inputFields: [],
+          },
+        },
+        {
+          id: "uvoice/tts-natural",
+          name: "UVoice Natural",
+          provider: "uvoice",
+          creditCost: 150,
+          configJson: {
+            generateType: "text-to-speech",
+            inputFields: [
+              {
+                key: "voiceID",
+                label: "Voice ID",
+                type: "select",
+                searchable: true,
+                options: [
+                  { value: "TH-NalineeNatural", label: "Nalinee Natural" },
+                ],
+              },
+            ],
+          },
+        },
+        {
+          id: "uvoice/tts-premium",
+          name: "UVoice Premium",
+          provider: "uvoice",
+          creditCost: 250,
+          configJson: {
+            generateType: "text-to-speech",
+            inputFields: [
+              {
+                key: "voiceID",
+                label: "Voice ID",
+                type: "select",
+                searchable: true,
+                options: [
+                  { value: "TH-BowkyPremiumHD", label: "Bowky Premium" },
+                ],
+              },
+            ],
+          },
+        },
+      ],
+      defaults: {
+        image: "flux-2.0",
+        video: "veo-3-1",
+        audio: "elevenlabs-tts",
+      },
+    },
+    video: {
+      models: [],
+      defaults: {
+        image: "flux-2.0",
+        video: "veo-3-1",
+        audio: "elevenlabs-tts",
+      },
+    },
+  };
+  mockListModelFieldOptionsData.current = { options: [] };
+  mockListModelFieldOptionsIsLoading.current = false;
+  mockListModelFieldOptionsRefetch.mockReset();
   localStorage.clear();
   mockSkillsData.current = {
     skills: [
@@ -241,6 +448,17 @@ describe("G.1 Modal Rendering", () => {
   it("renders article skill dropdown populated from skills list", () => {
     render(<AIDraftModal {...defaultProps} />);
     expect(screen.getAllByText(/Article Skill/i).length).toBeGreaterThan(0);
+  });
+
+  it("shows a custom article textarea when use-your-own-article mode is enabled", () => {
+    render(<AIDraftModal {...defaultProps} />);
+    const topicTextarea = screen.getByLabelText(/topic/i);
+    expect(topicTextarea).toBeEnabled();
+    expect(screen.queryByLabelText(/article content/i)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("switch", { name: /use your own article/i }));
+    expect(topicTextarea).toBeDisabled();
+    expect(screen.getByLabelText(/article content/i)).toBeInTheDocument();
+    expect(screen.queryByText(/^Article Skill$/i)).not.toBeInTheDocument();
   });
 
   it("shows word-count override hint when skill schema has both length and word_count", async () => {
@@ -278,7 +496,18 @@ describe("G.1 Modal Rendering", () => {
     const mediaModelSection = screen.getByText(/Media Model \(Image, optional\)/i).closest("div");
     const mediaModelCombobox = mediaModelSection?.querySelector("[role='combobox']");
     expect(mediaModelCombobox).toBeInTheDocument();
-    expect(within(mediaModelCombobox as HTMLElement).getByText(/Default \(flux-2.0\)/i)).toBeInTheDocument();
+    expect(within(mediaModelCombobox as HTMLElement).getByText(/Default \(Flux 2.0\)/i)).toBeInTheDocument();
+  });
+
+  it("shows audio model selector when generate audio is enabled", () => {
+    render(<AIDraftModal {...defaultProps} />);
+    expect(screen.queryByText(/Audio Model \(optional\)/i)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("switch", { name: /generate audio/i }));
+    expect(screen.getByText(/Audio Model \(optional\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/For UVoice, this is also where you select the tier/i)).toBeInTheDocument();
+    expect(screen.getByTestId("uvoice-tier-hint")).toHaveTextContent(
+      /choose the tier here via Audio Model: Standard, Natural, or Premium/i,
+    );
   });
 
   it("renders 5 style preset cards", () => {
@@ -411,6 +640,97 @@ describe("G.3 Progress View", () => {
     render(<AIDraftModal {...defaultProps} />);
     expect(screen.getByPlaceholderText(/describe/i)).toBeInTheDocument();
   });
+
+  it("formats deferred media warnings into user-friendly status text", async () => {
+    localStorage.setItem("smartspec_aiDraft_articleSkill", "general-article-writer");
+    mockGenerateDraftMutate.mockImplementation(
+      (_input: unknown, opts?: { onSuccess?: (data: { taskId: string }) => void }) => {
+        opts?.onSuccess?.({ taskId: "draft-task-1" });
+      },
+    );
+    mockGetDraftProgressData.current = {
+      phase: 6,
+      phaseLabel: "Complete",
+      slidesCompleted: 2,
+      totalSlides: 2,
+      slidePreview: [],
+      completed: true,
+      result: {
+        slidesAdded: 2,
+        newDeckVersion: 2,
+        articlePreview: "Preview text",
+        warnings: [
+          "Slide 1: image generation returned no media (timeout_waiting_for_result status=processing elapsed_ms=94652 grace_ms=0) [task=efaafc34-5443-4859-a218-5a2c84b1fd42]",
+          "Slide 1: queued deferred image task for later fetch [task=efaafc34-5443-4859-a218-5a2c84b1fd42]",
+        ],
+      },
+    };
+
+    render(<AIDraftModal {...defaultProps} />);
+    fireEvent.change(screen.getByPlaceholderText(/describe/i), {
+      target: { value: "Thai parenting slides" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /generate/i })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /generate/i }));
+
+    expect(await screen.findByText(/Successfully added 2 slides to your deck/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Slide 1: Image is still being processed by the media provider. The system will fetch it automatically when it is ready.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/timeout_waiting_for_result/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/queued deferred image task/i)).not.toBeInTheDocument();
+  });
+
+  it("formats uvoice 403 audio failures into an actionable message", async () => {
+    localStorage.setItem("smartspec_aiDraft_articleSkill", "general-article-writer");
+    mockGenerateDraftMutate.mockImplementation(
+      (_input: unknown, opts?: { onSuccess?: (data: { taskId: string }) => void }) => {
+        opts?.onSuccess?.({ taskId: "draft-task-2" });
+      },
+    );
+    mockGetDraftProgressData.current = {
+      phase: 6,
+      phaseLabel: "Complete",
+      slidesCompleted: 2,
+      totalSlides: 2,
+      slidePreview: [],
+      completed: true,
+      result: {
+        slidesAdded: 2,
+        newDeckVersion: 2,
+        articlePreview: "Preview text",
+        warnings: [
+          "Slide 1: audio generation failed (500: {'message': 'UVoice audio generation failed: HTTP 403', 'debug': {'provider_hint': 'uvoice', 'selected_voice_id': 'TH-Ai868Natural', 'api': {'provider': 'uvoice'}}})",
+        ],
+      },
+    };
+
+    render(<AIDraftModal {...defaultProps} />);
+    fireEvent.change(screen.getByPlaceholderText(/describe/i), {
+      target: { value: "Thai parenting slides" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /generate/i })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /generate/i }));
+
+    expect(await screen.findByText(/Successfully added 2 slides to your deck/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Slide 1: Audio generation was rejected by UVoice (403). The current UVoice key likely does not allow this selected voice or tier, so this slide was added without narration.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/TH-Ai868Natural/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/provider_hint/i)).not.toBeInTheDocument();
+  });
 });
 
 describe("G.4 Cancel Button", () => {
@@ -475,6 +795,28 @@ describe("G.6 Generate mutation", () => {
     // Verify mutate was NOT called since button is disabled
     expect(mockGenerateDraftMutate).not.toHaveBeenCalled();
   });
+
+  it("allows generation with a custom article and omits article skill fields", async () => {
+    render(<AIDraftModal {...defaultProps} />);
+
+    fireEvent.click(screen.getByRole("switch", { name: /use your own article/i }));
+    fireEvent.change(screen.getByLabelText(/article content/i), {
+      target: { value: "Custom article intro.\n\nPoint one.\nPoint two." },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /generate/i })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /generate/i }));
+    expect(mockGenerateDraftMutate).toHaveBeenCalledTimes(1);
+    const payload = mockGenerateDraftMutate.mock.calls[0][0] as Record<string, unknown>;
+    expect(payload.prompt).toBe("Custom article intro.\n\nPoint one.\nPoint two.");
+    expect(payload.useCustomArticle).toBe(true);
+    expect(payload.customArticleText).toBe("Custom article intro.\n\nPoint one.\nPoint two.");
+    expect(payload.articleSkillId).toBeUndefined();
+    expect(payload.articleSkillParams).toBeUndefined();
+  });
 });
 
 describe("G.7 Modal does not render when closed", () => {
@@ -490,6 +832,241 @@ describe("G.8 Image model field", () => {
     const mediaModelSection = screen.getByText(/Media Model \(Image, optional\)/i).closest("div");
     const combobox = mediaModelSection?.querySelector("[role='combobox']") as HTMLElement | null;
     expect(combobox).toBeInTheDocument();
-    expect(within(combobox as HTMLElement).getByText(/Default \(flux-2.0\)/i)).toBeInTheDocument();
+    expect(within(combobox as HTMLElement).getByText(/Default \(Flux 2.0\)/i)).toBeInTheDocument();
   });
+});
+
+describe("G.9 Advanced media options", () => {
+  it("keeps advanced media model inputs hidden by default", () => {
+    render(<AIDraftModal {...defaultProps} />);
+    expect(screen.queryByTestId("advanced-media-model-inputs")).not.toBeInTheDocument();
+  });
+
+  it("shows inferred sync mapping when advanced media options are enabled", async () => {
+    render(<AIDraftModal {...defaultProps} />);
+    fireEvent.click(screen.getByRole("switch", { name: /advanced media options/i }));
+
+    expect(await screen.findByTestId("advanced-media-model-inputs")).toBeInTheDocument();
+    expect(screen.getByText(/sync: aspect ratio/i)).toBeInTheDocument();
+    expect(screen.getByText(/sync: reference images/i)).toBeInTheDocument();
+  });
+
+  it("sends mediaModelExtraParams only when advanced media options are enabled", async () => {
+    localStorage.setItem("smartspec_aiDraft_articleSkill", "general-article-writer");
+    render(<AIDraftModal {...defaultProps} />);
+
+    fireEvent.change(screen.getByPlaceholderText(/describe/i), {
+      target: { value: "AI slide deck about healthcare" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /generate/i })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /generate/i }));
+    expect(mockGenerateDraftMutate).toHaveBeenCalledTimes(1);
+    const payloadWithoutAdvanced = mockGenerateDraftMutate.mock.calls[0][0] as Record<string, unknown>;
+    expect(payloadWithoutAdvanced.mediaModelExtraParams).toBeUndefined();
+
+    mockGenerateDraftMutate.mockClear();
+
+    fireEvent.click(screen.getByRole("switch", { name: /advanced media options/i }));
+    const qualitySelect = screen.getByLabelText(/advanced quality/i);
+    fireEvent.change(qualitySelect, { target: { value: "pro" } });
+    fireEvent.click(screen.getByRole("button", { name: /generate/i }));
+
+    expect(mockGenerateDraftMutate).toHaveBeenCalledTimes(1);
+    const payloadWithAdvanced = mockGenerateDraftMutate.mock.calls[0][0] as Record<string, unknown>;
+    expect(payloadWithAdvanced.mediaModelExtraParams).toMatchObject({
+      quality: "pro",
+      aspectRatio: "16:9",
+    });
+  });
+
+  it("uses selected draft aspect ratio for canvas size and sync mapping", async () => {
+    localStorage.setItem("smartspec_aiDraft_articleSkill", "general-article-writer");
+    render(<AIDraftModal {...defaultProps} />);
+
+    fireEvent.change(screen.getByPlaceholderText(/describe/i), {
+      target: { value: "AI slide deck about healthcare" },
+    });
+    fireEvent.change(screen.getByLabelText("Draft Aspect Ratio"), {
+      target: { value: "9:16" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /generate/i })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /generate/i }));
+    expect(mockGenerateDraftMutate).toHaveBeenCalledTimes(1);
+    const payloadWithoutAdvanced = mockGenerateDraftMutate.mock.calls[0][0] as Record<string, unknown>;
+    expect(payloadWithoutAdvanced.canvasWidth).toBe(720);
+    expect(payloadWithoutAdvanced.canvasHeight).toBe(1280);
+
+    mockGenerateDraftMutate.mockClear();
+
+    fireEvent.click(screen.getByRole("switch", { name: /advanced media options/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generate/i }));
+
+    expect(mockGenerateDraftMutate).toHaveBeenCalledTimes(1);
+    const payloadWithAdvanced = mockGenerateDraftMutate.mock.calls[0][0] as Record<string, unknown>;
+    expect(payloadWithAdvanced.mediaModelExtraParams).toMatchObject({
+      aspectRatio: "9:16",
+    });
+  });
+
+  it("sends audio generation config when generate audio is enabled", async () => {
+    localStorage.setItem("smartspec_aiDraft_articleSkill", "general-article-writer");
+    localStorage.setItem("smartspec_aiDraft_audioModel", "elevenlabs-tts");
+    render(<AIDraftModal {...defaultProps} />);
+
+    fireEvent.change(screen.getByPlaceholderText(/describe/i), {
+      target: { value: "AI slide deck about healthcare" },
+    });
+    fireEvent.click(screen.getByRole("switch", { name: /generate audio/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /generate/i })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /generate/i }));
+    expect(mockGenerateDraftMutate).toHaveBeenCalledTimes(1);
+    const payload = mockGenerateDraftMutate.mock.calls[0][0] as Record<string, unknown>;
+    expect(payload.generateAudio).toBe(true);
+    expect(payload.audioModel).toBe("elevenlabs-tts");
+  });
+
+  it("sends backend-resolved default media and audio models when the user has not selected one", async () => {
+    localStorage.setItem("smartspec_aiDraft_articleSkill", "general-article-writer");
+    mockGetModelsData.current = {
+      image: {
+        models: [
+          {
+            id: "seedream-4-5-251128",
+            name: "Seedream 4.5",
+            provider: "byteplus_modelark",
+            creditCost: 15,
+            configJson: {
+              generateType: "text-to-image",
+              inputFields: [],
+            },
+          },
+          {
+            id: "flux-2.0",
+            name: "Flux 2.0",
+            provider: "kie.ai",
+            creditCost: 5,
+            configJson: {
+              generateType: "text-to-image",
+              inputFields: [],
+            },
+          },
+        ],
+        defaults: {
+          image: "flux-2.0",
+          video: "veo-3-1",
+          audio: "elevenlabs-tts",
+        },
+      },
+      audio: {
+        models: [
+          {
+            id: "uvoice/tts-natural",
+            name: "UVoice Natural",
+            provider: "uvoice",
+            creditCost: 150,
+            configJson: {
+              generateType: "text-to-speech",
+              inputFields: [],
+            },
+          },
+          {
+            id: "elevenlabs-tts",
+            name: "ElevenLabs TTS",
+            provider: "elevenlabs",
+            creditCost: 10,
+            configJson: {
+              generateType: "text-to-speech",
+              inputFields: [],
+            },
+          },
+        ],
+        defaults: {
+          image: "flux-2.0",
+          video: "veo-3-1",
+          audio: "elevenlabs-tts",
+        },
+      },
+      video: {
+        models: [],
+        defaults: {
+          image: "flux-2.0",
+          video: "veo-3-1",
+          audio: "elevenlabs-tts",
+        },
+      },
+    };
+
+    render(<AIDraftModal {...defaultProps} />);
+
+    fireEvent.change(screen.getByPlaceholderText(/describe/i), {
+      target: { value: "AI slide deck about healthcare" },
+    });
+    fireEvent.click(screen.getByRole("switch", { name: /generate audio/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /generate/i })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /generate/i }));
+
+    expect(mockGenerateDraftMutate).toHaveBeenCalledTimes(1);
+    const payload = mockGenerateDraftMutate.mock.calls[0][0] as Record<string, unknown>;
+    expect(payload.imageModel).toBe("flux-2.0");
+    expect(payload.audioModel).toBe("elevenlabs-tts");
+  });
+
+  it("clears stale uvoice voiceID when switching to a different uvoice tier", () => {
+    const next = resolveAudioExtraParamsForModel(
+      {
+        id: "uvoice/tts-natural",
+        name: "UVoice Natural",
+        provider: "uvoice",
+        creditCost: 150,
+        configJson: {
+          inputFields: [
+            {
+              key: "voiceID",
+              label: "Voice ID",
+              type: "select",
+              options: [
+                { value: "TH-NalineeNatural", label: "Nalinee Natural" },
+              ],
+            },
+          ],
+        },
+      },
+      { voiceID: "TH-BowkyPremiumHD" },
+    );
+
+    expect(next).not.toHaveProperty("voiceID");
+  });
+
+  it("shows the selected uvoice tier hint when a uvoice audio model is active", () => {
+    localStorage.setItem("smartspec_aiDraft_audioModel", "uvoice/tts-premium");
+    render(<AIDraftModal {...defaultProps} />);
+
+    fireEvent.click(screen.getByRole("switch", { name: /generate audio/i }));
+
+    expect(screen.getByTestId("uvoice-tier-row")).toHaveTextContent(/Selected UVoice tier/i);
+    expect(screen.getByTestId("uvoice-tier-row")).toHaveTextContent(/Premium/i);
+    expect(screen.getByTestId("uvoice-tier-hint")).toHaveTextContent(
+      /UVoice tier selected: Premium/i,
+    );
+    expect(screen.getByTestId("uvoice-tier-hint")).toHaveTextContent(
+      /Voice ID options below are filtered to this tier only/i,
+    );
+  });
+
 });

@@ -1,9 +1,19 @@
 """Sample skill: Code Formatter (simple)."""
+from __future__ import annotations
 
-def respond(input_text: str, context=None) -> str:
-    # simple formatter: trim trailing spaces and ensure newline at end
-    code = input_text or ""
+import json
+from typing import Any
+
+
+def respond(input: Any, context=None) -> str:
+    code = str(input or "").replace("\\r\\n", "\n").replace("\\n", "\n")
     lines = [ln.rstrip() for ln in code.splitlines()]
-    out = "\n".join(lines).rstrip() + "\n"
-    # explain
-    return "Formatted:\n" + out
+    formatted = "\n".join(lines).rstrip() + "\n"
+    return json.dumps(
+        {
+            "success": True,
+            "output": "Formatted successfully",
+            "formatted_code": formatted,
+        },
+        ensure_ascii=False,
+    )

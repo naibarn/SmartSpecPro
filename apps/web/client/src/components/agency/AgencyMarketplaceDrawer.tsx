@@ -230,7 +230,7 @@ export function AgencyMarketplaceDrawer({
                       Agents
                     </h4>
                     <div className="space-y-2">
-                      {agency.agents.map((agent) => {
+                      {agency.agents.map((agent: { id: string; nodeType: string; name: string; isEntryPoint?: boolean }) => {
                         const meta = NODE_TYPE_META[agent.nodeType] ?? NODE_TYPE_META.agent;
                         const Icon = meta.icon;
                         return (

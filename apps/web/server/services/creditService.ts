@@ -8,6 +8,7 @@ import { users, creditTransactions, creditPackages, modelProviderMap, systemSett
 import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
 import { getRedisClient, isRedisAvailable } from "./redis";
 import { getTraceId } from "./traceContext";
+import { buildModelProviderMapLookupCondition } from "./modelLookup";
 
 export type TransactionType = "purchase" | "usage" | "bonus" | "refund" | "adjustment" | "subscription" | "creator_fee";
 
@@ -444,7 +445,7 @@ export async function isModelFree(modelId: string): Promise<boolean> {
   const rows = await db
     .select({ isFree: modelProviderMap.isFree })
     .from(modelProviderMap)
-    .where(and(eq(modelProviderMap.modelId, modelId), eq(modelProviderMap.isEnabled, true)))
+    .where(and(buildModelProviderMapLookupCondition(modelId), eq(modelProviderMap.isEnabled, true)))
     .limit(1);
   return rows.length > 0 && rows[0].isFree;
 }
@@ -460,7 +461,7 @@ async function getModelPricingFromDb(modelId: string): Promise<{ input: number; 
       isFree: modelProviderMap.isFree,
     })
     .from(modelProviderMap)
-    .where(and(eq(modelProviderMap.modelId, modelId), eq(modelProviderMap.isEnabled, true)))
+    .where(and(buildModelProviderMapLookupCondition(modelId), eq(modelProviderMap.isEnabled, true)))
     .limit(1);
 
   if (rows.length === 0) return null;
@@ -479,16 +480,22 @@ export async function deductCreditsForModel(params: {
   outputTokens: number;
   costUsd?: number;
   description?: string;
+  tenantId?: string;
+  idempotencyKey?: string;
   conversationId?: number;
   skillSlug?: string;
   sourceType?: CreditSourceType;
+  metadata?: Record<string, unknown>;
 }): Promise<{ creditsUsed: number; wasFree: boolean }> {
   // Skip for static tokens (server-to-server calls)
   if (params.userId === 0) {
     return { creditsUsed: 0, wasFree: true };
   }
 
-  const free = await isModelFree(params.model);
+  const normalizedCostUsd = Number(params.costUsd ?? 0);
+  const hasProviderReportedCost = Number.isFinite(normalizedCostUsd) && normalizedCostUsd > 0;
+  // Provider-reported cost is the source of truth when available.
+  const free = hasProviderReportedCost ? false : await isModelFree(params.model);
 
   if (free) {
     // Log a 0-credit transaction for audit trail
@@ -499,10 +506,12 @@ export async function deductCreditsForModel(params: {
       description: params.description ?? `Free model usage: ${params.model}`,
       metadata: {
         freeModel: true,
+        model: params.model,
         modelId: params.model,
         provider: params.provider,
         inputTokens: params.inputTokens,
-        outputTokens: params.outputTokens
+        outputTokens: params.outputTokens,
+        ...(params.metadata ?? {}),
       },
       balanceAfter: (await getCreditBalance(params.userId))?.credits ?? 0,
       traceId: getTraceId() ?? null,
@@ -514,14 +523,16 @@ export async function deductCreditsForModel(params: {
   }
 
   // Paid model: use dynamic pricing if available
-  const credits = params.costUsd != null && params.costUsd > 0
-    ? calculateCreditsFromCost(params.costUsd)
+  const credits = hasProviderReportedCost
+    ? calculateCreditsFromCost(normalizedCostUsd)
     : await calculateCreditsForLLMDynamic(params.inputTokens, params.outputTokens, params.model);
 
   const result = await deductCredits({
     userId: params.userId,
     amount: credits,
     description: params.description ?? `LLM usage: ${params.model}`,
+    tenantId: params.tenantId,
+    idempotencyKey: params.idempotencyKey,
     conversationId: params.conversationId,
     skillSlug: params.skillSlug,
     sourceType: params.sourceType ?? "chat",
@@ -529,7 +540,8 @@ export async function deductCreditsForModel(params: {
       model: params.model,
       provider: params.provider,
       tokensUsed: params.inputTokens + params.outputTokens,
-      costUsd: params.costUsd
+      costUsd: hasProviderReportedCost ? normalizedCostUsd : params.costUsd,
+      ...(params.metadata ?? {}),
     },
   });
 
@@ -688,6 +700,17 @@ interface CreditPricingConfig {
   ragQueryCost: number;
   mcpReadMaxCost: number;
   mcpSheetMaxCost: number;
+  libraryUploadSizeStepMb: number;
+  libraryUploadImageBase: number;
+  libraryUploadImagePerStep: number;
+  libraryUploadVideoBase: number;
+  libraryUploadVideoPerStep: number;
+  libraryUploadAudioBase: number;
+  libraryUploadAudioPerStep: number;
+  libraryUploadDocumentBase: number;
+  libraryUploadDocumentPerStep: number;
+  libraryUploadOtherBase: number;
+  libraryUploadOtherPerStep: number;
 }
 
 const PRICING_DEFAULTS: CreditPricingConfig = {
@@ -695,9 +718,24 @@ const PRICING_DEFAULTS: CreditPricingConfig = {
   ragQueryCost: 1,
   mcpReadMaxCost: 5,
   mcpSheetMaxCost: 3,
+  libraryUploadSizeStepMb: 10,
+  libraryUploadImageBase: 4,
+  libraryUploadImagePerStep: 2,
+  libraryUploadVideoBase: 20,
+  libraryUploadVideoPerStep: 15,
+  libraryUploadAudioBase: 6,
+  libraryUploadAudioPerStep: 4,
+  libraryUploadDocumentBase: 5,
+  libraryUploadDocumentPerStep: 3,
+  libraryUploadOtherBase: 8,
+  libraryUploadOtherPerStep: 5,
 };
 
 let _pricingCache: { config: CreditPricingConfig; expiresAt: number } | null = null;
+
+export function clearCreditPricingCache(): void {
+  _pricingCache = null;
+}
 
 /**
  * Load credit pricing from system_settings with 5-minute cache.
@@ -715,11 +753,22 @@ export async function getCreditPricingConfig(): Promise<CreditPricingConfig> {
   const config: CreditPricingConfig = { ...PRICING_DEFAULTS };
   for (const row of rows) {
     const num = Number(row.value);
-    if (!isNaN(num) && num > 0) {
+    if (!isNaN(num) && num >= 0) {
       if (row.key === "costPerChunk") config.costPerChunk = num;
       else if (row.key === "ragQueryCost") config.ragQueryCost = num;
       else if (row.key === "mcpReadMaxCost") config.mcpReadMaxCost = num;
       else if (row.key === "mcpSheetMaxCost") config.mcpSheetMaxCost = num;
+      else if (row.key === "libraryUploadSizeStepMb") config.libraryUploadSizeStepMb = num;
+      else if (row.key === "libraryUploadImageBase") config.libraryUploadImageBase = num;
+      else if (row.key === "libraryUploadImagePerStep") config.libraryUploadImagePerStep = num;
+      else if (row.key === "libraryUploadVideoBase") config.libraryUploadVideoBase = num;
+      else if (row.key === "libraryUploadVideoPerStep") config.libraryUploadVideoPerStep = num;
+      else if (row.key === "libraryUploadAudioBase") config.libraryUploadAudioBase = num;
+      else if (row.key === "libraryUploadAudioPerStep") config.libraryUploadAudioPerStep = num;
+      else if (row.key === "libraryUploadDocumentBase") config.libraryUploadDocumentBase = num;
+      else if (row.key === "libraryUploadDocumentPerStep") config.libraryUploadDocumentPerStep = num;
+      else if (row.key === "libraryUploadOtherBase") config.libraryUploadOtherBase = num;
+      else if (row.key === "libraryUploadOtherPerStep") config.libraryUploadOtherPerStep = num;
     }
   }
 
@@ -810,5 +859,80 @@ export async function estimateIndexingCost(totalSizeBytes: number): Promise<{
     estimatedChunks,
     estimatedCredits: estimatedChunks * pricing.costPerChunk,
     costPerChunk: pricing.costPerChunk,
+  };
+}
+
+export type LibraryUploadCreditCategory = "image" | "video" | "audio" | "document" | "other";
+
+export interface LibraryUploadCreditBreakdown {
+  category: LibraryUploadCreditCategory;
+  fileSizeBytes: number;
+  fileSizeMb: number;
+  sizeStepMb: number;
+  baseCredits: number;
+  stepCredits: number;
+  extraSteps: number;
+  totalCredits: number;
+}
+
+export function classifyLibraryUploadCategory(fileType: string): LibraryUploadCreditCategory {
+  const normalized = String(fileType || "").trim().toLowerCase();
+  if (normalized.startsWith("image/")) return "image";
+  if (normalized.startsWith("video/")) return "video";
+  if (normalized.startsWith("audio/")) return "audio";
+  if (
+    normalized === "application/pdf"
+    || normalized.includes("word")
+    || normalized.includes("presentation")
+    || normalized.includes("powerpoint")
+    || normalized.includes("excel")
+    || normalized.includes("spreadsheet")
+    || normalized.startsWith("text/")
+    || normalized === "application/json"
+    || normalized === "application/xml"
+  ) {
+    return "document";
+  }
+  return "other";
+}
+
+export async function calculateLibraryUploadCreditCost(
+  fileType: string,
+  fileSizeBytes: number,
+): Promise<LibraryUploadCreditBreakdown> {
+  const pricing = await getCreditPricingConfig();
+  const category = classifyLibraryUploadCategory(fileType);
+  const fileSizeMb = Math.max(0, fileSizeBytes) / (1024 * 1024);
+  const sizeStepMb = Math.max(1, Math.ceil(pricing.libraryUploadSizeStepMb));
+
+  let baseCredits = pricing.libraryUploadOtherBase;
+  let stepCredits = pricing.libraryUploadOtherPerStep;
+  if (category === "image") {
+    baseCredits = pricing.libraryUploadImageBase;
+    stepCredits = pricing.libraryUploadImagePerStep;
+  } else if (category === "video") {
+    baseCredits = pricing.libraryUploadVideoBase;
+    stepCredits = pricing.libraryUploadVideoPerStep;
+  } else if (category === "audio") {
+    baseCredits = pricing.libraryUploadAudioBase;
+    stepCredits = pricing.libraryUploadAudioPerStep;
+  } else if (category === "document") {
+    baseCredits = pricing.libraryUploadDocumentBase;
+    stepCredits = pricing.libraryUploadDocumentPerStep;
+  }
+
+  const overBaseMb = Math.max(0, fileSizeMb - sizeStepMb);
+  const extraSteps = Math.ceil(overBaseMb / sizeStepMb);
+  const totalCredits = Math.max(0, Math.ceil(baseCredits + (extraSteps * stepCredits)));
+
+  return {
+    category,
+    fileSizeBytes: Math.max(0, Math.floor(fileSizeBytes)),
+    fileSizeMb,
+    sizeStepMb,
+    baseCredits,
+    stepCredits,
+    extraSteps,
+    totalCredits,
   };
 }

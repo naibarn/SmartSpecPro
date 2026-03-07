@@ -226,6 +226,10 @@ export default function AdminSkills() {
   // Fetch vision-capable LLM models for default model selection
   const { data: visionModels } = trpc.skills.getVisionModels.useQuery();
   const { data: llmProvidersData } = trpc.llmProviders.list.useQuery();
+  const systemDefaultLlmModel = visionModels?.models?.find((model) => model.isDefault) || visionModels?.models?.[0];
+  const systemDefaultLlmLabel = systemDefaultLlmModel
+    ? `Use system default (${systemDefaultLlmModel.id})`
+    : "Use system default";
 
   // Fetch media models (image/video/audio) for media-generate skills
   const { data: imageModels } = trpc.mediaModels.list.useQuery({ type: "image" });
@@ -1630,7 +1634,7 @@ export default function AdminSkills() {
                                 const found = visionModels?.models?.find((m) => m.id === selectedModel);
                                 return found ? `${found.name} (${found.providerDisplayName})` : selectedModel;
                               })()
-                            : <span className="text-muted-foreground">Use system default (openai/gpt-4o)</span>}
+                            : <span className="text-muted-foreground">{systemDefaultLlmLabel}</span>}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
@@ -1645,7 +1649,7 @@ export default function AdminSkills() {
                                 onSelect={() => setEditingSkill({ ...editingSkill, defaultModel: null, llmModelId: null })}
                               >
                                 <Check className={`mr-2 h-4 w-4 ${!(editingSkill.llmModelId || editingSkill.defaultModel) ? "opacity-100" : "opacity-0"}`} />
-                                <span className="text-muted-foreground">Use system default (openai/gpt-4o)</span>
+                                <span className="text-muted-foreground">{systemDefaultLlmLabel}</span>
                               </CommandItem>
                               {visionModels?.models?.map((model) => (
                                 <CommandItem
@@ -1687,7 +1691,7 @@ export default function AdminSkills() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__auto__">Auto route (no provider pin)</SelectItem>
-                          {(llmProvidersData || []).map((provider) => (
+                          {(llmProvidersData || []).map((provider: { id: number; displayName: string; providerName: string }) => (
                             <SelectItem key={provider.id} value={String(provider.id)}>
                               {provider.displayName} ({provider.providerName})
                             </SelectItem>

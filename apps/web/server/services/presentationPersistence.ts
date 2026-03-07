@@ -11,6 +11,7 @@ import {
   type PresentationAssetLink,
   type PresentationConversionRecord,
   type PresentationDeck,
+  type SlideAudioTrackJson,
   type PresentationSourceAttachment,
   type PresentationSlide,
 } from "../../drizzle/schema";
@@ -62,6 +63,7 @@ export interface CreatePresentationSlideInput {
   deckId: number;
   title?: string;
   slideContent?: Record<string, unknown>;
+  audioTrack?: SlideAudioTrackJson | null;
   notes?: string | null;
 }
 
@@ -317,6 +319,7 @@ export async function createPresentationSlide(
       version: 1,
       title: input.title || `Slide ${nextOrderIndex + 1}`,
       slideContent: input.slideContent || {},
+      audioTrack: input.audioTrack ?? null,
       notes: input.notes ?? null,
       createdAt: new Date(),
       updatedAt: new Date(),

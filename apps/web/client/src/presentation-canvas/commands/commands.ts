@@ -5,12 +5,14 @@ import {
   reorderElementById,
   resizeCanvas,
   resizeElementById,
+  setSlideBackground,
   translateElements,
   updateElementById,
   type ArrangeDirection,
   type PresentationCanvasSize,
   type PresentationElement,
   type PresentationElementPatch,
+  type PresentationSlideBackground,
   type PresentationSlideContent,
 } from "@/lib/presentationEditorState";
 import { computeSnapPosition, type SnapCandidate, type SnapGuide } from "../snap/SnapEngine";
@@ -36,6 +38,11 @@ const NON_BROADCAST_PATCH_FIELDS = new Set<string>([
   "imagePrompt",
   "imageModelId",
   "imageReferenceUrls",
+  "imageExtraParams",
+  "videoPrompt",
+  "videoModelId",
+  "videoReferenceUrls",
+  "videoExtraParams",
 ]);
 
 function shouldBroadcastPatchToSelection(patch: PresentationElementPatch): boolean {
@@ -319,6 +326,19 @@ export function setCanvasSizeCommand(
       content: resizeCanvas(state.content, nextCanvas, {
         selectedElementIds: state.selectedElementIds,
       }),
+      snapGuides: [],
+    }),
+  };
+}
+
+export function setSlideBackgroundCommand(
+  background: PresentationSlideBackground | undefined,
+): CanvasCommand<CanvasCommandState> {
+  return {
+    id: "set-slide-background",
+    apply: (state) => ({
+      ...state,
+      content: setSlideBackground(state.content, background),
       snapGuides: [],
     }),
   };

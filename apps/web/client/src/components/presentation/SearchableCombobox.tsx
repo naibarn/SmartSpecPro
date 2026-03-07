@@ -61,6 +61,7 @@ export function SearchableCombobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
+          aria-label={selectedItem ? selectedItem.label : placeholder}
           disabled={disabled}
           className="w-full justify-between font-normal"
         >
@@ -71,9 +72,10 @@ export function SearchableCombobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="p-0"
+        className="max-w-[calc(100vw-1rem)] p-0"
         style={{ width: triggerWidth > 0 ? triggerWidth : undefined }}
         align="start"
+        collisionPadding={8}
       >
         <Command>
           <CommandInput
@@ -81,13 +83,13 @@ export function SearchableCombobox({
             value={searchValue}
             onValueChange={onSearchValueChange}
           />
-          <CommandList>
+          <CommandList className="max-h-[min(18rem,50vh)]">
             <CommandEmpty>{emptyMessage}</CommandEmpty>
             <CommandGroup>
               {items.map((item) => (
                 <CommandItem
                   key={item.value}
-                  value={item.label}
+                  value={`${item.label} ${item.value} ${item.description ?? ""}`}
                   onSelect={() => {
                     onValueChange(item.value);
                     setOpen(false);

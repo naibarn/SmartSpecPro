@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 
 // Mock dependencies before module import
 vi.mock("./llmRateLimiter", () => ({
@@ -6,7 +6,18 @@ vi.mock("./llmRateLimiter", () => ({
   recordMediaUsage: vi.fn(),
 }));
 
-import { MEDIA_MODELS } from "./mediaGenerationService";
+vi.mock("./auditLogger", () => ({
+  auditLogger: {
+    log: vi.fn(),
+  },
+}));
+
+import { scheduleMediaWithLimiter } from "./llmRateLimiter";
+import { auditLogger } from "./auditLogger";
+import { MEDIA_MODELS, MediaGenerationService } from "./mediaGenerationService";
+
+const fetchMock = vi.fn();
+global.fetch = fetchMock as typeof fetch;
 
 describe("MEDIA_MODELS — BytePlus ModelArk entries", () => {
   it('MEDIA_MODELS["seedream-4-5-251128"] has provider "byteplus_modelark" and type "image"', () => {
@@ -95,5 +106,75 @@ describe("MEDIA_MODELS — BytePlus ModelArk entries", () => {
     // If ImageModel and VideoModel unions do not include the BytePlus IDs,
     // `npm run check` will fail with type errors.
     expect(true).toBe(true);
+  });
+});
+
+describe("MediaGenerationService retry behavior", () => {
+  const taskPayload = {
+    id: "task-123",
+    task_id: null,
+    user_id: 1,
+    media_type: "audio",
+    status: "pending",
+    model: "uvoice/tts-standard",
+    prompt: "test",
+    parameters: {},
+    result_url: null,
+    result_data: null,
+    error_message: null,
+    credits_used: null,
+    credits_balance: null,
+    created_at: "2026-03-06T04:21:05.493354Z",
+    started_at: null,
+    completed_at: null,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(scheduleMediaWithLimiter).mockImplementation(async (_provider, _mediaType, fn) => fn());
+  });
+
+  it("retries async audio submission once for SETTINGS_KEY_NOT_FOUND and succeeds", async () => {
+    fetchMock
+      .mockRejectedValueOnce(new Error("ERR SETTINGS_KEY_NOT_FOUND"))
+      .mockResolvedValueOnce(new Response(JSON.stringify(taskPayload), { status: 200 }));
+
+    const service = new MediaGenerationService("http://localhost:8000");
+    const result = await service.generateAudioAsync(
+      {
+        text: "test",
+        model: "uvoice/tts-standard",
+        apiConfig: { provider: "uvoice" },
+        extraParams: { voiceID: "TH-AlisaSD" },
+      },
+      "test-token",
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.id).toBe("task-123");
+    expect(vi.mocked(auditLogger.log)).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: "error",
+      errorType: "media_submit_retryable_error",
+      errorMessage: expect.stringContaining("SETTINGS_KEY_NOT_FOUND"),
+    }));
+  });
+
+  it("rethrows enriched endpoint context after retryable submit error repeats", async () => {
+    fetchMock
+      .mockRejectedValueOnce(new Error("ERR SETTINGS_KEY_NOT_FOUND"))
+      .mockRejectedValueOnce(new Error("ERR SETTINGS_KEY_NOT_FOUND"));
+
+    const service = new MediaGenerationService("http://localhost:8000");
+
+    await expect(service.generateImageAsync(
+      {
+        prompt: "test image prompt",
+        model: "nano-banana-2",
+        apiConfig: { provider: "kie.ai" },
+      },
+      "test-token",
+    )).rejects.toThrow("ERR SETTINGS_KEY_NOT_FOUND [endpoint=/api/v1/media/async/image]");
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Music, Trash2, Plus, Play, Pause, Search, RefreshCw } from "lucide-react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { Music, Trash2, Plus, Play, Pause, Search, RefreshCw, Upload } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -56,6 +56,15 @@ function formatDuration(seconds: number): string {
   const mins = Math.floor(safe / 60);
   const secs = safe - mins * 60;
   return `${mins}:${secs.toFixed(1).padStart(4, "0")}`;
+}
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.readAsDataURL(file);
+  });
 }
 
 const AUDIO_SLIDER_CLASS = [
@@ -400,7 +409,7 @@ function AudioPickerDialog({ open, onClose, onSelect, target }: AudioPickerDialo
                     ? "border-primary/40 bg-primary/5"
                     : "border-transparent hover:border-border hover:bg-muted/40",
                 )}
-                data-testid={`audio-picker-item-${item.item_id}`}
+                data-testid={`audio-picker-item-${item.id}`}
               >
                 {/* Play / Pause preview button */}
                 <button
@@ -490,6 +499,8 @@ export function SlideAudioPanel({
   // Picker state
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<"slide" | "deck">("slide");
+  const [uploadTarget, setUploadTarget] = useState<"slide" | "deck" | null>(null);
+  const audioUploadInputRef = useRef<HTMLInputElement | null>(null);
 
   // Per-slide audio draft state (local, not persisted until Save/Select)
   const [slideVolumePct, setSlideVolumePct] = useState<number>(
@@ -607,6 +618,7 @@ export function SlideAudioPanel({
       onAudioChanged?.();
     },
   });
+  const uploadAndAttachAssetMutation = trpc.presentation.uploadAndAttachAsset.useMutation();
 
   // H3: helper to compute endAtMs — guards against accidental endAtMs: 0
   function computeSlideEndAtMs(): number | null {
@@ -803,6 +815,74 @@ export function SlideAudioPanel({
     }
   }
 
+  function openAudioUploadPicker(target: "slide" | "deck") {
+    setUploadTarget(target);
+    audioUploadInputRef.current?.click();
+  }
+
+  async function handleAudioUpload(target: "slide" | "deck", file: File) {
+    if (target === "slide" && slideId == null) {
+      toast.error("Select a slide before uploading slide audio.");
+      return;
+    }
+
+    try {
+      const fileBase64 = await readFileAsDataUrl(file);
+      const uploaded = await uploadAndAttachAssetMutation.mutateAsync({
+        deckId,
+        expectedVersion: deckVersion,
+        slideId: target === "slide" ? slideId : null,
+        fileName: file.name,
+        fileType: file.type || "audio/*",
+        fileBase64,
+      });
+
+      const libraryItemId = Number((uploaded as any)?.item?.id);
+      if (!Number.isFinite(libraryItemId) || libraryItemId <= 0) {
+        throw new Error("Upload completed but audio item is invalid.");
+      }
+
+      const nextExpectedVersion = deckVersion + 1;
+      if (target === "slide") {
+        await setSlideAudioMutation.mutateAsync({
+          slideId: slideId!,
+          deckId,
+          audioTrack: buildSlideAudioTrackInput(libraryItemId),
+          expectedVersion: nextExpectedVersion,
+        });
+      } else {
+        await setDeckAudioMutation.mutateAsync({
+          deckId,
+          projectAudioTrack: buildDeckAudioTrackInput(libraryItemId),
+          expectedVersion: nextExpectedVersion,
+        });
+      }
+
+      const creditsCharged = Number((uploaded as any)?.billing?.creditsCharged ?? 0);
+      if (creditsCharged > 0) {
+        toast.success(`Upload complete. Charged ${creditsCharged} credits.`);
+      }
+    } catch (error) {
+      const message = String((error as Error)?.message || error);
+      if (message.toLowerCase().includes("insufficient credits")) {
+        toast.error(message);
+        return;
+      }
+      toast.error(`Failed to upload audio: ${message}`);
+    } finally {
+      setUploadTarget(null);
+    }
+  }
+
+  function handleAudioUploadInputChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || uploadTarget == null) {
+      return;
+    }
+    void handleAudioUpload(uploadTarget, file);
+  }
+
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
@@ -820,16 +900,29 @@ export function SlideAudioPanel({
         ) : slideAudioTrack == null ? (
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">No audio configured for this slide.</p>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={openSlidePicker}
-              aria-label="Add audio"
-              data-testid="add-slide-audio-btn"
-            >
-              <Plus className="mr-1 h-3 w-3" />
-              Add Audio
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={openSlidePicker}
+                aria-label="Add audio"
+                data-testid="add-slide-audio-btn"
+              >
+                <Plus className="mr-1 h-3 w-3" />
+                Add Audio
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => openAudioUploadPicker("slide")}
+                disabled={uploadAndAttachAssetMutation.isPending}
+                aria-label="Upload slide audio"
+                data-testid="upload-slide-audio-btn"
+              >
+                <Upload className="mr-1 h-3 w-3" />
+                Upload Audio
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-3">
@@ -858,12 +951,26 @@ export function SlideAudioPanel({
               </Button>
               <Button
                 size="sm"
-                variant="ghost"
-                className="h-6 px-2 text-xs text-muted-foreground"
+                variant="outline"
+                className="h-7 px-2 text-xs"
                 onClick={openSlidePicker}
-                title="Change audio"
+                title="Change from library"
+                aria-label="Change slide audio from library"
               >
-                <RefreshCw className="h-3 w-3" />
+                <RefreshCw className="mr-1 h-3 w-3" />
+                Library
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-2 text-xs"
+                onClick={() => openAudioUploadPicker("slide")}
+                disabled={uploadAndAttachAssetMutation.isPending}
+                title="Upload and replace audio"
+                aria-label="Upload replacement slide audio"
+              >
+                <Upload className="mr-1 h-3 w-3" />
+                Upload
               </Button>
             </div>
 
@@ -936,16 +1043,29 @@ export function SlideAudioPanel({
         {deckAudioTrack == null ? (
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">No project audio configured.</p>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={openDeckPicker}
-              aria-label="Add project audio"
-              data-testid="add-deck-audio-btn"
-            >
-              <Plus className="mr-1 h-3 w-3" />
-              Add Project Audio
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={openDeckPicker}
+                aria-label="Add project audio"
+                data-testid="add-deck-audio-btn"
+              >
+                <Plus className="mr-1 h-3 w-3" />
+                Add Project Audio
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => openAudioUploadPicker("deck")}
+                disabled={uploadAndAttachAssetMutation.isPending}
+                aria-label="Upload project audio"
+                data-testid="upload-deck-audio-btn"
+              >
+                <Upload className="mr-1 h-3 w-3" />
+                Upload Audio
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-3">
@@ -974,12 +1094,26 @@ export function SlideAudioPanel({
               </Button>
               <Button
                 size="sm"
-                variant="ghost"
-                className="h-6 px-2 text-xs text-muted-foreground"
+                variant="outline"
+                className="h-7 px-2 text-xs"
                 onClick={openDeckPicker}
                 title="Change background audio"
+                aria-label="Change project audio from library"
               >
-                <RefreshCw className="h-3 w-3" />
+                <RefreshCw className="mr-1 h-3 w-3" />
+                Library
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-2 text-xs"
+                onClick={() => openAudioUploadPicker("deck")}
+                disabled={uploadAndAttachAssetMutation.isPending}
+                title="Upload and replace background audio"
+                aria-label="Upload replacement project audio"
+              >
+                <Upload className="mr-1 h-3 w-3" />
+                Upload
               </Button>
             </div>
 
@@ -1076,6 +1210,13 @@ export function SlideAudioPanel({
         onClose={() => setPickerOpen(false)}
         onSelect={handlePickerSelect}
         target={pickerTarget}
+      />
+      <input
+        ref={audioUploadInputRef}
+        type="file"
+        accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac"
+        className="hidden"
+        onChange={handleAudioUploadInputChange}
       />
     </div>
   );

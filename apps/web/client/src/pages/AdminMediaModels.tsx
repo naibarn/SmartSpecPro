@@ -112,7 +112,13 @@ interface FormData {
   apiQueryEndpoint: string;
   apiPayloadFormat: string;
   kieModelId: string;
+  apiConfigRaw: string;
   pricingFormula: string;
+  pricingUnitMetric: "characters" | "items";
+  pricingUnitField: string;
+  pricingUnitSize: number;
+  pricingUnitRounding: "ceil" | "floor" | "round";
+  pricingMinUnits: number;
   operationType: MediaOperationType;
   generateType: string;
   maxPromptLength: number;
@@ -133,6 +139,8 @@ interface InputFieldOptionDraft {
   label: string;
 }
 
+type InputFieldOptionsSourceType = "none" | "provider_api" | "public_api";
+
 interface InputFieldDraft {
   id: string;
   key: string;
@@ -143,8 +151,21 @@ interface InputFieldDraft {
   defaultBoolean: boolean;
   required: boolean;
   affectsPricing: boolean;
+  searchable: boolean;
   options: InputFieldOptionDraft[];
+  optionsSourceType: InputFieldOptionsSourceType;
+  optionsSourceEndpoint: string;
+  optionsSourceMethod: "GET" | "POST";
+  optionsSourceItemsPath: string;
+  optionsSourceValueField: string;
+  optionsSourceLabelField: string;
+  optionsSourceQueryParam: string;
+  optionsSourceValueTransform: "none" | "before_dash";
+  optionsSourceCacheTtlSeconds: string;
+  optionsSourceHeadersRaw: string;
+  optionsSourceBodyRaw: string;
   allowedExtensions: string; // comma-separated, e.g. "png,jpg" — only used for library_file type
+  itemTemplateRaw: string; // JSON template for array item mapping
 }
 
 interface PricingTierDraft {
@@ -153,11 +174,16 @@ interface PricingTierDraft {
   value: string;
 }
 
+interface ParsedBulkOption {
+  value: string;
+  label: string;
+}
+
 interface ApiConfigPreset {
   id: string;
   label: string;
   description: string;
-  pricingFormula: "flat" | "per_duration" | "matrix";
+  pricingFormula: "flat" | "per_duration" | "matrix" | "per_unit";
   inputFields: Array<Record<string, unknown>>;
   pricingTiers: Record<string, number>;
 }
@@ -202,6 +228,103 @@ function createDraftId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function isLikelyVoiceId(value: string): boolean {
+  return /^[A-Za-z0-9]{16,}$/.test(value.trim());
+}
+
+function normalizeOptionText(value: string): string {
+  return value.replace(/\u00A0/g, " ").trim();
+}
+
+function parseBulkOptionsText(raw: string): ParsedBulkOption[] {
+  const lines = raw.split(/\r?\n/).map((line) => normalizeOptionText(line));
+  const parsed: ParsedBulkOption[] = [];
+  let pendingVoiceId: string | null = null;
+
+  const pushOption = (valueRaw: string, labelRaw?: string) => {
+    const value = normalizeOptionText(valueRaw);
+    const label = normalizeOptionText(labelRaw ?? valueRaw);
+    if (!value) return;
+    parsed.push({ value, label: label || value });
+  };
+
+  for (const line of lines) {
+    if (!line) continue;
+    if (/^available voices:?$/i.test(line)) continue;
+
+    const idWithLabel = line.match(/^([A-Za-z0-9]{16,})\s*-\s*(.+)$/);
+    if (idWithLabel) {
+      pushOption(idWithLabel[1], idWithLabel[2]);
+      pendingVoiceId = null;
+      continue;
+    }
+
+    if (isLikelyVoiceId(line)) {
+      if (pendingVoiceId) {
+        pushOption(pendingVoiceId);
+      }
+      pendingVoiceId = line;
+      continue;
+    }
+
+    const bulletLabel = line.match(/^(?:[-*]\s*)(.+)$/);
+    if (bulletLabel && pendingVoiceId) {
+      pushOption(pendingVoiceId, bulletLabel[1]);
+      pendingVoiceId = null;
+      continue;
+    }
+
+    if (pendingVoiceId) {
+      pushOption(pendingVoiceId, line.replace(/^(?:[-*]\s*)/, ""));
+      pendingVoiceId = null;
+      continue;
+    }
+
+    // Generic fallback for simple one-option-per-line input
+    // Also supports comma-separated values in a single line.
+    const plain = line.replace(/^(?:[-*]\s*)/, "").trim();
+    if (plain) {
+      const commaParts = plain.split(",").map((part) => normalizeOptionText(part)).filter(Boolean);
+      if (commaParts.length > 1) {
+        for (const part of commaParts) {
+          pushOption(part, part);
+        }
+      } else {
+        pushOption(plain, plain);
+      }
+    }
+  }
+
+  if (pendingVoiceId) {
+    pushOption(pendingVoiceId);
+  }
+
+  const seen = new Set<string>();
+  const deduped: ParsedBulkOption[] = [];
+  for (const item of parsed) {
+    const key = item.value.trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(item);
+  }
+  return deduped;
+}
+
+function splitDelimitedTextValues(raw: string): string[] {
+  return raw
+    .split(/[\n,]/g)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function parseVoiceCatalogValues(raw: string): ParsedBulkOption[] {
+  const parsed = parseBulkOptionsText(raw);
+  if (parsed.length > 0) {
+    return parsed;
+  }
+  return splitDelimitedTextValues(raw).map((value) => ({ value, label: value }));
+}
+
 function createEmptyInputFieldDraft(): InputFieldDraft {
   return {
     id: createDraftId("field"),
@@ -213,8 +336,21 @@ function createEmptyInputFieldDraft(): InputFieldDraft {
     defaultBoolean: false,
     required: false,
     affectsPricing: false,
+    searchable: false,
     options: [],
+    optionsSourceType: "none",
+    optionsSourceEndpoint: "",
+    optionsSourceMethod: "GET",
+    optionsSourceItemsPath: "",
+    optionsSourceValueField: "",
+    optionsSourceLabelField: "",
+    optionsSourceQueryParam: "",
+    optionsSourceValueTransform: "none",
+    optionsSourceCacheTtlSeconds: "",
+    optionsSourceHeadersRaw: "",
+    optionsSourceBodyRaw: "",
     allowedExtensions: "",
+    itemTemplateRaw: "",
   };
 }
 
@@ -250,6 +386,24 @@ function parseInputFieldDrafts(value: unknown): InputFieldDraft[] {
     const syncWith: SyncTarget = VALID_SYNC_TARGETS.includes(rawSyncWith as SyncTarget)
       ? (rawSyncWith as SyncTarget)
       : "none";
+    const rawOptionsSource = (record.optionsSource && typeof record.optionsSource === "object")
+      ? (record.optionsSource as Record<string, unknown>)
+      : null;
+    const rawOptionsSourceType = rawOptionsSource && typeof rawOptionsSource.type === "string"
+      ? rawOptionsSource.type.trim().toLowerCase()
+      : "none";
+    const optionsSourceType: InputFieldOptionsSourceType = rawOptionsSourceType === "provider_api" || rawOptionsSourceType === "public_api"
+      ? rawOptionsSourceType
+      : "none";
+    const optionsSourceMethodRaw = rawOptionsSource && typeof rawOptionsSource.method === "string"
+      ? rawOptionsSource.method.toUpperCase()
+      : "GET";
+    const optionsSourceMethod: "GET" | "POST" = optionsSourceMethodRaw === "POST" ? "POST" : "GET";
+    const optionsSourceValueTransformRaw = rawOptionsSource && typeof rawOptionsSource.valueTransform === "string"
+      ? rawOptionsSource.valueTransform.trim().toLowerCase()
+      : "none";
+    const optionsSourceValueTransform: "none" | "before_dash" =
+      optionsSourceValueTransformRaw === "before_dash" ? "before_dash" : "none";
     return {
       id: createDraftId("field"),
       key: String(record.key ?? ""),
@@ -260,8 +414,27 @@ function parseInputFieldDrafts(value: unknown): InputFieldDraft[] {
       defaultBoolean: Boolean(record.default),
       required: Boolean(record.required),
       affectsPricing: Boolean(record.affectsPricing),
+      searchable: Boolean(record.searchable),
       options,
+      optionsSourceType,
+      optionsSourceEndpoint: rawOptionsSource && typeof rawOptionsSource.endpoint === "string" ? rawOptionsSource.endpoint : "",
+      optionsSourceMethod,
+      optionsSourceItemsPath: rawOptionsSource && typeof rawOptionsSource.itemsPath === "string" ? rawOptionsSource.itemsPath : "",
+      optionsSourceValueField: rawOptionsSource && typeof rawOptionsSource.valueField === "string" ? rawOptionsSource.valueField : "",
+      optionsSourceLabelField: rawOptionsSource && typeof rawOptionsSource.labelField === "string" ? rawOptionsSource.labelField : "",
+      optionsSourceQueryParam: rawOptionsSource && typeof rawOptionsSource.queryParam === "string" ? rawOptionsSource.queryParam : "",
+      optionsSourceValueTransform,
+      optionsSourceCacheTtlSeconds: rawOptionsSource && rawOptionsSource.cacheTtlSeconds !== undefined && rawOptionsSource.cacheTtlSeconds !== null
+        ? String(rawOptionsSource.cacheTtlSeconds)
+        : "",
+      optionsSourceHeadersRaw: rawOptionsSource && rawOptionsSource.headers && typeof rawOptionsSource.headers === "object"
+        ? JSON.stringify(rawOptionsSource.headers, null, 2)
+        : "",
+      optionsSourceBodyRaw: rawOptionsSource && rawOptionsSource.body !== undefined
+        ? JSON.stringify(rawOptionsSource.body, null, 2)
+        : "",
       allowedExtensions: typeof record.allowedExtensions === "string" ? record.allowedExtensions : "",
+      itemTemplateRaw: record.itemTemplate ? JSON.stringify(record.itemTemplate, null, 2) : "",
     };
   });
 }
@@ -319,22 +492,102 @@ function serializeInputFieldDrafts(drafts: InputFieldDraft[]): { fields: Record<
     // Always write syncWith so runtime can distinguish "explicitly none" from "legacy field (undefined)"
     nextField.syncWith = draft.syncWith;
 
-    if (draft.type === "select") {
-      const options = draft.options
-        .map((option) => ({
-          value: option.value.trim(),
-          label: option.label.trim(),
-        }))
-        .filter((option) => option.value.length > 0 || option.label.length > 0)
-        .map((option) => ({
-          value: option.value,
-          label: option.label || option.value,
-        }));
-      if (options.length === 0) {
-        errors.push(`Select field "${key}" must define at least one option.`);
+    if (draft.searchable) {
+      nextField.searchable = true;
+    }
+
+    const options = draft.options
+      .map((option) => ({
+        value: option.value.trim(),
+        label: option.label.trim(),
+      }))
+      .filter((option) => option.value.length > 0 || option.label.length > 0)
+      .map((option) => ({
+        value: option.value,
+        label: option.label || option.value,
+      }));
+    const hasOptionsSource = draft.optionsSourceType !== "none";
+    if (draft.type === "select" || draft.searchable || hasOptionsSource) {
+      if (options.length > 0) {
+        nextField.options = options;
+      }
+    }
+
+    if (hasOptionsSource) {
+      const endpoint = draft.optionsSourceEndpoint.trim();
+      if (!endpoint) {
+        errors.push(`Field "${key}" has options source enabled but no endpoint.`);
         continue;
       }
-      nextField.options = options;
+      const optionsSource: Record<string, unknown> = {
+        type: draft.optionsSourceType,
+        endpoint,
+        method: draft.optionsSourceMethod,
+      };
+
+      const itemsPath = draft.optionsSourceItemsPath.trim();
+      if (itemsPath) {
+        optionsSource.itemsPath = itemsPath;
+      }
+      const valueField = draft.optionsSourceValueField.trim();
+      if (valueField) {
+        optionsSource.valueField = valueField;
+      }
+      const labelField = draft.optionsSourceLabelField.trim();
+      if (labelField) {
+        optionsSource.labelField = labelField;
+      }
+      const queryParam = draft.optionsSourceQueryParam.trim();
+      if (queryParam) {
+        optionsSource.queryParam = queryParam;
+      }
+      if (draft.optionsSourceValueTransform !== "none") {
+        optionsSource.valueTransform = draft.optionsSourceValueTransform;
+      }
+
+      const cacheTtlRaw = draft.optionsSourceCacheTtlSeconds.trim();
+      if (cacheTtlRaw.length > 0) {
+        const cacheTtl = Number(cacheTtlRaw);
+        if (!Number.isFinite(cacheTtl) || cacheTtl <= 0) {
+          errors.push(`Field "${key}" has invalid options source cache TTL.`);
+          continue;
+        }
+        optionsSource.cacheTtlSeconds = Math.floor(cacheTtl);
+      }
+
+      const headersRaw = draft.optionsSourceHeadersRaw.trim();
+      if (headersRaw.length > 0) {
+        try {
+          const parsedHeaders = JSON.parse(headersRaw);
+          if (!parsedHeaders || typeof parsedHeaders !== "object" || Array.isArray(parsedHeaders)) {
+            errors.push(`Field "${key}" options source headers must be a JSON object.`);
+            continue;
+          }
+          optionsSource.headers = parsedHeaders;
+        } catch {
+          errors.push(`Field "${key}" has invalid options source headers JSON.`);
+          continue;
+        }
+      }
+
+      const bodyRaw = draft.optionsSourceBodyRaw.trim();
+      if (bodyRaw.length > 0) {
+        try {
+          optionsSource.body = JSON.parse(bodyRaw);
+        } catch {
+          errors.push(`Field "${key}" has invalid options source body JSON.`);
+          continue;
+        }
+      }
+
+      nextField.optionsSource = optionsSource;
+    }
+
+    if (draft.type === "select") {
+      if (options.length === 0 && !hasOptionsSource) {
+        errors.push(`Select field "${key}" must define at least one option or options source.`);
+        continue;
+      }
 
       const defaultValue = draft.defaultRaw.trim();
       if (defaultValue) {
@@ -355,6 +608,15 @@ function serializeInputFieldDrafts(drafts: InputFieldDraft[]): { fields: Record<
       }
     } else if (draft.type === "array") {
       // No default — actual items are provided at runtime by the user
+      const templateRaw = draft.itemTemplateRaw.trim();
+      if (templateRaw) {
+        try {
+          nextField.itemTemplate = JSON.parse(templateRaw);
+        } catch {
+          errors.push(`Array field "${key}" has invalid item template JSON.`);
+          continue;
+        }
+      }
     } else if (draft.type === "library_file") {
       // No default — user picks from Library at runtime
       const exts = draft.allowedExtensions.trim();
@@ -634,7 +896,13 @@ const DEFAULT_FORM_DATA: FormData = {
   apiQueryEndpoint: "",
   apiPayloadFormat: "market",
   kieModelId: "",
+  apiConfigRaw: "",
   pricingFormula: "flat",
+  pricingUnitMetric: "characters",
+  pricingUnitField: "text",
+  pricingUnitSize: 1000,
+  pricingUnitRounding: "ceil",
+  pricingMinUnits: 0,
   operationType: "other",
   generateType: "",
   maxPromptLength: 2000,
@@ -796,14 +1064,22 @@ export default function AdminMediaModels() {
       aspectRatios: (model.aspectRatios || []).join(", "),
       sizes: (model.sizes || []).join(", "),
       durations: (model.durations || []).join(", "),
-      voices: (model.voices || []).join(", "),
+      voices: (model.voices || []).join("\n"),
       isEnabled: model.isEnabled,
       priority: model.priority,
       apiEndpoint: cfg.apiEndpoint || "/api/v1/jobs/createTask",
       apiQueryEndpoint: cfg.apiQueryEndpoint || cfg.queryEndpoint || cfg.statusEndpoint || "",
       apiPayloadFormat: cfg.apiPayloadFormat || "market",
       kieModelId: cfg.kieModelId || "",
+      apiConfigRaw: cfg.apiConfig ? JSON.stringify(cfg.apiConfig, null, 2) : "",
       pricingFormula: cfg.pricingFormula || "flat",
+      pricingUnitMetric: cfg.pricingUnitMetric === "items" ? "items" : "characters",
+      pricingUnitField: cfg.pricingUnitField || "text",
+      pricingUnitSize: Number(cfg.pricingUnitSize) > 0 ? Number(cfg.pricingUnitSize) : 1000,
+      pricingUnitRounding: cfg.pricingUnitRounding === "floor" || cfg.pricingUnitRounding === "round"
+        ? cfg.pricingUnitRounding
+        : "ceil",
+      pricingMinUnits: Number(cfg.pricingMinUnits) >= 0 ? Number(cfg.pricingMinUnits) : 0,
       operationType: inferOperationTypeFromModel(model),
       generateType: cfg.generateType || "",
       maxPromptLength: cfg.maxPromptLength || 2000,
@@ -830,14 +1106,22 @@ export default function AdminMediaModels() {
       aspectRatios: (model.aspectRatios || []).join(", "),
       sizes: (model.sizes || []).join(", "),
       durations: (model.durations || []).join(", "),
-      voices: (model.voices || []).join(", "),
+      voices: (model.voices || []).join("\n"),
       isEnabled: false, // Start disabled for safety
       priority: model.priority,
       apiEndpoint: cfg.apiEndpoint || "/api/v1/jobs/createTask",
       apiQueryEndpoint: cfg.apiQueryEndpoint || cfg.queryEndpoint || cfg.statusEndpoint || "",
       apiPayloadFormat: cfg.apiPayloadFormat || "market",
       kieModelId: cfg.kieModelId || "",
+      apiConfigRaw: cfg.apiConfig ? JSON.stringify(cfg.apiConfig, null, 2) : "",
       pricingFormula: cfg.pricingFormula || "flat",
+      pricingUnitMetric: cfg.pricingUnitMetric === "items" ? "items" : "characters",
+      pricingUnitField: cfg.pricingUnitField || "text",
+      pricingUnitSize: Number(cfg.pricingUnitSize) > 0 ? Number(cfg.pricingUnitSize) : 1000,
+      pricingUnitRounding: cfg.pricingUnitRounding === "floor" || cfg.pricingUnitRounding === "round"
+        ? cfg.pricingUnitRounding
+        : "ceil",
+      pricingMinUnits: Number(cfg.pricingMinUnits) >= 0 ? Number(cfg.pricingMinUnits) : 0,
       operationType: inferOperationTypeFromModel(model),
       generateType: cfg.generateType || "",
       maxPromptLength: cfg.maxPromptLength || 2000,
@@ -852,30 +1136,43 @@ export default function AdminMediaModels() {
   };
 
   const handleSave = () => {
-    const aliases = formData.aliases
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const aspectRatios = formData.aspectRatios
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const sizes = formData.sizes
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const durations = formData.durations
-      .split(",")
-      .map((s) => parseInt(s.trim()))
-      .filter((n) => !isNaN(n));
-    const voices = formData.voices
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const aliases = splitDelimitedTextValues(formData.aliases);
+    const aspectRatios = splitDelimitedTextValues(formData.aspectRatios);
+    const sizes = splitDelimitedTextValues(formData.sizes);
+    const durations = splitDelimitedTextValues(formData.durations)
+      .map((s) => parseInt(s, 10))
+      .filter((n) => !Number.isNaN(n));
+    const voices = parseVoiceCatalogValues(formData.voices).map((entry) => entry.value);
 
     const serializedInputFields = serializeInputFieldDrafts(formData.inputFieldDrafts);
     const serializedPricingTiers = serializePricingTierDrafts(formData.pricingTierDrafts, formData.creditCost);
     const parseErrors = [...serializedInputFields.errors, ...serializedPricingTiers.errors];
+
+    let parsedApiConfig: Record<string, string | number | boolean> | undefined;
+    const apiConfigRaw = formData.apiConfigRaw.trim();
+    if (apiConfigRaw.length > 0) {
+      try {
+        const parsed = JSON.parse(apiConfigRaw);
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          parseErrors.push("API Config JSON must be an object.");
+        } else {
+          const normalized: Record<string, string | number | boolean> = {};
+          for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+            if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+              normalized[key] = value;
+            } else if (value !== null && value !== undefined) {
+              parseErrors.push(`API Config key "${key}" must be string, number, or boolean.`);
+              break;
+            }
+          }
+          if (parseErrors.length === 0) {
+            parsedApiConfig = normalized;
+          }
+        }
+      } catch {
+        parseErrors.push("API Config JSON is invalid.");
+      }
+    }
 
     // Show validation errors and abort save
     if (parseErrors.length > 0) {
@@ -891,7 +1188,17 @@ export default function AdminMediaModels() {
       apiQueryEndpoint: formData.apiQueryEndpoint || undefined,
       apiPayloadFormat: formData.apiPayloadFormat,
       kieModelId: formData.kieModelId || undefined,
+      apiConfig: parsedApiConfig,
       pricingFormula: formData.pricingFormula,
+      pricingUnitMetric: formData.pricingFormula === "per_unit" ? formData.pricingUnitMetric : undefined,
+      pricingUnitField: formData.pricingFormula === "per_unit" ? (formData.pricingUnitField || undefined) : undefined,
+      pricingUnitSize: formData.pricingFormula === "per_unit" && formData.pricingUnitSize > 0
+        ? formData.pricingUnitSize
+        : undefined,
+      pricingUnitRounding: formData.pricingFormula === "per_unit" ? formData.pricingUnitRounding : undefined,
+      pricingMinUnits: formData.pricingFormula === "per_unit" && formData.pricingMinUnits >= 0
+        ? formData.pricingMinUnits
+        : undefined,
       operationType: formData.operationType,
       generateType: formData.generateType || undefined,
       maxPromptLength: formData.maxPromptLength,
@@ -1470,6 +1777,8 @@ function ModelForm({
   const [selectedPresetId, setSelectedPresetId] = useState<string>("none");
   const [draggingFieldId, setDraggingFieldId] = useState<string | null>(null);
   const [dragOverFieldId, setDragOverFieldId] = useState<string | null>(null);
+  const [bulkOptionsByField, setBulkOptionsByField] = useState<Record<string, string>>({});
+  const previewFieldOptionsMutation = trpc.mediaModels.previewFieldOptions.useMutation();
 
   const applyApiConfigPreset = () => {
     if (selectedPresetId === "none") {
@@ -1539,7 +1848,6 @@ function ModelForm({
         field.id === fieldId
           ? {
               ...field,
-              type: field.type === "select" ? field.type : "select",
               options: [...field.options, { id: createDraftId("opt"), value: "", label: "" }],
             }
           : field
@@ -1579,6 +1887,238 @@ function ModelForm({
           : field
       )),
     });
+  };
+
+  const setBulkOptionsText = (fieldId: string, value: string) => {
+    setBulkOptionsByField((prev) => ({ ...prev, [fieldId]: value }));
+  };
+
+  const applyBulkOptionsToField = (field: InputFieldDraft, mode: "replace" | "merge") => {
+    const raw = (bulkOptionsByField[field.id] ?? "").trim();
+    if (!raw) {
+      toast.error("Please paste option list first.");
+      return;
+    }
+
+    const parsed = parseBulkOptionsText(raw);
+    if (parsed.length === 0) {
+      toast.error("No valid options found in pasted text.");
+      return;
+    }
+
+    const incoming = parsed.map((option) => ({
+      id: createDraftId("opt"),
+      value: option.value,
+      label: option.label,
+    }));
+
+    if (mode === "replace") {
+      updateInputFieldDraft(field.id, { options: incoming, searchable: true });
+      toast.success(`Imported ${incoming.length} options.`);
+      return;
+    }
+
+    const merged = new Map<string, InputFieldOptionDraft>();
+    for (const option of field.options) {
+      const value = option.value.trim();
+      if (!value || merged.has(value)) continue;
+      merged.set(value, option);
+    }
+    for (const option of incoming) {
+      const value = option.value.trim();
+      if (!value || merged.has(value)) continue;
+      merged.set(value, option);
+    }
+
+    updateInputFieldDraft(field.id, {
+      options: Array.from(merged.values()),
+      searchable: true,
+    });
+    toast.success(`Merged ${incoming.length} options (${merged.size} total).`);
+  };
+
+  const findPreferredVoiceField = (): InputFieldDraft | null => {
+    const preferredKeys = ["voiceID", "voiceId", "voice", "speakerVoice", "speaker"];
+    for (const key of preferredKeys) {
+      const found = formData.inputFieldDrafts.find((field) => field.key.trim().toLowerCase() === key.toLowerCase());
+      if (found) {
+        return found;
+      }
+    }
+    return null;
+  };
+
+  const syncVoiceCatalogToInputField = (mode: "replace" | "merge") => {
+    const parsedVoices = parseVoiceCatalogValues(formData.voices);
+    if (parsedVoices.length === 0) {
+      toast.error("Voice list is empty. Paste voices first.");
+      return;
+    }
+
+    const incomingOptions = parsedVoices.map((entry) => ({
+      id: createDraftId("opt"),
+      value: entry.value,
+      label: entry.label,
+    }));
+
+    const existingField = findPreferredVoiceField();
+    const defaultFieldKey = formData.provider.trim().toLowerCase().includes("uvoice") ? "voiceID" : "voice";
+
+    if (!existingField) {
+      const nextField = createEmptyInputFieldDraft();
+      nextField.key = defaultFieldKey;
+      nextField.label = defaultFieldKey === "voiceID" ? "Voice ID" : "Voice";
+      nextField.type = "select";
+      nextField.searchable = true;
+      nextField.options = incomingOptions;
+      nextField.defaultRaw = incomingOptions[0]?.value || "";
+      nextField.required = true;
+      setFormData({
+        ...formData,
+        inputFieldDrafts: [...formData.inputFieldDrafts, nextField],
+      });
+      toast.success(`Created "${nextField.key}" field with ${incomingOptions.length} voices.`);
+      return;
+    }
+
+    if (mode === "replace") {
+      const shouldSetDefault = !existingField.defaultRaw.trim()
+        || !incomingOptions.some((option) => option.value === existingField.defaultRaw.trim());
+      updateInputFieldDraft(existingField.id, {
+        searchable: true,
+        options: incomingOptions,
+        ...(shouldSetDefault ? { defaultRaw: incomingOptions[0]?.value || "" } : {}),
+      });
+      toast.success(`Replaced ${existingField.key} options with ${incomingOptions.length} voices.`);
+      return;
+    }
+
+    const merged = new Map<string, InputFieldOptionDraft>();
+    for (const option of existingField.options) {
+      const value = option.value.trim();
+      if (!value || merged.has(value)) continue;
+      merged.set(value, option);
+    }
+    for (const option of incomingOptions) {
+      const value = option.value.trim();
+      if (!value || merged.has(value)) continue;
+      merged.set(value, option);
+    }
+
+    updateInputFieldDraft(existingField.id, {
+      searchable: true,
+      options: Array.from(merged.values()),
+      ...(existingField.defaultRaw.trim().length === 0 ? { defaultRaw: incomingOptions[0]?.value || "" } : {}),
+    });
+    toast.success(`Merged voice list into ${existingField.key} (${merged.size} options).`);
+  };
+
+  const refreshInputFieldOptions = async (field: InputFieldDraft) => {
+    if (field.optionsSourceType === "none") {
+      toast.error("Please configure options source first.");
+      return;
+    }
+    const endpoint = field.optionsSourceEndpoint.trim();
+    if (!endpoint) {
+      toast.error("Options source endpoint is required.");
+      return;
+    }
+
+    const optionsSource: {
+      type: "provider_api" | "public_api";
+      endpoint: string;
+      method?: "GET" | "POST";
+      itemsPath?: string;
+      valueField?: string;
+      labelField?: string;
+      queryParam?: string;
+      valueTransform?: "none" | "before_dash";
+      cacheTtlSeconds?: number;
+      headers?: Record<string, string>;
+      body?: unknown;
+    } = {
+      type: field.optionsSourceType,
+      endpoint,
+      method: field.optionsSourceMethod,
+    };
+    const itemsPath = field.optionsSourceItemsPath.trim();
+    if (itemsPath) optionsSource.itemsPath = itemsPath;
+    const valueField = field.optionsSourceValueField.trim();
+    if (valueField) optionsSource.valueField = valueField;
+    const labelField = field.optionsSourceLabelField.trim();
+    if (labelField) optionsSource.labelField = labelField;
+    const queryParam = field.optionsSourceQueryParam.trim();
+    if (queryParam) optionsSource.queryParam = queryParam;
+    if (field.optionsSourceValueTransform !== "none") {
+      optionsSource.valueTransform = field.optionsSourceValueTransform;
+    }
+
+    const cacheTtlRaw = field.optionsSourceCacheTtlSeconds.trim();
+    if (cacheTtlRaw) {
+      const parsedTtl = Number(cacheTtlRaw);
+      if (!Number.isFinite(parsedTtl) || parsedTtl <= 0) {
+        toast.error("Options source cache TTL must be a positive number.");
+        return;
+      }
+      optionsSource.cacheTtlSeconds = Math.floor(parsedTtl);
+    }
+
+    const headersRaw = field.optionsSourceHeadersRaw.trim();
+    if (headersRaw) {
+      try {
+        const parsed = JSON.parse(headersRaw);
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          toast.error("Options source headers must be a JSON object.");
+          return;
+        }
+        optionsSource.headers = parsed as Record<string, string>;
+      } catch {
+        toast.error("Options source headers JSON is invalid.");
+        return;
+      }
+    }
+
+    const bodyRaw = field.optionsSourceBodyRaw.trim();
+    if (bodyRaw) {
+      try {
+        optionsSource.body = JSON.parse(bodyRaw);
+      } catch {
+        toast.error("Options source body JSON is invalid.");
+        return;
+      }
+    }
+
+    try {
+      const result = await previewFieldOptionsMutation.mutateAsync({
+        provider: formData.provider,
+        optionsSource,
+        limit: 2000,
+      });
+      const merged = new Map<string, InputFieldOptionDraft>();
+      for (const option of field.options) {
+        const value = option.value.trim();
+        if (!value || merged.has(value)) continue;
+        merged.set(value, option);
+      }
+      for (const option of result.options) {
+        const value = option.value.trim();
+        if (!value || merged.has(value)) continue;
+        merged.set(value, {
+          id: createDraftId("opt"),
+          value: option.value,
+          label: option.label,
+        });
+      }
+      updateInputFieldDraft(field.id, {
+        searchable: true,
+        options: Array.from(merged.values()),
+      });
+      toast.success(`Loaded ${result.options.length} options (${merged.size} total).`);
+    } catch (error: any) {
+      toast.error("Failed to refresh options", {
+        description: error?.message || "Unknown error",
+      });
+    }
   };
 
   const updatePricingTierDraft = (tierId: string, patch: Partial<PricingTierDraft>) => {
@@ -1841,12 +2381,31 @@ function ModelForm({
                 id="voices"
                 value={formData.voices}
                 onChange={(e) => setFormData({ ...formData, voices: e.target.value })}
-                placeholder="alloy, echo, fable, onyx, nova, shimmer"
-                rows={2}
+                placeholder={`Adam\nAlice\nMJ0RnG71ty4LH3dvNfSd\n- Leon - Soothing and Grounded`}
+                rows={8}
               />
               <p className="text-xs text-muted-foreground">
-                Comma-separated list of available voice options
+                Supports comma/newline list and VoiceID + label format. VoiceID will be stored in DB;
+                label will be used in searchable dropdown.
               </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => syncVoiceCatalogToInputField("replace")}
+                >
+                  Replace Voice Field Options
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => syncVoiceCatalogToInputField("merge")}
+                >
+                  Merge Into Voice Field
+                </Button>
+              </div>
             </div>
           )}
 
@@ -1940,6 +2499,21 @@ function ModelForm({
           </div>
 
           <div className="grid gap-2">
+            <Label htmlFor="apiConfigRaw">Advanced API Config JSON</Label>
+            <Textarea
+              id="apiConfigRaw"
+              rows={4}
+              value={formData.apiConfigRaw}
+              onChange={(e) => setFormData({ ...formData, apiConfigRaw: e.target.value })}
+              placeholder={`{\n  "omit_text": "true"\n}`}
+              className="font-mono text-xs"
+            />
+            <p className="text-xs text-muted-foreground">
+              Optional extra key/value sent in <code>configJson.apiConfig</code> for model-specific behavior.
+            </p>
+          </div>
+
+          <div className="grid gap-2">
             <Label htmlFor="pricingFormula">Pricing Formula</Label>
             <Select
               value={formData.pricingFormula}
@@ -1952,9 +2526,79 @@ function ModelForm({
                 <SelectItem value="flat">Flat (single price or by resolution)</SelectItem>
                 <SelectItem value="per_duration">Per Duration (5s, 10s...)</SelectItem>
                 <SelectItem value="matrix">Matrix (resolution x duration)</SelectItem>
+                <SelectItem value="per_unit">Per Unit (characters/items)</SelectItem>
               </SelectContent>
             </Select>
           </div>
+
+          {formData.pricingFormula === "per_unit" && (
+            <div className="grid gap-3 rounded-md border border-slate-200 p-3">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="grid gap-1">
+                  <Label className="text-xs text-muted-foreground">Unit Metric</Label>
+                  <Select
+                    value={formData.pricingUnitMetric}
+                    onValueChange={(value: "characters" | "items") => setFormData({ ...formData, pricingUnitMetric: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="characters">Characters</SelectItem>
+                      <SelectItem value="items">Items</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1">
+                  <Label className="text-xs text-muted-foreground">Source Field Key</Label>
+                  <Input
+                    value={formData.pricingUnitField}
+                    onChange={(e) => setFormData({ ...formData, pricingUnitField: e.target.value })}
+                    placeholder="text, prompt, dialogue"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="grid gap-1">
+                  <Label className="text-xs text-muted-foreground">Unit Size</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={formData.pricingUnitSize}
+                    onChange={(e) => setFormData({ ...formData, pricingUnitSize: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+                  />
+                </div>
+                <div className="grid gap-1">
+                  <Label className="text-xs text-muted-foreground">Rounding</Label>
+                  <Select
+                    value={formData.pricingUnitRounding}
+                    onValueChange={(value: "ceil" | "floor" | "round") => setFormData({ ...formData, pricingUnitRounding: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ceil">Ceil</SelectItem>
+                      <SelectItem value="round">Round</SelectItem>
+                      <SelectItem value="floor">Floor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1">
+                  <Label className="text-xs text-muted-foreground">Min Units</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={formData.pricingMinUnits}
+                    onChange={(e) => setFormData({ ...formData, pricingMinUnits: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Example: 70 credits per 1,000 characters = formula <code>per_unit</code>, metric <code>characters</code>, source <code>text</code>, unit size <code>1000</code>, rounding <code>ceil</code>, default tier <code>70</code>.
+              </p>
+            </div>
+          )}
 
           <div className="grid gap-2">
             <Label htmlFor="operationType">Operation Type</Label>
@@ -2138,7 +2782,7 @@ function ModelForm({
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
                       <Select
                         value={field.type}
                         onValueChange={(value) => updateInputFieldDraft(field.id, { type: value as InputFieldType })}
@@ -2168,6 +2812,13 @@ function ModelForm({
                           onCheckedChange={(checked) => updateInputFieldDraft(field.id, { affectsPricing: checked })}
                         />
                       </div>
+                      <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                        <span className="text-sm">Searchable Picker</span>
+                        <Switch
+                          checked={field.searchable}
+                          onCheckedChange={(checked) => updateInputFieldDraft(field.id, { searchable: checked })}
+                        />
+                      </div>
                     </div>
 
                     <div className="grid gap-1">
@@ -2189,6 +2840,126 @@ function ModelForm({
                       </Select>
                     </div>
 
+                    <div className="space-y-2 rounded-md border border-slate-100 p-2">
+                      <div className="grid gap-1">
+                        <Label className="text-xs text-muted-foreground">Options Source</Label>
+                        <Select
+                          value={field.optionsSourceType}
+                          onValueChange={(value) => updateInputFieldDraft(field.id, { optionsSourceType: value as InputFieldOptionsSourceType })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Manual / Static</SelectItem>
+                            <SelectItem value="provider_api">Provider API (uses provider key)</SelectItem>
+                            <SelectItem value="public_api">Public API (HTTPS URL)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {field.optionsSourceType !== "none" && (
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-1 gap-2 md:grid-cols-[2fr_1fr]">
+                            <Input
+                              value={field.optionsSourceEndpoint}
+                              onChange={(e) => updateInputFieldDraft(field.id, { optionsSourceEndpoint: e.target.value })}
+                              placeholder={field.optionsSourceType === "provider_api" ? "/voice/list" : "https://api.example.com/voices"}
+                            />
+                            <Select
+                              value={field.optionsSourceMethod}
+                              onValueChange={(value) => updateInputFieldDraft(field.id, { optionsSourceMethod: value as "GET" | "POST" })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="GET">GET</SelectItem>
+                                <SelectItem value="POST">POST</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                            <Input
+                              value={field.optionsSourceItemsPath}
+                              onChange={(e) => updateInputFieldDraft(field.id, { optionsSourceItemsPath: e.target.value })}
+                              placeholder="Items path (e.g., voices, data.items)"
+                            />
+                            <Input
+                              value={field.optionsSourceQueryParam}
+                              onChange={(e) => updateInputFieldDraft(field.id, { optionsSourceQueryParam: e.target.value })}
+                              placeholder="Query param (optional)"
+                            />
+                          </div>
+                          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                            <Input
+                              value={field.optionsSourceValueField}
+                              onChange={(e) => updateInputFieldDraft(field.id, { optionsSourceValueField: e.target.value })}
+                              placeholder="Value field (e.g., id, voiceID, name)"
+                            />
+                            <Input
+                              value={field.optionsSourceLabelField}
+                              onChange={(e) => updateInputFieldDraft(field.id, { optionsSourceLabelField: e.target.value })}
+                              placeholder="Label field (e.g., name)"
+                            />
+                          </div>
+                          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                            <Select
+                              value={field.optionsSourceValueTransform}
+                              onValueChange={(value) => updateInputFieldDraft(field.id, { optionsSourceValueTransform: value as "none" | "before_dash" })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Value Transform: None</SelectItem>
+                                <SelectItem value="before_dash">Value Transform: Before Dash</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Input
+                              value={field.optionsSourceCacheTtlSeconds}
+                              onChange={(e) => updateInputFieldDraft(field.id, { optionsSourceCacheTtlSeconds: e.target.value })}
+                              placeholder="Cache TTL seconds (optional)"
+                            />
+                          </div>
+                          <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                            <Textarea
+                              rows={3}
+                              value={field.optionsSourceHeadersRaw}
+                              onChange={(e) => updateInputFieldDraft(field.id, { optionsSourceHeadersRaw: e.target.value })}
+                              placeholder='Headers JSON (optional), e.g. {"x-api-version":"1"}'
+                              className="font-mono text-xs"
+                            />
+                            <Textarea
+                              rows={3}
+                              value={field.optionsSourceBodyRaw}
+                              onChange={(e) => updateInputFieldDraft(field.id, { optionsSourceBodyRaw: e.target.value })}
+                              placeholder='Body JSON (optional for POST), e.g. {"query":"{{query}}"}'
+                              className="font-mono text-xs"
+                            />
+                          </div>
+                          <div className="flex justify-end">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => { void refreshInputFieldOptions(field); }}
+                              disabled={previewFieldOptionsMutation.isPending}
+                            >
+                              {previewFieldOptionsMutation.isPending && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}
+                              <RefreshCw className="mr-1 h-3.5 w-3.5" />
+                              Fetch / Refresh Options
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {field.optionsSourceType === "provider_api"
+                              ? "Provider API source uses the provider API key configured in Admin > Media Providers. Endpoint must be relative path."
+                              : "Public API source requires full HTTPS URL and does not use provider credentials."}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
                     {field.type === "boolean" ? (
                       <div className="flex items-center justify-between rounded-md border px-3 py-2">
                         <span className="text-sm">Default Value</span>
@@ -2198,9 +2969,26 @@ function ModelForm({
                         />
                       </div>
                     ) : field.type === "array" ? (
-                      <p className="text-xs text-muted-foreground italic">
-                        Values are provided at runtime — no default needed.
-                      </p>
+                      <div className="grid gap-2">
+                        <p className="text-xs text-muted-foreground italic">
+                          Values are provided at runtime — no default needed.
+                        </p>
+                        <div className="grid gap-1">
+                          <Label className="text-xs text-muted-foreground">
+                            Item Template JSON (optional)
+                          </Label>
+                          <Textarea
+                            rows={4}
+                            value={field.itemTemplateRaw}
+                            onChange={(e) => updateInputFieldDraft(field.id, { itemTemplateRaw: e.target.value })}
+                            placeholder={`{\n  "text": "{{value}}",\n  "voice": "{{fields.voice}}"\n}`}
+                            className="font-mono text-xs"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Supports placeholders: <code>{"{{value}}"}</code>, <code>{"{{item}}"}</code>, <code>{"{{prompt}}"}</code>, <code>{"{{fields.someField}}"}</code>.
+                          </p>
+                        </div>
+                      </div>
                     ) : field.type === "library_file" ? (
                       <div className="grid gap-1">
                         <Label className="text-xs text-muted-foreground">
@@ -2215,7 +3003,7 @@ function ModelForm({
                           User picks a file from the Library at runtime — no default needed.
                         </p>
                       </div>
-                    ) : field.type === "select" ? (
+                    ) : (field.type === "select" || field.searchable || field.optionsSourceType !== "none") ? (
                       <div className="space-y-2 rounded-md border border-slate-100 p-2">
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-medium">Options</span>
@@ -2223,6 +3011,44 @@ function ModelForm({
                             <Plus className="mr-1 h-3.5 w-3.5" />
                             Add Option
                           </Button>
+                        </div>
+                        <div className="grid gap-1">
+                          <Label className="text-xs text-muted-foreground">
+                            Bulk Import (supports plain list or VoiceID + "- Label")
+                          </Label>
+                          <Textarea
+                            rows={5}
+                            value={bulkOptionsByField[field.id] ?? ""}
+                            onChange={(e) => setBulkOptionsText(field.id, e.target.value)}
+                            placeholder={`Adam\nAlice\nMJ0RnG71ty4LH3dvNfSd\n- Leon - Soothing and Grounded`}
+                            className="font-mono text-xs"
+                          />
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => applyBulkOptionsToField(field, "replace")}
+                            >
+                              Replace With Imported
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => applyBulkOptionsToField(field, "merge")}
+                            >
+                              Merge Imported
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setBulkOptionsText(field.id, "")}
+                            >
+                              Clear Input
+                            </Button>
+                          </div>
                         </div>
                         {field.options.length === 0 ? (
                           <p className="text-xs text-muted-foreground">No options yet.</p>
@@ -2252,33 +3078,44 @@ function ModelForm({
                           ))
                         )}
 
-                        <div className="grid gap-1">
-                          <Label className="text-xs text-muted-foreground">Default Option</Label>
-                          <Select
-                            value={
-                              field.options.some(
-                                (option) => option.value === field.defaultRaw && option.value.trim().length > 0,
-                              )
-                                ? field.defaultRaw
-                                : "__none__"
-                            }
-                            onValueChange={(value) => updateInputFieldDraft(field.id, { defaultRaw: value === "__none__" ? "" : value })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select default option" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__none__">No default</SelectItem>
-                              {field.options
-                                .filter((option) => option.value.trim().length > 0)
-                                .map((option) => (
-                                <SelectItem key={option.id} value={option.value}>
-                                  {option.label.trim() || option.value}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                        {field.type === "select" ? (
+                          <div className="grid gap-1">
+                            <Label className="text-xs text-muted-foreground">Default Option</Label>
+                            <Select
+                              value={
+                                field.options.some(
+                                  (option) => option.value === field.defaultRaw && option.value.trim().length > 0,
+                                )
+                                  ? field.defaultRaw
+                                  : "__none__"
+                              }
+                              onValueChange={(value) => updateInputFieldDraft(field.id, { defaultRaw: value === "__none__" ? "" : value })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select default option" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__none__">No default</SelectItem>
+                                {field.options
+                                  .filter((option) => option.value.trim().length > 0)
+                                  .map((option) => (
+                                  <SelectItem key={option.id} value={option.value}>
+                                    {option.label.trim() || option.value}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ) : (
+                          <div className="grid gap-1">
+                            <Label className="text-xs text-muted-foreground">Default Value</Label>
+                            <Input
+                              value={field.defaultRaw}
+                              onChange={(e) => updateInputFieldDraft(field.id, { defaultRaw: e.target.value })}
+                              placeholder="Default value"
+                            />
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="grid gap-1">

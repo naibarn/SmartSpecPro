@@ -33,6 +33,7 @@ import {
   recordModelUsage,
   type LimiterStats,
 } from "../services/llmRateLimiter";
+import { buildModelProviderMapLookupCondition } from "../services/modelLookup";
 import { isRedisAvailable } from "../services/redis";
 
 // In-memory fallback for when Redis/Bottleneck is not available
@@ -242,6 +243,7 @@ function formatErrorResponse(error: ParsedError): object {
 
 // Cached provider config (refreshed periodically)
 interface LlmProviderConfig {
+  providerId?: number;
   providerName: string;
   baseUrl: string;
   apiKey: string;
@@ -269,8 +271,6 @@ type ResolvedModel = {
 async function resolveProviderModel(modelId: string, providerId: number): Promise<ResolvedModel> {
   try {
     const { modelProviderMap } = await import("../../drizzle/schema");
-
-    // First try exact modelId match
     let [mapping] = await db
       .select({
         providerModelId: modelProviderMap.providerModelId,
@@ -278,31 +278,11 @@ async function resolveProviderModel(modelId: string, providerId: number): Promis
       })
       .from(modelProviderMap)
       .where(and(
-        eq(modelProviderMap.modelId, modelId),
+        buildModelProviderMapLookupCondition(modelId),
         eq(modelProviderMap.providerId, providerId),
         eq(modelProviderMap.isEnabled, true)
       ))
       .limit(1);
-
-    // If not found, try matching on providerModelId (for backwards compatibility)
-    if (!mapping) {
-      [mapping] = await db
-        .select({
-          providerModelId: modelProviderMap.providerModelId,
-          apiStyle: modelProviderMap.apiStyle,
-        })
-        .from(modelProviderMap)
-        .where(and(
-          eq(modelProviderMap.providerModelId, modelId),
-          eq(modelProviderMap.providerId, providerId),
-          eq(modelProviderMap.isEnabled, true)
-        ))
-        .limit(1);
-
-      if (mapping) {
-        debugLog("LLM", "Resolved model via providerModelId fallback", { modelId, providerId });
-      }
-    }
 
     if (!mapping) return null;
 
@@ -323,8 +303,6 @@ async function resolveProviderModel(modelId: string, providerId: number): Promis
 async function resolveProviderModelAny(modelId: string): Promise<ResolvedModel> {
   try {
     const { modelProviderMap } = await import("../../drizzle/schema");
-
-    // Try by internal modelId first
     let [mapping] = await db
       .select({
         providerModelId: modelProviderMap.providerModelId,
@@ -332,27 +310,11 @@ async function resolveProviderModelAny(modelId: string): Promise<ResolvedModel> 
       })
       .from(modelProviderMap)
       .where(and(
-        eq(modelProviderMap.modelId, modelId),
+        buildModelProviderMapLookupCondition(modelId),
         eq(modelProviderMap.isEnabled, true),
       ))
       .orderBy(asc(modelProviderMap.priority))
       .limit(1);
-
-    // Fallback: try matching on providerModelId directly
-    if (!mapping) {
-      [mapping] = await db
-        .select({
-          providerModelId: modelProviderMap.providerModelId,
-          apiStyle: modelProviderMap.apiStyle,
-        })
-        .from(modelProviderMap)
-        .where(and(
-          eq(modelProviderMap.providerModelId, modelId),
-          eq(modelProviderMap.isEnabled, true),
-        ))
-        .orderBy(asc(modelProviderMap.priority))
-        .limit(1);
-    }
 
     if (!mapping) return null;
     return {
@@ -372,6 +334,7 @@ async function getLlmProviderById(providerId: number): Promise<LlmProviderConfig
   try {
     const [provider] = await db
       .select({
+        providerId: llmProviders.id,
         providerName: llmProviders.providerName,
         baseUrl: llmProviders.baseUrl,
         apiKeyEncrypted: llmProviders.apiKeyEncrypted,
@@ -392,6 +355,7 @@ async function getLlmProviderById(providerId: number): Promise<LlmProviderConfig
     }
 
     return {
+      providerId: provider.providerId,
       providerName: provider.providerName,
       baseUrl: provider.baseUrl,
       apiKey,
@@ -418,6 +382,7 @@ async function getActiveLlmProvider(): Promise<LlmProviderConfig | null> {
     // Get the first enabled provider with an API key
     const [provider] = await db
       .select({
+        providerId: llmProviders.id,
         providerName: llmProviders.providerName,
         baseUrl: llmProviders.baseUrl,
         apiKeyEncrypted: llmProviders.apiKeyEncrypted,
@@ -443,6 +408,7 @@ async function getActiveLlmProvider(): Promise<LlmProviderConfig | null> {
     }
 
     cachedProvider = {
+      providerId: provider.providerId,
       providerName: provider.providerName,
       baseUrl: provider.baseUrl,
       apiKey,
@@ -1157,7 +1123,7 @@ async function proxyChatWithCredits(
           // Log to providerUsageLog for cost correlation
           logCostRequest({
             userId,
-            providerId: provider.providerId,
+            providerId: provider.providerId ?? preferredProviderId ?? 0,
             modelUsed: model,
             inputTokens,
             outputTokens,

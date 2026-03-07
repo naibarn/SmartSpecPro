@@ -178,11 +178,18 @@ export const usageRouter = router({
       const resolvedTraceId = input.traceId || llmRow?.traceId || mediaRow?.traceId;
       let entries: any[] = [];
       if (resolvedTraceId) {
-        const date = input.date ? new Date(input.date) : new Date();
-        entries = await auditLogger.readEntries({
-          date,
+        const preferredDate =
+          input.date
+            ? new Date(`${input.date}T00:00:00.000Z`)
+            : llmRow?.createdAt
+              ? new Date(llmRow.createdAt)
+              : mediaRow?.createdAt
+                ? new Date(mediaRow.createdAt)
+                : new Date();
+        entries = await readAuditEntriesWithFallback({
           traceId: resolvedTraceId,
-          limit: 50,
+          preferredDate,
+          limit: 100,
         });
       }
 
@@ -396,6 +403,7 @@ async function fetchUserTransactions(
       costUsd: providerUsageLog.costUsd,
       statusCode: providerUsageLog.statusCode,
       errorType: providerUsageLog.errorType,
+      errorMessage: providerUsageLog.errorMessage,
       responseTimeMs: providerUsageLog.responseTimeMs,
       inputTokens: providerUsageLog.inputTokens,
       outputTokens: providerUsageLog.outputTokens,
@@ -425,6 +433,7 @@ async function fetchUserTransactions(
       costUsd: apiAuditEvents.costUsd,
       statusCode: apiAuditEvents.statusCode,
       errorType: sql<string | null>`${apiAuditEvents.errorMessage}`,
+      errorMessage: apiAuditEvents.errorMessage,
       responseTimeMs: apiAuditEvents.responseTimeMs,
       inputTokens: sql<number | null>`null::int`,
       outputTokens: sql<number | null>`null::int`,
@@ -513,6 +522,7 @@ async function fetchAdminTransactions(
         costUsd: providerUsageLog.costUsd,
         statusCode: providerUsageLog.statusCode,
         errorType: providerUsageLog.errorType,
+        errorMessage: providerUsageLog.errorMessage,
         responseTimeMs: providerUsageLog.responseTimeMs,
         inputTokens: providerUsageLog.inputTokens,
         outputTokens: providerUsageLog.outputTokens,
@@ -547,6 +557,7 @@ async function fetchAdminTransactions(
         costUsd: apiAuditEvents.costUsd,
         statusCode: apiAuditEvents.statusCode,
         errorType: sql<string | null>`${apiAuditEvents.errorMessage}`,
+        errorMessage: apiAuditEvents.errorMessage,
         responseTimeMs: apiAuditEvents.responseTimeMs,
         inputTokens: sql<number | null>`null::int`,
         outputTokens: sql<number | null>`null::int`,
@@ -584,4 +595,68 @@ async function fetchAdminTransactions(
     transactions: merged,
     total: llmTotal + mediaTotal,
   };
+}
+
+function toIsoDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function addDays(date: Date, days: number): Date {
+  const next = new Date(date);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next;
+}
+
+async function readAuditEntriesWithFallback(opts: {
+  traceId: string;
+  preferredDate: Date;
+  limit?: number;
+}): Promise<any[]> {
+  const limit = opts.limit ?? 100;
+  const merged = new Map<string, any>();
+  const seenDates = new Set<string>();
+
+  const collect = async (date: Date) => {
+    const day = toIsoDate(date);
+    if (seenDates.has(day)) return;
+    seenDates.add(day);
+
+    const rows = await auditLogger.readEntries({
+      date,
+      traceId: opts.traceId,
+      limit,
+    });
+    for (const row of rows) {
+      const key = [
+        row.timestamp ?? "",
+        row.eventType ?? "",
+        row.model ?? "",
+        row.statusCode ?? "",
+        row.requestType ?? "",
+      ].join("|");
+      if (!merged.has(key)) {
+        merged.set(key, row);
+      }
+    }
+  };
+
+  for (const offset of [-1, 0, 1]) {
+    await collect(addDays(opts.preferredDate, offset));
+  }
+
+  if (merged.size === 0) {
+    const today = new Date();
+    for (let offset = 0; offset > -7; offset -= 1) {
+      await collect(addDays(today, offset));
+      if (merged.size >= limit) break;
+    }
+  }
+
+  return [...merged.values()]
+    .sort((a, b) => {
+      const ta = a?.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const tb = b?.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return ta - tb;
+    })
+    .slice(0, limit);
 }

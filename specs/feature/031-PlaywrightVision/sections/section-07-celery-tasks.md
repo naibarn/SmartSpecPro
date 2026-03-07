@@ -1,0 +1,1 @@
+Now let me look at existing Celery task patterns and the celery app configuration.

@@ -29,6 +29,12 @@ from app.tasks.agency_creator_task import (
     create_agency_discover_task,
     create_agency_design_task,
 )
+from app.tasks.automation_copilot_task import (
+    automation_analyze_task,
+    automation_execute_task,
+    browser_pool_health_check,
+    automation_credit_reconciliation,
+)
 try:
     from app.tasks.presentation_render import render_presentation
 except ModuleNotFoundError:
@@ -54,6 +60,10 @@ __all__ = [
     "detect_stuck_sandbox_jobs",
     "create_agency_discover_task",
     "create_agency_design_task",
+    "automation_analyze_task",
+    "automation_execute_task",
+    "browser_pool_health_check",
+    "automation_credit_reconciliation",
 ]
 
 if render_presentation is not None:

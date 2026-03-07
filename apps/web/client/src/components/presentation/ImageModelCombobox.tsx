@@ -18,15 +18,37 @@ interface ImageModelComboboxProps {
   value: string;
   onValueChange: (modelId: string) => void;
   disabled?: boolean;
-  mediaType?: "image" | "video";
+  mediaType?: "image" | "video" | "audio";
 }
 
 interface ImageModelOption {
   id: string;
   name: string;
+  description?: string;
   provider?: string;
   creditCost?: number;
   configJson?: unknown;
+}
+
+function inferUvoiceTierLabel(modelId: string | undefined): string | null {
+  const normalized = String(modelId || "").trim().toLowerCase();
+  if (normalized.endsWith("/tts-premium")) return "Premium";
+  if (normalized.endsWith("/tts-natural")) return "Natural";
+  if (normalized.endsWith("/tts-standard")) return "Standard";
+  return null;
+}
+
+function formatModelLabel(model: ImageModelOption | undefined, mediaType: "image" | "video" | "audio"): string | null {
+  if (!model) {
+    return null;
+  }
+  if (mediaType === "audio" && model.provider?.trim().toLowerCase() === "uvoice") {
+    const tier = inferUvoiceTierLabel(model.id);
+    if (tier) {
+      return `UVoice ${tier}`;
+    }
+  }
+  return model.name;
 }
 
 function normalizeGenerateType(configJson: unknown): string | null {
@@ -66,13 +88,19 @@ export function ImageModelCombobox({
 
   const models = (modelsQuery.data?.models ?? []) as ImageModelOption[];
   const compatibleModels =
-    mediaType === "video" ? models : models.filter(isTextToImageModel);
+    mediaType === "image" ? models.filter(isTextToImageModel) : models;
   const defaultModelId =
     compatibleModels[0]?.id ||
     (mediaType === "video"
       ? modelsQuery.data?.defaults?.video
-      : modelsQuery.data?.defaults?.image) ||
-    (mediaType === "video" ? "veo-3-1" : "flux-2.0");
+      : mediaType === "audio"
+        ? modelsQuery.data?.defaults?.audio
+        : modelsQuery.data?.defaults?.image) ||
+    (mediaType === "video"
+      ? "veo-3-1"
+      : mediaType === "audio"
+        ? "elevenlabs-tts"
+        : "flux-2.0");
 
   useEffect(() => {
     if (open && triggerRef.current) {
@@ -83,9 +111,11 @@ export function ImageModelCombobox({
   const selectedModel = models.find(
     (m: { id: string }) => m.id === value,
   );
+  const defaultModel = compatibleModels.find((model) => model.id === defaultModelId)
+    ?? models.find((model) => model.id === defaultModelId);
   const displayLabel = value
-    ? selectedModel?.name ?? value
-    : `Default (${defaultModelId})`;
+    ? formatModelLabel(selectedModel, mediaType) ?? value
+    : `Default (${formatModelLabel(defaultModel, mediaType) ?? defaultModelId})`;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -114,7 +144,7 @@ export function ImageModelCombobox({
             <CommandGroup>
               {/* Default option */}
               <CommandItem
-                value={`Default (${defaultModelId})`}
+                value={`Default (${defaultModelId}) ${defaultModelId}`}
                 onSelect={() => {
                   onValueChange("");
                   setOpen(false);
@@ -126,7 +156,7 @@ export function ImageModelCombobox({
                     !value ? "opacity-100" : "opacity-0",
                   )}
                 />
-                <span>Default ({defaultModelId})</span>
+                <span>Default ({formatModelLabel(defaultModel, mediaType) ?? defaultModelId})</span>
               </CommandItem>
 
               {modelsQuery.isLoading && (
@@ -138,7 +168,7 @@ export function ImageModelCombobox({
               {compatibleModels.map((model) => (
                 <CommandItem
                   key={model.id}
-                  value={model.name}
+                  value={`${model.name} ${model.id} ${model.provider ?? ""}`}
                   onSelect={() => {
                     onValueChange(model.id);
                     setOpen(false);
@@ -151,7 +181,17 @@ export function ImageModelCombobox({
                     )}
                   />
                   <div className="flex flex-1 items-center gap-2 overflow-hidden">
-                    <span className="truncate font-medium">{model.name}</span>
+                    <span className="truncate font-medium">
+                      {formatModelLabel(model, mediaType) ?? model.name}
+                    </span>
+                    {mediaType === "audio" && model.provider?.trim().toLowerCase() === "uvoice" && inferUvoiceTierLabel(model.id) ? (
+                      <Badge
+                        variant="outline"
+                        className="shrink-0 px-1.5 py-0 text-[10px]"
+                      >
+                        {inferUvoiceTierLabel(model.id)}
+                      </Badge>
+                    ) : null}
                     {model.provider && (
                       <Badge
                         variant="outline"
@@ -172,7 +212,7 @@ export function ImageModelCombobox({
                   </div>
                 </CommandItem>
               ))}
-              {compatibleModels.length < models.length && (
+              {mediaType === "image" && compatibleModels.length < models.length && (
                 <div className="px-2 pb-2 pt-1 text-[11px] text-muted-foreground">
                   Hidden incompatible models (image-to-image / edit only)
                 </div>

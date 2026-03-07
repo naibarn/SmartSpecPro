@@ -224,6 +224,33 @@ describe("resolveProviders", () => {
     expect(result[0].providerModelId).toBe("kimi-k2.5-chat");
   });
 
+  it("resolves provider-qualified model IDs through generic mappings", async () => {
+    const provider = makeCandidate({
+      providerId: 2,
+      providerModelId: "gpt-5.2",
+      providerName: "OpenCode",
+    });
+
+    let callCount = 0;
+    mockDbSelect.mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return {
+          from: vi.fn().mockReturnValue({
+            innerJoin: vi.fn().mockReturnValue({
+              where: vi.fn().mockResolvedValue([provider]),
+            }),
+          }),
+        };
+      }
+      return { from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) }) };
+    });
+
+    const result = await resolveProviders("openai/gpt-5.2");
+    expect(result).toHaveLength(1);
+    expect(result[0]?.providerModelId).toBe("gpt-5.2");
+  });
+
   it("routing rule precedence: exact match wins over glob over wildcard", async () => {
     const provider = makeCandidate({ providerId: 1 });
 
@@ -476,6 +503,41 @@ describe("executeWithFallback", () => {
     });
 
     expect(result.type).toBe("error");
+  });
+
+  it("all providers failing includes per-attempt provider/status summary", async () => {
+    const provider1 = makeCandidate({ providerId: 1, providerName: "OpenRouter-A" });
+    const provider2 = makeCandidate({ providerId: 2, providerName: "OpenRouter-B" });
+    setupProviderResolution([provider1, provider2]);
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 502,
+        text: async () => JSON.stringify({ error: { code: "upstream_timeout", message: "provider timed out" } }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        text: async () => "Internal Server Error",
+      });
+
+    const result = await executeWithFallback({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: "Hi" }],
+      stream: false,
+      userId: 1,
+    });
+
+    expect(result.type).toBe("error");
+    if (result.type === "error") {
+      expect(result.error).toContain("All providers failed after 2 attempt(s)");
+      expect(result.error).toContain("OpenRouter-A");
+      expect(result.error).toContain("HTTP 502");
+      expect(result.error).toContain("upstream_timeout");
+      expect(result.error).toContain("OpenRouter-B");
+      expect(result.error).toContain("HTTP 500");
+    }
   });
 
   it("recordSuccess called on success, recordFailure on failure", async () => {

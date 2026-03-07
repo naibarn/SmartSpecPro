@@ -94,6 +94,7 @@ export function ShareDialog({
     onSuccess: () => {
       toast.success("Share added");
       trpcUtils.library.getItemShares.invalidate({ itemId });
+      trpcUtils.library.listDocuments.invalidate();
       setSelectedUserId(null);
       setSelectedUserName("");
       setSelectedGroupId("");
@@ -109,6 +110,7 @@ export function ShareDialog({
     onSuccess: () => {
       toast.success("Share removed");
       trpcUtils.library.getItemShares.invalidate({ itemId });
+      trpcUtils.library.listDocuments.invalidate();
     },
     onError: (error) => {
       toast.error(error.message || "Failed to remove share");
@@ -120,6 +122,7 @@ export function ShareDialog({
       onSuccess: () => {
         toast.success("Permission updated");
         trpcUtils.library.getItemShares.invalidate({ itemId });
+        trpcUtils.library.listDocuments.invalidate();
       },
       onError: (error) => {
         toast.error(error.message || "Failed to update permission");

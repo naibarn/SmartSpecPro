@@ -24,10 +24,11 @@ import { addMediaTaskToLibrary } from "../services/mediaLibraryService";
 import { isLibraryEnabledForTenant } from "../services/libraryFeatureFlags";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import { getDb } from "../db";
-import { mediaModels } from "../../drizzle/schema";
+import { mediaModels, mediaProviders, users } from "../../drizzle/schema";
 import { eq, asc, and } from "drizzle-orm";
 import { shouldUseSandbox, dispatchToSandbox } from "../services/sandbox/dispatchService";
 import { checkAbuseGuard, hashPrompt } from "../services/abuseGuard";
+import { decrypt } from "../services/crypto";
 
 // Helper to create secure token for Python backend (fallback)
 function createMediaToken(userId: number): string {
@@ -108,6 +109,541 @@ async function getModelWithPricing(modelId: string): Promise<{
   return { creditCost: hardcoded?.creditCost ?? 10, configJson: null };
 }
 
+function resolveConfiguredMaxPromptLength(configJson: Record<string, any> | null | undefined): number | null {
+  if (!configJson || typeof configJson !== "object") {
+    return null;
+  }
+
+  const raw = configJson.maxPromptLength;
+  if (typeof raw !== "number" && typeof raw !== "string") {
+    return null;
+  }
+
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+
+  return Math.floor(parsed);
+}
+
+type ModelFieldOption = {
+  value: string;
+  label: string;
+  previewUrl?: string;
+};
+
+type ProviderApiOptionsSource = {
+  type?: string;
+  endpoint?: string;
+  method?: string;
+  headers?: Record<string, unknown>;
+  queryParam?: string;
+  body?: unknown;
+  itemsPath?: string;
+  valueField?: string;
+  labelField?: string;
+  previewField?: string;
+  previewBaseUrl?: string;
+  valueTransform?: string;
+  cacheTtlSeconds?: number;
+  voiceLanguageTag?: string;
+};
+
+const UVOICE_PUBLIC_VOICE_FILTERS = ["Standard", "Natural", "Premium"] as const;
+type UvoiceVoiceTier = "standard" | "natural" | "premium";
+
+function buildUvoiceVoiceSources(
+  languageTag: "en" | "th",
+  filters: readonly (typeof UVOICE_PUBLIC_VOICE_FILTERS)[number][],
+): ProviderApiOptionsSource[] {
+  return filters.map((filter) => ({
+    type: "public_api",
+    endpoint: `https://uvoice.app/?getVoice=true&lang_selected=${languageTag}&filter=${filter}&source=API-DOCS`,
+    method: "GET",
+    itemsPath: "",
+    valueField: "voiceID",
+    labelField: "displayName",
+    previewField: "path",
+    previewBaseUrl: "https://uvoice.app/",
+    cacheTtlSeconds: 86400,
+    voiceLanguageTag: languageTag,
+  }));
+}
+
+const modelFieldOptionsCache = new Map<string, { expiresAt: number; options: ModelFieldOption[] }>();
+const uvoicePreviewConfigCache: { expiresAt: number; config: { baseUrl: string; token: string } | null } = {
+  expiresAt: 0,
+  config: null,
+};
+
+function isVoiceFieldKey(fieldKey: string): boolean {
+  const normalizedFieldKey = fieldKey.trim().toLowerCase();
+  return normalizedFieldKey === "voiceid" || normalizedFieldKey === "voice_id" || normalizedFieldKey === "voice";
+}
+
+function getPathValue(source: unknown, path: string): unknown {
+  if (!path) return source;
+  const segments = path.split(".").filter(Boolean);
+  let current: unknown = source;
+  for (const segment of segments) {
+    if (!current || typeof current !== "object") {
+      return undefined;
+    }
+    current = (current as Record<string, unknown>)[segment];
+  }
+  return current;
+}
+
+function normalizeFieldOptions(raw: unknown): ModelFieldOption[] {
+  if (!Array.isArray(raw)) return [];
+
+  const options: ModelFieldOption[] = [];
+  for (const item of raw) {
+    if (typeof item === "string") {
+      const value = item.trim();
+      if (!value) continue;
+      options.push({ value, label: value });
+      continue;
+    }
+    if (!item || typeof item !== "object") continue;
+    const record = item as Record<string, unknown>;
+    const valueRaw = record.value;
+    const labelRaw = record.label;
+    const previewUrlRaw = record.previewUrl;
+    const value = typeof valueRaw === "string" ? valueRaw.trim() : "";
+    const label = typeof labelRaw === "string" ? labelRaw.trim() : value;
+    const previewUrl = typeof previewUrlRaw === "string" ? previewUrlRaw.trim() : "";
+    if (!value) continue;
+    options.push({ value, label: label || value, ...(previewUrl ? { previewUrl } : {}) });
+  }
+  return options;
+}
+
+function dedupeFieldOptions(options: ModelFieldOption[]): ModelFieldOption[] {
+  const seen = new Set<string>();
+  const deduped: ModelFieldOption[] = [];
+  for (const option of options) {
+    const key = option.value.trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(option);
+  }
+  return deduped;
+}
+
+function applyOptionValueTransform(value: unknown, transform?: string): string {
+  if (typeof value !== "string") {
+    return "";
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  if (transform === "before_dash") {
+    return trimmed.split(/\s*-\s*/, 1)[0]?.trim() || trimmed;
+  }
+
+  return trimmed;
+}
+
+function resolvePreviewUrl(
+  item: unknown,
+  previewField: string,
+  previewBaseUrl?: string,
+): string | undefined {
+  if (!previewField) {
+    return undefined;
+  }
+  const rawPreview = getPathValue(item, previewField);
+  if (typeof rawPreview !== "string") {
+    return undefined;
+  }
+  const trimmed = rawPreview.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    return /^https:\/\//i.test(trimmed) ? trimmed : undefined;
+  }
+
+  if (previewBaseUrl && /^https:\/\//i.test(previewBaseUrl)) {
+    try {
+      return new URL(trimmed.replace(/^\//, ""), previewBaseUrl).toString();
+    } catch {
+      return undefined;
+    }
+  }
+
+  return undefined;
+}
+
+function buildUvoicePreviewUrl(
+  relativePath: string,
+  config: { baseUrl: string; token: string },
+): string | undefined {
+  const cleanedPath = relativePath.trim().replace(/^\//, "");
+  if (!cleanedPath) {
+    return undefined;
+  }
+  if (!/^https:\/\//i.test(config.baseUrl)) {
+    return undefined;
+  }
+  const token = config.token.trim();
+  const normalizedToken = token ? (token.startsWith("?") ? token : `?${token}`) : "";
+  return `${config.baseUrl}${cleanedPath}${normalizedToken}`;
+}
+
+function isThaiTranslationLanguage(value: string): boolean {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+  return normalized === "thai" || normalized.startsWith("th");
+}
+
+function inferUvoiceVoiceTierFromModelId(modelId: string): UvoiceVoiceTier | null {
+  const normalized = modelId.trim().toLowerCase();
+  if (normalized.endsWith("/tts-premium")) return "premium";
+  if (normalized.endsWith("/tts-natural")) return "natural";
+  if (normalized.endsWith("/tts-standard")) return "standard";
+  return null;
+}
+
+function getUvoiceVoiceOptionSources(modelId: string, _includeThai: boolean): ProviderApiOptionsSource[] {
+  const tier = inferUvoiceVoiceTierFromModelId(modelId);
+  const filters: readonly (typeof UVOICE_PUBLIC_VOICE_FILTERS)[number][] = tier === "premium"
+    ? ["Premium"]
+    : tier === "natural"
+      ? ["Natural"]
+      : tier === "standard"
+        ? ["Standard"]
+        : UVOICE_PUBLIC_VOICE_FILTERS;
+  return [
+    ...buildUvoiceVoiceSources("en", filters),
+    ...buildUvoiceVoiceSources("th", filters),
+  ];
+}
+
+function applyUvoiceLanguagePrefix(label: string, languageTag: string): string {
+  const normalizedTag = languageTag.trim().toLowerCase();
+  if (!normalizedTag) {
+    return label;
+  }
+  const prefix = `${normalizedTag} - `;
+  return label.toLowerCase().startsWith(prefix) ? label : `${prefix}${label}`;
+}
+
+function buildUvoiceVoiceLabel(item: unknown, languageTag: string): string | null {
+  if (!item || typeof item !== "object") {
+    return null;
+  }
+  const nameRaw = getPathValue(item, "displayName");
+  const fallbackNameRaw = getPathValue(item, "name");
+  const ageRaw = getPathValue(item, "age");
+
+  const name = typeof nameRaw === "string" && nameRaw.trim().length > 0
+    ? nameRaw.trim()
+    : typeof fallbackNameRaw === "string" && fallbackNameRaw.trim().length > 0
+      ? fallbackNameRaw.trim()
+      : "";
+  if (!name) {
+    return null;
+  }
+  const age = typeof ageRaw === "string" || typeof ageRaw === "number"
+    ? String(ageRaw).trim()
+    : "";
+  const normalizedAge = age.toUpperCase();
+  const ageLabel = normalizedAge === "A"
+    ? "Adult"
+    : normalizedAge === "YA"
+      ? "Young Adult"
+      : normalizedAge === "C"
+      ? "Child"
+      : age;
+  const label = ageLabel ? `${name} (${ageLabel})` : name;
+  return applyUvoiceLanguagePrefix(label, languageTag);
+}
+
+async function fetchUvoiceCombinedVoiceOptions(
+  modelId: string,
+  query?: string,
+  includeThai = false,
+): Promise<ModelFieldOption[]> {
+  const sources = getUvoiceVoiceOptionSources(modelId, includeThai);
+  const merged: ModelFieldOption[] = [];
+  for (const source of sources) {
+    const options = await fetchProviderApiFieldOptions("uvoice", source, query);
+    merged.push(...options);
+  }
+  return dedupeFieldOptions(merged);
+}
+
+async function getUserTranslationLanguagePreference(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  userId: number,
+): Promise<string> {
+  const [user] = await db
+    .select({ userPreferences: users.userPreferences })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  const prefs = (user?.userPreferences as Record<string, unknown> | null | undefined) ?? {};
+  const rawLanguage = prefs.translationLanguage;
+  return typeof rawLanguage === "string" ? rawLanguage : "";
+}
+
+async function resolveUvoicePreviewConfig(): Promise<{ baseUrl: string; token: string } | null> {
+  const now = Date.now();
+  if (uvoicePreviewConfigCache.config && uvoicePreviewConfigCache.expiresAt > now) {
+    return uvoicePreviewConfigCache.config;
+  }
+
+  try {
+    const response = await fetch("https://uvoice.app/", {
+      headers: { Accept: "text/html" },
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const html = await response.text();
+    const baseUrlMatch = html.match(/var\s+apiBaseAudioUrl\s*=\s*"([^"]+)"/i);
+    const tokenMatch = html.match(/var\s+storageToken\s*=\s*"([^"]+)"/i);
+    const baseUrl = baseUrlMatch?.[1]?.trim() ?? "";
+    const token = tokenMatch?.[1]?.trim() ?? "";
+    if (!baseUrl || !token) {
+      return null;
+    }
+
+    const config = { baseUrl, token };
+    uvoicePreviewConfigCache.config = config;
+    uvoicePreviewConfigCache.expiresAt = now + (5 * 60 * 1000);
+    return config;
+  } catch {
+    return null;
+  }
+}
+
+function interpolateTemplateValue(template: unknown, query: string): unknown {
+  if (typeof template === "string") {
+    return template.replaceAll("{{query}}", query);
+  }
+  if (Array.isArray(template)) {
+    return template.map((entry) => interpolateTemplateValue(entry, query));
+  }
+  if (!template || typeof template !== "object") {
+    return template;
+  }
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(template as Record<string, unknown>)) {
+    out[key] = interpolateTemplateValue(value, query);
+  }
+  return out;
+}
+
+async function resolveProviderConnection(providerName: string): Promise<{ baseUrl: string; apiKey: string } | null> {
+  const db = await getDb();
+  if (!db) return null;
+
+  const [provider] = await db
+    .select({
+      baseUrl: mediaProviders.baseUrl,
+      apiKeyEncrypted: mediaProviders.apiKeyEncrypted,
+    })
+    .from(mediaProviders)
+    .where(eq(mediaProviders.providerName, providerName))
+    .limit(1);
+
+  if (!provider?.baseUrl || !provider.apiKeyEncrypted) {
+    return null;
+  }
+
+  const apiKey = decrypt(provider.apiKeyEncrypted);
+  if (!apiKey) {
+    return null;
+  }
+
+  return {
+    baseUrl: provider.baseUrl,
+    apiKey,
+  };
+}
+
+function resolveOptionsSourceForField(
+  providerName: string,
+  fieldKey: string,
+  fieldOptionsSource: unknown,
+): ProviderApiOptionsSource | undefined {
+  const normalizedProvider = providerName.trim().toLowerCase();
+  if (normalizedProvider === "uvoice" && isVoiceFieldKey(fieldKey)) {
+    if (fieldOptionsSource && typeof fieldOptionsSource === "object") {
+      return fieldOptionsSource as ProviderApiOptionsSource;
+    }
+    return buildUvoiceVoiceSources("en", ["Standard"])[0];
+  }
+
+  if (fieldOptionsSource && typeof fieldOptionsSource === "object") {
+    return fieldOptionsSource as ProviderApiOptionsSource;
+  }
+
+  return undefined;
+}
+
+async function fetchProviderApiFieldOptions(
+  providerName: string,
+  source: ProviderApiOptionsSource,
+  query?: string,
+): Promise<ModelFieldOption[]> {
+  const sourceTypeRaw = typeof source.type === "string" ? source.type.trim().toLowerCase() : "provider_api";
+  const sourceType = sourceTypeRaw === "public_api" ? "public_api" : "provider_api";
+  const endpointRaw = typeof source.endpoint === "string" ? source.endpoint.trim() : "";
+  if (!endpointRaw) return [];
+  const methodRaw = typeof source.method === "string" ? source.method.toUpperCase() : "GET";
+  const method = methodRaw === "POST" ? "POST" : "GET";
+  const itemsPath = typeof source.itemsPath === "string" ? source.itemsPath : "data";
+  const valueField = typeof source.valueField === "string" ? source.valueField : "id";
+  const labelField = typeof source.labelField === "string" ? source.labelField : "name";
+  const previewField = typeof source.previewField === "string" ? source.previewField : "";
+  const previewBaseUrl = typeof source.previewBaseUrl === "string" ? source.previewBaseUrl.trim() : "";
+  const valueTransform = typeof source.valueTransform === "string" ? source.valueTransform : "none";
+  const previewResolverVersion = providerName.trim().toLowerCase() === "uvoice"
+    ? "uvoice_preview_tokenized_v1"
+    : "default";
+  const cacheTtlSeconds = (
+    typeof source.cacheTtlSeconds === "number" && source.cacheTtlSeconds > 0
+      ? Math.floor(source.cacheTtlSeconds)
+      : 300
+  );
+
+  const cacheKey = `${sourceType}|${providerName}|${endpointRaw}|${method}|${itemsPath}|${valueField}|${labelField}|${previewField}|${previewBaseUrl}|${valueTransform}|${previewResolverVersion}|${query ?? ""}`;
+  const now = Date.now();
+  const cached = modelFieldOptionsCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    return cached.options;
+  }
+
+  let url: URL;
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+  };
+
+  if (sourceType === "provider_api") {
+    // Prevent arbitrary-host fetching from model config. Endpoint must be relative to provider baseUrl.
+    if (/^https?:\/\//i.test(endpointRaw)) return [];
+    if (endpointRaw.startsWith("//")) return [];
+    if (endpointRaw.includes("..")) return [];
+
+    const connection = await resolveProviderConnection(providerName);
+    if (!connection) return [];
+
+    url = new URL(endpointRaw.replace(/^\//, ""), `${connection.baseUrl.replace(/\/$/, "")}/`);
+    headers.Authorization = `Bearer ${connection.apiKey}`;
+  } else if (sourceType === "public_api") {
+    // Public endpoints must be explicit HTTPS URLs.
+    if (!/^https:\/\//i.test(endpointRaw)) {
+      return [];
+    }
+    if (endpointRaw.includes("..")) return [];
+    url = new URL(endpointRaw);
+  } else {
+    return [];
+  }
+
+  if (query && typeof source.queryParam === "string" && source.queryParam.trim().length > 0) {
+    url.searchParams.set(source.queryParam.trim(), query);
+  }
+
+  if (method === "POST") {
+    headers["Content-Type"] = "application/json";
+  }
+  if (source.headers && typeof source.headers === "object") {
+    for (const [key, value] of Object.entries(source.headers)) {
+      if (typeof value === "string" && value.trim().length > 0) {
+        headers[key] = value;
+      }
+    }
+  }
+
+  const payload = method === "POST"
+    ? interpolateTemplateValue(source.body ?? {}, query ?? "")
+    : undefined;
+
+  const response = await fetch(url.toString(), {
+    method,
+    headers,
+    ...(method === "POST" ? { body: JSON.stringify(payload) } : {}),
+  });
+  if (!response.ok) {
+    console.warn("[MediaFieldOptions] provider API returned non-OK", {
+      providerName,
+      endpoint: endpointRaw,
+      status: response.status,
+    });
+    return [];
+  }
+
+  let parsed: unknown = null;
+  try {
+    parsed = await response.json();
+  } catch {
+    return [];
+  }
+
+  const items = itemsPath ? getPathValue(parsed, itemsPath) : parsed;
+  if (!Array.isArray(items)) {
+    return [];
+  }
+  const isUvoiceVoiceSource = (
+    providerName.trim().toLowerCase() === "uvoice"
+    && sourceType === "public_api"
+    && /uvoice\.app/i.test(endpointRaw)
+    && endpointRaw.includes("getVoice=true")
+  );
+  const uvoiceLanguageTag = isUvoiceVoiceSource && typeof source.voiceLanguageTag === "string"
+    ? source.voiceLanguageTag.trim().toLowerCase()
+    : "";
+  const useUvoicePreviewToken = providerName.trim().toLowerCase() === "uvoice" && previewField.length > 0;
+  const uvoicePreviewConfig = useUvoicePreviewToken ? await resolveUvoicePreviewConfig() : null;
+
+  const options: ModelFieldOption[] = [];
+  for (const item of items) {
+    if (typeof item === "string") {
+      const value = item.trim();
+      if (!value) continue;
+      options.push({ value, label: value });
+      continue;
+    }
+    if (!item || typeof item !== "object") continue;
+    const valueRaw = getPathValue(item, valueField);
+    const labelRaw = getPathValue(item, labelField);
+    const previewPathRaw = getPathValue(item, previewField);
+    const value = applyOptionValueTransform(valueRaw, valueTransform);
+    const labelFromSource = typeof labelRaw === "string" ? labelRaw.trim() : value;
+    const label = isUvoiceVoiceSource
+      ? (buildUvoiceVoiceLabel(item, uvoiceLanguageTag) ?? applyUvoiceLanguagePrefix(labelFromSource, uvoiceLanguageTag))
+      : labelFromSource;
+    const rawPreviewPath = typeof previewPathRaw === "string"
+      ? previewPathRaw.trim()
+      : "";
+    const previewUrl = (
+      rawPreviewPath && uvoicePreviewConfig
+        ? buildUvoicePreviewUrl(rawPreviewPath, uvoicePreviewConfig)
+        : undefined
+    ) ?? resolvePreviewUrl(item, previewField, previewBaseUrl);
+    if (!value) continue;
+    options.push({ value, label: label || value, ...(previewUrl ? { previewUrl } : {}) });
+  }
+
+  const deduped = dedupeFieldOptions(options);
+  modelFieldOptionsCache.set(cacheKey, {
+    expiresAt: now + cacheTtlSeconds * 1000,
+    options: deduped,
+  });
+  return deduped;
+}
+
 async function getModelName(modelId: string): Promise<string> {
   try {
     const db = await getDb();
@@ -128,19 +664,95 @@ async function getModelName(modelId: string): Promise<string> {
   return MEDIA_MODELS[modelId]?.name ?? modelId;
 }
 
+function normalizeMediaProviderName(providerName: string | null | undefined): string {
+  const normalized = String(providerName ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s.-]+/g, "_");
+  if (!normalized) {
+    return "";
+  }
+  if (normalized === "kie" || normalized === "kie_ai" || normalized === "kieai") {
+    return "kie_ai";
+  }
+  if (normalized === "uvoice" || normalized === "u_voice" || normalized === "uvoice_ai" || normalized === "uvoiceapp") {
+    return "uvoice";
+  }
+  if (
+    normalized === "byteplus"
+    || normalized === "modelark"
+    || normalized === "byteplus_modelark"
+    || normalized === "byteplus_model_ark"
+  ) {
+    return "byteplus_modelark";
+  }
+  return normalized;
+}
+
+async function getConfiguredMediaProviderNames(): Promise<Set<string>> {
+  try {
+    const db = await getDb();
+    if (!db) {
+      return new Set();
+    }
+
+    const rows = await db
+      .select({
+        providerName: mediaProviders.providerName,
+        apiKeyEncrypted: mediaProviders.apiKeyEncrypted,
+      })
+      .from(mediaProviders)
+      .where(eq(mediaProviders.isEnabled, true))
+      .limit(50);
+
+    return new Set(
+      rows
+        .filter((row) => typeof row.apiKeyEncrypted === "string" && row.apiKeyEncrypted.trim().length > 0)
+        .map((row) => normalizeMediaProviderName(row.providerName)),
+    );
+  } catch (error) {
+    console.warn("[MediaModelLookup] Media provider config lookup failed, falling back to sorted defaults", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return new Set();
+  }
+}
+
+function pickConfiguredDefaultModelId<T extends { modelId: string; provider: string | null }>(
+  rows: T[],
+  configuredProviders: ReadonlySet<string>,
+): string | null {
+  if (rows.length === 0) {
+    return null;
+  }
+  if (configuredProviders.size === 0) {
+    return rows[0]?.modelId ?? null;
+  }
+  return (
+    rows.find((row) => configuredProviders.has(normalizeMediaProviderName(row.provider)))?.modelId
+    ?? rows[0]?.modelId
+    ?? null
+  );
+}
+
 async function getDefaultModelId(type: MediaType): Promise<string> {
   try {
     const db = await getDb();
     if (db) {
-      const [dbModel] = await db
-        .select({ modelId: mediaModels.modelId })
+      const dbModels = await db
+        .select({ modelId: mediaModels.modelId, provider: mediaModels.provider })
         .from(mediaModels)
         .where(and(eq(mediaModels.modelType, type), eq(mediaModels.isEnabled, true)))
         .orderBy(asc(mediaModels.sortOrder), asc(mediaModels.priority), asc(mediaModels.id))
-        .limit(1);
-      if (dbModel?.modelId) {
+        .limit(50);
+      const configuredProviders = await getConfiguredMediaProviderNames();
+      const modelId = pickConfiguredDefaultModelId(
+        dbModels.map((row) => ({ modelId: row.modelId, provider: row.provider ?? null })),
+        configuredProviders,
+      );
+      if (modelId) {
         mediaModelLookupCounters.defaultFromDb += 1;
-        return dbModel.modelId;
+        return modelId;
       }
     }
   } catch (error) {
@@ -276,10 +888,25 @@ export const mediaRouter = router({
           .where(and(...conditions))
           .orderBy(asc(mediaModels.sortOrder), asc(mediaModels.priority), asc(mediaModels.id));
 
-        // Derive defaults: first model per type in sorted order
-        const defaultImage = rows.find(m => m.type === "image")?.id ?? DEFAULT_MODELS.image;
-        const defaultVideo = rows.find(m => m.type === "video")?.id ?? DEFAULT_MODELS.video;
-        const defaultAudio = rows.find(m => m.type === "audio")?.id ?? DEFAULT_MODELS.audio;
+        const configuredProviders = await getConfiguredMediaProviderNames();
+        const defaultImage = pickConfiguredDefaultModelId(
+          rows
+            .filter((model) => model.type === "image")
+            .map((model) => ({ modelId: model.id, provider: model.provider ?? null })),
+          configuredProviders,
+        ) ?? DEFAULT_MODELS.image;
+        const defaultVideo = pickConfiguredDefaultModelId(
+          rows
+            .filter((model) => model.type === "video")
+            .map((model) => ({ modelId: model.id, provider: model.provider ?? null })),
+          configuredProviders,
+        ) ?? DEFAULT_MODELS.video;
+        const defaultAudio = pickConfiguredDefaultModelId(
+          rows
+            .filter((model) => model.type === "audio")
+            .map((model) => ({ modelId: model.id, provider: model.provider ?? null })),
+          configuredProviders,
+        ) ?? DEFAULT_MODELS.audio;
 
         return {
           models: rows,
@@ -454,6 +1081,12 @@ export const mediaRouter = router({
             apiConfig: apiConfigWithProvider,
             extraParams: input.extraParams,
             publicUrl: ctx.publicUrl ?? undefined,
+            auditContext: {
+              userId: ctx.user.id,
+              traceId: debugTraceId,
+              source: "trpc.media.generateImage",
+              stage: "submission",
+            },
           },
           userToken
         );
@@ -558,6 +1191,12 @@ export const mediaRouter = router({
             apiConfig: apiConfigWithProvider,
             extraParams: input.extraParams,
             publicUrl: ctx.publicUrl ?? undefined,
+            auditContext: {
+              userId: ctx.user.id,
+              traceId: debugTraceId,
+              source: "trpc.media.generateVideo",
+              stage: "submission",
+            },
           },
           userToken
         );
@@ -591,10 +1230,13 @@ export const mediaRouter = router({
   generateAudio: protectedProcedure
     .input(
       z.object({
-        text: z.string().min(1).max(5000),
+        // Keep a broad safety cap; enforce model-specific maxPromptLength from DB config below.
+        text: z.string().min(1).max(50000),
         model: audioModelSchema.optional(),
         voice: z.string().optional(),
         speed: z.number().min(0.5).max(2.0).optional(),
+        apiConfig: z.record(z.string()).optional(),
+        extraParams: z.record(z.any()).optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -625,7 +1267,17 @@ export const mediaRouter = router({
 
       // Calculate credit cost from DB pricingTiers
       const dbModel = await getModelWithPricing(model);
-      const creditCost = calculateCreditCost(dbModel, {});
+      const maxPromptLength = resolveConfiguredMaxPromptLength(dbModel.configJson);
+      if (maxPromptLength !== null && input.text.length > maxPromptLength) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Text length ${input.text.length} exceeds model limit ${maxPromptLength} for ${model}`,
+        });
+      }
+      const creditCost = calculateCreditCost(dbModel, {
+        text: input.text,
+        ...(input.extraParams ?? {}),
+      });
 
       // Check credits
       const hasCredits = await hasEnoughCredits(ctx.user.id, creditCost);
@@ -638,6 +1290,12 @@ export const mediaRouter = router({
 
       try {
         const userToken = getUserToken(ctx);
+        const debugTraceId = crypto.randomUUID();
+        const apiConfigWithProvider = {
+          ...(input.apiConfig ?? {}),
+          provider: modelMeta.provider,
+          trace_id: debugTraceId,
+        };
 
         const result = await mediaGenerationService.generateAudio(
           {
@@ -645,6 +1303,15 @@ export const mediaRouter = router({
             model: model as AudioModel,
             voice: input.voice,
             speed: input.speed,
+            apiConfig: apiConfigWithProvider,
+            extraParams: input.extraParams,
+            publicUrl: ctx.publicUrl ?? undefined,
+            auditContext: {
+              userId: ctx.user.id,
+              traceId: debugTraceId,
+              source: "trpc.media.generateAudio",
+              stage: "submission",
+            },
           },
           userToken
         );
@@ -773,6 +1440,12 @@ export const mediaRouter = router({
             apiConfig: apiConfigWithProvider,
             extraParams: input.extraParams,
             publicUrl: ctx.publicUrl ?? undefined,
+            auditContext: {
+              userId: ctx.user.id,
+              traceId: debugTraceId,
+              source: "trpc.media.generateImageAsync",
+              stage: "submission",
+            },
           },
           userToken
         );
@@ -902,6 +1575,12 @@ export const mediaRouter = router({
             apiConfig: apiConfigWithProvider,
             extraParams: input.extraParams,
             publicUrl: ctx.publicUrl ?? undefined,
+            auditContext: {
+              userId: ctx.user.id,
+              traceId: debugTraceId,
+              source: "trpc.media.generateVideoAsync",
+              stage: "submission",
+            },
           },
           userToken
         );
@@ -940,7 +1619,15 @@ export const mediaRouter = router({
     .query(async ({ input, ctx }) => {
       try {
         const userToken = getUserToken(ctx);
-        const task = await mediaGenerationService.getTask(input.taskId, userToken);
+        const task = await mediaGenerationService.getTask(
+          input.taskId,
+          userToken,
+          {
+            userId: ctx.user.id,
+            source: "trpc.media.getTask",
+            stage: "poll",
+          },
+        );
         return task;
       } catch (error) {
         throw new TRPCError({
@@ -1190,6 +1877,106 @@ export const mediaRouter = router({
       }
     }),
 
+  // Resolve selectable options for a dynamic model field (table-driven, supports provider API sources)
+  listModelFieldOptions: protectedProcedure
+    .input(
+      z.object({
+        modelId: mediaModelIdSchema,
+        fieldKey: z.string().min(1).max(120),
+        query: z.string().max(120).optional(),
+        limit: z.number().min(1).max(2000).default(200),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) {
+        return { options: [] as ModelFieldOption[], source: "none" as const };
+      }
+
+      const [model] = await db
+        .select({
+          modelType: mediaModels.modelType,
+          provider: mediaModels.provider,
+          configJson: mediaModels.configJson,
+          isEnabled: mediaModels.isEnabled,
+        })
+        .from(mediaModels)
+        .where(eq(mediaModels.modelId, input.modelId))
+        .limit(1);
+
+      if (!model || !model.isEnabled) {
+        return { options: [] as ModelFieldOption[], source: "none" as const };
+      }
+
+      const config = model.configJson as Record<string, unknown> | null | undefined;
+      const inputFields = Array.isArray(config?.inputFields) ? config?.inputFields as Record<string, any>[] : [];
+      const field = inputFields.find((entry) => entry?.key === input.fieldKey);
+      if (!field) {
+        return { options: [] as ModelFieldOption[], source: "none" as const };
+      }
+      const isUvoiceVoiceField = model.provider.trim().toLowerCase() === "uvoice"
+        && isVoiceFieldKey(String(field.key ?? ""));
+
+      const staticOptions = normalizeFieldOptions(field.options);
+
+      let dynamicOptions: ModelFieldOption[] = [];
+      if (isUvoiceVoiceField) {
+        let includeThaiVoices = false;
+        const userId = ctx?.user?.id;
+        if (typeof userId === "number" && Number.isFinite(userId)) {
+          try {
+            const translationLanguage = await getUserTranslationLanguagePreference(db, userId);
+            includeThaiVoices = isThaiTranslationLanguage(translationLanguage);
+          } catch {
+            includeThaiVoices = false;
+          }
+        }
+        dynamicOptions = await fetchUvoiceCombinedVoiceOptions(input.modelId, input.query, includeThaiVoices);
+      } else {
+        const optionsSource = resolveOptionsSourceForField(model.provider, String(field.key ?? ""), field.optionsSource);
+        const sourceType = typeof optionsSource?.type === "string"
+          ? optionsSource.type.trim().toLowerCase()
+          : "provider_api";
+        if (
+          optionsSource
+          && typeof optionsSource === "object"
+          && (sourceType === "provider_api" || sourceType === "public_api")
+        ) {
+          dynamicOptions = await fetchProviderApiFieldOptions(model.provider, optionsSource, input.query);
+        }
+      }
+
+      const merged = isUvoiceVoiceField
+        ? dedupeFieldOptions([
+          ...dynamicOptions,
+          ...staticOptions,
+        ])
+        : dedupeFieldOptions([
+          ...dynamicOptions,
+          ...staticOptions,
+        ]);
+
+      const normalizedQuery = input.query?.trim().toLowerCase();
+      const filtered = normalizedQuery
+        ? merged.filter((opt) =>
+            opt.label.toLowerCase().includes(normalizedQuery) ||
+            opt.value.toLowerCase().includes(normalizedQuery),
+          )
+        : merged;
+
+      return {
+        options: filtered.slice(0, input.limit),
+        source:
+          dynamicOptions.length > 0
+            ? staticOptions.length > 0
+              ? "merged"
+              : "dynamic"
+            : staticOptions.length > 0
+              ? "static"
+              : "none",
+      };
+    }),
+
   // Estimate credits for generation
   estimateCredits: protectedProcedure
     .input(
@@ -1199,6 +1986,8 @@ export const mediaRouter = router({
         numImages: z.number().optional(),
         duration: z.number().optional(),
         resolution: z.string().optional(),
+        text: z.string().optional(),
+        extraParams: z.record(z.any()).optional(),
       })
     )
     .query(async ({ input }) => {
@@ -1212,6 +2001,8 @@ export const mediaRouter = router({
         numImages: input.numImages,
         duration: input.duration,
         resolution: input.resolution,
+        text: input.text,
+        ...(input.extraParams ?? {}),
       });
 
       return {

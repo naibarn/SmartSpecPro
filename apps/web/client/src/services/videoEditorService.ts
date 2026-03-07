@@ -65,6 +65,15 @@ async function getJobClient(): Promise<MediaJobClient> {
 // ========================================
 
 export class VideoEditorMediaLibrary {
+  private async fetchUrlAsBlob(url: string): Promise<Blob> {
+    const response = await fetch(url, {
+      credentials: url.startsWith("/") ? "include" : "same-origin",
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to download media URL (${response.status})`);
+    }
+    return response.blob();
+  }
 
   /**
    * Fetch all generated videos from backend
@@ -223,6 +232,35 @@ export class VideoEditorMediaLibrary {
       return localPath;
     } catch (error) {
       console.error('Failed to download to workspace:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Download any direct media URL into the desktop workspace.
+   * Web mode returns the original URL because there is no local workspace.
+   */
+  async downloadUrlToWorkspace(url: string, filename: string): Promise<string> {
+    if (!isDesktop()) {
+      return url;
+    }
+
+    try {
+      const workspacePath = await tauriInvoke<string>('get_video_editor_workspace_path');
+      const safeFilename = filename.replace(/[^\w.\-]+/g, '_') || 'media.bin';
+      const localPath = `${workspacePath}/${safeFilename}`;
+      const blob = await this.fetchUrlAsBlob(url);
+      const arrayBuffer = await blob.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+
+      await tauriInvoke('save_blob_to_file', {
+        blob: Array.from(uint8Array),
+        path: localPath,
+      });
+
+      return localPath;
+    } catch (error) {
+      console.error('Failed to download URL to workspace:', error);
       throw error;
     }
   }

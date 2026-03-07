@@ -9,11 +9,13 @@ Tests are @pytest.mark.unit (synchronous, fast).
 
 import io
 import os
+import shutil
+import subprocess
 import zipfile
 import pytest
 from unittest.mock import MagicMock, patch, call
 from celery.exceptions import SoftTimeLimitExceeded
-from PIL import Image
+from PIL import Image, ImageChops, ImageStat
 import pypdf
 
 
@@ -42,6 +44,62 @@ def _make_blank_pdf_bytes(width: int = 1920, height: int = 1080) -> bytes:
 
 
 MOCK_PDF_BYTES = _make_blank_pdf_bytes()
+
+
+def _ffmpeg_available() -> bool:
+    return bool(shutil.which("ffmpeg"))
+
+
+def _make_white_then_motion_video(output_path: str) -> None:
+    """
+    Create a synthetic clip with white pre-roll followed by moving test pattern.
+    Used to verify trim + first-frame quality checks.
+    """
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        "color=c=white:s=320x180:r=10:d=0.4",
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc2=s=320x180:r=10:d=1.2",
+        "-filter_complex",
+        "[0:v][1:v]concat=n=2:v=1:a=0,format=yuv420p",
+        "-an",
+        output_path,
+    ]
+    subprocess.run(cmd, check=True, capture_output=True)
+
+
+def _extract_frame(video_path: str, at_seconds: float, frame_path: str) -> None:
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-ss",
+        f"{at_seconds:.3f}",
+        "-i",
+        video_path,
+        "-frames:v",
+        "1",
+        frame_path,
+    ]
+    subprocess.run(cmd, check=True, capture_output=True)
+
+
+def _image_luma_mean(image_path: str) -> float:
+    with Image.open(image_path) as image:
+        stat = ImageStat.Stat(image.convert("L"))
+        return float(stat.mean[0])
+
+
+def _frame_diff_mean(first_path: str, second_path: str) -> float:
+    with Image.open(first_path) as first, Image.open(second_path) as second:
+        diff = ImageChops.difference(first.convert("RGB"), second.convert("RGB"))
+        stat = ImageStat.Stat(diff)
+        return float(sum(stat.mean) / len(stat.mean))
 
 
 def _make_mock_playwright(png_bytes: bytes = MOCK_PNG_BYTES, slide_ready: bool = True):
@@ -492,6 +550,39 @@ class TestDynamicVideoExportPath:
         mock_clips.assert_called_once()
         mock_build_mp4_from_clips.assert_called_once()
         mock_screens.assert_not_called()
+
+
+@pytest.mark.unit
+@pytest.mark.skipif(not _ffmpeg_available(), reason="ffmpeg is required for clip quality checks")
+class TestDynamicVideoQualityGuards:
+    """Quality checks for first-frame pre-roll trim and motion retention."""
+
+    def test_trimmed_clip_first_frame_is_not_white_and_has_motion(self, tmp_path):
+        source_clip = tmp_path / "white_then_motion.mp4"
+        _make_white_then_motion_video(str(source_clip))
+
+        from app.tasks.presentation_render import _trim_video_clip_segment
+
+        segment = {
+            "path": str(source_clip),
+            "trim_start_ms": 500,
+            "duration_ms": 900,
+        }
+        trimmed = _trim_video_clip_segment(segment, idx=0, fps=10, tmp_dir=str(tmp_path))
+        assert os.path.exists(trimmed)
+
+        first_frame = tmp_path / "trim_first.png"
+        next_frame = tmp_path / "trim_next.png"
+        _extract_frame(trimmed, 0.00, str(first_frame))
+        _extract_frame(trimmed, 0.20, str(next_frame))
+
+        first_luma = _image_luma_mean(str(first_frame))
+        motion_delta = _frame_diff_mean(str(first_frame), str(next_frame))
+
+        # Fully white RGB frame has mean ~255. We expect trimmed output to start on content.
+        assert first_luma < 220
+        # Moving testsrc frames should differ measurably.
+        assert motion_delta > 2.0
 
 
 # ---------------------------------------------------------------------------

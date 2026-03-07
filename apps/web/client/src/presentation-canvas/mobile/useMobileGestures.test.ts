@@ -52,4 +52,23 @@ describe("useMobileGestures", () => {
     expect(result.current.state.viewport.offsetX).toBe(12);
     expect(result.current.state.viewport.offsetY).toBe(8);
   });
+
+  it("supports directly replacing viewport state", () => {
+    const { result } = renderHook(() => useMobileGestures());
+
+    act(() => {
+      result.current.setViewport({
+        scale: 1.75,
+        offsetX: -80,
+        offsetY: -140,
+      });
+    });
+
+    expect(result.current.state.viewport).toEqual({
+      scale: 1.75,
+      offsetX: -80,
+      offsetY: -140,
+    });
+    expect(result.current.state.lastGestureAt).toEqual(expect.any(Number));
+  });
 });

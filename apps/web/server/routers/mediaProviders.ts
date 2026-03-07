@@ -90,6 +90,19 @@ export const PROVIDER_TEMPLATES = [
       { id: "seedance-1-0-lite-i2v-250428", name: "Seedance 1.0 Lite I2V", type: "video" as const, description: "Lightweight image-to-video generation" },
     ],
   },
+  {
+    providerName: "uvoice",
+    displayName: "UVoice",
+    description: "Thai-focused text-to-speech API with multiple voice tiers and configurable output formats",
+    providerType: "audio" as const,
+    baseUrl: "https://api.uvoice.ai",
+    defaultModel: "uvoice/tts-standard",
+    availableModels: [
+      { id: "uvoice/tts-standard", name: "UVoice TTS Standard", type: "audio" as const, description: "Standard quality voices (up to 5,000 chars)" },
+      { id: "uvoice/tts-natural", name: "UVoice TTS Natural", type: "audio" as const, description: "Natural voice quality (up to 1,500 chars)" },
+      { id: "uvoice/tts-premium", name: "UVoice TTS Premium", type: "audio" as const, description: "Premium expressive voices (up to 1,500 chars)" },
+    ],
+  },
 ];
 
 // Model schema for validation
@@ -318,6 +331,12 @@ export const mediaProvidersRouter = router({
               provider.baseUrl || "https://ark.ap-southeast.bytepluses.com/api/v3"
             );
             break;
+          case "uvoice":
+            result = await testUVoice(
+              apiKey,
+              provider.baseUrl || "https://api.uvoice.ai"
+            );
+            break;
           default:
             // Generic test - just check if the base URL is reachable
             result = await testGenericProvider(apiKey, provider.baseUrl || "");
@@ -517,6 +536,56 @@ export async function testBytePlusModelArk(
     return { success: false, message: `API error: ${response.status} - ${text}`, latencyMs };
   }
   return { success: true, message: "Connection successful", latencyMs };
+}
+
+export async function testUVoice(
+  apiKey: string,
+  baseUrl: string
+): Promise<{ success: boolean; message: string; latencyMs?: number; balance?: number }> {
+  validateExternalUrl(baseUrl);
+  const startTime = Date.now();
+  const url = `${baseUrl.replace(/\/$/, "")}/generate`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      settings: {
+        // Intentionally invalid (min length is 5) to validate auth without consuming generation quota.
+        text: "test",
+        voiceID: "TH-KantapongPremiumHD",
+        outputType: "url",
+        outputFormat: "mp3",
+      },
+    }),
+  });
+
+  const latencyMs = Date.now() - startTime;
+
+  if (response.status === 401) {
+    return { success: false, message: "Invalid API key (401 Unauthorized)", latencyMs };
+  }
+  if (response.status === 400 || response.status === 429) {
+    return { success: true, message: "Connection successful (auth verified)", latencyMs };
+  }
+  if (!response.ok) {
+    const text = await response.text();
+    return { success: false, message: `API error: ${response.status} - ${text}`, latencyMs };
+  }
+
+  const payload: any = await response.json().catch(() => ({}));
+  const balanceRaw =
+    payload?.credits_remaining ??
+    payload?.credits ??
+    payload?.balance ??
+    payload?.remaining_characters ??
+    payload?.characters_remaining;
+  const balance = typeof balanceRaw === "number" ? balanceRaw : undefined;
+
+  return { success: true, message: "Connection successful", latencyMs, balance };
 }
 
 async function testGenericProvider(apiKey: string, baseUrl: string): Promise<{ success: boolean; message: string }> {

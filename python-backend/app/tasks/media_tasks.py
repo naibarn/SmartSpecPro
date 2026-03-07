@@ -265,6 +265,215 @@ def _extract_first_kie_result_url(status_response: dict) -> Optional[str]:
     return _extract_url_from_value(status_response)
 
 
+SENSITIVE_DEBUG_FIELD_MARKERS = (
+    "api_key",
+    "apikey",
+    "authorization",
+    "token",
+    "secret",
+    "password",
+)
+
+
+def _truncate_debug_text(value: Optional[str], limit: int = 2000) -> Optional[str]:
+    if not isinstance(value, str):
+        return None
+    trimmed = value.strip()
+    if len(trimmed) <= limit:
+        return trimmed
+    return f"{trimmed[:limit]}...(truncated)"
+
+
+def _mask_sensitive_debug_value(value: Any, key_hint: Optional[str] = None) -> Any:
+    normalized_key = str(key_hint or "").lower()
+    if any(marker in normalized_key for marker in SENSITIVE_DEBUG_FIELD_MARKERS):
+        return "***redacted***"
+
+    if isinstance(value, dict):
+        return {
+            str(k): _mask_sensitive_debug_value(v, str(k))
+            for k, v in value.items()
+        }
+    if isinstance(value, list):
+        return [_mask_sensitive_debug_value(item, key_hint) for item in value]
+    if isinstance(value, str):
+        return _truncate_debug_text(value, limit=3000)
+    return value
+
+
+def _extract_first_string(*values: Any) -> Optional[str]:
+    for value in values:
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _infer_audio_provider_hint(model: Any, api_config: dict[str, Any]) -> str:
+    provider_raw = str(api_config.get("provider") or "").strip().lower()
+    if "uvoice" in provider_raw:
+        return "uvoice"
+    if "kie" in provider_raw:
+        return "kie_ai"
+
+    model_raw = str(model or "").strip().lower()
+    if model_raw.startswith("uvoice/"):
+        return "uvoice"
+    return "kie_ai"
+
+
+def _resolve_audio_api_target(provider_hint: str, api_config: dict[str, Any]) -> tuple[str, str]:
+    endpoint = _extract_first_string(
+        api_config.get("endpoint"),
+        api_config.get("api_endpoint"),
+        api_config.get("apiEndpoint"),
+    )
+    if not endpoint:
+        endpoint = "/generate" if provider_hint == "uvoice" else "/api/v1/jobs/createTask"
+
+    if endpoint.startswith("http://") or endpoint.startswith("https://"):
+        return endpoint, endpoint
+
+    base_url = _extract_first_string(
+        api_config.get("base_url"),
+        api_config.get("baseUrl"),
+        api_config.get("url"),
+    )
+    if not base_url:
+        base_url = "https://api.uvoice.ai" if provider_hint == "uvoice" else "https://api.kie.ai/api/v1"
+
+    request_url = f"{base_url.rstrip('/')}/{endpoint.lstrip('/')}"
+    return endpoint, request_url
+
+
+def _build_uvoice_payload_preview(
+    request_data: dict[str, Any],
+    api_config: dict[str, Any],
+    selected_voice_id: Optional[str],
+) -> dict[str, Any]:
+    extra_params = request_data.get("extra_params") if isinstance(request_data.get("extra_params"), dict) else {}
+    settings: dict[str, Any] = {}
+
+    text_value = request_data.get("text")
+    if isinstance(text_value, str):
+        settings["text"] = _truncate_debug_text(text_value, limit=1200)
+
+    if selected_voice_id:
+        settings["voiceID"] = selected_voice_id
+
+    for key in ("speed", "volume", "pitch", "key"):
+        value = request_data.get(key)
+        if value is None and isinstance(extra_params, dict):
+            value = extra_params.get(key)
+        if value is not None:
+            settings[key] = value
+
+    auto_break = request_data.get("auto_break")
+    if auto_break is None and isinstance(extra_params, dict):
+        auto_break = (
+            extra_params.get("autoBreak")
+            if "autoBreak" in extra_params
+            else extra_params.get("auto_break")
+        )
+    if auto_break is not None:
+        settings["autoBreak"] = auto_break
+
+    output_format = _extract_first_string(
+        request_data.get("output_format"),
+        request_data.get("outputFormat"),
+        extra_params.get("output_format") if isinstance(extra_params, dict) else None,
+        extra_params.get("outputFormat") if isinstance(extra_params, dict) else None,
+    ) or "mp3"
+    output_type = _extract_first_string(
+        request_data.get("output_type"),
+        request_data.get("outputType"),
+        extra_params.get("output_type") if isinstance(extra_params, dict) else None,
+        extra_params.get("outputType") if isinstance(extra_params, dict) else None,
+    ) or "url"
+    settings["outputFormat"] = output_format
+    settings["outputType"] = output_type
+
+    payload: dict[str, Any] = {"settings": settings}
+    explicit_model = _extract_first_string(
+        api_config.get("uvoice_model_id"),
+        api_config.get("uvoiceModelId"),
+        api_config.get("model_id"),
+        api_config.get("modelId"),
+    )
+    if explicit_model:
+        payload["model"] = explicit_model
+    return payload
+
+
+def _build_audio_debug_request_snapshot(request_data: dict[str, Any]) -> dict[str, Any]:
+    api_config_raw = request_data.get("api_config")
+    api_config = api_config_raw if isinstance(api_config_raw, dict) else {}
+    extra_params_raw = request_data.get("extra_params")
+    extra_params = extra_params_raw if isinstance(extra_params_raw, dict) else {}
+
+    selected_voice_id = _extract_first_string(
+        request_data.get("voice_id"),
+        request_data.get("voice"),
+        extra_params.get("voiceID"),
+        extra_params.get("voiceId"),
+        extra_params.get("voice_id"),
+        extra_params.get("voice"),
+    )
+    provider_hint = _infer_audio_provider_hint(request_data.get("model"), api_config)
+    endpoint, request_url = _resolve_audio_api_target(provider_hint, api_config)
+
+    if provider_hint == "uvoice":
+        provider_payload = _build_uvoice_payload_preview(request_data, api_config, selected_voice_id)
+    else:
+        provider_payload = {
+            "model": request_data.get("model"),
+            "text": _truncate_debug_text(str(request_data.get("text") or ""), limit=1200),
+            "voice": request_data.get("voice"),
+            "voice_id": request_data.get("voice_id"),
+            "speed": request_data.get("speed"),
+            "extra_params": extra_params,
+        }
+
+    text_value = str(request_data.get("text") or "")
+    return _mask_sensitive_debug_value({
+        "provider_hint": provider_hint,
+        "selected_voice_id": selected_voice_id,
+        "text_length": len(text_value),
+        "text_preview": _truncate_debug_text(text_value, limit=320),
+        "api": {
+            "provider": provider_hint,
+            "method": "POST",
+            "endpoint": endpoint,
+            "request_url": request_url,
+            "voice_id": selected_voice_id,
+            "request_payload": provider_payload,
+        },
+    })
+
+
+def _extract_exception_debug_payload(error: Exception) -> dict[str, Any]:
+    status_code = getattr(error, "status_code", None)
+    detail = getattr(error, "detail", None)
+
+    parsed_message = None
+    provider_detail: Any = None
+    if isinstance(detail, dict):
+        parsed_message = _extract_first_string(
+            detail.get("message"),
+            detail.get("detail"),
+            detail.get("error"),
+        )
+        provider_detail = detail
+    elif isinstance(detail, str):
+        parsed_message = detail.strip() or None
+        provider_detail = detail
+
+    return {
+        "status_code": int(status_code) if isinstance(status_code, int) else None,
+        "message": parsed_message or str(error),
+        "detail": _mask_sensitive_debug_value(provider_detail),
+    }
+
+
 async def _send_failure_notifications(task_id: str, user_id: str, media_type: str, error: str):
     """Send in-app + email notifications on final task failure."""
     async with AsyncSessionLocal() as db:
@@ -512,6 +721,28 @@ async def _generate_audio_async(task_id: str, user_id: str, request_data: dict):
     Async implementation of audio generation
     """
     async with AsyncSessionLocal() as db:
+        task = None
+        api_config = request_data.get("api_config") if isinstance(request_data, dict) else None
+        if not isinstance(api_config, dict):
+            api_config = {}
+        trace_id = str(
+            api_config.get("trace_id")
+            or api_config.get("debug_trace_id")
+            or ""
+        ).strip() or None
+        audio_debug_snapshot = _build_audio_debug_request_snapshot(
+            request_data if isinstance(request_data, dict) else {}
+        )
+        debug_log_file = write_media_debug_event("audio.task.start", {
+            "trace_id": trace_id,
+            "task_id": task_id,
+            "user_id": user_id,
+            "model": request_data.get("model") if isinstance(request_data, dict) else None,
+            "provider_hint": audio_debug_snapshot.get("provider_hint"),
+            "selected_voice_id": audio_debug_snapshot.get("selected_voice_id"),
+            "api": audio_debug_snapshot.get("api"),
+            "request_keys": sorted(list(request_data.keys())) if isinstance(request_data, dict) else [],
+        })
         try:
             result = await db.execute(
                 select(MediaTask).filter(MediaTask.id == task_id)
@@ -537,24 +768,85 @@ async def _generate_audio_async(task_id: str, user_id: str, request_data: dict):
 
             task.status = TaskStatus.COMPLETED
             task.result_url = response.data[0].get("url") if response.data else None
-            task.result_data = {"response": response.dict()}
+            task.result_data = {
+                "response": response.dict(),
+                "debug": {
+                    "trace_id": trace_id,
+                    "provider_hint": audio_debug_snapshot.get("provider_hint"),
+                    "selected_voice_id": audio_debug_snapshot.get("selected_voice_id"),
+                    "log_file": debug_log_file,
+                    "api": audio_debug_snapshot.get("api"),
+                },
+            }
             task.credits_used = int(response.credits_used) if response.credits_used else None
             task.credits_balance = int(response.credits_balance) if response.credits_balance else None
             task.completed_at = datetime.utcnow()
             await db.commit()
+            write_media_debug_event("audio.task.completed", {
+                "trace_id": trace_id,
+                "task_id": task_id,
+                "provider_task_id": response.id,
+                "result_url": task.result_url,
+                "provider": response.provider,
+                "log_file": debug_log_file,
+            })
 
             logger.info("generate_audio_task_completed", task_id=task_id)
             return {"status": "completed", "task_id": task_id, "result_url": task.result_url}
 
         except Exception as e:
             logger.error("generate_audio_task_failed", task_id=task_id, error=str(e))
+            exception_debug = _extract_exception_debug_payload(e)
+            write_media_debug_event("audio.task.failed", {
+                "trace_id": trace_id,
+                "task_id": task_id,
+                "user_id": user_id,
+                "model": request_data.get("model") if isinstance(request_data, dict) else None,
+                "provider_hint": audio_debug_snapshot.get("provider_hint"),
+                "selected_voice_id": audio_debug_snapshot.get("selected_voice_id"),
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "api": {
+                    **(audio_debug_snapshot.get("api") if isinstance(audio_debug_snapshot.get("api"), dict) else {}),
+                    "response_status": exception_debug.get("status_code"),
+                },
+                "provider_detail": exception_debug.get("detail"),
+                "log_file": debug_log_file,
+            })
 
             try:
-                task.status = TaskStatus.FAILED
-                task.error_message = str(e)
-                task.completed_at = datetime.utcnow()
-                await db.commit()
-            except:
+                if task is not None:
+                    task.status = TaskStatus.FAILED
+                    task.error_message = str(e)
+                    existing_result_data = task.result_data if isinstance(task.result_data, dict) else {}
+                    api_debug = (
+                        audio_debug_snapshot.get("api")
+                        if isinstance(audio_debug_snapshot.get("api"), dict)
+                        else {}
+                    )
+                    task.result_data = {
+                        **existing_result_data,
+                        "debug": {
+                            "trace_id": trace_id,
+                            "provider_hint": audio_debug_snapshot.get("provider_hint"),
+                            "selected_voice_id": audio_debug_snapshot.get("selected_voice_id"),
+                            "log_file": debug_log_file,
+                            "api": {
+                                **api_debug,
+                                "response_status": exception_debug.get("status_code"),
+                            },
+                        },
+                        "failure": {
+                            "error": str(e),
+                            "error_type": type(e).__name__,
+                            "http_status_code": exception_debug.get("status_code"),
+                            "provider_message": exception_debug.get("message"),
+                            "provider_detail": exception_debug.get("detail"),
+                        },
+                    }
+                    task.completed_at = datetime.utcnow()
+                    await db.commit()
+            except Exception:
                 pass
 
             raise

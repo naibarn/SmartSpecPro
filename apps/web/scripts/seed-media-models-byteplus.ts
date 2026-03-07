@@ -24,19 +24,27 @@ const DATABASE_URL = process.env.DATABASE_URL || "postgresql://smartspec:smartsp
 interface InputField {
   key: string;
   label: string;
-  type: "select" | "text" | "number" | "boolean" | "image_urls" | "video_urls" | "audio_urls";
+  type: "select" | "text" | "number" | "boolean" | "image_urls" | "video_urls" | "audio_urls" | "array";
   options?: { value: string; label: string }[];
   default?: string | number | boolean;
   required?: boolean;
   affectsPricing?: boolean;
+  syncWith?: "none" | "reference_images" | "prompt" | "aspect_ratio";
+  itemTemplate?: Record<string, unknown>;
 }
 
 interface ModelDefinition {
   apiPayloadFormat: "market" | "veo" | "runway" | "suno" | "elevenlabs" | "custom" | "byteplus";
   generateType: string;
+  apiConfig?: Record<string, string | number | boolean>;
   inputFields: InputField[];
   pricingTiers: Record<string, number>;
-  pricingFormula: "flat" | "per_duration" | "matrix";
+  pricingFormula: "flat" | "per_duration" | "matrix" | "per_unit";
+  pricingUnitMetric?: "characters" | "items";
+  pricingUnitField?: string;
+  pricingUnitSize?: number;
+  pricingUnitRounding?: "ceil" | "floor" | "round";
+  pricingMinUnits?: number;
   hasAudio?: boolean;
   maxDuration?: number;
 }

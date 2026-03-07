@@ -61,6 +61,11 @@ describe("isModelFree", () => {
     mockModelProviderMapQuery([]);
     expect(await isModelFree("unknown-model")).toBe(false);
   });
+
+  it("accepts provider-qualified model IDs", async () => {
+    mockModelProviderMapQuery([{ isFree: false }]);
+    expect(await isModelFree("openai/gpt-4o")).toBe(false);
+  });
 });
 
 describe("deductCreditsForModel", () => {
@@ -108,6 +113,38 @@ describe("deductCreditsForModel", () => {
         metadata: expect.objectContaining({ freeModel: true }),
       })
     );
+  });
+
+  it("charges credits when provider reports real cost even if model is marked free", async () => {
+    mockTransaction.mockImplementation(async (fn: Function) => {
+      const tx = {
+        update: vi.fn().mockReturnValue({
+          set: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              returning: vi.fn().mockResolvedValue([{ newBalance: 88 }]),
+            }),
+          }),
+        }),
+        insert: vi.fn().mockReturnValue({
+          values: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([{ id: 2 }]),
+          }),
+        }),
+      };
+      await fn(tx);
+    });
+
+    const result = await deductCreditsForModel({
+      userId: 1,
+      model: "kimi-k2.5",
+      provider: "test-provider",
+      inputTokens: 1000,
+      outputTokens: 500,
+      costUsd: 0.012,
+    });
+
+    expect(result.wasFree).toBe(false);
+    expect(result.creditsUsed).toBe(12);
   });
 
   it("paid model deducts credits normally", async () => {
@@ -202,6 +239,13 @@ describe("calculateCreditsForLLMDynamic", () => {
 
     const credits = await calculateCreditsForLLMDynamic(10000, 5000, "kimi-k2.5");
     expect(credits).toBe(0);
+  });
+
+  it("uses DB pricing for provider-qualified model IDs", async () => {
+    mockModelProviderMapQuery([{ pricingInput: "2.00", pricingOutput: "8.00", isFree: false }]);
+
+    const credits = await calculateCreditsForLLMDynamic(1000, 500, "openai/gpt-5.2");
+    expect(credits).toBe(6);
   });
 
   it("DB pricing changes reflected without restart (no cache)", async () => {

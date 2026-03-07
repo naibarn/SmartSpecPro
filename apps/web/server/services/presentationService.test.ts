@@ -7,8 +7,13 @@ const dbMocks = vi.hoisted(() => ({
 }));
 
 const libraryServiceMocks = vi.hoisted(() => ({
+  createLibraryItem: vi.fn(),
+  ensureOwnedLibraryFolder: vi.fn(),
   getLibraryItemById: vi.fn(),
+  permanentDeleteLibraryItem: vi.fn(),
+  softDeleteLibraryItem: vi.fn(),
   getUserEffectivePermission: vi.fn(),
+  uploadLibraryFile: vi.fn(),
 }));
 
 const persistenceMocks = vi.hoisted(() => ({
@@ -26,8 +31,13 @@ vi.mock("../db", () => ({
 }));
 
 vi.mock("./libraryService", () => ({
+  createLibraryItem: libraryServiceMocks.createLibraryItem,
+  ensureOwnedLibraryFolder: libraryServiceMocks.ensureOwnedLibraryFolder,
   getLibraryItemById: libraryServiceMocks.getLibraryItemById,
+  permanentDeleteLibraryItem: libraryServiceMocks.permanentDeleteLibraryItem,
+  softDeleteLibraryItem: libraryServiceMocks.softDeleteLibraryItem,
   getUserEffectivePermission: libraryServiceMocks.getUserEffectivePermission,
+  uploadLibraryFile: libraryServiceMocks.uploadLibraryFile,
 }));
 
 vi.mock("./presentationPersistence", () => ({
@@ -45,6 +55,7 @@ import {
   addSlideToDeck,
   attachAssetToDeck,
   createPresentationDeckForLibraryItem,
+  deletePresentationDeck,
   updateSlideInDeck,
 } from "./presentationService";
 
@@ -79,6 +90,22 @@ describe("presentationService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     dbMocks.getDb.mockResolvedValue({} as any);
+    libraryServiceMocks.createLibraryItem.mockResolvedValue({
+      item: buildPresentationLibraryItem(),
+      idempotent: false,
+    });
+    libraryServiceMocks.ensureOwnedLibraryFolder.mockResolvedValue({
+      item: buildPresentationLibraryItem({ id: 901, itemType: "folder", title: "temp" }),
+      idempotent: true,
+    });
+    libraryServiceMocks.uploadLibraryFile.mockResolvedValue({
+      item: buildPresentationLibraryItem({ id: 990, itemType: "image", sourceUrl: "https://cdn.example.com/upload.png", thumbnailUrl: "https://cdn.example.com/upload.png", metadata: { file_size_bytes: 1024 } }),
+      storageKey: "library/uploads/tenant-1/7/upload.png",
+      indexJob: { jobId: 1, status: "pending", created: true, payloadVersion: "v2", dedupeKey: "x" },
+      billing: { creditsCharged: 4, category: "image", fileSizeBytes: 1024, baseCredits: 4, stepCredits: 0, extraSteps: 0, sizeStepMb: 10 },
+    });
+    libraryServiceMocks.softDeleteLibraryItem.mockResolvedValue(true);
+    libraryServiceMocks.permanentDeleteLibraryItem.mockResolvedValue({ daysInTrash: 0 });
     libraryServiceMocks.getUserEffectivePermission.mockResolvedValue({
       effectivePermissionLevel: "owner",
       sources: [{ type: "owner" }],
@@ -117,6 +144,60 @@ describe("presentationService", () => {
       if (!(error instanceof PresentationServiceError)) return false;
       return error.code === PRESENTATION_ERROR_CODE.PERMISSION_DENIED;
     });
+  });
+
+  it("creates the initial slide with 9:16 canvas defaults", async () => {
+    libraryServiceMocks.getLibraryItemById.mockResolvedValue(buildPresentationLibraryItem());
+    dbMocks.getDb.mockResolvedValue({
+      select: vi.fn(() => ({
+        from: vi.fn(() => ({
+          where: vi.fn(() => ({
+            limit: vi.fn().mockResolvedValue([]),
+          })),
+        })),
+      })),
+    } as any);
+    persistenceMocks.getPresentationDeckById.mockResolvedValue(null);
+    persistenceMocks.createPresentationDeck.mockResolvedValue({
+      id: 101,
+      tenantId: actor.tenantId,
+      libraryItemId: 44,
+      title: "Deck",
+      description: null,
+      version: 1,
+      slideCount: 0,
+      totalAssetBytes: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    persistenceMocks.createPresentationSlide.mockResolvedValue({
+      id: 201,
+      deckId: 101,
+      orderIndex: 0,
+      version: 1,
+      title: "Slide 1",
+      slideContent: {
+        elements: [],
+        canvas: { preset: "9:16", width: 720, height: 1280 },
+      },
+      notes: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await createPresentationDeckForLibraryItem({ libraryItemId: 44 }, actor);
+
+    expect(persistenceMocks.createPresentationSlide).toHaveBeenCalledWith(
+      {
+        deckId: 101,
+        title: "Slide 1",
+        slideContent: {
+          elements: [],
+          canvas: { preset: "9:16", width: 720, height: 1280 },
+        },
+      },
+      expect.anything(),
+    );
   });
 
   it("blocks slide updates when effective permission is read-only", async () => {
@@ -497,5 +578,68 @@ describe("presentationService", () => {
     );
 
     expect(restored.title).toBe("Restored slide");
+  });
+
+  it("cleans up presentation-uploaded assets when deleting deck", async () => {
+    const deckRow = {
+      id: 101,
+      tenantId: actor.tenantId,
+      libraryItemId: 44,
+      title: "Deck",
+      description: null,
+      version: 4,
+      slideCount: 1,
+      totalAssetBytes: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    persistenceMocks.getPresentationDeckById.mockResolvedValue(deckRow);
+    libraryServiceMocks.getLibraryItemById.mockResolvedValue(buildPresentationLibraryItem());
+
+    const dbClient = {
+      select: vi
+        .fn()
+        // linked uploads
+        .mockReturnValueOnce({
+          from: vi.fn().mockReturnValue({
+            innerJoin: vi.fn().mockReturnValue({
+              where: vi.fn().mockResolvedValue([{
+                id: 901,
+                metadata: { presentation_upload: true, presentation_deck_id: 101 },
+                ownerUserId: 777,
+              }]),
+            }),
+          }),
+        })
+        // reusable assets in other decks
+        .mockReturnValueOnce({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      delete: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([{ id: 101 }]),
+        }),
+      }),
+    } as any;
+
+    const result = await deletePresentationDeck(
+      { deckId: 101, expectedVersion: 4 },
+      actor,
+      dbClient,
+    );
+
+    expect(result.success).toBe(true);
+    expect(libraryServiceMocks.softDeleteLibraryItem).toHaveBeenCalledWith(
+      901,
+      { ...actor, userId: 777 },
+      dbClient,
+    );
+    expect(libraryServiceMocks.permanentDeleteLibraryItem).toHaveBeenCalledWith(
+      901,
+      { ...actor, userId: 777 },
+      dbClient,
+    );
   });
 });

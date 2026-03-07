@@ -80,16 +80,26 @@ class Orchestrator:
                 tests = "Tests missing."
 
         failed = [r for r in report.results if not r.passed]
-        failure_block = "\n".join([f"- {r.test_id}: missing={r.missing} output={r.output}" for r in failed]) or "(all passed)"
+        failure_block = "\n".join(
+            [
+                f"- {r.test_id}: categories={r.categories} reasons={r.reasons} missing={r.missing} output={r.output}"
+                for r in failed
+            ]
+        ) or "(all passed)"
 
-        system = f"You are an expert engineer. Output ONLY valid JSON. Keys must be file paths (e.g. 'skills/{skill_name}/python/skill.py' or 'skills/{skill_name}/tests.json'), values are the FULL replacement string for that file. No markdown, no unified diffs, no explanations."
-        user = f"""manifest.json:
+        system = (
+            "You are an expert engineer. Output ONLY valid JSON. "
+            "Keys must be file paths relative to the skill root (e.g. 'python/skill.py' "
+            "or 'tests/tests.json'), values are the FULL replacement string for that file. "
+            "No markdown, no unified diffs, no explanations."
+        )
+        user = f"""skill manifest:
 {manifest}
 
 CURRENT skill.py:
 {skill_code}
 
-tests.json:
+tests:
 {tests}
 
 FAILURES:
@@ -105,11 +115,14 @@ STRATEGY:
 RANKED RESEARCH:
 {ranked}
 
+REPORT DIMENSIONS:
+{report.dimension_failures}
+
 TEST POLICY:
 {test_policy}
 
 Hard requirements:
-- Keep respond(input_text: str, context=None) -> str (if Python) or module.exports = {{ respond }} (if JS)
+- Keep a valid public respond(...) entrypoint intact
 - skill code uses stdlib only
 - Make tests pass
 Return JSON ONLY. Do not use markdown code blocks.

@@ -14,7 +14,7 @@
       "description": "Operation mode",
       "enumDescriptions": {
         "create": "Create a brand-new skill with full schemas, code, and tests",
-        "improve": "Iteratively improve an existing ISC sandbox skill via LLM + research",
+        "improve": "Iteratively improve an existing skill via LLM + research",
         "convert_workflow": "Convert a Virtual Workflow JSON to a complete skill",
         "auto": "Auto-detect from description/skill_name presence"
       }
@@ -61,7 +61,7 @@
       "minLength": 2,
       "maxLength": 64,
       "pattern": "^[a-z][a-z0-9_-]*[a-z0-9]$",
-      "description": "For create: optional slug override (auto-generated if blank). For improve: required ISC sandbox skill name. Must be kebab-case or snake_case (lowercase letters, digits, hyphens, underscores).",
+      "description": "For create: optional slug override (auto-generated if blank). For improve: required existing skill name. Must be kebab-case or snake_case (lowercase letters, digits, hyphens, underscores).",
       "examples": ["my-date-converter", "skill_math_tutor", "seo-meta-generator"]
     },
 
@@ -199,7 +199,7 @@
     "required": ["skill_name"],
     "properties": {
       "skill_name": {
-        "description": "Required in improve mode — the slug of the existing ISC sandbox skill to improve."
+        "description": "Required in improve mode — the slug of the existing skill to improve."
       }
     }
   },

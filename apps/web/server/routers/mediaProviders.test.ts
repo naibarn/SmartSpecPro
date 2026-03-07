@@ -31,7 +31,7 @@ vi.mock("../services/crypto", () => ({
   decrypt: vi.fn((v: string) => v.replace("encrypted:", "")),
 }));
 
-import { PROVIDER_TEMPLATES, testBytePlusModelArk } from "./mediaProviders";
+import { PROVIDER_TEMPLATES, testBytePlusModelArk, testUVoice } from "./mediaProviders";
 
 describe("PROVIDER_TEMPLATES — BytePlus ModelArk entry", () => {
   const bytePlusTemplate = PROVIDER_TEMPLATES.find(
@@ -151,5 +151,81 @@ describe("testConnection switch — byteplus_modelark routing", () => {
       (t) => t.providerName === "kie_ai"
     );
     expect(kieTemplate).toBeDefined();
+  });
+});
+
+describe("PROVIDER_TEMPLATES — UVoice entry", () => {
+  const uvoiceTemplate = PROVIDER_TEMPLATES.find(
+    (t) => t.providerName === "uvoice"
+  );
+
+  it("includes an entry with providerName 'uvoice'", () => {
+    expect(uvoiceTemplate).toBeDefined();
+  });
+
+  it("has providerType 'audio'", () => {
+    expect(uvoiceTemplate?.providerType).toBe("audio");
+  });
+
+  it("includes at least 3 UVoice audio models", () => {
+    expect(uvoiceTemplate?.availableModels?.length).toBeGreaterThanOrEqual(3);
+    expect(
+      uvoiceTemplate?.availableModels.every((m) => m.type === "audio")
+    ).toBe(true);
+  });
+});
+
+describe("testUVoice", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("returns success with latency on 400 response (auth verified)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        text: async () => "text length must be at least 5",
+      })
+    );
+    const result = await testUVoice("test-key", "https://api.uvoice.ai");
+    expect(result.success).toBe(true);
+    expect(typeof result.latencyMs).toBe("number");
+  });
+
+  it("sends POST /generate with settings payload", async () => {
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      text: async () => "validation error",
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await testUVoice("test-key", "https://api.uvoice.ai");
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [url, options] = fetchSpy.mock.calls[0];
+    expect(url).toBe("https://api.uvoice.ai/generate");
+    expect(options.method).toBe("POST");
+    expect(options.headers["Authorization"]).toBe("Bearer test-key");
+    const body = JSON.parse(options.body);
+    expect(body.settings.voiceID).toBe("TH-KantapongPremiumHD");
+    expect(body.settings.outputType).toBe("url");
+  });
+
+  it("returns failure on 401", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: false, status: 401 })
+    );
+    const result = await testUVoice("bad-key", "https://api.uvoice.ai");
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects private IP URLs (SSRF blocked)", async () => {
+    await expect(testUVoice("key", "http://127.0.0.1")).rejects.toThrow(
+      /private|internal/i
+    );
   });
 });

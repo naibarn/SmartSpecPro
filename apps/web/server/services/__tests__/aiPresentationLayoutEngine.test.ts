@@ -663,6 +663,36 @@ describe("Edge Cases", () => {
     expect(texts).toContain("ปัญหากล้ามเนื้อ");
   });
 
+  it("keeps feature box heading and detail blocks separated in portrait auto layout", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "feature_boxes_right",
+        title: "Movement and Social Skills at 9 Months",
+        sections: [
+          { heading: "Encouraging Exploration", details: ["Create a safe environment for crawling"] },
+          { heading: "Remove hazardous items", details: ["Clear small or sharp objects from reach"] },
+          { heading: "Enhancing Communication", details: ["Read stories frequently"] },
+          { heading: "Promote strong language skills", details: ["Name objects and respond to babbling"] },
+        ],
+      }),
+      canvasWidth: 720,
+      canvasHeight: 1280,
+    }));
+
+    const heading = result.slideContent.elements.find(
+      (element) => element.type === "text" && element.text === "Enhancing Communication",
+    );
+    const detail = result.slideContent.elements.find(
+      (element) => element.type === "text" && element.text === "Read stories frequently",
+    );
+
+    expect(heading).toBeDefined();
+    expect(detail).toBeDefined();
+    if (heading?.type === "text" && detail?.type === "text") {
+      expect(detail.y).toBeGreaterThanOrEqual(heading.y + heading.height);
+    }
+  });
+
   it("renders subtitle level before detail body in split templates", () => {
     const result = generateSlide(makeLayoutInput({
       slideData: makeSlideData({

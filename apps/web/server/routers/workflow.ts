@@ -1674,7 +1674,10 @@ export const workflowRouter = router({
       let previewSvg: string | null = null;
       try {
         const { generateWorkflowSvg } = await import("../lib/workflowSvgGenerator");
-        previewSvg = generateWorkflowSvg(wfJson.nodes || [], wfJson.edges || []);
+        previewSvg = generateWorkflowSvg({
+          nodes: (wfJson.nodes || []) as any[],
+          edges: (wfJson.edges || []) as any[],
+        });
       } catch (_) { /* non-fatal */ }
 
       // Upsert: find existing template from this workflow or create new
@@ -1735,7 +1738,7 @@ export const workflowRouter = router({
         const admins = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin"));
         for (const admin of admins) {
           await createNotification({
-            db,
+            db: db.instance,
             userId: admin.id,
             type: "system",
             title: "Workflow Template Publish Request",
@@ -1806,7 +1809,7 @@ export const workflowRouter = router({
         if (tpl.authorId) {
           const { createNotification } = await import("../services/notificationService");
           await createNotification({
-            db,
+            db: db.instance,
             userId: tpl.authorId,
             type: "system",
             title: "Workflow Template Approved!",
@@ -1854,7 +1857,7 @@ export const workflowRouter = router({
           const { createNotification } = await import("../services/notificationService");
           const reasonText = input.reason?.trim() ? ` Reason: ${input.reason.trim()}` : "";
           await createNotification({
-            db,
+            db: db.instance,
             userId: tpl.authorId,
             type: "system",
             title: "Workflow Template Rejected",

@@ -6,11 +6,12 @@
 import { z } from "zod";
 import { router, adminProcedure, protectedProcedure } from "../_core/trpc";
 import { db } from "../db";
-import { mediaModels } from "../../drizzle/schema";
+import { mediaModels, mediaProviders } from "../../drizzle/schema";
 import { eq, asc, desc, and, ilike, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { clearModelCache } from "../services/modelRegistry";
 import { clearSkillRegistryCache } from "../services/skillRegistry";
+import { decrypt } from "../services/crypto";
 import {
   getMediaModelResolutionCounters,
   resetMediaModelResolutionCounters,
@@ -63,6 +64,210 @@ const updateModelSchema = z.object({
   priority: z.number().int().optional(),
   sortOrder: z.number().int().optional(),
 });
+
+const optionsSourceSchema = z.object({
+  type: z.enum(["provider_api", "public_api"]),
+  endpoint: z.string().min(1).max(500),
+  method: z.enum(["GET", "POST"]).optional(),
+  headers: z.record(z.string(), z.string()).optional(),
+  queryParam: z.string().max(120).optional(),
+  body: z.unknown().optional(),
+  itemsPath: z.string().max(120).optional(),
+  valueField: z.string().max(120).optional(),
+  labelField: z.string().max(120).optional(),
+  valueTransform: z.enum(["none", "before_dash"]).optional(),
+  cacheTtlSeconds: z.number().int().min(1).max(86400).optional(),
+});
+
+type ModelFieldOption = {
+  value: string;
+  label: string;
+};
+
+const modelFieldOptionsCache = new Map<string, { expiresAt: number; options: ModelFieldOption[] }>();
+
+function getPathValue(source: unknown, path: string): unknown {
+  if (!path) return source;
+  const segments = path.split(".").filter(Boolean);
+  let current: unknown = source;
+  for (const segment of segments) {
+    if (!current || typeof current !== "object") return undefined;
+    current = (current as Record<string, unknown>)[segment];
+  }
+  return current;
+}
+
+function dedupeFieldOptions(options: ModelFieldOption[]): ModelFieldOption[] {
+  const seen = new Set<string>();
+  const deduped: ModelFieldOption[] = [];
+  for (const option of options) {
+    const key = option.value.trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(option);
+  }
+  return deduped;
+}
+
+function applyOptionValueTransform(value: unknown, transform?: "none" | "before_dash"): string {
+  if (typeof value !== "string") {
+    return "";
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+  if (transform === "before_dash") {
+    return trimmed.split(/\s*-\s*/, 1)[0]?.trim() || trimmed;
+  }
+  return trimmed;
+}
+
+function interpolateTemplateValue(template: unknown, query: string): unknown {
+  if (typeof template === "string") {
+    return template.replaceAll("{{query}}", query);
+  }
+  if (Array.isArray(template)) {
+    return template.map((entry) => interpolateTemplateValue(entry, query));
+  }
+  if (!template || typeof template !== "object") {
+    return template;
+  }
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(template as Record<string, unknown>)) {
+    out[key] = interpolateTemplateValue(value, query);
+  }
+  return out;
+}
+
+async function resolveProviderConnection(providerName: string): Promise<{ baseUrl: string; apiKey: string } | null> {
+  const [provider] = await db
+    .select({
+      baseUrl: mediaProviders.baseUrl,
+      apiKeyEncrypted: mediaProviders.apiKeyEncrypted,
+    })
+    .from(mediaProviders)
+    .where(eq(mediaProviders.providerName, providerName))
+    .limit(1);
+
+  if (!provider?.baseUrl || !provider.apiKeyEncrypted) {
+    return null;
+  }
+
+  const apiKey = decrypt(provider.apiKeyEncrypted);
+  if (!apiKey) {
+    return null;
+  }
+
+  return {
+    baseUrl: provider.baseUrl,
+    apiKey,
+  };
+}
+
+async function fetchFieldOptionsFromSource(
+  providerName: string,
+  source: z.infer<typeof optionsSourceSchema>,
+  query?: string,
+): Promise<ModelFieldOption[]> {
+  const endpointRaw = source.endpoint.trim();
+  if (!endpointRaw) return [];
+
+  const sourceType = source.type;
+  const method = source.method === "POST" ? "POST" : "GET";
+  const itemsPath = source.itemsPath || "data";
+  const valueField = source.valueField || "id";
+  const labelField = source.labelField || "name";
+  const valueTransform = source.valueTransform || "none";
+  const cacheTtlSeconds = source.cacheTtlSeconds && source.cacheTtlSeconds > 0 ? source.cacheTtlSeconds : 300;
+
+  const cacheKey = `${sourceType}|${providerName}|${endpointRaw}|${method}|${itemsPath}|${valueField}|${labelField}|${valueTransform}|${query || ""}`;
+  const now = Date.now();
+  const cached = modelFieldOptionsCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    return cached.options;
+  }
+
+  let url: URL;
+  const headers: Record<string, string> = {
+    Accept: "application/json",
+  };
+
+  if (sourceType === "provider_api") {
+    if (/^https?:\/\//i.test(endpointRaw)) return [];
+    if (endpointRaw.startsWith("//")) return [];
+    if (endpointRaw.includes("..")) return [];
+
+    const connection = await resolveProviderConnection(providerName);
+    if (!connection) return [];
+    url = new URL(endpointRaw.replace(/^\//, ""), `${connection.baseUrl.replace(/\/$/, "")}/`);
+    headers.Authorization = `Bearer ${connection.apiKey}`;
+  } else {
+    if (!/^https:\/\//i.test(endpointRaw)) return [];
+    if (endpointRaw.includes("..")) return [];
+    url = new URL(endpointRaw);
+  }
+
+  if (query && source.queryParam && source.queryParam.trim().length > 0) {
+    url.searchParams.set(source.queryParam.trim(), query);
+  }
+
+  if (method === "POST") {
+    headers["Content-Type"] = "application/json";
+  }
+
+  if (source.headers) {
+    for (const [key, value] of Object.entries(source.headers)) {
+      const headerValue = typeof value === "string" ? value.trim() : "";
+      if (headerValue) {
+        headers[key] = headerValue;
+      }
+    }
+  }
+
+  const payload = method === "POST"
+    ? interpolateTemplateValue(source.body ?? {}, query ?? "")
+    : undefined;
+
+  const response = await fetch(url.toString(), {
+    method,
+    headers,
+    ...(method === "POST" ? { body: JSON.stringify(payload) } : {}),
+  });
+  if (!response.ok) {
+    return [];
+  }
+
+  let parsed: unknown = null;
+  try {
+    parsed = await response.json();
+  } catch {
+    return [];
+  }
+
+  const items = itemsPath ? getPathValue(parsed, itemsPath) : parsed;
+  if (!Array.isArray(items)) {
+    return [];
+  }
+
+  const options: ModelFieldOption[] = [];
+  for (const item of items) {
+    if (!item || typeof item !== "object") continue;
+    const valueRaw = getPathValue(item, valueField);
+    const labelRaw = getPathValue(item, labelField);
+    const value = applyOptionValueTransform(valueRaw, valueTransform);
+    const label = typeof labelRaw === "string" ? labelRaw.trim() : value;
+    if (!value) continue;
+    options.push({ value, label: label || value });
+  }
+
+  const deduped = dedupeFieldOptions(options);
+  modelFieldOptionsCache.set(cacheKey, {
+    expiresAt: now + cacheTtlSeconds * 1000,
+    options: deduped,
+  });
+  return deduped;
+}
 
 export const mediaModelsRouter = router({
   // ==================== Admin Operations ====================
@@ -394,6 +599,27 @@ export const mediaModelsRouter = router({
       resetAt: new Date().toISOString(),
     };
   }),
+
+  /**
+   * Preview dynamic field options for admin configuration UI
+   */
+  previewFieldOptions: adminProcedure
+    .input(z.object({
+      provider: z.string().min(1).max(64),
+      optionsSource: optionsSourceSchema,
+      query: z.string().max(120).optional(),
+      limit: z.number().int().min(1).max(2000).default(2000),
+    }))
+    .mutation(async ({ input }) => {
+      const options = await fetchFieldOptionsFromSource(
+        input.provider,
+        input.optionsSource,
+        input.query,
+      );
+      return {
+        options: options.slice(0, input.limit),
+      };
+    }),
 
   // ==================== Public Operations ====================
 

@@ -43,3 +43,27 @@ async def test_generate_image_uses_db_model_id_and_endpoint_aliases():
     assert args[1] == "veo/generate"
     assert kwargs["data"]["model"] == "nano-banana-2"
 
+
+@pytest.mark.asyncio
+async def test_generate_video_uses_db_kie_model_id_for_provider_payload():
+    reset_model_resolution_stats()
+
+    provider = KieAIProvider(api_key="test-key")
+    provider.wait_for_task = AsyncMock(return_value={"id": "task-1", "data": []})
+    provider._make_request = AsyncMock(return_value={"data": {"taskId": "task-1"}})
+
+    await provider.generate_video(
+        model="veo-3-1",
+        prompt="test prompt",
+        callback_url="",
+        api_config={
+            "kie_model_id": "veo3_fast",
+            "endpoint": "/api/v1/veo/generate",
+        },
+    )
+
+    provider._make_request.assert_awaited_once()
+    args, kwargs = provider._make_request.await_args
+    assert args[0] == "POST"
+    assert args[1] == "veo/generate"
+    assert kwargs["data"]["model"] == "veo3_fast"

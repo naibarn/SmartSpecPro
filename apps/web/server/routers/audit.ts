@@ -17,7 +17,7 @@ import {
   creditTransactions,
   llmProviders,
 } from "../../drizzle/schema";
-import { eq, and, gte, lte, desc, sql, isNotNull } from "drizzle-orm";
+import { eq, and, gte, lte, desc, sql, isNotNull, ilike, or } from "drizzle-orm";
 import { auditLogger } from "../services/auditLogger";
 
 function getErrorMessage(error: unknown): string {
@@ -36,10 +36,12 @@ export const auditRouter = router({
         dateEnd: z.string().datetime().optional(),
         userId: z.number().optional(),
         providerId: z.number().optional(),
+        provider: z.string().optional(),
         model: z.string().optional(),
         traceId: z.string().optional(),
         errorOnly: z.boolean().optional(),
         eventType: z.string().optional(),
+        requestType: z.string().optional(),
         limit: z.number().min(1).max(500).default(50),
         offset: z.number().min(0).default(0),
       })
@@ -55,13 +57,42 @@ export const auditRouter = router({
         if (input.dateEnd) conditions.push(lte(providerUsageLog.createdAt, new Date(input.dateEnd)));
         if (input.userId) conditions.push(eq(providerUsageLog.userId, input.userId));
         if (input.providerId) conditions.push(eq(providerUsageLog.providerId, input.providerId));
-        if (input.model) conditions.push(eq(providerUsageLog.modelUsed, input.model));
+        if (input.provider) conditions.push(ilike(llmProviders.providerName, `%${input.provider}%`));
+        if (input.model) conditions.push(ilike(providerUsageLog.modelUsed, `%${input.model}%`));
         if (input.traceId) conditions.push(eq(providerUsageLog.traceId, input.traceId));
-        if (input.errorOnly) conditions.push(isNotNull(providerUsageLog.errorType));
+        if (input.requestType) conditions.push(eq(providerUsageLog.requestType, input.requestType));
+        if (input.errorOnly) {
+          conditions.push(
+            or(
+              isNotNull(providerUsageLog.errorType),
+              isNotNull(providerUsageLog.errorMessage),
+            ),
+          );
+        }
 
         usageLogs = await db
-          .select()
+          .select({
+            id: providerUsageLog.id,
+            userId: providerUsageLog.userId,
+            providerId: providerUsageLog.providerId,
+            providerName: sql<string>`coalesce(${llmProviders.providerName}, 'Unknown')`,
+            modelUsed: providerUsageLog.modelUsed,
+            inputTokens: providerUsageLog.inputTokens,
+            outputTokens: providerUsageLog.outputTokens,
+            costUsd: providerUsageLog.costUsd,
+            creditsCharged: providerUsageLog.creditsCharged,
+            responseTimeMs: providerUsageLog.responseTimeMs,
+            statusCode: providerUsageLog.statusCode,
+            errorType: providerUsageLog.errorType,
+            errorMessage: providerUsageLog.errorMessage,
+            traceId: providerUsageLog.traceId,
+            requestType: providerUsageLog.requestType,
+            wasFallback: providerUsageLog.wasFallback,
+            fallbackFromProviderId: providerUsageLog.fallbackFromProviderId,
+            createdAt: providerUsageLog.createdAt,
+          })
           .from(providerUsageLog)
+          .leftJoin(llmProviders, eq(providerUsageLog.providerId, llmProviders.id))
           .where(conditions.length > 0 ? and(...conditions) : undefined)
           .orderBy(desc(providerUsageLog.createdAt))
           .limit(input.limit)
@@ -77,8 +108,18 @@ export const auditRouter = router({
         if (input.dateStart) eventConditions.push(gte(apiAuditEvents.createdAt, new Date(input.dateStart)));
         if (input.dateEnd) eventConditions.push(lte(apiAuditEvents.createdAt, new Date(input.dateEnd)));
         if (input.userId) eventConditions.push(eq(apiAuditEvents.userId, input.userId));
+        if (input.provider) eventConditions.push(ilike(apiAuditEvents.provider, `%${input.provider}%`));
+        if (input.model) eventConditions.push(ilike(apiAuditEvents.model, `%${input.model}%`));
         if (input.traceId) eventConditions.push(eq(apiAuditEvents.traceId, input.traceId));
         if (input.eventType) eventConditions.push(eq(apiAuditEvents.eventType, input.eventType));
+        if (input.requestType) {
+          eventConditions.push(
+            or(
+              eq(apiAuditEvents.mediaType, input.requestType),
+              eq(apiAuditEvents.eventType, input.requestType),
+            ),
+          );
+        }
         if (input.errorOnly) eventConditions.push(isNotNull(apiAuditEvents.errorMessage));
 
         auditEvents = await db
@@ -106,11 +147,13 @@ export const auditRouter = router({
       })
     )
     .query(async ({ input }) => {
-      const date = input.date ? new Date(input.date) : new Date();
-      const entries = await auditLogger.readEntries({
-        date,
+      const preferredDate = input.date
+        ? new Date(`${input.date}T00:00:00.000Z`)
+        : new Date();
+      const entries = await readAuditEntriesWithFallback({
         traceId: input.traceId,
-        limit: 50,
+        preferredDate,
+        limit: 100,
       });
       return { entries };
     }),
@@ -232,3 +275,68 @@ export const auditRouter = router({
       }
     }),
 });
+
+function toIsoDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function addDays(date: Date, days: number): Date {
+  const next = new Date(date);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next;
+}
+
+async function readAuditEntriesWithFallback(opts: {
+  traceId: string;
+  preferredDate: Date;
+  limit?: number;
+}): Promise<any[]> {
+  const limit = opts.limit ?? 100;
+  const seenDates = new Set<string>();
+  const merged = new Map<string, any>();
+
+  const collect = async (date: Date) => {
+    const keyDate = toIsoDate(date);
+    if (seenDates.has(keyDate)) return;
+    seenDates.add(keyDate);
+
+    const entries = await auditLogger.readEntries({
+      date,
+      traceId: opts.traceId,
+      limit,
+    });
+
+    for (const entry of entries) {
+      const key = [
+        entry.timestamp ?? "",
+        entry.eventType ?? "",
+        entry.model ?? "",
+        entry.statusCode ?? "",
+        entry.requestType ?? "",
+      ].join("|");
+      if (!merged.has(key)) {
+        merged.set(key, entry);
+      }
+    }
+  };
+
+  for (const offset of [-1, 0, 1]) {
+    await collect(addDays(opts.preferredDate, offset));
+  }
+
+  if (merged.size === 0) {
+    const today = new Date();
+    for (let offset = 0; offset > -7; offset -= 1) {
+      await collect(addDays(today, offset));
+      if (merged.size >= limit) break;
+    }
+  }
+
+  return [...merged.values()]
+    .sort((a, b) => {
+      const ta = a?.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const tb = b?.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return ta - tb;
+    })
+    .slice(0, limit);
+}

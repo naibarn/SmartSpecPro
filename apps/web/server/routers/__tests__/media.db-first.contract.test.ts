@@ -2,23 +2,28 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockGenerateImage,
+  mockGenerateAudio,
   mockCalculateCreditCost,
   mockDeductCredits,
   mockHasEnoughCredits,
   mockGetDb,
   mockCheckAbuseGuard,
+  mockDecrypt,
 } = vi.hoisted(() => ({
   mockGenerateImage: vi.fn(),
+  mockGenerateAudio: vi.fn(),
   mockCalculateCreditCost: vi.fn(),
   mockDeductCredits: vi.fn(),
   mockHasEnoughCredits: vi.fn(),
   mockGetDb: vi.fn(),
   mockCheckAbuseGuard: vi.fn(),
+  mockDecrypt: vi.fn(),
 }));
 
 vi.mock("../../services/mediaGenerationService", () => ({
   mediaGenerationService: {
     generateImage: mockGenerateImage,
+    generateAudio: mockGenerateAudio,
     getModels: vi.fn().mockReturnValue([]),
     getModel: vi.fn().mockReturnValue(null),
   },
@@ -68,6 +73,16 @@ vi.mock("../../../drizzle/schema", () => ({
     priority: "priority",
     id: "id",
   },
+  mediaProviders: {
+    providerName: "providerName",
+    baseUrl: "baseUrl",
+    apiKeyEncrypted: "apiKeyEncrypted",
+    isEnabled: "isEnabled",
+  },
+  users: {
+    id: "id",
+    userPreferences: "userPreferences",
+  },
 }));
 
 vi.mock("drizzle-orm", () => ({
@@ -92,6 +107,10 @@ vi.mock("../../services/sandbox/dispatchService", () => ({
 vi.mock("../../services/abuseGuard", () => ({
   checkAbuseGuard: mockCheckAbuseGuard,
   hashPrompt: vi.fn().mockReturnValue("prompt-hash"),
+}));
+
+vi.mock("../../services/crypto", () => ({
+  decrypt: mockDecrypt,
 }));
 
 vi.mock("../../services/mediaLibraryService", () => ({
@@ -144,9 +163,11 @@ function makeDbWithSequentialSelectResults(results: Array<any[]>) {
 describe("media router DB-first model contract", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
     mockCheckAbuseGuard.mockResolvedValue({ allowed: true, reason: "", retryAfter: 0 });
     mockHasEnoughCredits.mockResolvedValue(true);
     mockCalculateCreditCost.mockReturnValue(22);
+    mockDecrypt.mockReturnValue("uvoice-test-key");
     mockGenerateImage.mockResolvedValue({
       success: true,
       taskId: "task-1",
@@ -155,6 +176,15 @@ describe("media router DB-first model contract", () => {
       provider: "kie.ai",
       creditsUsed: 22,
       data: [{ url: "https://example.com/img.png" }],
+    });
+    mockGenerateAudio.mockResolvedValue({
+      success: true,
+      taskId: "task-audio-1",
+      status: "completed",
+      model: "db-only-audio-model",
+      provider: "uvoice",
+      creditsUsed: 22,
+      data: [{ url: "https://example.com/audio.mp3" }],
     });
   });
 
@@ -262,7 +292,8 @@ describe("media router DB-first model contract", () => {
 
   it("uses DB default model when request omits model", async () => {
     const db = makeDbWithSequentialSelectResults([
-      [{ modelId: "db-default-image" }],
+      [{ modelId: "db-default-image", provider: "kie.ai" }],
+      [],
       [{ modelType: "image", provider: "kie.ai", isEnabled: true }],
       [{ creditCost: 18, configJson: null }],
     ]);
@@ -288,6 +319,98 @@ describe("media router DB-first model contract", () => {
       }),
       "user-token",
     );
+  });
+
+  it("prefers a configured provider when resolving the DB default model", async () => {
+    const db = makeDbWithSequentialSelectResults([
+      [
+        { modelId: "db-unconfigured-image", provider: "uvoice" },
+        { modelId: "db-configured-image", provider: "kie.ai" },
+      ],
+      [{ providerName: "kie_ai", apiKeyEncrypted: "encrypted-key" }],
+      [{ modelType: "image", provider: "kie.ai", isEnabled: true }],
+      [{ creditCost: 18, configJson: null }],
+    ]);
+    mockGetDb.mockResolvedValue(db as any);
+    mockCalculateCreditCost.mockReturnValue(18);
+
+    const fn = mediaRouter.generateImage as Function;
+    await fn({
+      ctx: {
+        user: { id: 123, role: "user", currentTenantId: 1 },
+        userToken: "user-token",
+        tenantId: 1,
+        publicUrl: "https://tenant.example.com",
+      },
+      input: {
+        prompt: "test prompt",
+      },
+    });
+
+    expect(mockGenerateImage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "db-configured-image",
+      }),
+      "user-token",
+    );
+  });
+
+  it("getModels derives configured defaults instead of the first sorted row", async () => {
+    const db = {
+      select: vi
+        .fn()
+        .mockImplementationOnce(() => ({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              orderBy: vi.fn().mockResolvedValue([
+                {
+                  id: "seedance-1-0-pro-fast-251015",
+                  name: "Seedance Fast",
+                  description: "video",
+                  type: "video",
+                  provider: "byteplus_modelark",
+                  creditCost: 20,
+                  supportsAspectRatios: ["16:9"],
+                  supportsSizes: null,
+                  supportsDurations: [5],
+                  configJson: null,
+                },
+                {
+                  id: "veo-3-1",
+                  name: "Veo 3.1",
+                  description: "video",
+                  type: "video",
+                  provider: "kie.ai",
+                  creditCost: 50,
+                  supportsAspectRatios: ["16:9"],
+                  supportsSizes: null,
+                  supportsDurations: [5],
+                  configJson: null,
+                },
+              ]),
+            }),
+          }),
+        }))
+        .mockImplementationOnce(() => ({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([
+                { providerName: "kie_ai", apiKeyEncrypted: "encrypted-key" },
+              ]),
+            }),
+          }),
+        })),
+    };
+    mockGetDb.mockResolvedValue(db as any);
+
+    const fn = mediaRouter.getModels as Function;
+    const result = await fn({ input: { type: "video" } });
+
+    expect(result.defaults.video).toBe("veo-3-1");
+    expect(result.models.map((model: { id: string }) => model.id)).toEqual([
+      "seedance-1-0-pro-fast-251015",
+      "veo-3-1",
+    ]);
   });
 
   it("getModel resolves DB-only model details", async () => {
@@ -317,5 +440,556 @@ describe("media router DB-first model contract", () => {
       type: "image",
       creditCost: 22,
     });
+  });
+
+  it("generateAudio enforces model-specific maxPromptLength from DB config", async () => {
+    const db = makeDbWithSequentialSelectResults([
+      [{ modelType: "audio", provider: "uvoice", isEnabled: true }],
+      [{ creditCost: 150, configJson: { maxPromptLength: 1500, pricingTiers: { default: 150 } } }],
+    ]);
+    mockGetDb.mockResolvedValue(db as any);
+
+    const fn = mediaRouter.generateAudio as Function;
+    await expect(
+      fn({
+        ctx: {
+          user: { id: 123, role: "user", currentTenantId: 1 },
+          userToken: "user-token",
+          tenantId: 1,
+          publicUrl: "https://tenant.example.com",
+        },
+        input: {
+          model: "uvoice/tts-natural",
+          text: "a".repeat(1501),
+        },
+      }),
+    ).rejects.toMatchObject({ message: expect.stringContaining("exceeds model limit 1500") });
+
+    expect(mockGenerateAudio).not.toHaveBeenCalled();
+    expect(mockHasEnoughCredits).not.toHaveBeenCalled();
+  });
+
+  it("listModelFieldOptions returns static options from configJson input fields", async () => {
+    const db = makeDbWithSequentialSelectResults([
+      [{
+        modelType: "audio",
+        provider: "example-tts",
+        isEnabled: true,
+        configJson: {
+          inputFields: [
+            {
+              key: "speakerId",
+              options: [
+                { value: "TH-KantapongPremiumHD", label: "Kantapong Premium HD" },
+                { value: "TH-AnotherVoice", label: "Another Voice" },
+              ],
+            },
+          ],
+        },
+      }],
+    ]);
+    mockGetDb.mockResolvedValue(db as any);
+
+    const fn = mediaRouter.listModelFieldOptions as Function;
+    const result = await fn({
+      input: {
+        modelId: "example-tts/standard",
+        fieldKey: "speakerId",
+        query: "Kantapong",
+        limit: 20,
+      },
+    });
+
+    expect(result.options).toEqual([
+      { value: "TH-KantapongPremiumHD", label: "Kantapong Premium HD" },
+    ]);
+    expect(result.source).toBe("static");
+  });
+
+  it("listModelFieldOptions resolves provider_api options and merges with static options", async () => {
+    const db = makeDbWithSequentialSelectResults([
+      [{
+        modelType: "audio",
+        provider: "example-tts",
+        isEnabled: true,
+        configJson: {
+          inputFields: [
+            {
+              key: "speakerId",
+              options: [
+                { value: "TH-STATIC", label: "Static Voice" },
+              ],
+              optionsSource: {
+                type: "provider_api",
+                endpoint: "/voice/list",
+                method: "GET",
+                itemsPath: "voices",
+                valueField: "speaker_id",
+                labelField: "name",
+              },
+            },
+          ],
+        },
+      }],
+      [{
+        baseUrl: "https://api.uvoice.ai",
+        apiKeyEncrypted: "encrypted-key",
+      }],
+    ]);
+    mockGetDb.mockResolvedValue(db as any);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        voices: [
+          { speaker_id: "TH-STATIC", name: "Static Voice Dynamic Label" },
+          { speaker_id: "TH-DYNAMIC", name: "Dynamic Voice" },
+        ],
+      }),
+    }));
+
+    const fn = mediaRouter.listModelFieldOptions as Function;
+    const result = await fn({
+      input: {
+        modelId: "example-tts/standard",
+        fieldKey: "speakerId",
+        limit: 50,
+      },
+    });
+
+    expect(result.source).toBe("merged");
+    expect(result.options).toEqual([
+      { value: "TH-STATIC", label: "Static Voice Dynamic Label" },
+      { value: "TH-DYNAMIC", label: "Dynamic Voice" },
+    ]);
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.uvoice.ai/voice/list",
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({
+          Authorization: "Bearer uvoice-test-key",
+        }),
+      }),
+    );
+  });
+
+  it("listModelFieldOptions rejects absolute provider_api endpoint and keeps static options only", async () => {
+    const db = makeDbWithSequentialSelectResults([
+      [{
+        modelType: "audio",
+        provider: "example-tts",
+        isEnabled: true,
+        configJson: {
+          inputFields: [
+            {
+              key: "speakerId",
+              options: [{ value: "TH-STATIC", label: "Static Voice" }],
+              optionsSource: {
+                type: "provider_api",
+                endpoint: "https://evil.example.com/voices",
+                itemsPath: "voices",
+                valueField: "speaker_id",
+                labelField: "name",
+              },
+            },
+          ],
+        },
+      }],
+    ]);
+    mockGetDb.mockResolvedValue(db as any);
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const fn = mediaRouter.listModelFieldOptions as Function;
+    const result = await fn({
+      input: {
+        modelId: "example-tts/standard",
+        fieldKey: "speakerId",
+        limit: 50,
+      },
+    });
+
+    expect(result.source).toBe("static");
+    expect(result.options).toEqual([{ value: "TH-STATIC", label: "Static Voice" }]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("listModelFieldOptions restricts UVoice results to the selected model tier", async () => {
+    const db = makeDbWithSequentialSelectResults([
+      [{
+        modelType: "audio",
+        provider: "uvoice",
+        isEnabled: true,
+        configJson: {
+          inputFields: [
+            {
+              key: "voiceID",
+              options: [{ value: "TH-STATIC", label: "Static Voice" }],
+              optionsSource: {
+                type: "provider_api",
+                endpoint: "/voice/list",
+                itemsPath: "voices",
+                valueField: "voiceID",
+                labelField: "name",
+              },
+            },
+          ],
+        },
+      }],
+      [{ userPreferences: { translationLanguage: "en" } }],
+    ]);
+    mockGetDb.mockResolvedValue(db as any);
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async (url: string) => {
+      if (url === "https://uvoice.app/?getVoice=true&lang_selected=en&filter=Standard&source=API-DOCS") {
+        return {
+          ok: true,
+          json: async () => ([
+            { voiceID: "EN-1", displayName: "English Voice 1", age: "A", path: "voice-preview/en/voice-1.mp3" },
+          ]),
+        } as any;
+      }
+      if (url === "https://uvoice.app/?getVoice=true&lang_selected=en&filter=Natural&source=API-DOCS") {
+        return {
+          ok: true,
+          json: async () => ([
+            { voiceID: "EN-2", displayName: "English Voice 2", age: "YA", path: "voice-preview/en/voice-2.mp3" },
+          ]),
+        } as any;
+      }
+      if (url === "https://uvoice.app/?getVoice=true&lang_selected=en&filter=Premium&source=API-DOCS") {
+        return {
+          ok: true,
+          json: async () => ([
+            { voiceID: "EN-P1", displayName: "English Premium Voice", age: "A", path: "voice-preview/en/voice-premium.mp3" },
+          ]),
+        } as any;
+      }
+      if (url === "https://uvoice.app/?getVoice=true&lang_selected=th&filter=Standard&source=API-DOCS") {
+        return {
+          ok: true,
+          json: async () => ([
+            { voiceID: "TH-1", displayName: "Thai Voice 1", age: "A", path: "voice-preview/th/voice-1.mp3" },
+          ]),
+        } as any;
+      }
+      if (url === "https://uvoice.app/?getVoice=true&lang_selected=th&filter=Natural&source=API-DOCS") {
+        return {
+          ok: true,
+          json: async () => ([]),
+        } as any;
+      }
+      if (url === "https://uvoice.app/?getVoice=true&lang_selected=th&filter=Premium&source=API-DOCS") {
+        return {
+          ok: true,
+          json: async () => ([
+            { voiceID: "TH-BowkyPremiumHD", displayName: "Bowky Premium HD", age: "A", path: "voice-preview/th/bowky-premium.mp3" },
+          ]),
+        } as any;
+      }
+      if (url === "https://uvoice.app/") {
+        return {
+          ok: true,
+          text: async () => (
+            'var apiBaseAudioUrl = "https://hearme.blob.core.windows.net/audiostorage/";'
+            + 'var storageToken = "?sig=test-token";'
+          ),
+        } as any;
+      }
+      return {
+        ok: false,
+        status: 404,
+      } as any;
+    }));
+
+    const fn = mediaRouter.listModelFieldOptions as Function;
+    const result = await fn({
+      ctx: {
+        user: { id: 123, role: "user", currentTenantId: 1 },
+        userToken: "user-token",
+        tenantId: 1,
+        publicUrl: "https://tenant.example.com",
+      },
+      input: {
+        modelId: "uvoice/tts-standard",
+        fieldKey: "voiceID",
+        query: "english",
+        limit: 50,
+      },
+    });
+
+    expect(result.source).toBe("merged");
+    expect(result.options).toEqual([
+      {
+        value: "EN-1",
+        label: "en - English Voice 1 (Adult)",
+        previewUrl: "https://hearme.blob.core.windows.net/audiostorage/voice-preview/en/voice-1.mp3?sig=test-token",
+      },
+    ]);
+    expect(fetch).toHaveBeenCalledWith(
+      "https://uvoice.app/?getVoice=true&lang_selected=en&filter=Standard&source=API-DOCS",
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({
+          Accept: "application/json",
+        }),
+      }),
+    );
+    expect(fetch).not.toHaveBeenCalledWith(
+      "https://uvoice.app/?getVoice=true&lang_selected=en&filter=Natural&source=API-DOCS",
+      expect.anything(),
+    );
+    expect(fetch).not.toHaveBeenCalledWith(
+      "https://uvoice.app/?getVoice=true&lang_selected=en&filter=Premium&source=API-DOCS",
+      expect.anything(),
+    );
+    expect(fetch).toHaveBeenCalledWith(
+      "https://uvoice.app/",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Accept: "text/html",
+        }),
+      }),
+    );
+  });
+
+  it("listModelFieldOptions includes only premium UVoice voices for premium model and keeps static fallback", async () => {
+    const db = makeDbWithSequentialSelectResults([
+      [{
+        modelType: "audio",
+        provider: "uvoice",
+        isEnabled: true,
+        configJson: {
+          inputFields: [
+            {
+              key: "voiceID",
+              options: [{ value: "TH-STATIC", label: "Static Voice" }],
+              optionsSource: {
+                type: "provider_api",
+                endpoint: "/voice/list",
+                itemsPath: "voices",
+                valueField: "voiceID",
+                labelField: "name",
+              },
+            },
+          ],
+        },
+      }],
+      [{ userPreferences: { translationLanguage: "th" } }],
+    ]);
+    mockGetDb.mockResolvedValue(db as any);
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(async (url: string) => {
+      if (url === "https://uvoice.app/?getVoice=true&lang_selected=en&filter=Standard&source=API-DOCS") {
+        return {
+          ok: true,
+          json: async () => ([
+            { voiceID: "EN-1", displayName: "English Voice 1", age: "A", path: "voice-preview/en/voice-1.mp3" },
+          ]),
+        } as any;
+      }
+      if (url === "https://uvoice.app/?getVoice=true&lang_selected=en&filter=Natural&source=API-DOCS") {
+        return {
+          ok: true,
+          json: async () => ([
+            { voiceID: "EN-2", displayName: "English Voice 2", age: "YA", path: "voice-preview/en/voice-2.mp3" },
+          ]),
+        } as any;
+      }
+      if (url === "https://uvoice.app/?getVoice=true&lang_selected=en&filter=Premium&source=API-DOCS") {
+        return {
+          ok: true,
+          json: async () => ([
+            { voiceID: "EN-P1", displayName: "English Premium Voice", age: "A", path: "voice-preview/en/voice-premium.mp3" },
+          ]),
+        } as any;
+      }
+      if (url === "https://uvoice.app/?getVoice=true&lang_selected=th&filter=Standard&source=API-DOCS") {
+        return {
+          ok: true,
+          json: async () => ([
+            { voiceID: "TH-1", displayName: "Thai Voice 1", age: "A", path: "voice-preview/th/voice-1.mp3" },
+          ]),
+        } as any;
+      }
+      if (url === "https://uvoice.app/?getVoice=true&lang_selected=th&filter=Natural&source=API-DOCS") {
+        return {
+          ok: true,
+          json: async () => ([
+            { voiceID: "TH-N1", displayName: "Thai Natural Voice", age: "YA", path: "voice-preview/th/voice-natural-1.mp3" },
+          ]),
+        } as any;
+      }
+      if (url === "https://uvoice.app/?getVoice=true&lang_selected=th&filter=Premium&source=API-DOCS") {
+        return {
+          ok: true,
+          json: async () => ([
+            { voiceID: "TH-BowkyPremiumHD", displayName: "Bowky Premium HD", age: "A", path: "voice-preview/th/bowky-premium.mp3" },
+          ]),
+        } as any;
+      }
+      if (url === "https://uvoice.app/") {
+        return {
+          ok: true,
+          text: async () => (
+            'var apiBaseAudioUrl = "https://hearme.blob.core.windows.net/audiostorage/";'
+            + 'var storageToken = "?sig=test-token";'
+          ),
+        } as any;
+      }
+      return {
+        ok: false,
+        status: 404,
+      } as any;
+    }));
+
+    const fn = mediaRouter.listModelFieldOptions as Function;
+    const result = await fn({
+      ctx: {
+        user: { id: 123, role: "user", currentTenantId: 1 },
+        userToken: "user-token",
+        tenantId: 1,
+        publicUrl: "https://tenant.example.com",
+      },
+      input: {
+        modelId: "uvoice/tts-premium",
+        fieldKey: "voiceID",
+        limit: 50,
+      },
+    });
+
+    expect(result.source).toBe("merged");
+    expect(result.options).toEqual([
+      {
+        value: "EN-P1",
+        label: "en - English Premium Voice (Adult)",
+        previewUrl: "https://hearme.blob.core.windows.net/audiostorage/voice-preview/en/voice-premium.mp3?sig=test-token",
+      },
+      {
+        value: "TH-BowkyPremiumHD",
+        label: "th - Bowky Premium HD (Adult)",
+        previewUrl: "https://hearme.blob.core.windows.net/audiostorage/voice-preview/th/bowky-premium.mp3?sig=test-token",
+      },
+      {
+        value: "TH-STATIC",
+        label: "Static Voice",
+      },
+    ]);
+    expect(fetch).not.toHaveBeenCalledWith(
+      "https://uvoice.app/?getVoice=true&lang_selected=th&filter=Standard&source=API-DOCS",
+      expect.anything(),
+    );
+    expect(fetch).toHaveBeenCalledWith(
+      "https://uvoice.app/?getVoice=true&lang_selected=th&filter=Premium&source=API-DOCS",
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({
+          Accept: "application/json",
+        }),
+      }),
+    );
+    expect(fetch).not.toHaveBeenCalledWith(
+      "https://uvoice.app/?getVoice=true&lang_selected=th&filter=Natural&source=API-DOCS",
+      expect.anything(),
+    );
+  });
+
+  it("listModelFieldOptions resolves public_api options without provider key", async () => {
+    const db = makeDbWithSequentialSelectResults([
+      [{
+        modelType: "audio",
+        provider: "kie.ai",
+        isEnabled: true,
+        configJson: {
+          inputFields: [
+            {
+              key: "voice",
+              optionsSource: {
+                type: "public_api",
+                endpoint: "https://api.elevenlabs.io/v1/voices",
+                method: "GET",
+                itemsPath: "voices",
+                valueField: "name",
+                labelField: "name",
+                valueTransform: "before_dash",
+              },
+            },
+          ],
+        },
+      }],
+    ]);
+    mockGetDb.mockResolvedValue(db as any);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        voices: [
+          { name: "Jessica - Playful, Bright, Warm" },
+          { name: "Mark - Natural Conversations" },
+        ],
+      }),
+    }));
+
+    const fn = mediaRouter.listModelFieldOptions as Function;
+    const result = await fn({
+      input: {
+        modelId: "elevenlabs/text-to-dialogue-v3",
+        fieldKey: "voice",
+        limit: 50,
+      },
+    });
+
+    expect(result.source).toBe("dynamic");
+    expect(result.options).toEqual([
+      { value: "Jessica", label: "Jessica - Playful, Bright, Warm" },
+      { value: "Mark", label: "Mark - Natural Conversations" },
+    ]);
+    expect(fetch).toHaveBeenCalledWith(
+      "https://api.elevenlabs.io/v1/voices",
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({
+          Accept: "application/json",
+        }),
+      }),
+    );
+  });
+
+  it("listModelFieldOptions rejects non-https public_api endpoint", async () => {
+    const db = makeDbWithSequentialSelectResults([
+      [{
+        modelType: "audio",
+        provider: "kie.ai",
+        isEnabled: true,
+        configJson: {
+          inputFields: [
+            {
+              key: "voice",
+              options: [{ value: "Jessica", label: "Jessica" }],
+              optionsSource: {
+                type: "public_api",
+                endpoint: "http://api.elevenlabs.io/v1/voices",
+                method: "GET",
+                itemsPath: "voices",
+                valueField: "name",
+                labelField: "name",
+              },
+            },
+          ],
+        },
+      }],
+    ]);
+    mockGetDb.mockResolvedValue(db as any);
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const fn = mediaRouter.listModelFieldOptions as Function;
+    const result = await fn({
+      input: {
+        modelId: "elevenlabs/text-to-dialogue-v3",
+        fieldKey: "voice",
+        limit: 50,
+      },
+    });
+
+    expect(result.source).toBe("static");
+    expect(result.options).toEqual([{ value: "Jessica", label: "Jessica" }]);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });

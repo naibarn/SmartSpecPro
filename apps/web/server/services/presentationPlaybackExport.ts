@@ -49,6 +49,11 @@ import {
   recordPresentationFailureMetric,
   recordPresentationLog,
 } from "./presentationObservability";
+import {
+  evaluatePresentationEditAdditionalRolloutGate,
+  type PresentationEditAdditionalRolloutGateInput,
+  type PresentationEditAdditionalRolloutGateResult,
+} from "./presentationEditAdditionalRolloutGateEvaluator";
 
 const DEFAULT_DURATION_MS = 3000;
 const DEDUPE_WINDOW_MS = 15_000;
@@ -64,6 +69,7 @@ const MAX_THROTTLE_KEYS = 5_000;
 const MAX_THROTTLE_WINDOW_ENTRIES_PER_KEY = 120;
 const EXPORT_TASK_STALE_MS = 20 * 60_000;
 const DEFAULT_PYTHON_BACKEND_URL = "http://localhost:8000";
+const EDIT_ADDITIONAL_ROLLOUT_GATE_FLAG = "PRESENTATION_EDIT_ADDITIONAL_ROLLOUT_GATE_ENFORCED";
 
 interface PresentationExportStateRecord {
   exportId: number;
@@ -108,7 +114,16 @@ interface TriggerPresentationExportDependencies {
   };
   recordMetric?: (metric: string, tags?: Record<string, string>) => void;
   recordLog?: (event: string, payload: Record<string, unknown>) => void;
+  enforceEditAdditionalRolloutGate?: boolean;
+  editAdditionalRolloutGateInput?: PresentationEditAdditionalRolloutGateInput | null;
+  evaluateEditAdditionalRolloutGate?: (
+    input: PresentationEditAdditionalRolloutGateInput,
+  ) => PresentationEditAdditionalRolloutGateResult;
 }
+
+type ResolvedTriggerPresentationExportDependencies =
+  Omit<Required<TriggerPresentationExportDependencies>, "userToken">
+  & { userToken?: string };
 
 interface BuildSlideshowOptions {
   deckId?: number;
@@ -170,6 +185,129 @@ function resolvePythonBackendBaseUrl(): string {
     || process.env.VITE_PYTHON_BACKEND_URL?.trim()
     || DEFAULT_PYTHON_BACKEND_URL;
   return candidate.replace(/\/+$/, "");
+}
+
+function parseBooleanFlag(raw: string | undefined, fallback: boolean): boolean {
+  if (raw === undefined) {
+    return fallback;
+  }
+  const normalized = raw.trim().toLowerCase();
+  if (!normalized) {
+    return fallback;
+  }
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false;
+  }
+  return fallback;
+}
+
+function parseNumericEnv(raw: string | undefined): number | null {
+  if (typeof raw !== "string") {
+    return null;
+  }
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+  return parsed;
+}
+
+function parseBooleanEnv(raw: string | undefined): boolean | null {
+  if (typeof raw !== "string") {
+    return null;
+  }
+  const normalized = raw.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+  if (["1", "true", "yes", "on"].includes(normalized)) {
+    return true;
+  }
+  if (["0", "false", "no", "off"].includes(normalized)) {
+    return false;
+  }
+  return null;
+}
+
+function parsePresentationEditAdditionalRolloutStage(
+  raw: string | undefined,
+): PresentationEditAdditionalRolloutGateInput["stage"] | null {
+  const normalized = raw?.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+  switch (normalized) {
+    case "dogfood":
+    case "ramp_1":
+    case "ramp_5":
+    case "ramp_25":
+    case "ramp_50":
+    case "ramp_100":
+      return normalized;
+    default:
+      return null;
+  }
+}
+
+function resolveEditAdditionalRolloutGateInputFromEnv(
+  env: NodeJS.ProcessEnv = process.env,
+): PresentationEditAdditionalRolloutGateInput | null {
+  const stage = parsePresentationEditAdditionalRolloutStage(env.PRESENTATION_EDIT_ADDITIONAL_ROLLOUT_STAGE);
+  if (!stage) {
+    return null;
+  }
+
+  const holdDurationHours = parseNumericEnv(env.PRESENTATION_EDIT_ADDITIONAL_HOLD_DURATION_HOURS);
+  const exportsObserved = parseNumericEnv(env.PRESENTATION_EDIT_ADDITIONAL_EXPORTS_OBSERVED);
+  const mediaHeavyPercent = parseNumericEnv(env.PRESENTATION_EDIT_ADDITIONAL_MEDIA_HEAVY_PERCENT);
+  const denseLayoutPercent = parseNumericEnv(env.PRESENTATION_EDIT_ADDITIONAL_DENSE_LAYOUT_PERCENT);
+  const successRateDropPercent = parseNumericEnv(env.PRESENTATION_EDIT_ADDITIONAL_SUCCESS_RATE_DROP_PERCENT);
+  const slideReadyTimeoutPercent = parseNumericEnv(env.PRESENTATION_EDIT_ADDITIONAL_SLIDE_READY_TIMEOUT_PERCENT);
+  const svgPlaceholderPercent = parseNumericEnv(env.PRESENTATION_EDIT_ADDITIONAL_SVG_PLACEHOLDER_PERCENT);
+  const exportLatencyP95RegressionPercent = parseNumericEnv(
+    env.PRESENTATION_EDIT_ADDITIONAL_EXPORT_LATENCY_P95_REGRESSION_PERCENT,
+  );
+  const crashOomIncreasePercent = parseNumericEnv(env.PRESENTATION_EDIT_ADDITIONAL_CRASH_OOM_INCREASE_PERCENT);
+  const lowComplexityBaselinePresent = parseBooleanEnv(env.PRESENTATION_EDIT_ADDITIONAL_LOW_COMPLEXITY_BASELINE_PRESENT);
+  const rollbackRehearsalCompleted = parseBooleanEnv(env.PRESENTATION_EDIT_ADDITIONAL_ROLLBACK_REHEARSAL_COMPLETED);
+
+  if (
+    holdDurationHours === null
+    || exportsObserved === null
+    || mediaHeavyPercent === null
+    || denseLayoutPercent === null
+    || successRateDropPercent === null
+    || slideReadyTimeoutPercent === null
+    || svgPlaceholderPercent === null
+    || exportLatencyP95RegressionPercent === null
+    || crashOomIncreasePercent === null
+    || lowComplexityBaselinePresent === null
+    || rollbackRehearsalCompleted === null
+  ) {
+    return null;
+  }
+
+  return {
+    stage,
+    holdDurationHours,
+    exportsObserved,
+    mediaHeavyPercent,
+    denseLayoutPercent,
+    lowComplexityBaselinePresent,
+    successRateDropPercent,
+    slideReadyTimeoutPercent,
+    svgPlaceholderPercent,
+    exportLatencyP95RegressionPercent,
+    crashOomIncreasePercent,
+    rollbackRehearsalCompleted,
+  };
 }
 
 function extractStorageKeyFromSourceUrl(sourceUrl: string): string | null {
@@ -470,7 +608,7 @@ function shouldMarkExportTaskStale(record: { updatedAt: Date }, pythonState: { s
 
 function resolveDependencies(
   dependencies?: TriggerPresentationExportDependencies,
-): Required<TriggerPresentationExportDependencies> {
+): ResolvedTriggerPresentationExportDependencies {
   return {
     getDeckDetail: dependencies?.getDeckDetail ?? getPresentationDeckDetail,
     enqueueExportJob: dependencies?.enqueueExportJob ?? defaultEnqueueExportJob,
@@ -495,6 +633,15 @@ function resolveDependencies(
     },
     recordMetric: dependencies?.recordMetric ?? ((metric: string) => incrementPresentationMetric(metric)),
     recordLog: dependencies?.recordLog ?? recordPresentationLog,
+    enforceEditAdditionalRolloutGate:
+      dependencies?.enforceEditAdditionalRolloutGate
+      ?? parseBooleanFlag(process.env[EDIT_ADDITIONAL_ROLLOUT_GATE_FLAG], false),
+    editAdditionalRolloutGateInput:
+      dependencies?.editAdditionalRolloutGateInput
+      ?? resolveEditAdditionalRolloutGateInputFromEnv(),
+    evaluateEditAdditionalRolloutGate:
+      dependencies?.evaluateEditAdditionalRolloutGate
+      ?? evaluatePresentationEditAdditionalRolloutGate,
   };
 }
 
@@ -644,6 +791,58 @@ function ensureWarningCompatibilityMatrixComplete(
     `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: warning compatibility matrix is incomplete`,
     {
       warningCompatibilityMatrix: matrix,
+    },
+  );
+}
+
+function ensureEditAdditionalRolloutGateAllowsPromotion(
+  input: TriggerPresentationExportInput,
+  actor: PresentationActor,
+  resolved: ResolvedTriggerPresentationExportDependencies,
+): void {
+  if (!resolved.enforceEditAdditionalRolloutGate) {
+    return;
+  }
+
+  const gateInput = resolved.editAdditionalRolloutGateInput;
+  if (!gateInput) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
+      `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: rollout gate is enforced but input is missing`,
+      {
+        gateFlag: EDIT_ADDITIONAL_ROLLOUT_GATE_FLAG,
+        requiredInput:
+          "PRESENTATION_EDIT_ADDITIONAL_ROLLOUT_STAGE + PRESENTATION_EDIT_ADDITIONAL_* metrics",
+      },
+    );
+  }
+
+  const result = resolved.evaluateEditAdditionalRolloutGate(gateInput);
+  resolved.recordMetric("presentation.export.rollout_gate.evaluated", { format: input.format });
+
+  if (result.passed && !result.shouldHalt) {
+    resolved.recordMetric("presentation.export.rollout_gate.passed", { format: input.format });
+    return;
+  }
+
+  resolved.recordMetric("presentation.export.rollout_gate.blocked", { format: input.format });
+  resolved.recordLog("presentation_export_rollout_gate_blocked", {
+    tenantId: actor.tenantId,
+    userId: actor.userId,
+    deckId: input.deckId,
+    format: input.format,
+    stage: gateInput.stage,
+    failedChecks: result.failedChecks,
+    shouldHalt: result.shouldHalt,
+  });
+
+  throw new PresentationServiceError(
+    PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
+    `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: rollout gate blocked export promotion`,
+    {
+      failedChecks: result.failedChecks,
+      shouldHalt: result.shouldHalt,
+      stage: gateInput.stage,
     },
   );
 }
@@ -984,6 +1183,7 @@ export async function triggerPresentationExport(
         warningCodes: renderSpec.warnings.map((warning) => warning.code),
       });
     }
+    ensureEditAdditionalRolloutGateAllowsPromotion(input, actor, resolved);
     ensureWarningCompatibilityMatrixComplete(resolved.warningCompatibilityMatrix);
     ensureRenderSchemaAccepted(renderSpec, resolved.acceptedRenderSchemaVersions);
 

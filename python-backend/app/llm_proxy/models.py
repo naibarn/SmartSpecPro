@@ -46,7 +46,7 @@ class ImageGenerationRequest(BaseModel):
     reference_image_urls: Optional[List[str]] = Field(default=None, alias="referenceImageUrls")
     reference_style_url: Optional[str] = Field(default=None, alias="referenceStyleUrl")
     # Per-model API config (passed from Node.js based on configJson)
-    api_config: Optional[Dict[str, str]] = Field(default=None, alias="apiConfig")
+    api_config: Optional[Dict[str, Union[str, int, float, bool]]] = Field(default=None, alias="apiConfig")
     extra_params: Optional[Dict[str, Union[str, int, float, bool, List]]] = Field(default=None, alias="extraParams")
 
     model_config = {"populate_by_name": True}  # Accept both alias and field name
@@ -78,7 +78,7 @@ class VideoGenerationRequest(BaseModel):
     reference_video_url: Optional[str] = Field(default=None, alias="referenceVideoUrl")
     reference_image_urls: Optional[List[str]] = Field(default=None, alias="referenceImageUrls")
     # Per-model API config (passed from Node.js based on configJson)
-    api_config: Optional[Dict[str, str]] = Field(default=None, alias="apiConfig")
+    api_config: Optional[Dict[str, Union[str, int, float, bool]]] = Field(default=None, alias="apiConfig")
     extra_params: Optional[Dict[str, Union[str, int, float, bool, List]]] = Field(default=None, alias="extraParams")
 
     model_config = {"populate_by_name": True}  # Accept both alias and field name
@@ -107,6 +107,9 @@ class AudioGenerationRequest(BaseModel):
     stability: Optional[float] = None
     similarity_boost: Optional[float] = Field(default=None, alias="similarityBoost")
     output_format: Optional[Literal["mp3", "wav"]] = Field(default="mp3", alias="outputFormat")
+    # Per-model API config (passed from Node.js based on configJson)
+    api_config: Optional[Dict[str, Union[str, int, float, bool]]] = Field(default=None, alias="apiConfig")
+    extra_params: Optional[Dict[str, Union[str, int, float, bool, List, Dict]]] = Field(default=None, alias="extraParams")
 
     model_config = {"populate_by_name": True}  # Accept both alias and field name
 

@@ -122,9 +122,6 @@ export interface SkillDefinition {
   /** Chain to another skill after this skill completes (skill slug) */
   chainTo?: string;
 
-  /** Chain to another skill after this skill completes (skill slug) */
-  chainTo?: string;
-
   /** Database ID if from database */
   dbId?: number;
 }

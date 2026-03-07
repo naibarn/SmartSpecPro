@@ -17,6 +17,7 @@ import {
 export interface UseMobileGesturesResult {
   state: MobileInteractionState;
   setMode: (mode: MobileInteractionMode) => void;
+  setViewport: (viewport: MobileInteractionState["viewport"]) => void;
   applyGesture: (gesture: PinchPanGesture) => void;
   canUseTouchTarget: (sizePx: number) => boolean;
 }
@@ -37,6 +38,13 @@ export function useMobileGestures(): UseMobileGesturesResult {
         });
         return setMobileInteractionMode(current, mode);
       });
+    },
+    setViewport: (viewport) => {
+      setState((current) => ({
+        ...current,
+        viewport,
+        lastGestureAt: Date.now(),
+      }));
     },
     applyGesture: (gesture) => {
       setState((current) => applyPinchPanGesture(current, gesture));

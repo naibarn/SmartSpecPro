@@ -12,8 +12,10 @@
  */
 
 import postgres from "postgres";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 
-const DATABASE_URL = process.env.DATABASE_URL || "postgresql://smartspec:smartspec_dev@localhost:5432/smartspec";
+const DATABASE_URL = process.env.DATABASE_URL || "postgresql://smartspec:smartspec123@localhost:5432/smartspec";
 
 // ============================================================
 // Model Definition Types (for configJson)
@@ -21,26 +23,237 @@ const DATABASE_URL = process.env.DATABASE_URL || "postgresql://smartspec:smartsp
 interface InputField {
   key: string;
   label: string;
-  type: "select" | "text" | "number" | "boolean" | "image_urls" | "video_urls" | "audio_urls";
+  type: "select" | "text" | "number" | "boolean" | "image_urls" | "video_urls" | "audio_urls" | "array";
   options?: { value: string; label: string }[];
+  searchable?: boolean;
+  optionsSource?: {
+    type: "provider_api" | "public_api";
+    endpoint: string;
+    method?: "GET" | "POST";
+    itemsPath?: string;
+    valueField?: string;
+    labelField?: string;
+    valueTransform?: "none" | "before_dash";
+    queryParam?: string;
+    cacheTtlSeconds?: number;
+  };
   default?: string | number | boolean;
   required?: boolean;
   affectsPricing?: boolean;
+  syncWith?: "none" | "reference_images" | "prompt" | "aspect_ratio";
+  itemTemplate?: Record<string, unknown>;
 }
 
 interface ModelDefinition {
   apiEndpoint: string;
   apiPayloadFormat: "market" | "veo" | "runway" | "suno" | "elevenlabs" | "custom";
   kieModelId: string | null;
+  apiConfig?: Record<string, string | number | boolean>;
   inputFields: InputField[];
   pricingTiers?: Record<string, number>;
-  pricingFormula: "flat" | "per_duration" | "matrix";
+  pricingFormula: "flat" | "per_duration" | "matrix" | "per_unit";
+  pricingUnitMetric?: "characters" | "items";
+  pricingUnitField?: string;
+  pricingUnitSize?: number;
+  pricingUnitRounding?: "ceil" | "floor" | "round";
+  pricingMinUnits?: number;
   generateType?: string;
   hasAudio?: boolean;
   maxDuration?: number;
   supportedResolutions?: string[];
   supportedDurations?: number[];
   supportedAspectRatios?: string[];
+}
+
+const ELEVENLABS_VOICE_LIST_URL = "https://api.elevenlabs.io/v1/voices";
+const ELEVENLABS_DIALOGUE_VOICE_LIST_PATHS = [
+  process.env.ELEVENLABS_DIALOGUE_VOICE_LIST_FILE?.trim(),
+  resolve(process.cwd(), "scripts/data/elevenlabs-dialogue-v3-voices.txt"),
+  resolve(process.cwd(), "apps/web/scripts/data/elevenlabs-dialogue-v3-voices.txt"),
+].filter((entry): entry is string => Boolean(entry && entry.length > 0));
+
+const FALLBACK_ELEVENLABS_VOICES: { value: string; label: string }[] = [
+  { value: "Rachel", label: "Rachel" },
+  { value: "Adam", label: "Adam" },
+  { value: "Antoni", label: "Antoni" },
+  { value: "Bella", label: "Bella" },
+  { value: "Domi", label: "Domi" },
+  { value: "Elli", label: "Elli" },
+  { value: "Josh", label: "Josh" },
+];
+
+type ElevenLabsVoiceRecord = {
+  voice_id?: unknown;
+  voiceId?: unknown;
+  name?: unknown;
+  category?: unknown;
+  description?: unknown;
+};
+
+function isLikelyVoiceId(value: string): boolean {
+  return /^[A-Za-z0-9]{16,}$/.test(value.trim());
+}
+
+function parseVoiceOptionsText(raw: string): { value: string; label: string }[] {
+  const lines = raw.split(/\r?\n/).map((line) => line.replace(/\u00A0/g, " ").trim());
+  const parsed: { value: string; label: string }[] = [];
+  let pendingVoiceId: string | null = null;
+
+  const pushOption = (valueRaw: string, labelRaw?: string) => {
+    const value = valueRaw.trim();
+    const label = (labelRaw ?? valueRaw).trim();
+    if (!value) return;
+    parsed.push({ value, label: label || value });
+  };
+
+  for (const line of lines) {
+    if (!line) continue;
+    if (/^available voices:?$/i.test(line)) continue;
+
+    const idWithLabel = line.match(/^([A-Za-z0-9]{16,})\s*-\s*(.+)$/);
+    if (idWithLabel) {
+      pushOption(idWithLabel[1], idWithLabel[2]);
+      pendingVoiceId = null;
+      continue;
+    }
+
+    if (isLikelyVoiceId(line)) {
+      if (pendingVoiceId) {
+        pushOption(pendingVoiceId);
+      }
+      pendingVoiceId = line;
+      continue;
+    }
+
+    const bulletLabel = line.match(/^(?:[-*]\s*)(.+)$/);
+    if (bulletLabel && pendingVoiceId) {
+      pushOption(pendingVoiceId, bulletLabel[1]);
+      pendingVoiceId = null;
+      continue;
+    }
+
+    if (pendingVoiceId) {
+      pushOption(pendingVoiceId, line.replace(/^(?:[-*]\s*)/, ""));
+      pendingVoiceId = null;
+      continue;
+    }
+
+    const plain = line.replace(/^(?:[-*]\s*)/, "").trim();
+    if (plain) {
+      pushOption(plain, plain);
+    }
+  }
+
+  if (pendingVoiceId) {
+    pushOption(pendingVoiceId);
+  }
+
+  const seen = new Set<string>();
+  const deduped: { value: string; label: string }[] = [];
+  for (const item of parsed) {
+    const key = item.value.trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(item);
+  }
+  return deduped;
+}
+
+async function loadVoiceOptionsFromCatalogFile(): Promise<{ value: string; label: string }[]> {
+  for (const filePath of ELEVENLABS_DIALOGUE_VOICE_LIST_PATHS) {
+    try {
+      const raw = await readFile(filePath, "utf8");
+      const parsed = parseVoiceOptionsText(raw);
+      if (parsed.length > 0) {
+        console.log(`Loaded ${parsed.length} ElevenLabs voices from catalog file: ${filePath}`);
+        return parsed;
+      }
+    } catch {
+      // Ignore missing file and continue fallback chain.
+    }
+  }
+  return [];
+}
+
+function normalizeElevenLabsVoiceValue(record: ElevenLabsVoiceRecord): string {
+  const idRaw = typeof record.voice_id === "string"
+    ? record.voice_id
+    : typeof record.voiceId === "string"
+      ? record.voiceId
+      : "";
+  const id = idRaw.trim();
+  if (id) {
+    return id;
+  }
+  const name = typeof record.name === "string" ? record.name.trim() : "";
+  return name || "";
+}
+
+function normalizeElevenLabsVoiceLabel(record: ElevenLabsVoiceRecord): string {
+  const rawName = typeof record.name === "string" ? record.name.trim() : "";
+  const category = typeof record.category === "string" ? record.category.trim() : "";
+  const description = typeof record.description === "string" ? record.description.trim() : "";
+  if (!rawName) return "";
+  if (description) {
+    if (rawName.toLowerCase().includes(description.toLowerCase())) {
+      return rawName;
+    }
+    return `${rawName} - ${description}`;
+  }
+  if (!category) {
+    return rawName;
+  }
+  if (rawName.toLowerCase().includes(category.toLowerCase())) {
+    return rawName;
+  }
+  return `${rawName} - ${category}`;
+}
+
+async function fetchElevenLabsVoiceOptions(): Promise<{ value: string; label: string }[]> {
+  const response = await fetch(ELEVENLABS_VOICE_LIST_URL, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+
+  const payload = await response.json();
+  const voices = Array.isArray(payload?.voices) ? payload.voices : [];
+  const dedupe = new Map<string, { value: string; label: string }>();
+
+  for (const entry of voices as ElevenLabsVoiceRecord[]) {
+    const value = normalizeElevenLabsVoiceValue(entry);
+    if (!value) continue;
+    if (dedupe.has(value)) continue;
+
+    const fallbackLabel = typeof entry?.name === "string" ? entry.name.trim() : value;
+    const label = normalizeElevenLabsVoiceLabel(entry) || fallbackLabel;
+    dedupe.set(value, { value, label });
+  }
+
+  return [...dedupe.values()].sort((a, b) => a.label.localeCompare(b.label));
+}
+
+async function loadElevenLabsVoiceOptions(): Promise<{ value: string; label: string }[]> {
+  const fileOptions = await loadVoiceOptionsFromCatalogFile();
+  if (fileOptions.length > 0) {
+    return fileOptions;
+  }
+
+  try {
+    const options = await fetchElevenLabsVoiceOptions();
+    if (options.length > 0) {
+      console.log(`Fetched ${options.length} ElevenLabs voices from public API.`);
+      return options;
+    }
+    console.warn("ElevenLabs voice API returned 0 voices. Falling back to built-in voice list.");
+  } catch (error) {
+    console.warn("Failed to fetch ElevenLabs voice list. Falling back to built-in list.", error);
+  }
+  return FALLBACK_ELEVENLABS_VOICES;
 }
 
 // Video Models - Complete Kie AI catalog
@@ -1721,7 +1934,7 @@ const AUDIO_MODELS = [
     modelType: "audio",
     provider: "kie.ai",
     aliases: ["dialogue", "multi-speaker"],
-    creditCost: 25,
+    creditCost: 70,
     priority: 9,
     sortOrder: 9,
     voices: ["multiple"],
@@ -1730,9 +1943,47 @@ const AUDIO_MODELS = [
       apiPayloadFormat: "elevenlabs",
       kieModelId: "elevenlabs/text-to-dialogue-v3",
       generateType: "dialogue",
-      inputFields: [],
-      pricingTiers: { "default": 25 },
-      pricingFormula: "flat",
+      apiConfig: {
+        omit_text: "true",
+        prepend_newline: true,
+        apply_text_affix_to_dialogue: true,
+      },
+      inputFields: [
+        {
+          key: "voice",
+          label: "Voice",
+          type: "select",
+          searchable: true,
+          options: FALLBACK_ELEVENLABS_VOICES,
+          optionsSource: {
+            type: "public_api",
+            endpoint: ELEVENLABS_VOICE_LIST_URL,
+            method: "GET",
+            itemsPath: "voices",
+            valueField: "voice_id",
+            labelField: "name",
+            cacheTtlSeconds: 86400,
+          },
+          default: FALLBACK_ELEVENLABS_VOICES[0]?.value || "Adam",
+        },
+        {
+          key: "dialogue",
+          label: "Dialogue",
+          type: "array",
+          syncWith: "prompt",
+          itemTemplate: {
+            text: "{{item}}",
+            voice: "{{fields.voice}}",
+          },
+        },
+      ],
+      pricingTiers: { "default": 70 },
+      pricingFormula: "per_unit",
+      pricingUnitMetric: "characters",
+      pricingUnitField: "dialogue",
+      pricingUnitSize: 1000,
+      pricingUnitRounding: "ceil",
+      pricingMinUnits: 1,
     } as ModelDefinition,
   },
   {
@@ -1852,6 +2103,32 @@ async function seed() {
     }
 
     console.log("Using UPSERT mode (no destructive delete)\n");
+    const elevenLabsVoiceOptions = await loadElevenLabsVoiceOptions();
+    const audioModels = AUDIO_MODELS.map((model) => {
+      if (model.modelId !== "elevenlabs/text-to-dialogue-v3") {
+        return model;
+      }
+      const defaultVoiceValue = elevenLabsVoiceOptions[0]?.value || "Adam";
+      const inputFields = model.configJson.inputFields.map((field) => {
+        if (field.key !== "voice") {
+          return field;
+        }
+        return {
+          ...field,
+          searchable: true,
+          options: elevenLabsVoiceOptions,
+          default: defaultVoiceValue,
+        } satisfies InputField;
+      });
+      return {
+        ...model,
+        voices: elevenLabsVoiceOptions.map((entry) => entry.value),
+        configJson: {
+          ...model.configJson,
+          inputFields,
+        },
+      };
+    });
 
     // Upsert Video Models
     console.log("=== VIDEO MODELS ===");
@@ -1929,7 +2206,7 @@ async function seed() {
 
     // Upsert Audio Models
     console.log("=== AUDIO MODELS ===");
-    for (const model of AUDIO_MODELS) {
+    for (const model of audioModels) {
       await sql`
         INSERT INTO media_models (
           "modelId", name, description, "modelType", provider,
@@ -1963,15 +2240,15 @@ async function seed() {
       `;
       console.log(`  upsert ${model.name} (${model.creditCost} credits)`);
     }
-    console.log(`\nUpserted ${AUDIO_MODELS.length} audio models\n`);
+    console.log(`\nUpserted ${audioModels.length} audio models\n`);
 
     // Summary
-    const total = VIDEO_MODELS.length + IMAGE_MODELS.length + AUDIO_MODELS.length;
+    const total = VIDEO_MODELS.length + IMAGE_MODELS.length + audioModels.length;
     console.log("=".repeat(50));
     console.log(`TOTAL: ${total} Kie AI models seeded successfully!`);
     console.log(`  - Video: ${VIDEO_MODELS.length} models`);
     console.log(`  - Image: ${IMAGE_MODELS.length} models`);
-    console.log(`  - Audio: ${AUDIO_MODELS.length} models`);
+    console.log(`  - Audio: ${audioModels.length} models`);
     console.log("=".repeat(50));
 
   } catch (error) {

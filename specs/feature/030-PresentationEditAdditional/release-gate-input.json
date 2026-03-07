@@ -1,0 +1,14 @@
+{
+  "stage": "ramp_5",
+  "holdDurationHours": 30,
+  "exportsObserved": 1200,
+  "mediaHeavyPercent": 38,
+  "denseLayoutPercent": 26,
+  "lowComplexityBaselinePresent": true,
+  "successRateDropPercent": 0.4,
+  "slideReadyTimeoutPercent": 0.12,
+  "svgPlaceholderPercent": 0.21,
+  "exportLatencyP95RegressionPercent": 7.5,
+  "crashOomIncreasePercent": 0.03,
+  "rollbackRehearsalCompleted": true
+}

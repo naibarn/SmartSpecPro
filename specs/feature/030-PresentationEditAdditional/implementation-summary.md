@@ -34,12 +34,13 @@ Decision mode: `smart_auto`
 - `fix_now` execution result:
   - critical findings: none
   - high findings: none
-  - code-level hotfixes applied in this stage: none (no critical/high items to patch)
+  - hardening updates applied after re-review:
+    - rollout-gate enforcement wired into runtime export promotion path (`triggerPresentationExport`) with explicit block/fail logging.
+    - release-gate evidence/report moved to generated artifacts (`release-gate-evidence.json` + SHA-pinned markdown report).
+    - pre-roll quality guard test added for trimmed video first-frame non-white + motion presence checks.
 
 ## Remaining Risks / Deferred Items
 
-- Medium (deferred): ensure rollout gate evaluator (`evaluatePresentationEditAdditionalRolloutGate`) is wired into mandatory promotion control path, not only tests.
-- Low (deferred): automate generation of release-gate report from CI outputs to reduce manual artifact drift.
 - Low (deferred): map runbook commands to stable operational aliases/scripts to reduce environment naming drift risk.
 
 ## Blocked Task Queue
@@ -48,6 +49,5 @@ Decision mode: `smart_auto`
 
 ## Suggested Next Implementation Steps
 
-1. Wire rollout gate evaluator into CI/promotion automation for non-bypassable release gating.
-2. Add build-generated release-gate artifact pipeline with immutable evidence references.
-3. Add periodic runbook validation drill automation for worker command path correctness.
+1. Enable `PRESENTATION_EDIT_ADDITIONAL_ROLLOUT_GATE_ENFORCED` in rollout environments and supply gate metrics via env/config pipeline.
+2. Add periodic runbook validation drill automation for worker command path correctness.

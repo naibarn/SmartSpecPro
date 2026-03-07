@@ -24,11 +24,13 @@ import { trpc } from "@/lib/trpc";
 interface ShareLibraryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  folderId: number | null;
+  folderName?: string | null;
 }
 
 type PermissionLevel = "read" | "write" | "delete";
 
-export default function ShareLibraryDialog({ open, onOpenChange }: ShareLibraryDialogProps) {
+export default function ShareLibraryDialog({ open, onOpenChange, folderId, folderName }: ShareLibraryDialogProps) {
   const [selectedGroupId, setSelectedGroupId] = useState<string>("");
   const [permissionLevel, setPermissionLevel] = useState<PermissionLevel>("read");
 
@@ -45,7 +47,7 @@ export default function ShareLibraryDialog({ open, onOpenChange }: ShareLibraryD
 
   const shareLibrary = trpc.library.shareLibrary.useMutation({
     onSuccess: (result) => {
-      toast.success(`Library shared with group — ${result.shared} item(s) granted access.`);
+      toast.success(`Folder shared with group — ${result.shared} item(s) granted access.`);
       setSelectedGroupId("");
       onOpenChange(false);
     },
@@ -56,8 +58,9 @@ export default function ShareLibraryDialog({ open, onOpenChange }: ShareLibraryD
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedGroupId) return;
+    if (!selectedGroupId || folderId == null) return;
     shareLibrary.mutate({
+      folderId,
       groupId: Number(selectedGroupId),
       permissionLevel,
     });
@@ -69,10 +72,12 @@ export default function ShareLibraryDialog({ open, onOpenChange }: ShareLibraryD
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Share2 className="h-5 w-5 text-sky-500" />
-            Share Library with Group
+            Share Folder with Group
           </DialogTitle>
           <DialogDescription>
-            All items you own in this library will be shared with the selected group.
+            {folderId == null
+              ? "Select a folder first. Sharing the entire library is disabled."
+              : `All files you own in folder "${folderName || `#${folderId}`}" (including subfolders) will be shared with the selected group.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -141,9 +146,9 @@ export default function ShareLibraryDialog({ open, onOpenChange }: ShareLibraryD
             </Button>
             <Button
               type="submit"
-              disabled={!selectedGroupId || shareLibrary.isPending || groups.length === 0}
+              disabled={!selectedGroupId || shareLibrary.isPending || groups.length === 0 || folderId == null}
             >
-              {shareLibrary.isPending ? "Sharing…" : "Share Library"}
+              {shareLibrary.isPending ? "Sharing…" : "Share Folder"}
             </Button>
           </DialogFooter>
         </form>

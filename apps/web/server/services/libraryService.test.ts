@@ -26,11 +26,36 @@ vi.mock("../storage", () => ({
   storageDelete: vi.fn().mockResolvedValue(true),
 }));
 
+const creditServiceMocks = vi.hoisted(() => ({
+  calculateLibraryUploadCreditCost: vi.fn().mockResolvedValue({
+    category: "document",
+    totalCredits: 5,
+    baseCredits: 5,
+    stepCredits: 0,
+    extraSteps: 0,
+    sizeStepMb: 10,
+  }),
+  hasEnoughCredits: vi.fn().mockResolvedValue(true),
+  deductCredits: vi.fn().mockResolvedValue({ success: true, creditsUsed: 5, newBalance: 95, transactionId: 1 }),
+  refundCredits: vi.fn().mockResolvedValue({ success: true, creditsAdded: 5, newBalance: 100, transactionId: 2 }),
+}));
+
+vi.mock("./creditService", () => ({
+  calculateLibraryUploadCreditCost: creditServiceMocks.calculateLibraryUploadCreditCost,
+  hasEnoughCredits: creditServiceMocks.hasEnoughCredits,
+  deductCredits: creditServiceMocks.deductCredits,
+  refundCredits: creditServiceMocks.refundCredits,
+}));
+
+const groupsServiceMocks = vi.hoisted(() => ({
+  getUserGroups: vi.fn().mockResolvedValue([]),
+}));
+
 vi.mock("./groupsService", async (importOriginal) => {
   const orig = await importOriginal<typeof import("./groupsService")>();
   return {
     ...orig,
-    getUserGroups: vi.fn().mockResolvedValue([]),
+    getUserGroups: groupsServiceMocks.getUserGroups,
   };
 });
 
@@ -39,7 +64,10 @@ import {
   canReadLibraryItem,
   createLibraryItem,
   getLibraryItemById,
+  listLibraryDocuments,
   normalizeLibraryMetadata,
+  replaceLibraryFile,
+  shareLibraryToGroup,
   uploadLibraryFile,
   updateLibraryItem,
 } from "./libraryService";
@@ -61,9 +89,42 @@ function makeSelectChain(rows: any[], withJoin = false) {
   };
 }
 
+function makeSelectWhereChain(rows: any[]) {
+  const whereMock = vi.fn().mockResolvedValue(rows);
+  return {
+    from: vi.fn().mockReturnValue({
+      where: whereMock,
+    }),
+  };
+}
+
+function makeSelectOrderByChain(rows: any[]) {
+  const orderByMock = vi.fn().mockResolvedValue(rows);
+  const whereMock = vi.fn().mockReturnValue({
+    orderBy: orderByMock,
+  });
+  return {
+    from: vi.fn().mockReturnValue({
+      where: whereMock,
+    }),
+  };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetDb.mockResolvedValue(mockDb);
+  groupsServiceMocks.getUserGroups.mockResolvedValue([]);
+  creditServiceMocks.calculateLibraryUploadCreditCost.mockResolvedValue({
+    category: "document",
+    totalCredits: 5,
+    baseCredits: 5,
+    stepCredits: 0,
+    extraSteps: 0,
+    sizeStepMb: 10,
+  });
+  creditServiceMocks.hasEnoughCredits.mockResolvedValue(true);
+  creditServiceMocks.deductCredits.mockResolvedValue({ success: true, creditsUsed: 5, newBalance: 95, transactionId: 1 });
+  creditServiceMocks.refundCredits.mockResolvedValue({ success: true, creditsAdded: 5, newBalance: 100, transactionId: 2 });
 });
 
 describe("normalizeLibraryMetadata", () => {
@@ -466,6 +527,132 @@ describe("uploadLibraryFile", () => {
     expect(result.indexJob.created).toBe(false);
     expect(result.indexJob.status).toBe("enqueue_error");
     expect(result.indexJob.error).toContain("queue timeout");
+    expect(result.billing.creditsCharged).toBe(5);
+    expect(creditServiceMocks.deductCredits).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 9,
+        amount: 5,
+        idempotencyKey: "library-upload:901",
+      }),
+    );
+  });
+
+  it("rejects upload when user lacks credits for upload pricing", async () => {
+    creditServiceMocks.hasEnoughCredits.mockResolvedValueOnce(false);
+
+    await expect(
+      uploadLibraryFile(
+        {
+          fileName: "file.txt",
+          fileType: "text/plain",
+          fileBase64: Buffer.from("hello world", "utf8").toString("base64"),
+        },
+        {
+          userId: 9,
+          tenantId: 44,
+          role: "user",
+        },
+      ),
+    ).rejects.toThrow("Insufficient credits");
+
+    expect(mockStoragePut).not.toHaveBeenCalled();
+    expect(creditServiceMocks.deductCredits).not.toHaveBeenCalled();
+  });
+});
+
+describe("replaceLibraryFile billing", () => {
+  it("rejects replace when user lacks credits for upload pricing", async () => {
+    const now = new Date("2026-02-10T00:00:00.000Z");
+    const existingItem = {
+      id: 300,
+      tenantId: "44",
+      ownerUserId: 9,
+      itemType: "text",
+      source: "document_upload",
+      title: "legacy.txt",
+      description: null,
+      status: "ready",
+      visibility: "private",
+      metadata: {},
+      sourceUrl: "https://cdn.example.com/legacy.txt",
+      thumbnailUrl: null,
+      deletedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    mockDb.select
+      .mockReturnValueOnce(makeSelectChain([existingItem]))
+      .mockReturnValueOnce(makeSelectChain([]));
+    creditServiceMocks.hasEnoughCredits.mockResolvedValueOnce(false);
+
+    await expect(
+      replaceLibraryFile(
+        {
+          itemId: 300,
+          fileName: "new.txt",
+          fileType: "text/plain",
+          fileBase64: Buffer.from("next revision", "utf8").toString("base64"),
+        },
+        {
+          userId: 9,
+          tenantId: "44",
+          role: "user",
+        },
+      ),
+    ).rejects.toThrow("Insufficient credits");
+
+    expect(creditServiceMocks.deductCredits).not.toHaveBeenCalled();
+    expect(mockStoragePut).not.toHaveBeenCalled();
+  });
+
+  it("deducts credits before replacing stored content", async () => {
+    const now = new Date("2026-02-10T00:00:00.000Z");
+    const existingItem = {
+      id: 301,
+      tenantId: "44",
+      ownerUserId: 9,
+      itemType: "text",
+      source: "document_upload",
+      title: "legacy.txt",
+      description: null,
+      status: "ready",
+      visibility: "private",
+      metadata: {},
+      sourceUrl: "https://cdn.example.com/legacy.txt",
+      thumbnailUrl: null,
+      deletedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    mockDb.select
+      .mockReturnValueOnce(makeSelectChain([existingItem]))
+      .mockReturnValueOnce(makeSelectChain([]));
+    creditServiceMocks.deductCredits.mockRejectedValueOnce(new Error("billing charge failure"));
+
+    await expect(
+      replaceLibraryFile(
+        {
+          itemId: 301,
+          fileName: "new.txt",
+          fileType: "text/plain",
+          fileBase64: Buffer.from("next revision", "utf8").toString("base64"),
+        },
+        {
+          userId: 9,
+          tenantId: "44",
+          role: "user",
+        },
+      ),
+    ).rejects.toThrow("billing charge failure");
+
+    expect(creditServiceMocks.deductCredits).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 9,
+        amount: 5,
+        description: "Library replace (document): new.txt",
+      }),
+    );
+    expect(mockStoragePut).not.toHaveBeenCalled();
   });
 });
 
@@ -600,5 +787,333 @@ describe("libraryService - Permission Resolution", () => {
       );
       expect(result).toBe(true);
     });
+  });
+});
+
+describe("listLibraryDocuments scope filtering", () => {
+  it("shared_groups includes only explicit group-shared items", async () => {
+    const now = new Date("2026-03-05T10:00:00.000Z");
+    const itemRows = [
+      {
+        id: 101,
+        tenantId: "t1",
+        ownerUserId: 1,
+        parentId: null,
+        itemType: "presentation",
+        source: "document_management",
+        title: "Group Shared Deck",
+        description: null,
+        status: "ready",
+        visibility: "private",
+        metadata: {},
+        sourceUrl: "https://cdn.example.com/group.pptx",
+        thumbnailUrl: null,
+        deletedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: 102,
+        tenantId: "t1",
+        ownerUserId: 1,
+        parentId: null,
+        itemType: "presentation",
+        source: "document_management",
+        title: "Team Visible Deck",
+        description: null,
+        status: "ready",
+        visibility: "team",
+        metadata: {},
+        sourceUrl: "https://cdn.example.com/team.pptx",
+        thumbnailUrl: null,
+        deletedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: 103,
+        tenantId: "t1",
+        ownerUserId: 1,
+        parentId: null,
+        itemType: "presentation",
+        source: "document_management",
+        title: "Role Shared Deck",
+        description: null,
+        status: "ready",
+        visibility: "private",
+        metadata: {},
+        sourceUrl: "https://cdn.example.com/role.pptx",
+        thumbnailUrl: null,
+        deletedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: 104,
+        tenantId: "t1",
+        ownerUserId: 1,
+        parentId: null,
+        itemType: "presentation",
+        source: "document_management",
+        title: "Public Deck",
+        description: null,
+        status: "ready",
+        visibility: "public",
+        metadata: {},
+        sourceUrl: "https://cdn.example.com/public.pptx",
+        thumbnailUrl: null,
+        deletedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: 105,
+        tenantId: "t1",
+        ownerUserId: 99,
+        parentId: null,
+        itemType: "presentation",
+        source: "document_management",
+        title: "My Own Deck Shared To Group",
+        description: null,
+        status: "ready",
+        visibility: "private",
+        metadata: {},
+        sourceUrl: "https://cdn.example.com/my-own.pptx",
+        thumbnailUrl: null,
+        deletedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      },
+    ];
+
+    const permissionRows = [
+      {
+        libraryItemId: 101,
+        subjectType: "group",
+        subjectId: "10",
+        permissionLevel: "read",
+        expiresAt: null,
+      },
+      {
+        libraryItemId: 103,
+        subjectType: "tenant_role",
+        subjectId: "user",
+        permissionLevel: "read",
+        expiresAt: null,
+      },
+      {
+        libraryItemId: 105,
+        subjectType: "group",
+        subjectId: "10",
+        permissionLevel: "read",
+        expiresAt: null,
+      },
+    ];
+
+    groupsServiceMocks.getUserGroups.mockResolvedValueOnce([
+      { id: 10, name: "Design", role: "member" },
+    ]);
+
+    mockDb.select
+      .mockReturnValueOnce(makeSelectOrderByChain(itemRows))
+      .mockReturnValueOnce(makeSelectWhereChain(permissionRows))
+      .mockReturnValueOnce(makeSelectWhereChain([
+        { libraryItemId: 101 },
+        { libraryItemId: 103 },
+        { libraryItemId: 105 },
+      ]));
+
+    const result = await listLibraryDocuments(
+      {
+        scope: "shared_groups",
+        limit: 50,
+        offset: 0,
+      },
+      {
+        userId: 99,
+        tenantId: "t1",
+        role: "user",
+      },
+    );
+
+    expect(result.results.map((item) => item.id)).toEqual([101]);
+  });
+
+  it("shared_with_me includes only explicit direct user shares", async () => {
+    const now = new Date("2026-03-05T10:00:00.000Z");
+    const itemRows = [
+      {
+        id: 201,
+        tenantId: "t1",
+        ownerUserId: 1,
+        parentId: null,
+        itemType: "presentation",
+        source: "document_management",
+        title: "Direct Shared Deck",
+        description: null,
+        status: "ready",
+        visibility: "private",
+        metadata: {},
+        sourceUrl: "https://cdn.example.com/direct.pptx",
+        thumbnailUrl: null,
+        deletedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: 202,
+        tenantId: "t1",
+        ownerUserId: 1,
+        parentId: null,
+        itemType: "presentation",
+        source: "document_management",
+        title: "Group Shared Deck",
+        description: null,
+        status: "ready",
+        visibility: "private",
+        metadata: {},
+        sourceUrl: "https://cdn.example.com/group-only.pptx",
+        thumbnailUrl: null,
+        deletedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: 203,
+        tenantId: "t1",
+        ownerUserId: 1,
+        parentId: null,
+        itemType: "presentation",
+        source: "document_management",
+        title: "Team Visible Deck",
+        description: null,
+        status: "ready",
+        visibility: "team",
+        metadata: {},
+        sourceUrl: "https://cdn.example.com/team-only.pptx",
+        thumbnailUrl: null,
+        deletedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      },
+    ];
+
+    const permissionRows = [
+      {
+        libraryItemId: 201,
+        subjectType: "user",
+        subjectId: "99",
+        permissionLevel: "read",
+        expiresAt: null,
+      },
+      {
+        libraryItemId: 202,
+        subjectType: "group",
+        subjectId: "10",
+        permissionLevel: "read",
+        expiresAt: null,
+      },
+    ];
+
+    groupsServiceMocks.getUserGroups.mockResolvedValueOnce([
+      { id: 10, name: "Design", role: "member" },
+    ]);
+
+    mockDb.select
+      .mockReturnValueOnce(makeSelectOrderByChain(itemRows))
+      .mockReturnValueOnce(makeSelectWhereChain(permissionRows))
+      .mockReturnValueOnce(makeSelectWhereChain([
+        { libraryItemId: 201 },
+        { libraryItemId: 202 },
+      ]));
+
+    const result = await listLibraryDocuments(
+      {
+        scope: "shared_with_me",
+        limit: 50,
+        offset: 0,
+      },
+      {
+        userId: 99,
+        tenantId: "t1",
+        role: "user",
+      },
+    );
+
+    expect(result.results.map((item) => item.id)).toEqual([201]);
+  });
+});
+
+describe("shareLibraryToGroup folder-scoped", () => {
+  it("shares only items inside selected folder tree", async () => {
+    mockDb.select
+      // group exists
+      .mockReturnValueOnce(makeSelectChain([{ id: 10 }]))
+      // folder exists and is owned by actor
+      .mockReturnValueOnce(makeSelectChain([{ id: 55 }]))
+      // descendant folders lookup (none)
+      .mockReturnValueOnce(makeSelectWhereChain([]))
+      // owned items in folder tree
+      .mockReturnValueOnce(makeSelectWhereChain([{ id: 901 }, { id: 902 }]));
+
+    const onConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
+    const valuesMock = vi.fn().mockReturnValue({ onConflictDoUpdate });
+    mockDb.insert.mockReturnValueOnce({ values: valuesMock });
+
+    const result = await shareLibraryToGroup(
+      {
+        folderId: 55,
+        groupId: 10,
+        permissionLevel: "read",
+      },
+      {
+        userId: 42,
+        tenantId: "t1",
+        role: "user",
+      },
+    );
+
+    expect(result.shared).toBe(2);
+    expect(valuesMock).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          libraryItemId: 901,
+          subjectType: "group",
+          subjectId: "10",
+          permissionLevel: "read",
+        }),
+        expect.objectContaining({
+          libraryItemId: 902,
+          subjectType: "group",
+          subjectId: "10",
+          permissionLevel: "read",
+        }),
+      ]),
+    );
+  });
+
+  it("rejects when folder is not found/owned", async () => {
+    mockDb.select
+      // group exists
+      .mockReturnValueOnce(makeSelectChain([{ id: 10 }]))
+      // folder not found/not owned
+      .mockReturnValueOnce(makeSelectChain([]));
+
+    await expect(
+      shareLibraryToGroup(
+        {
+          folderId: 999,
+          groupId: 10,
+          permissionLevel: "read",
+        },
+        {
+          userId: 42,
+          tenantId: "t1",
+          role: "user",
+        },
+      ),
+    ).rejects.toThrow("Folder not found");
+
+    expect(mockDb.insert).not.toHaveBeenCalled();
   });
 });

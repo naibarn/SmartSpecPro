@@ -13,6 +13,7 @@ from app.llm_proxy.providers.openrouter_provider import OpenRouterProvider
 from app.llm_proxy.providers.zai_provider import ZAIProvider
 from .kie_ai_provider import KieAIProvider
 from .byteplus_modelark_provider import BytePlusModelArkProvider
+from .uvoice_provider import UVoiceProvider
 
 __all__ = [
     "BaseLLMProvider",
@@ -25,4 +26,5 @@ __all__ = [
     "ZAIProvider",
     "KieAIProvider",
     "BytePlusModelArkProvider",
+    "UVoiceProvider",
 ]

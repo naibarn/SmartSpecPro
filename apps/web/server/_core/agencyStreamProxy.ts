@@ -166,7 +166,7 @@ export function registerAgencyStreamRoutes(app: Express): void {
     } catch (err) {
       // Persona resolution failed — continue without persona
       if (err instanceof Error && !err.message?.includes("not enabled")) {
-        debugError("[agencyStreamProxy] Persona resolution failed:", err);
+        debugError("agencyStreamProxy", "Persona resolution failed", err);
       }
     }
 

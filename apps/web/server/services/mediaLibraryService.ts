@@ -142,7 +142,16 @@ export async function addMediaTaskToLibrary(
   input: AddMediaTaskToLibraryInput,
   actor: LibraryActor,
 ): Promise<AddMediaTaskToLibraryResult> {
-  const task = await mediaGenerationService.getTask(input.mediaTaskId, input.userToken);
+  const task = await mediaGenerationService.getTask(
+    input.mediaTaskId,
+    input.userToken,
+    {
+      userId: actor.userId,
+      traceId: `media_library:${input.mediaTaskId}`,
+      source: "media_library.addTaskToLibrary",
+      stage: "task_lookup",
+    },
+  );
   assertTaskEligible(task, actor);
 
   const db = await getDb();

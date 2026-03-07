@@ -1185,16 +1185,27 @@ export const oneDriveRouter = router({
         tenantId,
         role: ctx.user.role,
       };
-      const uploadResult = await uploadLibraryFile(
-        {
-          fileName: payload.fileName,
-          fileType: payload.fileType,
-          fileBase64: payload.fileBase64,
-          title: payload.fileName,
-          visibility: "private",
-        },
-        actor,
-      );
+      let uploadResult;
+      try {
+        uploadResult = await uploadLibraryFile(
+          {
+            fileName: payload.fileName,
+            fileType: payload.fileType,
+            fileBase64: payload.fileBase64,
+            title: payload.fileName,
+            visibility: "private",
+          },
+          actor,
+        );
+      } catch (error) {
+        if (error instanceof Error && error.message.toLowerCase().includes("insufficient credits")) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: error.message,
+          });
+        }
+        throw error;
+      }
 
       return {
         ...uploadResult,

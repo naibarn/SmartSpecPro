@@ -84,15 +84,30 @@ function CommandInput({
 
 function CommandList({
   className,
+  style,
+  onWheelCapture,
+  onTouchMoveCapture,
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.List>) {
   return (
     <CommandPrimitive.List
       data-slot="command-list"
       className={cn(
-        "max-h-[300px] scroll-py-1 overflow-x-hidden overflow-y-auto",
+        "max-h-[min(18rem,50vh)] scroll-py-1 overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y",
         className
       )}
+      style={{
+        WebkitOverflowScrolling: "touch",
+        ...style,
+      }}
+      onWheelCapture={(event) => {
+        event.stopPropagation();
+        onWheelCapture?.(event);
+      }}
+      onTouchMoveCapture={(event) => {
+        event.stopPropagation();
+        onTouchMoveCapture?.(event);
+      }}
       {...props}
     />
   );

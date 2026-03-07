@@ -16,6 +16,7 @@ vi.mock("@/lib/trpc", () => ({
     presentation: {
       setSlideAudio: { useMutation: vi.fn() },
       setDeckAudio: { useMutation: vi.fn() },
+      uploadAndAttachAsset: { useMutation: vi.fn() },
     },
     library: {
       listDocuments: { useQuery: vi.fn() },
@@ -32,9 +33,13 @@ vi.mock("sonner", () => ({
 // Mock factories
 // ---------------------------------------------------------------------------
 
-function makeMutationMock(mutate?: ReturnType<typeof vi.fn>) {
+function makeMutationMock(
+  mutate?: ReturnType<typeof vi.fn>,
+  mutateAsync?: ReturnType<typeof vi.fn>,
+) {
   return {
     mutate: mutate ?? vi.fn(),
+    mutateAsync: mutateAsync ?? vi.fn().mockResolvedValue({}),
     isPending: false,
     isError: false,
     isSuccess: false,
@@ -102,6 +107,9 @@ describe("SlideAudioPanel", () => {
     vi.mocked(trpc.presentation.setDeckAudio.useMutation).mockReturnValue(
       makeMutationMock() as any,
     );
+    vi.mocked(trpc.presentation.uploadAndAttachAsset.useMutation).mockReturnValue(
+      makeMutationMock() as any,
+    );
     vi.mocked(trpc.library.listDocuments.useQuery).mockReturnValue(
       makeLibraryDocumentsQueryMock() as any,
     );
@@ -114,6 +122,7 @@ describe("SlideAudioPanel", () => {
   it("renders 'Add Audio' button when no audio track is configured for slide", () => {
     render(<SlideAudioPanel {...PROPS_NO_AUDIO} />);
     expect(screen.getByRole("button", { name: /add audio/i })).toBeDefined();
+    expect(screen.getByRole("button", { name: /upload slide audio/i })).toBeDefined();
   });
 
   // 2. Audio file name and volume slider shown when audio track exists
@@ -168,6 +177,7 @@ describe("SlideAudioPanel", () => {
   it("'Add Project Audio' button is always visible (not gated on slide selection)", () => {
     render(<SlideAudioPanel {...PROPS_NO_AUDIO} slideId={null} />);
     expect(screen.getByRole("button", { name: /add project audio/i })).toBeDefined();
+    expect(screen.getByRole("button", { name: /upload project audio/i })).toBeDefined();
   });
 
   // 6. Deck audio section shows file name and loop toggle

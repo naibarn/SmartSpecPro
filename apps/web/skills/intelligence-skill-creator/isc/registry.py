@@ -1,60 +1,237 @@
 from __future__ import annotations
-import json
+
 import importlib.util
+import json
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional
 
 from .models import SkillManifest
 
-SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills"
+ISC_ROOT = Path(__file__).resolve().parent.parent
+CANONICAL_SKILLS_DIR = ISC_ROOT.parent
+LEGACY_SKILLS_DIR = ISC_ROOT / "skills"
 
-def skills_root() -> Path:
-    return SKILLS_DIR
 
-def list_skills() -> List[str]:
-    if not SKILLS_DIR.exists():
-        return []
-    out = []
-    for p in SKILLS_DIR.iterdir():
-        if p.is_dir() and (p / "skill.md").exists() and (
-            (p / "python" / "skill.py").exists() or (p / "js" / "skill.js").exists()
-        ):
-            out.append(p.name)
-    return sorted(out)
+@dataclass(frozen=True)
+class ResolvedSkillFiles:
+    skill_dir: Path
+    manifest_path: Optional[Path]
+    code_path: Optional[Path]
+    tests_path: Optional[Path]
+    is_legacy: bool = False
 
-def load_manifest(skill_name: str) -> SkillManifest:
-    p = SKILLS_DIR / skill_name / "manifest.json"
-    data = json.loads(p.read_text(encoding="utf-8"))
-    return SkillManifest(
-        name=data["name"],
-        version=data.get("version","0.0.0"),
-        description=data.get("description",""),
-        entrypoint=data.get("entrypoint","skill.py"),
-        author=data.get("author",""),
-        tags=data.get("tags",[]) or [],
+
+def canonical_skills_root() -> Path:
+    return CANONICAL_SKILLS_DIR
+
+
+def legacy_fixture_skills_root() -> Path:
+    return LEGACY_SKILLS_DIR
+
+
+def candidate_skill_roots() -> List[Path]:
+    roots = [canonical_skills_root()]
+    legacy = legacy_fixture_skills_root()
+    if legacy != roots[0]:
+        roots.append(legacy)
+    return roots
+
+
+def _skill_dir_exists(skill_dir: Path) -> bool:
+    return skill_dir.is_dir() and (
+        (skill_dir / "skill.md").exists() or (skill_dir / "manifest.json").exists()
     )
 
+
+def canonical_skill_dir(skill_name: str) -> Path:
+    return canonical_skills_root() / skill_name
+
+
+def resolve_skill_dir(skill_name: str) -> Path:
+    for root in candidate_skill_roots():
+        skill_dir = root / skill_name
+        if _skill_dir_exists(skill_dir):
+            return skill_dir
+    raise FileNotFoundError(f"Skill not found: {skill_name}")
+
+
+def resolve_skill_files(skill_name: str) -> ResolvedSkillFiles:
+    skill_dir = resolve_skill_dir(skill_name)
+    code_candidates = [
+        skill_dir / "python" / "skill.py",
+        skill_dir / "js" / "skill.js",
+        skill_dir / "skill.py",
+    ]
+    manifest_candidates = [
+        skill_dir / "skill.md",
+        skill_dir / "manifest.json",
+    ]
+    tests_candidates = [
+        skill_dir / "tests" / "tests.json",
+        skill_dir / "tests.json",
+    ]
+
+    manifest_path = next((p for p in manifest_candidates if p.exists()), None)
+    code_path = next((p for p in code_candidates if p.exists()), None)
+    tests_path = next((p for p in tests_candidates if p.exists()), None)
+
+    return ResolvedSkillFiles(
+        skill_dir=skill_dir,
+        manifest_path=manifest_path,
+        code_path=code_path,
+        tests_path=tests_path,
+        is_legacy=skill_dir.is_relative_to(legacy_fixture_skills_root()),
+    )
+
+
+def skills_root() -> Path:
+    return canonical_skills_root()
+
+
+def list_skills() -> List[str]:
+    seen = set()
+    out: List[str] = []
+    for root in candidate_skill_roots():
+        if not root.exists():
+            continue
+        for p in sorted(root.iterdir()):
+            if p.name in seen or not _skill_dir_exists(p):
+                continue
+            has_code = any(
+                candidate.exists()
+                for candidate in (
+                    p / "python" / "skill.py",
+                    p / "js" / "skill.js",
+                    p / "skill.py",
+                )
+            )
+            if has_code:
+                seen.add(p.name)
+                out.append(p.name)
+    return out
+
+
+def _strip_quotes(value: str) -> str:
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+        return value[1:-1]
+    return value
+
+
+def _parse_inline_list(value: str) -> List[str]:
+    value = value.strip()
+    if not value.startswith("[") or not value.endswith("]"):
+        return []
+    inner = value[1:-1].strip()
+    if not inner:
+        return []
+    return [_strip_quotes(part.strip()) for part in inner.split(",") if part.strip()]
+
+
+def parse_skill_frontmatter(text: str) -> dict:
+    if not text.startswith("---"):
+        return {}
+
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        return {}
+
+    data: dict = {}
+    list_key: Optional[str] = None
+    list_values: List[str] = []
+
+    for raw in lines[1:]:
+        line = raw.rstrip()
+        if line.strip() == "---":
+            if list_key is not None:
+                data[list_key] = list_values[:]
+            break
+        if not line.strip():
+            continue
+        if line.startswith("  - ") and list_key is not None:
+            list_values.append(_strip_quotes(line[4:].strip()))
+            continue
+        if ":" not in line:
+            continue
+        if list_key is not None:
+            data[list_key] = list_values[:]
+            list_key = None
+            list_values = []
+        key, value = line.split(":", 1)
+        key = key.strip()
+        value = value.strip()
+        if not value:
+            list_key = key
+            list_values = []
+            continue
+        if value.startswith("[") and value.endswith("]"):
+            data[key] = _parse_inline_list(value)
+            continue
+        data[key] = _strip_quotes(value)
+    return data
+
+
+def load_manifest(skill_name: str) -> SkillManifest:
+    files = resolve_skill_files(skill_name)
+    if files.manifest_path is None:
+        raise FileNotFoundError(f"No manifest found for skill: {skill_name}")
+
+    path = files.manifest_path
+    if path.name == "skill.md":
+        data = parse_skill_frontmatter(path.read_text(encoding="utf-8"))
+        return SkillManifest(
+            name=data.get("name", skill_name),
+            version=str(data.get("version", "0.0.0")),
+            description=str(data.get("description", "")),
+            entrypoint="python/skill.py"
+            if (files.code_path and files.code_path.as_posix().endswith("python/skill.py"))
+            else "js/skill.js"
+            if (files.code_path and files.code_path.as_posix().endswith("js/skill.js"))
+            else "skill.py",
+            author=str(data.get("author", "")),
+            tags=list(data.get("tags", []) or []),
+        )
+
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return SkillManifest(
+        name=data["name"],
+        version=data.get("version", "0.0.0"),
+        description=data.get("description", ""),
+        entrypoint=data.get("entrypoint", "skill.py"),
+        author=data.get("author", ""),
+        tags=data.get("tags", []) or [],
+    )
+
+
 def load_skill_module(skill_name: str):
-    skill_dir = SKILLS_DIR / skill_name
-    entry = skill_dir / "skill.py"
-    if not entry.exists():
-        raise FileNotFoundError(f"skill.py not found: {entry}")
+    files = resolve_skill_files(skill_name)
+    entry = files.code_path
+    if entry is None:
+        raise FileNotFoundError(f"Skill code not found for {skill_name}")
+    if entry.suffix != ".py":
+        raise RuntimeError(f"{skill_name} is not a Python skill: {entry}")
+
     spec = importlib.util.spec_from_file_location(f"skill_{skill_name}", str(entry))
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Could not load module for {skill_name}")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)  # type: ignore
     if not hasattr(mod, "respond"):
-        raise AttributeError(f"{skill_name}/skill.py must define respond(input_text, context=None)->str")
+        raise AttributeError(f"{entry} must define respond(input, context=None)->str")
     return mod
 
+
 def skill_path(skill_name: str) -> Path:
-    return SKILLS_DIR / skill_name
+    return resolve_skill_dir(skill_name)
+
 
 def read_text(skill_name: str, rel_path: str) -> str:
     p = skill_path(skill_name) / rel_path
     return p.read_text(encoding="utf-8")
 
+
 def write_text(skill_name: str, rel_path: str, content: str) -> None:
     p = skill_path(skill_name) / rel_path
+    p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(content, encoding="utf-8")

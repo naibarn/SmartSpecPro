@@ -1,5 +1,6 @@
 import {
   presentationSlideContentSchema,
+  type PresentationSlideBackground,
   type PresentationSlideContent as SharedPresentationSlideContent,
   type PresentationSlideElement as SharedPresentationElement,
 } from "@shared/presentation/contracts";
@@ -16,6 +17,7 @@ export type PresentationElementPatch = DistributivePatch<PresentationElement>;
 export type PresentationSlideContent = SharedPresentationSlideContent;
 export type ArrangeDirection = "forward" | "backward" | "front" | "back";
 export type { PresentationCanvasSize };
+export type { PresentationSlideBackground };
 
 const ELEMENT_FOCUS_TYPE_WEIGHTS: Record<PresentationElementType, number> = {
   text: 2.1,
@@ -166,6 +168,13 @@ export function createElement(
         poster: "",
         title: "Video",
         muted: true,
+        videoFit: "cover",
+        videoPositionX: 50,
+        videoPositionY: 50,
+        videoZoom: 1,
+        videoPrompt: "",
+        videoReferenceUrls: [],
+        videoExtraParams: {},
       };
     case "rect":
       return {
@@ -481,4 +490,11 @@ export function duplicateElements(
     canvas: getCanvasSize(content),
     elements: nextElements,
   };
+}
+
+export function setSlideBackground(
+  content: PresentationSlideContent,
+  background: PresentationSlideBackground | undefined,
+): PresentationSlideContent {
+  return { ...content, background };
 }

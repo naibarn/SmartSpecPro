@@ -10,9 +10,18 @@ import {
   BookOpen,
   Bot,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Globe,
+  HelpCircle,
+  Lightbulb,
   Loader2,
+  MousePointerClick,
   Save,
+  Search,
+  Shield,
   X,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -56,6 +65,7 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
   const [showSaveForm, setShowSaveForm] = useState(false);
+  const [showGuide, setShowGuide] = useState(true);
   const [templateName, setTemplateName] = useState("");
   const [templateDesc, setTemplateDesc] = useState("");
 
@@ -229,7 +239,7 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="relative mx-4 w-full max-w-lg rounded-lg bg-white shadow-xl">
+      <div className="relative mx-4 w-full max-w-2xl rounded-lg bg-white shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b px-4 py-3">
           <div className="flex items-center gap-2">
@@ -252,33 +262,206 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
         <div className="max-h-[60vh] overflow-y-auto p-4">
           {/* Idle state */}
           {state === "idle" && !showTemplates && (
-            <div className="space-y-3">
-              <p className="text-sm text-gray-500">
-                Describe what you want to automate in plain language.
-              </p>
-              <textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder="e.g., Go to example.com, click the login button, fill in my email..."
-                className="w-full rounded-md border p-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                rows={3}
-              />
-              <button
-                type="button"
-                onClick={handleSubmitPrompt}
-                disabled={!prompt.trim()}
-                className="w-full rounded-md bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-              >
-                Analyze
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowTemplates(true)}
-                className="flex w-full items-center justify-center gap-1.5 rounded-md border py-1.5 text-sm text-gray-600 hover:bg-gray-50"
-              >
-                <BookOpen className="h-3.5 w-3.5" />
-                Browse Templates
-              </button>
+            <div className="space-y-4">
+              {/* Collapsible Usage Guide */}
+              <div className="rounded-lg border border-blue-200 bg-blue-50/50">
+                <button
+                  type="button"
+                  onClick={() => setShowGuide((prev) => !prev)}
+                  className="flex w-full items-center justify-between px-3 py-2.5 text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <HelpCircle className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-semibold text-blue-900">
+                      How to Use Automation Copilot
+                    </span>
+                  </div>
+                  {showGuide ? (
+                    <ChevronUp className="h-4 w-4 text-blue-400" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-blue-400" />
+                  )}
+                </button>
+
+                {showGuide && (
+                  <div className="space-y-4 border-t border-blue-200 px-3 pb-3 pt-3">
+                    {/* What it does */}
+                    <div>
+                      <p className="text-xs leading-relaxed text-gray-600">
+                        Automation Copilot uses AI to understand your instructions and
+                        automate browser tasks — such as navigating websites, clicking
+                        buttons, filling out forms, and extracting data. Simply describe
+                        what you want in plain English.
+                      </p>
+                    </div>
+
+                    {/* Step-by-step workflow */}
+                    <div>
+                      <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-gray-800">
+                        <Zap className="h-3.5 w-3.5 text-amber-500" />
+                        Step-by-Step Workflow
+                      </h4>
+                      <ol className="space-y-1.5 pl-1 text-xs text-gray-600">
+                        <li className="flex gap-2">
+                          <span className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-700">
+                            1
+                          </span>
+                          <span>
+                            <strong>Describe your task</strong> — Type what you want to
+                            automate in the text box below. Be specific about which
+                            website, what actions to perform, and what data to collect.
+                          </span>
+                        </li>
+                        <li className="flex gap-2">
+                          <span className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-700">
+                            2
+                          </span>
+                          <span>
+                            <strong>Review the plan</strong> — The AI will analyze your
+                            request and show a step-by-step execution plan with estimated
+                            credit cost. Review each step before confirming.
+                          </span>
+                        </li>
+                        <li className="flex gap-2">
+                          <span className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-700">
+                            3
+                          </span>
+                          <span>
+                            <strong>Confirm & execute</strong> — Click "Confirm" to run
+                            the automation. The system will open a browser, perform each
+                            step, and report results back to you in real time.
+                          </span>
+                        </li>
+                        <li className="flex gap-2">
+                          <span className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-700">
+                            4
+                          </span>
+                          <span>
+                            <strong>Save as template</strong> — After a successful run,
+                            you can save the automation as a reusable template to run
+                            again later with one click.
+                          </span>
+                        </li>
+                      </ol>
+                    </div>
+
+                    {/* Example prompts */}
+                    <div>
+                      <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-gray-800">
+                        <Lightbulb className="h-3.5 w-3.5 text-yellow-500" />
+                        Example Prompts
+                      </h4>
+                      <div className="space-y-1.5">
+                        {[
+                          {
+                            icon: Globe,
+                            text: "Go to example.com, find the pricing page, and extract all plan names and prices into a table.",
+                          },
+                          {
+                            icon: MousePointerClick,
+                            text: "Navigate to my-app.com/login, enter username 'demo@test.com' and password 'demo123', then click Sign In.",
+                          },
+                          {
+                            icon: Search,
+                            text: "Search for 'AI automation tools' on Google, collect the top 5 result titles and URLs.",
+                          },
+                        ].map((example, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => setPrompt(example.text)}
+                            className="flex w-full items-start gap-2 rounded-md border border-gray-200 bg-white px-2.5 py-2 text-left text-xs text-gray-600 transition-colors hover:border-blue-300 hover:bg-blue-50/50"
+                          >
+                            <example.icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" />
+                            <span>{example.text}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Tips */}
+                    <div>
+                      <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-gray-800">
+                        <Shield className="h-3.5 w-3.5 text-green-500" />
+                        Tips for Best Results
+                      </h4>
+                      <ul className="space-y-1 pl-1 text-xs text-gray-600">
+                        <li className="flex gap-1.5">
+                          <span className="text-green-500">&#10003;</span>
+                          <span>
+                            Include the <strong>full URL</strong> of the target website
+                            (e.g., https://example.com/page).
+                          </span>
+                        </li>
+                        <li className="flex gap-1.5">
+                          <span className="text-green-500">&#10003;</span>
+                          <span>
+                            Describe actions in <strong>sequential order</strong> — first
+                            do X, then do Y, finally do Z.
+                          </span>
+                        </li>
+                        <li className="flex gap-1.5">
+                          <span className="text-green-500">&#10003;</span>
+                          <span>
+                            Specify <strong>what data to extract</strong> if you need
+                            information from the page (e.g., "collect all product names
+                            and prices").
+                          </span>
+                        </li>
+                        <li className="flex gap-1.5">
+                          <span className="text-green-500">&#10003;</span>
+                          <span>
+                            Use <strong>Browse Templates</strong> below to start from a
+                            pre-built automation instead of writing from scratch.
+                          </span>
+                        </li>
+                        <li className="flex gap-1.5">
+                          <span className="text-amber-500">&#9888;</span>
+                          <span>
+                            Only websites on the <strong>allowed domains list</strong>{" "}
+                            (configured by your admin) can be automated. Contact your
+                            admin to add new domains.
+                          </span>
+                        </li>
+                        <li className="flex gap-1.5">
+                          <span className="text-amber-500">&#9888;</span>
+                          <span>
+                            Each execution <strong>reserves credits</strong> upfront.
+                            Unused credits are refunded if the automation fails to start.
+                          </span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Prompt input */}
+              <div className="space-y-3">
+                <textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="Describe what you want to automate...&#10;&#10;e.g., Go to example.com, click the login button, fill in my email and password, then take a screenshot of the dashboard."
+                  className="w-full rounded-md border p-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  rows={4}
+                />
+                <button
+                  type="button"
+                  onClick={handleSubmitPrompt}
+                  disabled={!prompt.trim()}
+                  className="w-full rounded-md bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  Analyze
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowTemplates(true)}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-md border py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+                >
+                  <BookOpen className="h-3.5 w-3.5" />
+                  Browse Templates
+                </button>
+              </div>
             </div>
           )}
 

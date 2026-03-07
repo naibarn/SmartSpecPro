@@ -15,8 +15,12 @@ class SkillManifest:
 @dataclass(frozen=True)
 class TestCase:
     id: str
-    input: str
-    expected_contains: List[str]
+    input: Any
+    expected_contains: List[str] = field(default_factory=list)
+    forbidden_contains: List[str] = field(default_factory=list)
+    expected_success: Optional[bool] = None
+    expected_json_paths: Dict[str, Any] = field(default_factory=dict)
+    expected_schema_valid: Optional[bool] = None
     context: Optional[Dict[str, Any]] = None
 
 @dataclass(frozen=True)
@@ -24,7 +28,9 @@ class TestResult:
     test_id: str
     passed: bool
     output: str
-    missing: List[str]
+    missing: List[str] = field(default_factory=list)
+    reasons: List[str] = field(default_factory=list)
+    categories: List[str] = field(default_factory=list)
 
 @dataclass(frozen=True)
 class EvaluationReport:
@@ -33,6 +39,7 @@ class EvaluationReport:
     passed: int
     pass_rate: float
     results: List[TestResult]
+    dimension_failures: Dict[str, int] = field(default_factory=dict)
 
 @dataclass(frozen=True)
 class PatchProposal:

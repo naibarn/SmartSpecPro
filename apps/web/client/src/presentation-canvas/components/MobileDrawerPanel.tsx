@@ -33,6 +33,11 @@ export function MobileDrawerPanel({
 }: MobileDrawerPanelProps) {
   const [activeTab, setActiveTab] = useState<DrawerTab>("Slides");
 
+  function handleAddElement(type: PresentationElementType) {
+    onAddElement(type);
+    onClose();
+  }
+
   return (
     <>
       {/* Backdrop overlay */}
@@ -99,7 +104,7 @@ export function MobileDrawerPanel({
               <div className="grid grid-cols-3 gap-2">
                 <Button
                   type="button"
-                  onClick={() => onAddElement("text")}
+                  onClick={() => handleAddElement("text")}
                   size="sm"
                   variant="secondary"
                   className="gap-1 text-xs"
@@ -110,29 +115,29 @@ export function MobileDrawerPanel({
                 </Button>
                 <Button
                   type="button"
-                  onClick={() => onAddElement("image")}
+                  onClick={() => handleAddElement("image")}
                   size="sm"
                   variant="secondary"
                   className="gap-1 text-xs"
-                  aria-label="Add Image Element"
+                  aria-label="Upload Image Element"
                 >
                   <ImageIcon className="h-3.5 w-3.5" />
-                  Image
+                  Upload Img
                 </Button>
                 <Button
                   type="button"
-                  onClick={() => onAddElement("video")}
+                  onClick={() => handleAddElement("video")}
                   size="sm"
                   variant="secondary"
                   className="gap-1 text-xs"
-                  aria-label="Add Video Element"
+                  aria-label="Upload Video Element"
                 >
                   <Clapperboard className="h-3.5 w-3.5" />
-                  Video
+                  Upload Vid
                 </Button>
                 <Button
                   type="button"
-                  onClick={() => onAddElement("rect")}
+                  onClick={() => handleAddElement("rect")}
                   size="sm"
                   variant="secondary"
                   className="gap-1 text-xs"
@@ -143,7 +148,7 @@ export function MobileDrawerPanel({
                 </Button>
                 <Button
                   type="button"
-                  onClick={() => onAddElement("line")}
+                  onClick={() => handleAddElement("line")}
                   size="sm"
                   variant="secondary"
                   className="gap-1 text-xs"

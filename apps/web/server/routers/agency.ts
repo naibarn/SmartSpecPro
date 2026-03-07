@@ -128,7 +128,7 @@ export const agencyRouter = router({
         .offset(input.offset);
 
       return {
-        agencies: result.map((a) => ({
+        agencies: result.map((a: typeof result[number]) => ({
           ...a,
           canEdit: a.createdBy === userId || isAdmin,
         })),
@@ -207,7 +207,7 @@ export const agencyRouter = router({
           eq(userGroups.tenantId, tenantId),
         ));
 
-      const validIds = validGroups.map((g) => g.id);
+      const validIds = validGroups.map((g: { id: number }) => g.id);
       if (validIds.length === 0) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "No valid groups found" });
       }
@@ -215,7 +215,7 @@ export const agencyRouter = router({
       // Insert permissions (ignore conflicts)
       await db
         .insert(agencyPermissions)
-        .values(validIds.map((gId) => ({
+        .values(validIds.map((gId: number) => ({
           agencyId: input.agencyId,
           groupId: gId,
           grantedByUserId: userId,
@@ -1844,7 +1844,7 @@ export const agencyRouter = router({
 
         if (successRate < 0.9) {
           alerts.push({
-            agencyId: row.agency_id,
+            agencyId: String(row.agency_id ?? ""),
             metric: "success_rate",
             value: successRate,
             threshold: 0.9,
@@ -2260,11 +2260,11 @@ export const agencyRouter = router({
       const admins = await db
         .select({ id: users.id })
         .from(users)
-        .where(and(eq(users.currentTenantId, tenantId), eq(users.role, "admin")));
+        .where(eq(users.role, "admin"));
 
       for (const admin of admins) {
         await createNotification({
-          db,
+          db: db.instance,
           userId: admin.id,
           type: "system",
           title: "Agency Publish Request",
@@ -2327,7 +2327,7 @@ export const agencyRouter = router({
       // Notify creator
       if (agency.createdBy) {
         await createNotification({
-          db,
+          db: db.instance,
           userId: agency.createdBy,
           type: "system",
           title: "Agency Approved!",
@@ -2366,7 +2366,7 @@ export const agencyRouter = router({
       if (agency.createdBy) {
         const reasonText = input.reason ? ` Reason: ${input.reason}` : "";
         await createNotification({
-          db,
+          db: db.instance,
           userId: agency.createdBy,
           type: "system",
           title: "Agency Publish Request Rejected",

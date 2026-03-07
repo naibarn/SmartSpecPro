@@ -177,6 +177,29 @@ describe("calculateCost", () => {
     expect(cost.method).toBe("model_lookup");
   });
 
+  it("uses model lookup for provider-qualified model IDs", async () => {
+    const mockWhere = vi.fn().mockReturnValue({
+      limit: vi.fn().mockResolvedValue([
+        { pricingInput: "2.00", pricingOutput: "8.00", isFree: false },
+      ]),
+    });
+    const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
+    const mockDb = {
+      select: vi.fn().mockReturnValue({ from: mockFrom }),
+      insert: mockInsert,
+    };
+    vi.mocked(getDb).mockResolvedValue(mockDb as any);
+
+    const cost = await calculateCost({
+      modelId: "openai/gpt-5.2",
+      inputTokens: 1000,
+      outputTokens: 500,
+    });
+
+    expect(cost.cost).toBeCloseTo(0.006, 10);
+    expect(cost.method).toBe("model_lookup");
+  });
+
   it("uses default pricing when model not in map", async () => {
     const mockWhere = vi.fn().mockReturnValue({
       limit: vi.fn().mockResolvedValue([]),

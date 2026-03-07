@@ -1,0 +1,30 @@
+# Large generated or dependency directories
+**/node_modules/
+**/.venv/
+**/dist/
+**/build/
+**/.next/
+**/.turbo/
+**/.pytest_cache/
+**/__pycache__/
+**/.mypy_cache/
+**/.ruff_cache/
+
+# Repository runtime data
+logs/
+tmp/
+coverage/
+playwright-report/
+test-results/
+
+# Binary and media-heavy artifacts
+**/*.mp4
+**/*.mov
+**/*.mpeg
+**/*.mp3
+**/*.wav
+**/*.zip
+**/*.tar
+**/*.gz
+**/*.sqlite
+**/*.db

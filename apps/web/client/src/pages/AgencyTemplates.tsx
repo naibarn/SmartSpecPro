@@ -41,7 +41,7 @@ export default function AgencyTemplates() {
     onSuccess: (data) => {
       setCreatingId(null);
       toast.success("Agency created from template");
-      setLocation(`/agencies/${data.agencyId}/edit`);
+      setLocation(`/agencies/${data.id}/edit`);
     },
     onError: (err) => {
       toast.error(err.message);
@@ -51,7 +51,7 @@ export default function AgencyTemplates() {
 
   const handleUseTemplate = (templateId: string) => {
     setCreatingId(templateId);
-    createMutation.mutate({ templateId });
+    createMutation.mutate({ agencyTemplateId: templateId });
   };
 
   if (templatesQuery.isLoading) {
@@ -98,7 +98,7 @@ export default function AgencyTemplates() {
     );
   }
 
-  const templates = templatesQuery.data ?? [];
+  const templates = templatesQuery.data?.templates ?? [];
 
   return (
     <div className="p-6">
@@ -110,7 +110,7 @@ export default function AgencyTemplates() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {templates.map((template) => {
+        {templates.map((template: (typeof templates)[number]) => {
           const IconComponent = iconMap[template.icon] ?? Search;
           const isCreating = creatingId === template.id;
 

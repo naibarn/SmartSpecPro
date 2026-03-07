@@ -3,6 +3,13 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 
 const setLocationMock = vi.fn();
 const routeParamsMock = { docId: "42" };
+const { toastMocks } = vi.hoisted(() => ({
+  toastMocks: {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+  },
+}));
 
 const mutationMocks = {
   updateItem: vi.fn(),
@@ -14,6 +21,7 @@ const mutationMocks = {
   deleteSlide: vi.fn(),
   reorderSlides: vi.fn(),
   updateSlide: vi.fn(),
+  uploadAndAttachAsset: vi.fn(),
   createDeck: vi.fn(),
   triggerExport: vi.fn(),
   setSlideAudio: vi.fn(),
@@ -21,7 +29,21 @@ const mutationMocks = {
   relayoutSlide: vi.fn(),
   resolvePendingMedia: vi.fn(),
   generateImageAsync: vi.fn(),
+  generateVideoAsync: vi.fn(),
+  uploadReference: vi.fn(),
 };
+
+function createDragDataTransfer(): DataTransfer {
+  const store = new Map<string, string>();
+  return {
+    effectAllowed: "move",
+    dropEffect: "move",
+    setData: vi.fn((type: string, value: string) => {
+      store.set(type, value);
+    }),
+    getData: vi.fn((type: string) => store.get(type) ?? ""),
+  } as unknown as DataTransfer;
+}
 
 function buildDeckByItem() {
   return {
@@ -161,6 +183,54 @@ function buildPresentationVersions() {
   ] as any[];
 }
 
+function buildImageModelList() {
+  return [
+    {
+      id: "flux-2.0",
+      name: "Flux 2.0",
+      provider: "fal",
+      creditCost: 5,
+      configJson: { generateType: "text-to-image" },
+    },
+  ];
+}
+
+function buildVideoModelList(options?: { requireStylePreset?: boolean }) {
+  return [
+    {
+      id: "veo-3-1",
+      name: "Veo 3.1",
+      provider: "kie.ai",
+      creditCost: 50,
+      configJson: {
+        generateType: "text-to-video",
+        inputFields: [
+          { key: "scene_prompt", label: "Scene Prompt", type: "text", syncWith: "prompt" },
+          { key: "target_aspect_ratio", label: "Target Aspect Ratio", type: "text", syncWith: "aspect_ratio" },
+          { key: "quality", label: "Quality", type: "select", default: "pro", options: [{ value: "standard", label: "Standard" }, { value: "pro", label: "Pro" }] },
+          ...(options?.requireStylePreset
+            ? [{ key: "style_preset", label: "Style Preset", type: "text", required: true }]
+            : []),
+        ],
+      },
+    },
+    {
+      id: "veo-i2v",
+      name: "Veo Image-to-Video",
+      provider: "kie.ai",
+      creditCost: 45,
+      configJson: {
+        generateType: "image-to-video",
+      },
+    },
+  ];
+}
+
+const mediaModelState = {
+  imageModels: buildImageModelList(),
+  videoModels: buildVideoModelList(),
+};
+
 const queryState = {
   libraryItem: {
     id: 42,
@@ -195,11 +265,7 @@ vi.mock("@/contexts/AuthContext", () => ({
 }));
 
 vi.mock("sonner", () => ({
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
-    info: vi.fn(),
-  },
+  toast: toastMocks,
 }));
 
 vi.mock("@/lib/trpc", () => ({
@@ -211,6 +277,14 @@ vi.mock("@/lib/trpc", () => ({
       },
       presentation: {
         listVersions: { invalidate: vi.fn().mockResolvedValue(undefined) },
+      },
+      media: {
+        getTask: {
+          fetch: vi.fn().mockResolvedValue({
+            status: "completed",
+            resultUrl: "https://cdn.example.com/generated-asset.png",
+          }),
+        },
       },
     }),
     library: {
@@ -267,6 +341,14 @@ vi.mock("@/lib/trpc", () => ({
       updateItem: {
         useMutation: vi.fn(() => ({
           mutateAsync: mutationMocks.updateItem,
+          isPending: false,
+        })),
+      },
+    },
+    ai: {
+      upload: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: mutationMocks.uploadReference,
           isPending: false,
         })),
       },
@@ -378,6 +460,12 @@ vi.mock("@/lib/trpc", () => ({
           isPending: false,
         })),
       },
+      uploadAndAttachAsset: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: mutationMocks.uploadAndAttachAsset,
+          isPending: false,
+        })),
+      },
       createDeck: {
         useMutation: vi.fn(() => ({
           mutateAsync: mutationMocks.createDeck,
@@ -453,15 +541,33 @@ vi.mock("@/lib/trpc", () => ({
           isPending: false,
         })),
       },
-      getModels: {
-        useQuery: vi.fn(() => ({
-          data: {
-            models: [{ id: "flux-2.0", name: "Flux 2.0", provider: "fal", creditCost: 5, configJson: { generateType: "text-to-image" } }],
-            defaults: { image: "flux-2.0", video: "veo-3-1" },
-          },
-          isLoading: false,
-          error: null,
+      generateVideoAsync: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: mutationMocks.generateVideoAsync,
+          isPending: false,
         })),
+      },
+      getModels: {
+        useQuery: vi.fn((input?: any) => {
+          if (input?.type === "video") {
+            return {
+              data: {
+                models: mediaModelState.videoModels,
+                defaults: { image: "flux-2.0", video: "veo-3-1" },
+              },
+              isLoading: false,
+              error: null,
+            };
+          }
+          return {
+            data: {
+              models: mediaModelState.imageModels,
+              defaults: { image: "flux-2.0", video: "veo-3-1" },
+            },
+            isLoading: false,
+            error: null,
+          };
+        }),
       },
     },
   },
@@ -489,13 +595,16 @@ vi.mock("@/components/presentation/SlideAudioPanel", () => ({
   ),
 }));
 
-import PresentationEditor from "./PresentationEditor";
+import PresentationEditor, { mergeResolvedPendingMediaIntoCachedDraft } from "./PresentationEditor";
 
 describe("PresentationEditor", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useRealTimers();
     localStorage.clear();
+    sessionStorage.clear();
+    mediaModelState.imageModels = buildImageModelList();
+    mediaModelState.videoModels = buildVideoModelList();
     Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 1200 });
     mutationMocks.addSlide.mockResolvedValue({});
     mutationMocks.updateItem.mockResolvedValue({});
@@ -510,6 +619,15 @@ describe("PresentationEditor", () => {
     mutationMocks.deleteSlide.mockResolvedValue({});
     mutationMocks.reorderSlides.mockResolvedValue({});
     mutationMocks.updateSlide.mockResolvedValue({});
+    mutationMocks.uploadAndAttachAsset.mockResolvedValue({
+      item: {
+        id: 999,
+        title: "Uploaded",
+        sourceUrl: "https://cdn.example.com/uploaded.png",
+        thumbnailUrl: "https://cdn.example.com/uploaded.png",
+      },
+      billing: { creditsCharged: 4 },
+    });
     mutationMocks.createDeck.mockResolvedValue({});
     mutationMocks.triggerExport.mockResolvedValue({
       exportId: 1,
@@ -538,6 +656,13 @@ describe("PresentationEditor", () => {
     mutationMocks.generateImageAsync.mockResolvedValue({
       taskId: "media-task-1",
       status: "queued",
+    });
+    mutationMocks.generateVideoAsync.mockResolvedValue({
+      taskId: "media-video-task-1",
+      status: "queued",
+    });
+    mutationMocks.uploadReference.mockResolvedValue({
+      url: "https://cdn.example.com/uploaded-reference.png",
     });
     queryState.guard = {
       allowed: true,
@@ -573,6 +698,50 @@ describe("PresentationEditor", () => {
     expect(screen.getByText(/snap: locked/i)).toBeInTheDocument();
     expect(screen.getByLabelText("Canvas Aspect Ratio (Properties)")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /fit canvas to view/i })).toBeInTheDocument();
+  });
+
+  it("merges resolved pending media from persisted slide content into cached drafts", () => {
+    const cached = {
+      elements: [
+        { id: "img-slot", type: "rect", x: 0, y: 0, width: 640, height: 360, fill: "#d1d5db" },
+        { id: "caption", type: "text", x: 24, y: 300, width: 400, height: 40, text: "Slide preview", color: "#111827" },
+      ],
+      pendingMediaJobs: [
+        {
+          id: "pmj-1",
+          mediaType: "image",
+          mediaTaskId: "task-1",
+          targetElementId: "img-slot",
+          targetX: 0,
+          targetY: 0,
+          targetWidth: 640,
+          targetHeight: 360,
+          status: "pending",
+          createdAt: "2026-03-06T00:00:00.000Z",
+          lastCheckedAt: "2026-03-06T00:00:00.000Z",
+        },
+      ],
+    } as any;
+    const persisted = {
+      elements: [
+        { id: "img-slot", type: "image", x: 0, y: 0, width: 640, height: 360, src: "https://cdn.example.com/resolved.png", alt: "Resolved" },
+        { id: "caption", type: "text", x: 24, y: 300, width: 400, height: 40, text: "Slide preview", color: "#111827" },
+      ],
+    } as any;
+
+    const merged = mergeResolvedPendingMediaIntoCachedDraft(cached, persisted);
+
+    expect((merged as any).pendingMediaJobs).toBeUndefined();
+    expect((merged as any).elements[0]).toMatchObject({
+      id: "img-slot",
+      type: "image",
+      src: "https://cdn.example.com/resolved.png",
+    });
+    expect((merged as any).elements[1]).toMatchObject({
+      id: "caption",
+      type: "text",
+      text: "Slide preview",
+    });
   });
 
   it("keeps hook order stable when editor transitions from loading to ready", async () => {
@@ -769,6 +938,10 @@ describe("PresentationEditor", () => {
       expect(screen.getByLabelText("Video src")).toHaveValue("https://cdn.example.com/teaser.mp4");
       expect(screen.getByLabelText("Video title")).toHaveValue("Teaser Clip");
     });
+    expect(screen.getByLabelText("Video Prompt")).toHaveValue("");
+    expect(screen.getByLabelText("Video Model")).toBeInTheDocument();
+    expect(screen.getByLabelText("Video Fit Mode")).toHaveValue("cover");
+    expect(screen.getByRole("button", { name: /regenerate video/i })).toBeDisabled();
 
     const playVideoButton = await screen.findByRole("button", { name: /play video element/i });
     fireEvent.click(playVideoButton);
@@ -781,6 +954,228 @@ describe("PresentationEditor", () => {
 
     playSpy.mockRestore();
     pauseSpy.mockRestore();
+  });
+
+  it("shows only text-to-video compatible models in video model selector", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open videos library/i }));
+    const teaserCard = screen.getByText("Teaser Clip").closest("[role='button']");
+    expect(teaserCard).toBeTruthy();
+    fireEvent.click(within(teaserCard as HTMLElement).getByRole("button", { name: /^insert$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Video Model")).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("option", { name: /veo 3\.1/i })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /veo image-to-video/i })).not.toBeInTheDocument();
+  });
+
+  it("syncs model-mapped prompt/aspect fields into regenerate video payload", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open videos library/i }));
+    const teaserCard = screen.getByText("Teaser Clip").closest("[role='button']");
+    expect(teaserCard).toBeTruthy();
+    fireEvent.click(within(teaserCard as HTMLElement).getByRole("button", { name: /^insert$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Video Prompt")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("Video Prompt"), {
+      target: { value: "A happy baby playing in a colorful room" },
+    });
+
+    mutationMocks.generateVideoAsync.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: /regenerate video/i }));
+
+    await waitFor(() => {
+      expect(mutationMocks.generateVideoAsync).toHaveBeenCalledTimes(1);
+    });
+
+    const payload = mutationMocks.generateVideoAsync.mock.calls[0][0];
+    expect(payload.prompt).toBe("A happy baby playing in a colorful room");
+    expect(payload.extraParams).toMatchObject({
+      scene_prompt: "A happy baby playing in a colorful room",
+      target_aspect_ratio: payload.aspectRatio,
+      quality: "pro",
+    });
+  });
+
+  it("infers prompt/aspect sync for dynamic fields without explicit syncWith", async () => {
+    mediaModelState.videoModels = [
+      {
+        id: "veo-3-1",
+        name: "Veo 3.1",
+        provider: "kie.ai",
+        creditCost: 50,
+        configJson: {
+          generateType: "text-to-video",
+          inputFields: [
+            { key: "prompt", label: "Prompt", type: "text" },
+            { key: "aspectRatio", label: "Aspect Ratio", type: "select", options: [{ value: "16:9", label: "16:9" }, { value: "9:16", label: "9:16" }] },
+            { key: "quality", label: "Quality", type: "select", default: "standard", options: [{ value: "standard", label: "Standard" }, { value: "pro", label: "Pro" }] },
+          ],
+        },
+      },
+    ];
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open videos library/i }));
+    const teaserCard = screen.getByText("Teaser Clip").closest("[role='button']");
+    expect(teaserCard).toBeTruthy();
+    fireEvent.click(within(teaserCard as HTMLElement).getByRole("button", { name: /^insert$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Video Prompt")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("Video Prompt"), {
+      target: { value: "A curious child exploring a playground" },
+    });
+
+    mutationMocks.generateVideoAsync.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: /regenerate video/i }));
+
+    await waitFor(() => {
+      expect(mutationMocks.generateVideoAsync).toHaveBeenCalledTimes(1);
+    });
+
+    const payload = mutationMocks.generateVideoAsync.mock.calls[0][0];
+    expect(payload.extraParams).toMatchObject({
+      prompt: "A curious child exploring a playground",
+      aspectRatio: payload.aspectRatio,
+      quality: "standard",
+    });
+  });
+
+  it("hides video model inputs behind advanced mode by default", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open videos library/i }));
+    const teaserCard = screen.getByText("Teaser Clip").closest("[role='button']");
+    expect(teaserCard).toBeTruthy();
+    fireEvent.click(within(teaserCard as HTMLElement).getByRole("button", { name: /^insert$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Video Prompt")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/model inputs \(veo 3\.1\)/i)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Video Advanced Mode"));
+    expect(screen.getByText(/model inputs \(veo 3\.1\)/i)).toBeInTheDocument();
+  });
+
+  it("syncs standard video aspect ratio and image references into dynamic payload", async () => {
+    mediaModelState.videoModels = [
+      {
+        id: "veo-3-1",
+        name: "Veo 3.1",
+        provider: "kie.ai",
+        creditCost: 50,
+        configJson: {
+          generateType: "text-to-video",
+          inputFields: [
+            { key: "prompt", label: "Prompt", type: "text" },
+            { key: "aspectRatio", label: "Aspect Ratio", type: "text" },
+            { key: "imageUrls", label: "Image URLs", type: "image_urls" },
+            { key: "quality", label: "Quality", type: "select", default: "standard", options: [{ value: "standard", label: "Standard" }] },
+          ],
+        },
+      },
+    ];
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open videos library/i }));
+    const teaserCard = screen.getByText("Teaser Clip").closest("[role='button']");
+    expect(teaserCard).toBeTruthy();
+    fireEvent.click(within(teaserCard as HTMLElement).getByRole("button", { name: /^insert$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Video Prompt")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("Video Prompt"), {
+      target: { value: "A toddler learning to walk on a colorful playground" },
+    });
+    fireEvent.change(screen.getByLabelText("Video Aspect Ratio"), {
+      target: { value: "9:16" },
+    });
+
+    const OriginalFileReader = globalThis.FileReader;
+    class MockFileReader {
+      public result: string | ArrayBuffer | null = "data:image/png;base64,aGVsbG8=";
+
+      public onload: ((this: FileReader, ev: ProgressEvent<FileReader>) => unknown) | null = null;
+
+      public onerror: ((this: FileReader, ev: ProgressEvent<FileReader>) => unknown) | null = null;
+
+      readAsDataURL() {
+        if (this.onload) {
+          this.onload.call(this as unknown as FileReader, {} as ProgressEvent<FileReader>);
+        }
+      }
+    }
+    // @ts-expect-error test mock
+    globalThis.FileReader = MockFileReader;
+
+    const uploadInputs = document.querySelectorAll<HTMLInputElement>('input[type="file"][accept="image/*"][multiple]');
+    const referenceUploadInput = uploadInputs[uploadInputs.length - 1];
+    expect(referenceUploadInput).toBeTruthy();
+    fireEvent.change(referenceUploadInput as HTMLInputElement, {
+      target: { files: [new File(["hello"], "reference.png", { type: "image/png" })] },
+    });
+    await waitFor(() => {
+      expect(mutationMocks.uploadReference).toHaveBeenCalledTimes(1);
+    });
+    globalThis.FileReader = OriginalFileReader;
+
+    mutationMocks.generateVideoAsync.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: /regenerate video/i }));
+
+    await waitFor(() => {
+      expect(mutationMocks.generateVideoAsync).toHaveBeenCalledTimes(1);
+    });
+
+    const payload = mutationMocks.generateVideoAsync.mock.calls[0][0];
+    expect(payload.aspectRatio).toBe("9:16");
+    expect(payload.referenceImageUrls).toEqual(["https://cdn.example.com/uploaded-reference.png"]);
+    expect(payload.extraParams).toMatchObject({
+      prompt: "A toddler learning to walk on a colorful playground",
+      aspectRatio: "9:16",
+      imageUrls: ["https://cdn.example.com/uploaded-reference.png"],
+      quality: "standard",
+    });
+  });
+
+  it("blocks regenerate video when required dynamic model input is missing", async () => {
+    mediaModelState.videoModels = buildVideoModelList({ requireStylePreset: true });
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open videos library/i }));
+    const teaserCard = screen.getByText("Teaser Clip").closest("[role='button']");
+    expect(teaserCard).toBeTruthy();
+    fireEvent.click(within(teaserCard as HTMLElement).getByRole("button", { name: /^insert$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Video Prompt")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("Video Prompt"), {
+      target: { value: "A baby walking in a park" },
+    });
+
+    mutationMocks.generateVideoAsync.mockClear();
+    toastMocks.error.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: /regenerate video/i }));
+
+    await waitFor(() => {
+      expect(mutationMocks.generateVideoAsync).not.toHaveBeenCalled();
+      expect(toastMocks.error).toHaveBeenCalledWith(expect.stringMatching(/required model inputs/i));
+    });
   });
 
   it("renders fallback video thumbnail in library when thumbnail_url is missing", async () => {
@@ -1105,6 +1500,83 @@ describe("PresentationEditor", () => {
     });
   });
 
+  it("supports drag-drop slide reordering from the slides browse panel", async () => {
+    render(<PresentationEditor />);
+
+    const dataTransfer = createDragDataTransfer();
+    fireEvent.dragStart(screen.getByTestId("slide-preview-1"), { dataTransfer });
+    fireEvent.dragOver(screen.getByTestId("slide-preview-2"), { dataTransfer });
+    fireEvent.drop(screen.getByTestId("slide-preview-2"), { dataTransfer });
+
+    await waitFor(() => {
+      expect(mutationMocks.reorderSlides).toHaveBeenCalledWith(expect.objectContaining({
+        deckId: 7,
+        movedSlideId: 71,
+        targetIndex: 1,
+        expectedVersion: 5,
+      }));
+    });
+  });
+
+  it("opens compact reorder overview from browse hint", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /open reorder slides overview/i })[0]);
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: /reorder slides overview/i })).toBeInTheDocument();
+      expect(screen.getByText("2 slide(s) total")).toBeInTheDocument();
+    });
+  });
+
+  it("supports drag-drop reordering inside compact reorder overview", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /open reorder slides overview/i })[0]);
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: /reorder slides overview/i })).toBeInTheDocument();
+    });
+
+    const dataTransfer = createDragDataTransfer();
+    fireEvent.dragStart(screen.getByTestId("reorder-slide-tile-1"), { dataTransfer });
+    fireEvent.dragOver(screen.getByTestId("reorder-slide-tile-2"), { dataTransfer });
+    fireEvent.drop(screen.getByTestId("reorder-slide-tile-2"), { dataTransfer });
+
+    await waitFor(() => {
+      expect(mutationMocks.reorderSlides).toHaveBeenCalledWith(expect.objectContaining({
+        deckId: 7,
+        movedSlideId: 71,
+        targetIndex: 1,
+        expectedVersion: 5,
+      }));
+    });
+  });
+
+  it("applies selected transition to every slide from the slide timing panel", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.change(screen.getByLabelText("Slide Transition"), {
+      target: { value: "slide-left" },
+    });
+    mutationMocks.updateSlide.mockClear();
+
+    fireEvent.click(screen.getByRole("button", { name: /apply transition all slides/i }));
+
+    await waitFor(() => {
+      const payloads = mutationMocks.updateSlide.mock.calls.map(([payload]) => payload);
+      expect(payloads).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          slideId: 71,
+          slideContent: expect.objectContaining({ transition: "slide-left" }),
+        }),
+        expect.objectContaining({
+          slideId: 72,
+          slideContent: expect.objectContaining({ transition: "slide-left" }),
+        }),
+      ]));
+    });
+  });
+
   it("supports adding slides repeatedly with incremented deck expectedVersion", async () => {
     render(<PresentationEditor />);
 
@@ -1124,6 +1596,32 @@ describe("PresentationEditor", () => {
     }));
     expect(mutationMocks.addSlide).toHaveBeenNthCalledWith(2, expect.objectContaining({
       expectedVersion: 6,
+    }));
+  });
+
+  it("adds a new slide using the current canvas ratio", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.change(screen.getByLabelText("Canvas Aspect Ratio"), {
+      target: { value: "9:16" },
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("canvas-stage-size")).toHaveTextContent("canvas: 720x1280 (9:16)");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /add slide/i }));
+    await waitFor(() => {
+      expect(mutationMocks.addSlide).toHaveBeenCalledTimes(1);
+    });
+
+    expect(mutationMocks.addSlide).toHaveBeenCalledWith(expect.objectContaining({
+      slideContent: expect.objectContaining({
+        canvas: expect.objectContaining({
+          preset: "9:16",
+          width: 720,
+          height: 1280,
+        }),
+      }),
     }));
   });
 
@@ -1526,14 +2024,14 @@ describe("PresentationEditor", () => {
 
   it("supports changing canvas preset ratio from toolbar", async () => {
     render(<PresentationEditor />);
-    expect(screen.getByTestId("canvas-stage-size")).toHaveTextContent("canvas: 1280x720 (16:9)");
+    expect(screen.getByTestId("canvas-stage-size")).toHaveTextContent("canvas: 720x1280 (9:16)");
 
     fireEvent.change(screen.getByLabelText("Canvas Aspect Ratio"), {
-      target: { value: "9:16" },
+      target: { value: "16:9" },
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId("canvas-stage-size")).toHaveTextContent("canvas: 720x1280 (9:16)");
+      expect(screen.getByTestId("canvas-stage-size")).toHaveTextContent("canvas: 1280x720 (16:9)");
     });
   });
 
@@ -1571,29 +2069,79 @@ describe("PresentationEditor", () => {
     render(<PresentationEditor />);
 
     expect(screen.getByTestId("mobile-quick-actions")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /expand panel/i }));
+    fireEvent.click(screen.getByRole("tab", { name: /mobile properties section canvas/i }));
+    expect(screen.getByLabelText("Canvas Aspect Ratio (Properties)")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /edit mode/i })).toBeInTheDocument();
     const canvasElement = screen.getByRole("button", { name: /select canvas element 1/i });
     const initialStyle = canvasElement.getAttribute("style");
-
-    const quickActions = screen.getByTestId("mobile-quick-actions");
-    const iconOnlyButtons = within(quickActions)
-      .getAllByRole("button")
-      .filter((button) => button.textContent?.trim() === "");
-    fireEvent.click(iconOnlyButtons[0] as HTMLElement);
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: /select canvas element 1/i })).toHaveAttribute(
-        "style",
-        initialStyle,
-      );
-    });
+    const viewportStatus = screen.getByTestId("canvas-stage-viewport");
+    expect(viewportStatus).toHaveTextContent("1.00x");
+    expect(screen.getAllByRole("button", { name: /fit canvas to view/i })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: /center canvas view/i })).toHaveLength(1);
+    expect(screen.getByRole("button", { name: /center canvas view/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /reset canvas view/i })).toBeDisabled();
+    expect(screen.queryByTestId("mobile-selection-controls")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /move selection left/i })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /edit mode/i }));
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /pan mode/i })).toBeInTheDocument();
+      expect(screen.getByTestId("mobile-selection-controls")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /move selection left/i }));
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /select canvas element 1/i }).getAttribute("style"))
+        .not.toBe(initialStyle);
     });
 
     fireEvent.click(screen.getByRole("button", { name: /pan mode/i }));
     expect(screen.getByRole("button", { name: /edit mode/i })).toBeInTheDocument();
+    expect(screen.queryByTestId("mobile-selection-controls")).not.toBeInTheDocument();
+
+    const stageLayer = screen.getByTestId("canvas-stage-layer-content");
+    fireEvent.touchStart(stageLayer, {
+      touches: [
+        { identifier: 1, clientX: 100, clientY: 120 },
+        { identifier: 2, clientX: 220, clientY: 120 },
+      ],
+      changedTouches: [
+        { identifier: 1, clientX: 100, clientY: 120 },
+        { identifier: 2, clientX: 220, clientY: 120 },
+      ],
+    });
+    fireEvent.touchMove(stageLayer, {
+      touches: [
+        { identifier: 1, clientX: 80, clientY: 120 },
+        { identifier: 2, clientX: 260, clientY: 120 },
+      ],
+      changedTouches: [
+        { identifier: 1, clientX: 80, clientY: 120 },
+        { identifier: 2, clientX: 260, clientY: 120 },
+      ],
+    });
+    fireEvent.touchEnd(stageLayer, {
+      touches: [],
+      changedTouches: [
+        { identifier: 1, clientX: 80, clientY: 120 },
+        { identifier: 2, clientX: 260, clientY: 120 },
+      ],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("canvas-stage-viewport")).not.toHaveTextContent("1.00x");
+    });
+
+    const centerViewButton = screen.getByRole("button", { name: /center canvas view/i });
+    expect(centerViewButton).toBeEnabled();
+
+    const fitViewButton = screen.getByRole("button", { name: /fit canvas to view/i });
+    fireEvent.click(fitViewButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("canvas-stage-viewport")).toHaveTextContent("1.00x");
+    });
   });
 
   it("shows version history in mobile bottom sheet versions tab", async () => {
@@ -1609,7 +2157,7 @@ describe("PresentationEditor", () => {
     });
   });
 
-  it("prevents accidental mobile advanced transforms below touch-target threshold", async () => {
+  it("supports four-direction mobile nudge controls once edit mode is enabled", async () => {
     Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 375 });
 
     render(<PresentationEditor />);
@@ -1619,16 +2167,169 @@ describe("PresentationEditor", () => {
     const initialStyle = canvasElement.getAttribute("style");
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /pan mode/i })).toBeInTheDocument();
+      expect(screen.getByTestId("mobile-selection-controls")).toBeInTheDocument();
     });
 
-    const quickActions = screen.getByTestId("mobile-quick-actions");
-    const iconOnlyButtons = within(quickActions)
-      .getAllByRole("button")
-      .filter((button) => button.textContent?.trim() === "");
-    fireEvent.click(iconOnlyButtons[2] as HTMLElement);
+    fireEvent.click(screen.getByRole("button", { name: /move selection down/i }));
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /select canvas element 1/i }).getAttribute("style"))
         .not.toBe(initialStyle);
+    });
+  });
+
+  it("lets the user collapse mobile selection controls to reclaim canvas space", async () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 375 });
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /edit mode/i }));
+    await waitFor(() => {
+      expect(screen.getByTestId("mobile-selection-controls")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /toggle selection controls/i }));
+    expect(screen.queryByTestId("mobile-selection-controls")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /toggle selection controls/i }));
+    expect(screen.getByTestId("mobile-selection-controls")).toBeInTheDocument();
+  });
+
+  it("moves secondary toolbar actions into a mobile overflow menu", async () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 375 });
+
+    render(<PresentationEditor />);
+
+    expect(screen.getByRole("button", { name: /save slide/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /play slideshow/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /more actions/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^import$/i })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /more actions/i }));
+
+    expect(await screen.findByRole("menuitem", { name: /^import$/i })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /^export$/i })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: /play mode/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("menuitem", { name: /^import$/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("import-dialog-mock")).toBeInTheDocument();
+    });
+  });
+
+  it("starts tablet bottom sheet expanded so properties stay accessible", () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 820 });
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("tab", { name: /mobile properties section canvas/i }));
+    expect(screen.getByLabelText("Canvas Aspect Ratio (Properties)")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /collapse panel/i })).toBeInTheDocument();
+  });
+
+  it("remembers the last mobile bottom sheet tab and expansion state within the session", async () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 375 });
+
+    const firstRender = render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Versions" }));
+    await waitFor(() => {
+      expect(screen.getByText(/saved versions/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /collapse panel/i })).toBeInTheDocument();
+    });
+
+    firstRender.unmount();
+
+    render(<PresentationEditor />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/saved versions/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /collapse panel/i })).toBeInTheDocument();
+    });
+    expect(screen.getByRole("tab", { name: "Versions" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("switches the mobile bottom sheet back to properties when an element is selected", async () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 375 });
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Versions" }));
+    await waitFor(() => {
+      expect(screen.getByText(/saved versions/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /collapse panel/i })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("button", { name: /collapse panel/i }));
+    expect(screen.getByRole("button", { name: /expand panel/i })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /edit mode/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: /select canvas element 1/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("tab", { name: "Properties" })).toHaveAttribute("aria-selected", "true");
+      expect(screen.getByRole("button", { name: /collapse panel/i })).toBeInTheDocument();
+    });
+  });
+
+  it("organizes mobile properties into element, slide, and canvas sections", async () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 375 });
+
+    render(<PresentationEditor />);
+    fireEvent.click(screen.getByRole("button", { name: /expand panel/i }));
+
+    expect(screen.getByRole("tab", { name: /mobile properties section element/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /mobile properties section slide/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /mobile properties section canvas/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: /mobile properties section slide/i }));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Slide duration seconds")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("tab", { name: /mobile properties section canvas/i }));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Canvas Aspect Ratio (Properties)")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Slide duration seconds")).not.toBeInTheDocument();
+    });
+  });
+
+  it("returns mobile properties to the element section when a canvas element is focused", async () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 375 });
+
+    render(<PresentationEditor />);
+    fireEvent.click(screen.getByRole("button", { name: /expand panel/i }));
+
+    fireEvent.click(screen.getByRole("tab", { name: /mobile properties section slide/i }));
+    await waitFor(() => {
+      expect(screen.getByLabelText("Slide duration seconds")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /edit mode/i }));
+    fireEvent.click(screen.getByRole("button", { name: /select canvas element 1/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("tab", { name: /mobile properties section element/i })).toHaveAttribute("aria-selected", "true");
+      expect(screen.getByLabelText("Element x")).toBeInTheDocument();
+      expect(screen.queryByLabelText("Slide duration seconds")).not.toBeInTheDocument();
+    });
+  });
+
+  it("closes the mobile tools drawer after adding an element", async () => {
+    Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value: 375 });
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open tools panel/i }));
+    const toolsPanel = screen.getByRole("dialog", { name: /editor tools panel/i });
+    expect(toolsPanel).toHaveClass("translate-x-0");
+
+    fireEvent.click(within(toolsPanel).getByRole("tab", { name: "Add" }));
+    fireEvent.click(within(toolsPanel).getByRole("button", { name: /add text element/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("dialog", { name: /editor tools panel/i })).toHaveClass("-translate-x-full");
+      expect(screen.getByRole("tab", { name: "Properties" })).toHaveAttribute("aria-selected", "true");
+      expect(screen.getByRole("button", { name: /collapse panel/i })).toBeInTheDocument();
     });
   });
 

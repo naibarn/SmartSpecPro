@@ -3131,14 +3131,22 @@ function MenuOverridesPanel() {
 // ============================================================
 
 function AutomationSettingsPanel() {
+  const { user } = useAuth();
   const [visionModel, setVisionModel] = useState("gpt-4o");
   const [allowedDomains, setAllowedDomains] = useState("");
   const [saving, setSaving] = useState(false);
+  const [modelSearch, setModelSearch] = useState("");
 
   const settingsQuery = trpc.systemSettings.getSettingsByCategory.useQuery(
     { category: "tenant_automation" },
     { enabled: true },
   );
+
+  const { data: modelsData, isLoading: modelsLoading } =
+    trpc.llmProviders.availableModels.useQuery(undefined, {
+      enabled: !!user && user.role === "admin",
+      staleTime: 60_000,
+    });
 
   const updateMutation = trpc.systemSettings.updateSetting.useMutation({
     onSuccess: () => {
@@ -3154,7 +3162,7 @@ function AutomationSettingsPanel() {
         if (s.key === "automation_vision_model" && s.value) {
           setVisionModel(s.value);
         }
-        if (s.key.startsWith("allowed_domains_") && s.value) {
+        if (s.key === "allowed_domains" && s.value) {
           setAllowedDomains(s.value);
         }
       }
@@ -3181,6 +3189,30 @@ function AutomationSettingsPanel() {
     }
   };
 
+  // Group models by provider for better readability
+  const allModels = modelsData?.models ?? [];
+  const filteredModels = modelSearch
+    ? allModels.filter(
+        (m: any) =>
+          m.id.toLowerCase().includes(modelSearch.toLowerCase()) ||
+          m.name.toLowerCase().includes(modelSearch.toLowerCase()) ||
+          m.providerDisplayName
+            ?.toLowerCase()
+            .includes(modelSearch.toLowerCase()),
+      )
+    : allModels;
+
+  // Group by provider
+  const groupedModels = filteredModels.reduce(
+    (acc: Record<string, typeof filteredModels>, m: any) => {
+      const key = m.providerDisplayName || m.provider || "Other";
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(m);
+      return acc;
+    },
+    {} as Record<string, typeof filteredModels>,
+  );
+
   return (
     <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
       <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
@@ -3200,17 +3232,78 @@ function AutomationSettingsPanel() {
             <SelectTrigger>
               <SelectValue placeholder="Select vision model" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="gpt-4o">GPT-4o</SelectItem>
-              <SelectItem value="gpt-4o-mini">GPT-4o Mini</SelectItem>
-              <SelectItem value="claude-sonnet-4-20250514">
-                Claude Sonnet 4
-              </SelectItem>
+            <SelectContent className="max-h-[min(300px,var(--radix-select-content-available-height))]">
+              <div className="sticky top-0 z-10 bg-popover px-2 pb-1.5 pt-1">
+                <Input
+                  placeholder="Search models..."
+                  value={modelSearch}
+                  onChange={(e) => setModelSearch(e.target.value)}
+                  className="h-8 text-sm"
+                  onKeyDown={(e) => e.stopPropagation()}
+                />
+              </div>
+
+              {modelsLoading && (
+                <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Loading models...
+                </div>
+              )}
+
+              {!modelsLoading && allModels.length === 0 && (
+                <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                  No LLM providers configured.
+                  <br />
+                  <span className="text-xs">
+                    Set up providers in the LLM Providers settings first.
+                  </span>
+                </div>
+              )}
+
+              {!modelsLoading &&
+                allModels.length > 0 &&
+                filteredModels.length === 0 && (
+                  <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                    No models matching "{modelSearch}"
+                  </div>
+                )}
+
+              {Object.entries(groupedModels).map(
+                ([providerName, models]: [string, any[]]) => (
+                  <Fragment key={providerName}>
+                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                      {providerName}
+                    </div>
+                    {models.map((m: any) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        <span className="flex items-center gap-2">
+                          <span>{m.name || m.id}</span>
+                          {m.isDefault && (
+                            <Badge
+                              variant="secondary"
+                              className="ml-1 px-1 py-0 text-[10px]"
+                            >
+                              default
+                            </Badge>
+                          )}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </Fragment>
+                ),
+              )}
             </SelectContent>
           </Select>
           <p className="text-xs text-gray-500">
-            The LLM model used to analyze screenshots and generate selectors.
+            The LLM model used to analyze screenshots and generate browser
+            selectors. Choose a model with vision/multimodal capability (e.g.,
+            GPT-4o, Claude Sonnet 4) for best results.
           </p>
+          {visionModel && (
+            <p className="text-xs text-blue-600">
+              Currently selected: <strong>{visionModel}</strong>
+            </p>
+          )}
         </div>
 
         <div className="space-y-2">

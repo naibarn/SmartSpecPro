@@ -16,6 +16,8 @@ export interface CallLLMStructuredParams<T> {
   maxRetries?: number; // default 1
   userId: number;
   tenantId: string;
+  billingDescription?: string;
+  billingMetadata?: Record<string, unknown>;
 }
 
 export interface CallLLMStructuredResult<T> {
@@ -63,6 +65,8 @@ export async function callLLMStructured<T>(
     maxRetries = 1,
     userId,
     tenantId,
+    billingDescription,
+    billingMetadata,
   } = params;
 
   const augmentedSystemPrompt = `${systemPrompt}
@@ -101,7 +105,9 @@ The JSON must strictly conform to the expected schema.`;
       messages,
       stream: false,
       userId,
-      preferredProvider: preferredProviderId,
+      preferredProvider: strictProviderPin
+        ? preferredProviderId
+        : undefined,
     });
 
     if (result.type === "error") {
@@ -133,6 +139,14 @@ The JSON must strictly conform to the expected schema.`;
       inputTokens,
       outputTokens,
       costUsd,
+      tenantId,
+      description: billingDescription,
+      metadata: {
+        requestType: "structured_llm",
+        structured: true,
+        attempt: attempt + 1,
+        ...(billingMetadata ?? {}),
+      },
       sourceType: "skill",
     });
     totalCredits += creditsUsed;

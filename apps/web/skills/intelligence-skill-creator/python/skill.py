@@ -6,9 +6,9 @@ Two primary modes:
                schemas/input.schema.json  (MANDATORY)
                schemas/output.schema.json (MANDATORY)
                schemas/ui.schema.json     (MANDATORY)
-               skill.md, python/skill.py OR js/skill.js, tests/tests.json, README.md
+               skill.md, python/skill.py OR js/skill.js, tests/tests.json
 
-  improve  — Iterative LLM + research improvement loop for existing ISC sandbox skills
+  improve  — Iterative LLM + research improvement loop for existing skills in apps/web/skills/
 
 Input formats accepted:
   - Flat dict (from UI form via outputMapping):
@@ -38,7 +38,7 @@ for _p in (str(_SKILL_DIR), str(_ISC_DIR.parent)):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-ISC_ROOT = _SKILL_DIR   # for improve mode (sandbox skills live here)
+ISC_ROOT = _SKILL_DIR   # stores ISC runtime assets (runs/, configs/, fixtures/)
 
 
 # ── Logging ────────────────────────────────────────────────────────────────────
@@ -284,7 +284,7 @@ def _create_skill(inp: dict, context: Any = None) -> str:
 # ── Improve mode ───────────────────────────────────────────────────────────────
 
 def _improve_skill(inp: dict, context: Any = None) -> str:
-    """Iterative LLM improvement loop for ISC sandbox skills."""
+    """Iterative LLM improvement loop for existing skills."""
     skill_name: str = (
         inp.get("skill_name")
         or _extract_skill_name(inp.get("prompt", ""))
@@ -302,7 +302,10 @@ def _improve_skill(inp: dict, context: Any = None) -> str:
             "output": f"❌ `skill_name` required for improve mode.\nAvailable skills: {available}",
         }, ensure_ascii=False)
 
-    if not (ISC_ROOT / "skills" / skill_name).exists():
+    try:
+        from isc.registry import resolve_skill_dir
+        resolve_skill_dir(skill_name)
+    except Exception:
         try:
             from isc.registry import list_skills
             available = ", ".join(list_skills()) or "none"
@@ -311,7 +314,7 @@ def _improve_skill(inp: dict, context: Any = None) -> str:
         return json.dumps({
             "success": False,
             "output": (
-                f"❌ Skill `{skill_name}` not found in ISC sandbox.\n"
+                f"❌ Skill `{skill_name}` not found.\n"
                 f"Available: {available}"
             ),
         }, ensure_ascii=False)
@@ -371,14 +374,21 @@ def _improve_skill(inp: dict, context: Any = None) -> str:
         return json.dumps({"success": False, "output": f"❌ Improvement failed: {e}"}, ensure_ascii=False)
 
     # Save proposals
+    from isc.proposals import save_patch_proposal
     proposals_dir = ISC_ROOT / "runs" / "proposals" / skill_name
-    proposals_dir.mkdir(parents=True, exist_ok=True)
     saved: list[str] = []
-    for i, p in enumerate(run_result.proposals, 1):
-        stamp = p.created_at_iso.replace(":", "").replace("-", "")
-        diff_path = proposals_dir / f"{stamp}_r{i}.diff"
-        diff_path.write_text(p.unified_diff, encoding="utf-8")
-        saved.append(str(diff_path.relative_to(ISC_ROOT)))
+    for p in run_result.proposals:
+        proposal_path, _meta_path = save_patch_proposal(
+            proposals_dir,
+            p,
+            {
+                "workspace": str(run_result.workspace),
+                "mode": mode,
+                "rounds": rounds,
+                "llm_override": llm_override,
+            },
+        )
+        saved.append(str(proposal_path.relative_to(ISC_ROOT)))
 
     r = run_result.final_report
     lines = [
@@ -386,7 +396,7 @@ def _improve_skill(inp: dict, context: Any = None) -> str:
         f"- Rounds: {rounds} | Score: **{r.passed}/{r.total}** ({r.pass_rate:.0%})",
     ]
     if saved:
-        lines += ["- Proposals saved (sandbox, not auto-applied):"] + [f"  - `{d}`" for d in saved]
+        lines += ["- Proposals saved (workspace output, not auto-applied):"] + [f"  - `{d}`" for d in saved]
         lines.append(f"\n_Apply: `python -m isc.cli apply --skill {skill_name}`_")
     else:
         lines.append("- No patches generated (all tests passing or heuristic mode)")
@@ -530,16 +540,16 @@ def _extract_skill_name(prompt: str) -> str | None:
 def _help_response() -> str:
     try:
         from isc.registry import list_skills
-        sandbox_skills = ", ".join(f"`{s}`" for s in list_skills()) or "none"
+        available_skills = ", ".join(f"`{s}`" for s in list_skills()) or "none"
     except Exception:
-        sandbox_skills = "unavailable"
+        available_skills = "unavailable"
 
     return json.dumps({
         "success": True,
         "output": (
             "## Intelligence Skill Creator (ISC) v0.4.0\n\n"
             "### 🔨 Create a new skill\n"
-            "Set `mode: create` and provide `description`. ISC generates all 3 schemas, code, tests and README.\n"
+            "Set `mode: create` and provide `description`. ISC generates all 3 schemas, code, and tests.\n"
             "```json\n"
             '{"mode": "create", "description": "A skill that converts Thai dates to Buddhist Era format",\n'
             ' "skill_language": "python", "complexity": "simple",\n'
@@ -547,20 +557,20 @@ def _help_response() -> str:
             "```\n\n"
             "**Always generates:** `schemas/input.schema.json`, `schemas/output.schema.json`, "
             "`schemas/ui.schema.json`, `skill.md`, `python/skill.py` or `js/skill.js`, "
-            "`tests/tests.json`, `README.md`\n\n"
+            "`tests/tests.json`\n\n"
             "### 🔄 Convert a Virtual Workflow to a skill\n"
             "Export a workflow from the Workflow Editor and paste the JSON:\n"
             "```json\n"
             '{"mode": "convert_workflow", "workflow_json": "<paste exported JSON here>",\n'
             ' "llm_gateway_mode": "system", "llm_model_search": "claude-sonnet-4-6"}\n'
             "```\n\n"
-            "### 🔧 Improve an existing ISC sandbox skill\n"
+            "### 🔧 Improve an existing skill\n"
             "Set `mode: improve` and `skill_name`:\n"
             "```json\n"
             '{"mode": "improve", "skill_name": "skill_math_tutor", "rounds": 3,\n'
             ' "llm_gateway_mode": "system", "llm_model_search": "claude-sonnet-4-6"}\n'
             "```\n\n"
-            f"ISC sandbox skills: {sandbox_skills}\n\n"
+            f"Available skills: {available_skills}\n\n"
             "### LLM Gateway\n"
             "| `llm_gateway_mode` | How it works |\n"
             "|--------------------|-------------|\n"

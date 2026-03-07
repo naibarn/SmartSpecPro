@@ -9,7 +9,7 @@ import {
   type WheelEvent as ReactWheelEvent,
 } from "react";
 
-import type { PresentationElement } from "@/lib/presentationEditorState";
+import type { PresentationElement, PresentationSlideBackground } from "@/lib/presentationEditorState";
 import type { SnapGuide } from "./snap/SnapEngine";
 import { CanvasObjects } from "./CanvasObjects";
 import { TransformHandles } from "./components/TransformHandles";
@@ -26,6 +26,8 @@ interface CanvasStageProps {
   showVideoPlaybackToggle?: boolean;
   suppressTransformHandles?: boolean;
   showTransformDock?: boolean;
+  showViewportControls?: boolean;
+  slideBackground?: PresentationSlideBackground;
   viewport?: {
     scale: number;
     offsetX: number;
@@ -33,6 +35,7 @@ interface CanvasStageProps {
   };
   onViewportChange?: (viewport: { scale: number; offsetX: number; offsetY: number }) => void;
   onSelectElement: (elementId: string, options?: { additive?: boolean }) => void;
+  onFocusElement?: (elementId: string) => void;
   onMoveSelection: (deltaX: number, deltaY: number) => void;
   onResizeSelection: (width: number, height: number) => void;
   onRotateSelection: (deltaDegrees: number) => void;
@@ -74,6 +77,15 @@ interface MarqueeDragState {
   captureTarget: HTMLDivElement;
 }
 
+interface TouchGestureState {
+  startDistance: number;
+  startMidX: number;
+  startMidY: number;
+  startScale: number;
+  startOffsetX: number;
+  startOffsetY: number;
+}
+
 function normalizeMarqueeBounds(
   startX: number,
   startY: number,
@@ -102,9 +114,12 @@ export function CanvasStage({
   showVideoPlaybackToggle = true,
   suppressTransformHandles,
   showTransformDock: showTransformDockProp = true,
+  showViewportControls = true,
+  slideBackground,
   viewport,
   onViewportChange,
   onSelectElement,
+  onFocusElement,
   onMoveSelection,
   onResizeSelection,
   onRotateSelection,
@@ -126,6 +141,7 @@ export function CanvasStage({
   } | null>(null);
   const panCaptureTargetRef = useRef<HTMLDivElement | null>(null);
   const marqueeStateRef = useRef<MarqueeDragState | null>(null);
+  const touchGestureRef = useRef<TouchGestureState | null>(null);
   const [marqueeBounds, setMarqueeBounds] = useState<{
     x: number;
     y: number;
@@ -477,6 +493,89 @@ export function CanvasStage({
     }
   }
 
+  function readTouchGestureMetrics(
+    target: HTMLDivElement,
+    touches: Pick<Touch, "clientX" | "clientY">[],
+  ) {
+    if (touches.length < 2) {
+      return null;
+    }
+    const rect = target.getBoundingClientRect();
+    const [touchA, touchB] = touches;
+    const pointAX = touchA.clientX - rect.left;
+    const pointAY = touchA.clientY - rect.top;
+    const pointBX = touchB.clientX - rect.left;
+    const pointBY = touchB.clientY - rect.top;
+    return {
+      midX: (pointAX + pointBX) / 2,
+      midY: (pointAY + pointBY) / 2,
+      distance: Math.max(1, Math.hypot(pointBX - pointAX, pointBY - pointAY)),
+    };
+  }
+
+  function handleCanvasTouchStart(event: React.TouchEvent<HTMLDivElement>) {
+    if (!viewport || !onViewportChange || event.touches.length < 2) {
+      return;
+    }
+    const metrics = readTouchGestureMetrics(event.currentTarget, Array.from(event.touches));
+    if (!metrics) {
+      return;
+    }
+    touchGestureRef.current = {
+      startDistance: metrics.distance,
+      startMidX: metrics.midX,
+      startMidY: metrics.midY,
+      startScale: viewport.scale,
+      startOffsetX: viewport.offsetX,
+      startOffsetY: viewport.offsetY,
+    };
+    event.preventDefault();
+  }
+
+  function handleCanvasTouchMove(event: React.TouchEvent<HTMLDivElement>) {
+    if (!viewport || !onViewportChange) {
+      return;
+    }
+
+    if (event.touches.length < 2) {
+      if (touchGestureRef.current) {
+        event.preventDefault();
+      }
+      return;
+    }
+
+    const gesture = touchGestureRef.current;
+    const metrics = readTouchGestureMetrics(event.currentTarget, Array.from(event.touches));
+    if (!gesture || !metrics) {
+      return;
+    }
+
+    const nextScale = Math.min(
+      MAX_STAGE_ZOOM,
+      Math.max(
+        MIN_STAGE_ZOOM,
+        Number(((gesture.startScale * metrics.distance) / gesture.startDistance).toFixed(3)),
+      ),
+    );
+    const anchorCanvasX = (gesture.startMidX - gesture.startOffsetX) / gesture.startScale;
+    const anchorCanvasY = (gesture.startMidY - gesture.startOffsetY) / gesture.startScale;
+    const nextOffsetX = metrics.midX - (anchorCanvasX * nextScale);
+    const nextOffsetY = metrics.midY - (anchorCanvasY * nextScale);
+    const clamped = clampViewportOffsets(nextScale, nextOffsetX, nextOffsetY);
+    onViewportChange({
+      scale: nextScale,
+      offsetX: clamped.offsetX,
+      offsetY: clamped.offsetY,
+    });
+    event.preventDefault();
+  }
+
+  function handleCanvasTouchEnd() {
+    if (touchGestureRef.current) {
+      touchGestureRef.current = null;
+    }
+  }
+
   function handleCanvasWheel(event: ReactWheelEvent<HTMLDivElement>) {
     if (!viewport || !onViewportChange) {
       return;
@@ -543,7 +642,7 @@ export function CanvasStage({
         <p data-testid="canvas-stage-size">
           canvas: {canvasWidth}x{canvasHeight} ({canvasSize.preset || "custom"})
         </p>
-        {viewport && onViewportChange ? (
+        {showViewportControls && viewport && onViewportChange ? (
           <div className="flex items-center gap-1">
             <Button
               type="button"
@@ -578,14 +677,30 @@ export function CanvasStage({
           <div className="flex h-full min-h-0 items-center gap-3">
             <div className="flex min-w-0 flex-1 items-center justify-center">
               <div
-                className="relative overflow-hidden rounded-md border border-slate-400 bg-white shadow-2xl"
+                className="relative overflow-hidden rounded-md border border-slate-400 shadow-2xl"
                 style={{
                   width: `${fittedStageSize.width}px`,
                   height: `${fittedStageSize.height}px`,
+                  backgroundColor: slideBackground?.type === "color"
+                    ? slideBackground.value
+                    : slideBackground?.type === "image"
+                      ? "transparent"
+                      : "#ffffff",
                 }}
                 aria-label="Canvas workspace"
                 onWheel={handleCanvasWheel}
               >
+                {slideBackground?.type === "image" && (
+                  <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                      backgroundImage: `url(${slideBackground.url})`,
+                      backgroundSize: "cover",
+                      backgroundPosition: "center",
+                      backgroundRepeat: "no-repeat",
+                    }}
+                  />
+                )}
                 <div
                   data-testid="canvas-stage-layer-background"
                   className="absolute inset-0"
@@ -602,6 +717,10 @@ export function CanvasStage({
                   data-testid="canvas-stage-layer-content"
                   className={`absolute inset-0 touch-none ${effectiveScale > 1 ? "cursor-grab active:cursor-grabbing" : ""}`}
                   onPointerDown={handlePanPointerDown}
+                  onTouchStart={handleCanvasTouchStart}
+                  onTouchMove={handleCanvasTouchMove}
+                  onTouchEnd={handleCanvasTouchEnd}
+                  onTouchCancel={handleCanvasTouchEnd}
                   onContextMenu={handleCanvasContextMenu}
                   onDragEnter={handleDragEnter}
                   onDragOver={handleDragOver}
@@ -621,6 +740,7 @@ export function CanvasStage({
                       elements={elements}
                       selectedElementIds={selectedElementIds}
                       onSelectElement={onSelectElement}
+                      onFocusElement={onFocusElement}
                       onMoveSelection={onMoveSelection}
                       onResizeSelection={onResizeSelection}
                       onRotateSelection={onRotateSelection}
@@ -631,6 +751,7 @@ export function CanvasStage({
                       showElementFrames={showElementFrames}
                       autoPlayVideos={autoPlayVideos}
                       showVideoPlaybackToggle={showVideoPlaybackToggle}
+                      clipTextToElementBounds={false}
                     />
                     {marqueeBounds ? (
                       <div

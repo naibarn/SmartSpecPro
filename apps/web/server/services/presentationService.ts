@@ -1,8 +1,9 @@
 import crypto from "node:crypto";
-import { and, count, desc, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { getDb } from "../db";
 import {
+  libraryItems,
   libraryContentVersions,
   presentationAssetLinks,
   presentationDecks,
@@ -11,6 +12,7 @@ import {
   type PresentationAssetLink,
   type PresentationDeck,
   type PresentationSlide,
+  type SlideAudioTrackJson,
 } from "../../drizzle/schema";
 import {
   attachPresentationAsset,
@@ -23,8 +25,12 @@ import {
 } from "./presentationPersistence";
 import {
   createLibraryItem,
+  ensureOwnedLibraryFolder,
   getLibraryItemById,
+  permanentDeleteLibraryItem,
+  softDeleteLibraryItem,
   getUserEffectivePermission,
+  uploadLibraryFile,
   type LibraryActor,
   type LibraryItemDto,
 } from "./libraryService";
@@ -54,6 +60,23 @@ import {
 
 type DbClient = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
+function normalizeSlideAudioTrackInput(
+  audioTrack: AudioTrackInput | null | undefined,
+): SlideAudioTrackJson | null | undefined {
+  if (audioTrack === undefined) {
+    return undefined;
+  }
+  if (audioTrack === null) {
+    return null;
+  }
+  return {
+    libraryItemId: audioTrack.libraryItemId,
+    volume: audioTrack.volume,
+    startAtMs: audioTrack.startAtMs,
+    endAtMs: audioTrack.endAtMs ?? null,
+  };
+}
+
 export interface PresentationActor extends LibraryActor {
   tenantId: string;
 }
@@ -82,6 +105,7 @@ export interface AddPresentationSlideInput {
   expectedVersion: number;
   title?: string;
   slideContent?: Record<string, unknown>;
+  audioTrack?: AudioTrackInput | null;
   notes?: string | null;
 }
 
@@ -126,6 +150,15 @@ export interface AttachPresentationAssetInput {
   slideId?: number | null;
   libraryItemId: number;
   byteSize: number;
+}
+
+export interface UploadPresentationAssetInput {
+  deckId: number;
+  expectedVersion: number;
+  slideId?: number | null;
+  fileName: string;
+  fileType: string;
+  fileBase64: string;
 }
 
 export interface DetachPresentationAssetInput {
@@ -358,6 +391,45 @@ function ensureExpectedDeckVersion(deck: PresentationDeck, expectedVersion: numb
     return;
   }
   throwDeckVersionConflict(deck, expectedVersion);
+}
+
+function buildPresentationTempMonthKey(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  return `${year}${month}`;
+}
+
+function parseFileKindFromMime(fileType: string): "image" | "video" | "audio" | "document" | "file" {
+  const normalized = String(fileType || "").toLowerCase();
+  if (normalized.startsWith("image/")) return "image";
+  if (normalized.startsWith("video/")) return "video";
+  if (normalized.startsWith("audio/")) return "audio";
+  if (
+    normalized.startsWith("text/")
+    || normalized === "application/pdf"
+    || normalized.includes("word")
+    || normalized.includes("presentation")
+    || normalized.includes("spreadsheet")
+    || normalized.includes("excel")
+  ) {
+    return "document";
+  }
+  return "file";
+}
+
+function isDeckScopedPresentationUpload(
+  metadata: unknown,
+  deckId: number,
+): boolean {
+  if (!metadata || typeof metadata !== "object") {
+    return false;
+  }
+  const source = metadata as Record<string, unknown>;
+  if (source.presentation_upload !== true) {
+    return false;
+  }
+  const linkedDeckId = Number(source.presentation_deck_id);
+  return Number.isFinite(linkedDeckId) && linkedDeckId === deckId;
 }
 
 function computeSlideContentBytes(slideContent: unknown): number {
@@ -827,7 +899,10 @@ export async function createPresentationDeckForLibraryItem(
     {
       deckId: deck.id,
       title: "Slide 1",
-      slideContent: { elements: [] },
+      slideContent: {
+        elements: [],
+        canvas: { preset: "9:16", width: 720, height: 1280 },
+      },
     },
     db,
   );
@@ -878,12 +953,89 @@ export async function deletePresentationDeck(
   const { deck, db } = await resolveDeckContext(input.deckId, actor, { write: true }, dbClient);
   ensureExpectedDeckVersion(deck, input.expectedVersion);
 
+  const linkedUploadRows = await db
+    .select({
+      id: libraryItems.id,
+      metadata: libraryItems.metadata,
+      ownerUserId: libraryItems.ownerUserId,
+    })
+    .from(presentationAssetLinks)
+    .innerJoin(libraryItems, eq(libraryItems.id, presentationAssetLinks.libraryItemId))
+    .where(
+      and(
+        eq(presentationAssetLinks.deckId, deck.id),
+        eq(presentationAssetLinks.tenantId, actor.tenantId),
+        eq(libraryItems.tenantId, actor.tenantId),
+        isNull(libraryItems.deletedAt),
+      ),
+    );
+
+  const candidateUploads = Array.from(
+    new Map(
+      linkedUploadRows
+        .filter((row) => isDeckScopedPresentationUpload(row.metadata, deck.id))
+        .map((row) => [row.id, { id: row.id, ownerUserId: Number(row.ownerUserId) }]),
+    ).values(),
+  );
+
+  const reusableUploadIds = new Set<number>();
+  if (candidateUploads.length > 0) {
+    const rows = await db
+      .select({
+        libraryItemId: presentationAssetLinks.libraryItemId,
+      })
+      .from(presentationAssetLinks)
+      .where(
+        and(
+          inArray(
+            presentationAssetLinks.libraryItemId,
+            candidateUploads.map((candidate) => candidate.id),
+          ),
+          eq(presentationAssetLinks.tenantId, actor.tenantId),
+          sql`${presentationAssetLinks.deckId} <> ${deck.id}`,
+        ),
+      );
+    for (const row of rows) {
+      reusableUploadIds.add(row.libraryItemId);
+    }
+  }
+
   const rows = await db
     .delete(presentationDecks)
     .where(and(eq(presentationDecks.id, input.deckId), eq(presentationDecks.tenantId, actor.tenantId)))
     .returning({ id: presentationDecks.id });
 
-  return { success: Boolean(rows[0]?.id) };
+  const success = Boolean(rows[0]?.id);
+  if (success) {
+    for (const candidate of candidateUploads) {
+      const libraryItemId = candidate.id;
+      if (reusableUploadIds.has(libraryItemId)) {
+        continue;
+      }
+      const cleanupActor = {
+        ...actor,
+        userId: Number.isFinite(candidate.ownerUserId) && candidate.ownerUserId > 0
+          ? candidate.ownerUserId
+          : actor.userId,
+      };
+      try {
+        const softDeleted = await softDeleteLibraryItem(libraryItemId, cleanupActor, db);
+        if (softDeleted) {
+          await permanentDeleteLibraryItem(libraryItemId, cleanupActor, db);
+        }
+      } catch (error) {
+        recordPresentationLog("presentation_temp_upload_cleanup_failed", {
+          tenantId: actor.tenantId,
+          userId: actor.userId,
+          deckId: input.deckId,
+          libraryItemId,
+          error: String((error as Error)?.message || "unknown"),
+        });
+      }
+    }
+  }
+
+  return { success };
 }
 
 export async function listSlidesForDeck(
@@ -919,6 +1071,7 @@ export async function addSlideToDeck(
       deckId: input.deckId,
       title: input.title,
       slideContent: validatedSlideContent,
+      audioTrack: normalizeSlideAudioTrackInput(input.audioTrack),
       notes: input.notes,
     },
     db,
@@ -1233,6 +1386,107 @@ export async function attachAssetToDeck(
     },
     db,
   );
+}
+
+export async function uploadAssetToDeck(
+  input: UploadPresentationAssetInput,
+  actor: PresentationActor,
+  dbClient?: DbClient,
+): Promise<{
+  item: LibraryItemDto;
+  link: PresentationAssetLink;
+  totals: { totalAssetBytes: number; warningExceeded: boolean; hardLimitExceeded: boolean };
+  billing: {
+    creditsCharged: number;
+    category: string;
+    fileSizeBytes: number;
+    baseCredits: number;
+    stepCredits: number;
+    extraSteps: number;
+    sizeStepMb: number;
+  };
+  folder: {
+    tempFolderId: number;
+    userFolderId: number;
+    monthFolderId: number;
+    monthKey: string;
+  };
+}> {
+  const { deck, db } = await resolveDeckContext(input.deckId, actor, { write: true }, dbClient);
+  ensureExpectedDeckVersion(deck, input.expectedVersion);
+
+  const monthKey = buildPresentationTempMonthKey(new Date());
+  const tempFolder = await ensureOwnedLibraryFolder(
+    { name: "temp", parentId: null },
+    actor,
+    db,
+  );
+  const userFolder = await ensureOwnedLibraryFolder(
+    { name: `user-${actor.userId}`, parentId: tempFolder.item.id },
+    actor,
+    db,
+  );
+  const monthFolder = await ensureOwnedLibraryFolder(
+    { name: monthKey, parentId: userFolder.item.id },
+    actor,
+    db,
+  );
+
+  const fileKind = parseFileKindFromMime(input.fileType);
+  const uploadResult = await uploadLibraryFile(
+    {
+      fileName: input.fileName,
+      fileType: input.fileType,
+      fileBase64: input.fileBase64,
+      visibility: "private",
+      parentId: monthFolder.item.id,
+      metadata: {
+        source_type: "presentation_temp_upload",
+        presentation_upload: true,
+        presentation_deck_id: deck.id,
+        presentation_slide_id: input.slideId ?? null,
+        presentation_month_key: monthKey,
+        presentation_file_kind: fileKind,
+      },
+    },
+    actor,
+    db,
+  );
+
+  const byteSize = Number(uploadResult.item.metadata?.file_size_bytes ?? 0);
+  try {
+    const attached = await attachAssetToDeck(
+      {
+        deckId: input.deckId,
+        expectedVersion: input.expectedVersion,
+        slideId: input.slideId ?? null,
+        libraryItemId: uploadResult.item.id,
+        byteSize: Number.isFinite(byteSize) && byteSize > 0 ? byteSize : 0,
+      },
+      actor,
+      db,
+    );
+
+    return {
+      item: uploadResult.item,
+      link: attached.link,
+      totals: attached.totals,
+      billing: uploadResult.billing,
+      folder: {
+        tempFolderId: tempFolder.item.id,
+        userFolderId: userFolder.item.id,
+        monthFolderId: monthFolder.item.id,
+        monthKey,
+      },
+    };
+  } catch (error) {
+    try {
+      await softDeleteLibraryItem(uploadResult.item.id, actor, db);
+    } catch {
+      // Ignore cleanup errors; preserve original attach failure.
+    }
+    throw error;
+  }
 }
 
 export async function detachAssetFromDeck(

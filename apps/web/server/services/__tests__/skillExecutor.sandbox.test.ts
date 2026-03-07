@@ -26,6 +26,8 @@ vi.mock("../pricingCalculator", () => ({ calculateCreditCost: vi.fn(() => 1) }))
 import { executeSkill } from "../skillExecutor";
 import type { SkillExecutionParams } from "../skillExecutor";
 import type { SkillDefinition } from "@smartspec/skills";
+import { mediaGenerationService } from "../mediaGenerationService";
+import { getDefaultModel, getModelById } from "../modelRegistry";
 import {
   isSandboxEnabled,
   shouldUseSandboxForFeature,
@@ -195,6 +197,29 @@ describe("skillExecutor sandbox dispatch", () => {
     const skill = makeSkill({ executionMode: "media-generate", type: "image-generation" });
     const result = await executeSkill(skill, defaultParams, 1, "token", "tenant-001");
     expect(result.type).toBe("sandbox-job");
+  });
+
+  it("routes audio-generation to audio executor in legacy path", async () => {
+    vi.mocked(isSandboxEnabled).mockReturnValue(false);
+    vi.mocked(shouldUseSandboxForFeature).mockReturnValue(false);
+    vi.mocked(getDefaultModel).mockReturnValue({ id: "uvoice/tts-standard" } as any);
+    vi.mocked(getModelById).mockReturnValue({
+      id: "uvoice/tts-standard",
+      name: "UVoice TTS Standard",
+      type: "audio",
+      creditCost: 1,
+      configJson: { pricingTiers: { default: 1 } },
+    } as any);
+    vi.mocked(mediaGenerationService.generateAudio as any).mockResolvedValue({
+      data: [{ url: "https://example.com/audio.mp3" }],
+      creditsUsed: 1,
+    });
+
+    const skill = makeSkill({ executionMode: "media-generate", type: "audio-generation" as any });
+    const result = await executeSkill(skill, defaultParams, 1, "token");
+    expect(result.success).toBe(true);
+    expect(result.type).toBe("audio");
+    expect(mediaGenerationService.generateAudio).toHaveBeenCalled();
   });
 
   it("routes executionMode=python to sandbox-python when enabled", async () => {

@@ -29,7 +29,7 @@ def _heuristic_topics(desc: str, failure_summary: str, max_topics: int) -> List[
     if "ขั้น" in failure_summary or "step" in failure_summary.lower():
         topics.append("Thai step by step explanation numbering format 1. 2. 3.")
     topics += [
-        "unified diff format git diff how to generate and apply patches",
+        "json full file replacement patch format safe apply patterns",
         "test driven development iterate until tests pass best practices",
     ]
     if not topics:
@@ -81,7 +81,7 @@ def plan_research_topics(
             tests = "Tests missing."
     failed = [r for r in report.results if not r.passed]
     failure_summary = "\n".join([
-        f"- {r.test_id}: missing={r.missing} output={r.output[:160].replace(chr(10),' ')}"
+        f"- {r.test_id}: categories={r.categories} reasons={r.reasons} missing={r.missing} output={r.output[:160].replace(chr(10),' ')}"
         for r in failed
     ]) or "All tests passed."
 

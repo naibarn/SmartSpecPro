@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type ReactElement } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type DragEvent, type ReactElement } from "react";
 import { useLocation, useRoute } from "wouter";
 import {
   BookMarked,
@@ -20,6 +20,7 @@ import {
   Music,
   Pause,
   MousePointer2,
+  MoreHorizontal,
   Plus,
   Save,
   Shapes,
@@ -101,6 +102,11 @@ import {
   type PresentationElementType,
   type PresentationSlideContent,
 } from "@/lib/presentationEditorState";
+import {
+  fitSlidesToProjectAudioDuration,
+  resolveProjectAudioPlayableDurationMs,
+  type FitSlidesToProjectAudioDurationFailure,
+} from "@/lib/presentationTiming";
 import { SelectionEngine } from "@/presentation-canvas/selection/SelectionEngine";
 import { CommandBus } from "@/presentation-canvas/commands/CommandBus";
 import { useMobileGestures } from "@/presentation-canvas/mobile/useMobileGestures";
@@ -132,6 +138,7 @@ import {
   rotateSelectionCommand,
   selectElementsCommand,
   setCanvasSizeCommand,
+  setSlideBackgroundCommand,
   type CanvasCommandState,
 } from "@/presentation-canvas/commands/commands";
 import { trackAutosaveResult } from "@/lib/analytics/presentationEvents";
@@ -158,7 +165,11 @@ import {
   AI_STYLE_PRESET_IDS,
 } from "@shared/presentation/aiTypes";
 import { BUILT_IN_PRESETS } from "@shared/presentation/aiStylePresets";
-import type { PresentationExportWarning } from "@shared/presentation/contracts";
+import type {
+  PresentationExportWarning,
+  PresentationSlideBackground,
+  PresentationTransition,
+} from "@shared/presentation/contracts";
 
 function parseDocId(value: string | undefined): number | null {
   if (!value) return null;
@@ -170,10 +181,99 @@ type SaveState = "idle" | "pending" | "saved" | "conflict" | "error";
 type PlaybackState = "idle" | "playing";
 type SaveMode = "manual" | "autosave";
 type LibraryMediaKind = "image" | "video";
+type MobilePropertiesSection = "element" | "slide" | "canvas";
 const MIN_DESKTOP_ZOOM = 0.5;
 const MAX_DESKTOP_ZOOM = 2;
 const DESKTOP_ZOOM_STEP = 0.1;
 const MIN_SLIDE_DURATION_MS = 250;
+const MAX_SLIDE_DURATION_MS = 120_000;
+const SLIDESHOW_PREVIEW_TRANSITION_DURATION_MS = 700;
+const MOBILE_SHEET_TAB_STORAGE_KEY = "presentation-editor-mobile-sheet-tab";
+const MOBILE_SHEET_EXPANDED_STORAGE_KEY = "presentation-editor-mobile-sheet-expanded";
+const MOBILE_SHEET_TABS = new Set<MobileBottomSheetTab>(["Add", "Layers", "Properties", "Pages", "Versions", "Audio"]);
+const PRESENTATION_TRANSITION_OPTIONS: Array<{ value: PresentationTransition; label: string }> = [
+  { value: "cut", label: "Cut" },
+  { value: "fade", label: "Fade" },
+  { value: "slide-left", label: "Slide Left" },
+  { value: "slide-right", label: "Slide Right" },
+  { value: "zoom-in", label: "Zoom In" },
+  { value: "zoom-out", label: "Zoom Out" },
+  { value: "blur", label: "Blur" },
+];
+
+function readStoredMobileSheetTab(): MobileBottomSheetTab | null {
+  try {
+    const stored = window.sessionStorage.getItem(MOBILE_SHEET_TAB_STORAGE_KEY);
+    return stored && MOBILE_SHEET_TABS.has(stored as MobileBottomSheetTab)
+      ? stored as MobileBottomSheetTab
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function readStoredMobileSheetExpanded(defaultValue: boolean): boolean {
+  try {
+    const stored = window.sessionStorage.getItem(MOBILE_SHEET_EXPANDED_STORAGE_KEY);
+    if (stored === "true") {
+      return true;
+    }
+    if (stored === "false") {
+      return false;
+    }
+  } catch {
+    return defaultValue;
+  }
+  return defaultValue;
+}
+
+function getSlideshowPreviewTransitionStyle(
+  transition: PresentationTransition,
+  entering: boolean,
+): CSSProperties {
+  if (!entering || transition === "cut") {
+    return {
+      opacity: 1,
+      transform: "none",
+    };
+  }
+
+  switch (transition) {
+    case "slide-left":
+      return {
+        opacity: 0,
+        transform: "translate3d(56px, 0, 0) scale(1)",
+      };
+    case "slide-right":
+      return {
+        opacity: 0,
+        transform: "translate3d(-56px, 0, 0) scale(1)",
+      };
+    case "zoom-in":
+      return {
+        opacity: 0,
+        transform: "translate3d(0, 0, 0) scale(1.08)",
+      };
+    case "zoom-out":
+      return {
+        opacity: 0,
+        transform: "translate3d(0, 0, 0) scale(0.92)",
+      };
+    case "blur":
+      return {
+        opacity: 0,
+        transform: "translate3d(0, 0, 0) scale(1)",
+        filter: "blur(10px)",
+      };
+    case "fade":
+    default:
+      return {
+        opacity: 0,
+        transform: "none",
+      };
+  }
+}
+
 type AutoLayoutScope = "current" | "all";
 type AutoLayoutTemplateChoice = "auto" | (typeof AI_LAYOUT_TEMPLATE_IDS)[number];
 type AutoLayoutStyleChoice = "auto" | (typeof AI_STYLE_PRESET_IDS)[number];
@@ -550,6 +650,76 @@ function buildSlideContentSignature(content: PresentationSlideContent): string {
   return JSON.stringify(sortValueForStableJson(normalized));
 }
 
+export function mergeResolvedPendingMediaIntoCachedDraft(
+  cachedContent: PresentationSlideContent,
+  persistedContent: PresentationSlideContent,
+): PresentationSlideContent {
+  const cached = ensureSlideContent(cachedContent);
+  const persisted = ensureSlideContent(persistedContent);
+  const cachedJobs = Array.isArray(cached.pendingMediaJobs) ? cached.pendingMediaJobs : [];
+  if (cachedJobs.length === 0) {
+    return cached;
+  }
+
+  const persistedJobs = Array.isArray(persisted.pendingMediaJobs) ? persisted.pendingMediaJobs : [];
+  const persistedJobsById = new Map(persistedJobs.map((job) => [job.id, job]));
+  const resolvedJobs = cachedJobs.filter((job) => !persistedJobsById.has(job.id));
+  if (resolvedJobs.length === 0) {
+    return cached;
+  }
+
+  let nextElements = [...cached.elements];
+  for (const job of resolvedJobs) {
+    const replacement = persisted.elements.find((element) => {
+      if (element.type !== "image" && element.type !== "video") {
+        return false;
+      }
+      if (job.targetElementId) {
+        return element.id === job.targetElementId;
+      }
+      return (
+        element.x === job.targetX
+        && element.y === job.targetY
+        && element.width === job.targetWidth
+        && element.height === job.targetHeight
+      );
+    });
+    if (!replacement) {
+      continue;
+    }
+
+    const targetIndex = job.targetElementId
+      ? nextElements.findIndex((element) => element.id === job.targetElementId)
+      : nextElements.findIndex((element) => (
+        element.x === job.targetX
+        && element.y === job.targetY
+        && element.width === job.targetWidth
+        && element.height === job.targetHeight
+      ));
+
+    if (targetIndex >= 0) {
+      nextElements[targetIndex] = replacement;
+    } else {
+      nextElements.push(replacement);
+    }
+  }
+
+  const remainingJobs = cachedJobs
+    .filter((job) => persistedJobsById.has(job.id))
+    .map((job) => persistedJobsById.get(job.id) ?? job);
+
+  const { pendingMediaJobs: _cachedPendingMediaJobs, ...cachedWithoutPending } = cached;
+  const merged: PresentationSlideContent = {
+    ...cachedWithoutPending,
+    elements: nextElements,
+    ...(remainingJobs.length > 0 ? { pendingMediaJobs: remainingJobs } : {}),
+  };
+
+  return buildSlideContentSignature(merged) === buildSlideContentSignature(cached)
+    ? cached
+    : merged;
+}
+
 function normalizeLibraryMediaItems(
   rows: unknown,
   kind: LibraryMediaKind,
@@ -559,52 +729,55 @@ function normalizeLibraryMediaItems(
     return [];
   }
 
-  return rows
-    .map((row) => row as LibraryResultItemLike)
-    .filter((row) => {
-      const id = Number(row.id ?? row.item_id);
-      if (!Number.isFinite(id)) {
-        return false;
-      }
-      const rowKind = String(row.item_type || "").toLowerCase();
-      if (rowKind === "image" || rowKind === "video") {
-        return rowKind === kind;
-      }
-      return true;
-    })
-    .map((row) => {
-      const id = Number(row.id ?? row.item_id);
-      const sourceUrl = String(row.source_url || "").trim();
-      if (!sourceUrl) {
-        return null;
-      }
-      const normalizedSourceUrl = normalizeMediaSourceUrl(sourceUrl);
+  const normalized: CanvasLibraryAsset[] = [];
+  for (const rawRow of rows) {
+    const row = rawRow as LibraryResultItemLike;
+    const id = Number(row.id ?? row.item_id);
+    if (!Number.isFinite(id)) {
+      continue;
+    }
 
-      const title = String(row.title || `${kind} #${id}`).trim() || `${kind} #${id}`;
-      const thumbnailRaw = String(
-        row.thumbnail_url
-        || row.preview_url
-        || row.poster_url
-        || "",
-      ).trim();
-      const ownerUserId = Number(row.owner_user_id);
-      const accessSource = String(row.access_source || "").toLowerCase();
-      const isSharedByAccessSource = accessSource === "shared_group" || accessSource === "shared_direct";
-      const isSharedByOwner = Number.isFinite(ownerUserId)
-        && currentUserId !== null
-        && ownerUserId !== currentUserId;
-      return {
-        id,
-        kind,
-        title,
-        sourceUrl: normalizedSourceUrl,
-        thumbnailUrl: normalizeMediaSourceUrl(
-          thumbnailRaw || (kind === "image" ? normalizedSourceUrl : null),
-        ) || null,
-        sourceType: isSharedByAccessSource || isSharedByOwner ? "shared" : "library",
-      } satisfies CanvasLibraryAsset;
-    })
-    .filter((value): value is CanvasLibraryAsset => Boolean(value));
+    const rowKind = String(row.item_type || "").toLowerCase();
+    if ((rowKind === "image" || rowKind === "video") && rowKind !== kind) {
+      continue;
+    }
+
+    const sourceUrl = String(row.source_url || "").trim();
+    if (!sourceUrl) {
+      continue;
+    }
+    const normalizedSourceUrl = normalizeMediaSourceUrl(sourceUrl);
+    if (!normalizedSourceUrl) {
+      continue;
+    }
+
+    const title = String(row.title || `${kind} #${id}`).trim() || `${kind} #${id}`;
+    const thumbnailRaw = String(
+      row.thumbnail_url
+      || row.preview_url
+      || row.poster_url
+      || "",
+    ).trim();
+    const ownerUserId = Number(row.owner_user_id);
+    const accessSource = String(row.access_source || "").toLowerCase();
+    const isSharedByAccessSource = accessSource === "shared_group" || accessSource === "shared_direct";
+    const isSharedByOwner = Number.isFinite(ownerUserId)
+      && currentUserId !== null
+      && ownerUserId !== currentUserId;
+
+    normalized.push({
+      id,
+      kind,
+      title,
+      sourceUrl: normalizedSourceUrl,
+      thumbnailUrl: normalizeMediaSourceUrl(
+        thumbnailRaw || (kind === "image" ? normalizedSourceUrl : null),
+      ) || null,
+      sourceType: isSharedByAccessSource || isSharedByOwner ? "shared" : "library",
+    });
+  }
+
+  return normalized;
 }
 
 function readFirstHttpUrl(value: unknown, visited = new WeakSet<object>()): string | null {
@@ -758,33 +931,46 @@ function normalizeMediaHistoryItems(
   }
 
   const normalizedQuery = query.trim().toLowerCase();
-  return rows
-    .map((row) => row as MediaHistoryTaskLike)
-    .filter((row) => String(row.status || "").toLowerCase() === "completed")
-    .filter((row) => String(row.mediaType || "").toLowerCase() === kind)
-    .map((row) => {
-      const sourceUrl = extractMediaHistoryResultUrl(row);
-      if (!sourceUrl) {
-        return null;
-      }
-      const title = buildMediaHistoryTitle(row, kind);
-      const searchable = `${title} ${row.model || ""} ${row.prompt || ""} ${row.id || ""} ${row.taskId || ""}`.toLowerCase();
-      if (normalizedQuery && !searchable.includes(normalizedQuery)) {
-        return null;
-      }
-      const thumbnailUrl = kind === "image"
-        ? sourceUrl
-        : extractMediaHistoryThumbnailUrl(row);
-      return {
-        id: stableTaskNumericId(row, kind),
-        kind,
-        title,
-        sourceUrl: normalizeMediaSourceUrl(sourceUrl),
-        thumbnailUrl: normalizeMediaSourceUrl(thumbnailUrl),
-        sourceType: "history",
-      } satisfies CanvasLibraryAsset;
-    })
-    .filter((value): value is CanvasLibraryAsset => Boolean(value));
+  const normalized: CanvasLibraryAsset[] = [];
+  for (const rawRow of rows) {
+    const row = rawRow as MediaHistoryTaskLike;
+    if (String(row.status || "").toLowerCase() !== "completed") {
+      continue;
+    }
+    if (String(row.mediaType || "").toLowerCase() !== kind) {
+      continue;
+    }
+
+    const sourceUrl = extractMediaHistoryResultUrl(row);
+    if (!sourceUrl) {
+      continue;
+    }
+
+    const title = buildMediaHistoryTitle(row, kind);
+    const searchable = `${title} ${row.model || ""} ${row.prompt || ""} ${row.id || ""} ${row.taskId || ""}`.toLowerCase();
+    if (normalizedQuery && !searchable.includes(normalizedQuery)) {
+      continue;
+    }
+
+    const thumbnailUrl = kind === "image"
+      ? sourceUrl
+      : extractMediaHistoryThumbnailUrl(row);
+    const normalizedSourceUrl = normalizeMediaSourceUrl(sourceUrl);
+    if (!normalizedSourceUrl) {
+      continue;
+    }
+
+    normalized.push({
+      id: stableTaskNumericId(row, kind),
+      kind,
+      title,
+      sourceUrl: normalizedSourceUrl,
+      thumbnailUrl: normalizeMediaSourceUrl(thumbnailUrl),
+      sourceType: "history",
+    });
+  }
+
+  return normalized;
 }
 
 function mergeLibraryAssets(
@@ -845,6 +1031,22 @@ function clampNumber(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      if (!result) {
+        reject(new Error("Failed to read file"));
+        return;
+      }
+      resolve(result);
+    };
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
 function resolveImageDisplayConfig(element: PresentationSlideContent["elements"][number]): {
   fit: "contain" | "cover" | "fill";
   positionX: number;
@@ -860,6 +1062,24 @@ function resolveImageDisplayConfig(element: PresentationSlideContent["elements"]
   const positionX = clampNumber(Number(element.imagePositionX ?? 50), 0, 100);
   const positionY = clampNumber(Number(element.imagePositionY ?? 50), 0, 100);
   const zoom = clampNumber(Number(element.imageZoom ?? 1), 0.5, 3);
+  return { fit, positionX, positionY, zoom };
+}
+
+function resolveVideoDisplayConfig(element: PresentationSlideContent["elements"][number]): {
+  fit: "contain" | "cover" | "fill";
+  positionX: number;
+  positionY: number;
+  zoom: number;
+} {
+  if (element.type !== "video") {
+    return { fit: "cover", positionX: 50, positionY: 50, zoom: 1 };
+  }
+  const fit = (element.videoFit === "contain" || element.videoFit === "fill")
+    ? element.videoFit
+    : "cover";
+  const positionX = clampNumber(Number(element.videoPositionX ?? 50), 0, 100);
+  const positionY = clampNumber(Number(element.videoPositionY ?? 50), 0, 100);
+  const zoom = clampNumber(Number(element.videoZoom ?? 1), 0.5, 3);
   return { fit, positionX, positionY, zoom };
 }
 
@@ -889,23 +1109,36 @@ function renderReadonlySlideElement(
   } satisfies CSSProperties;
 
   if (element.type === "text") {
-    const fontSize = Number.isFinite(element.fontSize) ? element.fontSize : 48;
+    const fontSize = typeof element.fontSize === "number" && Number.isFinite(element.fontSize)
+      ? element.fontSize
+      : 48;
     const lineHeight = Number.isFinite(element.lineHeight) ? element.lineHeight : 1.25;
-    const letterSpacing = Number.isFinite(element.letterSpacing) ? element.letterSpacing : 0;
+    const letterSpacing = typeof element.letterSpacing === "number" && Number.isFinite(element.letterSpacing)
+      ? element.letterSpacing
+      : 0;
+    const hasThaiText = /[\u0e00-\u0e7f]/.test(String(element.text ?? ""));
     const scaledFontSize = Math.max(8, fontSize * Math.max(0.0001, renderScale));
     const scaledPaddingPx = Math.max(1, Math.round(8 * Math.max(0.0001, renderScale)));
     const scaledLetterSpacing = letterSpacing * Math.max(0.0001, renderScale);
     return (
-      <div key={element.id || `play-${index}`} className="absolute overflow-hidden" style={commonStyle}>
+      <div
+        key={element.id || `play-${index}`}
+        className="absolute overflow-visible"
+        style={{
+          ...commonStyle,
+          backgroundColor: element.backgroundColor || "transparent",
+          padding: `${scaledPaddingPx}px`,
+          boxSizing: "border-box",
+        }}
+      >
         <p
           className="w-full whitespace-pre-wrap break-words"
           style={{
             display: "block",
             minHeight: "100%",
-            padding: `${scaledPaddingPx}px`,
-            paddingBottom: "0.14em",
+            boxSizing: "border-box",
+            paddingBottom: hasThaiText ? "0.48em" : "0.14em",
             color: element.color || "#111827",
-            backgroundColor: element.backgroundColor || "transparent",
             fontSize: scaledFontSize,
             fontFamily: element.fontFamily || "Inter, system-ui, sans-serif",
             fontWeight: element.fontWeight || "600",
@@ -975,12 +1208,19 @@ function renderReadonlySlideElement(
   if (element.type === "video") {
     const normalizedSource = normalizeMediaSourceUrl(element.src);
     const normalizedPoster = normalizeMediaSourceUrl(element.poster);
+    const videoConfig = resolveVideoDisplayConfig(element);
     return (
       <div key={element.id || `play-${index}`} className="absolute overflow-hidden bg-black" style={commonStyle}>
         <video
           src={normalizedSource}
           poster={normalizedPoster || undefined}
-          className="h-full w-full object-contain"
+          className="h-full w-full"
+          style={{
+            objectFit: videoConfig.fit,
+            objectPosition: `${videoConfig.positionX}% ${videoConfig.positionY}%`,
+            transform: `scale(${videoConfig.zoom})`,
+            transformOrigin: `${videoConfig.positionX}% ${videoConfig.positionY}%`,
+          }}
           preload="auto"
           autoPlay
           muted
@@ -1048,6 +1288,70 @@ function extractMetadataDurationSeconds(metadata: unknown): number | null {
   return null;
 }
 
+function formatDurationSecondsLabel(seconds: number): string {
+  return `${seconds.toFixed(1).replace(/\.0$/, "")}s`;
+}
+
+function formatDurationMsLabel(milliseconds: number): string {
+  return formatDurationSecondsLabel(milliseconds / 1000);
+}
+
+async function probeMediaDurationSeconds(
+  sourceUrl: string,
+  kind: "audio" | "video",
+  timeoutMs = 12_000,
+): Promise<number | null> {
+  if (!sourceUrl.trim()) {
+    return null;
+  }
+
+  return new Promise((resolve) => {
+    const media: HTMLMediaElement = kind === "video"
+      ? document.createElement("video")
+      : new Audio();
+    let settled = false;
+    const timeoutId = window.setTimeout(() => {
+      finalize(null);
+    }, timeoutMs);
+
+    const cleanup = () => {
+      window.clearTimeout(timeoutId);
+      media.removeEventListener("loadedmetadata", onLoadedMetadata);
+      media.removeEventListener("error", onError);
+      media.src = "";
+      if (typeof media.load === "function") {
+        media.load();
+      }
+    };
+
+    const finalize = (value: number | null) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      cleanup();
+      resolve(value);
+    };
+
+    const onLoadedMetadata = () => {
+      if (Number.isFinite(media.duration) && media.duration > 0) {
+        finalize(media.duration);
+        return;
+      }
+      finalize(null);
+    };
+
+    const onError = () => {
+      finalize(null);
+    };
+
+    media.preload = "metadata";
+    media.addEventListener("loadedmetadata", onLoadedMetadata);
+    media.addEventListener("error", onError);
+    media.src = sourceUrl;
+  });
+}
+
 export default function PresentationEditor() {
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const trpcUtils = trpc.useUtils();
@@ -1093,6 +1397,7 @@ export default function PresentationEditor() {
   const deleteSlideMutation = trpc.presentation.deleteSlide.useMutation();
   const reorderSlidesMutation = trpc.presentation.reorderSlides.useMutation();
   const updateSlideMutation = trpc.presentation.updateSlide.useMutation();
+  const uploadAndAttachAssetMutation = trpc.presentation.uploadAndAttachAsset.useMutation();
   const restoreVersionMutation = trpc.presentation.restoreVersion.useMutation();
   const triggerExportMutation = trpc.presentation.triggerExport.useMutation();
   const relayoutSlideMutation = trpc.presentation.ai.relayoutSlide.useMutation();
@@ -1143,6 +1448,7 @@ export default function PresentationEditor() {
   const [playbackState, setPlaybackState] = useState<PlaybackState>("idle");
   const [playbackSlideIndex, setPlaybackSlideIndex] = useState(0);
   const [playbackPaused, setPlaybackPaused] = useState(false);
+  const [playbackSlideTransitionEntering, setPlaybackSlideTransitionEntering] = useState(false);
   const [exportMessage, setExportMessage] = useState<string>("");
   const [exportWarnings, setExportWarnings] = useState<PresentationExportWarning[]>([]);
   const [lastExportId, setLastExportId] = useState<number | null>(null);
@@ -1151,6 +1457,8 @@ export default function PresentationEditor() {
   const previewAudioPlayerRef = useRef<AudioTrackPlayer | null>(null);
   const previewAudioSlideIndexRef = useRef<number | null>(null);
   const previewAudioDeckSignatureRef = useRef<string | null>(null);
+  const playbackTransitionSlideRef = useRef<number | null>(null);
+  const playbackTransitionFrameRef = useRef<number | null>(null);
   const [playbackStageHostSize, setPlaybackStageHostSize] = useState({ width: 0, height: 0 });
   const [isPlaybackFullscreen, setIsPlaybackFullscreen] = useState(false);
   const [projectTitleDraft, setProjectTitleDraft] = useState("");
@@ -1160,13 +1468,18 @@ export default function PresentationEditor() {
   const [autoDeckInitPending, setAutoDeckInitPending] = useState(false);
   const [autoDeckInitError, setAutoDeckInitError] = useState<string | null>(null);
   const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() => window.innerWidth < 1024);
+  const [isTabletViewport, setIsTabletViewport] = useState<boolean>(() => window.innerWidth >= 768 && window.innerWidth < 1024);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
-  const [mobileSheetTab, setMobileSheetTab] = useState<MobileBottomSheetTab>("Properties");
+  const [isMobileHeaderMenuOpen, setIsMobileHeaderMenuOpen] = useState(false);
+  const [mobileSheetTab, setMobileSheetTab] = useState<MobileBottomSheetTab>(() => readStoredMobileSheetTab() ?? "Properties");
+  const [isMobileSheetExpanded, setIsMobileSheetExpanded] = useState<boolean>(() => readStoredMobileSheetExpanded(window.innerWidth >= 768 && window.innerWidth < 1024));
+  const [mobilePropertiesSection, setMobilePropertiesSection] = useState<MobilePropertiesSection>("canvas");
   const [desktopInspectorTab, setDesktopInspectorTab] = useState<"properties" | "versions" | "audio">("properties");
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isAIDraftModalOpen, setIsAIDraftModalOpen] = useState(false);
   const [isAutoLayoutDialogOpen, setIsAutoLayoutDialogOpen] = useState(false);
+  const [isReorderDialogOpen, setIsReorderDialogOpen] = useState(false);
   const [autoLayoutScope, setAutoLayoutScope] = useState<AutoLayoutScope>("current");
   const [autoLayoutTemplateChoice, setAutoLayoutTemplateChoice] = useState<AutoLayoutTemplateChoice>("auto");
   const [autoLayoutStyleChoice, setAutoLayoutStyleChoice] = useState<AutoLayoutStyleChoice>("auto");
@@ -1184,9 +1497,17 @@ export default function PresentationEditor() {
   const [autoLayoutProgress, setAutoLayoutProgress] = useState<{ done: number; total: number } | null>(null);
   const [timingDurationSecInput, setTimingDurationSecInput] = useState<string>("3");
   const [timingApplyAllPending, setTimingApplyAllPending] = useState(false);
+  const [transitionApplyAllPending, setTransitionApplyAllPending] = useState(false);
+  const [timingFitProjectAudioPending, setTimingFitProjectAudioPending] = useState(false);
+  const [draggingSlideId, setDraggingSlideId] = useState<number | null>(null);
+  const [slideDropTargetId, setSlideDropTargetId] = useState<number | null>(null);
   const [canvasApplyAllPending, setCanvasApplyAllPending] = useState(false);
   const [libraryTab, setLibraryTab] = useState<AssetLibraryTab>("slides");
   const [librarySearchQuery, setLibrarySearchQuery] = useState("");
+  const [localUploadKind, setLocalUploadKind] = useState<LibraryMediaKind | null>(null);
+  const imageUploadInputRef = useRef<HTMLInputElement | null>(null);
+  const videoUploadInputRef = useRef<HTMLInputElement | null>(null);
+  const mobileHeaderMenuRef = useRef<HTMLDivElement | null>(null);
   const [selectedSavedVersionId, setSelectedSavedVersionId] = useState<number | null>(null);
   const [restoreDialogVersionId, setRestoreDialogVersionId] = useState<number | null>(null);
   const [desktopViewport, setDesktopViewport] = useState({
@@ -1200,6 +1521,17 @@ export default function PresentationEditor() {
   const isExportsEnabled = import.meta.env.VITE_PRESENTATION_EXPORTS_ENABLED !== "false";
   const availabilityQuery = trpc.presentation.availability.useQuery();
   const isAIGenerationEnabled = availabilityQuery.data?.aiGenerationEnabled === true;
+
+  useEffect(() => {
+    if (draggingSlideId == null) {
+      return;
+    }
+    const stillExists = slides.some((slide) => slide.id === draggingSlideId);
+    if (!stillExists) {
+      setDraggingSlideId(null);
+      setSlideDropTargetId(null);
+    }
+  }, [slides, draggingSlideId]);
 
   useEffect(() => {
     if (isProjectTitleEditing) {
@@ -1417,13 +1749,19 @@ export default function PresentationEditor() {
     [slides, selectedSlideId],
   );
   const selectedSlideAudioTrack = (selectedSlide as any)?.audioTrack ?? null;
+  const deckProjectAudioTrack = (deck as any)?.projectAudioTrack ?? null;
   const selectedSlideAudioItemQuery = trpc.library.getItem.useQuery(
     { id: selectedSlideAudioTrack?.libraryItemId ?? 0 },
     { enabled: Boolean(selectedSlideAudioTrack?.libraryItemId) },
   );
+  const deckProjectAudioItemQuery = trpc.library.getItem.useQuery(
+    { id: deckProjectAudioTrack?.libraryItemId ?? 0 },
+    { enabled: Boolean(deckProjectAudioTrack?.libraryItemId) },
+  );
   const draftContent = commandState.content;
   const selectedElementIds = commandState.selectedElementIds;
   const selectedElementId = selectedElementIds[0] ?? null;
+  const previousMobileSelectedElementIdRef = useRef<string | null | undefined>(undefined);
   const draftSignature = useMemo(
     () => buildDraftSignature(selectedSlide?.id ?? null, draftContent),
     [draftContent, selectedSlide?.id],
@@ -1573,6 +1911,23 @@ export default function PresentationEditor() {
     }
   }, [autoLayoutWatermarkOptions]);
   const autoLayoutCanApplyWatermark = !autoLayoutWatermarkEnabled || selectedAutoLayoutWatermarkOption !== null;
+  useEffect(() => {
+    if (!isMobileViewport) {
+      previousMobileSelectedElementIdRef.current = selectedElementId;
+      return;
+    }
+    const previousSelectedElementId = previousMobileSelectedElementIdRef.current;
+    if (previousSelectedElementId === undefined) {
+      previousMobileSelectedElementIdRef.current = selectedElementId;
+      return;
+    }
+    if (selectedElementId && selectedElementId !== previousSelectedElementId) {
+      setMobilePropertiesSection("element");
+    } else if (!selectedElementId && previousSelectedElementId && mobilePropertiesSection === "element") {
+      setMobilePropertiesSection("slide");
+    }
+    previousMobileSelectedElementIdRef.current = selectedElementId;
+  }, [isMobileViewport, mobilePropertiesSection, selectedElementId]);
   const autoLayoutApplyDisabled = !deck
     || !selectedSlide
     || autoLayoutBusy
@@ -1815,6 +2170,7 @@ export default function PresentationEditor() {
   useEffect(() => {
     const onResize = () => {
       setIsMobileViewport(window.innerWidth < 1024);
+      setIsTabletViewport(window.innerWidth >= 768 && window.innerWidth < 1024);
     };
 
     window.addEventListener("resize", onResize);
@@ -1822,6 +2178,57 @@ export default function PresentationEditor() {
       window.removeEventListener("resize", onResize);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isMobileViewport) {
+      setIsMobileHeaderMenuOpen(false);
+    }
+  }, [isMobileViewport]);
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(MOBILE_SHEET_TAB_STORAGE_KEY, mobileSheetTab);
+    } catch {
+      // Ignore storage failures in restricted environments.
+    }
+  }, [mobileSheetTab]);
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(MOBILE_SHEET_EXPANDED_STORAGE_KEY, String(isMobileSheetExpanded));
+    } catch {
+      // Ignore storage failures in restricted environments.
+    }
+  }, [isMobileSheetExpanded]);
+
+  useEffect(() => {
+    if (isTabletViewport) {
+      setIsMobileSheetExpanded(true);
+    }
+  }, [isTabletViewport]);
+
+  useEffect(() => {
+    if (!isMobileHeaderMenuOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      if (!mobileHeaderMenuRef.current) {
+        return;
+      }
+      const target = event.target;
+      if (target instanceof Node && !mobileHeaderMenuRef.current.contains(target)) {
+        setIsMobileHeaderMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+    };
+  }, [isMobileHeaderMenuOpen]);
 
   useEffect(() => {
     if (!slides.length) {
@@ -1852,7 +2259,11 @@ export default function PresentationEditor() {
         continue;
       }
       const persistedContent = ensureSlideContent(persistedSlide.slideContent);
-      if (buildSlideContentSignature(persistedContent) === buildSlideContentSignature(cached)) {
+      const mergedCached = mergeResolvedPendingMediaIntoCachedDraft(cached, persistedContent);
+      if (buildSlideContentSignature(mergedCached) !== buildSlideContentSignature(cached)) {
+        slideDraftCacheRef.current.set(slideId, mergedCached);
+      }
+      if (buildSlideContentSignature(persistedContent) === buildSlideContentSignature(mergedCached)) {
         slideDraftCacheRef.current.delete(slideId);
       }
     }
@@ -2109,7 +2520,10 @@ export default function PresentationEditor() {
         deckId: deck.id,
         expectedVersion,
         title: `Slide ${(slides.length || 0) + 1}`,
-        slideContent: { elements: [] },
+        slideContent: {
+          elements: [],
+          canvas: activeCanvasSize,
+        },
       })
     ));
     if (created) {
@@ -2149,6 +2563,20 @@ export default function PresentationEditor() {
     });
   }
 
+  async function handleReorderSlideToIndex(movedSlideId: number, targetIndex: number) {
+    if (!deck) {
+      return;
+    }
+    await runDeckMutation(async (expectedVersion) => {
+      await reorderSlidesMutation.mutateAsync({
+        deckId: deck.id,
+        movedSlideId,
+        targetIndex,
+        expectedVersion,
+      });
+    });
+  }
+
   async function handleMoveSlide(direction: "up" | "down") {
     if (!deck || !selectedSlide) return;
     const targetIndex =
@@ -2159,14 +2587,56 @@ export default function PresentationEditor() {
       return;
     }
 
-    await runDeckMutation(async (expectedVersion) => {
-      await reorderSlidesMutation.mutateAsync({
-        deckId: deck.id,
-        movedSlideId: selectedSlide.id,
-        targetIndex,
-        expectedVersion,
-      });
-    });
+    await handleReorderSlideToIndex(selectedSlide.id, targetIndex);
+  }
+
+  function resetSlideDragState() {
+    setDraggingSlideId(null);
+    setSlideDropTargetId(null);
+  }
+
+  function handleSlideDragStart(slideId: number, event: DragEvent<HTMLButtonElement>) {
+    if (deckMutationBusy) {
+      event.preventDefault();
+      return;
+    }
+    setDraggingSlideId(slideId);
+    setSlideDropTargetId(slideId);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", String(slideId));
+  }
+
+  function handleSlideDragOver(targetSlideId: number, event: DragEvent<HTMLButtonElement>) {
+    if (draggingSlideId == null || draggingSlideId === targetSlideId) {
+      return;
+    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    if (slideDropTargetId !== targetSlideId) {
+      setSlideDropTargetId(targetSlideId);
+    }
+  }
+
+  function handleSlideDragEnd() {
+    resetSlideDragState();
+  }
+
+  async function handleSlideDrop(targetSlideId: number, event: DragEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    const movedSlideIdFromEvent = Number(event.dataTransfer.getData("text/plain"));
+    const movedSlideId = draggingSlideId ?? movedSlideIdFromEvent;
+    resetSlideDragState();
+
+    if (!Number.isFinite(movedSlideId) || movedSlideId <= 0 || movedSlideId === targetSlideId) {
+      return;
+    }
+
+    const targetIndex = slides.findIndex((slide) => slide.id === targetSlideId);
+    if (targetIndex < 0) {
+      return;
+    }
+
+    await handleReorderSlideToIndex(movedSlideId, targetIndex);
   }
 
   function isTouchActionAllowed(minTouchTargetPx: number): boolean {
@@ -2183,12 +2653,95 @@ export default function PresentationEditor() {
   }
 
   function handleAddElement(type: PresentationElementType) {
-    if (!isTouchActionAllowed(40)) {
+    if (isMobileViewport) {
+      if (isMobilePanMode) {
+        mobileGestures.setMode("edit_mode");
+      }
+    } else if (!isTouchActionAllowed(40)) {
+      return;
+    }
+
+    if (type === "image") {
+      imageUploadInputRef.current?.click();
+      return;
+    }
+    if (type === "video") {
+      videoUploadInputRef.current?.click();
       return;
     }
 
     const element = createElement(type, nextElementId(type));
     executeCommand(addElementCommand(element));
+    focusMobileProperties("element");
+  }
+
+  async function handleLocalMediaUpload(kind: LibraryMediaKind, file: File) {
+    if (!deck || !selectedSlide) {
+      toast.error("No active slide selected.");
+      return;
+    }
+
+    setLocalUploadKind(kind);
+    try {
+      const fileBase64 = await readFileAsDataUrl(file);
+      const uploaded = await runDeckMutation(async (expectedVersion) => (
+        uploadAndAttachAssetMutation.mutateAsync({
+          deckId: deck.id,
+          expectedVersion,
+          slideId: selectedSlide.id,
+          fileName: file.name,
+          fileType: file.type || (kind === "image" ? "image/*" : "video/*"),
+          fileBase64,
+        })
+      ));
+
+      if (!uploaded) {
+        return;
+      }
+
+      const item = (uploaded as any)?.item;
+      if (item?.sourceUrl) {
+        insertLibraryAsset({
+          id: Number(item.id) || Date.now(),
+          kind,
+          title: String(item.title || file.name || (kind === "image" ? "Uploaded image" : "Uploaded video")),
+          sourceUrl: normalizeMediaSourceUrl(String(item.sourceUrl)),
+          thumbnailUrl: normalizeMediaSourceUrl(
+            item.thumbnailUrl
+            || (kind === "image" ? item.sourceUrl : null),
+          ) || null,
+          sourceType: "library",
+        });
+      }
+
+      const creditsCharged = Number((uploaded as any)?.billing?.creditsCharged ?? 0);
+      if (creditsCharged > 0) {
+        toast.success(`Upload complete. Charged ${creditsCharged} credits.`);
+      } else {
+        toast.success("Upload complete.");
+      }
+
+      setLibraryTab("slides");
+      await trpcUtils.library.listDocuments.invalidate();
+    } catch (error) {
+      const message = String((error as Error)?.message || error);
+      if (message.toLowerCase().includes("insufficient credits")) {
+        toast.error(message);
+      } else {
+        toast.error(`Upload failed: ${message}`);
+      }
+    } finally {
+      setLocalUploadKind(null);
+    }
+  }
+
+  function handleLocalUploadInputChange(kind: LibraryMediaKind, event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) {
+      return;
+    }
+    void handleLocalMediaUpload(kind, file);
   }
 
   function insertLibraryAsset(
@@ -2225,6 +2778,7 @@ export default function PresentationEditor() {
           y: nextY,
         };
     executeCommand(addElementCommand(nextElement));
+    focusMobileProperties("element");
   }
 
   function handleInsertGraphic(graphic: SvgGraphic) {
@@ -2247,6 +2801,7 @@ export default function PresentationEditor() {
     };
     executeCommand(addElementCommand(nextElement as any));
     setLibraryTab("slides");
+    focusMobileProperties("element");
   }
 
   function handleDragAssetStart(event: DragEvent<HTMLElement>, asset: CanvasLibraryAsset) {
@@ -2286,6 +2841,55 @@ export default function PresentationEditor() {
 
   function handleDesktopViewportChange(nextViewport: { scale: number; offsetX: number; offsetY: number }) {
     setDesktopViewport(nextViewport);
+  }
+
+  function handleMobileViewportChange(nextViewport: { scale: number; offsetX: number; offsetY: number }) {
+    mobileGestures.setViewport(nextViewport);
+  }
+
+  function handleResetMobileViewport() {
+    mobileGestures.setViewport({
+      scale: 1,
+      offsetX: 0,
+      offsetY: 0,
+    });
+  }
+
+  function handleFitMobileViewport() {
+    mobileGestures.setViewport({
+      scale: 1,
+      offsetX: 0,
+      offsetY: 0,
+    });
+  }
+
+  function handleCenterMobileViewport() {
+    const scale = mobileGestures.state.viewport.scale;
+    if (scale <= 1) {
+      return;
+    }
+    mobileGestures.setViewport({
+      scale,
+      offsetX: 0,
+      offsetY: 0,
+    });
+  }
+
+  function focusMobileInspector(tab: MobileBottomSheetTab = "Properties") {
+    if (!isMobileViewport) {
+      return;
+    }
+    setMobileSheetTab(tab);
+    setIsMobileSheetExpanded(true);
+  }
+
+  function focusMobileProperties(section: MobilePropertiesSection) {
+    if (!isMobileViewport) {
+      return;
+    }
+    setMobilePropertiesSection(section);
+    setMobileSheetTab("Properties");
+    setIsMobileSheetExpanded(true);
   }
 
   function handleChangeCanvasPreset(presetId: string) {
@@ -2351,10 +2955,18 @@ export default function PresentationEditor() {
         ? [elementId, ...toggled.selectedIds.filter((id) => id !== elementId)]
         : toggled.selectedIds;
       executeCommand(selectElementsCommand(nextSelectedIds));
+      if (nextSelectedIds.length > 0) {
+        focusMobileProperties("element");
+      }
       return;
     }
 
     executeCommand(selectElementsCommand([elementId]));
+    focusMobileProperties("element");
+  }
+
+  function handleFocusElement() {
+    focusMobileProperties("element");
   }
 
   function handleMarqueeSelect(
@@ -2378,6 +2990,9 @@ export default function PresentationEditor() {
       ? [next.activeId, ...next.selectedIds.filter((id) => id !== next.activeId)]
       : next.selectedIds;
     executeCommand(selectElementsCommand(ordered));
+    if (ordered.length > 0) {
+      focusMobileProperties("element");
+    }
   }
 
   function handlePatchSelectedElement(patch: Parameters<typeof patchSelectedElementCommand>[0]) {
@@ -2451,6 +3066,10 @@ export default function PresentationEditor() {
     }
 
     executeCommand(arrangeSelectionCommand(direction));
+  }
+
+  function handleSetSlideBackground(background: PresentationSlideBackground | undefined) {
+    executeCommand(setSlideBackgroundCommand(background));
   }
 
   function handleUndo() {
@@ -2563,6 +3182,22 @@ export default function PresentationEditor() {
     });
   }
 
+  function normalizeTransitionChoice(value: string): PresentationTransition {
+    const matched = PRESENTATION_TRANSITION_OPTIONS.find((option) => option.value === value);
+    return matched?.value ?? "fade";
+  }
+
+  function applyTransitionToSelectedDraft(transition: PresentationTransition) {
+    if (!selectedSlide) return;
+    syncCommandState({
+      ...commandState,
+      content: {
+        ...draftContent,
+        transition,
+      },
+    });
+  }
+
   function handleApplySelectedSlideDuration() {
     const durationMs = parseTimingDurationMsFromInput();
     if (!durationMs) {
@@ -2606,6 +3241,222 @@ export default function PresentationEditor() {
       toast.error(`Failed to apply duration to all slides: ${String((error as Error)?.message || error)}`);
     } finally {
       setTimingApplyAllPending(false);
+    }
+  }
+
+  async function handleApplyTransitionAllSlides(transition: PresentationTransition) {
+    if (!deck || !slides.length || transitionApplyAllPending) {
+      return;
+    }
+
+    setTransitionApplyAllPending(true);
+    try {
+      for (const slide of slides) {
+        const persistedContent = ensureSlideContent(slide.slideContent);
+        if ((persistedContent.transition ?? "fade") === transition) {
+          continue;
+        }
+        const baseContent = slide.id === selectedSlide?.id
+          ? draftContent
+          : persistedContent;
+        await updateSlideMutation.mutateAsync({
+          deckId: deck.id,
+          slideId: slide.id,
+          expectedVersion: slide.version,
+          saveMode: "manual",
+          title: slide.title,
+          slideContent: {
+            ...baseContent,
+            transition,
+          },
+        });
+      }
+      toast.success(`Applied ${transition} transition to all slides.`);
+    } catch (error) {
+      toast.error(`Failed to apply transition to all slides: ${String((error as Error)?.message || error)}`);
+    } finally {
+      setTransitionApplyAllPending(false);
+      await refreshDeck();
+    }
+  }
+
+  async function handleFitProjectAudioDurationAllSlides() {
+    if (!deck || !slides.length || timingFitProjectAudioPending) {
+      return;
+    }
+    if (!deckProjectAudioTrack) {
+      toast.error("No project audio configured.");
+      return;
+    }
+
+    const slideNumberById = new Map(slides.map((slide) => [slide.id, slide.orderIndex + 1]));
+    const formatSlideNumbers = (slideIds: number[] | undefined): string => {
+      if (!slideIds || !slideIds.length) {
+        return "";
+      }
+      const numbers = slideIds
+        .map((slideId) => slideNumberById.get(slideId))
+        .filter((value): value is number => value != null)
+        .sort((a, b) => a - b);
+      if (!numbers.length) {
+        return "";
+      }
+      return numbers.join(", ");
+    };
+    const buildFitFailureMessage = (failure: FitSlidesToProjectAudioDurationFailure): string => {
+      switch (failure.code) {
+        case "video_duration_unknown": {
+          const slideNumbers = formatSlideNumbers(failure.slideIds);
+          if (!slideNumbers) {
+            return "Unable to read video duration for one or more slides.";
+          }
+          return `Unable to read video duration for slide(s): ${slideNumbers}.`;
+        }
+        case "video_duration_exceeds_max": {
+          const slideNumbers = formatSlideNumbers(failure.slideIds);
+          if (!slideNumbers) {
+            return "At least one video slide is longer than supported max duration.";
+          }
+          return `Video on slide(s) ${slideNumbers} exceeds the ${formatDurationMsLabel(MAX_SLIDE_DURATION_MS)} per-slide limit.`;
+        }
+        case "target_shorter_than_locked_slides":
+          return `Project audio (${formatDurationMsLabel(failure.targetDurationMs ?? 0)}) is shorter than locked video slides (${formatDurationMsLabel(failure.lockedDurationMs ?? 0)}).`;
+        case "target_outside_adjustable_range": {
+          const minTotal = (failure.lockedDurationMs ?? 0) + (failure.minAdjustableDurationMs ?? 0);
+          const maxTotal = (failure.lockedDurationMs ?? 0) + (failure.maxAdjustableDurationMs ?? 0);
+          return `Project audio length is outside adjustable range (${formatDurationMsLabel(minTotal)} - ${formatDurationMsLabel(maxTotal)}).`;
+        }
+        case "no_adjustable_slides":
+          return "All slides are video-locked and cannot be adjusted to match this project audio length.";
+        case "no_slides":
+          return "No slides available to adjust.";
+        case "invalid_target_duration":
+        default:
+          return "Unable to determine project audio duration from current trim settings.";
+      }
+    };
+
+    setTimingFitProjectAudioPending(true);
+    try {
+      const metadataDurationSec = extractMetadataDurationSeconds(deckProjectAudioItemQuery.data?.metadata);
+      const projectAudioSourceUrl = normalizeMediaSourceUrl((deckProjectAudioItemQuery.data as any)?.sourceUrl);
+      let sourceDurationMs = metadataDurationSec != null
+        ? Math.round(metadataDurationSec * 1000)
+        : null;
+      if (sourceDurationMs == null && projectAudioSourceUrl) {
+        const probedDurationSec = await probeMediaDurationSeconds(projectAudioSourceUrl, "audio");
+        if (probedDurationSec != null) {
+          sourceDurationMs = Math.round(probedDurationSec * 1000);
+        }
+      }
+
+      const targetAudioDurationMs = resolveProjectAudioPlayableDurationMs(
+        deckProjectAudioTrack,
+        sourceDurationMs,
+      );
+      if (targetAudioDurationMs == null || targetAudioDurationMs < MIN_SLIDE_DURATION_MS) {
+        toast.error("Unable to determine project audio duration from current trim settings.");
+        return;
+      }
+
+      const videoDurationProbeCache = new Map<string, Promise<number | null>>();
+      const slideTimingInputs = await Promise.all(slides.map(async (slide) => {
+        const cachedContent = slideDraftCacheRef.current.get(slide.id);
+        const content = slide.id === selectedSlide?.id
+          ? draftContent
+          : cachedContent ?? ensureSlideContent(slide.slideContent);
+        const currentDurationMs = resolveSlideDurationMs(content);
+        const videoSourceUrls = [...new Set(content.elements
+          .filter((element) => element.type === "video")
+          .map((element) => normalizeMediaSourceUrl(element.src))
+          .filter((sourceUrl): sourceUrl is string => Boolean(sourceUrl.trim())))];
+        if (!videoSourceUrls.length) {
+          return {
+            slideId: slide.id,
+            currentDurationMs,
+            hasVideo: false,
+            videoDurationMs: null,
+          };
+        }
+
+        const videoDurationsSec = await Promise.all(videoSourceUrls.map((sourceUrl) => {
+          const cached = videoDurationProbeCache.get(sourceUrl);
+          if (cached) {
+            return cached;
+          }
+          const pending = probeMediaDurationSeconds(sourceUrl, "video");
+          videoDurationProbeCache.set(sourceUrl, pending);
+          return pending;
+        }));
+        const knownDurationsSec = videoDurationsSec.filter((value): value is number => (
+          value != null && Number.isFinite(value) && value > 0
+        ));
+        const videoDurationMs = knownDurationsSec.length === videoDurationsSec.length
+          ? Math.round(Math.max(...knownDurationsSec) * 1000)
+          : null;
+        return {
+          slideId: slide.id,
+          currentDurationMs,
+          hasVideo: true,
+          videoDurationMs,
+        };
+      }));
+
+      const fitResult = fitSlidesToProjectAudioDuration({
+        targetAudioDurationMs,
+        slides: slideTimingInputs,
+        minSlideDurationMs: MIN_SLIDE_DURATION_MS,
+        maxSlideDurationMs: MAX_SLIDE_DURATION_MS,
+      });
+      if (!fitResult.ok) {
+        toast.error(buildFitFailureMessage(fitResult));
+        return;
+      }
+
+      let updatedSlideCount = 0;
+      for (const slide of slides) {
+        const nextDurationMs = fitResult.durationBySlideId.get(slide.id);
+        if (nextDurationMs == null) {
+          continue;
+        }
+        const cachedContent = slideDraftCacheRef.current.get(slide.id);
+        const baseContent = slide.id === selectedSlide?.id
+          ? draftContent
+          : cachedContent ?? ensureSlideContent(slide.slideContent);
+        if (resolveSlideDurationMs(baseContent) === nextDurationMs) {
+          continue;
+        }
+        await updateSlideMutation.mutateAsync({
+          deckId: deck.id,
+          slideId: slide.id,
+          expectedVersion: slide.version,
+          saveMode: "manual",
+          title: slide.title,
+          slideContent: {
+            ...baseContent,
+            durationMs: nextDurationMs,
+          },
+        });
+        updatedSlideCount += 1;
+      }
+
+      await refreshDeck();
+
+      const targetLabel = formatDurationMsLabel(fitResult.targetDurationMs);
+      if (updatedSlideCount > 0) {
+        toast.success(`Adjusted ${updatedSlideCount} slide(s) to match project audio (${targetLabel}).`);
+      } else {
+        toast.success(`Slide timings already match project audio (${targetLabel}).`);
+      }
+      if (fitResult.lockedVideoSlideIds.length > 0) {
+        toast.info(
+          `Locked ${fitResult.lockedVideoSlideIds.length} video slide(s) to avoid cutting video playback.`,
+        );
+      }
+    } catch (error) {
+      toast.error(`Failed to fit slides to project audio: ${String((error as Error)?.message || error)}`);
+    } finally {
+      setTimingFitProjectAudioPending(false);
     }
   }
 
@@ -3168,6 +4019,12 @@ export default function PresentationEditor() {
   }
 
   function handleStopSlideshow() {
+    if (playbackTransitionFrameRef.current != null) {
+      window.cancelAnimationFrame(playbackTransitionFrameRef.current);
+      playbackTransitionFrameRef.current = null;
+    }
+    playbackTransitionSlideRef.current = null;
+    setPlaybackSlideTransitionEntering(false);
     setPlaybackState("idle");
     setPlaybackPaused(false);
     setPlaybackSlideIndex(0);
@@ -3227,6 +4084,12 @@ export default function PresentationEditor() {
       0,
       slides.findIndex((slide) => slide.id === selectedSlideId),
     );
+    if (playbackTransitionFrameRef.current != null) {
+      window.cancelAnimationFrame(playbackTransitionFrameRef.current);
+      playbackTransitionFrameRef.current = null;
+    }
+    playbackTransitionSlideRef.current = null;
+    setPlaybackSlideTransitionEntering(false);
     setPlaybackSlideIndex(startIndex);
     setPlaybackPaused(false);
     previewAudioDeckSignatureRef.current = null;
@@ -3440,6 +4303,44 @@ export default function PresentationEditor() {
 
   useEffect(() => {
     if (playbackState !== "playing") {
+      if (playbackTransitionFrameRef.current != null) {
+        window.cancelAnimationFrame(playbackTransitionFrameRef.current);
+        playbackTransitionFrameRef.current = null;
+      }
+      playbackTransitionSlideRef.current = null;
+      setPlaybackSlideTransitionEntering(false);
+      return;
+    }
+
+    const activeSlideId = playbackSlides[playbackSlideIndex]?.slideId ?? null;
+    if (activeSlideId == null) {
+      return;
+    }
+
+    if (playbackTransitionSlideRef.current == null) {
+      playbackTransitionSlideRef.current = activeSlideId;
+      setPlaybackSlideTransitionEntering(false);
+      return;
+    }
+
+    if (playbackTransitionSlideRef.current === activeSlideId) {
+      return;
+    }
+
+    playbackTransitionSlideRef.current = activeSlideId;
+    if (playbackTransitionFrameRef.current != null) {
+      window.cancelAnimationFrame(playbackTransitionFrameRef.current);
+      playbackTransitionFrameRef.current = null;
+    }
+    setPlaybackSlideTransitionEntering(true);
+    playbackTransitionFrameRef.current = window.requestAnimationFrame(() => {
+      setPlaybackSlideTransitionEntering(false);
+      playbackTransitionFrameRef.current = null;
+    });
+  }, [playbackSlideIndex, playbackSlides, playbackState]);
+
+  useEffect(() => {
+    if (playbackState !== "playing") {
       return;
     }
 
@@ -3522,6 +4423,10 @@ export default function PresentationEditor() {
 
   useEffect(() => {
     return () => {
+      if (playbackTransitionFrameRef.current != null) {
+        window.cancelAnimationFrame(playbackTransitionFrameRef.current);
+        playbackTransitionFrameRef.current = null;
+      }
       previewAudioPlayerRef.current?.destroy();
       previewAudioPlayerRef.current = null;
       previewAudioSlideIndexRef.current = null;
@@ -3733,14 +4638,36 @@ export default function PresentationEditor() {
     || (triggerExportMutation.isPending ? "queued" : "idle");
   const slidesPanel = (
     <div className="flex h-full min-h-0 flex-col">
+      <button
+        type="button"
+        className="mb-2 rounded border border-slate-700 bg-slate-900/70 px-2 py-1 text-left text-[11px] text-slate-300 hover:border-sky-500 hover:text-sky-200"
+        onClick={() => setIsReorderDialogOpen(true)}
+        aria-label="Open Reorder Slides Overview"
+      >
+        Browse all slides and drag cards to reorder quickly.
+      </button>
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
         {slides.map((slide) => {
           const cachedContent = slideDraftCacheRef.current.get(slide.id);
-          const preview = summarizeSlidePreview(
-            selectedSlideId === slide.id
-              ? draftContent
-              : cachedContent ?? ensureSlideContent(slide.slideContent),
-          );
+          const slideContentForPreview = selectedSlideId === slide.id
+            ? draftContent
+            : cachedContent ?? ensureSlideContent(slide.slideContent);
+          const isDraggingSlide = draggingSlideId === slide.id;
+          const isDropTargetSlide =
+            draggingSlideId !== null
+            && slideDropTargetId === slide.id
+            && draggingSlideId !== slide.id;
+          const preview = summarizeSlidePreview(slideContentForPreview);
+          const slideBg = slideContentForPreview.background;
+          const thumbnailBgStyle: React.CSSProperties = slideBg?.type === "color"
+            ? { backgroundColor: slideBg.value }
+            : slideBg?.type === "image"
+              ? {
+                  backgroundImage: `url(${slideBg.url})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }
+              : {};
           return (
             <button
               key={slide.id}
@@ -3748,12 +4675,20 @@ export default function PresentationEditor() {
               className={`w-full rounded-lg border px-2 py-2 text-left text-sm transition ${selectedSlideId === slide.id
                 ? "border-sky-400 bg-sky-500/10 text-sky-800"
                 : "border-slate-300 bg-white hover:border-slate-400"
-                }`}
+                } ${isDraggingSlide ? "cursor-grabbing opacity-70 ring-2 ring-sky-300" : "cursor-grab"} ${isDropTargetSlide ? "border-sky-500 bg-sky-50" : ""}`}
               onClick={() => switchToSlide(slide.id)}
+              draggable={!deckMutationBusy}
+              onDragStart={(event) => handleSlideDragStart(slide.id, event)}
+              onDragOver={(event) => handleSlideDragOver(slide.id, event)}
+              onDrop={(event) => void handleSlideDrop(slide.id, event)}
+              onDragEnd={handleSlideDragEnd}
               aria-label={`Select slide ${slide.orderIndex + 1}`}
               data-testid={`slide-preview-${slide.orderIndex + 1}`}
             >
-              <div className="relative mb-2 aspect-[4/3] overflow-hidden rounded-md border border-slate-300 bg-slate-100">
+              <div
+                className="relative mb-2 aspect-[4/3] overflow-hidden rounded-md border border-slate-300 bg-slate-100"
+                style={thumbnailBgStyle}
+              >
                 {preview.mediaSrc && preview.mediaKind === "video" ? (
                   preview.mediaPosterSrc ? (
                     <img
@@ -3836,6 +4771,16 @@ export default function PresentationEditor() {
         <Button size="sm" onClick={() => void handleMoveSlide("down")} aria-label="Move Slide Down" variant="outline" disabled={deckMutationBusy} className="gap-1">
           <ChevronDown className="h-3.5 w-3.5" />
           Move Down
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="col-span-2 gap-1"
+          onClick={() => setIsReorderDialogOpen(true)}
+          aria-label="Open Reorder Slides Overview"
+          disabled={!slides.length || deckMutationBusy}
+        >
+          Reorder All
         </Button>
         <Button
           size="sm"
@@ -4120,10 +5065,15 @@ export default function PresentationEditor() {
   const canvasToolbar = isMobileViewport ? (
     <MobileQuickActions
       mode={mobileGestures.state.mode}
+      viewportScale={mobileGestures.state.viewport.scale}
       onToggleMode={handleToggleMobileMode}
+      onFitViewport={handleFitMobileViewport}
+      onCenterViewport={handleCenterMobileViewport}
+      onResetViewport={handleResetMobileViewport}
       onNudgeSelection={handleMoveSelection}
       onDeleteSelection={handleDeleteSelection}
-      disabled={!selectedElementId}
+      hasSelection={Boolean(selectedElementId)}
+      canCenterViewport={mobileGestures.state.viewport.scale > 1}
     />
   ) : (
     <div className="space-y-1 rounded-lg border border-slate-800 bg-slate-950 px-2 py-1.5 text-slate-100">
@@ -4140,23 +5090,25 @@ export default function PresentationEditor() {
         </Button>
         <Button
           onClick={() => handleAddElement("image")}
-          aria-label="Add Image Element"
+          aria-label="Upload Image Element"
           variant="secondary"
           size="sm"
           className="gap-1 text-xs"
+          disabled={localUploadKind !== null}
         >
-          <ImageIcon className="h-3.5 w-3.5" />
-          Add Image
+          {localUploadKind === "image" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImageIcon className="h-3.5 w-3.5" />}
+          Upload Image
         </Button>
         <Button
           onClick={() => handleAddElement("video")}
-          aria-label="Add Video Element"
+          aria-label="Upload Video Element"
           variant="secondary"
           size="sm"
           className="gap-1 text-xs"
+          disabled={localUploadKind !== null}
         >
-          <Clapperboard className="h-3.5 w-3.5" />
-          Add Video
+          {localUploadKind === "video" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Clapperboard className="h-3.5 w-3.5" />}
+          Upload Video
         </Button>
         <Button
           onClick={() => handleAddElement("rect")}
@@ -4345,42 +5297,51 @@ export default function PresentationEditor() {
     ? Math.max(0.25, selectedSlideVideoDurationSec)
     : null;
   const autoDurationFromMediaSec = autoDurationFromSlideAudioSec ?? autoDurationFromVideoSec;
-  const propertyEditorPanel = (
+  const selectedSlideTransition: PresentationTransition = normalizeTransitionChoice(
+    String(draftContent.transition ?? "fade"),
+  );
+  const canvasPropertiesPanel = (
+    <label className={`rounded-md border border-slate-300 bg-white px-2 py-2 text-xs text-slate-700 ${isMobileViewport ? "block space-y-2" : "flex items-center justify-between gap-2"}`}>
+      <span className="font-medium">Canvas Size</span>
+      <div className={`flex items-center gap-1.5 ${isMobileViewport ? "pt-1" : ""}`}>
+        <select
+          aria-label="Canvas Aspect Ratio (Properties)"
+          className="rounded border border-slate-300 bg-white px-2 py-1 text-xs outline-none"
+          value={activeCanvasSize.preset}
+          onChange={(event) => handleChangeCanvasPreset(event.target.value)}
+        >
+          {PRESENTATION_CANVAS_PRESETS.map((preset) => (
+            <option key={preset.id} value={preset.id}>
+              {preset.label}
+            </option>
+          ))}
+        </select>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-7 px-2 text-[11px]"
+          onClick={() => void handleApplyCanvasPresetAllSlides(activeCanvasSize.preset)}
+          disabled={!slides.length || canvasApplyAllPending}
+          aria-label="Apply Canvas Size to All Slides"
+        >
+          {canvasApplyAllPending ? "Applying..." : "Apply All"}
+        </Button>
+      </div>
+    </label>
+  );
+  const slidePropertiesPanel = (
     <div className="space-y-3">
-      {!isMobileViewport ? (
-        <label className="flex items-center justify-between gap-2 rounded-md border border-slate-300 bg-white px-2 py-2 text-xs text-slate-700">
-          <span className="font-medium">Canvas Size</span>
-          <div className="flex items-center gap-1.5">
-            <select
-              aria-label="Canvas Aspect Ratio (Properties)"
-              className="rounded border border-slate-300 bg-white px-2 py-1 text-xs outline-none"
-              value={activeCanvasSize.preset}
-              onChange={(event) => handleChangeCanvasPreset(event.target.value)}
-            >
-              {PRESENTATION_CANVAS_PRESETS.map((preset) => (
-                <option key={preset.id} value={preset.id}>
-                  {preset.label}
-                </option>
-              ))}
-            </select>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-7 px-2 text-[11px]"
-              onClick={() => void handleApplyCanvasPresetAllSlides(activeCanvasSize.preset)}
-              disabled={!slides.length || canvasApplyAllPending}
-              aria-label="Apply Canvas Size to All Slides"
-            >
-              {canvasApplyAllPending ? "Applying..." : "Apply All"}
-            </Button>
-          </div>
-        </label>
+      {isMobileViewport ? (
+        <div className="rounded-md border border-slate-300 bg-slate-50 px-3 py-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Slide Controls</p>
+          <p className="mt-1 text-[11px] text-slate-500">Timing, transitions, and background for the current slide.</p>
+        </div>
       ) : null}
       <div className="rounded-md border border-slate-300 bg-white p-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Slide Timing</p>
         <p className="mt-1 text-[11px] text-slate-500">
-          Set seconds per slide, apply to current slide/all slides, or fit to media end.
+          Set seconds per slide, apply to current slide/all slides, or auto-fit to media/project audio.
         </p>
         <div className="mt-2 flex items-center gap-2">
           <Input
@@ -4412,6 +5373,15 @@ export default function PresentationEditor() {
             disabled={!slides.length || timingApplyAllPending}
           >
             {timingApplyAllPending ? "Applying..." : "Apply All Slides"}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            onClick={() => void handleFitProjectAudioDurationAllSlides()}
+            disabled={!slides.length || !deckProjectAudioTrack || timingFitProjectAudioPending}
+          >
+            {timingFitProjectAudioPending ? "Fitting..." : "Auto: Fit Project Audio"}
           </Button>
           <Button
             size="sm"
@@ -4453,7 +5423,108 @@ export default function PresentationEditor() {
             Auto: Fit Video
           </Button>
         </div>
+        <div className="mt-3 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="slide-transition-picker" className="text-xs font-medium text-slate-700">
+              Slide Transition
+            </Label>
+            <span className="text-[11px] text-slate-500">{selectedSlideTransition}</span>
+          </div>
+          <select
+            id="slide-transition-picker"
+            aria-label="Slide Transition"
+            className="h-8 w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs outline-none"
+            value={selectedSlideTransition}
+            onChange={(event) => applyTransitionToSelectedDraft(normalizeTransitionChoice(event.target.value))}
+            disabled={!selectedSlide}
+          >
+            {PRESENTATION_TRANSITION_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            onClick={() => void handleApplyTransitionAllSlides(selectedSlideTransition)}
+            disabled={!slides.length || transitionApplyAllPending}
+          >
+            {transitionApplyAllPending ? "Applying..." : "Apply Transition All Slides"}
+          </Button>
+        </div>
       </div>
+      {isMobileViewport ? (
+        <PropertyPanel
+          selectedElement={null}
+          selectedElementCount={0}
+          selectionHasMixedTypes={false}
+          onPatchSelected={handlePatchSelectedElement}
+          onPatchElementById={handlePatchElementById}
+          slideBackground={draftContent.background}
+          onSetSlideBackground={handleSetSlideBackground}
+        />
+      ) : null}
+    </div>
+  );
+  const elementPropertiesPanel = selectedElement ? (
+    <PropertyPanel
+      selectedElement={selectedElement}
+      selectedElementCount={selectedElementIds.length}
+      selectionHasMixedTypes={selectionHasMixedTypes}
+      onPatchSelected={handlePatchSelectedElement}
+      onPatchElementById={handlePatchElementById}
+      slideBackground={draftContent.background}
+      onSetSlideBackground={handleSetSlideBackground}
+    />
+  ) : (
+    <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-4 text-sm text-slate-500">
+      Select an element to edit its content, style, and transform settings.
+    </div>
+  );
+  const mobilePropertiesSectionSwitcher = isMobileViewport ? (
+    <div
+      className="grid grid-cols-3 gap-2 rounded-xl border border-slate-200 bg-slate-100/90 p-1"
+      role="tablist"
+      aria-label="Mobile Property Sections"
+    >
+      {[
+        { id: "element", label: "Element", disabled: !selectedElement },
+        { id: "slide", label: "Slide", disabled: false },
+        { id: "canvas", label: "Canvas", disabled: false },
+      ].map((section) => {
+        const isActive = mobilePropertiesSection === section.id;
+        return (
+          <Button
+            key={section.id}
+            type="button"
+            size="sm"
+            variant={isActive ? "default" : "ghost"}
+            className="h-8 text-xs"
+            role="tab"
+            aria-selected={isActive}
+            aria-label={`Mobile Properties Section ${section.label}`}
+            disabled={section.disabled}
+            onClick={() => setMobilePropertiesSection(section.id as MobilePropertiesSection)}
+          >
+            {section.label}
+          </Button>
+        );
+      })}
+    </div>
+  ) : null;
+  const propertyEditorPanel = (
+    <div className="space-y-3">
+      {mobilePropertiesSectionSwitcher}
+      {isMobileViewport
+        ? mobilePropertiesSection === "canvas"
+          ? canvasPropertiesPanel
+          : mobilePropertiesSection === "slide"
+            ? slidePropertiesPanel
+            : elementPropertiesPanel
+        : canvasPropertiesPanel}
+      {!isMobileViewport ? slidePropertiesPanel : null}
       {!isMobileViewport ? (
         <div
           className="rounded-md border border-slate-300 bg-slate-200/70 p-2"
@@ -4471,13 +5542,7 @@ export default function PresentationEditor() {
           />
         </div>
       ) : null}
-      <PropertyPanel
-        selectedElement={selectedElement}
-        selectedElementCount={selectedElementIds.length}
-        selectionHasMixedTypes={selectionHasMixedTypes}
-        onPatchSelected={handlePatchSelectedElement}
-        onPatchElementById={handlePatchElementById}
-      />
+      {!isMobileViewport ? elementPropertiesPanel : null}
     </div>
   );
   const hasProjectAudio = Boolean((deck as any)?.projectAudioTrack);
@@ -4634,11 +5699,17 @@ export default function PresentationEditor() {
       activeTab={mobileSheetTab}
       onTabChange={setMobileSheetTab}
       body={mobileBottomSheetBody}
+      defaultExpanded={isTabletViewport}
+      expanded={isMobileSheetExpanded}
+      onExpandedChange={setIsMobileSheetExpanded}
     />
   ) : desktopInspectorPanel;
   const activePlaybackSlide = playbackState === "playing"
     ? (playbackSlides[playbackSlideIndex] || null)
     : null;
+  const activePlaybackTransition: PresentationTransition = normalizeTransitionChoice(
+    String(activePlaybackSlide?.content.transition ?? "fade"),
+  );
 
   const playbackCanvasSize = normalizeCanvasSize(activePlaybackSlide?.content.canvas);
   const playbackViewport = (() => {
@@ -4672,6 +5743,20 @@ export default function PresentationEditor() {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-slate-950">
+      <input
+        ref={imageUploadInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(event) => handleLocalUploadInputChange("image", event)}
+      />
+      <input
+        ref={videoUploadInputRef}
+        type="file"
+        accept="video/*"
+        className="hidden"
+        onChange={(event) => handleLocalUploadInputChange("video", event)}
+      />
       <header className="flex shrink-0 items-center gap-2 border-b border-slate-800 bg-slate-950 px-3 py-1.5 text-slate-100">
         {isMobileViewport ? (
           <Button
@@ -4689,18 +5774,19 @@ export default function PresentationEditor() {
           size="sm"
           onClick={handleBackToPresentationLibrary}
           className="shrink-0 gap-1 px-2 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+          aria-label="Back"
         >
           <ChevronLeft className="h-4 w-4" />
-          Back
+          <span className="hidden sm:inline">Back</span>
         </Button>
         <div className="h-4 w-px shrink-0 bg-slate-700" />
         {isProjectTitleEditing ? (
-          <div className="flex items-center gap-1.5">
+          <div className="flex min-w-0 items-center gap-1.5">
             <Input
               value={projectTitleDraft}
               onChange={(event) => setProjectTitleDraft(event.target.value)}
               aria-label="Project Name"
-              className="h-7 w-52 border-slate-700 bg-slate-900 text-sm text-slate-100"
+              className="h-7 w-40 border-slate-700 bg-slate-900 text-sm text-slate-100 sm:w-52"
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
                   event.preventDefault();
@@ -4738,8 +5824,8 @@ export default function PresentationEditor() {
             </Button>
           </div>
         ) : (
-          <div className="flex items-center gap-1">
-            <h1 className="text-sm font-semibold">{projectTitle}</h1>
+          <div className="flex min-w-0 items-center gap-1">
+            <h1 className="truncate text-sm font-semibold">{projectTitle}</h1>
             <Button
               variant="ghost"
               size="sm"
@@ -4760,122 +5846,253 @@ export default function PresentationEditor() {
             <Music className="h-3 w-3" />
           </span>
         ) : null}
-        <div className="ml-auto flex items-center gap-1">
+        <div className="ml-auto flex shrink-0 items-center gap-1">
           <Button
             onClick={() => void handleSaveSlide()}
             aria-label="Save Slide"
             size="sm"
-            className="gap-1 bg-sky-600 text-white hover:bg-sky-500"
+            className={`${isMobileViewport ? "h-8 w-8 px-0" : "gap-1"} bg-sky-600 text-white hover:bg-sky-500`}
             disabled={!deck || !selectedSlide || saveState === "pending"}
           >
             <Save className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Save</span>
           </Button>
           <Button
-            onClick={() => void handleSaveToTemplate()}
-            aria-label="Save to Template"
-            variant="outline"
-            size="sm"
-            className="gap-1 border-slate-600 bg-slate-900 text-slate-100 hover:bg-slate-800"
-            disabled={!deck || saveAsTemplateMutation.isPending || isProjectTitleSaving}
-          >
-            <BookMarked className="h-3.5 w-3.5" />
-            <span className="hidden lg:inline">Template</span>
-          </Button>
-          <Button
             onClick={handlePlaySlideshow}
             aria-label="Play Slideshow"
             variant="secondary"
             size="sm"
-            className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
+            className={`${isMobileViewport ? "h-8 w-8 px-0" : "gap-1"} bg-slate-800 text-slate-100 hover:bg-slate-700`}
           >
             <Play className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Play</span>
           </Button>
-          <Button
-            onClick={() => setIsImportDialogOpen(true)}
-            aria-label="Import"
-            title="Import a file to create a new presentation"
-            variant="secondary"
-            size="sm"
-            className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
-          >
-            <Upload className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Import</span>
-          </Button>
-          <Button
-            onClick={() => setIsAutoLayoutDialogOpen(true)}
-            aria-label="Auto Layout Slide"
-            title="Re-layout current slide using existing image"
-            variant="secondary"
-            size="sm"
-            className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
-            disabled={!deck || !selectedSlide || autoLayoutBusy}
-          >
-            {autoLayoutBusy ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <WandSparkles className="h-3.5 w-3.5" />
-            )}
-            <span className="hidden sm:inline">
-              {autoLayoutProgress
-                ? `Auto Layout ${autoLayoutProgress.done}/${autoLayoutProgress.total}`
-                : "Auto Layout"}
-            </span>
-          </Button>
-          {isAIGenerationEnabled && (
-            <Button
-              onClick={() => setIsAIDraftModalOpen(true)}
-              aria-label="Draft with AI"
-              variant="secondary"
-              size="sm"
-              className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
-              disabled={!deck}
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Draft with AI</span>
-            </Button>
+          {isMobileViewport ? (
+            <div className="relative" ref={mobileHeaderMenuRef}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+                aria-label="More Actions"
+                aria-haspopup="menu"
+                aria-expanded={isMobileHeaderMenuOpen}
+                onClick={() => setIsMobileHeaderMenuOpen((prev) => !prev)}
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+              {isMobileHeaderMenuOpen ? (
+                <div
+                  className="absolute right-0 top-full z-50 mt-2 w-56 rounded-lg border border-slate-700 bg-slate-900 p-1.5 shadow-xl"
+                  role="menu"
+                  aria-label="More Actions Menu"
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm text-slate-100 transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => {
+                      setIsMobileHeaderMenuOpen(false);
+                      void handleSaveToTemplate();
+                    }}
+                    disabled={!deck || saveAsTemplateMutation.isPending || isProjectTitleSaving}
+                  >
+                    <BookMarked className="mr-2 h-4 w-4" />
+                    <span>Save to Template</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm text-slate-100 transition-colors hover:bg-slate-800"
+                    onClick={() => {
+                      setIsMobileHeaderMenuOpen(false);
+                      setIsImportDialogOpen(true);
+                    }}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    <span>Import</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm text-slate-100 transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => {
+                      setIsMobileHeaderMenuOpen(false);
+                      setIsAutoLayoutDialogOpen(true);
+                    }}
+                    disabled={!deck || !selectedSlide || autoLayoutBusy}
+                  >
+                    {autoLayoutBusy ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <WandSparkles className="mr-2 h-4 w-4" />
+                    )}
+                    <span>
+                      {autoLayoutProgress
+                        ? `Auto Layout ${autoLayoutProgress.done}/${autoLayoutProgress.total}`
+                        : "Auto Layout"}
+                    </span>
+                  </button>
+                  {isAIGenerationEnabled ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm text-slate-100 transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                      onClick={() => {
+                        setIsMobileHeaderMenuOpen(false);
+                        setIsAIDraftModalOpen(true);
+                      }}
+                      disabled={!deck}
+                    >
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      <span>Draft with AI</span>
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm text-slate-100 transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => {
+                      setIsMobileHeaderMenuOpen(false);
+                      void handleResolvePendingMedia();
+                    }}
+                    disabled={!deck || pendingMediaJobCount <= 0 || resolvePendingMediaMutation.isPending}
+                  >
+                    {resolvePendingMediaMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <RotateCw className="mr-2 h-4 w-4" />
+                    )}
+                    <span>Fetch Pending ({pendingMediaJobCount})</span>
+                  </button>
+                  <div className="my-1 h-px bg-slate-700" aria-hidden="true" />
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm text-slate-100 transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => {
+                      setIsMobileHeaderMenuOpen(false);
+                      setIsExportDialogOpen(true);
+                    }}
+                    disabled={!isExportsEnabled || !deck}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    <span>Export</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="flex w-full items-center rounded-md px-3 py-2 text-left text-sm text-slate-100 transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => {
+                      setIsMobileHeaderMenuOpen(false);
+                      handleOpenPlayMode();
+                    }}
+                    disabled={!deck}
+                  >
+                    <Play className="mr-2 h-4 w-4" />
+                    <span>Play Mode</span>
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <>
+              <Button
+                onClick={() => void handleSaveToTemplate()}
+                aria-label="Save to Template"
+                variant="outline"
+                size="sm"
+                className="gap-1 border-slate-600 bg-slate-900 text-slate-100 hover:bg-slate-800"
+                disabled={!deck || saveAsTemplateMutation.isPending || isProjectTitleSaving}
+              >
+                <BookMarked className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline">Template</span>
+              </Button>
+              <Button
+                onClick={() => setIsImportDialogOpen(true)}
+                aria-label="Import"
+                title="Import a file to create a new presentation"
+                variant="secondary"
+                size="sm"
+                className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Import</span>
+              </Button>
+              <Button
+                onClick={() => setIsAutoLayoutDialogOpen(true)}
+                aria-label="Auto Layout Slide"
+                title="Re-layout current slide using existing image"
+                variant="secondary"
+                size="sm"
+                className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
+                disabled={!deck || !selectedSlide || autoLayoutBusy}
+              >
+                {autoLayoutBusy ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <WandSparkles className="h-3.5 w-3.5" />
+                )}
+                <span className="hidden sm:inline">
+                  {autoLayoutProgress
+                    ? `Auto Layout ${autoLayoutProgress.done}/${autoLayoutProgress.total}`
+                    : "Auto Layout"}
+                </span>
+              </Button>
+              {isAIGenerationEnabled && (
+                <Button
+                  onClick={() => setIsAIDraftModalOpen(true)}
+                  aria-label="Draft with AI"
+                  variant="secondary"
+                  size="sm"
+                  className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
+                  disabled={!deck}
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Draft with AI</span>
+                </Button>
+              )}
+              <Button
+                onClick={() => void handleResolvePendingMedia()}
+                aria-label="Fetch Pending Media"
+                variant="secondary"
+                size="sm"
+                className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
+                disabled={!deck || pendingMediaJobCount <= 0 || resolvePendingMediaMutation.isPending}
+                title={pendingMediaJobCount > 0
+                  ? `Fetch ${pendingMediaJobCount} pending media tasks`
+                  : "No pending media tasks"}
+              >
+                {resolvePendingMediaMutation.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RotateCw className="h-3.5 w-3.5" />
+                )}
+                <span className="hidden sm:inline">Fetch Pending ({pendingMediaJobCount})</span>
+              </Button>
+              <Button
+                onClick={() => setIsExportDialogOpen(true)}
+                aria-label="Export"
+                variant="secondary"
+                size="sm"
+                className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
+                disabled={!isExportsEnabled || !deck}
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Export</span>
+              </Button>
+              <Button
+                onClick={handleOpenPlayMode}
+                aria-label="Play Mode"
+                variant="secondary"
+                size="sm"
+                className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
+                disabled={!deck}
+              >
+                <Play className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline">Play Mode</span>
+              </Button>
+            </>
           )}
-          <Button
-            onClick={() => void handleResolvePendingMedia()}
-            aria-label="Fetch Pending Media"
-            variant="secondary"
-            size="sm"
-            className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
-            disabled={!deck || pendingMediaJobCount <= 0 || resolvePendingMediaMutation.isPending}
-            title={pendingMediaJobCount > 0
-              ? `Fetch ${pendingMediaJobCount} pending media tasks`
-              : "No pending media tasks"}
-          >
-            {resolvePendingMediaMutation.isPending ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <RotateCw className="h-3.5 w-3.5" />
-            )}
-            <span className="hidden sm:inline">Fetch Pending ({pendingMediaJobCount})</span>
-          </Button>
-          <Button
-            onClick={() => setIsExportDialogOpen(true)}
-            aria-label="Export"
-            variant="secondary"
-            size="sm"
-            className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
-            disabled={!isExportsEnabled || !deck}
-          >
-            <Download className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Export</span>
-          </Button>
-          <Button
-            onClick={handleOpenPlayMode}
-            aria-label="Play Mode"
-            variant="secondary"
-            size="sm"
-            className="gap-1 bg-slate-800 text-slate-100 hover:bg-slate-700"
-            disabled={!deck}
-          >
-            <Play className="h-3.5 w-3.5" />
-            <span className="hidden lg:inline">Play Mode</span>
-          </Button>
         </div>
       </header>
 
@@ -4894,9 +6111,12 @@ export default function PresentationEditor() {
               showElementFrames={showElementFrames}
               suppressTransformHandles={isMobilePanMode}
               showTransformDock={false}
+              slideBackground={draftContent.background}
               viewport={activeViewport}
-              onViewportChange={isMobileViewport ? undefined : handleDesktopViewportChange}
+              onViewportChange={isMobileViewport ? handleMobileViewportChange : handleDesktopViewportChange}
+              showViewportControls={!isMobileViewport}
               onSelectElement={handleSelectElement}
+              onFocusElement={handleFocusElement}
               onMoveSelection={handleDragMove}
               onResizeSelection={handleDragResize}
               onRotateSelection={handleDragRotate}
@@ -4982,12 +6202,31 @@ export default function PresentationEditor() {
           </div>
           <div ref={playbackStageHostRef} className="grid flex-1 place-items-center min-h-0">
             <div
-              className="relative overflow-hidden rounded-xl border border-slate-700 bg-white shadow-2xl"
+              data-testid="slideshow-preview-transition-layer"
+              className="relative overflow-hidden rounded-xl border border-slate-700 shadow-2xl transition-[opacity,transform,filter] ease-in-out"
               style={{
+                ...getSlideshowPreviewTransitionStyle(activePlaybackTransition, playbackSlideTransitionEntering),
+                transitionDuration: `${activePlaybackTransition === "cut" ? 0 : SLIDESHOW_PREVIEW_TRANSITION_DURATION_MS}ms`,
                 width: `${playbackViewport.width}px`,
                 height: `${playbackViewport.height}px`,
+                backgroundColor: activePlaybackSlide.content.background?.type === "color"
+                  ? activePlaybackSlide.content.background.value
+                  : activePlaybackSlide.content.background?.type === "image"
+                    ? "transparent"
+                    : "#ffffff",
               }}
             >
+              {activePlaybackSlide.content.background?.type === "image" && (
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    backgroundImage: `url(${activePlaybackSlide.content.background.url})`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                    backgroundRepeat: "no-repeat",
+                  }}
+                />
+              )}
               {activePlaybackSlide.content.elements.map((element, index) =>
                 renderReadonlySlideElement(
                   element,
@@ -5000,6 +6239,77 @@ export default function PresentationEditor() {
           </div>
         </div>
       ) : null}
+      <Dialog
+        open={isReorderDialogOpen}
+        onOpenChange={(open) => {
+          setIsReorderDialogOpen(open);
+          if (!open) {
+            resetSlideDragState();
+          }
+        }}
+      >
+        <DialogContent className="max-w-6xl">
+          <DialogHeader>
+            <DialogTitle>Reorder Slides Overview</DialogTitle>
+            <DialogDescription>
+              Compact view for large decks. Drag any slide tile to set its new position.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
+            {slides.length} slide(s) total
+          </div>
+          <div className="max-h-[72vh] overflow-y-auto pr-1">
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-3 xl:grid-cols-4">
+              {slides.map((slide) => {
+                const isDraggingSlide = draggingSlideId === slide.id;
+                const isDropTargetSlide =
+                  draggingSlideId !== null
+                  && slideDropTargetId === slide.id
+                  && draggingSlideId !== slide.id;
+                return (
+                  <button
+                    key={`reorder-overview-${slide.id}`}
+                    type="button"
+                    draggable={!deckMutationBusy}
+                    onDragStart={(event) => handleSlideDragStart(slide.id, event)}
+                    onDragOver={(event) => handleSlideDragOver(slide.id, event)}
+                    onDrop={(event) => void handleSlideDrop(slide.id, event)}
+                    onDragEnd={handleSlideDragEnd}
+                    onClick={() => switchToSlide(slide.id)}
+                    className={`rounded border px-2 py-1.5 text-left transition ${selectedSlideId === slide.id
+                      ? "border-sky-400 bg-sky-50 text-sky-800"
+                      : "border-slate-300 bg-white text-slate-700 hover:border-slate-400"
+                      } ${isDraggingSlide ? "cursor-grabbing opacity-70 ring-2 ring-sky-300" : "cursor-grab"} ${isDropTargetSlide ? "border-sky-500 bg-sky-100" : ""}`}
+                    aria-label={`Reorder slide ${slide.orderIndex + 1}`}
+                    data-testid={`reorder-slide-tile-${slide.orderIndex + 1}`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700">
+                        #{slide.orderIndex + 1}
+                      </span>
+                      <span className="text-[10px] text-slate-500">
+                        v{slide.version}
+                      </span>
+                    </div>
+                    <p className="mt-1 truncate text-sm font-medium">{slide.title}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsReorderDialogOpen(false);
+                resetSlideDragState();
+              }}
+            >
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={isAutoLayoutDialogOpen}
         onOpenChange={(open) => {

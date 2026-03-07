@@ -12,8 +12,8 @@ export interface PresentationCanvasSize {
 }
 
 export type PresentationCanvasPresetId =
-  | "16:9"
   | "9:16"
+  | "16:9"
   | "4:3"
   | "3:4"
   | "4:5"
@@ -21,8 +21,8 @@ export type PresentationCanvasPresetId =
   | "1:1";
 
 export const PRESENTATION_CANVAS_PRESETS: PresentationCanvasPreset[] = [
-  { id: "16:9", label: "16:9", width: 1280, height: 720 },
   { id: "9:16", label: "9:16", width: 720, height: 1280 },
+  { id: "16:9", label: "16:9", width: 1280, height: 720 },
   { id: "4:3", label: "4:3", width: 1024, height: 768 },
   { id: "3:4", label: "3:4", width: 768, height: 1024 },
   { id: "4:5", label: "4:5", width: 960, height: 1200 },

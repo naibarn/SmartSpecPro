@@ -119,7 +119,7 @@ const sentryReplaySessionSampleRate = parseSampleRate(import.meta.env.VITE_SENTR
 const sentryReplayOnErrorSampleRate = parseSampleRate(import.meta.env.VITE_SENTRY_REPLAY_ON_ERROR_SAMPLE_RATE, 0.1);
 
 if (isSentryEnabled && sentryDsn) {
-  const integrations = [Sentry.browserTracingIntegration()];
+  const integrations: any[] = [Sentry.browserTracingIntegration()];
   if (sentryReplaySessionSampleRate > 0 || sentryReplayOnErrorSampleRate > 0) {
     integrations.push(
       Sentry.replayIntegration({

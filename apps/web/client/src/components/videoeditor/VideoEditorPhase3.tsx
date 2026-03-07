@@ -18,6 +18,8 @@ import KeyboardShortcutsOverlay from './KeyboardShortcutsOverlay';
 import HistoryPanel from './HistoryPanel';
 import TransitionsPanel from './TransitionsPanel';
 import OverlayPanel from './OverlayPanel';
+import { VideoDraftAIPanel, type VideoDraftAIGenerateRequest } from './VideoDraftAIPanel';
+import { AIDraftModal } from '../presentation/AIDraftModal';
 import SilenceDetectionPanel from './SilenceDetectionPanel';
 import SilenceDetectionDialog from './SilenceDetectionDialog';
 import TextClipEditor from './TextClipEditor';
@@ -51,14 +53,253 @@ import {
 } from '../../types/videoEditor';
 import { processExportToTimeline } from './silenceExportUtils';
 import { createMediaJobClient } from '../../services/mediaJobClient';
+import { buildPresentationDraftImportSegments } from './presentationDraftImport';
 import { clamp01, DEFAULT_CLIP_TRANSFORM, removeTransformKeyframe, resolveTransformAtTime, upsertTransformKeyframe } from './transformKeyframes';
 import { addTextClipToProject, canMoveClipToTrack, shouldAllowOverlap } from './textTimelineUtils';
 import { isTextClipRolloutEnabled } from './textRollout';
+import {
+  presentationSlideContentSchema,
+  type PresentationSlideContent,
+} from '@shared/presentation/contracts';
 
 const SIDEBAR_DEFAULT_WIDTH = 320;
 const SIDEBAR_MIN_WIDTH = 260;
 const SIDEBAR_MAX_WIDTH = 680;
 const EDITOR_MAIN_MIN_WIDTH = 520;
+const TASK_POLL_INTERVAL_MS = 2000;
+const TASK_POLL_MAX_ATTEMPTS = 90;
+const IMPORTED_DRAFT_DURATION_EPSILON = 0.05;
+const IMPORTED_DRAFT_REPAIR_DIFF_THRESHOLD = 0.25;
+
+function getErrorMessage(error: unknown, fallback = 'Failed to generate media'): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+  if (error && typeof error === 'object' && 'message' in error) {
+    const raw = (error as { message?: unknown }).message;
+    if (typeof raw === 'string' && raw.trim()) {
+      return raw;
+    }
+  }
+  return fallback;
+}
+
+function extractTaskResultUrl(task: unknown): string | null {
+  if (!task || typeof task !== 'object') {
+    return null;
+  }
+  const data = task as {
+    resultUrl?: unknown;
+    resultData?: unknown;
+    data?: unknown;
+  };
+  if (typeof data.resultUrl === 'string' && data.resultUrl.trim().length > 0) {
+    return data.resultUrl.trim();
+  }
+
+  const fromValue = (value: unknown): string | null => {
+    if (!value) return null;
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('/')) {
+        return trimmed;
+      }
+      return null;
+    }
+    if (Array.isArray(value)) {
+      for (const entry of value) {
+        const found = fromValue(entry);
+        if (found) return found;
+      }
+      return null;
+    }
+    if (typeof value !== 'object') return null;
+    const obj = value as Record<string, unknown>;
+    const keys = ['url', 'image_url', 'imageUrl', 'video_url', 'videoUrl', 'result_url', 'resultUrl'];
+    for (const key of keys) {
+      const candidate = obj[key];
+      if (typeof candidate === 'string' && candidate.trim()) {
+        const trimmed = candidate.trim();
+        if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('/')) {
+          return trimmed;
+        }
+      }
+    }
+    return null;
+  };
+
+  const resultData = data.resultData;
+  if (resultData && typeof resultData === 'object') {
+    const resultDataObj = resultData as Record<string, unknown>;
+    const candidates: unknown[] = [
+      resultDataObj,
+      resultDataObj.data,
+      resultDataObj.response,
+      resultDataObj.taskResult,
+      resultDataObj.resultJson,
+      resultDataObj.output,
+      resultDataObj.kie_ai_response,
+    ];
+    if (typeof resultDataObj.resultJson === 'string') {
+      try {
+        candidates.push(JSON.parse(resultDataObj.resultJson));
+      } catch {
+        // Ignore invalid JSON.
+      }
+    }
+    for (const candidate of candidates) {
+      const found = fromValue(candidate);
+      if (found) return found;
+    }
+  }
+
+  return fromValue(data.data);
+}
+
+function normalizeTaskStatus(task: unknown): string | null {
+  if (!task || typeof task !== 'object') {
+    return null;
+  }
+  const raw = (task as { status?: unknown }).status;
+  if (typeof raw !== 'string') {
+    return null;
+  }
+  const normalized = raw.trim().toLowerCase();
+  return normalized.length > 0 ? normalized : null;
+}
+
+function extractTaskFailureMessage(task: unknown): string | null {
+  if (!task || typeof task !== 'object') {
+    return null;
+  }
+  const direct = (task as { errorMessage?: unknown; error_message?: unknown }).errorMessage;
+  if (typeof direct === 'string' && direct.trim()) {
+    return direct.trim();
+  }
+  const alt = (task as { errorMessage?: unknown; error_message?: unknown }).error_message;
+  if (typeof alt === 'string' && alt.trim()) {
+    return alt.trim();
+  }
+  const resultData = (task as { resultData?: unknown }).resultData;
+  if (!resultData || typeof resultData !== 'object') {
+    return null;
+  }
+  const candidates = ['error', 'errorMessage', 'message', 'detail', 'failMsg'] as const;
+  for (const key of candidates) {
+    const value = (resultData as Record<string, unknown>)[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  return null;
+}
+
+function sleepMs(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function pollTaskUntilTerminal(
+  taskId: string,
+  fetchTask: (taskId: string) => Promise<unknown>,
+  mediaLabel: 'image' | 'video',
+): Promise<unknown> {
+  for (let attempt = 0; attempt < TASK_POLL_MAX_ATTEMPTS; attempt += 1) {
+    const task = await fetchTask(taskId);
+    const status = normalizeTaskStatus(task);
+    if (status === 'completed') {
+      return task;
+    }
+    if (status === 'failed' || status === 'cancelled') {
+      const errorMessage = extractTaskFailureMessage(task);
+      throw new Error(errorMessage || `${mediaLabel} generation ${status}.`);
+    }
+    await sleepMs(TASK_POLL_INTERVAL_MS);
+  }
+  throw new Error(`${mediaLabel} generation timeout. Please try again.`);
+}
+
+function extractFormatFromUrl(url: string, fallback: string): string {
+  const match = url.match(/\.([a-z0-9]+)(?:\?|#|$)/i);
+  if (!match || !match[1]) {
+    return fallback;
+  }
+  return match[1].toLowerCase();
+}
+
+function extractResolutionLabel(task: unknown): string | undefined {
+  if (!task || typeof task !== 'object') return undefined;
+  const parameters = (task as { parameters?: unknown }).parameters;
+  if (parameters && typeof parameters === 'object') {
+    const resolution = (parameters as Record<string, unknown>).resolution;
+    if (typeof resolution === 'string' && resolution.trim()) {
+      return resolution.trim();
+    }
+  }
+  return undefined;
+}
+
+function extractDurationSeconds(task: unknown, mediaType: 'image' | 'video'): number {
+  if (!task || typeof task !== 'object') {
+    return mediaType === 'image' ? 5 : 10;
+  }
+  const parameters = (task as { parameters?: unknown }).parameters;
+  if (parameters && typeof parameters === 'object') {
+    const duration = (parameters as Record<string, unknown>).duration;
+    const parsed = typeof duration === 'number' ? duration : Number.parseFloat(String(duration ?? ''));
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+  return mediaType === 'image' ? 5 : 10;
+}
+
+function sanitizeImportedFilenameSegment(value: string, fallback: string): string {
+  const sanitized = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return sanitized || fallback;
+}
+
+function buildImportedAssetFilename(
+  slideOrder: number,
+  mediaType: 'image' | 'video' | 'audio',
+  title: string,
+  url: string,
+): string {
+  const baseTitle = sanitizeImportedFilenameSegment(title, `${mediaType}-${slideOrder + 1}`);
+  const extension = extractFormatFromUrl(
+    url,
+    mediaType === 'image' ? 'png' : mediaType === 'video' ? 'mp4' : 'mp3',
+  );
+  return `ai-draft-${slideOrder + 1}-${baseTitle}.${extension}`;
+}
+
+function resolveImportedClipDuration(
+  requestedDuration: number,
+  actualDuration?: number,
+  hasExplicitDuration: boolean = false,
+): number {
+  if (Number.isFinite(actualDuration) && actualDuration && actualDuration > 0) {
+    if (hasExplicitDuration && Number.isFinite(requestedDuration) && requestedDuration > 0) {
+      return Math.max(0.25, Math.min(requestedDuration, actualDuration));
+    }
+    return Math.max(0.25, actualDuration);
+  }
+
+  if (Number.isFinite(requestedDuration) && requestedDuration > 0) {
+    return Math.max(0.25, requestedDuration);
+  }
+
+  return 3;
+}
+
+function isImportedDraftAssetModel(model: unknown): boolean {
+  return model === 'presentation-ai-draft' || model === 'presentation-ai-draft-audio';
+}
 
 export const VideoEditorPhase3: React.FC = () => {
   const [, setLocation] = useLocation();
@@ -92,7 +333,7 @@ export const VideoEditorPhase3: React.FC = () => {
   const [pendingDeleteClipId, setPendingDeleteClipId] = useState<string | null>(null);
 
   // Sidebar view
-  const [sidebarView, setSidebarView] = useState<'library' | 'ducking' | 'aspectRatio' | 'history' | 'transitions' | 'overlay' | 'silence' | 'text'>('library');
+  const [sidebarView, setSidebarView] = useState<'library' | 'ducking' | 'aspectRatio' | 'history' | 'transitions' | 'overlay' | 'draftAi' | 'silence' | 'text'>('library');
   const [textClipRolloutEnabled, setTextClipRolloutEnabled] = useState<boolean>(() => isTextClipRolloutEnabled());
   const [sidebarWidth, setSidebarWidth] = useState<number>(SIDEBAR_DEFAULT_WIDTH);
   const [isSidebarResizing, setIsSidebarResizing] = useState(false);
@@ -197,6 +438,23 @@ export const VideoEditorPhase3: React.FC = () => {
     onError: (err: any) => console.warn('[AutoSave] DB auto-save failed:', err.message),
   });
   const deleteMutation = trpc.videoEditorProjects.delete.useMutation();
+  const createLibraryItemMutation = trpc.library.createItem.useMutation();
+  const deleteLibraryItemMutation = trpc.library.deleteItem.useMutation();
+  const createPresentationDeckMutation = trpc.presentation.createDeck.useMutation();
+  const deletePresentationDeckMutation = trpc.presentation.deleteDeck.useMutation();
+  const generateImageAsyncMutation = trpc.media.generateImageAsync.useMutation();
+  const generateVideoAsyncMutation = trpc.media.generateVideoAsync.useMutation();
+  const [isGeneratingDraftMedia, setIsGeneratingDraftMedia] = useState(false);
+  const [isPresentationDraftModalOpen, setIsPresentationDraftModalOpen] = useState(false);
+  const [isPreparingPresentationDraft, setIsPreparingPresentationDraft] = useState(false);
+  const [isImportingPresentationDraft, setIsImportingPresentationDraft] = useState(false);
+  const [isRepairingImportedDraft, setIsRepairingImportedDraft] = useState(false);
+  const [presentationDraftSession, setPresentationDraftSession] = useState<{
+    libraryItemId: number;
+    deckId: number;
+    expectedVersion: number;
+  } | null>(null);
+  const importedDraftRepairKeyRef = React.useRef<string | null>(null);
 
   // Save project to sessionStorage for error recovery
   useEffect(() => {
@@ -496,6 +754,639 @@ export const VideoEditorPhase3: React.FC = () => {
     });
   };
 
+  const cleanupPresentationDraftSession = useCallback(async (
+    session: {
+      libraryItemId: number;
+      deckId: number;
+      expectedVersion: number;
+    } | null,
+  ) => {
+    if (!session) {
+      return;
+    }
+
+    try {
+      const detail = await trpcUtils.presentation.getDeck.fetch({ deckId: session.deckId });
+      await deletePresentationDeckMutation.mutateAsync({
+        deckId: session.deckId,
+        expectedVersion: detail.deck.version,
+      });
+    } catch {
+      // Best-effort cleanup only.
+    }
+
+    try {
+      await deleteLibraryItemMutation.mutateAsync({ id: session.libraryItemId });
+    } catch {
+      // Best-effort cleanup only.
+    }
+  }, [
+    deleteLibraryItemMutation,
+    deletePresentationDeckMutation,
+    trpcUtils.presentation.getDeck,
+  ]);
+
+  const handleOpenPresentationDraft = useCallback(async () => {
+    if (isPreparingPresentationDraft) {
+      return;
+    }
+
+    if (presentationDraftSession) {
+      setIsPresentationDraftModalOpen(true);
+      return;
+    }
+
+    setIsPreparingPresentationDraft(true);
+    let createdLibraryItemId: number | null = null;
+    try {
+      const now = new Date();
+      const title = `Video Draft ${now.toLocaleString()}`;
+      const createItemResult = await createLibraryItemMutation.mutateAsync({
+        itemType: 'presentation',
+        source: 'video_editor_ai_draft',
+        title,
+        description: 'Temporary AI draft deck for video editor timeline import',
+        status: 'ready',
+        visibility: 'private',
+        metadata: {
+          extension: 'presentation',
+          source_type: 'video_editor_ai_draft',
+          temporary: true,
+        },
+      });
+      createdLibraryItemId = createItemResult.item.id;
+      const createDeckResult = await createPresentationDeckMutation.mutateAsync({
+        libraryItemId: createItemResult.item.id,
+        title,
+      });
+
+      setPresentationDraftSession({
+        libraryItemId: createItemResult.item.id,
+        deckId: createDeckResult.deck.id,
+        expectedVersion: createDeckResult.deck.version,
+      });
+      setIsPresentationDraftModalOpen(true);
+    } catch (error) {
+      if (createdLibraryItemId) {
+        try {
+          await deleteLibraryItemMutation.mutateAsync({ id: createdLibraryItemId });
+        } catch {
+          // Best-effort cleanup only.
+        }
+      }
+      showToast(getErrorMessage(error, 'Failed to prepare AI draft workspace'), 'error');
+    } finally {
+      setIsPreparingPresentationDraft(false);
+    }
+  }, [
+    createLibraryItemMutation,
+    createPresentationDeckMutation,
+    deleteLibraryItemMutation,
+    isPreparingPresentationDraft,
+    presentationDraftSession,
+  ]);
+
+  const handleClosePresentationDraftModal = useCallback(() => {
+    setIsPresentationDraftModalOpen(false);
+
+    if (isImportingPresentationDraft) {
+      return;
+    }
+
+    const session = presentationDraftSession;
+    setPresentationDraftSession(null);
+    void cleanupPresentationDraftSession(session);
+  }, [
+    cleanupPresentationDraftSession,
+    isImportingPresentationDraft,
+    presentationDraftSession,
+  ]);
+
+  const handleImportPresentationDraft = useCallback(async ({
+    deckId,
+    close,
+  }: {
+    deckId: number;
+    taskId: string;
+    result: {
+      slidesAdded: number;
+      newDeckVersion: number;
+      articlePreview: string;
+      warnings: string[];
+    };
+    close: () => void;
+  }) => {
+    if (!presentationDraftSession || presentationDraftSession.deckId !== deckId) {
+      throw new Error('AI draft session is no longer available.');
+    }
+
+    setIsImportingPresentationDraft(true);
+    try {
+      const [deckDetail, playDeck] = await Promise.all([
+        trpcUtils.presentation.getDeck.fetch({ deckId }),
+        trpcUtils.presentation.getPlayDeck.fetch({ itemId: presentationDraftSession.libraryItemId }),
+      ]);
+
+      const slides = deckDetail.slides
+        .map((slide) => {
+          const parsed = presentationSlideContentSchema.safeParse(slide.slideContent);
+          if (!parsed.success) {
+            return null;
+          }
+          return {
+            id: slide.id,
+            orderIndex: slide.orderIndex,
+            title: slide.title,
+            slideContent: parsed.data,
+          };
+        })
+        .filter((slide): slide is {
+          id: number;
+          orderIndex: number;
+          title: string;
+          slideContent: PresentationSlideContent;
+        } => slide !== null);
+
+      const segments = buildPresentationDraftImportSegments({
+        slides,
+        playDeck,
+        startTime: Math.max(0, currentTime),
+      });
+
+      if (segments.length === 0) {
+        throw new Error('AI draft completed but no usable media was found to import.');
+      }
+
+      const preparedSegments = await Promise.all(segments.map(async (segment) => {
+        let preparedVisual: {
+          asset: MediaLibraryAsset;
+          localPath: string;
+          clipDuration: number;
+        } | null = null;
+        if (segment.visual) {
+          const visual = segment.visual;
+          const filename = buildImportedAssetFilename(
+            segment.orderIndex,
+            visual.type,
+            segment.title,
+            visual.src,
+          );
+          const localPath = await videoEditorMediaLibrary.downloadUrlToWorkspace(
+            visual.src,
+            filename,
+          );
+          let actualDuration: number | undefined;
+          let resolution: string | undefined;
+          if (visual.type === 'video') {
+            try {
+              const probe = await videoEditorMediaLibrary.probeMediaFile(localPath);
+              actualDuration = probe.duration;
+              if (probe.width && probe.height) {
+                resolution = `${probe.width}x${probe.height}`;
+              }
+            } catch {
+              // Best-effort only.
+            }
+          }
+
+          preparedVisual = {
+            asset: {
+              id: `${segment.slideId}-${visual.type}`,
+              type: visual.type,
+              title: segment.title,
+              thumbnailUrl: visual.type === 'image' ? visual.src : '',
+              duration: resolveImportedClipDuration(
+                segment.duration,
+                actualDuration,
+                segment.hasExplicitDuration,
+              ),
+              url: visual.src,
+              model: visual.modelId || 'presentation-ai-draft',
+              createdAt: new Date(),
+              resolution,
+              format: extractFormatFromUrl(
+                visual.src,
+                visual.type === 'image' ? 'png' : 'mp4',
+              ),
+            },
+            localPath,
+            clipDuration: segment.duration,
+          };
+        }
+
+        let preparedAudio: {
+          asset: MediaLibraryAsset;
+          localPath: string;
+          clipDuration: number;
+        } | null = null;
+        if (segment.audio) {
+          const audio = segment.audio;
+          const filename = buildImportedAssetFilename(
+            segment.orderIndex,
+            'audio',
+            `${segment.title}-audio`,
+            audio.url,
+          );
+          const localPath = await videoEditorMediaLibrary.downloadUrlToWorkspace(
+            audio.url,
+            filename,
+          );
+          let actualDuration: number | undefined;
+          try {
+            const probe = await videoEditorMediaLibrary.probeMediaFile(localPath);
+            actualDuration = probe.duration;
+          } catch {
+            // Best-effort only.
+          }
+
+          preparedAudio = {
+            asset: {
+              id: `${segment.slideId}-audio`,
+              type: 'audio',
+              title: `${segment.title} narration`,
+              thumbnailUrl: '',
+              duration: resolveImportedClipDuration(
+                segment.duration,
+                actualDuration,
+                segment.hasExplicitDuration,
+              ),
+              url: audio.url,
+              model: 'presentation-ai-draft-audio',
+              createdAt: new Date(),
+              format: extractFormatFromUrl(audio.url, 'mp3'),
+            },
+            localPath,
+            clipDuration: resolveImportedClipDuration(
+              segment.duration,
+              actualDuration,
+              segment.hasExplicitDuration,
+            ),
+          };
+        }
+
+        return {
+          ...segment,
+          preparedVisual,
+          preparedAudio,
+        };
+      }));
+
+      let importCursor = Math.max(0, currentTime);
+      const scheduledSegments = preparedSegments.map((segment) => {
+        const visualDuration = segment.preparedVisual?.clipDuration ?? 0;
+        const audioDuration = segment.preparedAudio?.clipDuration ?? 0;
+        const timelineDuration = segment.hasExplicitDuration
+          ? Math.max(0.25, segment.duration)
+          : Math.max(0.25, visualDuration, audioDuration, segment.duration);
+        const scheduledSegment = {
+          ...segment,
+          startTime: importCursor,
+          timelineDuration,
+        };
+        importCursor += timelineDuration;
+        return scheduledSegment;
+      });
+
+      let lastInsertedClipId: string | null = null;
+      setProject((prevProject) => {
+        const newProject = JSON.parse(JSON.stringify(prevProject)) as VideoEditorProject;
+
+        for (const segment of scheduledSegments) {
+          if (segment.preparedVisual) {
+            const visualAsset = addAssetToProject(
+              newProject,
+              segment.preparedVisual.asset,
+              segment.preparedVisual.localPath,
+            );
+            const visualTrack = findTrackByType(newProject.timeline, segment.preparedVisual.asset.type);
+            if (visualTrack) {
+              const insertedClip = addClipToTrack(visualTrack, visualAsset, segment.startTime);
+              insertedClip.duration = Math.max(0.25, segment.preparedVisual.clipDuration);
+              insertedClip.trimOut = insertedClip.duration;
+              lastInsertedClipId = insertedClip.id;
+            }
+          }
+
+          if (segment.preparedAudio) {
+            const audioAsset = addAssetToProject(
+              newProject,
+              segment.preparedAudio.asset,
+              segment.preparedAudio.localPath,
+            );
+            const audioTrack = findTrackByType(newProject.timeline, 'audio');
+            if (audioTrack) {
+              const audioClip = addClipToTrack(audioTrack, audioAsset, segment.startTime);
+              audioClip.duration = Math.max(0.25, segment.preparedAudio.clipDuration);
+              audioClip.trimOut = audioClip.duration;
+            }
+          }
+        }
+
+        newProject.settings.duration = calculateProjectDuration(newProject.timeline);
+        newProject.modifiedAt = new Date().toISOString();
+        addToHistory(newProject);
+        return newProject;
+      });
+
+      if (lastInsertedClipId) {
+        setSelectedClipId(lastInsertedClipId);
+      }
+
+      const session = presentationDraftSession;
+      setIsPresentationDraftModalOpen(false);
+      setPresentationDraftSession(null);
+      await cleanupPresentationDraftSession(session);
+      showToast(`Imported ${preparedSegments.length} AI draft segments to timeline.`, 'success');
+      close();
+    } finally {
+      setIsImportingPresentationDraft(false);
+    }
+  }, [
+    addToHistory,
+    cleanupPresentationDraftSession,
+    currentTime,
+    presentationDraftSession,
+    trpcUtils.presentation.getDeck,
+    trpcUtils.presentation.getPlayDeck,
+  ]);
+
+  const repairImportedDraftDurations = useCallback(async () => {
+    if (isRepairingImportedDraft || isImportingPresentationDraft) {
+      return;
+    }
+
+    const clipEntries = project.timeline.tracks.flatMap((track) =>
+      track.clips.map((clip) => ({
+        trackId: track.id,
+        trackType: track.type,
+        clipId: clip.id,
+        assetId: clip.assetId,
+        startTime: clip.startTime,
+        duration: clip.duration,
+        trimIn: clip.trimIn,
+      })),
+    );
+    const candidateEntries = clipEntries.filter((entry) => {
+      if (entry.trackType !== 'video' && entry.trackType !== 'audio') {
+        return false;
+      }
+      const asset = project.assets[entry.assetId];
+      if (!asset || !isImportedDraftAssetModel(asset.model)) {
+        return false;
+      }
+      return Math.abs(entry.duration - 3) <= IMPORTED_DRAFT_DURATION_EPSILON;
+    });
+
+    if (candidateEntries.length === 0) {
+      return;
+    }
+
+    const candidateKey = candidateEntries
+      .map((entry) => `${entry.clipId}:${entry.startTime}:${entry.duration}`)
+      .sort()
+      .join('|');
+    if (importedDraftRepairKeyRef.current === candidateKey) {
+      return;
+    }
+    importedDraftRepairKeyRef.current = candidateKey;
+
+    setIsRepairingImportedDraft(true);
+    try {
+      const assetDurationMap = new Map<string, number>();
+      for (const entry of candidateEntries) {
+        if (assetDurationMap.has(entry.assetId)) {
+          continue;
+        }
+        const asset = project.assets[entry.assetId];
+        if (!asset?.path) {
+          continue;
+        }
+        try {
+          const probe = await videoEditorMediaLibrary.probeMediaFile(asset.path);
+          if (Number.isFinite(probe.duration) && probe.duration > 0) {
+            assetDurationMap.set(entry.assetId, probe.duration);
+          }
+        } catch {
+          // Ignore probe failures and keep existing durations.
+        }
+      }
+
+      const requiresRepair = candidateEntries.some((entry) => {
+        const actualDuration = assetDurationMap.get(entry.assetId);
+        return Number.isFinite(actualDuration)
+          && actualDuration! > 0
+          && Math.abs(actualDuration! - entry.duration) > IMPORTED_DRAFT_REPAIR_DIFF_THRESHOLD;
+      });
+      if (!requiresRepair) {
+        return;
+      }
+
+      type RepairGroup = {
+        originalStartTime: number;
+        entries: typeof candidateEntries;
+      };
+      const groupsMap = new Map<string, RepairGroup>();
+      for (const entry of candidateEntries) {
+        const key = entry.startTime.toFixed(3);
+        const existing = groupsMap.get(key);
+        if (existing) {
+          existing.entries.push(entry);
+        } else {
+          groupsMap.set(key, {
+            originalStartTime: entry.startTime,
+            entries: [entry],
+          });
+        }
+      }
+      const groups = [...groupsMap.values()].sort(
+        (left, right) => left.originalStartTime - right.originalStartTime,
+      );
+
+      let repairedClipCount = 0;
+      setProject((prevProject) => {
+        const newProject = JSON.parse(JSON.stringify(prevProject)) as VideoEditorProject;
+        let cursor = groups[0]?.originalStartTime ?? 0;
+
+        for (const group of groups) {
+          let groupDuration = 0;
+          for (const entry of group.entries) {
+            const actualDuration = assetDurationMap.get(entry.assetId);
+            const nextDuration = resolveImportedClipDuration(
+              entry.duration,
+              actualDuration,
+              false,
+            );
+            groupDuration = Math.max(groupDuration, nextDuration);
+
+            const targetTrack = newProject.timeline.tracks.find((track) => track.id === entry.trackId);
+            const targetClip = targetTrack?.clips.find((clip) => clip.id === entry.clipId);
+            if (!targetClip) {
+              continue;
+            }
+            targetClip.startTime = cursor;
+            targetClip.duration = nextDuration;
+            targetClip.trimOut = targetClip.trimIn + nextDuration;
+            repairedClipCount += 1;
+          }
+          cursor += Math.max(0.25, groupDuration || 3);
+        }
+
+        newProject.settings.duration = calculateProjectDuration(newProject.timeline);
+        newProject.modifiedAt = new Date().toISOString();
+        addToHistory(newProject);
+        return newProject;
+      });
+
+      if (repairedClipCount > 0) {
+        showToast(`Repaired ${repairedClipCount} imported AI draft clip durations in the current project.`, 'success');
+      }
+    } finally {
+      setIsRepairingImportedDraft(false);
+    }
+  }, [
+    addToHistory,
+    isImportingPresentationDraft,
+    isRepairingImportedDraft,
+    project,
+  ]);
+
+  useEffect(() => {
+    void repairImportedDraftDurations();
+  }, [repairImportedDraftDurations]);
+
+  const handleGenerateDraftMedia = useCallback(async (request: VideoDraftAIGenerateRequest) => {
+    const normalizedPrompt = request.prompt.trim();
+    if (!normalizedPrompt) {
+      showToast('Please enter prompt before generating.', 'error');
+      return;
+    }
+
+    setIsGeneratingDraftMedia(true);
+    try {
+      const referenceImageUrls = request.referenceImageUrls.length > 0
+        ? request.referenceImageUrls
+        : undefined;
+      let taskResult: unknown;
+
+      if (request.mediaType === 'image') {
+        taskResult = await generateImageAsyncMutation.mutateAsync({
+          prompt: normalizedPrompt,
+          model: request.modelId,
+          aspectRatio: request.aspectRatio,
+          numImages: 1,
+          referenceImageUrls,
+          extraParams: request.extraParams,
+        });
+      } else {
+        const normalizedDuration = (() => {
+          const raw = request.extraParams?.duration;
+          const parsed = typeof raw === 'number' ? raw : Number.parseInt(String(raw ?? ''), 10);
+          if (!Number.isFinite(parsed) || parsed <= 0) return undefined;
+          return Math.min(60, Math.max(1, Math.round(parsed)));
+        })();
+        const normalizedResolution = (() => {
+          const raw = request.extraParams?.resolution;
+          if (typeof raw !== 'string') return undefined;
+          const value = raw.trim();
+          return value.length > 0 ? value : undefined;
+        })();
+        taskResult = await generateVideoAsyncMutation.mutateAsync({
+          prompt: normalizedPrompt,
+          model: request.modelId,
+          aspectRatio: request.aspectRatio,
+          referenceImageUrls,
+          ...(normalizedDuration ? { duration: normalizedDuration } : {}),
+          ...(normalizedResolution ? { resolution: normalizedResolution } : {}),
+          extraParams: request.extraParams,
+        });
+      }
+
+      const taskRecord = taskResult as { id?: unknown; taskId?: unknown; model?: unknown };
+      const taskId = typeof taskRecord.id === 'string' && taskRecord.id.trim()
+        ? taskRecord.id.trim()
+        : (typeof taskRecord.taskId === 'string' && taskRecord.taskId.trim()
+          ? taskRecord.taskId.trim()
+          : null);
+      if (!taskId) {
+        throw new Error('Media generation started but task ID was not returned.');
+      }
+
+      const terminalTask = await pollTaskUntilTerminal(
+        taskId,
+        async (id) => trpcUtils.media.getTask.fetch({ taskId: id }),
+        request.mediaType,
+      );
+      const resultUrl = extractTaskResultUrl(terminalTask) || extractTaskResultUrl(taskResult);
+      if (!resultUrl) {
+        throw new Error('Media provider returned no URL.');
+      }
+
+      const createdAt = new Date();
+      const modelName = request.modelId?.trim()
+        || (typeof taskRecord.model === 'string' && taskRecord.model.trim()
+          ? taskRecord.model.trim()
+          : 'default');
+      const mediaAsset: MediaLibraryAsset = {
+        id: taskId,
+        type: request.mediaType,
+        title: normalizedPrompt.length > 60 ? `${normalizedPrompt.slice(0, 60)}...` : normalizedPrompt,
+        thumbnailUrl: request.mediaType === 'image' ? resultUrl : '',
+        duration: extractDurationSeconds(terminalTask, request.mediaType),
+        url: resultUrl,
+        model: modelName,
+        createdAt,
+        resolution: extractResolutionLabel(terminalTask),
+        format: extractFormatFromUrl(resultUrl, request.mediaType === 'image' ? 'png' : 'mp4'),
+      };
+
+      const localPath = await videoEditorMediaLibrary.downloadToWorkspace(mediaAsset);
+      try {
+        const fileInfo = await videoEditorMediaLibrary.probeMediaFile(localPath);
+        if (Number.isFinite(fileInfo.duration) && fileInfo.duration > 0) {
+          mediaAsset.duration = fileInfo.duration;
+        }
+        if (fileInfo.width && fileInfo.height) {
+          mediaAsset.resolution = `${fileInfo.width}x${fileInfo.height}`;
+        }
+      } catch {
+        // Probe is best-effort only.
+      }
+
+      let insertedClipId: string | null = null;
+      setProject((prevProject) => {
+        const newProject = JSON.parse(JSON.stringify(prevProject)) as VideoEditorProject;
+        const newAsset = addAssetToProject(newProject, mediaAsset, localPath);
+        const track = findTrackByType(newProject.timeline, request.mediaType);
+        if (!track) {
+          showToast(`No available ${request.mediaType} track found`, 'error');
+          return prevProject;
+        }
+        const insertedClip = addClipToTrack(track, newAsset, Math.max(0, currentTime));
+        insertedClipId = insertedClip.id;
+        newProject.settings.duration = calculateProjectDuration(newProject.timeline);
+        newProject.modifiedAt = new Date().toISOString();
+        addToHistory(newProject);
+        return newProject;
+      });
+
+      if (insertedClipId) {
+        setSelectedClipId(insertedClipId);
+        showToast(`Generated ${request.mediaType} and added to timeline.`, 'success');
+      }
+    } catch (error) {
+      console.error('Draft with AI generation failed:', error);
+      showToast(getErrorMessage(error, 'Failed to generate media'), 'error');
+    } finally {
+      setIsGeneratingDraftMedia(false);
+    }
+  }, [
+    addToHistory,
+    currentTime,
+    generateImageAsyncMutation,
+    generateVideoAsyncMutation,
+    trpcUtils.media.getTask,
+  ]);
+
   const handleDropAsset = useCallback(async (asset: MediaLibraryAsset, trackId: string, startTime: number) => {
     try {
       // Validate track type before downloading
@@ -554,6 +1445,7 @@ export const VideoEditorPhase3: React.FC = () => {
       }
 
       if (!clip) return prevProject;
+      const clipMediaType = sourceTrackType ?? 'video';
 
       const newTrack = newProject.timeline.tracks.find((t: any) => t.id === newTrackId);
       if (!newTrack) return prevProject;
@@ -2270,6 +3162,14 @@ export const VideoEditorPhase3: React.FC = () => {
             background: #555;
           }
 
+          .header-button.primary {
+            background: #0078d4;
+          }
+
+          .header-button.primary:hover {
+            background: #0a84ea;
+          }
+
           .editor-layout {
             flex: 1;
             display: flex;
@@ -2536,6 +3436,16 @@ export const VideoEditorPhase3: React.FC = () => {
             </span>
           )}
           <div className="header-spacer" />
+          <button
+            className="header-button primary"
+            onClick={() => void handleOpenPresentationDraft()}
+            disabled={isPreparingPresentationDraft || isImportingPresentationDraft}
+            title="Draft with AI"
+          >
+            {isPreparingPresentationDraft || isImportingPresentationDraft
+              ? '...'
+              : '✨ Draft with AI'}
+          </button>
           <button className="header-button" onClick={handleSave} disabled={isSaving} title="Save to cloud">
             {isSaving ? '...' : '\uD83D\uDCBE'} Save
           </button>
@@ -2723,6 +3633,12 @@ export const VideoEditorPhase3: React.FC = () => {
                 🎨 Overlay
               </button>
               <button
+                className={`sidebar-tab ${sidebarView === 'draftAi' ? 'active' : ''}`}
+                onClick={() => setSidebarView('draftAi')}
+              >
+                🤖 Draft AI
+              </button>
+              <button
                 className={`sidebar-tab ${sidebarView === 'silence' ? 'active' : ''}`}
                 onClick={() => setSidebarView('silence')}
               >
@@ -2798,6 +3714,16 @@ export const VideoEditorPhase3: React.FC = () => {
                   onSeekToTime={handleTimeChange}
                 />
               )}
+              {sidebarView === 'draftAi' && (
+                <VideoDraftAIPanel
+                  projectWidth={project.settings.width}
+                  projectHeight={project.settings.height}
+                  isGenerating={isGeneratingDraftMedia}
+                  isPreparingPresentationDraft={isPreparingPresentationDraft || isImportingPresentationDraft}
+                  onOpenPresentationDraft={() => void handleOpenPresentationDraft()}
+                  onGenerate={handleGenerateDraftMedia}
+                />
+              )}
               {sidebarView === 'silence' && (
                 <SilenceDetectionPanel
                   onOpenDialog={() => setShowSilenceDialog(true)}
@@ -2822,6 +3748,19 @@ export const VideoEditorPhase3: React.FC = () => {
             project={project}
             onExport={handleExport}
             onCancel={() => setShowExportDialog(false)}
+          />
+        )}
+
+        {presentationDraftSession && (
+          <AIDraftModal
+            isOpen={isPresentationDraftModalOpen}
+            onClose={handleClosePresentationDraftModal}
+            deckId={presentationDraftSession.deckId}
+            expectedVersion={presentationDraftSession.expectedVersion}
+            currentSlideCount={1}
+            canvasWidth={project.settings.width}
+            canvasHeight={project.settings.height}
+            onComplete={handleImportPresentationDraft}
           />
         )}
 

@@ -10,6 +10,7 @@ import {
   type MediaType as RateLimiterMediaType,
 } from './llmRateLimiter';
 import { normalizeMediaPrompt } from "./mediaPromptNormalization";
+import { auditLogger } from "./auditLogger";
 
 // ==================== Types ====================
 
@@ -40,6 +41,10 @@ export interface ModelMetadata {
   creditCost: number;
 }
 export { normalizeMediaPrompt } from "./mediaPromptNormalization";
+
+const RETRYABLE_MEDIA_SETTINGS_ERROR = /\bSETTINGS_KEY_NOT_FOUND\b/i;
+const MEDIA_SUBMIT_RETRY_DELAY_MS = 250;
+const MEDIA_SUBMIT_MAX_ATTEMPTS = 2;
 
 const mediaModelResolutionCounters = {
   providerFromApiConfig: 0,
@@ -250,6 +255,30 @@ export const MEDIA_MODELS: Record<string, ModelMetadata> = {
     description: "Sound effects generation",
     creditCost: 3,
   },
+  "uvoice/tts-standard": {
+    id: "uvoice/tts-standard",
+    type: "audio",
+    name: "UVoice TTS Standard",
+    provider: "uvoice",
+    description: "UVoice standard text-to-speech",
+    creditCost: 150,
+  },
+  "uvoice/tts-natural": {
+    id: "uvoice/tts-natural",
+    type: "audio",
+    name: "UVoice TTS Natural",
+    provider: "uvoice",
+    description: "UVoice natural text-to-speech",
+    creditCost: 150,
+  },
+  "uvoice/tts-premium": {
+    id: "uvoice/tts-premium",
+    type: "audio",
+    name: "UVoice TTS Premium",
+    provider: "uvoice",
+    description: "UVoice premium text-to-speech",
+    creditCost: 300,
+  },
 };
 
 // Default models
@@ -282,6 +311,8 @@ export interface ImageGenerationRequest {
   referenceImageUrls?: string[];
   /** Reference style URL for style transfer */
   referenceStyleUrl?: string;
+  /** Optional audit metadata for end-to-end traceability */
+  auditContext?: MediaAuditContext;
 }
 
 export interface VideoGenerationRequest {
@@ -302,6 +333,8 @@ export interface VideoGenerationRequest {
   referenceImageUrls?: string[];
   /** Reference video URL for vid2vid */
   referenceVideoUrl?: string;
+  /** Optional audit metadata for end-to-end traceability */
+  auditContext?: MediaAuditContext;
 }
 
 export interface AudioGenerationRequest {
@@ -309,6 +342,22 @@ export interface AudioGenerationRequest {
   model?: AudioModel;
   voice?: string;
   speed?: number;
+  /** Per-model API overrides from model config */
+  apiConfig?: Record<string, string>;
+  /** Dynamic model-specific input fields */
+  extraParams?: Record<string, any>;
+  /** Tenant public URL for resolving relative reference URLs */
+  publicUrl?: string;
+  /** Optional audit metadata for end-to-end traceability */
+  auditContext?: MediaAuditContext;
+}
+
+export interface MediaAuditContext {
+  userId?: number;
+  traceId?: string;
+  source?: string;
+  stage?: string;
+  [key: string]: unknown;
 }
 
 export interface MediaGenerationResult {
@@ -458,6 +507,46 @@ function validateBackendUrl(url: string): string {
   return url;
 }
 
+class MediaRequestError extends Error {
+  statusCode: number;
+  responsePayload: unknown;
+  endpoint: string;
+
+  constructor(message: string, statusCode: number, endpoint: string, responsePayload: unknown) {
+    super(message);
+    this.name = "MediaRequestError";
+    this.statusCode = statusCode;
+    this.endpoint = endpoint;
+    this.responsePayload = responsePayload;
+  }
+}
+
+function sanitizeAuditError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error ?? "Unknown error");
+  return raw.replace(/\s+/g, " ").trim().slice(0, 500);
+}
+
+function isRetryableMediaSubmitError(error: unknown): boolean {
+  if (error instanceof MediaRequestError) {
+    return false;
+  }
+  const raw = error instanceof Error ? error.message : String(error ?? "");
+  return RETRYABLE_MEDIA_SETTINGS_ERROR.test(raw);
+}
+
+function enrichMediaSubmitError(error: unknown, endpointPath: string): Error {
+  const raw = error instanceof Error ? error.message : String(error ?? "Unknown error");
+  if (!RETRYABLE_MEDIA_SETTINGS_ERROR.test(raw) || raw.includes(`[endpoint=${endpointPath}]`)) {
+    return error instanceof Error ? error : new Error(raw);
+  }
+
+  const enriched = new Error(`${raw} [endpoint=${endpointPath}]`);
+  if (error instanceof Error && error.stack) {
+    enriched.stack = error.stack;
+  }
+  return enriched;
+}
+
 export class MediaGenerationService {
   private baseUrl: string;
 
@@ -474,6 +563,232 @@ export class MediaGenerationService {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${userToken}`,
     };
+  }
+
+  private getAuditContext(request: { auditContext?: MediaAuditContext }): MediaAuditContext {
+    return request.auditContext ?? {};
+  }
+
+  private logRetryableSubmitError(params: {
+    request: { auditContext?: MediaAuditContext };
+    provider: string;
+    model: string;
+    mediaType: MediaType;
+    requestType: string;
+    endpoint: string;
+    attempt: number;
+    maxAttempts: number;
+    error: unknown;
+  }): void {
+    const auditContext = this.getAuditContext(params.request);
+    const errorMessage = sanitizeAuditError(params.error);
+
+    auditLogger.log({
+      traceId: typeof auditContext.traceId === "string" ? auditContext.traceId : undefined,
+      eventType: "error",
+      userId: typeof auditContext.userId === "number" ? auditContext.userId : null,
+      providerName: params.provider,
+      model: params.model,
+      mediaType: params.mediaType,
+      requestType: params.requestType,
+      endpoint: params.endpoint,
+      errorType: "media_submit_retryable_error",
+      errorMessage,
+      metadata: {
+        source: auditContext.source ?? "media_generation_service",
+        stage: auditContext.stage ?? null,
+        retryAttempt: params.attempt,
+        maxAttempts: params.maxAttempts,
+      },
+    });
+
+    console.warn("[MediaGenerationService] Retrying transient media submit error", {
+      traceId: auditContext.traceId,
+      provider: params.provider,
+      model: params.model,
+      mediaType: params.mediaType,
+      requestType: params.requestType,
+      endpoint: params.endpoint,
+      attempt: params.attempt,
+      maxAttempts: params.maxAttempts,
+      errorMessage,
+    });
+  }
+
+  private async submitTaskWithRetry(params: {
+    request: { auditContext?: MediaAuditContext };
+    requestType: string;
+    mediaType: MediaType;
+    provider: string;
+    model: string;
+    endpoint: string;
+    userToken: string;
+    payload: unknown;
+  }): Promise<{ status: number; data: any }> {
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= MEDIA_SUBMIT_MAX_ATTEMPTS; attempt += 1) {
+      try {
+        return await scheduleMediaWithLimiter(
+          params.provider,
+          params.mediaType as RateLimiterMediaType,
+          async () => this.postJson(params.userToken, params.endpoint, params.payload),
+        );
+      } catch (error) {
+        const enrichedError = enrichMediaSubmitError(error, params.endpoint);
+        lastError = enrichedError;
+
+        if (!isRetryableMediaSubmitError(enrichedError) || attempt >= MEDIA_SUBMIT_MAX_ATTEMPTS) {
+          throw enrichedError;
+        }
+
+        this.logRetryableSubmitError({
+          request: params.request,
+          provider: params.provider,
+          model: params.model,
+          mediaType: params.mediaType,
+          requestType: params.requestType,
+          endpoint: params.endpoint,
+          attempt,
+          maxAttempts: MEDIA_SUBMIT_MAX_ATTEMPTS,
+          error: enrichedError,
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, MEDIA_SUBMIT_RETRY_DELAY_MS));
+      }
+    }
+
+    throw enrichMediaSubmitError(lastError, params.endpoint);
+  }
+
+  private logMediaRequest(params: {
+    request: { auditContext?: MediaAuditContext };
+    requestType: string;
+    mediaType: MediaType;
+    provider: string;
+    model: string;
+    endpoint: string;
+    payload: unknown;
+  }): void {
+    const auditContext = this.getAuditContext(params.request);
+    auditLogger.log({
+      traceId: typeof auditContext.traceId === "string" ? auditContext.traceId : undefined,
+      eventType: "media_request",
+      userId: typeof auditContext.userId === "number" ? auditContext.userId : null,
+      providerName: params.provider,
+      model: params.model,
+      mediaType: params.mediaType,
+      requestType: params.requestType,
+      requestPayload: {
+        source: auditContext.source ?? "media_generation_service",
+        stage: auditContext.stage ?? null,
+        endpoint: params.endpoint,
+        provider: params.provider,
+        model: params.model,
+        payload: params.payload,
+      },
+    });
+  }
+
+  private logMediaResponse(params: {
+    request: { auditContext?: MediaAuditContext };
+    requestType: string;
+    mediaType: MediaType;
+    provider: string;
+    model: string;
+    statusCode: number;
+    success: boolean;
+    responsePayload?: unknown;
+    errorMessage?: string;
+  }): void {
+    const auditContext = this.getAuditContext(params.request);
+    auditLogger.log({
+      traceId: typeof auditContext.traceId === "string" ? auditContext.traceId : undefined,
+      eventType: "media_response",
+      userId: typeof auditContext.userId === "number" ? auditContext.userId : null,
+      providerName: params.provider,
+      model: params.model,
+      mediaType: params.mediaType,
+      requestType: params.requestType,
+      statusCode: params.statusCode,
+      errorType: params.success ? undefined : "media_generation_failed",
+      errorMessage: params.success ? undefined : params.errorMessage,
+      responsePayload: {
+        success: params.success,
+        ...(!params.success && params.errorMessage ? { error: params.errorMessage } : {}),
+        ...(params.responsePayload !== undefined ? { providerResponse: params.responsePayload } : {}),
+      },
+      metadata: {
+        source: auditContext.source ?? "media_generation_service",
+        stage: auditContext.stage ?? null,
+      },
+    });
+  }
+
+  private async postJson(userToken: string, endpointPath: string, payload: unknown): Promise<{ status: number; data: any }> {
+    const response = await fetch(`${this.baseUrl}${endpointPath}`, {
+      method: "POST",
+      headers: this.getHeaders(userToken),
+      body: JSON.stringify(payload),
+    });
+
+    const rawText = await response.text().catch(() => "");
+    let parsed: unknown;
+    if (rawText.length === 0) {
+      parsed = {};
+    } else {
+      try {
+        parsed = JSON.parse(rawText);
+      } catch {
+        parsed = { raw: rawText.slice(0, 2000) };
+      }
+    }
+
+    if (!response.ok) {
+      const payloadObj = parsed && typeof parsed === "object"
+        ? parsed as Record<string, unknown>
+        : {};
+      const nestedError = payloadObj.error && typeof payloadObj.error === "object"
+        ? payloadObj.error as Record<string, unknown>
+        : undefined;
+      const code = nestedError?.code ?? payloadObj.code;
+      const detail =
+        nestedError?.message
+        ?? payloadObj.detail
+        ?? payloadObj.message
+        ?? payloadObj.error;
+      const detailObj = detail && typeof detail === "object"
+        ? detail as Record<string, unknown>
+        : undefined;
+      const detailMessage = typeof detail === "string" && detail.trim().length > 0
+        ? detail
+        : (
+          detailObj
+          && typeof detailObj.message === "string"
+          && detailObj.message.trim().length > 0
+        )
+          ? detailObj.message
+          : (
+            detailObj
+            && typeof detailObj.detail === "string"
+            && detailObj.detail.trim().length > 0
+          )
+            ? detailObj.detail
+            : (
+              detailObj
+              && typeof detailObj.error === "string"
+              && detailObj.error.trim().length > 0
+            )
+              ? detailObj.error
+              : null;
+      const messageBase = detailMessage ?? `Media request failed: ${response.status}`;
+      const message = typeof code === "string" && code.trim().length > 0
+        ? `${code}: ${messageBase}`
+        : messageBase;
+      throw new MediaRequestError(message, response.status, endpointPath, parsed);
+    }
+
+    return { status: response.status, data: parsed };
   }
 
   /**
@@ -533,21 +848,30 @@ export class MediaGenerationService {
       payload.reference_style_url = resolveReferenceUrl(request.referenceStyleUrl, publicUrl);
     }
 
+    this.logMediaRequest({
+      request,
+      requestType: "generateImage",
+      mediaType: "image",
+      provider,
+      model: modelId,
+      endpoint: "/api/v1/media/image",
+      payload,
+    });
+
     // Use rate limiter to prevent overwhelming the API
     try {
       const result = await scheduleMediaWithLimiter(provider, "image" as RateLimiterMediaType, async () => {
-        const response = await fetch(`${this.baseUrl}/api/v1/media/image`, {
-          method: "POST",
-          headers: this.getHeaders(userToken),
-          body: JSON.stringify(payload),
+        const { data, status } = await this.postJson(userToken, "/api/v1/media/image", payload);
+        this.logMediaResponse({
+          request,
+          requestType: "generateImage",
+          mediaType: "image",
+          provider,
+          model: modelId,
+          statusCode: status,
+          success: true,
+          responsePayload: data,
         });
-
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({ detail: "Unknown error" }));
-          throw new Error(error.detail || `Image generation failed: ${response.status}`);
-        }
-
-        const data = await response.json();
         return this.mapResponse(data);
       });
 
@@ -555,6 +879,30 @@ export class MediaGenerationService {
       recordMediaUsage(provider, modelId, "image" as RateLimiterMediaType, true, result.creditsUsed);
       return result;
     } catch (error) {
+      if (error instanceof MediaRequestError) {
+        this.logMediaResponse({
+          request,
+          requestType: "generateImage",
+          mediaType: "image",
+          provider,
+          model: modelId,
+          statusCode: error.statusCode,
+          success: false,
+          responsePayload: error.responsePayload,
+          errorMessage: sanitizeAuditError(error),
+        });
+      } else {
+        this.logMediaResponse({
+          request,
+          requestType: "generateImage",
+          mediaType: "image",
+          provider,
+          model: modelId,
+          statusCode: 0,
+          success: false,
+          errorMessage: sanitizeAuditError(error),
+        });
+      }
       // Record failed usage
       recordMediaUsage(provider, modelId, "image" as RateLimiterMediaType, false, 0);
       throw error;
@@ -612,27 +960,60 @@ export class MediaGenerationService {
       payload.reference_video_url = resolveReferenceUrl(request.referenceVideoUrl, publicUrl);
     }
 
+    this.logMediaRequest({
+      request,
+      requestType: "generateVideo",
+      mediaType: "video",
+      provider,
+      model: modelId,
+      endpoint: "/api/v1/media/video",
+      payload,
+    });
+
     // Use rate limiter with video priority (lower priority due to resource intensity)
     try {
       const result = await scheduleMediaWithLimiter(provider, "video" as RateLimiterMediaType, async () => {
-        const response = await fetch(`${this.baseUrl}/api/v1/media/video`, {
-          method: "POST",
-          headers: this.getHeaders(userToken),
-          body: JSON.stringify(payload),
+        const { data, status } = await this.postJson(userToken, "/api/v1/media/video", payload);
+        this.logMediaResponse({
+          request,
+          requestType: "generateVideo",
+          mediaType: "video",
+          provider,
+          model: modelId,
+          statusCode: status,
+          success: true,
+          responsePayload: data,
         });
-
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({ detail: "Unknown error" }));
-          throw new Error(error.detail || `Video generation failed: ${response.status}`);
-        }
-
-        const data = await response.json();
         return this.mapResponse(data);
       });
 
       recordMediaUsage(provider, modelId, "video" as RateLimiterMediaType, true, result.creditsUsed);
       return result;
     } catch (error) {
+      if (error instanceof MediaRequestError) {
+        this.logMediaResponse({
+          request,
+          requestType: "generateVideo",
+          mediaType: "video",
+          provider,
+          model: modelId,
+          statusCode: error.statusCode,
+          success: false,
+          responsePayload: error.responsePayload,
+          errorMessage: sanitizeAuditError(error),
+        });
+      } else {
+        this.logMediaResponse({
+          request,
+          requestType: "generateVideo",
+          mediaType: "video",
+          provider,
+          model: modelId,
+          statusCode: 0,
+          success: false,
+          errorMessage: sanitizeAuditError(error),
+        });
+      }
       recordMediaUsage(provider, modelId, "video" as RateLimiterMediaType, false, 0);
       throw error;
     }
@@ -646,35 +1027,77 @@ export class MediaGenerationService {
     userToken: string
   ): Promise<MediaGenerationResponse> {
     const modelId = request.model || DEFAULT_MODELS.audio;
-    const provider = resolveProvider(modelId);
-
-    const payload = {
+    const provider = resolveProvider(modelId, request.apiConfig);
+    const payload: Record<string, unknown> = {
       text: request.text,
       model: modelId,
       voice: request.voice,
       speed: request.speed,
     };
 
+    // Add apiConfig for model-specific endpoints and payload formats
+    if (request.apiConfig) {
+      payload.api_config = request.apiConfig;
+    }
+
+    // Add extraParams for model-specific fields
+    if (request.extraParams) {
+      payload.extra_params = resolveExtraParamsUrls(request.extraParams, request.publicUrl);
+    }
+
+    this.logMediaRequest({
+      request,
+      requestType: "generateAudio",
+      mediaType: "audio",
+      provider,
+      model: modelId,
+      endpoint: "/api/v1/media/audio",
+      payload,
+    });
+
     try {
       const result = await scheduleMediaWithLimiter(provider, "audio" as RateLimiterMediaType, async () => {
-        const response = await fetch(`${this.baseUrl}/api/v1/media/audio`, {
-          method: "POST",
-          headers: this.getHeaders(userToken),
-          body: JSON.stringify(payload),
+        const { data, status } = await this.postJson(userToken, "/api/v1/media/audio", payload);
+        this.logMediaResponse({
+          request,
+          requestType: "generateAudio",
+          mediaType: "audio",
+          provider,
+          model: modelId,
+          statusCode: status,
+          success: true,
+          responsePayload: data,
         });
-
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({ detail: "Unknown error" }));
-          throw new Error(error.detail || `Audio generation failed: ${response.status}`);
-        }
-
-        const data = await response.json();
         return this.mapResponse(data);
       });
 
       recordMediaUsage(provider, modelId, "audio" as RateLimiterMediaType, true, result.creditsUsed);
       return result;
     } catch (error) {
+      if (error instanceof MediaRequestError) {
+        this.logMediaResponse({
+          request,
+          requestType: "generateAudio",
+          mediaType: "audio",
+          provider,
+          model: modelId,
+          statusCode: error.statusCode,
+          success: false,
+          responsePayload: error.responsePayload,
+          errorMessage: sanitizeAuditError(error),
+        });
+      } else {
+        this.logMediaResponse({
+          request,
+          requestType: "generateAudio",
+          mediaType: "audio",
+          provider,
+          model: modelId,
+          statusCode: 0,
+          success: false,
+          errorMessage: sanitizeAuditError(error),
+        });
+      }
       recordMediaUsage(provider, modelId, "audio" as RateLimiterMediaType, false, 0);
       throw error;
     }
@@ -727,27 +1150,67 @@ export class MediaGenerationService {
       payload.reference_style_url = resolveReferenceUrl(request.referenceStyleUrl, publicUrl);
     }
 
+    this.logMediaRequest({
+      request,
+      requestType: "generateImageAsync",
+      mediaType: "image",
+      provider,
+      model: modelId,
+      endpoint: "/api/v1/media/async/image",
+      payload,
+    });
+
     try {
-      const task = await scheduleMediaWithLimiter(provider, "image" as RateLimiterMediaType, async () => {
-        const response = await fetch(`${this.baseUrl}/api/v1/media/async/image`, {
-          method: "POST",
-          headers: this.getHeaders(userToken),
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({ detail: "Unknown error" }));
-          throw new Error(error.detail || `Async image generation failed: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return this.mapTask(data);
+      const { data, status } = await this.submitTaskWithRetry({
+        request,
+        requestType: "generateImageAsync",
+        mediaType: "image",
+        provider,
+        model: modelId,
+        endpoint: "/api/v1/media/async/image",
+        userToken,
+        payload,
       });
+      this.logMediaResponse({
+        request,
+        requestType: "generateImageAsync",
+        mediaType: "image",
+        provider,
+        model: modelId,
+        statusCode: status,
+        success: true,
+        responsePayload: data,
+      });
+      const task = this.mapTask(data);
 
       // Record task submission (actual completion tracked separately)
       recordMediaUsage(provider, modelId, "image" as RateLimiterMediaType, true, 0);
       return task;
     } catch (error) {
+      if (error instanceof MediaRequestError) {
+        this.logMediaResponse({
+          request,
+          requestType: "generateImageAsync",
+          mediaType: "image",
+          provider,
+          model: modelId,
+          statusCode: error.statusCode,
+          success: false,
+          responsePayload: error.responsePayload,
+          errorMessage: sanitizeAuditError(error),
+        });
+      } else {
+        this.logMediaResponse({
+          request,
+          requestType: "generateImageAsync",
+          mediaType: "image",
+          provider,
+          model: modelId,
+          statusCode: 0,
+          success: false,
+          errorMessage: sanitizeAuditError(error),
+        });
+      }
       recordMediaUsage(provider, modelId, "image" as RateLimiterMediaType, false, 0);
       throw error;
     }
@@ -798,43 +1261,59 @@ export class MediaGenerationService {
       payload.extra_params = resolveExtraParamsUrls(request.extraParams, publicUrl);
     }
 
-    console.log('[MediaGeneration] generateVideoAsync called with:', {
-      model: modelId,
+    this.logMediaRequest({
+      request,
+      requestType: "generateVideoAsync",
+      mediaType: "video",
       provider,
-      baseUrl: this.baseUrl,
-      payloadKeys: Object.keys(payload),
+      model: modelId,
+      endpoint: "/api/v1/media/async/video",
+      payload,
     });
 
     try {
       const task = await scheduleMediaWithLimiter(provider, "video" as RateLimiterMediaType, async () => {
-        const url = `${this.baseUrl}/api/v1/media/async/video`;
-        console.log('[MediaGeneration] Making POST request to:', url);
-        console.log('[MediaGeneration] Payload:', JSON.stringify(payload, null, 2));
-
-        const response = await fetch(url, {
-          method: "POST",
-          headers: this.getHeaders(userToken),
-          body: JSON.stringify(payload),
+        const { data, status } = await this.postJson(userToken, "/api/v1/media/async/video", payload);
+        this.logMediaResponse({
+          request,
+          requestType: "generateVideoAsync",
+          mediaType: "video",
+          provider,
+          model: modelId,
+          statusCode: status,
+          success: true,
+          responsePayload: data,
         });
-
-        console.log('[MediaGeneration] Response status:', response.status);
-
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({ detail: "Unknown error" }));
-          console.error('[MediaGeneration] Error response:', error);
-          throw new Error(error.detail || `Async video generation failed: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log('[MediaGeneration] Success response data:', data);
         return this.mapTask(data);
       });
 
-      console.log('[MediaGeneration] Task created and mapped:', task);
       recordMediaUsage(provider, modelId, "video" as RateLimiterMediaType, true, 0);
       return task;
     } catch (error) {
-      console.error('[MediaGeneration] Error in generateVideoAsync:', error);
+      if (error instanceof MediaRequestError) {
+        this.logMediaResponse({
+          request,
+          requestType: "generateVideoAsync",
+          mediaType: "video",
+          provider,
+          model: modelId,
+          statusCode: error.statusCode,
+          success: false,
+          responsePayload: error.responsePayload,
+          errorMessage: sanitizeAuditError(error),
+        });
+      } else {
+        this.logMediaResponse({
+          request,
+          requestType: "generateVideoAsync",
+          mediaType: "video",
+          provider,
+          model: modelId,
+          statusCode: 0,
+          success: false,
+          errorMessage: sanitizeAuditError(error),
+        });
+      }
       recordMediaUsage(provider, modelId, "video" as RateLimiterMediaType, false, 0);
       throw error;
     }
@@ -848,35 +1327,84 @@ export class MediaGenerationService {
     userToken: string
   ): Promise<MediaTask> {
     const modelId = request.model || DEFAULT_MODELS.audio;
-    const provider = resolveProvider(modelId);
-
-    const payload = {
+    const provider = resolveProvider(modelId, request.apiConfig);
+    const payload: Record<string, unknown> = {
       text: request.text,
       model: modelId,
       voice: request.voice,
       speed: request.speed,
     };
 
+    // Add apiConfig for model-specific endpoints and payload formats
+    if (request.apiConfig) {
+      payload.api_config = request.apiConfig;
+    }
+
+    // Add extraParams for model-specific fields
+    if (request.extraParams) {
+      payload.extra_params = resolveExtraParamsUrls(request.extraParams, request.publicUrl);
+    }
+
+    this.logMediaRequest({
+      request,
+      requestType: "generateAudioAsync",
+      mediaType: "audio",
+      provider,
+      model: modelId,
+      endpoint: "/api/v1/media/async/audio",
+      payload,
+    });
+
     try {
-      const task = await scheduleMediaWithLimiter(provider, "audio" as RateLimiterMediaType, async () => {
-        const response = await fetch(`${this.baseUrl}/api/v1/media/async/audio`, {
-          method: "POST",
-          headers: this.getHeaders(userToken),
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({ detail: "Unknown error" }));
-          throw new Error(error.detail || `Async audio generation failed: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return this.mapTask(data);
+      const { data, status } = await this.submitTaskWithRetry({
+        request,
+        requestType: "generateAudioAsync",
+        mediaType: "audio",
+        provider,
+        model: modelId,
+        endpoint: "/api/v1/media/async/audio",
+        userToken,
+        payload,
       });
+      this.logMediaResponse({
+        request,
+        requestType: "generateAudioAsync",
+        mediaType: "audio",
+        provider,
+        model: modelId,
+        statusCode: status,
+        success: true,
+        responsePayload: data,
+      });
+      const task = this.mapTask(data);
 
       recordMediaUsage(provider, modelId, "audio" as RateLimiterMediaType, true, 0);
       return task;
     } catch (error) {
+      if (error instanceof MediaRequestError) {
+        this.logMediaResponse({
+          request,
+          requestType: "generateAudioAsync",
+          mediaType: "audio",
+          provider,
+          model: modelId,
+          statusCode: error.statusCode,
+          success: false,
+          responsePayload: error.responsePayload,
+          errorMessage: sanitizeAuditError(error),
+        });
+      } else {
+        this.logMediaResponse({
+          request,
+          requestType: "generateAudioAsync",
+          mediaType: "audio",
+          provider,
+          model: modelId,
+          statusCode: 0,
+          success: false,
+          errorMessage: sanitizeAuditError(error),
+        });
+      }
       recordMediaUsage(provider, modelId, "audio" as RateLimiterMediaType, false, 0);
       throw error;
     }
@@ -885,19 +1413,68 @@ export class MediaGenerationService {
   /**
    * Get task status by ID
    */
-  async getTask(taskId: string, userToken: string): Promise<MediaTask> {
+  async getTask(taskId: string, userToken: string, auditContext?: MediaAuditContext): Promise<MediaTask> {
+    auditLogger.log({
+      traceId: typeof auditContext?.traceId === "string" ? auditContext.traceId : undefined,
+      eventType: "media_request",
+      userId: typeof auditContext?.userId === "number" ? auditContext.userId : null,
+      requestType: "getTask",
+      mediaTaskId: taskId,
+      requestPayload: {
+        source: auditContext?.source ?? "media_generation_service",
+        endpoint: `/api/v1/media/tasks/${taskId}`,
+      },
+    });
+
     const response = await fetch(`${this.baseUrl}/api/v1/media/tasks/${taskId}`, {
       method: "GET",
       headers: this.getHeaders(userToken),
     });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: "Unknown error" }));
-      throw new Error(error.detail || `Get task failed: ${response.status}`);
+    const rawText = await response.text().catch(() => "");
+    let parsed: unknown;
+    if (!rawText) {
+      parsed = {};
+    } else {
+      try {
+        parsed = JSON.parse(rawText);
+      } catch {
+        parsed = { raw: rawText.slice(0, 2000) };
+      }
     }
 
-    const data = await response.json();
-    return this.mapTask(data);
+    if (!response.ok) {
+      const detail = (parsed as Record<string, unknown> | null)?.detail;
+      const errorMessage = typeof detail === "string" && detail.trim().length > 0
+        ? detail
+        : `Get task failed: ${response.status}`;
+      auditLogger.log({
+        traceId: typeof auditContext?.traceId === "string" ? auditContext.traceId : undefined,
+        eventType: "media_response",
+        userId: typeof auditContext?.userId === "number" ? auditContext.userId : null,
+        requestType: "getTask",
+        mediaTaskId: taskId,
+        statusCode: response.status,
+        errorType: "media_task_fetch_failed",
+        errorMessage: errorMessage.slice(0, 500),
+        responsePayload: parsed,
+      });
+      throw new Error(errorMessage);
+    }
+
+    auditLogger.log({
+      traceId: typeof auditContext?.traceId === "string" ? auditContext.traceId : undefined,
+      eventType: "media_response",
+      userId: typeof auditContext?.userId === "number" ? auditContext.userId : null,
+      requestType: "getTask",
+      mediaTaskId: taskId,
+      statusCode: response.status,
+      responsePayload: parsed,
+    });
+    if (!parsed || typeof parsed !== "object") {
+      throw new Error("Invalid task payload");
+    }
+    return this.mapTask(parsed as Record<string, unknown>);
   }
 
   /**

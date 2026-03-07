@@ -27,6 +27,7 @@ const serviceMocks = vi.hoisted(() => ({
   createTemplateFromPresentation: vi.fn(),
   createPresentationFromTemplate: vi.fn(),
   attachAssetToDeck: vi.fn(),
+  uploadAssetToDeck: vi.fn(),
   updateSlideInDeck: vi.fn(),
   listPresentationVersionHistory: vi.fn(),
   restorePresentationVersion: vi.fn(),
@@ -60,6 +61,7 @@ vi.mock("../services/presentationService", async () => {
     createTemplateFromPresentation: serviceMocks.createTemplateFromPresentation,
     createPresentationFromTemplate: serviceMocks.createPresentationFromTemplate,
     attachAssetToDeck: serviceMocks.attachAssetToDeck,
+    uploadAssetToDeck: serviceMocks.uploadAssetToDeck,
     updateSlideInDeck: serviceMocks.updateSlideInDeck,
     listPresentationVersionHistory: serviceMocks.listPresentationVersionHistory,
     restorePresentationVersion: serviceMocks.restorePresentationVersion,
@@ -161,18 +163,34 @@ describe("presentationRouter", () => {
       restoredSlideVersion: 4,
       deckVersion: 9,
     });
+    serviceMocks.uploadAssetToDeck.mockResolvedValue({
+      item: {
+        id: 901,
+        title: "Uploaded Hero",
+        sourceUrl: "https://cdn.example.com/uploaded-hero.png",
+        thumbnailUrl: "https://cdn.example.com/uploaded-hero.png",
+      },
+      link: { id: 22, deckId: 88, slideId: 71, libraryItemId: 901, byteSize: 1200, tenantId: "tenant-1", createdAt: new Date() },
+      totals: { totalAssetBytes: 1200, warningExceeded: false, hardLimitExceeded: false },
+      billing: { creditsCharged: 4, category: "image", fileSizeBytes: 1200, baseCredits: 4, stepCredits: 0, extraSteps: 0, sizeStepMb: 10 },
+      folder: { tempFolderId: 11, userFolderId: 12, monthFolderId: 13, monthKey: "202603" },
+    });
     serviceMocks.getPresentationDeckByLibraryItem.mockResolvedValue({
-      id: 88,
-      tenantId: "tenant-1",
-      libraryItemId: 42,
-      title: "Play Deck",
-      description: null,
-      version: 1,
-      slideCount: 0,
-      totalAssetBytes: 0,
-      projectAudioTrack: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      deck: {
+        id: 88,
+        tenantId: "tenant-1",
+        libraryItemId: 42,
+        title: "Play Deck",
+        description: null,
+        version: 1,
+        slideCount: 0,
+        totalAssetBytes: 0,
+        projectAudioTrack: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      slides: [],
+      assets: [],
     });
     serviceMocks.getPresentationDeckDetail.mockResolvedValue({
       deck: { id: 88, libraryItemId: 42 },
@@ -363,6 +381,59 @@ describe("presentationRouter", () => {
     ).rejects.toSatisfy((error: unknown) => {
       if (!(error instanceof TRPCError)) return false;
       return error.code === "BAD_REQUEST" && error.message.includes(PRESENTATION_ERROR_CODE.DECK_SIZE_LIMIT_EXCEEDED);
+    });
+  });
+
+  it("uploads local asset and attaches to deck with tenant-scoped actor", async () => {
+    const fn = presentationRouter.uploadAndAttachAsset as Function;
+    const result = await fn({
+      ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+      input: {
+        deckId: 88,
+        expectedVersion: 1,
+        slideId: 71,
+        fileName: "hero.png",
+        fileType: "image/png",
+        fileBase64: "data:image/png;base64,aGVsbG8=",
+      },
+    });
+
+    expect(serviceMocks.uploadAssetToDeck).toHaveBeenCalledWith(
+      {
+        deckId: 88,
+        expectedVersion: 1,
+        slideId: 71,
+        fileName: "hero.png",
+        fileType: "image/png",
+        fileBase64: "data:image/png;base64,aGVsbG8=",
+      },
+      { userId: 10, tenantId: "tenant-1", role: "user" },
+    );
+    expect(result.item.id).toBe(901);
+    expect(result.folder.monthKey).toBe("202603");
+  });
+
+  it("maps insufficient credit errors when uploading local presentation assets", async () => {
+    serviceMocks.uploadAssetToDeck.mockRejectedValueOnce(
+      new Error("Insufficient credits. Required: 20"),
+    );
+
+    const fn = presentationRouter.uploadAndAttachAsset as Function;
+    await expect(
+      fn({
+        ctx: { tenantId: "tenant-1", user: { id: 10, role: "user" } },
+        input: {
+          deckId: 88,
+          expectedVersion: 1,
+          slideId: 71,
+          fileName: "hero.mp4",
+          fileType: "video/mp4",
+          fileBase64: "data:video/mp4;base64,aGVsbG8=",
+        },
+      }),
+    ).rejects.toSatisfy((error: unknown) => {
+      if (!(error instanceof TRPCError)) return false;
+      return error.code === "PRECONDITION_FAILED" && error.message.includes("Insufficient credits");
     });
   });
 
@@ -612,7 +683,8 @@ describe("presentationRouter", () => {
 
     expect(playbackMocks.triggerPresentationExport).toHaveBeenCalledWith(
       expect.objectContaining({ format: "jpg" }),
-      expect.any(Object),
+      expect.objectContaining({ tenantId: "tenant-1", userId: 10, role: "user" }),
+      expect.objectContaining({ userToken: expect.any(String) }),
     );
   });
 
@@ -625,7 +697,8 @@ describe("presentationRouter", () => {
 
     expect(playbackMocks.triggerPresentationExport).toHaveBeenCalledWith(
       expect.objectContaining({ format: "pdf" }),
-      expect.any(Object),
+      expect.objectContaining({ tenantId: "tenant-1", userId: 10, role: "user" }),
+      expect.objectContaining({ userToken: expect.any(String) }),
     );
   });
 
@@ -638,7 +711,8 @@ describe("presentationRouter", () => {
 
     expect(playbackMocks.triggerPresentationExport).toHaveBeenCalledWith(
       expect.objectContaining({ quality: "high" }),
-      expect.any(Object),
+      expect.objectContaining({ tenantId: "tenant-1", userId: 10, role: "user" }),
+      expect.objectContaining({ userToken: expect.any(String) }),
     );
   });
 
@@ -817,8 +891,10 @@ describe("presentationRouter", () => {
     });
 
     expect(playbackMocks.buildPlayDeckPayload).toHaveBeenCalledWith(
-      expect.objectContaining({ deck: { id: 88, libraryItemId: 42 } }),
-      expect.any(Object),
+      expect.objectContaining({
+        deck: expect.objectContaining({ id: 88, libraryItemId: 42 }),
+      }),
+      expect.objectContaining({ deckId: 88 }),
     );
     expect(result.slides[0].audioTrack?.url).toBe("https://cdn.example.com/audio.mp3");
   });

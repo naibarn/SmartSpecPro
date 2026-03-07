@@ -1,0 +1,82 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/031-PlaywrightVision/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/031-PlaywrightVision/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-exceptions-and-url-validator",
+    "section-02-browser-pool",
+    "section-03-selector-cache",
+    "section-04-script-generator",
+    "section-05-self-healing-executor",
+    "section-06-orchestrator",
+    "section-07-celery-tasks",
+    "section-08-fastapi-endpoints",
+    "section-09-trpc-router-and-db-schema",
+    "section-10-frontend-components",
+    "section-11-admin-settings-and-navigation",
+    "section-12-templates-db-and-polish"
+  ],
+  "sections_state": {
+    "section-01-exceptions-and-url-validator": {
+      "status": "complete",
+      "commit_hash": "2439b81"
+    },
+    "section-02-browser-pool": {
+      "status": "complete",
+      "commit_hash": "f441294"
+    },
+    "section-03-selector-cache": {
+      "status": "complete",
+      "commit_hash": "7a180c6"
+    },
+    "section-04-script-generator": {
+      "status": "complete",
+      "commit_hash": "a36ffea"
+    },
+    "section-05-self-healing-executor": {
+      "status": "complete",
+      "commit_hash": "f210766"
+    },
+    "section-06-orchestrator": {
+      "status": "complete",
+      "commit_hash": "ad5f56a"
+    },
+    "section-07-celery-tasks": {
+      "status": "complete",
+      "commit_hash": "20435ab"
+    },
+    "section-08-fastapi-endpoints": {
+      "status": "complete",
+      "commit_hash": "74d58b8"
+    },
+    "section-09-trpc-router-and-db-schema": {
+      "status": "complete",
+      "commit_hash": "6c81785"
+    },
+    "section-10-frontend-components": {
+      "status": "complete",
+      "commit_hash": "0d9280f"
+    },
+    "section-11-admin-settings-and-navigation": {
+      "status": "complete",
+      "commit_hash": "a00b54f"
+    },
+    "section-12-templates-db-and-polish": {
+      "status": "complete",
+      "commit_hash": "aef9291"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-03-06T12:50:49.663826+00:00"
+}

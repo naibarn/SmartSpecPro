@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -6,10 +7,25 @@ const releaseGateReportPath = resolve(
   __dirname,
   "../../../../specs/feature/030-PresentationEditAdditional/release-gate-report.md",
 );
+const releaseGateEvidencePath = resolve(
+  __dirname,
+  "../../../../specs/feature/030-PresentationEditAdditional/release-gate-evidence.json",
+);
 
 function loadReleaseGateReport(): string {
   expect(existsSync(releaseGateReportPath)).toBe(true);
   return readFileSync(releaseGateReportPath, "utf8");
+}
+
+function loadReleaseGateEvidence(): {
+  decision: string;
+  commandEvidence: Array<{ command: string; status: string }>;
+} {
+  expect(existsSync(releaseGateEvidencePath)).toBe(true);
+  return JSON.parse(readFileSync(releaseGateEvidencePath, "utf8")) as {
+    decision: string;
+    commandEvidence: Array<{ command: string; status: string }>;
+  };
 }
 
 describe("presentation integration release gates (feature 030)", () => {
@@ -50,5 +66,20 @@ describe("presentation integration release gates (feature 030)", () => {
     expect(report).toContain("npm --prefix apps/web test -- client/src/pages/PresentationPlayMode.test.tsx");
     expect(report).toContain("npm --prefix apps/web test -- server/routes/slideRender.test.ts");
     expect(report).toContain("DEBUG=false uv run --project python-backend pytest python-backend/tests/test_presentation_render_task.py -k \"SlideReadyTimeout\"");
+  });
+
+  it("pins report content to evidence sha256 and all command statuses", () => {
+    const report = loadReleaseGateReport();
+    const evidenceRaw = readFileSync(releaseGateEvidencePath, "utf8");
+    const evidence = loadReleaseGateEvidence();
+    const expectedHash = createHash("sha256").update(evidenceRaw).digest("hex");
+
+    expect(report).toContain(`Evidence SHA256: \`${expectedHash}\``);
+    expect(evidence.decision).toBe("go_staged_rollout");
+    expect(evidence.commandEvidence.length).toBeGreaterThan(0);
+    expect(evidence.commandEvidence.every((entry) => entry.status === "pass")).toBe(true);
+    for (const entry of evidence.commandEvidence) {
+      expect(report).toContain(entry.command);
+    }
   });
 });

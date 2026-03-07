@@ -717,7 +717,7 @@ export const adminOpsRouter = router({
             .orderBy(asc(skills.requestedPublishAt))
             .limit(input.limit).offset(input.offset);
           const [cnt] = await getDb.select({ c: sql<number>`count(*)` }).from(skills).where(eq(skills.visibility, 'pending_approval'));
-          return { items: rows.map(r => ({ type: 'skill' as const, id: String(r.id), name: r.name || '', description: r.description, ownerName: r.ownerName, requestedAt: r.requestedAt })), total: Number(cnt?.c ?? 0) };
+          return { items: rows.map((r: typeof rows[number]) => ({ type: 'skill' as const, id: String(r.id), name: r.name || '', description: r.description, ownerName: r.ownerName, requestedAt: r.requestedAt })), total: Number(cnt?.c ?? 0) };
         }
 
         if (input.type === 'agency') {
@@ -728,7 +728,7 @@ export const adminOpsRouter = router({
             .orderBy(asc(agencies.requestedPublishAt))
             .limit(input.limit).offset(input.offset);
           const [cnt] = await getDb.select({ c: sql<number>`count(*)` }).from(agencies).where(eq(agencies.visibility, 'pending_approval'));
-          return { items: rows.map(r => ({ type: 'agency' as const, id: r.id, name: r.name, description: r.description, ownerName: r.ownerName, requestedAt: r.requestedAt })), total: Number(cnt?.c ?? 0) };
+          return { items: rows.map((r: typeof rows[number]) => ({ type: 'agency' as const, id: r.id, name: r.name, description: r.description, ownerName: r.ownerName, requestedAt: r.requestedAt })), total: Number(cnt?.c ?? 0) };
         }
 
         if (input.type === 'template') {
@@ -739,7 +739,7 @@ export const adminOpsRouter = router({
             .orderBy(asc(workflowTemplates.requestedPublishAt))
             .limit(input.limit).offset(input.offset);
           const [cnt] = await getDb.select({ c: sql<number>`count(*)` }).from(workflowTemplates).where(eq(workflowTemplates.status, 'pending_review'));
-          return { items: rows.map(r => ({ type: 'template' as const, id: String(r.id), name: r.name, description: r.description, ownerName: r.ownerName, requestedAt: r.requestedAt })), total: Number(cnt?.c ?? 0) };
+          return { items: rows.map((r: typeof rows[number]) => ({ type: 'template' as const, id: String(r.id), name: r.name, description: r.description, ownerName: r.ownerName, requestedAt: r.requestedAt })), total: Number(cnt?.c ?? 0) };
         }
 
         // "All" tab: fetch from all 3 tables with DB-level sorting, merge + sort in memory

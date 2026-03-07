@@ -5,10 +5,11 @@ from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 
-from .registry import list_skills, load_manifest
+from .registry import list_skills, load_manifest, resolve_skill_dir
 from .evaluator import evaluate, report_to_json_dict
 from .runner import iterate_improve
 from .llm import load_llm_config_from_env
+from .proposals import apply_patch_payload, save_patch_proposal
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 RUNS_DIR = PROJECT_ROOT / "runs"
@@ -72,41 +73,38 @@ def cmd_improve(args):
                           safety_cfg=safety_cfg if safety_cfg else None)
 
     props_dir = RUNS_DIR / "proposals" / skill_name
-    props_dir.mkdir(parents=True, exist_ok=True)
-    for i, p in enumerate(res.proposals, 1):
-        stamp = p.created_at_iso.replace(":","").replace("-","")
-        diff_path = props_dir / f"{stamp}_r{i}.diff"
-        meta_path = props_dir / f"{stamp}_r{i}.meta.json"
-        diff_path.write_text(p.unified_diff, encoding="utf-8")
-        meta_path.write_text(json.dumps({
-            "skill_name": p.skill_name,
-            "created_at_iso": p.created_at_iso,
-            "rationale": p.rationale,
-            "diff_file": str(diff_path),
+    for p in res.proposals:
+        save_patch_proposal(props_dir, p, {
             "workspace": str(res.workspace),
             "mode": mode,
             "rounds": rounds,
             "llm_override": llm_override
-        }, ensure_ascii=False, indent=2), encoding="utf-8")
+        })
 
     console.print(Panel.fit(
-        f"Workspace: {res.workspace}\nFinal: Passed {res.final_report.passed}/{res.final_report.total} (pass_rate={res.final_report.pass_rate:.0%})\nSaved diffs: {props_dir}"
+        f"Workspace: {res.workspace}\nFinal: Passed {res.final_report.passed}/{res.final_report.total} (pass_rate={res.final_report.pass_rate:.0%})\nSaved proposals: {props_dir}"
     ))
 
 def cmd_apply(args):
     props_dir = RUNS_DIR / "proposals" / args.skill
-    diffs = sorted(props_dir.glob("*.diff")) if props_dir.exists() else []
-    if not diffs:
-        console.print("[red]No diff found. Run improve first.[/red]")
+    proposal_files = sorted(props_dir.glob("*.json")) if props_dir.exists() else []
+    proposal_files = [p for p in proposal_files if not p.name.endswith(".meta.json")]
+    if not proposal_files:
+        console.print("[red]No proposal found. Run improve first.[/red]")
         return
-    latest = diffs[-1]
-    diff_text = latest.read_text(encoding="utf-8")
-    import subprocess
-    res = subprocess.run(["patch","-N","-r","-","-p0"], input=diff_text, text=True, capture_output=True, cwd=str(PROJECT_ROOT))
-    if res.returncode != 0:
-        console.print(Panel.fit(f"[red]Apply failed.[/red]\n{res.stderr.strip() or res.stdout.strip()}\nDiff: {latest}"))
+    latest = proposal_files[-1]
+    try:
+        target_skill_dir = resolve_skill_dir(args.skill)
+    except Exception:
+        console.print(Panel.fit(f"[red]Apply failed.[/red]\nSkill directory not found for: {args.skill}"))
         return
-    console.print(Panel.fit(f"[green]Applied latest patch.[/green]\nDiff: {latest}"))
+    try:
+        changed = apply_patch_payload(target_skill_dir, latest.read_text(encoding="utf-8"))
+    except Exception as e:
+        console.print(Panel.fit(f"[red]Apply failed.[/red]\n{e}\nProposal: {latest}"))
+        return
+    changed_lines = "\n".join(str(p.relative_to(target_skill_dir)) for p in changed) or "(none)"
+    console.print(Panel.fit(f"[green]Applied latest proposal.[/green]\nProposal: {latest}\nFiles:\n{changed_lines}"))
 
 def build_parser():
     p = argparse.ArgumentParser(prog="isc", description="Intelligence Skill Creator")

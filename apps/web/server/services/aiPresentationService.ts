@@ -19,6 +19,7 @@ import { pickRandomSvgFromCategory } from "@shared/presentation/svgGraphicsCatal
 import { PRESENTATION_ERROR_CODE, PRESENTATION_LIMITS } from "@shared/presentation/constants";
 import {
   presentationSlideContentSchema,
+  type AudioTrackInput,
   type PresentationSlideContent,
   type PresentationPendingMediaJob,
 } from "@shared/presentation/contracts";
@@ -26,7 +27,7 @@ import { randomBytes } from "node:crypto";
 
 import { callLLMStructured } from "./callLLMStructured";
 import { getSkillByIdAsync } from "./skillRegistry";
-import { mediaGenerationService, type ImageModel, type TaskStatus } from "./mediaGenerationService";
+import { mediaGenerationService, type ImageModel, type MediaTask, type TaskStatus } from "./mediaGenerationService";
 import { getModelsByTypeAsync, type ModelDefinition } from "./modelRegistry";
 import {
   addSlideToDeck,
@@ -34,7 +35,8 @@ import {
   updateSlideInDeck,
   type PresentationActor,
 } from "./presentationService";
-import { hasEnoughCredits } from "./creditService";
+import { addMediaTaskToLibrary } from "./mediaLibraryService";
+import { deductCredits, deductCreditsForModel, hasEnoughCredits } from "./creditService";
 import { getRedisClient } from "./redis";
 import { auditLogger } from "./auditLogger";
 import { getDb, type DrizzleDB } from "../db";
@@ -113,6 +115,27 @@ const VIDEO_POLL_ACTIVE_GRACE_MAX_MS = (() => {
   }
   return 1800000;
 })();
+const AUDIO_POLL_BASE_TIMEOUT_MS = (() => {
+  const raw = Number.parseInt(process.env.AI_DRAFT_AUDIO_POLL_TIMEOUT_MS ?? "", 10);
+  if (Number.isFinite(raw) && raw >= 10000) {
+    return raw;
+  }
+  return 180000;
+})();
+const AUDIO_POLL_TIMEOUT_PER_SLIDE_MS = (() => {
+  const raw = Number.parseInt(process.env.AI_DRAFT_AUDIO_POLL_TIMEOUT_PER_SLIDE_MS ?? "", 10);
+  if (Number.isFinite(raw) && raw >= 0) {
+    return raw;
+  }
+  return 15000;
+})();
+const AUDIO_POLL_TIMEOUT_MAX_MS = (() => {
+  const raw = Number.parseInt(process.env.AI_DRAFT_AUDIO_POLL_TIMEOUT_MAX_MS ?? "", 10);
+  if (Number.isFinite(raw) && raw >= 10000) {
+    return raw;
+  }
+  return 600000;
+})();
 const LOCK_TTL_SECONDS = 300;
 const PROGRESS_TTL_SECONDS = (() => {
   const raw = Number.parseInt(process.env.AI_DRAFT_PROGRESS_TTL_SECONDS ?? "", 10);
@@ -160,11 +183,13 @@ const CREDIT_ARTICLE = 30;
 const CREDIT_SPLIT = 10;
 const CREDIT_IMAGE_SKILL = 75;
 const CREDIT_IMAGE_GEN = 40;
+const CREDIT_AUDIO_GEN = 40;
 const CREDIT_BUFFER_MULTIPLIER = 1.2;
 const DEFAULT_TEXT_MODEL = "claude-sonnet-4-6";
 
 const FALLBACK_IMAGE_MODEL: ImageModel = "flux-2.0";
 const FALLBACK_VIDEO_MODEL: ImageModel = "veo-3-1";
+const FALLBACK_AUDIO_MODEL = "elevenlabs-tts";
 const DEFAULT_CANVAS_WIDTH = 1280;
 const DEFAULT_CANVAS_HEIGHT = 720;
 const MIN_CANVAS_DIMENSION = 64;
@@ -199,6 +224,39 @@ interface DeferredMediaTaskInfo {
   modelId?: string;
   prompt?: string;
   reason?: string;
+}
+
+interface SkillLLMBillingContext {
+  description: string;
+  taskId: string;
+  deckId: number;
+  phase: number;
+  stage: string;
+  slideIndex?: number;
+  promptPreview?: string;
+}
+
+interface MediaBillingContext {
+  userId: number;
+  tenantId?: string;
+  deckId: number;
+  aiDraftTaskId?: string;
+  slideIndex: number;
+  totalSlides: number;
+  mediaType: "image" | "video" | "audio";
+  modelId: string;
+  provider?: string;
+  promptPreview?: string;
+  task: MediaTask;
+  fallbackCredits?: number;
+  stage: string;
+}
+
+class BillingChargeError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BillingChargeError";
+  }
 }
 
 interface RelayoutSlideInput {
@@ -346,22 +404,157 @@ function resolveTextWeightScore(weight?: "normal" | "500" | "600" | "700"): numb
   }
 }
 
+interface NarrativeTextElement extends SlideTextElement {
+  rawText: string;
+  normalizedText: string;
+  normalizedLines: string[];
+  score: number;
+  fontSizeValue: number;
+  fontWeightValue: number;
+}
+
+function computeHorizontalOverlapRatio(
+  first: Pick<SlideTextElement, "x" | "width">,
+  second: Pick<SlideTextElement, "x" | "width">,
+): number {
+  const left = Math.max(first.x, second.x);
+  const right = Math.min(first.x + first.width, second.x + second.width);
+  const overlap = Math.max(0, right - left);
+  const minWidth = Math.max(1, Math.min(first.width, second.width));
+  return overlap / minWidth;
+}
+
+function shouldPairAsSectionDetail(
+  headingElement: NarrativeTextElement,
+  detailElement: NarrativeTextElement,
+  canvas: { width: number; height: number },
+): boolean {
+  const fontHierarchy = headingElement.fontSizeValue >= (detailElement.fontSizeValue * 1.08)
+    || (headingElement.fontWeightValue - detailElement.fontWeightValue) >= 100;
+  if (!fontHierarchy) {
+    return false;
+  }
+  const verticalGap = detailElement.y - (headingElement.y + headingElement.height);
+  const minVerticalGap = -Math.max(12, headingElement.height * 0.28);
+  const maxVerticalGap = Math.max(canvas.height * 0.09, headingElement.height * 1.25);
+  if (verticalGap < minVerticalGap || verticalGap > maxVerticalGap) {
+    return false;
+  }
+  const overlapRatio = computeHorizontalOverlapRatio(headingElement, detailElement);
+  const xAligned = Math.abs(headingElement.x - detailElement.x) <= Math.max(24, canvas.width * 0.04);
+  return overlapRatio >= 0.46 || xAligned;
+}
+
+function inferNarrativeSections(
+  bodyCandidates: NarrativeTextElement[],
+  titleKey: string,
+  canvas: { width: number; height: number },
+): Array<{ heading: string; details: string[] }> {
+  const sections: Array<{ heading: string; details: string[] }> = [];
+  let sectionsWithDetails = 0;
+  let index = 0;
+
+  while (index < bodyCandidates.length) {
+    const current = bodyCandidates[index];
+    const lines = current.normalizedLines.filter((line) => line.toLowerCase() !== titleKey);
+    if (lines.length === 0) {
+      index += 1;
+      continue;
+    }
+
+    if (lines.length >= 2) {
+      const heading = lines[0].slice(0, 180);
+      const details = lines.slice(1, 5).map((line) => line.slice(0, 260));
+      const averageDetailLength = details.length > 0
+        ? details.reduce((sum, line) => sum + line.length, 0) / details.length
+        : 0;
+      const multilineHierarchyLikely = details.length > 0
+        && heading.length <= 160
+        && (lines.length === 2 || averageDetailLength >= Math.round(heading.length * 0.85));
+      if (multilineHierarchyLikely) {
+        sections.push({ heading, details });
+        sectionsWithDetails += 1;
+      } else {
+        sections.push({ heading, details: [] });
+      }
+      index += 1;
+      continue;
+    }
+
+    const headingText = lines[0].slice(0, 180);
+    let details: string[] = [];
+    const next = bodyCandidates[index + 1];
+    if (next) {
+      const nextLines = next.normalizedLines.filter((line) => line.toLowerCase() !== titleKey);
+      const nextPrimaryLine = nextLines[0];
+      if (
+        nextPrimaryLine
+        && shouldPairAsSectionDetail(current, next, canvas)
+        && nextPrimaryLine.length > 0
+      ) {
+        details = [nextPrimaryLine.slice(0, 260)];
+        index += 1;
+      }
+    }
+    sections.push({ heading: headingText, details });
+    if (details.length > 0) {
+      sectionsWithDetails += 1;
+    }
+    index += 1;
+  }
+
+  if (sectionsWithDetails < 2) {
+    return [];
+  }
+
+  const deduped: Array<{ heading: string; details: string[] }> = [];
+  const seen = new Set<string>();
+  for (const section of sections) {
+    const normalizedHeading = normalizeSlideText(section.heading);
+    const normalizedDetails = section.details
+      .map((detail) => normalizeSlideText(detail))
+      .filter((detail) => detail.length > 0 && detail.toLowerCase() !== normalizedHeading.toLowerCase())
+      .slice(0, 4);
+    if (!normalizedHeading) {
+      continue;
+    }
+    const key = `${normalizedHeading.toLowerCase()}||${normalizedDetails.join("||").toLowerCase()}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    deduped.push({
+      heading: normalizedHeading.slice(0, 180),
+      details: normalizedDetails.map((detail) => detail.slice(0, 260)),
+    });
+    if (deduped.length >= 6) {
+      break;
+    }
+  }
+  return deduped;
+}
+
 function extractSlideNarrative(slideTitle: string, slideContent: PresentationSlideContent): {
   title: string;
   body: string[];
+  sections: Array<{ heading: string; details: string[] }>;
 } {
+  const canvas = resolveSlideCanvasDimensions(slideContent);
   const textElements = slideContent.elements
     .filter((element): element is SlideTextElement => element.type === "text")
     .map((element) => ({
       ...element,
       rawText: String(element.text ?? ""),
       normalizedText: normalizeSlideText(String(element.text ?? "")),
+      normalizedLines: normalizeTextLines(String(element.text ?? "")),
+      fontSizeValue: Number.isFinite(element.fontSize) ? Number(element.fontSize) : 28,
+      fontWeightValue: resolveTextWeightScore(element.fontWeight),
       score:
         ((Number.isFinite(element.fontSize) ? Number(element.fontSize) : 28) * 2.4)
         + (resolveTextWeightScore(element.fontWeight) * 0.03)
         + (Math.max(0, element.width) * 0.02)
         - (Math.max(0, element.y) * 0.015),
-    }))
+    }) satisfies NarrativeTextElement)
     .filter((element) => element.normalizedText.length > 0)
     .sort((a, b) => b.score - a.score);
 
@@ -384,7 +577,11 @@ function extractSlideNarrative(slideTitle: string, slideContent: PresentationSli
       seen.add(key);
       body.push(line);
       if (body.length >= 15) {
-        return { title: titleCandidate, body };
+        return {
+          title: titleCandidate,
+          body,
+          sections: inferNarrativeSections(sortedBodyCandidates, titleKey, canvas),
+        };
       }
     }
   }
@@ -392,7 +589,11 @@ function extractSlideNarrative(slideTitle: string, slideContent: PresentationSli
   if (body.length === 0) {
     body.push(titleCandidate);
   }
-  return { title: titleCandidate, body };
+  return {
+    title: titleCandidate,
+    body,
+    sections: inferNarrativeSections(sortedBodyCandidates, titleKey, canvas),
+  };
 }
 
 const WATERMARK_ID_PREFIX = "watermark__";
@@ -1272,17 +1473,291 @@ export function computeVideoPollTimeoutMs(numSlides: number): number {
   return Math.min(VIDEO_POLL_TIMEOUT_MAX_MS, scaledTimeout);
 }
 
+export function computeAudioPollTimeoutMs(numSlides: number): number {
+  const safeSlides = Number.isFinite(numSlides)
+    ? Math.max(1, Math.round(numSlides))
+    : 1;
+  const scaledTimeout = AUDIO_POLL_BASE_TIMEOUT_MS
+    + ((safeSlides - 1) * AUDIO_POLL_TIMEOUT_PER_SLIDE_MS);
+  return Math.min(AUDIO_POLL_TIMEOUT_MAX_MS, scaledTimeout);
+}
+
+function buildSlideNarrationText(
+  slide: AIPresentationSlide,
+  index: number,
+  totalSlides: number,
+): string {
+  const segments: string[] = [];
+  const seenSegments = new Set<string>();
+  const appendSegment = (value: string) => {
+    const normalized = normalizeSlideText(value || "");
+    if (!normalized) {
+      return;
+    }
+    const key = normalized.toLocaleLowerCase();
+    if (seenSegments.has(key)) {
+      return;
+    }
+    seenSegments.add(key);
+    segments.push(normalized);
+  };
+
+  appendSegment(slide.title || "");
+  for (const line of slide.body ?? []) {
+    appendSegment(line || "");
+  }
+  if (Array.isArray(slide.sections)) {
+    for (const section of slide.sections) {
+      appendSegment(section?.heading || "");
+      for (const detail of section?.details ?? []) {
+        appendSegment(detail || "");
+      }
+    }
+  }
+
+  const narration = segments
+    .map((segment) => finalizeNarrationSegment(segment))
+    .filter((segment) => segment.length > 0)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const fallback = `Slide ${index + 1} of ${totalSlides}.`;
+  return (narration || fallback).slice(0, 4000);
+}
+
+function finalizeNarrationSegment(segment: string): string {
+  const normalized = normalizeSlideText(segment);
+  if (!normalized) {
+    return "";
+  }
+
+  if (/[.!?…:;。！？]$/.test(normalized)) {
+    return normalized;
+  }
+
+  // Thai narration sounds unnatural when we inject English-style periods
+  // between each text fragment. Keep Thai segments spaced without extra punctuation.
+  if (/[\u0e00-\u0e7f]/i.test(normalized)) {
+    return normalized;
+  }
+
+  return `${normalized}.`;
+}
+
 function parsePositiveNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value) && value > 0) {
     return value;
   }
   if (typeof value === "string") {
-    const parsed = Number.parseFloat(value.trim());
+    const normalized = value.trim();
+    if (!/^\d+(?:\.\d+)?$/.test(normalized)) {
+      return null;
+    }
+    const parsed = Number.parseFloat(normalized);
     if (Number.isFinite(parsed) && parsed > 0) {
       return parsed;
     }
   }
   return null;
+}
+
+function parseDurationStringToSeconds(value: string): number | null {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+
+  const unitMatch = normalized.match(/^(\d+(?:\.\d+)?)\s*(ms|msec|msecs|milliseconds?|s|sec|secs|seconds?|m|min|mins|minutes?|h|hr|hrs|hours?)$/i);
+  if (unitMatch) {
+    const amount = Number.parseFloat(unitMatch[1] ?? "");
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return null;
+    }
+    const unit = unitMatch[2]?.toLowerCase() ?? "";
+    if (unit.startsWith("ms")) {
+      return amount / 1000;
+    }
+    if (unit.startsWith("s")) {
+      return amount;
+    }
+    if (unit.startsWith("m")) {
+      return amount * 60;
+    }
+    if (unit.startsWith("h")) {
+      return amount * 3600;
+    }
+  }
+
+  if (!normalized.includes(":")) {
+    return null;
+  }
+
+  const parts = normalized.split(":").map((part) => part.trim());
+  if (parts.length < 2 || parts.length > 3) {
+    return null;
+  }
+
+  const parsed = parts.map((part) => Number.parseFloat(part));
+  if (parsed.some((part) => !Number.isFinite(part) || part < 0)) {
+    return null;
+  }
+
+  const [first, second, third] = parsed;
+  if (parts.length === 2) {
+    return (first! * 60) + second!;
+  }
+
+  return (first! * 3600) + (second! * 60) + third!;
+}
+
+const MIN_GENERATED_SLIDE_DURATION_MS = 250;
+const MAX_GENERATED_SLIDE_DURATION_MS = 120_000;
+
+function clampGeneratedSlideDurationMs(durationMs: number): number | null {
+  if (!Number.isFinite(durationMs) || durationMs <= 0) {
+    return null;
+  }
+  return Math.max(
+    MIN_GENERATED_SLIDE_DURATION_MS,
+    Math.min(MAX_GENERATED_SLIDE_DURATION_MS, Math.round(durationMs)),
+  );
+}
+
+function extractMediaDurationSeconds(metadata: unknown): number | null {
+  if (!metadata || typeof metadata !== "object") {
+    return null;
+  }
+
+  const seen = new Set<unknown>();
+  const durationMsKeys = [
+    "durationMs",
+    "duration_ms",
+    "audioDurationMs",
+    "audio_duration_ms",
+    "videoDurationMs",
+    "video_duration_ms",
+  ];
+  const durationSecondsKeys = [
+    "durationSeconds",
+    "duration_seconds",
+    "durationSec",
+    "duration_sec",
+    "duration",
+    "audioDuration",
+    "audio_duration",
+    "videoDuration",
+    "video_duration",
+  ];
+  const nestedKeys = [
+    "data",
+    "response",
+    "result",
+    "output",
+    "submission",
+    "metadata",
+    "meta",
+    "media",
+    "assets",
+    "files",
+    "items",
+    "kie_ai_response",
+    "raw_response",
+  ];
+
+  let bestSeconds: number | null = null;
+
+  const recordSeconds = (value: unknown, divisor = 1) => {
+    const parsed = parsePositiveNumber(value);
+    const seconds = parsed != null
+      ? parsed / divisor
+      : (typeof value === "string" ? parseDurationStringToSeconds(value) : null);
+    if (seconds == null) {
+      return;
+    }
+    if (!Number.isFinite(seconds) || seconds <= 0) {
+      return;
+    }
+    bestSeconds = bestSeconds == null ? seconds : Math.max(bestSeconds, seconds);
+  };
+
+  const walk = (value: unknown, depth: number) => {
+    if (depth > 6 || value == null || typeof value !== "object") {
+      return;
+    }
+    if (seen.has(value)) {
+      return;
+    }
+    seen.add(value);
+
+    if (Array.isArray(value)) {
+      value.forEach((item) => walk(item, depth + 1));
+      return;
+    }
+
+    const source = value as Record<string, unknown>;
+    for (const key of durationMsKeys) {
+      if (key in source) {
+        recordSeconds(source[key], 1000);
+      }
+    }
+    for (const key of durationSecondsKeys) {
+      if (key in source) {
+        recordSeconds(source[key], 1);
+      }
+    }
+    for (const [key, nestedValue] of Object.entries(source)) {
+      const normalizedKey = key.trim();
+      if (!normalizedKey || /^duration(ms)?$/i.test(normalizedKey)) {
+        continue;
+      }
+      if (/duration/i.test(normalizedKey)) {
+        const useMilliseconds = /(^|[_-])ms$/i.test(normalizedKey) || /durationms$/i.test(normalizedKey);
+        recordSeconds(nestedValue, useMilliseconds ? 1000 : 1);
+      }
+    }
+    for (const key of nestedKeys) {
+      if (key in source) {
+        walk(source[key], depth + 1);
+      }
+    }
+  };
+
+  walk(metadata, 0);
+  return bestSeconds;
+}
+
+function resolveGeneratedMediaDurationMs(
+  task: MediaTask | undefined,
+  fallbackSeconds?: number,
+): number | null {
+  const secondsFromResult = extractMediaDurationSeconds(task?.resultData);
+  if (secondsFromResult != null) {
+    return clampGeneratedSlideDurationMs(secondsFromResult * 1000);
+  }
+  const secondsFromParameters = extractMediaDurationSeconds(task?.parameters);
+  if (secondsFromParameters != null) {
+    return clampGeneratedSlideDurationMs(secondsFromParameters * 1000);
+  }
+  if (fallbackSeconds != null && Number.isFinite(fallbackSeconds) && fallbackSeconds > 0) {
+    return clampGeneratedSlideDurationMs(fallbackSeconds * 1000);
+  }
+  return null;
+}
+
+function resolveGeneratedSlideDurationMs(input: {
+  audioDurationMs?: number | null;
+  videoDurationMs?: number | null;
+}): number | null {
+  const candidates = [input.audioDurationMs, input.videoDurationMs]
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value) && value > 0);
+  if (!candidates.length) {
+    return null;
+  }
+  return clampGeneratedSlideDurationMs(Math.max(...candidates));
+}
+
+function resolveStoredSlideDurationMs(content: PresentationSlideContent): number | null {
+  return clampGeneratedSlideDurationMs(Number(content.durationMs));
 }
 
 function selectVideoDuration(
@@ -1442,9 +1917,15 @@ function buildResolvedMediaElement(
     height: number;
   },
   title?: string,
+  metadata?: {
+    prompt?: string;
+    modelId?: string;
+  },
 ): SlideImageElement | SlideVideoElement {
   const elementId = target.elementId || createPendingMediaJobId();
   if (mediaType === "video") {
+    const videoPrompt = metadata?.prompt?.trim();
+    const videoModelId = metadata?.modelId?.trim();
     return {
       id: elementId,
       type: "video",
@@ -1457,6 +1938,12 @@ function buildResolvedMediaElement(
       title: title || "Video",
       muted: true,
       loop: true,
+      videoFit: "cover",
+      videoPositionX: 50,
+      videoPositionY: 50,
+      videoZoom: 1,
+      ...(videoPrompt ? { videoPrompt: videoPrompt.slice(0, 4000) } : {}),
+      ...(videoModelId ? { videoModelId: videoModelId.slice(0, 256) } : {}),
     } satisfies SlideVideoElement;
   }
 
@@ -1489,7 +1976,16 @@ function applyResolvedMediaToElements(
     width: job.targetWidth,
     height: job.targetHeight,
   };
-  const replacement = buildResolvedMediaElement(job.mediaType, sourceUrl, target, slideTitle);
+  const replacement = buildResolvedMediaElement(
+    job.mediaType,
+    sourceUrl,
+    target,
+    slideTitle,
+    {
+      prompt: job.prompt,
+      modelId: job.modelId,
+    },
+  );
   const targetIndex = job.targetElementId
     ? elements.findIndex((element) => element.id === job.targetElementId)
     : -1;
@@ -1594,31 +2090,200 @@ function buildImageApiConfig(model?: ModelDefinition): Record<string, string> | 
     if (typeof configJson.provider === "string") {
       apiConfig.provider = configJson.provider;
     }
+    const customApiConfig = configJson.apiConfig;
+    if (customApiConfig && typeof customApiConfig === "object" && !Array.isArray(customApiConfig)) {
+      for (const [key, value] of Object.entries(customApiConfig as Record<string, unknown>)) {
+        if (typeof value === "string") {
+          const normalized = value.trim();
+          if (normalized.length > 0) {
+            apiConfig[key] = normalized;
+          }
+        } else if (typeof value === "number" || typeof value === "boolean") {
+          apiConfig[key] = String(value);
+        }
+      }
+    }
   }
 
   return Object.keys(apiConfig).length > 0 ? apiConfig : undefined;
 }
 
-function buildImageExtraParams(model?: ModelDefinition): Record<string, unknown> | undefined {
+type ModelInputSyncTarget = "none" | "reference_images" | "prompt" | "aspect_ratio";
+type ModelInputFieldType =
+  | "select"
+  | "text"
+  | "number"
+  | "boolean"
+  | "image_urls"
+  | "video_urls"
+  | "audio_urls"
+  | "library_file";
+
+interface ParsedModelInputField {
+  key: string;
+  type: ModelInputFieldType;
+  syncWith: ModelInputSyncTarget;
+  default?: unknown;
+  required?: boolean;
+  options?: Array<{ value: unknown; label?: string }>;
+}
+
+function normalizeModelInputFieldType(rawType: unknown): ModelInputFieldType {
+  const type = typeof rawType === "string" ? rawType.trim() : "text";
+  if (
+    type === "select"
+    || type === "text"
+    || type === "number"
+    || type === "boolean"
+    || type === "image_urls"
+    || type === "video_urls"
+    || type === "audio_urls"
+    || type === "library_file"
+  ) {
+    return type;
+  }
+  return "text";
+}
+
+function normalizeModelInputSyncTarget(rawSyncWith: unknown): ModelInputSyncTarget | null {
+  if (typeof rawSyncWith !== "string") {
+    return null;
+  }
+  const sync = rawSyncWith.trim();
+  if (
+    sync === "none"
+    || sync === "reference_images"
+    || sync === "prompt"
+    || sync === "aspect_ratio"
+  ) {
+    return sync;
+  }
+  return null;
+}
+
+function inferModelInputSyncTarget(
+  key: string,
+  type: ModelInputFieldType,
+  explicit: ModelInputSyncTarget | null,
+): ModelInputSyncTarget {
+  if (explicit) {
+    return explicit;
+  }
+  if (type === "image_urls" || type === "video_urls" || type === "audio_urls") {
+    return "reference_images";
+  }
+  const normalizedKey = key.replace(/[^a-z0-9]/gi, "").toLowerCase();
+  if (normalizedKey === "prompt" || normalizedKey.endsWith("prompt")) {
+    return "prompt";
+  }
+  if (normalizedKey.includes("aspect") && normalizedKey.includes("ratio")) {
+    return "aspect_ratio";
+  }
+  if (
+    normalizedKey.includes("imageurls")
+    || normalizedKey.includes("imageurl")
+    || normalizedKey.includes("referenceimages")
+    || normalizedKey.includes("referenceimage")
+  ) {
+    return "reference_images";
+  }
+  return "none";
+}
+
+function parseModelInputFields(model?: ModelDefinition): ParsedModelInputField[] {
   const configJson = model?.configJson as { inputFields?: unknown } | undefined;
   const inputFields = Array.isArray(configJson?.inputFields) ? configJson.inputFields : [];
   if (inputFields.length === 0) {
-    return undefined;
+    return [];
   }
-
-  const extraParams: Record<string, unknown> = {};
-  for (const field of inputFields) {
-    if (!field || typeof field !== "object") {
+  const parsed: ParsedModelInputField[] = [];
+  for (const rawField of inputFields) {
+    if (!rawField || typeof rawField !== "object") {
       continue;
     }
-    const key = (field as { key?: unknown }).key;
-    const defaultValue = (field as { default?: unknown }).default;
-    if (typeof key === "string" && key.trim().length > 0 && defaultValue !== undefined) {
-      extraParams[key] = defaultValue;
+    const field = rawField as Record<string, unknown>;
+    const rawKey = field.key;
+    if (typeof rawKey !== "string" || rawKey.trim().length === 0) {
+      continue;
+    }
+    const key = rawKey.trim();
+    const type = normalizeModelInputFieldType(field.type);
+    const explicitSyncWith = normalizeModelInputSyncTarget(field.syncWith);
+    const options = Array.isArray(field.options)
+      ? (field.options as unknown[])
+          .filter((entry): entry is { value: unknown; label?: string } => (
+            Boolean(entry)
+            && typeof entry === "object"
+            && "value" in (entry as Record<string, unknown>)
+          ))
+      : undefined;
+    parsed.push({
+      key,
+      type,
+      syncWith: inferModelInputSyncTarget(key, type, explicitSyncWith),
+      default: field.default,
+      required: Boolean(field.required),
+      options,
+    });
+  }
+  return parsed;
+}
+
+function buildImageExtraParams(model?: ModelDefinition): Record<string, unknown> | undefined {
+  const fields = parseModelInputFields(model);
+  if (fields.length === 0) {
+    return undefined;
+  }
+  const extraParams: Record<string, unknown> = {};
+  for (const field of fields) {
+    if (field.default !== undefined) {
+      extraParams[field.key] = field.default;
+      continue;
+    }
+    if (field.required && field.type === "select" && field.options && field.options.length > 0) {
+      extraParams[field.key] = field.options[0]?.value;
     }
   }
-
   return Object.keys(extraParams).length > 0 ? extraParams : undefined;
+}
+
+function mergeExtraParams(
+  base: Record<string, unknown> | undefined,
+  override: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+  if (!base && !override) {
+    return undefined;
+  }
+  if (!base) {
+    return override;
+  }
+  if (!override) {
+    return base;
+  }
+  return { ...base, ...override };
+}
+
+function sanitizeRequestedModelExtraParams(
+  requested: unknown,
+  model?: ModelDefinition,
+): Record<string, unknown> | undefined {
+  if (!requested || typeof requested !== "object" || Array.isArray(requested)) {
+    return undefined;
+  }
+  const fields = parseModelInputFields(model);
+  if (fields.length === 0) {
+    return undefined;
+  }
+  const requestedRecord = requested as Record<string, unknown>;
+  const allowedKeys = new Set(fields.map((field) => field.key));
+  const next: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(requestedRecord)) {
+    if (!allowedKeys.has(key)) {
+      continue;
+    }
+    next[key] = value;
+  }
+  return Object.keys(next).length > 0 ? next : undefined;
 }
 
 function sanitizeCanvasDimension(value: unknown): number | null {
@@ -1810,60 +2475,40 @@ interface FieldSyncValues {
 }
 
 /**
- * Injects runtime context values into extraParams for fields that declare a syncWith target.
- * Also handles the legacy `type === "image_urls"` convention for reference images.
+ * Injects runtime context values into extraParams for fields that declare (or infer) a syncWith target.
  */
 function applyFieldSyncTargets(
   baseExtraParams: Record<string, unknown> | undefined,
   model: ModelDefinition | undefined,
   syncValues: FieldSyncValues,
 ): Record<string, unknown> | undefined {
-  if (!model) {
-    return baseExtraParams;
-  }
-
-  const configJson = model.configJson as { inputFields?: unknown } | undefined;
-  const inputFields = Array.isArray(configJson?.inputFields) ? (configJson.inputFields as Record<string, unknown>[]) : [];
-  if (inputFields.length === 0) {
+  const fields = parseModelInputFields(model);
+  if (fields.length === 0) {
     return baseExtraParams;
   }
 
   let next: Record<string, unknown> | undefined = baseExtraParams;
 
-  for (const field of inputFields) {
-    if (!field || typeof field !== "object") continue;
-    const key = field.key;
-    if (typeof key !== "string" || key.trim().length === 0) continue;
-
-    const type = field.type;
-    const syncWith = field.syncWith;
-
-    // reference_images: explicit syncWith OR legacy type="image_urls"
+  for (const field of fields) {
     if (
-      (syncWith === "reference_images" || type === "image_urls") &&
+      field.syncWith === "reference_images" &&
       syncValues.referenceImageUrls &&
       syncValues.referenceImageUrls.length > 0
     ) {
       next = next ?? {};
-      if (next[key] === undefined || next[key] === null || next[key] === "") {
-        next = { ...next, [key]: syncValues.referenceImageUrls };
-      }
+      next = { ...next, [field.key]: syncValues.referenceImageUrls };
       continue;
     }
 
-    if (syncWith === "prompt" && syncValues.prompt) {
+    if (field.syncWith === "prompt" && syncValues.prompt) {
       next = next ?? {};
-      if (next[key] === undefined || next[key] === null || next[key] === "") {
-        next = { ...next, [key]: syncValues.prompt };
-      }
+      next = { ...next, [field.key]: syncValues.prompt };
       continue;
     }
 
-    if (syncWith === "aspect_ratio" && syncValues.aspectRatio) {
+    if (field.syncWith === "aspect_ratio" && syncValues.aspectRatio) {
       next = next ?? {};
-      if (next[key] === undefined || next[key] === null || next[key] === "") {
-        next = { ...next, [key]: syncValues.aspectRatio };
-      }
+      next = { ...next, [field.key]: syncValues.aspectRatio };
     }
   }
 
@@ -1895,8 +2540,10 @@ async function invokeSkillTextLLM(params: {
   systemPrompt: string;
   userPrompt: string;
   userId: number;
+  tenantId?: string;
   preferredProviderId?: number;
   strictProviderPin?: boolean;
+  billingContext?: SkillLLMBillingContext;
 }): Promise<string> {
   if (params.strictProviderPin && params.preferredProviderId) {
     const candidates = await resolveProviders(params.model).catch(() => []);
@@ -1914,7 +2561,9 @@ async function invokeSkillTextLLM(params: {
     ],
     stream: false,
     userId: params.userId,
-    preferredProvider: params.preferredProviderId,
+    preferredProvider: params.strictProviderPin
+      ? params.preferredProviderId
+      : undefined,
   });
 
   if (result.type === "error") {
@@ -1927,8 +2576,62 @@ async function invokeSkillTextLLM(params: {
     throw new Error("LLM provider requires fallback consent");
   }
 
+  const usage = result.response?.usage ?? {
+    prompt_tokens: 0,
+    completion_tokens: 0,
+  };
+  const inputTokens = Number(usage.prompt_tokens ?? 0);
+  const outputTokens = Number(usage.completion_tokens ?? 0);
+  const costUsdValue = Number(usage.cost ?? 0);
+  const costUsd = Number.isFinite(costUsdValue) && costUsdValue > 0 ? costUsdValue : undefined;
+  const billing = params.billingContext;
+
+  try {
+    await deductCreditsForModel({
+      userId: params.userId,
+      tenantId: params.tenantId,
+      model: params.model,
+      provider: result.providerName,
+      inputTokens: Number.isFinite(inputTokens) ? inputTokens : 0,
+      outputTokens: Number.isFinite(outputTokens) ? outputTokens : 0,
+      costUsd,
+      description: billing?.description,
+      sourceType: "skill",
+      metadata: billing
+        ? {
+            operation: "ai_draft_llm",
+            taskId: billing.taskId,
+            deckId: billing.deckId,
+            phase: billing.phase,
+            stage: billing.stage,
+            ...(billing.slideIndex !== undefined ? { slideIndex: billing.slideIndex } : {}),
+            ...(billing.promptPreview ? { promptPreview: billing.promptPreview.slice(0, 500) } : {}),
+          }
+        : undefined,
+    });
+  } catch (err) {
+    throw new BillingChargeError(`LLM credit deduction failed: ${sanitizeErrorMessage(err)}`);
+  }
+
   const content = result.response?.choices?.[0]?.message?.content;
   return extractTextContent(content) || JSON.stringify(content);
+}
+
+function buildTextModelResolutionCandidates(preferredModel: string): string[] {
+  const trimmed = preferredModel.trim();
+  const candidates = new Set<string>();
+  if (trimmed.length > 0) {
+    candidates.add(trimmed);
+  }
+
+  const unprefixed = trimmed.includes("/")
+    ? trimmed.slice(trimmed.lastIndexOf("/") + 1).trim()
+    : "";
+  if (unprefixed.length > 0) {
+    candidates.add(unprefixed);
+  }
+
+  return Array.from(candidates);
 }
 
 async function resolveRoutableTextModel(
@@ -1937,33 +2640,38 @@ async function resolveRoutableTextModel(
   strictProviderPin?: boolean,
 ): Promise<string> {
   const preferred = preferredModel.trim();
+  const preferredCandidates = buildTextModelResolutionCandidates(preferred);
 
-  const preferredProviders = await resolveProviders(preferred).catch(() => []);
-  if (preferredProviderId && preferredProviders.some((p) => p.providerId === preferredProviderId)) {
-    return preferred;
-  }
-  if (preferredProviders.length > 0) {
-    return preferred;
+  for (const candidate of preferredCandidates) {
+    const candidateProviders = await resolveProviders(candidate).catch(() => []);
+    if (preferredProviderId && candidateProviders.some((p) => p.providerId === preferredProviderId)) {
+      return candidate;
+    }
+    if (candidateProviders.length > 0) {
+      return candidate;
+    }
   }
 
   const db = await getDb();
   if (db) {
-    const byProviderModelId = await db
-      .select({ modelId: modelProviderMap.modelId })
-      .from(modelProviderMap)
-      .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
-      .where(
-        and(
-          eq(modelProviderMap.providerModelId, preferred),
-          ...(preferredProviderId ? [eq(modelProviderMap.providerId, preferredProviderId)] : []),
-          eq(modelProviderMap.isEnabled, true),
-          eq(llmProviders.isEnabled, true),
-        ),
-      )
-      .orderBy(asc(modelProviderMap.priority))
-      .limit(1);
-    if (byProviderModelId[0]?.modelId) {
-      return byProviderModelId[0].modelId;
+    for (const candidate of preferredCandidates) {
+      const byProviderModelId = await db
+        .select({ modelId: modelProviderMap.modelId })
+        .from(modelProviderMap)
+        .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
+        .where(
+          and(
+            eq(modelProviderMap.providerModelId, candidate),
+            ...(preferredProviderId ? [eq(modelProviderMap.providerId, preferredProviderId)] : []),
+            eq(modelProviderMap.isEnabled, true),
+            eq(llmProviders.isEnabled, true),
+          ),
+        )
+        .orderBy(asc(modelProviderMap.priority))
+        .limit(1);
+      if (byProviderModelId[0]?.modelId) {
+        return byProviderModelId[0].modelId;
+      }
     }
   }
 
@@ -2037,6 +2745,7 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
     templateId,
     title: narrative.title.slice(0, 200),
     body: clampedBody.map((line) => line.slice(0, 240)),
+    ...(narrative.sections.length > 0 ? { sections: narrative.sections } : {}),
     graphicCategory,
     imagePromptKeywords: combinedText.slice(0, 500) || narrative.title.slice(0, 500),
   };
@@ -2079,6 +2788,17 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
     // a proper video element at the same template-determined position and size.
     if (videoElement && element.src === videoElement.src) {
       const vid = videoElement as any;
+      const videoPrompt = typeof vid.videoPrompt === "string"
+        ? vid.videoPrompt
+        : (typeof vid.imagePrompt === "string" ? vid.imagePrompt : undefined);
+      const videoModelId = typeof vid.videoModelId === "string"
+        ? vid.videoModelId
+        : (typeof vid.imageModelId === "string" ? vid.imageModelId : undefined);
+      const videoReferenceUrls = normalizeReferenceImageUrls(
+        Array.isArray(vid.videoReferenceUrls)
+          ? (vid.videoReferenceUrls as string[])
+          : undefined,
+      );
       return {
         id: element.id,
         type: "video" as const,
@@ -2091,6 +2811,14 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
         title: vid.title ?? "Video",
         muted: vid.muted ?? true,
         loop: vid.loop ?? true,
+        ...(videoPrompt ? { videoPrompt: videoPrompt.slice(0, 4000) } : {}),
+        ...(videoModelId ? { videoModelId: videoModelId.slice(0, 256) } : {}),
+        ...(videoReferenceUrls.length > 0 ? { videoReferenceUrls } : {}),
+        ...(vid.videoFit !== undefined ? { videoFit: vid.videoFit } : {}),
+        ...(vid.videoPositionX !== undefined ? { videoPositionX: vid.videoPositionX } : {}),
+        ...(vid.videoPositionY !== undefined ? { videoPositionY: vid.videoPositionY } : {}),
+        ...(vid.videoZoom !== undefined ? { videoZoom: vid.videoZoom } : {}),
+        ...(vid.videoExtraParams !== undefined ? { videoExtraParams: vid.videoExtraParams } : {}),
         ...(vid.autoplay !== undefined ? { autoplay: vid.autoplay } : {}),
         ...(vid.objectFit !== undefined ? { objectFit: vid.objectFit } : {}),
       } as SlideElement;
@@ -2252,9 +2980,46 @@ function parsePositiveInteger(value: unknown): number | null {
   return null;
 }
 
-function inferArticleLanguage(language: string, topic: string): "th" | "en" {
-  if (language === "th") {
+function normalizeArticleLanguagePreference(value: unknown): "auto" | "th" | "en" | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+  if (normalized === "th" || normalized === "thai" || normalized.includes("ภาษาไทย")) {
     return "th";
+  }
+  if (normalized === "en" || normalized === "english") {
+    return "en";
+  }
+  if (normalized === "auto" || normalized === "auto-detect" || normalized === "autodetect") {
+    return "auto";
+  }
+  return null;
+}
+
+function resolveArticleLanguagePreference(
+  language: string,
+  skillParams?: Record<string, unknown>,
+): "auto" | "th" | "en" {
+  return normalizeArticleLanguagePreference(skillParams?.language)
+    ?? normalizeArticleLanguagePreference(language)
+    ?? "auto";
+}
+
+function inferArticleLanguage(
+  language: string,
+  topic: string,
+  skillParams?: Record<string, unknown>,
+): "th" | "en" {
+  const preferredLanguage = resolveArticleLanguagePreference(language, skillParams);
+  if (preferredLanguage === "th") {
+    return "th";
+  }
+  if (preferredLanguage === "en") {
+    return "en";
   }
   if (language === "en") {
     return "en";
@@ -2326,7 +3091,7 @@ function buildArticleWordPlan(
   hardMaxWords: number | null;
   lengthPreset: "short" | "medium" | "long" | null;
 } {
-  const resolvedLanguage = inferArticleLanguage(language, topic);
+  const resolvedLanguage = inferArticleLanguage(language, topic, skillParams);
   const slideRecommendedWords = computeSlideRecommendedWords(resolvedLanguage, numSlides);
   const explicitWordCount = resolveExplicitWordCount(skillParams);
   const lengthPresetTarget = resolveLengthPresetTarget(skillParams);
@@ -2805,8 +3570,9 @@ function topUpSlideBodiesFromArticle(
 
 // ── Public Functions ───────────────────────────────────────
 
-export function estimateCreditCost(numSlides: number): number {
-  const base = CREDIT_ARTICLE + CREDIT_SPLIT + (CREDIT_IMAGE_SKILL + CREDIT_IMAGE_GEN) * numSlides;
+export function estimateCreditCost(numSlides: number, includeAudio = false): number {
+  const basePerSlide = CREDIT_IMAGE_SKILL + CREDIT_IMAGE_GEN + (includeAudio ? CREDIT_AUDIO_GEN : 0);
+  const base = CREDIT_ARTICLE + CREDIT_SPLIT + (basePerSlide * numSlides);
   return Math.round(base * CREDIT_BUFFER_MULTIPLIER);
 }
 
@@ -2816,10 +3582,11 @@ export function buildArticlePrompt(
   numSlides: number,
   skillParams?: Record<string, unknown>,
 ): string {
+  const requestedLanguage = resolveArticleLanguagePreference(language, skillParams);
   const langInstruction =
-    language === "auto"
+    requestedLanguage === "auto"
       ? "Write in the same language as the topic. If the topic is in Thai, write in Thai. If in English, write in English."
-      : language === "th"
+      : requestedLanguage === "th"
         ? "Write the entire article in Thai."
         : "Write the entire article in English.";
 
@@ -2925,6 +3692,9 @@ export async function generateAIDraft(
   try {
     // Sanitize user inputs
     const sanitizedPrompt = input.prompt.replace(/[\x00-\x1f\x7f]/g, "").slice(0, 1000);
+    const sanitizedCustomArticleText = input.customArticleText
+      ?.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, "")
+      .trim();
     const sanitizedImagePromptContext = sanitizePromptContext(input.imagePromptContext);
     const normalizedReferenceImageUrls = normalizeReferenceImageUrls(input.referenceImageUrls);
     const normalizedWatermark = normalizeWatermarkInput(input.watermark, warnings);
@@ -2981,19 +3751,55 @@ export async function generateAIDraft(
         `${isVideoSkill ? "Video" : "Image"} model "${imageModelToUse}" does not list aspect ratio "${canvasAspectRatio}"; using "${imageAspectRatio}"`,
       );
     }
-    // Base extra params: field defaults + reference_images + aspect_ratio sync targets.
+    const userSelectedExtraParams = sanitizeRequestedModelExtraParams(
+      input.mediaModelExtraParams,
+      selectedImageModel,
+    );
+    // Base extra params: field defaults + user-selected advanced params + sync targets.
     // Prompt sync is applied per-slide (see below) since the prompt varies per slide.
     const mediaExtraParams = applyFieldSyncTargets(
-      buildImageExtraParams(selectedImageModel),
+      mergeExtraParams(
+        buildImageExtraParams(selectedImageModel),
+        userSelectedExtraParams,
+      ),
       selectedImageModel,
       { referenceImageUrls: normalizedReferenceImageUrls, aspectRatio: imageAspectRatio },
     );
     const selectedVideoDuration = isVideoSkill
       ? selectVideoDuration(selectedImageModel, mediaExtraParams)
       : undefined;
+    const shouldGenerateAudio = Boolean(input.generateAudio);
+    const requestedAudioModel = input.audioModel?.trim();
+    const availableAudioModels = shouldGenerateAudio
+      ? await getModelsByTypeAsync("audio")
+      : [];
+    const requestedAudioModelMatch = requestedAudioModel
+      ? availableAudioModels.find((model) => model.id === requestedAudioModel)
+      : undefined;
+    const selectedAudioModel = shouldGenerateAudio
+      ? (requestedAudioModelMatch ?? availableAudioModels[0])
+      : undefined;
+    if (shouldGenerateAudio && requestedAudioModel && !requestedAudioModelMatch) {
+      warnings.push(
+        `Audio model "${requestedAudioModel}" not found; using "${selectedAudioModel?.id ?? FALLBACK_AUDIO_MODEL}"`,
+      );
+    }
+    const audioModelToUse = selectedAudioModel?.id || FALLBACK_AUDIO_MODEL;
+    const audioApiConfig = shouldGenerateAudio
+      ? buildImageApiConfig(selectedAudioModel)
+      : undefined;
+    const userSelectedAudioExtraParams = shouldGenerateAudio
+      ? sanitizeRequestedModelExtraParams(input.audioModelExtraParams, selectedAudioModel)
+      : undefined;
+    const audioExtraParams = shouldGenerateAudio
+      ? mergeExtraParams(
+          buildImageExtraParams(selectedAudioModel),
+          userSelectedAudioExtraParams,
+        )
+      : undefined;
 
     // ── Credit pre-check (UX fast-fail; actual deductions happen in downstream LLM/media services)
-    const estimatedCost = estimateCreditCost(input.numSlides);
+    const estimatedCost = estimateCreditCost(input.numSlides, shouldGenerateAudio);
     const hasCredits = await hasEnoughCredits(actor.userId, estimatedCost);
     if (!hasCredits) {
       await updateProgress({
@@ -3009,54 +3815,109 @@ export async function generateAIDraft(
     // ── Phase 1: Article Generation ───────────────────────
     if (await isCancelled()) { await setCancelled(); return; }
 
-    await updateProgress({ phase: 1, phaseLabel: "Writing article..." });
-
-    auditLogger.log({
-      traceId: taskId,
-      timestamp: new Date().toISOString(),
-      eventType: "skill_execute",
-      userId: actor.userId,
-      requestPayload: { phase: 1, skillId: input.articleSkillId, topic: sanitizedPrompt },
-    });
-
-    // Skills are system-level (filesystem-based), already validated by Zod in router.
-    // No per-user scoping needed — all enabled skills are visible to all users.
-    const articleSkill = await getSkillByIdAsync(input.articleSkillId);
-    if (!articleSkill?.systemPrompt) {
-      await updateProgress({
-        completed: true,
-        error: {
-          code: PRESENTATION_ERROR_CODE.AI_GENERATION_FAILED,
-          message: `Article skill not found: ${input.articleSkillId}`,
-        },
-      });
-      return;
-    }
-    const articleModel = await resolveRoutableTextModel(
-      resolveSkillModel(articleSkill),
-      articleSkill?.preferredProviderId,
-      articleSkill?.strictProviderPin,
-    );
-
     let articleText: string;
-    try {
-      articleText = await invokeSkillTextLLM({
-        model: articleModel,
-        systemPrompt: articleSkill.systemPrompt,
-        userPrompt: buildArticlePrompt(sanitizedPrompt, input.language, input.numSlides, input.articleSkillParams),
+    let articleModel = DEFAULT_TEXT_MODEL;
+    let articlePreferredProviderId: number | undefined;
+    let articleStrictProviderPin = false;
+
+    if (input.useCustomArticle && sanitizedCustomArticleText) {
+      await updateProgress({ phase: 1, phaseLabel: "Using provided article..." });
+      auditLogger.log({
+        traceId: taskId,
+        timestamp: new Date().toISOString(),
+        eventType: "skill_execute",
         userId: actor.userId,
-        preferredProviderId: articleSkill.preferredProviderId,
-        strictProviderPin: articleSkill.strictProviderPin,
-      });
-    } catch (err) {
-      await updateProgress({
-        completed: true,
-        error: {
-          code: PRESENTATION_ERROR_CODE.AI_GENERATION_FAILED,
-          message: `Article generation failed: ${sanitizeErrorMessage(err)}`,
+        requestPayload: {
+          phase: 1,
+          stage: "article_provided",
+          topic: sanitizedPrompt,
+          approxWords: countApproxWords(sanitizedCustomArticleText),
         },
       });
-      return;
+      articleText = sanitizedCustomArticleText;
+      articleModel = await resolveRoutableTextModel(DEFAULT_TEXT_MODEL);
+    } else {
+      await updateProgress({ phase: 1, phaseLabel: "Writing article..." });
+
+      auditLogger.log({
+        traceId: taskId,
+        timestamp: new Date().toISOString(),
+        eventType: "skill_execute",
+        userId: actor.userId,
+        requestPayload: { phase: 1, skillId: input.articleSkillId, topic: sanitizedPrompt },
+      });
+
+      // Skills are system-level (filesystem-based), already validated by Zod in router.
+      // No per-user scoping needed — all enabled skills are visible to all users.
+      const articleSkill = await getSkillByIdAsync(input.articleSkillId);
+      if (!articleSkill?.systemPrompt) {
+        await updateProgress({
+          completed: true,
+          error: {
+            code: PRESENTATION_ERROR_CODE.AI_GENERATION_FAILED,
+            message: `Article skill not found: ${input.articleSkillId}`,
+          },
+        });
+        return;
+      }
+      articlePreferredProviderId = articleSkill.preferredProviderId;
+      articleStrictProviderPin = Boolean(articleSkill.strictProviderPin);
+      articleModel = await resolveRoutableTextModel(
+        resolveSkillModel(articleSkill),
+        articlePreferredProviderId,
+        articleStrictProviderPin,
+      );
+
+      const articlePrompt = buildArticlePrompt(
+        sanitizedPrompt,
+        input.language,
+        input.numSlides,
+        input.articleSkillParams,
+      );
+
+      try {
+        articleText = await invokeSkillTextLLM({
+          model: articleModel,
+          systemPrompt: articleSkill.systemPrompt,
+          userPrompt: articlePrompt,
+          userId: actor.userId,
+          tenantId: actor.tenantId,
+          preferredProviderId: articlePreferredProviderId,
+          strictProviderPin: articleStrictProviderPin,
+          billingContext: {
+            description: `AI Draft article generation (Deck #${input.deckId})`,
+            taskId,
+            deckId: input.deckId,
+            phase: 1,
+            stage: "article_generation",
+            promptPreview: articlePrompt.slice(0, 500),
+          },
+        });
+      } catch (err) {
+        const sanitizedError = sanitizeErrorMessage(err);
+        auditLogger.log({
+          traceId: taskId,
+          timestamp: new Date().toISOString(),
+          eventType: "skill_execute",
+          userId: actor.userId,
+          responsePayload: {
+            phase: "error",
+            stage: "article_generation",
+            model: articleModel,
+            preferredProviderId: articlePreferredProviderId ?? null,
+            strictProviderPin: articleStrictProviderPin,
+            errorMessage: sanitizedError,
+          },
+        });
+        await updateProgress({
+          completed: true,
+          error: {
+            code: PRESENTATION_ERROR_CODE.AI_GENERATION_FAILED,
+            message: `Article generation failed: ${sanitizedError}`,
+          },
+        });
+        return;
+      }
     }
 
     const explicitWordLimit = resolveExplicitWordCount(input.articleSkillParams);
@@ -3083,11 +3944,20 @@ export async function generateAIDraft(
         systemPrompt: SLIDE_SPLIT_SYSTEM_PROMPT,
         userMessage: buildSlideSplitUserPrompt(splitArticleExcerpt, input.numSlides),
         model: articleModel,
-        preferredProviderId: articleSkill.preferredProviderId,
-        strictProviderPin: articleSkill.strictProviderPin,
+        preferredProviderId: articlePreferredProviderId,
+        strictProviderPin: articleStrictProviderPin,
         zodSchema: AIPresentationSchema,
         userId: actor.userId,
         tenantId: actor.tenantId,
+        billingDescription: `AI Draft slide structuring (Deck #${input.deckId})`,
+        billingMetadata: {
+          operation: "ai_draft_slide_split",
+          taskId,
+          deckId: input.deckId,
+          phase: 2,
+          stage: "slide_split",
+          promptPreview: splitArticleExcerpt.slice(0, 500),
+        },
       });
       slides = normalizeSlidesToRequestedCount(splitResult.data, input.numSlides, warnings)
         .map((slide) => normalizeSlideHierarchy(slide));
@@ -3166,153 +4036,398 @@ export async function generateAIDraft(
 
     const imageUrls: (string | null)[] = [];
     const imagePrompts: string[] = [];
+    const slideAudioTracks: Array<AudioTrackInput | null> = new Array(slides.length).fill(null);
+    const slideAudioDurationsMs: Array<number | null> = new Array(slides.length).fill(null);
+    const slideVideoDurationsMs: Array<number | null> = new Array(slides.length).fill(
+      isVideoSkill && selectedVideoDuration
+        ? clampGeneratedSlideDurationMs(selectedVideoDuration * 1000)
+        : null,
+    );
+    const mediaExtraParamsPerSlide: Array<Record<string, unknown> | undefined> = new Array(slides.length).fill(undefined);
     const mediaFailureReasons: Array<string | null> = new Array(slides.length).fill(null);
     const deferredMediaTasks: Array<DeferredMediaTaskInfo | null> = new Array(slides.length).fill(null);
     let mediaSlidesFinalized = 0;
+    let phase4AbortError: BillingChargeError | null = null;
+
+    const setPhase4AbortError = (err: BillingChargeError) => {
+      if (!phase4AbortError) {
+        phase4AbortError = err;
+      }
+    };
+    const throwIfPhase4Aborted = () => {
+      if (phase4AbortError) {
+        throw phase4AbortError;
+      }
+    };
 
     // Process slides with bounded concurrency
-    await mapWithConcurrency(
-      slides,
-      async (slide, index) => {
-        if (await isCancelled()) {
-          imageUrls[index] = null;
-          return;
-        }
+    try {
+      await mapWithConcurrency(
+        slides,
+        async (slide, index) => {
+          throwIfPhase4Aborted();
+          if (await isCancelled()) {
+            imageUrls[index] = null;
+            return;
+          }
 
-        // Phase 3: Image prompt enhancement
-        const baseImagePrompt = appendPromptContext(slide.imagePromptKeywords, sanitizedImagePromptContext);
-        let imagePrompt = baseImagePrompt;
+          // Phase 3: Image prompt enhancement
+          const baseImagePrompt = appendPromptContext(slide.imagePromptKeywords, sanitizedImagePromptContext);
+          let imagePrompt = baseImagePrompt;
 
+          await updateProgress({
+            phase: 4,
+            phaseLabel: `${isVideoSkill ? "Videos" : "Images"}: preparing ${index + 1}/${slides.length}`,
+            slidesCompleted: mediaSlidesFinalized,
+            totalSlides: slides.length,
+            slidePreview,
+          });
+
+          if (imageSkillSystemPrompt) {
+            try {
+              imagePrompt = await withTimeout(
+                invokeSkillTextLLM({
+                  model: imageSkillModel,
+                  systemPrompt: imageSkillSystemPrompt,
+                  userPrompt: baseImagePrompt,
+                  userId: actor.userId,
+                  tenantId: actor.tenantId,
+                  preferredProviderId: imageSkillPreferredProviderId,
+                  strictProviderPin: imageSkillStrictProviderPin,
+                  billingContext: {
+                    description: `AI Draft prompt enhancement (Deck #${input.deckId}, Slide ${index + 1}/${slides.length})`,
+                    taskId,
+                    deckId: input.deckId,
+                    phase: 3,
+                    stage: "image_prompt_enhancement",
+                    slideIndex: index,
+                    promptPreview: baseImagePrompt.slice(0, 500),
+                  },
+                }),
+                IMAGE_PROMPT_ENHANCE_TIMEOUT_MS,
+                "image_prompt_enhancement_timeout",
+              );
+              imagePrompt = appendPromptContext(imagePrompt, sanitizedImagePromptContext);
+            } catch (err) {
+              if (err instanceof BillingChargeError) {
+                setPhase4AbortError(err);
+                throw err;
+              }
+              warnings.push(`Slide ${index + 1}: image prompt enhancement failed (${sanitizeErrorMessage(err)}), using raw keywords`);
+            }
+          }
+          imagePrompts[index] = imagePrompt;
+
+          // Apply per-slide prompt sync (fields with syncWith="prompt" receive the final prompt).
+          const slideExtraParams = applyFieldSyncTargets(
+            mediaExtraParams,
+            selectedImageModel,
+            { prompt: imagePrompt },
+          );
+          mediaExtraParamsPerSlide[index] = slideExtraParams;
+          const mediaApiConfigForSlide = {
+            ...(mediaApiConfig ?? {}),
+            trace_id: `${taskId}:slide:${index + 1}:${isVideoSkill ? "video" : "image"}`,
+          };
+
+          // Phase 4: Media generation (image or video depending on skill type)
+          let imageUrl: string | null = null;
+          const mediaTraceId = `${taskId}:slide:${index + 1}:${isVideoSkill ? "video" : "image"}:poll`;
+          try {
+            throwIfPhase4Aborted();
+            const mediaTask = await withTimeout(
+              isVideoSkill
+                ? mediaGenerationService.generateVideoAsync(
+                    {
+                      prompt: imagePrompt,
+                      model: imageModelToUse as string,
+                      ...(selectedVideoDuration ? { duration: selectedVideoDuration } : {}),
+                      aspectRatio: imageAspectRatio,
+                      ...(normalizedReferenceImageUrls.length > 0
+                        ? { referenceImageUrls: normalizedReferenceImageUrls }
+                        : {}),
+                      ...(Object.keys(mediaApiConfigForSlide).length > 0 ? { apiConfig: mediaApiConfigForSlide } : {}),
+                      ...(slideExtraParams ? { extraParams: slideExtraParams } : {}),
+                      auditContext: {
+                        userId: actor.userId,
+                        traceId: `${taskId}:slide:${index + 1}:video`,
+                        source: "ai_draft.generateAIDraft",
+                        stage: "phase_4_media_submit",
+                        deckId: input.deckId,
+                        slideIndex: index,
+                      },
+                    },
+                    userToken,
+                  )
+                : mediaGenerationService.generateImageAsync(
+                    {
+                      prompt: imagePrompt,
+                      model: imageModelToUse,
+                      aspectRatio: imageAspectRatio,
+                      ...(normalizedReferenceImageUrls.length > 0
+                        ? { referenceImageUrls: normalizedReferenceImageUrls }
+                        : {}),
+                      ...(Object.keys(mediaApiConfigForSlide).length > 0 ? { apiConfig: mediaApiConfigForSlide } : {}),
+                      ...(slideExtraParams ? { extraParams: slideExtraParams } : {}),
+                      auditContext: {
+                        userId: actor.userId,
+                        traceId: `${taskId}:slide:${index + 1}:image`,
+                        source: "ai_draft.generateAIDraft",
+                        stage: "phase_4_media_submit",
+                        deckId: input.deckId,
+                        slideIndex: index,
+                      },
+                    },
+                    userToken,
+                  ),
+              MEDIA_SUBMIT_TIMEOUT_MS,
+              "media_submit_timeout",
+            );
+            const pollResult = await pollMediaTask(
+              mediaTask.id,
+              userToken,
+              mediaPollTimeoutMs,
+              {
+                activeGraceMs: mediaActiveGraceMs,
+                shouldAbort: () => Boolean(phase4AbortError),
+                auditContext: {
+                  userId: actor.userId,
+                  traceId: mediaTraceId,
+                  source: "ai_draft.generateAIDraft",
+                  stage: "phase_4_media_poll",
+                  deckId: input.deckId,
+                  slideIndex: index,
+                },
+              },
+            );
+            throwIfPhase4Aborted();
+            if (pollResult.task) {
+              await chargeMediaCreditsForAIDraftTask({
+                userId: actor.userId,
+                tenantId: actor.tenantId,
+                deckId: input.deckId,
+                aiDraftTaskId: taskId,
+                slideIndex: index,
+                totalSlides: slides.length,
+                mediaType: isVideoSkill ? "video" : "image",
+                modelId: imageModelToUse,
+                provider: selectedImageModel?.provider,
+                promptPreview: imagePrompt,
+                task: pollResult.task,
+                fallbackCredits: selectedImageModel?.creditCost
+                  ?? await resolveMediaModelFallbackCreditCost(
+                    imageModelToUse,
+                    isVideoSkill ? "video" : "image",
+                  ),
+                stage: "phase_4_media_poll",
+              });
+            }
+            imageUrl = pollResult.url;
+            if (isVideoSkill) {
+              slideVideoDurationsMs[index] = resolveGeneratedMediaDurationMs(
+                pollResult.task,
+                selectedVideoDuration,
+              ) ?? slideVideoDurationsMs[index] ?? null;
+            }
+            if (!imageUrl) {
+              const reason = (pollResult.reason || "no output URL")
+                .replace(/\s+/g, " ")
+                .slice(0, 160);
+              mediaFailureReasons[index] = reason;
+              const taskRef = pollResult.task?.taskId || mediaTask.taskId || mediaTask.id;
+              warnings.push(`Slide ${index + 1}: ${isVideoSkill ? "video" : "image"} generation returned no media (${reason}) [task=${taskRef}]`);
+              if (
+                pollResult.status === "timeout"
+                || pollResult.status === "pending"
+                || pollResult.status === "processing"
+              ) {
+                deferredMediaTasks[index] = {
+                  mediaType: isVideoSkill ? "video" : "image",
+                  mediaTaskId: mediaTask.id,
+                  providerTaskId: mediaTask.taskId,
+                  modelId: imageModelToUse,
+                  prompt: imagePrompt,
+                  reason,
+                };
+              }
+            }
+          } catch (err) {
+            if (err instanceof BillingChargeError) {
+              setPhase4AbortError(err);
+              throw err;
+            }
+            const reason = sanitizeErrorMessage(err);
+            mediaFailureReasons[index] = reason;
+            warnings.push(`Slide ${index + 1}: ${isVideoSkill ? "video" : "image"} generation failed (${reason})`);
+          }
+
+          imageUrls[index] = imageUrl;
+
+          // Update slide preview
+          slidePreview[index] = {
+            ...slidePreview[index],
+            imageStatus: imageUrl ? "done" : "placeholder",
+          };
+          mediaSlidesFinalized += 1;
+
+          await updateProgress({
+            phase: 4,
+            phaseLabel: `${isVideoSkill ? "Videos" : "Images"}: ${mediaSlidesFinalized}/${slides.length}`,
+            slidesCompleted: mediaSlidesFinalized,
+            totalSlides: slides.length,
+            slidePreview,
+          });
+        },
+        MAX_IMAGE_CONCURRENCY,
+        { stopOnError: true },
+      );
+    } catch (err) {
+      await updateProgress({
+        completed: true,
+        error: {
+          code: PRESENTATION_ERROR_CODE.AI_GENERATION_FAILED,
+          message: `Media generation failed: ${sanitizeErrorMessage(err)}`,
+        },
+      });
+      return;
+    }
+
+    // ── Phase 5: Slide Audio Generation (optional) ────────
+    if (await isCancelled()) { await setCancelled(); return; }
+
+    if (shouldGenerateAudio) {
+      await updateProgress({ phase: 5, phaseLabel: "Generating slide audio..." });
+      const audioPollTimeoutMs = computeAudioPollTimeoutMs(slides.length);
+      let audioSlidesCompleted = 0;
+
+      for (let index = 0; index < slides.length; index += 1) {
+        if (await isCancelled()) { await setCancelled(); return; }
+        const slide = slides[index];
+        const narrationText = buildSlideNarrationText(slide, index, slides.length);
         await updateProgress({
-          phase: 4,
-          phaseLabel: `${isVideoSkill ? "Videos" : "Images"}: preparing ${index + 1}/${slides.length}`,
-          slidesCompleted: mediaSlidesFinalized,
+          phase: 5,
+          phaseLabel: `Audio: preparing ${index + 1}/${slides.length}`,
+          slidesCompleted: audioSlidesCompleted,
           totalSlides: slides.length,
           slidePreview,
         });
 
-        if (imageSkillSystemPrompt) {
-          try {
-            imagePrompt = await withTimeout(
-              invokeSkillTextLLM({
-                model: imageSkillModel,
-                systemPrompt: imageSkillSystemPrompt,
-                userPrompt: baseImagePrompt,
-                userId: actor.userId,
-                preferredProviderId: imageSkillPreferredProviderId,
-                strictProviderPin: imageSkillStrictProviderPin,
-              }),
-              IMAGE_PROMPT_ENHANCE_TIMEOUT_MS,
-              "image_prompt_enhancement_timeout",
-            );
-            imagePrompt = appendPromptContext(imagePrompt, sanitizedImagePromptContext);
-          } catch (err) {
-            warnings.push(`Slide ${index + 1}: image prompt enhancement failed (${sanitizeErrorMessage(err)}), using raw keywords`);
-          }
-        }
-        imagePrompts[index] = imagePrompt;
-
-        // Apply per-slide prompt sync (fields with syncWith="prompt" receive the final prompt).
-        const slideExtraParams = applyFieldSyncTargets(
-          mediaExtraParams,
-          selectedImageModel,
-          { prompt: imagePrompt },
-        );
-
-        // Phase 4: Media generation (image or video depending on skill type)
-        let imageUrl: string | null = null;
         try {
-          const mediaTask = await withTimeout(
-            isVideoSkill
-              ? mediaGenerationService.generateVideoAsync(
-                  {
-                    prompt: imagePrompt,
-                    model: imageModelToUse as string,
-                    ...(selectedVideoDuration ? { duration: selectedVideoDuration } : {}),
-                    aspectRatio: imageAspectRatio,
-                    ...(normalizedReferenceImageUrls.length > 0
-                      ? { referenceImageUrls: normalizedReferenceImageUrls }
-                      : {}),
-                    ...(mediaApiConfig ? { apiConfig: mediaApiConfig } : {}),
-                    ...(slideExtraParams ? { extraParams: slideExtraParams } : {}),
-                  },
-                  userToken,
-                )
-              : mediaGenerationService.generateImageAsync(
-                  {
-                    prompt: imagePrompt,
-                    model: imageModelToUse,
-                    aspectRatio: imageAspectRatio,
-                    ...(normalizedReferenceImageUrls.length > 0
-                      ? { referenceImageUrls: normalizedReferenceImageUrls }
-                      : {}),
-                    ...(mediaApiConfig ? { apiConfig: mediaApiConfig } : {}),
-                    ...(slideExtraParams ? { extraParams: slideExtraParams } : {}),
-                  },
-                  userToken,
-                ),
+          const audioApiConfigForSlide = {
+            ...(audioApiConfig ?? {}),
+            trace_id: `${taskId}:slide:${index + 1}:audio`,
+          };
+          const audioExtraParamsForSlide = applyFieldSyncTargets(
+            audioExtraParams,
+            selectedAudioModel,
+            { prompt: narrationText },
+          );
+          const audioTask = await withTimeout(
+            mediaGenerationService.generateAudioAsync(
+              {
+                text: narrationText,
+                model: audioModelToUse,
+                ...(Object.keys(audioApiConfigForSlide).length > 0 ? { apiConfig: audioApiConfigForSlide } : {}),
+                ...(audioExtraParamsForSlide ? { extraParams: audioExtraParamsForSlide } : {}),
+                auditContext: {
+                  userId: actor.userId,
+                  traceId: `${taskId}:slide:${index + 1}:audio`,
+                  source: "ai_draft.generateAIDraft",
+                  stage: "phase_5_audio_submit",
+                  deckId: input.deckId,
+                  slideIndex: index,
+                },
+              },
+              userToken,
+            ),
             MEDIA_SUBMIT_TIMEOUT_MS,
             "media_submit_timeout",
           );
           const pollResult = await pollMediaTask(
-            mediaTask.id,
+            audioTask.id,
             userToken,
-            mediaPollTimeoutMs,
-            { activeGraceMs: mediaActiveGraceMs },
+            audioPollTimeoutMs,
+            {
+              auditContext: {
+                userId: actor.userId,
+                traceId: `${taskId}:slide:${index + 1}:audio:poll`,
+                source: "ai_draft.generateAIDraft",
+                stage: "phase_5_audio_poll",
+                deckId: input.deckId,
+                slideIndex: index,
+              },
+            },
           );
-          imageUrl = pollResult.url;
-          if (!imageUrl) {
-            const reason = (pollResult.reason || "no output URL")
+          if (pollResult.task) {
+            await chargeMediaCreditsForAIDraftTask({
+              userId: actor.userId,
+              tenantId: actor.tenantId,
+              deckId: input.deckId,
+              aiDraftTaskId: taskId,
+              slideIndex: index,
+              totalSlides: slides.length,
+              mediaType: "audio",
+              modelId: audioModelToUse,
+              provider: selectedAudioModel?.provider,
+              promptPreview: narrationText,
+              task: pollResult.task,
+              fallbackCredits: selectedAudioModel?.creditCost
+                ?? await resolveMediaModelFallbackCreditCost(audioModelToUse, "audio"),
+              stage: "phase_5_audio_poll",
+            });
+          }
+
+          if (!pollResult.url || pollResult.status !== "completed") {
+            const reason = (pollResult.reason || pollResult.status || "audio_generation_failed")
               .replace(/\s+/g, " ")
               .slice(0, 160);
-            mediaFailureReasons[index] = reason;
-            const taskRef = mediaTask.taskId || mediaTask.id;
-            warnings.push(`Slide ${index + 1}: ${isVideoSkill ? "video" : "image"} generation returned no media (${reason}) [task=${taskRef}]`);
-            if (
-              pollResult.status === "timeout"
-              || pollResult.status === "pending"
-              || pollResult.status === "processing"
-            ) {
-              deferredMediaTasks[index] = {
-                mediaType: isVideoSkill ? "video" : "image",
-                mediaTaskId: mediaTask.id,
-                providerTaskId: mediaTask.taskId,
-                modelId: imageModelToUse,
-                prompt: imagePrompt,
-                reason,
-              };
-            }
+            warnings.push(`Slide ${index + 1}: audio generation failed (${reason})`);
+          } else {
+            const audioTaskIdForLibrary = pollResult.task?.id || audioTask.id;
+            const audioLibrary = await addMediaTaskToLibrary(
+              {
+                mediaTaskId: audioTaskIdForLibrary,
+                userToken,
+                title: `${slide.title.slice(0, 80)} narration`,
+                visibility: "private",
+              },
+              actor,
+            );
+            slideAudioDurationsMs[index] = resolveGeneratedMediaDurationMs(pollResult.task);
+            slideAudioTracks[index] = {
+              libraryItemId: audioLibrary.itemId,
+              volume: 1,
+              startAtMs: 0,
+              endAtMs: null,
+            };
           }
         } catch (err) {
-          const reason = sanitizeErrorMessage(err);
-          mediaFailureReasons[index] = reason;
-          warnings.push(`Slide ${index + 1}: ${isVideoSkill ? "video" : "image"} generation failed (${reason})`);
+          warnings.push(`Slide ${index + 1}: audio generation failed (${sanitizeErrorMessage(err)})`);
         }
 
-        imageUrls[index] = imageUrl;
-
-        // Update slide preview
-        slidePreview[index] = {
-          ...slidePreview[index],
-          imageStatus: imageUrl ? "done" : "placeholder",
-        };
-        mediaSlidesFinalized += 1;
-
+        audioSlidesCompleted += 1;
         await updateProgress({
-          phase: 4,
-          phaseLabel: `${isVideoSkill ? "Videos" : "Images"}: ${mediaSlidesFinalized}/${slides.length}`,
-          slidesCompleted: mediaSlidesFinalized,
+          phase: 5,
+          phaseLabel: `Audio: ${audioSlidesCompleted}/${slides.length}`,
+          slidesCompleted: audioSlidesCompleted,
           totalSlides: slides.length,
           slidePreview,
         });
-      },
-      MAX_IMAGE_CONCURRENCY,
-    );
+      }
+    } else {
+      await updateProgress({
+        phase: 5,
+        phaseLabel: "Skipping slide audio",
+        slidesCompleted: slides.length,
+        totalSlides: slides.length,
+        slidePreview,
+      });
+    }
 
-    // ── Phase 5: Layout Compilation ───────────────────────
+    // ── Phase 6: Layout Compilation ───────────────────────
     if (await isCancelled()) { await setCancelled(); return; }
 
-    await updateProgress({ phase: 5, phaseLabel: "Compiling layouts..." });
+    await updateProgress({ phase: 6, phaseLabel: "Compiling layouts..." });
 
     const preset = getBuiltInPreset(input.stylePresetId);
     if (!preset) {
@@ -3379,6 +4494,7 @@ export async function generateAIDraft(
       });
       const promptForSlide = imagePrompts[i]?.trim();
       const imageModelIdForSlide = selectedImageModel?.id ?? imageModelToUse;
+      const extraParamsForSlide = mediaExtraParamsPerSlide[i];
       const elementsWithImageMetadata = slideContent.elements.map((element) => {
         if (element.type !== "image") {
           return element;
@@ -3400,6 +4516,18 @@ export async function generateAIDraft(
             title: slides[i].title,
             muted: true,
             loop: true,
+            videoFit: "cover" as const,
+            videoPositionX: 50,
+            videoPositionY: 50,
+            videoZoom: 1,
+            ...(promptForSlide ? { videoPrompt: promptForSlide.slice(0, 4000) } : {}),
+            ...(imageModelIdForSlide ? { videoModelId: imageModelIdForSlide } : {}),
+            ...(normalizedReferenceImageUrls.length > 0
+              ? { videoReferenceUrls: normalizedReferenceImageUrls }
+              : {}),
+            ...(extraParamsForSlide && Object.keys(extraParamsForSlide).length > 0
+              ? { videoExtraParams: extraParamsForSlide }
+              : {}),
           };
         }
         return {
@@ -3443,6 +4571,16 @@ export async function generateAIDraft(
         slideWithCanvas = watermarkApplied.slideContent;
         warnings.push(...watermarkApplied.warnings.map((warning) => `Slide ${i + 1}: ${warning}`));
       }
+      const generatedDurationMs = resolveGeneratedSlideDurationMs({
+        audioDurationMs: slideAudioDurationsMs[i],
+        videoDurationMs: slideVideoDurationsMs[i],
+      });
+      if (generatedDurationMs != null) {
+        slideWithCanvas = {
+          ...slideWithCanvas,
+          durationMs: generatedDurationMs,
+        };
+      }
       compiledSlides.push(slideWithCanvas);
       if (mediaFailureReasons[i]) {
         warnings.push(
@@ -3453,10 +4591,10 @@ export async function generateAIDraft(
       }
     }
 
-    // ── Phase 6: Deck Insertion ───────────────────────────
+    // ── Phase 7: Deck Insertion ───────────────────────────
     if (await isCancelled()) { await setCancelled(); return; }
 
-    await updateProgress({ phase: 6, phaseLabel: "Saving slides..." });
+    await updateProgress({ phase: 7, phaseLabel: "Saving slides..." });
 
     const db = await getDb();
     if (!db) {
@@ -3491,9 +4629,15 @@ export async function generateAIDraft(
 
         let expectedVersion = deckRow.version;
         insertionBaseVersion = expectedVersion;
-        for (const slideContent of compiledSlides) {
+        for (let index = 0; index < compiledSlides.length; index += 1) {
+          const slideContent = compiledSlides[index];
           await addSlideToDeck(
-            { deckId: input.deckId, expectedVersion, slideContent: slideContent as Record<string, unknown> },
+            {
+              deckId: input.deckId,
+              expectedVersion,
+              slideContent: slideContent as Record<string, unknown>,
+              audioTrack: slideAudioTracks[index] ?? undefined,
+            },
             actor,
             tx as unknown as DrizzleDB,
           );
@@ -3513,7 +4657,7 @@ export async function generateAIDraft(
 
     // ── Success ─────────────────────────────────────────
     await updateProgress({
-      phase: 6,
+      phase: 7,
       phaseLabel: "Complete",
       completed: true,
       slidesCompleted: compiledSlides.length,
@@ -3602,6 +4746,7 @@ export async function resolvePendingMediaForDeck(
 
     let nextElements = [...baseContent.elements];
     const nextJobs: Array<SlidePendingMediaJob | null> = [...existingJobs];
+    let nextDurationMs = resolveStoredSlideDurationMs(baseContent);
     let slideMutated = false;
     let slideResolvedCount = 0;
 
@@ -3619,7 +4764,12 @@ export async function resolvePendingMediaForDeck(
       let task;
       try {
         task = await withTimeout(
-          mediaGenerationService.getTask(job.mediaTaskId, userToken),
+          mediaGenerationService.getTask(job.mediaTaskId, userToken, {
+            userId: actor.userId,
+            traceId: `resolve-pending:${input.deckId}:slide:${slide.orderIndex + 1}:job:${job.mediaTaskId}`,
+            source: "ai_draft.resolvePendingMediaForDeck",
+            stage: "pending_media_poll",
+          }),
           MEDIA_STATUS_FETCH_TIMEOUT_MS,
           "media_status_fetch_timeout",
         );
@@ -3636,10 +4786,55 @@ export async function resolvePendingMediaForDeck(
         continue;
       }
 
+      const isTerminalTaskStatus =
+        task.status === "completed"
+        || task.status === "failed"
+        || task.status === "cancelled";
+      if (isTerminalTaskStatus) {
+        try {
+          await chargeMediaCreditsForAIDraftTask({
+            userId: actor.userId,
+            tenantId: actor.tenantId,
+            deckId: input.deckId,
+            slideIndex: slide.orderIndex,
+            totalSlides: orderedSlides.length,
+            mediaType: job.mediaType,
+            modelId: job.modelId || task.model || "unknown",
+            promptPreview: job.prompt,
+            task,
+            fallbackCredits: await resolveMediaModelFallbackCreditCost(job.modelId || task.model, job.mediaType),
+            stage: "pending_media_poll",
+          });
+        } catch (err) {
+          const reason = sanitizeErrorMessage(err).slice(0, 256);
+          nextJobs[i] = {
+            ...job,
+            status: "pending",
+            reason: `billing_failed: ${reason}`.slice(0, 256),
+            lastCheckedAt: checkedAt,
+          };
+          slideMutated = true;
+          warnings.push(`Slide ${slide.orderIndex + 1}: billing failed for task ${job.mediaTaskId} (${reason})`);
+          continue;
+        }
+      }
+
       if (task.status === "completed") {
         const resolvedUrl = task.resultUrl || extractMediaUrlFromResultData(task.resultData);
         if (resolvedUrl) {
           nextElements = applyResolvedMediaToElements(nextElements, job, resolvedUrl, slide.title);
+          if (job.mediaType === "video") {
+            const resolvedVideoDurationMs = resolveGeneratedMediaDurationMs(task);
+            if (resolvedVideoDurationMs != null) {
+              const mergedDurationMs = resolveGeneratedSlideDurationMs({
+                audioDurationMs: nextDurationMs,
+                videoDurationMs: resolvedVideoDurationMs,
+              });
+              if (mergedDurationMs != null && mergedDurationMs !== nextDurationMs) {
+                nextDurationMs = mergedDurationMs;
+              }
+            }
+          }
           nextJobs[i] = null;
           slideMutated = true;
           slideResolvedCount += 1;
@@ -3685,6 +4880,7 @@ export async function resolvePendingMediaForDeck(
     const nextSlideContent: PresentationSlideContent = {
       ...contentWithoutPending,
       elements: nextElements,
+      ...(nextDurationMs != null ? { durationMs: nextDurationMs } : {}),
       ...(compactJobs.length > 0 ? { pendingMediaJobs: compactJobs } : {}),
     };
 
@@ -3725,10 +4921,125 @@ interface PollMediaTaskResult {
   url: string | null;
   status: TaskStatus | "timeout";
   reason?: string;
+  task?: MediaTask;
 }
 
 interface PollMediaTaskOptions {
   activeGraceMs?: number;
+  shouldAbort?: () => boolean;
+  auditContext?: {
+    userId?: number;
+    traceId?: string;
+    source?: string;
+    stage?: string;
+    [key: string]: unknown;
+  };
+}
+
+const mediaModelFallbackCreditCostCache = new Map<string, number>();
+
+async function resolveMediaModelFallbackCreditCost(
+  modelId: string | undefined,
+  mediaType: "image" | "video" | "audio",
+): Promise<number | undefined> {
+  if (!modelId || !modelId.trim()) {
+    return undefined;
+  }
+  const normalizedModelId = modelId.trim();
+  const cacheKey = `${mediaType}:${normalizedModelId}`;
+  if (mediaModelFallbackCreditCostCache.has(cacheKey)) {
+    return mediaModelFallbackCreditCostCache.get(cacheKey);
+  }
+  const models = await getModelsByTypeAsync(mediaType).catch(() => []);
+  const matched = models.find((m) => m.id === normalizedModelId);
+  const cost = Number(matched?.creditCost ?? 0);
+  if (Number.isFinite(cost) && cost > 0) {
+    mediaModelFallbackCreditCostCache.set(cacheKey, cost);
+    return cost;
+  }
+  return undefined;
+}
+
+async function chargeMediaCreditsForAIDraftTask(context: MediaBillingContext): Promise<void> {
+  if (!Number.isFinite(context.userId) || context.userId <= 0) {
+    return;
+  }
+
+  const isTerminalTaskStatus =
+    context.task.status === "completed"
+    || context.task.status === "failed"
+    || context.task.status === "cancelled";
+  if (!isTerminalTaskStatus) {
+    return;
+  }
+
+  const providerReportedCredits = Number(context.task.creditsUsed ?? 0);
+  const normalizedProviderCredits = Number.isFinite(providerReportedCredits) && providerReportedCredits > 0
+    ? providerReportedCredits
+    : 0;
+  const fallbackCredits = Number(context.fallbackCredits ?? 0);
+  const normalizedFallbackCredits = Number.isFinite(fallbackCredits) && fallbackCredits > 0
+    ? fallbackCredits
+    : 0;
+  const shouldUseFallback =
+    normalizedProviderCredits <= 0
+    && context.task.status === "completed"
+    && normalizedFallbackCredits > 0;
+  const creditsToChargeRaw = normalizedProviderCredits > 0
+    ? normalizedProviderCredits
+    : shouldUseFallback
+      ? normalizedFallbackCredits
+      : 0;
+  const creditsToCharge = creditsToChargeRaw > 0 ? Math.max(1, Math.ceil(creditsToChargeRaw)) : 0;
+  if (creditsToCharge <= 0) {
+    return;
+  }
+
+  const sourceType = context.mediaType === "video"
+    ? "media_video"
+    : context.mediaType === "audio"
+      ? "media_audio"
+      : "media_image";
+  const slideNumber = context.slideIndex + 1;
+  const taskRef = context.task.taskId || context.task.id;
+  const providerFromTask = context.task.parameters && typeof context.task.parameters === "object"
+    ? (context.task.parameters as Record<string, unknown>).provider
+    : undefined;
+  const provider = context.provider
+    || (typeof providerFromTask === "string" ? providerFromTask : undefined);
+
+  try {
+    await deductCredits({
+      userId: context.userId,
+      tenantId: context.tenantId,
+      amount: creditsToCharge,
+      description: `AI Draft ${context.mediaType} generation (Deck #${context.deckId}, Slide ${slideNumber}/${context.totalSlides}, Task ${taskRef})`,
+      sourceType,
+      idempotencyKey: `ai_draft:${context.mediaType}:task:${context.task.id}:charge`,
+      metadata: {
+        operation: "ai_draft_media_generation",
+        stage: context.stage,
+        deckId: context.deckId,
+        ...(context.aiDraftTaskId ? { taskId: context.aiDraftTaskId } : {}),
+        slideIndex: context.slideIndex,
+        slideNumber,
+        totalSlides: context.totalSlides,
+        mediaType: context.mediaType,
+        model: context.modelId,
+        ...(provider ? { provider } : {}),
+        mediaTaskId: context.task.id,
+        ...(context.task.taskId ? { providerTaskId: context.task.taskId } : {}),
+        taskStatus: context.task.status,
+        ...(context.promptPreview ? { promptPreview: context.promptPreview.slice(0, 500) } : {}),
+        billingBasis: normalizedProviderCredits > 0 ? "provider_reported" : "model_fallback",
+        providerReportedCredits: normalizedProviderCredits > 0 ? normalizedProviderCredits : 0,
+        fallbackCredits: normalizedFallbackCredits > 0 ? normalizedFallbackCredits : 0,
+        ...(context.aiDraftTaskId ? { traceId: context.aiDraftTaskId } : {}),
+      },
+    });
+  } catch (err) {
+    throw new BillingChargeError(`Media credit deduction failed for task ${taskRef}: ${sanitizeErrorMessage(err)}`);
+  }
 }
 
 function extractMediaUrlFromResultData(resultData: unknown): string | null {
@@ -3818,6 +5129,13 @@ async function pollMediaTask(
   let lastStatusError: string | null = null;
   let lastObservedStatus: TaskStatus | null = null;
   while (true) {
+    if (options?.shouldAbort?.()) {
+      return {
+        url: null,
+        status: "cancelled",
+        reason: "aborted_due_to_billing_failure",
+      };
+    }
     if (Date.now() > deadline) {
       if (
         remainingActiveGraceMs > 0
@@ -3834,7 +5152,7 @@ async function pollMediaTask(
     let task;
     try {
       task = await withTimeout(
-        mediaGenerationService.getTask(mediaTaskId, userToken),
+        mediaGenerationService.getTask(mediaTaskId, userToken, options?.auditContext),
         MEDIA_STATUS_FETCH_TIMEOUT_MS,
         "media_status_fetch_timeout",
       );
@@ -3848,12 +5166,13 @@ async function pollMediaTask(
     if (task.status === "completed") {
       const resolvedUrl = task.resultUrl || extractMediaUrlFromResultData(task.resultData);
       if (resolvedUrl) {
-        return { url: resolvedUrl, status: "completed" };
+        return { url: resolvedUrl, status: "completed", task };
       }
       return {
         url: null,
         status: "completed",
         reason: task.errorMessage || "completed_without_output_url",
+        task,
       };
     }
     if (task.status === "failed" || task.status === "cancelled") {
@@ -3861,6 +5180,7 @@ async function pollMediaTask(
         url: null,
         status: task.status,
         reason: task.errorMessage || `task_${task.status}`,
+        task,
       };
     }
     await sleep(IMAGE_POLL_INTERVAL_MS);
@@ -3884,14 +5204,29 @@ async function mapWithConcurrency<T, R>(
   items: T[],
   fn: (item: T, index: number) => Promise<R>,
   concurrency: number,
+  options?: { stopOnError?: boolean },
 ): Promise<R[]> {
   const results: R[] = new Array(items.length);
   let nextIndex = 0;
+  let firstError: unknown = null;
 
   async function worker(): Promise<void> {
     while (nextIndex < items.length) {
+      if (options?.stopOnError && firstError) {
+        return;
+      }
       const i = nextIndex++;
-      results[i] = await fn(items[i], i);
+      try {
+        results[i] = await fn(items[i], i);
+      } catch (err) {
+        if (!firstError) {
+          firstError = err;
+        }
+        if (!options?.stopOnError) {
+          throw err;
+        }
+        return;
+      }
     }
   }
 
@@ -3900,5 +5235,8 @@ async function mapWithConcurrency<T, R>(
     () => worker(),
   );
   await Promise.all(workers);
+  if (firstError) {
+    throw firstError;
+  }
   return results;
 }

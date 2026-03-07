@@ -3,8 +3,13 @@
     {
       "id": "t1",
       "input": "print('hi')   \\nprint('ok')   ",
+      "expected_success": true,
+      "expected_json_paths": {
+        "formatted_code": "print('hi')\nprint('ok')\n"
+      },
+      "expected_schema_valid": true,
       "expected_contains": [
-        "Formatted:",
+        "Formatted successfully",
         "print('hi')",
         "print('ok')"
       ]

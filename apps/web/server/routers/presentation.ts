@@ -45,6 +45,7 @@ import {
   listSlidesForDeck,
   reorderSlidesInDeck,
   restorePresentationVersion,
+  uploadAssetToDeck,
   updatePresentationDeckMetadata,
   updateSlideInDeck,
   updateSlideAudioTrack,
@@ -79,6 +80,8 @@ import {
 
 const DOCUMENT_MANAGEMENT_ROUTE_BASE =
   "/document-management?scope=my_library&sort=updated_desc&mode=editor&doc=";
+// 50MB binary file + base64 overhead.
+const MAX_PRESENTATION_UPLOAD_BASE64_LENGTH = 68_000_000;
 
 function buildWrongTypeGuard(itemId: number, itemType: string): PresentationRouteBlockedResult {
   return {
@@ -238,13 +241,13 @@ function createPresentationToken(userId: number, scopes: string[]): string {
 
 function getPresentationToken(
   ctx: {
-    req: { headers: { authorization?: string | string[] } };
+    req?: { headers?: { authorization?: string | string[] } };
     userToken: string | null;
     user: { id: number };
   },
   scopes: string[],
 ): string {
-  const authHeader = ctx.req.headers.authorization;
+  const authHeader = ctx.req?.headers?.authorization;
   if (typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
     return authHeader.substring(7);
   }
@@ -1002,6 +1005,33 @@ export const presentationRouter = router({
         ensureFeatureEnabled();
         return await attachAssetToDeck(input, toPresentationActor(ctx));
       } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  uploadAndAttachAsset: protectedProcedure
+    .input(z.object({
+      deckId: z.number().int().positive(),
+      expectedVersion: z.number().int().nonnegative(),
+      slideId: z.number().int().positive().nullable().optional(),
+      fileName: z.string().min(1).max(255),
+      fileType: z.string().min(1).max(255),
+      fileBase64: z.string().min(1).max(MAX_PRESENTATION_UPLOAD_BASE64_LENGTH),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await uploadAssetToDeck(input, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof Error && error.message.toLowerCase().includes("insufficient credits")) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: error.message,
+          });
+        }
         if (error instanceof PresentationServiceError) {
           throw mapPresentationServiceError(error);
         }

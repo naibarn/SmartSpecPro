@@ -8,6 +8,7 @@ from typing import List, Optional, Dict, Any
 from .evaluator import evaluate_from_path
 from .models import EvaluationReport, PatchProposal
 from .improver import HeuristicImprover, LLMImprover, apply_diff
+from .registry import resolve_skill_dir
 
 @dataclass
 class RunResult:
@@ -19,7 +20,7 @@ def make_workspace(project_root: Path, skill_name: str) -> Path:
     ts = _dt.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     ws = project_root / "runs" / "workspaces" / skill_name / ts
     ws.mkdir(parents=True, exist_ok=True)
-    src = project_root / "skills" / skill_name
+    src = resolve_skill_dir(skill_name)
     dst = ws / "skills" / skill_name
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(src, dst, dirs_exist_ok=True)
@@ -54,7 +55,7 @@ def iterate_improve(project_root: Path, skill_name: str, mode: str="auto", round
         proposals.append(proposal)
         if not proposal.patch_payload.strip():
             break
-        apply_diff(ws, proposal.patch_payload)
+        apply_diff(skill_dir, proposal.patch_payload)
         report = evaluate_from_path(skill_dir)
 
     return RunResult(ws, report, proposals)

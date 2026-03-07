@@ -39,6 +39,57 @@ interface TransactionDetailDialogProps {
   date?: string;
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function normalizeText(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const compact = value.replace(/\s+/g, " ").trim();
+  return compact.length > 0 ? compact : null;
+}
+
+function pickText(...values: unknown[]): string | null {
+  for (const value of values) {
+    const text = normalizeText(value);
+    if (text) return text;
+  }
+  return null;
+}
+
+function compactText(value: string, max = 220): string {
+  if (value.length <= max) return value;
+  return `${value.slice(0, max)}...`;
+}
+
+function extractPromptPreview(requestPayload: unknown): string | null {
+  const request = asRecord(requestPayload);
+  if (!request) return null;
+
+  const payload = asRecord(request.payload);
+  const direct = pickText(
+    request.prompt,
+    request.userPrompt,
+    request.text,
+    payload?.prompt,
+    payload?.text,
+  );
+  if (direct) return compactText(direct, 280);
+
+  if (!Array.isArray(request.messages)) return null;
+
+  const lastUserMessage = [...request.messages].reverse().find((message) => {
+    const item = asRecord(message);
+    if (!item) return false;
+    return item.role === "user";
+  });
+  const entry = asRecord(lastUserMessage);
+  const content = pickText(entry?.content);
+  return content ? compactText(content, 280) : null;
+}
+
 /** Collapsible JSON section */
 function PayloadSection({
   title,
@@ -53,7 +104,8 @@ function PayloadSection({
 }) {
   const [open, setOpen] = useState(defaultOpen);
 
-  if (!data || (typeof data === "string" && data.startsWith("["))) return null;
+  if (data == null) return null;
+  if (typeof data === "string" && data.trim().length === 0) return null;
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -324,17 +376,56 @@ export function TransactionDetailDialog({
                   <div className="divide-y">
                     {entries.map((entry: any, i: number) => (
                       <div key={i} className="py-1">
+                        {(() => {
+                          const requestPayload = asRecord(entry.requestPayload);
+                          const responsePayload = asRecord(entry.responsePayload);
+                          const metadata = asRecord(entry.metadata);
+                          const requestInnerPayload = asRecord(requestPayload?.payload);
+                          const stage = pickText(metadata?.stage, requestPayload?.stage, responsePayload?.stage);
+                          const source = pickText(metadata?.source, requestPayload?.source);
+                          const provider = pickText(entry.providerName, entry.provider, requestPayload?.provider);
+                          const endpoint = pickText(entry.endpoint, requestPayload?.endpoint);
+                          const requestType = pickText(entry.requestType);
+                          const mediaTaskId = pickText(entry.mediaTaskId, requestPayload?.mediaTaskId, responsePayload?.mediaTaskId);
+                          const promptPreview = extractPromptPreview(entry.requestPayload);
+                          const statusCode = typeof entry.statusCode === "number" ? entry.statusCode : null;
+                          const isError = Boolean(entry.errorMessage) || Boolean(entry.errorType) || (statusCode != null && statusCode >= 400);
+
+                          return (
+                            <>
                         {/* Event header */}
-                        <div className="flex items-center gap-2 px-3 py-1.5">
+                        <div className="flex flex-wrap items-center gap-2 px-3 py-1.5">
                           <Badge variant="secondary" className="text-[10px] font-mono">
                             {entry.eventType}
                           </Badge>
                           <span className="text-xs text-muted-foreground">
                             {new Date(entry.timestamp).toLocaleTimeString()}
                           </span>
+                          {requestType && (
+                            <Badge variant="outline" className="text-[10px] font-mono">
+                              {requestType}
+                            </Badge>
+                          )}
+                          {statusCode != null && (
+                            <Badge
+                              variant="outline"
+                              className={`text-[10px] font-mono ${
+                                statusCode >= 400
+                                  ? "border-red-300 text-red-700 dark:border-red-800 dark:text-red-300"
+                                  : "border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300"
+                              }`}
+                            >
+                              HTTP {statusCode}
+                            </Badge>
+                          )}
                           {entry.model && (
                             <span className="text-xs text-blue-600 font-mono">
                               {entry.model}
+                            </span>
+                          )}
+                          {provider && (
+                            <span className="text-xs text-muted-foreground">
+                              {provider}
                             </span>
                           )}
                           {entry.timing?.totalMs != null && (
@@ -354,10 +445,46 @@ export function TransactionDetailDialog({
                             <Badge variant="outline" className="text-[9px] px-1 py-0">
                               {entry.costCalculationMethod === "provider_reported" ? "provider cost"
                                 : entry.costCalculationMethod === "model_lookup" ? "model pricing"
-                                : "default rate"}
+                              : "default rate"}
                             </Badge>
                           )}
                         </div>
+
+                        {/* Context row */}
+                        <div className="px-3 pb-2 flex flex-wrap gap-1.5">
+                          {stage && (
+                            <Badge variant="outline" className="text-[10px] font-mono">
+                              stage: {stage}
+                            </Badge>
+                          )}
+                          {source && (
+                            <Badge variant="outline" className="text-[10px] font-mono">
+                              source: {source}
+                            </Badge>
+                          )}
+                          {endpoint && (
+                            <Badge variant="outline" className="text-[10px] font-mono">
+                              endpoint: {endpoint}
+                            </Badge>
+                          )}
+                          {mediaTaskId && (
+                            <Badge variant="outline" className="text-[10px] font-mono">
+                              task: {mediaTaskId}
+                            </Badge>
+                          )}
+                          {Boolean(requestInnerPayload?.api_config) && (
+                            <Badge variant="outline" className="text-[10px] font-mono">
+                              api_config
+                            </Badge>
+                          )}
+                        </div>
+
+                        {promptPreview && (
+                          <div className="mx-3 mb-2 text-xs text-muted-foreground border rounded-md bg-muted/30 px-2.5 py-1.5">
+                            <span className="font-medium text-foreground">Prompt:</span>{" "}
+                            {promptPreview}
+                          </div>
+                        )}
 
                         {/* Collapsible payloads */}
                         <PayloadSection
@@ -372,13 +499,23 @@ export function TransactionDetailDialog({
                           data={entry.responsePayload}
                           defaultOpen={entries.length === 1 || i === 0}
                         />
+                        <PayloadSection
+                          title="Metadata"
+                          icon={<Cpu className="h-3.5 w-3.5 text-indigo-500" />}
+                          data={entry.metadata}
+                          defaultOpen={isError}
+                        />
 
                         {entry.errorMessage && (
                           <div className="mx-3 mb-2 text-xs text-red-600 flex items-center gap-1">
                             <AlertTriangle className="h-3 w-3" />
+                            {entry.errorType ? `[${entry.errorType}] ` : ""}
                             {entry.errorMessage}
                           </div>
                         )}
+                            </>
+                          );
+                        })()}
                       </div>
                     ))}
                   </div>

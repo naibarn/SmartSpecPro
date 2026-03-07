@@ -899,16 +899,36 @@ class KieAIProvider:
         """
         # Resolve model ID from api_config first, then fallback alias mapping
         api_config = kwargs.pop("api_config", None)
+        extra_params = kwargs.pop("extra_params", None)
         api_model = resolve_api_model(model, api_config)
 
-        input_params = {"text": text}
+        omit_text_raw = _get_api_config_value(api_config, "omit_text", "omitText")
+        omit_text = str(omit_text_raw).strip().lower() in {"1", "true", "yes", "on"}
 
+        input_params = {}
+        if text and not omit_text:
+            input_params["text"] = text
+
+        if kwargs.get("voice"):
+            input_params["voice"] = kwargs["voice"]
         if kwargs.get("voice_id"):
             input_params["voice_id"] = kwargs["voice_id"]
         if kwargs.get("language"):
             input_params["language"] = kwargs["language"]
         if kwargs.get("speed"):
             input_params["speed"] = kwargs["speed"]
+        if kwargs.get("stability") is not None:
+            input_params["stability"] = kwargs["stability"]
+        if kwargs.get("similarity_boost") is not None:
+            input_params["similarity_boost"] = kwargs["similarity_boost"]
+        if kwargs.get("output_format"):
+            input_params["output_format"] = kwargs["output_format"]
+
+        # Merge extra_params from configJson-based dynamic fields
+        if extra_params and isinstance(extra_params, dict):
+            for key, value in extra_params.items():
+                if value is not None:
+                    input_params[key] = value
 
         # Use provided callback_url if explicitly passed, otherwise fall back to stored callback_url
         # Empty string ("") means "no callback" - use polling mode
@@ -918,7 +938,18 @@ class KieAIProvider:
         if callback_url == "":  # Empty string means explicitly disable callback
             callback_url = None
 
-        result = await self.create_task(api_model, input_params, callback_url)
+        # Determine endpoint — use api_config endpoint or default to create_task
+        api_endpoint = _get_api_config_value(api_config, "endpoint", "api_endpoint", "apiEndpoint")
+
+        if api_endpoint and api_endpoint != "/api/v1/jobs/createTask":
+            payload = dict(input_params)
+            if api_model:
+                payload["model"] = api_model
+            if callback_url:
+                payload["callBackUrl"] = callback_url
+            result = await self._make_request("POST", api_endpoint.removeprefix("/api/v1/"), data=payload)
+        else:
+            result = await self.create_task(api_model, input_params, callback_url)
 
         # Extract taskId from nested response
         task_id = (

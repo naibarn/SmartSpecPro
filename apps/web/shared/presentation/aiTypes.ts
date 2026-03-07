@@ -174,13 +174,19 @@ export const GenerateAIDraftInputSchema = z.object({
   prompt: z.string().min(3).max(1000),
   numSlides: z.number().int().min(1).max(MAX_AI_DRAFT_SLIDES).default(5),
   language: z.enum(["auto", "en", "th"]).default("auto"),
-  articleSkillId: z.string().min(1),
+  articleSkillId: z.string().min(1).optional(),
+  useCustomArticle: z.boolean().default(false),
+  customArticleText: z.string().min(1).max(20_000).optional(),
   imageSkillId: z.string().min(1).optional(),
   imageModel: z.string().min(1).optional(),
+  generateAudio: z.boolean().default(false),
+  audioModel: z.string().min(1).optional(),
   canvasWidth: z.number().int().positive().max(10_000).optional(),
   canvasHeight: z.number().int().positive().max(10_000).optional(),
   imagePromptContext: z.string().max(1000).optional(),
   referenceImageUrls: z.array(referenceImageUrlSchema).max(5).optional(),
+  mediaModelExtraParams: z.record(z.string(), z.any()).optional(),
+  audioModelExtraParams: z.record(z.string(), z.any()).optional(),
   stylePresetId: z.enum(AI_STYLE_PRESET_IDS).default("dark-professional"),
   headerCustomText: z.string().max(200).optional(),
   footerCustomText: z.string().max(200).optional(),
@@ -194,6 +200,25 @@ export const GenerateAIDraftInputSchema = z.object({
     .optional(),
   watermark: AIWatermarkSchema.optional(),
   articleSkillParams: z.record(z.string(), z.any()).optional(),
+}).superRefine((value, ctx) => {
+  if (value.useCustomArticle) {
+    if (!value.customArticleText?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["customArticleText"],
+        message: "Custom article text is required when using your own article",
+      });
+    }
+    return;
+  }
+
+  if (!value.articleSkillId?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["articleSkillId"],
+      message: "Article skill is required when custom article mode is disabled",
+    });
+  }
 });
 
 export type GenerateAIDraftInput = z.infer<typeof GenerateAIDraftInputSchema>;
@@ -211,7 +236,7 @@ export type GenerateAIDraftOutput = z.infer<typeof GenerateAIDraftOutputSchema>;
 // ── AIDraftProgress schema (polling response) ──────────────
 
 export const AIDraftProgressSchema = z.object({
-  phase: z.number().int().min(0).max(6),
+  phase: z.number().int().min(0).max(7),
   phaseLabel: z.string(),
   slidesCompleted: z.number().int().nonnegative(),
   totalSlides: z.number().int().nonnegative(),

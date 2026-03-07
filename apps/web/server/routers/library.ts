@@ -223,7 +223,18 @@ export const libraryRouter = router({
         role: ctx.user.role,
       };
 
-      const result = await uploadLibraryFile(input, actor);
+      let result;
+      try {
+        result = await uploadLibraryFile(input, actor);
+      } catch (error) {
+        if (error instanceof Error && error.message.toLowerCase().includes("insufficient credits")) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: error.message,
+          });
+        }
+        throw error;
+      }
 
       // Dispatch complex file parsing to sandbox when enabled
       const requiresSandboxParsing =
@@ -239,7 +250,7 @@ export const libraryRouter = router({
             userId: ctx.user.id,
             inputFiles: [
               {
-                key: result.item.objectKey || "",
+                key: result.storageKey,
                 mimeType: input.fileType,
                 sizeBytes: Buffer.byteLength(input.fileBase64, "base64"),
               },
@@ -297,7 +308,18 @@ export const libraryRouter = router({
         role: ctx.user.role,
       };
 
-      const result = await replaceLibraryFile(input, actor);
+      let result;
+      try {
+        result = await replaceLibraryFile(input, actor);
+      } catch (error) {
+        if (error instanceof Error && error.message.toLowerCase().includes("insufficient credits")) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: error.message,
+          });
+        }
+        throw error;
+      }
 
       auditLogger.log({
         eventType: "library_mutation",
@@ -1026,6 +1048,7 @@ export const libraryRouter = router({
   shareLibrary: protectedProcedure
     .input(
       z.object({
+        folderId: z.number().int().positive(),
         groupId: z.number().int().positive(),
         permissionLevel: sharePermissionLevelSchema,
       }),
@@ -1045,7 +1068,7 @@ export const libraryRouter = router({
         userId: ctx.user.id,
         endpoint: "library.shareLibrary",
         requestType: "mutation",
-        requestPayload: { tenantId: tenantIdResolved, groupId: input.groupId, permissionLevel: input.permissionLevel },
+        requestPayload: { tenantId: tenantIdResolved, folderId: input.folderId, groupId: input.groupId, permissionLevel: input.permissionLevel },
         responsePayload: { shared: result.shared },
       });
 

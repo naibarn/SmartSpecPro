@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { TRPCError } from "@trpc/server";
-import { and, count, desc, eq, gt, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
 
 import { getDb } from "../db";
 import { storagePut, storageGet, storageDelete } from "../storage";
@@ -23,11 +23,19 @@ import {
   libraryItems,
   libraryLinks,
   libraryPermissions,
+  presentationAssetLinks,
+  presentationDecks,
   userGroups,
   users,
   type LibraryContentVersion,
 } from "../../drizzle/schema";
 import { getUserGroups as getGroupsServiceUserGroups } from "./groupsService";
+import {
+  calculateLibraryUploadCreditCost,
+  deductCredits,
+  hasEnoughCredits,
+  refundCredits,
+} from "./creditService";
 import type { EffectivePermission, PermissionSource } from "../../shared/types/library";
 
 export type LibraryPermissionLevel = "read" | "write" | "delete" | "owner";
@@ -157,11 +165,22 @@ export interface UploadLibraryFileInput {
   title?: string;
   visibility?: LibraryVisibility;
   parentId?: number | null;
+  metadata?: Record<string, unknown>;
 }
 
 export interface UploadLibraryFileResult {
   item: LibraryItemDto;
+  storageKey: string;
   indexJob: LibraryEnqueueResult;
+  billing: {
+    creditsCharged: number;
+    category: string;
+    fileSizeBytes: number;
+    baseCredits: number;
+    stepCredits: number;
+    extraSteps: number;
+    sizeStepMb: number;
+  };
 }
 
 export interface ReplaceLibraryFileInput {
@@ -251,6 +270,8 @@ export interface LibraryDocumentListItem {
   metadata: Record<string, unknown>;
   access_source: LibraryDocumentAccessSource;
   permission_level: LibraryPermissionLevel;
+  shared_out_count: number;
+  has_shared_out: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -1168,6 +1189,14 @@ export async function uploadLibraryFile(
     fileBuffer = sanitized.sanitizedBuffer;
   }
 
+  const billing = await calculateLibraryUploadCreditCost(fileType, fileBuffer.length);
+  if (billing.totalCredits > 0) {
+    const hasCredits = await hasEnoughCredits(actor.userId, billing.totalCredits);
+    if (!hasCredits) {
+      throw new Error(`Insufficient credits. Required: ${billing.totalCredits}`);
+    }
+  }
+
   const fileId = crypto.randomUUID().replace(/-/g, "");
   const key = `library/uploads/${tenantId}/${actor.userId}/${fileId}${ext ? `.${ext}` : ""}`;
   const storage = await storagePut(key, fileBuffer, fileType);
@@ -1189,6 +1218,7 @@ export async function uploadLibraryFile(
         file_size_bytes: fileBuffer.length,
         source_type: "document_upload",
         svg_sanitized: svgUpload || undefined,
+        ...(input.metadata || {}),
       },
       sourceUrl: storage.url,
       thumbnailUrl: inferredItemType === "image" ? storage.url : null,
@@ -1200,6 +1230,44 @@ export async function uploadLibraryFile(
     actor,
     db,
   );
+
+  if (billing.totalCredits > 0) {
+    try {
+      await deductCredits({
+        userId: actor.userId,
+        amount: billing.totalCredits,
+        tenantId,
+        sourceType: "indexing",
+        description: `Library upload (${billing.category}): ${fileName}`,
+        idempotencyKey: `library-upload:${created.item.id}`,
+        metadata: {
+          service: "library.upload_file",
+          libraryItemId: created.item.id,
+          fileName,
+          fileType,
+          fileSizeBytes: fileBuffer.length,
+          billingCategory: billing.category,
+          billingBaseCredits: billing.baseCredits,
+          billingStepCredits: billing.stepCredits,
+          billingExtraSteps: billing.extraSteps,
+          billingSizeStepMb: billing.sizeStepMb,
+        },
+      });
+    } catch (error) {
+      // Roll back uploaded artifact when post-upload billing fails (e.g., concurrent balance race).
+      try {
+        const softDeleted = await softDeleteLibraryItem(created.item.id, actor, db);
+        if (softDeleted) {
+          await permanentDeleteLibraryItem(created.item.id, actor, db);
+        } else {
+          await storageDelete(storage.key).catch(() => {});
+        }
+      } catch {
+        await storageDelete(storage.key).catch(() => {});
+      }
+      throw error;
+    }
+  }
 
   const indexJob = await safeEnqueueLibraryIndexJob(
     {
@@ -1220,7 +1288,17 @@ export async function uploadLibraryFile(
 
   return {
     item: created.item,
+    storageKey: storage.key,
     indexJob,
+    billing: {
+      creditsCharged: billing.totalCredits,
+      category: billing.category,
+      fileSizeBytes: fileBuffer.length,
+      baseCredits: billing.baseCredits,
+      stepCredits: billing.stepCredits,
+      extraSteps: billing.extraSteps,
+      sizeStepMb: billing.sizeStepMb,
+    },
   };
 }
 
@@ -1279,52 +1357,83 @@ export async function replaceLibraryFile(
     fileBuffer = sanitized.sanitizedBuffer;
   }
 
-  // 3. Get current file's storage key
-  const currentLinks = await db
-    .select()
-    .from(libraryLinks)
-    .where(
-      and(
-        eq(libraryLinks.libraryItemId, existing.id),
-        eq(libraryLinks.linkType, "upload_key"),
-      ),
-    )
-    .limit(1);
+  const billing = await calculateLibraryUploadCreditCost(fileType, fileBuffer.length);
+  let debitTransactionId: number | null = null;
+  if (billing.totalCredits > 0) {
+    const hasCredits = await hasEnoughCredits(actor.userId, billing.totalCredits);
+    if (!hasCredits) {
+      throw new Error(`Insufficient credits. Required: ${billing.totalCredits}`);
+    }
 
-  const currentStorageKey = currentLinks[0]?.linkId ?? null;
-  const oldMetadata = (existing.metadata ?? {}) as Record<string, unknown>;
-
-  // 4. Archive current file as version snapshot
-  const snapshotContent = JSON.stringify({
-    file_name: oldMetadata.file_name ?? existing.title,
-    file_type: oldMetadata.file_type ?? "application/octet-stream",
-    file_size_bytes: oldMetadata.file_size_bytes ?? 0,
-    original_source_url: existing.sourceUrl ?? null,
-  });
-
-  const version = await createContentVersion(db, {
-    tenantId,
-    libraryItemId: existing.id,
-    content: snapshotContent,
-    contentType: "file_snapshot",
-    createdByUserId: actor.userId,
-    changeDescription: input.changeDescription || `Replaced with ${fileName}`,
-    snapshotObjectKey: currentStorageKey ?? undefined,
-  });
-
-  if (!version) {
-    throw new Error("Failed to create version snapshot before replacing file");
+    const debit = await deductCredits({
+      userId: actor.userId,
+      amount: billing.totalCredits,
+      tenantId,
+      sourceType: "indexing",
+      description: `Library replace (${billing.category}): ${fileName}`,
+      metadata: {
+        service: "library.replace_file",
+        libraryItemId: existing.id,
+        fileName,
+        fileType,
+        fileSizeBytes: fileBuffer.length,
+        billingCategory: billing.category,
+        billingBaseCredits: billing.baseCredits,
+        billingStepCredits: billing.stepCredits,
+        billingExtraSteps: billing.extraSteps,
+        billingSizeStepMb: billing.sizeStepMb,
+      },
+    });
+    debitTransactionId = debit.transactionId;
   }
-  const versionNumber = version.versionNumber;
 
-  // 5. Upload new file
-  const fileId = crypto.randomUUID().replace(/-/g, "");
-  const newKey = `library/uploads/${tenantId}/${actor.userId}/${fileId}${ext ? `.${ext}` : ""}`;
-  const storage = await storagePut(newKey, fileBuffer, fileType);
-  const inferredItemType = inferLibraryItemType(fileType, ext);
-
-  // Steps 6-7 in a transaction so item + link updates are atomic
+  let newKey: string | null = null;
   try {
+    // 3. Get current file's storage key
+    const currentLinks = await db
+      .select()
+      .from(libraryLinks)
+      .where(
+        and(
+          eq(libraryLinks.libraryItemId, existing.id),
+          eq(libraryLinks.linkType, "upload_key"),
+        ),
+      )
+      .limit(1);
+
+    const currentStorageKey = currentLinks[0]?.linkId ?? null;
+    const oldMetadata = (existing.metadata ?? {}) as Record<string, unknown>;
+
+    // 4. Archive current file as version snapshot
+    const snapshotContent = JSON.stringify({
+      file_name: oldMetadata.file_name ?? existing.title,
+      file_type: oldMetadata.file_type ?? "application/octet-stream",
+      file_size_bytes: oldMetadata.file_size_bytes ?? 0,
+      original_source_url: existing.sourceUrl ?? null,
+    });
+
+    const version = await createContentVersion(db, {
+      tenantId,
+      libraryItemId: existing.id,
+      content: snapshotContent,
+      contentType: "file_snapshot",
+      createdByUserId: actor.userId,
+      changeDescription: input.changeDescription || `Replaced with ${fileName}`,
+      snapshotObjectKey: currentStorageKey ?? undefined,
+    });
+
+    if (!version) {
+      throw new Error("Failed to create version snapshot before replacing file");
+    }
+    const versionNumber = version.versionNumber;
+
+    // 5. Upload new file
+    const fileId = crypto.randomUUID().replace(/-/g, "");
+    newKey = `library/uploads/${tenantId}/${actor.userId}/${fileId}${ext ? `.${ext}` : ""}`;
+    const storage = await storagePut(newKey, fileBuffer, fileType);
+    const inferredItemType = inferLibraryItemType(fileType, ext);
+
+    // Steps 6-7 in a transaction so item + link updates are atomic
     const updated = await db.transaction(async (tx) => {
       // 6. Update library item
       const now = new Date();
@@ -1396,8 +1505,29 @@ export async function replaceLibraryFile(
       versionNumber,
     };
   } catch (err) {
-    // Clean up the orphaned uploaded file
-    await storageDelete(newKey).catch(() => {});
+    if (newKey) {
+      // Clean up the orphaned uploaded file
+      await storageDelete(newKey).catch(() => {});
+    }
+    if (billing.totalCredits > 0 && debitTransactionId) {
+      await refundCredits({
+        userId: actor.userId,
+        amount: billing.totalCredits,
+        description: `Refund for failed library replace: ${fileName}`,
+        originalTransactionId: debitTransactionId,
+        sourceType: "indexing",
+        metadata: {
+          service: "library.replace_file",
+          libraryItemId: existing.id,
+          billingCategory: billing.category,
+        },
+      }).catch((refundError) => {
+        console.error(
+          `[library.replaceFile] Failed to refund credits for item ${existing.id}:`,
+          refundError instanceof Error ? refundError.message : refundError,
+        );
+      });
+    }
     throw err;
   }
 }
@@ -1496,6 +1626,99 @@ export async function updateLibraryItem(
   return toLibraryItemDto(updated[0]);
 }
 
+function isPresentationTempUploadMetadata(
+  metadata: unknown,
+  expectedDeckId: number,
+): boolean {
+  if (!metadata || typeof metadata !== "object") {
+    return false;
+  }
+  const source = metadata as Record<string, unknown>;
+  if (source.presentation_upload !== true) {
+    return false;
+  }
+  const deckId = Number(source.presentation_deck_id);
+  return Number.isFinite(deckId) && deckId === expectedDeckId;
+}
+
+async function softDeleteDeckScopedPresentationUploads(
+  presentationItemId: number,
+  actor: LibraryActor,
+  db: DbClient,
+): Promise<void> {
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+  const deckRows = await db
+    .select({ id: presentationDecks.id })
+    .from(presentationDecks)
+    .where(
+      and(
+        eq(presentationDecks.libraryItemId, presentationItemId),
+        eq(presentationDecks.tenantId, actorTenantId),
+      ),
+    )
+    .limit(1);
+
+  const deck = deckRows[0];
+  if (!deck) {
+    return;
+  }
+
+  const linkedRows = await db
+    .select({
+      id: libraryItems.id,
+      metadata: libraryItems.metadata,
+    })
+    .from(presentationAssetLinks)
+    .innerJoin(libraryItems, eq(libraryItems.id, presentationAssetLinks.libraryItemId))
+    .where(
+      and(
+        eq(presentationAssetLinks.deckId, deck.id),
+        eq(presentationAssetLinks.tenantId, actorTenantId),
+        eq(libraryItems.tenantId, actorTenantId),
+        isNull(libraryItems.deletedAt),
+      ),
+    );
+
+  const now = new Date();
+  const uploadItemIds = linkedRows
+    .filter((row) => isPresentationTempUploadMetadata(row.metadata, deck.id))
+    .map((row) => row.id);
+
+  if (!uploadItemIds.length) {
+    return;
+  }
+
+  await db
+    .update(libraryItems)
+    .set({
+      deletedAt: now,
+      deletedBy: actor.userId,
+      status: "archived",
+      updatedAt: now,
+    })
+    .where(
+      and(
+        inArray(libraryItems.id, uploadItemIds),
+        eq(libraryItems.tenantId, actorTenantId),
+      ),
+    );
+
+  for (const uploadItemId of uploadItemIds) {
+    await safeEnqueueLibraryIndexJob(
+      {
+        libraryItemId: uploadItemId,
+        tenantId: actorTenantId,
+        jobType: "delete_index",
+        domain: "library",
+        operation: "delete",
+        source: "library.delete.presentation_upload",
+        allowThrottle: false,
+      },
+      db,
+    );
+  }
+}
+
 export async function softDeleteLibraryItem(
   itemId: number,
   actor: LibraryActor,
@@ -1541,6 +1764,10 @@ export async function softDeleteLibraryItem(
     },
     db,
   );
+
+  if (existing.itemType === "presentation") {
+    await softDeleteDeckScopedPresentationUploads(itemId, actor, db);
+  }
 
   return true;
 }
@@ -1912,11 +2139,17 @@ function getDocumentAccessSource(
 function matchesDocumentScope(
   scope: LibraryDocumentScope,
   accessSource: LibraryDocumentAccessSource,
+  permissionInfo: {
+    hasDirectShare: boolean;
+    hasGroupShare: boolean;
+  },
 ): boolean {
   if (scope === "all") return true;
   if (scope === "my_library") return accessSource === "owner";
-  if (scope === "shared_with_me") return accessSource === "shared_direct";
-  if (scope === "shared_groups") return accessSource === "shared_group";
+  // Shared-with-me should include only explicit direct user shares.
+  if (scope === "shared_with_me") return permissionInfo.hasDirectShare;
+  // Shared-groups should include only explicit group shares from other users.
+  if (scope === "shared_groups") return permissionInfo.hasGroupShare && accessSource !== "owner";
   return true;
 }
 
@@ -2049,21 +2282,23 @@ export async function listLibraryDocuments(
   const afterFilters = itemRows.filter((item) => itemMatchesDocumentFilters(item, input.filters));
   const afterQuery = afterFilters.filter((item) => itemMatchesDocumentQuery(item, query));
 
-  const visible = afterQuery
-    .map((item) => {
+  const visible = afterQuery.reduce<LibraryDocumentListItem[]>((acc, item) => {
       const permissionInfo = getPermissionLevelForItem(permissionRows, item.id, actor, groupIdNums);
       const canRead = canReadLibraryItem(item, actor, permissionInfo.effectivePermissionLevel);
       if (!canRead) {
-        return null;
+        return acc;
       }
 
       const accessSource = getDocumentAccessSource(item, actor, permissionInfo);
-      if (!matchesDocumentScope(scope, accessSource)) {
-        return null;
+      if (!matchesDocumentScope(scope, accessSource, {
+        hasDirectShare: permissionInfo.hasDirectShare,
+        hasGroupShare: permissionInfo.hasGroupShare,
+      })) {
+        return acc;
       }
 
       const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
-      return {
+      acc.push({
         id: item.id,
         item_type: item.itemType,
         source: item.source,
@@ -2080,11 +2315,13 @@ export async function listLibraryDocuments(
         permission_level: item.ownerUserId === actor.userId
           ? "owner"
           : permissionInfo.effectivePermissionLevel ?? "read",
+        shared_out_count: 0,
+        has_shared_out: false as boolean,
         created_at: item.createdAt.toISOString(),
         updated_at: item.updatedAt.toISOString(),
-      } satisfies LibraryDocumentListItem;
-    })
-    .filter((item): item is LibraryDocumentListItem => item !== null);
+      });
+      return acc;
+    }, []);
 
   visible.sort((a, b) => {
     if (sort === "created_desc") {
@@ -2101,6 +2338,56 @@ export async function listLibraryDocuments(
   });
 
   const paged = visible.slice(offset, offset + limit);
+
+  if (paged.length > 0) {
+    const pagedItemIds = paged.map((item) => item.id);
+    const ownerUserIdByItemId = new Map<number, number>(
+      paged.map((item) => [item.id, item.owner_user_id]),
+    );
+    const activeShareRows = await db
+      .select({
+        libraryItemId: libraryPermissions.libraryItemId,
+        subjectType: libraryPermissions.subjectType,
+        subjectId: libraryPermissions.subjectId,
+        permissionLevel: libraryPermissions.permissionLevel,
+      })
+      .from(libraryPermissions)
+      .where(
+        and(
+          eq(libraryPermissions.tenantId, actorTenantId),
+          inArray(libraryPermissions.libraryItemId, pagedItemIds),
+          or(
+            eq(libraryPermissions.subjectType, "user"),
+            eq(libraryPermissions.subjectType, "group"),
+          ),
+          or(isNull(libraryPermissions.expiresAt), gt(libraryPermissions.expiresAt, new Date())),
+        ),
+      );
+
+    const shareCountByItemId = new Map<number, number>();
+    for (const row of activeShareRows) {
+      const itemId = Number(row.libraryItemId);
+      if (row.permissionLevel === "owner") {
+        continue;
+      }
+      const ownerUserId = ownerUserIdByItemId.get(itemId);
+      if (
+        row.subjectType === "user"
+        && ownerUserId !== undefined
+        && Number(row.subjectId) === ownerUserId
+      ) {
+        continue;
+      }
+      shareCountByItemId.set(itemId, (shareCountByItemId.get(itemId) ?? 0) + 1);
+    }
+
+    for (const item of paged) {
+      const explicitShareCount = shareCountByItemId.get(item.id) ?? 0;
+      item.shared_out_count = explicitShareCount;
+      item.has_shared_out = explicitShareCount > 0;
+    }
+  }
+
   return {
     total: visible.length,
     limit,
@@ -3283,6 +3570,41 @@ export interface LibraryFolderAncestor {
   title: string;
 }
 
+export async function findOwnedLibraryFolderByName(
+  input: { name: string; parentId?: number | null },
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<LibraryItemDto | null> {
+  const db = await resolveDb(dbClient);
+  const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
+  const normalizedName = input.name.trim();
+  if (!normalizedName) {
+    throw new Error("Folder name is required");
+  }
+
+  const rows = await db
+    .select()
+    .from(libraryItems)
+    .where(
+      and(
+        eq(libraryItems.tenantId, actorTenantId),
+        eq(libraryItems.ownerUserId, actor.userId),
+        eq(libraryItems.itemType, "folder"),
+        eq(libraryItems.title, normalizedName),
+        input.parentId == null ? isNull(libraryItems.parentId) : eq(libraryItems.parentId, input.parentId),
+        isNull(libraryItems.deletedAt),
+      ),
+    )
+    .orderBy(libraryItems.id)
+    .limit(1);
+
+  if (!rows[0]) {
+    return null;
+  }
+
+  return toLibraryItemDto(rows[0]);
+}
+
 /**
  * Create a folder item (itemType="folder") in the library.
  */
@@ -3305,6 +3627,19 @@ export async function createLibraryFolder(
     actor,
     dbClient,
   );
+}
+
+export async function ensureOwnedLibraryFolder(
+  input: { name: string; parentId?: number | null },
+  actor: LibraryActor,
+  dbClient?: DbClient,
+): Promise<CreateLibraryItemResult> {
+  const existing = await findOwnedLibraryFolderByName(input, actor, dbClient);
+  if (existing) {
+    return { item: existing, idempotent: true };
+  }
+
+  return createLibraryFolder(input, actor, dbClient);
 }
 
 /**
@@ -3377,6 +3712,23 @@ export async function batchSoftDeleteLibraryItems(
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
   const now = new Date();
 
+  const existingRows = await db
+    .select({
+      id: libraryItems.id,
+      itemType: libraryItems.itemType,
+    })
+    .from(libraryItems)
+    .where(
+      and(
+        inArray(libraryItems.id, itemIds),
+        eq(libraryItems.tenantId, actorTenantId),
+        isNull(libraryItems.deletedAt),
+      ),
+    );
+  const presentationItemIds = existingRows
+    .filter((row) => row.itemType === "presentation")
+    .map((row) => row.id);
+
   const result = await db
     .update(libraryItems)
     .set({ deletedAt: now, deletedBy: actor.userId, status: "archived", updatedAt: now })
@@ -3389,15 +3741,19 @@ export async function batchSoftDeleteLibraryItems(
     )
     .returning({ id: libraryItems.id });
 
+  for (const presentationItemId of presentationItemIds) {
+    await softDeleteDeckScopedPresentationUploads(presentationItemId, actor, db);
+  }
+
   return result.length;
 }
 
 /**
- * Share all items owned by the actor in the library with a specific group.
+ * Share all non-folder items in a specific owned folder (recursive) with a group.
  * Returns the number of items that were newly shared (or already had a share updated).
  */
 export async function shareLibraryToGroup(
-  input: { groupId: number; permissionLevel: LibraryPermissionLevel },
+  input: { folderId: number; groupId: number; permissionLevel: LibraryPermissionLevel },
   actor: LibraryActor,
   dbClient?: DbClient,
 ): Promise<{ shared: number }> {
@@ -3421,7 +3777,54 @@ export async function shareLibraryToGroup(
     throw new Error("Group not found or does not belong to this tenant");
   }
 
-  // Fetch all owned non-deleted items (exclude folders themselves since folder access implies child access)
+  const [folder] = await db
+    .select({ id: libraryItems.id })
+    .from(libraryItems)
+    .where(
+      and(
+        eq(libraryItems.id, input.folderId),
+        eq(libraryItems.tenantId, actorTenantId),
+        eq(libraryItems.ownerUserId, actor.userId),
+        eq(libraryItems.itemType, "folder"),
+        isNull(libraryItems.deletedAt),
+      ),
+    )
+    .limit(1);
+
+  if (!folder) {
+    throw new Error("Folder not found or you do not have permission to share it");
+  }
+
+  // Collect all descendant folders owned by actor (BFS) so sharing is folder-recursive.
+  const folderIds: number[] = [input.folderId];
+  let frontier: number[] = [input.folderId];
+  while (frontier.length > 0) {
+    const children = await db
+      .select({ id: libraryItems.id })
+      .from(libraryItems)
+      .where(
+        and(
+          eq(libraryItems.tenantId, actorTenantId),
+          eq(libraryItems.ownerUserId, actor.userId),
+          eq(libraryItems.itemType, "folder"),
+          inArray(libraryItems.parentId, frontier),
+          isNull(libraryItems.deletedAt),
+        ),
+      );
+
+    const next = children
+      .map((row) => row.id)
+      .filter((id) => !folderIds.includes(id));
+
+    if (next.length === 0) {
+      break;
+    }
+
+    folderIds.push(...next);
+    frontier = next;
+  }
+
+  // Fetch all owned non-deleted non-folder items inside the selected folder tree.
   const ownedItems = await db
     .select({ id: libraryItems.id })
     .from(libraryItems)
@@ -3429,6 +3832,8 @@ export async function shareLibraryToGroup(
       and(
         eq(libraryItems.tenantId, actorTenantId),
         eq(libraryItems.ownerUserId, actor.userId),
+        ne(libraryItems.itemType, "folder"),
+        inArray(libraryItems.parentId, folderIds),
         isNull(libraryItems.deletedAt),
       ),
     );

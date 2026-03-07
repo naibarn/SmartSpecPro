@@ -75,7 +75,36 @@ export const creditsRouter = router({
       });
 
       // Allowlist safe metadata fields — strip internal/sensitive keys
-      const safeMetadataKeys = ["model", "provider", "tokensUsed", "costUsd", "inputTokens", "outputTokens", "skill", "reason"];
+      const safeMetadataKeys = [
+        "model",
+        "modelId",
+        "provider",
+        "tokensUsed",
+        "costUsd",
+        "inputTokens",
+        "outputTokens",
+        "skill",
+        "reason",
+        "operation",
+        "phase",
+        "stage",
+        "deckId",
+        "taskId",
+        "slideIndex",
+        "slideNumber",
+        "totalSlides",
+        "mediaType",
+        "mediaTaskId",
+        "providerTaskId",
+        "taskStatus",
+        "promptPreview",
+        "billingBasis",
+        "providerReportedCredits",
+        "fallbackCredits",
+        "requestType",
+        "structured",
+        "attempt",
+      ];
 
       return transactions.map((t: (typeof transactions)[number]) => {
         const safeMeta = t.metadata
@@ -203,7 +232,36 @@ export const creditsRouter = router({
       });
 
       // Apply same sanitization as user-facing endpoint
-      const safeMetadataKeys = ["model", "provider", "tokensUsed", "costUsd", "inputTokens", "outputTokens", "skill", "reason"];
+      const safeMetadataKeys = [
+        "model",
+        "modelId",
+        "provider",
+        "tokensUsed",
+        "costUsd",
+        "inputTokens",
+        "outputTokens",
+        "skill",
+        "reason",
+        "operation",
+        "phase",
+        "stage",
+        "deckId",
+        "taskId",
+        "slideIndex",
+        "slideNumber",
+        "totalSlides",
+        "mediaType",
+        "mediaTaskId",
+        "providerTaskId",
+        "taskStatus",
+        "promptPreview",
+        "billingBasis",
+        "providerReportedCredits",
+        "fallbackCredits",
+        "requestType",
+        "structured",
+        "attempt",
+      ];
 
       return transactions.map((t: (typeof transactions)[number]) => {
         const safeMeta = t.metadata

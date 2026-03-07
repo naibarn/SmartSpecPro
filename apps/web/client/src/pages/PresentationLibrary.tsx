@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { formatRelativeTime } from "@smartspec/shared";
 import type { LucideIcon } from "lucide-react";
-import { ChevronLeft, FileStack, LayoutTemplate, Loader2, Plus, Presentation, Search, Trash2 } from "lucide-react";
+import { ChevronLeft, FileStack, LayoutTemplate, Loader2, Plus, Presentation, Search, Share2, Trash2, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ShareDialog } from "@/components/library/ShareDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
 import { isPresentationTemplateItem } from "@shared/presentation/template";
@@ -16,9 +17,12 @@ type LibraryPresentationItem = {
   title: string;
   source: string;
   status: string;
+  visibility: string;
   metadata: Record<string, unknown>;
   ownerUserId: number;
   permissionLevel: string;
+  sharedOutCount: number;
+  hasSharedOut: boolean;
   sourceUrl: string | null;
   thumbnailUrl: string | null;
   searchText: string;
@@ -41,6 +45,9 @@ function toPresentationItem(row: any): LibraryPresentationItem | null {
   }
 
   const source = String(row?.source || "unknown");
+  const visibility = String(row?.visibility || "private");
+  const parsedSharedOutCount = Number(row?.shared_out_count);
+  const sharedOutCount = Number.isFinite(parsedSharedOutCount) ? parsedSharedOutCount : 0;
   const metadata = asRecord(row?.metadata);
   const title = String(row?.title || `Presentation #${id}`);
   const metadataSearchText = Object.values(metadata)
@@ -52,9 +59,13 @@ function toPresentationItem(row: any): LibraryPresentationItem | null {
     title,
     source,
     status: String(row?.status || "unknown"),
+    visibility,
     metadata,
     ownerUserId: Number(row?.owner_user_id || 0),
     permissionLevel: String(row?.permission_level || ""),
+    sharedOutCount,
+    hasSharedOut:
+      row?.has_shared_out === true || sharedOutCount > 0,
     sourceUrl: typeof row?.source_url === "string" ? row.source_url : null,
     thumbnailUrl: typeof row?.thumbnail_url === "string" ? row.thumbnail_url : null,
     searchText: `${title} ${source} ${metadataSearchText}`.toLowerCase(),
@@ -216,6 +227,7 @@ function PresentationGroup({
   isAdmin,
   onOpen,
   onUseTemplate,
+  onShare,
   onDelete,
   deletingItemId,
   useTemplateItemId,
@@ -232,6 +244,7 @@ function PresentationGroup({
   isAdmin: boolean;
   onOpen: (item: LibraryPresentationItem) => void;
   onUseTemplate: (item: LibraryPresentationItem) => void;
+  onShare: (item: LibraryPresentationItem) => void;
   onDelete: (item: LibraryPresentationItem) => void;
   deletingItemId: number | null;
   useTemplateItemId: number | null;
@@ -278,6 +291,8 @@ function PresentationGroup({
             const canDeleteTemplate = item.isTemplate && isAdmin;
             const canDeleteProject = !item.isTemplate && (isOwner || isAdmin);
             const canDelete = canDeleteTemplate || canDeleteProject;
+            const canShare = isOwner || isAdmin;
+            const showSharedBadge = !item.isTemplate && item.hasSharedOut;
 
             return (
               <div key={item.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -286,15 +301,26 @@ function PresentationGroup({
                 </div>
                 <div className="flex items-start justify-between gap-2">
                   <h3 className="line-clamp-2 font-medium text-slate-900">{item.title}</h3>
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                      indexed
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-amber-100 text-amber-700"
-                    }`}
-                  >
-                    {indexed ? "Indexed" : item.status}
-                  </span>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    {showSharedBadge ? (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-medium text-sky-700"
+                        title={item.sharedOutCount > 0 ? `Shared with ${item.sharedOutCount} permission${item.sharedOutCount > 1 ? "s" : ""}` : "Shared"}
+                      >
+                        <Users className="h-3 w-3" />
+                        Shared
+                      </span>
+                    ) : null}
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                        indexed
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-amber-100 text-amber-700"
+                      }`}
+                    >
+                      {indexed ? "Indexed" : item.status}
+                    </span>
+                  </div>
                 </div>
                 <div className="mt-2 space-y-1 text-xs text-slate-500">
                   <p>ID: {item.id}</p>
@@ -322,6 +348,17 @@ function PresentationGroup({
                       Open in Presentation Editor
                     </Button>
                   )}
+                  {canShare ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onShare(item)}
+                      aria-label={`Share presentation ${item.title}`}
+                      title="Share"
+                    >
+                      <Share2 className="h-4 w-4" />
+                    </Button>
+                  ) : null}
                   {canDelete ? (
                     <Button
                       variant="outline"
@@ -354,6 +391,7 @@ export default function PresentationLibrary() {
   const [offset, setOffset] = useState(0);
   const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
   const [useTemplateItemId, setUseTemplateItemId] = useState<number | null>(null);
+  const [shareTarget, setShareTarget] = useState<{ id: number; title: string } | null>(null);
   const limit = 50;
 
   useEffect(() => {
@@ -410,6 +448,10 @@ export default function PresentationLibrary() {
 
   function handleOpenPresentation(item: LibraryPresentationItem) {
     setLocation(`/presentation-editor/${item.id}`);
+  }
+
+  function handleShareItem(item: LibraryPresentationItem) {
+    setShareTarget({ id: item.id, title: item.title });
   }
 
   async function handleUseTemplate(item: LibraryPresentationItem) {
@@ -587,6 +629,7 @@ export default function PresentationLibrary() {
           isAdmin={isAdmin}
           onOpen={handleOpenPresentation}
           onUseTemplate={handleUseTemplate}
+          onShare={handleShareItem}
           onDelete={handleDeleteItem}
           deletingItemId={deletingItemId}
           useTemplateItemId={useTemplateItemId}
@@ -605,6 +648,7 @@ export default function PresentationLibrary() {
           isAdmin={isAdmin}
           onOpen={handleOpenPresentation}
           onUseTemplate={handleUseTemplate}
+          onShare={handleShareItem}
           onDelete={handleDeleteItem}
           deletingItemId={deletingItemId}
           useTemplateItemId={useTemplateItemId}
@@ -632,6 +676,14 @@ export default function PresentationLibrary() {
           </Button>
         </div>
       </main>
+      {shareTarget ? (
+        <ShareDialog
+          itemId={shareTarget.id}
+          itemTitle={shareTarget.title}
+          isOpen={Boolean(shareTarget)}
+          onClose={() => setShareTarget(null)}
+        />
+      ) : null}
     </div>
   );
 }

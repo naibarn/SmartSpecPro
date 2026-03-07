@@ -228,6 +228,82 @@ describe("PresentationPlayMode", () => {
     expect(stage).toHaveAttribute("data-show-video-playback-toggle", "false");
   });
 
+  it("applies modern transition styles when slide state is transitioning", () => {
+    const baseDeck = buildPlayDeck();
+    queryState.playDeck = {
+      ...baseDeck,
+      slides: [
+        {
+          ...baseDeck.slides[0],
+          transition: "slide-left",
+        },
+        baseDeck.slides[1],
+      ],
+    } as any;
+
+    render(<PresentationPlayMode />);
+    act(() => {
+      capturedOnStateChange?.("SLIDE_TRANSITIONING", 0);
+    });
+
+    expect(screen.getByTestId("play-slide-transition-layer")).toHaveStyle({
+      opacity: "0",
+      transform: "translate3d(-220px, 0, 0) scale(1)",
+    });
+  });
+
+  it("animates enter transition when playback advances to the next slide", () => {
+    const baseDeck = buildPlayDeck();
+    queryState.playDeck = {
+      ...baseDeck,
+      slides: [
+        baseDeck.slides[0],
+        {
+          ...baseDeck.slides[1],
+          transition: "slide-left",
+        },
+      ],
+    } as any;
+    const rafSpy = vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 1 as any);
+
+    render(<PresentationPlayMode />);
+    act(() => {
+      capturedOnStateChange?.("PLAYING", 1);
+    });
+
+    expect(screen.getByTestId("play-slide-transition-layer")).toHaveStyle({
+      opacity: "0",
+      transform: "translate3d(220px, 0, 0) scale(1)",
+    });
+    rafSpy.mockRestore();
+  });
+
+  it("animates transition when user navigates slides with Arrow keys while not playing", () => {
+    const baseDeck = buildPlayDeck();
+    queryState.playDeck = {
+      ...baseDeck,
+      slides: [
+        baseDeck.slides[0],
+        {
+          ...baseDeck.slides[1],
+          transition: "slide-left",
+        },
+      ],
+    } as any;
+    const rafSpy = vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 1 as any);
+
+    render(<PresentationPlayMode />);
+    act(() => {
+      capturedOnStateChange?.("IDLE", 1);
+    });
+
+    expect(screen.getByTestId("play-slide-transition-layer")).toHaveStyle({
+      opacity: "0",
+      transform: "translate3d(220px, 0, 0) scale(1)",
+    });
+    rafSpy.mockRestore();
+  });
+
   it("pressing Space calls play when IDLE, pause when PLAYING", () => {
     render(<PresentationPlayMode />);
     // Initial state is IDLE → pressing Space calls play()

@@ -62,6 +62,40 @@ interface PreparedPythonSandboxPayload {
   metadata: Record<string, unknown>;
 }
 
+function setApiConfigValue(apiConfig: Record<string, string>, key: string, value: unknown): void {
+  if (value === null || value === undefined) return;
+  if (typeof value === "string") {
+    const normalized = value.trim();
+    if (normalized.length > 0) {
+      apiConfig[key] = normalized;
+    }
+    return;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    apiConfig[key] = String(value);
+  }
+}
+
+function mergeApiConfigObject(apiConfig: Record<string, string>, value: unknown): void {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return;
+  for (const [key, entryValue] of Object.entries(value as Record<string, unknown>)) {
+    setApiConfigValue(apiConfig, key, entryValue);
+  }
+}
+
+function buildMediaApiConfig(configJson?: Record<string, unknown>): Record<string, string> {
+  const apiConfig: Record<string, string> = {};
+  if (!configJson || typeof configJson !== "object") {
+    return apiConfig;
+  }
+  setApiConfigValue(apiConfig, "endpoint", configJson.apiEndpoint);
+  setApiConfigValue(apiConfig, "query_endpoint", configJson.apiQueryEndpoint);
+  setApiConfigValue(apiConfig, "payload_format", configJson.apiPayloadFormat);
+  setApiConfigValue(apiConfig, "kie_model_id", configJson.kieModelId);
+  mergeApiConfigObject(apiConfig, configJson.apiConfig);
+  return apiConfig;
+}
+
 function checkRateLimit(userId: number, skillType: string): boolean {
   const key = `${userId}:${skillType}`;
   const now = Date.now();
@@ -355,6 +389,10 @@ export async function executeSkill(
       console.log(`[SkillExecutor] Skill type is image-video-generation, routing to video generation`);
       return executeVideoGeneration(skill, params, userId, userToken);
 
+    case "audio-generation":
+      console.log(`[SkillExecutor] Routing to executeAudioGeneration`);
+      return executeAudioGeneration(params, userId, userToken);
+
     case "automation":
     case "chat-assistant":
     case "code-assistant":
@@ -436,14 +474,10 @@ async function executeImageGeneration(
 
   try {
     // Build apiConfig from model's configJson (database is source of truth)
-    const apiConfig: Record<string, string> = {};
-    const configJson = modelMeta.configJson;
-    if (configJson) {
-      if (configJson.apiEndpoint) apiConfig.endpoint = configJson.apiEndpoint;
-      if (configJson.apiQueryEndpoint) apiConfig.query_endpoint = configJson.apiQueryEndpoint;
-      if (configJson.apiPayloadFormat) apiConfig.payload_format = configJson.apiPayloadFormat;
-      if (configJson.kieModelId) apiConfig.kie_model_id = configJson.kieModelId;
-    }
+    const apiConfig = {
+      ...buildMediaApiConfig(modelMeta.configJson as Record<string, unknown> | undefined),
+      ...(params.apiConfig ?? {}),
+    };
 
     // Generate image — forward all params including extraParams from configJson.inputFields
     const result = await mediaGenerationService.generateImage(
@@ -458,6 +492,11 @@ async function executeImageGeneration(
         ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
         ...(params.extraParams && Object.keys(params.extraParams).length > 0 ? { extraParams: params.extraParams } : {}),
         ...(params.publicUrl ? { publicUrl: params.publicUrl } : {}),
+        auditContext: {
+          userId,
+          source: "skill_executor.executeImageGeneration",
+          stage: "submission",
+        },
       } as any,
       userToken
     );
@@ -545,14 +584,10 @@ async function executeVideoGeneration(
 
   try {
     // Build apiConfig from model's configJson (database is source of truth)
-    const apiConfig: Record<string, string> = {};
-    const configJson = modelMeta.configJson;
-    if (configJson) {
-      if (configJson.apiEndpoint) apiConfig.endpoint = configJson.apiEndpoint;
-      if (configJson.apiQueryEndpoint) apiConfig.query_endpoint = configJson.apiQueryEndpoint;
-      if (configJson.apiPayloadFormat) apiConfig.payload_format = configJson.apiPayloadFormat;
-      if (configJson.kieModelId) apiConfig.kie_model_id = configJson.kieModelId;
-    }
+    const apiConfig = {
+      ...buildMediaApiConfig(modelMeta.configJson as Record<string, unknown> | undefined),
+      ...(params.apiConfig ?? {}),
+    };
 
     // Generate video asynchronously — forward all params including extraParams
     console.log('[executeVideoGeneration] Preparing to call generateVideoAsync with:', {
@@ -575,6 +610,11 @@ async function executeVideoGeneration(
         ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
         ...(params.extraParams && Object.keys(params.extraParams).length > 0 ? { extraParams: params.extraParams } : {}),
         ...(params.publicUrl ? { publicUrl: params.publicUrl } : {}),
+        auditContext: {
+          userId,
+          source: "skill_executor.executeVideoGeneration",
+          stage: "submission",
+        },
       } as any,
       userToken
     );
@@ -645,7 +685,8 @@ export async function executeAudioGeneration(
 
   // Calculate credits using pricing tiers
   const audioCreditCost = calculateCreditCost(modelMeta, {
-    voice: params.voice,
+    text: params.prompt,
+    ...(params.extraParams ?? {}),
   });
   const hasCredits = await hasEnoughCredits(userId, audioCreditCost);
   if (!hasCredits) {
@@ -658,12 +699,24 @@ export async function executeAudioGeneration(
   }
 
   try {
+    const apiConfig = {
+      ...buildMediaApiConfig(modelMeta.configJson as Record<string, unknown> | undefined),
+      ...(params.apiConfig ?? {}),
+    };
+
     const result = await mediaGenerationService.generateAudio(
       {
         text: params.prompt,
         model,
         voice: params.voice,
+        ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
         ...(params.extraParams && Object.keys(params.extraParams).length > 0 ? { extraParams: params.extraParams } : {}),
+        ...(params.publicUrl ? { publicUrl: params.publicUrl } : {}),
+        auditContext: {
+          userId,
+          source: "skill_executor.executeAudioGeneration",
+          stage: "submission",
+        },
       } as any,
       userToken
     );

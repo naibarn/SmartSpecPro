@@ -317,6 +317,7 @@ export default function AdminOverviewDashboard() {
     { label: "Queue Dashboard", icon: Gauge, path: "/admin/queues" },
     { label: "LLM Monitor", icon: Brain, path: "/admin/queues/llm" },
     { label: "Media Monitor", icon: PlayCircle, path: "/admin/queues/media" },
+    { label: "Audit Logs", icon: Shield, path: "/admin/audit-logs" },
     { label: "Infrastructure", icon: Server, path: "/admin/settings" },
     { label: "Users", icon: Users, path: "/admin/users" },
     { label: "Tenants", icon: Building2, path: "/admin/tenants" },

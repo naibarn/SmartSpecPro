@@ -120,7 +120,7 @@ def automation_analyze_task(
             _set_status(task_id, status_data)
             return status_data
         finally:
-            await redis_client.aclose()
+            await redis_client.close()
 
     try:
         return _run_async(_analyze())
@@ -223,7 +223,7 @@ def automation_execute_task(
             _set_status(task_id, result_data)
             return result_data
         finally:
-            await redis_client.aclose()
+            await redis_client.close()
 
     try:
         return _run_async(_execute())

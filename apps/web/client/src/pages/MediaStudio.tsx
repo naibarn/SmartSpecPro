@@ -22,6 +22,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -46,6 +59,7 @@ import {
   ChevronLeft,
   ChevronDown,
   ChevronUp,
+  ChevronsUpDown,
   RefreshCw,
   X,
   Upload,
@@ -116,6 +130,7 @@ import {
 
 type MediaType = "image" | "video" | "audio";
 type LibraryRecentDaysFilter = "all" | 1 | 3 | 7 | 15 | 30;
+type StudioSidebarTab = "history" | "library";
 
 interface ReferenceImage {
   url: string;
@@ -151,6 +166,12 @@ interface StyleCategory {
   id: string;
   name: string;
   styles: StyleOption[];
+}
+
+interface SearchableFieldOption {
+  value: string;
+  label: string;
+  previewUrl?: string;
 }
 
 // Per-tab state structure - each tab has independent controls
@@ -267,6 +288,249 @@ function parseSkillOutputForBothMode(content: string): { imagePrompt: string; vi
   const videoPrompt = `${header}\n\n${videoSection}`;
 
   return { imagePrompt, videoPrompt };
+}
+
+function parseArrayFieldValue(
+  raw: unknown,
+  options: { splitLines?: boolean } = {},
+): unknown[] {
+  const splitLines = options.splitLines ?? true;
+  if (Array.isArray(raw)) return raw;
+  if (raw === null || raw === undefined) return [];
+
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (!trimmed) return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return parsed;
+      return [parsed];
+    } catch {
+      if (!splitLines) {
+        return [trimmed];
+      }
+      return trimmed
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+    }
+  }
+
+  return [raw];
+}
+
+function getTemplatePathValue(source: unknown, path: string): unknown {
+  const segments = path.split(".").filter(Boolean);
+  let current: unknown = source;
+  for (const segment of segments) {
+    if (current === null || current === undefined || typeof current !== "object") {
+      return undefined;
+    }
+    current = (current as Record<string, unknown>)[segment];
+  }
+  return current;
+}
+
+function interpolateTemplate(template: unknown, context: Record<string, unknown>): unknown {
+  if (typeof template === "string") {
+    const tokenPattern = /\{\{\s*([^}]+)\s*\}\}/g;
+    const fullToken = template.match(/^\s*\{\{\s*([^}]+)\s*\}\}\s*$/);
+    if (fullToken) {
+      const fullPath = fullToken[1]?.trim();
+      if (fullPath) {
+        const fullValue = getTemplatePathValue(context, fullPath);
+        return fullValue ?? "";
+      }
+      return "";
+    }
+    return template.replace(tokenPattern, (_match, rawPath: string) => {
+      const path = rawPath.trim();
+      const value = path ? getTemplatePathValue(context, path) : undefined;
+      return value === null || value === undefined ? "" : String(value);
+    });
+  }
+
+  if (Array.isArray(template)) {
+    return template.map((item) => interpolateTemplate(item, context));
+  }
+
+  if (template && typeof template === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(template as Record<string, unknown>)) {
+      out[key] = interpolateTemplate(value, context);
+    }
+    return out;
+  }
+
+  return template;
+}
+
+function resolveArrayFieldRuntimeValue(
+  field: Record<string, any>,
+  rawValue: unknown,
+  context: Record<string, unknown>
+): unknown[] {
+  // Prompt-synced array fields should default to a single item (full prompt),
+  // while user-entered array strings can still use newline splitting.
+  const splitLines = field.syncWith === "prompt" ? false : true;
+  const items = parseArrayFieldValue(rawValue, { splitLines });
+  const template = field.itemTemplate;
+  if (!template) {
+    return items;
+  }
+
+  return items.map((item, index) => interpolateTemplate(template, {
+    ...context,
+    value: item,
+    item,
+    index,
+  }));
+}
+
+function countCharactersForPricing(value: unknown, options: { ignoreWhitespace?: boolean } = {}): number {
+  const ignoreWhitespace = options.ignoreWhitespace === true;
+  if (value === null || value === undefined) return 0;
+  if (typeof value === "string") {
+    return ignoreWhitespace ? value.replace(/\s+/g, "").length : value.length;
+  }
+  if (Array.isArray(value)) {
+    return value.reduce((sum: number, item: unknown) => sum + countCharactersForPricing(item, options), 0);
+  }
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if (typeof record.text === "string") {
+      return ignoreWhitespace ? record.text.replace(/\s+/g, "").length : record.text.length;
+    }
+    return Object.values(record).reduce((sum: number, item: unknown) => sum + countCharactersForPricing(item, options), 0);
+  }
+  return 0;
+}
+
+function countItemsForPricing(value: unknown): number {
+  if (value === null || value === undefined) return 0;
+  if (Array.isArray(value)) return value.length;
+  if (typeof value === "string") return value.trim().length > 0 ? 1 : 0;
+  return 1;
+}
+
+function measurePricingUnits(
+  value: unknown,
+  metric: string,
+  options: { ignoreWhitespace?: boolean } = {},
+): number {
+  if (metric === "items") {
+    return countItemsForPricing(value);
+  }
+  return countCharactersForPricing(value, options);
+}
+
+const API_CONFIG_KEYS_ALLOWING_WHITESPACE_VALUES = new Set([
+  "text_prefix",
+  "textPrefix",
+  "audio_text_prefix",
+  "audioTextPrefix",
+  "input_text_prefix",
+  "inputTextPrefix",
+  "text_suffix",
+  "textSuffix",
+  "audio_text_suffix",
+  "audioTextSuffix",
+  "input_text_suffix",
+  "inputTextSuffix",
+]);
+
+function setApiConfigValue(apiConfig: Record<string, string>, key: string, value: unknown): void {
+  if (value === null || value === undefined) return;
+  if (typeof value === "string") {
+    if (API_CONFIG_KEYS_ALLOWING_WHITESPACE_VALUES.has(key)) {
+      if (value.length > 0) {
+        apiConfig[key] = value;
+      }
+      return;
+    }
+    const normalized = value.trim();
+    if (normalized.length > 0) {
+      apiConfig[key] = normalized;
+    }
+    return;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    apiConfig[key] = String(value);
+  }
+}
+
+function buildApiConfigFromModelConfig(modelConfig: Record<string, unknown> | null | undefined): Record<string, string> {
+  const apiConfig: Record<string, string> = {};
+  if (!modelConfig || typeof modelConfig !== "object") {
+    return apiConfig;
+  }
+  setApiConfigValue(apiConfig, "endpoint", modelConfig.apiEndpoint);
+  setApiConfigValue(apiConfig, "query_endpoint", modelConfig.apiQueryEndpoint);
+  setApiConfigValue(apiConfig, "payload_format", modelConfig.apiPayloadFormat);
+  setApiConfigValue(apiConfig, "kie_model_id", modelConfig.kieModelId);
+
+  const customApiConfig = modelConfig.apiConfig;
+  if (customApiConfig && typeof customApiConfig === "object" && !Array.isArray(customApiConfig)) {
+    for (const [key, value] of Object.entries(customApiConfig as Record<string, unknown>)) {
+      setApiConfigValue(apiConfig, key, value);
+    }
+  }
+
+  return apiConfig;
+}
+
+function normalizeModelFieldOptions(raw: unknown): SearchableFieldOption[] {
+  if (!Array.isArray(raw)) return [];
+  const options: SearchableFieldOption[] = [];
+  for (const item of raw) {
+    if (typeof item === "string") {
+      const value = item.trim();
+      if (!value) continue;
+      options.push({ value, label: value });
+      continue;
+    }
+    if (!item || typeof item !== "object") continue;
+    const record = item as Record<string, unknown>;
+    const valueRaw = record.value;
+    const labelRaw = record.label;
+    const previewUrlRaw = record.previewUrl;
+    const value = typeof valueRaw === "string" ? valueRaw.trim() : "";
+    const label = typeof labelRaw === "string" ? labelRaw.trim() : value;
+    const previewUrl = typeof previewUrlRaw === "string" ? previewUrlRaw.trim() : "";
+    if (!value) continue;
+    options.push({ value, label: label || value, ...(previewUrl ? { previewUrl } : {}) });
+  }
+  return options;
+}
+
+function hasProviderApiOptionsSource(field: Record<string, any> | null | undefined): boolean {
+  if (!field || typeof field !== "object") return false;
+  const source = field.optionsSource;
+  if (!source || typeof source !== "object") return false;
+  const sourceType = String((source as Record<string, unknown>).type || "").toLowerCase();
+  return sourceType === "provider_api" || sourceType === "public_api";
+}
+
+function isSearchableModelField(field: Record<string, any> | null | undefined): boolean {
+  if (!field || typeof field !== "object") return false;
+  if (field.searchable === true) return true;
+  return hasProviderApiOptionsSource(field);
+}
+
+function isVoiceSelectionField(field: Record<string, any> | null | undefined): boolean {
+  if (!field || typeof field !== "object") return false;
+  const normalizedKey = String(field.key ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_\-\s]/g, "");
+  return normalizedKey === "voice" || normalizedKey === "voiceid";
+}
+
+function isUvoiceVoiceSelectionField(
+  providerName: unknown,
+  field: Record<string, any> | null | undefined,
+): boolean {
+  return String(providerName ?? "").trim().toLowerCase() === "uvoice" && isVoiceSelectionField(field);
 }
 
 export default function MediaStudio() {
@@ -423,6 +687,7 @@ export default function MediaStudio() {
   const [debouncedLibrarySearchQuery, setDebouncedLibrarySearchQuery] = useState("");
   const [libraryRecentDays, setLibraryRecentDays] = useState<LibraryRecentDaysFilter>(7);
   const [selectedLibraryItemId, setSelectedLibraryItemId] = useState<number | null>(null);
+  const [activeSidebarTab, setActiveSidebarTab] = useState<StudioSidebarTab>("history");
 
   // Dialog states (global)
   const [showStyleDialog, setShowStyleDialog] = useState(false);
@@ -499,6 +764,11 @@ export default function MediaStudio() {
 
   // LLM model search (UI state, not per-tab)
   const [llmModelSearch, setLlmModelSearch] = useState("");
+  const [fieldPickerOpenKey, setFieldPickerOpenKey] = useState<string | null>(null);
+  const [fieldOptionsCache, setFieldOptionsCache] = useState<Record<string, SearchableFieldOption[]>>({});
+  const voicePreviewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [playingVoicePreviewKey, setPlayingVoicePreviewKey] = useState<string | null>(null);
+  const [loadingVoicePreviewKey, setLoadingVoicePreviewKey] = useState<string | null>(null);
 
   // API queries
   const { data: credits } = trpc.credits.balance.useQuery();
@@ -527,6 +797,142 @@ export default function MediaStudio() {
     }));
   }, [userVisibleSkillsRaw]);
   const { data: mediaModels } = trpc.mediaModels.list.useQuery({ type: activeTab });
+  const selectedMediaModel = useMemo(
+    () => (mediaModels?.models as any[] | undefined)?.find((m) => m.modelId === selectedModel),
+    [mediaModels?.models, selectedModel],
+  );
+  const selectedMediaModelConfig = useMemo(() => {
+    const rawConfig = selectedMediaModel?.configJson;
+    if (!rawConfig) return null;
+    if (typeof rawConfig === "string") {
+      try {
+        return JSON.parse(rawConfig) as Record<string, unknown>;
+      } catch {
+        return null;
+      }
+    }
+    if (typeof rawConfig === "object") {
+      return rawConfig as Record<string, unknown>;
+    }
+    return null;
+  }, [selectedMediaModel?.configJson]);
+  const selectedModelInputFields = useMemo(() => {
+    const inputFields = Array.isArray(selectedMediaModelConfig?.inputFields)
+      ? selectedMediaModelConfig.inputFields as any[]
+      : [];
+    return inputFields;
+  }, [selectedMediaModelConfig]);
+  const activePickerField = useMemo(() => {
+    if (!fieldPickerOpenKey) return null;
+    return selectedModelInputFields.find((field) => field?.key === fieldPickerOpenKey) ?? null;
+  }, [fieldPickerOpenKey, selectedModelInputFields]);
+  const shouldLoadDynamicFieldOptions = (
+    !!selectedModel &&
+    !!activePickerField &&
+    hasProviderApiOptionsSource(activePickerField)
+  );
+  const {
+    data: dynamicFieldOptionsData,
+    isLoading: isDynamicFieldOptionsLoading,
+    refetch: refetchDynamicFieldOptions,
+  } = trpc.media.listModelFieldOptions.useQuery(
+    {
+      modelId: selectedModel || "__no_model__",
+      fieldKey: fieldPickerOpenKey || "__no_field__",
+      limit: 2000,
+    },
+    {
+      enabled: shouldLoadDynamicFieldOptions,
+      staleTime: 5 * 60 * 1000,
+      retry: false,
+    },
+  );
+  const activeDynamicFieldOptions = useMemo(() => {
+    const apiOptions = normalizeModelFieldOptions(dynamicFieldOptionsData?.options ?? []);
+    const isActiveUvoiceVoiceField = isUvoiceVoiceSelectionField(selectedMediaModel?.provider, activePickerField);
+    if (isActiveUvoiceVoiceField) {
+      return apiOptions;
+    }
+    if (hasProviderApiOptionsSource(activePickerField) && apiOptions.length > 0) {
+      return apiOptions;
+    }
+    return normalizeModelFieldOptions(activePickerField?.options);
+  }, [dynamicFieldOptionsData?.options, activePickerField, activePickerField?.options, selectedMediaModel?.provider]);
+  useEffect(() => {
+    if (!fieldPickerOpenKey) return;
+    if (!Array.isArray(dynamicFieldOptionsData?.options)) return;
+    setFieldOptionsCache((prev) => ({
+      ...prev,
+      [fieldPickerOpenKey]: normalizeModelFieldOptions(dynamicFieldOptionsData.options),
+    }));
+  }, [dynamicFieldOptionsData?.options, fieldPickerOpenKey]);
+  const stopVoicePreview = useCallback(() => {
+    if (voicePreviewAudioRef.current) {
+      voicePreviewAudioRef.current.pause();
+      voicePreviewAudioRef.current.currentTime = 0;
+      voicePreviewAudioRef.current.src = "";
+      voicePreviewAudioRef.current = null;
+    }
+    setPlayingVoicePreviewKey(null);
+    setLoadingVoicePreviewKey(null);
+  }, []);
+  const toggleVoicePreview = useCallback((fieldKey: string, option: SearchableFieldOption | undefined) => {
+    const previewUrl = option?.previewUrl;
+    if (!previewUrl) {
+      return;
+    }
+
+    const optionKey = `${fieldKey}:${option.value}`;
+    const activeAudio = voicePreviewAudioRef.current;
+    if (activeAudio && playingVoicePreviewKey === optionKey && !activeAudio.paused) {
+      stopVoicePreview();
+      return;
+    }
+
+    if (activeAudio) {
+      activeAudio.pause();
+      activeAudio.currentTime = 0;
+    }
+
+    const audio = new Audio(previewUrl);
+    voicePreviewAudioRef.current = audio;
+    setPlayingVoicePreviewKey(optionKey);
+    setLoadingVoicePreviewKey(optionKey);
+
+    audio.onended = () => {
+      if (voicePreviewAudioRef.current === audio) {
+        setPlayingVoicePreviewKey(null);
+        setLoadingVoicePreviewKey(null);
+      }
+    };
+    audio.onerror = () => {
+      if (voicePreviewAudioRef.current === audio) {
+        setPlayingVoicePreviewKey(null);
+        setLoadingVoicePreviewKey(null);
+        toast.error("Unable to play voice preview");
+      }
+    };
+
+    void audio.play()
+      .then(() => {
+        if (voicePreviewAudioRef.current === audio) {
+          setLoadingVoicePreviewKey(null);
+        }
+      })
+      .catch(() => {
+        if (voicePreviewAudioRef.current === audio) {
+          setPlayingVoicePreviewKey(null);
+          setLoadingVoicePreviewKey(null);
+          toast.error("Unable to play voice preview");
+        }
+      });
+  }, [playingVoicePreviewKey, stopVoicePreview]);
+  useEffect(() => {
+    return () => stopVoicePreview();
+  }, [stopVoicePreview]);
+  useEffect(() => {
+    stopVoicePreview();
+  }, [activeTab, selectedModel, stopVoicePreview]);
   const { data: mediaHistory, refetch: refetchMediaHistory } = trpc.media.listTasks.useQuery(
     {
       limit: 50,
@@ -587,9 +993,9 @@ export default function MediaStudio() {
 
   // Mutations
   const uploadMutation = trpc.ai.upload.useMutation();
-  const executeSkillMutation = trpc.chat.executeSkill.useMutation();
   const generateImageAsyncMutation = trpc.media.generateImageAsync.useMutation();
   const generateVideoAsyncMutation = trpc.media.generateVideoAsync.useMutation();
+  const generateAudioMutation = trpc.media.generateAudio.useMutation();
   const enhancePromptMutation = trpc.skills.enhancePrompt.useMutation();
   const executeCustomSkillMutation = trpc.skills.executeCustomSkill.useMutation();
 
@@ -1443,16 +1849,9 @@ export default function MediaStudio() {
     setGenerationTasks(initialTasks);
     setIsGenerating(true);
 
-    // Generate image/video via media gateway directly.
-    // Skills are used only for Auto Prompt (or legacy audio fallback below).
-    const shouldUseDirectMediaGateway = activeTab === "image" || activeTab === "video";
-
-    // Legacy fallback for audio-only flow
-    const mediaTypeFallback = activeTab === "audio" ? "audio-generation" : "";
-    const selectedSkillForExecution = skillsList?.find((s) => s.id === selectedSkillId);
-    const skillId = activeTab === "audio" && selectedSkillForExecution?.type === "audio-generation"
-      ? selectedSkillId
-      : mediaTypeFallback;
+    // Generate media via model-driven gateway for all tabs.
+    // Skills are only used for Auto Prompt / prompt enhancement.
+    const shouldUseDirectMediaGateway = true;
 
     // When Advanced Mode is ON, use aspectRatio from dynamicFormValues (if set)
     const currentAspectRatio = aspectRatio;
@@ -1465,15 +1864,25 @@ export default function MediaStudio() {
     const rawConfig = selectedModelData?.configJson;
     const modelConfig = (typeof rawConfig === "string" ? (() => { try { return JSON.parse(rawConfig); } catch { return null; } })() : rawConfig) as any;
     const extraParams: Record<string, any> = {};
-    const apiConfig: Record<string, string> = {};
+    const apiConfig: Record<string, string> = buildApiConfigFromModelConfig(
+      (modelConfig as Record<string, unknown>) ?? null,
+    );
     let usedModelSpecificImageKey = false; // Track if we used model-specific key for images
 
+    const templateBaseContext = {
+      prompt: finalPrompt,
+      aspectRatio: finalAspectRatio,
+      activeTab,
+      fields: modelInputValues,
+    } as Record<string, unknown>;
+
     if (modelConfig) {
-      // Populate apiConfig from configJson
-      if (modelConfig.apiEndpoint) apiConfig.endpoint = modelConfig.apiEndpoint;
-      if (modelConfig.apiQueryEndpoint) apiConfig.query_endpoint = modelConfig.apiQueryEndpoint;
-      if (modelConfig.apiPayloadFormat) apiConfig.payload_format = modelConfig.apiPayloadFormat;
-      if (modelConfig.kieModelId) apiConfig.kie_model_id = modelConfig.kieModelId;
+      const resolveFieldValue = (field: any, value: unknown): unknown => {
+        if (field.type === "array") {
+          return resolveArrayFieldRuntimeValue(field, value, templateBaseContext);
+        }
+        return value;
+      };
 
       // Populate extraParams — syncWith fields get their value from the live runtime state;
       // unsynchronised fields get the value from modelInputValues (user's direct input).
@@ -1493,12 +1902,12 @@ export default function MediaStudio() {
         }
 
         if (syncWith === "prompt") {
-          extraParams[field.key] = finalPrompt;
+          extraParams[field.key] = resolveFieldValue(field, finalPrompt);
           continue;
         }
 
         if (syncWith === "aspect_ratio") {
-          extraParams[field.key] = finalAspectRatio;
+          extraParams[field.key] = resolveFieldValue(field, finalAspectRatio);
           continue;
         }
 
@@ -1506,8 +1915,14 @@ export default function MediaStudio() {
         if (field.key === "aspect_ratio" || field.key === "aspect.ratio") continue;
         if (field.key === "duration" && activeTab === "video") continue;
 
-        const val = modelInputValues[field.key];
-        if (val !== undefined && val !== null && val !== "") {
+        const rawVal = modelInputValues[field.key];
+        const val = resolveFieldValue(field, rawVal);
+        if (
+          val !== undefined
+          && val !== null
+          && val !== ""
+          && !(Array.isArray(val) && val.length === 0)
+        ) {
           extraParams[field.key] = val;
         }
       }
@@ -1568,20 +1983,19 @@ export default function MediaStudio() {
           resultUrl = task.resultUrl || extractTaskResultUrl(task as any) || undefined;
           creditsUsed = task.creditsUsed;
           startedAsyncTask = !!task.id || !!task.taskId;
-        } else {
-          // Legacy fallback for audio tab
-          const result = await executeSkillMutation.mutateAsync({
-            skillId,
-            ...commonPayload,
-            duration: undefined,
-          } as any);
+        } else if (shouldUseDirectMediaGateway && activeTab === "audio") {
+          const result = await generateAudioMutation.mutateAsync({
+            text: currentPrompt,
+            model: selectedModel || undefined,
+            ...(Object.keys(extraParams).length > 0 ? { extraParams } : {}),
+            ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
+          });
 
-          if (!result.success) {
-            throw new Error(result.error || "Unknown generation error");
-          }
-          resultUrl = result.resultUrl || result.resultUrls?.[0];
+          resultUrl = extractTaskResultUrl(result as any) || undefined;
           creditsUsed = result.creditsUsed;
-          startedAsyncTask = !!(result as any).isAsync || !!(result as any).taskId;
+          startedAsyncTask = false;
+        } else {
+          throw new Error("Unsupported generation mode");
         }
 
         if (resultUrl) {
@@ -1727,10 +2141,6 @@ export default function MediaStudio() {
   };
 
   const extractTaskResultUrl = (task: any): string | null => {
-    if (typeof task?.resultUrl === "string" && task.resultUrl.startsWith("http")) {
-      return task.resultUrl;
-    }
-
     const fromValue = (value: any): string | null => {
       if (!value) return null;
       if (typeof value === "string" && value.startsWith("http")) return value;
@@ -1760,6 +2170,24 @@ export default function MediaStudio() {
       }
       return null;
     };
+
+    if (typeof task?.resultUrl === "string" && task.resultUrl.startsWith("http")) {
+      return task.resultUrl;
+    }
+
+    const directCandidates = [
+      task?.result_url,
+      task?.url,
+      task?.audio_url,
+      task?.video_url,
+      task?.image_url,
+      task?.data,
+      task?.data?.[0],
+    ];
+    for (const candidate of directCandidates) {
+      const found = fromValue(candidate);
+      if (found) return found;
+    }
 
     const resultData = task?.resultData;
     if (!resultData || typeof resultData !== "object") return null;
@@ -2193,8 +2621,12 @@ export default function MediaStudio() {
     const model = mediaModels.models.find((m: any) => m.modelId === selectedModel);
     if (!model) return 10;
 
-    const config = model.configJson as any;
+    const rawConfig = model.configJson;
+    const config = (typeof rawConfig === "string"
+      ? (() => { try { return JSON.parse(rawConfig); } catch { return null; } })()
+      : rawConfig) as any;
     const baseCost = model.creditCost || 10;
+    const effectivePrompt = (enhancedPrompt || prompt || "").trim();
 
     // If no pricing tiers, use legacy calculation
     if (!config?.pricingTiers) {
@@ -2222,12 +2654,54 @@ export default function MediaStudio() {
     } else if (config.pricingFormula === "per_duration") {
       const dur = modelInputValues.duration ?? duration;
       tierKey = dur ? `${dur}s` : "default";
+    } else if (config.pricingFormula === "per_unit") {
+      tierKey = "default";
     } else if (config.pricingFormula === "flat") {
       const res = modelInputValues.resolution;
       tierKey = res && config.pricingTiers[res] !== undefined ? res : "default";
     }
 
     const tierCost = config.pricingTiers[tierKey] ?? baseCost;
+
+    if (config.pricingFormula === "per_unit") {
+      const metric = String(config.pricingUnitMetric || "characters");
+      const sourceField = String(config.pricingUnitField || "text");
+      const roundingMode = String(config.pricingUnitRounding || "ceil");
+      const rawUnitSize = Number(config.pricingUnitSize);
+      const unitSize = Number.isFinite(rawUnitSize) && rawUnitSize > 0 ? rawUnitSize : 1;
+      const minUnitsRaw = Number(config.pricingMinUnits);
+      const minUnits = Number.isFinite(minUnitsRaw) && minUnitsRaw >= 0 ? minUnitsRaw : 0;
+
+      let sourceValue: unknown;
+      if (sourceField === "text" || sourceField === "prompt") {
+        sourceValue = effectivePrompt;
+      } else {
+        sourceValue = getTemplatePathValue(modelInputValues, sourceField);
+      }
+
+      const sourceRootField = sourceField.split(".")[0];
+      const fieldCfg = (config.inputFields || []).find(
+        (f: any) => f.key === sourceField || f.key === sourceRootField,
+      );
+      if (fieldCfg?.type === "array") {
+        sourceValue = resolveArrayFieldRuntimeValue(fieldCfg, sourceValue, {
+          prompt: effectivePrompt,
+          fields: modelInputValues,
+          activeTab,
+        });
+      }
+
+      const measured = measurePricingUnits(sourceValue, metric, {
+        ignoreWhitespace: config.pricingIgnoreWhitespace === true,
+      });
+      const rawUnits = measured / unitSize;
+      const roundedUnits = measured > 0
+        ? (roundingMode === "floor" ? Math.floor(rawUnits) : roundingMode === "round" ? Math.round(rawUnits) : Math.ceil(rawUnits))
+        : 0;
+      const chargeUnits = Math.max(minUnits, roundedUnits);
+      return tierCost * chargeUnits;
+    }
+
     const multiplier = activeTab === "image" ? numImages : 1;
     return tierCost * multiplier;
   };
@@ -2863,7 +3337,157 @@ export default function MediaStudio() {
                             {field.label}
                             {field.affectsPricing && <span className="ml-1 text-xs text-amber-500">($)</span>}
                           </label>
-                          {field.type === "library_file" ? (
+                          {isSearchableModelField(field) ? (
+                            <div className="space-y-2">
+                              {(() => {
+                                const isOpen = fieldPickerOpenKey === field.key;
+                                const isUvoiceVoiceField = isUvoiceVoiceSelectionField(selectedMediaModel?.provider, field);
+                                const cachedFieldOptions = fieldOptionsCache[field.key] ?? [];
+                                const fieldOptions = isOpen
+                                  ? activeDynamicFieldOptions
+                                  : isUvoiceVoiceField
+                                    ? cachedFieldOptions
+                                    : normalizeModelFieldOptions(field.options);
+                                const currentValue = String(modelInputValues[field.key] ?? field.default ?? "");
+                                const selectedOption = fieldOptions.find((opt) => opt.value === currentValue);
+                                const isLoadingOptions = isOpen && shouldLoadDynamicFieldOptions && isDynamicFieldOptionsLoading;
+                                const supportsRefresh = hasProviderApiOptionsSource(field);
+                                const supportsManualInput = field.type !== "select";
+                                const isVoiceField = isVoiceSelectionField(field);
+                                return (
+                                  <>
+                              <div className="flex items-center gap-2">
+                                <Popover
+                                  open={isOpen}
+                                  onOpenChange={(open) => {
+                                    if (open) {
+                                      setFieldPickerOpenKey(field.key);
+                                      return;
+                                    }
+                                    if (fieldPickerOpenKey === field.key) {
+                                      setFieldPickerOpenKey(null);
+                                    }
+                                  }}
+                                >
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      role="combobox"
+                                      className="h-10 w-full justify-between"
+                                    >
+                                      <span className="truncate text-left">
+                                        {selectedOption
+                                          ? isUvoiceVoiceField
+                                            ? selectedOption.label
+                                            : `${selectedOption.label} (${selectedOption.value})`
+                                          : currentValue
+                                            ? currentValue
+                                            : isLoadingOptions
+                                              ? "Loading options..."
+                                              : "Select option"}
+                                      </span>
+                                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                                    <Command>
+                                      <CommandInput placeholder={`Search ${String(field.label || field.key).toLowerCase()}...`} />
+                                      <CommandList>
+                                        <CommandEmpty>
+                                          {isLoadingOptions ? "Loading options..." : "No options found."}
+                                        </CommandEmpty>
+                                        <CommandGroup>
+                                          {fieldOptions.map((opt) => (
+                                            <CommandItem
+                                              key={opt.value}
+                                              value={`${opt.label} ${opt.value}`}
+                                              onSelect={() => {
+                                                setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: opt.value }));
+                                                setFieldPickerOpenKey(null);
+                                              }}
+                                            >
+                                              <div className="flex w-full items-center gap-2">
+                                                <Check
+                                                  className={cn(
+                                                    "h-4 w-4",
+                                                    currentValue === opt.value
+                                                      ? "opacity-100"
+                                                    : "opacity-0",
+                                                  )}
+                                                />
+                                                <span className="min-w-0 flex-1 truncate">{opt.label}</span>
+                                                {!isUvoiceVoiceField && opt.label !== opt.value && (
+                                                  <span className="truncate text-xs text-muted-foreground">{opt.value}</span>
+                                                )}
+                                                {isVoiceField && (
+                                                  <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="h-7 w-7 shrink-0"
+                                                    disabled={!opt.previewUrl}
+                                                    onMouseDown={(e) => {
+                                                      e.preventDefault();
+                                                      e.stopPropagation();
+                                                    }}
+                                                    onClick={(e) => {
+                                                      e.preventDefault();
+                                                      e.stopPropagation();
+                                                      toggleVoicePreview(field.key, opt);
+                                                    }}
+                                                    title={opt.previewUrl ? "Play voice preview" : "No preview available"}
+                                                  >
+                                                    {loadingVoicePreviewKey === `${field.key}:${opt.value}` ? (
+                                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                    ) : playingVoicePreviewKey === `${field.key}:${opt.value}` ? (
+                                                      <Pause className="h-3.5 w-3.5" />
+                                                    ) : (
+                                                      <Play className="h-3.5 w-3.5" />
+                                                    )}
+                                                  </Button>
+                                                )}
+                                              </div>
+                                            </CommandItem>
+                                          ))}
+                                        </CommandGroup>
+                                      </CommandList>
+                                    </Command>
+                                  </PopoverContent>
+                                </Popover>
+                                {supportsRefresh && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-10 w-10 shrink-0"
+                                    onClick={() => {
+                                      setFieldPickerOpenKey(field.key);
+                                      void refetchDynamicFieldOptions();
+                                    }}
+                                    title="Refresh option list"
+                                  >
+                                    <RefreshCw className={cn("h-4 w-4", isLoadingOptions && "animate-spin")} />
+                                  </Button>
+                                )}
+                              </div>
+                              {supportsManualInput && (
+                                <Input
+                                  type="text"
+                                  placeholder={`Or enter custom ${field.label || field.key}`}
+                                  value={currentValue}
+                                  onChange={(e) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: e.target.value }))}
+                                />
+                              )}
+                              {!isLoadingOptions && fieldOptions.length === 0 && supportsManualInput && (
+                                <p className="text-xs text-muted-foreground">
+                                  Option list unavailable right now. You can still enter a value manually.
+                                </p>
+                              )}
+                                  </>
+                                );
+                              })()}
+                            </div>
+                          ) : field.type === "library_file" ? (
                             <LibraryFilePicker
                               value={String(modelInputValues[field.key] ?? "")}
                               onValueChange={(url) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: url }))}
@@ -2897,6 +3521,19 @@ export default function MediaStudio() {
                               />
                               <span className="text-sm">{modelInputValues[field.key] ? "On" : "Off"}</span>
                             </div>
+                          ) : field.type === "array" ? (
+                            <Textarea
+                              rows={4}
+                              placeholder={`Enter JSON array or one item per line for ${field.label}`}
+                              value={
+                                typeof modelInputValues[field.key] === "string"
+                                  ? modelInputValues[field.key]
+                                  : modelInputValues[field.key] === undefined || modelInputValues[field.key] === null
+                                  ? ""
+                                  : JSON.stringify(modelInputValues[field.key], null, 2)
+                              }
+                              onChange={(e) => setModelInputValues((prev: Record<string, any>) => ({ ...prev, [field.key]: e.target.value }))}
+                            />
                           ) : field.type === "number" ? (
                             <Input
                               type="number"
@@ -3780,299 +4417,312 @@ export default function MediaStudio() {
               )}
             </div>
 
-            <LibrarySearchPanel
-              query={librarySearchQuery}
-              onQueryChange={setLibrarySearchQuery}
-              recentDays={libraryRecentDays}
-              onRecentDaysChange={setLibraryRecentDays}
-              isLoading={isLibrarySearchLoading}
-              results={librarySearchResults}
-              totalResults={librarySearchData?.total ?? 0}
-              hasMore={librarySearchData?.has_more ?? false}
-              errorMessage={librarySearchError?.message}
-              selectedItemId={selectedLibraryItemId}
-              onSelect={handleLibraryResultSelect}
-            />
-
-            {/* History Gallery - Draggable Images */}
-            <div className="pt-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold flex items-center gap-2">
+            <Tabs value={activeSidebarTab} onValueChange={(value) => setActiveSidebarTab(value as StudioSidebarTab)}>
+              <TabsList className="grid w-full grid-cols-2 bg-muted/50 p-1">
+                <TabsTrigger value="history" className="gap-2">
                   <History className="h-4 w-4" />
                   History Gallery
-                </h3>
-                <Badge variant="outline" className="text-xs">
-                  {activeTab === "image" ? "Drag to use as reference" : "Click to preview"}
-                </Badge>
-              </div>
+                </TabsTrigger>
+                <TabsTrigger value="library" className="gap-2">
+                  <Search className="h-4 w-4" />
+                  Search Library
+                </TabsTrigger>
+              </TabsList>
 
-              <div className="pr-3">
-                {/* Completed tasks grid */}
-                <div className="grid grid-cols-3 gap-2 mb-4 pb-2">
-                  {mediaHistory?.tasks
-                    ?.filter((task) => task.status === "completed" && !!extractTaskResultUrl(task) && !expiredUrls.has(extractTaskResultUrl(task)!))
-                    .map((task) => {
-                      const resultUrl = extractTaskResultUrl(task);
-                      if (!resultUrl) return null;
-                      const canAddToLibrary = isMediaTaskEligibleForLibraryAdd({
-                        id: task.id,
-                        status: task.status,
-                        resultUrl,
-                      });
-                      const libraryState = taskLibraryState[task.id];
-                      const libraryStatusMeta = getLibraryItemStatusMeta(libraryState?.status);
-                      return (
-                      <div
-                        key={task.id}
-                        className={cn(
-                          "relative",
-                          task.mediaType === "image" ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
-                        )}
-                        draggable={task.mediaType === "image"}
-                        onDragStart={task.mediaType === "image" ? (e) => handleHistoryDragStart(e, resultUrl) : undefined}
-                        onClick={() => setPreviewUrl(resultUrl)}
-                      >
-                        {canAddToLibrary && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  size="icon"
-                                  variant="secondary"
-                                  className={cn(
-                                    "absolute left-1 top-1 z-10 h-7 w-7 rounded-full border shadow-sm",
-                                    libraryState?.action === "adding" && "border-amber-300 bg-amber-100 text-amber-800 hover:bg-amber-100",
-                                    libraryState?.action === "added" && "border-emerald-300 bg-emerald-100 text-emerald-700 hover:bg-emerald-100",
-                                    libraryState?.action === "error" && "border-red-300 bg-red-100 text-red-700 hover:bg-red-100",
-                                    !libraryState?.action && "border-slate-300 bg-white/95 text-slate-700 hover:bg-white",
-                                  )}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    void handleAddHistoryTaskToLibrary({
-                                      id: task.id,
-                                      status: task.status,
-                                      resultUrl,
-                                    });
-                                  }}
-                                  disabled={libraryState?.action === "adding" || libraryState?.action === "added"}
-                                >
-                                  {libraryState?.action === "adding" ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  ) : libraryState?.action === "added" ? (
-                                    <CheckCircle className="h-3.5 w-3.5" />
-                                  ) : (
-                                    <Library className="h-3.5 w-3.5" />
-                                  )}
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {libraryState?.action === "adding"
-                                  ? "Adding to library..."
-                                  : libraryState?.action === "added"
-                                    ? "Added to library"
-                                    : libraryStatusMeta.retryable
-                                      ? "Retry add to library"
-                                      : "Add to library"}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                        {task.mediaType === "video" ? (
-                          <div className="relative w-full aspect-square rounded-lg border border-blue-200 overflow-hidden hover:border-blue-400 transition-colors bg-black">
-                            <video
-                              src={resultUrl}
-                              className="w-full h-full object-cover"
-                              muted
-                              playsInline
-                              preload="metadata"
-                              onError={() => markExpired(resultUrl)}
-                            />
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                              <div className="rounded-full bg-black/50 p-2">
-                                <Play className="h-4 w-4 text-white" />
+              <TabsContent value="history" className="mt-4">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold flex items-center gap-2">
+                      <History className="h-4 w-4" />
+                      History Gallery
+                    </h3>
+                    <Badge variant="outline" className="text-xs">
+                      {activeTab === "image" ? "Drag to use as reference" : "Click to preview"}
+                    </Badge>
+                  </div>
+
+                  <div className="pr-3">
+                    {/* Completed tasks grid */}
+                    <div className="grid grid-cols-3 gap-2 mb-4 pb-2">
+                      {mediaHistory?.tasks
+                        ?.filter((task) => task.status === "completed" && !!extractTaskResultUrl(task) && !expiredUrls.has(extractTaskResultUrl(task)!))
+                        .map((task) => {
+                          const resultUrl = extractTaskResultUrl(task);
+                          if (!resultUrl) return null;
+                          const canAddToLibrary = isMediaTaskEligibleForLibraryAdd({
+                            id: task.id,
+                            status: task.status,
+                            resultUrl,
+                          });
+                          const libraryState = taskLibraryState[task.id];
+                          const libraryStatusMeta = getLibraryItemStatusMeta(libraryState?.status);
+                          return (
+                            <div
+                              key={task.id}
+                              className={cn(
+                                "relative",
+                                task.mediaType === "image" ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
+                              )}
+                              draggable={task.mediaType === "image"}
+                              onDragStart={task.mediaType === "image" ? (e) => handleHistoryDragStart(e, resultUrl) : undefined}
+                              onClick={() => setPreviewUrl(resultUrl)}
+                            >
+                              {canAddToLibrary && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        size="icon"
+                                        variant="secondary"
+                                        className={cn(
+                                          "absolute left-1 top-1 z-10 h-7 w-7 rounded-full border shadow-sm",
+                                          libraryState?.action === "adding" && "border-amber-300 bg-amber-100 text-amber-800 hover:bg-amber-100",
+                                          libraryState?.action === "added" && "border-emerald-300 bg-emerald-100 text-emerald-700 hover:bg-emerald-100",
+                                          libraryState?.action === "error" && "border-red-300 bg-red-100 text-red-700 hover:bg-red-100",
+                                          !libraryState?.action && "border-slate-300 bg-white/95 text-slate-700 hover:bg-white",
+                                        )}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          void handleAddHistoryTaskToLibrary({
+                                            id: task.id,
+                                            status: task.status,
+                                            resultUrl,
+                                          });
+                                        }}
+                                        disabled={libraryState?.action === "adding" || libraryState?.action === "added"}
+                                      >
+                                        {libraryState?.action === "adding" ? (
+                                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        ) : libraryState?.action === "added" ? (
+                                          <CheckCircle className="h-3.5 w-3.5" />
+                                        ) : (
+                                          <Library className="h-3.5 w-3.5" />
+                                        )}
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      {libraryState?.action === "adding"
+                                        ? "Adding to library..."
+                                        : libraryState?.action === "added"
+                                          ? "Added to library"
+                                          : libraryStatusMeta.retryable
+                                            ? "Retry add to library"
+                                            : "Add to library"}
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                              {task.mediaType === "video" ? (
+                                <div className="relative w-full aspect-square rounded-lg border border-blue-200 overflow-hidden hover:border-blue-400 transition-colors bg-black">
+                                  <video
+                                    src={resultUrl}
+                                    className="w-full h-full object-cover"
+                                    muted
+                                    playsInline
+                                    preload="metadata"
+                                    onError={() => markExpired(resultUrl)}
+                                  />
+                                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                    <div className="rounded-full bg-black/50 p-2">
+                                      <Play className="h-4 w-4 text-white" />
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : task.mediaType === "audio" ? (
+                                <div className="w-full aspect-square rounded-lg border border-orange-200 bg-orange-50 hover:border-orange-400 transition-colors flex items-center justify-center">
+                                  <Music className="h-8 w-8 text-orange-500" />
+                                </div>
+                              ) : (
+                                <img
+                                  src={resultUrl}
+                                  alt={task.prompt?.slice(0, 30)}
+                                  className="w-full aspect-square object-cover rounded-lg border hover:border-purple-400 transition-colors"
+                                  onError={() => markExpired(resultUrl)}
+                                />
+                              )}
+                              <div className="mt-1 flex items-center justify-center gap-1.5 rounded-md border bg-white/90 px-1 py-1 shadow-sm">
+                                {task.mediaType === "image" && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-9 w-9 rounded-lg"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            openLightbox(resultUrl, task.prompt || "", task.model, task.createdAt);
+                                          }}
+                                        >
+                                          <Maximize2 className="h-5 w-5" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>View & Copy Prompt</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                                {task.mediaType === "image" && referenceImages.length < maxReferenceImages && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-9 w-9 rounded-lg"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            addHistoryAsReference({ id: task.id, resultUrl });
+                                          }}
+                                        >
+                                          <ImagePlus className="h-5 w-5" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Use as reference</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                                {task.mediaType === "image" && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-9 w-9 rounded-lg"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            openSplitDialog(resultUrl);
+                                          }}
+                                        >
+                                          <Grid2X2 className="h-5 w-5" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Split Grid</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                                {task.mediaType === "image" && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          size="icon"
+                                          variant="ghost"
+                                          className="h-9 w-9 rounded-lg"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            openSplitDialog(resultUrl, "crop");
+                                          }}
+                                        >
+                                          <Crop className="h-5 w-5" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Crop by Ratio</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-9 w-9 rounded-lg"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const ext = task.mediaType === "image" ? "png" : task.mediaType === "video" ? "mp4" : "mp3";
+                                          downloadMedia(resultUrl, `${task.id}.${ext}`);
+                                        }}
+                                      >
+                                        <Download className="h-5 w-5" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Download</TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                               </div>
                             </div>
-                          </div>
-                        ) : task.mediaType === "audio" ? (
-                          <div className="w-full aspect-square rounded-lg border border-orange-200 bg-orange-50 hover:border-orange-400 transition-colors flex items-center justify-center">
-                            <Music className="h-8 w-8 text-orange-500" />
-                          </div>
-                        ) : (
-                          <img
-                            src={resultUrl}
-                            alt={task.prompt?.slice(0, 30)}
-                            className="w-full aspect-square object-cover rounded-lg border hover:border-purple-400 transition-colors"
-                            onError={() => markExpired(resultUrl)}
-                          />
-                        )}
-                        <div className="mt-1 flex items-center justify-center gap-1.5 rounded-md border bg-white/90 px-1 py-1 shadow-sm">
-                          {task.mediaType === "image" && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-9 w-9 rounded-lg"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openLightbox(resultUrl, task.prompt || "", task.model, task.createdAt);
-                                    }}
-                                  >
-                                    <Maximize2 className="h-5 w-5" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>View & Copy Prompt</TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                          {task.mediaType === "image" && referenceImages.length < maxReferenceImages && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-9 w-9 rounded-lg"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      addHistoryAsReference({ id: task.id, resultUrl });
-                                    }}
-                                  >
-                                    <ImagePlus className="h-5 w-5" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Use as reference</TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                          {task.mediaType === "image" && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-9 w-9 rounded-lg"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openSplitDialog(resultUrl);
-                                    }}
-                                  >
-                                    <Grid2X2 className="h-5 w-5" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Split Grid</TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                          {task.mediaType === "image" && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-9 w-9 rounded-lg"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openSplitDialog(resultUrl, "crop");
-                                    }}
-                                  >
-                                    <Crop className="h-5 w-5" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Crop by Ratio</TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  size="icon"
-                                  variant="ghost"
-                                  className="h-9 w-9 rounded-lg"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    const ext = task.mediaType === "image" ? "png" : task.mediaType === "video" ? "mp4" : "mp3";
-                                    downloadMedia(resultUrl, `${task.id}.${ext}`);
-                                  }}
-                                >
-                                  <Download className="h-5 w-5" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Download</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      </div>
-                    );
-                    })}
-                </div>
+                          );
+                        })}
+                    </div>
 
-                {/* Pending/Processing Tasks - Only show failed tasks from current session */}
-                <div className="space-y-2">
-                  {mediaHistory?.tasks
-                    ?.filter((task) => {
-                      // Always show processing/pending tasks
-                      if (task.status === "processing" || task.status === "pending") return true;
-                      // Show failed tasks only if they failed during this session
-                      if (task.status === "failed") {
-                        return task.createdAt && new Date(task.createdAt) >= sessionStartTime;
-                      }
-                      // Hide completed tasks without resultUrl and old failed tasks
-                      return false;
-                    })
-                    .map((task) => (
-                      <div
-                        key={task.id}
-                        className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50"
-                      >
-                        <div className={cn(
-                          "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
-                          task.mediaType === "image" ? "bg-purple-100" :
-                          task.mediaType === "video" ? "bg-blue-100" : "bg-orange-100"
-                        )}>
-                          {task.status === "processing" ? (
-                            <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
-                          ) : task.mediaType === "image" ? (
-                            <Image className="h-5 w-5 text-purple-500" />
-                          ) : task.mediaType === "video" ? (
-                            <Video className="h-5 w-5 text-blue-500" />
-                          ) : (
-                            <Music className="h-5 w-5 text-orange-500" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {task.prompt?.slice(0, 25)}...
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {task.status === "processing" ? (
-                              <span className="text-blue-500">Processing...</span>
-                            ) : task.status === "failed" ? (
-                              <span className="text-red-500">Failed</span>
-                            ) : (
-                              <span className="text-yellow-500">Pending</span>
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                </div>
+                    {/* Pending/Processing Tasks - Only show failed tasks from current session */}
+                    <div className="space-y-2">
+                      {mediaHistory?.tasks
+                        ?.filter((task) => {
+                          if (task.status === "processing" || task.status === "pending") return true;
+                          if (task.status === "failed") {
+                            return task.createdAt && new Date(task.createdAt) >= sessionStartTime;
+                          }
+                          return false;
+                        })
+                        .map((task) => (
+                          <div
+                            key={task.id}
+                            className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50"
+                          >
+                            <div className={cn(
+                              "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
+                              task.mediaType === "image" ? "bg-purple-100" :
+                              task.mediaType === "video" ? "bg-blue-100" : "bg-orange-100"
+                            )}>
+                              {task.status === "processing" ? (
+                                <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+                              ) : task.mediaType === "image" ? (
+                                <Image className="h-5 w-5 text-purple-500" />
+                              ) : task.mediaType === "video" ? (
+                                <Video className="h-5 w-5 text-blue-500" />
+                              ) : (
+                                <Music className="h-5 w-5 text-orange-500" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {task.prompt?.slice(0, 25)}...
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {task.status === "processing" ? (
+                                  <span className="text-blue-500">Processing...</span>
+                                ) : task.status === "failed" ? (
+                                  <span className="text-red-500">Failed</span>
+                                ) : (
+                                  <span className="text-yellow-500">Pending</span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
 
-                {(!mediaHistory?.tasks || mediaHistory.tasks.length === 0) && (
-                  <p className="text-sm text-muted-foreground text-center py-8">
-                    {activeTab === "video"
-                      ? "No history yet. Generate some videos!"
-                      : activeTab === "audio"
-                      ? "No history yet. Generate some audio!"
-                      : "No history yet. Generate some images!"}
-                  </p>
-                )}
-              </div>
-            </div>
+                    {(!mediaHistory?.tasks || mediaHistory.tasks.length === 0) && (
+                      <p className="text-sm text-muted-foreground text-center py-8">
+                        {activeTab === "video"
+                          ? "No history yet. Generate some videos!"
+                          : activeTab === "audio"
+                            ? "No history yet. Generate some audio!"
+                            : "No history yet. Generate some images!"}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="library" className="mt-4">
+                <LibrarySearchPanel
+                  query={librarySearchQuery}
+                  onQueryChange={setLibrarySearchQuery}
+                  recentDays={libraryRecentDays}
+                  onRecentDaysChange={setLibraryRecentDays}
+                  isLoading={isLibrarySearchLoading}
+                  results={librarySearchResults}
+                  totalResults={librarySearchData?.total ?? 0}
+                  hasMore={librarySearchData?.has_more ?? false}
+                  errorMessage={librarySearchError?.message}
+                  selectedItemId={selectedLibraryItemId}
+                  onSelect={handleLibraryResultSelect}
+                />
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </main>

@@ -1,7 +1,5 @@
 from __future__ import annotations
-import difflib
 import datetime as _dt
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Protocol, Dict, Any
@@ -9,6 +7,7 @@ from typing import Optional, Protocol, Dict, Any
 from .models import EvaluationReport, PatchProposal
 from .registry import read_text
 from .llm import load_llm_config_from_env, merge_llm_config, OpenAICompatibleClient
+from .proposals import apply_patch_payload
 from .validator import validate_patch
 from .orchestrator import Orchestrator, OrchestratorConfig
 
@@ -42,7 +41,7 @@ class HeuristicImprover:
                 patched += """\n\n// --- ISC AUTO PATCH (heuristic) ---\n\nfunction _iscFormatSteps(steps) { return steps.map((s, i) => `${i+1}. ${s}`).join('\\n'); }\n"""
 
         import json
-        payload = json.dumps({f"skills/{skill_name}/{rel_path}": patched})
+        payload = json.dumps({rel_path: patched})
         return PatchProposal(skill_name, _dt.datetime.utcnow().replace(microsecond=0).isoformat()+"Z",
                              f"Heuristic patch. Failed tests: {[r.test_id for r in failed]}", payload)
 
@@ -83,12 +82,5 @@ class LLMImprover:
             raise RuntimeError("Patch failed validator: " + "; ".join(vr.errors))
         return proposal
 
-def apply_diff(project_root: Path, patch_payload: str) -> None:
-    import json
-    data = json.loads(patch_payload)
-    for filepath, content in data.items():
-        if ".." in filepath:
-            raise RuntimeError("Path traversal attempt in patch")
-        out_path = project_root / filepath
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(content, encoding="utf-8")
+def apply_diff(skill_dir: Path, patch_payload: str) -> None:
+    apply_patch_payload(skill_dir, patch_payload)

@@ -121,14 +121,14 @@ export function createSlideRenderRouter(): Router {
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background: #fff;
+    background: transparent;
   }
   #slide-viewport {
     position: relative;
     width: 100vw;
     height: 100vh;
     overflow: hidden;
-    background: #fff;
+    background: transparent;
   }
   #slide-canvas {
     position: absolute;
@@ -311,14 +311,16 @@ window.__slideReady = false;
   function renderText(el) {
     var node = document.createElement("div");
     applyBaseStyle(node, el);
-    node.style.overflow = "hidden";
+    node.style.overflow = "visible";
+    var hasThaiText = /[\u0e00-\u0e7f]/.test(typeof el.text === "string" ? el.text : "");
     var p = document.createElement("p");
     p.style.margin = "0";
     p.style.width = "100%";
     p.style.display = "block";
     p.style.minHeight = "100%";
     p.style.padding = "8px";
-    p.style.paddingBottom = "0.14em";
+    p.style.paddingTop = hasThaiText ? "0.2em" : "0.04em";
+    p.style.paddingBottom = hasThaiText ? "0.48em" : "0.14em";
     p.style.boxSizing = "border-box";
     p.style.whiteSpace = "pre-wrap";
     p.style.wordBreak = "break-word";
@@ -330,7 +332,8 @@ window.__slideReady = false;
     p.style.fontStyle = typeof el.fontStyle === "string" ? el.fontStyle : "normal";
     p.style.textDecoration = typeof el.textDecoration === "string" ? el.textDecoration : "none";
     p.style.textAlign = typeof el.textAlign === "string" ? el.textAlign : "left";
-    p.style.lineHeight = String(typeof el.lineHeight === "number" ? el.lineHeight : 1.25);
+    var rawLineHeight = typeof el.lineHeight === "number" ? el.lineHeight : 1.25;
+    p.style.lineHeight = String(hasThaiText ? Math.max(1.5, rawLineHeight) : rawLineHeight);
     p.style.letterSpacing = asNumber(el.letterSpacing, 0) + "px";
     if (typeof el.textShadow === "string") {
       p.style.textShadow = el.textShadow;
@@ -401,11 +404,22 @@ window.__slideReady = false;
   function renderVideo(el) {
     var src = normalizeMediaSrc(el.src);
     var poster = normalizeMediaSrc(el.poster);
+    var fit = (typeof el.videoFit === "string" && (el.videoFit === "contain" || el.videoFit === "fill" || el.videoFit === "cover"))
+      ? el.videoFit
+      : "cover";
+    var posX = clamp(asNumber(el.videoPositionX, 50), 0, 100);
+    var posY = clamp(asNumber(el.videoPositionY, 50), 0, 100);
+    var zoom = clamp(asNumber(el.videoZoom, 1), 0.5, 3);
     if (!src) {
       if (poster) {
         var asImage = {
           x: el.x, y: el.y, width: el.width, height: el.height, opacity: el.opacity, rotation: el.rotation,
-          src: poster, alt: typeof el.title === "string" ? el.title : "video poster", imageFit: "cover",
+          src: poster,
+          alt: typeof el.title === "string" ? el.title : "video poster",
+          imageFit: fit,
+          imagePositionX: posX,
+          imagePositionY: posY,
+          imageZoom: zoom,
         };
         return renderImage(asImage);
       }
@@ -428,7 +442,12 @@ window.__slideReady = false;
     video.style.width = "100%";
     video.style.height = "100%";
     video.style.display = "block";
-    video.style.objectFit = "cover";
+    video.style.objectFit = fit;
+    video.style.objectPosition = posX + "% " + posY + "%";
+    if (zoom !== 1) {
+      video.style.transform = "scale(" + zoom + ")";
+      video.style.transformOrigin = posX + "% " + posY + "%";
+    }
     video.muted = true;
     video.loop = el.loop === true;
     video.autoplay = true;
@@ -470,6 +489,27 @@ window.__slideReady = false;
       node.style.opacity = String(clamp(el.opacity, 0, 1));
     }
     return node;
+  }
+
+  function renderBackground() {
+    var bg = slide && slide.background;
+    if (!bg) {
+      canvas.style.background = "#ffffff";
+      return;
+    }
+    if (bg.type === "color") {
+      canvas.style.background = typeof bg.value === "string" && bg.value ? bg.value : "#ffffff";
+      canvas.style.backgroundImage = "";
+    } else if (bg.type === "image") {
+      var bgUrl = normalizeMediaSrc(bg.url);
+      canvas.style.background = "#ffffff";
+      if (bgUrl) {
+        canvas.style.backgroundImage = "url(" + bgUrl + ")";
+        canvas.style.backgroundSize = "cover";
+        canvas.style.backgroundPosition = "center";
+        canvas.style.backgroundRepeat = "no-repeat";
+      }
+    }
   }
 
   function renderElements() {
@@ -614,12 +654,24 @@ window.__slideReady = false;
     var videos = canvas.querySelectorAll("video");
     var imgCount = imgs ? imgs.length : 0;
     var videoCount = videos ? videos.length : 0;
-    if ((imgCount + videoCount) === 0) {
+
+    // Track background image loading (CSS backgroundImage on canvas)
+    var bgImg = null;
+    var bg = slide && slide.background;
+    if (bg && bg.type === "image" && bg.url) {
+      var bgUrl = normalizeMediaSrc(bg.url);
+      if (bgUrl) {
+        bgImg = new Image();
+      }
+    }
+    var bgCount = bgImg ? 1 : 0;
+
+    if ((imgCount + videoCount + bgCount) === 0) {
       done(false);
       return;
     }
 
-    var remaining = imgCount + videoCount;
+    var remaining = imgCount + videoCount + bgCount;
     var hadFallback = false;
     var doneOne = function(fallbackUsed) {
       if (fallbackUsed === true) {
@@ -643,6 +695,13 @@ window.__slideReady = false;
           doneOne(true);
         }, { once: true });
       }
+    }
+
+    // Track background image
+    if (bgImg) {
+      bgImg.addEventListener("load", function() { doneOne(false); }, { once: true });
+      bgImg.addEventListener("error", function() { doneOne(true); }, { once: true });
+      bgImg.src = normalizeMediaSrc(bg.url);
     }
 
     var primeVideo = function(video, fallbackTimeoutMs, mode, onDone) {
@@ -753,6 +812,7 @@ window.__slideReady = false;
   }
 
   try {
+    renderBackground();
     renderElements();
     fitCanvasToViewport();
     window.addEventListener("resize", fitCanvasToViewport);

@@ -8,6 +8,7 @@ interface CanvasObjectsProps {
   elements: PresentationElement[];
   selectedElementIds: string[];
   onSelectElement: (elementId: string, options?: { additive?: boolean }) => void;
+  onFocusElement?: (elementId: string) => void;
   onMoveSelection: (deltaX: number, deltaY: number) => void;
   onResizeSelection: (width: number, height: number) => void;
   onRotateSelection: (deltaDegrees: number) => void;
@@ -19,9 +20,14 @@ interface CanvasObjectsProps {
   showElementFrames?: boolean;
   autoPlayVideos?: boolean;
   showVideoPlaybackToggle?: boolean;
+  clipTextToElementBounds?: boolean;
 }
 
 const MIN_LINE_HEIGHT_PX = 2;
+const THAI_TEXT_REGEX = /[\u0e00-\u0e7f]/;
+const THAI_TEXT_MIN_LINE_HEIGHT = 1.5;
+const THAI_TEXT_PADDING_TOP = "0.2em";
+const THAI_TEXT_PADDING_BOTTOM = "0.48em";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -48,6 +54,25 @@ function resolveImageRenderProps(element: PresentationElement): {
   const positionX = clamp(Number(element.imagePositionX ?? 50), 0, 100);
   const positionY = clamp(Number(element.imagePositionY ?? 50), 0, 100);
   const zoom = clamp(Number(element.imageZoom ?? 1), 0.5, 3);
+  return { fit, positionX, positionY, zoom };
+}
+
+function resolveVideoRenderProps(element: PresentationElement): {
+  fit: "contain" | "cover" | "fill";
+  positionX: number;
+  positionY: number;
+  zoom: number;
+} {
+  if (element.type !== "video") {
+    return { fit: "cover", positionX: 50, positionY: 50, zoom: 1 };
+  }
+
+  const fit = (element.videoFit === "contain" || element.videoFit === "fill")
+    ? element.videoFit
+    : "cover";
+  const positionX = clamp(Number(element.videoPositionX ?? 50), 0, 100);
+  const positionY = clamp(Number(element.videoPositionY ?? 50), 0, 100);
+  const zoom = clamp(Number(element.videoZoom ?? 1), 0.5, 3);
   return { fit, positionX, positionY, zoom };
 }
 
@@ -99,6 +124,7 @@ interface RenderElementBodyOptions {
   setVideoRef: (elementId: string, node: HTMLVideoElement | null) => void;
   autoPlayVideos: boolean;
   showVideoPlaybackToggle: boolean;
+  clipTextToElementBounds: boolean;
 }
 
 function renderElementBody(
@@ -107,12 +133,14 @@ function renderElementBody(
 ): ReactElement {
   if (element.type === "text") {
     const fontSize = Number.isFinite(element.fontSize) ? element.fontSize : 48;
-    const lineHeight = Number.isFinite(element.lineHeight) ? element.lineHeight : 1.25;
+    const lineHeight = typeof element.lineHeight === "number" && Number.isFinite(element.lineHeight)
+      ? element.lineHeight
+      : 1.25;
     const letterSpacing = Number.isFinite(element.letterSpacing) ? element.letterSpacing : 0;
-    const hasThaiText = /[\u0e00-\u0e7f]/.test(String(element.text ?? ""));
+    const hasThaiText = THAI_TEXT_REGEX.test(String(element.text ?? ""));
     return (
       <div
-        className="h-full w-full overflow-hidden px-2 py-0.5"
+        className={`h-full w-full px-2 py-0.5 ${options.clipTextToElementBounds ? "overflow-hidden" : "overflow-visible"}`}
         style={{ backgroundColor: element.backgroundColor || "transparent" }}
       >
         <p
@@ -120,7 +148,9 @@ function renderElementBody(
           style={{
             display: "block",
             minHeight: "100%",
-            paddingBottom: hasThaiText ? "0.24em" : "0.14em",
+            boxSizing: "border-box",
+            paddingTop: hasThaiText ? THAI_TEXT_PADDING_TOP : "0.04em",
+            paddingBottom: hasThaiText ? THAI_TEXT_PADDING_BOTTOM : "0.14em",
             color: element.color || "#111827",
             fontSize,
             fontFamily: element.fontFamily || "Inter, system-ui, sans-serif",
@@ -128,8 +158,9 @@ function renderElementBody(
             fontStyle: element.fontStyle || "normal",
             textDecoration: element.textDecoration || "none",
             textAlign: element.textAlign || "left",
-            lineHeight,
+            lineHeight: hasThaiText ? Math.max(THAI_TEXT_MIN_LINE_HEIGHT, lineHeight) : lineHeight,
             letterSpacing: `${letterSpacing}px`,
+            transform: "translateZ(0)",
             ...(element.textShadow ? { textShadow: element.textShadow } : {}),
             ...(element.textStroke ? { WebkitTextStroke: element.textStroke } : {}),
           }}
@@ -211,6 +242,7 @@ function renderElementBody(
     const resolvedPoster = normalizeMediaSourceUrl(element.poster);
     const hasSource = Boolean(resolvedSource);
     const isPlaying = Boolean(options.videoPlaybackMap[element.id]);
+    const videoRender = resolveVideoRenderProps(element);
     return (
       <div className="relative h-full w-full bg-black/85">
         {hasSource ? (
@@ -221,7 +253,13 @@ function renderElementBody(
             muted={options.autoPlayVideos ? true : (element.muted ?? true)}
             loop={element.loop ?? false}
             preload={options.autoPlayVideos ? "auto" : "metadata"}
-            className="h-full w-full object-cover"
+            className="h-full w-full"
+            style={{
+              objectFit: videoRender.fit,
+              objectPosition: `${videoRender.positionX}% ${videoRender.positionY}%`,
+              transform: `scale(${videoRender.zoom})`,
+              transformOrigin: `${videoRender.positionX}% ${videoRender.positionY}%`,
+            }}
             autoPlay={options.autoPlayVideos}
             playsInline
             onCanPlay={(event) => {
@@ -291,6 +329,7 @@ export function CanvasObjects({
   elements,
   selectedElementIds,
   onSelectElement,
+  onFocusElement,
   onMoveSelection,
   onResizeSelection,
   onRotateSelection,
@@ -301,6 +340,7 @@ export function CanvasObjects({
   showElementFrames = true,
   autoPlayVideos = false,
   showVideoPlaybackToggle = true,
+  clipTextToElementBounds = false,
 }: CanvasObjectsProps) {
   const dragStateRef = useRef<PointerDragState | null>(null);
   const videoRefsRef = useRef<Record<string, HTMLVideoElement | null>>({});
@@ -496,6 +536,8 @@ export function CanvasObjects({
               onSelectElement(element.id, { additive: true });
             } else if (!isAlreadySelected) {
               onSelectElement(element.id);
+            } else {
+              onFocusElement?.(element.id);
             }
             dragStateRef.current = {
               mode: "move",
@@ -521,13 +563,19 @@ export function CanvasObjects({
                 onSelectElement(element.id, { additive: true });
               } else if (!isAlreadySelected) {
                 onSelectElement(element.id);
+              } else {
+                onFocusElement?.(element.id);
               }
             }
           }}
           aria-label={getElementAriaLabel(element, index)}
           title={`${index + 1}. ${getElementDisplayText(element)} (${element.type})`}
         >
-          <span className="block h-full w-full overflow-hidden rounded-[inherit]">
+          <span
+            className={`block h-full w-full rounded-[inherit] ${
+              element.type === "text" && !clipTextToElementBounds ? "overflow-visible" : "overflow-hidden"
+            }`}
+          >
             {renderElementBody(element, {
               videoPlaybackMap,
               onToggleVideoPlayback: handleToggleVideoPlayback,
@@ -535,6 +583,7 @@ export function CanvasObjects({
               setVideoRef,
               autoPlayVideos,
               showVideoPlaybackToggle,
+              clipTextToElementBounds,
             })}
           </span>
           {selectedElement?.id === element.id ? (

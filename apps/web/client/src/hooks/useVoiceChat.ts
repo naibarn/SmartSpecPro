@@ -11,8 +11,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useUser } from "@/hooks/useUser";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -62,11 +61,6 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}): UseVoiceChatRet
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
-
-  const { data: user } = useUser();
-
-  // Check if consent has been granted
-  const hasConsent = !!user?.voiceConsentGrantedAt;
 
   // ── Cleanup ─────────────────────────────────────────────────────────────
 
@@ -124,12 +118,6 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}): UseVoiceChatRet
   const startSession = useCallback(async () => {
     if (state !== "idle") return;
 
-    // Check consent
-    if (!hasConsent) {
-      setState("requesting_consent");
-      return;
-    }
-
     setState("connecting");
     setError(null);
 
@@ -141,7 +129,17 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}): UseVoiceChatRet
       }
       if (!tokenResponse.ok) {
         const body = await tokenResponse.json().catch(() => ({}));
-        throw new Error((body as any).error ?? "Failed to start voice session");
+        const errorMessage = (body as any).error ?? "Failed to start voice session";
+        if (
+          tokenResponse.status === 403
+          && typeof errorMessage === "string"
+          && errorMessage.toLowerCase().includes("consent")
+        ) {
+          setState("requesting_consent");
+          setError(null);
+          return;
+        }
+        throw new Error(errorMessage);
       }
       const { token, wsUrl } = await tokenResponse.json();
 
@@ -195,7 +193,7 @@ export function useVoiceChat(options: UseVoiceChatOptions = {}): UseVoiceChatRet
       setError(err.message ?? "Failed to start voice session");
       setState("error");
     }
-  }, [state, hasConsent, mode, cleanup]);
+  }, [state, mode, cleanup]);
 
   // ── Recording ────────────────────────────────────────────────────────────
 

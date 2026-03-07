@@ -1,6 +1,7 @@
 from decimal import Decimal
 from typing import Dict, Any, Optional, List, Literal, Union
 import re
+import math
 import httpx
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -115,12 +116,265 @@ class LLMGateway:
             return "byteplus_modelark"
         if normalized in {"kie", "kie_ai", "kieai"}:
             return "kie_ai"
+        if normalized in {"uvoice", "u_voice", "uvoice_ai", "uvoiceapp"}:
+            return "uvoice"
         return normalized
+
+    @staticmethod
+    def _get_api_config_string(
+        api_config: Optional[Dict[str, Any]],
+        *keys: str,
+    ) -> Optional[str]:
+        if not isinstance(api_config, dict):
+            return None
+
+        for key in keys:
+            value = api_config.get(key)
+            if isinstance(value, str):
+                if value != "":
+                    return value
+        return None
+
+    @staticmethod
+    def _get_api_config_bool(
+        api_config: Optional[Dict[str, Any]],
+        *keys: str,
+    ) -> Optional[bool]:
+        if not isinstance(api_config, dict):
+            return None
+
+        truthy = {"1", "true", "yes", "on"}
+        falsy = {"0", "false", "no", "off"}
+
+        for key in keys:
+            if key not in api_config:
+                continue
+            value = api_config.get(key)
+            if isinstance(value, bool):
+                return value
+            if isinstance(value, (int, float)):
+                return value != 0
+            if isinstance(value, str):
+                normalized = value.strip().lower()
+                if normalized in truthy:
+                    return True
+                if normalized in falsy:
+                    return False
+        return None
+
+    @staticmethod
+    def _apply_text_affix_once(text: str, prefix: str, suffix: str) -> str:
+        if not isinstance(text, str) or (not prefix and not suffix):
+            return text
+
+        updated = text
+        if prefix and not updated.startswith(prefix):
+            updated = f"{prefix}{updated}"
+        if suffix and not updated.endswith(suffix):
+            updated = f"{updated}{suffix}"
+        return updated
+
+    @classmethod
+    def _apply_affix_to_dialogue_payload(
+        cls,
+        value: Any,
+        prefix: str,
+        suffix: str,
+    ) -> Any:
+        if isinstance(value, list):
+            return [cls._apply_affix_to_dialogue_payload(item, prefix, suffix) for item in value]
+        if isinstance(value, dict):
+            updated = dict(value)
+            text_value = updated.get("text")
+            if isinstance(text_value, str):
+                updated["text"] = cls._apply_text_affix_once(text_value, prefix, suffix)
+            return updated
+        return value
+
+    @staticmethod
+    def _request_has_tts_voice_hints(request: AudioGenerationRequest) -> bool:
+        if isinstance(request.voice, str) and request.voice.strip():
+            return True
+        if isinstance(request.voice_id, str) and request.voice_id.strip():
+            return True
+
+        if not isinstance(request.extra_params, dict):
+            return False
+
+        for key in ("voice", "voice_id", "voiceId", "voiceID"):
+            value = request.extra_params.get(key)
+            if isinstance(value, str) and value.strip():
+                return True
+
+        for key in ("dialogue", "dialogues"):
+            if key in request.extra_params:
+                return True
+
+        return False
+
+    @staticmethod
+    def _extract_audio_voice_hint(request: AudioGenerationRequest) -> Optional[str]:
+        if isinstance(request.voice_id, str) and request.voice_id.strip():
+            return request.voice_id.strip()
+        if isinstance(request.voice, str) and request.voice.strip():
+            return request.voice.strip()
+        if not isinstance(request.extra_params, dict):
+            return None
+        for key in ("voiceID", "voiceId", "voice_id", "voice"):
+            value = request.extra_params.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        return None
+
+    @classmethod
+    def _build_uvoice_fallback_requests(
+        cls,
+        request: AudioGenerationRequest,
+    ) -> List[AudioGenerationRequest]:
+        normalized_model = cls._normalize_model_id(request.model)
+        selected_voice = cls._extract_audio_voice_hint(request)
+        extra_params = dict(request.extra_params) if isinstance(request.extra_params, dict) else {}
+        candidates: List[tuple[str, str]] = []
+
+        if normalized_model.endswith("tts-natural"):
+            candidates.append(("uvoice/tts-standard", "TH-TigerSD"))
+        elif normalized_model.endswith("tts-standard"):
+            candidates.append(("uvoice/tts-standard", "TH-TigerSD"))
+        elif normalized_model.endswith("tts-premium"):
+            candidates.extend([
+                ("uvoice/tts-premium", "TH-KantapongPremiumHD"),
+                ("uvoice/tts-premium", "TH-BowkyPremiumHD"),
+            ])
+
+        fallback_requests: List[AudioGenerationRequest] = []
+        seen: set[tuple[str, str]] = set()
+        for model_id, voice_id in candidates:
+            key = (model_id, voice_id)
+            if key in seen:
+                continue
+            seen.add(key)
+            if model_id == request.model and voice_id == selected_voice:
+                continue
+
+            next_extra_params = {
+                **extra_params,
+                "voiceID": voice_id,
+            }
+            next_extra_params.pop("voiceId", None)
+            next_extra_params.pop("voice_id", None)
+            next_extra_params.pop("voice", None)
+
+            updates: Dict[str, Any] = {
+                "model": model_id,
+                "voice": None,
+                "voice_id": voice_id,
+                "extra_params": next_extra_params,
+            }
+            if hasattr(request, "model_copy"):
+                fallback_requests.append(request.model_copy(update=updates))  # Pydantic v2
+            else:
+                fallback_requests.append(request.copy(update=updates))  # Pydantic v1 fallback
+        return fallback_requests
+
+    @classmethod
+    def _normalize_audio_request_for_generation(
+        cls,
+        request: AudioGenerationRequest,
+    ) -> AudioGenerationRequest:
+        api_config = request.api_config if isinstance(request.api_config, dict) else {}
+
+        text_prefix = cls._get_api_config_string(
+            api_config,
+            "text_prefix",
+            "textPrefix",
+            "audio_text_prefix",
+            "audioTextPrefix",
+            "input_text_prefix",
+            "inputTextPrefix",
+        ) or ""
+        text_suffix = cls._get_api_config_string(
+            api_config,
+            "text_suffix",
+            "textSuffix",
+            "audio_text_suffix",
+            "audioTextSuffix",
+            "input_text_suffix",
+            "inputTextSuffix",
+        ) or ""
+
+        if not text_prefix:
+            prepend_newline = cls._get_api_config_bool(
+                api_config,
+                "prepend_newline",
+                "prependNewline",
+                "inject_leading_newline",
+                "injectLeadingNewline",
+                "prevent_first_word_clipping",
+                "preventFirstWordClipping",
+            )
+            if prepend_newline is None:
+                prepend_newline = cls._request_has_tts_voice_hints(request)
+            if prepend_newline is True:
+                text_prefix = "\n"
+
+        if not text_prefix and not text_suffix:
+            return request
+
+        updated_text = cls._apply_text_affix_once(request.text, text_prefix, text_suffix)
+        updated_extra_params = request.extra_params
+
+        if isinstance(request.extra_params, dict):
+            updated_extra_params = dict(request.extra_params)
+
+            if isinstance(updated_extra_params.get("text"), str):
+                updated_extra_params["text"] = cls._apply_text_affix_once(
+                    updated_extra_params["text"],
+                    text_prefix,
+                    text_suffix,
+                )
+
+            apply_to_dialogue = cls._get_api_config_bool(
+                api_config,
+                "apply_text_affix_to_dialogue",
+                "applyTextAffixToDialogue",
+                "apply_affix_to_dialogue",
+                "applyAffixToDialogue",
+            )
+            if apply_to_dialogue is not False:
+                for dialogue_key in ("dialogue", "dialogues"):
+                    if dialogue_key in updated_extra_params:
+                        updated_extra_params[dialogue_key] = cls._apply_affix_to_dialogue_payload(
+                            updated_extra_params[dialogue_key],
+                            text_prefix,
+                            text_suffix,
+                        )
+
+        updates: Dict[str, Any] = {}
+        if updated_text != request.text:
+            updates["text"] = updated_text
+        if isinstance(updated_extra_params, dict) and updated_extra_params != request.extra_params:
+            updates["extra_params"] = updated_extra_params
+
+        if not updates:
+            return request
+
+        logger.info(
+            "audio_request_text_affix_applied",
+            model=request.model,
+            applied_to_text=updated_text != request.text,
+            applied_to_extra_params=isinstance(updated_extra_params, dict) and updated_extra_params != request.extra_params,
+            prefix_length=len(text_prefix),
+            suffix_length=len(text_suffix),
+        )
+
+        if hasattr(request, "model_copy"):
+            return request.model_copy(update=updates)  # Pydantic v2
+        return request.copy(update=updates)  # Pydantic v1 fallback
 
     async def _resolve_media_provider(
         self,
         model_id: str,
-        api_config: Optional[Dict[str, str]],
+        api_config: Optional[Dict[str, Any]],
     ) -> Optional[str]:
         # 1) Explicit provider hint from caller payload
         if isinstance(api_config, dict):
@@ -704,9 +958,191 @@ class LLMGateway:
         """
         logger.info("audio_generation_request", user_id=user.id, model=request.model)
 
+        normalized_request = self._normalize_audio_request_for_generation(request)
+
         # Estimate cost via Web Gateway or use local estimate
-        estimated_cost = await self._estimate_cost(request, False)
+        estimated_cost = await self._estimate_cost(normalized_request, False)
         await self._check_credits(user, estimated_cost)
+
+        resolved_provider = await self._resolve_media_provider(normalized_request.model, normalized_request.api_config)
+        normalized_model = self._normalize_model_id(normalized_request.model)
+
+        from app.llm_proxy.providers.uvoice_provider import UVoiceProvider
+        uvoice_audio_models = {
+            self._normalize_model_id(model_name)
+            for model_name in UVoiceProvider.AUDIO_MODELS
+        }
+        route_to_uvoice = (
+            resolved_provider == "uvoice"
+            or normalized_model in uvoice_audio_models
+        )
+
+        logger.info(
+            "audio_provider_routing",
+            model=request.model,
+            normalized_model=normalized_model,
+            resolved_provider=resolved_provider,
+            route="uvoice" if route_to_uvoice else "kie_ai",
+        )
+
+        if route_to_uvoice:
+            from app.services.media_provider_service import get_media_provider_key
+
+            provider_config = await get_media_provider_key("uvoice")
+            if not provider_config or not provider_config.get("apiKey"):
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="UVoice not configured. Please add API key in Admin > Media Providers.",
+                )
+
+            api_config = normalized_request.api_config if isinstance(normalized_request.api_config, dict) else {}
+            endpoint = self._get_api_config_string(api_config, "endpoint", "api_endpoint", "apiEndpoint") or "/generate"
+            base_url = str(provider_config.get("baseUrl") or "https://api.uvoice.ai").rstrip("/")
+            request_url = endpoint if endpoint.startswith(("http://", "https://")) else f"{base_url}/{endpoint.lstrip('/')}"
+            extra_params = normalized_request.extra_params if isinstance(normalized_request.extra_params, dict) else {}
+            selected_voice_id = (
+                normalized_request.voice_id
+                or normalized_request.voice
+                or extra_params.get("voiceID")
+                or extra_params.get("voiceId")
+                or extra_params.get("voice_id")
+                or extra_params.get("voice")
+            )
+            debug_request_payload = {
+                "model": normalized_request.model,
+                "text": normalized_request.text[:1200],
+                "voice": normalized_request.voice,
+                "voice_id": normalized_request.voice_id,
+                "speed": normalized_request.speed,
+                "extra_params": extra_params,
+            }
+
+            client = None
+            try:
+                client = UVoiceProvider(
+                    api_key=provider_config["apiKey"],
+                    base_url=provider_config.get("baseUrl"),
+                )
+                async def _generate_with_request(active_request: AudioGenerationRequest) -> tuple[Dict[str, Any], Optional[str], Dict[str, Any]]:
+                    active_extra_params = active_request.extra_params if isinstance(active_request.extra_params, dict) else {}
+                    active_selected_voice_id = self._extract_audio_voice_hint(active_request)
+                    active_debug_request_payload = {
+                        "model": active_request.model,
+                        "text": active_request.text[:1200],
+                        "voice": active_request.voice,
+                        "voice_id": active_request.voice_id,
+                        "speed": active_request.speed,
+                        "extra_params": active_extra_params,
+                    }
+                    audio_data = await client.generate_audio(
+                        model=active_request.model,
+                        text=active_request.text,
+                        **active_request.dict(exclude_unset=True, exclude={
+                            "model", "text", "user"
+                        })
+                    )
+                    return audio_data, active_selected_voice_id, active_debug_request_payload
+
+                active_request = normalized_request
+                active_selected_voice_id = selected_voice_id
+                active_debug_request_payload = debug_request_payload
+                try:
+                    audio_data, active_selected_voice_id, active_debug_request_payload = await _generate_with_request(active_request)
+                except httpx.HTTPStatusError as primary_error:
+                    if primary_error.response.status_code == 403:
+                        fallback_requests = self._build_uvoice_fallback_requests(normalized_request)
+                        for fallback_request in fallback_requests:
+                            fallback_voice_id = self._extract_audio_voice_hint(fallback_request)
+                            logger.warning(
+                                "uvoice_audio_generation_retrying_with_fallback",
+                                user_id=user.id,
+                                model=normalized_request.model,
+                                selected_voice_id=selected_voice_id,
+                                fallback_model=fallback_request.model,
+                                fallback_voice_id=fallback_voice_id,
+                            )
+                            try:
+                                audio_data, active_selected_voice_id, active_debug_request_payload = await _generate_with_request(fallback_request)
+                                active_request = fallback_request
+                                break
+                            except httpx.HTTPStatusError:
+                                continue
+                        else:
+                            raise primary_error
+                    else:
+                        raise
+
+                response = AudioGenerationResponse(
+                    id=audio_data.get("id", ""),
+                    model=active_request.model,
+                    provider="uvoice",
+                    created=audio_data.get("created", 0),
+                    data=audio_data.get("data", []),
+                )
+                transaction = await self._deduct_credits(
+                    user, estimated_cost, request, response, estimated_cost, False
+                )
+                response.credits_used = abs(transaction.amount)
+                response.credits_balance = transaction.balance_after
+                return response
+            except httpx.HTTPStatusError as e:
+                response_body = (e.response.text or "")[:4000]
+                request_method = e.request.method if e.request else "POST"
+                request_url_from_exc = str(e.request.url) if e.request and e.request.url else request_url
+                logger.error(
+                    "uvoice_audio_generation_http_error",
+                    user_id=user.id,
+                    model=normalized_request.model,
+                    status=e.response.status_code,
+                    request_url=request_url_from_exc,
+                    body=response_body[:1000],
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail={
+                        "message": f"UVoice audio generation failed: HTTP {e.response.status_code}",
+                        "debug": {
+                            "provider_hint": "uvoice",
+                            "selected_voice_id": active_selected_voice_id,
+                            "api": {
+                                "provider": "uvoice",
+                                "endpoint": endpoint,
+                                "request_url": request_url_from_exc,
+                                "method": request_method,
+                                "voice_id": active_selected_voice_id,
+                                "request_payload": active_debug_request_payload,
+                                "response_status": e.response.status_code,
+                                "response_body": response_body,
+                            },
+                        },
+                    },
+                )
+            except Exception as e:
+                logger.error("uvoice_audio_generation_failed", user_id=user.id, model=normalized_request.model, error=str(e))
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail={
+                        "message": f"Audio generation failed: {str(e)}",
+                        "debug": {
+                            "provider_hint": "uvoice",
+                            "selected_voice_id": active_selected_voice_id,
+                            "api": {
+                                "provider": "uvoice",
+                                "endpoint": endpoint,
+                                "request_url": request_url,
+                                "method": "POST",
+                                "voice_id": active_selected_voice_id,
+                                "request_payload": active_debug_request_payload,
+                            },
+                        },
+                    },
+                )
+            finally:
+                if client is not None:
+                    try:
+                        await client.aclose()
+                    except Exception:
+                        pass
 
         if not self.unified_client.kie_ai_client:
             # Try to initialize from SmartSpecWeb media_providers
@@ -722,16 +1158,16 @@ class LLMGateway:
         try:
             # For synchronous generation, always use polling mode (not callback mode)
             audio_data = await self.unified_client.kie_ai_client.generate_audio(
-                model=request.model,
-                text=request.text,
+                model=normalized_request.model,
+                text=normalized_request.text,
                 callback_url="",  # Force polling mode
-                **request.dict(exclude_unset=True, exclude={
+                **normalized_request.dict(exclude_unset=True, exclude={
                     "model", "text", "user"
                 })
             )
             response = AudioGenerationResponse(
                 id=audio_data.get("id", ""),
-                model=request.model,
+                model=normalized_request.model,
                 provider="kie_ai",
                 created=audio_data.get("created", 0),
                 data=audio_data.get("data", []),
@@ -790,33 +1226,140 @@ class LLMGateway:
                             config = _json.loads(config_json) if isinstance(config_json, str) else config_json
                             pricing_tiers = config.get("pricingTiers") if isinstance(config, dict) else None
                             if pricing_tiers and isinstance(pricing_tiers, dict):
-                                # Build tier key from request parameters
-                                resolution = getattr(request, "resolution", None)
-                                duration = getattr(request, "duration", None)
-                                formula = config.get("pricingFormula", "flat")
+                                request_payload = request.dict(exclude_unset=True)
+                                extra_params = request_payload.get("extra_params")
+                                if isinstance(extra_params, dict):
+                                    request_payload.update(extra_params)
+                                ignore_whitespace_for_pricing = config.get("pricingIgnoreWhitespace") is True
 
-                                tier_key = None
-                                if formula == "flat" and resolution and resolution in pricing_tiers:
-                                    tier_key = resolution
-                                elif formula == "per_duration" and duration:
-                                    tier_key = f"{duration}s"
+                                def _get_by_path(source: dict, path: str):
+                                    current = source
+                                    for segment in str(path).split("."):
+                                        if not segment:
+                                            continue
+                                        if not isinstance(current, dict):
+                                            return None
+                                        current = current.get(segment)
+                                    return current
+
+                                def _count_characters(value):
+                                    if value is None:
+                                        return 0
+                                    if isinstance(value, str):
+                                        if ignore_whitespace_for_pricing:
+                                            return len(re.sub(r"\s+", "", value))
+                                        return len(value)
+                                    if isinstance(value, list):
+                                        return sum(_count_characters(item) for item in value)
+                                    if isinstance(value, dict):
+                                        if isinstance(value.get("text"), str):
+                                            text_value = value.get("text")
+                                            if ignore_whitespace_for_pricing:
+                                                return len(re.sub(r"\s+", "", text_value))
+                                            return len(text_value)
+                                        return sum(_count_characters(item) for item in value.values())
+                                    return 0
+
+                                def _count_items(value):
+                                    if value is None:
+                                        return 0
+                                    if isinstance(value, list):
+                                        return len(value)
+                                    if isinstance(value, str):
+                                        return 1 if value.strip() else 0
+                                    return 1
+
+                                formula = config.get("pricingFormula", "flat")
+                                tier_key = "default"
+
+                                if formula == "flat":
+                                    resolution = _get_by_path(request_payload, "resolution")
+                                    if resolution and resolution in pricing_tiers:
+                                        tier_key = str(resolution)
+                                elif formula == "per_duration":
+                                    duration = _get_by_path(request_payload, "duration")
+                                    if duration:
+                                        tier_key = f"{duration}s"
                                 elif formula == "matrix":
-                                    # Build composite key from pricing-affecting fields
                                     parts = []
-                                    for field in sorted(config.get("inputFields", []), key=lambda f: {"resolution": 0, "quality": 1, "duration": 2}.get(f.get("key", ""), 99)):
+                                    for field in sorted(
+                                        config.get("inputFields", []),
+                                        key=lambda f: {"resolution": 0, "quality": 1, "duration": 2}.get(f.get("key", ""), 99),
+                                    ):
                                         if field.get("affectsPricing"):
-                                            val = getattr(request, field["key"], None) or field.get("default")
+                                            field_key = field.get("key")
+                                            if not field_key:
+                                                continue
+                                            val = _get_by_path(request_payload, field_key)
+                                            if val is None:
+                                                val = field.get("default")
                                             if val is not None:
                                                 s = str(val)
-                                                if field["key"] == "duration" and not s.endswith("s"):
+                                                if field_key == "duration" and not s.endswith("s"):
                                                     s += "s"
                                                 parts.append(s)
                                     if parts:
                                         tier_key = "-".join(parts)
 
-                                if tier_key and tier_key in pricing_tiers:
-                                    credit_cost = pricing_tiers[tier_key]
-                                    logger.info("estimate_cost_from_pricing_tier", model=request.model, tier_key=tier_key, credit_cost=credit_cost)
+                                base_tier_cost = pricing_tiers.get(tier_key)
+                                if base_tier_cost is None:
+                                    base_tier_cost = pricing_tiers.get("default")
+                                if base_tier_cost is not None:
+                                    credit_cost = base_tier_cost
+                                    logger.info(
+                                        "estimate_cost_from_pricing_tier",
+                                        model=request.model,
+                                        tier_key=tier_key,
+                                        credit_cost=credit_cost,
+                                    )
+
+                                if formula == "per_unit":
+                                    metric = str(config.get("pricingUnitMetric", "characters"))
+                                    unit_field = str(config.get("pricingUnitField", "text"))
+                                    unit_size_raw = config.get("pricingUnitSize", 1)
+                                    try:
+                                        unit_size = float(unit_size_raw)
+                                    except (TypeError, ValueError):
+                                        unit_size = 1.0
+                                    if not unit_size or unit_size <= 0:
+                                        unit_size = 1.0
+
+                                    rounding_mode = str(config.get("pricingUnitRounding", "ceil"))
+                                    min_units_raw = config.get("pricingMinUnits", 0)
+                                    try:
+                                        min_units = int(float(min_units_raw))
+                                    except (TypeError, ValueError):
+                                        min_units = 0
+                                    if min_units < 0:
+                                        min_units = 0
+
+                                    source_value = _get_by_path(request_payload, unit_field)
+                                    if source_value is None and unit_field == "text":
+                                        source_value = request_payload.get("prompt") or request_payload.get("text")
+
+                                    measured = _count_items(source_value) if metric == "items" else _count_characters(source_value)
+                                    raw_units = measured / unit_size
+                                    if measured > 0:
+                                        if rounding_mode == "floor":
+                                            rounded_units = int(math.floor(raw_units))
+                                        elif rounding_mode == "round":
+                                            rounded_units = int(round(raw_units))
+                                        else:
+                                            rounded_units = int(math.ceil(raw_units))
+                                    else:
+                                        rounded_units = 0
+
+                                    final_units = max(min_units, rounded_units)
+                                    credit_cost = float(credit_cost) * final_units
+                                    logger.info(
+                                        "estimate_cost_from_per_unit",
+                                        model=request.model,
+                                        metric=metric,
+                                        unit_field=unit_field,
+                                        measured=measured,
+                                        units=final_units,
+                                        credit_cost=credit_cost,
+                                    )
                         except Exception as e:
                             logger.debug(f"Could not parse pricingTiers: {e}")
 

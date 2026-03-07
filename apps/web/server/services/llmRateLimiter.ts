@@ -138,6 +138,16 @@ export const MEDIA_PROVIDER_LIMITS: Record<string, MediaProviderLimitConfig> = {
     videoMultiplier: 1,
     audioMultiplier: 1.5,
   },
+  'uvoice': {
+    // UVoice public limit: 100 requests/minute
+    maxConcurrent: 5,
+    minTime: 600,
+    reservoir: 100,
+    reservoirRefreshInterval: 60000,
+    timeout: 120000,
+    videoMultiplier: 1,
+    audioMultiplier: 1.2,
+  },
   'byteplus_modelark': {
     // BytePlus ModelArk: Seedream (sync image) + Seedance (async video task creation)
     // Conservative defaults; Seedance task creation is lightweight but polling is separate

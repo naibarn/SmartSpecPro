@@ -360,6 +360,98 @@ describe("presentationPlaybackExport", () => {
     });
   });
 
+  it("blocks export queueing when edit-additional rollout gate enforcement fails", async () => {
+    const deckDetail = buildDeckDetail();
+
+    await expect(
+      triggerPresentationExport(
+        { deckId: 101, format: "mp4", idempotencyKey: "rollout-gate-fail-1" },
+        actor,
+        {
+          getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
+          enqueueExportJob: vi.fn(),
+          now: () => Date.parse("2026-02-22T10:00:02.000Z"),
+          enforceEditAdditionalRolloutGate: true,
+          editAdditionalRolloutGateInput: {
+            stage: "ramp_50",
+            holdDurationHours: 30,
+            exportsObserved: 1200,
+            mediaHeavyPercent: 35,
+            denseLayoutPercent: 25,
+            lowComplexityBaselinePresent: true,
+            successRateDropPercent: 1.4,
+            slideReadyTimeoutPercent: 0.1,
+            svgPlaceholderPercent: 0.2,
+            exportLatencyP95RegressionPercent: 10,
+            crashOomIncreasePercent: 0.03,
+            rollbackRehearsalCompleted: true,
+          },
+        },
+      ),
+    ).rejects.toSatisfy((error: unknown) => {
+      return (
+        error instanceof PresentationServiceError
+        && error.code === PRESENTATION_ERROR_CODE.VALIDATION_FAILED
+      );
+    });
+  });
+
+  it("requires rollout gate input when edit-additional gate enforcement is enabled", async () => {
+    const deckDetail = buildDeckDetail();
+
+    await expect(
+      triggerPresentationExport(
+        { deckId: 101, format: "mp4", idempotencyKey: "rollout-gate-missing-input-1" },
+        actor,
+        {
+          getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
+          enqueueExportJob: vi.fn(),
+          now: () => Date.parse("2026-02-22T10:00:02.000Z"),
+          enforceEditAdditionalRolloutGate: true,
+          editAdditionalRolloutGateInput: null,
+        },
+      ),
+    ).rejects.toSatisfy((error: unknown) => {
+      return (
+        error instanceof PresentationServiceError
+        && error.code === PRESENTATION_ERROR_CODE.VALIDATION_FAILED
+      );
+    });
+  });
+
+  it("queues export when edit-additional rollout gate enforcement is enabled and gate passes", async () => {
+    const deckDetail = buildDeckDetail();
+    const enqueueExportJob = vi.fn().mockResolvedValue({ jobId: "job-rollout-gate-pass" });
+
+    const result = await triggerPresentationExport(
+      { deckId: 101, format: "mp4", idempotencyKey: "rollout-gate-pass-1" },
+      actor,
+      {
+        getDeckDetail: vi.fn().mockResolvedValue(deckDetail),
+        enqueueExportJob,
+        now: () => Date.parse("2026-02-22T10:00:02.000Z"),
+        enforceEditAdditionalRolloutGate: true,
+        editAdditionalRolloutGateInput: {
+          stage: "ramp_5",
+          holdDurationHours: 28,
+          exportsObserved: 900,
+          mediaHeavyPercent: 37,
+          denseLayoutPercent: 24,
+          lowComplexityBaselinePresent: true,
+          successRateDropPercent: 0.4,
+          slideReadyTimeoutPercent: 0.1,
+          svgPlaceholderPercent: 0.2,
+          exportLatencyP95RegressionPercent: 6,
+          crashOomIncreasePercent: 0.03,
+          rollbackRehearsalCompleted: true,
+        },
+      },
+    );
+
+    expect(result.schemaVersion).toBe(PRESENTATION_EXPORT_SCHEMA_VERSION);
+    expect(enqueueExportJob).toHaveBeenCalledTimes(1);
+  });
+
   it("buildPresentationRenderSpec derives width/height from slide canvas when not explicitly provided", () => {
     const deckDetail = buildDeckDetail({
       slides: [

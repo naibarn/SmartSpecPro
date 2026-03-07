@@ -177,6 +177,33 @@ describe("callLLMStructured", () => {
     expect(call.userId).toBe(42);
   });
 
+  it("does not pin preferred provider unless strictProviderPin is enabled", async () => {
+    const validJson = JSON.stringify({ title: "Test", items: ["a"] });
+    mockExecuteWithFallback.mockResolvedValue(makeSuccessResponse(validJson));
+
+    await callLLMStructured({
+      ...baseParams,
+      preferredProviderId: 9,
+    });
+
+    const call = mockExecuteWithFallback.mock.calls[0][0];
+    expect(call.preferredProvider).toBeUndefined();
+  });
+
+  it("pins preferred provider when strictProviderPin is enabled", async () => {
+    const validJson = JSON.stringify({ title: "Test", items: ["a"] });
+    mockExecuteWithFallback.mockResolvedValue(makeSuccessResponse(validJson));
+
+    await callLLMStructured({
+      ...baseParams,
+      preferredProviderId: 1,
+      strictProviderPin: true,
+    });
+
+    const call = mockExecuteWithFallback.mock.calls[0][0];
+    expect(call.preferredProvider).toBe(1);
+  });
+
   it("uses default model when model param is omitted", async () => {
     const validJson = JSON.stringify({ title: "Test", items: ["a"] });
     mockExecuteWithFallback.mockResolvedValue(makeSuccessResponse(validJson));

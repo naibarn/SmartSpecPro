@@ -150,7 +150,13 @@ describe("listLibraryDocuments", () => {
 
     mockDb.select
       .mockReturnValueOnce(makeSelectWithOrder(items))
-      .mockReturnValueOnce(makeSelectWithWhere(permissions));
+      .mockReturnValueOnce(makeSelectWithWhere(permissions))
+      .mockReturnValueOnce(
+        makeSelectWithWhere([
+          { libraryItemId: 2 },
+          { libraryItemId: 3 },
+        ]),
+      );
 
     const result = await listLibraryDocuments(
       { scope: "all", sort: "updated_desc", limit: 10, offset: 0 },
@@ -242,6 +248,7 @@ describe("saveLibraryMarkdown", () => {
           },
         ]),
       )
+      .mockReturnValueOnce(makeSelectWithLimit([]))
       .mockReturnValueOnce(makeSelectWithLimit([]));
 
     const chunkConflict = vi.fn().mockResolvedValue(undefined);
@@ -295,7 +302,7 @@ describe("saveLibraryMarkdown", () => {
       { userId: 5, tenantId: 50, role: "user" },
     );
 
-    expect(result?.indexJob).toEqual({
+    expect(result?.indexJob).toMatchObject({
       jobId: 999,
       status: "pending",
       created: true,

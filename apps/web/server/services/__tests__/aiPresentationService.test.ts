@@ -8,11 +8,16 @@ const {
   mockCallLLMStructured,
   mockGetSkillByIdAsync,
   mockGenerateImageAsync,
+  mockGenerateVideoAsync,
+  mockGenerateAudioAsync,
   mockGetTask,
+  mockAddMediaTaskToLibrary,
   mockAddSlideToDeck,
   mockGetPresentationDeckDetail,
   mockUpdateSlideInDeck,
   mockHasEnoughCredits,
+  mockDeductCreditsForModel,
+  mockDeductCredits,
   mockAuditLog,
   mockGetBuiltInPreset,
   mockPickRandomSvg,
@@ -29,11 +34,16 @@ const {
   mockCallLLMStructured: vi.fn(),
   mockGetSkillByIdAsync: vi.fn(),
   mockGenerateImageAsync: vi.fn(),
+  mockGenerateVideoAsync: vi.fn(),
+  mockGenerateAudioAsync: vi.fn(),
   mockGetTask: vi.fn(),
+  mockAddMediaTaskToLibrary: vi.fn(),
   mockAddSlideToDeck: vi.fn(),
   mockGetPresentationDeckDetail: vi.fn(),
   mockUpdateSlideInDeck: vi.fn(),
   mockHasEnoughCredits: vi.fn(),
+  mockDeductCreditsForModel: vi.fn(),
+  mockDeductCredits: vi.fn(),
   mockAuditLog: vi.fn(),
   mockGetBuiltInPreset: vi.fn(),
   mockPickRandomSvg: vi.fn(),
@@ -62,8 +72,14 @@ vi.mock("../skillRegistry", () => ({
 vi.mock("../mediaGenerationService", () => ({
   mediaGenerationService: {
     generateImageAsync: mockGenerateImageAsync,
+    generateVideoAsync: mockGenerateVideoAsync,
+    generateAudioAsync: mockGenerateAudioAsync,
     getTask: mockGetTask,
   },
+}));
+
+vi.mock("../mediaLibraryService", () => ({
+  addMediaTaskToLibrary: mockAddMediaTaskToLibrary,
 }));
 
 vi.mock("../presentationService", () => ({
@@ -74,6 +90,8 @@ vi.mock("../presentationService", () => ({
 
 vi.mock("../creditService", () => ({
   hasEnoughCredits: mockHasEnoughCredits,
+  deductCreditsForModel: mockDeductCreditsForModel,
+  deductCredits: mockDeductCredits,
 }));
 
 vi.mock("../auditLogger", () => ({
@@ -230,7 +248,17 @@ function setupHappyPath() {
   });
 
   mockGenerateImageAsync.mockResolvedValue({ id: "task-1", status: "processing" });
+  mockGenerateVideoAsync.mockResolvedValue({ id: "video-task-1", status: "processing" });
+  mockGenerateAudioAsync.mockResolvedValue({ id: "audio-task-1", status: "processing" });
+  mockAddMediaTaskToLibrary.mockResolvedValue({
+    itemId: 301,
+    created: true,
+    indexJob: { jobId: 1, status: "queued", created: true },
+    taskStatus: "completed",
+  });
   mockGetTask.mockResolvedValue({ id: "task-1", status: "completed", resultUrl: "https://cdn.example.com/image.jpg" });
+  mockDeductCreditsForModel.mockResolvedValue({ creditsUsed: 1, wasFree: false });
+  mockDeductCredits.mockResolvedValue({ success: true, creditsUsed: 8, newBalance: 92, transactionId: 1 });
 
   mockGetBuiltInPreset.mockReturnValue({
     id: "dark-professional",
@@ -241,19 +269,36 @@ function setupHappyPath() {
 
   mockPickRandomSvg.mockReturnValue(MOCK_SVG);
   mockGenerateSlide.mockReturnValue({ slideContent: MOCK_SLIDE_CONTENT, warnings: [] });
-  mockGetModelsByTypeAsync.mockResolvedValue([
-    {
-      id: "flux-2.0",
-      type: "image",
-      name: "Flux 2.0",
-      provider: "kie.ai",
-      description: "Fast and creative image generation",
-      creditCost: 8,
-      isEnabled: true,
-      priority: 0,
-      configJson: { generateType: "text-to-image" },
-    },
-  ]);
+  mockGetModelsByTypeAsync.mockImplementation(async (type: string) => {
+    if (type === "audio") {
+      return [
+        {
+          id: "elevenlabs-tts",
+          type: "audio",
+          name: "ElevenLabs Text-to-Speech",
+          provider: "kie.ai",
+          description: "High-quality text-to-speech",
+          creditCost: 5,
+          isEnabled: true,
+          priority: 0,
+          configJson: { generateType: "text-to-audio" },
+        },
+      ];
+    }
+    return [
+      {
+        id: "flux-2.0",
+        type: "image",
+        name: "Flux 2.0",
+        provider: "kie.ai",
+        description: "Fast and creative image generation",
+        creditCost: 8,
+        isEnabled: true,
+        priority: 0,
+        configJson: { generateType: "text-to-image" },
+      },
+    ];
+  });
   mockDbTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<void>) => fn({
     select: () => ({
       from: () => ({
@@ -330,6 +375,22 @@ describe("buildArticlePrompt", () => {
     });
     expect(prompt).toContain("Length preset \"short\" detected");
     expect(prompt).not.toContain("STRICT LIMIT:");
+  });
+
+  it("prefers explicit article skill language over top-level auto language", () => {
+    const prompt = buildArticlePrompt("Sleep routines for newborns", "auto", 4, {
+      language: "th",
+      length: "medium",
+    });
+    expect(prompt).toContain("Write the entire article in Thai.");
+    expect(prompt).not.toContain("Write in the same language as the topic.");
+  });
+
+  it("normalizes human-readable Thai language values from skill params", () => {
+    const prompt = buildArticlePrompt("Toddler tantrums", "auto", 4, {
+      language: "Thai (ภาษาไทย)",
+    });
+    expect(prompt).toContain("Write the entire article in Thai.");
   });
 });
 
@@ -446,6 +507,64 @@ describe("relayoutExistingSlide", () => {
     expect(capturedLayoutInput.slideData.body).toContain("ทารกอายุ 1 เดือนขึ้นไป");
     expect(capturedLayoutInput.slideData.body).toContain("ถ่าย 1 ไม่ถ่าย 1 เสมอ");
     expect(capturedLayoutInput.slideData.body).toContain("หากถ่าย 2 วันไม่ถ่ายควรพบแพทย์");
+  });
+
+  it("preserves heading-detail hierarchy for card-like text groups during relayout", () => {
+    let capturedLayoutInput: any = null;
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockGenerateSlide.mockImplementation((input: unknown) => {
+      capturedLayoutInput = input;
+      return {
+        slideContent: {
+          elements: [],
+        },
+        warnings: [],
+      };
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+
+    relayoutExistingSlide({
+      slideTitle: "การพัฒนาทางการสื่อสารและการรับประทานอาหาร",
+      deckTitle: "Deck",
+      slideIndex: 2,
+      totalSlides: 6,
+      templateId: "feature_boxes_right",
+      includeSvg: false,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1600, height: 900, fill: "#1a1a2e" },
+          { id: "hero", type: "image", x: 0, y: 0, width: 860, height: 900, src: "https://cdn.example.com/hero.jpg", alt: "hero" },
+          { id: "title", type: "text", x: 940, y: 56, width: 600, height: 132, text: "การพัฒนาทางการสื่อสารและการรับประทานอาหาร", color: "#ff4d7a", fontSize: 66, fontWeight: "700" },
+
+          { id: "h1", type: "text", x: 960, y: 220, width: 560, height: 60, text: "การสื่อสารและปฏิสัมพันธ์", color: "#ffffff", fontSize: 46, fontWeight: "700" },
+          { id: "d1", type: "text", x: 960, y: 288, width: 560, height: 88, text: "ออกเสียงพยางค์ง่ายๆ เช่น 'บา-บา' พยายามล้อเลียนเสียงที่คุณทำ", color: "#ffffff", fontSize: 30, fontWeight: "normal" },
+
+          { id: "h2", type: "text", x: 960, y: 398, width: 560, height: 58, text: "การรับประทานอาหารเสริม", color: "#ffffff", fontSize: 46, fontWeight: "700" },
+          { id: "d2", type: "text", x: 960, y: 466, width: 560, height: 84, text: "เริ่มทานเมื่ออายุ 6 เดือน ทำให้อาหารเป็นประสบการณ์ที่สนุก", color: "#ffffff", fontSize: 30, fontWeight: "normal" },
+
+          { id: "h3", type: "text", x: 960, y: 572, width: 560, height: 58, text: "เริ่มออกเสียงง่ายๆ", color: "#ffffff", fontSize: 46, fontWeight: "700" },
+          { id: "d3", type: "text", x: 960, y: 640, width: 560, height: 72, text: "ฟังและล้อเลียนเสียง", color: "#ffffff", fontSize: 30, fontWeight: "normal" },
+        ],
+        canvas: { width: 1600, height: 900, preset: "16:9" },
+      },
+    });
+
+    expect(capturedLayoutInput).toBeTruthy();
+    expect(capturedLayoutInput.slideData.sections).toBeDefined();
+    expect(capturedLayoutInput.slideData.sections.length).toBeGreaterThanOrEqual(3);
+    expect(capturedLayoutInput.slideData.sections[0]).toMatchObject({
+      heading: "การสื่อสารและปฏิสัมพันธ์",
+      details: ["ออกเสียงพยางค์ง่ายๆ เช่น 'บา-บา' พยายามล้อเลียนเสียงที่คุณทำ"],
+    });
+    expect(capturedLayoutInput.slideData.sections[1]).toMatchObject({
+      heading: "การรับประทานอาหารเสริม",
+      details: ["เริ่มทานเมื่ออายุ 6 เดือน ทำให้อาหารเป็นประสบการณ์ที่สนุก"],
+    });
   });
 
   it("forces header/footer off for auto relayout to avoid adding chrome", () => {
@@ -833,7 +952,7 @@ describe("relayoutExistingSlide", () => {
 });
 
 describe("generateAIDraft - happy path", () => {
-  it("completes full 6-phase pipeline", async () => {
+  it("completes full 7-phase pipeline", async () => {
     setupHappyPath();
     const input = buildMockInput();
     const actor = buildMockActor();
@@ -856,6 +975,364 @@ describe("generateAIDraft - happy path", () => {
     // Phase 6: DB insertion
     expect(mockDbTransaction).toHaveBeenCalledTimes(1);
     expect(mockAddSlideToDeck).toHaveBeenCalledTimes(3);
+  });
+
+  it("generates and attaches per-slide audio tracks when audio is enabled", async () => {
+    setupHappyPath();
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 2,
+        generateAudio: true,
+        audioModel: "elevenlabs-tts",
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    expect(mockGenerateAudioAsync).toHaveBeenCalledTimes(2);
+    expect(mockAddMediaTaskToLibrary).toHaveBeenCalledTimes(2);
+    const firstInsertPayload = mockAddSlideToDeck.mock.calls[0]?.[0] as { audioTrack?: Record<string, unknown> } | undefined;
+    expect(firstInsertPayload?.audioTrack).toMatchObject({
+      libraryItemId: 301,
+      volume: 1,
+      startAtMs: 0,
+      endAtMs: null,
+    });
+  });
+
+  it("sets slide duration to generated audio length for image plus audio drafts", async () => {
+    setupHappyPath();
+    mockGetTask.mockImplementation(async (taskId: string) => {
+      if (taskId === "audio-task-1") {
+        return {
+          id: "audio-task-1",
+          status: "completed",
+          resultUrl: "https://cdn.example.com/narration.mp3",
+          resultData: {
+            response: {
+              data: [{ url: "https://cdn.example.com/narration.mp3", durationSeconds: 7.2 }],
+            },
+          },
+        };
+      }
+      return {
+        id: taskId,
+        status: "completed",
+        resultUrl: "https://cdn.example.com/image.jpg",
+        resultData: {
+          response: {
+            data: [{ url: "https://cdn.example.com/image.jpg" }],
+          },
+        },
+      };
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 1,
+        generateAudio: true,
+        audioModel: "elevenlabs-tts",
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const firstInsertPayload = mockAddSlideToDeck.mock.calls[0]?.[0] as {
+      slideContent?: { durationMs?: number };
+    } | undefined;
+    expect(firstInsertPayload?.slideContent?.durationMs).toBe(7200);
+  });
+
+  it("sets slide duration to the longer of generated video and audio lengths", async () => {
+    setupHappyPath();
+    mockGenerateSlide.mockImplementation(({ imageUrl }: { imageUrl?: string | null }) => ({
+      slideContent: {
+        elements: [
+          {
+            id: "img-1",
+            type: "image",
+            x: 0,
+            y: 0,
+            width: 640,
+            height: 360,
+            src: imageUrl || "https://cdn.example.com/clip.mp4",
+            alt: "Generated media",
+          },
+        ],
+      },
+      warnings: [],
+    }));
+    mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
+      if (skillId === "video-skill") {
+        return {
+          id: "video-skill",
+          name: "Video Skill",
+          type: "video-generation",
+          systemPrompt: "Create a video prompt.",
+          executionMode: "llm-only",
+        };
+      }
+      return {
+        id: "general-article-writer",
+        name: "General Article Writer",
+        systemPrompt: "You are a versatile article writer.",
+        executionMode: "llm-only",
+      };
+    });
+    mockGetModelsByTypeAsync.mockImplementation(async (type: string) => {
+      if (type === "audio") {
+        return [
+          {
+            id: "elevenlabs-tts",
+            type: "audio",
+            name: "ElevenLabs Text-to-Speech",
+            provider: "kie.ai",
+            description: "High-quality text-to-speech",
+            aliases: [],
+            creditCost: 5,
+            isEnabled: true,
+            priority: 0,
+            configJson: { generateType: "text-to-audio" },
+          },
+        ];
+      }
+      if (type === "video") {
+        return [
+          {
+            id: "veo-3-1",
+            type: "video",
+            name: "Veo 3.1",
+            provider: "kie.ai",
+            description: "Video generation",
+            aliases: [],
+            creditCost: 20,
+            isEnabled: true,
+            priority: 0,
+            durations: [5],
+            aspectRatios: ["16:9", "9:16"],
+            configJson: { generateType: "text-to-video" },
+          },
+        ];
+      }
+      return [];
+    });
+    mockGenerateVideoAsync.mockResolvedValue({ id: "video-task-1", status: "processing" });
+    mockGetTask.mockImplementation(async (taskId: string) => {
+      if (taskId === "video-task-1") {
+        return {
+          id: "video-task-1",
+          status: "completed",
+          resultUrl: "https://cdn.example.com/clip.mp4",
+          resultData: {
+            response: {
+              data: [{ url: "https://cdn.example.com/clip.mp4", duration: 4.5 }],
+            },
+          },
+          parameters: {
+            duration: 5,
+          },
+        };
+      }
+      if (taskId === "audio-task-1") {
+        return {
+          id: "audio-task-1",
+          status: "completed",
+          resultUrl: "https://cdn.example.com/narration.mp3",
+          resultData: {
+            response: {
+              data: [{ url: "https://cdn.example.com/narration.mp3", durationSeconds: 7.4 }],
+            },
+          },
+        };
+      }
+      return {
+        id: taskId,
+        status: "completed",
+      };
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 1,
+        generateAudio: true,
+        audioModel: "elevenlabs-tts",
+        imageSkillId: "video-skill",
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const firstInsertPayload = mockAddSlideToDeck.mock.calls[0]?.[0] as {
+      slideContent?: { durationMs?: number; elements?: Array<Record<string, unknown>> };
+    } | undefined;
+    expect(firstInsertPayload?.slideContent?.durationMs).toBe(7400);
+    expect(firstInsertPayload?.slideContent?.elements?.some((element) => element.type === "video")).toBe(true);
+  });
+
+  it("parses time-string media durations and keeps the longest one for slide timing", async () => {
+    setupHappyPath();
+    mockGenerateSlide.mockImplementation(({ imageUrl }: { imageUrl?: string | null }) => ({
+      slideContent: {
+        elements: [
+          {
+            id: "img-1",
+            type: "image",
+            x: 0,
+            y: 0,
+            width: 640,
+            height: 360,
+            src: imageUrl || "https://cdn.example.com/clip.mp4",
+            alt: "Generated media",
+          },
+        ],
+      },
+      warnings: [],
+    }));
+    mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
+      if (skillId === "video-skill") {
+        return {
+          id: "video-skill",
+          name: "Video Skill",
+          type: "video-generation",
+          systemPrompt: "Create a video prompt.",
+          executionMode: "llm-only",
+        };
+      }
+      return {
+        id: "general-article-writer",
+        name: "General Article Writer",
+        systemPrompt: "You are a versatile article writer.",
+        executionMode: "llm-only",
+      };
+    });
+    mockGetModelsByTypeAsync.mockImplementation(async (type: string) => {
+      if (type === "audio") {
+        return [
+          {
+            id: "elevenlabs-tts",
+            type: "audio",
+            name: "ElevenLabs Text-to-Speech",
+            provider: "kie.ai",
+            description: "High-quality text-to-speech",
+            aliases: [],
+            creditCost: 5,
+            isEnabled: true,
+            priority: 0,
+            configJson: { generateType: "text-to-audio" },
+          },
+        ];
+      }
+      if (type === "video") {
+        return [
+          {
+            id: "veo-3-1",
+            type: "video",
+            name: "Veo 3.1",
+            provider: "kie.ai",
+            description: "Video generation",
+            aliases: [],
+            creditCost: 20,
+            isEnabled: true,
+            priority: 0,
+            durations: [5, 10],
+            aspectRatios: ["16:9", "9:16"],
+            configJson: { generateType: "text-to-video" },
+          },
+        ];
+      }
+      return [];
+    });
+    mockGenerateVideoAsync.mockResolvedValue({ id: "video-task-1", status: "processing" });
+    mockGetTask.mockImplementation(async (taskId: string) => {
+      if (taskId === "video-task-1") {
+        return {
+          id: "video-task-1",
+          status: "completed",
+          resultUrl: "https://cdn.example.com/clip.mp4",
+          resultData: {
+            response: {
+              data: [{ url: "https://cdn.example.com/clip.mp4", duration: "0:08" }],
+            },
+          },
+          parameters: {
+            duration: "0:10",
+          },
+        };
+      }
+      if (taskId === "audio-task-1") {
+        return {
+          id: "audio-task-1",
+          status: "completed",
+          resultUrl: "https://cdn.example.com/narration.mp3",
+          resultData: {
+            response: {
+              data: [{ url: "https://cdn.example.com/narration.mp3", duration: "1:03" }],
+            },
+          },
+        };
+      }
+      return {
+        id: taskId,
+        status: "completed",
+      };
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 1,
+        generateAudio: true,
+        audioModel: "elevenlabs-tts",
+        imageSkillId: "video-skill",
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const firstInsertPayload = mockAddSlideToDeck.mock.calls[0]?.[0] as {
+      slideContent?: { durationMs?: number; elements?: Array<Record<string, unknown>> };
+    } | undefined;
+    expect(firstInsertPayload?.slideContent?.durationMs).toBe(63_000);
+    expect(firstInsertPayload?.slideContent?.elements?.some((element) => element.type === "video")).toBe(true);
+  });
+
+  it("does not inject period separators into Thai narration sent to audio generation", async () => {
+    setupHappyPath();
+    mockCallLLMStructured.mockResolvedValueOnce({
+      data: [
+        {
+          templateId: "hero_center" as const,
+          title: "การสนับสนุนและข้อควรระวัง",
+          body: ["กระตุ้นสมองและร่างกาย", "เล่นของเล่นโมบายสีสดใส"],
+          graphicCategory: "Health" as const,
+          imagePromptKeywords: "thai narration",
+        },
+      ],
+      tokensUsed: 120,
+      creditsUsed: 4,
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        prompt: "พัฒนาการเด็ก",
+        language: "th",
+        numSlides: 1,
+        generateAudio: true,
+        audioModel: "elevenlabs-tts",
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const firstAudioCall = mockGenerateAudioAsync.mock.calls[0]?.[0] as { text?: string } | undefined;
+    expect(firstAudioCall?.text).toBe(
+      "การสนับสนุนและข้อควรระวัง กระตุ้นสมองและร่างกาย เล่นของเล่นโมบายสีสดใส",
+    );
+    expect(firstAudioCall?.text).not.toContain(". ");
   });
 
   it("updates Redis progress to completed", async () => {
@@ -911,6 +1388,69 @@ describe("generateAIDraft - happy path", () => {
 });
 
 describe("generateAIDraft - Phase 1", () => {
+  it("skips article skill generation when custom article mode is enabled", async () => {
+    setupHappyPath();
+
+    await generateAIDraft(
+      buildMockInput({
+        articleSkillId: undefined,
+        useCustomArticle: true,
+        customArticleText: "Custom article intro\n\nSection One\nSection Two\nSection Three",
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    expect(mockGetSkillByIdAsync).not.toHaveBeenCalled();
+    expect(mockExecuteWithFallback).not.toHaveBeenCalled();
+    expect(mockCallLLMStructured).toHaveBeenCalledTimes(1);
+    const splitCall = mockCallLLMStructured.mock.calls[0]?.[0];
+    expect(splitCall.userMessage).toContain("Custom article intro");
+  });
+
+  it("uses the default text model to split a provided custom article", async () => {
+    setupHappyPath();
+
+    await generateAIDraft(
+      buildMockInput({
+        articleSkillId: undefined,
+        useCustomArticle: true,
+        customArticleText: "Provided article body for direct structuring.",
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const splitCall = mockCallLLMStructured.mock.calls[0]?.[0];
+    expect(splitCall.model).toBe("claude-sonnet-4-6");
+    expect(splitCall.preferredProviderId).toBeUndefined();
+    expect(splitCall.strictProviderPin).toBe(false);
+  });
+
+  it("uses article skill language override when top-level language is auto", async () => {
+    setupHappyPath();
+
+    await generateAIDraft(
+      buildMockInput({
+        prompt: "Toddler tantrums",
+        language: "auto",
+        articleSkillParams: {
+          language: "th",
+        },
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const firstCall = mockExecuteWithFallback.mock.calls[0]?.[0] as
+      | { messages?: Array<{ role?: string; content?: string }> }
+      | undefined;
+    expect(firstCall?.messages?.[1]?.content).toContain("Write the entire article in Thai.");
+  });
+
   it("loads skill definition via getSkillByIdAsync", async () => {
     setupHappyPath();
     await generateAIDraft(buildMockInput(), buildMockActor(), "test-token", "task-123");
@@ -932,6 +1472,48 @@ describe("generateAIDraft - Phase 1", () => {
     expect(mockExecuteWithFallback).toHaveBeenCalledWith(
       expect.objectContaining({
         model: "gpt-4o-mini",
+      }),
+    );
+  });
+
+  it("normalizes provider-qualified skill models before routing text generation", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockResolvedValueOnce({
+      id: "parenting-article-writer",
+      name: "Parenting Article Writer",
+      systemPrompt: "You are a parenting article writer.",
+      defaultModel: "openai/gpt-5.2",
+      executionMode: "llm-only",
+    });
+    mockResolveProviders.mockImplementation(async (model: string) => {
+      if (model === "gpt-5.2") {
+        return [
+          {
+            providerId: 2,
+            providerName: "opencode-zen",
+            baseUrl: "https://example.com",
+            apiKey: "test-key",
+            providerModelId: "gpt-5.2",
+            pricingInput: 0,
+            pricingOutput: 0,
+            isFree: false,
+            priority: 10,
+          },
+        ];
+      }
+      return [];
+    });
+
+    await generateAIDraft(
+      buildMockInput({ articleSkillId: "parenting-article-writer" }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    expect(mockExecuteWithFallback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "gpt-5.2",
       }),
     );
   });
@@ -1122,6 +1704,38 @@ describe("generateAIDraft - Phase 2", () => {
 });
 
 describe("generateAIDraft - Phase 3+4", () => {
+  it("deducts credits per LLM/media step with transparent descriptions", async () => {
+    setupHappyPath();
+
+    await generateAIDraft(buildMockInput(), buildMockActor(), "test-token", "task-123");
+
+    expect(mockDeductCreditsForModel).toHaveBeenCalledTimes(1); // article generation
+    expect(mockDeductCredits).toHaveBeenCalledTimes(3); // one media task per slide
+
+    const firstMediaCharge = mockDeductCredits.mock.calls[0][0] as { description: string; metadata?: Record<string, unknown> };
+    expect(firstMediaCharge.description).toContain("AI Draft image generation");
+    expect(firstMediaCharge.description).toContain("Deck #1");
+    expect(firstMediaCharge.metadata?.operation).toBe("ai_draft_media_generation");
+    expect(firstMediaCharge.metadata?.slideNumber).toBe(1);
+  });
+
+  it("aborts entire draft immediately when media billing fails under concurrency", async () => {
+    setupHappyPath();
+    mockDeductCredits
+      .mockRejectedValueOnce(new Error("Insufficient credits"))
+      .mockResolvedValue({ success: true, creditsUsed: 8, newBalance: 84, transactionId: 2 });
+
+    await generateAIDraft(
+      buildMockInput({ numSlides: 8 }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    expect(mockAddSlideToDeck).not.toHaveBeenCalled();
+    expect(mockGenerateImageAsync.mock.calls.length).toBeLessThanOrEqual(3); // bounded by concurrency when stopOnError is active
+  });
+
   it("loads image skill when imageSkillId provided", async () => {
     setupHappyPath();
     const input = buildMockInput({ imageSkillId: "image-prompt-engineer" });
@@ -1229,6 +1843,292 @@ describe("generateAIDraft - Phase 3+4", () => {
       "/uploads/ref-1.jpg",
       "https://cdn.example.com/ref-2.jpg",
     ]);
+  });
+
+  it("maps referenceImageUrls into extraParams when video model declares legacy video_urls input field", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (id: string) => {
+      if (id === "video-creator") {
+        return {
+          id: "video-creator",
+          name: "Video Creator",
+          type: "video-generation",
+          executionMode: "llm-only",
+        };
+      }
+      return {
+        id: "general-article-writer",
+        name: "General Article Writer",
+        systemPrompt: "You are a versatile article writer.",
+        executionMode: "llm-only",
+      };
+    });
+    mockGetModelsByTypeAsync.mockResolvedValueOnce([
+      {
+        id: "veo-3-1",
+        type: "video",
+        name: "Veo 3.1",
+        provider: "kie.ai",
+        description: "Video model",
+        creditCost: 50,
+        isEnabled: true,
+        priority: 0,
+        aspectRatios: ["16:9"],
+        configJson: {
+          generateType: "text-to-video",
+          inputFields: [
+            { key: "reference_clips", type: "video_urls" },
+          ],
+        },
+      },
+    ]);
+    mockGetTask.mockResolvedValue({ id: "video-task-1", status: "completed", resultUrl: "https://cdn.example.com/video.mp4" });
+
+    await generateAIDraft(
+      buildMockInput({
+        imageSkillId: "video-creator",
+        imageModel: "veo-3-1",
+        referenceImageUrls: ["/uploads/ref-1.jpg", "https://cdn.example.com/ref-2.jpg"],
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    expect(mockGenerateVideoAsync).toHaveBeenCalled();
+    const firstCall = mockGenerateVideoAsync.mock.calls[0][0];
+    expect(firstCall.extraParams).toMatchObject({
+      reference_clips: ["/uploads/ref-1.jpg", "https://cdn.example.com/ref-2.jpg"],
+    });
+  });
+
+  it("infers sync targets for aspectRatio and imageUrls when syncWith is omitted", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (id: string) => {
+      if (id === "video-creator") {
+        return {
+          id: "video-creator",
+          name: "Video Creator",
+          type: "video-generation",
+          executionMode: "llm-only",
+        };
+      }
+      return {
+        id: "general-article-writer",
+        name: "General Article Writer",
+        systemPrompt: "You are a versatile article writer.",
+        executionMode: "llm-only",
+      };
+    });
+    mockGetModelsByTypeAsync.mockResolvedValueOnce([
+      {
+        id: "veo-3-1",
+        type: "video",
+        name: "Veo 3.1",
+        provider: "kie.ai",
+        description: "Video model",
+        creditCost: 50,
+        isEnabled: true,
+        priority: 0,
+        aspectRatios: ["9:16", "16:9"],
+        configJson: {
+          generateType: "text-to-video",
+          inputFields: [
+            { key: "imageUrls", type: "text" },
+            { key: "aspectRatio", type: "select", options: [{ value: "16:9" }, { value: "9:16" }] },
+          ],
+        },
+      },
+    ]);
+    mockGetTask.mockResolvedValue({ id: "video-task-1", status: "completed", resultUrl: "https://cdn.example.com/video.mp4" });
+
+    await generateAIDraft(
+      buildMockInput({
+        imageSkillId: "video-creator",
+        imageModel: "veo-3-1",
+        canvasWidth: 720,
+        canvasHeight: 1280,
+        referenceImageUrls: ["/uploads/ref-1.jpg", "https://cdn.example.com/ref-2.jpg"],
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    expect(mockGenerateVideoAsync).toHaveBeenCalled();
+    const firstCall = mockGenerateVideoAsync.mock.calls[0][0];
+    expect(firstCall.extraParams).toMatchObject({
+      imageUrls: ["/uploads/ref-1.jpg", "https://cdn.example.com/ref-2.jpg"],
+      aspectRatio: "9:16",
+    });
+  });
+
+  it("syncs runtime prompt into model-mapped prompt input for video generation", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (id: string) => {
+      if (id === "video-creator") {
+        return {
+          id: "video-creator",
+          name: "Video Creator",
+          type: "video-generation",
+          executionMode: "llm-only",
+        };
+      }
+      return {
+        id: "general-article-writer",
+        name: "General Article Writer",
+        systemPrompt: "You are a versatile article writer.",
+        executionMode: "llm-only",
+      };
+    });
+    mockGetModelsByTypeAsync.mockResolvedValueOnce([
+      {
+        id: "veo-3-1",
+        type: "video",
+        name: "Veo 3.1",
+        provider: "kie.ai",
+        description: "Video model",
+        creditCost: 50,
+        isEnabled: true,
+        priority: 0,
+        aspectRatios: ["16:9"],
+        configJson: {
+          generateType: "text-to-video",
+          inputFields: [
+            { key: "scene_prompt", type: "text", default: "legacy-default-prompt", syncWith: "prompt" },
+          ],
+        },
+      },
+    ]);
+    mockGetTask.mockResolvedValue({ id: "video-task-1", status: "completed", resultUrl: "https://cdn.example.com/video.mp4" });
+
+    await generateAIDraft(
+      buildMockInput({
+        imageSkillId: "video-creator",
+        imageModel: "veo-3-1",
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    expect(mockGenerateVideoAsync).toHaveBeenCalled();
+    const firstCall = mockGenerateVideoAsync.mock.calls[0][0];
+    expect(firstCall.prompt).toContain("test image 1");
+    expect(firstCall.extraParams).toMatchObject({
+      scene_prompt: firstCall.prompt,
+    });
+  });
+
+  it("applies mediaModelExtraParams from request and strips unknown keys", async () => {
+    setupHappyPath();
+    mockGetModelsByTypeAsync.mockResolvedValueOnce([
+      {
+        id: "flux-2.0",
+        type: "image",
+        name: "Flux 2.0",
+        provider: "fal",
+        description: "Image model",
+        creditCost: 10,
+        isEnabled: true,
+        priority: 0,
+        aspectRatios: ["9:16", "16:9"],
+        configJson: {
+          generateType: "text-to-image",
+          inputFields: [
+            { key: "quality", type: "select", default: "standard", options: [{ value: "standard" }, { value: "pro" }] },
+            { key: "seed", type: "number" },
+            { key: "aspectRatio", type: "select", options: [{ value: "16:9" }, { value: "9:16" }] },
+          ],
+        },
+      },
+    ]);
+
+    await generateAIDraft(
+      buildMockInput({
+        imageModel: "flux-2.0",
+        canvasWidth: 720,
+        canvasHeight: 1280,
+        mediaModelExtraParams: {
+          quality: "pro",
+          seed: 777,
+          aspectRatio: "1:1",
+          unknown: "drop-me",
+        },
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    expect(mockGenerateImageAsync).toHaveBeenCalled();
+    const firstCall = mockGenerateImageAsync.mock.calls[0][0];
+    expect(firstCall.extraParams).toMatchObject({
+      quality: "pro",
+      seed: 777,
+      aspectRatio: "9:16",
+    });
+    expect(firstCall.extraParams).not.toHaveProperty("unknown");
+  });
+
+  it("passes configured kie_model_id for video generation when media model is Veo 3.1", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (id: string) => {
+      if (id === "video-creator") {
+        return {
+          id: "video-creator",
+          name: "Video Creator",
+          type: "video-generation",
+          executionMode: "llm-only",
+        };
+      }
+      return {
+        id: "general-article-writer",
+        name: "General Article Writer",
+        systemPrompt: "You are a versatile article writer.",
+        executionMode: "llm-only",
+      };
+    });
+    mockGetModelsByTypeAsync.mockResolvedValueOnce([
+      {
+        id: "veo-3-1",
+        type: "video",
+        name: "Veo 3.1",
+        provider: "kie.ai",
+        description: "Video model",
+        creditCost: 50,
+        isEnabled: true,
+        priority: 0,
+        aspectRatios: ["16:9"],
+        configJson: {
+          generateType: "text-to-video",
+          apiEndpoint: "/api/v1/veo/generate",
+          apiPayloadFormat: "veo",
+          kieModelId: "veo3_fast",
+        },
+      },
+    ]);
+    mockGetTask.mockResolvedValue({ id: "video-task-1", status: "completed", resultUrl: "https://cdn.example.com/video.mp4" });
+
+    await generateAIDraft(
+      buildMockInput({
+        imageSkillId: "video-creator",
+        imageModel: "veo-3-1",
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    expect(mockGenerateVideoAsync).toHaveBeenCalled();
+    const firstCall = mockGenerateVideoAsync.mock.calls[0][0];
+    expect(firstCall.model).toBe("veo-3-1");
+    expect(firstCall.apiConfig).toMatchObject({
+      provider: "kie.ai",
+      endpoint: "/api/v1/veo/generate",
+      payload_format: "veo",
+      kie_model_id: "veo3_fast",
+    });
   });
 
   it("uses canvas aspect ratio for image generation when provided", async () => {
@@ -1510,6 +2410,72 @@ describe("resolvePendingMediaForDeck", () => {
       id: "ph-1",
       type: "image",
       src: "https://cdn.example.com/resolved.jpg",
+    });
+  });
+
+  it("extends slide duration when a pending video resolves longer than the current slide timing", async () => {
+    const actor = buildMockActor();
+    mockGetPresentationDeckDetail.mockResolvedValue({
+      deck: { id: 1, version: 10 },
+      slides: [
+        {
+          id: 12,
+          deckId: 1,
+          orderIndex: 0,
+          version: 3,
+          title: "Slide B",
+          notes: null,
+          slideContent: {
+            durationMs: 5000,
+            elements: [
+              { id: "ph-v1", type: "rect", x: 0, y: 0, width: 640, height: 360, fill: "#111" },
+            ],
+            pendingMediaJobs: [
+              {
+                id: "pmj-v1",
+                mediaType: "video",
+                mediaTaskId: "video-task-1",
+                targetElementId: "ph-v1",
+                targetX: 0,
+                targetY: 0,
+                targetWidth: 640,
+                targetHeight: 360,
+                status: "processing",
+                createdAt: "2026-03-02T12:00:00.000Z",
+              },
+            ],
+          },
+        },
+      ],
+      assets: [],
+    });
+    mockGetTask.mockResolvedValue({
+      id: "video-task-1",
+      status: "completed",
+      resultUrl: "https://cdn.example.com/resolved.mp4",
+      resultData: {
+        response: {
+          data: [{ url: "https://cdn.example.com/resolved.mp4", durationSeconds: 7.6 }],
+        },
+      },
+    });
+    mockUpdateSlideInDeck.mockResolvedValue({ id: 12, version: 4 });
+
+    const result = await resolvePendingMediaForDeck(
+      { deckId: 1, maxJobs: 10 },
+      actor,
+      "test-token",
+    );
+
+    expect(result.jobsChecked).toBe(1);
+    expect(result.jobsResolved).toBe(1);
+    const payload = mockUpdateSlideInDeck.mock.calls[0]?.[0];
+    expect(payload.slideContent.durationMs).toBe(7600);
+    expect(payload.slideContent.pendingMediaJobs).toBeUndefined();
+    expect(payload.slideContent.elements[0]).toMatchObject({
+      id: "ph-v1",
+      type: "video",
+      src: "https://cdn.example.com/resolved.mp4",
     });
   });
 });

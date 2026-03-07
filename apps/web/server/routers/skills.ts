@@ -147,6 +147,88 @@ function mapCategoryToEnum(category?: string): string {
   return "chat_assistant"; // default for external skills (most are chat-based)
 }
 
+type VisionModelOption = {
+  id: string;
+  name: string;
+  provider: string;
+  providerDisplayName: string;
+  isDefault?: boolean;
+  supportsVision?: boolean;
+};
+
+const FALLBACK_VISION_MODELS: VisionModelOption[] = [
+  { id: "openai/gpt-4o", name: "GPT-4o", provider: "openai", providerDisplayName: "OpenAI", isDefault: true, supportsVision: true },
+  { id: "openai/gpt-4o-mini", name: "GPT-4o Mini", provider: "openai", providerDisplayName: "OpenAI", supportsVision: true },
+  { id: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet", provider: "anthropic", providerDisplayName: "Anthropic", supportsVision: true },
+];
+
+async function getVisionModelOptions(): Promise<VisionModelOption[]> {
+  const providers = await db
+    .select({
+      providerName: llmProviders.providerName,
+      displayName: llmProviders.displayName,
+      defaultModel: llmProviders.defaultModel,
+      availableModels: llmProviders.availableModels,
+      configJson: llmProviders.configJson,
+      sortOrder: llmProviders.sortOrder,
+      id: llmProviders.id,
+    })
+    .from(llmProviders)
+    .where(eq(llmProviders.isEnabled, true))
+    .orderBy(asc(llmProviders.sortOrder), asc(llmProviders.id));
+
+  const allModels: VisionModelOption[] = [];
+  const visionPatterns = [
+    "gpt-4o", "gpt-4-vision", "gpt-4-turbo", "gpt-5",
+    "claude-3", "claude-haiku", "claude-sonnet", "claude-opus",
+    "gemini", "llava", "qwen-vl",
+  ];
+
+  for (const provider of providers) {
+    const config = provider.configJson as { supportsVision?: boolean } | null;
+    const models = provider.availableModels || [];
+
+    if (models.length > 0) {
+      for (const model of models) {
+        const modelId = typeof model === "string" ? model : model.id;
+        const modelName = typeof model === "string" ? model : model.name;
+        const supportsVision = config?.supportsVision ||
+          visionPatterns.some(pattern => modelId.toLowerCase().includes(pattern.toLowerCase()));
+        const fullModelId = modelId.includes("/") ? modelId : `${provider.providerName}/${modelId}`;
+
+        allModels.push({
+          id: fullModelId,
+          name: modelName,
+          provider: provider.providerName,
+          providerDisplayName: provider.displayName,
+          isDefault: modelId === provider.defaultModel || fullModelId === provider.defaultModel,
+          supportsVision,
+        });
+      }
+      continue;
+    }
+
+    if (provider.defaultModel) {
+      const fullModelId = provider.defaultModel.includes("/")
+        ? provider.defaultModel
+        : `${provider.providerName}/${provider.defaultModel}`;
+
+      allModels.push({
+        id: fullModelId,
+        name: provider.defaultModel,
+        provider: provider.providerName,
+        providerDisplayName: provider.displayName,
+        isDefault: true,
+        supportsVision: visionPatterns.some(pattern =>
+          provider.defaultModel?.toLowerCase().includes(pattern.toLowerCase())
+        ),
+      });
+    }
+  }
+
+  return allModels.length > 0 ? allModels : FALLBACK_VISION_MODELS;
+}
+
 function decryptApiKey(text: string): string {
   return decrypt(text);
 }
@@ -1033,99 +1115,12 @@ export const skillsRouter = router({
   // (vision capability is a bonus when reference images are provided)
   getVisionModels: protectedProcedure.query(async () => {
     try {
-      // Get enabled LLM providers
-      const providers = await db
-        .select({
-          providerName: llmProviders.providerName,
-          displayName: llmProviders.displayName,
-          defaultModel: llmProviders.defaultModel,
-          availableModels: llmProviders.availableModels,
-          configJson: llmProviders.configJson,
-        })
-        .from(llmProviders)
-        .where(eq(llmProviders.isEnabled, true));
-
-      // Build list of ALL available models
-      const allModels: Array<{
-        id: string;
-        name: string;
-        provider: string;
-        providerDisplayName: string;
-        isDefault?: boolean;
-        supportsVision?: boolean;
-      }> = [];
-
-      // Known vision-capable model patterns (for informational purposes)
-      const visionPatterns = [
-        "gpt-4o", "gpt-4-vision", "gpt-4-turbo", "gpt-5",
-        "claude-3", "claude-haiku", "claude-sonnet", "claude-opus",
-        "gemini", "llava", "qwen-vl",
-      ];
-
-      for (const provider of providers) {
-        const config = provider.configJson as { supportsVision?: boolean } | null;
-        const models = provider.availableModels || [];
-
-        // If provider has availableModels, add ALL of them
-        if (models.length > 0) {
-          for (const model of models) {
-            const modelId = typeof model === "string" ? model : model.id;
-            const modelName = typeof model === "string" ? model : model.name;
-
-            // Check if model likely supports vision (informational only)
-            const supportsVision = config?.supportsVision ||
-              visionPatterns.some(pattern => modelId.toLowerCase().includes(pattern.toLowerCase()));
-
-            // For OpenRouter format, the model.id already includes provider prefix
-            // e.g., "openai/gpt-4o-mini" - don't double-prefix
-            const fullModelId = modelId.includes("/") ? modelId : `${provider.providerName}/${modelId}`;
-
-            allModels.push({
-              id: fullModelId,
-              name: modelName,
-              provider: provider.providerName,
-              providerDisplayName: provider.displayName,
-              isDefault: modelId === provider.defaultModel || fullModelId === provider.defaultModel,
-              supportsVision,
-            });
-          }
-        } else if (provider.defaultModel) {
-          // If no availableModels but has defaultModel, add it
-          const fullModelId = provider.defaultModel.includes("/")
-            ? provider.defaultModel
-            : `${provider.providerName}/${provider.defaultModel}`;
-
-          allModels.push({
-            id: fullModelId,
-            name: provider.defaultModel,
-            provider: provider.providerName,
-            providerDisplayName: provider.displayName,
-            isDefault: true,
-            supportsVision: visionPatterns.some(pattern =>
-              provider.defaultModel?.toLowerCase().includes(pattern.toLowerCase())
-            ),
-          });
-        }
-      }
-
-      // If no models found, add common defaults
-      if (allModels.length === 0) {
-        allModels.push(
-          { id: "openai/gpt-4o", name: "GPT-4o", provider: "openai", providerDisplayName: "OpenAI", isDefault: true, supportsVision: true },
-          { id: "openai/gpt-4o-mini", name: "GPT-4o Mini", provider: "openai", providerDisplayName: "OpenAI", supportsVision: true },
-          { id: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet", provider: "anthropic", providerDisplayName: "Anthropic", supportsVision: true },
-        );
-      }
-
-      return { models: allModels };
+      return { models: await getVisionModelOptions() };
     } catch (error) {
       console.error("[Skills] Error fetching models:", error);
       // Return fallback models on error
       return {
-        models: [
-          { id: "openai/gpt-4o", name: "GPT-4o", provider: "openai", providerDisplayName: "OpenAI", isDefault: true, supportsVision: true },
-          { id: "openai/gpt-4o-mini", name: "GPT-4o Mini", provider: "openai", providerDisplayName: "OpenAI", supportsVision: true },
-        ],
+        models: FALLBACK_VISION_MODELS,
       };
     }
   }),
@@ -1155,8 +1150,8 @@ export const skillsRouter = router({
 
         if (!skill) {
           return {
-            defaultModel: "openai/gpt-4o",
-            llmModelId: "openai/gpt-4o",
+            defaultModel: null,
+            llmModelId: null,
             preferredProviderId: null,
             strictProviderPin: false,
             availableModels: null,
@@ -1164,8 +1159,8 @@ export const skillsRouter = router({
         }
 
         return {
-          defaultModel: skill.defaultModel || "openai/gpt-4o",
-          llmModelId: skill.llmModelId || skill.defaultModel || "openai/gpt-4o",
+          defaultModel: skill.defaultModel,
+          llmModelId: skill.llmModelId || skill.defaultModel,
           preferredProviderId: skill.preferredProviderId ?? null,
           strictProviderPin: skill.strictProviderPin ?? false,
           availableModels: skill.availableModels,
@@ -1173,8 +1168,8 @@ export const skillsRouter = router({
       } catch (error) {
         console.error("[Skills] Error fetching skill config:", error);
         return {
-          defaultModel: "openai/gpt-4o",
-          llmModelId: "openai/gpt-4o",
+          defaultModel: null,
+          llmModelId: null,
           preferredProviderId: null,
           strictProviderPin: false,
           availableModels: null,

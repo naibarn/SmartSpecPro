@@ -343,6 +343,7 @@ export default function DocumentManagement() {
     { enabled: currentFolderId != null },
   );
   const folderPath = folderPathQuery.data ?? [];
+  const currentFolderName = folderPath.length > 0 ? folderPath[folderPath.length - 1]?.title ?? null : null;
 
   useEffect(() => {
     if (!reindexStatus) return;
@@ -1346,6 +1347,8 @@ export default function DocumentManagement() {
       <ShareLibraryDialog
         open={isShareLibraryOpen}
         onOpenChange={setIsShareLibraryOpen}
+        folderId={currentFolderId}
+        folderName={currentFolderName}
       />
 
       <AlertDialog open={isReindexConfirmOpen} onOpenChange={setIsReindexConfirmOpen}>
@@ -1492,9 +1495,11 @@ export default function DocumentManagement() {
                             variant="outline"
                             className="h-7 gap-1 rounded-lg px-2 text-xs"
                             onClick={() => setIsShareLibraryOpen(true)}
+                            disabled={currentFolderId == null}
+                            title={currentFolderId == null ? "Open a folder to share it with a group" : undefined}
                           >
                             <Share2 className="h-3 w-3" />
-                            Share
+                            Share Folder
                           </Button>
                         </div>
                       </div>
@@ -1884,9 +1889,11 @@ export default function DocumentManagement() {
                           variant="outline"
                           className="h-8 gap-1.5 rounded-lg px-2.5 text-xs"
                           onClick={() => setIsShareLibraryOpen(true)}
+                          disabled={currentFolderId == null}
+                          title={currentFolderId == null ? "Open a folder to share it with a group" : undefined}
                         >
                           <Share2 className="h-3.5 w-3.5" />
-                          Share
+                          Share Folder
                         </Button>
                       </div>
                     </div>

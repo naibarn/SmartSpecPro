@@ -115,7 +115,7 @@
         "markdown",
         "plain_text"
       ],
-      "default": "markdown"
+      "default": "plain_text"
     },
     "response_mode": {
       "type": "string",

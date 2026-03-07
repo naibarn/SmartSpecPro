@@ -16,7 +16,7 @@ export const artifactRouter = router({
   getArtifacts: protectedProcedure
     .input(z.object({ conversationId: z.number() }))
     .query(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? ctx.user.tenantId;
+      const tenantId = ctx.tenantId ?? String(ctx.user.currentTenantId ?? "");
       if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context required" });
 
       try {
@@ -36,7 +36,7 @@ export const artifactRouter = router({
   getArtifactVersions: protectedProcedure
     .input(z.object({ artifactId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? ctx.user.tenantId;
+      const tenantId = ctx.tenantId ?? String(ctx.user.currentTenantId ?? "");
       if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context required" });
 
       try {
@@ -60,7 +60,7 @@ export const artifactRouter = router({
       title: z.string().max(200).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const tenantId = ctx.tenantId ?? ctx.user.tenantId;
+      const tenantId = ctx.tenantId ?? String(ctx.user.currentTenantId ?? "");
       try {
         return await createArtifactVersion(
           input.artifactId,

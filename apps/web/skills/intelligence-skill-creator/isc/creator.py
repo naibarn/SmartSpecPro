@@ -17,10 +17,10 @@ Mandatory output for every created skill:
   skill.md                    — manifest with YAML frontmatter
   python/skill.py OR js/skill.js
   tests/tests.json
-  README.md
 """
 from __future__ import annotations
 
+import ast
 import json
 import re
 import sys
@@ -30,6 +30,11 @@ from typing import Any
 
 from isc.llm import OpenAICompatibleClient
 from isc.models import CreatedSkill
+from isc.artifact_validation import (
+    collect_creation_validation_results,
+    raise_for_validation_errors,
+)
+from isc.exemplars import format_exemplar_context, select_relevant_skill_exemplars
 
 # ── System prompts ──────────────────────────────────────────────────────────────
 
@@ -200,7 +205,6 @@ class SkillCreator:
       skill.md
       python/skill.py  OR  js/skill.js
       tests/tests.json
-      README.md
     """
 
     def __init__(
@@ -211,6 +215,7 @@ class SkillCreator:
     ) -> None:
         self.client = llm_client
         self.skills_root = Path(skills_root)
+        self._active_exemplar_context = "(no exemplar context prepared)"
         self.safety_cfg = safety_cfg or {
             "restrict_paths_under_skills": True,
             "disallow_new_deps_in_skill_py": True,
@@ -239,6 +244,7 @@ class SkillCreator:
             CreatedSkill with paths and summary.
         """
         # Phase 1: Plan
+        self._active_exemplar_context = self._build_exemplar_context(description)
         _log("Phase 1/7 — Planning skill architecture")
         plan = self._phase_plan(description, language, complexity)
         if skill_name:
@@ -279,11 +285,28 @@ class SkillCreator:
 
         # Phase 6.5: Test-Driven Creation (Self-Correction)
         _log("Phase 6.5/7 — Test-Driven Creation (Self-Correction)")
-        skill_code, tests = self._phase_tdc(plan, plan['skill_name'], skill_code, tests)
+        skill_code, tests = self._phase_tdc(
+            plan,
+            plan['skill_name'],
+            skill_code,
+            tests,
+            output_schema,
+        )
 
         # Phase 6.7: Dependencies
         _log("Phase 6.7/7 — Generating dependencies")
         dependencies = self._phase_dependencies(plan, skill_code)
+
+        # Validation gate before writing anything to disk
+        _log("Phase 6.9/7 — Validating generated artifacts")
+        self._phase_validate_artifacts(
+            plan=plan,
+            input_schema=input_schema,
+            output_schema=output_schema,
+            ui_schema=ui_schema,
+            skill_md=skill_md,
+            tests=tests,
+        )
 
         # Phase 7: Write to disk
         _log(f"Phase 7/7 — Writing to {self.skills_root / plan['skill_name']}")
@@ -340,6 +363,7 @@ class SkillCreator:
         }
 
         # Phase 1: Plan (workflow-aware)
+        self._active_exemplar_context = self._build_exemplar_context(description)
         _log("Phase 1/7 — Planning skill architecture from workflow")
         plan = self._phase_plan_from_workflow(description, workflow_spec, language, complexity)
         if skill_name:
@@ -373,10 +397,26 @@ class SkillCreator:
         tests = self._phase_tests(plan, input_schema)
 
         _log("Phase 6.5/7 — Test-Driven Creation (Self-Correction)")
-        skill_code, tests = self._phase_tdc(plan, plan['skill_name'], skill_code, tests)
+        skill_code, tests = self._phase_tdc(
+            plan,
+            plan['skill_name'],
+            skill_code,
+            tests,
+            output_schema,
+        )
 
         _log("Phase 6.7/7 — Generating dependencies")
         dependencies = self._phase_dependencies(plan, skill_code)
+
+        _log("Phase 6.9/7 — Validating generated artifacts")
+        self._phase_validate_artifacts(
+            plan=plan,
+            input_schema=input_schema,
+            output_schema=output_schema,
+            ui_schema=ui_schema,
+            skill_md=skill_md,
+            tests=tests,
+        )
 
         _log(f"Phase 7/7 — Writing to {self.skills_root / plan['skill_name']}")
         return self._phase_write(
@@ -392,6 +432,9 @@ class SkillCreator:
 DESCRIPTION: {description}
 PREFERRED LANGUAGE: {language}  (auto = choose best between python and javascript)
 COMPLEXITY: {complexity}
+
+LOCAL SKILL EXEMPLARS:
+{self._active_exemplar_context}
 
 Return this EXACT JSON structure (no omissions):
 {{
@@ -444,6 +487,9 @@ WORKFLOW STRUCTURE:
 PREFERRED LANGUAGE: {language}  (auto = choose best)
 COMPLEXITY: {complexity}
 
+LOCAL SKILL EXEMPLARS:
+{self._active_exemplar_context}
+
 The skill must replicate EVERY node's logic as code — triggers become inputs,
 AI/LLM nodes become function calls, data nodes become transformations, etc.
 
@@ -486,6 +532,9 @@ Return the EXACT same JSON structure as a standard skill plan:
 PLAN:
 {json.dumps(plan, ensure_ascii=False, indent=2)}
 
+LOCAL SKILL EXEMPLARS:
+{self._active_exemplar_context}
+
 Return a COMPLETE JSON Schema (draft-07):
 - "$schema": "http://json-schema.org/draft-07/schema#"
 - "title": skill title
@@ -509,6 +558,9 @@ Be comprehensive — add sensible optional parameters beyond the plan's basic in
 
 PLAN:
 {json.dumps(plan, ensure_ascii=False, indent=2)}
+
+LOCAL SKILL EXEMPLARS:
+{self._active_exemplar_context}
 
 Return a COMPLETE JSON Schema (draft-07):
 - "$schema": "http://json-schema.org/draft-07/schema#"
@@ -534,6 +586,9 @@ Return a COMPLETE JSON Schema (draft-07):
 
 PLAN:
 {json.dumps(plan, ensure_ascii=False, indent=2)}
+
+LOCAL SKILL EXEMPLARS:
+{self._active_exemplar_context}
 
 INPUT SCHEMA properties:
 {json.dumps(input_schema.get('properties', {}), ensure_ascii=False, indent=2)}
@@ -695,6 +750,9 @@ Created by **Intelligence Skill Creator (ISC) v0.4.0**
 PLAN:
 {plan_json}
 
+LOCAL SKILL EXEMPLARS:
+{self._active_exemplar_context}
+
 SCHEMAS (input + output for reference):
 {schemas_json}
 
@@ -714,6 +772,9 @@ Write the complete python/skill.py now:"""
 
 PLAN:
 {plan_json}
+
+LOCAL SKILL EXEMPLARS:
+{self._active_exemplar_context}
 
 SCHEMAS (input + output for reference):
 {schemas_json}
@@ -849,23 +910,80 @@ Return JSON: {{"issues": [...], "fixed_code": "...COMPLETE file content..."}}"""
                 violations.append("Direct Database import detected. Must use HTTP APIs/MCP.")
             if re.search(r'^\s*from\s+(sqlite3|psycopg2|mysql|sqlalchemy|pymongo)\s+import', code, re.MULTILINE):
                 violations.append("Direct Database import detected. Must use HTTP APIs/MCP.")
+            violations.extend(self._scan_python_ast_for_security_issues(code))
         else: # javascript
             if re.search(r'(require|import).*(sqlite|mysql|pg|mongodb|postgres)', code_lower):
                  violations.append("Direct Database import detected. Must use HTTP APIs/MCP.")
+            if re.search(r'\b(child_process|exec|spawn|fork|execsync|spawnsync)\b', code_lower):
+                 violations.append("Process execution detected in JavaScript skill. This is not allowed.")
+            if re.search(r'\b(eval|function)\s*\(', code_lower):
+                 violations.append("Dynamic code execution detected in JavaScript skill. This is not allowed.")
 
         # 3. File System Access
         if language == "python":
+            if re.search(r'open\s*\(', code):
+                 violations.append("File system access via open() detected. Must use HTTP APIs/MCP.")
             if re.search(r'open\s*\(.*,\s*[\'"]w[\'"]\)', code): # writing files
                  violations.append("File system write (open(..., 'w')) detected. Must use HTTP APIs/MCP.")
             if re.search(r'os\.(remove|rmdir|unlink|mkdir|makedirs|rename)', code):
                  violations.append("File system manipulation (os.*) detected. Must use HTTP APIs/MCP.")
         else:
-            if re.search(r'fs\.(writeFile|unlink|mkdir|rename|appendFile|rm)', code):
+            if re.search(r'fs\.(readFile|writeFile|unlink|mkdir|rename|appendFile|rm)', code):
                  violations.append("File system manipulation (fs.*) detected. Must use HTTP APIs/MCP.")
 
         if violations:
             msg = "\n".join(f"- {v}" for v in violations)
             raise RuntimeError(f"SECURITY CHECK FAILED. Code violates constraints:\n{msg}")
+
+    def _scan_python_ast_for_security_issues(self, code: str) -> list[str]:
+        violations: list[str] = []
+        try:
+            tree = ast.parse(code)
+        except SyntaxError as e:
+            return [f"Generated Python code is not valid syntax: {e}"]
+
+        banned_imports = {"subprocess", "sqlite3", "psycopg2", "sqlalchemy", "pymongo"}
+        banned_call_names = {"eval", "exec", "compile"}
+        banned_attr_calls = {
+            "Path.read_text",
+            "Path.write_text",
+            "Path.open",
+            "os.system",
+            "os.popen",
+            "subprocess.run",
+            "subprocess.Popen",
+            "subprocess.call",
+            "subprocess.check_call",
+            "subprocess.check_output",
+        }
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    if alias.name.split(".")[0] in banned_imports:
+                        violations.append(f"Banned import detected: {alias.name}")
+            elif isinstance(node, ast.ImportFrom):
+                if node.module and node.module.split(".")[0] in banned_imports:
+                    violations.append(f"Banned import detected: {node.module}")
+            elif isinstance(node, ast.Call):
+                func = node.func
+                if isinstance(func, ast.Name) and func.id in banned_call_names:
+                    violations.append(f"Dynamic code execution detected: {func.id}()")
+                if isinstance(func, ast.Name) and func.id == "open":
+                    violations.append("File system access detected: open()")
+                if isinstance(func, ast.Attribute):
+                    base = None
+                    if isinstance(func.value, ast.Name):
+                        base = func.value.id
+                    elif isinstance(func.value, ast.Attribute) and isinstance(func.value.value, ast.Name):
+                        base = f"{func.value.value.id}.{func.value.attr}"
+                    if base:
+                        dotted = f"{base}.{func.attr}"
+                        if dotted in banned_attr_calls:
+                            violations.append(f"Banned call detected: {dotted}()")
+                    if func.attr in {"read_text", "write_text", "open"}:
+                        violations.append(f"Path-based file access detected: .{func.attr}()")
+        return violations
 
     # ── Phase 6: Test Generation ────────────────────────────────────────────────
 
@@ -876,6 +994,9 @@ Return JSON: {{"issues": [...], "fixed_code": "...COMPLETE file content..."}}"""
 PLAN:
 {json.dumps(plan, ensure_ascii=False, indent=2)}
 
+LOCAL SKILL EXEMPLARS:
+{self._active_exemplar_context}
+
 INPUT SCHEMA required fields: {json.dumps(required)}
 
 Return a JSON array of 5-6 test cases:
@@ -883,7 +1004,11 @@ Return a JSON array of 5-6 test cases:
   {{
     "id": "test_001_happy_path",
     "input": {{"field": "value"}},
-    "expected_contains": ["string that MUST appear in output JSON"],
+    "expected_contains": ["string that MUST appear in the raw output"],
+    "forbidden_contains": ["unexpected text that must not appear"],
+    "expected_success": true,
+    "expected_json_paths": {{"success": true, "output": "some exact string or summary"}},
+    "expected_schema_valid": true,
     "context": "What this test verifies"
   }},
   ...
@@ -895,7 +1020,14 @@ Include:
 3. Edge case: minimal/boundary input
 4. Edge case: rich/complex input
 5. Error case: missing required field → should return success=false
-6. Error case: invalid type or out-of-range value → should return success=false"""
+6. Error case: invalid type or out-of-range value → should return success=false
+
+Rules:
+- Every test must set expected_success
+- Every test must set expected_schema_valid=true
+- Use expected_json_paths for values that should be exact in parsed JSON
+- Use expected_contains only for human-readable text fragments inside the raw output string
+- Use forbidden_contains for text that should never appear"""
 
         try:
             tests = _llm_json(self.client, _SYS_PLANNER, prompt)
@@ -908,13 +1040,24 @@ Include:
                 "id": "test_001_basic",
                 "input": {},
                 "expected_contains": ["success"],
+                "forbidden_contains": [],
+                "expected_success": False,
+                "expected_json_paths": {},
+                "expected_schema_valid": True,
                 "context": "Basic smoke test",
             }
         ]
 
     # ── Phase 6.5: Test-Driven Creation ─────────────────────────────────────────
 
-    def _phase_tdc(self, plan: dict, skill_name: str, skill_code: str, tests: list[dict]) -> tuple[str, list[dict]]:
+    def _phase_tdc(
+        self,
+        plan: dict,
+        skill_name: str,
+        skill_code: str,
+        tests: list[dict],
+        output_schema: dict,
+    ) -> tuple[str, list[dict]]:
         """
         Write the skill to a temporary directory, run evaluators, and if tests fail,
         ask the LLM to fix the code. Max 2 iterations.
@@ -943,6 +1086,13 @@ Include:
                 
                 test_file = tmp_path / "tests.json"
                 test_file.write_text(json.dumps({"tests": tests}, indent=2), encoding="utf-8")
+
+                schema_dir = tmp_path / "schemas"
+                schema_dir.mkdir(parents=True, exist_ok=True)
+                (schema_dir / "output.schema.json").write_text(
+                    json.dumps(output_schema, indent=2),
+                    encoding="utf-8",
+                )
                 
                 report = evaluate_from_path(tmp_path)
                 
@@ -953,7 +1103,12 @@ Include:
                 _log(f"  TDC Iteration {iteration+1}: {report.passed}/{report.total} tests passed. Asking LLM for fixes...")
                 
                 failed_tests = [r for r in report.results if not r.passed]
-                failure_details = "\n".join([f"- Test {r.test_id}: expected contains {r.missing}. Actual output: {r.output}" for r in failed_tests])
+                failure_details = "\n".join(
+                    [
+                        f"- Test {r.test_id}: reasons={r.reasons} missing={r.missing} categories={r.categories}. Actual output: {r.output}"
+                        for r in failed_tests
+                    ]
+                )
                 
                 system = f"You are an expert engineer. Your task is to fix the '{lang}' code so it passes the failing tests.\nOutput ONLY valid JSON where keys are file paths (e.g. '{rel_path}') and values are the FULL replacement string for that file.\nNo markdown, no explanations."
                 user = f"Current code:\n{skill_code}\n\nFailing test results:\n{failure_details}\n\nPlease fix the code."
@@ -974,30 +1129,30 @@ Include:
     # ── Phase 6.7: Dependencies ─────────────────────────────────────────────────
 
     def _phase_dependencies(self, plan: dict, skill_code: str) -> str:
-        lang = plan.get('language', 'python')
-        if lang == "python":
-            sys_msg = "You are a Python expert. Analyze the code and return ONLY the contents of a requirements.txt file (e.g., beautifulsoup4==4.12.0). Do NOT include stdlib modules (json, math, etc.). If no external dependencies are needed, return an empty string. No markdown."
-        else:
-            sys_msg = "You are a Node.js expert. Analyze the code and return ONLY the contents of a valid package.json file containing only the required 'dependencies' field. Do NOT include node built-ins (fs, path, etc.). If no external dependencies are needed, return an empty string. No markdown."
-        
-        user_msg = f"Code:\n{skill_code}"
-        
-        try:
-            deps = self.client.chat([{"role":"system","content":sys_msg},{"role":"user","content":user_msg}]).strip()
-            deps = deps.replace("```json", "").replace("```text", "").replace("```", "").strip()
-            if deps.lower() in ["none", ""]:
-                return ""
-            
-            # Additional safety check
-            if lang == "javascript" and not deps.startswith("{"):
-                return ""
-            
-            return deps
-        except Exception as e:
-            _log(f"  Dependency generation failed: {e}")
-            return ""
+        _log("  Dependency generation disabled: ISC now defaults to stdlib/built-ins only")
+        return ""
 
     # ── Phase 7: Write to Disk ──────────────────────────────────────────────────
+
+    def _phase_validate_artifacts(
+        self,
+        *,
+        plan: dict,
+        input_schema: dict,
+        output_schema: dict,
+        ui_schema: dict,
+        skill_md: str,
+        tests: list[dict],
+    ) -> None:
+        results = collect_creation_validation_results(
+            input_schema=input_schema,
+            output_schema=output_schema,
+            ui_schema=ui_schema,
+            skill_md=skill_md,
+            tests=tests,
+            language=plan.get("language", "python"),
+        )
+        raise_for_validation_errors(results)
 
     def _phase_write(
         self,
@@ -1061,11 +1216,6 @@ Include:
         _write_json(tests_dir / "tests.json", {"tests": tests})
         files_written.append("tests/tests.json")
 
-        # ── README.md ─────────────────────────────────────────────────────────
-        readme = _build_readme(plan, files_written)
-        (skill_dir / "README.md").write_text(readme, encoding="utf-8")
-        files_written.append("README.md")
-
         # ── Summary ───────────────────────────────────────────────────────────
         summary_lines = [
             f"Language: {language}",
@@ -1094,52 +1244,6 @@ Include:
             warnings=warnings,
         )
 
-
-# ── README builder ──────────────────────────────────────────────────────────────
-
-def _build_readme(plan: dict, files: list[str]) -> str:
-    skill_title = plan.get("skill_title", plan.get("skill_name", "Skill"))
-    description = plan.get("description", "")
-    purpose = plan.get("purpose", "")
-    language = plan.get("language", "python")
-    complexity = plan.get("complexity", "moderate")
-    logic_steps = plan.get("logic_steps", [])
-    categories = plan.get("categories", [])
-    tags = plan.get("tags", [])
-
-    steps_str = "\n".join(f"{i + 1}. {s}" for i, s in enumerate(logic_steps))
-    files_str = "\n".join(f"- `{f}`" for f in files)
-    tags_str = " ".join(f"`{t}`" for t in tags[:8])
-
-    return f"""# {skill_title}
-
-> {description}
-
-## About
-
-{purpose}
-
-**Language**: {language} | **Complexity**: {complexity} | **Category**: {', '.join(categories)}
-
-**Tags**: {tags_str}
-
-## Files
-
-{files_str}
-
-## Schemas
-
-| File | Purpose |
-|------|---------|
-| `schemas/input.schema.json` | Input field validation & API documentation |
-| `schemas/output.schema.json` | Output structure specification |
-| `schemas/ui.schema.json` | SmartAIHub UI form (Thai/English labels) |
-
-## Logic
-
-{steps_str}
-
----
-
-*Generated by [Intelligence Skill Creator (ISC) v0.4.0](../intelligence-skill-creator/)*
-"""
+    def _build_exemplar_context(self, query: str) -> str:
+        exemplars = select_relevant_skill_exemplars(query, top_k=3, exclude_skill_names={"intelligence-skill-creator"})
+        return format_exemplar_context(exemplars)

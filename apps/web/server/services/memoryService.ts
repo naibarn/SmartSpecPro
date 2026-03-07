@@ -19,6 +19,7 @@ import {
   EntityMemory,
 } from "../../drizzle/schema";
 import { sanitizeEntityForStorage, filterEntityFacts } from "./piiFilter";
+import { buildModelProviderMapLookupCondition } from "./modelLookup";
 
 // Configuration
 const BUFFER_SIZE = 20; // Number of recent messages to keep in buffer
@@ -41,7 +42,7 @@ async function getModelContextLength(modelId: string): Promise<number> {
     const [model] = await db
       .select({ contextLength: modelProviderMap.contextLength })
       .from(modelProviderMap)
-      .where(eq(modelProviderMap.modelId, modelId))
+      .where(buildModelProviderMapLookupCondition(modelId))
       .limit(1);
 
     return model?.contextLength || DEFAULT_CONTEXT_LENGTH;

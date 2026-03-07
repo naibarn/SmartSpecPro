@@ -14,6 +14,12 @@
 # NOTE: Set NODE_BASE_URL=http://host.docker.internal:3000 in apps/web/.env
 #   so asset URIs resolve correctly from inside Docker containers.
 
+x-external-dns: &external-dns
+  # Explicit public resolvers avoid Docker inheriting an empty upstream DNS set.
+  dns:
+    - 1.1.1.1
+    - 8.8.8.8
+
 services:
   # ============================================
   # CELERY MEDIA WORKER
@@ -22,6 +28,7 @@ services:
   # These are API-bound (LLM/provider calls), light CPU
   # ============================================
   celery-media:
+    <<: *external-dns
     build:
       context: ./python-backend
       dockerfile: Dockerfile
@@ -68,6 +75,7 @@ services:
   # Resource limits: 4 CPUs / 8GB RAM max
   # ============================================
   celery-video:
+    <<: *external-dns
     build:
       context: ./python-backend
       dockerfile: Dockerfile
@@ -111,6 +119,7 @@ services:
   # These are API-bound (S3 download, Google API), light CPU
   # ============================================
   celery-import:
+    <<: *external-dns
     build:
       context: ./python-backend
       dockerfile: Dockerfile
@@ -153,6 +162,7 @@ services:
   # Uses Playwright + FFmpeg + R2 upload; isolated for stability
   # ============================================
   celery-presentation:
+    <<: *external-dns
     image: smartspecpro-celery-media
     container_name: smartspec-celery-presentation
     command: celery -A app.core.celery_app worker --loglevel=info --concurrency=1 --max-tasks-per-child=10 --max-memory-per-child=2500000 -Q presentation_export -n presentation@%h
@@ -195,6 +205,7 @@ services:
   # Resource limits: 2 CPUs / 4GB RAM max
   # ============================================
   celery-sandbox:
+    <<: *external-dns
     build:
       context: ./python-backend
       dockerfile: Dockerfile
@@ -239,6 +250,7 @@ services:
   # Runs exactly once — schedules cleanup + retry tasks
   # ============================================
   celery-beat:
+    <<: *external-dns
     build:
       context: ./python-backend
       dockerfile: Dockerfile
@@ -274,6 +286,7 @@ services:
   # Monitors both media and video queues
   # ============================================
   flower:
+    <<: *external-dns
     build:
       context: ./python-backend
       dockerfile: Dockerfile

@@ -21,6 +21,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import {
   Collapsible,
   CollapsibleContent,
@@ -41,11 +42,28 @@ import { SearchableCombobox } from "./SearchableCombobox";
 import { ImageModelCombobox } from "./ImageModelCombobox";
 import DynamicSkillForm from "@/components/media/DynamicSkillForm";
 import type { SkillInputSchema } from "@/components/media/DynamicSkillForm";
+import { ModelInputFieldsPanel } from "@/components/media/ModelInputFieldsPanel";
+import {
+  PRESENTATION_CANVAS_PRESETS,
+  getCanvasPresetById,
+  getCanvasPresetBySize,
+} from "@/presentation-canvas/constants";
 import {
   inferWatermarkFormatFromSourceUrl,
   normalizeWatermarkLibraryOptions,
   type LibraryWatermarkOption,
 } from "@/lib/presentationWatermark";
+import {
+  applyModelSyncTargets,
+  buildDefaultExtraParamsForModel,
+  getMissingRequiredModelFields,
+  isTextToImageModel,
+  isTextToVideoModel,
+  mergeExtraParams,
+  parseModelInputFields,
+  pickExtraParamsForModel,
+  type MediaModelOption,
+} from "@/lib/mediaModelInputs";
 import {
   Sparkles,
   Loader2,
@@ -68,6 +86,17 @@ interface AIDraftModalProps {
   currentSlideCount: number;
   canvasWidth: number;
   canvasHeight: number;
+  onComplete?: (context: {
+    deckId: number;
+    taskId: string;
+    result: {
+      slidesAdded: number;
+      newDeckVersion: number;
+      articlePreview: string;
+      warnings: string[];
+    };
+    close: () => void;
+  }) => Promise<void> | void;
 }
 
 interface ReferenceImageItem {
@@ -79,6 +108,8 @@ const ARTICLE_TARGET_WORDS_MIN = 320;
 const ARTICLE_TARGET_WORDS_MAX = 3600;
 const ARTICLE_WORDS_PER_SLIDE_EN = 108;
 const ARTICLE_WORDS_PER_SLIDE_TH = 92;
+const MAX_MEDIA_REFERENCES = 5;
+const TOTAL_AI_DRAFT_PHASES = 7;
 
 function clampInteger(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) {
@@ -101,6 +132,160 @@ function computeRecommendedWordsForLanguage(
   );
 }
 
+function formatAIDraftWarningMessage(warning: string): string | null {
+  const cleaned = String(warning || "").replace(/\s+/g, " ").trim();
+  if (!cleaned) {
+    return null;
+  }
+
+  const coverageMatch = cleaned.match(
+    /^Slide coverage check:\s*([^,]+),\s*avg bullets\s*(.+)$/i,
+  );
+  if (coverageMatch) {
+    return `Slide coverage review: ${coverageMatch[1]}, average bullets ${coverageMatch[2]}.`;
+  }
+
+  const returnedNoMediaMatch = cleaned.match(
+    /^Slide (\d+): (image|video) generation returned no media \((.+)\)(?: \[task=[^\]]+\])?$/i,
+  );
+  if (returnedNoMediaMatch) {
+    const [, slideNumber, mediaType, rawReason] = returnedNoMediaMatch;
+    const normalizedReason = rawReason.toLowerCase();
+    const mediaLabel = mediaType.toLowerCase() === "video" ? "Video" : "Image";
+    if (
+      normalizedReason.includes("timeout_waiting_for_result")
+      || normalizedReason.includes("status=processing")
+      || normalizedReason.includes("status=pending")
+    ) {
+      return `Slide ${slideNumber}: ${mediaLabel} is still being processed by the media provider. The system will fetch it automatically when it is ready.`;
+    }
+    return `Slide ${slideNumber}: ${mediaLabel} generation did not return a usable file.`;
+  }
+
+  const deferredTaskMatch = cleaned.match(
+    /^Slide (\d+): queued deferred (image|video) task for later fetch(?: \[task=[^\]]+\])?$/i,
+  );
+  if (deferredTaskMatch) {
+    return null;
+  }
+
+  const deferredRegionMatch = cleaned.match(
+    /^Slide (\d+): deferred media task could not find a target region on slide$/i,
+  );
+  if (deferredRegionMatch) {
+    return `Slide ${deferredRegionMatch[1]}: Media finished later, but the slide no longer had a valid target area to place it.`;
+  }
+
+  const audioFailureMatch = cleaned.match(
+    /^Slide (\d+): audio generation failed \((.+)\)$/i,
+  );
+  if (audioFailureMatch) {
+    const [, slideNumber, rawReason] = audioFailureMatch;
+    const normalizedReason = rawReason.toLowerCase();
+    if (normalizedReason.includes("uvoice") && normalizedReason.includes("http 403")) {
+      return `Slide ${slideNumber}: Audio generation was rejected by UVoice (403). The current UVoice key likely does not allow this selected voice or tier, so this slide was added without narration.`;
+    }
+    if (normalizedReason.includes("http 403")) {
+      return `Slide ${slideNumber}: Audio generation was rejected by the audio provider (403), so this slide was added without narration.`;
+    }
+    if (
+      normalizedReason.includes("timeout_waiting_for_result")
+      || normalizedReason.includes("status=processing")
+      || normalizedReason.includes("status=pending")
+    ) {
+      return `Slide ${slideNumber}: Audio is still being processed by the media provider.`;
+    }
+    return `Slide ${slideNumber}: Audio generation failed, so this slide was added without narration.`;
+  }
+
+  return cleaned.replace(/\s*\[task=[^\]]+\]/gi, "");
+}
+
+function formatAIDraftWarnings(warnings: string[] | undefined): string[] {
+  if (!warnings || warnings.length === 0) {
+    return [];
+  }
+
+  const formatted: string[] = [];
+  const seen = new Set<string>();
+  for (const warning of warnings) {
+    const next = formatAIDraftWarningMessage(warning);
+    if (!next || seen.has(next)) {
+      continue;
+    }
+    seen.add(next);
+    formatted.push(next);
+  }
+  return formatted;
+}
+
+function gcd(a: number, b: number): number {
+  let x = Math.abs(Math.round(a));
+  let y = Math.abs(Math.round(b));
+  while (y !== 0) {
+    const temp = x % y;
+    x = y;
+    y = temp;
+  }
+  return x || 1;
+}
+
+function toAspectRatio(width: number, height: number): string {
+  const safeWidth = Number.isFinite(width) && width > 0 ? width : 1;
+  const safeHeight = Number.isFinite(height) && height > 0 ? height : 1;
+  const divisor = gcd(safeWidth, safeHeight);
+  return `${Math.round(safeWidth / divisor)}:${Math.round(safeHeight / divisor)}`;
+}
+
+function inferUvoiceTierFromModelId(modelId: string | undefined): "standard" | "natural" | "premium" | null {
+  const normalized = String(modelId || "").trim().toLowerCase();
+  if (normalized.endsWith("/tts-premium")) return "premium";
+  if (normalized.endsWith("/tts-natural")) return "natural";
+  if (normalized.endsWith("/tts-standard")) return "standard";
+  return null;
+}
+
+function inferUvoiceTierFromVoiceId(voiceId: unknown): "standard" | "natural" | "premium" | null {
+  const normalized = String(voiceId || "").trim().toLowerCase();
+  if (!normalized) return null;
+  if (normalized.includes("premium")) return "premium";
+  if (normalized.includes("natural")) return "natural";
+  if (normalized.includes("standard") || normalized.endsWith("sd")) return "standard";
+  return null;
+}
+
+export function resolveAudioExtraParamsForModel(
+  model: MediaModelOption | undefined,
+  extraParams: Record<string, unknown>,
+): Record<string, unknown> {
+  const scopedCurrent = pickExtraParamsForModel(model, extraParams);
+  const nextScopedCurrent = { ...(scopedCurrent ?? {}) };
+  if (model?.provider?.trim().toLowerCase() === "uvoice") {
+    const modelTier = inferUvoiceTierFromModelId(model.id);
+    const voiceTier = inferUvoiceTierFromVoiceId(
+      nextScopedCurrent.voiceID
+      ?? nextScopedCurrent.voiceId
+      ?? nextScopedCurrent.voice_id,
+    );
+    if (modelTier && voiceTier && modelTier !== voiceTier) {
+      delete nextScopedCurrent.voiceID;
+      delete nextScopedCurrent.voiceId;
+      delete nextScopedCurrent.voice_id;
+    }
+  }
+  return mergeExtraParams(
+    buildDefaultExtraParamsForModel(model),
+    nextScopedCurrent,
+  ) ?? {};
+}
+
+function formatUvoiceTierLabel(tier: "standard" | "natural" | "premium" | null): string | null {
+  if (!tier) {
+    return null;
+  }
+  return tier.charAt(0).toUpperCase() + tier.slice(1);
+}
+
 export function AIDraftModal({
   isOpen,
   onClose,
@@ -109,16 +294,35 @@ export function AIDraftModal({
   currentSlideCount,
   canvasWidth,
   canvasHeight,
+  onComplete,
 }: AIDraftModalProps) {
   // Config state
   const [topic, setTopic] = useState("");
+  const [useCustomArticle, setUseCustomArticle] = useState(false);
+  const [customArticleText, setCustomArticleText] = useState("");
   const [numSlides, setNumSlides] = useState(5);
-  const [language, setLanguage] = useState("auto");
+  const [language, setLanguage] = useState<"auto" | "en" | "th">("auto");
   const [selectedArticleSkill, setSelectedArticleSkill] = useState("");
   const [selectedImageSkill, setSelectedImageSkill] = useState("");
   const [imageModel, setImageModel] = useState("");
+  const [generateAudio, setGenerateAudio] = useState(false);
+  const [audioModel, setAudioModel] = useState("");
+  const [audioModelExtraParams, setAudioModelExtraParams] = useState<Record<string, unknown>>({});
+  const [draftAspectRatio, setDraftAspectRatio] = useState(() => {
+    const initialPreset = getCanvasPresetBySize(canvasWidth, canvasHeight);
+    if (initialPreset) {
+      return initialPreset.id;
+    }
+    const derivedRatio = toAspectRatio(canvasWidth, canvasHeight);
+    return getCanvasPresetById(derivedRatio)?.id ?? PRESENTATION_CANVAS_PRESETS[0]?.id ?? "16:9";
+  });
+  const [advancedMediaOptionsEnabled, setAdvancedMediaOptionsEnabled] = useState(false);
+  const [mediaModelExtraParams, setMediaModelExtraParams] = useState<Record<string, unknown>>({});
   const [imagePromptContext, setImagePromptContext] = useState("");
   const [referenceImages, setReferenceImages] = useState<ReferenceImageItem[]>([]);
+  const [selectedReferenceLibraryUrl, setSelectedReferenceLibraryUrl] = useState("");
+  const [referenceLibrarySearchQuery, setReferenceLibrarySearchQuery] = useState("");
+  const [debouncedReferenceLibrarySearchQuery, setDebouncedReferenceLibrarySearchQuery] = useState("");
   const [referenceUrlInput, setReferenceUrlInput] = useState("");
   const [selectedPresetId, setSelectedPresetId] = useState("dark-professional");
   const [headerTitleText, setHeaderTitleText] = useState("");
@@ -144,9 +348,11 @@ export function AIDraftModal({
   // Progress state
   const [taskId, setTaskId] = useState<string | null>(null);
   const [completed, setCompleted] = useState(false);
+  const [isFinalizingCompletion, setIsFinalizingCompletion] = useState(false);
   const [stalledSeconds, setStalledSeconds] = useState(0);
   const lastProgressAtRef = useRef<number>(Date.now());
   const lastProgressMarkerRef = useRef<string>("");
+  const completionHandledRef = useRef<string | null>(null);
 
   const utils = trpc.useUtils();
 
@@ -159,6 +365,21 @@ export function AIDraftModal({
       scope: "all",
       sort: "updated_desc",
       limit: 50,
+      offset: 0,
+      filters: {
+        itemType: "image",
+      },
+    },
+    {
+      enabled: isOpen,
+    },
+  );
+  const referenceLibraryQuery = trpc.library.listDocuments.useQuery(
+    {
+      query: debouncedReferenceLibrarySearchQuery || undefined,
+      scope: "all",
+      sort: "updated_desc",
+      limit: 30,
       offset: 0,
       filters: {
         itemType: "image",
@@ -244,6 +465,10 @@ export function AIDraftModal({
     if (savedModel && !imageModel) {
       setImageModel(savedModel);
     }
+    const savedAudioModel = localStorage.getItem("smartspec_aiDraft_audioModel");
+    if (savedAudioModel && !audioModel) {
+      setAudioModel(savedAudioModel);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -259,7 +484,7 @@ export function AIDraftModal({
         if (Array.isArray(parsed)) {
           const normalized = parsed
             .filter((item) => item && typeof item.url === "string" && typeof item.name === "string")
-            .slice(0, 5);
+            .slice(0, MAX_MEDIA_REFERENCES);
           if (normalized.length > 0) {
             setReferenceImages(normalized);
           }
@@ -318,6 +543,91 @@ export function AIDraftModal({
     (selectedMediaSkill as { category?: string } | null)?.category === "video_generation"
       ? "video"
       : "image";
+  const mediaModelsQuery = trpc.media.getModels.useQuery(
+    { type: mediaModelType },
+    { staleTime: 300_000 },
+  );
+  const mediaModels = (mediaModelsQuery.data?.models ?? []) as MediaModelOption[];
+  const compatibleMediaModels = mediaModelType === "video"
+    ? mediaModels.filter(isTextToVideoModel)
+    : mediaModels.filter(isTextToImageModel);
+  const displayedMediaModels = mediaModelType === "video"
+    ? (compatibleMediaModels.length > 0 ? compatibleMediaModels : mediaModels)
+    : compatibleMediaModels;
+  const backendDefaultMediaModelId = mediaModelType === "video"
+    ? mediaModelsQuery.data?.defaults?.video
+    : mediaModelsQuery.data?.defaults?.image;
+  const defaultMediaModelId = backendDefaultMediaModelId
+    || displayedMediaModels[0]?.id
+    || "";
+  const selectedMediaModelId = (
+    imageModel.trim() && mediaModels.some((model) => model.id === imageModel.trim())
+      ? imageModel.trim()
+      : defaultMediaModelId
+  );
+  const selectedMediaModelConfig = mediaModels.find((model) => model.id === selectedMediaModelId);
+  const selectedMediaModelFields = useMemo(
+    () => parseModelInputFields(selectedMediaModelConfig),
+    [selectedMediaModelConfig],
+  );
+  const audioModelsQuery = trpc.media.getModels.useQuery(
+    { type: "audio" },
+    { staleTime: 300_000 },
+  );
+  const audioModels = (audioModelsQuery.data?.models ?? []) as MediaModelOption[];
+  const defaultAudioModelId = audioModelsQuery.data?.defaults?.audio || audioModels[0]?.id || "";
+  const selectedAudioModelId = (
+    audioModel.trim() && audioModels.some((model) => model.id === audioModel.trim())
+      ? audioModel.trim()
+      : defaultAudioModelId
+  );
+  const selectedAudioModelConfig = audioModels.find((model) => model.id === selectedAudioModelId);
+  const selectedUvoiceTierLabel = formatUvoiceTierLabel(
+    selectedAudioModelConfig?.provider?.trim().toLowerCase() === "uvoice"
+      ? inferUvoiceTierFromModelId(selectedAudioModelConfig.id)
+      : null,
+  );
+  const selectedAudioModelFields = useMemo(
+    () => parseModelInputFields(selectedAudioModelConfig),
+    [selectedAudioModelConfig],
+  );
+  const canvasAspectRatio = useMemo(
+    () => toAspectRatio(canvasWidth, canvasHeight),
+    [canvasWidth, canvasHeight],
+  );
+  const detectedCanvasPresetId = useMemo(() => {
+    const fromSize = getCanvasPresetBySize(canvasWidth, canvasHeight);
+    if (fromSize) {
+      return fromSize.id;
+    }
+    return getCanvasPresetById(canvasAspectRatio)?.id ?? PRESENTATION_CANVAS_PRESETS[0]?.id ?? "16:9";
+  }, [canvasWidth, canvasHeight, canvasAspectRatio]);
+  const selectedCanvasPreset = useMemo(
+    () => getCanvasPresetById(draftAspectRatio) ?? getCanvasPresetById(detectedCanvasPresetId),
+    [draftAspectRatio, detectedCanvasPresetId],
+  );
+  const selectedCanvasWidth = selectedCanvasPreset?.width ?? canvasWidth;
+  const selectedCanvasHeight = selectedCanvasPreset?.height ?? canvasHeight;
+  const selectedCanvasAspectRatio = selectedCanvasPreset?.id ?? canvasAspectRatio;
+  const normalizedReferenceImageUrls = useMemo(
+    () => {
+      const deduped: string[] = [];
+      const seen = new Set<string>();
+      for (const item of referenceImages) {
+        const url = String(item.url || "").trim();
+        if (!url || seen.has(url) || (!url.startsWith("/") && !/^https?:\/\//i.test(url))) {
+          continue;
+        }
+        seen.add(url);
+        deduped.push(url);
+        if (deduped.length >= MAX_MEDIA_REFERENCES) {
+          break;
+        }
+      }
+      return deduped;
+    },
+    [referenceImages],
+  );
   const watermarkOptions = useMemo(
     () => normalizeWatermarkLibraryOptions(watermarkLibraryQuery.data?.results),
     [watermarkLibraryQuery.data?.results],
@@ -357,6 +667,26 @@ export function AIDraftModal({
     })),
     [watermarkOptions],
   );
+  const referenceLibraryItems = useMemo(() => {
+    const results = (referenceLibraryQuery.data?.results ?? []) as Array<{
+      source_url?: string | null;
+      title?: string | null;
+      metadata?: { mimeType?: string | null; extension?: string | null } | null;
+    }>;
+    return results.reduce<Array<{ value: string; label: string; description?: string }>>((acc, item) => {
+      const url = String(item.source_url || "").trim();
+      if (!url) {
+        return acc;
+      }
+      const extension = String(item.metadata?.extension || "").trim();
+      acc.push({
+        value: url,
+        label: String(item.title || url.split("/").pop() || "Library image"),
+        description: extension ? `.${extension}` : undefined,
+      });
+      return acc;
+    }, []);
+  }, [referenceLibraryQuery.data?.results]);
 
   const handleWatermarkSourceChange = useCallback((sourceUrl: string) => {
     setWatermarkSourceUrl(sourceUrl);
@@ -380,6 +710,10 @@ export function AIDraftModal({
     },
   );
   const progress = progressQuery.data;
+  const formattedResultWarnings = useMemo(
+    () => formatAIDraftWarnings(progress?.result?.warnings),
+    [progress?.result?.warnings],
+  );
 
   // Track completion
   useEffect(() => {
@@ -393,6 +727,7 @@ export function AIDraftModal({
       lastProgressAtRef.current = Date.now();
       lastProgressMarkerRef.current = "";
       setStalledSeconds(0);
+      setIsFinalizingCompletion(false);
       return;
     }
 
@@ -434,9 +769,11 @@ export function AIDraftModal({
     }
     setTaskId(null);
     setCompleted(false);
+    setIsFinalizingCompletion(false);
     setStalledSeconds(0);
     lastProgressAtRef.current = Date.now();
     lastProgressMarkerRef.current = "";
+    completionHandledRef.current = null;
   }, [isOpen]);
 
   useEffect(() => {
@@ -446,9 +783,25 @@ export function AIDraftModal({
     return () => window.clearTimeout(timer);
   }, [watermarkSearchQuery]);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedReferenceLibrarySearchQuery(referenceLibrarySearchQuery.trim());
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [referenceLibrarySearchQuery]);
+
   // Reset advanced options to modal defaults on each open
   useEffect(() => {
     if (!isOpen) return;
+    completionHandledRef.current = null;
+    setDraftAspectRatio(detectedCanvasPresetId);
+    setAdvancedMediaOptionsEnabled(false);
+    setMediaModelExtraParams({});
+    setGenerateAudio(false);
+    setAudioModelExtraParams({});
+    setSelectedReferenceLibraryUrl("");
+    setReferenceLibrarySearchQuery("");
+    setDebouncedReferenceLibrarySearchQuery("");
     setHeaderEnabled(false);
     setShowDeckTitle(false);
     setFooterEnabled(false);
@@ -457,7 +810,45 @@ export function AIDraftModal({
     setWatermarkClarityPercent(20);
     setWatermarkSearchQuery("");
     setDebouncedWatermarkSearchQuery("");
-  }, [isOpen]);
+  }, [isOpen, detectedCanvasPresetId]);
+
+  useEffect(() => {
+    setMediaModelExtraParams((prev) => {
+      const scopedCurrent = pickExtraParamsForModel(selectedMediaModelConfig, prev);
+      const next = mergeExtraParams(
+        buildDefaultExtraParamsForModel(selectedMediaModelConfig),
+        scopedCurrent,
+      ) ?? {};
+      const prevKeys = Object.keys(prev);
+      const nextKeys = Object.keys(next);
+      if (prevKeys.length !== nextKeys.length) {
+        return next;
+      }
+      for (const key of nextKeys) {
+        if (!Object.is(prev[key], next[key])) {
+          return next;
+        }
+      }
+      return prev;
+    });
+  }, [selectedMediaModelConfig?.id]);
+
+  useEffect(() => {
+    setAudioModelExtraParams((prev) => {
+      const next = resolveAudioExtraParamsForModel(selectedAudioModelConfig, prev);
+      const prevKeys = Object.keys(prev);
+      const nextKeys = Object.keys(next);
+      if (prevKeys.length !== nextKeys.length) {
+        return next;
+      }
+      for (const key of nextKeys) {
+        if (!Object.is(prev[key], next[key])) {
+          return next;
+        }
+      }
+      return prev;
+    });
+  }, [selectedAudioModelConfig?.id]);
 
   useEffect(() => {
     if (!watermarkEnabled || watermarkSourceUrl) {
@@ -472,10 +863,36 @@ export function AIDraftModal({
   }, [watermarkEnabled, watermarkSourceUrl, watermarkOptions]);
 
   const selectedPreset = getBuiltInPreset(selectedPresetId);
+  const advancedMediaBaseExtraParams = useMemo(
+    () => mergeExtraParams(
+      buildDefaultExtraParamsForModel(selectedMediaModelConfig),
+      advancedMediaOptionsEnabled
+        ? pickExtraParamsForModel(selectedMediaModelConfig, mediaModelExtraParams)
+        : undefined,
+    ),
+    [selectedMediaModelConfig, advancedMediaOptionsEnabled, mediaModelExtraParams],
+  );
+  const advancedMediaSyncedExtraParams = useMemo(
+    () => applyModelSyncTargets(
+      selectedMediaModelConfig,
+      advancedMediaBaseExtraParams,
+      {
+        aspectRatio: selectedCanvasAspectRatio,
+        referenceImageUrls: normalizedReferenceImageUrls,
+      },
+    ),
+    [
+      selectedMediaModelConfig,
+      advancedMediaBaseExtraParams,
+      selectedCanvasAspectRatio,
+      normalizedReferenceImageUrls,
+    ],
+  );
 
   const canGenerate =
-    topic.length >= 3 &&
-    selectedArticleSkill !== "" &&
+    (useCustomArticle
+      ? customArticleText.trim().length > 0
+      : topic.length >= 3 && selectedArticleSkill !== "") &&
     (!watermarkEnabled || selectedWatermarkOption !== null) &&
     !generateDraft.isPending;
 
@@ -489,7 +906,7 @@ export function AIDraftModal({
       localStorage.removeItem("smartspec_aiDraft_referenceImages");
       return;
     }
-    localStorage.setItem("smartspec_aiDraft_referenceImages", JSON.stringify(images.slice(0, 5)));
+    localStorage.setItem("smartspec_aiDraft_referenceImages", JSON.stringify(images.slice(0, MAX_MEDIA_REFERENCES)));
   }, []);
 
   const handleAddReferenceUrl = useCallback(() => {
@@ -506,7 +923,7 @@ export function AIDraftModal({
         toast.info("This reference image is already added.");
         return prev;
       }
-      if (prev.length >= 5) {
+      if (prev.length >= MAX_MEDIA_REFERENCES) {
         toast.error("Maximum 5 reference images");
         return prev;
       }
@@ -516,6 +933,31 @@ export function AIDraftModal({
     });
     setReferenceUrlInput("");
   }, [referenceUrlInput, isValidReferenceUrl, persistReferenceImages]);
+
+  const handleAddReferenceFromLibrary = useCallback((url: string) => {
+    const normalizedUrl = url.trim();
+    if (!normalizedUrl) {
+      return;
+    }
+    setReferenceImages((prev) => {
+      if (prev.some((item) => item.url === normalizedUrl)) {
+        toast.info("This reference image is already added.");
+        return prev;
+      }
+      if (prev.length >= MAX_MEDIA_REFERENCES) {
+        toast.error("Maximum 5 reference images");
+        return prev;
+      }
+      const libraryItem = referenceLibraryItems.find((item) => item.value === normalizedUrl);
+      const next = [...prev, {
+        url: normalizedUrl,
+        name: libraryItem?.label || `Reference ${prev.length + 1}`,
+      }];
+      persistReferenceImages(next);
+      return next;
+    });
+    setSelectedReferenceLibraryUrl("");
+  }, [persistReferenceImages, referenceLibraryItems]);
 
   const handleRemoveReferenceImage = useCallback((url: string) => {
     setReferenceImages((prev) => {
@@ -532,7 +974,7 @@ export function AIDraftModal({
         return;
       }
 
-      const remainingSlots = Math.max(0, 5 - referenceImages.length);
+      const remainingSlots = Math.max(0, MAX_MEDIA_REFERENCES - referenceImages.length);
       if (remainingSlots === 0) {
         toast.error("Maximum 5 reference images");
         event.target.value = "";
@@ -573,7 +1015,10 @@ export function AIDraftModal({
         setReferenceImages((prev) => {
           const deduped = [...prev];
           for (const img of nextImages) {
-            if (!deduped.some((existing) => existing.url === img.url) && deduped.length < 5) {
+            if (
+              !deduped.some((existing) => existing.url === img.url)
+              && deduped.length < MAX_MEDIA_REFERENCES
+            ) {
               deduped.push(img);
             }
           }
@@ -588,6 +1033,32 @@ export function AIDraftModal({
   );
 
   const handleGenerate = useCallback(() => {
+    if (advancedMediaOptionsEnabled) {
+      const missingRequiredFields = getMissingRequiredModelFields(selectedMediaModelFields, {
+        extraParams: advancedMediaSyncedExtraParams,
+        aspectRatio: selectedCanvasAspectRatio,
+        referenceImageUrls: normalizedReferenceImageUrls,
+      }, {
+        treatPromptSyncAsAuto: true,
+      });
+      if (missingRequiredFields.length > 0) {
+        toast.error(`Please fill required model inputs: ${missingRequiredFields.join(", ")}`);
+        return;
+      }
+    }
+
+    if (generateAudio) {
+      const missingAudioFields = getMissingRequiredModelFields(selectedAudioModelFields, {
+        extraParams: audioModelExtraParams,
+      }, {
+        treatPromptSyncAsAuto: true,
+      });
+      if (missingAudioFields.length > 0) {
+        toast.error(`Please fill required audio inputs: ${missingAudioFields.join(", ")}`);
+        return;
+      }
+    }
+
     // Always send explicit advanced style options from modal state
     const overrides = {
       headerEnabled,
@@ -595,26 +1066,50 @@ export function AIDraftModal({
       footerEnabled,
       showPageNumber,
     };
+    const effectivePrompt = useCustomArticle
+      ? (topic.trim() || customArticleText.trim().slice(0, 1000) || "Custom article")
+      : topic;
 
     generateDraft.mutate(
       {
         deckId,
         expectedVersion,
-        prompt: topic,
+        prompt: effectivePrompt,
         numSlides,
         language: language as "auto" | "en" | "th",
-        articleSkillId: selectedArticleSkill,
+        articleSkillId:
+          !useCustomArticle && selectedArticleSkill
+            ? selectedArticleSkill
+            : undefined,
+        useCustomArticle,
+        customArticleText:
+          useCustomArticle && customArticleText.trim().length > 0
+            ? customArticleText.trim()
+            : undefined,
         imageSkillId:
           selectedImageSkill && selectedImageSkill !== "__none__"
             ? selectedImageSkill
             : undefined,
-        imageModel: imageModel || undefined,
-        canvasWidth,
-        canvasHeight,
+        imageModel: selectedMediaModelId || undefined,
+        generateAudio,
+        audioModel: generateAudio ? (selectedAudioModelId || undefined) : undefined,
+        audioModelExtraParams:
+          generateAudio
+          && Object.keys(audioModelExtraParams).length > 0
+            ? audioModelExtraParams
+            : undefined,
+        canvasWidth: selectedCanvasWidth,
+        canvasHeight: selectedCanvasHeight,
         imagePromptContext: imagePromptContext.trim() || undefined,
         referenceImageUrls:
-          referenceImages.length > 0
-            ? referenceImages.map((img) => img.url)
+          normalizedReferenceImageUrls.length > 0
+            ? normalizedReferenceImageUrls
+            : undefined,
+        mediaModelExtraParams:
+          advancedMediaOptionsEnabled
+          && advancedMediaSyncedExtraParams
+          && Object.keys(advancedMediaSyncedExtraParams).length > 0
+            ? advancedMediaSyncedExtraParams
             : undefined,
         stylePresetId: selectedPresetId as (typeof AI_STYLE_PRESET_IDS)[number],
         headerCustomText: headerTitleText.trim() || undefined,
@@ -629,7 +1124,7 @@ export function AIDraftModal({
             }
             : undefined,
         articleSkillParams:
-          Object.keys(articleSkillParams).length > 0
+          !useCustomArticle && Object.keys(articleSkillParams).length > 0
             ? articleSkillParams
             : undefined,
       },
@@ -651,15 +1146,25 @@ export function AIDraftModal({
     deckId,
     expectedVersion,
     topic,
+    useCustomArticle,
+    customArticleText,
     numSlides,
     language,
     selectedArticleSkill,
     selectedImageSkill,
     imageModel,
-    canvasWidth,
-    canvasHeight,
+    generateAudio,
+    audioModel,
+    selectedAudioModelFields,
+    audioModelExtraParams,
+    selectedCanvasWidth,
+    selectedCanvasHeight,
     imagePromptContext,
-    referenceImages,
+    normalizedReferenceImageUrls,
+    advancedMediaOptionsEnabled,
+    selectedMediaModelFields,
+    advancedMediaSyncedExtraParams,
+    selectedCanvasAspectRatio,
     selectedPresetId,
     headerTitleText,
     footerText,
@@ -680,6 +1185,9 @@ export function AIDraftModal({
   }, [cancelDraft, taskId]);
 
   const handleClose = useCallback(() => {
+    if (isFinalizingCompletion) {
+      return;
+    }
     if (completed && progress?.result) {
       utils.presentation.getDeck.invalidate({ deckId });
       utils.presentation.getDeckByLibraryItem.invalidate();
@@ -687,7 +1195,39 @@ export function AIDraftModal({
       utils.presentation.getSlideshow.invalidate({ deckId });
     }
     onClose();
-  }, [completed, progress, utils, deckId, onClose]);
+  }, [completed, progress, utils, deckId, isFinalizingCompletion, onClose]);
+
+  useEffect(() => {
+    if (!onComplete || !taskId || !progress?.completed || !progress.result) {
+      return;
+    }
+    if (completionHandledRef.current === taskId) {
+      return;
+    }
+
+    completionHandledRef.current = taskId;
+    setIsFinalizingCompletion(true);
+
+    void Promise.resolve(
+      onComplete({
+        deckId,
+        taskId,
+        result: progress.result,
+        close: handleClose,
+      }),
+    )
+      .catch((error) => {
+        completionHandledRef.current = null;
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to finalize AI draft output.",
+        );
+      })
+      .finally(() => {
+        setIsFinalizingCompletion(false);
+      });
+  }, [deckId, handleClose, onComplete, progress?.completed, progress?.result, taskId]);
 
   const handlePresetSelect = useCallback((id: string) => {
     setSelectedPresetId(id);
@@ -709,7 +1249,7 @@ export function AIDraftModal({
             (progress.totalSlides > 0
               ? progress.slidesCompleted / progress.totalSlides
               : 0)) /
-            6) *
+            TOTAL_AI_DRAFT_PHASES) *
             100,
         ),
       )
@@ -727,6 +1267,71 @@ export function AIDraftModal({
   const effectiveShowDeckTitle = showDeckTitle;
   const effectiveFooterEnabled = footerEnabled;
   const effectiveShowPageNumber = showPageNumber;
+  const updateMediaModelExtraParam = useCallback((key: string, value: unknown) => {
+    setMediaModelExtraParams((prev) => {
+      const next: Record<string, unknown> = { ...prev };
+      if (
+        value === undefined
+        || value === null
+        || value === ""
+        || (Array.isArray(value) && value.length === 0)
+      ) {
+        delete next[key];
+      } else {
+        next[key] = value;
+      }
+      return next;
+    });
+  }, []);
+  const updateAudioModelExtraParam = useCallback((key: string, value: unknown) => {
+    setAudioModelExtraParams((prev) => {
+      const next: Record<string, unknown> = { ...prev };
+      if (
+        value === undefined
+        || value === null
+        || value === ""
+        || (Array.isArray(value) && value.length === 0)
+      ) {
+        delete next[key];
+      } else {
+        next[key] = value;
+      }
+      return next;
+    });
+  }, []);
+
+  const renderDynamicMediaModelInputs = () => {
+    return (
+      <ModelInputFieldsPanel
+        enabled={advancedMediaOptionsEnabled}
+        model={selectedMediaModelConfig}
+        fields={selectedMediaModelFields}
+        extraParams={mediaModelExtraParams}
+        onChange={updateMediaModelExtraParam}
+        promptPreview="Auto from generated slide prompts"
+        aspectRatioPreview={selectedCanvasAspectRatio}
+        referenceImageUrls={normalizedReferenceImageUrls}
+        panelTestId="advanced-media-model-inputs"
+        emptyTestId="advanced-media-model-inputs-empty"
+      />
+    );
+  };
+  const renderDynamicAudioModelInputs = () => {
+    return (
+      <ModelInputFieldsPanel
+        enabled={generateAudio}
+        model={selectedAudioModelConfig}
+        fields={selectedAudioModelFields}
+        extraParams={audioModelExtraParams}
+        onChange={updateAudioModelExtraParam}
+        promptPreview="Auto from generated slide narration"
+        panelTestId="audio-model-inputs"
+        emptyTestId="audio-model-inputs-empty"
+        titlePrefix="Audio Inputs"
+        ariaLabelPrefix="Audio"
+      />
+    );
+  };
 
   // Config phase
   const configView = (
@@ -737,11 +1342,46 @@ export function AIDraftModal({
         <textarea
           id="ai-topic"
           className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[80px] w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-          placeholder="Describe what your presentation should be about..."
+          placeholder={useCustomArticle
+            ? "Topic is optional when you provide your own article."
+            : "Describe what your presentation should be about..."}
           maxLength={1000}
           value={topic}
           onChange={(e) => setTopic(e.target.value)}
+          disabled={useCustomArticle}
         />
+      </div>
+
+      <div className="space-y-2 rounded-md border border-muted bg-muted/20 p-3">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <Label className="text-sm">Use Your Own Article</Label>
+            <p className="text-xs text-muted-foreground">
+              Paste your article below to skip article skill generation and go straight to slide structuring.
+            </p>
+          </div>
+          <Switch
+            aria-label="Use your own article"
+            checked={useCustomArticle}
+            onCheckedChange={setUseCustomArticle}
+          />
+        </div>
+        {useCustomArticle && (
+          <div className="space-y-1.5">
+            <Label htmlFor="ai-custom-article">Article Content</Label>
+            <textarea
+              id="ai-custom-article"
+              className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[180px] w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+              placeholder="Paste your article here..."
+              maxLength={20000}
+              value={customArticleText}
+              onChange={(e) => setCustomArticleText(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              The system will reuse your article, split it into slide-sized sections, and continue the normal draft flow.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Slide count */}
@@ -760,7 +1400,7 @@ export function AIDraftModal({
       {/* Language */}
       <div className="space-y-1.5">
         <Label>Language</Label>
-        <Select value={language} onValueChange={setLanguage}>
+        <Select value={language} onValueChange={(value) => setLanguage(value as "auto" | "en" | "th")}>
           <SelectTrigger>
             <SelectValue placeholder="Select language" />
           </SelectTrigger>
@@ -773,24 +1413,26 @@ export function AIDraftModal({
       </div>
 
       {/* Article skill (searchable) */}
-      <div className="space-y-1.5">
-        <Label>Article Skill</Label>
-        <SearchableCombobox
-          items={articleSkillItems}
-          value={selectedArticleSkill}
-          onValueChange={(v) => {
-            setSelectedArticleSkill(v);
-            setArticleSkillParams({});
-            localStorage.setItem("smartspec_aiDraft_articleSkill", v);
-          }}
-          placeholder="Select article skill..."
-          searchPlaceholder="Search skills..."
-          emptyMessage="No article skills found."
-        />
-      </div>
+      {!useCustomArticle && (
+        <div className="space-y-1.5">
+          <Label>Article Skill</Label>
+          <SearchableCombobox
+            items={articleSkillItems}
+            value={selectedArticleSkill}
+            onValueChange={(v) => {
+              setSelectedArticleSkill(v);
+              setArticleSkillParams({});
+              localStorage.setItem("smartspec_aiDraft_articleSkill", v);
+            }}
+            placeholder="Select article skill..."
+            searchPlaceholder="Search skills..."
+            emptyMessage="No article skills found."
+          />
+        </div>
+      )}
 
       {/* Dynamic skill form fields */}
-      {skillSchema && (
+      {!useCustomArticle && skillSchema && (
         <div className="rounded-md border border-muted bg-muted/30 p-3">
           <DynamicSkillForm
             schema={skillSchema}
@@ -849,6 +1491,8 @@ export function AIDraftModal({
                 : "image";
             if (prevType !== nextType) {
               setImageModel("");
+              setAdvancedMediaOptionsEnabled(false);
+              setMediaModelExtraParams({});
               localStorage.removeItem("smartspec_aiDraft_imageModel");
             }
             setSelectedImageSkill(v);
@@ -875,6 +1519,13 @@ export function AIDraftModal({
           mediaType={mediaModelType}
           onValueChange={(v) => {
             setImageModel(v);
+            const nextModelId = v.trim() || defaultMediaModelId;
+            const nextModel = mediaModels.find((model) => model.id === nextModelId);
+            const nextExtraParams = mergeExtraParams(
+              buildDefaultExtraParamsForModel(nextModel),
+              pickExtraParamsForModel(nextModel, mediaModelExtraParams),
+            ) ?? {};
+            setMediaModelExtraParams(nextExtraParams);
             if (v) {
               localStorage.setItem("smartspec_aiDraft_imageModel", v);
             } else {
@@ -882,6 +1533,114 @@ export function AIDraftModal({
             }
           }}
         />
+      </div>
+
+      <div className="space-y-2 rounded-md border border-muted bg-muted/20 p-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <Label className="text-sm">Generate Slide Audio</Label>
+            <p className="text-xs text-muted-foreground">
+              Create voice narration for each slide.
+            </p>
+          </div>
+          <Switch
+            aria-label="Generate audio"
+            checked={generateAudio}
+            onCheckedChange={setGenerateAudio}
+          />
+        </div>
+        {generateAudio && (
+          <div className="space-y-1.5">
+            <Label>Audio Model (optional)</Label>
+            <p className="text-xs text-muted-foreground">
+              Choose the audio generation model for this draft. For UVoice, this is also where you select the tier: Standard, Natural, or Premium.
+            </p>
+            <ImageModelCombobox
+              value={audioModel}
+              mediaType="audio"
+              onValueChange={(value) => {
+                setAudioModel(value);
+                if (value) {
+                  localStorage.setItem("smartspec_aiDraft_audioModel", value);
+                } else {
+                  localStorage.removeItem("smartspec_aiDraft_audioModel");
+                }
+              }}
+            />
+            {selectedUvoiceTierLabel ? (
+              <div
+                className="flex items-center gap-2 text-xs"
+                data-testid="uvoice-tier-row"
+              >
+                <span className="text-muted-foreground">Selected UVoice tier</span>
+                <Badge variant="secondary">{selectedUvoiceTierLabel}</Badge>
+              </div>
+            ) : null}
+            {audioModels.length === 0 && !audioModelsQuery.isLoading ? (
+              <p className="text-xs text-muted-foreground">No audio models available.</p>
+            ) : null}
+            {!audioModel && defaultAudioModelId ? (
+              <p className="text-xs text-muted-foreground">
+                Using default audio model: {defaultAudioModelId}
+              </p>
+            ) : null}
+            {selectedUvoiceTierLabel ? (
+              <p className="text-xs text-muted-foreground" data-testid="uvoice-tier-hint">
+                UVoice tier selected: {selectedUvoiceTierLabel}. Voice ID options below are filtered to this tier only.
+              </p>
+            ) : (
+              audioModels.some((model) => model.provider?.trim().toLowerCase() === "uvoice") ? (
+                <p className="text-xs text-muted-foreground" data-testid="uvoice-tier-hint">
+                  For UVoice, choose the tier here via Audio Model: Standard, Natural, or Premium.
+                </p>
+              ) : null
+            )}
+            {renderDynamicAudioModelInputs()}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="ai-draft-aspect-ratio">Aspect Ratio</Label>
+        <select
+          id="ai-draft-aspect-ratio"
+          aria-label="Draft Aspect Ratio"
+          className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-9 w-full rounded-md border px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+          value={selectedCanvasAspectRatio}
+          onChange={(event) => {
+            const next = getCanvasPresetById(event.target.value);
+            if (!next) {
+              return;
+            }
+            setDraftAspectRatio(next.id);
+          }}
+        >
+          {PRESENTATION_CANVAS_PRESETS.map((preset) => (
+            <option key={preset.id} value={preset.id}>
+              {preset.label}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-muted-foreground">
+          Used as draft canvas size and synced to model input fields that map to aspect ratio.
+        </p>
+      </div>
+
+      <div className="space-y-2 rounded-md border border-muted bg-muted/20 p-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <Label className="text-sm">Advanced Media Options</Label>
+            <p className="text-xs text-muted-foreground">
+              Enable to edit model-specific dynamic inputs manually. Off = simple default flow.
+            </p>
+          </div>
+          <Switch
+            aria-label="Advanced media options"
+            checked={advancedMediaOptionsEnabled}
+            onCheckedChange={setAdvancedMediaOptionsEnabled}
+          />
+        </div>
+        {renderDynamicMediaModelInputs()}
       </div>
 
       {/* Image prompt context */}
@@ -915,6 +1674,23 @@ export function AIDraftModal({
         <p className="text-xs text-muted-foreground">
           Attach up to 5 images to guide character/style consistency for compatible models.
         </p>
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Add from Library</Label>
+          <SearchableCombobox
+            items={referenceLibraryItems}
+            value={selectedReferenceLibraryUrl}
+            onValueChange={(value) => {
+              setSelectedReferenceLibraryUrl(value);
+              handleAddReferenceFromLibrary(value);
+            }}
+            placeholder="Search image from Library..."
+            searchPlaceholder="Search library images..."
+            emptyMessage={referenceLibraryQuery.isLoading ? "Loading library..." : "No images found."}
+            disabled={referenceImages.length >= MAX_MEDIA_REFERENCES}
+            searchValue={referenceLibrarySearchQuery}
+            onSearchValueChange={setReferenceLibrarySearchQuery}
+          />
+        </div>
         <div className="flex flex-wrap gap-2">
           <input
             ref={referenceFileInputRef}
@@ -929,7 +1705,7 @@ export function AIDraftModal({
             variant="outline"
             size="sm"
             onClick={() => referenceFileInputRef.current?.click()}
-            disabled={uploadReferenceMutation.isPending || referenceImages.length >= 5}
+            disabled={uploadReferenceMutation.isPending || referenceImages.length >= MAX_MEDIA_REFERENCES}
           >
             {uploadReferenceMutation.isPending ? (
               <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
@@ -955,7 +1731,7 @@ export function AIDraftModal({
               variant="outline"
               size="sm"
               onClick={handleAddReferenceUrl}
-              disabled={!referenceUrlInput.trim() || referenceImages.length >= 5}
+              disabled={!referenceUrlInput.trim() || referenceImages.length >= MAX_MEDIA_REFERENCES}
             >
               <Plus className="mr-1 h-3.5 w-3.5" />
               Add URL
@@ -1217,7 +1993,7 @@ export function AIDraftModal({
       {progress && !progress.completed && (
         <>
           <div className="text-sm font-medium">
-            Phase {progress.phase}/6: {progress.phaseLabel}
+            Phase {progress.phase}/{TOTAL_AI_DRAFT_PHASES}: {progress.phaseLabel}
           </div>
           <Progress value={progressPercent} />
           {showStalledWarning && (
@@ -1261,9 +2037,15 @@ export function AIDraftModal({
           <AlertDescription>
             Successfully added {progress.result.slidesAdded} slides to your
             deck.
-            {progress.result.warnings?.length > 0 && (
+            {isFinalizingCompletion && (
+              <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Finalizing output...
+              </div>
+            )}
+            {formattedResultWarnings.length > 0 && (
               <ul className="mt-1 list-disc pl-4 text-xs">
-                {progress.result.warnings.map((w: string, i: number) => (
+                {formattedResultWarnings.map((w: string, i: number) => (
                   <li key={i}>{w}</li>
                 ))}
               </ul>
@@ -1306,7 +2088,7 @@ export function AIDraftModal({
             Draft with AI
           </DialogTitle>
           <DialogDescription>
-            Generate presentation slides from a topic using AI.
+            Generate presentation slides from a topic with AI, or structure your own article into slides.
           </DialogDescription>
         </DialogHeader>
 
@@ -1318,7 +2100,7 @@ export function AIDraftModal({
           {!taskId && (
             <Button
               onClick={handleGenerate}
-              disabled={!canGenerate}
+              disabled={!canGenerate || isFinalizingCompletion}
               aria-label="Generate slides"
             >
               {generateDraft.isPending ? (
@@ -1334,7 +2116,7 @@ export function AIDraftModal({
             <Button
               variant="destructive"
               onClick={handleCancel}
-              disabled={cancelDraft.isPending}
+              disabled={cancelDraft.isPending || isFinalizingCompletion}
               aria-label="Cancel generation"
             >
               {cancelDraft.isPending ? "Cancelling..." : "Cancel"}
@@ -1342,8 +2124,12 @@ export function AIDraftModal({
           )}
 
           {taskId && completed && !progress?.error && (
-            <Button onClick={handleClose} aria-label="Close">
-              Close
+            <Button
+              onClick={handleClose}
+              aria-label="Close"
+              disabled={isFinalizingCompletion}
+            >
+              {isFinalizingCompletion ? "Finalizing..." : "Close"}
             </Button>
           )}
 

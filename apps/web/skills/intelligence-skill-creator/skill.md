@@ -32,7 +32,7 @@ triggerPatterns:
 - **Phase 3 — skill.md:** Generates manifest with YAML frontmatter, input/output tables, usage examples
 - **Phase 4 — Code:** Generates complete `python/skill.py` OR `js/skill.js` with stdlib only
 - **Phase 5 — Critic:** Second LLM pass reviews and fixes correctness, edge cases, security
-- **Phase 6 — Tests:** Generates `tests/tests.json` with happy path, edge cases, error cases
+- **Phase 6 — Tests:** Generates `tests/tests.json` with structured assertions for happy path, edge cases, and error cases
 - **Phase 7 — Write:** Writes all artifacts to `apps/web/skills/{skill-name}/`
 
 ### 🔧 Improve Mode (since v0.3.0)
@@ -54,8 +54,7 @@ skills/{skill-name}/
 ├── skill.md                 ← manifest + YAML frontmatter
 ├── python/skill.py          ← if language=python (respond() entry point)
 │   OR js/skill.js           ← if language=javascript
-├── tests/tests.json         ← 5-6 test cases (happy path + edge + error)
-└── README.md                ← auto-generated documentation
+└── tests/tests.json         ← 5-6 structured test cases (happy path + edge + error)
 ```
 
 ## Usage — Create Mode
@@ -102,7 +101,7 @@ skills/{skill-name}/
 ```json
 {
   "success": true,
-  "output": "✅ Skill `thai-date-converter` created successfully!\n\n📁 Location: ...\n📄 Files created:\n  ✅ schemas/input.schema.json\n  ✅ schemas/output.schema.json\n  ✅ schemas/ui.schema.json\n  ✅ skill.md\n  ✅ python/skill.py\n  ✅ tests/tests.json\n  ✅ README.md",
+  "output": "✅ Skill `thai-date-converter` created successfully!\n\n📁 Location: ...\n📄 Files created:\n  ✅ schemas/input.schema.json\n  ✅ schemas/output.schema.json\n  ✅ schemas/ui.schema.json\n  ✅ skill.md\n  ✅ python/skill.py\n  ✅ tests/tests.json",
   "skill_path": "/path/to/apps/web/skills/thai-date-converter"
 }
 ```

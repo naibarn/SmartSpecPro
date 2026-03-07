@@ -51,9 +51,10 @@ async function callSTTProvider(
   provider: "groq" | "openai",
 ): Promise<STTResult> {
   const formData = new FormData();
+  const audioBytes = Uint8Array.from(audioBuffer);
   formData.append(
     "audio",
-    new Blob([audioBuffer], { type: "application/octet-stream" }),
+    new Blob([audioBytes], { type: "application/octet-stream" }),
     `audio.${options.format}`,
   );
   formData.append("provider", provider);

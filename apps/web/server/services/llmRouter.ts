@@ -6,6 +6,8 @@ import { logRequest, calculateCost, type CostMethod } from "./costTracker";
 import { auditLogger } from "./auditLogger";
 import { decrypt } from "./crypto";
 import { getTraceId } from "./traceContext";
+import { calculateCreditsFromCost } from "./creditService";
+import { buildModelProviderMapLookupCondition } from "./modelLookup";
 import type { Message } from "../_core/llm";
 
 // --- Types ---
@@ -26,6 +28,15 @@ export type ExecuteResult =
   | { type: "success"; response: any; providerId: number; providerName: string }
   | { type: "fallback_required"; from: ProviderCandidate; to: ProviderCandidate; estimatedCredits: number }
   | { type: "error"; error: string; statusCode: number };
+
+interface AttemptFailureDetail {
+  providerId: number;
+  providerName: string;
+  providerModelId: string;
+  statusCode: number;
+  errorType: string;
+  errorMessage: string;
+}
 
 // --- Constants ---
 
@@ -94,6 +105,7 @@ export async function getProviderForModel(modelId: string): Promise<ProviderCand
 async function resolveProvidersWithRule(modelId: string): Promise<ResolveResult> {
   const db = await getDb();
   if (!db) return { candidates: [], maxFallbacks: 0 };
+  const lookupCondition = buildModelProviderMapLookupCondition(modelId);
 
   // 1. Query model_provider_map JOIN llm_providers
   const rows = await db
@@ -112,7 +124,7 @@ async function resolveProvidersWithRule(modelId: string): Promise<ResolveResult>
     .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
     .where(
       and(
-        eq(modelProviderMap.modelId, modelId),
+        lookupCondition,
         eq(modelProviderMap.isEnabled, true),
         eq(llmProviders.isEnabled, true),
       )
@@ -213,6 +225,76 @@ function resolveChatUrl(baseUrl: string): string {
   return `${base}/v1/chat/completions`;
 }
 
+function compactText(text: string, max = 180): string {
+  return text.replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+function parseProviderErrorMessage(raw: string): { code?: string; message: string } {
+  const trimmed = raw.trim();
+  if (!trimmed) return { message: "Unknown provider error" };
+
+  try {
+    const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+    const nestedError = parsed.error && typeof parsed.error === "object"
+      ? parsed.error as Record<string, unknown>
+      : undefined;
+
+    const code = nestedError?.code ?? parsed.code;
+    const message =
+      nestedError?.message
+      ?? parsed.message
+      ?? parsed.detail
+      ?? parsed.error
+      ?? trimmed;
+
+    return {
+      code: typeof code === "string" ? compactText(code, 80) : undefined,
+      message: compactText(String(message), 240),
+    };
+  } catch {
+    return { message: compactText(trimmed, 240) };
+  }
+}
+
+function buildAggregatedFailureMessage(details: AttemptFailureDetail[]): string {
+  if (details.length === 0) {
+    return "All providers failed";
+  }
+
+  const summary = details
+    .map((d, index) => {
+      const base = `attempt ${index + 1} ${d.providerName}(${d.providerModelId})`;
+      const codePart = d.errorType === `http_${d.statusCode}`
+        ? `HTTP ${d.statusCode}`
+        : d.errorType;
+      return `${base}: ${codePart} - ${compactText(d.errorMessage, 120)}`;
+    })
+    .join("; ");
+
+  return `All providers failed after ${details.length} attempt(s): ${summary}`;
+}
+
+function toAuditMessageContent(content: unknown): string {
+  if (typeof content === "string") {
+    return compactText(content, 4000);
+  }
+  if (Array.isArray(content)) {
+    const textParts = content
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object" && "type" in item && (item as { type?: unknown }).type === "text") {
+          const text = (item as { text?: unknown }).text;
+          return typeof text === "string" ? text : "";
+        }
+        return "";
+      })
+      .filter(Boolean)
+      .join("\n");
+    return compactText(textParts, 4000);
+  }
+  return compactText(String(content ?? ""), 4000);
+}
+
 export async function executeWithFallback(params: {
   model: string;
   messages: Message[];
@@ -222,6 +304,7 @@ export async function executeWithFallback(params: {
   preferredProvider?: number;
 }): Promise<ExecuteResult> {
   const { candidates, maxFallbacks } = await resolveProvidersWithRule(params.model);
+  const failureDetails: AttemptFailureDetail[] = [];
 
   // If preferredProvider, filter to just that one
   let targets: ProviderCandidate[];
@@ -256,10 +339,14 @@ export async function executeWithFallback(params: {
         requestType: "chat",
         requestPayload: {
           messageCount: params.messages.length,
-          messages: params.messages.map((m) => ({
-            role: m.role,
-            contentLength: typeof m.content === "string" ? m.content.length : 0,
-          })),
+          messages: params.messages.map((m) => {
+            const content = toAuditMessageContent(m.content);
+            return {
+              role: m.role,
+              content,
+              contentLength: content.length,
+            };
+          }),
           model: candidate.providerModelId,
           stream: params.stream,
         },
@@ -297,6 +384,10 @@ export async function executeWithFallback(params: {
           inputTokens,
           outputTokens,
         });
+        const creditsCharged =
+          params.userId > 0 && Number.isFinite(costUsd) && costUsd > 0
+            ? calculateCreditsFromCost(costUsd)
+            : 0;
 
         logRequest({
           userId: params.userId,
@@ -305,7 +396,7 @@ export async function executeWithFallback(params: {
           inputTokens,
           outputTokens,
           costUsd,
-          creditsCharged: 0,
+          creditsCharged,
           responseTimeMs,
           statusCode: 200,
           wasFallback: i > 0,
@@ -323,6 +414,7 @@ export async function executeWithFallback(params: {
           inputTokens,
           outputTokens,
           costUsd,
+          creditsCharged,
           costCalculationMethod: costMethod,
           timing: { networkMs, parseMs, totalMs: responseTimeMs },
           wasFallback: i > 0,
@@ -337,6 +429,7 @@ export async function executeWithFallback(params: {
             },
             choiceCount: data?.choices?.length ?? 0,
             finishReason: data?.choices?.[0]?.finish_reason ?? null,
+            assistantPreview: toAuditMessageContent(data?.choices?.[0]?.message?.content ?? ""),
           },
         });
 
@@ -346,8 +439,20 @@ export async function executeWithFallback(params: {
       // Error handling
       const statusCode = response.status;
       const errorText = await response.text().catch(() => "Unknown error");
+      const parsedProviderError = parseProviderErrorMessage(errorText);
+      const parsedErrorMessage = parsedProviderError.code
+        ? `${parsedProviderError.code}: ${parsedProviderError.message}`
+        : parsedProviderError.message;
 
       recordFailure(candidate.providerId, `http_${statusCode}`);
+      failureDetails.push({
+        providerId: candidate.providerId,
+        providerName: candidate.providerName,
+        providerModelId: candidate.providerModelId,
+        statusCode,
+        errorType: `http_${statusCode}`,
+        errorMessage: parsedErrorMessage,
+      });
 
       logRequest({
         userId: params.userId,
@@ -374,7 +479,7 @@ export async function executeWithFallback(params: {
         model: candidate.providerModelId,
         statusCode,
         errorType: `http_${statusCode}`,
-        errorMessage: errorText.slice(0, 500),
+        errorMessage: parsedErrorMessage.slice(0, 500),
         timing: { networkMs, totalMs: Date.now() - startTime },
         wasFallback: i > 0,
         fallbackAttempt: i,
@@ -383,7 +488,7 @@ export async function executeWithFallback(params: {
 
       // Non-retriable client error — truncate error text to avoid leaking provider internals
       if (!isFallbackEligible(statusCode)) {
-        return { type: "error", error: errorText.slice(0, 500), statusCode };
+        return { type: "error", error: parsedErrorMessage.slice(0, 500), statusCode };
       }
 
       // Check free->paid boundary before fallback
@@ -403,6 +508,18 @@ export async function executeWithFallback(params: {
       // Continue to next candidate
     } catch (err: any) {
       recordFailure(candidate.providerId, "network_error");
+      const networkMessage = compactText(
+        err instanceof Error ? err.message : String(err ?? "Unknown network error"),
+        240,
+      );
+      failureDetails.push({
+        providerId: candidate.providerId,
+        providerName: candidate.providerName,
+        providerModelId: candidate.providerModelId,
+        statusCode: 0,
+        errorType: "network_error",
+        errorMessage: networkMessage,
+      });
 
       logRequest({
         userId: params.userId,
@@ -420,6 +537,21 @@ export async function executeWithFallback(params: {
         traceId: getTraceId(),
       }).catch((err) => console.error("[AuditLog] Failed to log request:", err.message));
 
+      auditLogger.log({
+        eventType: "llm_response",
+        userId: params.userId,
+        providerId: candidate.providerId,
+        providerName: candidate.providerName,
+        model: candidate.providerModelId,
+        statusCode: 0,
+        errorType: "network_error",
+        errorMessage: networkMessage.slice(0, 500),
+        timing: { totalMs: Date.now() - startTime },
+        wasFallback: i > 0,
+        fallbackAttempt: i,
+        fallbackFromProviderId: i > 0 ? targets[i - 1].providerId : undefined,
+      });
+
       // Check free->paid boundary
       const nextCandidate = targets[i + 1];
       if (nextCandidate && candidate.isFree && !nextCandidate.isFree) {
@@ -431,5 +563,25 @@ export async function executeWithFallback(params: {
     }
   }
 
-  return { type: "error", error: "All providers failed", statusCode: 502 };
+  const aggregatedError = buildAggregatedFailureMessage(failureDetails);
+  auditLogger.log({
+    eventType: "llm_response",
+    userId: params.userId,
+    model: params.model,
+    statusCode: 502,
+    errorType: "all_providers_failed",
+    errorMessage: aggregatedError.slice(0, 500),
+    metadata: {
+      attempts: failureDetails.map((detail, index) => ({
+        attempt: index + 1,
+        providerId: detail.providerId,
+        providerName: detail.providerName,
+        providerModelId: detail.providerModelId,
+        statusCode: detail.statusCode,
+        errorType: detail.errorType,
+        errorMessage: detail.errorMessage,
+      })),
+    },
+  });
+  return { type: "error", error: aggregatedError, statusCode: 502 };
 }

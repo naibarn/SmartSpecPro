@@ -1,6 +1,7 @@
 import { eq, and, gte, lte, sql, isNotNull } from "drizzle-orm";
 import { getDb } from "../db";
 import { providerUsageLog, modelProviderMap, llmProviders } from "../../drizzle/schema";
+import { buildModelProviderMapLookupCondition } from "./modelLookup";
 
 // --- Constants ---
 
@@ -71,7 +72,7 @@ export async function calculateCost(params: {
       .from(modelProviderMap)
       .where(
         and(
-          eq(modelProviderMap.modelId, params.modelId),
+          buildModelProviderMapLookupCondition(params.modelId),
           eq(modelProviderMap.isEnabled, true),
         )
       )
