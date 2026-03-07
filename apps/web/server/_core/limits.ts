@@ -39,6 +39,12 @@ export function rateLimit(namespace: string, opts: { rpm: number; windowMs?: num
   const windowMs = Math.max(1_000, opts.windowMs ?? 60_000);
 
   return (req: Request, res: Response, next: NextFunction) => {
+    // Allow internal service-to-service calls to bypass IP rate limiting
+    if ((res.locals as any).skipIpRateLimit === true) {
+      next();
+      return;
+    }
+
     const k = keyFor(req, namespace);
     const b = buckets.get(k) ?? { ts: [] };
     const t = now();

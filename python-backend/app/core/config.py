@@ -121,6 +121,7 @@ class Settings(BaseSettings):
     SMARTSPEC_MCP_BASE_URL: str = ""  # optional; defaults to WEB_GATEWAY_URL
     SMARTSPEC_WEB_GATEWAY_TIMEOUT_SECONDS: int = 600
     SMARTSPEC_WEB_GATEWAY_RETRIES: int = 2  # number of retries on transient errors (in addition to first attempt)
+    LLM_GATEWAY_SERVICE_ACCOUNT_ID: int = 1  # User ID for system credit pool (service account mode)
 
     # Optional auth gate for the Python OpenAI-compatible surface (if set, require Authorization Bearer)
     SMARTSPEC_PROXY_TOKEN: str = ""

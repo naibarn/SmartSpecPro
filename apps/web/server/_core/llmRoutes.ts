@@ -1,4 +1,5 @@
 import type { Express, Request, Response } from "express";
+import crypto from "crypto";
 import { decrypt } from "../services/crypto";
 import { ENV } from "./env";
 import { authorizeRequest, AuthResult } from "./authz";
@@ -1191,11 +1192,71 @@ export function registerLLMRoutes(app: Express) {
     return checkCredits(auth, res);
   };
 
+  /**
+   * Verify X-Internal-Token header using timing-safe comparison.
+   * Returns true if the token is valid, false otherwise.
+   */
+  const verifyInternalToken = (req: Request): boolean => {
+    const expected = ENV.webGatewayToken;
+    if (!expected) return false;
+    const token = req.headers["x-internal-token"] as string | undefined;
+    if (!token) return false;
+    const tokenBuf = Buffer.from(token);
+    const expectedBuf = Buffer.from(expected);
+    if (tokenBuf.length !== expectedBuf.length) return false;
+    return crypto.timingSafeEqual(tokenBuf, expectedBuf);
+  };
+
+  const SERVICE_ACCOUNT_ID = parseInt(process.env.LLM_GATEWAY_SERVICE_ACCOUNT_ID || "1", 10);
+
+  /**
+   * Auth wrapper that accepts either X-Internal-Token (service-to-service)
+   * or falls through to JWT auth via guardWithCredits.
+   */
+  const guardWithCreditsOrInternalToken = async (
+    req: Request,
+    res: Response
+  ): Promise<{ ok: true; userId: number; isInternal: boolean } | { ok: false }> => {
+    // Use cached verification result from middleware if available, otherwise verify
+    const isInternal = (res.locals as any).verifiedInternalToken === true || verifyInternalToken(req);
+    if (isInternal) {
+      const userIdHeader = req.headers["x-user-id"] as string | undefined;
+      const userId = userIdHeader ? parseInt(userIdHeader, 10) : SERVICE_ACCOUNT_ID;
+      if (isNaN(userId)) {
+        res.status(400).json({ error: { message: "Invalid X-User-Id header", code: "bad_request" } });
+        return { ok: false };
+      }
+
+      // Check credits for the specified user (internal callers still need credits)
+      const hasCredits = await hasEnoughCredits(userId, MIN_CREDITS_REQUIRED);
+      if (!hasCredits) {
+        res.status(402).json({ error: { message: "Insufficient credits", code: "insufficient_credits" } });
+        return { ok: false };
+      }
+
+      return { ok: true, userId, isInternal: true };
+    }
+
+    // Fall through to JWT auth
+    const result = await guardWithCredits(req, res);
+    if (!result.ok) return { ok: false };
+    return { ...result, isInternal: false };
+  };
+
   const llmLimiter = rateLimit("llm", { rpm: LLM_RPM });
 
   // OpenAI-compatible gateway endpoints for LLM proxy callers.
   app.post(
     "/v1/chat/completions",
+    (req: Request, res: Response, next: Function) => {
+      // Skip IP rate limiter for internal token callers; cache result to avoid double verification
+      const isInternal = verifyInternalToken(req);
+      if (isInternal) {
+        (res.locals as any).skipIpRateLimit = true;
+        (res.locals as any).verifiedInternalToken = true;
+      }
+      next();
+    },
     llmLimiter,
     enforceJsonBodyMaxBytes(MAX_LLM_BODY_BYTES),
     async (req: Request, res: Response) => {
@@ -1204,7 +1265,7 @@ export function registerLLMRoutes(app: Express) {
       req.socket.setTimeout(600_000);  // 10 min
       res.setTimeout(600_000);
 
-      const check = await guardWithCredits(req, res);
+      const check = await guardWithCreditsOrInternalToken(req, res);
       if (!check.ok) return;
 
       const stream = Boolean(req.body?.stream);

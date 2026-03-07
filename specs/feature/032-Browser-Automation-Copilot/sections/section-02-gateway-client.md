@@ -275,11 +275,34 @@ Do NOT change other routes (`/api/llm/chat`, `/api/llm/stream`, `/api/llm/brains
 
 ---
 
+## Implementation Notes (As-Built)
+
+### Files Created
+- `python-backend/app/services/llm_gateway_client.py` — LLMGatewayClient with chat_completion(), vision_call(), list_available_models(), aclose()
+- `python-backend/tests/test_llm_gateway_client.py` — 10 tests covering headers, body, errors, retries
+- `apps/web/server/__tests__/guardWithCreditsOrInternalToken.test.ts` — 8 tests covering crypto, auth flow, credits
+
+### Files Modified
+- `apps/web/server/_core/llmRoutes.ts` — Added verifyInternalToken(), guardWithCreditsOrInternalToken(), rate limiter skip middleware
+- `apps/web/server/_core/limits.ts` — Added skipIpRateLimit check in rateLimit()
+- `python-backend/app/core/config.py` — Added LLM_GATEWAY_SERVICE_ACCOUNT_ID setting
+
+### Deviations from Plan
+- **vision_call signature**: Uses `(prompt, screenshot_b64, model)` instead of `(messages_with_images, model)` for simpler API
+- **httpx client reuse**: Client stored as instance variable with `aclose()` lifecycle (reviewer fix)
+- **Retry-After cap**: Capped at 60 seconds max (reviewer fix)
+- **Rate limiter bypass**: Wired up `skipIpRateLimit` flag in limits.ts (reviewer identified dead code)
+- **Double verification cache**: `res.locals.verifiedInternalToken` avoids re-verifying token (reviewer fix)
+
+### Tests
+- Python: 10 tests — headers, body, vision, service account, 402, 429 retry, 429 max retries, 5xx retry, timeout, success
+- Node.js: 8 tests — token verification, auth flow, credit checks
+
+---
+
 ## Verification Checklist
 
-1. All 11 Python tests pass: `cd /home/dev/projects/SmartSpecPro/python-backend && pytest tests/test_llm_gateway_client.py -v`
-2. All 6 Node.js tests pass: `cd /home/dev/projects/SmartSpecPro/apps/web && pnpm vitest run server/__tests__/guardWithCreditsOrInternalToken.test.ts`
-3. TypeScript check passes: `cd /home/dev/projects/SmartSpecPro/apps/web && pnpm check`
-4. Python lint passes: `cd /home/dev/projects/SmartSpecPro/python-backend && ruff check app/services/llm_gateway_client.py`
-5. Existing tests unaffected: all Feature 031 tests still pass
-6. The existing `browserTool.ts` `X-Internal-Token` pattern continues working (shares the same `ENV.webGatewayToken`)
+1. All 10 Python tests pass: `uv run pytest tests/test_llm_gateway_client.py -v --no-cov`
+2. All 8 Node.js tests pass: `npx vitest run server/__tests__/guardWithCreditsOrInternalToken.test.ts`
+3. Existing section-01 tests still pass (20 total tests green)
+4. The existing `browserTool.ts` `X-Internal-Token` pattern continues working
