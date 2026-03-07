@@ -3147,7 +3147,6 @@ function AutomationSettingsPanel() {
       enabled: !!user && user.role === "admin",
       staleTime: 60_000,
     });
-
   const updateMutation = trpc.systemSettings.updateSetting.useMutation({
     onSuccess: () => {
       toast.success("Automation settings saved");
@@ -3212,7 +3211,6 @@ function AutomationSettingsPanel() {
     },
     {} as Record<string, typeof filteredModels>,
   );
-
   return (
     <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
       <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
