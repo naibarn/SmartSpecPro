@@ -16,7 +16,7 @@ import { signBearerToken } from "../_core/tokens";
 // System Settings Router
 // ============================================================
 
-const settingCategorySchema = z.enum(["stripe", "invoice", "email", "general", "oauth", "ai", "telegram", "vectordb", "credit_pricing", "infrastructure"]);
+const settingCategorySchema = z.enum(["stripe", "invoice", "email", "general", "oauth", "ai", "telegram", "vectordb", "credit_pricing", "infrastructure", "tenant_automation"]);
 
 const stripeSettingsSchema = z.object({
   secretKey: z.string().optional(),
