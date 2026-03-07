@@ -297,7 +297,17 @@ Disable the `responsesApi` feature flag (both global and per-tenant) and the end
 
 | File | Action | Description |
 |------|--------|-------------|
-| `apps/web/server/_core/responsesRoutes.ts` | **Create** | Responses API handler: sanitizer, streaming/JSON proxying, tool-call loop, web_search tracking, budget cap |
-| `apps/web/server/_core/llmRoutes.ts` | **Modify** | Import and register `responsesRoutes`, export shared utilities |
-| `apps/web/server/services/auditLogger.ts` | **Modify** | Add `responses_api_call`, `web_search_call`, `browser_tool_call` event types |
-| `apps/web/server/__tests__/responsesRoutes.test.ts` | **Create** | Test suite (25+ test cases) |
+| `apps/web/server/_core/responsesRoutes.ts` | **Created** | Responses API handler: sanitizer, streaming/JSON proxying, tool-call loop, web_search tracking, budget cap (~640 lines) |
+| `apps/web/server/_core/llmRoutes.ts` | **Modified** | Import `registerResponsesRoutes`, call with deps injection inside `registerLLMRoutes()` |
+| `apps/web/server/services/auditLogger.ts` | **Modified** | Added `responses_api_call`, `web_search_call`, `browser_tool_call` event types to AuditEventType union |
+| `apps/web/server/__tests__/responsesRoutes.test.ts` | **Created** | 30 test cases covering sanitization, feature flags, non-streaming mode, tool-call loop, web_search tracking, budget cap, auth, audit logging |
+
+## Implementation Deviations from Plan
+
+1. **Dependency injection pattern**: Instead of importing internal functions directly from `llmRoutes.ts`, `registerResponsesRoutes` receives all dependencies as a `deps` parameter. This avoids circular imports and makes testing easier.
+2. **No exponential backoff retry**: Deferred per code review. Current behavior returns partial results on upstream error, which is safe.
+3. **No tools array validation**: Deferred to section-09 security audit.
+4. **MAX_TOOL_ROUNDS / budget defaults hardcoded**: Not loaded from system_settings (deferred — hardcoded defaults are functional for MVP).
+5. **Feature flags fail-closed**: Changed from plan's "fail open" to "fail closed" (return 500 on flag service error) per code review security fix.
+6. **Tenant ID security**: Internal callers can specify tenant via X-Tenant-Id header; external callers always use "default" tenant (not user-controlled header).
+7. **Streaming function call deduplication**: Added dedup by callId to prevent double-dispatch from both `response.output_item.done` and `response.completed` events.

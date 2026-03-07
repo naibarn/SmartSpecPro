@@ -19,6 +19,7 @@ import { handleChatWithRouter, handleStreamWithRouter } from "../services/llmRou
 import { auditLogger } from "../services/auditLogger";
 import { getTraceId } from "../services/traceContext";
 import { logRequest as logCostRequest } from "../services/costTracker";
+import { registerResponsesRoutes } from "./responsesRoutes";
 
 // --- Provider-specific Rate Limiter with Queue System ---
 // Uses Bottleneck with Redis for distributed rate limiting when available
@@ -1276,6 +1277,19 @@ export function registerLLMRoutes(app: Express) {
       }
     }
   );
+
+  // Responses API endpoint (/v1/responses) — for GPT-5.x web_search & function tools
+  registerResponsesRoutes(app, {
+    guardWithCreditsOrInternalToken,
+    verifyInternalToken,
+    getActiveLlmProvider,
+    getLlmProviderById,
+    resolveProviderModelAny,
+    resolveProviderModel,
+    acquireProviderSlot,
+    releaseProviderSlot,
+    recordModelUsage,
+  });
 
   // Models endpoint - returns models from enabled providers in database
   app.get("/v1/models", llmLimiter, async (req: Request, res: Response) => {
