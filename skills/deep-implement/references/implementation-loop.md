@@ -52,10 +52,10 @@ Run:
 - targeted tests for touched area
 - quick regression subset for nearby behavior
 
-If failures persist after 3 focused attempts, stop and ask user whether to:
-- `debug` = continue debugging
-- `skip` = skip current section
-- `pause` = pause workflow
+If failures persist after 3 focused attempts, escalate automatically:
+- continue with a deeper debug pass if the issue still looks local and tractable
+- if the section is blocked by an external dependency or prerequisite, record a blocked task and continue to the next safe ready task
+- ask the user only if the next step would materially change scope, skip agreed deliverables, or depends on product-direction choices
 
 ### 6) Stage for Review
 

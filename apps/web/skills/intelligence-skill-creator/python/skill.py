@@ -591,6 +591,11 @@ def _help_response() -> str:
             "| `llm_model_search` | system gateway | Model ID from the system model list |\n"
             "| `llm_base_url` | custom gateway | OpenAI-compatible endpoint URL |\n"
             "| `llm_model` | custom gateway | Model name (e.g. gpt-4o) |\n"
+            "\n### Category rules\n"
+            "- `article_generation` -> `llm-only`\n"
+            "- `image_prompt_generation` / `video_prompt_generation` -> `llm-only` or `enhance-prompt`\n"
+            "- `image_generation` / `video_generation` / `image_video_generation` / `audio_generation` / `sound_effects` -> `media-generate`\n"
+            "- `automation`, `code_assistant`, `document_analysis`, `web_search`, `data_analysis`, `translation`, `summarization`, `chat_assistant`, `other` -> `llm-only` or `python`\n"
         ),
     }, ensure_ascii=False)
 

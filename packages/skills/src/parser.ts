@@ -36,12 +36,18 @@ export function mapCategoryToEnum(category?: string): string {
     "prompt-enhancement": "prompt_enhancement",
     "image_generation": "image_generation",
     "image-generation": "image_generation",
+    "image_prompt_generation": "image_prompt_generation",
+    "image-prompt-generation": "image_prompt_generation",
     "video_generation": "video_generation",
     "video-generation": "video_generation",
+    "video_prompt_generation": "video_prompt_generation",
+    "video-prompt-generation": "video_prompt_generation",
     "image_video_generation": "image_video_generation",
     "image-video-generation": "image_video_generation",
     "audio_generation": "audio_generation",
     "audio-generation": "audio_generation",
+    "article_generation": "article_generation",
+    "article-generation": "article_generation",
     "sound_effects": "sound_effects",
     "sound-effects": "sound_effects",
     "code_assistant": "code_assistant",
@@ -59,7 +65,7 @@ export function mapCategoryToEnum(category?: string): string {
     "data-analysis": "data_analysis",
     "other": "other",
   };
-  return categoryMap[category || ""] || "prompt_enhancement";
+  return categoryMap[category || ""] || "other";
 }
 
 /**
@@ -68,9 +74,12 @@ export function mapCategoryToEnum(category?: string): string {
 export function categoryToSkillType(category: string): string {
   const categoryMap: Record<string, string> = {
     "image_generation": "image-generation",
+    "image_prompt_generation": "prompt-enhancement",
     "video_generation": "video-generation",
+    "video_prompt_generation": "prompt-enhancement",
     "image_video_generation": "image-video-generation",
     "audio_generation": "audio-generation",
+    "article_generation": "chat-assistant",
     "sound_effects": "audio-generation",
     "code_assistant": "code-assistant",
     "document_analysis": "document-analysis",
@@ -79,8 +88,11 @@ export function categoryToSkillType(category: string): string {
     "automation": "automation",
     "chat_assistant": "chat-assistant",
     "translation": "translation",
+    "data_analysis": "chat-assistant",
+    "summarization": "chat-assistant",
+    "other": "chat-assistant",
   };
-  return categoryMap[category] || "prompt-enhancement";
+  return categoryMap[category] || "chat-assistant";
 }
 
 /**
@@ -173,6 +185,7 @@ export function normalizeMetadata(raw: SkillMetadata, slug: string): {
   enabledByDefault: boolean;
   priority: number;
   executionMode: string;
+  chainTo?: string;
 } {
   return {
     name: raw.name || slug,
@@ -183,5 +196,6 @@ export function normalizeMetadata(raw: SkillMetadata, slug: string): {
     enabledByDefault: raw.enabledByDefault ?? raw.enabled_by_default ?? true,
     priority: raw.priority ?? 50,
     executionMode: (raw.executionMode ?? raw.execution_mode ?? "llm-only") as string,
+    chainTo: (raw.chainTo ?? raw.chain_to ?? undefined) as string | undefined,
   };
 }

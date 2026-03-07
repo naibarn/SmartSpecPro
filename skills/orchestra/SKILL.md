@@ -1,6 +1,6 @@
 ---
 name: orchestra
-description: "AI Orchestra Conductor: analyzes tasks, dispatches specialized sub-agents, integrates results, and manages file-based memory to survive context compaction. Coordinates with /deep-project, /deep-plan, and /deep-implement."
+description: "AI Orchestra Conductor: analyzes tasks, dispatches specialized sub-agents, integrates results, manages file-based memory to survive context compaction, and automatically chains into deep-project, deep-plan, deep-plan-quick, and deep-implement when needed."
 license: MIT
 compatibility: "Claude Code (full features), Codex (general-purpose subagents), OpenCode (sequential mode)"
 ---
@@ -37,6 +37,8 @@ Orchestra reads reference files only when needed. This avoids unnecessary overhe
 | Reference File | When to Read |
 |----------------|-------------|
 | `references/task-analysis.md` | Always — Step 1 |
+| `references/intent-matrix.md` | Always — Step 1 plain-text activation and edge-case calibration |
+| `references/intent-regression-suite.md` | Always when tuning or validating Step 1 trigger behavior; recommended for ambiguous trigger decisions |
 | `references/routing-decision.md` | Always — Step 2 |
 | `references/skill-pack-integration.md` | Only when scope is `large` or `project` — Step 2 |
 | `references/wave-planning.md` | Only for `medium` scope and above — Step 3 |
@@ -49,13 +51,65 @@ Orchestra reads reference files only when needed. This avoids unnecessary overhe
 | `references/compaction-safety.md` | Only when context state is `yellow` or `red` — Step 8 |
 | `references/session-resume.md` | Only on resume path — Step 0 |
 | `references/artifact-management.md` | Always on Step 0 when orchestra/ needs to be created, archived, or verified — fresh start, archive path, and first-ever invocation all read this file |
+| `../BACKUP-PLAYBOOK.md` | Any time the planned route includes destructive data risk, backup creation, restore planning, or irreversible transforms |
 
 ---
+
+## Auto-Activation From Plain Text
+
+Orchestra should not rely only on explicit slash invocation.
+
+If the user does **not** type `/orchestra` but their message clearly describes work that benefits from orchestration, treat that message as an implicit orchestra invocation and start Step 0 automatically.
+
+### Positive Intent Signals
+
+Activate orchestra automatically when the user message implies one or more of these intents:
+
+- multi-step implementation work: “build”, “create”, “implement”, “add a feature”, “wire this up”, “make this work end-to-end”
+- planning/decomposition work: “plan this”, “break this down”, “analyze before coding”, “design the approach”, “what should we change across the system”
+- cross-file or cross-domain work: frontend + backend + DB + Python + infra, or any request likely to touch multiple subsystems
+- orchestration/conductor language: “manage this task”, “coordinate the work”, “handle this end-to-end”, “drive this to completion”
+- ambiguous but substantial engineering asks: short requests that are clearly not single-file edits and would benefit from routing, planning, or staged execution
+- recovery/resume intent: “continue where we left off”, “resume the previous work”, “pick this back up”
+- review-and-execute intent: “analyze what needs to change and do it”, “figure out the best approach and implement it”
+
+### Strong Trigger Patterns
+
+Bias strongly toward orchestra when the message includes phrases like:
+- “ทำต่อให้จบ”, “ทำให้ครบ”, “จัดการให้ทั้งหมด”, “วิเคราะห์แล้วลงมือแก้”, “ช่วยวางแผนและทำต่อ”, “แตกงานให้หน่อย”, “ช่วยจัดลำดับงาน”, “ทำ end-to-end”
+- “build a module/service/system”, “implement the full flow”, “plan and execute”, “coordinate this”, “handle the whole task”, “work through this systematically”
+
+### Promotion Rules
+
+Even if the initial wording looks small, promote into orchestra automatically when any of these are true after quick inspection:
+- more than one subsystem is likely involved
+- planning artifacts would reduce risk
+- the task is under-specified and needs decomposition before coding
+- execution may require chained skills (`deep-plan-quick`, `deep-plan`, `deep-project`, `deep-implement`)
+- the user is delegating ownership of the workflow rather than asking a narrow factual question
+
+### Do Not Auto-Activate Orchestra For
+
+Do **not** activate orchestra automatically for:
+- simple factual questions
+- single-command utility requests (“what time is it”, “show git status”)
+- purely editorial rewrites with no execution plan needed
+- direct small bug fixes where the file and change are already obvious and no planning/routing value exists
+- explicit requests for a different named skill when that skill alone clearly covers the job
+
+### Tie-Break Rule
+
+If you are unsure whether the task is just a direct implementation request or an orchestration-worthy request, prefer orchestra when the downside of missing orchestration is higher than the cost of a brief classification pass.
+
+### Invocation Wording
+
+When orchestra auto-activates from plain text, do not ask the user to rephrase with `/orchestra`.
+Treat the original message as the task description and proceed immediately.
 
 ## Language Detection — MANDATORY
 
 Detect the language of the user's task description at invocation time:
-- If the user typed in **Thai** → use Thai for all AskUserQuestion prompts, option labels, descriptions, banners, and status messages throughout this session.
+- If the user typed in **Thai** → use Thai for all user prompts, option labels, descriptions, banners, and status messages throughout this session.
 - If the user typed in **English** → use English for all prompts and messages.
 - If mixed → default to **Thai** (respect the dominant language).
 
@@ -82,14 +136,13 @@ Orchestra halts and waits for user input when any of these conditions occur. Do 
 
 | Condition | Action |
 |-----------|--------|
-| scope = `large` | Create spec, write `orchestra/backlog.md`, instruct `/deep-plan`, STOP |
-| scope = `project` | Create requirements doc, write `orchestra/backlog.md`, instruct `/deep-project`, STOP |
-| Decision mode = `ask_every_choice` AND HIGH/CRITICAL architectural choice encountered | Present choice with AskUserQuestion, STOP until answered |
-| `/orchestra resume` after deep-* handoff AND expected artifact paths missing from `backlog.md` | Report missing artifacts with exact paths, STOP |
+| A destructive reset/archive is required before planning can continue | Create a timestamped backup/dump first and continue automatically. STOP only if no reliable backup can be produced or the operation would still cause irreversible external loss |
+| Product intent remains ambiguous after codebase/spec analysis | Present the ambiguity clearly, ask only for the product decision, STOP |
+| `/orchestra resume` after an automatic deep-* chain AND expected artifact paths are still missing | Reconstruct from the earliest incomplete safe stage automatically. STOP only if recovery would require destructive reset, accepted-risk security bypass, or ambiguous product intent |
 | Quality gate fails after 3 retry attempts (Step 6) | Report full failure details, STOP |
 | CRITICAL security findings found (Step 6) | Present each finding, STOP — cannot auto-proceed |
 | Circular dependency detected in wave plan (Step 3) | Report cycle with affected task names, STOP until resolved |
-| Conflict unresolvable between two agents (Step 5) | Present both options with AskUserQuestion, STOP |
+| Conflict unresolvable between two agents or two valid product-direction options | Present both options with a direct user prompt, STOP |
 
 ---
 
@@ -99,24 +152,14 @@ Orchestra halts and waits for user input when any of these conditions occur. Do 
 - Replace: `Platform: [detected / unknown — will prompt in Step 4]`
 - With: `Platform: detected ✓ — {value from platform.md}`
 
-If `orchestra/platform.md` does NOT exist, leave the banner line as written — the platform will be set in Step 4.
+If `orchestra/platform.md` does NOT exist, auto-detect the current runtime. In this Codex skill pack, default to `codex`, persist it, and continue without asking unless runtime evidence clearly shows another platform.
 
 Print the orchestra banner. Then check whether `orchestra/snapshot.json` exists at the project root.
 
 **If `orchestra/snapshot.json` exists:**
-
-```
-AskUserQuestion:
-  question: "An orchestra session snapshot was found. How would you like to proceed?"
-  options:
-    - label: "Resume from snapshot"
-      description: "Read orchestra/snapshot.md and snapshot.json, restore state, continue from in-progress step"
-    - label: "Fresh start"
-      description: "Archive the entire orchestra/ directory to orchestra/archive/<ISO-timestamp>/, then begin a new session"
-```
-
-- **Resume path:** Read `references/session-resume.md`. Execute the R4 algorithm (Read, Restore, Reconcile, Resume). Jump to the step indicated by `snapshot.json` > `checkpoint.phase`.
-- **Fresh start path:** Run the **uncommitted work check** (see below). Then read `references/artifact-management.md`. Move `orchestra/` to `orchestra/archive/<ISO-8601-timestamp>/`. Create a new empty `orchestra/` directory.
+- If the user explicitly asked for `new`, `fresh`, `reset`, or `archive and restart`, follow the fresh-start path.
+- Otherwise default to **Resume path** automatically: read `references/session-resume.md`, execute the R4 algorithm (Read, Restore, Reconcile, Resume), and jump to the step indicated by `snapshot.json` > `checkpoint.phase`.
+- **Fresh start path:** Read `references/artifact-management.md`. Move `orchestra/` to `orchestra/archive/<ISO-8601-timestamp>/`. Create a new empty `orchestra/` directory.
 
 **If no `orchestra/snapshot.json` exists:**
 - Read `references/artifact-management.md`.
@@ -134,24 +177,17 @@ git log --oneline "@{u}..HEAD" 2>/dev/null | head -5
 ```
 
 If either command returns non-empty output (uncommitted files OR unpushed commits exist):
-
-```
-AskUserQuestion:
-  question: "Git has uncommitted or unpushed work. How would you like to handle this before starting a new Orchestra session?"
-  options:
-    - label: "Commit and push first (Recommended)"
-      description: "STOP Orchestra — commit your changes and push to remote first, then re-run /orchestra when done"
-    - label: "Proceed without committing"
-      description: "Start the new Orchestra session now; uncommitted changes remain as-is"
-    - label: "Stash changes"
-      description: "Stash current changes via git stash, run Orchestra, then apply stash manually when done"
-```
-
-- **"Commit and push first"** → STOP. Do not archive or write to `orchestra/`. Print: `"Please commit and push your current work, then re-run /orchestra."` Do not proceed further.
-- **"Stash changes"** → Run `git stash push -m "orchestra-pre-session-$(date +%Y%m%d_%H%M%S)"`. Note the stash ref (from `git stash list | head -1`) — log it to `orchestra/progress.md` after the directory is created. Then continue with fresh-start setup.
-- **"Proceed without committing"** → Continue normally.
+- Treat this as advisory by default, not a blocking confirmation gate.
+- Log the dirty/unpushed state to `orchestra/progress.md` once the session directory exists.
+- Continue normally unless the next planned action would require destructive git operations, risky history rewriting, or ownership is materially ambiguous due to overlapping in-progress changes.
 
 If both commands return empty output, skip this check silently and proceed.
+
+**Execution autonomy rule:** Do not ask for permission to inspect the codebase, run repository searches, do web research, or run safe non-destructive shell commands. These are conductor-owned execution steps and should happen automatically. Ask only for destructive/irreversible actions, accepted-risk security bypasses, or genuine product ambiguity.
+
+**Git/GitHub recovery rule:** For repo-local work, treat git history and the GitHub-backed repository as the primary recovery mechanism. Do not stop for confirmation merely because rollback might be needed later. Instead, prefer recoverable workflows: preserve history, avoid destructive rewrites, keep artifacts in git, and continue automatically. Ask only when the next action could destroy data that git/GitHub cannot restore (for example DB table loss, external state deletion, or irreversible side effects outside the repository).
+
+**Backup-first rule:** If an operation may destroy data, dump/copy/export the at-risk state to timestamped backup files first, record their paths, and then continue automatically. Examples: SQL dump before destructive migration, file copy before overwrite-heavy refactor, JSON/CSV export before bulk rewrite. Ask the user only if a reliable backup cannot be created or restore viability is unclear.
 
 ---
 
@@ -200,46 +236,25 @@ Print the classification summary to the user before proceeding.
 
 Read `references/routing-decision.md`.
 
-**Decision mode setup (first time only):** If `orchestra/decision-mode.md` does not exist:
-
-```
-AskUserQuestion:
-  question: "How much should Orchestra pause for your input on architectural choices?"
-  options:
-    - label: "ask_every_choice"
-      description: "Pause at every architectural decision (maximum control)"
-    - label: "smart_auto"
-      description: "Pause only for HIGH/CRITICAL risk decisions (recommended)"
-    - label: "auto_by_default"
-      description: "Proceed autonomously, log all decisions to orchestra/decisions.md"
-```
-
-Write the chosen value to `orchestra/decision-mode.md`. Never ask again.
+**Decision mode setup (first time only):**
+- If `orchestra/decision-mode.md` does not exist, write `auto_by_default` immediately.
+- Change mode only if the user explicitly requests `smart auto` or `ask mode`.
 
 **Routing decision table** (apply scope from Step 1):
 
 | Scope | Route | Next Action |
 |-------|-------|-------------|
 | `trivial` | Direct edit | Conductor edits file directly. No sub-agents. Skip to Step 7. |
-| `small` | Single agent | Build one Task Packet. Skip Step 3. Proceed to Step 4. |
-| `medium` | Multi-agent waves | Full pipeline. Proceed to Step 3. |
-| `large` | deep-plan chain | Read `references/skill-pack-integration.md`. Create requirements spec. Write expected artifact paths to `orchestra/backlog.md`. Print handoff instruction. STOP. |
-| `project` | deep-project decomposition | Read `references/skill-pack-integration.md`. Create requirements document. Write `orchestra/backlog.md`. Print handoff instruction. STOP. |
+| `small` | Single agent or quick-plan-chain | If implementation is obvious, build one Task Packet. If the task is under-specified or benefits from a written plan, auto-run `deep-plan-quick`. |
+| `medium` | Multi-agent waves or quick-plan-chain | Use waves when the task is implementation-ready. Use `deep-plan-quick` when a compact written plan is still needed. |
+| `large` | deep-plan chain | Read `references/skill-pack-integration.md`. Create or refresh `spec.md`, auto-run `deep-plan`, verify artifacts, then continue directly into `deep-implement`. |
+| `project` | full-pipeline | Read `references/skill-pack-integration.md`. Create or refresh `requirements.md`, auto-run `deep-project`, then auto-run `deep-plan` and `deep-implement` per split. |
 
-> **Note for `large` scope:** Orchestra **automatically creates** the spec file at `specs/feature/NNN-name/spec.md` from the user's task description — the user does NOT need to write or create it manually. After creating the spec, Orchestra presents a **3-option review gate**: (1) Auto-review — evaluates spec for completeness, clarity, scope, and risks then reports findings; (2) Review myself — displays the spec for the user to read and request changes; (3) Proceed directly to `/deep-plan`. See `references/routing-decision.md` for full review logic. For `project` scope, Orchestra auto-creates `requirements.md` and applies the same review gate before routing to `/deep-project`.
+> **Automatic chaining rule:** Orchestra owns the end-to-end lifecycle. It may create planning artifacts, read sibling deep-* skill files, execute those workflows inline, verify their outputs, and continue automatically. Do not wait for the user to type `/deep-plan`, `/deep-plan-quick`, `/deep-project`, or `/deep-implement` unless the user explicitly asks to take over that step manually.
 
-**Large scope handoff instruction (print to user):**
-```
-Requirements spec created at: specs/feature/NNN-name/spec.md
+> **Quick planning rule:** If the user provides only a short request and no `spec.md`, but the task still benefits from planning, orchestra should route to `deep-plan-quick` instead of forcing a full spec-first flow.
 
-Run this command to begin planning:
-  /deep-plan @specs/feature/NNN-name/spec.md
-
-When the deep-plan session is complete, return with:
-  /orchestra resume
-```
-
-**Resume after deep-* handoff:** When `/orchestra resume` is invoked, read `orchestra/backlog.md`. Check that all expected artifact paths exist. If any are missing — see STOP conditions table above.
+**Resume after automatic deep-* chaining:** When `/orchestra resume` is invoked, read `orchestra/backlog.md`. Check that all expected artifact paths exist. If some are missing, fall back to the earliest incomplete safe automatic stage and continue; stop only if recovery would require destructive reset or product-direction clarification.
 
 ---
 
@@ -274,20 +289,10 @@ Read `references/sub-agent-dispatch.md` and `references/platform-compat.md`.
 **Platform detection (REQUIRED before any Task call):**
 
 Check whether `orchestra/platform.md` exists. If missing:
-
-```
-AskUserQuestion:
-  question: "Which platform are you running orchestra on?"
-  options:
-    - label: "claude-code"
-      description: "Full Task tool support, parallel sub-agents"
-    - label: "codex"
-      description: "Task tool available, inject agent templates manually"
-    - label: "open-code"
-      description: "No Task tool; sequential execution, small scope only"
-```
-
-Write the chosen value to `orchestra/platform.md`. Never ask again.
+- infer the current platform automatically
+- in this Codex skill pack, default to `codex`
+- write the detected value to `orchestra/platform.md`
+- ask the user only if runtime evidence is contradictory and dispatch strategy would materially change
 
 **Build Task Packets:** For each agent in the current wave, construct a Task Packet following `references/sub-agent-dispatch.md`. See `references/task-packet-format.md` for the construction guide. The packet must include all 8 required sections: TASK, DOMAIN, FILES, CONTEXT, CONSTRAINTS, CONTRACT, OUTPUT, QUALITY GATE.
 
@@ -307,7 +312,7 @@ Do NOT dump raw conversation history. Include only file paths, change descriptio
 | Platform | Method |
 |----------|--------|
 | `claude-code` | Task tool with specific `subagent_type`. All wave agents dispatched in a **single message** (multiple Task calls). Max 4 concurrent agents. |
-| `codex` | Task tool with `subagent_type=general-purpose`. Prepend condensed agent identity template to each Task Packet prompt. Parallel dispatch still works. |
+| `codex` | Prefer general-purpose sub-agents only when this Codex environment exposes them. Inject a condensed agent identity template. If no sub-agent tool is available, execute the role inline while preserving the same Task Packet and Result Report contracts. |
 | `open-code` | No Task tool. Conductor executes each agent role sequentially. For medium+ scope: warn "This task requires parallel agents. Consider switching to Claude Code or Codex. Proceeding sequentially." |
 
 **Parallelism hard constraints:**
@@ -361,11 +366,11 @@ Read `references/quality-gates.md`.
 
 | Gate | Command | Trigger | Blocking? |
 |------|---------|---------|-----------|
-| TypeScript check | `cd apps/web && pnpm check` | Any `.ts`/`.tsx` changed | Yes for HIGH/CRITICAL |
-| Python lint | `cd python-backend && ruff check app/` | Any `.py` changed | Yes for HIGH/CRITICAL |
-| Unit tests | `pnpm test` or `pytest` | Risk ≥ medium | Yes for HIGH/CRITICAL |
+| TypeScript check | `repo typecheck command` (SmartSpecPro default: `cd apps/web && pnpm check`) | Any type-checked source changed | Yes for HIGH/CRITICAL |
+| Python lint | `repo Python lint command` (SmartSpecPro default: `cd python-backend && ruff check app/`) | Any `.py` changed | Yes for HIGH/CRITICAL |
+| Unit tests | `repo unit/integration test command(s)` (SmartSpecPro defaults: `cd apps/web && pnpm test`, `cd python-backend && pytest`) | Risk ≥ medium | Yes for HIGH/CRITICAL |
 | Security review (general) | Dispatch `security.md` agent | Risk = HIGH | Blocking for CRITICAL findings |
-| Full test suite | Both `pnpm test` AND `pytest` | Risk = CRITICAL | Always blocking |
+| Full test suite | All relevant repo test suites | Risk = CRITICAL | Always blocking |
 | Pre-merge security gate | 3-specialist parallel audit (see below) | `security_gate_required = true` | CRITICAL findings block |
 
 **Blocking policy:**
@@ -548,27 +553,12 @@ RECOMMENDED NEXT STEPS:
 ═══════════════════════════════════════════════════════════════
 ```
 
-### Follow-up Question
+### Follow-up Handling
 
-After the report, present:
-
-```
-AskUserQuestion:
-  question: "Post-completion review is done. What would you like to do next?"
-  options:
-    - label: "Address critical gaps now"
-      description: "Re-run /orchestra for the 🔴 critical items above"
-    - label: "Choose items to address"
-      description: "I'll tell you which findings to tackle — run /orchestra for those"
-    - label: "Finalize as-is"
-      description: "Implementation is complete — close this session without further changes"
-```
-
-- **"Address critical gaps now"** → Write the critical items to `orchestra/backlog.md` as a new task batch. Print: `"Run /orchestra to address these items."` STOP.
-- **"Choose items to address"** → Ask which numbered findings to tackle. Write selected items to `orchestra/backlog.md`. Print: `"Run /orchestra to address these items."` STOP.
-- **"Finalize as-is"** → Proceed to print the final summary below.
-
-**Note:** If ALL 5 dimensions return clean (no findings), skip the AskUserQuestion and go directly to the final summary. Print: `"✅ Post-completion review: no gaps, security issues, or missing features found."`
+After the report:
+- If ALL 5 dimensions return clean (no findings), go directly to the final summary. Print: `"✅ Post-completion review: no gaps, security issues, or missing features found."`
+- If findings remain and `decision-mode` is `auto_by_default` or `smart_auto`, write actionable follow-ups to `orchestra/backlog.md`, log the decision, and proceed directly to the final summary without waiting.
+- Ask the user what to do next only if `decision-mode` is `ask_every_choice` or if a remaining item requires destructive/irreversible acceptance.
 
 ### Final Summary (after review)
 

@@ -94,6 +94,7 @@ import { buildWrongEditorOpenGuard } from "@/lib/presentationRouting";
 import { normalizeMediaSourceUrl } from "@/lib/mediaUrl";
 import { toast } from "sonner";
 import {
+  addElement as insertElement,
   createElement,
   ensureSlideContent,
   resizeCanvas,
@@ -996,6 +997,8 @@ function summarizeSlidePreview(slideContent: unknown): {
   mediaKind: "image" | "video" | null;
   textSnippet: string | null;
   elementCount: number;
+  inlineSvgContent: string | null;
+  inlineSvgColor: string | null;
 } {
   const normalized = ensureSlideContent(slideContent as PresentationSlideContent);
   const mediaElement = normalized.elements.find((element) => {
@@ -1012,6 +1015,13 @@ function summarizeSlidePreview(slideContent: unknown): {
     const value = String((element as any).text || "").trim();
     return value.length > 0;
   }) as ({ text: string } | undefined);
+  const inlineSvgElement = normalized.elements.find((element) => {
+    if (element.type !== "image") {
+      return false;
+    }
+    const svgContent = typeof element.svgContent === "string" ? element.svgContent.trim() : "";
+    return svgContent.length > 0 && isLikelySvgMarkup(svgContent);
+  }) as ({ svgContent: string; svgColor?: string } | undefined);
 
   return {
     mediaSrc: mediaElement?.src || null,
@@ -1022,6 +1032,8 @@ function summarizeSlidePreview(slideContent: unknown): {
     mediaKind: mediaElement?.type || null,
     textSnippet: textElement?.text ? textElement.text.slice(0, 56) : null,
     elementCount: normalized.elements.length,
+    inlineSvgContent: inlineSvgElement?.svgContent ?? null,
+    inlineSvgColor: inlineSvgElement?.svgColor ?? null,
   };
 }
 
@@ -1759,6 +1771,11 @@ export default function PresentationEditor() {
     { enabled: Boolean(deckProjectAudioTrack?.libraryItemId) },
   );
   const draftContent = commandState.content;
+  const selectedSlideVisualOnly = draftContent.visualOnly === true;
+  const visualOnlySlideCount = useMemo(
+    () => slides.filter((slide) => ensureSlideContent(slide.slideContent).visualOnly === true).length,
+    [slides],
+  );
   const selectedElementIds = commandState.selectedElementIds;
   const selectedElementId = selectedElementIds[0] ?? null;
   const previousMobileSelectedElementIdRef = useRef<string | null | undefined>(undefined);
@@ -2671,7 +2688,26 @@ export default function PresentationEditor() {
     }
 
     const element = createElement(type, nextElementId(type));
-    executeCommand(addElementCommand(element));
+    if (type === "text" && draftContent.visualOnly === true) {
+      executeCommand({
+        id: "add-text-exit-visual-only",
+        apply: (state) => ({
+          ...state,
+          content: insertElement(
+            {
+              ...state.content,
+              visualOnly: undefined,
+            },
+            element,
+          ),
+          selectedElementIds: [element.id],
+          snapGuides: [],
+        }),
+      });
+      toast.info("Visual-only mode was turned off for this slide because you added text.");
+    } else {
+      executeCommand(addElementCommand(element));
+    }
     focusMobileProperties("element");
   }
 
@@ -3117,6 +3153,7 @@ export default function PresentationEditor() {
       return;
     }
     const offset = 16 * (clipboardPasteCountRef.current + 1);
+    const includesTextElement = clipboardElements.some((element) => element.type === "text");
     executeCommand({
       id: "paste-selection",
       apply: (state) => {
@@ -3130,6 +3167,9 @@ export default function PresentationEditor() {
           ...state,
           content: {
             ...state.content,
+            ...(includesTextElement && state.content.visualOnly === true
+              ? { visualOnly: undefined }
+              : {}),
             elements: [...state.content.elements, ...pasted],
           },
           selectedElementIds: pasted.map((element) => element.id),
@@ -3137,6 +3177,9 @@ export default function PresentationEditor() {
         };
       },
     });
+    if (includesTextElement && draftContent.visualOnly === true) {
+      toast.info("Visual-only mode was turned off for this slide because you pasted text.");
+    }
     clipboardPasteCountRef.current += 1;
   }
 
@@ -4658,6 +4701,7 @@ export default function PresentationEditor() {
             && slideDropTargetId === slide.id
             && draggingSlideId !== slide.id;
           const preview = summarizeSlidePreview(slideContentForPreview);
+          const isVisualOnlySlide = slideContentForPreview.visualOnly === true;
           const slideBg = slideContentForPreview.background;
           const thumbnailBgStyle: React.CSSProperties = slideBg?.type === "color"
             ? { backgroundColor: slideBg.value }
@@ -4718,6 +4762,15 @@ export default function PresentationEditor() {
                     draggable={false}
                     data-testid={`slide-preview-media-image-${slide.orderIndex + 1}`}
                   />
+                ) : preview.inlineSvgContent ? (
+                  <div
+                    className="h-full w-full"
+                    data-testid={`slide-preview-inline-svg-${slide.orderIndex + 1}`}
+                    style={{ color: preview.inlineSvgColor || "#ffffff" }}
+                    dangerouslySetInnerHTML={{
+                      __html: preview.inlineSvgContent.replace(/currentColor/g, preview.inlineSvgColor || "#ffffff"),
+                    }}
+                  />
                 ) : (
                   <div className="grid h-full w-full place-items-center text-[11px] text-slate-500">
                     Slide preview
@@ -4728,14 +4781,24 @@ export default function PresentationEditor() {
                     VIDEO
                   </span>
                 ) : null}
-                {(slide as any)?.audioTrack != null ? (
-                  <span
-                    className="absolute left-1 top-1 flex items-center gap-0.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white"
-                    title="Slide has audio"
-                  >
-                    <Music className="h-2.5 w-2.5" />
-                  </span>
-                ) : null}
+                <div className="absolute left-1 top-1 flex flex-col items-start gap-1">
+                  {(slide as any)?.audioTrack != null ? (
+                    <span
+                      className="flex items-center gap-0.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white"
+                      title="Slide has audio"
+                    >
+                      <Music className="h-2.5 w-2.5" />
+                    </span>
+                  ) : null}
+                  {isVisualOnlySlide ? (
+                    <span
+                      className="rounded bg-amber-500/90 px-1.5 py-0.5 text-[10px] font-medium text-slate-950"
+                      title="This slide is visual-only and does not show on-slide text"
+                    >
+                      NO TEXT
+                    </span>
+                  ) : null}
+                </div>
                 {preview.textSnippet ? (
                   <p className="absolute inset-x-1 bottom-1 truncate rounded bg-black/65 px-1.5 py-0.5 text-[10px] text-white">
                     {preview.textSnippet}
@@ -4746,6 +4809,11 @@ export default function PresentationEditor() {
                 <div className="min-w-0">
                   <p className="text-[11px] uppercase tracking-wide text-slate-500">Slide {slide.orderIndex + 1}</p>
                   <p className="truncate font-medium">{slide.title}</p>
+                  {isVisualOnlySlide ? (
+                    <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-700">
+                      Visual-only slide
+                    </p>
+                  ) : null}
                 </div>
                 <span className="shrink-0 rounded bg-slate-200 px-1.5 py-0.5 text-[10px] text-slate-600">
                   {preview.elementCount}
@@ -5247,6 +5315,14 @@ export default function PresentationEditor() {
       <span className="rounded bg-slate-100 px-2 py-0.5">Save: {saveStatusLabel}</span>
       <span className="rounded bg-slate-100 px-2 py-0.5">Playback: {playbackStatusLabel}</span>
       <span className="rounded bg-slate-100 px-2 py-0.5">Export: {exportStatusLabel}</span>
+      {selectedSlideVisualOnly ? (
+        <span
+          className="rounded bg-amber-100 px-2 py-0.5 font-medium text-amber-800"
+          title="This slide is configured to hide on-slide text"
+        >
+          Slide mode: Visual-only
+        </span>
+      ) : null}
       <span className="rounded bg-slate-100 px-2 py-0.5">
         Snap: {snapLockEnabled ? "Locked" : "Free"}
       </span>
@@ -5332,6 +5408,14 @@ export default function PresentationEditor() {
   );
   const slidePropertiesPanel = (
     <div className="space-y-3">
+      {selectedSlideVisualOnly ? (
+        <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">Visual-only slide</p>
+          <p className="mt-1 text-[11px] text-amber-700">
+            This slide intentionally hides on-slide text and keeps image or video full-canvas.
+          </p>
+        </div>
+      ) : null}
       {isMobileViewport ? (
         <div className="rounded-md border border-slate-300 bg-slate-50 px-3 py-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Slide Controls</p>
@@ -6559,6 +6643,14 @@ export default function PresentationEditor() {
             <p className="text-xs text-slate-500">
               Target slides: {autoLayoutTargetCount}
             </p>
+            {(
+              (autoLayoutScope === "current" && selectedSlideVisualOnly)
+              || (autoLayoutScope === "all" && visualOnlySlideCount > 0)
+            ) ? (
+              <p className="text-xs text-amber-700">
+                Visual-only slides keep text hidden during Auto Layout. Geometric crop and accent overlays are skipped for those slides.
+              </p>
+            ) : null}
             {autoLayoutScope === "all" && unsavedCachedSlideIds.length > 0 ? (
               <p className="text-xs text-sky-600">
                 Pending edits on other slides will be saved automatically before Auto Layout runs.

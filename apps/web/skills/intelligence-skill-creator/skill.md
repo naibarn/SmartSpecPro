@@ -4,7 +4,7 @@ name: Intelligence Skill Creator
 version: "0.4.0"
 type: automation
 languages: en, th
-category: skill_development
+category: automation
 execution_mode: python
 isAutoTrigger: false
 enabledByDefault: false
@@ -20,6 +20,20 @@ triggerPatterns:
 # Intelligence Skill Creator (ISC) — v0.4.0
 
 7-phase multi-agent LLM pipeline that creates complete, production-ready SmartAIHub skills from a natural language description — or iteratively improves existing ones.
+
+## Category & Execution Mode Rules
+
+ISC must generate skills using the platform's supported categories and matching execution modes:
+
+- `article_generation` -> `llm-only`
+- `image_prompt_generation` -> `llm-only` or `enhance-prompt`
+- `video_prompt_generation` -> `llm-only` or `enhance-prompt`
+- `prompt_enhancement` -> `llm-only` or `enhance-prompt`
+- `image_generation`, `video_generation`, `image_video_generation`, `audio_generation`, `sound_effects` -> `media-generate`
+- `automation`, `code_assistant`, `document_analysis`, `web_search`, `data_analysis`, `translation`, `summarization`, `chat_assistant`, `other` -> `llm-only` or `python`
+
+`execution_mode` describes runtime behavior, not the implementation language.
+If ISC generates `python/skill.py`, that does **not** automatically mean the final skill's `execution_mode` should be `python`.
 
 ## Capabilities
 

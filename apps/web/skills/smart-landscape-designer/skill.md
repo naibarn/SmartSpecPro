@@ -1,3 +1,18 @@
+---
+name: Smart Landscape Designer
+slug: smart-landscape-designer
+description: Generate copy-ready landscape image prompts from user requests and optional reference images.
+category: image_prompt_generation
+execution_mode: llm-only
+icon: image
+version: "1.2.2"
+author: SmartAIHub
+isAutoTrigger: false
+enabledByDefault: true
+priority: 55
+creditMultiplier: 1.0
+---
+
 # Smart Landscape Designer Skill V1.2.2
 
 This is a vendor-neutral agent skill for generating **one copy-ready landscape image prompt as a single raw string**.

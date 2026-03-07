@@ -1,6 +1,10 @@
 ---
+slug: parenting-article-writer
 name: parenting-article-writer
 description: Write structured, practical, medically cautious parenting articles about newborn/baby/child issues (sleep, feeding, crying, development milestones, common illnesses, daily care, safety) with optional age-range targeting and bilingual output (English or Thai). Supports standard article output or structured JSON output.
+category: article_generation
+execution_mode: llm-only
+enabledByDefault: true
 ---
 
 # Parenting Article Writer

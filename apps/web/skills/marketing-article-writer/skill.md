@@ -2,7 +2,7 @@
 name: Marketing Article Writer
 slug: marketing-article-writer
 description: Write marketing-focused content covering campaigns, audience targeting, brand messaging, and growth strategies for pitch decks.
-category: chat_assistant
+category: article_generation
 icon: megaphone
 version: "1.0.0"
 author: SmartAIHub

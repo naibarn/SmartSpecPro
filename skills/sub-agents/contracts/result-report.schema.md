@@ -100,6 +100,8 @@ next_steps:
 
 ### quality_gate_results
 
+Use the same commands the conductor supplied in the Task Packet's `QUALITY GATE` section. The command strings in the examples below are SmartSpecPro defaults only.
+
 **What it must contain:** The pass/fail/skip result for every quality gate listed in the Task Packet's QUALITY GATE section.
 
 **Allowed values per gate:** `passed`, `failed`, `skipped`

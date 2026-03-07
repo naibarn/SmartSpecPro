@@ -700,6 +700,128 @@ describe("PresentationEditor", () => {
     expect(screen.getByRole("button", { name: /fit canvas to view/i })).toBeInTheDocument();
   });
 
+  it("shows clear visual-only indicators for slides that hide on-slide text", () => {
+    queryState.deckByItem = {
+      ...buildDeckByItem(),
+      slides: [
+        {
+          ...buildDeckByItem().slides[0],
+          slideContent: {
+            elements: [
+              { id: "img-1", type: "image", x: 0, y: 0, width: 1280, height: 720, src: "https://cdn.example.com/existing.jpg", alt: "hero" },
+            ],
+            visualOnly: true,
+          },
+        },
+        buildDeckByItem().slides[1],
+      ],
+    } as any;
+
+    render(<PresentationEditor />);
+
+    expect(screen.getByText(/slide mode: visual-only/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/visual-only slide/i).length).toBeGreaterThan(0);
+    expect(screen.getByText("NO TEXT")).toBeInTheDocument();
+  });
+
+  it("turns off visual-only mode when the user adds text to the slide", async () => {
+    queryState.deckByItem = {
+      ...buildDeckByItem(),
+      slides: [
+        {
+          ...buildDeckByItem().slides[0],
+          slideContent: {
+            elements: [
+              { id: "img-1", type: "image", x: 0, y: 0, width: 1280, height: 720, src: "https://cdn.example.com/existing.jpg", alt: "hero" },
+            ],
+            visualOnly: true,
+          },
+        },
+        buildDeckByItem().slides[1],
+      ],
+    } as any;
+
+    render(<PresentationEditor />);
+
+    expect(screen.getByText(/slide mode: visual-only/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /add text element/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(/slide mode: visual-only/i)).not.toBeInTheDocument();
+    });
+    expect(toastMocks.info).toHaveBeenCalledWith(
+      "Visual-only mode was turned off for this slide because you added text.",
+    );
+  });
+
+  it("turns off visual-only mode when pasted content includes text", async () => {
+    queryState.deckByItem = {
+      ...buildDeckByItem(),
+      slides: [
+        {
+          ...buildDeckByItem().slides[0],
+          slideContent: {
+            elements: [
+              { id: "img-1", type: "image", x: 0, y: 0, width: 1280, height: 720, src: "https://cdn.example.com/existing.jpg", alt: "hero" },
+            ],
+            visualOnly: true,
+          },
+        },
+        buildDeckByItem().slides[1],
+      ],
+    } as any;
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /select slide 2/i }));
+    fireEvent.click(screen.getByRole("button", { name: /add text element/i }));
+    fireEvent.keyDown(window, { key: "c", metaKey: true });
+    fireEvent.click(screen.getByRole("button", { name: /select slide 1/i }));
+    expect(screen.getByText(/slide mode: visual-only/i)).toBeInTheDocument();
+    toastMocks.info.mockClear();
+    fireEvent.keyDown(window, { key: "v", metaKey: true });
+
+    await waitFor(() => {
+      expect(screen.queryByText(/slide mode: visual-only/i)).not.toBeInTheDocument();
+    });
+    expect(toastMocks.info.mock.calls).toContainEqual([
+      "Visual-only mode was turned off for this slide because you pasted text.",
+    ]);
+  });
+
+  it("renders inline svg previews in the slide list", () => {
+    queryState.deckByItem = {
+      ...buildDeckByItem(),
+      slides: [
+        {
+          ...buildDeckByItem().slides[0],
+          slideContent: {
+            elements: [
+              {
+                id: "svg-1",
+                type: "image",
+                x: 0,
+                y: 0,
+                width: 1280,
+                height: 720,
+                src: "",
+                alt: "graphic",
+                svgContent: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='currentColor' /></svg>",
+                svgColor: "#22c55e",
+              },
+            ],
+            visualOnly: true,
+          },
+        },
+        buildDeckByItem().slides[1],
+      ],
+    } as any;
+
+    render(<PresentationEditor />);
+
+    expect(screen.getByTestId("slide-preview-inline-svg-1")).toBeInTheDocument();
+  });
+
   it("merges resolved pending media from persisted slide content into cached drafts", () => {
     const cached = {
       elements: [
@@ -864,6 +986,29 @@ describe("PresentationEditor", () => {
       format: "png",
       clarityPercent: 20,
     });
+  });
+
+  it("explains visual-only Auto Layout behavior in the dialog", async () => {
+    queryState.deckByItem = {
+      ...buildDeckByItem(),
+      slides: [
+        {
+          ...buildDeckByItem().slides[0],
+          slideContent: {
+            elements: [
+              { id: "img-1", type: "image", x: 0, y: 0, width: 1280, height: 720, src: "https://cdn.example.com/existing.jpg", alt: "hero" },
+            ],
+            visualOnly: true,
+          },
+        },
+        buildDeckByItem().slides[1],
+      ],
+    } as any;
+
+    render(<PresentationEditor />);
+    fireEvent.click(screen.getByRole("button", { name: /auto layout slide/i }));
+
+    expect(screen.getByText(/visual-only slides keep text hidden during auto layout/i)).toBeInTheDocument();
   });
 
   it("filters asset cards by source chip", async () => {

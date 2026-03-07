@@ -3,11 +3,13 @@
  * Executes prompt-enhancement skills to generate professional AI image prompts
  */
 
-import { getSkillById } from "./skillRegistry";
+import { getAvailableSkills, getSkillById, getSkillByIdOrType } from "./skillRegistry";
 import fs from "fs";
 import path from "path";
 
 export interface PromptEnhancementRequest {
+  /** Selected prompt skill */
+  skillId?: string;
   /** User's basic idea or description */
   userInput: string;
   /** Reference image URLs (1-5) */
@@ -168,6 +170,112 @@ export interface VFXEffect {
   name: string;
   nameEn: string;
   promptText: string;
+}
+
+function normalizeSkillValue(value: string | null | undefined): string {
+  return String(value || "").trim().toLowerCase();
+}
+
+export function resolvePromptEnhancementSkill(skillId?: string): {
+  resolvedSkillId: string;
+  mediaType: "image" | "video";
+  skillName: string;
+} {
+  const requestedSkill = skillId
+    ? getSkillByIdOrType(skillId)
+      || getSkillByIdOrType(skillId.replace(/-/g, "_"))
+      || getSkillByIdOrType(skillId.replace(/_/g, "-"))
+    : undefined;
+
+  const fallbackSkill = getAvailableSkills()
+    .filter((skill) => normalizeSkillValue(skill.category) === "image_prompt_generation")
+    .sort((a, b) => b.priority - a.priority)[0];
+  const resolvedSkill = requestedSkill || fallbackSkill;
+
+  if (!resolvedSkill) {
+    throw new Error("Prompt enhancement skill not found");
+  }
+
+  const mediaType = normalizeSkillValue((resolvedSkill as { category?: string }).category) === "video_prompt_generation"
+    ? "video"
+    : "image";
+
+  return {
+    resolvedSkillId: resolvedSkill.id,
+    mediaType,
+    skillName: resolvedSkill.name,
+  };
+}
+
+function buildVideoPromptSystemPrompt(
+  request: PromptEnhancementRequest,
+  skillContent: string | null,
+  knowledgebase: string,
+): string {
+  const language = request.language || "en";
+  const maxPromptChars = request.maxPromptLength || 5000;
+  let systemPrompt = `You are an expert AI video prompt generator.
+
+Transform the user's idea into a production-ready prompt for AI video generation.
+Focus on cinematic direction, subject motion, camera language, lighting, pacing, and scene continuity.
+Always return the final prompt itself, not explanations.
+
+## Output Format
+`;
+
+  if (language === "both") {
+    systemPrompt += `1. **[English Prompt]** - Full prompt in English
+2. **[Translated Prompt]** - Full prompt translated to the user's language
+`;
+  } else if (language === "th") {
+    systemPrompt += `**[Thai Prompt]**
+<your full Thai prompt here>
+`;
+  } else {
+    systemPrompt += `**[English Prompt]**
+<your full English prompt here>
+`;
+  }
+
+  systemPrompt += `
+## Video Prompt Rules
+- Describe subject, environment, motion, camera movement, framing, and lighting clearly
+- Keep the wording usable for modern video generation models
+- Avoid JSON, bullet lists, and explanations unless explicitly requested
+- If reference images are provided, use them as subject/style continuity anchors
+- Respect the requested aspect ratio and target platform when provided
+`;
+
+  if (maxPromptChars < 5000) {
+    systemPrompt += `
+## Character Limit
+Keep the total prompt under ${maxPromptChars} characters.
+`;
+  }
+
+  if (request.targetPlatform && request.targetPlatform !== "generic") {
+    systemPrompt += `
+## Target Platform
+Optimize the prompt for ${request.targetPlatform}.
+`;
+  }
+
+  if (request.aspectRatioCustom || request.aspectRatio) {
+    systemPrompt += `
+## Aspect Ratio
+Honor the requested aspect ratio: ${request.aspectRatioCustom || request.aspectRatio}.
+`;
+  }
+
+  if (skillContent && skillContent.length > 0) {
+    systemPrompt += `\n## Skill Instructions\n${skillContent}`;
+  }
+
+  if (knowledgebase) {
+    systemPrompt += `\n## Knowledgebase\n${knowledgebase}`;
+  }
+
+  return systemPrompt;
 }
 
 // Style Categories (A-N)
@@ -459,7 +567,7 @@ export function getPromptOptions(): PromptOptions {
  * Load skill content from file or database
  */
 function loadSkillContent(skillId: string): string | null {
-  const skill = getSkillById(skillId);
+  const skill = getSkillByIdOrType(skillId);
   if (!skill) return null;
 
   // Try to load from skillFilePath
@@ -487,7 +595,7 @@ function loadSkillContent(skillId: string): string | null {
  * Load skill knowledgebase files (references)
  */
 function loadSkillKnowledgebase(skillId: string): string {
-  const skill = getSkillById(skillId);
+  const skill = getSkillByIdOrType(skillId);
   if (!skill || !skill.skillFilePath) return "";
 
   const skillDir = path.dirname(skill.skillFilePath);
@@ -522,16 +630,15 @@ function loadSkillKnowledgebase(skillId: string): string {
  * Now dynamically loads skill content and builds comprehensive context
  */
 export function buildSystemPrompt(request: PromptEnhancementRequest): string {
-  const skillId = "image_prompt_engineer"; // Use underscore version
-  const skill = getSkillById(skillId) || getSkillById("create-image-prompt");
-
-  if (!skill) {
-    throw new Error("Image Prompt Engineer skill not found");
-  }
+  const { resolvedSkillId, mediaType } = resolvePromptEnhancementSkill(request.skillId);
 
   // Try to load actual skill content
-  const skillContent = loadSkillContent(skillId) || loadSkillContent("create-image-prompt");
-  const knowledgebase = loadSkillKnowledgebase(skillId) || loadSkillKnowledgebase("create-image-prompt");
+  const skillContent = loadSkillContent(resolvedSkillId);
+  const knowledgebase = loadSkillKnowledgebase(resolvedSkillId);
+
+  if (mediaType === "video") {
+    return buildVideoPromptSystemPrompt(request, skillContent, knowledgebase);
+  }
 
   // Build system prompt with actual skill content or enhanced default
   const language = request.language || "en";
@@ -950,6 +1057,7 @@ Be concise while maintaining quality. Prioritize essential visual elements.
  */
 export function buildUserPrompt(request: PromptEnhancementRequest): string {
   let userPrompt = "";
+  const { mediaType } = resolvePromptEnhancementSkill(request.skillId);
 
   // Main request/idea
   if (request.userInput?.trim()) {
@@ -1034,7 +1142,7 @@ export function buildUserPrompt(request: PromptEnhancementRequest): string {
 
   // Handle empty text with images
   if (!request.userInput?.trim() && request.referenceImages?.length) {
-    userPrompt = `Please analyze the provided reference image(s) and create a detailed prompt that describes what you see. The prompt should be suitable for AI image generation that recreates or reimagines the scene/subject.`;
+    userPrompt = `Please analyze the provided reference image(s) and create a detailed prompt that describes what you see. The prompt should be suitable for AI ${mediaType} generation that recreates or reimagines the scene/subject.`;
 
     if (inputSummary.length > 0) {
       userPrompt += `\n\nApply these options:\n- ${inputSummary.join("\n- ")}`;

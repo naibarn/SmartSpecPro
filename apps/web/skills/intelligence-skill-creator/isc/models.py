@@ -59,6 +59,7 @@ class SkillPlan:
     description: str
     language: str                    # "python" | "javascript"
     complexity: str                  # "simple" | "moderate" | "complex"
+    execution_mode: str              # llm-only | media-generate | enhance-prompt | python
     purpose: str
     inputs: List[Dict[str, Any]]     # [{name, type, required, description, example}]
     outputs: List[Dict[str, Any]]    # [{name, type, description}]

@@ -1,159 +1,129 @@
-# Skill Pack Integration — Handoff to deep-* Skills
+# Skill Pack Integration — Automatic deep-* Chaining
 
 ## Overview
 
-The orchestra conductor handles tasks up to a certain complexity threshold using its parallel-wave model. When a task is classified as `large` or `project` scope, the wave model is insufficient — the task requires structured specification decomposition, section-level planning, and implementation tracking that are provided by the `deep-plan` and `deep-project` skills.
+Orchestra remains the top-level conductor for the whole lifecycle. It does **not** wait for the user to manually type `/deep-plan`, `/deep-plan-quick`, `/deep-project`, or `/deep-implement`.
 
-Orchestra does **not** replicate these skills' functionality. Instead, it creates the input artifact (a requirements spec or requirements document), hands off to the appropriate skill via a user instruction, and waits. The handoff is a clean boundary: orchestra owns the session lifecycle and progress tracking; the deep-* skill owns the actual planning and implementation work.
+Instead, orchestra:
+- creates or selects the correct planning artifact
+- reads the sibling skill instructions directly from the installed skill pack
+- executes the matching deep-* workflow inline
+- verifies that the expected artifacts were written
+- continues automatically into implementation when planning is complete
 
----
+The human should only be interrupted when product intent is ambiguous, destructive reset is required, or a critical blocker cannot be resolved safely.
 
-## Large Scope Handoff
+## Route Selection
 
-Used when Step 1 (task analysis) classifies scope as `large`.
+Use these rules when orchestra decides to leave the normal wave model:
 
-### Procedure
+- `quick-plan-chain`
+  - Use when the task benefits from a written plan but does not require a full heavyweight planning pipeline.
+  - Typical triggers: user request is short/free-form, no `spec.md` exists, task is small/medium, or the work needs planning before implementation but not a full deep decomposition.
+  - Planner: `../../deep-plan-quick/SKILL.md`
 
-1. Orchestra classifies scope as `large` in Step 1 and records this in `orchestra/plan.md`.
-2. Orchestra reads available context (user requirements, existing code structure, known constraints) and **composes a requirements spec file** at `specs/feature/NNN-name/spec.md` (where `NNN` is the next available feature number).
-3. Orchestra writes the **expected output paths** to `orchestra/backlog.md`:
-   ```
-   [PENDING] deep-plan handoff for: {task_description}
-   Expected artifacts:
-     - specs/feature/NNN-name/claude-plan.md
-     - specs/feature/NNN-name/sections/index.md
-     - specs/feature/NNN-name/claude-plan-tdd.md
-   Handoff invocation: /deep-plan @specs/feature/NNN-name/spec.md
-   ```
-4. Orchestra prints the handoff instruction to the user:
-   ```
-   Requirements spec created at: specs/feature/NNN-name/spec.md
+- `deep-plan-chain`
+  - Use when scope is `large`, when a `spec.md` already exists, or when the task needs the full structured planning pipeline.
+  - Planner: `../../deep-plan/SKILL.md`
 
-   Run this command to begin planning:
-     /deep-plan @specs/feature/NNN-name/spec.md
+- `full-pipeline`
+  - Use when scope is `project` and the request must first be decomposed into multiple feature/spec units.
+  - Decomposer: `../../deep-project/SKILL.md`
+  - Follow-on planner per split: `../../deep-plan/SKILL.md`
 
-   When the deep-plan session is complete, return with:
-     /orchestra resume
-   ```
-5. Orchestra **saves a snapshot** (follow the red-state protocol in `compaction-safety.md`) and **halts**.
+## Automatic Large-Scope Planning
 
-Orchestra does not proceed until the user returns with `/orchestra resume`.
+When scope is `large`:
 
----
+1. Create or refresh `specs/feature/NNN-name/spec.md`.
+2. Write a backlog entry with the expected planning artifacts.
+3. Read `../../deep-plan/SKILL.md` and execute that workflow immediately.
+4. Verify these artifacts exist:
+   - `implementation-plan.md`
+   - `implementation-plan-tdd.md`
+   - `sections/index.md`
+5. Record completion in `orchestra/progress.md` and `orchestra/decisions.md`.
+6. Continue directly into `deep-implement` using the generated `sections/` directory.
 
-## Project Scope Handoff
+Do not print a manual handoff command to the user unless the user explicitly asks to take over the planning step themselves.
 
-Used when Step 1 classifies scope as `project` (multiple independent features or a large system decomposition).
+## Automatic Quick Planning Without spec.md
 
-### Procedure
+When a written plan is useful but the request is still small/medium or under-specified:
 
-1. Orchestra classifies scope as `project` in Step 1.
-2. Orchestra composes a **high-level requirements document** at `specs/project/NNN-name/requirements.md` covering all sub-features, their relationships, and constraints.
-3. Orchestra prints the handoff instruction:
-   ```
-   Requirements document created at: specs/project/NNN-name/requirements.md
+1. Create a lightweight planning directory under `specs/quick/NNN-name/`.
+2. Save the original user request to `request.md`.
+3. Read `../../deep-plan-quick/SKILL.md` and execute it immediately.
+4. Verify these artifacts exist:
+   - `implementation-plan.md`
+   - `sections/index.md`
+   - at least one `sections/section-*.md`
+5. If the quick planner determines the task is actually `large`, promote the work into the full `deep-plan-chain` by synthesizing `spec.md` and switching to `../../deep-plan/SKILL.md`.
+6. Continue directly into `deep-implement` using the generated `sections/` directory.
 
-   Run this command to decompose the project:
-     /deep-project @specs/project/NNN-name/requirements.md
+## Automatic Project Decomposition
 
-   deep-project will split this into individual feature specs.
-   After splitting, follow the large-scope handoff pattern for each split:
-     /deep-plan @specs/feature/NNN-split-name/spec.md
+When scope is `project`:
 
-   When all deep-plan sessions are complete, return with:
-     /orchestra resume
-   ```
-4. Orchestra writes expected artifact paths for each anticipated split to `orchestra/backlog.md`.
-5. Orchestra saves a snapshot and halts.
-
-After deep-project splits the project into individual specs, the user runs the large-scope handoff pattern for each one. Orchestra tracks all expected artifacts in `backlog.md`.
-
----
+1. Create or refresh `specs/project/NNN-name/requirements.md`.
+2. Write a backlog entry with the expected decomposition artifacts.
+3. Read `../../deep-project/SKILL.md` and execute it immediately.
+4. For each generated split spec, invoke the full `deep-plan-chain` automatically.
+5. For each completed plan, invoke `deep-implement` automatically.
+6. Aggregate progress, decisions, and blockers centrally in `orchestra/`.
 
 ## Backlog Tracking
 
-`orchestra/backlog.md` is the tracking file for all pending items and expected artifact paths from deep-* handoffs. Format for each entry:
+`orchestra/backlog.md` remains the source of truth for automatic chained work.
 
-```
+Use entries like:
+
+```text
 [PENDING] {item description}
-  Type: deep-plan-handoff | deep-project-handoff | manual-task
+  Type: quick-plan-chain | deep-plan-chain | full-pipeline | deep-implement-chain
   Expected artifacts:
-    - /absolute/path/from/filesystem/root/to/expected/file.md
-    - /absolute/path/from/filesystem/root/to/another/file.md
-  Invocation: /skill-name @arg
+    - /absolute/path/to/file.md
+  Invocation: automatic
   Added: YYYY-MM-DDTHH:MM:SSZ
 ```
 
-**Path rule:** All artifact paths in `backlog.md` must be **absolute paths** (starting from the filesystem root). This is required for resume verification to work correctly when `/orchestra` is invoked from any working directory — the same rule as `key_files` in `snapshot.json`.
+When a chained stage completes:
 
-When an item is resolved, update its status:
-```
+```text
 [DONE] {item description}
   Resolved: YYYY-MM-DDTHH:MM:SSZ
   Artifacts verified: yes
 ```
 
----
+## Resume Behavior
 
-## Resume Verification
+If orchestration is interrupted and `/orchestra resume` is invoked:
 
-When the user returns with `/orchestra resume` after a deep-* handoff:
+1. Read `orchestra/backlog.md` and `orchestra/progress.md`.
+2. Identify the most recent incomplete chain stage.
+3. Verify which expected artifacts already exist.
+4. Resume from the earliest incomplete automatic stage:
+   - quick planning
+   - full planning
+   - decomposition
+   - implementation
+5. Do not ask the user to manually re-run deep-* skills unless a critical failure requires explicit takeover.
 
-1. Orchestra reads `orchestra/backlog.md` for all `[PENDING]` entries with expected artifact paths.
-2. For **each expected artifact path**, check whether the file exists on the filesystem.
-3. If **any expected artifacts are missing**:
-   ```
-   Expected artifacts from deep-plan not found at [path]. Did the deep-plan session complete successfully?
+## Automatic Transition to deep-implement
 
-   Missing:
-     - [path 1]
-     - [path 2]
+After planning artifacts exist and are verified:
 
-   Options:
-     1. The deep-plan session is still running — return when complete.
-     2. The session failed — re-run: /deep-plan @specs/feature/NNN-name/spec.md
-     3. The files are at a different path — confirm the actual paths.
+1. Read `../../deep-implement/SKILL.md`.
+2. Run it against the generated `sections/` directory.
+3. Track commits, tests, blocked tasks, and hardening decisions in the same `orchestra/` session.
+4. If `deep-implement` generates a hardening follow-up plan, keep that inside the same orchestra backlog rather than handing control back to the user.
 
-   Orchestra will not proceed until you confirm or the files exist.
-   ```
-4. Orchestra **does not proceed** until the user confirms (e.g., types "confirmed" or corrects the paths) or all files are verified to exist.
-5. If **all expected artifacts exist**: proceed to state synchronization.
+## Human Interaction Boundary
 
----
+Orchestra should interrupt the user only when:
+- product intent is ambiguous
+- destructive archival/reset is required
+- a critical security finding needs explicit acceptance
+- implementation is blocked by an external dependency the conductor cannot resolve safely
 
-## State Synchronization
-
-After the user confirms that deep-* artifacts exist, orchestra syncs output into the session:
-
-1. Read each confirmed artifact (e.g., `claude-plan.md`, `sections/index.md`).
-2. Update `orchestra/progress.md`:
-   ```
-   [COMPLETE] deep-plan: {task_description}
-     Plan: specs/feature/NNN-name/claude-plan.md
-     Sections: specs/feature/NNN-name/sections/index.md
-     Completed: YYYY-MM-DDTHH:MM:SSZ
-   ```
-3. Mark the corresponding `backlog.md` entry as `[DONE]`.
-4. Log the artifact absorption in `orchestra/decisions.md`:
-   ```
-   [YYYY-MM-DDTHH:MM:SSZ] DECISION: Absorbed deep-plan output for {task_description}
-     Artifacts: {list of paths}
-   ```
-5. Continue with the next wave — typically quality gates for the planned sections, or `/deep-implement` invocation for each section. For each section in `sections/index.md`, run: `/deep-implement @specs/feature/NNN-name/sections/.` and track the resulting implementation commits.
-
----
-
-## Shared Context: Passing `orchestra/` to deep-* Skills
-
-When creating the requirements spec or requirements document for handoff, orchestra includes a comment block at the top of the spec file so that deep-* skills know where to append shared decisions:
-
-```markdown
-<!-- Orchestra session: {project_root}/orchestra/ -->
-<!-- Append key decisions to: {project_root}/orchestra/decisions.md -->
-```
-
-Replace `{project_root}` with the actual absolute path to the project root (e.g., `/home/dev/projects/MyProject`).
-
-This allows a deep-plan session to record its own architectural decisions in the shared `orchestra/decisions.md` audit trail, maintaining continuity across the handoff boundary.
-
-Deep-* skills are not required to use this comment — it is a hint, not a protocol requirement.
+Everything else should chain automatically.

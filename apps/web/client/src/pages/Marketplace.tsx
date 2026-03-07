@@ -62,8 +62,11 @@ const fadeInUp = {
 const CATEGORIES = [
   { value: "all", label: "All Skills" },
   { value: "image_generation", label: "Image Generation" },
+  { value: "image_prompt_generation", label: "Create Prompt for Image Generation" },
   { value: "video_generation", label: "Video Generation" },
+  { value: "video_prompt_generation", label: "Create Prompt for Video Generation" },
   { value: "audio_generation", label: "Audio / TTS" },
+  { value: "article_generation", label: "Article Generation" },
   { value: "sound_effects", label: "Sound Effects" },
   { value: "prompt_enhancement", label: "Prompt Enhancement" },
   { value: "code_assistant", label: "Code Assistant" },
@@ -79,8 +82,11 @@ const CATEGORIES = [
 
 const CATEGORY_ICONS: Record<string, any> = {
   image_generation: Image,
+  image_prompt_generation: Sparkles,
   video_generation: Video,
+  video_prompt_generation: Sparkles,
   audio_generation: Music,
+  article_generation: FileText,
   sound_effects: Music,
   prompt_enhancement: Sparkles,
   code_assistant: Code2,

@@ -43,6 +43,25 @@ const SKILL_TO_MEDIA_TYPE: Record<string, "image" | "video" | "audio"> = {
   "audio-generation": "audio",
 };
 
+function shouldBackfillBuiltInCategory(
+  slug: string,
+  currentCategory: string | null | undefined,
+  nextCategory: string,
+): boolean {
+  if (slug === "image_prompt_engineer") {
+    return currentCategory === "image_generation" && nextCategory === "image_prompt_generation";
+  }
+  if (slug === "video-prompt-engineer") {
+    return currentCategory === "video_generation" && nextCategory === "video_prompt_generation";
+  }
+  return false;
+}
+
+function getMetadataChainTarget(metadata: SkillMetadata): string | undefined {
+  const chainTo = metadata.chainTo ?? metadata.chain_to;
+  return typeof chainTo === "string" && chainTo.trim() ? chainTo.trim() : undefined;
+}
+
 /**
  * Convert database skill to SkillDefinition
  */
@@ -100,6 +119,7 @@ function dbSkillToDefinition(dbSkill: {
     description: dbSkill.description || "",
     icon: dbSkill.icon || "sparkles",
     type: skillType,
+    category: dbSkill.category,
     triggers: dbSkill.isAutoTrigger ? parseTriggerPatterns(dbSkill.triggerPatterns) : [],
     requiresExplicit: !dbSkill.isAutoTrigger,
     creditMultiplier: Number(dbSkill.creditMultiplier) || 1.0,
@@ -234,8 +254,10 @@ export async function autoSyncSkillsFromFolder(): Promise<{
   }
 
   // Get existing skills from database (with contentHash for change detection)
-  const existingSkills = await db.select({ slug: skillsTable.slug, contentHash: skillsTable.contentHash }).from(skillsTable);
-  const existingSlugs = new Map(existingSkills.map(s => [s.slug, s.contentHash]));
+  const existingSkills = await db
+    .select({ slug: skillsTable.slug, contentHash: skillsTable.contentHash, category: skillsTable.category })
+    .from(skillsTable);
+  const existingSlugs = new Map(existingSkills.map((s) => [s.slug, s]));
 
   // Scan folder for skills
   const folderSkills = scanSkillsFolder();
@@ -271,6 +293,7 @@ export async function autoSyncSkillsFromFolder(): Promise<{
         llmModelId: routingConfig.llmModelId ?? null,
         preferredProviderId: routingConfig.preferredProviderId ?? null,
         strictProviderPin: routingConfig.strictProviderPin ?? false,
+        chainTo: getMetadataChainTarget(metadata) ?? null,
         importSource: "folder" as const,
       };
 
@@ -279,7 +302,8 @@ export async function autoSyncSkillsFromFolder(): Promise<{
         // Never overwrite admin-customized fields (name, description, category, icon, tags, etc.)
         const rawContent = fs.readFileSync(folder.skillMdPath, "utf-8");
         const newHash = crypto.createHash("md5").update(rawContent).digest("hex");
-        const oldHash = existingSlugs.get(folder.slug);
+        const existingSkill = existingSlugs.get(folder.slug);
+        const oldHash = existingSkill?.contentHash;
 
         if (oldHash !== newHash) {
           const fileDefaultModel = metadata.defaultModel ?? metadata.default_model ?? null;
@@ -290,12 +314,19 @@ export async function autoSyncSkillsFromFolder(): Promise<{
           const fileLlmModelId = routingConfig.llmModelId;
           const filePreferredProviderId = routingConfig.preferredProviderId;
           const fileStrictProviderPin = routingConfig.strictProviderPin;
+          const normalizedCategory = mapCategoryToEnum(metadata.category);
+          const shouldUpdateCategory = shouldBackfillBuiltInCategory(
+            folder.slug,
+            existingSkill?.category,
+            normalizedCategory,
+          );
           await db.update(skillsTable).set({
             skillContent: parsed.content,
             systemPrompt: parsed.content,
             contentHash: newHash,
             version: metadata.version || undefined,
             executionMode: metadata.executionMode ?? metadata.execution_mode ?? undefined,
+            ...(shouldUpdateCategory ? { category: normalizedCategory as any } : {}),
             ...(fileDefaultModel ? { defaultModel: fileDefaultModel } : {}),
             ...(fileTriggerPatterns ? { triggerPatterns: fileTriggerPatterns } : {}),
             ...(filePriority !== undefined ? { priority: filePriority } : {}),
@@ -304,6 +335,7 @@ export async function autoSyncSkillsFromFolder(): Promise<{
             ...(fileLlmModelId !== undefined ? { llmModelId: fileLlmModelId } : {}),
             ...(filePreferredProviderId !== undefined ? { preferredProviderId: filePreferredProviderId } : {}),
             ...(fileStrictProviderPin !== undefined ? { strictProviderPin: fileStrictProviderPin } : {}),
+            ...(getMetadataChainTarget(metadata) !== undefined ? { chainTo: getMetadataChainTarget(metadata) } : {}),
           }).where(eq(skillsTable.slug, folder.slug));
           result.synced.push(folder.slug);
           console.log(`[SkillRegistry] Updated skill content (hash changed): ${folder.slug}`);
@@ -396,6 +428,7 @@ export async function syncSingleSkillIfChanged(slug: string): Promise<{ synced: 
       ...(routingConfig.llmModelId !== undefined ? { llmModelId: routingConfig.llmModelId } : {}),
       ...(routingConfig.preferredProviderId !== undefined ? { preferredProviderId: routingConfig.preferredProviderId } : {}),
       ...(routingConfig.strictProviderPin !== undefined ? { strictProviderPin: routingConfig.strictProviderPin } : {}),
+      ...(getMetadataChainTarget(metadata) !== undefined ? { chainTo: getMetadataChainTarget(metadata) } : {}),
       ...(metadata.triggerPatterns ?? metadata.trigger_patterns ? { triggerPatterns: metadata.triggerPatterns ?? metadata.trigger_patterns } : {}),
       ...(metadata.priority !== undefined ? { priority: metadata.priority } : {}),
       ...(metadata.isAutoTrigger ?? metadata.auto_trigger !== undefined ? { isAutoTrigger: metadata.isAutoTrigger ?? metadata.auto_trigger } : {}),

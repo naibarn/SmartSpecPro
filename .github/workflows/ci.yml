@@ -5,6 +5,13 @@ on:
   pull_request:
 
 jobs:
+  skill_pack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate skill-pack backup mirror
+        run: bash scripts/ci/validate_skill_pack_backup.sh
+
   python:
     runs-on: ubuntu-latest
     steps:

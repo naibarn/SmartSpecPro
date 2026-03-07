@@ -29,9 +29,13 @@ const {
   mockSkillsData: {
     current: {
       skills: [
-        { id: 1, slug: "general-article-writer", name: "General Article Writer", description: "Write articles", category: "chat_assistant", executionMode: "llm-only" },
-        { id: 2, slug: "business-article-writer", name: "Business Article Writer", description: "Write business articles", category: "chat_assistant", executionMode: "llm-only" },
+        { id: 1, slug: "general-article-writer", name: "General Article Writer", description: "Write articles", category: "article_generation", executionMode: "llm-only" },
+        { id: 2, slug: "business-article-writer", name: "Business Article Writer", description: "Write business articles", category: "article_generation", executionMode: "llm-only" },
         { id: 3, slug: "image-creator", name: "Image Creator", description: "Create images", category: "image_generation", executionMode: "media-generate" },
+        { id: 4, slug: "prompt-enhancer", name: "Prompt Enhancer", description: "Enhance visual prompts", category: "prompt_enhancement", executionMode: "enhance-prompt" },
+        { id: 5, slug: "video-story-crafter", name: "Video Story Crafter", description: "Create video-first drafts", category: "video_generation", executionMode: "media-generate" },
+        { id: 6, slug: "image-prompt-engineer", name: "Image Prompt Engineer", description: "Create prompts for image generation", category: "image_prompt_generation", executionMode: "enhance-prompt" },
+        { id: 7, slug: "video-prompt-engineer", name: "Video Prompt Engineer", description: "Create prompts for video generation", category: "video_prompt_generation", executionMode: "enhance-prompt" },
       ],
     } as unknown,
   },
@@ -264,6 +268,16 @@ vi.mock("@/lib/trpc", () => ({
   },
 }));
 
+const buildVisibleDraftSkills = () => ([
+  { id: 1, slug: "general-article-writer", name: "General Article Writer", description: "Write articles", category: "article_generation", executionMode: "llm-only" },
+  { id: 2, slug: "business-article-writer", name: "Business Article Writer", description: "Write business articles", category: "article_generation", executionMode: "llm-only" },
+  { id: 3, slug: "image-creator", name: "Image Creator", description: "Create images", category: "image_generation", executionMode: "media-generate" },
+  { id: 4, slug: "prompt-enhancer", name: "Prompt Enhancer", description: "Enhance visual prompts", category: "prompt_enhancement", executionMode: "enhance-prompt" },
+  { id: 5, slug: "video-story-crafter", name: "Video Story Crafter", description: "Create video-first drafts", category: "video_generation", executionMode: "media-generate" },
+  { id: 6, slug: "image-prompt-engineer", name: "Image Prompt Engineer", description: "Create prompts for image generation", category: "image_prompt_generation", executionMode: "enhance-prompt" },
+  { id: 7, slug: "video-prompt-engineer", name: "Video Prompt Engineer", description: "Create prompts for video generation", category: "video_prompt_generation", executionMode: "enhance-prompt" },
+]);
+
 vi.mock("sonner", () => ({
   toast: { error: vi.fn(), success: vi.fn() },
 }));
@@ -428,9 +442,7 @@ beforeEach(() => {
   localStorage.clear();
   mockSkillsData.current = {
     skills: [
-      { id: 1, slug: "general-article-writer", name: "General Article Writer", description: "Write articles", category: "chat_assistant", executionMode: "llm-only" },
-      { id: 2, slug: "business-article-writer", name: "Business Article Writer", description: "Write business articles", category: "chat_assistant", executionMode: "llm-only" },
-      { id: 3, slug: "image-creator", name: "Image Creator", description: "Create images", category: "image_generation", executionMode: "media-generate" },
+      ...buildVisibleDraftSkills(),
     ],
   };
 });
@@ -445,9 +457,25 @@ describe("G.1 Modal Rendering", () => {
     expect(screen.getByText("Language")).toBeInTheDocument();
   });
 
-  it("renders article skill dropdown populated from skills list", () => {
+  it("renders draft skill dropdown populated from supported skills", () => {
     render(<AIDraftModal {...defaultProps} />);
-    expect(screen.getAllByText(/Article Skill/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Draft Skill/i).length).toBeGreaterThan(0);
+  });
+
+  it("switches media model picker to video when the saved draft skill is video-first", async () => {
+    localStorage.setItem("smartspec_aiDraft_articleSkill", "video-story-crafter");
+    render(<AIDraftModal {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText(/Media Model \(Video, optional\)/i)).toBeInTheDocument();
+    });
+  });
+
+  it("switches media model picker to video for video prompt generation skills", async () => {
+    localStorage.setItem("smartspec_aiDraft_articleSkill", "video-prompt-engineer");
+    render(<AIDraftModal {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText(/Media Model \(Video, optional\)/i)).toBeInTheDocument();
+    });
   });
 
   it("shows a custom article textarea when use-your-own-article mode is enabled", () => {
@@ -458,7 +486,22 @@ describe("G.1 Modal Rendering", () => {
     fireEvent.click(screen.getByRole("switch", { name: /use your own article/i }));
     expect(topicTextarea).toBeDisabled();
     expect(screen.getByLabelText(/article content/i)).toBeInTheDocument();
-    expect(screen.queryByText(/^Article Skill$/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Draft Skill$/i)).not.toBeInTheDocument();
+  });
+
+  it("disables on-slide text style toggles when visual-only mode is enabled", () => {
+    render(<AIDraftModal {...defaultProps} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /advanced style options/i }));
+    const headerRow = screen.getByText("Show Header").closest("div");
+    const headerSwitch = headerRow?.querySelector("[role='switch']") as HTMLElement | null;
+    expect(headerSwitch).toBeTruthy();
+    expect(headerSwitch).toBeEnabled();
+
+    fireEvent.click(screen.getByRole("switch", { name: /hide on-slide text/i }));
+
+    expect(screen.getByText(/visual-only slides disable header, footer, deck title, and page number automatically/i)).toBeInTheDocument();
+    expect(headerSwitch).toBeDisabled();
   });
 
   it("shows word-count override hint when skill schema has both length and word_count", async () => {
@@ -814,8 +857,47 @@ describe("G.6 Generate mutation", () => {
     expect(payload.prompt).toBe("Custom article intro.\n\nPoint one.\nPoint two.");
     expect(payload.useCustomArticle).toBe(true);
     expect(payload.customArticleText).toBe("Custom article intro.\n\nPoint one.\nPoint two.");
+    expect(payload.draftSkillId).toBeUndefined();
     expect(payload.articleSkillId).toBeUndefined();
     expect(payload.articleSkillParams).toBeUndefined();
+  });
+
+  it("submits prompt-first skills through draftSkillId without forcing articleSkillId", async () => {
+    localStorage.setItem("smartspec_aiDraft_articleSkill", "prompt-enhancer");
+    render(<AIDraftModal {...defaultProps} />);
+
+    fireEvent.change(screen.getByPlaceholderText(/describe/i), {
+      target: { value: "Product launch teaser" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /generate/i })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /generate/i }));
+    expect(mockGenerateDraftMutate).toHaveBeenCalledTimes(1);
+    const payload = mockGenerateDraftMutate.mock.calls[0][0] as Record<string, unknown>;
+    expect(payload.draftSkillId).toBe("prompt-enhancer");
+    expect(payload.articleSkillId).toBeUndefined();
+  });
+
+  it("includes hideTextOnSlides when visual-only mode is enabled", async () => {
+    render(<AIDraftModal {...defaultProps} />);
+
+    fireEvent.click(screen.getByRole("switch", { name: /use your own article/i }));
+    fireEvent.click(screen.getByRole("switch", { name: /hide on-slide text/i }));
+    fireEvent.change(screen.getByLabelText(/article content/i), {
+      target: { value: "Visual-only article body.\n\nScene one.\nScene two." },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /generate/i })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /generate/i }));
+    expect(mockGenerateDraftMutate).toHaveBeenCalledTimes(1);
+    const payload = mockGenerateDraftMutate.mock.calls[0][0] as Record<string, unknown>;
+    expect(payload.hideTextOnSlides).toBe(true);
   });
 });
 

@@ -2,7 +2,7 @@
 name: Education Article Writer
 slug: education-article-writer
 description: Write educational content including lesson plans, explainers, and learning-focused articles for academic presentations.
-category: chat_assistant
+category: article_generation
 icon: graduation-cap
 version: "1.0.0"
 author: SmartAIHub

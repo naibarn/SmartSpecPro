@@ -82,9 +82,9 @@ git branch --show-current
 git status --short
 ```
 
-If branch is protected (`main`, `master`, `release/*`), recommend switching branch before continuing.
+If branch is protected (`main`, `master`, `release/*`), recommend switching branch before continuing. Only pause if the user explicitly asked for branch safety review or if this run would require risky git history rewriting.
 
-If working tree is dirty, ask user explicitly whether to proceed on top of existing changes.
+If working tree is dirty, inspect whether existing changes overlap the target section files. Proceed automatically when overlap risk is low and record that decision. Ask the user only if overlapping changes make ownership ambiguous or increase merge risk materially.
 
 ### 5) Determine Test Command
 
@@ -94,24 +94,22 @@ If missing, infer from repository:
 - JS/TS: `npm test` (or workspace-specific command)
 - Python: `uv run pytest`
 
-When uncertain, ask user once and store the chosen command in session notes.
+When uncertain, inspect repository scripts/config first and choose the most codebase-aligned command automatically. Ask the user only if no reliable command can be inferred.
 
-### 6) Decision Style Handshake (Required)
+### 6) Decision Style Handshake (Autonomous by Default)
 
 Before entering the implementation loop, resolve decision style:
-- If `<planning_dir>/decision-mode.md` exists and user did not request changing mode this turn, reuse it and do not ask again.
-- Otherwise ask user with a single-choice prompt:
-  - `ask_every_choice` = Ask on every multi-option decision
-  - `smart_auto` = Smart auto-decide (Recommended)
-  - `auto_by_default` = Auto-decide by default, ask only for critical risk
+- If `<planning_dir>/decision-mode.md` exists and user did not request changing mode this turn, reuse it.
+- Otherwise default to `auto_by_default` and write it immediately.
+- Change mode only if the user explicitly asks for tighter control this turn.
 
 Store as `decision_mode` for this run and write:
 - `<planning_dir>/decision-mode.md`
 
 Use values:
-- `ask_every_choice`
+- `ask_every_choice` (only on explicit user request)
 - `smart_auto`
-- `auto_by_default`
+- `auto_by_default` (default)
 
 ---
 
@@ -123,17 +121,17 @@ Whenever there are multiple valid implementation options:
 - `high-impact`: skipping sections, scope changes, schema/migration changes, disabling/weakening tests, changing commit strategy, security-sensitive tradeoffs.
 - `low-impact`: naming/order/style choices, minor reversible workflow details.
 
-2) Apply `decision_mode`:
-- `ask_every_choice`:
-  - always ask user with numbered options.
-- `smart_auto`:
-  - ask user for `high-impact` decisions.
-  - auto-decide `low-impact` decisions with concise rationale.
-- `auto_by_default`:
-  - auto-decide both low/high impact.
-  - ask user only for destructive/irreversible risk or low-confidence decisions.
+2) Default to codebase-first autonomous implementation choices:
+- Prefer the option that matches current repository conventions, keeps the diff smallest, preserves compatibility/contracts, and maintains testability.
+- Treat purely technical tradeoffs as implementer-owned decisions.
+- Ask the user only when a choice changes product behavior, expands/reduces agreed scope, introduces destructive/irreversible risk, or remains genuinely low-confidence after codebase inspection.
 
-3) Always log decisions:
+3) Apply `decision_mode`:
+- `ask_every_choice`: ask only because the user explicitly requested that mode.
+- `smart_auto`: auto-decide technical options; ask only for product/scope/destructive decisions.
+- `auto_by_default`: auto-decide all technical options; ask only for destructive/irreversible risk, ambiguous product intent, or genuinely low confidence.
+
+4) Always log decisions:
 - Write/update `<planning_dir>/implementation-decision-log.md`:
   - section or step
   - options considered
@@ -141,16 +139,30 @@ Whenever there are multiple valid implementation options:
   - mode used (`asked` or `auto`)
   - rationale
 
-4) Adaptive preference:
-- If user repeatedly replies with quick numeric confirmations, bias toward more automation within current mode.
-- If user requests more control/detail, bias toward more prompts.
+5) Adaptive preference:
+- Bias toward more automation by default.
+- If user requests more control/detail, bias toward more prompts for the remainder of the run.
 - User can override anytime with:
   - `ask mode`
   - `smart auto`
   - `auto mode`
 
-5) Safety prompts:
-- Context/compaction checkpoints defined by workflow remain mandatory.
+6) Safety prompts:
+- Context/compaction checkpoints should auto-continue unless the context state is genuinely unsafe.
+- Do not ask the user for permission to inspect the codebase, search files, run tests, run safe non-destructive shell commands, or gather needed technical context.
+- These are implementer-owned execution steps and should happen automatically.
+- Ask only for destructive/irreversible actions, accepted-risk security bypasses, or product/scope ambiguity.
+
+7) Git/GitHub recovery bias:
+- Treat git history and the GitHub-backed repository as the default recovery mechanism for repo-local implementation work.
+- Do not pause merely because a change may need rollback later; preserve recoverability and continue.
+- Ask only when the next action would destroy data that git/GitHub cannot recover or would cause irreversible external side effects.
+
+8) Backup-first data safety:
+- If an operation risks data loss, create a timestamped dump/export/copy backup first and record the path plus restore command/steps.
+- Continue automatically after the backup succeeds; do not wait for user confirmation merely because backup was necessary.
+- Ask only if a reliable backup cannot be created, cannot be verified, or the risky action affects external state outside the available recovery path.
+- Use `../BACKUP-PLAYBOOK.md` for backup naming, storage, restore-note format, and command patterns.
 
 ## Question UX Rules (Required)
 
@@ -172,10 +184,14 @@ Use strictly separated question phases:
 
 ### Stage B: Post-Implementation Hardening Decisions (Late Workflow)
 - Only after `implementation-security-review.md` exists
-- Present hardening recommendations, then ask one adoption choice:
+- In `ask_every_choice`, present hardening recommendations and ask one adoption choice:
   - `plan_now` (create focused hardening plan)
   - `fix_now` (implement critical/high now)
   - `defer` (record and continue)
+- In `smart_auto` or `auto_by_default`, choose automatically:
+  - `fix_now` for safe in-scope critical/high items
+  - `plan_now` when follow-up work is clearly needed but would expand scope materially
+  - `defer` only for lower-priority residual hardening
 
 Transition rule:
 - Do not ask Stage B decisions during Stage A.
@@ -256,15 +272,12 @@ Keep scope strictly within section objective.
 4. Re-run tests until green.
 5. Run quick regression subset for touched area.
 
-If tests fail repeatedly (3 focused attempts), stop and ask user whether to:
-- `debug` = continue debugging
-- `skip` = skip current section
-- `pause` = pause workflow
+If tests fail repeatedly (3 focused attempts), escalate automatically:
+- continue with a deeper debug pass if the failure still looks local and tractable
+- if the section is blocked by an external dependency or unclear prerequisite, record a blocked task and move to the next safe ready task
+- only ask the user if continuing would expand scope materially, require skipping agreed deliverables, or the blocker is product-directional rather than technical
 
-Decision handling for repeated failures must follow `decision_mode`:
-- `ask_every_choice`: always ask.
-- `smart_auto`: ask before skip/pause; may auto-continue debugging with rationale.
-- `auto_by_default`: auto-decide unless destructive/irreversible risk is present.
+Decision handling for repeated failures must still follow `decision_mode`, but autonomous modes should prefer `debug` or `blocked-and-continue` over asking the user to choose a technical path.
 
 ### Step 4: Section Review
 
@@ -325,11 +338,7 @@ Append per section:
 
 ### Step 9: Context Check (Every 2 Sections)
 
-After sections 02, 04, 06, ... prompt user:
-- `continue` = continue now
-- `clear` = `/clear` and resume from progress file
-
-If user chooses clear, stop cleanly.
+After sections 02, 04, 06, ... run a lightweight self-check on remaining context. Continue automatically by default. Only pause and offer `/clear` if context looks genuinely unsafe or the user explicitly asked for manual checkpoints.
 
 ---
 
@@ -364,25 +373,27 @@ Format findings by severity (`critical`, `high`, `medium`, `low`) with:
 - risk statement
 - recommended fix direction
 
-### Mandatory User Prompt After Re-Review
+### Autonomous Post-Re-Review Resolution
 
-After producing `implementation-security-review.md`, always ask user immediately:
+After producing `implementation-security-review.md`, choose the next action automatically:
 
-- `plan_now` = Create improvement plan now (Recommended)
-- `fix_now` = Implement critical/high fixes now without new planning
-- `defer` = Defer improvements and continue
+- `fix_now` when findings are critical/high and can be resolved within the current task scope
+- `plan_now` when the findings are significant but need a contained follow-up hardening plan
+- `defer` when only medium/low findings remain or immediate fixes would expand scope disproportionately
 
-Record user choice in:
+Ask the user only if the choice would materially change product behavior, expand scope, or require destructive/irreversible changes.
+
+Record the chosen action in:
 - `<planning_dir>/implementation-summary.md`
 
-If user chooses `plan_now`:
+If the chosen action is `plan_now`:
 - Generate a focused follow-up plan file:
   - `<planning_dir>/implementation-hardening-plan.md`
 
-If user chooses `fix_now`:
+If the chosen action is `fix_now`:
 - Prioritize only `critical`/`high` findings first, then re-run tests and update summary.
 
-If user chooses `defer`:
+If the chosen action is `defer`:
 - Keep deferred findings explicitly listed in summary with rationale.
 
 ---

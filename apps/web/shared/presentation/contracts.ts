@@ -354,6 +354,7 @@ export const presentationSlideContentSchema = z.object({
   durationMs: z.number().finite().min(250).max(120_000).optional(),
   pendingMediaJobs: z.array(presentationPendingMediaJobSchema).max(32).optional(),
   background: presentationSlideBackgroundSchema.optional(),
+  visualOnly: z.boolean().optional(),
 }).strict();
 
 export const presentationSlideshowSlideSchema = z.object({

@@ -52,6 +52,7 @@ export interface SkillDefinition {
   description: string;
   icon: string;
   type: SkillType;
+  category?: string;
 
   /** Trigger rules (regex + optional per-pattern chainTo) */
   triggers: TriggerRule[];
@@ -135,6 +136,8 @@ export interface SkillMetadata {
   author?: string;
   description?: string;
   category?: string;
+  chainTo?: string;
+  chain_to?: string;
   icon?: string;
   tags?: string[];
   // Support both snake_case and camelCase from YAML frontmatter

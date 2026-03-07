@@ -4,6 +4,13 @@ import path from "path";
 import { parseSkillFile, mapCategoryToEnum } from "@smartspec/skills";
 
 const SKILLS_DIR = path.resolve(__dirname, "..", "..", "..", "skills");
+function resolveSkillFilePath(slug: string): string {
+  const lowercasePath = path.join(SKILLS_DIR, slug, "skill.md");
+  if (fs.existsSync(lowercasePath)) {
+    return lowercasePath;
+  }
+  return path.join(SKILLS_DIR, slug, "SKILL.md");
+}
 
 const ARTICLE_WRITER_SLUGS = [
   "general-article-writer",
@@ -11,13 +18,14 @@ const ARTICLE_WRITER_SLUGS = [
   "education-article-writer",
   "marketing-article-writer",
   "lifestyle-article-writer",
+  "parenting-article-writer",
 ];
 
 describe("Built-in Article Writer Skills", () => {
-  it("all 5 skill.md files exist and are readable", () => {
+  it("all article writer skill files exist and are readable", () => {
     for (const slug of ARTICLE_WRITER_SLUGS) {
-      const filePath = path.join(SKILLS_DIR, slug, "skill.md");
-      expect(fs.existsSync(filePath), `${slug}/skill.md should exist`).toBe(true);
+      const filePath = resolveSkillFilePath(slug);
+      expect(fs.existsSync(filePath), `${slug} skill file should exist`).toBe(true);
       const content = fs.readFileSync(filePath, "utf-8");
       expect(content.length).toBeGreaterThan(0);
     }
@@ -25,7 +33,7 @@ describe("Built-in Article Writer Skills", () => {
 
   for (const slug of ARTICLE_WRITER_SLUGS) {
     describe(slug, () => {
-      const filePath = path.join(SKILLS_DIR, slug, "skill.md");
+      const filePath = resolveSkillFilePath(slug);
       const content = fs.readFileSync(filePath, "utf-8");
       const parsed = parseSkillFile(content);
 
@@ -39,9 +47,9 @@ describe("Built-in Article Writer Skills", () => {
         expect(parsed.metadata.execution_mode).toBe("llm-only");
       });
 
-      it("has category that maps to chat_assistant", () => {
+      it("has category that maps to article_generation", () => {
         const mapped = mapCategoryToEnum(parsed.metadata.category);
-        expect(mapped).toBe("chat_assistant");
+        expect(mapped).toBe("article_generation");
       });
 
       it("has enabledByDefault set to true", () => {

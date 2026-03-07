@@ -14,7 +14,7 @@ The `orchestra/` working directory is the single source of truth for an orchestr
 |------|-------------|--------------|--------------|---------|
 | `plan.md` | Step 1 (task analysis) | Step 2 (routing), Step 3 (wave plan) | Never | Scope, risk, route, wave structure |
 | `progress.md` | Step 5 (first wave complete) | Every wave integration | Never | Wave status: completed / in-progress / pending |
-| `backlog.md` | Step 2 (if large/project scope) | When items are resolved | Never | Pending items, expected artifact paths from deep-* handoffs |
+| `backlog.md` | Step 2 (when any planning/implementation chain is needed) | When items are resolved | Never | Pending items, expected artifact paths from automatic deep-* chains |
 | `decisions.md` | First auto-decision | Every auto-decision (append-only) | Never | Timestamped log of all conductor decisions |
 | `contracts.md` | Step 3 (contract definition) | Never after Wave 1 | Never | Agent interface contracts (frozen after Wave 1) |
 | `platform.md` | First platform detection | Never (permanent) | User deletes it | Detected platform (claude-code / codex / open-code) |
@@ -85,11 +85,84 @@ This convention ensures that old session data is never deleted — only moved as
 
 `orchestra/` **should be committed** to the project repository. It is not ephemeral — it documents decisions, contracts, and progress that have long-term value as project history.
 
+Use git/GitHub as the default recovery mechanism for orchestration state. This means the conductor should prefer recoverable file/history workflows over interactive confirmation prompts whenever the risk is limited to repo-local changes.
+
 **Important:** Your project's `.gitignore` must **NOT** exclude `orchestra/`. Verify this before and after adding the directory to git.
 
 Recommended commit workflow:
 - Commit `orchestra/` at the end of each wave cycle, together with the wave's output artifacts.
 - Use commit messages like: `chore: orchestra progress — wave N complete`
+
+Confirmation policy:
+- Do not ask the user for approval just because a repo-local change might need future rollback.
+- Use git history, branches, and the GitHub-backed remote as the control/recovery layer instead.
+- Ask only when the next action can destroy data or state that is not safely recoverable from the repository.
+
+Backup-first extension:
+- If the upcoming action risks data loss beyond ordinary repo-local edits, create a timestamped backup file set first.
+- Store backup paths and restore notes in `orchestra/decisions.md` or `orchestra/progress.md`.
+- Continue automatically after the backup is captured; lack of a backup is the blocker, not lack of user confirmation.
+
+## Backup Conventions
+
+Use a dedicated backup root inside the project when practical:
+
+```text
+{project_root}/orchestra/backups/
+```
+
+If the backup is feature-specific and should live near the work, this is also acceptable:
+
+```text
+{planning_dir}/backups/
+```
+
+### Naming Standard
+
+Use timestamped names with UTC-like precision and a short purpose suffix:
+
+```text
+backup-{YYYYMMDD-HHMMSSZ}-{scope}-{kind}.{ext}
+```
+
+Examples:
+- `backup-20260307-101530Z-users-table-pre-drop.sql`
+- `backup-20260307-101530Z-media-library-json-export.json`
+- `backup-20260307-101530Z-config-tree-pre-refactor.tar.gz`
+- `backup-20260307-101530Z-sqlite-db-pre-migration.sqlite3`
+
+### Required Backup Log Fields
+
+Whenever a backup is created, record:
+- absolute path
+- timestamp
+- source scope (table, file tree, config, dataset, etc.)
+- backup format
+- restore command or restore steps
+- reason backup was required
+
+Log these in `orchestra/decisions.md` or `orchestra/progress.md`.
+
+### Preferred Formats by Data Type
+
+| Risk Type | Preferred Backup |
+|---|---|
+| Postgres table/schema change | `.sql` dump or `.dump` archive |
+| MySQL table/schema change | `.sql` dump |
+| SQLite migration | copied `.sqlite` / `.db` file |
+| JSON/CSV bulk rewrite | exported `.json` / `.csv` snapshot |
+| File tree refactor | `tar.gz` archive or mirrored copy |
+| Generated artifacts overwrite | copied artifact directory with timestamp suffix |
+
+### Restore Note Standard
+
+Always write a short restore note next to the backup log entry:
+
+```text
+Restore:
+- command: <exact command if known>
+- validation: <how to confirm restore worked>
+```
 
 **`orchestra/archive/` — Retention Guidance:**
 The `archive/` subdirectory can accumulate many timestamped old sessions over time. To prevent unbounded growth:

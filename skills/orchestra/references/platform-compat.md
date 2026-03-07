@@ -2,7 +2,8 @@
 
 Tells the conductor how to detect which AI platform it is running on and how to adapt
 dispatch behavior for that platform. Platform detection runs once per session (SKILL.md
-Step 4) and is persisted to `orchestra/platform.md` so it never needs to be asked again.
+Step 4) and is persisted to `orchestra/platform.md`. Detection should be automatic by
+default and should not ask the user unless runtime evidence is genuinely contradictory.
 
 ---
 
@@ -13,17 +14,21 @@ Step 4) and is persisted to `orchestra/platform.md` so it never needs to be aske
    → Yes: read it, use the stored platform name, skip to dispatch
    → No: proceed to step 2
 
-2. Ask user once using AskUserQuestion:
-   "Which AI platform are you running on?"
-   Options:
+2. If the current skill pack/runtime is clearly Codex-oriented, default to `codex`
+   immediately and continue.
+
+3. If runtime evidence clearly points to another platform, use that platform name:
    a) claude-code  — Full features (native Task tool, parallel agents, worktree isolation)
-   b) codex        — Task tool available; subagent_type must be general-purpose; inject
-                     agent identity templates
-   c) open-code    — No Task tool; conductor executes all roles sequentially inline
+   b) codex        — If a general-purpose sub-agent tool is available, inject agent
+                     identity templates; otherwise execute the same role inline
+   c) open-code    — No sub-agent tool; conductor executes all roles sequentially inline
 
-3. Write the user's answer to `orchestra/platform.md` (one line: the platform name)
+4. Ask the user only if the runtime evidence is contradictory and the dispatch strategy
+   would materially change.
 
-4. Never ask again for this session (or future sessions) until platform.md is deleted
+5. Write the resolved platform to `orchestra/platform.md` (one line: the platform name)
+
+6. Never ask again for this session (or future sessions) until platform.md is deleted
 ```
 
 **Platform names are case-sensitive:** Use exactly `claude-code`, `codex`, or `open-code`.
@@ -76,10 +81,7 @@ Dispatch (single message, both Task calls simultaneously):
 
 ## 3. Codex Mode
 
-The Task tool is available but `subagent_type` must be `general-purpose` for all agents —
-Codex does not support plugin agent types. Preserve agent specialization by injecting
-the identity + constraints section from `deep_plan/skills/sub-agents/agents/NAME.md` at
-the top of each Task Packet prompt.
+If this Codex environment exposes a general-purpose sub-agent tool, use it — `subagent_type` must remain `general-purpose` for all agents. Preserve agent specialization by injecting the identity + constraints section from `../../sub-agents/agents/NAME.md` at the top of each Task Packet prompt. If no sub-agent tool is available, follow the open-code inline procedure while preserving the same Task Packet and Result Report contracts.
 
 See `sub-agent-dispatch.md` Section 4 for the full template injection procedure.
 

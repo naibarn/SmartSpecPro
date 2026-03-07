@@ -90,8 +90,11 @@ const iconMap: Record<string, React.ElementType> = {
 const categoryLabels: Record<string, string> = {
   all: "All Categories",
   image_generation: "Image Generation",
+  image_prompt_generation: "Create Prompt for Image Generation",
   video_generation: "Video Generation",
+  video_prompt_generation: "Create Prompt for Video Generation",
   audio_generation: "Audio Generation",
+  article_generation: "Article Generation",
   prompt_enhancement: "Prompt Enhancement",
   code_assistant: "Code Assistant",
   document_analysis: "Document Analysis",

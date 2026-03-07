@@ -2,7 +2,8 @@
 name: viral-talking-objects
 version: "1.1.0"
 author: SmartAIHub
-category: image_video_generation
+category: video_prompt_generation
+execution_mode: llm-only
 icon: video
 description: |
   Professional TikTok viral content creator for "Talking Objects" style videos.

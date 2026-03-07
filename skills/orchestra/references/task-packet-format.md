@@ -1,6 +1,6 @@
 # Task Packet Construction Guide (Conductor Reference)
 
-This document is the conductor's reference for **building** Task Packets. It covers the same 8-field schema as `deep_plan/skills/sub-agents/contracts/task-packet.schema.md` but from the perspective of the `/orchestra` conductor writing packets — not agents reading them.
+This document is the conductor's reference for **building** Task Packets. It covers the same 8-field schema as `../../sub-agents/contracts/task-packet.schema.md` but from the perspective of the `/orchestra` conductor writing packets — not agents reading them.
 
 **Read `task-packet.schema.md` first** to understand what each field means. This document focuses on *how to construct a correct packet* before dispatching.
 
@@ -40,11 +40,11 @@ Match the domain to the `subagent_type` you will pass to the `Task` tool:
 
 | DOMAIN | subagent_type | Edits files in |
 |--------|---------------|----------------|
-| CMD-1 Frontend | `multi-platform-apps:frontend-developer` | `apps/web/client/src/`, `packages/ui/` |
-| CMD-2 Backend | `multi-platform-apps:backend-architect` | `apps/web/server/`, `packages/shared/` |
+| CMD-1 Frontend | `general-purpose` | `apps/web/client/src/`, `packages/ui/` |
+| CMD-2 Backend | `backend-api-security:backend-architect` | `apps/web/server/`, `packages/shared/` |
 | CMD-3 Python | `python-development:fastapi-pro` | `python-backend/app/` |
-| CMD-4 Database | `Explore` (analysis) or direct (migration) | `apps/web/drizzle/`, `packages/db/` |
-| CMD-5 Infra | `Explore` (analysis) | `docker/`, `nginx/`, `docker-compose*.yml` |
+| CMD-4 Database | `general-purpose` (write) or `Explore` (analysis) | `apps/web/drizzle/`, `packages/db/` |
+| CMD-5 Infra | `Explore` (analysis) or `general-purpose` (write) | `docker/`, `nginx/`, `docker-compose*.yml` |
 | CMD-6 Security | `backend-api-security:backend-security-coder` | Audit only or targeted fixes |
 
 ---
@@ -116,7 +116,7 @@ OUTPUT:
 
 ### QUALITY GATE
 
-**Construction rule:** Copy the exact command from CLAUDE.md or the project's README. Do not paraphrase. If the command requires a specific working directory, include `cd X &&` in the gate.
+**Construction rule:** Copy the exact command from the active plan artifacts or the project's docs. Prefer commands already recorded in `implementation-plan.md`, `sections/index.md`, or repo-level task docs. Do not paraphrase. If the command requires a specific working directory, include `cd X &&` in the gate.
 
 **SmartSpecPro quality gates by domain:**
 
@@ -141,7 +141,7 @@ Standard dispatch via the Task tool:
 
 ```
 Task(
-  subagent_type="multi-platform-apps:backend-architect",
+  subagent_type="backend-api-security:backend-architect",
   prompt="
     TASK: Add Zod validation to createSkill procedure
     DOMAIN: CMD-2 Backend
@@ -161,13 +161,13 @@ Use the `subagent_type` that matches the DOMAIN (see domain table above).
 
 ### Mode: `codex`
 
-Codex does not support `subagent_type` specialization. Prepend the full agent definition file content **before** the Task Packet:
+If this Codex environment exposes a general-purpose sub-agent tool, do not rely on `subagent_type` specialization. Prepend only the condensed identity + constraints from the agent definition before the Task Packet. If no sub-agent tool is available, use the inline fallback described below:
 
 ```
 Task(
   subagent_type="general-purpose",
   prompt="
-    [Full contents of deep_plan/skills/sub-agents/agents/backend.md]
+    [Condensed identity + constraints from ../../sub-agents/agents/backend.md]
 
     ---
 
@@ -179,7 +179,7 @@ Task(
 )
 ```
 
-**Scope cap warning:** Codex agents have a smaller context window. If the agent definition + packet exceeds 8,000 tokens, split the packet into two dispatches (reduce FILES and CONSTRAINTS per dispatch).
+**Scope cap warning:** Codex agents have a smaller context window. If the injected identity + packet exceeds 8,000 tokens, split the packet into two dispatches (reduce FILES and CONSTRAINTS per dispatch). If the environment does not expose a sub-agent tool, run the role inline instead of forcing a fake Task call.
 
 ---
 
@@ -187,7 +187,7 @@ Task(
 
 No Task tool is available. The conductor adopts the agent identity and executes inline:
 
-1. Read `deep_plan/skills/sub-agents/agents/NAME.md`
+1. Read `../../sub-agents/agents/NAME.md`
 2. Follow its Workflow section step-by-step, in-context
 3. Apply all Constraints and Quality Checklist items manually
 4. Write the Result Report inline and continue
@@ -412,7 +412,7 @@ QUALITY GATE:
 
 ## Skill Registration Note
 
-After section 06 creates `deep_plan/skills/orchestra/SKILL.md`, verify whether the `/orchestra` command is auto-discoverable by the Claude Code plugin system. The `deep_plan/` root auto-discovers sibling skills under `skills/` — check if `/orchestra` is available without changes to `.claude/settings.json`.
+After section 06 creates the orchestra skill artifacts, verify whether `/orchestra` is discoverable in the active platform's skill system. In Claude Code this may rely on sibling skill auto-discovery; in Codex/open-code environments verify that the installed skill pack exposes `/orchestra` without additional manual registration.
 
 If explicit registration is required, add an entry to `.claude/settings.json` analogous to the existing `"deep-plan"` entry. The acceptance criterion: invoking `/orchestra` displays the orchestra banner without a "skill not found" error.
 

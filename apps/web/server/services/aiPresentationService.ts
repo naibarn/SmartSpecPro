@@ -18,6 +18,11 @@ import { BUILT_IN_PRESETS, getBuiltInPreset } from "@shared/presentation/aiStyle
 import { pickRandomSvgFromCategory } from "@shared/presentation/svgGraphicsCatalog";
 import { PRESENTATION_ERROR_CODE, PRESENTATION_LIMITS } from "@shared/presentation/constants";
 import {
+  classifyDraftSkillCapability,
+  getDraftSkillMediaType,
+  shouldUseDraftSkillForMedia,
+} from "@shared/presentation/draftSkillCapabilities";
+import {
   presentationSlideContentSchema,
   type AudioTrackInput,
   type PresentationSlideContent,
@@ -594,6 +599,10 @@ function extractSlideNarrative(slideTitle: string, slideContent: PresentationSli
     body,
     sections: inferNarrativeSections(sortedBodyCandidates, titleKey, canvas),
   };
+}
+
+function isVisualOnlySlideContent(slideContent: PresentationSlideContent): boolean {
+  return slideContent.visualOnly === true;
 }
 
 const WATERMARK_ID_PREFIX = "watermark__";
@@ -2711,6 +2720,7 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
   const parsedContent = presentationSlideContentSchema.parse(input.slideContent);
   const warnings: string[] = [];
   const canvas = resolveSlideCanvasDimensions(parsedContent);
+  const preserveVisualOnly = isVisualOnlySlideContent(parsedContent);
   const narrative = extractSlideNarrative(input.slideTitle, parsedContent);
   const imageElement = pickLargestImageElement(parsedContent);
   // When there is no static image but there is a video, incorporate the video into the
@@ -2764,6 +2774,7 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
     totalSlides: input.totalSlides,
     canvasWidth: canvas.width,
     canvasHeight: canvas.height,
+    visualOnly: preserveVisualOnly,
   });
 
   const imagePrompt = imageElement?.imagePrompt;
@@ -2826,7 +2837,7 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
     return element;
   });
   let appliedCropShape: Exclude<GeometricCropShapeId, "auto"> | null = null;
-  if (input.includeGeometricCrop) {
+  if (input.includeGeometricCrop && !preserveVisualOnly) {
     const cropResult = applyGeometricImageCrop(elements, {
       requestedShape: input.geometricCropShape,
       seed: input.layoutSeed ?? Date.now(),
@@ -2835,7 +2846,7 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
     appliedCropShape = cropResult.appliedShape;
   }
   let appliedAccentShape: Exclude<GeometricAccentShapeId, "auto"> | null = null;
-  if (input.includeGeometricAccents) {
+  if (input.includeGeometricAccents && !preserveVisualOnly) {
     const accentResult = buildGeometricAccentElements({
       canvasWidth: canvas.width,
       canvasHeight: canvas.height,
@@ -2880,6 +2891,7 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
       width: canvas.width,
       height: canvas.height,
     },
+    ...(preserveVisualOnly ? { visualOnly: true } : {}),
   };
   if (watermark) {
     const watermarkApplied = applyWatermarkToSlideContent(relayoutContent, watermark);
@@ -2897,13 +2909,20 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
   if (!imageElement?.src) {
     warnings.push("No reusable image found on this slide; used visual placeholder layout.");
   }
+  if (preserveVisualOnly) {
+    warnings.push("Preserved visual-only slide mode during auto layout.");
+  }
   if (input.includeGeometricCrop && appliedCropShape) {
     warnings.push(`Applied geometric image crop shape "${appliedCropShape}".`);
+  } else if (input.includeGeometricCrop && preserveVisualOnly) {
+    warnings.push("Skipped geometric crop to preserve full-canvas visual-only slide.");
   } else if (input.includeGeometricCrop && !appliedCropShape) {
     warnings.push("Geometric crop requested but no eligible image was found on this slide.");
   }
   if (input.includeGeometricAccents && appliedAccentShape) {
     warnings.push(`Added geometric accents using "${appliedAccentShape}" shape.`);
+  } else if (input.includeGeometricAccents && preserveVisualOnly) {
+    warnings.push("Skipped geometric accents to preserve full-canvas visual-only slide.");
   }
   warnings.push(`Applied template "${templateId}" with preset "${stylePresetId}".`);
 
@@ -2952,11 +2971,71 @@ Coverage and quality requirements:
   - Level 2: sections[].heading (medium)
   - Level 3: sections[].details[] (small detail text)`;
 
+const TOPIC_TO_SLIDES_SYSTEM_PROMPT = `You are a presentation strategist. Convert a topic brief directly into a slide plan.
+
+For each slide, produce a JSON object with these fields:
+- templateId: one of ${JSON.stringify(AI_LAYOUT_TEMPLATE_IDS)}
+- title: a short, compelling title for the slide (max 200 chars)
+- body: an array of 1-10 bullet point strings summarizing the key points
+- sections (optional but strongly recommended): an array of section objects with:
+  - heading: medium-size subheading text (max 180 chars)
+  - details: array of 1-4 supporting detail lines (max 260 chars each)
+- graphicCategory: one of ${JSON.stringify(AI_SVG_CATEGORIES)} - pick the most relevant category for a decorative SVG icon
+- imagePromptKeywords: a descriptive prompt (max 500 chars) for generating a relevant background or hero visual
+
+Output ONLY a valid JSON array. No markdown code fences, no explanatory text.
+
+You MUST return exactly the number of slides requested by the user message.
+
+The first slide MUST use templateId "hero_center" as the title/intro slide.
+Distribute remaining slides among "split_left_image", "split_right_image", "top_image_text_bottom", "bottom_image_text_top", and "feature_boxes_right" for visual variety.
+
+Planning rules:
+- Build a coherent beginning, middle, and end even when only a short topic is provided.
+- Keep each slide focused on one clear idea.
+- Use concise but substantive points, suitable for presentation slides rather than prose paragraphs.
+- When the brief suggests a visual campaign, product reveal, or creative concept, make imagePromptKeywords vivid and production-ready.`;
+
 function buildSlideSplitUserPrompt(articleText: string, requestedSlides: number): string {
   return `Target slide count: ${requestedSlides}
 
 Article:
 ${articleText}`;
+}
+
+function buildTopicToSlidesUserPrompt(
+  topic: string,
+  requestedSlides: number,
+  language: GenerateAIDraftInput["language"],
+  draftSkillCapability: string,
+  skillParams?: Record<string, unknown>,
+): string {
+  const lines = [
+    `Target slide count: ${requestedSlides}`,
+    `Language: ${language}`,
+    `Draft skill mode: ${draftSkillCapability}`,
+    "",
+    "Topic brief:",
+    topic,
+  ];
+
+  const paramLines = Object.entries(skillParams ?? {})
+    .filter(([, value]) => value !== undefined && value !== null && value !== "")
+    .map(([key, value]) => `- ${key}: ${typeof value === "object" ? JSON.stringify(value) : String(value)}`);
+
+  if (paramLines.length > 0) {
+    lines.push("", "Additional user inputs:", ...paramLines);
+  }
+
+  lines.push(
+    "",
+    "Requirements:",
+    "- Make the deck feel complete even without a source article.",
+    "- Each slide should have useful text structure plus strong imagePromptKeywords.",
+    "- Prefer titles and bullets that are presentation-ready, not essay-style paragraphs.",
+  );
+
+  return lines.join("\n");
 }
 
 function clampInteger(value: number, min: number, max: number): number {
@@ -3703,14 +3782,20 @@ export async function generateAIDraft(
     const canvasAspectRatio = toAspectRatio(canvasWidth, canvasHeight);
     const canvasPreset = CANVAS_PRESET_BY_RATIO[canvasAspectRatio];
     const requestedImageModel = input.imageModel?.trim();
+    const primaryDraftSkillId = input.draftSkillId?.trim() || input.articleSkillId?.trim() || undefined;
+    const primaryDraftSkillParams = input.draftSkillParams ?? input.articleSkillParams;
+    const primaryDraftSkill = primaryDraftSkillId
+      ? await getSkillByIdAsync(primaryDraftSkillId)
+      : undefined;
+    const primaryDraftSkillCapability = classifyDraftSkillCapability(primaryDraftSkill);
 
-    // Load image skill early to determine media type (image vs video)
-    const preloadedImageSkill = input.imageSkillId
+    // Load explicit media skill early to determine media type (image vs video)
+    const explicitImageSkill = input.imageSkillId
       ? await getSkillByIdAsync(input.imageSkillId)
       : undefined;
-    const isVideoSkill =
-      preloadedImageSkill?.type === "video-generation" ||
-      preloadedImageSkill?.type === "image-video-generation";
+    const effectiveMediaSkill = explicitImageSkill
+      ?? (shouldUseDraftSkillForMedia(primaryDraftSkill) ? primaryDraftSkill : undefined);
+    const isVideoSkill = getDraftSkillMediaType(effectiveMediaSkill) === "video";
     const mediaModelQueryType = isVideoSkill ? "video" : "image";
 
     const availableImageModels = await getModelsByTypeAsync(mediaModelQueryType);
@@ -3812,10 +3897,13 @@ export async function generateAIDraft(
       return;
     }
 
-    // ── Phase 1: Article Generation ───────────────────────
+    // ── Phase 1: Draft Source Preparation ────────────────
     if (await isCancelled()) { await setCancelled(); return; }
 
-    let articleText: string;
+    const shouldPlanSlidesDirectlyFromTopic =
+      !input.useCustomArticle && primaryDraftSkillCapability !== "article";
+
+    let articleText = "";
     let articleModel = DEFAULT_TEXT_MODEL;
     let articlePreferredProviderId: number | undefined;
     let articleStrictProviderPin = false;
@@ -3836,6 +3924,52 @@ export async function generateAIDraft(
       });
       articleText = sanitizedCustomArticleText;
       articleModel = await resolveRoutableTextModel(DEFAULT_TEXT_MODEL);
+    } else if (shouldPlanSlidesDirectlyFromTopic) {
+      if (!primaryDraftSkillId || !primaryDraftSkill) {
+        await updateProgress({
+          completed: true,
+          error: {
+            code: PRESENTATION_ERROR_CODE.AI_GENERATION_FAILED,
+            message: `Draft skill not found: ${primaryDraftSkillId ?? "unknown"}`,
+          },
+        });
+        return;
+      }
+      if (primaryDraftSkillCapability === "unknown") {
+        await updateProgress({
+          completed: true,
+          error: {
+            code: PRESENTATION_ERROR_CODE.AI_GENERATION_FAILED,
+            message: `Draft skill "${primaryDraftSkillId}" is not supported for Draft with AI`,
+          },
+        });
+        return;
+      }
+
+      await updateProgress({ phase: 1, phaseLabel: "Planning slides from topic..." });
+      auditLogger.log({
+        traceId: taskId,
+        timestamp: new Date().toISOString(),
+        eventType: "skill_execute",
+        userId: actor.userId,
+        requestPayload: {
+          phase: 1,
+          stage: "topic_to_slide_plan",
+          skillId: primaryDraftSkillId,
+          mode: primaryDraftSkillCapability,
+          topic: sanitizedPrompt,
+        },
+      });
+      articlePreferredProviderId = primaryDraftSkill.preferredProviderId;
+      articleStrictProviderPin = Boolean(primaryDraftSkill.strictProviderPin);
+      articleModel = await resolveRoutableTextModel(
+        primaryDraftSkill.systemPrompt
+          ? resolveSkillModel(primaryDraftSkill)
+          : DEFAULT_TEXT_MODEL,
+        articlePreferredProviderId,
+        articleStrictProviderPin,
+      );
+      articleText = sanitizedPrompt;
     } else {
       await updateProgress({ phase: 1, phaseLabel: "Writing article..." });
 
@@ -3844,18 +3978,18 @@ export async function generateAIDraft(
         timestamp: new Date().toISOString(),
         eventType: "skill_execute",
         userId: actor.userId,
-        requestPayload: { phase: 1, skillId: input.articleSkillId, topic: sanitizedPrompt },
+        requestPayload: { phase: 1, skillId: primaryDraftSkillId, topic: sanitizedPrompt },
       });
 
       // Skills are system-level (filesystem-based), already validated by Zod in router.
       // No per-user scoping needed — all enabled skills are visible to all users.
-      const articleSkill = await getSkillByIdAsync(input.articleSkillId);
+      const articleSkill = primaryDraftSkill;
       if (!articleSkill?.systemPrompt) {
         await updateProgress({
           completed: true,
           error: {
             code: PRESENTATION_ERROR_CODE.AI_GENERATION_FAILED,
-            message: `Article skill not found: ${input.articleSkillId}`,
+            message: `Article skill not found: ${primaryDraftSkillId ?? "unknown"}`,
           },
         });
         return;
@@ -3872,7 +4006,7 @@ export async function generateAIDraft(
         sanitizedPrompt,
         input.language,
         input.numSlides,
-        input.articleSkillParams,
+        primaryDraftSkillParams,
       );
 
       try {
@@ -3920,8 +4054,10 @@ export async function generateAIDraft(
       }
     }
 
-    const explicitWordLimit = resolveExplicitWordCount(input.articleSkillParams);
-    if (explicitWordLimit) {
+    const explicitWordLimit = shouldPlanSlidesDirectlyFromTopic
+      ? null
+      : resolveExplicitWordCount(primaryDraftSkillParams);
+    if (explicitWordLimit && articleText) {
       const originalWordCount = countApproxWords(articleText);
       if (originalWordCount > explicitWordLimit) {
         articleText = trimToMaxWords(articleText, explicitWordLimit);
@@ -3931,42 +4067,76 @@ export async function generateAIDraft(
       }
     }
 
-    // ── Phase 2: Article to Slide Split ───────────────────
+    // ── Phase 2: Slide Planning / Split ───────────────────
     if (await isCancelled()) { await setCancelled(); return; }
 
-    await updateProgress({ phase: 2, phaseLabel: "Splitting into slides..." });
-
-    const splitArticleExcerpt = buildSlideSplitArticleExcerpt(articleText, input.numSlides, warnings);
+    await updateProgress({
+      phase: 2,
+      phaseLabel: shouldPlanSlidesDirectlyFromTopic
+        ? "Structuring slides from topic..."
+        : "Splitting into slides...",
+    });
 
     let slides: AIPresentationSlide[];
     try {
-      const splitResult = await callLLMStructured({
-        systemPrompt: SLIDE_SPLIT_SYSTEM_PROMPT,
-        userMessage: buildSlideSplitUserPrompt(splitArticleExcerpt, input.numSlides),
-        model: articleModel,
-        preferredProviderId: articlePreferredProviderId,
-        strictProviderPin: articleStrictProviderPin,
-        zodSchema: AIPresentationSchema,
-        userId: actor.userId,
-        tenantId: actor.tenantId,
-        billingDescription: `AI Draft slide structuring (Deck #${input.deckId})`,
-        billingMetadata: {
-          operation: "ai_draft_slide_split",
-          taskId,
-          deckId: input.deckId,
-          phase: 2,
-          stage: "slide_split",
-          promptPreview: splitArticleExcerpt.slice(0, 500),
-        },
-      });
-      slides = normalizeSlidesToRequestedCount(splitResult.data, input.numSlides, warnings)
-        .map((slide) => normalizeSlideHierarchy(slide));
+      if (shouldPlanSlidesDirectlyFromTopic) {
+        const planResult = await callLLMStructured({
+          systemPrompt: TOPIC_TO_SLIDES_SYSTEM_PROMPT,
+          userMessage: buildTopicToSlidesUserPrompt(
+            sanitizedPrompt,
+            input.numSlides,
+            input.language,
+            primaryDraftSkillCapability,
+            primaryDraftSkillParams,
+          ),
+          model: articleModel,
+          preferredProviderId: articlePreferredProviderId,
+          strictProviderPin: articleStrictProviderPin,
+          zodSchema: AIPresentationSchema,
+          userId: actor.userId,
+          tenantId: actor.tenantId,
+          billingDescription: `AI Draft topic-to-slide planning (Deck #${input.deckId})`,
+          billingMetadata: {
+            operation: "ai_draft_topic_to_slide_plan",
+            taskId,
+            deckId: input.deckId,
+            phase: 2,
+            stage: "topic_to_slide_plan",
+            promptPreview: sanitizedPrompt.slice(0, 500),
+          },
+        });
+        slides = normalizeSlidesToRequestedCount(planResult.data, input.numSlides, warnings)
+          .map((slide) => normalizeSlideHierarchy(slide));
+      } else {
+        const splitArticleExcerpt = buildSlideSplitArticleExcerpt(articleText, input.numSlides, warnings);
+        const splitResult = await callLLMStructured({
+          systemPrompt: SLIDE_SPLIT_SYSTEM_PROMPT,
+          userMessage: buildSlideSplitUserPrompt(splitArticleExcerpt, input.numSlides),
+          model: articleModel,
+          preferredProviderId: articlePreferredProviderId,
+          strictProviderPin: articleStrictProviderPin,
+          zodSchema: AIPresentationSchema,
+          userId: actor.userId,
+          tenantId: actor.tenantId,
+          billingDescription: `AI Draft slide structuring (Deck #${input.deckId})`,
+          billingMetadata: {
+            operation: "ai_draft_slide_split",
+            taskId,
+            deckId: input.deckId,
+            phase: 2,
+            stage: "slide_split",
+            promptPreview: splitArticleExcerpt.slice(0, 500),
+          },
+        });
+        slides = normalizeSlidesToRequestedCount(splitResult.data, input.numSlides, warnings)
+          .map((slide) => normalizeSlideHierarchy(slide));
+      }
     } catch (err) {
       await updateProgress({
         completed: true,
         error: {
           code: PRESENTATION_ERROR_CODE.AI_INVALID_RESPONSE,
-          message: `Article split failed: ${sanitizeErrorMessage(err)}`,
+          message: `${shouldPlanSlidesDirectlyFromTopic ? "Topic planning" : "Article split"} failed: ${sanitizeErrorMessage(err)}`,
         },
       });
       return;
@@ -3977,18 +4147,20 @@ export async function generateAIDraft(
       slides[0] = normalizeSlideHierarchy({ ...slides[0], templateId: "hero_center" });
     }
 
-    const initialCoverage = assessSlideCoverage(articleText, slides);
-    if (initialCoverage.score < 0.68 || initialCoverage.avgBulletsPerSlide < 2.2) {
-      const enrichedSlides = topUpSlideBodiesFromArticle(articleText, slides)
-        .map((slide) => normalizeSlideHierarchy(slide));
-      const enrichedCoverage = assessSlideCoverage(articleText, enrichedSlides);
-      if (enrichedCoverage.score > initialCoverage.score
-        || enrichedCoverage.avgBulletsPerSlide > initialCoverage.avgBulletsPerSlide) {
-        slides = enrichedSlides;
+    if (!shouldPlanSlidesDirectlyFromTopic) {
+      const initialCoverage = assessSlideCoverage(articleText, slides);
+      if (initialCoverage.score < 0.68 || initialCoverage.avgBulletsPerSlide < 2.2) {
+        const enrichedSlides = topUpSlideBodiesFromArticle(articleText, slides)
+          .map((slide) => normalizeSlideHierarchy(slide));
+        const enrichedCoverage = assessSlideCoverage(articleText, enrichedSlides);
+        if (enrichedCoverage.score > initialCoverage.score
+          || enrichedCoverage.avgBulletsPerSlide > initialCoverage.avgBulletsPerSlide) {
+          slides = enrichedSlides;
+        }
+        warnings.push(
+          `Slide coverage check: ${Math.round(initialCoverage.score * 100)}% -> ${Math.round(enrichedCoverage.score * 100)}%, avg bullets ${initialCoverage.avgBulletsPerSlide.toFixed(1)} -> ${enrichedCoverage.avgBulletsPerSlide.toFixed(1)}.`,
+        );
       }
-      warnings.push(
-        `Slide coverage check: ${Math.round(initialCoverage.score * 100)}% -> ${Math.round(enrichedCoverage.score * 100)}%, avg bullets ${initialCoverage.avgBulletsPerSlide.toFixed(1)} -> ${enrichedCoverage.avgBulletsPerSlide.toFixed(1)}.`,
-      );
     }
 
     // Build slide preview
@@ -4018,17 +4190,17 @@ export async function generateAIDraft(
         )
       : 0;
 
-    // Use preloaded image skill (already fetched above for media type detection)
+    // Use explicit or implicit media skill (already fetched above for media type detection)
     let imageSkillSystemPrompt: string | null = null;
     let imageSkillModel = DEFAULT_TEXT_MODEL;
     let imageSkillPreferredProviderId: number | undefined;
     let imageSkillStrictProviderPin: boolean | undefined;
-    if (preloadedImageSkill) {
-      imageSkillSystemPrompt = preloadedImageSkill.systemPrompt ?? null;
-      imageSkillPreferredProviderId = preloadedImageSkill.preferredProviderId;
-      imageSkillStrictProviderPin = preloadedImageSkill.strictProviderPin;
+    if (effectiveMediaSkill) {
+      imageSkillSystemPrompt = effectiveMediaSkill.systemPrompt ?? null;
+      imageSkillPreferredProviderId = effectiveMediaSkill.preferredProviderId;
+      imageSkillStrictProviderPin = effectiveMediaSkill.strictProviderPin;
       imageSkillModel = await resolveRoutableTextModel(
-        resolveSkillModel(preloadedImageSkill),
+        resolveSkillModel(effectiveMediaSkill),
         imageSkillPreferredProviderId,
         imageSkillStrictProviderPin,
       );
@@ -4478,6 +4650,18 @@ export async function generateAIDraft(
       }
     }
 
+    if (input.hideTextOnSlides) {
+      if (presetCopy.header) {
+        presetCopy.header.enabled = false;
+        presetCopy.header.showDeckTitle = false;
+      }
+      if (presetCopy.footer) {
+        presetCopy.footer.enabled = false;
+        presetCopy.footer.showPageNumber = false;
+        presetCopy.footer.showCustomText = false;
+      }
+    }
+
     const compiledSlides: PresentationSlideContent[] = [];
     for (let i = 0; i < slides.length; i++) {
       const svg = pickRandomSvgFromCategory(slides[i].graphicCategory);
@@ -4491,6 +4675,7 @@ export async function generateAIDraft(
         totalSlides: slides.length,
         canvasWidth,
         canvasHeight,
+        visualOnly: input.hideTextOnSlides,
       });
       const promptForSlide = imagePrompts[i]?.trim();
       const imageModelIdForSlide = selectedImageModel?.id ?? imageModelToUse;
@@ -4564,6 +4749,7 @@ export async function generateAIDraft(
           width: canvasWidth,
           height: canvasHeight,
         },
+        ...(input.hideTextOnSlides ? { visualOnly: true } : {}),
         ...(pendingMediaJobs.length > 0 ? { pendingMediaJobs } : {}),
       };
       if (normalizedWatermark) {
@@ -4666,7 +4852,7 @@ export async function generateAIDraft(
       result: {
         slidesAdded: compiledSlides.length,
         newDeckVersion: insertionBaseVersion + compiledSlides.length,
-        articlePreview: articleText.slice(0, 200),
+        articlePreview: (articleText || sanitizedPrompt).slice(0, 200),
         warnings,
       },
     });

@@ -116,5 +116,6 @@ export function normalizePresentationSlideContent(input: unknown): PresentationS
       : undefined,
     transition: parsed.transition,
     durationMs: parsed.durationMs,
+    visualOnly: parsed.visualOnly,
   };
 }

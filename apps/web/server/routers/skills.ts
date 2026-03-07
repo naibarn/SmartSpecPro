@@ -7,7 +7,9 @@ import { z } from "zod";
 import { router, protectedProcedure, adminProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import {
+  autoSyncSkillsFromFolder,
   getAvailableSkills,
+  getAvailableSkillsAsync,
   getSkillById,
   getSkillByIdOrType,
   SkillDefinition,
@@ -22,6 +24,7 @@ import {
   buildUserPrompt,
   parsePromptResponse,
   loadSkillFile,
+  resolvePromptEnhancementSkill,
   type PromptEnhancementRequest,
 } from "../services/promptEnhancementService";
 import { db, getDb } from "../db";
@@ -53,6 +56,10 @@ import {
 import { generateMarketplaceContent } from "../services/marketplaceContentGenerator";
 import { decrypt } from "../services/crypto";
 import { sanitizeBrandText } from "../services/brandingSanitizer";
+import {
+  getRecommendedExecutionModeForSkillCategory,
+  isExecutionModeCompatibleWithSkillCategory,
+} from "@shared/skills/skillCategoryMetadata";
 
 // Skills directory path
 const SKILLS_DIR = path.resolve(process.cwd(), "skills");
@@ -107,12 +114,18 @@ function mapCategoryToEnum(category?: string): string {
     "prompt-enhancement": "prompt_enhancement",
     "image_generation": "image_generation",
     "image-generation": "image_generation",
+    "image_prompt_generation": "image_prompt_generation",
+    "image-prompt-generation": "image_prompt_generation",
     "video_generation": "video_generation",
     "video-generation": "video_generation",
+    "video_prompt_generation": "video_prompt_generation",
+    "video-prompt-generation": "video_prompt_generation",
     "image_video_generation": "image_video_generation",
     "image-video-generation": "image_video_generation",
     "audio_generation": "audio_generation",
     "audio-generation": "audio_generation",
+    "article_generation": "article_generation",
+    "article-generation": "article_generation",
     "sound_effects": "sound_effects",
     "sound-effects": "sound_effects",
     "code_assistant": "code_assistant",
@@ -133,8 +146,10 @@ function mapCategoryToEnum(category?: string): string {
   const cat = category?.toLowerCase() || "";
   if (categoryMap[cat]) return categoryMap[cat];
   // Fuzzy mapping for external skills with free-text categories
+  if ((cat.includes("image") || cat.includes("photo") || cat.includes("visual")) && cat.includes("prompt")) return "image_prompt_generation";
+  if ((cat.includes("video") || cat.includes("film") || cat.includes("movie")) && cat.includes("prompt")) return "video_prompt_generation";
   if (cat.includes("code") || cat.includes("dev") || cat.includes("engineer") || cat.includes("programming")) return "code_assistant";
-  if (cat.includes("write") || cat.includes("content") || cat.includes("blog") || cat.includes("copy")) return "chat_assistant";
+  if (cat.includes("write") || cat.includes("content") || cat.includes("blog") || cat.includes("copy")) return "article_generation";
   if (cat.includes("data") || cat.includes("analy")) return "data_analysis";
   if (cat.includes("image") || cat.includes("photo") || cat.includes("visual")) return "image_generation";
   if (cat.includes("video") || cat.includes("film") || cat.includes("movie")) return "video_generation";
@@ -144,7 +159,7 @@ function mapCategoryToEnum(category?: string): string {
   if (cat.includes("search")) return "web_search";
   if (cat.includes("doc") || cat.includes("document")) return "document_analysis";
   if (cat.includes("automat") || cat.includes("workflow")) return "automation";
-  return "chat_assistant"; // default for external skills (most are chat-based)
+  return "other";
 }
 
 type VisionModelOption = {
@@ -408,6 +423,7 @@ const skillTypeSchema = z.enum([
 ]);
 
 const promptEnhancementRequestSchema = z.object({
+  skillId: z.string().optional(),
   userInput: z.string().max(5000), // Allow empty when images are provided
   // Accept any string for images - they may be relative URLs (/uploads/...) or full URLs
   referenceImages: z.array(z.string().min(1)).max(5).optional(),
@@ -802,8 +818,8 @@ export const skillsRouter = router({
         enabledOnly: z.boolean().optional(),
       }).optional()
     )
-    .query(({ input }) => {
-      let skills = getAvailableSkills();
+    .query(async ({ input }) => {
+      let skills = await getAvailableSkillsAsync();
 
       if (input?.type) {
         skills = skills.filter((s) => s.type === input.type);
@@ -1192,6 +1208,7 @@ export const skillsRouter = router({
     .input(promptEnhancementRequestSchema)
     .mutation(({ input }) => {
       try {
+        const { resolvedSkillId } = resolvePromptEnhancementSkill(input.skillId);
         const systemPrompt = buildSystemPrompt(input);
         const userPrompt = buildUserPrompt(input);
 
@@ -1199,7 +1216,7 @@ export const skillsRouter = router({
           success: true,
           systemPrompt,
           userPrompt,
-          skillId: "create-image-prompt",
+          skillId: resolvedSkillId,
         };
       } catch (error) {
         throw new TRPCError({
@@ -1239,24 +1256,11 @@ export const skillsRouter = router({
       try {
         // DEBUG: Log maxPromptLength to verify it's being passed
         console.log(`[Skills] enhancePrompt called with maxPromptLength: ${input.maxPromptLength}`);
+        const { resolvedSkillId, skillName } = resolvePromptEnhancementSkill(input.skillId);
 
-        // Build prompts using the CreateImagePrompt skill
+        // Build prompts using the selected prompt skill
         const systemPrompt = buildSystemPrompt(input);
-
-        // Build user prompt with image context
-        let userPrompt = input.userInput;
-
-        // If only images without text, describe the task
-        if (!input.userInput.trim() && input.referenceImages && input.referenceImages.length > 0) {
-          userPrompt = `Please analyze the provided reference image(s) and create a detailed prompt that describes what you see. The prompt should be suitable for AI image generation that recreates or reimagines the scene/subject.`;
-        } else if (input.referenceImages && input.referenceImages.length > 0) {
-          userPrompt = `User's idea: "${input.userInput}"\n\nPlease analyze the provided reference image(s) and incorporate what you see into an enhanced prompt that combines the user's idea with visual elements from the images.`;
-        }
-
-        // Add context about images count
-        if (input.referenceImages && input.referenceImages.length > 0) {
-          userPrompt += `\n\n[${input.referenceImages.length} reference image(s) provided - analyze them for visual details]`;
-        }
+        const userPrompt = buildUserPrompt(input);
 
         // Call LLM with vision support
         // Use user-selected model or default to openai/gpt-4o for vision capability
@@ -1374,12 +1378,12 @@ export const skillsRouter = router({
         await deductCredits({
           userId,
           amount: creditsUsed,
-          description: "Auto Prompt enhancement (CreateImagePrompt skill)",
-          skillSlug: "create-image-prompt",
+          description: `Auto Prompt enhancement (${skillName})`,
+          skillSlug: resolvedSkillId,
           sourceType: "skill",
           metadata: {
             model: visionModel,
-            skill: "create-image-prompt",
+            skill: resolvedSkillId,
             inputTokens: result.usage.promptTokens,
             outputTokens: result.usage.completionTokens,
             hasReferenceImages: (input.referenceImages?.length || 0) > 0,
@@ -1394,7 +1398,7 @@ export const skillsRouter = router({
           wasTruncated,
           creditsUsed,
           usage: result.usage,
-          skillId: "create-image-prompt",
+          skillId: resolvedSkillId,
         };
       } catch (error) {
         console.error("[Skills] enhancePrompt error:", error);
@@ -1580,8 +1584,8 @@ export const skillsRouter = router({
     }),
 
   // List editable skills (skills with skill files)
-  listEditable: adminProcedure.query(() => {
-    const skills = getAvailableSkills();
+  listEditable: adminProcedure.query(async () => {
+    const skills = await getAvailableSkillsAsync();
     const editableSkills = skills.filter((s) => s.skillFilePath);
 
     return editableSkills.map((skill) => ({
@@ -2324,7 +2328,11 @@ export const skillsRouter = router({
       const { id, ...updateData } = input;
 
       const [currentSkill] = await dbInstance
-        .select({ preferredProviderId: skills.preferredProviderId })
+        .select({
+          preferredProviderId: skills.preferredProviderId,
+          category: skills.category,
+          executionMode: skills.executionMode,
+        })
         .from(skills)
         .where(eq(skills.id, id))
         .limit(1);
@@ -2363,6 +2371,26 @@ export const skillsRouter = router({
             message: `LLM provider ${updateData.preferredProviderId} not found`,
           });
         }
+      }
+
+      const effectiveCategory = updateData.category !== undefined
+        ? mapCategoryToEnum(updateData.category)
+        : currentSkill.category;
+      const effectiveExecutionMode = updateData.executionMode !== undefined
+        ? updateData.executionMode
+        : currentSkill.executionMode;
+
+      if (
+        effectiveExecutionMode
+        && !isExecutionModeCompatibleWithSkillCategory(effectiveCategory, effectiveExecutionMode)
+      ) {
+        const recommendedExecutionMode = getRecommendedExecutionModeForSkillCategory(effectiveCategory);
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: recommendedExecutionMode
+            ? `Category '${effectiveCategory}' requires executionMode '${recommendedExecutionMode}' or another compatible mode.`
+            : `Category '${effectiveCategory}' is not compatible with executionMode '${effectiveExecutionMode}'.`,
+        });
       }
 
       // Build update object
@@ -2914,6 +2942,7 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
       offset: z.number().min(0).default(0),
     }).optional())
     .query(async ({ ctx, input }) => {
+      await autoSyncSkillsFromFolder();
       return _getUserVisibleSkills(ctx.user.id, input ?? {});
     }),
 
@@ -2928,6 +2957,7 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
       offset: z.number().min(0).default(0),
     }).optional())
     .query(async ({ ctx, input }) => {
+      await autoSyncSkillsFromFolder();
       return getAllSkillsForUser(ctx.user.id, input ?? {});
     }),
 

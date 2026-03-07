@@ -142,6 +142,23 @@ RETURN: valid JSON only:
 - issues: list (empty if none)
 - fixed_code: the ENTIRE corrected file content (not a diff, not a snippet)."""
 
+SUPPORTED_SKILL_CATEGORY_GUIDE = """
+Supported categories and execution modes:
+- article_generation -> llm-only
+- image_prompt_generation -> llm-only or enhance-prompt
+- video_prompt_generation -> llm-only or enhance-prompt
+- prompt_enhancement -> llm-only or enhance-prompt
+- image_generation -> media-generate
+- video_generation -> media-generate
+- image_video_generation -> media-generate
+- audio_generation -> media-generate
+- sound_effects -> media-generate
+- automation, code_assistant, document_analysis, web_search, data_analysis, translation, summarization, chat_assistant, other -> llm-only or python
+
+execution_mode describes runtime behavior, not the implementation language.
+Use the dedicated prompt categories for prompt-creation skills instead of generic prompt_enhancement whenever possible.
+"""
+
 
 # ── Helpers ─────────────────────────────────────────────────────────────────────
 
@@ -436,6 +453,8 @@ COMPLEXITY: {complexity}
 LOCAL SKILL EXEMPLARS:
 {self._active_exemplar_context}
 
+{SUPPORTED_SKILL_CATEGORY_GUIDE}
+
 Return this EXACT JSON structure (no omissions):
 {{
   "skill_name": "kebab-case-unique-slug",
@@ -443,6 +462,7 @@ Return this EXACT JSON structure (no omissions):
   "description": "One concise sentence — what this skill does",
   "language": "python",
   "complexity": "moderate",
+  "execution_mode": "llm-only",
   "purpose": "2-3 sentences explaining value, typical use cases, and who benefits",
   "inputs": [
     {{"name": "field_name", "type": "string|number|boolean|array|object", "required": true,
@@ -461,7 +481,7 @@ Return this EXACT JSON structure (no omissions):
   ],
   "algorithms": ["specific algorithm or approach used"],
   "external_apis": [],
-  "categories": ["category1"],
+  "categories": ["automation"],
   "tags": ["tag1", "tag2", "tag3", "tag4", "tag5"],
   "trigger_patterns": ["en pattern|en variant", "thai pattern|thai variant"]
 }}
@@ -469,6 +489,11 @@ Return this EXACT JSON structure (no omissions):
 Language selection:
 - Python: math/stats, NLP, text processing, data parsing, CSV/JSON analysis, algorithms
 - JavaScript: JSON transformation, async/API-like, URL manipulation, templating, event logic
+
+Category selection:
+- Choose exactly one primary category from the supported list above.
+- Set execution_mode to match that category.
+- If the skill's main job is creating prompts for image/video models, use the dedicated prompt categories.
 
 Be thorough with inputs and outputs — design a comprehensive, production-ready interface."""
 
@@ -490,6 +515,8 @@ COMPLEXITY: {complexity}
 LOCAL SKILL EXEMPLARS:
 {self._active_exemplar_context}
 
+{SUPPORTED_SKILL_CATEGORY_GUIDE}
+
 The skill must replicate EVERY node's logic as code — triggers become inputs,
 AI/LLM nodes become function calls, data nodes become transformations, etc.
 
@@ -500,6 +527,7 @@ Return the EXACT same JSON structure as a standard skill plan:
   "description": "One concise sentence — what this skill does",
   "language": "python",
   "complexity": "moderate",
+  "execution_mode": "llm-only",
   "purpose": "2-3 sentences — what the workflow does and who benefits from having it as a skill",
   "inputs": [
     {{"name": "field_name", "type": "string|number|boolean|array|object", "required": true,
@@ -518,7 +546,7 @@ Return the EXACT same JSON structure as a standard skill plan:
   ],
   "algorithms": ["algorithms/approaches used by the workflow nodes"],
   "external_apis": ["any external services referenced in workflow configs"],
-  "categories": ["category1"],
+  "categories": ["automation"],
   "tags": ["tag1", "tag2", "tag3", "tag4", "tag5"],
   "trigger_patterns": ["en pattern", "thai pattern"]
 }}"""
@@ -635,6 +663,7 @@ Thai labels must be proper, natural Thai text — not Google-Translate style."""
         skill_title = plan.get("skill_title", "New Skill")
         language = plan.get("language", "python")
         categories = plan.get("categories", ["general"])
+        execution_mode = plan.get("execution_mode", "llm-only")
         tags = plan.get("tags", [])
         triggers = plan.get("trigger_patterns", [])
         purpose = plan.get("purpose", "")
@@ -642,7 +671,6 @@ Thai labels must be proper, natural Thai text — not Google-Translate style."""
         inputs = plan.get("inputs", [])
         outputs = plan.get("outputs", [])
 
-        exec_mode = "python" if language == "python" else "javascript"
         tag_str = ", ".join(tags[:6])
         trigger_lines = "\n  - ".join(f'"{t}"' for t in triggers[:4])
 
@@ -676,8 +704,8 @@ name: {skill_title}
 version: "1.0.0"
 type: automation
 languages: en, th
-category: {categories[0] if categories else 'general'}
-execution_mode: {exec_mode}
+category: {categories[0] if categories else 'other'}
+execution_mode: {execution_mode}
 isAutoTrigger: false
 enabledByDefault: false
 visibleByDefault: true

@@ -65,6 +65,12 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
+import {
+  getAllowedExecutionModesForSkillCategory,
+  getMediaModelTypeForSkillCategory,
+  getRecommendedExecutionModeForSkillCategory,
+  isExecutionModeCompatibleWithSkillCategory,
+} from "@shared/skills/skillCategoryMetadata";
 
 // Skill interface matching database schema
 interface Skill {
@@ -126,9 +132,12 @@ interface FolderInfo {
 // Category icon mapping
 const categoryIcons: Record<string, typeof Sparkles> = {
   image_generation: Image,
+  image_prompt_generation: Sparkles,
   video_generation: Video,
+  video_prompt_generation: Sparkles,
   image_video_generation: Video,
   audio_generation: Music,
+  article_generation: FileText,
   sound_effects: Music,
   prompt_enhancement: Sparkles,
   code_assistant: Code,
@@ -142,9 +151,12 @@ const categoryIcons: Record<string, typeof Sparkles> = {
 // Category labels
 const categoryLabels: Record<string, string> = {
   image_generation: "Image Generation",
+  image_prompt_generation: "Create Prompt for Image Generation",
   video_generation: "Video Generation",
+  video_prompt_generation: "Create Prompt for Video Generation",
   image_video_generation: "Image/Video Generation",
   audio_generation: "Audio Generation",
+  article_generation: "Article Generation",
   sound_effects: "Sound Effects",
   prompt_enhancement: "Prompt Enhancement",
   code_assistant: "Code Assistant",
@@ -157,6 +169,55 @@ const categoryLabels: Record<string, string> = {
   automation: "Automation",
   other: "Other",
 };
+
+const executionModeLabels: Record<
+  "llm-only" | "media-generate" | "enhance-prompt" | "python",
+  string
+> = {
+  "llm-only": "LLM Only (Custom Skill - uses skill.md as system prompt)",
+  "enhance-prompt": "Enhance Prompt (specialized prompt enhancement endpoint)",
+  "media-generate": "Media Generate (LLM prompt + media API)",
+  python: "Python (runs python/skill.py via subprocess)",
+};
+
+function getExecutionModeHelperText(
+  category: string,
+  executionMode: "llm-only" | "media-generate" | "enhance-prompt" | "python" | null | undefined,
+): string {
+  if (executionMode === "media-generate") {
+    const mediaType = getMediaModelTypeForSkillCategory(category);
+    if (mediaType === "audio") {
+      return "LLM generates structured audio prompt JSON, then auto-calls the audio API.";
+    }
+    if (mediaType === "video") {
+      return "LLM generates optimized video prompt JSON, then auto-calls the video generation API.";
+    }
+    return "LLM generates optimized prompt JSON, then auto-calls the media generation API.";
+  }
+  if (executionMode === "enhance-prompt") {
+    return "Uses the specialized prompt-enhancement endpoint for prompt-creation skills.";
+  }
+  if (executionMode === "python") {
+    return "Runs python/skill.py as subprocess. Input: JSON stdin. Output: JSON stdout {success, output}.";
+  }
+  return "Uses skill.md content as system prompt for LLM (default).";
+}
+
+function getMediaModelsForCategory(
+  category: string,
+  imageModels?: { models?: any[] },
+  videoModels?: { models?: any[] },
+  audioModels?: { models?: any[] },
+): any[] {
+  const mediaType = getMediaModelTypeForSkillCategory(category);
+  if (mediaType === "image") return imageModels?.models || [];
+  if (mediaType === "video") return videoModels?.models || [];
+  if (mediaType === "audio") return audioModels?.models || [];
+  if (mediaType === "image-video") {
+    return [...(imageModels?.models || []), ...(videoModels?.models || [])];
+  }
+  return [];
+}
 
 export default function AdminSkills() {
   const { user, isLoading: authLoading } = useAuth();
@@ -234,6 +295,7 @@ export default function AdminSkills() {
   // Fetch media models (image/video/audio) for media-generate skills
   const { data: imageModels } = trpc.mediaModels.list.useQuery({ type: "image" });
   const { data: videoModels } = trpc.mediaModels.list.useQuery({ type: "video" });
+  const { data: audioModels } = trpc.mediaModels.list.useQuery({ type: "audio" });
 
   // Fetch pending skills for admin approval tab
   const { data: pendingSkills } = trpc.skills.listPending.useQuery(undefined, {
@@ -809,14 +871,22 @@ export default function AdminSkills() {
                                   variant="ghost"
                                   size="sm"
                                   onClick={() =>
-                                    setEditingSkill({
-                                      ...(skill as any),
-                                      triggerPatterns: ((skill as any).triggerPatterns || []).map((pattern: any) =>
-                                        typeof pattern === "string" ? pattern : pattern?.pattern || ""
-                                      ),
-                                      executionMode: (skill as any).executionMode ?? "llm-only",
-                                      marketplaceContent: (skill as any).marketplaceContent ?? null,
-                                    } as Skill)
+                                    setEditingSkill((() => {
+                                      const normalizedExecutionMode = isExecutionModeCompatibleWithSkillCategory(
+                                        skill.category,
+                                        (skill as any).executionMode ?? "llm-only",
+                                      )
+                                        ? ((skill as any).executionMode ?? "llm-only")
+                                        : (getRecommendedExecutionModeForSkillCategory(skill.category) || "llm-only");
+                                      return {
+                                        ...(skill as any),
+                                        triggerPatterns: ((skill as any).triggerPatterns || []).map((pattern: any) =>
+                                          typeof pattern === "string" ? pattern : pattern?.pattern || ""
+                                        ),
+                                        executionMode: normalizedExecutionMode,
+                                        marketplaceContent: (skill as any).marketplaceContent ?? null,
+                                      } as Skill;
+                                    })())
                                   }
                                 >
                                   <Edit className="h-3 w-3" />
@@ -1479,12 +1549,26 @@ export default function AdminSkills() {
               <div className="grid gap-4 md:grid-cols-3">
                 <div>
                   <Label>Category</Label>
-                  <Select
-                    value={editingSkill.category}
-                    onValueChange={(value) =>
-                      setEditingSkill({ ...editingSkill, category: value })
-                    }
-                  >
+                <Select
+                  value={editingSkill.category}
+                  onValueChange={(value) => {
+                    const nextExecutionMode = isExecutionModeCompatibleWithSkillCategory(
+                      value,
+                      editingSkill.executionMode,
+                    )
+                      ? (editingSkill.executionMode || getRecommendedExecutionModeForSkillCategory(value) || "llm-only")
+                      : (getRecommendedExecutionModeForSkillCategory(value) || "llm-only");
+                    setEditingSkill({
+                      ...editingSkill,
+                      category: value,
+                      executionMode: nextExecutionMode,
+                      defaultModel: null,
+                      llmModelId: null,
+                      preferredProviderId: null,
+                      strictProviderPin: false,
+                    });
+                  }}
+                >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -1548,20 +1632,15 @@ export default function AdminSkills() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="llm-only">LLM Only (Custom Skill - uses skill.md as system prompt)</SelectItem>
-                    <SelectItem value="enhance-prompt">Enhance Prompt (specialized prompt enhancement endpoint)</SelectItem>
-                    <SelectItem value="media-generate">Media Generate (LLM prompt + media API)</SelectItem>
-                    <SelectItem value="python">Python (runs python/skill.py via subprocess)</SelectItem>
+                    {getAllowedExecutionModesForSkillCategory(editingSkill.category).map((mode) => (
+                      <SelectItem key={mode} value={mode}>
+                        {executionModeLabels[mode]}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  {editingSkill.executionMode === "media-generate"
-                    ? "LLM generates optimized prompt JSON, then auto-calls media generation API."
-                    : editingSkill.executionMode === "enhance-prompt"
-                    ? "Uses specialized enhancePrompt endpoint for image prompt generation."
-                    : editingSkill.executionMode === "python"
-                    ? "Runs python/skill.py as subprocess. Input: JSON stdin. Output: JSON stdout {success, output}."
-                    : "Uses skill.md content as system prompt for LLM (default)."}
+                  {getExecutionModeHelperText(editingSkill.category, editingSkill.executionMode)}
                 </p>
               </div>
 
@@ -1578,7 +1657,12 @@ export default function AdminSkills() {
                         <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
                           {editingSkill.defaultModel
                             ? (() => {
-                                const models = editingSkill.category === "image_generation" ? imageModels?.models : (editingSkill.category === "image_video_generation" ? [...(imageModels?.models || []), ...(videoModels?.models || [])] : videoModels?.models);
+                                const models = getMediaModelsForCategory(
+                                  editingSkill.category,
+                                  imageModels,
+                                  videoModels,
+                                  audioModels,
+                                );
                                 const found = models?.find((m: any) => m.modelId === editingSkill.defaultModel);
                                 return found ? `${found.name} (${found.provider})` : editingSkill.defaultModel;
                               })()
@@ -1599,7 +1683,12 @@ export default function AdminSkills() {
                                 <Check className={`mr-2 h-4 w-4 ${!editingSkill.defaultModel ? "opacity-100" : "opacity-0"}`} />
                                 <span className="text-muted-foreground">Auto (highest priority model)</span>
                               </CommandItem>
-                              {(editingSkill.category === "image_generation" ? imageModels?.models : (editingSkill.category === "image_video_generation" ? [...(imageModels?.models || []), ...(videoModels?.models || [])] : videoModels?.models))?.map((model: any) => (
+                              {getMediaModelsForCategory(
+                                editingSkill.category,
+                                imageModels,
+                                videoModels,
+                                audioModels,
+                              )?.map((model: any) => (
                                 <CommandItem
                                   key={model.modelId}
                                   value={`${model.name} ${model.modelId} ${model.provider}`}
@@ -1616,7 +1705,7 @@ export default function AdminSkills() {
                       </PopoverContent>
                     </Popover>
                     <p className="text-xs text-muted-foreground">
-                      The media generation model used when this skill creates images/videos.
+                      The media generation model used when this skill creates media output.
                     </p>
                   </>
                 ) : (

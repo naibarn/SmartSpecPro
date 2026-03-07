@@ -24,14 +24,14 @@ class ArtifactValidationTests(unittest.TestCase):
         self.assertFalse(result.ok)
         self.assertIn("skill.md must include YAML frontmatter.", result.errors)
 
-    def test_validate_skill_markdown_rejects_wrong_execution_mode(self) -> None:
+    def test_validate_skill_markdown_rejects_incompatible_category_execution_mode(self) -> None:
         skill_md = "\n".join(
             [
                 "---",
                 'name: "Demo"',
                 'description: "Example"',
-                "category: automation",
-                "execution_mode: javascript",
+                "category: image_generation",
+                "execution_mode: llm-only",
                 "triggerPatterns:",
                 '  - "demo"',
                 "---",
@@ -42,6 +42,24 @@ class ArtifactValidationTests(unittest.TestCase):
 
         self.assertFalse(result.ok)
         self.assertTrue(any("execution_mode" in error for error in result.errors))
+
+    def test_validate_skill_markdown_allows_supported_prompt_category_combo(self) -> None:
+        skill_md = "\n".join(
+            [
+                "---",
+                'name: "Demo Prompt Skill"',
+                'description: "Example"',
+                "category: video_prompt_generation",
+                "execution_mode: enhance-prompt",
+                "triggerPatterns:",
+                '  - "demo"',
+                "---",
+            ]
+        )
+
+        result = validate_skill_markdown(skill_md, language="python")
+
+        self.assertTrue(result.ok)
 
     def test_validate_ui_schema_document_rejects_missing_output_mapping(self) -> None:
         ui_schema = {
@@ -95,7 +113,7 @@ class ArtifactValidationTests(unittest.TestCase):
             input_schema={"$schema": "http://json-schema.org/draft-07/schema#", "type": "object", "properties": {}, "required": []},
             output_schema={"$schema": "http://json-schema.org/draft-07/schema#", "type": "object", "properties": {}, "required": []},
             ui_schema={"version": "1.0", "skillId": "demo", "title": "Demo", "titleTh": "เดโม", "description": "Demo", "descriptionTh": "เดโม", "sections": [], "outputMapping": {}},
-            skill_md="---\nname: Demo\ndescription: Demo\ncategory: automation\nexecution_mode: python\n---\n",
+            skill_md="---\nname: Demo\ndescription: Demo\ncategory: automation\nexecution_mode: python\ntriggerPatterns:\n  - \"demo\"\n---\n",
             tests=[{"id": "t1", "input": {}, "expected_contains": ["success"]}],
             language="python",
         )

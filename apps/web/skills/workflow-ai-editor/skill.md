@@ -1,7 +1,7 @@
 ---
 name: Workflow AI Editor
 description: Automatically fix workflow errors and improve workflow structure using AI — resolves compilation errors, type mismatches, invalid port connections, and adds missing nodes
-category: workflow
+category: automation
 execution_mode: python
 icon: wrench
 version: "1.0.0"

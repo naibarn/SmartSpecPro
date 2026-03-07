@@ -3,7 +3,7 @@
 Defines how the orchestra conductor processes wave outputs after all agents in a wave have
 returned their Result Reports. Read by SKILL.md Step 5.
 
-Result Report schema is defined in `deep_plan/skills/sub-agents/contracts/result-report.schema.md`.
+Result Report schema is defined in `../../sub-agents/contracts/result-report.schema.md`.
 
 ---
 
@@ -109,8 +109,10 @@ If an agent returns `status: failed`:
 2. If the blocker is fixable (wrong file path, missing import, minor schema mismatch):
    construct a fix Task Packet and re-dispatch.
 3. If the blocker is unfixable (external service down, unresolvable merge conflict,
-   missing dependency that requires a new wave): log to `orchestra/progress.md` and pause
-   for user.
+   missing dependency that requires a new wave): log to `orchestra/progress.md`, create the
+   necessary backlog/follow-up item automatically, and continue if the remaining route is still
+   safe. Pause only when the blocker implies destructive recovery, accepted-risk security bypass,
+   or ambiguous product direction.
 4. Never silently skip a failed agent's work and proceed to the next wave.
 
 ---

@@ -4,8 +4,9 @@ name: Image Prompt Engineer
 version: "2.1"
 type: agent-skill
 languages: en, th
-category: image_generation
+category: image_prompt_generation
 execution_mode: enhance-prompt
+chainTo: image-creator
 isAutoTrigger: true
 enabledByDefault: true
 priority: 50

@@ -67,8 +67,14 @@ function mapCategoryToEnum(category?: string): string {
     "prompt-enhancement": "prompt_enhancement",
     "image_generation": "image_generation",
     "image-generation": "image_generation",
+    "image_prompt_generation": "image_prompt_generation",
+    "image-prompt-generation": "image_prompt_generation",
     "video_generation": "video_generation",
     "video-generation": "video_generation",
+    "video_prompt_generation": "video_prompt_generation",
+    "video-prompt-generation": "video_prompt_generation",
+    "article_generation": "article_generation",
+    "article-generation": "article_generation",
     "audio_generation": "audio_generation",
     "audio-generation": "audio_generation",
     "sound_effects": "sound_effects",
@@ -90,8 +96,10 @@ function mapCategoryToEnum(category?: string): string {
   };
   const cat = category?.toLowerCase() || "";
   if (categoryMap[cat]) return categoryMap[cat];
+  if ((cat.includes("image") || cat.includes("photo")) && cat.includes("prompt")) return "image_prompt_generation";
+  if ((cat.includes("video") || cat.includes("film")) && cat.includes("prompt")) return "video_prompt_generation";
   if (cat.includes("code") || cat.includes("dev") || cat.includes("engineer") || cat.includes("programming")) return "code_assistant";
-  if (cat.includes("write") || cat.includes("content") || cat.includes("blog")) return "chat_assistant";
+  if (cat.includes("write") || cat.includes("content") || cat.includes("blog")) return "article_generation";
   if (cat.includes("data") || cat.includes("analy")) return "data_analysis";
   if (cat.includes("image") || cat.includes("photo")) return "image_generation";
   if (cat.includes("video") || cat.includes("film")) return "video_generation";
@@ -101,7 +109,7 @@ function mapCategoryToEnum(category?: string): string {
   if (cat.includes("search")) return "web_search";
   if (cat.includes("doc") || cat.includes("document")) return "document_analysis";
   if (cat.includes("automat") || cat.includes("workflow")) return "automation";
-  return "chat_assistant";
+  return "other";
 }
 
 function computeContentHash(content: string): string {

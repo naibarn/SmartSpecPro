@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Iterable, List
+from typing import Any, Dict, Iterable, List
 
 from .registry import parse_skill_frontmatter
 
@@ -106,6 +106,28 @@ def validate_ui_schema_document(ui_schema: dict) -> ArtifactValidationResult:
     return ArtifactValidationResult("schemas/ui.schema.json", errors, warnings)
 
 
+CATEGORY_ALLOWED_EXECUTION_MODES: Dict[str, set[str]] = {
+    "article_generation": {"llm-only"},
+    "image_prompt_generation": {"llm-only", "enhance-prompt"},
+    "video_prompt_generation": {"llm-only", "enhance-prompt"},
+    "prompt_enhancement": {"llm-only", "enhance-prompt"},
+    "image_generation": {"media-generate"},
+    "video_generation": {"media-generate"},
+    "image_video_generation": {"media-generate"},
+    "audio_generation": {"media-generate"},
+    "sound_effects": {"media-generate"},
+    "automation": {"llm-only", "python"},
+    "code_assistant": {"llm-only", "python"},
+    "document_analysis": {"llm-only", "python"},
+    "web_search": {"llm-only", "python"},
+    "data_analysis": {"llm-only", "python"},
+    "translation": {"llm-only", "python"},
+    "summarization": {"llm-only", "python"},
+    "chat_assistant": {"llm-only", "python"},
+    "other": {"llm-only", "python"},
+}
+
+
 def validate_skill_markdown(skill_md: str, *, language: str) -> ArtifactValidationResult:
     errors: List[str] = []
     warnings: List[str] = []
@@ -118,10 +140,21 @@ def validate_skill_markdown(skill_md: str, *, language: str) -> ArtifactValidati
         if not _is_non_empty_string(frontmatter.get(key)):
             errors.append(f"skill.md frontmatter missing or empty: {key}")
 
-    expected_execution_mode = "python" if language == "python" else "javascript"
-    if frontmatter.get("execution_mode") != expected_execution_mode:
+    category = str(frontmatter.get("category", "")).strip()
+    execution_mode = str(frontmatter.get("execution_mode", "")).strip()
+    allowed_modes = CATEGORY_ALLOWED_EXECUTION_MODES.get(category)
+    if allowed_modes is None:
+        errors.append(f"skill.md category is not supported: {category}")
+    elif execution_mode not in allowed_modes:
         errors.append(
-            f"skill.md execution_mode must be '{expected_execution_mode}' for language '{language}'."
+            "skill.md execution_mode "
+            f"'{execution_mode}' is not allowed for category '{category}'. "
+            f"Allowed: {', '.join(sorted(allowed_modes))}."
+        )
+
+    if language == "javascript" and execution_mode == "python":
+        warnings.append(
+            "JavaScript implementation selected but execution_mode is python; verify the runtime routing intentionally uses python dispatch."
         )
 
     trigger_patterns = frontmatter.get("triggerPatterns")

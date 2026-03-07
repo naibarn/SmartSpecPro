@@ -1,3 +1,18 @@
+---
+name: Storyboard to Video Prompts
+slug: video-storyboard-to-prompts
+description: Turn a user idea into a storyboard first, then generate scene-by-scene prompts for AI video creation.
+category: video_prompt_generation
+execution_mode: llm-only
+icon: film
+version: "1.0.0"
+author: SmartAIHub
+isAutoTrigger: false
+enabledByDefault: true
+priority: 55
+creditMultiplier: 1.0
+---
+
 # Storyboard → Video Prompts Skill
 
 ## Purpose

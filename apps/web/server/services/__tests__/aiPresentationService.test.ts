@@ -466,6 +466,59 @@ describe("relayoutExistingSlide", () => {
     expect(output.applied.reusedImage).toBe(true);
   });
 
+  it("preserves visual-only slides during relayout and skips text-oriented auto-layout extras", () => {
+    let capturedLayoutInput: any = null;
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+      header: { enabled: true, height: 60, backgroundColor: "#101010", showDeckTitle: true },
+      footer: { enabled: true, height: 42, backgroundColor: "#101010", showPageNumber: true },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockImplementation((input: unknown) => {
+      capturedLayoutInput = input;
+      return {
+        slideContent: {
+          elements: [
+            { id: "hero", type: "image", x: 0, y: 0, width: 1280, height: 720, src: "https://cdn.example.com/existing.jpg", alt: "hero", imageFit: "cover" },
+          ],
+        },
+        warnings: [],
+      };
+    });
+
+    const output = relayoutExistingSlide({
+      slideTitle: "Original title",
+      deckTitle: "Deck",
+      slideIndex: 1,
+      totalSlides: 5,
+      includeSvg: true,
+      includeGeometricCrop: true,
+      includeGeometricAccents: true,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "img-1", type: "image", x: 0, y: 0, width: 1280, height: 720, src: "https://cdn.example.com/existing.jpg", alt: "hero", imagePrompt: "prompt", imageModelId: "flux-2.0" },
+        ],
+        visualOnly: true,
+        transition: "fade",
+        durationMs: 5000,
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+      },
+      layoutSeed: 2,
+    });
+
+    expect(capturedLayoutInput).toBeTruthy();
+    expect(capturedLayoutInput.visualOnly).toBe(true);
+    expect(output.slideContent.visualOnly).toBe(true);
+    expect(output.slideContent.elements.some((element) => element.type === "text")).toBe(false);
+    expect(output.warnings).toContain("Preserved visual-only slide mode during auto layout.");
+    expect(output.warnings).toContain("Skipped geometric crop to preserve full-canvas visual-only slide.");
+    expect(output.warnings).toContain("Skipped geometric accents to preserve full-canvas visual-only slide.");
+  });
+
   it("preserves multiline body text and adds Thai number spacing for readability", () => {
     let capturedLayoutInput: any = null;
     mockGetBuiltInPreset.mockReturnValue({
@@ -977,6 +1030,133 @@ describe("generateAIDraft - happy path", () => {
     expect(mockAddSlideToDeck).toHaveBeenCalledTimes(3);
   });
 
+  it("plans slides directly from the topic for image prompt generation skills", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
+      if (skillId === "image-prompt-engineer") {
+        return {
+          id: "image-prompt-engineer",
+          name: "Image Prompt Engineer",
+          category: "image_prompt_generation",
+          type: "prompt-enhancement",
+          systemPrompt: "Enhance visual prompts.",
+          executionMode: "enhance-prompt",
+        };
+      }
+      return undefined;
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        draftSkillId: "image-prompt-engineer",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const planningCall = mockCallLLMStructured.mock.calls[0]?.[0] as { billingMetadata?: Record<string, unknown> } | undefined;
+    expect(planningCall?.billingMetadata?.stage).toBe("topic_to_slide_plan");
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(3);
+    expect(mockGenerateImageAsync).toHaveBeenCalledTimes(3);
+  });
+
+  it("treats video prompt generation skills as prompt-first and defaults media generation to video", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
+      if (skillId === "video-prompt-engineer") {
+        return {
+          id: "video-prompt-engineer",
+          name: "Video Prompt Engineer",
+          category: "video_prompt_generation",
+          type: "prompt-enhancement",
+          systemPrompt: "Create cinematic video prompts.",
+          executionMode: "enhance-prompt",
+        };
+      }
+      return undefined;
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        draftSkillId: "video-prompt-engineer",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const planningCall = mockCallLLMStructured.mock.calls[0]?.[0] as { billingMetadata?: Record<string, unknown> } | undefined;
+    expect(planningCall?.billingMetadata?.stage).toBe("topic_to_slide_plan");
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(3);
+    expect(mockGenerateVideoAsync).toHaveBeenCalledTimes(3);
+    expect(mockGenerateImageAsync).not.toHaveBeenCalled();
+  });
+
+  it("treats video-first draft skills as the default media generator", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
+      if (skillId === "video-story-crafter") {
+        return {
+          id: "video-story-crafter",
+          name: "Video Story Crafter",
+          category: "video_generation",
+          type: "video-generation",
+          executionMode: "media-generate",
+        };
+      }
+      return undefined;
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        draftSkillId: "video-story-crafter",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const planningCall = mockCallLLMStructured.mock.calls[0]?.[0] as { billingMetadata?: Record<string, unknown> } | undefined;
+    expect(planningCall?.billingMetadata?.stage).toBe("topic_to_slide_plan");
+    expect(mockGenerateVideoAsync).toHaveBeenCalledTimes(3);
+    expect(mockGenerateImageAsync).not.toHaveBeenCalled();
+  });
+
+  it("treats image-first draft skills as the default media generator", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
+      if (skillId === "image-creator") {
+        return {
+          id: "image-creator",
+          name: "Image Creator",
+          category: "image_generation",
+          type: "image-generation",
+          executionMode: "media-generate",
+        };
+      }
+      return undefined;
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        draftSkillId: "image-creator",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const planningCall = mockCallLLMStructured.mock.calls[0]?.[0] as { billingMetadata?: Record<string, unknown> } | undefined;
+    expect(planningCall?.billingMetadata?.stage).toBe("topic_to_slide_plan");
+    expect(mockGenerateImageAsync).toHaveBeenCalledTimes(3);
+    expect(mockGenerateVideoAsync).not.toHaveBeenCalled();
+  });
+
   it("generates and attaches per-slide audio tracks when audio is enabled", async () => {
     setupHappyPath();
     await generateAIDraft(
@@ -1384,6 +1564,60 @@ describe("generateAIDraft - happy path", () => {
     const firstLayoutCall = mockGenerateSlide.mock.calls[0]?.[0];
     expect(firstLayoutCall).toBeDefined();
     expect(firstLayoutCall.slideData.body.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("renders visual-only slides without text chrome when hideTextOnSlides is enabled", async () => {
+    setupHappyPath();
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: {
+        background: "#1a1a2e",
+        backgroundAlt: "#16213e",
+        primary: "#e94560",
+        secondary: "#0f3460",
+        text: "#ffffff",
+        textMuted: "#a0a0b0",
+        cardBg: ["#16213e", "#0f3460", "#1a1a3e"],
+        overlay: "rgba(0,0,0,0.55)",
+      },
+      typography: {
+        titleFontFamily: "Inter",
+        bodyFontFamily: "Inter",
+        titleFontWeight: 700,
+        bodyFontWeight: 400,
+      },
+      header: { enabled: true, height: 60, backgroundColor: "#101010", showDeckTitle: true },
+      footer: { enabled: true, height: 42, backgroundColor: "#101010", showPageNumber: true, showCustomText: true },
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        hideTextOnSlides: true,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const firstLayoutCall = mockGenerateSlide.mock.calls[0]?.[0] as {
+      visualOnly?: boolean;
+      stylePreset?: {
+        header?: { enabled?: boolean; showDeckTitle?: boolean };
+        footer?: { enabled?: boolean; showPageNumber?: boolean; showCustomText?: boolean };
+      };
+    } | undefined;
+    expect(firstLayoutCall).toBeDefined();
+    expect(firstLayoutCall?.visualOnly).toBe(true);
+    expect(firstLayoutCall?.stylePreset?.header?.enabled).toBe(false);
+    expect(firstLayoutCall?.stylePreset?.header?.showDeckTitle).toBe(false);
+    expect(firstLayoutCall?.stylePreset?.footer?.enabled).toBe(false);
+    expect(firstLayoutCall?.stylePreset?.footer?.showPageNumber).toBe(false);
+    expect(firstLayoutCall?.stylePreset?.footer?.showCustomText).toBe(false);
+    const firstInsertCall = mockAddSlideToDeck.mock.calls[0]?.[0] as {
+      slideContent?: { visualOnly?: boolean };
+    } | undefined;
+    expect(firstInsertCall?.slideContent?.visualOnly).toBe(true);
   });
 });
 

@@ -1,7 +1,6 @@
 # Quality Gates
 
-Defines all 6 gate types that the orchestra conductor runs after each wave of agent work.
-Read by SKILL.md Step 6. Risk level terminology follows `task-analysis.md`.
+Defines all 6 gate types that the orchestra conductor runs after each wave of agent work. Read by SKILL.md Step 6. Risk level terminology follows `task-analysis.md`. Commands below are SmartSpecPro defaults. If the active plan or repository docs define explicit `typecheck`, `lint`, or `test` commands, those discovered commands override the defaults.
 
 ---
 
@@ -69,7 +68,7 @@ both TypeScript and Python files.
 
 ### Gate 4: Security Review (General)
 
-Dispatch `security.md` agent (from `deep_plan/skills/sub-agents/agents/security.md`) as a
+Dispatch `security.md` agent (from `../../sub-agents/agents/security.md`) as a
 spot check. This is not the full pre-merge gate — it is a targeted review of high-risk
 changes mid-workflow. The agent reads changed files and returns findings. Does not dispatch
 specialist sub-agents.
@@ -131,6 +130,6 @@ cd apps/web && pnpm test
 # Python unit tests
 cd python-backend && pytest
 
-# Full test suite (both)
+# Full test suite (both SmartSpecPro defaults)
 cd apps/web && pnpm test && cd ../../python-backend && pytest
 ```

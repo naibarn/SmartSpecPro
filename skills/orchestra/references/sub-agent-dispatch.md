@@ -5,11 +5,11 @@ Tells the conductor exactly how to dispatch each of the 17 agent roles — which
 Packets, and when the pre-merge security gate triggers automatically.
 
 For the Task Packet format definition, see:
-- `deep_plan/skills/sub-agents/contracts/task-packet.schema.md`
-- `deep_plan/skills/orchestra/references/task-packet-format.md`
+- `../../sub-agents/contracts/task-packet.schema.md`
+- `task-packet-format.md`
 
 For wave grouping and contract format, see:
-- `deep_plan/skills/orchestra/references/wave-planning.md`
+- `wave-planning.md`
 
 ---
 
@@ -17,7 +17,7 @@ For wave grouping and contract format, see:
 
 For each of the 17 agent roles, the `subagent_type` for Claude Code mode and the fallback
 behavior for Codex/open-code are shown below. Agent identity files live in
-`deep_plan/skills/sub-agents/agents/NAME.md`.
+`../../sub-agents/agents/NAME.md`.
 
 | Agent Role | Claude Code `subagent_type` | Codex Fallback | Open-Code Mode |
 |-----------|---------------------------|----------------|----------------|
@@ -34,10 +34,10 @@ behavior for Codex/open-code are shown below. Agent identity files live in
 | error-detective | `error-debugging:error-detective` | `general-purpose` + injected template | Inline |
 | infrastructure | `Explore` (analysis) or `general-purpose` (write) | `general-purpose` + injected template | Inline |
 | docs-release | `general-purpose` | `general-purpose` + injected template | Inline |
-| security-review | `backend-api-security:backend-security-coder` | `general-purpose` + injected template | Inline |
+| security-review | `Explore` | `general-purpose` + injected template | Inline |
 | security-trpc | `backend-api-security:backend-security-coder` | `general-purpose` + injected template | Inline |
 | security-fastapi | `backend-api-security:backend-security-coder` | `general-purpose` + injected template | Inline |
-| security-frontend | `Explore` | `general-purpose` + injected template | Inline |
+| security-frontend | `backend-api-security:backend-security-coder` | `general-purpose` + injected template | Inline |
 
 **13 general agents** (section-07): research, architect, frontend, backend, python, database,
 test-qa, reviewer, security, debugger, error-detective, infrastructure, docs-release
@@ -49,10 +49,7 @@ security-frontend
 
 ## 2. Parallel Dispatch Rule
 
-> **All agents in the same wave MUST be dispatched in a single message containing multiple
-> Task tool calls. Never dispatch agents one-by-one when they are intended to run
-> concurrently. Sequential one-by-one dispatch wastes time and defeats the purpose of wave
-> planning.**
+> **If the active platform exposes a Task/sub-agent tool, launch all independent agents in the same wave in one dispatch batch. If it does not, preserve the same wave plan and execute them sequentially inline.**
 
 ```
 WRONG (sequential — do not do this):
@@ -63,16 +60,14 @@ CORRECT (parallel — one message, all wave agents):
   Message 1: Task(frontend agent) + Task(backend agent) → wait for both results
 ```
 
-The conductor's single message containing multiple Task calls causes the Task tool to
-dispatch all agents simultaneously. The conductor then waits for all results before
-proceeding to the next wave.
+On platforms with a Task/sub-agent tool, the conductor's single dispatch batch causes all agents to start concurrently. On platforms without that tool, the conductor executes the same wave sequentially and records each result before proceeding.
 
 ---
 
 ## 3. Task Packet Construction
 
-The full Task Packet format is defined in `deep_plan/skills/sub-agents/contracts/task-packet.schema.md`
-and `deep_plan/skills/orchestra/references/task-packet-format.md`. This file covers
+The full Task Packet format is defined in `../../sub-agents/contracts/task-packet.schema.md`
+and `task-packet-format.md`. This file covers
 dispatch mechanics only.
 
 **When building a Task Packet for dispatch:**
@@ -99,7 +94,7 @@ primary responsibility.]
 [Full Task Packet follows]
 ```
 
-**Inject only identity and constraints** from `deep_plan/skills/sub-agents/agents/NAME.md`.
+**Inject only identity and constraints** from `../../sub-agents/agents/NAME.md`.
 Do not inject the full file — it inflates prompt size beyond what Codex handles reliably.
 
 **Include:**
@@ -133,7 +128,7 @@ DOMAIN: CMD-1 Frontend
 
 After the final wave completes (all tasks done, no more waves pending), check whether the
 security gate must run before reporting completion. Read
-`deep_plan/skills/orchestra/references/security-review-protocol.md` for the full trigger
+`security-review-protocol.md` for the full trigger
 condition list. This check runs in **SKILL.md Step 5** (result integration), not Step 6.
 
 **If any trigger condition matches, the conductor:**

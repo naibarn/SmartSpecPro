@@ -2,7 +2,7 @@
 name: Lifestyle Article Writer
 slug: lifestyle-article-writer
 description: Write lifestyle and wellness content covering health tips, recipes, travel, and personal development for inspiring presentations.
-category: chat_assistant
+category: article_generation
 icon: heart
 version: "1.0.0"
 author: SmartAIHub

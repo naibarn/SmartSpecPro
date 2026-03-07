@@ -1541,16 +1541,12 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
 
     if (executionMode === "media-generate" && currentSkillId) {
       // media-generate: LLM generates structured prompt+params, then auto-call media API
-      // For video generation: use video-prompt-engineer's richer cinematic system prompt
-      const isVideoGeneration = resolvedSkill?.type === "video-generation";
-      const promptSkillId = isVideoGeneration ? "video-prompt-engineer" : currentSkillId;
-
       const generatedContent = await streamResponse({
         id: userMessage.id,
         role: "user",
         content: typeof content === "string" ? content : textWithLibraryContext,
         createdAt: new Date(userMessage.createdAt),
-      }, promptSkillId);
+      }, currentSkillId);
 
       if (generatedContent) {
         // Parse structured JSON from LLM response
@@ -1672,9 +1668,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
       // Handle skill chaining:
       // Priority: 1. Per-pattern chainTo (from matched trigger pattern)
       //           2. Skill-level chainTo
-      //           3. Manual fallback for image edit requests
-      const shouldChainToImageCreator = isImageEditRequest && currentSkillId === "image_prompt_engineer";
-      const effectiveChainTo = currentPatternChainTo || currentChainTo || (shouldChainToImageCreator ? "image-creator" : null);
+      const effectiveChainTo = currentPatternChainTo || currentChainTo;
 
       if (generatedContent && effectiveChainTo && currentSkillId) {
         // Extract prompt and parameters from generated content

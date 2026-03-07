@@ -19,6 +19,7 @@ export interface LayoutEngineInput {
   totalSlides: number;
   canvasWidth?: number;
   canvasHeight?: number;
+  visualOnly?: boolean;
 }
 
 export interface LayoutEngineOutput {
@@ -1939,6 +1940,45 @@ function buildFooterElements(
   return elements;
 }
 
+function buildVisualOnlyMediaElements(ctx: TemplateContext): SlideElement[] {
+  const mediaAlt = ctx.slideData.title?.trim() || `Slide ${ctx.slideIndex + 1} media`;
+  if (ctx.imageUrl?.trim()) {
+    return [
+      makeImageElement({
+        x: 0,
+        y: 0,
+        width: ctx.canvasWidth,
+        height: ctx.canvasHeight,
+        src: ctx.imageUrl,
+        alt: mediaAlt,
+        imageFit: "cover",
+        imagePositionX: 50,
+        imagePositionY: 50,
+        imageZoom: 1,
+      }),
+    ];
+  }
+
+  if (ctx.svgGraphic?.svg) {
+    return [
+      makeImageElement({
+        x: 0,
+        y: 0,
+        width: ctx.canvasWidth,
+        height: ctx.canvasHeight,
+        src: "",
+        alt: mediaAlt,
+        imageFit: "cover",
+        svgContent: ctx.svgGraphic.svg,
+        svgColor: ctx.preset.colors.primary,
+      }),
+    ];
+  }
+
+  ctx.warnings.push("No generated media available for visual-only slide; using background only");
+  return [];
+}
+
 // ── Main Entry Point ───────────────────────────────────────
 
 export function generateSlide(input: LayoutEngineInput): LayoutEngineOutput {
@@ -1993,53 +2033,61 @@ export function generateSlide(input: LayoutEngineInput): LayoutEngineOutput {
 
   // 2. Template content
   let templateElements: SlideElement[];
-  switch (input.slideData.templateId) {
-    case "hero_center":
-      templateElements = buildHeroCenter(ctx);
-      break;
-    case "split_right_image":
-      templateElements = buildSplitRightImage(ctx);
-      break;
-    case "split_left_image":
-      templateElements = buildSplitLeftImage(ctx);
-      break;
-    case "top_image_text_bottom":
-      templateElements = buildTopImageTextBottom(ctx);
-      break;
-    case "bottom_image_text_top":
-      templateElements = buildBottomImageTextTop(ctx);
-      break;
-    case "feature_boxes_right":
-      templateElements = buildFeatureBoxesRight(ctx);
-      break;
-    default:
-      templateElements = buildHeroCenter(ctx);
+  if (input.visualOnly) {
+    templateElements = buildVisualOnlyMediaElements(ctx);
+  } else {
+    switch (input.slideData.templateId) {
+      case "hero_center":
+        templateElements = buildHeroCenter(ctx);
+        break;
+      case "split_right_image":
+        templateElements = buildSplitRightImage(ctx);
+        break;
+      case "split_left_image":
+        templateElements = buildSplitLeftImage(ctx);
+        break;
+      case "top_image_text_bottom":
+        templateElements = buildTopImageTextBottom(ctx);
+        break;
+      case "bottom_image_text_top":
+        templateElements = buildBottomImageTextTop(ctx);
+        break;
+      case "feature_boxes_right":
+        templateElements = buildFeatureBoxesRight(ctx);
+        break;
+      default:
+        templateElements = buildHeroCenter(ctx);
+    }
   }
   elements.push(...templateElements);
 
   // 3. Header
-  elements.push(
-    ...buildHeaderElements(
-      input.stylePreset,
-      canvasWidth,
-      headerHeight,
-      input.deckTitle,
-      scale,
-    ),
-  );
+  if (!input.visualOnly) {
+    elements.push(
+      ...buildHeaderElements(
+        input.stylePreset,
+        canvasWidth,
+        headerHeight,
+        input.deckTitle,
+        scale,
+      ),
+    );
+  }
 
   // 4. Footer
-  elements.push(
-    ...buildFooterElements(
-      input.stylePreset,
-      canvasWidth,
-      canvasHeight,
-      footerHeight,
-      input.slideIndex,
-      input.totalSlides,
-      scale,
-    ),
-  );
+  if (!input.visualOnly) {
+    elements.push(
+      ...buildFooterElements(
+        input.stylePreset,
+        canvasWidth,
+        canvasHeight,
+        footerHeight,
+        input.slideIndex,
+        input.totalSlides,
+        scale,
+      ),
+    );
+  }
 
   // 5. Validate output
   const slideContent = { elements };

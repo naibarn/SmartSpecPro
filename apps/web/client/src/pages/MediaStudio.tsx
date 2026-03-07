@@ -108,6 +108,14 @@ import {
   type LibrarySearchResultItem,
   type TaskLibraryUIState,
 } from "@/lib/libraryUi";
+import {
+  isMediaStudioSkillCompatible,
+  sortMediaStudioSkillsForTab,
+} from "@/lib/mediaStudioSkillMatching";
+import {
+  canGenerateInMediaStudio,
+  pickMediaStudioSkillForTab,
+} from "@/lib/mediaStudioSelection";
 
 import DynamicSkillForm, { type SkillInputSchema, type StyleAction } from "@/components/media/DynamicSkillForm";
 import { LibraryFilePicker } from "@/components/library/LibraryFilePicker";
@@ -1136,47 +1144,14 @@ export default function MediaStudio() {
   useEffect(() => {
     if (!skillsList || skillsList.length === 0) return;
 
-    // Map media type to skill types (API returns hyphenated type field like "image-generation")
-    const typeMap: Record<string, string[]> = {
-      image: ["image-generation", "prompt-enhancement"],
-      video: ["video-generation", "prompt-enhancement"],
-      audio: ["audio-generation", "sound-effects"],
-    };
-    const matchingTypes = typeMap[activeTab] || [];
-
-    // 1. Check localStorage for last selected skill for this media type
     const storageKey = `smartspec_last_skill_${activeTab}`;
-    const savedSkillId = localStorage.getItem(storageKey);
+    const selectedSkill = pickMediaStudioSkillForTab(
+      activeTab,
+      skillsList,
+      localStorage.getItem(storageKey),
+    );
 
-    if (savedSkillId) {
-      // Verify the saved skill still exists and matches the current tab's type
-      const savedSkill = skillsList.find(s => s.id === savedSkillId);
-      // Only use saved skill if it matches the current tab's type
-      if (savedSkill && matchingTypes.includes(savedSkill.type)) {
-        setSelectedSkillId(savedSkillId);
-        setSkillInitialized(true);
-        return;
-      }
-    }
-
-    // 2. Find skills matching media type, sorted by priority (higher = better)
-    // Note: skillsList already filtered by enabledOnly: true in the query
-    const matchingSkills = skillsList
-      .filter(s => matchingTypes.includes(s.type))
-      .sort((a, b) => (b.priority || 0) - (a.priority || 0));
-
-    if (matchingSkills.length > 0) {
-      setSelectedSkillId(matchingSkills[0].id);
-      setSkillInitialized(true);
-      return;
-    }
-
-    // 3. Fallback: select first skill by priority
-    const sortedSkills = [...skillsList].sort((a, b) => (b.priority || 0) - (a.priority || 0));
-
-    if (sortedSkills.length > 0) {
-      setSelectedSkillId(sortedSkills[0].id);
-    }
+    setSelectedSkillId(selectedSkill);
     setSkillInitialized(true);
   }, [skillsList, activeTab]);
 
@@ -1184,16 +1159,9 @@ export default function MediaStudio() {
   // Only save if the selected skill matches the current tab's type to prevent cross-tab pollution
   useEffect(() => {
     if (skillInitialized && selectedSkillId && skillsList) {
-      const typeMap: Record<string, string[]> = {
-        image: ["image-generation", "prompt-enhancement"],
-        video: ["video-generation", "prompt-enhancement"],
-        audio: ["audio-generation", "sound-effects"],
-      };
-      const matchingTypes = typeMap[activeTab] || [];
-
       // Find the selected skill and verify it matches the current tab
       const skill = skillsList.find(s => s.id === selectedSkillId);
-      if (skill && matchingTypes.includes(skill.type)) {
+      if (skill && isMediaStudioSkillCompatible(activeTab, skill)) {
         const storageKey = `smartspec_last_skill_${activeTab}`;
         localStorage.setItem(storageKey, selectedSkillId);
       }
@@ -1468,6 +1436,12 @@ export default function MediaStudio() {
     }
 
     if (!userIdea && referenceImages.length === 0) return;
+    if (!currentSkill) {
+      toast.error("No compatible prompt skill selected", {
+        description: `Choose a prompt skill for the ${activeTab} tab before using Auto Prompt.`,
+      });
+      return;
+    }
 
     setIsEnhancing(true);
     try {
@@ -1649,7 +1623,7 @@ export default function MediaStudio() {
           });
         }
       } else {
-        // Use the default enhancePrompt for image-prompt-engineer skill
+        // Use the specialized prompt-enhancement endpoint for prompt-focused skills
         let requestData;
 
         // Get maxPromptLength from selected media model's configJson
@@ -1672,6 +1646,7 @@ export default function MediaStudio() {
           });
 
           requestData = {
+            skillId: selectedSkillId,
             userInput: userIdea || "Create a prompt based on the reference images",
             referenceImages: referenceImages.map((r: any) => r.url),
             // Include selected LLM model for Auto Prompt (from Advanced Mode selector)
@@ -1690,6 +1665,7 @@ export default function MediaStudio() {
           const isFaceLockEnabled = !isFieldDisabledByAdvancedMode("faceLock");
 
           requestData = {
+            skillId: selectedSkillId,
             userInput: userIdea || "Create a prompt based on the reference images",
             referenceImages: referenceImages.map((r: any) => r.url),
             // Include selected LLM model for Auto Prompt (from Advanced Mode selector)
@@ -3076,7 +3052,14 @@ export default function MediaStudio() {
               {/* Generate Button - Primary location under Prompt */}
               <Button
                 onClick={handleGenerate}
-                disabled={!(enhancedPrompt || prompt || (useAdvancedMode ? dynamicFormValues.request as string : ""))?.trim() || isGenerating || (credits?.credits || 0) < getModelCost()}
+                disabled={!canGenerateInMediaStudio({
+                  prompt,
+                  enhancedPrompt,
+                  advancedRequest: useAdvancedMode ? dynamicFormValues.request as string : "",
+                  isGenerating,
+                  credits: credits?.credits || 0,
+                  modelCost: getModelCost(),
+                })}
                 className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
                 size="lg"
               >
@@ -3820,18 +3803,22 @@ export default function MediaStudio() {
                       <span className="font-medium text-purple-900">
                         {currentSkill?.name || "No Skill Selected"}
                       </span>
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-purple-100 text-purple-700">
-                        Active
-                      </Badge>
+                      {currentSkill && (
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-purple-100 text-purple-700">
+                          Active
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-xs text-purple-600/80 truncate">
-                      {currentSkill?.description || "Click to select a skill for enhancing your prompts"}
+                      {currentSkill?.description || `Choose a prompt-creation skill for the ${activeTab} tab`}
                     </p>
                   </div>
                 </div>
 
                 <p className="text-xs text-muted-foreground">
-                  This skill will be used when you click "Auto Prompt" to enhance your input
+                  {activeTab === "audio"
+                    ? "This skill is used to shape text-to-speech or sound effect prompts before generation."
+                    : `Only prompt-creation skills are shown here so the ${activeTab} tab stays aligned with its output type.`}
                 </p>
 
                 <Dialog open={showSkillDialog} onOpenChange={setShowSkillDialog}>
@@ -3866,21 +3853,13 @@ export default function MediaStudio() {
 
                         {/* Skill Cards */}
                         {(() => {
-                          const tabTypes: Record<string, string[]> = {
-                            image: ["image-generation", "image-video-generation", "prompt-enhancement"],
-                            video: ["video-generation", "image-video-generation", "prompt-enhancement"],
-                            audio: ["audio-generation", "sound-effects"],
-                          };
-                          const matchTypes = tabTypes[activeTab] || [];
-                          const filtered = (skillsList || [])
-                            .filter((s) => matchTypes.includes(s.type))
-                            .sort((a, b) => (b.priority ?? 50) - (a.priority ?? 50));
+                          const filtered = sortMediaStudioSkillsForTab(activeTab, skillsList || []);
 
                           if (filtered.length === 0) {
                             return (
                               <div className="text-center py-12 text-muted-foreground">
                                 <Wand2 className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                                <p>No skills available for {activeTab}</p>
+                                <p>No prompt skills available for {activeTab}</p>
                               </div>
                             );
                           }
@@ -4198,7 +4177,7 @@ export default function MediaStudio() {
           {/* Right Panel - Preview */}
           <div className="space-y-4">
             <div className={cn(
-              "bg-white/70 backdrop-blur rounded-xl border sticky top-24 z-10",
+              "isolate overflow-hidden bg-white/70 backdrop-blur rounded-xl border sticky top-24 z-20",
               isPreviewCollapsed ? "p-3" : "p-4",
             )}>
               <div className="mb-3 flex items-center justify-between gap-2">
@@ -4417,7 +4396,11 @@ export default function MediaStudio() {
               )}
             </div>
 
-            <Tabs value={activeSidebarTab} onValueChange={(value) => setActiveSidebarTab(value as StudioSidebarTab)}>
+            <Tabs
+              value={activeSidebarTab}
+              onValueChange={(value) => setActiveSidebarTab(value as StudioSidebarTab)}
+              className="relative z-0"
+            >
               <TabsList className="grid w-full grid-cols-2 bg-muted/50 p-1">
                 <TabsTrigger value="history" className="gap-2">
                   <History className="h-4 w-4" />
@@ -4475,7 +4458,7 @@ export default function MediaStudio() {
                                         size="icon"
                                         variant="secondary"
                                         className={cn(
-                                          "absolute left-1 top-1 z-10 h-7 w-7 rounded-full border shadow-sm",
+                                          "absolute left-1 top-1 z-[1] h-7 w-7 rounded-full border shadow-sm",
                                           libraryState?.action === "adding" && "border-amber-300 bg-amber-100 text-amber-800 hover:bg-amber-100",
                                           libraryState?.action === "added" && "border-emerald-300 bg-emerald-100 text-emerald-700 hover:bg-emerald-100",
                                           libraryState?.action === "error" && "border-red-300 bg-red-100 text-red-700 hover:bg-red-100",

@@ -1,8 +1,9 @@
 ---
 name: Video Prompt Engineer
 description: Generate optimized cinematic prompts for AI video generation platforms
-category: video_generation
+category: video_prompt_generation
 execution_mode: llm-only
+chainTo: video-creator
 icon: film
 version: "1.0.0"
 author: SmartAIHub

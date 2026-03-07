@@ -1,6 +1,6 @@
 # Sub-Agents Skill Pack
 
-This registry documents all 17 agents available in the SmartSpecPro sub-agents skill pack. Orchestra (the SKILL.md conductor) dispatches these agents as Claude Code subprocesses to parallelize development work across domains. Each agent corresponds to a native `.claude/agents/` definition (see Section 09) that enables direct invocation via Claude Code's agents feature.
+This registry documents all 17 agents available in the SmartSpecPro sub-agents skill pack. Orchestra (the SKILL.md conductor) dispatches these agents across Claude Code, Codex, and open-code workflows to parallelize development work across domains. For Claude Code, agents may also have native `.claude/agents/` definitions (see Section 09) that enable direct invocation via Claude Code's agents feature.
 
 ---
 
@@ -49,7 +49,7 @@ OUTPUT: [Exact deliverable format — "modify file X to add Y" or "return analys
 
 ### Parallel Dispatch Rule
 
-All agents in the same wave are dispatched in a single message with multiple Task tool calls. Never dispatch agents one-by-one when they are independent. Serialization is only required for:
+On platforms with a Task/sub-agent tool, all agents in the same wave are dispatched in a single batch. On platforms without that tool, keep the same wave boundaries but execute agents sequentially. Serialization is only required for:
 - Database migration operations (sequential by design)
 - Agents that depend on a prior agent's output files
 - Git operations (stage → commit → push)
@@ -108,7 +108,7 @@ The pre-merge security check uses a 5-step flow:
 
 3. Add the agent to `sub-agent-dispatch.md` agent type mapping (the Section 03 reference file for wave planning)
 
-4. Create the native `.claude/agents/ssp-YOUR-AGENT.md` definition with YAML frontmatter (see Section 09 for the full format and naming convention)
+4. For Claude Code support, create the native `.claude/agents/ssp-YOUR-AGENT.md` definition with YAML frontmatter (see Section 09 for the full format and naming convention). This step is optional for Codex/open-code-only environments.
 
 5. Update the **Platform Compatibility Matrix** above with the new agent's `subagent_type` values for each platform
 

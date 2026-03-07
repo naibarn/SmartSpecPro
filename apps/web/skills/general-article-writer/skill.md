@@ -2,7 +2,7 @@
 name: General Article Writer
 slug: general-article-writer
 description: Write articles on any topic for presentation slides. Versatile all-purpose writer with no domain assumptions.
-category: chat_assistant
+category: article_generation
 icon: pen-tool
 version: "1.0.0"
 author: SmartAIHub

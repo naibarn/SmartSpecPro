@@ -2,7 +2,7 @@
 name: Business Article Writer
 slug: business-article-writer
 description: Write business-focused articles covering strategy, operations, market analysis, and case studies for professional presentations.
-category: chat_assistant
+category: article_generation
 icon: briefcase
 version: "1.0.0"
 author: SmartAIHub

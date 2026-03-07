@@ -52,6 +52,40 @@ Is the affected file/component unknown?
 
 ---
 
+## Plain-Text Intent Detection
+
+Before scope classification, interpret the raw user message and decide whether this request should be owned by orchestra at all.
+Read `intent-matrix.md` before finalizing this judgment. Use it as the calibration layer for positive, negative, and borderline examples.
+Read `intent-regression-suite.md` whenever a message feels borderline, when you adjust heuristics, or when you want to sanity-check whether a trigger decision is consistent with the canonical examples.
+
+
+### Auto-Own The Request When The Message Implies:
+- multi-step software work
+- planning + implementation together
+- decomposition, coordination, or staged execution
+- cross-domain or system-level changes
+- resume/continue semantics for prior implementation work
+- “analyze then execute” behavior rather than a narrow one-shot change
+
+### Message Patterns That Usually Mean Orchestra
+- “ช่วยวางแผนแล้วทำต่อ” / “ช่วยจัดการงานนี้ให้จบ” / “แตกงานให้หน่อย”
+- “implement this end-to-end” / “plan and execute” / “coordinate this work”
+- “what all needs to change” / “drive this to completion”
+
+### Message Patterns That Usually Do NOT Mean Orchestra
+- narrow factual Q&A
+- one-off shell command requests
+- obvious single-file tweak requests with no decomposition value
+- requests explicitly targeted at another named specialized skill that does not need conductor behavior
+
+### Escalate Into Orchestra After Quick Inspection When:
+- the task appears under-specified
+- the likely file/domain count is larger than the user message suggests
+- planning artifacts would reduce risk
+- the job is likely to require `deep-plan-quick`, `deep-plan`, `deep-project`, or `deep-implement`
+
+If orchestra takes ownership from plain text, treat the original message itself as the task description and continue into scope/risk classification.
+
 ## Scope Classification Table
 
 Apply **first-match-wins** in priority order. Stop at the first matching rule.
@@ -69,6 +103,8 @@ Apply **first-match-wins** in priority order. Stop at the first matching rule.
 - A tRPC router file + its test file = 2 files
 - A migration SQL file + schema.ts + the router that uses it = 3 files
 - Frontend component + page that imports it + shared type = 3 files
+
+**Quick-plan override:** If scope lands in `small` or `medium` but the request is still under-specified, has no `spec.md`, or would benefit from a written plan before coding, choose `quick-plan-chain` instead of going straight to implementation.
 
 **SmartSpecPro-specific scope examples:**
 
@@ -127,6 +163,9 @@ After classification, write this block to `orchestra/plan.md`:
 ```
 
 **Example output:**
+
+A `small` or `medium` classification can still route to `quick-plan-chain` when planning value is high and implementation readiness is low.
+
 
 ```markdown
 ## Task Classification

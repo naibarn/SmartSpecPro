@@ -64,6 +64,57 @@ function makeLayoutInput(
 
 // ── C.1: Template Rendering Tests ──────────────────────────
 
+describe("Visual-only slides", () => {
+  it("renders a full-canvas media slide without text elements", () => {
+    const input = makeLayoutInput({
+      visualOnly: true,
+      canvasWidth: 720,
+      canvasHeight: 1280,
+    });
+
+    const result = generateSlide(input);
+    const textElements = result.slideContent.elements.filter((element) => element.type === "text");
+    const imageElements = result.slideContent.elements.filter((element) => element.type === "image");
+
+    expect(textElements).toHaveLength(0);
+    expect(imageElements).toHaveLength(1);
+    expect(imageElements[0]).toMatchObject({
+      x: 0,
+      y: 0,
+      width: 720,
+      height: 1280,
+      imageFit: "cover",
+      src: "https://example.com/image.jpg",
+    });
+  });
+
+  it("falls back to a full-canvas svg when generated media is unavailable", () => {
+    const input = makeLayoutInput({
+      visualOnly: true,
+      imageUrl: null,
+      canvasWidth: 1080,
+      canvasHeight: 1080,
+    });
+
+    const result = generateSlide(input);
+    const textElements = result.slideContent.elements.filter((element) => element.type === "text");
+    const imageElements = result.slideContent.elements.filter((element) => element.type === "image");
+
+    expect(textElements).toHaveLength(0);
+    expect(imageElements).toHaveLength(1);
+    expect(imageElements[0]).toMatchObject({
+      x: 0,
+      y: 0,
+      width: 1080,
+      height: 1080,
+      src: "",
+    });
+    if (imageElements[0]?.type === "image") {
+      expect(imageElements[0].svgContent).toContain("<svg");
+    }
+  });
+});
+
 describe("Template Rendering", () => {
   const templates = [
     "hero_center",

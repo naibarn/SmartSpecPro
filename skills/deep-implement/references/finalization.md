@@ -17,6 +17,7 @@ Include:
 - test results summary
 - key deviations from original plan
 - known residual risks
+- backups created and restore notes (if any)
 - recommended next steps
 
 ## 3) Output Completion Summary

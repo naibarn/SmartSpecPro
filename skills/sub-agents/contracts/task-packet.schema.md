@@ -167,6 +167,8 @@ QUALITY GATE:
 
 ## Worked Examples
 
+Before using any example command below, prefer the exact repo commands supplied by the conductor in the `QUALITY GATE` field. The commands in this document are SmartSpecPro defaults and examples only.
+
 ### Example 1 — Frontend Agent Packet (Adding a React component)
 
 ```

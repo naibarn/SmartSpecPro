@@ -38,6 +38,14 @@ import {
   AI_STYLE_PRESET_IDS,
   MAX_AI_DRAFT_SLIDES,
 } from "@shared/presentation/aiTypes";
+import {
+  classifyDraftSkillCapability,
+  getDraftSkillMediaType,
+  getDraftSkillModeLabel,
+  isArticleDraftSkill,
+  isSupportedDraftSkill,
+  shouldUseDraftSkillForMedia,
+} from "@shared/presentation/draftSkillCapabilities";
 import { SearchableCombobox } from "./SearchableCombobox";
 import { ImageModelCombobox } from "./ImageModelCombobox";
 import DynamicSkillForm from "@/components/media/DynamicSkillForm";
@@ -103,6 +111,15 @@ interface ReferenceImageItem {
   url: string;
   name: string;
 }
+
+type VisibleSkillOption = {
+  slug: string;
+  name: string;
+  description?: string;
+  category?: string | null;
+  executionMode?: string | null;
+  type?: string | null;
+};
 
 const ARTICLE_TARGET_WORDS_MIN = 320;
 const ARTICLE_TARGET_WORDS_MAX = 3600;
@@ -296,14 +313,22 @@ export function AIDraftModal({
   canvasHeight,
   onComplete,
 }: AIDraftModalProps) {
+  const loadSavedValue = (key: string): string => {
+    if (typeof window === "undefined") {
+      return "";
+    }
+    return localStorage.getItem(key) || "";
+  };
+
   // Config state
   const [topic, setTopic] = useState("");
   const [useCustomArticle, setUseCustomArticle] = useState(false);
   const [customArticleText, setCustomArticleText] = useState("");
+  const [hideTextOnSlides, setHideTextOnSlides] = useState(false);
   const [numSlides, setNumSlides] = useState(5);
   const [language, setLanguage] = useState<"auto" | "en" | "th">("auto");
-  const [selectedArticleSkill, setSelectedArticleSkill] = useState("");
-  const [selectedImageSkill, setSelectedImageSkill] = useState("");
+  const [selectedArticleSkill, setSelectedArticleSkill] = useState(() => loadSavedValue("smartspec_aiDraft_articleSkill"));
+  const [selectedImageSkill, setSelectedImageSkill] = useState(() => loadSavedValue("smartspec_aiDraft_imageSkill"));
   const [imageModel, setImageModel] = useState("");
   const [generateAudio, setGenerateAudio] = useState(false);
   const [audioModel, setAudioModel] = useState("");
@@ -358,7 +383,7 @@ export function AIDraftModal({
 
   // Fetch skills
   const skillsQuery = trpc.skills.getUserVisibleSkills.useQuery({ limit: 100 });
-  const skills = skillsQuery.data?.skills ?? [];
+  const skills = (skillsQuery.data?.skills ?? []) as VisibleSkillOption[];
   const watermarkLibraryQuery = trpc.library.listDocuments.useQuery(
     {
       query: debouncedWatermarkSearchQuery || undefined,
@@ -398,6 +423,22 @@ export function AIDraftModal({
   const skillSchema = skillSchemaQuery.data?.hasSchema
     ? (skillSchemaQuery.data.schema as SkillInputSchema)
     : null;
+  const selectedDraftSkillRecord = useMemo(
+    () => skills.find((skill) => skill.slug === selectedArticleSkill) ?? null,
+    [skills, selectedArticleSkill],
+  );
+  const selectedDraftSkillCapability = classifyDraftSkillCapability(selectedDraftSkillRecord);
+  const selectedDraftSkillModeLabel = getDraftSkillModeLabel(selectedDraftSkillRecord);
+  const selectedExplicitMediaSkillRecord = useMemo(
+    () => (
+      selectedImageSkill && selectedImageSkill !== "__none__"
+        ? skills.find((skill) => skill.slug === selectedImageSkill) ?? null
+        : null
+    ),
+    [skills, selectedImageSkill],
+  );
+  const effectiveMediaSkillRecord = selectedExplicitMediaSkillRecord
+    ?? (shouldUseDraftSkillForMedia(selectedDraftSkillRecord) ? selectedDraftSkillRecord : null);
   const articleSkillFieldState = useMemo(() => {
     if (!skillSchema?.sections) {
       return { hasLengthField: false, hasWordCountField: false };
@@ -416,10 +457,11 @@ export function AIDraftModal({
     );
     return { hasLengthField, hasWordCountField };
   }, [skillSchema]);
-  const hasArticleWordCountOverrideHint = articleSkillFieldState.hasLengthField
+  const hasArticleWordCountOverrideHint = isArticleDraftSkill(selectedDraftSkillRecord)
+    && articleSkillFieldState.hasLengthField
     && articleSkillFieldState.hasWordCountField;
   const wordCountRecommendationHint = useMemo(() => {
-    if (!articleSkillFieldState.hasWordCountField) {
+    if (!isArticleDraftSkill(selectedDraftSkillRecord) || !articleSkillFieldState.hasWordCountField) {
       return null;
     }
     const slideLabel = numSlides === 1 ? "slide" : "slides";
@@ -431,7 +473,7 @@ export function AIDraftModal({
     const recommendedMax = computeRecommendedWordsForLanguage(language, numSlides);
     const languageLabel = language === "th" ? "Thai" : "English";
     return `Recommended Maximum Words for ${numSlides} ${slideLabel} (${languageLabel}): up to ${recommendedMax} words.`;
-  }, [articleSkillFieldState.hasWordCountField, language, numSlides]);
+  }, [articleSkillFieldState.hasWordCountField, language, numSlides, selectedDraftSkillRecord]);
 
   // Restore saved selections from localStorage when skills load
   useEffect(() => {
@@ -441,8 +483,7 @@ export function AIDraftModal({
       savedArticle &&
       !selectedArticleSkill &&
       skills.some(
-        (s: { slug: string; executionMode?: string }) =>
-          s.slug === savedArticle && s.executionMode !== "media-generate",
+        (s) => s.slug === savedArticle && isSupportedDraftSkill(s),
       )
     ) {
       setSelectedArticleSkill(savedArticle);
@@ -497,17 +538,14 @@ export function AIDraftModal({
   }, []);
 
   // Memoize skill lists for comboboxes
-  const articleSkillItems = useMemo(
+  const draftSkillItems = useMemo(
     () =>
       skills
-        .filter(
-          (s: { executionMode?: string }) =>
-            s.executionMode !== "media-generate",
-        )
-        .map((s: { slug: string; name: string; description?: string }) => ({
+        .filter((skill) => isSupportedDraftSkill(skill))
+        .map((s) => ({
           value: s.slug,
           label: s.name,
-          description: s.description,
+          description: `${getDraftSkillModeLabel(s)}${s.description ? ` - ${s.description}` : ""}`,
         })),
     [skills],
   );
@@ -516,33 +554,19 @@ export function AIDraftModal({
     () => [
       { value: "__none__", label: "None" },
       ...skills
-        .filter(
-          (s: { executionMode?: string }) =>
-            s.executionMode === "media-generate",
-        )
-        .map((s: { slug: string; name: string; description?: string }) => ({
+        .filter((skill) => shouldUseDraftSkillForMedia(skill))
+        .map((s) => ({
           value: s.slug,
           label: s.name,
-          description: s.description,
+          description: `${getDraftSkillModeLabel(s)}${s.description ? ` - ${s.description}` : ""}`,
         })),
     ],
     [skills],
   );
 
   // Derive media type from selected image skill category
-  const selectedMediaSkill = useMemo(
-    () =>
-      selectedImageSkill && selectedImageSkill !== "__none__"
-        ? skills.find(
-            (s: { slug: string }) => s.slug === selectedImageSkill,
-          )
-        : null,
-    [skills, selectedImageSkill],
-  );
   const mediaModelType: "image" | "video" =
-    (selectedMediaSkill as { category?: string } | null)?.category === "video_generation"
-      ? "video"
-      : "image";
+    getDraftSkillMediaType(effectiveMediaSkillRecord);
   const mediaModelsQuery = trpc.media.getModels.useQuery(
     { type: mediaModelType },
     { staleTime: 300_000 },
@@ -798,6 +822,7 @@ export function AIDraftModal({
     setAdvancedMediaOptionsEnabled(false);
     setMediaModelExtraParams({});
     setGenerateAudio(false);
+    setHideTextOnSlides(false);
     setAudioModelExtraParams({});
     setSelectedReferenceLibraryUrl("");
     setReferenceLibrarySearchQuery("");
@@ -811,6 +836,16 @@ export function AIDraftModal({
     setWatermarkSearchQuery("");
     setDebouncedWatermarkSearchQuery("");
   }, [isOpen, detectedCanvasPresetId]);
+
+  useEffect(() => {
+    if (!hideTextOnSlides) {
+      return;
+    }
+    setHeaderEnabled(false);
+    setShowDeckTitle(false);
+    setFooterEnabled(false);
+    setShowPageNumber(false);
+  }, [hideTextOnSlides]);
 
   useEffect(() => {
     setMediaModelExtraParams((prev) => {
@@ -1061,10 +1096,10 @@ export function AIDraftModal({
 
     // Always send explicit advanced style options from modal state
     const overrides = {
-      headerEnabled,
-      showDeckTitle,
-      footerEnabled,
-      showPageNumber,
+      headerEnabled: effectiveHeaderEnabled,
+      showDeckTitle: effectiveShowDeckTitle,
+      footerEnabled: effectiveFooterEnabled,
+      showPageNumber: effectiveShowPageNumber,
     };
     const effectivePrompt = useCustomArticle
       ? (topic.trim() || customArticleText.trim().slice(0, 1000) || "Custom article")
@@ -1077,8 +1112,12 @@ export function AIDraftModal({
         prompt: effectivePrompt,
         numSlides,
         language: language as "auto" | "en" | "th",
-        articleSkillId:
+        draftSkillId:
           !useCustomArticle && selectedArticleSkill
+            ? selectedArticleSkill
+            : undefined,
+        articleSkillId:
+          !useCustomArticle && selectedArticleSkill && isArticleDraftSkill(selectedDraftSkillRecord)
             ? selectedArticleSkill
             : undefined,
         useCustomArticle,
@@ -1086,6 +1125,7 @@ export function AIDraftModal({
           useCustomArticle && customArticleText.trim().length > 0
             ? customArticleText.trim()
             : undefined,
+        hideTextOnSlides,
         imageSkillId:
           selectedImageSkill && selectedImageSkill !== "__none__"
             ? selectedImageSkill
@@ -1123,8 +1163,12 @@ export function AIDraftModal({
               clarityPercent: watermarkClarityPercent,
             }
             : undefined,
-        articleSkillParams:
+        draftSkillParams:
           !useCustomArticle && Object.keys(articleSkillParams).length > 0
+            ? articleSkillParams
+            : undefined,
+        articleSkillParams:
+          !useCustomArticle && isArticleDraftSkill(selectedDraftSkillRecord) && Object.keys(articleSkillParams).length > 0
             ? articleSkillParams
             : undefined,
       },
@@ -1148,9 +1192,11 @@ export function AIDraftModal({
     topic,
     useCustomArticle,
     customArticleText,
+    hideTextOnSlides,
     numSlides,
     language,
     selectedArticleSkill,
+    selectedDraftSkillRecord,
     selectedImageSkill,
     imageModel,
     generateAudio,
@@ -1263,10 +1309,10 @@ export function AIDraftModal({
   );
 
   // Effective values for advanced toggles
-  const effectiveHeaderEnabled = headerEnabled;
-  const effectiveShowDeckTitle = showDeckTitle;
-  const effectiveFooterEnabled = footerEnabled;
-  const effectiveShowPageNumber = showPageNumber;
+  const effectiveHeaderEnabled = hideTextOnSlides ? false : headerEnabled;
+  const effectiveShowDeckTitle = hideTextOnSlides ? false : showDeckTitle;
+  const effectiveFooterEnabled = hideTextOnSlides ? false : footerEnabled;
+  const effectiveShowPageNumber = hideTextOnSlides ? false : showPageNumber;
   const updateMediaModelExtraParam = useCallback((key: string, value: unknown) => {
     setMediaModelExtraParams((prev) => {
       const next: Record<string, unknown> = { ...prev };
@@ -1384,6 +1430,22 @@ export function AIDraftModal({
         )}
       </div>
 
+      <div className="space-y-2 rounded-md border border-muted bg-muted/20 p-3">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <Label className="text-sm">Hide On-Slide Text</Label>
+            <p className="text-xs text-muted-foreground">
+              Use the article only for generating media and narration. Slides will render full-canvas image or video without visible text.
+            </p>
+          </div>
+          <Switch
+            aria-label="Hide on-slide text"
+            checked={hideTextOnSlides}
+            onCheckedChange={setHideTextOnSlides}
+          />
+        </div>
+      </div>
+
       {/* Slide count */}
       <div className="space-y-1.5">
         <Label>Number of slides: {numSlides}</Label>
@@ -1412,22 +1474,57 @@ export function AIDraftModal({
         </Select>
       </div>
 
-      {/* Article skill (searchable) */}
+      {/* Draft skill (searchable) */}
       {!useCustomArticle && (
         <div className="space-y-1.5">
-          <Label>Article Skill</Label>
+          <Label>Draft Skill</Label>
+          <p className="text-xs text-muted-foreground">
+            Supports article generation, prompt-for-image, prompt-for-video, image generation, and video generation skills. Draft with AI will adapt its flow automatically from the selected skill type.
+          </p>
           <SearchableCombobox
-            items={articleSkillItems}
+            items={draftSkillItems}
             value={selectedArticleSkill}
             onValueChange={(v) => {
+              const previousDraftSkill = selectedDraftSkillRecord;
+              const nextDraftSkill = skills.find((skill) => skill.slug === v) ?? null;
+              const previousMediaType =
+                selectedImageSkill && selectedImageSkill !== "__none__"
+                  ? mediaModelType
+                  : getDraftSkillMediaType(previousDraftSkill);
+              const nextMediaType =
+                selectedImageSkill && selectedImageSkill !== "__none__"
+                  ? mediaModelType
+                  : getDraftSkillMediaType(nextDraftSkill);
+              if (previousMediaType !== nextMediaType) {
+                setImageModel("");
+                setAdvancedMediaOptionsEnabled(false);
+                setMediaModelExtraParams({});
+                localStorage.removeItem("smartspec_aiDraft_imageModel");
+              }
               setSelectedArticleSkill(v);
               setArticleSkillParams({});
               localStorage.setItem("smartspec_aiDraft_articleSkill", v);
             }}
-            placeholder="Select article skill..."
+            placeholder="Select draft skill..."
             searchPlaceholder="Search skills..."
-            emptyMessage="No article skills found."
+            emptyMessage="No supported draft skills found."
           />
+          {selectedDraftSkillRecord && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Badge variant="secondary" className="rounded-full px-2 py-0.5 text-[11px]">
+                {selectedDraftSkillModeLabel}
+              </Badge>
+              <span>
+                {selectedDraftSkillCapability === "article"
+                  ? "The skill will write a source article first, then the system will split it into slides."
+                  : selectedDraftSkillCapability === "prompt"
+                    ? "The system will plan slides from the topic, then use this skill to enhance prompts for the media phase."
+                    : selectedDraftSkillCapability === "video"
+                      ? "The system will plan slides from the topic and treat this as the default video-generation skill."
+                      : "The system will plan slides from the topic and treat this as the default image-generation skill."}
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -1463,7 +1560,10 @@ export function AIDraftModal({
 
       {/* Image skill (searchable, optional) */}
       <div className="space-y-1.5">
-        <Label>Image Skill (optional)</Label>
+        <Label>Media Skill Override (optional)</Label>
+        <p className="text-xs text-muted-foreground">
+          Leave empty to reuse the selected Draft Skill for prompt/media work when it supports that phase.
+        </p>
         <SearchableCombobox
           items={imageSkillItems}
           value={selectedImageSkill || "__none__"}
@@ -1479,16 +1579,12 @@ export function AIDraftModal({
               v && v !== "__none__"
                 ? skills.find((s: { slug: string }) => s.slug === v)
                 : null;
-            const prevType =
-              (prevSkill as { category?: string } | null)?.category ===
-              "video_generation"
-                ? "video"
-                : "image";
-            const nextType =
-              (nextSkill as { category?: string } | null)?.category ===
-              "video_generation"
-                ? "video"
-                : "image";
+            const prevType = getDraftSkillMediaType(
+              prevSkill as { category?: string; executionMode?: string; type?: string } | null,
+            );
+            const nextType = getDraftSkillMediaType(
+              nextSkill as { category?: string; executionMode?: string; type?: string } | null,
+            );
             if (prevType !== nextType) {
               setImageModel("");
               setAdvancedMediaOptionsEnabled(false);
@@ -1498,10 +1594,10 @@ export function AIDraftModal({
             setSelectedImageSkill(v);
             localStorage.setItem("smartspec_aiDraft_imageSkill", v);
           }}
-          placeholder="None"
-          searchPlaceholder="Search image skills..."
-          emptyMessage="No image skills found."
-        />
+            placeholder="None"
+            searchPlaceholder="Search media skills..."
+            emptyMessage="No compatible media skills found."
+          />
       </div>
 
       {/* Media model (image/video generation) */}
@@ -1837,12 +1933,18 @@ export function AIDraftModal({
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="ml-2 space-y-3 border-l-2 border-muted pl-3 pt-3">
+            {hideTextOnSlides && (
+              <p className="text-xs text-muted-foreground">
+                Visual-only slides disable header, footer, deck title, and page number automatically.
+              </p>
+            )}
             {/* Header section */}
             <div className="flex items-center justify-between">
               <Label className="text-sm">Show Header</Label>
               <Switch
                 checked={effectiveHeaderEnabled}
                 onCheckedChange={setHeaderEnabled}
+                disabled={hideTextOnSlides}
               />
             </div>
             {effectiveHeaderEnabled && (
@@ -1854,6 +1956,7 @@ export function AIDraftModal({
                   <Switch
                     checked={effectiveShowDeckTitle}
                     onCheckedChange={setShowDeckTitle}
+                    disabled={hideTextOnSlides}
                   />
                 </div>
                 {effectiveShowDeckTitle && (
@@ -1882,6 +1985,7 @@ export function AIDraftModal({
               <Switch
                 checked={effectiveFooterEnabled}
                 onCheckedChange={setFooterEnabled}
+                disabled={hideTextOnSlides}
               />
             </div>
             {effectiveFooterEnabled && (
@@ -1893,6 +1997,7 @@ export function AIDraftModal({
                   <Switch
                     checked={effectiveShowPageNumber}
                     onCheckedChange={setShowPageNumber}
+                    disabled={hideTextOnSlides}
                   />
                 </div>
                 <div className="space-y-1 pl-4">

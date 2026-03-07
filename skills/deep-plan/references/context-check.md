@@ -22,22 +22,20 @@ review_mode=external_llm (or other value)
 
 Check session config for `context_check_enabled`. If `false`, skip context checks entirely.
 
-## Running the Script
+## Running the Check
 
-If context checks are enabled (or you're unsure), run:
+If context checks are enabled (or you're unsure), do a lightweight manual check before the upcoming operation:
 
-```bash
-uv run {plugin_root}/scripts/checks/check-context-decision.py \
-  --planning-dir "<planning_dir>" \
-  --upcoming-operation "<operation_name>"
-```
+1. Estimate whether the remaining context window is comfortably large enough for the next step
+2. Check whether the next operation will require loading multiple large files or long reviews
+3. If you are close to the context limit or the next step is unusually large, set `action = prompt`; otherwise set `action = skip`
 
-## Handling Script Output
+## Handling the Result
 
 | action | What to do |
 |--------|------------|
-| `skip` | Prompts disabled - proceed immediately |
-| `prompt` | Use AskUserQuestion with `prompt.message` and `prompt.options` |
+| `skip` | Prompts disabled or context looks safe — proceed immediately |
+| `prompt` | Ask the user directly with `prompt.message` and `prompt.options` using the platform's native prompt flow |
 
 ### Option Handling
 

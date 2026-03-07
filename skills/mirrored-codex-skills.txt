@@ -1,0 +1,8 @@
+create-image-prompt
+deep-implement
+deep-plan
+deep-plan-quick
+deep-project
+orchestra
+programming-advisor
+sub-agents

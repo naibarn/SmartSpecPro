@@ -400,6 +400,20 @@
       "when": 1772805922605,
       "tag": "0056_ambiguous_kabuki",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1772868000000,
+      "tag": "0057_article_generation_category",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1772871600000,
+      "tag": "0058_prompt_media_generation_categories",
+      "breakpoints": true
     }
   ]
 }

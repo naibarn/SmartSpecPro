@@ -174,9 +174,11 @@ export const GenerateAIDraftInputSchema = z.object({
   prompt: z.string().min(3).max(1000),
   numSlides: z.number().int().min(1).max(MAX_AI_DRAFT_SLIDES).default(5),
   language: z.enum(["auto", "en", "th"]).default("auto"),
+  draftSkillId: z.string().min(1).optional(),
   articleSkillId: z.string().min(1).optional(),
   useCustomArticle: z.boolean().default(false),
   customArticleText: z.string().min(1).max(20_000).optional(),
+  hideTextOnSlides: z.boolean().default(false),
   imageSkillId: z.string().min(1).optional(),
   imageModel: z.string().min(1).optional(),
   generateAudio: z.boolean().default(false),
@@ -199,6 +201,7 @@ export const GenerateAIDraftInputSchema = z.object({
     })
     .optional(),
   watermark: AIWatermarkSchema.optional(),
+  draftSkillParams: z.record(z.string(), z.any()).optional(),
   articleSkillParams: z.record(z.string(), z.any()).optional(),
 }).superRefine((value, ctx) => {
   if (value.useCustomArticle) {
@@ -212,11 +215,11 @@ export const GenerateAIDraftInputSchema = z.object({
     return;
   }
 
-  if (!value.articleSkillId?.trim()) {
+  if (!value.draftSkillId?.trim() && !value.articleSkillId?.trim()) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      path: ["articleSkillId"],
-      message: "Article skill is required when custom article mode is disabled",
+      path: ["draftSkillId"],
+      message: "Draft skill is required when custom article mode is disabled",
     });
   }
 });

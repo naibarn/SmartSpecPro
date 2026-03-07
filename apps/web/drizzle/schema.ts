@@ -2210,9 +2210,12 @@ export type InsertUserCreditBudget = typeof userCreditBudgets.$inferInsert;
  */
 export const skillCategoryEnum = pgEnum("skill_category", [
   "image_generation",      // Generate Images
+  "image_prompt_generation", // Create prompts for image generation
   "video_generation",      // Generate Video
+  "video_prompt_generation", // Create prompts for video generation
   "image_video_generation", // Generate both Image and Video
   "audio_generation",      // Generate Text To Speech
+  "article_generation",    // Generate source articles / presentation drafts
   "sound_effects",         // Generate Sound Effects
   "prompt_enhancement",    // Enhance prompts
   "code_assistant",        // Code help

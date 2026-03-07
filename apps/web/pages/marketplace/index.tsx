@@ -52,7 +52,9 @@ interface TemplateListResponse {
 
 const CATEGORIES = [
   { value: 'image_generation', label: 'Image Generation', icon: '🖼️' },
+  { value: 'image_prompt_generation', label: 'Create Prompt for Image Generation', icon: '✨' },
   { value: 'video_generation', label: 'Video Generation', icon: '🎬' },
+  { value: 'video_prompt_generation', label: 'Create Prompt for Video Generation', icon: '✨' },
   { value: 'audio_generation', label: 'Audio Generation', icon: '🎵' },
   { value: 'media_suite', label: 'Media Suite', icon: '🎨' },
   { value: 'ai_features', label: 'AI Features', icon: '🤖' },

@@ -31,6 +31,15 @@ describe("GenerateAIDraftInputSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts draftSkillId as the primary selector", () => {
+    const { articleSkillId, ...rest } = validInput;
+    const result = GenerateAIDraftInputSchema.safeParse({
+      ...rest,
+      draftSkillId: "prompt-enhancer",
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("accepts custom article mode without articleSkillId", () => {
     const { articleSkillId, ...withoutArticleSkill } = validInput;
     const result = GenerateAIDraftInputSchema.safeParse({
@@ -41,7 +50,7 @@ describe("GenerateAIDraftInputSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("rejects missing articleSkillId when custom article mode is disabled", () => {
+  it("rejects missing draft/article skill when custom article mode is disabled", () => {
     const { articleSkillId, ...withoutArticleSkill } = validInput;
     const result = GenerateAIDraftInputSchema.safeParse(withoutArticleSkill);
     expect(result.success).toBe(false);
@@ -97,6 +106,22 @@ describe("GenerateAIDraftInputSchema", () => {
     if (result.success) {
       expect(result.data.generateAudio).toBe(false);
     }
+  });
+
+  it("defaults hideTextOnSlides to false", () => {
+    const result = GenerateAIDraftInputSchema.safeParse(validInput);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.hideTextOnSlides).toBe(false);
+    }
+  });
+
+  it("accepts visual-only slide generation mode", () => {
+    const result = GenerateAIDraftInputSchema.safeParse({
+      ...validInput,
+      hideTextOnSlides: true,
+    });
+    expect(result.success).toBe(true);
   });
 
   it("accepts generateAudio with audioModel", () => {

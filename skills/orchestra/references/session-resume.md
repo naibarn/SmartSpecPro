@@ -48,7 +48,7 @@ Verify that actual filesystem state matches the snapshot's recorded state:
    - Check the file's **modification time** against `checkpoint.timestamp`. If a file is **newer** than the snapshot: read the current file content and update the in-memory state to reflect the newer version (the file is authoritative over the snapshot).
 2. For each wave in `checkpoint.completed_waves`:
    - Verify that the output artifacts for that wave exist. If a wave's output file is missing, flag that wave's status as `NEEDS_VERIFICATION` before resuming.
-3. If any blockers were identified: list them in the resume banner and ask the user how to proceed before starting work.
+3. If any blockers were identified: list them in the resume banner, then continue automatically from the earliest safe incomplete stage. Ask the user only if resolving the blocker would require destructive reset/archive, accepted-risk security bypass, or a product-direction decision.
 
 ### Step 4: Resume
 
@@ -85,9 +85,9 @@ If blockers were found:
 ⚠️  BLOCKERS DETECTED — resolve before continuing:
   - {blocker 1}
   - {blocker 2}
-
-Respond with how to proceed, or type "skip" to continue past blockers.
 ```
+
+If blockers are non-destructive consistency issues, continue automatically after logging the recovery path.
 
 ---
 
@@ -150,7 +150,7 @@ Fall back to `snapshot.md` for a human-readable reconstruction. Parse what you c
 
 ### A `key_file` is missing
 
-Add the file to blockers. Present the blocker to the user before resuming. Do not auto-recreate the file — the user may have deleted it intentionally or it may be in a different location.
+Add the file to blockers. Do not auto-recreate the file blindly. Instead, resume from the earliest safe incomplete stage that can regenerate or re-verify the missing artifact. Ask the user only if the file appears intentionally removed, the recovery path would archive/discard work, or product intent is no longer clear.
 
 ### A `key_file` is newer than the snapshot
 
@@ -158,14 +158,8 @@ This means work continued after the snapshot was taken (possibly in a different 
 
 ### Snapshot is from a completely different task
 
-If `task_description` does not match any currently visible task or the wave structure makes no sense in context, print a warning and ask the user:
+If `task_description` does not match any currently visible task or the wave structure makes no sense in context:
+- if the user explicitly asked to resume prior work, continue with the snapshot
+- otherwise archive the old `orchestra/` directory automatically and start a fresh session
 
-```
-⚠️  Snapshot found but task does not match current context.
-  Snapshot task: {task_description}
-  Options:
-    1. Archive and start fresh — moves orchestra/ to orchestra/archive/<timestamp>/ (data is preserved)
-    2. Continue with snapshot — resume the old task regardless of current context
-```
-
-If the user chooses option 1, follow the archive-and-fresh-start procedure in `artifact-management.md`. **Do not delete** the old `orchestra/` directory — archive it. This ensures the old snapshot is not detected on the next invocation (since it has been moved into `archive/`).
+Do not delete the old `orchestra/` directory — archive it. This ensures the old snapshot is not detected on the next invocation (since it has been moved into `archive/`).
