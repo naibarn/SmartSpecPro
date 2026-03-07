@@ -446,7 +446,7 @@ interface LLMUsageInfo {
  * Determine the API style based on model ID
  * OpenCode Zen uses different endpoints for different model families
  */
-type ApiStyle = 'chat-completions' | 'responses' | 'messages' | 'gemini';
+export type ApiStyle = 'chat-completions' | 'responses' | 'messages' | 'gemini';
 
 function getApiStyleForModel(modelId: string): ApiStyle {
   const id = modelId.toLowerCase();
@@ -480,7 +480,7 @@ function getApiStyleForModel(modelId: string): ApiStyle {
  * - Google: Uses /models/{model}:generateContent endpoint (native API)
  * - Others: Use standard /chat/completions (OpenAI-compatible)
  */
-function resolveApiUrl(
+export function resolveApiUrl(
   baseUrl: string,
   modelId: string,
   providerName: string,
@@ -517,6 +517,11 @@ function resolveApiUrl(
     // Google AI API: https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent
     // Note: Google uses different versioning (v1beta vs v1)
     return `${base}/models/${modelId}:generateContent`;
+  }
+
+  // Generic apiStyle routing for any provider (e.g., direct OpenAI with Responses API)
+  if (apiStyle === 'responses') {
+    return base.includes("/v1") ? `${base}/responses` : `${base}/v1/responses`;
   }
 
   // All other providers: Use standard OpenAI-compatible /chat/completions

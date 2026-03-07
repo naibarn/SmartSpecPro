@@ -208,6 +208,28 @@ After implementation, verify:
 
 ---
 
+## Implementation Notes (As-Built)
+
+### Files Created
+- `apps/web/scripts/seed-gpt54.ts` — Idempotent seed script for GPT-5.4 model + system settings + Redis feature flag
+- `apps/web/server/__tests__/gpt54ModelConfig.test.ts` — 12 tests covering resolveApiUrl, feature flags, spec constants
+
+### Files Modified
+- `apps/web/server/_core/llmRoutes.ts` — Exported `resolveApiUrl` and `ApiStyle`; added generic `apiStyle === 'responses'` routing for non-OpenCode providers (lines 522-525)
+
+### Deviations from Plan
+- **resolveApiUrl fix**: Plan noted this as conditional ("check whether resolveApiUrl needs a fallback"). Confirmed it was needed — direct OpenAI provider would route GPT-5.4 to `/chat/completions` without the fix.
+- **Seed script**: Uses `opencode-zen` provider (ID 2) instead of direct OpenAI, matching existing model seeding pattern. Provider lookup is case-insensitive.
+- **Tests**: Used actual `resolveApiUrl` function (exported) rather than DB-level integration tests (no test DB infrastructure). Feature flag tests use mocked Redis.
+- **Redis feature flag**: Seeded by the seed script (not just manual redis-cli), defaults to `"false"`.
+
+### Tests Added
+- 6 resolveApiUrl routing tests (OpenCode, OpenAI, Anthropic, DeepSeek, with/without /v1)
+- 4 feature flag tests (global true/false, tenant override true/false)
+- 2 spec constant validation tests
+
+---
+
 ## Rollback
 
 - **GPT-5.4 model entry**: Set `isEnabled = false` in `model_provider_map` -- the model will no longer resolve.
