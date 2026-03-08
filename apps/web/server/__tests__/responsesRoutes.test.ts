@@ -205,25 +205,13 @@ describe("sanitizeResponsesBody", () => {
     }
   });
 
-  it("overrides store=true when tenant disallows", () => {
+  it("always overrides store=true to false (ZDR compliance)", () => {
     const result = sanitizeResponsesBody(
       { model: "gpt-5.4", input: [{ role: "user", content: "hi" }], store: true },
-      false,
     );
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.body.store).toBe(false);
-    }
-  });
-
-  it("allows store=true when tenant allows", () => {
-    const result = sanitizeResponsesBody(
-      { model: "gpt-5.4", input: [{ role: "user", content: "hi" }], store: true },
-      true,
-    );
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.body.store).toBe(true);
     }
   });
 

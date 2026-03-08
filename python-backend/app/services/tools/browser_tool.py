@@ -15,12 +15,14 @@ from __future__ import annotations
 
 import asyncio
 import ipaddress
+import re
 import socket
 import time
 import uuid
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
+import bleach
 import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,6 +33,60 @@ if TYPE_CHECKING:
     from app.services.sandbox_dispatcher import SandboxDispatcher
 
 logger = structlog.get_logger(__name__)
+
+
+# ── Prompt Injection Mitigation ───────────────────────────────────────────
+
+MAX_TOOL_OUTPUT_LENGTH = 50_000
+
+# Regex to strip content of dangerous tags before bleach processes text
+_DANGEROUS_TAG_CONTENT = re.compile(
+    r"<\s*(script|style|iframe|object|embed)[^>]*>.*?</\s*\1\s*>",
+    re.IGNORECASE | re.DOTALL,
+)
+
+def sanitize_tool_output(raw: str) -> str:
+    """Strip all HTML from tool output to prevent prompt injection.
+
+    Removes all HTML tags, event handler attributes, and truncates
+    to MAX_TOOL_OUTPUT_LENGTH characters.
+    """
+    if not raw:
+        return raw
+    # First strip dangerous tags AND their content (script, style, iframe, etc.)
+    cleaned = _DANGEROUS_TAG_CONTENT.sub("", raw)
+    # Then strip remaining HTML tags (preserving text content of safe tags)
+    cleaned = bleach.clean(cleaned, tags=[], attributes={}, strip=True)
+    if len(cleaned) > MAX_TOOL_OUTPUT_LENGTH:
+        cleaned = cleaned[:MAX_TOOL_OUTPUT_LENGTH]
+    return cleaned
+
+
+# ── Redaction Policy ──────────────────────────────────────────────────────
+
+_SENSITIVE_SELECTOR_PATTERNS = re.compile(
+    r"(?i)"
+    r"(?:type\s*=\s*[\"']?password)"
+    r"|(?:\[(?:name|id)\s*\*?=\s*[\"']?[^\]]*(?:token|secret|api_?key|password|credential)[^\]]*\])"
+    r"|(?:#[^\"'\s]*(?:password|token|secret))"
+)
+
+def redact_action_for_audit(action: dict) -> dict:
+    """Return a shallow copy of an action dict with sensitive values redacted.
+
+    For fill/type actions on password or secret-related fields, replaces the
+    value with '[REDACTED]'. Non-sensitive fields are preserved as-is.
+    """
+    copy = dict(action)
+    action_type = copy.get("type", "")
+    if action_type not in ("fill", "type"):
+        return copy
+
+    selector = copy.get("selector", "")
+    if _SENSITIVE_SELECTOR_PATTERNS.search(selector):
+        copy["value"] = "[REDACTED]"
+
+    return copy
 
 
 # ── SSRF Protection ────────────────────────────────────────────────────────
@@ -438,12 +494,16 @@ class BrowserSession:
             self._check_session_timeout()
 
             action_type = action_spec.get("action", "")
+            # Redact sensitive values for audit trail (original action still used for execution)
+            redacted_spec = redact_action_for_audit(action_spec)
             try:
                 result = await self._dispatch_action(action_spec)
                 results.append({"action": action_type, "success": True, "data": result})
                 self._actual_cost += 1  # 1 credit per action
+                logger.info("browser_action_executed", action=redacted_spec, success=True)
             except ValueError as exc:
                 results.append({"action": action_type, "success": False, "error": str(exc)})
+                logger.info("browser_action_executed", action=redacted_spec, success=False)
                 break  # Stop on SSRF or limit errors
 
         return {
@@ -539,12 +599,13 @@ class BrowserSession:
         return {"screenshot_index": self._screenshot_count, "data": ""}
 
     async def extract_text(self, selector: str | None = None) -> dict:
-        """Extract text content. Truncates at MAX_TEXT_LENGTH chars."""
+        """Extract text content. Sanitizes HTML and truncates at MAX_TEXT_LENGTH chars."""
         if self._dispatcher is not None:
             result = await self._dispatch_to_sandbox(
                 {"action": "extractText", "selector": selector}
             )
             text = result.get("text", "")
+            text = sanitize_tool_output(text)
             truncated = self._truncate_text(text)
             self._check_output_budget(len(truncated.encode()))
             return {"text": truncated, "selector": selector}

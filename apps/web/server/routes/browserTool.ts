@@ -22,6 +22,8 @@ import crypto from "crypto";
 import { deductCredits, refundCredits, hasEnoughCredits, drawFromReservation } from "../services/creditService";
 import { getRedisClient } from "../services/redis";
 import { getTenantFeatureFlag } from "../services/featureFlags";
+import { auditLogger } from "../services/auditLogger";
+import { getTraceId } from "../services/traceContext";
 import { ENV } from "../_core/env";
 
 const router = Router();
@@ -254,6 +256,14 @@ router.post("/api/internal/tools/browser", async (req: Request, res: Response) =
     }
 
     // Forward to Python browser service
+    const traceId = getTraceId();
+    const startTime = Date.now();
+
+    // Extract domains from navigate actions for audit
+    const domains = (actions as Array<{ action: string; url?: string }>)
+      .filter((a) => a.action === "navigate" && a.url)
+      .map((a) => { try { return new URL(a.url!).hostname; } catch { return "unknown"; } });
+
     const pythonRes = await fetch(`${PYTHON_BACKEND_URL}/api/browser/execute`, {
       method: "POST",
       headers: {
@@ -285,6 +295,20 @@ router.post("/api/internal/tools/browser", async (req: Request, res: Response) =
         creditsReserved = false;
       }
 
+      auditLogger.log({
+        traceId,
+        eventType: "browser_tool_call",
+        userId,
+        metadata: {
+          domains,
+          actionCount: (actions as unknown[]).length,
+          screenshotsTaken: 0,
+          actualCost: 0,
+          outcome: "failure",
+          wallTimeMs: Date.now() - startTime,
+        },
+      });
+
       // Normalize upstream error to avoid leaking internal details
       res.status(502).json({
         error: "Browser execution failed.",
@@ -313,6 +337,20 @@ router.post("/api/internal/tools/browser", async (req: Request, res: Response) =
         });
       }
     }
+
+    auditLogger.log({
+      traceId,
+      eventType: "browser_tool_call",
+      userId,
+      metadata: {
+        domains,
+        actionCount: (actions as unknown[]).length,
+        screenshotsTaken: result.screenshots_taken ?? 0,
+        actualCost: result.actual_cost ?? 0,
+        outcome: "success",
+        wallTimeMs: Date.now() - startTime,
+      },
+    });
 
     res.json(result);
   } catch (err) {

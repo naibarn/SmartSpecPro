@@ -9,6 +9,7 @@
  */
 
 import type { Express, Request, Response } from "express";
+import sanitizeHtml from "sanitize-html";
 import { enforceJsonBodyMaxBytes, rateLimit } from "./limits";
 import { debugLog, debugError } from "./logger";
 import { auditLogger } from "../services/auditLogger";
@@ -116,13 +117,36 @@ const TOOL_DISPATCH_MAP: Record<string, string> = {
 // Helpers
 // ---------------------------------------------------------------------------
 
+const MAX_TOOL_OUTPUT_LENGTH = 50_000;
+
+// Pre-pass regex to strip dangerous tag content (script, style, iframe, etc.)
+const DANGEROUS_TAG_RE = /<\s*(script|style|iframe|object|embed)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi;
+
+/**
+ * Sanitize tool output HTML before sending as function_call_output to the LLM.
+ * Defense-in-depth against prompt injection via untrusted tool results.
+ */
+export function sanitizeToolOutputForLLM(raw: string): string {
+  if (!raw) return raw;
+  // First strip dangerous tags AND their content
+  let cleaned = raw.replace(DANGEROUS_TAG_RE, "");
+  // Then strip remaining HTML tags (preserving text content of safe tags)
+  cleaned = sanitizeHtml(cleaned, {
+    allowedTags: [],
+    allowedAttributes: {},
+  });
+  if (cleaned.length > MAX_TOOL_OUTPUT_LENGTH) {
+    cleaned = cleaned.slice(0, MAX_TOOL_OUTPUT_LENGTH);
+  }
+  return cleaned;
+}
+
 /**
  * Sanitize and validate a Responses API request body.
- * Enforces store=false default, validates required fields, strips unknown fields.
+ * Enforces store=false always (ZDR compliance), validates required fields, strips unknown fields.
  */
 export function sanitizeResponsesBody(
   body: any,
-  tenantStoreAllowed: boolean = false,
 ): SanitizeResult {
   if (!body || typeof body !== "object") {
     return { ok: false, error: "Request body must be a JSON object", status: 400 };
@@ -150,13 +174,8 @@ export function sanitizeResponsesBody(
     }
   }
 
-  // Enforce store=false (ZDR compliance)
-  if (sanitized.store === true && !tenantStoreAllowed) {
-    sanitized.store = false;
-  }
-  if (sanitized.store === undefined) {
-    sanitized.store = false;
-  }
+  // Always enforce store=false (ZDR compliance — OpenAI must never store request/response)
+  sanitized.store = false;
 
   const stream = Boolean(sanitized.stream);
 
@@ -388,7 +407,7 @@ export function registerResponsesRoutes(
       }
 
       // --- Sanitize body ---
-      const sanitizeResult = sanitizeResponsesBody(req.body, false);
+      const sanitizeResult = sanitizeResponsesBody(req.body);
       if (!sanitizeResult.ok) {
         return res
           .status(sanitizeResult.status)
@@ -748,12 +767,15 @@ async function proxyResponsesJson(
         },
       });
 
-      const output = await dispatchFunctionCall(
+      const rawOutput = await dispatchFunctionCall(
         fc.name,
         fc.arguments,
         internalToken,
         userId,
       );
+
+      // Sanitize tool output to prevent prompt injection via untrusted content
+      const output = sanitizeToolOutputForLLM(rawOutput);
 
       toolOutputs.push({
         type: "function_call_output",
@@ -1142,12 +1164,15 @@ async function proxyResponsesStream(
           metadata: { toolName: fc.name, callId: fc.callId, round },
         });
 
-        const output = await dispatchFunctionCall(
+        const rawOutput = await dispatchFunctionCall(
           fc.name,
           fc.arguments,
           internalToken,
           userId,
         );
+
+        // Sanitize tool output to prevent prompt injection via untrusted content
+        const output = sanitizeToolOutputForLLM(rawOutput);
 
         toolOutputs.push({
           type: "function_call_output",
