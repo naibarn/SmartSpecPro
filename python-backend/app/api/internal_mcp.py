@@ -15,9 +15,10 @@ from pydantic import BaseModel
 from app.core.config import settings
 from app.mcp.google_drive_mcp import GOOGLE_DRIVE_TOOLS, TOOL_HANDLERS as GDRIVE_HANDLERS, ToolError
 from app.mcp.onedrive_mcp import ONEDRIVE_TOOLS, TOOL_HANDLERS as ONEDRIVE_HANDLERS
+from app.mcp.browser_tools_mcp import BROWSER_TOOLS, TOOL_HANDLERS as BROWSER_HANDLERS
 
-# Merge tool handlers from both providers
-TOOL_HANDLERS = {**GDRIVE_HANDLERS, **ONEDRIVE_HANDLERS}
+# Merge tool handlers from all providers
+TOOL_HANDLERS = {**GDRIVE_HANDLERS, **ONEDRIVE_HANDLERS, **BROWSER_HANDLERS}
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +80,9 @@ async def list_tools(
             tools.extend(ONEDRIVE_TOOLS)
     else:
         tools = GOOGLE_DRIVE_TOOLS + ONEDRIVE_TOOLS
+
+    # Browser tools are always available (no OAuth needed)
+    tools.extend(BROWSER_TOOLS)
 
     return {"tools": tools}
 

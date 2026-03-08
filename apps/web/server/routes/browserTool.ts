@@ -157,13 +157,15 @@ router.post("/api/internal/tools/browser", async (req: Request, res: Response) =
     return;
   }
 
-  const { userId, tenantId, actions, allowedDomains = [], timeout = 300 } = req.body as {
-    userId?: number;
-    tenantId?: string;
-    actions?: unknown[];
-    allowedDomains?: string[];
-    timeout?: number;
-  };
+  const { userId, tenantId, actions, allowedDomains = [], timeout = 300, parentReservationId } =
+    req.body as {
+      userId?: number;
+      tenantId?: string;
+      actions?: unknown[];
+      allowedDomains?: string[];
+      timeout?: number;
+      parentReservationId?: string;
+    };
 
   // Basic validation
   if (!userId || !tenantId) {
