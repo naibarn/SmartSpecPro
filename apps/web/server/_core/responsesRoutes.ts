@@ -23,6 +23,12 @@ import {
   hasEnoughCredits,
 } from "../services/creditService";
 import { resolveApiUrl, type ApiStyle } from "./llmRoutes";
+import {
+  SearchResultCache,
+  requiresFreshData,
+  DEFAULT_MAX_SEARCH_CALLS_PER_REQUEST,
+} from "../services/searchResultCache";
+import { getRedisClient } from "../services/redis";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -31,7 +37,17 @@ import { resolveApiUrl, type ApiStyle } from "./llmRoutes";
 const MAX_TOOL_ROUNDS = 10;
 const WEB_SEARCH_COST_USD = 0.01; // $0.01 per web_search call
 const DEFAULT_MAX_BUDGET_CREDITS = 500;
+const MAX_SEARCH_CALLS_PER_REQUEST = DEFAULT_MAX_SEARCH_CALLS_PER_REQUEST;
 const SOCKET_TIMEOUT_MS = 600_000; // 10 min
+
+// Lazy-initialized search result cache
+let _searchCacheInstance: SearchResultCache | null = null;
+function getSearchCache(): SearchResultCache {
+  if (!_searchCacheInstance) {
+    _searchCacheInstance = new SearchResultCache(getRedisClient());
+  }
+  return _searchCacheInstance;
+}
 
 const MAX_LLM_BODY_BYTES = parseInt(
   process.env.WEB_LLM_MAX_BODY_BYTES || "2097152",
@@ -246,6 +262,24 @@ function estimateNextRoundCredits(budget: BudgetState): number {
   if (budget.currentRound === 0) return 10; // Conservative default
   const avgPerRound = budget.accumulatedCredits / budget.currentRound;
   return Math.ceil(avgPerRound * 1.2); // 20% buffer
+}
+
+/**
+ * Extract the user's prompt text from a Responses API input field.
+ * Handles both string and message-array formats.
+ */
+function extractUserPrompt(input: unknown): string {
+  if (typeof input === "string") return input;
+  if (!Array.isArray(input)) return "";
+  // Look for user message first
+  const userMsg = input.find(
+    (i: any) => i?.role === "user" && i?.content,
+  );
+  if (userMsg) return String((userMsg as any).content);
+  // Fallback to first string or first content
+  const first = input[0];
+  if (typeof first === "string") return first;
+  return String((first as any)?.content || "");
 }
 
 // ---------------------------------------------------------------------------
@@ -541,6 +575,35 @@ async function proxyResponsesJson(
   let lastResponse: any = null;
   let budgetExceeded = false;
 
+  // --- Cache lookup: check before making API call ---
+  const userPrompt = extractUserPrompt(body.input);
+  if (userPrompt && !requiresFreshData(userPrompt)) {
+    try {
+      const searchCache = getSearchCache();
+      const tenantId = (body as any)._tenantId || "default";
+      const cached = await searchCache.get(userId, tenantId, userPrompt);
+      if (cached) {
+        debugLog("responses", "Search cache hit", { userId, traceId });
+        // Inject cached search results as context for the model
+        // rather than returning directly (model still needs to synthesize)
+        const cachedContext = cached.snippets
+          .map((s) => `[${s.title}](${s.url}): ${s.text}`)
+          .join("\n");
+        if (cachedContext && Array.isArray(currentInput)) {
+          currentInput = [
+            ...currentInput,
+            {
+              role: "user",
+              content: `[Cached web search results from ${cached.retrievedAt}]:\n${cachedContext}`,
+            },
+          ];
+        }
+      }
+    } catch (err: any) {
+      debugError("responses", "Search cache lookup failed", err?.message);
+    }
+  }
+
   // Tool-call loop
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     budget.currentRound = round + 1;
@@ -587,6 +650,52 @@ async function proxyResponsesJson(
     // Count web_search_call items
     const searchCalls = countWebSearchCalls(data.output || []);
     budget.webSearchCalls += searchCalls;
+
+    // Per-run search quota check
+    if (budget.webSearchCalls > MAX_SEARCH_CALLS_PER_REQUEST) {
+      debugLog("responses", "Search quota exceeded", {
+        webSearchCalls: budget.webSearchCalls,
+        max: MAX_SEARCH_CALLS_PER_REQUEST,
+        round,
+      });
+      // Return partial results with quota flag
+      if (lastResponse && typeof lastResponse === "object") {
+        lastResponse._meta = { ...lastResponse._meta, quota_exceeded: true };
+      }
+      break;
+    }
+
+    // Populate search cache with results
+    if (searchCalls > 0) {
+      try {
+        const { normalizeSearchQuery } = await import("../services/searchResultCache");
+        const searchCache = getSearchCache();
+        const searchSnippets = (data.output || [])
+          .filter((item: any) => item?.type === "web_search_call" && item?.results)
+          .flatMap((item: any) =>
+            (item.results || []).map((r: any) => ({
+              title: r.title || "",
+              url: r.url || "",
+              text: r.snippet || r.text || "",
+            })),
+          );
+        if (searchSnippets.length > 0) {
+          const userPrompt = extractUserPrompt(body.input);
+          const cacheEntry = {
+            snippets: searchSnippets,
+            citations: searchSnippets.map((s: any) => ({ url: s.url, title: s.title })),
+            retrievedAt: new Date().toISOString(),
+            queryHash: normalizeSearchQuery(userPrompt),
+          };
+          await searchCache.setTenantCache(tenantId, userPrompt, cacheEntry)
+            .catch((err: any) => debugError("responses", "Cache set (tenant) failed", err?.message));
+          await searchCache.setUserCache(userId, userPrompt, cacheEntry)
+            .catch((err: any) => debugError("responses", "Cache set (user) failed", err?.message));
+        }
+      } catch (err: any) {
+        debugError("responses", "Cache population failed", err?.message);
+      }
+    }
 
     // Calculate credits for this round
     const roundCredits = calculateCreditsForLLM(
@@ -969,6 +1078,21 @@ async function proxyResponsesStream(
       budget.totalInputTokens += roundUsage.inputTokens;
       budget.totalOutputTokens += roundUsage.outputTokens;
       budget.webSearchCalls += roundSearchCalls;
+
+      // Per-run search quota check (streaming)
+      if (budget.webSearchCalls > MAX_SEARCH_CALLS_PER_REQUEST) {
+        debugLog("responses", "Search quota exceeded (streaming)", {
+          webSearchCalls: budget.webSearchCalls,
+          max: MAX_SEARCH_CALLS_PER_REQUEST,
+          round,
+        });
+        if (!clientDisconnected) {
+          res.write(
+            `event: search_quota_exceeded\ndata: ${JSON.stringify({ webSearchCalls: budget.webSearchCalls, max: MAX_SEARCH_CALLS_PER_REQUEST })}\n\n`,
+          );
+        }
+        break;
+      }
 
       const roundCredits = calculateCreditsForLLM(
         roundUsage.inputTokens,
