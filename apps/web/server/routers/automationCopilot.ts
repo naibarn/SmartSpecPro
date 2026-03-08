@@ -16,10 +16,11 @@ import {
 } from "../../shared/automation/contracts";
 import { protectedProcedure, router } from "../_core/trpc";
 import {
-  deductCredits,
   hasEnoughCredits,
-  refundCredits,
+  createCreditReservation,
+  refundReservation,
 } from "../services/creditService";
+import { getRedisClient, isRedisAvailable } from "../services/redis";
 import { getTenantFeatureFlag } from "../services/featureFlags";
 
 const PY_URL =
@@ -142,7 +143,21 @@ export const automationCopilotRouter = router({
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: msg });
       }
 
-      return (await res.json()) as Record<string, unknown>;
+      const data = (await res.json()) as Record<string, unknown>;
+
+      // Refund unused reservation when execution reaches terminal state
+      const status = data.status as string | undefined;
+      if ((status === "success" || status === "failed") && isRedisAvailable()) {
+        const redis = getRedisClient();
+        const resKey = `automation:task_reservation:${input.taskId}`;
+        const reservationId = await redis.get(resKey);
+        if (reservationId) {
+          await refundReservation(reservationId);
+          await redis.del(resKey);
+        }
+      }
+
+      return data;
     }),
 
   /**
@@ -165,7 +180,7 @@ export const automationCopilotRouter = router({
         });
       }
 
-      // Pre-reserve credits
+      // Pre-reserve credits via reservation pattern
       const hasCreds = await hasEnoughCredits(ctx.user.id, CREDIT_RESERVE_AMOUNT);
       if (!hasCreds) {
         throw new TRPCError({
@@ -174,14 +189,12 @@ export const automationCopilotRouter = router({
         });
       }
 
-      await deductCredits({
-        userId: ctx.user.id,
-        amount: CREDIT_RESERVE_AMOUNT,
-        sourceType: "browser_automation",
-        idempotencyKey: input.executionId,
-        description: "Automation Copilot execution reservation",
-        metadata: { taskId: input.taskId, executionId: input.executionId },
-      });
+      const reservation = await createCreditReservation(
+        ctx.user.id,
+        CREDIT_RESERVE_AMOUNT,
+        "browser_automation",
+        { taskId: input.taskId, executionId: input.executionId },
+      );
 
       // Fetch tenant allowed_domains from system_settings
       let allowedDomains: string[] = [];
@@ -251,23 +264,30 @@ export const automationCopilotRouter = router({
           user_id: ctx.user.id,
           vision_model: visionModel,
           allowed_domains: allowedDomains,
+          reservation_id: reservation.reservationId,
         },
         timeoutMs: 60_000,
       });
 
       if (!res.ok) {
-        // Refund on failure to enqueue
-        await refundCredits({
-          userId: ctx.user.id,
-          amount: CREDIT_RESERVE_AMOUNT,
-          description: "Automation Copilot reservation refund (enqueue failed)",
-          metadata: { taskId: input.taskId, executionId: input.executionId },
-        });
+        // Refund unused reservation on failure to enqueue
+        await refundReservation(reservation.reservationId);
         const msg = await readPythonError(res);
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: msg });
       }
 
-      return { ok: true };
+      // Store taskId→reservationId mapping for refund on completion
+      if (isRedisAvailable()) {
+        const redis = getRedisClient();
+        await redis.set(
+          `automation:task_reservation:${input.taskId}`,
+          reservation.reservationId,
+          "EX",
+          900, // 15 min — slightly longer than reservation TTL
+        );
+      }
+
+      return { ok: true, reservationId: reservation.reservationId };
     }),
 
   /**

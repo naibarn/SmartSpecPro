@@ -64,6 +64,12 @@ class AnalyzeRequest(BaseModel):
     user_jwt: str
 
 
+class CostEstimate(BaseModel):
+    estimated_credits: int
+    breakdown: dict[str, int]
+    max_possible_credits: int
+
+
 class ExecuteRequest(BaseModel):
     task_id: str
     execution_id: str
@@ -73,6 +79,7 @@ class ExecuteRequest(BaseModel):
     user_id: int
     vision_model: str = Field(default="gpt-4o", max_length=100)
     allowed_domains: list[str] = Field(default_factory=list)
+    reservation_id: str | None = None
 
 
 class CancelRequest(BaseModel):
@@ -137,7 +144,31 @@ async def get_status(
         )
 
     # Strip internal keys
-    return {k: v for k, v in data.items() if not k.startswith("_")}
+    result = {k: v for k, v in data.items() if not k.startswith("_")}
+
+    # Add cost estimate when intent is available
+    if result.get("status") in ("ready", "preview_ready") and result.get("intent"):
+        intent = result["intent"] if isinstance(result["intent"], dict) else {}
+        steps = intent.get("steps", [])
+        browser_tasks = intent.get("browser_tasks", steps)
+        num_browser_tasks = len(browser_tasks) if isinstance(browser_tasks, list) else 0
+        num_llm_calls = num_browser_tasks + 1
+        num_web_searches = len(intent.get("search_tasks", [])) if isinstance(intent.get("search_tasks"), list) else 0
+
+        estimated = (num_browser_tasks * 15) + (num_llm_calls * 5) + (num_web_searches * 10)
+        max_possible = int(estimated * 1.5) + 20
+
+        result["cost_estimate"] = {
+            "estimated_credits": estimated,
+            "breakdown": {
+                "browser_actions": num_browser_tasks * 15,
+                "llm_calls": num_llm_calls * 5,
+                "web_searches": num_web_searches * 10,
+            },
+            "max_possible_credits": max_possible,
+        }
+
+    return result
 
 
 @router.post("/execute")
@@ -165,6 +196,7 @@ async def execute(
         body.intent_json,
         body.vision_model,
         body.allowed_domains,
+        body.reservation_id,
     )
     logger.info("automation_execute_enqueued", task_id=body.task_id, tenant_id=body.tenant_id)
     return {"ok": True}

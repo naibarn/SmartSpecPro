@@ -68,6 +68,16 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
   const [showGuide, setShowGuide] = useState(true);
   const [templateName, setTemplateName] = useState("");
   const [templateDesc, setTemplateDesc] = useState("");
+  const [mode, setMode] = useState<"search" | "browse">("browse");
+  const [budgetCredits, setBudgetCredits] = useState<number | null>(null);
+  const [costEstimate, setCostEstimate] = useState<{
+    estimated_credits: number;
+    breakdown: Record<string, number>;
+    max_possible_credits: number;
+  } | null>(null);
+  const [citations, setCitations] = useState<Array<{ url: string; title?: string; retrievedAt?: string }>>([]);
+  const [additionalDomains, setAdditionalDomains] = useState<string[]>([]);
+  const [domainInput, setDomainInput] = useState("");
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollStartRef = useRef<number>(0);
@@ -100,6 +110,11 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
     setShowSaveForm(false);
     setTemplateName("");
     setTemplateDesc("");
+    setCostEstimate(null);
+    setCitations([]);
+    setAdditionalDomains([]);
+    setDomainInput("");
+    setBudgetCredits(null);
   }, [clearPolling]);
 
   // Cleanup on unmount or close
@@ -136,13 +151,25 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
           } else if (status.status === "ready" || status.status === "preview_ready") {
             clearPolling();
             if (status.intent) {
+              const ce = status.cost_estimate as typeof costEstimate;
               setPlanSummary({
                 steps: ((status.intent as Record<string, unknown>).steps as AutomationPlanSummary["steps"]) ?? [],
-                estimatedCredits: (status.actual_credits_used as number) ?? 25,
+                estimatedCredits: ce?.estimated_credits ?? (status.actual_credits_used as number) ?? 25,
                 estimatedDurationSeconds: 30,
               });
+              if (ce) setCostEstimate(ce);
             }
             setState("preview_ready");
+          } else if (status.status === "executing" || status.status === "generating" || status.status === "running") {
+            // Update live progress during execution
+            setExecutionStatus({
+              status: "generating",
+              currentStep: status.current_step as string | undefined,
+              accumulatedCost: status.accumulated_cost as number | undefined,
+            });
+            if (status.citations) {
+              setCitations(status.citations as Array<{ url: string; title?: string; retrievedAt?: string }>);
+            }
           } else if (status.status === "success") {
             clearPolling();
             setExecutionStatus({
@@ -150,6 +177,9 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
               extractedData: status.extracted_data as Record<string, unknown> | undefined,
               actualCreditsUsed: status.actual_credits_used as number | undefined,
             });
+            if (status.citations) {
+              setCitations(status.citations as Array<{ url: string; title?: string; retrievedAt?: string }>);
+            }
             setState("success");
           } else if (status.status === "failed") {
             clearPolling();
@@ -436,6 +466,34 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
                 )}
               </div>
 
+              {/* Mode toggle */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMode("search")}
+                  className={`flex flex-1 items-center justify-center gap-1.5 rounded-md border py-2 text-sm font-medium transition-colors ${
+                    mode === "search"
+                      ? "border-blue-500 bg-blue-50 text-blue-700"
+                      : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  <Search className="h-4 w-4" />
+                  Search Only
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode("browse")}
+                  className={`flex flex-1 items-center justify-center gap-1.5 rounded-md border py-2 text-sm font-medium transition-colors ${
+                    mode === "browse"
+                      ? "border-blue-500 bg-blue-50 text-blue-700"
+                      : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  <Globe className="h-4 w-4" />
+                  Search + Browse
+                </button>
+              </div>
+
               {/* Prompt input */}
               <div className="space-y-3">
                 <textarea
@@ -445,6 +503,52 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
                   className="w-full rounded-md border p-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   rows={4}
                 />
+
+                {/* Allowed domains input (browse mode only) */}
+                {mode === "browse" && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-gray-600">
+                      Additional Allowed Domains
+                    </label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {additionalDomains.map((d) => (
+                        <span
+                          key={d}
+                          className="flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs text-blue-700"
+                        >
+                          {d}
+                          <button
+                            type="button"
+                            onClick={() => setAdditionalDomains((prev) => prev.filter((x) => x !== d))}
+                            className="text-blue-400 hover:text-blue-600"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex gap-1.5">
+                      <input
+                        type="text"
+                        value={domainInput}
+                        onChange={(e) => setDomainInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && domainInput.trim()) {
+                            e.preventDefault();
+                            const domain = domainInput.trim().toLowerCase();
+                            if (!additionalDomains.includes(domain)) {
+                              setAdditionalDomains((prev) => [...prev, domain]);
+                            }
+                            setDomainInput("");
+                          }
+                        }}
+                        placeholder="example.com"
+                        className="flex-1 rounded-md border px-2 py-1.5 text-xs focus:border-blue-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <button
                   type="button"
                   onClick={handleSubmitPrompt}
@@ -539,11 +643,59 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
 
           {/* Preview ready */}
           {state === "preview_ready" && planSummary && (
-            <AutomationPreviewPanel
-              planSummary={planSummary}
-              onConfirm={handleConfirmExecution}
-              onCancel={handleCancel}
-            />
+            <div className="space-y-4">
+              <AutomationPreviewPanel
+                planSummary={planSummary}
+                onConfirm={handleConfirmExecution}
+                onCancel={handleCancel}
+              />
+
+              {/* Cost estimate card */}
+              {costEstimate && (
+                <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3">
+                  <h4 className="mb-2 text-xs font-semibold text-blue-900">
+                    Estimated Cost
+                  </h4>
+                  <div className="space-y-1 text-xs text-gray-700">
+                    <div className="flex justify-between">
+                      <span>Browser actions</span>
+                      <span>{costEstimate.breakdown.browser_actions ?? 0} credits</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>LLM calls</span>
+                      <span>{costEstimate.breakdown.llm_calls ?? 0} credits</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Web searches</span>
+                      <span>{costEstimate.breakdown.web_searches ?? 0} credits</span>
+                    </div>
+                    <div className="flex justify-between border-t border-blue-200 pt-1 font-semibold">
+                      <span>Estimated total</span>
+                      <span>{costEstimate.estimated_credits} credits</span>
+                    </div>
+                    <div className="flex justify-between text-gray-400">
+                      <span>Max possible</span>
+                      <span>{costEstimate.max_possible_credits} credits</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Budget input */}
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-medium text-gray-600 whitespace-nowrap">
+                  Max budget (credits)
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={budgetCredits ?? ""}
+                  onChange={(e) => setBudgetCredits(e.target.value ? Number(e.target.value) : null)}
+                  placeholder="No limit"
+                  className="w-28 rounded-md border px-2 py-1.5 text-xs focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+            </div>
           )}
 
           {/* Executing */}
@@ -552,6 +704,19 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
               <AutomationStepTracker
                 status={executionStatus ?? { status: "generating" }}
               />
+              {executionStatus?.currentStep && (
+                <div className="text-xs text-gray-500">
+                  Current step: {executionStatus.currentStep}
+                </div>
+              )}
+              {executionStatus?.accumulatedCost != null && (
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <span>Credits used: {executionStatus.accumulatedCost}</span>
+                  {budgetCredits != null && (
+                    <span>Budget remaining: {budgetCredits - executionStatus.accumulatedCost}</span>
+                  )}
+                </div>
+              )}
               <button
                 type="button"
                 onClick={handleCancel}
@@ -569,7 +734,42 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
                 <CheckCircle2 className="h-5 w-5" />
                 <span className="font-medium">Automation complete!</span>
               </div>
+              {executionStatus.actualCreditsUsed != null && (
+                <div className="text-xs text-gray-500">
+                  Total credits used: {executionStatus.actualCreditsUsed}
+                </div>
+              )}
               <AutomationStepTracker status={executionStatus} />
+
+              {/* Citations panel */}
+              {citations.length > 0 && (
+                <details className="rounded-lg border">
+                  <summary className="flex cursor-pointer items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-700">
+                    <Globe className="h-3.5 w-3.5" />
+                    Sources ({citations.length})
+                  </summary>
+                  <div className="space-y-1.5 border-t px-3 py-2">
+                    {citations.map((c, i) => (
+                      <div key={i} className="flex items-start gap-1.5 text-xs">
+                        <span className="shrink-0 text-gray-400">{i + 1}.</span>
+                        <div>
+                          <a
+                            href={c.url?.startsWith("http") ? c.url : "#"}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            {c.title || c.url}
+                          </a>
+                          {c.retrievedAt && (
+                            <span className="ml-1.5 text-gray-400">{c.retrievedAt}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
               {!showSaveForm ? (
                 <button
                   type="button"

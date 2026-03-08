@@ -287,3 +287,32 @@ The status endpoint should return these additional fields when available:
 3. **Cost estimate is approximate**: The formula `(tasks*15) + (llm_calls*5) + (searches*10)` is an estimate shown to the user before execution. Actual costs depend on token usage, retries, and tool rounds. The `max_possible_credits` provides an upper bound.
 
 4. **Mode toggle affects analyze, not execute**: The "Search Only" vs "Search + Browse" mode is passed during the analyze phase. The intent analysis then decides which tools to plan for. The execute phase follows whatever the intent specifies.
+
+---
+
+## Actual Implementation Notes
+
+### Deviations from plan
+
+1. **Atomic drawFromReservation**: Plan specified "atomically increment drawnAmount in Redis". Initial implementation used separate get/set (race condition). Code review fix #1 replaced with a Lua script that atomically checks budget + increments drawnAmount in one Redis call.
+
+2. **Redis availability guard**: `createCreditReservation` now throws _before_ calling `deductCredits` if Redis is unavailable, preventing credits from being deducted with no way to track/refund (review fix #3).
+
+3. **crypto import**: Used `import { randomUUID } from "crypto"` instead of `crypto.randomUUID()` for compatibility with Node < 19 (review fix #6).
+
+4. **Refund on terminal status**: Plan said "after execution completes, call refundReservation". Implemented by storing a `taskId→reservationId` mapping in Redis (key `automation:task_reservation:{taskId}`, TTL 900s) during execute, and calling `refundReservation` in the `getStatus` handler when status is "success" or "failed" (review fix #4).
+
+5. **Citations URL validation**: Added `c.url?.startsWith("http") ? c.url : "#"` guard to prevent `javascript:` URL injection (review fix #5).
+
+6. **Cost estimate location**: Plan said to add to `AnalyzeResponse`. Implemented in the `get_status` endpoint instead (computed when status is "ready"/"preview_ready" and intent is available). This works via polling and avoids modifying the analyze response shape.
+
+7. **Frontend wiring deferred**: Mode toggle, budget input, and domain tags UI components are rendered but not yet wired to backend mutations. The backend APIs need corresponding parameter support first — deferred per code review interview decision.
+
+8. **reservation_id forwarding deferred**: Python task accepts `reservation_id` but doesn't yet forward it to the Node browser tool route during execution. Deferred to section 09 per code review interview decision.
+
+9. **TTL auto-refund accepted as known edge case**: If Redis key expires before refund is called, credits are lost. Accepted per interview decision — execution rarely exceeds 10min, and the refund-on-terminal-status fix covers the normal path.
+
+### Test counts
+- Credit reservation tests: 6 (create, draw, draw-exceed, draw-not-found, refund-unused, refund-not-found)
+- AutomationChatModal tests: 6 (structural/export verification)
+- Total: 12 passing

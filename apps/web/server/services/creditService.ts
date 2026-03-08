@@ -6,6 +6,7 @@
 import { db } from "../db";
 import { users, creditTransactions, creditPackages, modelProviderMap, systemSettings, conversations } from "../../drizzle/schema";
 import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
+import { randomUUID } from "crypto";
 import { getRedisClient, isRedisAvailable } from "./redis";
 import { getTraceId } from "./traceContext";
 import { buildModelProviderMapLookupCondition } from "./modelLookup";
@@ -326,6 +327,143 @@ export async function addCredits(params: AddCreditsParams) {
     newBalance,
     transactionId,
   };
+}
+
+// ── Credit Reservation Pattern ───────────────────────────────────────────
+
+export interface CreditReservation {
+  reservationId: string;
+  userId: number;
+  reservedAmount: number;
+  drawnAmount: number;
+  transactionId: number;
+  sourceType: CreditSourceType;
+  createdAt: string;
+  expiresAt: string;
+}
+
+const RESERVATION_TTL_SECONDS = 600; // 10 minutes
+
+export async function createCreditReservation(
+  userId: number,
+  amount: number,
+  sourceType: CreditSourceType,
+  metadata?: Record<string, any>,
+): Promise<CreditReservation> {
+  if (!isRedisAvailable()) {
+    throw new Error("Redis unavailable — cannot create credit reservation");
+  }
+
+  const reservationId = randomUUID();
+
+  // Deduct the full amount upfront
+  const deductResult = await deductCredits({
+    userId,
+    amount,
+    description: `Credit reservation ${reservationId}`,
+    sourceType,
+    metadata: { ...metadata, reservationId },
+  });
+
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + RESERVATION_TTL_SECONDS * 1000);
+
+  const reservation: CreditReservation = {
+    reservationId,
+    userId,
+    reservedAmount: amount,
+    drawnAmount: 0,
+    transactionId: deductResult.transactionId,
+    sourceType,
+    createdAt: now.toISOString(),
+    expiresAt: expiresAt.toISOString(),
+  };
+
+  // Store in Redis with TTL
+  const redis = getRedisClient();
+  await redis.set(
+    `credit:reservation:${reservationId}`,
+    JSON.stringify(reservation),
+    "EX",
+    RESERVATION_TTL_SECONDS,
+  );
+
+  return reservation;
+}
+
+// Lua script for atomic draw: check budget + increment drawnAmount in one call
+const DRAW_LUA = `
+local raw = redis.call('GET', KEYS[1])
+if not raw then return {err='not_found'} end
+local r = cjson.decode(raw)
+local newDrawn = r.drawnAmount + tonumber(ARGV[1])
+if newDrawn > r.reservedAmount then return {err='budget_exceeded'} end
+r.drawnAmount = newDrawn
+local ttl = redis.call('TTL', KEYS[1])
+if ttl < 1 then ttl = tonumber(ARGV[2]) end
+redis.call('SET', KEYS[1], cjson.encode(r), 'EX', ttl)
+return {r.reservedAmount - newDrawn}
+`;
+
+export async function drawFromReservation(
+  reservationId: string,
+  amount: number,
+  _description?: string,
+): Promise<{ drawn: number; remaining: number }> {
+  if (!isRedisAvailable()) {
+    throw new Error("Redis unavailable for reservation tracking");
+  }
+
+  const redis = getRedisClient();
+  const key = `credit:reservation:${reservationId}`;
+  const result = await redis.eval(
+    DRAW_LUA,
+    1,
+    key,
+    String(amount),
+    String(RESERVATION_TTL_SECONDS),
+  ) as any;
+
+  if (result?.err === "not_found" || result === null) {
+    throw new Error(`Reservation ${reservationId} not found or expired`);
+  }
+  if (result?.err === "budget_exceeded") {
+    throw new Error(`Reservation budget exceeded`);
+  }
+
+  const remaining = Number(Array.isArray(result) ? result[0] : result);
+  return { drawn: amount, remaining };
+}
+
+export async function refundReservation(
+  reservationId: string,
+): Promise<{ refundedAmount: number }> {
+  if (!isRedisAvailable()) {
+    return { refundedAmount: 0 };
+  }
+
+  const redis = getRedisClient();
+  const raw = await redis.get(`credit:reservation:${reservationId}`);
+  if (!raw) {
+    return { refundedAmount: 0 };
+  }
+
+  const reservation: CreditReservation = JSON.parse(raw);
+  const unused = reservation.reservedAmount - reservation.drawnAmount;
+
+  if (unused > 0) {
+    await refundCredits({
+      userId: reservation.userId,
+      amount: unused,
+      description: `Reservation refund (${reservation.drawnAmount} of ${reservation.reservedAmount} used)`,
+      originalTransactionId: reservation.transactionId,
+      sourceType: reservation.sourceType,
+      metadata: { reservationId },
+    });
+  }
+
+  await redis.del(`credit:reservation:${reservationId}`);
+  return { refundedAmount: unused };
 }
 
 /**

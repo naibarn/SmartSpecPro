@@ -19,7 +19,7 @@ import { Router } from "express";
 import type { Request, Response } from "express";
 import crypto from "crypto";
 
-import { deductCredits, refundCredits, hasEnoughCredits } from "../services/creditService";
+import { deductCredits, refundCredits, hasEnoughCredits, drawFromReservation } from "../services/creditService";
 import { getRedisClient } from "../services/redis";
 import { getTenantFeatureFlag } from "../services/featureFlags";
 import { ENV } from "../_core/env";
@@ -207,6 +207,7 @@ router.post("/api/internal/tools/browser", async (req: Request, res: Response) =
   const sessionId = crypto.randomUUID();
   let concurrencyAcquired = false;
   let creditsReserved = false;
+  const usingParentReservation = !!parentReservationId;
 
   try {
     // Concurrency check
@@ -220,25 +221,37 @@ router.post("/api/internal/tools/browser", async (req: Request, res: Response) =
     }
     concurrencyAcquired = true;
 
-    // Credit balance check
-    const hasCredits = await hasEnoughCredits(userId, BROWSER_RESERVE_CREDITS);
-    if (!hasCredits) {
-      res.status(402).json({
-        error: "Insufficient credits for browser session.",
-        code: "INSUFFICIENT_CREDITS",
-      });
-      return;
-    }
+    if (usingParentReservation) {
+      // Draw from parent reservation instead of independent credit check
+      try {
+        await drawFromReservation(parentReservationId, BROWSER_RESERVE_CREDITS, "Browser tool draw");
+      } catch (drawErr) {
+        res.status(402).json({
+          error: "Parent reservation budget exceeded.",
+          code: "RESERVATION_EXCEEDED",
+        });
+        return;
+      }
+    } else {
+      // Independent credit check (direct browser tool calls, not via copilot)
+      const hasCredits = await hasEnoughCredits(userId, BROWSER_RESERVE_CREDITS);
+      if (!hasCredits) {
+        res.status(402).json({
+          error: "Insufficient credits for browser session.",
+          code: "INSUFFICIENT_CREDITS",
+        });
+        return;
+      }
 
-    // Pre-reserve credits
-    await deductCredits({
-      userId,
-      amount: BROWSER_RESERVE_CREDITS,
-      description: "Browser automation session reservation",
-      sourceType: "browser_automation",
-      tenantId,
-    });
-    creditsReserved = true;
+      await deductCredits({
+        userId,
+        amount: BROWSER_RESERVE_CREDITS,
+        description: "Browser automation session reservation",
+        sourceType: "browser_automation",
+        tenantId,
+      });
+      creditsReserved = true;
+    }
 
     // Forward to Python browser service
     const pythonRes = await fetch(`${PYTHON_BACKEND_URL}/api/browser/execute`, {
@@ -263,12 +276,14 @@ router.post("/api/internal/tools/browser", async (req: Request, res: Response) =
       const rawBody = await pythonRes.text().catch(() => "");
       console.error("[browserTool] Python service error", pythonRes.status, rawBody.slice(0, 200));
 
-      await refundCredits({
-        userId,
-        amount: BROWSER_RESERVE_CREDITS,
-        description: "Browser session full refund (service error)",
-      });
-      creditsReserved = false;
+      if (!usingParentReservation) {
+        await refundCredits({
+          userId,
+          amount: BROWSER_RESERVE_CREDITS,
+          description: "Browser session full refund (service error)",
+        });
+        creditsReserved = false;
+      }
 
       // Normalize upstream error to avoid leaking internal details
       res.status(502).json({
@@ -286,20 +301,22 @@ router.post("/api/internal/tools/browser", async (req: Request, res: Response) =
       pages_loaded: number;
     };
 
-    // Clamp actual_cost to prevent over-refund from malicious/buggy response
-    const actualCost = Math.max(0, Math.min(result.actual_cost ?? 0, BROWSER_RESERVE_CREDITS));
-    if (actualCost < BROWSER_RESERVE_CREDITS) {
-      const refundAmount = BROWSER_RESERVE_CREDITS - actualCost;
-      await refundCredits({
-        userId,
-        amount: refundAmount,
-        description: `Browser session partial refund (used ${actualCost} of ${BROWSER_RESERVE_CREDITS} credits)`,
-      });
+    // Only handle refund for independent reservations (parent handles its own)
+    if (!usingParentReservation) {
+      const actualCost = Math.max(0, Math.min(result.actual_cost ?? 0, BROWSER_RESERVE_CREDITS));
+      if (actualCost < BROWSER_RESERVE_CREDITS) {
+        const refundAmount = BROWSER_RESERVE_CREDITS - actualCost;
+        await refundCredits({
+          userId,
+          amount: refundAmount,
+          description: `Browser session partial refund (used ${actualCost} of ${BROWSER_RESERVE_CREDITS} credits)`,
+        });
+      }
     }
 
     res.json(result);
   } catch (err) {
-    if (creditsReserved) {
+    if (creditsReserved && !usingParentReservation) {
       await refundCredits({
         userId,
         amount: BROWSER_RESERVE_CREDITS,

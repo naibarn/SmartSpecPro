@@ -151,6 +151,7 @@ def automation_execute_task(
     intent_json: str,
     vision_model: str,
     allowed_domains: list[str],
+    reservation_id: str | None = None,
 ) -> dict:
     """Phase 2: Generate scripts + execute with self-healing."""
 

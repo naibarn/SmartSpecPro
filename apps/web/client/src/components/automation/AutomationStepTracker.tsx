@@ -18,7 +18,7 @@ export interface AutomationHealEvent {
 
 export interface AutomationExecutionStatus {
   status: string;
-  currentStep?: number;
+  currentStep?: number | string;
   totalSteps?: number;
   completedActions?: string[];
   healEvent?: AutomationHealEvent;
@@ -26,18 +26,19 @@ export interface AutomationExecutionStatus {
   screenshots?: string[];
   error?: string;
   actualCreditsUsed?: number;
+  accumulatedCost?: number;
 }
 
 interface AutomationStepTrackerProps {
   status: AutomationExecutionStatus;
 }
 
-function getPhaseDisplay(status: string, currentStep?: number, totalSteps?: number) {
+function getPhaseDisplay(status: string, currentStep?: number | string, totalSteps?: number) {
   if (status === "generating") {
     return { text: "Generating script...", icon: <Loader2 className="h-5 w-5 animate-spin text-blue-500" /> };
   }
   if (status === "running") {
-    const stepText = currentStep && totalSteps ? ` step ${currentStep} of ${totalSteps}` : "";
+    const stepText = currentStep != null && totalSteps ? ` step ${currentStep} of ${totalSteps}` : "";
     return { text: `Running${stepText}...`, icon: <Loader2 className="h-5 w-5 animate-spin text-blue-500" /> };
   }
   if (status.startsWith("healing_attempt")) {
@@ -69,7 +70,7 @@ export function AutomationStepTracker({ status }: AutomationStepTrackerProps) {
       </div>
 
       {/* Progress bar */}
-      {status.currentStep != null && status.totalSteps != null && status.totalSteps > 0 && (
+      {typeof status.currentStep === "number" && status.totalSteps != null && status.totalSteps > 0 && (
         <div className="h-2 w-full rounded-full bg-gray-200">
           <div
             className="h-2 rounded-full bg-blue-500 transition-all duration-300"
