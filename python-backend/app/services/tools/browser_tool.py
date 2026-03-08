@@ -13,14 +13,22 @@ Usage:
 
 from __future__ import annotations
 
+import asyncio
 import ipaddress
 import socket
 import time
 import uuid
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 import structlog
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.sandbox import SandboxJob
+
+if TYPE_CHECKING:
+    from app.services.sandbox_dispatcher import SandboxDispatcher
 
 logger = structlog.get_logger(__name__)
 
@@ -157,6 +165,75 @@ class BrowserSSRFGuard:
         return url
 
 
+# ── SSRF Route Filter (defense-in-depth) ──────────────────────────────────
+
+
+def ssrf_route_filter(url: str, allowed_domains: list[str]) -> bool:
+    """Return True if the request should be ALLOWED, False if blocked.
+
+    Checks:
+    1. URL hostname is not a private/reserved IP
+    2. URL hostname matches allowed_domains whitelist
+    3. Blocks metadata endpoints (169.254.169.254, metadata.google.internal)
+
+    Used as the decision function for Playwright page.route() interception.
+    """
+    try:
+        parsed = urlparse(url)
+        hostname = parsed.hostname or ""
+    except Exception:
+        return False
+
+    if not hostname:
+        return False
+
+    hostname_lower = hostname.lower()
+
+    # Check blocked hosts
+    if hostname_lower in BrowserSSRFGuard.BLOCKED_HOSTS:
+        logger.warning(
+            "ssrf_route_blocked",
+            blocked_url=url,
+            reason="blocked_host",
+        )
+        return False
+
+    # Check if hostname is an IP and if it's in a blocked range
+    try:
+        ip_addr = ipaddress.ip_address(hostname)
+        for network in BrowserSSRFGuard.BLOCKED_NETWORKS:
+            if ip_addr in network:
+                logger.warning(
+                    "ssrf_route_blocked",
+                    blocked_url=url,
+                    reason="private_ip",
+                )
+                return False
+    except ValueError:
+        pass  # Not an IP literal, check domain allowlist
+
+    # Check domain allowlist
+    if not allowed_domains:
+        logger.warning(
+            "ssrf_route_blocked",
+            blocked_url=url,
+            reason="no_allowed_domains",
+        )
+        return False
+
+    for domain in allowed_domains:
+        domain_lower = domain.lower().strip()
+        if hostname_lower == domain_lower or hostname_lower.endswith("." + domain_lower):
+            return True
+
+    logger.warning(
+        "ssrf_route_blocked",
+        blocked_url=url,
+        reason="not_in_allowlist",
+    )
+    return False
+
+
 # ── Concurrency Guard ──────────────────────────────────────────────────────
 
 
@@ -240,6 +317,8 @@ class BrowserSession:
     MAX_OUTPUT_SIZE = 204_800          # 200KB total
     ACTION_TIMEOUT = 60               # seconds per action
     SESSION_TIMEOUT = 300             # seconds total
+    MAX_ACTIONS = 50                  # Reject upfront if actions list exceeds this
+    MAX_PAGES = 5                     # Abort at runtime when pages loaded reaches this
 
     def __init__(
         self,
@@ -247,12 +326,14 @@ class BrowserSession:
         tenant_id: str,
         allowed_domains: list[str],
         redis_client: Any | None = None,
+        dispatcher: "SandboxDispatcher | None" = None,
     ) -> None:
         self._session_id = str(uuid.uuid4())
         self._user_id = user_id
         self._tenant_id = tenant_id
         self._allowed_domains = allowed_domains
         self._redis = redis_client
+        self._dispatcher = dispatcher
         self._ssrf_guard = BrowserSSRFGuard()
         self._created_at = time.monotonic()
         self._screenshot_count = 0
@@ -293,10 +374,50 @@ class BrowserSession:
             )
         self._total_output_bytes += new_bytes
 
-    async def execute_actions(self, actions: list[dict]) -> dict:
-        """Execute a sequence of browser actions (without real Playwright — stub for testing).
+    async def _wait_job(self, job_id: str | None) -> dict:
+        """Wait for sandbox job completion and return result.
 
-        In production, this delegates to the browser sandbox container.
+        If job_id is None (sandbox disabled/fallback), returns empty result.
+        Polls job status with exponential backoff up to ACTION_TIMEOUT.
+        """
+        if job_id is None:
+            return {}
+
+        backoff = 0.1
+        max_wait = self.ACTION_TIMEOUT
+        start = time.monotonic()
+
+        while (time.monotonic() - start) < max_wait:
+            await asyncio.sleep(backoff)
+
+            # Expire cached state to get fresh DB reads
+            await self._dispatcher.db.expire_all()
+
+            stmt = select(SandboxJob).where(SandboxJob.id == job_id)
+            result = await self._dispatcher.db.execute(stmt)
+            job = result.scalar_one_or_none()
+
+            if job is None:
+                raise ValueError(f"Sandbox job {job_id} not found.")
+
+            if job.status == "completed":
+                return job.output_manifest_json or {}
+            elif job.status in ("failed", "timed_out", "canceled"):
+                reason = getattr(job, "status_reason", None) or job.status
+                raise ValueError(f"Sandbox job {job_id} {job.status}: {reason}")
+
+            # Exponential backoff, capped at 2s
+            backoff = min(backoff * 2, 2.0)
+
+        raise ValueError(
+            f"Sandbox job {job_id} timed out after {max_wait}s."
+        )
+
+    async def execute_actions(self, actions: list[dict]) -> dict:
+        """Execute a sequence of browser actions.
+
+        When a dispatcher is provided, actions are dispatched to the sandbox.
+        Otherwise, stub behavior is used for testing/fallback.
 
         Args:
             actions: List of action dicts with 'action' key and action-specific params.
@@ -305,6 +426,12 @@ class BrowserSession:
             Dict with results list, actual_cost, screenshots_taken, pages_loaded.
         """
         self._check_session_timeout()
+
+        if len(actions) > self.MAX_ACTIONS:
+            raise ValueError(
+                f"Too many actions: {len(actions)} exceeds maximum of {self.MAX_ACTIONS}. "
+                "Split into multiple requests."
+            )
 
         results = []
         for action_spec in actions:
@@ -325,6 +452,7 @@ class BrowserSession:
             "actual_cost": self._actual_cost,
             "screenshots_taken": self._screenshot_count,
             "pages_loaded": self._pages_loaded,
+            "pages_cap_reached": self._pages_loaded >= self.MAX_PAGES,
         }
 
     async def _dispatch_action(self, spec: dict) -> dict:
@@ -349,43 +477,135 @@ class BrowserSession:
         else:
             raise ValueError(f"Unknown browser action: {action!r}")
 
+    async def _dispatch_to_sandbox(self, inputs: dict) -> dict:
+        """Dispatch an action to the sandbox and wait for result."""
+        job_id = await self._dispatcher.dispatch(
+            feature_type="connector",
+            execution_mode="browser",
+            tenant_id=self._tenant_id,
+            user_id=self._user_id,
+            inputs=inputs,
+        )
+        return await self._wait_job(job_id)
+
     async def navigate(self, url: str) -> dict:
         """Navigate to URL (SSRF-validated). Returns page title and status."""
+        if self._pages_loaded >= self.MAX_PAGES:
+            raise ValueError(
+                f"Page navigation cap of {self.MAX_PAGES} reached."
+            )
+
         validated_url = self._ssrf_guard.validate_url(url, self._allowed_domains)
+        self._ssrf_guard.validate_url_dns(validated_url, self._allowed_domains)
         self._pages_loaded += 1
-        # Stub — real implementation would call sandbox container
+
+        if self._dispatcher is not None:
+            return await self._dispatch_to_sandbox(
+                {"action": "navigate", "url": validated_url}
+            )
+
+        # Stub fallback (no dispatcher)
         return {"url": validated_url, "title": "", "status": 200}
 
     async def click(self, selector: str) -> dict:
         """Click an element by CSS selector."""
+        if self._dispatcher is not None:
+            return await self._dispatch_to_sandbox(
+                {"action": "click", "selector": selector}
+            )
         return {"selector": selector, "clicked": True}
 
     async def fill(self, selector: str, value: str) -> dict:
         """Fill a form field."""
+        if self._dispatcher is not None:
+            return await self._dispatch_to_sandbox(
+                {"action": "fill", "selector": selector, "value": value}
+            )
         return {"selector": selector, "filled": True}
 
     async def screenshot(self) -> dict:
         """Take screenshot. Returns base64-encoded PNG. Max 5 per session."""
         self._check_screenshot_limit()
+
+        if self._dispatcher is not None:
+            self._screenshot_count += 1
+            try:
+                return await self._dispatch_to_sandbox({"action": "screenshot"})
+            except Exception:
+                self._screenshot_count -= 1
+                raise
+
         self._screenshot_count += 1
         return {"screenshot_index": self._screenshot_count, "data": ""}
 
     async def extract_text(self, selector: str | None = None) -> dict:
         """Extract text content. Truncates at MAX_TEXT_LENGTH chars."""
-        text = ""  # Stub
+        if self._dispatcher is not None:
+            result = await self._dispatch_to_sandbox(
+                {"action": "extractText", "selector": selector}
+            )
+            text = result.get("text", "")
+            truncated = self._truncate_text(text)
+            self._check_output_budget(len(truncated.encode()))
+            return {"text": truncated, "selector": selector}
+
+        # Stub fallback
+        text = ""
         truncated = self._truncate_text(text)
         self._check_output_budget(len(truncated.encode()))
         return {"text": truncated, "selector": selector}
 
     async def extract_links(self) -> dict:
         """Extract all links. Max MAX_LINKS returned."""
-        links: list[str] = []  # Stub
+        if self._dispatcher is not None:
+            result = await self._dispatch_to_sandbox({"action": "extractLinks"})
+            links = result.get("links", [])
+            return {"links": links[: self.MAX_LINKS]}
+
+        links: list[str] = []
         return {"links": links[: self.MAX_LINKS]}
 
     async def wait_for_selector(self, selector: str) -> dict:
         """Wait for element to appear (up to ACTION_TIMEOUT)."""
+        if self._dispatcher is not None:
+            return await self._dispatch_to_sandbox(
+                {"action": "waitForSelector", "selector": selector}
+            )
         return {"selector": selector, "found": True}
 
     async def scroll_to(self, position: str) -> dict:
         """Scroll to position ('top', 'bottom', or pixel offset)."""
+        if self._dispatcher is not None:
+            return await self._dispatch_to_sandbox(
+                {"action": "scrollTo", "position": position}
+            )
         return {"position": position}
+
+
+# ── Browser Session Factory ───────────────────────────────────────────────
+
+
+class BrowserSessionFactory:
+    """Creates BrowserSession instances with injected SandboxDispatcher."""
+
+    def __init__(self, db_session: AsyncSession):
+        self._db_session = db_session
+
+    def create(
+        self,
+        user_id: int,
+        tenant_id: str,
+        allowed_domains: list[str],
+        redis_client: Any | None = None,
+    ) -> BrowserSession:
+        """Create a BrowserSession with SandboxDispatcher injected."""
+        from app.services.sandbox_dispatcher import SandboxDispatcher
+
+        dispatcher = SandboxDispatcher(self._db_session)
+        return BrowserSession(
+            user_id=user_id,
+            tenant_id=tenant_id,
+            allowed_domains=allowed_domains,
+            redis_client=redis_client,
+            dispatcher=dispatcher,
+        )

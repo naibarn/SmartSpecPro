@@ -26,6 +26,63 @@ import { ENV } from "../_core/env";
 
 const router = Router();
 
+// ── Domain validation (exported for testing) ────────────────────────────────
+
+export interface DomainValidationError {
+  status: number;
+  code: string;
+  message: string;
+}
+
+export function validateBrowserDomains(
+  actions: Array<{ action: string; url?: string; [key: string]: unknown }>,
+  allowedDomains: string[] | undefined,
+): DomainValidationError | null {
+  const urlsInActions = actions
+    .filter((a) => a.action === "navigate" && a.url)
+    .map((a) => a.url as string);
+
+  if (urlsInActions.length === 0) {
+    return null; // No navigate actions = no domain check needed
+  }
+
+  if (!allowedDomains || allowedDomains.length === 0) {
+    return {
+      status: 403,
+      code: "DOMAIN_NOT_ALLOWED",
+      message: "No allowed domains configured. All navigation is blocked.",
+    };
+  }
+
+  for (const url of urlsInActions) {
+    let hostname: string;
+    try {
+      hostname = new URL(url).hostname.toLowerCase();
+    } catch {
+      return {
+        status: 400,
+        code: "INVALID_URL",
+        message: `Invalid URL: "${url}"`,
+      };
+    }
+
+    const isAllowed = allowedDomains.some((d: string) => {
+      const domain = d.toLowerCase().trim();
+      return hostname === domain || hostname.endsWith("." + domain);
+    });
+
+    if (!isAllowed) {
+      return {
+        status: 403,
+        code: "DOMAIN_NOT_ALLOWED",
+        message: `Domain "${hostname}" is not in the allowed domains list.`,
+      };
+    }
+  }
+
+  return null;
+}
+
 const BROWSER_RESERVE_CREDITS = 20;
 const PYTHON_BACKEND_URL = ENV.pythonBackendUrl || "http://127.0.0.1:8000";
 
@@ -129,6 +186,19 @@ router.post("/api/internal/tools/browser", async (req: Request, res: Response) =
     res
       .status(403)
       .json({ error: "Browser automation is not enabled for this tenant.", code: "FEATURE_DISABLED" });
+    return;
+  }
+
+  // Domain validation — BEFORE concurrency and credit checks (fail fast)
+  const domainError = validateBrowserDomains(
+    actions as Array<{ action: string; url?: string }>,
+    allowedDomains,
+  );
+  if (domainError) {
+    res.status(domainError.status).json({
+      error: domainError.message,
+      code: domainError.code,
+    });
     return;
   }
 
