@@ -59,6 +59,7 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
   const [taskId, setTaskId] = useState<string | null>(null);
   const [executionId, setExecutionId] = useState<string | null>(null);
   const [planSummary, setPlanSummary] = useState<AutomationPlanSummary | null>(null);
+  const [rawIntent, setRawIntent] = useState<Record<string, unknown> | null>(null);
   const [executionStatus, setExecutionStatus] = useState<AutomationExecutionStatus | null>(null);
   const [questions, setQuestions] = useState<ClarificationQuestion[]>([]);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -102,6 +103,7 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
     setTaskId(null);
     setExecutionId(null);
     setPlanSummary(null);
+    setRawIntent(null);
     setExecutionStatus(null);
     setQuestions([]);
     setAnswers({});
@@ -151,9 +153,11 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
           } else if (status.status === "ready" || status.status === "preview_ready") {
             clearPolling();
             if (status.intent) {
+              const intent = status.intent as Record<string, unknown>;
+              setRawIntent(intent);
               const ce = status.cost_estimate as typeof costEstimate;
               setPlanSummary({
-                steps: ((status.intent as Record<string, unknown>).steps as AutomationPlanSummary["steps"]) ?? [],
+                steps: (intent.browser_tasks as AutomationPlanSummary["steps"]) ?? (intent.steps as AutomationPlanSummary["steps"]) ?? [],
                 estimatedCredits: ce?.estimated_credits ?? (status.actual_credits_used as number) ?? 25,
                 estimatedDurationSeconds: 30,
               });
@@ -183,10 +187,11 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
             setState("success");
           } else if (status.status === "failed") {
             clearPolling();
-            setErrorMessage((status.error_message as string) ?? "Automation failed");
+            const errMsg = (status.error_message as string) ?? (status.error as string) ?? "Automation failed";
+            setErrorMessage(errMsg);
             setExecutionStatus({
               status: "failed",
-              error: (status.error_message as string) ?? "Automation failed",
+              error: errMsg,
             });
             setState("failed");
           }
@@ -243,7 +248,7 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
       await executeMutation.mutateAsync({
         taskId,
         executionId: execId,
-        intentJson: JSON.stringify(planSummary ?? {}),
+        intentJson: JSON.stringify(rawIntent ?? {}),
       });
       startPolling(taskId);
     } catch (err: unknown) {
@@ -251,7 +256,7 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
       toast.error(message);
       setState("preview_ready");
     }
-  }, [taskId, planSummary, executeMutation, startPolling]);
+  }, [taskId, rawIntent, executeMutation, startPolling]);
 
   const handleCancel = useCallback(async () => {
     clearPolling();
@@ -573,8 +578,10 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
           {state === "idle" && showTemplates && (
             <TemplateListPanel
               onSelectTemplate={(intent, scripts, name) => {
+                const intentObj = intent as Record<string, unknown>;
+                setRawIntent(intentObj);
                 setPlanSummary({
-                  steps: ((intent as Record<string, unknown>)?.steps as AutomationPlanSummary["steps"]) ?? [],
+                  steps: (intentObj?.browser_tasks as AutomationPlanSummary["steps"]) ?? (intentObj?.steps as AutomationPlanSummary["steps"]) ?? [],
                   estimatedCredits: 25,
                   estimatedDurationSeconds: 30,
                 });

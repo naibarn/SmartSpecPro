@@ -1,0 +1,482 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "VEO Video Creator Input Schema",
+  "description": "Complete input specification for creating professional videos optimized for Google Veo 3.1 with native audio, multi-character dialogue, and cinematic composition",
+  "type": "object",
+  "required": [
+    "description",
+    "duration",
+    "aspectRatio",
+    "resolution",
+    "style",
+    "audioMode",
+    "dialogueLanguage"
+  ],
+  "properties": {
+    "description": {
+      "type": "string",
+      "title": "1. Video Description",
+      "description": "Describe the video scene, action, characters, and mood. Can be in Thai or English — the AI will transform it into an optimized Veo 3.1 prompt.",
+      "minLength": 5,
+      "examples": [
+        "Thai male host introducing himself in a studio, speaking Thai",
+        "Aerial drone shot over Bangkok at golden hour",
+        "Two people interview in an office, discussing technology",
+        "Night market scene with multiple camera angles",
+        "Product showcase of a luxury watch on black velvet"
+      ]
+    },
+    "duration": {
+      "type": "integer",
+      "title": "2. Clip Duration (seconds)",
+      "description": "Duration per clip. Must be 8s when using 1080p/4K or reference images.",
+      "enum": [4, 6, 8],
+      "enumDescriptions": {
+        "4": "4 seconds — Quick shot, 720p only",
+        "6": "6 seconds — Short scene, 720p only",
+        "8": "8 seconds — Full scene (Required for 1080p/4K/reference images)"
+      },
+      "default": 8
+    },
+    "aspectRatio": {
+      "type": "string",
+      "title": "3. Aspect Ratio",
+      "description": "Video aspect ratio. Affects composition and framing.",
+      "enum": ["16:9", "9:16"],
+      "enumDescriptions": {
+        "16:9": "Landscape — YouTube, presentations, cinematic",
+        "9:16": "Vertical — TikTok, Instagram Reels, YouTube Shorts"
+      },
+      "default": "16:9"
+    },
+    "resolution": {
+      "type": "string",
+      "title": "4. Resolution",
+      "description": "Output video resolution. 1080p/4K requires 8s duration.",
+      "enum": ["720p", "1080p", "4k"],
+      "enumDescriptions": {
+        "720p": "720p — Faster generation, supports 4/6/8s duration, required for extension",
+        "1080p": "1080p — High quality, 8s only, longer generation time",
+        "4k": "4K — Ultra high quality, 8s only, longest generation time"
+      },
+      "default": "1080p"
+    },
+    "style": {
+      "type": "string",
+      "title": "5. Visual Style",
+      "description": "Overall cinematic style that determines lighting, color, and camera approach",
+      "enum": [
+        "cinematic",
+        "documentary",
+        "commercial",
+        "music_video",
+        "vlog",
+        "narrative",
+        "film_noir",
+        "anime",
+        "artistic"
+      ],
+      "enumDescriptions": {
+        "cinematic": "Film-quality with dramatic lighting and deliberate camera work",
+        "documentary": "Natural lighting, observational camera, authentic feel",
+        "commercial": "High-key lighting, vibrant colors, smooth camera moves",
+        "music_video": "Neon/colored lighting, high contrast, dynamic camera",
+        "vlog": "Natural window light, warm tones, slight handheld feel",
+        "narrative": "Story-driven with dramatic motivated lighting",
+        "film_noir": "Hard shadows, high contrast, moody atmosphere",
+        "anime": "Stylized flat lighting, vibrant saturated colors",
+        "artistic": "Experimental lighting, bold palette, creative framing"
+      },
+      "default": "cinematic"
+    },
+    "audioMode": {
+      "type": "string",
+      "title": "6. Audio Mode",
+      "description": "Type of audio to generate with the video",
+      "enum": [
+        "full_mix",
+        "dialogue",
+        "voiceover",
+        "ambient_only",
+        "sfx_only",
+        "silent"
+      ],
+      "enumDescriptions": {
+        "full_mix": "Dialogue + SFX + Ambient — Complete sound design (Recommended)",
+        "dialogue": "Character dialogue with minimal ambient",
+        "voiceover": "Narrator voiceover with ambient background",
+        "ambient_only": "Environment sounds only, no speech",
+        "sfx_only": "Sound effects only, no speech or ambient",
+        "silent": "No audio — visual only"
+      },
+      "default": "full_mix"
+    },
+    "dialogueLanguage": {
+      "type": "string",
+      "title": "7. Dialogue Language",
+      "description": "Language for spoken dialogue / voiceover in the video",
+      "enum": ["th", "en"],
+      "enumDescriptions": {
+        "th": "Thai — ภาษาไทย",
+        "en": "English"
+      },
+      "default": "th"
+    },
+    "speakerCount": {
+      "type": "integer",
+      "title": "8. Number of Speakers",
+      "description": "Number of speaking characters. 0 = no dialogue (B-roll/ambient). Affects framing and blocking.",
+      "minimum": 0,
+      "maximum": 4,
+      "default": 1
+    },
+    "speakerDetails": {
+      "type": "string",
+      "title": "9. Speaker Details (Optional)",
+      "description": "Describe each speaker's appearance, name, and role. Separate multiple speakers with |. Example: 'Host: Thai male, 30s, blazer | Guest: Thai female, 25s, casual dress'",
+      "examples": [
+        "Host: Thai male, early 30s, short hair, navy blazer",
+        "Host: Thai male, 30s, blazer | Guest: Thai female, 25s, casual dress",
+        "Person A: project lead, stands near whiteboard | Person B: designer, seated | Person C: editor, seated"
+      ]
+    },
+    "dialogueScript": {
+      "type": "string",
+      "title": "10. Dialogue Script (Optional)",
+      "description": "Pre-written dialogue for speakers. Format: 'Speaker: dialogue text'. Separate lines with |. Leave empty for AI-generated dialogue.",
+      "examples": [
+        "Host: Hello everyone, today we will cover 3 video techniques",
+        "Host: What do you think about this? | Guest: I think it's very interesting",
+        "Narrator: When the city never stops moving"
+      ]
+    },
+    "shotType": {
+      "type": "string",
+      "title": "11. Shot Type",
+      "description": "Camera framing / shot size. Auto-selected if not specified.",
+      "enum": [
+        "auto",
+        "extreme_wide",
+        "wide",
+        "medium_wide",
+        "medium",
+        "medium_close_up",
+        "close_up",
+        "extreme_close_up",
+        "two_shot",
+        "over_the_shoulder",
+        "pov",
+        "aerial"
+      ],
+      "enumDescriptions": {
+        "auto": "Auto-select based on content and speaker count",
+        "extreme_wide": "Extreme wide shot — Establishing shot, landscapes",
+        "wide": "Wide shot — Full body, environment context",
+        "medium_wide": "Medium wide shot — Knee-up, walking scenes",
+        "medium": "Medium shot — Waist-up, general conversation",
+        "medium_close_up": "Medium close-up — Chest-up, interviews, hosts",
+        "close_up": "Close-up — Face/detail, emotion, intimacy",
+        "extreme_close_up": "Extreme close-up — Eyes, small details, macro",
+        "two_shot": "Two-shot — Two people in frame, interviews",
+        "over_the_shoulder": "Over-the-shoulder — Conversation perspective",
+        "pov": "POV — First-person perspective",
+        "aerial": "Aerial/Drone — Bird's eye, establishing"
+      },
+      "default": "auto"
+    },
+    "cameraMovement": {
+      "type": "string",
+      "title": "12. Camera Movement",
+      "description": "Camera motion style. Auto-selected if not specified.",
+      "enum": [
+        "auto",
+        "static",
+        "pan",
+        "tilt",
+        "dolly",
+        "truck",
+        "crane",
+        "handheld",
+        "drone_glide",
+        "tracking",
+        "arc",
+        "whip_pan",
+        "zoom",
+        "rack_focus"
+      ],
+      "enumDescriptions": {
+        "auto": "Auto-select based on content and style",
+        "static": "Static tripod — Stable, professional",
+        "pan": "Pan left/right — Reveal, follow subject",
+        "tilt": "Tilt up/down — Reveal height, drama",
+        "dolly": "Dolly in/out — Emotional emphasis",
+        "truck": "Truck/lateral — Side movement, parallax",
+        "crane": "Crane — Sweeping vertical movement",
+        "handheld": "Handheld — Raw, intimate, documentary",
+        "drone_glide": "Drone glide — Smooth aerial movement",
+        "tracking": "Tracking — Follow subject movement",
+        "arc": "Arc — Circle around subject",
+        "whip_pan": "Whip pan — Fast transition, energy",
+        "zoom": "Zoom in/out — Focus shift, reveal",
+        "rack_focus": "Rack focus — Shift focus between subjects"
+      },
+      "default": "auto"
+    },
+    "lighting": {
+      "type": "string",
+      "title": "13. Lighting Style",
+      "description": "Lighting approach. Auto-selected based on style if not specified.",
+      "enum": [
+        "auto",
+        "natural",
+        "golden_hour",
+        "blue_hour",
+        "three_point",
+        "rembrandt",
+        "rim_light",
+        "neon",
+        "film_noir",
+        "high_key",
+        "low_key",
+        "silhouette",
+        "volumetric",
+        "practical"
+      ],
+      "enumDescriptions": {
+        "auto": "Auto-select based on style and mood",
+        "natural": "Natural available light",
+        "golden_hour": "Warm golden sunset light",
+        "blue_hour": "Cool twilight blue tones",
+        "three_point": "3-point studio lighting (key/fill/back)",
+        "rembrandt": "Dramatic single-source with triangle shadow",
+        "rim_light": "Edge/back lighting for separation",
+        "neon": "Neon signs, colored light reflections",
+        "film_noir": "Hard directional shadows, high contrast",
+        "high_key": "Bright, even, minimal shadows",
+        "low_key": "Dark, dramatic, deep shadows",
+        "silhouette": "Backlit subject outline",
+        "volumetric": "God rays, fog, atmospheric light",
+        "practical": "In-scene light sources (lamps, screens)"
+      },
+      "default": "auto"
+    },
+    "mood": {
+      "type": "string",
+      "title": "14. Mood / Atmosphere",
+      "description": "Emotional tone of the scene. Affects color grading, pacing, and audio.",
+      "enum": [
+        "auto",
+        "warm_inviting",
+        "cool_professional",
+        "dramatic_intense",
+        "peaceful_serene",
+        "energetic_upbeat",
+        "mysterious_moody",
+        "romantic_soft",
+        "nostalgic_vintage",
+        "futuristic_tech",
+        "dark_gritty"
+      ],
+      "enumDescriptions": {
+        "auto": "Auto-select based on content",
+        "warm_inviting": "Warm tones, welcoming, comfortable",
+        "cool_professional": "Cool tones, clean, corporate",
+        "dramatic_intense": "High contrast, tension, urgency",
+        "peaceful_serene": "Soft, calm, contemplative",
+        "energetic_upbeat": "Vibrant, dynamic, exciting",
+        "mysterious_moody": "Dark, enigmatic, atmospheric",
+        "romantic_soft": "Soft focus, warm pastels, gentle",
+        "nostalgic_vintage": "Desaturated, film grain, retro feel",
+        "futuristic_tech": "Blue/cyan tones, clean lines, tech aesthetic",
+        "dark_gritty": "Desaturated, raw, urban, noir-influenced"
+      },
+      "default": "auto"
+    },
+    "useReferenceImages": {
+      "type": "boolean",
+      "title": "15. Use Reference Images",
+      "description": "Enable character locking via reference images (up to 3). Forces 8s duration. Preserves character appearance across clips.",
+      "default": false
+    },
+    "sceneMode": {
+      "type": "string",
+      "title": "16. Scene Mode",
+      "description": "How to structure the video output",
+      "enum": ["single", "storyboard", "extension"],
+      "enumDescriptions": {
+        "single": "Single clip — One complete scene",
+        "storyboard": "Multi-scene storyboard — Multiple clips with transition notes",
+        "extension": "Extension mode — Continue/extend an existing clip"
+      },
+      "default": "single"
+    },
+    "totalScenes": {
+      "type": "integer",
+      "title": "17. Total Scenes (for storyboard mode)",
+      "description": "Number of scenes in storyboard mode. Each scene is one Veo generation.",
+      "minimum": 1,
+      "maximum": 20,
+      "default": 1
+    },
+    "useTimestamps": {
+      "type": "boolean",
+      "title": "18. Use Timestamp Prompting",
+      "description": "Enable multi-shot timestamp blocks within a single clip (e.g., [00:00-00:02] wide shot... [00:02-00:04] close-up...)",
+      "default": false
+    },
+    "voiceTone": {
+      "type": "string",
+      "title": "19. Voice / Speech Tone",
+      "description": "Tone descriptor for dialogue or voiceover delivery",
+      "enum": [
+        "auto",
+        "warm_friendly",
+        "calm_documentary",
+        "energetic_excited",
+        "serious_urgent",
+        "cheerful_upbeat",
+        "professional_confident",
+        "soft_intimate",
+        "dramatic_narrator"
+      ],
+      "enumDescriptions": {
+        "auto": "Auto-select based on content and style",
+        "warm_friendly": "Warm, approachable, conversational",
+        "calm_documentary": "Calm, measured, documentary narration",
+        "energetic_excited": "High energy, enthusiastic, dynamic",
+        "serious_urgent": "Serious, important, urgent tone",
+        "cheerful_upbeat": "Happy, positive, light",
+        "professional_confident": "Authoritative, knowledgeable, confident",
+        "soft_intimate": "Gentle, personal, ASMR-like",
+        "dramatic_narrator": "Deep, dramatic, cinematic voiceover"
+      },
+      "default": "auto"
+    },
+    "colorPalette": {
+      "type": "string",
+      "title": "20. Color Palette / Grading",
+      "description": "Color grading approach for the video. Affects overall tone and feel.",
+      "enum": [
+        "auto",
+        "warm_amber",
+        "cool_blue",
+        "teal_orange",
+        "desaturated",
+        "vibrant_saturated",
+        "pastel_soft",
+        "monochrome",
+        "neon_cyberpunk",
+        "earthy_natural",
+        "vintage_film"
+      ],
+      "enumDescriptions": {
+        "auto": "Auto-select based on style and mood",
+        "warm_amber": "Warm amber and orange tones — cozy, inviting",
+        "cool_blue": "Cool blue and gray tones — professional, clean",
+        "teal_orange": "Teal shadows + orange highlights — cinematic blockbuster look",
+        "desaturated": "Muted, low saturation — serious, documentary feel",
+        "vibrant_saturated": "Punchy, vivid colors — commercial, energetic",
+        "pastel_soft": "Soft pastel tones — dreamy, gentle, romantic",
+        "monochrome": "Black and white or near-monochrome — artistic, noir",
+        "neon_cyberpunk": "Neon pink, cyan, purple — futuristic, nightlife",
+        "earthy_natural": "Greens, browns, warm neutrals — organic, nature",
+        "vintage_film": "Faded highlights, lifted blacks, film grain — retro analog"
+      },
+      "default": "auto"
+    },
+    "depthOfField": {
+      "type": "string",
+      "title": "21. Depth of Field",
+      "description": "Control the focus depth — affects background blur and cinematic feel.",
+      "enum": [
+        "auto",
+        "deep",
+        "shallow",
+        "ultra_shallow",
+        "rack_focus"
+      ],
+      "enumDescriptions": {
+        "auto": "Auto-select based on shot type and style",
+        "deep": "Deep focus — everything sharp, front to back (landscapes, wide shots)",
+        "shallow": "Shallow DOF — subject sharp, background softly blurred (portraits, interviews)",
+        "ultra_shallow": "Ultra-shallow — extreme bokeh, dreamy separation (close-ups, products)",
+        "rack_focus": "Rack focus — shift focus between foreground and background during shot"
+      },
+      "default": "auto"
+    },
+    "negativeElements": {
+      "type": "string",
+      "title": "22. Elements to Avoid (Optional)",
+      "description": "List elements to avoid in generation (not as negative prompt, but as guidance). E.g., 'text overlays, watermarks, split screen'",
+      "examples": [
+        "text overlays, subtitles, watermarks",
+        "shaky camera, fast cuts",
+        "dark scenes, horror elements"
+      ]
+    }
+  },
+  "examples": [
+    {
+      "description": "Thai male host, 30 years old, introducing himself in a studio, casual style",
+      "duration": 8,
+      "aspectRatio": "16:9",
+      "resolution": "1080p",
+      "style": "cinematic",
+      "audioMode": "dialogue",
+      "dialogueLanguage": "th",
+      "speakerCount": 1,
+      "speakerDetails": "Host: Thai male, early 30s, short hair, casual blazer",
+      "shotType": "medium_close_up",
+      "cameraMovement": "static",
+      "lighting": "three_point",
+      "mood": "warm_inviting",
+      "voiceTone": "warm_friendly"
+    },
+    {
+      "description": "Two people interview in a modern office, discussing AI technology",
+      "duration": 8,
+      "aspectRatio": "16:9",
+      "resolution": "1080p",
+      "style": "cinematic",
+      "audioMode": "full_mix",
+      "dialogueLanguage": "th",
+      "speakerCount": 2,
+      "speakerDetails": "Host: Thai male, 30s, blazer | Guest: Thai female, 25s, casual dress",
+      "dialogueScript": "Host: What do you think about AI today? | Guest: It has completely changed the world",
+      "shotType": "two_shot",
+      "cameraMovement": "rack_focus",
+      "lighting": "three_point",
+      "mood": "cool_professional"
+    },
+    {
+      "description": "Aerial drone shot over Bangkok river at sunset",
+      "duration": 8,
+      "aspectRatio": "16:9",
+      "resolution": "1080p",
+      "style": "documentary",
+      "audioMode": "voiceover",
+      "dialogueLanguage": "th",
+      "speakerCount": 0,
+      "dialogueScript": "Narrator: When the city never stops moving, never stops running",
+      "shotType": "aerial",
+      "cameraMovement": "drone_glide",
+      "lighting": "golden_hour",
+      "mood": "peaceful_serene",
+      "voiceTone": "calm_documentary"
+    },
+    {
+      "description": "Night market multi-angle montage with Thai narrator",
+      "duration": 8,
+      "aspectRatio": "9:16",
+      "resolution": "720p",
+      "style": "cinematic",
+      "audioMode": "full_mix",
+      "dialogueLanguage": "th",
+      "speakerCount": 1,
+      "useTimestamps": true,
+      "shotType": "auto",
+      "mood": "energetic_upbeat"
+    }
+  ],
+  "additionalProperties": false
+}

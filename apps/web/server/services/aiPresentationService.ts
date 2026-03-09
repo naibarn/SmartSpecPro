@@ -37,6 +37,7 @@ import { getModelsByTypeAsync, type ModelDefinition } from "./modelRegistry";
 import {
   addSlideToDeck,
   getPresentationDeckDetail,
+  updatePresentationDeckMetadata,
   updateSlideInDeck,
   type PresentationActor,
 } from "./presentationService";
@@ -46,6 +47,7 @@ import { getRedisClient } from "./redis";
 import { auditLogger } from "./auditLogger";
 import { getDb, type DrizzleDB } from "../db";
 import { generateSlide } from "./aiPresentationLayoutEngine";
+import { resolveTtsTextFromSlideNote } from "./ttsText";
 import { executeWithFallback, resolveProviders } from "./llmRouter";
 import { llmProviders, modelProviderMap, presentationDecks } from "../../drizzle/schema";
 import { and, asc, eq } from "drizzle-orm";
@@ -385,8 +387,82 @@ function normalizeThaiNumberSpacing(value: string): string {
     .replace(/([\u0e00-\u0e7f])([0-9])/g, "$1 $2");
 }
 
+/** Strip all markdown formatting from text for display on slides. */
+function stripMarkdownFormatting(value: string): string {
+  return value
+    .replace(/^#{1,6}\s+/gm, "")                    // # headings
+    .replace(/\*{2,3}([^*]+)\*{2,3}/g, "$1")        // **bold** / ***bold italic***
+    .replace(/\*([^*]+)\*/g, "$1")                   // *italic*
+    .replace(/_([^_]+)_/g, "$1")                     // _italic_
+    .replace(/~~([^~]+)~~/g, "$1")                   // ~~strikethrough~~
+    .replace(/`([^`]+)`/g, "$1")                     // `code`
+    .replace(/^\s*>\s?/gm, "")                       // > blockquote
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")         // [link](url)
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1");       // ![alt](img)
+}
+
+/**
+ * Parse markdown-structured note into title, section headings, and body lines.
+ * Uses # for slide title, ## for section headings.
+ * Returns structured data with markdown stripped from all text.
+ */
+function parseMarkdownNoteStructure(note: string): {
+  title: string | null;
+  sections: Array<{ heading: string; bodyLines: string[] }>;
+  plainLines: string[];
+} {
+  const lines = note.replace(/\r/g, "\n").split(/\n/);
+  let title: string | null = null;
+  const sections: Array<{ heading: string; bodyLines: string[] }> = [];
+  const plainLines: string[] = [];
+  let currentSection: { heading: string; bodyLines: string[] } | null = null;
+
+  for (const rawLine of lines) {
+    const trimmed = rawLine.trim();
+    if (!trimmed) {
+      continue;
+    }
+
+    // # Main title (level 1)
+    const h1Match = trimmed.match(/^#\s+(.+)/);
+    if (h1Match && !title) {
+      title = stripMarkdownFormatting(h1Match[1]).trim();
+      continue;
+    }
+
+    // ## Section heading (level 2-3)
+    const h2Match = trimmed.match(/^#{2,3}\s+(.+)/);
+    if (h2Match) {
+      if (currentSection) {
+        sections.push(currentSection);
+      }
+      currentSection = {
+        heading: stripMarkdownFormatting(h2Match[1]).trim(),
+        bodyLines: [],
+      };
+      continue;
+    }
+
+    // Regular line — strip markdown and add to current section or plainLines
+    const cleanLine = stripMarkdownFormatting(trimmed).trim();
+    if (!cleanLine) {
+      continue;
+    }
+    if (currentSection) {
+      currentSection.bodyLines.push(cleanLine);
+    } else {
+      plainLines.push(cleanLine);
+    }
+  }
+  if (currentSection) {
+    sections.push(currentSection);
+  }
+
+  return { title, sections, plainLines };
+}
+
 function normalizeSlideText(value: string): string {
-  const collapsed = value
+  const collapsed = stripMarkdownFormatting(value)
     .replace(/\u00a0/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -1450,8 +1526,9 @@ function clampBodyLinesForTemplate(body: string[], templateId: LayoutTemplateId)
       break;
     }
   }
-  while (unique.length < min) {
-    unique.push(unique[0] ?? "Key point");
+  // Do NOT pad with duplicate lines — fewer unique lines is better than repeated text
+  if (unique.length === 0) {
+    unique.push("Key point");
   }
   return unique;
 }
@@ -1496,6 +1573,18 @@ function buildSlideNarrationText(
   index: number,
   totalSlides: number,
 ): string {
+  const segments = collectVisibleSlideTextSegments(slide);
+  const narration = segments
+    .map((segment) => finalizeNarrationSegment(segment))
+    .filter((segment) => segment.length > 0)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const fallback = `Slide ${index + 1} of ${totalSlides}.`;
+  return (narration || fallback).slice(0, 4000);
+}
+
+function collectVisibleSlideTextSegments(slide: AIPresentationSlide): string[] {
   const segments: string[] = [];
   const seenSegments = new Set<string>();
   const appendSegment = (value: string) => {
@@ -1524,14 +1613,7 @@ function buildSlideNarrationText(
     }
   }
 
-  const narration = segments
-    .map((segment) => finalizeNarrationSegment(segment))
-    .filter((segment) => segment.length > 0)
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .trim();
-  const fallback = `Slide ${index + 1} of ${totalSlides}.`;
-  return (narration || fallback).slice(0, 4000);
+  return segments;
 }
 
 function finalizeNarrationSegment(segment: string): string {
@@ -1551,6 +1633,49 @@ function finalizeNarrationSegment(segment: string): string {
   }
 
   return `${normalized}.`;
+}
+
+function synchronizeSlideNoteWithVisibleContent(
+  slide: AIPresentationSlide,
+  index: number,
+  totalSlides: number,
+): AIPresentationSlide {
+  const existingNote = normalizeSlideText(slide.notes ?? "").slice(0, 5_000);
+  const visibleSegments = collectVisibleSlideTextSegments(slide)
+    .map((segment) => finalizeNarrationSegment(segment))
+    .filter((segment) => segment.length > 0);
+
+  if (visibleSegments.length === 0) {
+    return existingNote ? { ...slide, notes: existingNote } : slide;
+  }
+
+  if (!existingNote) {
+    return {
+      ...slide,
+      notes: buildSlideNarrationText(slide, index, totalSlides).slice(0, 5_000),
+    };
+  }
+
+  const noteLower = existingNote.toLocaleLowerCase();
+  const missingSegments = visibleSegments.filter((segment) => !noteLower.includes(segment.toLocaleLowerCase()));
+  if (missingSegments.length === 0) {
+    return {
+      ...slide,
+      notes: existingNote,
+    };
+  }
+
+  return {
+    ...slide,
+    notes: `${existingNote} ${missingSegments.join(" ")}`
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 5_000),
+  };
+}
+
+function synchronizeSlideNotesWithVisibleContent(slides: AIPresentationSlide[]): AIPresentationSlide[] {
+  return slides.map((slide, index) => synchronizeSlideNoteWithVisibleContent(slide, index, slides.length));
 }
 
 function parsePositiveNumber(value: unknown): number | null {
@@ -1621,6 +1746,19 @@ function parseDurationStringToSeconds(value: string): number | null {
 
 const MIN_GENERATED_SLIDE_DURATION_MS = 250;
 const MAX_GENERATED_SLIDE_DURATION_MS = 120_000;
+
+// Thai ~5 chars/sec, English ~13 chars/sec at normal TTS speed.
+// Use a blended conservative rate so the slide is long enough for the audio.
+const TTS_CHARS_PER_SECOND = 6;
+const TTS_MIN_DURATION_MS = 2000;
+const TTS_OVERHEAD_MS = 500; // TTS intro/outro silence
+
+function estimateAudioDurationMs(text: string): number | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  const estimatedMs = Math.round((trimmed.length / TTS_CHARS_PER_SECOND) * 1000) + TTS_OVERHEAD_MS;
+  return Math.max(TTS_MIN_DURATION_MS, estimatedMs);
+}
 
 function clampGeneratedSlideDurationMs(durationMs: number): number | null {
   if (!Number.isFinite(durationMs) || durationMs <= 0) {
@@ -2754,7 +2892,7 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
   const slideData: AIPresentationSlide = {
     templateId,
     title: narrative.title.slice(0, 200),
-    body: clampedBody.map((line) => line.slice(0, 240)),
+    body: clampedBody,
     ...(narrative.sections.length > 0 ? { sections: narrative.sections } : {}),
     graphicCategory,
     imagePromptKeywords: combinedText.slice(0, 500) || narrative.title.slice(0, 500),
@@ -2946,6 +3084,7 @@ For each slide, produce a JSON object with these fields:
 - templateId: one of ${JSON.stringify(AI_LAYOUT_TEMPLATE_IDS)}
 - title: a short, compelling title for the slide (max 200 chars)
 - body: an array of 1-10 bullet point strings summarizing the key points
+- notes: the full slide note text for this slide (max 5000 chars)
 - sections (optional but strongly recommended): an array of section objects with:
   - heading: medium-size subheading text (max 180 chars)
   - details: array of 1-4 supporting detail lines (max 260 chars each)
@@ -2961,6 +3100,7 @@ Distribute remaining slides among "split_left_image", "split_right_image", "top_
 
 Coverage and quality requirements:
 - Preserve all major ideas from the source article across the full deck; do not drop sections.
+- notes must keep the substantive article excerpt assigned to this slide and must not be shorter or less informative than the visible slide text.
 - Keep slide text concise but substantive:
   - hero_center: 2-4 body points
   - split_left_image / split_right_image / top_image_text_bottom / bottom_image_text_top: 3-6 body points
@@ -2977,6 +3117,7 @@ For each slide, produce a JSON object with these fields:
 - templateId: one of ${JSON.stringify(AI_LAYOUT_TEMPLATE_IDS)}
 - title: a short, compelling title for the slide (max 200 chars)
 - body: an array of 1-10 bullet point strings summarizing the key points
+- notes: the full slide note text for this slide (max 5000 chars)
 - sections (optional but strongly recommended): an array of section objects with:
   - heading: medium-size subheading text (max 180 chars)
   - details: array of 1-4 supporting detail lines (max 260 chars each)
@@ -2993,6 +3134,7 @@ Distribute remaining slides among "split_left_image", "split_right_image", "top_
 Planning rules:
 - Build a coherent beginning, middle, and end even when only a short topic is provided.
 - Keep each slide focused on one clear idea.
+- notes must include the full narration/reference text for that slide and must not be shorter or less informative than the visible slide text.
 - Use concise but substantive points, suitable for presentation slides rather than prose paragraphs.
 - When the brief suggests a visual campaign, product reveal, or creative concept, make imagePromptKeywords vivid and production-ready.`;
 
@@ -3309,7 +3451,7 @@ function buildSlideSectionsFromBody(
 
     sections.push({
       heading: current.slice(0, 180),
-      details: [current.slice(0, 260)],
+      details: [],
     });
     index += 1;
   }
@@ -3317,23 +3459,400 @@ function buildSlideSectionsFromBody(
   return sections;
 }
 
+function getTemplateBodyLimits(templateId: LayoutTemplateId): { min: number; max: number } {
+  const limits: Record<LayoutTemplateId, { min: number; max: number }> = {
+    hero_center: { min: 2, max: 12 },
+    split_left_image: { min: 3, max: 12 },
+    split_right_image: { min: 3, max: 12 },
+    top_image_text_bottom: { min: 3, max: 12 },
+    bottom_image_text_top: { min: 3, max: 12 },
+    feature_boxes_right: { min: 3, max: 8 },
+  };
+  return limits[templateId];
+}
+
+function splitCanonicalTextIntoClauses(value: string): string[] {
+  const fragments = value
+    .replace(/\r/g, "\n")
+    .split(/\n+/)
+    .flatMap((line) => line.split(/[.!?。！？]+|(?<=\S)[;:]+|(?<=\S)\s+[•\-*]\s+/))
+    .flatMap((line) => line.split(/\s*[|/]\s*|\s*[+＋]\s*|,\s*/))
+    .map((line) => normalizeCoverageText(line))
+    .filter((line) => line.length >= 12);
+
+  // For Thai text (and other CJK-style text without sentence delimiters),
+  // long fragments need additional splitting at space boundaries.
+  const TARGET_CHUNK_LEN = 120;
+  const result: string[] = [];
+  for (const fragment of fragments) {
+    if (fragment.length <= TARGET_CHUNK_LEN * 1.5) {
+      result.push(fragment);
+      continue;
+    }
+    // Split long fragments at Thai/CJK space boundaries
+    const words = fragment.split(/\s+/);
+    if (words.length <= 1) {
+      result.push(fragment);
+      continue;
+    }
+    let chunk = "";
+    for (const word of words) {
+      if (chunk && (chunk.length + 1 + word.length) > TARGET_CHUNK_LEN) {
+        const trimmed = chunk.trim();
+        if (trimmed.length >= 12) {
+          result.push(trimmed);
+        }
+        chunk = word;
+      } else {
+        chunk = chunk ? `${chunk} ${word}` : word;
+      }
+    }
+    if (chunk.trim().length >= 12) {
+      result.push(chunk.trim());
+    }
+  }
+  return result;
+}
+
+function isSubstringOverlap(a: string, b: string): boolean {
+  const la = a.toLowerCase();
+  const lb = b.toLowerCase();
+  if (la.includes(lb) || lb.includes(la)) {
+    return true;
+  }
+  // Check for high token overlap (>70% shared tokens)
+  const tokensA = new Set(la.match(/[a-z0-9\u0e00-\u0e7f]{2,}/g) ?? []);
+  const tokensB = new Set(lb.match(/[a-z0-9\u0e00-\u0e7f]{2,}/g) ?? []);
+  if (tokensA.size === 0 || tokensB.size === 0) {
+    return false;
+  }
+  const smaller = tokensA.size <= tokensB.size ? tokensA : tokensB;
+  const larger = tokensA.size <= tokensB.size ? tokensB : tokensA;
+  let overlap = 0;
+  for (const token of smaller) {
+    if (larger.has(token)) {
+      overlap += 1;
+    }
+  }
+  return overlap / smaller.size > 0.7;
+}
+
+function deriveBodyFromCanonicalNote(note: string, templateId: LayoutTemplateId): string[] {
+  const { min, max } = getTemplateBodyLimits(templateId);
+  const candidates = [
+    ...extractCoveragePointsFromArticle(note, max * 2),
+    ...splitCanonicalTextIntoClauses(note),
+  ];
+  const unique: string[] = [];
+  const seen = new Set<string>();
+  for (const candidate of candidates) {
+    const normalized = normalizeCoverageText(candidate).slice(0, 400);
+    const key = normalized.toLowerCase();
+    if (!normalized || seen.has(key)) {
+      continue;
+    }
+    // Check substring/overlap with already-accepted lines
+    const overlaps = unique.some((existing) => isSubstringOverlap(existing, normalized));
+    if (overlaps) {
+      continue;
+    }
+    seen.add(key);
+    unique.push(normalized);
+    if (unique.length >= max) {
+      break;
+    }
+  }
+  if (unique.length === 0) {
+    unique.push("Key point");
+  }
+  // Do NOT pad with duplicate lines — fewer unique lines is better than repeated text
+  return unique.slice(0, max);
+}
+
+function stripArticleHeadingPrefix(value: string): string {
+  return stripMarkdownFormatting(value)
+    .replace(/^(?:title|หัวข้อ|เรื่อง)\s*:\s*/i, "")
+    .replace(/^\d+\s*[\).:\-]\s*/, "")
+    .replace(/^section\s+\d+\s*[\).:\-]?\s*/i, "")
+    .trim();
+}
+
+function deriveTitleFromCanonicalNote(
+  note: string,
+  fallbackTitle: string,
+  slideIndex: number,
+): string {
+  const normalizedFallback = normalizeSlideText(fallbackTitle).slice(0, 200);
+  const noteTokens = new Set(tokenizeCoverage(note));
+  const fallbackTokens = tokenizeCoverage(normalizedFallback);
+  const overlap = fallbackTokens.filter((token) => noteTokens.has(token)).length;
+  if (
+    normalizedFallback
+    && fallbackTokens.length > 0
+    && overlap / fallbackTokens.length >= 0.34
+  ) {
+    return normalizedFallback;
+  }
+
+  // Prefer markdown headings (#, ##) as title — they're concise by nature
+  const mdHeadingMatch = note.match(/^#{1,3}\s+(.+)/m);
+  if (mdHeadingMatch) {
+    const heading = stripArticleHeadingPrefix(mdHeadingMatch[1]).slice(0, 200);
+    if (heading.length >= 6) {
+      return heading;
+    }
+  }
+
+  const lines = note
+    .replace(/\r/g, "\n")
+    .split(/\n+/)
+    .map((line) => stripArticleHeadingPrefix(line))
+    .filter((line) => line.length >= 6);
+  if (lines.length > 0) {
+    // If the first line is very long, try to extract a shorter title from it
+    const firstLine = lines[0];
+    if (firstLine.length > 100) {
+      // Try to find a natural break point (space boundary) within first 100 chars
+      const spaceIdx = firstLine.lastIndexOf(" ", 100);
+      if (spaceIdx > 30) {
+        return firstLine.slice(0, spaceIdx);
+      }
+    }
+    return firstLine.slice(0, 200);
+  }
+
+  const firstSentence = note
+    .split(/[.!?。！？\n]+/)
+    .map((segment) => stripArticleHeadingPrefix(segment))
+    .find((segment) => segment.length >= 6);
+  if (firstSentence) {
+    return firstSentence.slice(0, 200);
+  }
+
+  return normalizedFallback || `Slide ${slideIndex + 1}`;
+}
+
+function splitParagraphSentences(paragraph: string): string[] {
+  return paragraph
+    .split(/[.!?。！？\n]+/)
+    .map((sentence) => normalizeSlideText(sentence))
+    .filter((sentence) => sentence.length > 0);
+}
+
+function buildFallbackCanonicalSlideNotes(articleText: string, slideCount: number): string[] {
+  const paragraphs = articleText
+    .replace(/\r/g, "\n")
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter((paragraph) => paragraph.length > 0);
+  const units = paragraphs.length > 0
+    ? paragraphs
+    : splitParagraphSentences(articleText);
+  if (units.length === 0) {
+    return Array.from({ length: slideCount }, () => "");
+  }
+  if (units.length < slideCount) {
+    const expanded = [...units];
+    for (const unit of units) {
+      if (expanded.length >= slideCount) {
+        break;
+      }
+      const parts = splitParagraphSentences(unit);
+      for (const part of parts) {
+        if (expanded.length >= slideCount) {
+          break;
+        }
+        if (!expanded.includes(part)) {
+          expanded.push(part);
+        }
+      }
+    }
+    while (expanded.length < slideCount) {
+      expanded.push(expanded[expanded.length - 1] ?? expanded[0] ?? "");
+    }
+    return expanded.slice(0, slideCount).map((unit) => unit.trim());
+  }
+  return Array.from({ length: slideCount }, (_, index) => {
+    const start = Math.floor((index * units.length) / slideCount);
+    const end = Math.floor(((index + 1) * units.length) / slideCount);
+    return units.slice(start, Math.max(start + 1, end)).join("\n\n").trim();
+  });
+}
+
+function extractCanonicalArticleBlocks(articleText: string): { title: string | null; blocks: string[] } {
+  const normalizedArticle = articleText.replace(/\r/g, "\n").trim();
+  if (!normalizedArticle) {
+    return { title: null, blocks: [] };
+  }
+
+  // Strategy 1: Split on markdown ## headers (most reliable for LLM output)
+  const mdHeadingMatches = Array.from(normalizedArticle.matchAll(/^#{2,3}\s+/gm));
+  if (mdHeadingMatches.length >= 2) {
+    // Extract title from # heading or text before first ##
+    const firstH2Start = mdHeadingMatches[0]?.index ?? 0;
+    const preamble = normalizedArticle.slice(0, firstH2Start).trim();
+    const h1Match = preamble.match(/^#\s+(.+)/m);
+    const titleCandidate = h1Match
+      ? stripMarkdownFormatting(h1Match[1]).trim()
+      : (preamble ? stripMarkdownFormatting(preamble.split("\n")[0]).trim() : null);
+
+    const blocks = mdHeadingMatches.map((match, index) => {
+      const start = match.index ?? 0;
+      const end = mdHeadingMatches[index + 1]?.index ?? normalizedArticle.length;
+      return normalizedArticle.slice(start, end).trim();
+    }).filter((block) => block.length > 0);
+
+    if (blocks.length > 0) {
+      return { title: titleCandidate || null, blocks };
+    }
+  }
+
+  // Strategy 2: Split on numbered headings (1), 2), etc.)
+  const numberedHeadingPattern = /(?:^|\n|\s)(?:section\s+)?\d+\s*[\).:\-]\s+/gi;
+  const matches = Array.from(normalizedArticle.matchAll(numberedHeadingPattern));
+  if (matches.length > 0) {
+    const titleCandidate = normalizedArticle.slice(0, matches[0]?.index ?? 0).trim();
+    const blocks = matches.map((match, index) => {
+      const rawStart = match.index ?? 0;
+      const start = rawStart > 0 && /\s/.test(normalizedArticle[rawStart] ?? "")
+        ? rawStart + 1
+        : rawStart;
+      const nextRawStart = matches[index + 1]?.index ?? normalizedArticle.length;
+      const end = nextRawStart > 0 && /\s/.test(normalizedArticle[nextRawStart] ?? "")
+        ? nextRawStart
+        : nextRawStart;
+      return normalizedArticle.slice(start, end).trim();
+    }).filter((block) => block.length > 0);
+    return {
+      title: titleCandidate || null,
+      blocks,
+    };
+  }
+
+  // Strategy 3: Fall back to paragraph splitting
+  const paragraphs = normalizedArticle
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter((paragraph) => paragraph.length > 0);
+  if (paragraphs.length === 0) {
+    return { title: null, blocks: [] };
+  }
+  const titleParagraph = paragraphs[0] ?? null;
+  return {
+    title: titleParagraph,
+    blocks: paragraphs.slice(1).length > 0 ? paragraphs.slice(1) : paragraphs,
+  };
+}
+
+function buildCanonicalSlideNotesFromArticle(
+  articleText: string,
+  slideCount: number,
+): string[] {
+  const normalizedArticle = articleText.trim();
+  if (!normalizedArticle) {
+    return Array.from({ length: slideCount }, () => "");
+  }
+
+  const { title, blocks } = extractCanonicalArticleBlocks(normalizedArticle);
+  const sourceBlocks = blocks.length > 0
+    ? blocks
+    : buildFallbackCanonicalSlideNotes(normalizedArticle, slideCount);
+  const grouped = sourceBlocks.length === slideCount
+    ? [...sourceBlocks]
+    : Array.from({ length: slideCount }, (_, index) => {
+        const start = Math.floor((index * sourceBlocks.length) / slideCount);
+        const end = Math.floor(((index + 1) * sourceBlocks.length) / slideCount);
+        return sourceBlocks.slice(start, Math.max(start + 1, end)).join("\n\n").trim();
+      });
+
+  if (title && grouped.length > 0 && !grouped[0].startsWith(title)) {
+    grouped[0] = `${title}\n\n${grouped[0]}`.trim();
+  }
+  return grouped.map((group) => group.trim().slice(0, 5_000));
+}
+
+function applyCanonicalArticleTextToSlides(
+  articleText: string,
+  slides: AIPresentationSlide[],
+): AIPresentationSlide[] {
+  const canonicalNotes = buildCanonicalSlideNotesFromArticle(articleText, slides.length);
+  return slides.map((slide, index) => {
+    const rawNote = (canonicalNotes[index] ?? "").trim().slice(0, 5_000);
+    if (!rawNote) {
+      return normalizeSlideHierarchy(slide);
+    }
+
+    // Parse markdown structure to separate headings from body content.
+    // # → slide title, ## → section headings, plain text → body lines.
+    const mdStructure = parseMarkdownNoteStructure(rawNote);
+
+    let title: string;
+    let body: string[];
+    let sections: Array<{ heading: string; details: string[] }>;
+
+    if (mdStructure.sections.length > 0 || mdStructure.title) {
+      // Markdown-structured note: use parsed structure
+      title = mdStructure.title
+        || deriveTitleFromCanonicalNote(rawNote, slide.title, index);
+
+      // Build body from section body lines + plain lines (NOT headings)
+      const allBodyLines = [
+        ...mdStructure.plainLines,
+        ...mdStructure.sections.flatMap((s) => s.bodyLines),
+      ];
+      body = allBodyLines.length > 0
+        ? allBodyLines
+        : deriveBodyFromCanonicalNote(rawNote, slide.templateId);
+
+      // Build sections from ## headings with their body lines as details
+      sections = mdStructure.sections
+        .filter((s) => s.heading.length > 0)
+        .map((s) => ({
+          heading: s.heading.slice(0, 180),
+          details: s.bodyLines.slice(0, 4).map((d) => d.slice(0, 260)),
+        }));
+      if (sections.length === 0) {
+        sections = buildSlideSectionsFromBody(body, slide.templateId);
+      }
+    } else {
+      // No markdown structure — fall back to text-based extraction
+      title = deriveTitleFromCanonicalNote(rawNote, slide.title, index);
+      body = deriveBodyFromCanonicalNote(rawNote, slide.templateId);
+      sections = buildSlideSectionsFromBody(body, slide.templateId);
+    }
+
+    // Store the clean (markdown-stripped) note text
+    const notes = normalizeSlideText(rawNote);
+    return normalizeSlideHierarchy({
+      ...slide,
+      title,
+      body,
+      notes,
+      sections,
+    });
+  });
+}
+
 function normalizeSlideHierarchy(slide: AIPresentationSlide): AIPresentationSlide {
   const title = normalizeSlideText(slide.title).slice(0, 200) || "Key Insight";
+  const titleLower = title.toLowerCase();
   const body = clampBodyLinesForTemplate(slide.body, slide.templateId)
-    .map((line) => normalizeSlideText(line).slice(0, 240))
-    .filter((line) => line.length > 0);
+    .map((line) => normalizeSlideText(line).slice(0, 400))
+    .filter((line) => line.length > 0 && line.toLowerCase() !== titleLower);
+  const notes = normalizeSlideText(slide.notes ?? "").slice(0, 5_000);
   const maxSections = slide.templateId === "hero_center" ? 2 : 6;
 
   const explicitSections = (slide.sections ?? [])
     .map((section) => {
       const heading = normalizeSlideText(section.heading).slice(0, 180);
-      const details = section.details
-        .map((detail) => normalizeSlideText(detail).slice(0, 260))
-        .filter((detail) => detail.length > 0)
-        .slice(0, 4);
-      if (!heading || details.length === 0) {
+      if (!heading) {
         return null;
       }
+      const details = section.details
+        .map((detail) => normalizeSlideText(detail).slice(0, 260))
+        .filter((detail) => detail.length > 0 && detail.toLowerCase() !== heading.toLowerCase())
+        .slice(0, 4);
+      // Keep sections even with empty details — heading-only sections are valid
       return { heading, details };
     })
     .filter((section): section is { heading: string; details: string[] } => Boolean(section))
@@ -3369,6 +3888,7 @@ function normalizeSlideHierarchy(slide: AIPresentationSlide): AIPresentationSlid
     ...slide,
     title,
     body: body.length > 0 ? body : ["Key point"],
+    ...(notes ? { notes } : {}),
     ...(sections.length > 0 ? { sections } : {}),
   };
 }
@@ -3397,6 +3917,7 @@ function buildFallbackSlide(index: number, seed?: AIPresentationSlide): AIPresen
     templateId,
     title,
     body: body.length > 0 ? body : [`Key point ${index + 1}`],
+    ...(seed?.notes?.trim() ? { notes: seed.notes.trim().slice(0, 5_000) } : {}),
     sections: body.length > 0
       ? buildSlideSectionsFromBody(body, templateId)
       : [{
@@ -3440,11 +3961,38 @@ function normalizeSlidesToRequestedCount(
 }
 
 function normalizeCoverageText(value: string): string {
-  return value
+  return stripMarkdownFormatting(value)
     .replace(/^[\s\u2022\-*•]+/, "")
     .replace(/^\d+[\).:\-\s]+/, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function splitLongTextAtSpaces(text: string, targetLen: number, minLen: number): string[] {
+  if (text.length <= targetLen * 1.5) {
+    return [text];
+  }
+  const words = text.split(/\s+/);
+  if (words.length <= 1) {
+    return [text];
+  }
+  const chunks: string[] = [];
+  let chunk = "";
+  for (const word of words) {
+    if (chunk && (chunk.length + 1 + word.length) > targetLen) {
+      const trimmed = chunk.trim();
+      if (trimmed.length >= minLen) {
+        chunks.push(trimmed);
+      }
+      chunk = word;
+    } else {
+      chunk = chunk ? `${chunk} ${word}` : word;
+    }
+  }
+  if (chunk.trim().length >= minLen) {
+    chunks.push(chunk.trim());
+  }
+  return chunks.length > 0 ? chunks : [text];
 }
 
 function extractCoveragePointsFromArticle(articleText: string, maxPoints: number): string[] {
@@ -3455,6 +4003,7 @@ function extractCoveragePointsFromArticle(articleText: string, maxPoints: number
 
   const linePoints = rawLines
     .filter((line) => !/^(title|บทนำ|introduction)\s*[:\-]/i.test(line))
+    .flatMap((line) => splitLongTextAtSpaces(line, 120, 18))
     .slice(0, maxPoints * 2);
 
   const sentencePoints = articleText
@@ -3462,6 +4011,7 @@ function extractCoveragePointsFromArticle(articleText: string, maxPoints: number
     .split(/[.!?。！？\n]+/)
     .map((sentence) => normalizeCoverageText(sentence))
     .filter((sentence) => sentence.length >= 24)
+    .flatMap((sentence) => splitLongTextAtSpaces(sentence, 120, 18))
     .slice(0, maxPoints * 2);
 
   const merged = [...linePoints, ...sentencePoints];
@@ -3840,11 +4390,25 @@ export async function generateAIDraft(
       input.mediaModelExtraParams,
       selectedImageModel,
     );
-    // Base extra params: field defaults + user-selected advanced params + sync targets.
+    // Merge media skill params (from skill dynamic form) into extra params.
+    // These are user-selected overrides from the skill's ui.schema (e.g., duration, resolution).
+    // Only include non-sentinel values; "auto"/empty values use model defaults.
+    const skillDerivedExtraParams: Record<string, unknown> = {};
+    if (input.mediaSkillParams) {
+      for (const [k, v] of Object.entries(input.mediaSkillParams)) {
+        if (v !== undefined && v !== null && v !== "" && v !== "auto" && v !== false && v !== "none") {
+          skillDerivedExtraParams[k] = v;
+        }
+      }
+    }
+    // Base extra params: field defaults + skill params + user-selected advanced params + sync targets.
     // Prompt sync is applied per-slide (see below) since the prompt varies per slide.
     const mediaExtraParams = applyFieldSyncTargets(
       mergeExtraParams(
-        buildImageExtraParams(selectedImageModel),
+        mergeExtraParams(
+          buildImageExtraParams(selectedImageModel),
+          skillDerivedExtraParams,
+        ),
         userSelectedExtraParams,
       ),
       selectedImageModel,
@@ -4148,19 +4712,13 @@ export async function generateAIDraft(
     }
 
     if (!shouldPlanSlidesDirectlyFromTopic) {
-      const initialCoverage = assessSlideCoverage(articleText, slides);
-      if (initialCoverage.score < 0.68 || initialCoverage.avgBulletsPerSlide < 2.2) {
-        const enrichedSlides = topUpSlideBodiesFromArticle(articleText, slides)
-          .map((slide) => normalizeSlideHierarchy(slide));
-        const enrichedCoverage = assessSlideCoverage(articleText, enrichedSlides);
-        if (enrichedCoverage.score > initialCoverage.score
-          || enrichedCoverage.avgBulletsPerSlide > initialCoverage.avgBulletsPerSlide) {
-          slides = enrichedSlides;
-        }
-        warnings.push(
-          `Slide coverage check: ${Math.round(initialCoverage.score * 100)}% -> ${Math.round(enrichedCoverage.score * 100)}%, avg bullets ${initialCoverage.avgBulletsPerSlide.toFixed(1)} -> ${enrichedCoverage.avgBulletsPerSlide.toFixed(1)}.`,
-        );
-      }
+      slides = applyCanonicalArticleTextToSlides(articleText, slides);
+      const coverage = assessSlideCoverage(articleText, slides);
+      warnings.push(
+        `Slide coverage check: ${Math.round(coverage.score * 100)}%, avg bullets ${coverage.avgBulletsPerSlide.toFixed(1)}.`,
+      );
+    } else {
+      slides = synchronizeSlideNotesWithVisibleContent(slides);
     }
 
     // Build slide preview
@@ -4257,11 +4815,22 @@ export async function generateAIDraft(
 
           if (imageSkillSystemPrompt) {
             try {
+              // Enrich prompt with media skill params if provided
+              let enrichedImagePrompt = baseImagePrompt;
+              const msp = input.mediaSkillParams;
+              if (msp && Object.keys(msp).length > 0) {
+                const paramLines = Object.entries(msp)
+                  .filter(([, v]) => v !== undefined && v !== null && v !== "" && v !== "auto" && v !== false && v !== "none")
+                  .map(([k, v]) => `- ${k}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`);
+                if (paramLines.length > 0) {
+                  enrichedImagePrompt += `\n\nUser-selected skill parameters:\n${paramLines.join("\n")}`;
+                }
+              }
               imagePrompt = await withTimeout(
                 invokeSkillTextLLM({
                   model: imageSkillModel,
                   systemPrompt: imageSkillSystemPrompt,
-                  userPrompt: baseImagePrompt,
+                  userPrompt: enrichedImagePrompt,
                   userId: actor.userId,
                   tenantId: actor.tenantId,
                   preferredProviderId: imageSkillPreferredProviderId,
@@ -4475,7 +5044,10 @@ export async function generateAIDraft(
       for (let index = 0; index < slides.length; index += 1) {
         if (await isCancelled()) { await setCancelled(); return; }
         const slide = slides[index];
-        const narrationText = buildSlideNarrationText(slide, index, slides.length);
+        const narrationText = resolveTtsTextFromSlideNote(
+          slide.notes,
+          buildSlideNarrationText(slide, index, slides.length),
+        );
         await updateProgress({
           phase: 5,
           phaseLabel: `Audio: preparing ${index + 1}/${slides.length}`,
@@ -4565,7 +5137,9 @@ export async function generateAIDraft(
               },
               actor,
             );
-            slideAudioDurationsMs[index] = resolveGeneratedMediaDurationMs(pollResult.task);
+            slideAudioDurationsMs[index] =
+              resolveGeneratedMediaDurationMs(pollResult.task)
+              ?? estimateAudioDurationMs(narrationText);
             slideAudioTracks[index] = {
               libraryItemId: audioLibrary.itemId,
               volume: 1,
@@ -4794,7 +5368,9 @@ export async function generateAIDraft(
       return;
     }
 
+    const presentationNote = articleText.trim();
     let insertionBaseVersion = input.expectedVersion;
+    let finalDeckVersion = input.expectedVersion;
     try {
       await db.transaction(async (tx) => {
         const deckRows = await tx
@@ -4817,18 +5393,37 @@ export async function generateAIDraft(
         insertionBaseVersion = expectedVersion;
         for (let index = 0; index < compiledSlides.length; index += 1) {
           const slideContent = compiledSlides[index];
+          const slidePlan = slides[index];
           await addSlideToDeck(
             {
               deckId: input.deckId,
               expectedVersion,
               slideContent: slideContent as Record<string, unknown>,
               audioTrack: slideAudioTracks[index] ?? undefined,
+              notes: slidePlan?.notes?.trim()
+                ? slidePlan.notes.trim().slice(0, 5_000)
+                : buildSlideNarrationText(slidePlan, index, slides.length).slice(0, 5_000),
             },
             actor,
             tx as unknown as DrizzleDB,
           );
           expectedVersion++;
         }
+
+        if (presentationNote) {
+          await updatePresentationDeckMetadata(
+            {
+              deckId: input.deckId,
+              expectedVersion,
+              notes: presentationNote.slice(0, 20_000),
+            },
+            actor,
+            tx as unknown as DrizzleDB,
+          );
+          expectedVersion++;
+        }
+
+        finalDeckVersion = expectedVersion;
       });
     } catch (err) {
       await updateProgress({
@@ -4851,7 +5446,7 @@ export async function generateAIDraft(
       slidePreview,
       result: {
         slidesAdded: compiledSlides.length,
-        newDeckVersion: insertionBaseVersion + compiledSlides.length,
+        newDeckVersion: finalDeckVersion || (insertionBaseVersion + compiledSlides.length),
         articlePreview: (articleText || sanitizedPrompt).slice(0, 200),
         warnings,
       },

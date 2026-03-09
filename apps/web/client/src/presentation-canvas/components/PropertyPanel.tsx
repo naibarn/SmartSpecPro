@@ -2,6 +2,21 @@ import { useEffect, useState, type ChangeEvent } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { LibraryFilePicker } from "@/components/library/LibraryFilePicker";
+import type {
+  PresentationMediaMotion,
+  PresentationMediaMotionEasing,
+  PresentationMediaMotionPreset,
+  PresentationMediaMotionTimingMode,
+} from "@shared/presentation/contracts";
+import {
+  DEFAULT_MEDIA_MOTION_DURATION_MS,
+  DEFAULT_MEDIA_MOTION_EASING,
+  DEFAULT_MEDIA_MOTION_INTENSITY,
+  DEFAULT_MEDIA_MOTION_TIMING_MODE,
+  PRESENTATION_MEDIA_MOTION_PRESET_OPTIONS as MEDIA_MOTION_PRESET_OPTIONS,
+  normalizeMediaMotion,
+  serializeMediaMotion,
+} from "@shared/presentation/mediaMotion";
 import type { PresentationElement, PresentationElementPatch, PresentationSlideBackground } from "@/lib/presentationEditorState";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -163,6 +178,14 @@ const LIBRARY_AUDIO_EXTENSIONS = ["mp3", "wav", "m4a", "aac", "flac", "ogg"];
 const RETRY_AFTER_SECONDS_PATTERN = /retry after\s+(\d+)s/i;
 const TASK_POLL_INTERVAL_MS = 2000;
 const TASK_POLL_MAX_ATTEMPTS = 90;
+const MEDIA_MOTION_EASING_OPTIONS: Array<{ value: PresentationMediaMotionEasing; label: string }> = [
+  { value: "ease-in-out", label: "Ease In-Out" },
+  { value: "linear", label: "Linear" },
+];
+const MEDIA_MOTION_TIMING_OPTIONS: Array<{ value: PresentationMediaMotionTimingMode; label: string }> = [
+  { value: "duration", label: "Custom Duration" },
+  { value: "until-slide-end", label: "Until Slide Ends" },
+];
 
 function normalizeGenerateType(configJson: unknown): string | null {
   if (!configJson || typeof configJson !== "object") {
@@ -776,6 +799,304 @@ function Section({ label, children }: SectionProps) {
       <p className="text-[10px] uppercase tracking-widest text-zinc-400 font-semibold">{label}</p>
       {children}
     </div>
+  );
+}
+
+interface MediaMotionControlsProps {
+  mediaLabel: string;
+  motion: PresentationMediaMotion | undefined;
+  onChange: (motion: PresentationMediaMotion | undefined) => void;
+}
+
+interface MediaMotionTemplateDefinition {
+  id: string;
+  label: string;
+  description: string;
+  motion: NonNullable<ReturnType<typeof serializeMediaMotion>>;
+}
+
+const MEDIA_MOTION_TEMPLATES: MediaMotionTemplateDefinition[] = [
+  {
+    id: "ken-burns-in",
+    label: "Ken Burns In",
+    description: "Slow zoom-in across the full slide.",
+    motion: {
+      intro: {
+        preset: "zoom-in",
+        intensity: 0.7,
+        easing: "ease-in-out",
+        timingMode: "until-slide-end",
+        durationMs: DEFAULT_MEDIA_MOTION_DURATION_MS,
+      },
+    },
+  },
+  {
+    id: "ken-burns-out",
+    label: "Ken Burns Out",
+    description: "Slow zoom-out across the full slide.",
+    motion: {
+      intro: {
+        preset: "zoom-out",
+        intensity: 0.65,
+        easing: "ease-in-out",
+        timingMode: "until-slide-end",
+        durationMs: DEFAULT_MEDIA_MOTION_DURATION_MS,
+      },
+    },
+  },
+  {
+    id: "hold-then-exit",
+    label: "Hold then Exit",
+    description: "Hold the shot, then drift out near the end.",
+    motion: {
+      outro: {
+        preset: "pan-left",
+        intensity: 1,
+        easing: "ease-in-out",
+        timingMode: "duration",
+        durationMs: 1500,
+      },
+    },
+  },
+];
+
+function MediaMotionPhaseControls({
+  mediaLabel,
+  phaseLabel,
+  description,
+  effectAriaLabel,
+  intensityAriaLabel,
+  easingAriaLabel,
+  timingAriaLabel,
+  durationAriaLabel,
+  normalizedMotion,
+  onChange,
+}: {
+  mediaLabel: string;
+  phaseLabel: string;
+  description: string;
+  effectAriaLabel: string;
+  intensityAriaLabel: string;
+  easingAriaLabel: string;
+  timingAriaLabel: string;
+  durationAriaLabel: string;
+  normalizedMotion: ReturnType<typeof normalizeMediaMotion>["intro"];
+  onChange: (patch: Partial<ReturnType<typeof normalizeMediaMotion>["intro"]>) => void;
+}) {
+  const hasActiveMotion = normalizedMotion.preset !== "none";
+  const durationSeconds = (normalizedMotion.durationMs / 1000).toFixed(1).replace(/\.0$/, "");
+
+  return (
+    <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
+      <div className="mb-3 space-y-1">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-medium text-zinc-200">{phaseLabel}</span>
+          <span className="text-[10px] uppercase tracking-wide text-zinc-500">{hasActiveMotion ? "Active" : "Off"}</span>
+        </div>
+        <p className="text-[10px] text-zinc-500">{description}</p>
+      </div>
+
+      <div className="space-y-3">
+        <label className="flex flex-col gap-1">
+          <span className="text-[10px] text-zinc-400">Effect</span>
+          <select
+            aria-label={effectAriaLabel}
+            className="w-full rounded-md bg-zinc-800 border border-zinc-700 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            value={normalizedMotion.preset}
+            onChange={(event) => onChange({
+              preset: event.target.value as PresentationMediaMotionPreset,
+            })}
+          >
+            {MEDIA_MOTION_PRESET_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <div className="flex items-center justify-between text-[10px] text-zinc-400">
+            <span>Intensity</span>
+            <span className="tabular-nums">{Math.round(normalizedMotion.intensity * 100)}%</span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            aria-label={intensityAriaLabel}
+            className="w-full accent-blue-500"
+            disabled={!hasActiveMotion}
+            value={normalizedMotion.intensity}
+            onChange={(event) => onChange({
+              intensity: clampNumber(
+                parseNumberInput(event.target.value, normalizedMotion.intensity),
+                0,
+                1,
+              ),
+            })}
+          />
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-[10px] text-zinc-400">Easing</span>
+          <select
+            aria-label={easingAriaLabel}
+            className="w-full rounded-md bg-zinc-800 border border-zinc-700 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            value={normalizedMotion.easing ?? DEFAULT_MEDIA_MOTION_EASING}
+            disabled={!hasActiveMotion}
+            onChange={(event) => onChange({
+              easing: event.target.value as PresentationMediaMotionEasing,
+            })}
+          >
+            {MEDIA_MOTION_EASING_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-[10px] text-zinc-400">Timing</span>
+          <select
+            aria-label={timingAriaLabel}
+            className="w-full rounded-md bg-zinc-800 border border-zinc-700 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            value={normalizedMotion.timingMode ?? DEFAULT_MEDIA_MOTION_TIMING_MODE}
+            disabled={!hasActiveMotion}
+            onChange={(event) => onChange({
+              timingMode: event.target.value as PresentationMediaMotionTimingMode,
+            })}
+          >
+            {MEDIA_MOTION_TIMING_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </label>
+
+        {normalizedMotion.timingMode === "duration" ? (
+          <label className="flex flex-col gap-1">
+            <div className="flex items-center justify-between text-[10px] text-zinc-400">
+              <span>Duration</span>
+              <span className="tabular-nums">{durationSeconds}s</span>
+            </div>
+            <Input
+              aria-label={durationAriaLabel}
+              type="number"
+              min={0.25}
+              max={120}
+              step={0.1}
+              disabled={!hasActiveMotion}
+              value={durationSeconds}
+              onChange={(event) => onChange({
+                durationMs: Math.round(
+                  clampNumber(
+                    parseNumberInput(event.target.value, normalizedMotion.durationMs / 1000),
+                    0.25,
+                    120,
+                  ) * 1000,
+                ),
+              })}
+              className="h-8 bg-zinc-800 border-zinc-700 text-xs text-zinc-100"
+            />
+          </label>
+        ) : (
+          <p className="text-[10px] text-zinc-500">
+            {phaseLabel === "At Slide Start"
+              ? `${mediaLabel} starts moving immediately and keeps progressing until the slide ends.`
+              : `${mediaLabel} keeps this ending motion active across the slide and lands on its final frame at the end.`}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MediaMotionControls({
+  mediaLabel,
+  motion,
+  onChange,
+}: MediaMotionControlsProps) {
+  const normalizedMotion = normalizeMediaMotion(motion);
+  const hasAnyActiveMotion = normalizedMotion.intro.preset !== "none" || normalizedMotion.outro.preset !== "none";
+
+  const updatePhase = (
+    phase: "intro" | "outro",
+    patch: Partial<typeof normalizedMotion.intro>,
+  ) => {
+    const next = {
+      ...normalizedMotion,
+      [phase]: {
+        ...normalizedMotion[phase],
+        ...patch,
+        timingMode: patch.timingMode ?? normalizedMotion[phase].timingMode ?? DEFAULT_MEDIA_MOTION_TIMING_MODE,
+        durationMs: patch.durationMs ?? normalizedMotion[phase].durationMs ?? DEFAULT_MEDIA_MOTION_DURATION_MS,
+        intensity: patch.intensity ?? normalizedMotion[phase].intensity ?? DEFAULT_MEDIA_MOTION_INTENSITY,
+        easing: patch.easing ?? normalizedMotion[phase].easing ?? DEFAULT_MEDIA_MOTION_EASING,
+      },
+    };
+    onChange(serializeMediaMotion(next));
+  };
+
+  return (
+    <Section label="Motion">
+      <div className="space-y-2">
+        <span className="text-[10px] text-zinc-400">Motion Presets</span>
+        <div className="grid grid-cols-1 gap-2">
+          {MEDIA_MOTION_TEMPLATES.map((template) => (
+            <button
+              key={template.id}
+              type="button"
+              className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-left transition hover:border-zinc-700 hover:bg-zinc-800/80"
+              onClick={() => onChange(template.motion)}
+              aria-label={`Apply ${mediaLabel} ${template.label} Motion Preset`}
+            >
+              <span className="block text-xs font-medium text-zinc-200">{template.label}</span>
+              <span className="block text-[10px] text-zinc-500">{template.description}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <MediaMotionPhaseControls
+        mediaLabel={mediaLabel}
+        phaseLabel="At Slide Start"
+        description="Runs from the beginning of the slide."
+        effectAriaLabel={`${mediaLabel} Motion Effect`}
+        intensityAriaLabel={`${mediaLabel} Motion Intensity`}
+        easingAriaLabel={`${mediaLabel} Motion Easing`}
+        timingAriaLabel={`${mediaLabel} Motion Timing`}
+        durationAriaLabel={`${mediaLabel} Motion Duration Seconds`}
+        normalizedMotion={normalizedMotion.intro}
+        onChange={(patch) => updatePhase("intro", patch)}
+      />
+
+      <MediaMotionPhaseControls
+        mediaLabel={mediaLabel}
+        phaseLabel="Before Slide Ends"
+        description="Runs near the end of the slide or can keep evolving until the final frame."
+        effectAriaLabel={`${mediaLabel} Outro Motion Effect`}
+        intensityAriaLabel={`${mediaLabel} Outro Motion Intensity`}
+        easingAriaLabel={`${mediaLabel} Outro Motion Easing`}
+        timingAriaLabel={`${mediaLabel} Outro Motion Timing`}
+        durationAriaLabel={`${mediaLabel} Outro Motion Duration Seconds`}
+        normalizedMotion={normalizedMotion.outro}
+        onChange={(patch) => updatePhase("outro", patch)}
+      />
+
+      <div className="flex gap-1.5">
+        <button
+          type="button"
+          className="rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs text-zinc-300 hover:bg-zinc-700"
+          onClick={() => onChange(undefined)}
+        >
+          Clear Motion
+        </button>
+      </div>
+
+      <span className="text-[10px] text-zinc-500">
+        {hasAnyActiveMotion
+          ? `${mediaLabel} keeps its base crop while intro and outro motion animate during slideshow preview, Play Mode, and MP4 export.`
+          : "Select an effect to animate this media during slideshow preview and MP4 export."}
+      </span>
+    </Section>
   );
 }
 
@@ -2495,6 +2816,14 @@ export function PropertyPanel({
                 </select>
               </label>
 
+              <MediaMotionControls
+                mediaLabel="Image"
+                motion={selectedElement.mediaMotion}
+                onChange={(mediaMotion) => onPatchSelected({
+                  mediaMotion,
+                } as PresentationElementPatch)}
+              />
+
               <div className="grid grid-cols-1 gap-2">
                 <label className="flex flex-col gap-1">
                   <div className="flex items-center justify-between text-[10px] text-zinc-400">
@@ -2798,6 +3127,14 @@ export function PropertyPanel({
               <option value="fill">Fill</option>
             </select>
           </label>
+
+          <MediaMotionControls
+            mediaLabel="Video"
+            motion={selectedElement.mediaMotion}
+            onChange={(mediaMotion) => onPatchSelected({
+              mediaMotion,
+            } as PresentationElementPatch)}
+          />
 
           <div className="grid grid-cols-1 gap-2">
             <label className="flex flex-col gap-1">

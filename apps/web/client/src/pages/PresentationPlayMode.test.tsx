@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { PlaybackState } from "@/presentation-canvas/play/PlaybackEngine";
+import {
+  computeMediaMotionPlaybackProgress,
+  computeMediaMotionTimelineFrame,
+} from "@shared/presentation/mediaMotion";
 
 // ---------------------------------------------------------------------------
 // Mock: PlaybackEngine
@@ -49,22 +53,64 @@ vi.mock("@/presentation-canvas", () => ({
     elements,
     autoPlayVideos,
     showVideoPlaybackToggle,
+    mediaMotionTiming,
   }: {
-    elements: unknown[];
+    elements: any[];
     autoPlayVideos?: boolean;
     showVideoPlaybackToggle?: boolean;
-  }) => (
-    <div
-      data-testid="canvas-stage"
-      data-element-count={elements.length}
-      data-auto-play-videos={String(Boolean(autoPlayVideos))}
-      data-show-video-playback-toggle={String(showVideoPlaybackToggle ?? true)}
-    />
-  ),
+    mediaMotionTiming?: { elapsedMs: number; slideDurationMs: number };
+  }) => {
+    const elapsedMs = mediaMotionTiming?.elapsedMs ?? 0;
+    const slideDurationMs = mediaMotionTiming?.slideDurationMs ?? 3000;
+    const progress = computeMediaMotionPlaybackProgress(elapsedMs, slideDurationMs);
+    return (
+      <div
+        data-testid="canvas-stage"
+        data-element-count={elements.length}
+        data-auto-play-videos={String(Boolean(autoPlayVideos))}
+        data-show-video-playback-toggle={String(showVideoPlaybackToggle ?? true)}
+        data-media-motion-progress={String(progress)}
+        data-media-motion-elapsed-ms={String(elapsedMs)}
+        data-media-motion-slide-duration-ms={String(slideDurationMs)}
+      >
+        {elements.map((element) => {
+          if (element.type !== "image" && element.type !== "video") {
+            return null;
+          }
+          const motionFrame = computeMediaMotionTimelineFrame(element.mediaMotion, elapsedMs, slideDurationMs);
+          const positionX = Number(element.imagePositionX ?? element.videoPositionX ?? 50);
+          const positionY = Number(element.imagePositionY ?? element.videoPositionY ?? 50);
+          const zoom = Number(element.imageZoom ?? element.videoZoom ?? 1);
+          const style = {
+            transform: `translate(${motionFrame.translateXPercent}%, ${motionFrame.translateYPercent}%) scale(${zoom * motionFrame.scaleMultiplier})`,
+            transformOrigin: `${positionX}% ${positionY}%`,
+          };
+
+          if (element.type === "image" && typeof element.svgContent === "string" && element.svgContent.trim()) {
+            return (
+              <div
+                key={element.id}
+                data-testid={`canvas-stage-inline-svg-${element.id}`}
+                style={style}
+                dangerouslySetInnerHTML={{ __html: element.svgContent }}
+              />
+            );
+          }
+
+          if (element.type === "image") {
+            return <img key={element.id} data-testid={`canvas-stage-image-${element.id}`} style={style} alt="" />;
+          }
+
+          return <video key={element.id} data-testid={`canvas-stage-video-${element.id}`} style={style} />;
+        })}
+      </div>
+    );
+  },
 }));
 
 // H1: normalizeCanvasSize comes from constants, not the barrel
 vi.mock("@/presentation-canvas/constants", () => ({
+  DEFAULT_PRESENTATION_CANVAS_SIZE: { width: 1920, height: 1080, preset: "16:9" },
   normalizeCanvasSize: vi.fn(() => ({ width: 1920, height: 1080, preset: "16:9" })),
 }));
 
@@ -420,6 +466,445 @@ describe("PresentationPlayMode", () => {
       vi.advanceTimersByTime(3001);
     });
     expect(controlBar).toHaveClass("opacity-0");
+  });
+
+  it("passes advancing media motion progress into CanvasStage while playing", async () => {
+    vi.useFakeTimers();
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback: FrameRequestCallback) => (
+        window.setTimeout(() => callback(Date.now()), 16) as unknown as number
+      ));
+    const performanceNowSpy = vi
+      .spyOn(window.performance, "now")
+      .mockImplementation(() => Date.now());
+    const cancelAnimationFrameSpy = vi
+      .spyOn(window, "cancelAnimationFrame")
+      .mockImplementation((handle: number) => {
+        window.clearTimeout(handle);
+      });
+
+    render(<PresentationPlayMode />);
+
+    act(() => {
+      capturedOnStateChange?.("PLAYING", 0);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1200);
+    });
+
+    const progress = Number(screen.getByTestId("canvas-stage").getAttribute("data-media-motion-progress") ?? "0");
+    expect(progress).toBeGreaterThan(0.3);
+
+    requestAnimationFrameSpy.mockRestore();
+    performanceNowSpy.mockRestore();
+    cancelAnimationFrameSpy.mockRestore();
+  });
+
+  it("animates a rendered inline svg media node while PlayMode is playing", async () => {
+    vi.useFakeTimers();
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback: FrameRequestCallback) => (
+        window.setTimeout(() => callback(Date.now()), 16) as unknown as number
+      ));
+    const performanceNowSpy = vi
+      .spyOn(window.performance, "now")
+      .mockImplementation(() => Date.now());
+    const cancelAnimationFrameSpy = vi
+      .spyOn(window, "cancelAnimationFrame")
+      .mockImplementation((handle: number) => {
+        window.clearTimeout(handle);
+      });
+
+    queryState.playDeck = {
+      ...buildPlayDeck(),
+      slides: [
+        {
+          ...buildPlayDeck().slides[0],
+          slideContent: {
+            elements: [
+              {
+                id: "svg-playmode-1",
+                type: "image",
+                x: 0,
+                y: 0,
+                width: 320,
+                height: 180,
+                src: "",
+                alt: "SVG motion",
+                svgContent: "<svg viewBox='0 0 10 10'><rect width='10' height='10' fill='currentColor' /></svg>",
+                mediaMotion: {
+                  preset: "pan-right",
+                  intensity: 1,
+                  easing: "linear",
+                },
+              },
+            ],
+          },
+        },
+        ...buildPlayDeck().slides.slice(1),
+      ],
+    } as any;
+    queryState.deckDetail = {
+      ...buildDeckDetail(),
+      slides: [
+        {
+          id: 71,
+          orderIndex: 0,
+          title: "Intro",
+          slideContent: {
+            elements: [
+              {
+                id: "svg-playmode-1",
+                type: "image",
+                x: 0,
+                y: 0,
+                width: 320,
+                height: 180,
+                src: "",
+                alt: "SVG motion",
+                svgContent: "<svg viewBox='0 0 10 10'><rect width='10' height='10' fill='currentColor' /></svg>",
+                mediaMotion: {
+                  preset: "pan-right",
+                  intensity: 1,
+                  easing: "linear",
+                },
+              },
+            ],
+          },
+        },
+        ...buildDeckDetail().slides.slice(1),
+      ],
+    } as any;
+
+    render(<PresentationPlayMode />);
+    expect(screen.getByTestId("canvas-stage")).toHaveAttribute("data-element-count", "1");
+
+    act(() => {
+      capturedOnStateChange?.("PLAYING", 0);
+    });
+
+    const inlineSvg = screen.getByTestId("canvas-stage-inline-svg-svg-playmode-1");
+    const transformBefore = inlineSvg.style.transform;
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1200);
+    });
+
+    expect(inlineSvg.style.transform).not.toBe(transformBefore);
+    expect(inlineSvg.style.transform).toContain("translate(");
+
+    requestAnimationFrameSpy.mockRestore();
+    performanceNowSpy.mockRestore();
+    cancelAnimationFrameSpy.mockRestore();
+  });
+
+  it("uses the capped motion timeline for long-slide raster images in PlayMode", async () => {
+    vi.useFakeTimers();
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback: FrameRequestCallback) => (
+        window.setTimeout(() => callback(Date.now()), 16) as unknown as number
+      ));
+    const performanceNowSpy = vi
+      .spyOn(window.performance, "now")
+      .mockImplementation(() => Date.now());
+    const cancelAnimationFrameSpy = vi
+      .spyOn(window, "cancelAnimationFrame")
+      .mockImplementation((handle: number) => {
+        window.clearTimeout(handle);
+      });
+
+    queryState.playDeck = {
+      ...buildPlayDeck(),
+      slides: [
+        {
+          ...buildPlayDeck().slides[0],
+          durationMs: 10_000,
+        },
+        ...buildPlayDeck().slides.slice(1),
+      ],
+    } as any;
+    queryState.deckDetail = {
+      ...buildDeckDetail(),
+      slides: [
+        {
+          id: 71,
+          orderIndex: 0,
+          title: "Intro",
+          slideContent: {
+            elements: [
+              {
+                id: "img-playmode-1",
+                type: "image",
+                x: 0,
+                y: 0,
+                width: 320,
+                height: 180,
+                src: "https://cdn.example.com/playmode-image.png",
+                alt: "PlayMode raster motion",
+                mediaMotion: {
+                  preset: "zoom-in",
+                },
+              },
+            ],
+          },
+        },
+        ...buildDeckDetail().slides.slice(1),
+      ],
+    } as any;
+
+    render(<PresentationPlayMode />);
+
+    act(() => {
+      capturedOnStateChange?.("PLAYING", 0);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+
+    const image = screen.getByTestId("canvas-stage-image-img-playmode-1");
+    const scaleMatch = image.getAttribute("style")?.match(/scale\(([^)]+)\)/);
+    expect(scaleMatch).not.toBeNull();
+    expect(Number(scaleMatch?.[1] ?? "0")).toBeGreaterThan(1.02);
+
+    requestAnimationFrameSpy.mockRestore();
+    performanceNowSpy.mockRestore();
+    cancelAnimationFrameSpy.mockRestore();
+  });
+
+  it("resets media motion timing when jumping to another slide while playing", async () => {
+    vi.useFakeTimers();
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback: FrameRequestCallback) => (
+        window.setTimeout(() => callback(Date.now()), 16) as unknown as number
+      ));
+    const performanceNowSpy = vi
+      .spyOn(window.performance, "now")
+      .mockImplementation(() => Date.now());
+    const cancelAnimationFrameSpy = vi
+      .spyOn(window, "cancelAnimationFrame")
+      .mockImplementation((handle: number) => {
+        window.clearTimeout(handle);
+      });
+
+    queryState.playDeck = {
+      ...buildPlayDeck(),
+      slides: [
+        {
+          ...buildPlayDeck().slides[0],
+          durationMs: 10_000,
+        },
+        {
+          ...buildPlayDeck().slides[1],
+          durationMs: 10_000,
+        },
+      ],
+    } as any;
+    queryState.deckDetail = {
+      ...buildDeckDetail(),
+      slides: [
+        {
+          id: 71,
+          orderIndex: 0,
+          title: "Intro",
+          slideContent: {
+            elements: [
+              {
+                id: "img-slide-1",
+                type: "image",
+                x: 0,
+                y: 0,
+                width: 320,
+                height: 180,
+                src: "https://cdn.example.com/playmode-image-1.png",
+                alt: "Slide 1 motion",
+                mediaMotion: { preset: "zoom-in" },
+              },
+            ],
+          },
+        },
+        {
+          id: 72,
+          orderIndex: 1,
+          title: "Agenda",
+          slideContent: {
+            elements: [
+              {
+                id: "img-slide-2",
+                type: "image",
+                x: 0,
+                y: 0,
+                width: 320,
+                height: 180,
+                src: "https://cdn.example.com/playmode-image-2.png",
+                alt: "Slide 2 motion",
+                mediaMotion: { preset: "zoom-in" },
+              },
+            ],
+          },
+        },
+      ],
+    } as any;
+
+    render(<PresentationPlayMode />);
+
+    act(() => {
+      capturedOnStateChange?.("PLAYING", 0);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1200);
+    });
+
+    const elapsedBeforeJump = Number(screen.getByTestId("canvas-stage").getAttribute("data-media-motion-elapsed-ms") ?? "0");
+    expect(elapsedBeforeJump).toBeGreaterThan(1000);
+
+    act(() => {
+      capturedOnStateChange?.("PLAYING", 1);
+    });
+
+    expect(screen.getByTestId("canvas-stage")).toHaveAttribute("data-media-motion-elapsed-ms", "0");
+    const jumpedImage = screen.getByTestId("canvas-stage-image-img-slide-2");
+    expect(jumpedImage.getAttribute("style")).toContain("scale(1)");
+
+    requestAnimationFrameSpy.mockRestore();
+    performanceNowSpy.mockRestore();
+    cancelAnimationFrameSpy.mockRestore();
+  });
+
+  it("starts outro image motion near the end of a PlayMode slide", async () => {
+    vi.useFakeTimers();
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback: FrameRequestCallback) => (
+        window.setTimeout(() => callback(Date.now()), 16) as unknown as number
+      ));
+    const performanceNowSpy = vi
+      .spyOn(window.performance, "now")
+      .mockImplementation(() => Date.now());
+    const cancelAnimationFrameSpy = vi
+      .spyOn(window, "cancelAnimationFrame")
+      .mockImplementation((handle: number) => {
+        window.clearTimeout(handle);
+      });
+
+    queryState.playDeck = {
+      ...buildPlayDeck(),
+      slides: [
+        {
+          ...buildPlayDeck().slides[0],
+          durationMs: 10_000,
+        },
+        ...buildPlayDeck().slides.slice(1),
+      ],
+    } as any;
+    queryState.deckDetail = {
+      ...buildDeckDetail(),
+      slides: [
+        {
+          id: 71,
+          orderIndex: 0,
+          title: "Intro",
+          slideContent: {
+            elements: [
+              {
+                id: "img-playmode-outro-1",
+                type: "image",
+                x: 0,
+                y: 0,
+                width: 320,
+                height: 180,
+                src: "https://cdn.example.com/playmode-image.png",
+                alt: "PlayMode outro motion",
+                mediaMotion: {
+                  outro: {
+                    preset: "pan-left",
+                    intensity: 1,
+                    easing: "linear",
+                    durationMs: 2000,
+                  },
+                },
+              },
+            ],
+          },
+        },
+        ...buildDeckDetail().slides.slice(1),
+      ],
+    } as any;
+
+    render(<PresentationPlayMode />);
+
+    act(() => {
+      capturedOnStateChange?.("PLAYING", 0);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(7000);
+    });
+
+    const image = screen.getByTestId("canvas-stage-image-img-playmode-outro-1");
+    expect(image.getAttribute("style")).toContain("translate(0%, 0%)");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    const translateMatch = image.getAttribute("style")?.match(/translate\(([-0-9.]+)%\,\s*0%\)/);
+    expect(translateMatch).not.toBeNull();
+    expect(Number(translateMatch?.[1] ?? "0")).toBeLessThan(-5.5);
+
+    requestAnimationFrameSpy.mockRestore();
+    performanceNowSpy.mockRestore();
+    cancelAnimationFrameSpy.mockRestore();
+  });
+
+  it("freezes media motion progress on pause and resumes from the same point", async () => {
+    vi.useFakeTimers();
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback: FrameRequestCallback) => (
+        window.setTimeout(() => callback(Date.now()), 16) as unknown as number
+      ));
+    const performanceNowSpy = vi
+      .spyOn(window.performance, "now")
+      .mockImplementation(() => Date.now());
+    const cancelAnimationFrameSpy = vi
+      .spyOn(window, "cancelAnimationFrame")
+      .mockImplementation((handle: number) => {
+        window.clearTimeout(handle);
+      });
+
+    render(<PresentationPlayMode />);
+
+    act(() => {
+      capturedOnStateChange?.("PLAYING", 0);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    const progressBeforePause = Number(screen.getByTestId("canvas-stage").getAttribute("data-media-motion-progress") ?? "0");
+
+    act(() => {
+      capturedOnStateChange?.("PAUSED", 0);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    const progressWhilePaused = Number(screen.getByTestId("canvas-stage").getAttribute("data-media-motion-progress") ?? "0");
+    expect(progressWhilePaused).toBeCloseTo(progressBeforePause, 2);
+
+    act(() => {
+      capturedOnStateChange?.("PLAYING", 0);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(600);
+    });
+    const progressAfterResume = Number(screen.getByTestId("canvas-stage").getAttribute("data-media-motion-progress") ?? "0");
+    expect(progressAfterResume).toBeGreaterThan(progressWhilePaused);
+
+    requestAnimationFrameSpy.mockRestore();
+    performanceNowSpy.mockRestore();
+    cancelAnimationFrameSpy.mockRestore();
   });
 
   it("keyboard listeners are cleaned up on component unmount", () => {

@@ -390,41 +390,19 @@ export function getProviderLimiter(providerName: string): Bottleneck {
   const config = getProviderLimitConfig(key);
   let limiter: Bottleneck;
 
-  if (isRedisAvailable()) {
-    // Use Redis-backed limiter for distributed rate limiting
-    console.log(`[LLMRateLimiter] Creating Redis-backed limiter for ${key}`);
+  // Use in-memory limiter — single Node.js process does not need distributed
+  // Redis state and Bottleneck's IORedis mode has persistent
+  // SETTINGS_KEY_NOT_FOUND issues when keys expire between requests.
+  console.log(`[LLMRateLimiter] Creating in-memory limiter for ${key}`);
 
-    limiter = new Bottleneck({
-      id: `llm-rate-${key}`,
-      maxConcurrent: config.maxConcurrent,
-      minTime: config.minTime,
-      reservoir: config.reservoir,
-      reservoirRefreshAmount: config.reservoir,
-      reservoirRefreshInterval: config.reservoirRefreshInterval,
-      timeout: config.timeout,
-
-      // Redis configuration
-      datastore: 'ioredis',
-      clientOptions: {
-        host: process.env.REDIS_HOST || 'localhost',
-        port: parseInt(process.env.REDIS_PORT || '6379'),
-        password: process.env.REDIS_PASSWORD || undefined,
-      },
-      clearDatastore: false, // Don't clear on startup
-    });
-  } else {
-    // Fallback to in-memory limiter
-    console.log(`[LLMRateLimiter] Creating in-memory limiter for ${key} (Redis unavailable)`);
-
-    limiter = new Bottleneck({
-      maxConcurrent: config.maxConcurrent,
-      minTime: config.minTime,
-      reservoir: config.reservoir,
-      reservoirRefreshAmount: config.reservoir,
-      reservoirRefreshInterval: config.reservoirRefreshInterval,
-      timeout: config.timeout,
-    });
-  }
+  limiter = new Bottleneck({
+    maxConcurrent: config.maxConcurrent,
+    minTime: config.minTime,
+    reservoir: config.reservoir,
+    reservoirRefreshAmount: config.reservoir,
+    reservoirRefreshInterval: config.reservoirRefreshInterval,
+    timeout: config.timeout,
+  });
 
   // Initialize stats
   limiterStats.set(key, {
@@ -523,6 +501,11 @@ export async function scheduleWithLimiter<T>(
     if (error.message?.includes('timed out')) {
       throw new Error(`Rate limiter timeout for ${providerName}: Request waited too long in queue`);
     }
+    // Bottleneck Redis errors — bypass limiter rather than failing the request
+    if (/SETTINGS_KEY_NOT_FOUND|UNKNOWN_CLIENT/i.test(error.message ?? '')) {
+      console.warn(`[LLMRateLimiter] Bottleneck Redis error for ${providerName}, bypassing rate limiter: ${error.message}`);
+      return fn();
+    }
     throw error;
   }
 }
@@ -543,38 +526,19 @@ export function getMediaProviderLimiter(providerName: string): Bottleneck {
   const config = getMediaProviderLimitConfig(providerName);
   let limiter: Bottleneck;
 
-  if (isRedisAvailable()) {
-    console.log(`[MediaRateLimiter] Creating Redis-backed limiter for ${key}`);
+  // Use in-memory limiter for media — single Node.js process does not need
+  // distributed Redis state and Bottleneck's IORedis mode has persistent
+  // SETTINGS_KEY_NOT_FOUND issues when keys expire between requests.
+  console.log(`[MediaRateLimiter] Creating in-memory limiter for ${key}`);
 
-    limiter = new Bottleneck({
-      id: `media-rate-${providerName.toLowerCase()}`,
-      maxConcurrent: config.maxConcurrent,
-      minTime: config.minTime,
-      reservoir: config.reservoir,
-      reservoirRefreshAmount: config.reservoir,
-      reservoirRefreshInterval: config.reservoirRefreshInterval,
-      timeout: config.timeout,
-
-      datastore: 'ioredis',
-      clientOptions: {
-        host: process.env.REDIS_HOST || 'localhost',
-        port: parseInt(process.env.REDIS_PORT || '6379'),
-        password: process.env.REDIS_PASSWORD || undefined,
-      },
-      clearDatastore: false,
-    });
-  } else {
-    console.log(`[MediaRateLimiter] Creating in-memory limiter for ${key} (Redis unavailable)`);
-
-    limiter = new Bottleneck({
-      maxConcurrent: config.maxConcurrent,
-      minTime: config.minTime,
-      reservoir: config.reservoir,
-      reservoirRefreshAmount: config.reservoir,
-      reservoirRefreshInterval: config.reservoirRefreshInterval,
-      timeout: config.timeout,
-    });
-  }
+  limiter = new Bottleneck({
+    maxConcurrent: config.maxConcurrent,
+    minTime: config.minTime,
+    reservoir: config.reservoir,
+    reservoirRefreshAmount: config.reservoir,
+    reservoirRefreshInterval: config.reservoirRefreshInterval,
+    timeout: config.timeout,
+  });
 
   // Initialize stats
   limiterStats.set(key, {
@@ -681,6 +645,14 @@ export async function scheduleMediaWithLimiter<T>(
   } catch (error: any) {
     if (error.message?.includes('timed out')) {
       throw new Error(`Media rate limiter timeout for ${providerName}: Request waited too long in queue`);
+    }
+    // Bottleneck Redis keys can expire (groupTimeout TTL) or fail to initialize.
+    // When the rate limiter itself fails, bypass it and execute directly rather
+    // than failing the user's request. Rate limiting is a best-effort safeguard,
+    // not a hard gate.
+    if (/SETTINGS_KEY_NOT_FOUND|UNKNOWN_CLIENT/i.test(error.message ?? '')) {
+      console.warn(`[MediaRateLimiter] Bottleneck Redis error for ${providerName}, bypassing rate limiter: ${error.message}`);
+      return fn();
     }
     throw error;
   }

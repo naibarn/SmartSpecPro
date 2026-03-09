@@ -7,6 +7,8 @@ import { getDb } from "../db";
 import { skills as skillsTable, userSkillVisibility, skillPermissions, groupMembers, users } from "../../drizzle/schema";
 import { eq, and, sql, ilike, or, count, inArray } from "drizzle-orm";
 import { sanitizeBrandText } from "./brandingSanitizer";
+import path from "path";
+import { hasRelativeSkillManifest } from "./skillFiles";
 
 // Per-user cache with TTL
 const userVisibleCache = new Map<number, { skillIds: number[], expiry: number }>();
@@ -14,6 +16,10 @@ const USER_CACHE_TTL = 120_000; // 2 minutes
 
 function invalidateUserCache(userId: number) {
   userVisibleCache.delete(userId);
+}
+
+function hasLocalSkillFolder(slug: string): boolean {
+  return hasRelativeSkillManifest(path.join("skills", slug));
 }
 
 async function requireDb() {
@@ -318,6 +324,7 @@ export async function getAllSkillsForUser(
       autoTriggerEnabled: s.autoTriggerEnabled ?? true,
       ownerName: s.ownerName ? sanitizeBrandText(s.ownerName) : null,
       isOwner: s.createdBy === userId,
+      hasLocalFolder: hasLocalSkillFolder(s.slug),
     })),
     total: totalResult[0]?.total ?? 0,
   };

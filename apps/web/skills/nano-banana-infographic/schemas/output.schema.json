@@ -1,0 +1,186 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Nano Banana Infographic Creator Output Schema",
+  "description": "Output format for Nano Banana optimized infographic/slide illustration prompts. The LLM returns this JSON structure after processing user inputs.",
+  "type": "object",
+  "required": [
+    "prompt",
+    "contentType",
+    "aspectRatio",
+    "resolution",
+    "outputFormat",
+    "style",
+    "model"
+  ],
+  "properties": {
+    "prompt": {
+      "type": "string",
+      "description": "Complete Nano Banana optimized prompt following the formula: [CONTENT TYPE] + [VISUAL STYLE] + [LAYOUT & COMPOSITION] + [COLOR SCHEME] + [TYPOGRAPHY HINTS] + [TECHNICAL SPECS]. For Google Search grounding, uses two-step format.",
+      "minLength": 50
+    },
+    "contentType": {
+      "type": "string",
+      "enum": [
+        "slide_illustration",
+        "chart_bar",
+        "chart_line",
+        "chart_pie",
+        "chart_mixed",
+        "infographic_cartoon",
+        "infographic_education",
+        "photorealistic_slide",
+        "asset_header",
+        "asset_icons",
+        "timeline",
+        "process_flow"
+      ],
+      "description": "Type of visual content generated"
+    },
+    "aspectRatio": {
+      "type": "string",
+      "enum": ["1:1", "16:9", "9:16", "4:3", "3:4", "21:9"],
+      "description": "Image aspect ratio"
+    },
+    "resolution": {
+      "type": "string",
+      "enum": ["512px", "1k", "2k", "4k"],
+      "description": "Output image resolution"
+    },
+    "outputFormat": {
+      "type": "string",
+      "enum": ["png", "jpeg", "webp"],
+      "description": "Image file format"
+    },
+    "style": {
+      "type": "string",
+      "enum": [
+        "minimal_modern",
+        "flat_corporate",
+        "cartoon_friendly",
+        "isometric",
+        "photorealistic",
+        "futuristic_clean",
+        "hand_drawn",
+        "gradient_abstract"
+      ],
+      "description": "Visual style applied"
+    },
+    "model": {
+      "type": "string",
+      "enum": ["google-banana-2", "google-nano-banana-pro"],
+      "description": "Nano Banana model selected (auto-resolved to specific model)"
+    },
+    "colorScheme": {
+      "type": "object",
+      "description": "Color palette used in the design",
+      "properties": {
+        "background": {
+          "type": "string",
+          "description": "Background color or description (e.g., '#FFFFFF', 'white', 'warm office tones')"
+        },
+        "accent": {
+          "type": "string",
+          "description": "Primary accent color (hex code preferred)"
+        },
+        "secondary": {
+          "type": "string",
+          "description": "Secondary color (hex code preferred)"
+        },
+        "textColor": {
+          "type": "string",
+          "description": "Primary text color (hex code preferred)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "layoutDescription": {
+      "type": "string",
+      "description": "Brief summary of the layout composition for UI preview (e.g., '5 cards in a row with icons, 40% empty space on left')"
+    },
+    "accessibilityNotes": {
+      "type": "string",
+      "description": "Accessibility considerations applied: contrast ratio, color-blind safety, text readability"
+    },
+    "searchGrounding": {
+      "type": "object",
+      "description": "Google Search grounding details. Present only when search grounding is used.",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether Google Search grounding was used"
+        },
+        "queries": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Search queries used to retrieve factual data"
+        },
+        "sourcesCited": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Source names cited in the infographic footer"
+        }
+      },
+      "additionalProperties": false
+    },
+    "autoCorrections": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of auto-corrections applied due to parameter conflicts or best-practice overrides. Omit if none."
+    },
+    "numImages": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4,
+      "description": "Number of image variations to generate",
+      "default": 1
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "prompt": "Create a minimal modern slide illustration for a presentation titled 'Business Growth 2026'. White background with subtle light gray grid pattern. Abstract geometric composition: a large upward-trending arrow made of gradient blue rectangles (from #93C5FD to #2563EB) positioned on the right third. Small golden circle accents (#F59E0B) at intersection points. Leave the left 40% completely empty as negative space for text overlay. Safe margin 6% on all sides. No characters, no logos. Aspect ratio 16:9, resolution 2K, PNG format.",
+      "contentType": "slide_illustration",
+      "aspectRatio": "16:9",
+      "resolution": "2k",
+      "outputFormat": "png",
+      "style": "minimal_modern",
+      "model": "google-banana-2",
+      "colorScheme": {
+        "background": "#FFFFFF",
+        "accent": "#2563EB",
+        "secondary": "#F59E0B",
+        "textColor": "#1F2937"
+      },
+      "layoutDescription": "Upward arrow graphic on right, 40% empty space on left for text",
+      "accessibilityNotes": "High contrast blue on white, WCAG AA compliant",
+      "numImages": 1
+    },
+    {
+      "prompt": "Step 1: Use Google Search to find 'Thailand internet users statistics 2025-2026 by age group percentage'. Step 2: Based on retrieved data, create a modern clean bar chart infographic, 16:9 aspect ratio, 4K resolution. White background. Title at top in bold dark sans-serif. Vertical bars in gradient blue, each labeled with percentage above. Footer with sources.",
+      "contentType": "chart_bar",
+      "aspectRatio": "16:9",
+      "resolution": "4k",
+      "outputFormat": "png",
+      "style": "flat_corporate",
+      "model": "google-nano-banana-pro",
+      "colorScheme": {
+        "background": "#FFFFFF",
+        "accent": "#2563EB",
+        "secondary": "#60A5FA",
+        "textColor": "#111827"
+      },
+      "layoutDescription": "Bar chart centered, title top, source footer bottom",
+      "accessibilityNotes": "High contrast, color-blind safe single-hue palette, direct labels",
+      "searchGrounding": {
+        "enabled": true,
+        "queries": ["Thailand internet users by age group percentage 2026"],
+        "sourcesCited": ["NBTC", "We Are Social Digital 2026"]
+      },
+      "autoCorrections": [
+        "Model auto-selected: Pro (data visualization with numbers).",
+        "Two-step prompt: Google Search grounding enabled."
+      ],
+      "numImages": 1
+    }
+  ]
+}

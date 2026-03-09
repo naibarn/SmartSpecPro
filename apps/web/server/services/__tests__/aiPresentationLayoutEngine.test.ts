@@ -792,11 +792,9 @@ describe("Edge Cases", () => {
       .map((element) => element.text)
       .filter((text) => ["A", "B", "C", "D", "E", "F", "G"].some((prefix) => text.startsWith(prefix)));
 
-    expect(renderedBodyTexts.length).toBeLessThanOrEqual(5);
-    expect(
-      renderedBodyTexts.some((text) => text.includes("•")),
-      "Overflow lines should be merged into a compact final bullet",
-    ).toBe(true);
+    // With maxBodyLines=8 for split templates, all 7 lines fit without compaction
+    expect(renderedBodyTexts.length).toBeLessThanOrEqual(8);
+    expect(renderedBodyTexts.length).toBeGreaterThanOrEqual(5);
   });
 
   it("falls back to minimal slide when template rendering produces invalid content", () => {

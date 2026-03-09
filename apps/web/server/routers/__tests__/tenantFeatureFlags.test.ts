@@ -133,6 +133,7 @@ describe("getFeatureFlagDefaults", () => {
     const falseKeys: (keyof typeof FEATURE_FLAG_DEFAULTS)[] = [
       "multiChannel", "chatWidget", "browserTool", "canvas",
       "voiceChat", "webhookTriggers", "crossAgency", "channelRouter",
+      "automationCopilot", "responsesApi",
     ];
     for (const key of falseKeys) {
       expect(FEATURE_FLAG_DEFAULTS[key]).toBe(false);

@@ -15,6 +15,22 @@ import {
   type TenantFeatureFlagKey,
   type TenantFeatureFlags,
 } from "../../shared/featureFlags";
+import { setTenantFeatureFlag } from "./featureFlags";
+
+/**
+ * Flag keys that are also checked via Redis by backend route guards.
+ * When these flags are updated in the DB, we sync to Redis so that
+ * getTenantFeatureFlag() in featureFlags.ts picks up the admin toggle.
+ */
+const REDIS_SYNCED_FLAGS: ReadonlySet<TenantFeatureFlagKey> = new Set([
+  "browserTool",
+  "automationCopilot",
+  "responsesApi",
+  "chatWidget",
+  "webhookTriggers",
+  "voiceChat",
+  "channelRouter",
+]);
 
 /**
  * Validate and sanitize a raw feature flags input.
@@ -123,7 +139,7 @@ export async function updateTenantFeatureFlags(
     throw new Error("Database unavailable");
   }
 
-  return db.transaction(async (tx) => {
+  const merged = await db.transaction(async (tx) => {
     // Step 1: Read current flags inside transaction
     const [row] = await tx
       .select({ featureFlags: tenants.featureFlags })
@@ -139,14 +155,32 @@ export async function updateTenantFeatureFlags(
     const currentFlags = resolveFeatureFlags(
       row.featureFlags as Record<string, boolean> | null,
     );
-    const merged: TenantFeatureFlags = { ...currentFlags, ...flagUpdates };
+    const result: TenantFeatureFlags = { ...currentFlags, ...flagUpdates };
 
     // Step 3: Write back only the featureFlags column
     await tx
       .update(tenants)
-      .set({ featureFlags: merged as unknown as Record<string, boolean> })
+      .set({ featureFlags: result as unknown as Record<string, boolean> })
       .where(eq(tenants.id, tenantId));
 
-    return merged;
+    return result;
   });
+
+  // Step 4: Sync changed flags to Redis (outside transaction — best-effort)
+  // This bridges the admin panel (DB) with backend route guards (Redis).
+  const syncPromises: Promise<void>[] = [];
+  for (const [key, value] of Object.entries(flagUpdates) as [TenantFeatureFlagKey, boolean][]) {
+    if (REDIS_SYNCED_FLAGS.has(key)) {
+      syncPromises.push(
+        setTenantFeatureFlag(key, tenantId, value).catch(() => {
+          // Redis sync is best-effort — DB is the source of truth
+        }),
+      );
+    }
+  }
+  if (syncPromises.length > 0) {
+    await Promise.all(syncPromises);
+  }
+
+  return merged;
 }

@@ -37,7 +37,7 @@ describe("conflictPolicy", () => {
 
     expect(second.phase).toBe("stale_blocked");
     expect(shouldBlockSaveAttempt(second, "autosave", now + 700)).toBe("stale_blocked");
-    expect(shouldBlockSaveAttempt(second, "manual", now + 700)).toBe("stale_blocked");
+    expect(shouldBlockSaveAttempt(second, "manual", now + 700)).toBeNull();
   });
 
   it("resets stale block and conflict counters on explicit release or save success", () => {

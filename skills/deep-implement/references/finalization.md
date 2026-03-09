@@ -1,4 +1,4 @@
-# Finalization (Codex)
+# Finalization
 
 After all manifest sections are implemented:
 

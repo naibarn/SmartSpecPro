@@ -145,6 +145,7 @@ export const AIPresentationSlideSchema = z.object({
   templateId: z.enum(AI_LAYOUT_TEMPLATE_IDS),
   title: z.string().min(1).max(200),
   body: z.array(z.string()).min(1).max(10),
+  notes: z.string().min(1).max(5_000).optional(),
   sections: z
     .array(
       z.object({
@@ -203,6 +204,7 @@ export const GenerateAIDraftInputSchema = z.object({
   watermark: AIWatermarkSchema.optional(),
   draftSkillParams: z.record(z.string(), z.any()).optional(),
   articleSkillParams: z.record(z.string(), z.any()).optional(),
+  mediaSkillParams: z.record(z.string(), z.any()).optional(),
 }).superRefine((value, ctx) => {
   if (value.useCustomArticle) {
     if (!value.customArticleText?.trim()) {

@@ -88,6 +88,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
 import { buildWrongEditorOpenGuard } from "@/lib/presentationRouting";
@@ -166,8 +167,13 @@ import {
   AI_STYLE_PRESET_IDS,
 } from "@shared/presentation/aiTypes";
 import { BUILT_IN_PRESETS } from "@shared/presentation/aiStylePresets";
+import {
+  computeMediaMotionTimelineFrame,
+  hasActiveMediaMotion,
+} from "@shared/presentation/mediaMotion";
 import type {
   PresentationExportWarning,
+  PresentationMediaMotion,
   PresentationSlideBackground,
   PresentationTransition,
 } from "@shared/presentation/contracts";
@@ -367,6 +373,11 @@ interface SlideDiffSummary {
   removedElementCount: number;
 }
 
+interface SlideDraftState {
+  content: PresentationSlideContent;
+  notes: string | null;
+}
+
 function getItemType(item: unknown): string {
   if (!item || typeof item !== "object") {
     return "";
@@ -511,7 +522,13 @@ interface PresentationConflictLike {
   latestSlide?: {
     version?: number;
     slideContent?: unknown;
+    notes?: string | null;
   };
+}
+
+interface DeckNoteConflictState {
+  latestVersion: number | null;
+  latestNotes: string;
 }
 
 function extractPresentationConflict(error: unknown): PresentationConflictLike | null {
@@ -548,6 +565,7 @@ function resolveLatestConflictSlideVersion(conflict: PresentationConflictLike): 
 function isConflictSlideContentEqualDraft(
   conflict: PresentationConflictLike,
   draftContent: PresentationSlideContent,
+  draftNotes: string | null,
 ): boolean {
   if (!conflict.latestSlide || conflict.latestSlide.slideContent == null) {
     return false;
@@ -556,7 +574,10 @@ function isConflictSlideContentEqualDraft(
   try {
     const latestNormalized = ensureSlideContent(conflict.latestSlide.slideContent as PresentationSlideContent);
     const draftNormalized = ensureSlideContent(draftContent);
-    return JSON.stringify(latestNormalized) === JSON.stringify(draftNormalized);
+    return (
+      JSON.stringify(latestNormalized) === JSON.stringify(draftNormalized)
+      && (conflict.latestSlide.notes ?? "") === (draftNotes ?? "")
+    );
   } catch {
     return false;
   }
@@ -623,12 +644,13 @@ async function exitAnyFullscreen(doc: FullscreenCapableDocument): Promise<void> 
 function buildDraftSignature(
   slideId: number | null,
   content: PresentationSlideContent,
+  notes?: string | null,
 ): string | null {
   if (!slideId) {
     return null;
   }
 
-  return `${slideId}:${buildSlideContentSignature(content)}`;
+  return `${slideId}:${buildSlideContentSignature(content)}:${notes ?? ""}`;
 }
 
 function sortValueForStableJson(value: unknown): unknown {
@@ -649,6 +671,20 @@ function sortValueForStableJson(value: unknown): unknown {
 function buildSlideContentSignature(content: PresentationSlideContent): string {
   const normalized = ensureSlideContent(content);
   return JSON.stringify(sortValueForStableJson(normalized));
+}
+
+async function copyTextToClipboard(value: string, successMessage: string): Promise<void> {
+  const text = value.trim();
+  if (!text) {
+    toast.error("Nothing to copy.");
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success(successMessage);
+  } catch {
+    toast.error("Copy failed.");
+  }
 }
 
 export function mergeResolvedPendingMediaIntoCachedDraft(
@@ -1037,6 +1073,13 @@ function summarizeSlidePreview(slideContent: unknown): {
   };
 }
 
+function slideContentHasActiveMediaMotion(content: PresentationSlideContent): boolean {
+  return content.elements.some((element) => (
+    (element.type === "image" || element.type === "video")
+    && hasActiveMediaMotion((element as any).mediaMotion)
+  ));
+}
+
 const MIN_PREVIEW_LINE_HEIGHT = 2;
 
 function clampNumber(value: number, min: number, max: number): number {
@@ -1100,12 +1143,29 @@ function isLikelySvgMarkup(value: string): boolean {
   return normalized.includes("<svg") && normalized.includes("</svg>");
 }
 
+function buildReadonlyMediaTransformStyle(
+  baseZoom: number,
+  positionX: number,
+  positionY: number,
+  mediaMotion: PresentationMediaMotion | undefined,
+  playbackElapsedMs: number,
+  slideDurationMs: number,
+): CSSProperties {
+  const motionFrame = computeMediaMotionTimelineFrame(mediaMotion, playbackElapsedMs, slideDurationMs);
+  return {
+    transform: `translate(${motionFrame.translateXPercent}%, ${motionFrame.translateYPercent}%) scale(${baseZoom * motionFrame.scaleMultiplier})`,
+    transformOrigin: `${positionX}% ${positionY}%`,
+  };
+}
+
 function renderReadonlySlideElement(
   element: PresentationSlideContent["elements"][number],
   index: number,
   canvasWidth: number,
   canvasHeight: number,
   renderScale: number,
+  playbackElapsedMs: number,
+  slideDurationMs: number,
 ): ReactElement {
   const commonStyle = {
     left: `${(element.x / canvasWidth) * 100}%`,
@@ -1190,7 +1250,17 @@ function renderReadonlySlideElement(
           <div
             className="h-full w-full"
             data-testid={`readonly-svg-image-${element.id || index}`}
-            style={{ color: svgColor }}
+            style={{
+              color: svgColor,
+              ...buildReadonlyMediaTransformStyle(
+                imageConfig.zoom,
+                imageConfig.positionX,
+                imageConfig.positionY,
+                element.mediaMotion,
+                playbackElapsedMs,
+                slideDurationMs,
+              ),
+            }}
             dangerouslySetInnerHTML={{ __html: coloredSvg }}
           />
         ) : hasInlineSvg ? (
@@ -1208,8 +1278,14 @@ function renderReadonlySlideElement(
             style={{
               objectFit: imageConfig.fit,
               objectPosition: `${imageConfig.positionX}% ${imageConfig.positionY}%`,
-              transform: `scale(${imageConfig.zoom})`,
-              transformOrigin: `${imageConfig.positionX}% ${imageConfig.positionY}%`,
+              ...buildReadonlyMediaTransformStyle(
+                imageConfig.zoom,
+                imageConfig.positionX,
+                imageConfig.positionY,
+                element.mediaMotion,
+                playbackElapsedMs,
+                slideDurationMs,
+              ),
             }}
           />
         ) : null}
@@ -1224,14 +1300,21 @@ function renderReadonlySlideElement(
     return (
       <div key={element.id || `play-${index}`} className="absolute overflow-hidden bg-black" style={commonStyle}>
         <video
+          data-testid={`readonly-video-${element.id || index}`}
           src={normalizedSource}
           poster={normalizedPoster || undefined}
           className="h-full w-full"
           style={{
             objectFit: videoConfig.fit,
             objectPosition: `${videoConfig.positionX}% ${videoConfig.positionY}%`,
-            transform: `scale(${videoConfig.zoom})`,
-            transformOrigin: `${videoConfig.positionX}% ${videoConfig.positionY}%`,
+            ...buildReadonlyMediaTransformStyle(
+              videoConfig.zoom,
+              videoConfig.positionX,
+              videoConfig.positionY,
+              element.mediaMotion,
+              playbackElapsedMs,
+              slideDurationMs,
+            ),
           }}
           preload="auto"
           autoPlay
@@ -1442,7 +1525,7 @@ export default function PresentationEditor() {
   const [commandState, setCommandState] = useState<CanvasCommandState>(() =>
     createCanvasCommandState({ elements: [] }),
   );
-  const slideDraftCacheRef = useRef<Map<number, PresentationSlideContent>>(new Map());
+  const slideDraftCacheRef = useRef<Map<number, SlideDraftState>>(new Map());
   const elementClipboardRef = useRef<PresentationElement[]>([]);
   const clipboardPasteCountRef = useRef(0);
   const commandBusRef = useRef(
@@ -1471,11 +1554,21 @@ export default function PresentationEditor() {
   const previewAudioDeckSignatureRef = useRef<string | null>(null);
   const playbackTransitionSlideRef = useRef<number | null>(null);
   const playbackTransitionFrameRef = useRef<number | null>(null);
+  const playbackProgressFrameRef = useRef<number | null>(null);
+  const playbackSlideStartedAtRef = useRef<number | null>(null);
+  const playbackSlideElapsedRef = useRef(0);
+  const [playbackSlideElapsedMs, setPlaybackSlideElapsedMs] = useState(0);
   const [playbackStageHostSize, setPlaybackStageHostSize] = useState({ width: 0, height: 0 });
   const [isPlaybackFullscreen, setIsPlaybackFullscreen] = useState(false);
   const [projectTitleDraft, setProjectTitleDraft] = useState("");
+  const [deckNoteDraft, setDeckNoteDraft] = useState("");
+  const [slideNoteDraft, setSlideNoteDraft] = useState("");
   const [isProjectTitleEditing, setIsProjectTitleEditing] = useState(false);
   const [isProjectTitleSaving, setIsProjectTitleSaving] = useState(false);
+  const [isDeckNoteDialogOpen, setIsDeckNoteDialogOpen] = useState(false);
+  const [isSlideNoteDialogOpen, setIsSlideNoteDialogOpen] = useState(false);
+  const [isDeckNoteSaving, setIsDeckNoteSaving] = useState(false);
+  const [deckNoteConflict, setDeckNoteConflict] = useState<DeckNoteConflictState | null>(null);
   const [autoDeckInitAttempted, setAutoDeckInitAttempted] = useState(false);
   const [autoDeckInitPending, setAutoDeckInitPending] = useState(false);
   const [autoDeckInitError, setAutoDeckInitError] = useState<string | null>(null);
@@ -1520,6 +1613,8 @@ export default function PresentationEditor() {
   const imageUploadInputRef = useRef<HTMLInputElement | null>(null);
   const videoUploadInputRef = useRef<HTMLInputElement | null>(null);
   const mobileHeaderMenuRef = useRef<HTMLDivElement | null>(null);
+  const deckNoteDraftRef = useRef(deckNoteDraft);
+  const deckNoteLastSyncedRef = useRef("");
   const [selectedSavedVersionId, setSelectedSavedVersionId] = useState<number | null>(null);
   const [restoreDialogVersionId, setRestoreDialogVersionId] = useState<number | null>(null);
   const [desktopViewport, setDesktopViewport] = useState({
@@ -1551,6 +1646,22 @@ export default function PresentationEditor() {
     }
     setProjectTitleDraft(projectTitle);
   }, [projectTitle, isProjectTitleEditing]);
+
+  useEffect(() => {
+    deckNoteDraftRef.current = deckNoteDraft;
+  }, [deckNoteDraft]);
+
+  useEffect(() => {
+    const latestNotes = typeof deck?.notes === "string" ? deck.notes : "";
+    const currentDraft = deckNoteDraftRef.current;
+    const draftMatchesLastSynced = currentDraft === deckNoteLastSyncedRef.current;
+    const draftMatchesLatest = currentDraft === latestNotes;
+    deckNoteLastSyncedRef.current = latestNotes;
+    if (deckNoteConflict != null || (!draftMatchesLastSynced && !draftMatchesLatest)) {
+      return;
+    }
+    setDeckNoteDraft(latestNotes);
+  }, [deck?.id, deck?.version, deck?.notes, deckNoteConflict]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -1776,18 +1887,34 @@ export default function PresentationEditor() {
     () => slides.filter((slide) => ensureSlideContent(slide.slideContent).visualOnly === true).length,
     [slides],
   );
+  const staticExportMotionWarningSlideCount = useMemo(() => {
+    let count = 0;
+    for (const slide of slides) {
+      const content = slide.id === selectedSlideId
+        ? draftContent
+        : ensureSlideContent(slide.slideContent);
+      if (slideContentHasActiveMediaMotion(content)) {
+        count += 1;
+      }
+    }
+    return count;
+  }, [draftContent, selectedSlideId, slides]);
   const selectedElementIds = commandState.selectedElementIds;
   const selectedElementId = selectedElementIds[0] ?? null;
   const previousMobileSelectedElementIdRef = useRef<string | null | undefined>(undefined);
   const draftSignature = useMemo(
-    () => buildDraftSignature(selectedSlide?.id ?? null, draftContent),
-    [draftContent, selectedSlide?.id],
+    () => buildDraftSignature(selectedSlide?.id ?? null, draftContent, slideNoteDraft),
+    [draftContent, selectedSlide?.id, slideNoteDraft],
   );
   const persistedSlideSignature = useMemo(
     () => (selectedSlide
-      ? buildDraftSignature(selectedSlide.id, ensureSlideContent(selectedSlide.slideContent))
+      ? buildDraftSignature(
+          selectedSlide.id,
+          ensureSlideContent(selectedSlide.slideContent),
+          selectedSlide.notes,
+        )
       : null),
-    [selectedSlide?.id, selectedSlide?.version, selectedSlide?.slideContent],
+    [selectedSlide?.id, selectedSlide?.version, selectedSlide?.slideContent, selectedSlide?.notes],
   );
   const hasUnsavedSelectedSlideChanges = useMemo(() => (
     Boolean(
@@ -1796,9 +1923,12 @@ export default function PresentationEditor() {
       && draftSignature !== persistedSlideSignature,
     )
   ), [draftSignature, persistedSlideSignature]);
+  const slideNoteDirty = (selectedSlide?.notes ?? "") !== slideNoteDraft;
+  const hasSavedSlideNote = Boolean((selectedSlide?.notes ?? "").trim()) && !slideNoteDirty;
+  const deckNoteDirty = (deck?.notes ?? "") !== deckNoteDraft;
   const unsavedCachedSlideIds = (() => {
     const result: number[] = [];
-    for (const [slideId, cachedContent] of slideDraftCacheRef.current.entries()) {
+    for (const [slideId, cachedDraft] of slideDraftCacheRef.current.entries()) {
       if (slideId === selectedSlideId) {
         continue;
       }
@@ -1807,7 +1937,11 @@ export default function PresentationEditor() {
         continue;
       }
       const persistedContent = ensureSlideContent(persistedSlide.slideContent);
-      if (buildSlideContentSignature(persistedContent) !== buildSlideContentSignature(cachedContent)) {
+      const persistedNotes = persistedSlide.notes ?? null;
+      if (
+        buildSlideContentSignature(persistedContent) !== buildSlideContentSignature(cachedDraft.content)
+        || (persistedNotes ?? "") !== (cachedDraft.notes ?? "")
+      ) {
         result.push(slideId);
       }
     }
@@ -2084,12 +2218,15 @@ export default function PresentationEditor() {
     const activeContent = selectedSlideId === selectedSavedVersionSlide.id
       ? draftContent
       : ensureSlideContent(selectedSavedVersionSlide.slideContent);
+    const activeNotes = selectedSlideId === selectedSavedVersionSlide.id
+      ? slideNoteDraft
+      : selectedSavedVersionSlide.notes;
     return {
       title: selectedSavedVersionSlide.title,
-      notes: selectedSavedVersionSlide.notes,
+      notes: activeNotes,
       content: activeContent,
     };
-  }, [draftContent, selectedSavedVersionSlide, selectedSlideId]);
+  }, [draftContent, selectedSavedVersionSlide, selectedSlideId, slideNoteDraft]);
   const selectedSavedVersionSnapshotState = useMemo<SlideComparisonState | null>(() => {
     if (!selectedSavedVersion || !selectedSavedVersionContent) {
       return null;
@@ -2127,10 +2264,10 @@ export default function PresentationEditor() {
   );
   const playbackSlides = useMemo(() => {
     return slides.map((slide) => {
-      const cachedContent = slideDraftCacheRef.current.get(slide.id);
+      const cachedDraft = getCachedSlideDraft(slide.id);
       const content = selectedSlideId === slide.id
         ? draftContent
-        : cachedContent ?? ensureSlideContent(slide.slideContent);
+        : cachedDraft?.content ?? ensureSlideContent(slide.slideContent);
       return {
         slideId: slide.id,
         title: slide.title,
@@ -2140,6 +2277,9 @@ export default function PresentationEditor() {
       };
     });
   }, [draftContent, selectedSlideId, slides]);
+  // Keep a stable ref so the auto-advance timer isn't reset by memo recomputation.
+  const playbackSlidesRef = useRef(playbackSlides);
+  playbackSlidesRef.current = playbackSlides;
   const activeViewport = isMobileViewport
     ? mobileGestures.state.viewport
     : desktopViewport;
@@ -2155,9 +2295,16 @@ export default function PresentationEditor() {
     syncCommandState(commandBusRef.current.execute(command));
   }
 
-  function cacheSlideDraft(slideId: number | null, content: PresentationSlideContent) {
+  function cacheSlideDraft(
+    slideId: number | null,
+    content: PresentationSlideContent,
+    notes: string | null,
+  ) {
     if (!slideId) return;
-    slideDraftCacheRef.current.set(slideId, ensureSlideContent(content));
+    slideDraftCacheRef.current.set(slideId, {
+      content: ensureSlideContent(content),
+      notes: notes?.trim() ? notes : null,
+    });
   }
 
   function clearCachedSlideDraft(slideId: number | null) {
@@ -2165,11 +2312,18 @@ export default function PresentationEditor() {
     slideDraftCacheRef.current.delete(slideId);
   }
 
+  function getCachedSlideDraft(slideId: number | null): SlideDraftState | null {
+    if (!slideId) {
+      return null;
+    }
+    return slideDraftCacheRef.current.get(slideId) ?? null;
+  }
+
   function switchToSlide(nextSlideId: number) {
     if (selectedSlideId === nextSlideId) {
       return;
     }
-    cacheSlideDraft(selectedSlideId, draftContent);
+    cacheSlideDraft(selectedSlideId, draftContent, slideNoteDraft);
     setSelectedSlideId(nextSlideId);
   }
 
@@ -2269,18 +2423,24 @@ export default function PresentationEditor() {
     for (const slide of slides) {
       slidesById.set(slide.id, slide);
     }
-    for (const [slideId, cached] of slideDraftCacheRef.current.entries()) {
+    for (const [slideId, cachedDraft] of slideDraftCacheRef.current.entries()) {
       const persistedSlide = slidesById.get(slideId);
       if (!persistedSlide) {
         slideDraftCacheRef.current.delete(slideId);
         continue;
       }
       const persistedContent = ensureSlideContent(persistedSlide.slideContent);
-      const mergedCached = mergeResolvedPendingMediaIntoCachedDraft(cached, persistedContent);
-      if (buildSlideContentSignature(mergedCached) !== buildSlideContentSignature(cached)) {
-        slideDraftCacheRef.current.set(slideId, mergedCached);
+      const mergedContent = mergeResolvedPendingMediaIntoCachedDraft(cachedDraft.content, persistedContent);
+      if (buildSlideContentSignature(mergedContent) !== buildSlideContentSignature(cachedDraft.content)) {
+        slideDraftCacheRef.current.set(slideId, {
+          ...cachedDraft,
+          content: mergedContent,
+        });
       }
-      if (buildSlideContentSignature(persistedContent) === buildSlideContentSignature(mergedCached)) {
+      if (
+        buildSlideContentSignature(persistedContent) === buildSlideContentSignature(mergedContent)
+        && (persistedSlide.notes ?? "") === (cachedDraft.notes ?? "")
+      ) {
         slideDraftCacheRef.current.delete(slideId);
       }
     }
@@ -2422,15 +2582,16 @@ export default function PresentationEditor() {
       const empty = createCanvasCommandState({ elements: [] });
       commandBusRef.current.reset(empty);
       setCommandState(empty);
+      setSlideNoteDraft("");
       setSaveState("idle");
       setExpectedSlideVersion(null);
       setConflictPolicy(releaseStaleBlock());
       return;
     }
 
-    const cachedDraft = slideDraftCacheRef.current.get(selectedSlide.id);
+    const cachedDraft = getCachedSlideDraft(selectedSlide.id);
     const next = cachedDraft
-      ? ensureSlideContent(cachedDraft)
+      ? ensureSlideContent(cachedDraft.content)
       : ensureSlideContent(selectedSlide.slideContent);
     const nextSelected = next.elements[0]?.id ? [next.elements[0].id] : [];
     const nextState = createCanvasCommandState(next, nextSelected);
@@ -2451,8 +2612,8 @@ export default function PresentationEditor() {
     }
     setSaveState("idle");
     setExpectedSlideVersion(selectedSlide.version);
-    setConflictPolicy(releaseStaleBlock());
-  }, [selectedSlide?.id, selectedSlide?.version]);
+    setSlideNoteDraft(cachedDraft?.notes ?? selectedSlide.notes ?? "");
+  }, [selectedSlide?.id, selectedSlide?.version, selectedSlide?.notes]);
 
   async function refreshDeck() {
     const tasks: Array<Promise<unknown>> = [];
@@ -2478,6 +2639,14 @@ export default function PresentationEditor() {
       return latest;
     }
     return deckVersionRef.current;
+  }
+
+  async function readLatestDeckDetail(): Promise<any | null> {
+    if (typeof deckQuery.refetch !== "function") {
+      return deckData ?? null;
+    }
+    const result = await deckQuery.refetch();
+    return ((result.data as any) ?? deckData ?? null);
   }
 
   function getExpectedDeckVersion(): number {
@@ -2956,15 +3125,19 @@ export default function PresentationEditor() {
     setCanvasApplyAllPending(true);
     try {
       for (const slide of slides) {
+        const cachedDraft = getCachedSlideDraft(slide.id);
         const baseContent = slide.id === selectedSlide?.id
           ? draftContent
-          : ensureSlideContent(slide.slideContent);
+          : cachedDraft?.content ?? ensureSlideContent(slide.slideContent);
         await updateSlideMutation.mutateAsync({
           deckId: deck.id,
           slideId: slide.id,
           expectedVersion: slide.version,
           saveMode: "manual",
           title: slide.title,
+          notes: slide.id === selectedSlide?.id
+            ? (slideNoteDraft.trim() ? slideNoteDraft : null)
+            : cachedDraft?.notes ?? slide.notes ?? null,
           slideContent: resizeCanvas(baseContent, {
             preset: preset.id,
             width: preset.width,
@@ -3263,15 +3436,19 @@ export default function PresentationEditor() {
     setTimingApplyAllPending(true);
     try {
       for (const slide of slides) {
+        const cachedDraft = getCachedSlideDraft(slide.id);
         const baseContent = slide.id === selectedSlide?.id
           ? draftContent
-          : ensureSlideContent(slide.slideContent);
+          : cachedDraft?.content ?? ensureSlideContent(slide.slideContent);
         await updateSlideMutation.mutateAsync({
           deckId: deck.id,
           slideId: slide.id,
           expectedVersion: slide.version,
           saveMode: "manual",
           title: slide.title,
+          notes: slide.id === selectedSlide?.id
+            ? (slideNoteDraft.trim() ? slideNoteDraft : null)
+            : cachedDraft?.notes ?? slide.notes ?? null,
           slideContent: {
             ...baseContent,
             durationMs,
@@ -3295,19 +3472,23 @@ export default function PresentationEditor() {
     setTransitionApplyAllPending(true);
     try {
       for (const slide of slides) {
+        const cachedDraft = getCachedSlideDraft(slide.id);
         const persistedContent = ensureSlideContent(slide.slideContent);
         if ((persistedContent.transition ?? "fade") === transition) {
           continue;
         }
         const baseContent = slide.id === selectedSlide?.id
           ? draftContent
-          : persistedContent;
+          : cachedDraft?.content ?? persistedContent;
         await updateSlideMutation.mutateAsync({
           deckId: deck.id,
           slideId: slide.id,
           expectedVersion: slide.version,
           saveMode: "manual",
           title: slide.title,
+          notes: slide.id === selectedSlide?.id
+            ? (slideNoteDraft.trim() ? slideNoteDraft : null)
+            : cachedDraft?.notes ?? slide.notes ?? null,
           slideContent: {
             ...baseContent,
             transition,
@@ -3404,10 +3585,10 @@ export default function PresentationEditor() {
 
       const videoDurationProbeCache = new Map<string, Promise<number | null>>();
       const slideTimingInputs = await Promise.all(slides.map(async (slide) => {
-        const cachedContent = slideDraftCacheRef.current.get(slide.id);
+        const cachedDraft = getCachedSlideDraft(slide.id);
         const content = slide.id === selectedSlide?.id
           ? draftContent
-          : cachedContent ?? ensureSlideContent(slide.slideContent);
+          : cachedDraft?.content ?? ensureSlideContent(slide.slideContent);
         const currentDurationMs = resolveSlideDurationMs(content);
         const videoSourceUrls = [...new Set(content.elements
           .filter((element) => element.type === "video")
@@ -3462,10 +3643,10 @@ export default function PresentationEditor() {
         if (nextDurationMs == null) {
           continue;
         }
-        const cachedContent = slideDraftCacheRef.current.get(slide.id);
+        const cachedDraft = getCachedSlideDraft(slide.id);
         const baseContent = slide.id === selectedSlide?.id
           ? draftContent
-          : cachedContent ?? ensureSlideContent(slide.slideContent);
+          : cachedDraft?.content ?? ensureSlideContent(slide.slideContent);
         if (resolveSlideDurationMs(baseContent) === nextDurationMs) {
           continue;
         }
@@ -3475,6 +3656,9 @@ export default function PresentationEditor() {
           expectedVersion: slide.version,
           saveMode: "manual",
           title: slide.title,
+          notes: slide.id === selectedSlide?.id
+            ? (slideNoteDraft.trim() ? slideNoteDraft : null)
+            : cachedDraft?.notes ?? slide.notes ?? null,
           slideContent: {
             ...baseContent,
             durationMs: nextDurationMs,
@@ -3553,6 +3737,7 @@ export default function PresentationEditor() {
         expectedVersion: saveVersion,
         saveMode,
         title: selectedSlide.title,
+        notes: slideNoteDraft.trim() ? slideNoteDraft : null,
         slideContent: draftContent,
       });
     };
@@ -3580,7 +3765,7 @@ export default function PresentationEditor() {
           const latestConflictVersion = resolveLatestConflictSlideVersion(conflict);
           if (
             latestConflictVersion !== null
-            && isConflictSlideContentEqualDraft(conflict, draftContent)
+            && isConflictSlideContentEqualDraft(conflict, draftContent, slideNoteDraft)
           ) {
             setExpectedSlideVersion(latestConflictVersion);
             clearCachedSlideDraft(selectedSlide.id);
@@ -3602,8 +3787,12 @@ export default function PresentationEditor() {
       }
 
       if (isConflictError(finalError)) {
-        const nextPolicy = registerConflict(conflictPolicyRef.current, Date.now());
-        setConflictPolicy(nextPolicy);
+        const nextPolicy = saveMode === "autosave"
+          ? registerConflict(conflictPolicyRef.current, Date.now())
+          : conflictPolicyRef.current;
+        if (saveMode === "autosave") {
+          setConflictPolicy(nextPolicy);
+        }
         setSaveState("conflict");
         if (saveMode === "autosave") {
           trackAutosaveResult({
@@ -3627,7 +3816,7 @@ export default function PresentationEditor() {
       }
       return "skipped";
     }
-  }, [deck, draftContent, expectedSlideVersion, selectedSlide, updateSlideMutation]);
+  }, [deck, draftContent, expectedSlideVersion, selectedSlide, slideNoteDraft, updateSlideMutation]);
 
   const autosaveController = useAutosaveController({
     enabled: Boolean(deck && selectedSlide && draftSignature),
@@ -3645,9 +3834,10 @@ export default function PresentationEditor() {
       buildDraftSignature(
         selectedSlide.id,
         ensureSlideContent(selectedSlide.slideContent),
+        selectedSlide.notes,
       ),
     );
-  }, [autosaveController, selectedSlide?.id, selectedSlide?.version]);
+  }, [autosaveController, selectedSlide?.id, selectedSlide?.version, selectedSlide?.notes]);
 
   async function handleSaveSlide(options?: { silent?: boolean }): Promise<boolean> {
     if (!deck || !selectedSlide) {
@@ -3754,8 +3944,14 @@ export default function PresentationEditor() {
     }
 
     if (scope === "all") {
-      const dirtyCachedSlides: Array<{ id: number; orderIndex: number; title: string; content: PresentationSlideContent }> = [];
-      for (const [slideId, cachedContent] of slideDraftCacheRef.current.entries()) {
+      const dirtyCachedSlides: Array<{
+        id: number;
+        orderIndex: number;
+        title: string;
+        content: PresentationSlideContent;
+        notes: string | null;
+      }> = [];
+      for (const [slideId, cachedDraft] of slideDraftCacheRef.current.entries()) {
         if (slideId === selectedId) {
           continue;
         }
@@ -3764,8 +3960,11 @@ export default function PresentationEditor() {
           continue;
         }
         const persisted = ensureSlideContent(slide.slideContent);
-        const cached = ensureSlideContent(cachedContent);
-        if (buildSlideContentSignature(persisted) === buildSlideContentSignature(cached)) {
+        const cached = ensureSlideContent(cachedDraft.content);
+        if (
+          buildSlideContentSignature(persisted) === buildSlideContentSignature(cached)
+          && (slide.notes ?? "") === (cachedDraft.notes ?? "")
+        ) {
           clearCachedSlideDraft(slideId);
           continue;
         }
@@ -3774,6 +3973,7 @@ export default function PresentationEditor() {
           orderIndex: slide.orderIndex,
           title: slide.title,
           content: cached,
+          notes: cachedDraft.notes ?? null,
         });
       }
 
@@ -3789,6 +3989,7 @@ export default function PresentationEditor() {
               expectedVersion,
               saveMode: "manual",
               title: draftSlide.title,
+              notes: draftSlide.notes,
               slideContent: draftSlide.content,
             });
             const savedVersion = Number((savedSlide as any)?.version);
@@ -3880,7 +4081,9 @@ export default function PresentationEditor() {
               preLayoutState,
               postLayoutState: commandBusRef.current.getState(),
             };
-            autosaveController.markPersisted(buildDraftSignature(selectedId, nextContent));
+            autosaveController.markPersisted(
+              buildDraftSignature(selectedId, nextContent, slideNoteDraft),
+            );
           }
           const resultWarnings = Array.isArray((result as any)?.warnings)
             ? (result as any).warnings.filter((warning: unknown) => typeof warning === "string")
@@ -3968,6 +4171,111 @@ export default function PresentationEditor() {
       toast.error(error instanceof Error ? error.message : "Failed to update project name.");
     } finally {
       setIsProjectTitleSaving(false);
+    }
+  }
+
+  async function persistDeckNote(
+    expectedVersion: number,
+    nextNotes: string | null,
+  ): Promise<void> {
+    await updateDeckMutation.mutateAsync({
+      deckId: deck!.id,
+      expectedVersion,
+      notes: nextNotes,
+    });
+    deckVersionRef.current = expectedVersion + 1;
+    deckNoteLastSyncedRef.current = nextNotes ?? "";
+    setDeckNoteConflict(null);
+    await refreshDeck();
+  }
+
+  function handleReloadDeckNoteConflict() {
+    if (!deckNoteConflict) {
+      return;
+    }
+    setDeckNoteDraft(deckNoteConflict.latestNotes);
+    deckNoteLastSyncedRef.current = deckNoteConflict.latestNotes;
+    setDeckNoteConflict(null);
+    toast.info("Loaded the latest presentation note.");
+  }
+
+  async function handleSaveDeckNote(options?: { forceOverwrite?: boolean }): Promise<boolean> {
+    if (!deck) {
+      return false;
+    }
+    const nextNotes = deckNoteDraft.trim() ? deckNoteDraft : null;
+    if ((deck.notes ?? null) === nextNotes) {
+      setDeckNoteConflict(null);
+      setIsDeckNoteDialogOpen(false);
+      return true;
+    }
+
+    setIsDeckNoteSaving(true);
+    try {
+      const initialExpectedVersion = (
+        options?.forceOverwrite
+          ? deckNoteConflict?.latestVersion
+          : getExpectedDeckVersion()
+      ) ?? getExpectedDeckVersion();
+      try {
+        await persistDeckNote(initialExpectedVersion, nextNotes);
+      } catch (error) {
+        if (!isConflictError(error)) {
+          throw error;
+        }
+
+        const latestDetail = await readLatestDeckDetail();
+        const latestVersion = Number((latestDetail as any)?.deck?.version);
+        const latestNotes = typeof (latestDetail as any)?.deck?.notes === "string"
+          ? String((latestDetail as any).deck.notes)
+          : "";
+        if (Number.isFinite(latestVersion) && latestVersion >= 0) {
+          deckVersionRef.current = latestVersion;
+        }
+
+        if ((nextNotes ?? "") === latestNotes) {
+          deckNoteLastSyncedRef.current = latestNotes;
+          setDeckNoteConflict(null);
+          setDeckNoteDraft(latestNotes);
+        } else if (options?.forceOverwrite && Number.isFinite(latestVersion) && latestVersion >= 0) {
+          try {
+            await persistDeckNote(latestVersion, nextNotes);
+          } catch (retryError) {
+            if (!isConflictError(retryError)) {
+              throw retryError;
+            }
+            const newestDetail = await readLatestDeckDetail();
+            const newestVersion = Number((newestDetail as any)?.deck?.version);
+            const newestNotes = typeof (newestDetail as any)?.deck?.notes === "string"
+              ? String((newestDetail as any).deck.notes)
+              : "";
+            if (Number.isFinite(newestVersion) && newestVersion >= 0) {
+              deckVersionRef.current = newestVersion;
+            }
+            setDeckNoteConflict({
+              latestVersion: Number.isFinite(newestVersion) && newestVersion >= 0 ? newestVersion : null,
+              latestNotes: newestNotes,
+            });
+            toast.error("Presentation note changed again before overwrite completed.");
+            return false;
+          }
+        } else {
+          setDeckNoteConflict({
+            latestVersion: Number.isFinite(latestVersion) && latestVersion >= 0 ? latestVersion : null,
+            latestNotes,
+          });
+          toast.error("Presentation note changed in another session. Review latest note or overwrite.");
+          return false;
+        }
+      }
+      setIsDeckNoteDialogOpen(false);
+      toast.success("Presentation note saved.");
+      return true;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to save presentation note.");
+      return false;
+    } finally {
+      setIsDeckNoteSaving(false);
     }
   }
 
@@ -4324,25 +4632,110 @@ export default function PresentationEditor() {
       return;
     }
 
-    const activeSlide = playbackSlides[playbackSlideIndex];
+    // Read from the stable ref so memo recomputation of playbackSlides
+    // (caused by draftContent / selectedSlideId changes) does NOT reset
+    // the auto-advance timer.  The ref is always up-to-date because it is
+    // assigned synchronously after the useMemo.
+    const slides_ = playbackSlidesRef.current;
+    const activeSlide = slides_[playbackSlideIndex];
     if (!activeSlide) {
       return;
     }
 
+    const remainingMs = Math.max(0, activeSlide.durationMs - playbackSlideElapsedRef.current);
     const timeoutId = window.setTimeout(() => {
-      const isLastSlide = playbackSlideIndex >= playbackSlides.length - 1;
+      const latestSlides = playbackSlidesRef.current;
+      const isLastSlide = playbackSlideIndex >= latestSlides.length - 1;
       if (isLastSlide) {
         handleStopSlideshow();
         setExportMessage("Slideshow preview completed.");
         return;
       }
-      setPlaybackSlideIndex((current) => Math.min(playbackSlides.length - 1, current + 1));
-    }, activeSlide.durationMs);
+      setPlaybackSlideIndex((current) => Math.min(latestSlides.length - 1, current + 1));
+    }, remainingMs);
 
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [playbackPaused, playbackSlideIndex, playbackSlides, playbackState]);
+    // playbackSlides intentionally excluded — we use playbackSlidesRef to avoid
+    // timer resets when the memo recomputes during playback.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playbackPaused, playbackSlideIndex, playbackState]);
+
+  useEffect(() => {
+    if (playbackState !== "playing") {
+      if (playbackProgressFrameRef.current != null) {
+        window.cancelAnimationFrame(playbackProgressFrameRef.current);
+        playbackProgressFrameRef.current = null;
+      }
+      playbackSlideStartedAtRef.current = null;
+      playbackSlideElapsedRef.current = 0;
+      setPlaybackSlideElapsedMs(0);
+      return;
+    }
+
+    playbackSlideStartedAtRef.current = null;
+    playbackSlideElapsedRef.current = 0;
+    setPlaybackSlideElapsedMs(0);
+  }, [playbackSlideIndex, playbackState]);
+
+  useEffect(() => {
+    if (playbackState !== "playing") {
+      return;
+    }
+
+    const activeSlide = playbackSlidesRef.current[playbackSlideIndex];
+    if (!activeSlide) {
+      return;
+    }
+
+    if (playbackProgressFrameRef.current != null) {
+      window.cancelAnimationFrame(playbackProgressFrameRef.current);
+      playbackProgressFrameRef.current = null;
+    }
+
+    if (playbackPaused) {
+      if (playbackSlideStartedAtRef.current != null) {
+        const elapsed = clampNumber(
+          window.performance.now() - playbackSlideStartedAtRef.current,
+          0,
+          activeSlide.durationMs,
+        );
+        playbackSlideElapsedRef.current = elapsed;
+        setPlaybackSlideElapsedMs(elapsed);
+      }
+      playbackSlideStartedAtRef.current = null;
+      return;
+    }
+
+    playbackSlideStartedAtRef.current = window.performance.now() - playbackSlideElapsedRef.current;
+
+    const tick = (now: number) => {
+      if (playbackSlideStartedAtRef.current == null) {
+        return;
+      }
+      const elapsed = clampNumber(
+        now - playbackSlideStartedAtRef.current,
+        0,
+        activeSlide.durationMs,
+      );
+      playbackSlideElapsedRef.current = elapsed;
+      setPlaybackSlideElapsedMs(elapsed);
+      if (elapsed >= activeSlide.durationMs) {
+        playbackProgressFrameRef.current = null;
+        return;
+      }
+      playbackProgressFrameRef.current = window.requestAnimationFrame(tick);
+    };
+
+    playbackProgressFrameRef.current = window.requestAnimationFrame(tick);
+    return () => {
+      if (playbackProgressFrameRef.current != null) {
+        window.cancelAnimationFrame(playbackProgressFrameRef.current);
+        playbackProgressFrameRef.current = null;
+      }
+    };
+  }, [playbackPaused, playbackSlideIndex, playbackState]);
 
   useEffect(() => {
     if (playbackState !== "playing") {
@@ -4355,7 +4748,7 @@ export default function PresentationEditor() {
       return;
     }
 
-    const activeSlideId = playbackSlides[playbackSlideIndex]?.slideId ?? null;
+    const activeSlideId = playbackSlidesRef.current[playbackSlideIndex]?.slideId ?? null;
     if (activeSlideId == null) {
       return;
     }
@@ -4380,7 +4773,8 @@ export default function PresentationEditor() {
       setPlaybackSlideTransitionEntering(false);
       playbackTransitionFrameRef.current = null;
     });
-  }, [playbackSlideIndex, playbackSlides, playbackState]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playbackSlideIndex, playbackState]);
 
   useEffect(() => {
     if (playbackState !== "playing") {
@@ -4691,10 +5085,10 @@ export default function PresentationEditor() {
       </button>
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
         {slides.map((slide) => {
-          const cachedContent = slideDraftCacheRef.current.get(slide.id);
+          const cachedDraft = getCachedSlideDraft(slide.id);
           const slideContentForPreview = selectedSlideId === slide.id
             ? draftContent
-            : cachedContent ?? ensureSlideContent(slide.slideContent);
+            : cachedDraft?.content ?? ensureSlideContent(slide.slideContent);
           const isDraggingSlide = draggingSlideId === slide.id;
           const isDropTargetSlide =
             draggingSlideId !== null
@@ -5637,6 +6031,10 @@ export default function PresentationEditor() {
       slideId={selectedSlide?.id ?? null}
       slideVersion={selectedSlide?.version ?? null}
       slideAudioTrack={(selectedSlide as any)?.audioTrack ?? null}
+      slideTitle={selectedSlide?.title ?? null}
+      slideNote={selectedSlide?.notes ?? null}
+      slideNoteDirty={slideNoteDirty}
+      onSaveSlideNote={() => handleSaveSlide({ silent: true })}
       deckId={deck.id}
       deckVersion={deck.version}
       deckAudioTrack={(deck as any)?.projectAudioTrack ?? null}
@@ -5794,6 +6192,8 @@ export default function PresentationEditor() {
   const activePlaybackTransition: PresentationTransition = normalizeTransitionChoice(
     String(activePlaybackSlide?.content.transition ?? "fade"),
   );
+  const activePlaybackElapsedMs = activePlaybackSlide ? playbackSlideElapsedMs : 0;
+  const activePlaybackSlideDurationMs = activePlaybackSlide?.durationMs ?? 3000;
 
   const playbackCanvasSize = normalizeCanvasSize(activePlaybackSlide?.content.canvas);
   const playbackViewport = (() => {
@@ -5931,6 +6331,28 @@ export default function PresentationEditor() {
           </span>
         ) : null}
         <div className="ml-auto flex shrink-0 items-center gap-1">
+          <Button
+            onClick={() => setIsDeckNoteDialogOpen(true)}
+            aria-label="Open Presentation Note"
+            variant="secondary"
+            size="sm"
+            className={`${isMobileViewport ? "h-8 w-8 px-0" : "gap-1"} bg-slate-800 text-slate-100 hover:bg-slate-700`}
+            disabled={!deck || isDeckNoteSaving}
+          >
+            <BookMarked className="h-3.5 w-3.5" />
+            <span className="hidden lg:inline">Presentation Note</span>
+          </Button>
+          <Button
+            onClick={() => setIsSlideNoteDialogOpen(true)}
+            aria-label="Open Slide Note"
+            variant="secondary"
+            size="sm"
+            className={`${isMobileViewport ? "h-8 w-8 px-0" : "gap-1"} bg-slate-800 text-slate-100 hover:bg-slate-700`}
+            disabled={!selectedSlide}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            <span className="hidden lg:inline">Slide Note</span>
+          </Button>
           <Button
             onClick={() => void handleSaveSlide()}
             aria-label="Save Slide"
@@ -6318,6 +6740,8 @@ export default function PresentationEditor() {
                   playbackCanvasSize.width,
                   playbackCanvasSize.height,
                   playbackRenderScale,
+                  activePlaybackElapsedMs,
+                  activePlaybackSlideDurationMs,
                 ))}
             </div>
           </div>
@@ -6737,6 +7161,7 @@ export default function PresentationEditor() {
           open={isExportDialogOpen}
           onClose={() => setIsExportDialogOpen(false)}
           deckId={deck.id}
+          staticMotionWarningSlideCount={staticExportMotionWarningSlideCount}
           onBeforeExport={async () => {
             if (!hasUnsavedSelectedSlideChanges) {
               return true;
@@ -6759,6 +7184,137 @@ export default function PresentationEditor() {
           }}
         />
       )}
+      <Dialog open={isDeckNoteDialogOpen} onOpenChange={setIsDeckNoteDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Presentation Note</DialogTitle>
+            <DialogDescription>
+              Internal note for this presentation only. It is hidden from play mode and exports.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <span>
+                {deckNoteConflict
+                  ? "Conflict detected"
+                  : deckNoteDirty
+                    ? "Unsaved changes"
+                    : "Saved"}
+              </span>
+              <span>{deckNoteDraft.trim().length} chars</span>
+            </div>
+            {deckNoteConflict ? (
+              <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                <p className="font-medium">A newer presentation note was saved elsewhere.</p>
+                <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-amber-800">
+                  {deckNoteConflict.latestNotes || "Latest note is empty."}
+                </p>
+              </div>
+            ) : null}
+            <Textarea
+              value={deckNoteDraft}
+              onChange={(event) => setDeckNoteDraft(event.target.value)}
+              placeholder="Write presentation-level notes here..."
+              rows={14}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void copyTextToClipboard(deckNoteDraft, "Presentation note copied.")}
+            >
+              <Copy className="mr-1 h-3.5 w-3.5" />
+              Copy
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDeckNoteDialogOpen(false)}
+              disabled={isDeckNoteSaving}
+            >
+              Close
+            </Button>
+            {deckNoteConflict ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleReloadDeckNoteConflict}
+                disabled={isDeckNoteSaving}
+              >
+                Reload Latest
+              </Button>
+            ) : null}
+            {deckNoteConflict ? (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => void handleSaveDeckNote({ forceOverwrite: true })}
+                disabled={!deck || isDeckNoteSaving}
+              >
+                Overwrite Note
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              onClick={() => void handleSaveDeckNote()}
+              disabled={!deck || isDeckNoteSaving}
+            >
+              {isDeckNoteSaving ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
+              Save Note
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isSlideNoteDialogOpen} onOpenChange={setIsSlideNoteDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Slide Note</DialogTitle>
+            <DialogDescription>
+              Internal note for slide {selectedSlide ? selectedSlide.orderIndex + 1 : "-"}. It is hidden from play mode and exports.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <span>{slideNoteDirty ? "Unsaved changes" : "Saved"}</span>
+              <span>{slideNoteDraft.trim().length} chars</span>
+            </div>
+            <Textarea
+              value={slideNoteDraft}
+              onChange={(event) => setSlideNoteDraft(event.target.value)}
+              placeholder="Write slide-level notes here..."
+              rows={14}
+              disabled={!selectedSlide}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void copyTextToClipboard(slideNoteDraft, "Slide note copied.")}
+              disabled={!selectedSlide}
+            >
+              <Copy className="mr-1 h-3.5 w-3.5" />
+              Copy
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsSlideNoteDialogOpen(false)}
+            >
+              Close
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleSaveSlide()}
+              disabled={!selectedSlide || saveState === "pending"}
+            >
+              {saveState === "pending" ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
+              Save Note
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {isImportDialogOpen && (
         <ImportPresentationDialog onClose={() => setIsImportDialogOpen(false)} />
       )}
@@ -6771,6 +7327,10 @@ export default function PresentationEditor() {
           currentSlideCount={slides.length}
           canvasWidth={activeCanvasSize.width}
           canvasHeight={activeCanvasSize.height}
+          onComplete={async ({ close }) => {
+            await deckQuery.refetch();
+            close();
+          }}
         />
       )}
       {isMobileViewport && (

@@ -1,6 +1,6 @@
 # Sub-Agents Skill Pack
 
-This registry documents all 17 agents available in the SmartSpecPro sub-agents skill pack. Orchestra (the SKILL.md conductor) dispatches these agents across Claude Code, Codex, and open-code workflows to parallelize development work across domains. For Claude Code, agents may also have native `.claude/agents/` definitions (see Section 09) that enable direct invocation via Claude Code's agents feature.
+This registry documents all 17 agents available in the SmartSpecPro sub-agents skill pack. Orchestra (the SKILL.md conductor) dispatches these agents across Claude Code, Standard, and open-code workflows to parallelize development work across domains. For Claude Code, agents may also have native `.claude/agents/` definitions (see Section 09) that enable direct invocation via Claude Code's agents feature.
 
 ---
 
@@ -70,7 +70,7 @@ The pre-merge security check uses a 5-step flow:
 
 ## Platform Compatibility Matrix
 
-| Agent | claude-code (`subagent_type`) | codex (template injected) | open-code (sequential) |
+| Agent | claude-code (`subagent_type`) | standard (template injected) | open-code (sequential) |
 |---|---|---|---|
 | `research` | `Explore` | `general-purpose` + `research.md` template | Conductor adopts role |
 | `architect` | `Plan` | `general-purpose` + `architect.md` template | Conductor adopts role |
@@ -108,7 +108,7 @@ The pre-merge security check uses a 5-step flow:
 
 3. Add the agent to `sub-agent-dispatch.md` agent type mapping (the Section 03 reference file for wave planning)
 
-4. For Claude Code support, create the native `.claude/agents/ssp-YOUR-AGENT.md` definition with YAML frontmatter (see Section 09 for the full format and naming convention). This step is optional for Codex/open-code-only environments.
+4. For Claude Code support, create the native `.claude/agents/ssp-YOUR-AGENT.md` definition with YAML frontmatter (see Section 09 for the full format and naming convention). This step is optional for standard/open-code-only environments.
 
 5. Update the **Platform Compatibility Matrix** above with the new agent's `subagent_type` values for each platform
 

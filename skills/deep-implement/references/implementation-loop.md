@@ -1,4 +1,4 @@
-# Implementation Loop (Codex)
+# Implementation Loop
 
 Per-section execution workflow for `deep-implement`.
 

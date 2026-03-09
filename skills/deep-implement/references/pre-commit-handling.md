@@ -1,4 +1,4 @@
-# Pre-Commit Handling (Codex)
+# Pre-Commit Handling
 
 Guidelines for handling commit failures caused by hooks/linters/formatters.
 

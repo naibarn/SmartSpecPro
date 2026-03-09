@@ -3,7 +3,7 @@
  */
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
 import { SlideAudioPanel } from "./SlideAudioPanel";
 import { trpc } from "@/lib/trpc";
 
@@ -13,10 +13,18 @@ import { trpc } from "@/lib/trpc";
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
+    useUtils: vi.fn(),
     presentation: {
       setSlideAudio: { useMutation: vi.fn() },
       setDeckAudio: { useMutation: vi.fn() },
       uploadAndAttachAsset: { useMutation: vi.fn() },
+      generateSlideAudioFromNote: { useMutation: vi.fn() },
+    },
+    media: {
+      getModels: { useQuery: vi.fn() },
+      listModelFieldOptions: { useQuery: vi.fn() },
+      generateAudioAsync: { useMutation: vi.fn() },
+      addTaskToLibrary: { useMutation: vi.fn() },
     },
     library: {
       listDocuments: { useQuery: vi.fn() },
@@ -67,6 +75,36 @@ function makeGetItemQueryMock(overrides?: Partial<{ title: string; sourceUrl: st
   };
 }
 
+function makeAudioModelsQueryMock() {
+  return {
+    data: {
+      models: [
+        {
+          id: "uvoice/tts-standard",
+          name: "UVoice Standard",
+          provider: "uvoice",
+          configJson: {
+            inputFields: [
+              {
+                key: "voice",
+                label: "Voice",
+                type: "select",
+                required: true,
+                options: [{ value: "alloy", label: "Alloy" }],
+              },
+            ],
+          },
+        },
+      ],
+      defaults: {
+        audio: "uvoice/tts-standard",
+      },
+    },
+    isLoading: false,
+    error: null,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Default props
 // ---------------------------------------------------------------------------
@@ -90,10 +128,25 @@ const PROPS_NO_AUDIO = {
   slideId: 10,
   slideVersion: 1,
   slideAudioTrack: null,
+  slideTitle: "Intro",
+  slideNote: null,
+  slideNoteDirty: false,
+  onSaveSlideNote: vi.fn().mockResolvedValue(true),
   deckId: 42,
   deckVersion: 1,
   deckAudioTrack: null,
 };
+
+class MockFileReader {
+  result: string | null = null;
+  onload: ((this: FileReader, ev: ProgressEvent<FileReader>) => unknown) | null = null;
+  onerror: ((this: FileReader, ev: ProgressEvent<FileReader>) => unknown) | null = null;
+
+  readAsDataURL(file: Blob) {
+    this.result = `data:${(file as File).type || "audio/mpeg"};base64,dGVzdA==`;
+    this.onload?.call(this as unknown as FileReader, {} as ProgressEvent<FileReader>);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -101,6 +154,7 @@ const PROPS_NO_AUDIO = {
 
 describe("SlideAudioPanel", () => {
   beforeEach(() => {
+    vi.stubGlobal("FileReader", MockFileReader as unknown as typeof FileReader);
     vi.mocked(trpc.presentation.setSlideAudio.useMutation).mockReturnValue(
       makeMutationMock() as any,
     );
@@ -110,12 +164,34 @@ describe("SlideAudioPanel", () => {
     vi.mocked(trpc.presentation.uploadAndAttachAsset.useMutation).mockReturnValue(
       makeMutationMock() as any,
     );
+    vi.mocked(trpc.presentation.generateSlideAudioFromNote.useMutation).mockReturnValue(
+      makeMutationMock(undefined, vi.fn().mockResolvedValue({ libraryItemId: 777 })) as any,
+    );
+    vi.mocked(trpc.media.getModels.useQuery).mockReturnValue(
+      makeAudioModelsQueryMock() as any,
+    );
+    vi.mocked(trpc.media.listModelFieldOptions.useQuery).mockReturnValue(
+      { data: { options: [] }, isLoading: false, error: null } as any,
+    );
+    vi.mocked(trpc.media.generateAudioAsync.useMutation).mockReturnValue(
+      makeMutationMock(undefined, vi.fn().mockResolvedValue({ id: "audio-task-1" })) as any,
+    );
+    vi.mocked(trpc.media.addTaskToLibrary.useMutation).mockReturnValue(
+      makeMutationMock(undefined, vi.fn().mockResolvedValue({ itemId: 777 })) as any,
+    );
     vi.mocked(trpc.library.listDocuments.useQuery).mockReturnValue(
       makeLibraryDocumentsQueryMock() as any,
     );
     vi.mocked(trpc.library.getItem.useQuery).mockReturnValue(
       makeGetItemQueryMock() as any,
     );
+    vi.mocked(trpc.useUtils).mockReturnValue({
+      media: {
+        getTask: {
+          fetch: vi.fn().mockResolvedValue({ status: "completed" }),
+        },
+      },
+    } as any);
   });
 
   // 1. Add Audio button shown when no slide audio configured
@@ -269,5 +345,107 @@ describe("SlideAudioPanel", () => {
     render(<SlideAudioPanel {...PROPS_NO_AUDIO} />);
     fireEvent.click(screen.getByRole("button", { name: /add audio/i }));
     expect(screen.getByText("Shared")).toBeInTheDocument();
+  });
+
+  it("shows save-note-first CTA when the slide note is dirty", async () => {
+    const onSaveSlideNote = vi.fn().mockResolvedValue(true);
+    render(
+      <SlideAudioPanel
+        {...PROPS_NO_AUDIO}
+        slideNote="Saved note"
+        slideNoteDirty
+        onSaveSlideNote={onSaveSlideNote}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /save note first/i }));
+    await waitFor(() => {
+      expect(onSaveSlideNote).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("generates slide audio from the saved note and replaces the slide track after success", async () => {
+    const generateSlideAudioFromNote = vi.fn().mockResolvedValue({ libraryItemId: 777 });
+    vi.mocked(trpc.presentation.generateSlideAudioFromNote.useMutation).mockReturnValue(
+      makeMutationMock(undefined, generateSlideAudioFromNote) as any,
+    );
+
+    render(
+      <SlideAudioPanel
+        {...PROPS_NO_AUDIO}
+        slideNote="Saved narration note"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /generate from note/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generate audio/i }));
+
+    await waitFor(() => {
+      expect(generateSlideAudioFromNote).toHaveBeenCalledWith(
+        expect.objectContaining({
+          deckId: 42,
+          slideId: 10,
+          expectedVersion: 1,
+        }),
+      );
+    });
+  });
+
+  it("reuses the latest local deck version across sequential slide audio uploads without waiting for parent refresh", async () => {
+    const uploadAndAttachAsset = vi.fn()
+      .mockResolvedValueOnce({ item: { id: 701 } })
+      .mockResolvedValueOnce({ item: { id: 702 } });
+    const setSlideAudioAsync = vi.fn()
+      .mockResolvedValueOnce({ deckVersion: 3, slideVersion: 2 })
+      .mockResolvedValueOnce({ deckVersion: 5, slideVersion: 3 });
+
+    vi.mocked(trpc.presentation.uploadAndAttachAsset.useMutation).mockReturnValue(
+      makeMutationMock(undefined, uploadAndAttachAsset) as any,
+    );
+    vi.mocked(trpc.presentation.setSlideAudio.useMutation).mockReturnValue(
+      makeMutationMock(undefined, setSlideAudioAsync) as any,
+    );
+
+    const { container } = render(<SlideAudioPanel {...PROPS_NO_AUDIO} />);
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(fileInput).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: /upload slide audio/i }));
+    await act(async () => {
+      fireEvent.change(fileInput, {
+        target: {
+          files: [new File(["audio-one"], "one.mp3", { type: "audio/mpeg" })],
+        },
+      });
+    });
+
+    await waitFor(() => {
+      expect(uploadAndAttachAsset).toHaveBeenCalledWith(
+        expect.objectContaining({ expectedVersion: 1 }),
+      );
+      expect(setSlideAudioAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ expectedVersion: 2 }),
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /upload slide audio/i }));
+    await act(async () => {
+      fireEvent.change(fileInput, {
+        target: {
+          files: [new File(["audio-two"], "two.mp3", { type: "audio/mpeg" })],
+        },
+      });
+    });
+
+    await waitFor(() => {
+      expect(uploadAndAttachAsset).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ expectedVersion: 3 }),
+      );
+      expect(setSlideAudioAsync).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ expectedVersion: 4 }),
+      );
+    });
   });
 });

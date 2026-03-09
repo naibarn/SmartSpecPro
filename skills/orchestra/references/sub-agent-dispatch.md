@@ -16,10 +16,10 @@ For wave grouping and contract format, see:
 ## 1. Agent Type Mapping Table
 
 For each of the 17 agent roles, the `subagent_type` for Claude Code mode and the fallback
-behavior for Codex/open-code are shown below. Agent identity files live in
+behavior for Standard/open-code are shown below. Agent identity files live in
 `../../sub-agents/agents/NAME.md`.
 
-| Agent Role | Claude Code `subagent_type` | Codex Fallback | Open-Code Mode |
+| Agent Role | Claude Code `subagent_type` | Standard Fallback | Open-Code Mode |
 |-----------|---------------------------|----------------|----------------|
 | research | `Explore` | `general-purpose` + injected template | Inline (conductor adopts role) |
 | architect | `Plan` | `general-purpose` + injected template | Inline |
@@ -82,9 +82,9 @@ dispatch mechanics only.
 
 ---
 
-## 4. Codex Mode: Template Injection
+## 4. Standard Mode: Template Injection
 
-When the detected platform is `codex`, prepend the agent role identity at the top of every
+When the detected platform is `standard`, prepend the agent role identity at the top of every
 Task Packet prompt:
 
 ```
@@ -95,7 +95,7 @@ primary responsibility.]
 ```
 
 **Inject only identity and constraints** from `../../sub-agents/agents/NAME.md`.
-Do not inject the full file — it inflates prompt size beyond what Codex handles reliably.
+Do not inject the full file — it inflates prompt size beyond what Standard mode handles reliably.
 
 **Include:**
 - Identity paragraph (who the agent is, what stack it specializes in)
@@ -106,7 +106,7 @@ Do not inject the full file — it inflates prompt size beyond what Codex handle
 - Quality Checklist
 - Error Handling
 
-**Example injection prefix for frontend agent (Codex mode):**
+**Example injection prefix for frontend agent (Standard mode):**
 
 ```
 You are the Frontend Agent for SmartSpecPro. You implement React 19 components following

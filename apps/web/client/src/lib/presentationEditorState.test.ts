@@ -65,6 +65,7 @@ describe("presentationEditorState", () => {
       muted: true,
       rotation: 0,
     });
+    expect("mediaMotion" in video).toBe(false);
   });
 
   it("scales elements with preserved aspect ratio and keeps visual focus while auto-arranging", () => {

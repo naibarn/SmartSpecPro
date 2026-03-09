@@ -1,6 +1,6 @@
 # Backup Playbook
 
-Shared backup-first guidance for Codex skill workflows.
+Shared backup-first guidance for skill workflows.
 
 Use this reference whenever planned work may cause data loss, destructive
 migration, bulk overwrite, or irreversible transformation.

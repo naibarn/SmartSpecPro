@@ -157,6 +157,43 @@ export const presentationTransitionSchema = z.enum([
   "zoom-out",
   "blur",
 ]);
+export const presentationMediaMotionPresetSchema = z.enum([
+  "none",
+  "zoom-in",
+  "zoom-out",
+  "pan-left",
+  "pan-right",
+  "pan-up",
+  "pan-down",
+  "pan-up-left",
+  "pan-up-right",
+  "pan-down-left",
+  "pan-down-right",
+]);
+export const presentationMediaMotionEasingSchema = z.enum([
+  "linear",
+  "ease-in-out",
+]);
+export const presentationMediaMotionTimingModeSchema = z.enum([
+  "duration",
+  "until-slide-end",
+]);
+export const presentationMediaMotionSegmentSchema = z.object({
+  preset: presentationMediaMotionPresetSchema,
+  intensity: z.number().finite().min(0).max(1).optional(),
+  easing: presentationMediaMotionEasingSchema.optional(),
+  timingMode: presentationMediaMotionTimingModeSchema.optional(),
+  durationMs: z.number().finite().min(250).max(120_000).optional(),
+}).strict();
+export const presentationMediaMotionSchema = z.object({
+  preset: presentationMediaMotionPresetSchema.optional(),
+  intensity: z.number().finite().min(0).max(1).optional(),
+  easing: presentationMediaMotionEasingSchema.optional(),
+  timingMode: presentationMediaMotionTimingModeSchema.optional(),
+  durationMs: z.number().finite().min(250).max(120_000).optional(),
+  intro: presentationMediaMotionSegmentSchema.optional(),
+  outro: presentationMediaMotionSegmentSchema.optional(),
+}).strict();
 export const presentationCanvasPresetSchema = z.enum([
   "16:9",
   "9:16",
@@ -224,6 +261,7 @@ export const presentationImageElementSchema = z.object({
   imageExtraParams: z.record(z.unknown()).optional(),
   svgContent: z.string().max(8_192).optional(),
   svgColor: z.string().max(32).optional(),
+  mediaMotion: presentationMediaMotionSchema.optional(),
 }).strict();
 
 export const presentationVideoElementSchema = z.object({
@@ -248,6 +286,7 @@ export const presentationVideoElementSchema = z.object({
   videoPositionY: z.number().finite().min(0).max(100).optional(),
   videoZoom: z.number().finite().min(0.5).max(3).optional(),
   videoExtraParams: z.record(z.unknown()).optional(),
+  mediaMotion: presentationMediaMotionSchema.optional(),
 }).strict();
 
 export const presentationRectElementSchema = z.object({
@@ -447,6 +486,11 @@ export type PresentationConversionResult = z.infer<typeof presentationConversion
 export type PresentationSlideshowPayload = z.infer<typeof presentationSlideshowPayloadSchema>;
 export type PresentationRenderSpec = z.infer<typeof presentationRenderSpecSchema>;
 export type PresentationTransition = z.infer<typeof presentationTransitionSchema>;
+export type PresentationMediaMotionPreset = z.infer<typeof presentationMediaMotionPresetSchema>;
+export type PresentationMediaMotionEasing = z.infer<typeof presentationMediaMotionEasingSchema>;
+export type PresentationMediaMotionTimingMode = z.infer<typeof presentationMediaMotionTimingModeSchema>;
+export type PresentationMediaMotionSegment = z.infer<typeof presentationMediaMotionSegmentSchema>;
+export type PresentationMediaMotion = z.infer<typeof presentationMediaMotionSchema>;
 export type PresentationSlideElement = z.infer<typeof presentationSlideElementSchema>;
 export type PresentationPendingMediaJob = z.infer<typeof presentationPendingMediaJobSchema>;
 export type PresentationSlideBackground = z.infer<typeof presentationSlideBackgroundSchema>;

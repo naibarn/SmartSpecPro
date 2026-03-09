@@ -8,7 +8,7 @@ except Exception:  # pragma: no cover
     DDGS = None
 
 from .models import EvaluationReport
-from .registry import load_manifest, read_text
+from .registry import load_manifest, read_manifest_text, read_text
 from .llm import OpenAICompatibleClient
 
 @dataclass(frozen=True)
@@ -54,7 +54,7 @@ def plan_research_topics(
     llm: Optional[OpenAICompatibleClient] = None,
 ) -> List[str]:
     try:
-        manifest = read_text(skill_name, "skill.md")
+        manifest = read_manifest_text(skill_name)
     except FileNotFoundError:
         try:
             manifest = read_text(skill_name, "manifest.json")

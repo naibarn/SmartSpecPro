@@ -70,6 +70,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { SkillStudioDialog } from "@/components/skills/SkillStudioDialog";
 
 const PAGE_SIZE = 20;
 
@@ -224,6 +225,9 @@ export default function SkillBrowser() {
   const [category, setCategory] = useState("all");
   const [page, setPage] = useState(0);
   const [expandedSkillId, setExpandedSkillId] = useState<number | null>(null);
+  const [studioOpen, setStudioOpen] = useState(false);
+  const [studioMode, setStudioMode] = useState<"create" | "improve">("create");
+  const [studioTargetSkillId, setStudioTargetSkillId] = useState<number | null>(null);
 
   // Debounce search
   const debounceTimer = useState<ReturnType<typeof setTimeout> | null>(null);
@@ -246,6 +250,10 @@ export default function SkillBrowser() {
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
     },
+    { enabled: isAuthenticated }
+  );
+  const { data: studioSkillsData } = trpc.skills.browseAllSkills.useQuery(
+    { limit: 100, offset: 0 },
     { enabled: isAuthenticated }
   );
 
@@ -313,6 +321,18 @@ export default function SkillBrowser() {
                 Browse and manage which skills are visible in your chat
                 {data && ` \u2022 ${data.total} skills available`}
               </p>
+            </div>
+            <div className="ml-auto">
+              <Button
+                onClick={() => {
+                  setStudioMode("create");
+                  setStudioTargetSkillId(null);
+                  setStudioOpen(true);
+                }}
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Skill Studio
+              </Button>
             </div>
           </div>
 
@@ -496,6 +516,29 @@ export default function SkillBrowser() {
                                   </TooltipProvider>
                                 )}
 
+                                {isOwner && skill.hasLocalFolder && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-7 px-2 text-xs"
+                                          onClick={() => {
+                                            setStudioMode("improve");
+                                            setStudioTargetSkillId(skill.id);
+                                            setStudioOpen(true);
+                                          }}
+                                        >
+                                          <Sparkles className="h-3.5 w-3.5 mr-1 text-amber-600" />
+                                          Improve
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Improve this skill with ISC</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+
                                 {/* Delete button for owned skills */}
                                 {isOwner && (
                                   <TooltipProvider>
@@ -599,6 +642,27 @@ export default function SkillBrowser() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <SkillStudioDialog
+        open={studioOpen}
+        onOpenChange={setStudioOpen}
+        scope="user"
+        initialMode={studioMode}
+        initialTargetSkillId={studioTargetSkillId}
+        availableSkills={(studioSkillsData?.skills || []).map((skill: any) => ({
+          id: skill.id,
+          slug: skill.slug,
+          name: skill.name,
+          description: skill.description,
+          visibility: skill.visibility,
+          isOwner: skill.isOwner,
+          hasLocalFolder: skill.hasLocalFolder,
+        }))}
+        onCompleted={() => {
+          utils.skills.browseAllSkills.invalidate();
+          utils.skills.getUserVisibleSkills.invalidate();
+        }}
+      />
     </div>
   );
 }

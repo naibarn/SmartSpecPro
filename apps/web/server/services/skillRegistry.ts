@@ -26,6 +26,10 @@ import {
   parseTriggerPatterns,
   normalizeMetadata,
 } from "@smartspec/skills";
+import {
+  resolveRelativeSkillManifestPath,
+  resolveSkillManifestPath,
+} from "./skillFiles";
 
 export type { SkillType, SkillDefinition } from "@smartspec/skills";
 
@@ -132,7 +136,9 @@ function dbSkillToDefinition(dbSkill: {
     strictProviderPin: dbSkill.strictProviderPin ?? undefined,
     systemPrompt: dbSkill.systemPrompt || undefined,
     skillContent: dbSkill.skillContent || undefined,
-    skillFilePath: dbSkill.folderPath ? `${dbSkill.folderPath}/skill.md` : undefined,
+    skillFilePath: dbSkill.folderPath
+      ? resolveRelativeSkillManifestPath(dbSkill.folderPath) ?? `${dbSkill.folderPath}/skill.md`
+      : undefined,
     executionMode: (dbSkill.executionMode as any) || "llm-only",
     chainTo: dbSkill.chainTo || undefined,
     sandboxProfileSlug: dbSkill.sandboxProfileSlug ?? undefined,
@@ -210,11 +216,12 @@ function scanSkillsFolder(): Array<{
           if (!entry.isDirectory()) continue;
 
           const slug = entry.name;
-          const skillMdPath = path.join(dir, slug, "skill.md");
-          const hasSkillMd = fs.existsSync(skillMdPath);
+          const skillDir = path.join(dir, slug);
+          const skillMdPath = resolveSkillManifestPath(skillDir);
+          const hasSkillMd = !!skillMdPath;
 
           // Only add if not already found
-          if (hasSkillMd && !folders.find(f => f.slug === slug)) {
+          if (hasSkillMd && skillMdPath && !folders.find(f => f.slug === slug)) {
             folders.push({ slug, skillMdPath, hasSkillMd });
           }
         }
@@ -379,7 +386,7 @@ export async function syncSingleSkillIfChanged(slug: string): Promise<{ synced: 
     return { synced: false, error: "Database not available" };
   }
 
-  // Find skill.md file
+  // Find skill manifest file
   const folders = scanSkillsFolder();
   const folder = folders.find(f => f.slug === slug);
 

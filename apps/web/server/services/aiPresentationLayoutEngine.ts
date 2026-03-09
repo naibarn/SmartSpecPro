@@ -273,14 +273,25 @@ function compactBodyLines(body: string[], maxLines: number): string[] {
   }
   const head = cleaned.slice(0, Math.max(0, maxLines - 1));
   const tail = cleaned.slice(Math.max(0, maxLines - 1)).join(" • ");
-  const compactTail = tail.length > 220
-    ? `${tail.slice(0, 219).trimEnd()}…`
+  const compactTail = tail.length > 500
+    ? `${tail.slice(0, 499).trimEnd()}…`
     : tail;
   return [...head, compactTail];
 }
 
 function normalizeLayoutText(value: string): string {
-  return value.replace(/\s+/g, " ").trim();
+  return value
+    .replace(/^#{1,6}\s+/gm, "")                    // # headings
+    .replace(/\*{2,3}([^*]+)\*{2,3}/g, "$1")        // **bold** / ***bold italic***
+    .replace(/\*([^*]+)\*/g, "$1")                   // *italic*
+    .replace(/_([^_]+)_/g, "$1")                     // _italic_
+    .replace(/~~([^~]+)~~/g, "$1")                   // ~~strikethrough~~
+    .replace(/`([^`]+)`/g, "$1")                     // `code`
+    .replace(/^\s*>\s?/gm, "")                       // > blockquote
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")         // [link](url)
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")        // ![alt](img)
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function parseSectionFromBodyLine(line: string): SlideSectionBlock | null {
@@ -364,14 +375,22 @@ function resolveSlideSubtitleAndBodyLines(
   const allowSubtitleFromSections = hasExplicitSections || Boolean(structuredFirstBody);
   const subtitleCandidate = sections[0]?.heading ? normalizeLayoutText(sections[0].heading) : "";
   const titleKey = normalizeLayoutText(slideData.title).toLowerCase();
-  const subtitle = allowSubtitleFromSections && subtitleCandidate && subtitleCandidate.toLowerCase() !== titleKey
+  // Strip numbered list prefix (e.g. "1)", "2.", "A)") before comparing subtitle to title.
+  // This prevents "1) คำตอบสั้น ๆ..." appearing as subtitle when title is "คำตอบสั้น ๆ..."
+  const subtitleCandidateNormalized = subtitleCandidate.replace(/^\d+\s*[).\-]\s*|^[a-zA-Z]\s*[).\-]\s*/i, "").trim();
+  const subtitle = allowSubtitleFromSections
+    && subtitleCandidate
+    && subtitleCandidateNormalized.toLowerCase() !== titleKey
+    && subtitleCandidate.toLowerCase() !== titleKey
     ? subtitleCandidate
     : null;
 
   const detailPool: string[] = [];
   for (let i = 0; i < sections.length; i++) {
     const section = sections[i]!;
-    const details = section.details.filter((detail) => detail.length > 0);
+    const details = section.details
+      .filter((detail) => detail.length > 0)
+      .filter((detail) => normalizeLayoutText(detail).toLowerCase() !== section.heading.toLowerCase());
     if (details.length === 0) {
       if (i > 0 || !subtitle) {
         detailPool.push(section.heading);
@@ -388,13 +407,56 @@ function resolveSlideSubtitleAndBodyLines(
     }
   }
 
-  const deduped = detailPool
+  const dedupedRaw = detailPool
     .map((line) => normalizeLayoutText(line))
-    .filter((line, index, arr) => line.length > 0 && arr.indexOf(line) === index);
+    .filter((line, index, arr) => line.length > 0 && arr.indexOf(line) === index)
+    .filter((line) => line.toLowerCase() !== titleKey);
+
+  // Remove lines that are substrings of the title or subtitle
+  const subtitleLower = subtitle?.toLowerCase() ?? "";
+  // Build a set of original body line prefixes to catch "heading: detail" composites where
+  // the heading comes from a body line (e.g. the deck question text) rather than the slide title.
+  const bodyLineLowers = new Set(
+    (slideData.body ?? []).map((line) => normalizeLayoutText(line).toLowerCase()),
+  );
+  const deduped = dedupedRaw.filter((line) => {
+    const lower = line.toLowerCase();
+    // Only apply substring dedup for lines long enough to be meaningful matches
+    // (avoids dropping short single-word body lines that happen to appear in the title string)
+    const longEnough = lower.length >= 10;
+    // Reject if line is substring of title or title is substring of line
+    if (longEnough && titleKey && (lower.includes(titleKey) || titleKey.includes(lower))) {
+      return false;
+    }
+    // Reject if line is substring of subtitle or vice versa
+    if (longEnough && subtitleLower && (lower.includes(subtitleLower) || subtitleLower.includes(lower))) {
+      return false;
+    }
+    // Reject "heading: detail" composites where the heading is itself a body line
+    // (avoids echoing deck-question text + colon + body content as a visual element)
+    const colonIdx = lower.indexOf(":");
+    if (colonIdx > 0) {
+      const headingPart = lower.slice(0, colonIdx).trim();
+      if (headingPart.length >= 10 && bodyLineLowers.has(headingPart)) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  // Also deduplicate the fallback bodyLines
+  const fallbackLines = compactBodyLines(bodyLines, maxBodyLines)
+    .filter((line) => {
+      const lower = line.toLowerCase();
+      if (lower.length >= 10 && titleKey && (lower.includes(titleKey) || titleKey.includes(lower))) {
+        return false;
+      }
+      return lower.length > 0;
+    });
 
   return {
     subtitle,
-    bodyLines: compactBodyLines(deduped.length > 0 ? deduped : bodyLines, maxBodyLines),
+    bodyLines: compactBodyLines(deduped.length > 0 ? deduped : fallbackLines, maxBodyLines),
   };
 }
 
@@ -498,9 +560,17 @@ function fitBodyRowsToHeight(opts: {
 
   let rows = buildFittedRows(lines, minFontSize, width, lineHeightRatio, maxLinesPerRow);
   let totalHeight = computeRowsHeight(rows, gapPx);
+  const hadOverflow = totalHeight > availableHeightPx;
   while (rows.length > 1 && totalHeight > availableHeightPx) {
     rows = rows.slice(0, -1);
     totalHeight = computeRowsHeight(rows, gapPx);
+  }
+
+  // Append ellipsis to last row when rows were dropped due to overflow
+  if (hadOverflow && rows.length > 0) {
+    const last = rows[rows.length - 1];
+    const trimmed = last.text.replace(/[,.\s…]+$/, "");
+    rows[rows.length - 1] = { ...last, text: `${trimmed}…` };
   }
 
   return {
@@ -851,9 +921,12 @@ function buildHeroCenter(ctx: TemplateContext): SlideElement[] {
 function buildSplitRightImage(ctx: TemplateContext): SlideElement[] {
   const { contentArea, slideData, preset, scale, canvasWidth, canvasHeight } = ctx;
   const elements: SlideElement[] = [];
-  const halfWidth = contentArea.width * 0.5;
   const portrait = isPortraitCanvas(canvasWidth, canvasHeight);
-  const { subtitle, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 6 : 5);
+  const { subtitle, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 10 : 8);
+  // Dynamic split: give text more space when content is heavy
+  const totalTextLen = (slideData.title?.length ?? 0) + (subtitle?.length ?? 0) + bodyLines.join("").length;
+  const textRatio = totalTextLen > 300 ? 0.6 : 0.5;
+  const halfWidth = Math.round(contentArea.width * textRatio);
   const thaiText = hasThaiCharacters(`${slideData.title}\n${subtitle ?? ""}\n${bodyLines.join("\n")}`);
   const titleLineHeight = getTitleLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLineHeightRatio = getBodyLineHeight(canvasWidth, canvasHeight, thaiText);
@@ -976,7 +1049,7 @@ function buildSplitRightImage(ctx: TemplateContext): SlideElement[] {
     lines: bodyLines,
     width: titleWidth,
     baseFontSize: scaleBodyFontSize(26, scale, canvasWidth, canvasHeight),
-    minFontSize: portrait ? 20 : 16,
+    minFontSize: portrait ? 14 : 12,
     maxFontSize: portrait ? 34 : 24,
     lineHeightRatio: bodyLineHeightRatio,
     gapPx: bodyGap,
@@ -1006,13 +1079,14 @@ function buildSplitRightImage(ctx: TemplateContext): SlideElement[] {
     bodyY += row.height + bodyGap;
   }
 
-  // 5. Right image
+  // 5. Right image (uses remaining space)
+  const imageWidth = contentArea.width - halfWidth;
   elements.push(
     makeImageOrPlaceholder(
       ctx,
       contentArea.x + halfWidth,
       contentArea.y,
-      halfWidth,
+      imageWidth,
       contentArea.height,
       slideData.title,
       {
@@ -1030,13 +1104,17 @@ function buildSplitRightImage(ctx: TemplateContext): SlideElement[] {
 function buildSplitLeftImage(ctx: TemplateContext): SlideElement[] {
   const { contentArea, slideData, preset, scale, canvasWidth, canvasHeight } = ctx;
   const elements: SlideElement[] = [];
-  const halfWidth = contentArea.width * 0.5;
   const portrait = isPortraitCanvas(canvasWidth, canvasHeight);
-  const { subtitle, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 6 : 5);
+  const { subtitle, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 10 : 8);
   const thaiText = hasThaiCharacters(`${slideData.title}\n${subtitle ?? ""}\n${bodyLines.join("\n")}`);
   const titleLineHeight = getTitleLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLineHeightRatio = getBodyLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLetterSpacing = getBodyLetterSpacing(canvasWidth, canvasHeight, thaiText);
+  // Dynamic split: give text more space when content is heavy
+  const totalTextLen = (slideData.title?.length ?? 0) + (subtitle?.length ?? 0) + bodyLines.join("").length;
+  const textRatio = totalTextLen > 300 ? 0.6 : 0.5;
+  const imageWidth = Math.round(contentArea.width * (1 - textRatio));
+  const textWidth = contentArea.width - imageWidth;
 
   // 1. Left image
   elements.push(
@@ -1044,7 +1122,7 @@ function buildSplitLeftImage(ctx: TemplateContext): SlideElement[] {
       ctx,
       contentArea.x,
       contentArea.y,
-      halfWidth,
+      imageWidth,
       contentArea.height,
       slideData.title,
       {
@@ -1059,9 +1137,9 @@ function buildSplitLeftImage(ctx: TemplateContext): SlideElement[] {
   // 2. Right panel rect
   elements.push(
     makeRectElement({
-      x: contentArea.x + halfWidth,
+      x: contentArea.x + imageWidth,
       y: contentArea.y,
-      width: halfWidth,
+      width: textWidth,
       height: contentArea.height,
       fill: preset.colors.backgroundAlt,
     }),
@@ -1072,7 +1150,7 @@ function buildSplitLeftImage(ctx: TemplateContext): SlideElement[] {
     const svgSize = Math.round(80 * scale.scaleX);
     elements.push(
       makeImageElement({
-        x: contentArea.x + halfWidth + Math.round(40 * scale.scaleX),
+        x: contentArea.x + imageWidth + Math.round(40 * scale.scaleX),
         y: contentArea.y + Math.round(40 * scale.scaleY),
         width: svgSize,
         height: svgSize,
@@ -1088,8 +1166,8 @@ function buildSplitLeftImage(ctx: TemplateContext): SlideElement[] {
   const titleBaseFontSize = scaleFontSize(48, scale);
   const titleY = contentArea.y + Math.round(160 * scale.scaleY);
   const accentWidth = Math.max(4, Math.round(6 * scale.scaleX));
-  const titleX = contentArea.x + halfWidth + Math.round(40 * scale.scaleX) + accentWidth + Math.round(14 * scale.scaleX);
-  const titleWidth = halfWidth - Math.round(96 * scale.scaleX);
+  const titleX = contentArea.x + imageWidth + Math.round(40 * scale.scaleX) + accentWidth + Math.round(14 * scale.scaleX);
+  const titleWidth = textWidth - Math.round(96 * scale.scaleX);
   const titleSizing = fitTitleTypography(
     slideData.title,
     titleWidth,
@@ -1172,7 +1250,7 @@ function buildSplitLeftImage(ctx: TemplateContext): SlideElement[] {
     lines: bodyLines,
     width: titleWidth,
     baseFontSize: scaleBodyFontSize(26, scale, canvasWidth, canvasHeight),
-    minFontSize: portrait ? 20 : 16,
+    minFontSize: portrait ? 14 : 12,
     maxFontSize: portrait ? 34 : 24,
     lineHeightRatio: bodyLineHeightRatio,
     gapPx: bodyGap,

@@ -34,7 +34,9 @@ import {
   Download,
   ImagePlus,
   Loader2,
+  ToggleLeft,
 } from 'lucide-react';
+import { TenantFeatureFlagsPanel } from '@/components/admin/TenantFeatureFlagsPanel';
 import { toast } from 'sonner';
 
 interface Tenant {
@@ -520,15 +522,15 @@ export default function AdminTenants() {
           resetForm();
         }
       }}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
+          <DialogHeader className="shrink-0">
             <DialogTitle>{editingTenant ? 'Edit Tenant' : 'Create New Tenant'}</DialogTitle>
             <DialogDescription>
               {editingTenant ? 'Update tenant information' : 'Add a new white label tenant'}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto flex-1 pr-1">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="name">Tenant Name *</Label>
@@ -872,9 +874,20 @@ export default function AdminTenants() {
                 )}
               </div>
             )}
+
+            {/* Feature Flags (edit mode only) */}
+            {editingTenant && (
+              <div className="space-y-2 pt-4 border-t">
+                <div className="flex items-center gap-2">
+                  <ToggleLeft className="w-4 h-4 text-gray-500" />
+                  <h3 className="text-sm font-semibold text-gray-700">Feature Flags</h3>
+                </div>
+                <TenantFeatureFlagsPanel tenantId={editingTenant.id} canEdit />
+              </div>
+            )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="shrink-0">
             <Button variant="outline" onClick={() => {
               setIsCreateDialogOpen(false);
               setEditingTenant(null);

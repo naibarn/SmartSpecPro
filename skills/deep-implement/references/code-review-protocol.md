@@ -1,4 +1,4 @@
-# Code Review Protocol (Codex)
+# Code Review Protocol
 
 Code review workflow for a completed section before commit.
 

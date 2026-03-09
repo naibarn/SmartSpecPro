@@ -5,9 +5,13 @@ Handles long-running media generation tasks
 
 from celery import Celery
 from celery.schedules import crontab
+from celery.signals import worker_process_init, worker_process_shutdown
 from kombu import Queue
 from app.core.config import settings
+import logging
 import os
+
+_celery_logger = logging.getLogger(__name__)
 
 # Required queues — worker MUST consume from all of these
 REQUIRED_QUEUES = ["celery", "video", "media", "presentation_export", "presentation_import", "sandbox"]
@@ -96,6 +100,11 @@ celery_app.conf.update(
         # Agency creator (LLM call) -> media queue (network-bound, like workflow gen)
         "app.tasks.agency_creator_task.create_agency_discover_task": {"queue": "media"},
         "app.tasks.agency_creator_task.create_agency_design_task": {"queue": "media"},
+        # Automation Copilot (Browser tasks, LLM + Playwright) -> media queue
+        "app.tasks.automation_copilot_task.automation_analyze_task": {"queue": "media"},
+        "app.tasks.automation_copilot_task.automation_execute_task": {"queue": "media"},
+        "app.tasks.automation_copilot_task.browser_pool_health_check": {"queue": "media"},
+        "app.tasks.automation_copilot_task.automation_credit_reconciliation": {"queue": "media"},
         # Sandbox job execution -> sandbox queue (isolated, resource-intensive)
         "app.workers.sandbox_job_worker.execute_sandbox_job": {"queue": "sandbox"},
         # Sandbox maintenance tasks
@@ -186,6 +195,38 @@ celery_app.conf.beat_schedule = beat_schedule
 
 # Auto-discover tasks
 celery_app.autodiscover_tasks(["app.tasks", "app.workers"])
+
+
+# ---------------------------------------------------------------------------
+# Worker lifecycle signals — initialise BrowserPool for the media queue
+# ---------------------------------------------------------------------------
+@worker_process_init.connect
+def _init_browser_pool_on_worker(**kwargs):
+    """Start BrowserPool when a media worker process forks."""
+    queues = os.getenv("CELERY_WORKER_QUEUES", "")
+    # The -Q flag sets CELERY_WORKER_QUEUES at runtime; also check argv
+    import sys
+
+    argv_str = " ".join(sys.argv)
+    if "media" in queues or "-Q media" in argv_str or "-Q" not in argv_str:
+        try:
+            from app.services.browser_pool import init_browser_pool_sync
+
+            init_browser_pool_sync()
+        except Exception:
+            _celery_logger.warning("BrowserPool init failed — automation tasks will fail", exc_info=True)
+
+
+@worker_process_shutdown.connect
+def _shutdown_browser_pool_on_worker(**kwargs):
+    """Cleanly stop BrowserPool when the worker process exits."""
+    try:
+        from app.services.browser_pool import shutdown_browser_pool_sync
+
+        shutdown_browser_pool_sync()
+    except Exception:
+        _celery_logger.warning("BrowserPool shutdown error", exc_info=True)
+
 
 if __name__ == "__main__":
     celery_app.start()

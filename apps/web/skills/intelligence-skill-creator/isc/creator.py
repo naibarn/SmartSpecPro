@@ -1215,9 +1215,10 @@ Rules:
         _write_json(schemas_dir / "ui.schema.json", ui_schema)
         files_written.append("schemas/ui.schema.json")
 
-        # ── skill.md ──────────────────────────────────────────────────────────
-        (skill_dir / "skill.md").write_text(skill_md, encoding="utf-8")
-        files_written.append("skill.md")
+        # ── skill manifest aliases ────────────────────────────────────────────
+        for manifest_name in ("skill.md", "SKILL.md"):
+            (skill_dir / manifest_name).write_text(skill_md, encoding="utf-8")
+            files_written.append(manifest_name)
 
         # ── Skill code ────────────────────────────────────────────────────────
         if language == "python":

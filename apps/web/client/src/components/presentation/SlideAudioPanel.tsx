@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { Music, Trash2, Plus, Play, Pause, Search, RefreshCw, Upload } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { Music, Trash2, Plus, Play, Pause, Search, RefreshCw, Upload, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -18,6 +19,16 @@ import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import type { AudioTrackInput, ProjectAudioTrackInput } from "@shared/presentation/contracts";
+import { ImageModelCombobox } from "./ImageModelCombobox";
+import { ModelInputFieldsPanel } from "@/components/media/ModelInputFieldsPanel";
+import {
+  buildDefaultExtraParamsForModel,
+  getMissingRequiredModelFields,
+  mergeExtraParams,
+  parseModelInputFields,
+  pickExtraParamsForModel,
+  type MediaModelOption,
+} from "@/lib/mediaModelInputs";
 
 // ---------------------------------------------------------------------------
 // Extended types — add optional display title (not persisted to DB)
@@ -37,6 +48,14 @@ export interface SlideAudioPanelProps {
   slideVersion: number | null;
   /** Current audio track on the selected slide, or null. */
   slideAudioTrack: AudioTrackWithTitle | null;
+  /** Title of the selected slide for generated narration naming. */
+  slideTitle?: string | null;
+  /** Last saved slide note. Generation must use persisted note text only. */
+  slideNote?: string | null;
+  /** Whether the visible slide note draft differs from the persisted note. */
+  slideNoteDirty?: boolean;
+  /** Save current slide note before allowing note-driven audio regeneration. */
+  onSaveSlideNote?: () => Promise<boolean>;
   /** ID of the deck. */
   deckId: number;
   /** Version of the deck (for optimistic locking). */
@@ -130,6 +149,16 @@ function useMediaDurationSeconds(sourceUrl: string | null | undefined, fallbackS
   }, [sourceUrl]);
 
   return durationSec;
+}
+
+function extractVoiceSelection(extraParams: Record<string, unknown>): string | undefined {
+  for (const key of ["voice", "voiceId", "voice_id"]) {
+    const value = extraParams[key];
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return undefined;
 }
 
 interface AudioTrimTimelineProps {
@@ -491,6 +520,10 @@ export function SlideAudioPanel({
   slideId,
   slideVersion,
   slideAudioTrack,
+  slideTitle,
+  slideNote,
+  slideNoteDirty = false,
+  onSaveSlideNote,
   deckId,
   deckVersion,
   deckAudioTrack,
@@ -500,7 +533,13 @@ export function SlideAudioPanel({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<"slide" | "deck">("slide");
   const [uploadTarget, setUploadTarget] = useState<"slide" | "deck" | null>(null);
+  const [audioGenerationDialogOpen, setAudioGenerationDialogOpen] = useState(false);
+  const [audioModelId, setAudioModelId] = useState("");
+  const [audioExtraParams, setAudioExtraParams] = useState<Record<string, unknown>>({});
+  const [isGeneratingSlideAudio, setIsGeneratingSlideAudio] = useState(false);
   const audioUploadInputRef = useRef<HTMLInputElement | null>(null);
+  const deckVersionRef = useRef<number>(deckVersion);
+  const lastDeckIdRef = useRef<number>(deckId);
 
   // Per-slide audio draft state (local, not persisted until Save/Select)
   const [slideVolumePct, setSlideVolumePct] = useState<number>(
@@ -554,6 +593,55 @@ export function SlideAudioPanel({
     deckAudioSourceUrl,
     extractDurationSeconds(deckAudioItemQuery.data?.metadata),
   );
+  const audioModelsQuery = trpc.media.getModels.useQuery(
+    { type: "audio" },
+    { staleTime: 300_000 },
+  );
+  const generateSlideAudioFromNoteMutation = trpc.presentation.generateSlideAudioFromNote.useMutation();
+  const audioModels = useMemo(
+    () => ((audioModelsQuery.data?.models ?? []) as MediaModelOption[]),
+    [audioModelsQuery.data?.models],
+  );
+  const defaultAudioModelId = (
+    audioModelsQuery.data?.defaults?.audio
+    || audioModels[0]?.id
+    || "elevenlabs-tts"
+  );
+  const selectedAudioModelId = audioModelId || defaultAudioModelId;
+  const selectedAudioModel = audioModels.find((model) => model.id === selectedAudioModelId)
+    ?? audioModels.find((model) => model.id === defaultAudioModelId);
+  const audioModelFields = useMemo(
+    () => parseModelInputFields(selectedAudioModel),
+    [selectedAudioModel],
+  );
+  const savedSlideNoteText = typeof slideNote === "string" ? slideNote.trim() : "";
+  const canGenerateFromSavedNote = Boolean(slideId && savedSlideNoteText && !slideNoteDirty);
+  const noteActionLabel = slideNoteDirty
+    ? "Save Note First"
+    : savedSlideNoteText
+      ? (slideAudioTrack ? "Regenerate From Note" : "Generate From Note")
+      : "Add Slide Note First";
+
+  function getCurrentDeckVersion(): number {
+    const candidate = deckVersionRef.current;
+    if (Number.isFinite(candidate) && candidate >= 0) {
+      return candidate;
+    }
+    return deckVersion;
+  }
+
+  function commitDeckVersion(nextVersion: number | null | undefined) {
+    if (typeof nextVersion !== "number" || !Number.isFinite(nextVersion) || nextVersion < 0) {
+      return;
+    }
+    deckVersionRef.current = nextVersion;
+  }
+
+  function bumpDeckVersion(delta = 1): number {
+    const next = getCurrentDeckVersion() + delta;
+    commitDeckVersion(next);
+    return next;
+  }
 
   // M1: sync draft state when slideId or slideAudioTrack changes
   useEffect(() => {
@@ -564,6 +652,17 @@ export function SlideAudioPanel({
   }, [slideId, slideAudioTrack]); // M1: slideId added so state resets on slide change
 
   useEffect(() => {
+    if (lastDeckIdRef.current !== deckId) {
+      lastDeckIdRef.current = deckId;
+      deckVersionRef.current = deckVersion;
+      return;
+    }
+    if (deckVersion >= getCurrentDeckVersion()) {
+      deckVersionRef.current = deckVersion;
+    }
+  }, [deckId, deckVersion]);
+
+  useEffect(() => {
     setDeckVolumePct(Math.round((deckAudioTrack?.volume ?? 1) * 100));
     setDeckStartSec((deckAudioTrack?.startAtMs ?? 0) / 1000);
     setDeckPlayToEnd(deckAudioTrack == null || deckAudioTrack.endAtMs == null);
@@ -571,6 +670,25 @@ export function SlideAudioPanel({
     setDeckLoop(deckAudioTrack?.loop ?? false);
     setDeckFadeMs(deckAudioTrack?.fadeOutMs ?? 0);
   }, [deckAudioTrack]);
+
+  useEffect(() => {
+    const nextDefaults = mergeExtraParams(
+      buildDefaultExtraParamsForModel(selectedAudioModel),
+      pickExtraParamsForModel(selectedAudioModel, audioExtraParams),
+    ) ?? {};
+    setAudioExtraParams((current) => {
+      const currentSerialized = JSON.stringify(current);
+      const nextSerialized = JSON.stringify(nextDefaults);
+      return currentSerialized === nextSerialized ? current : nextDefaults;
+    });
+  }, [selectedAudioModel]);
+
+  useEffect(() => {
+    setAudioGenerationDialogOpen(false);
+    setAudioModelId("");
+    setAudioExtraParams({});
+    setIsGeneratingSlideAudio(false);
+  }, [slideId]);
 
   useEffect(() => {
     return () => {
@@ -603,7 +721,8 @@ export function SlideAudioPanel({
   // Mutations
   const setSlideAudioMutation = trpc.presentation.setSlideAudio.useMutation({
     onError: onSlideAudioError,
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
+      commitDeckVersion((data as { deckVersion?: number } | undefined)?.deckVersion);
       toast.success(variables.audioTrack ? "Slide audio saved." : "Slide audio removed.");
       onAudioChanged?.();
     },
@@ -611,7 +730,8 @@ export function SlideAudioPanel({
 
   const setDeckAudioMutation = trpc.presentation.setDeckAudio.useMutation({
     onError: onDeckAudioError,
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
+      commitDeckVersion((data as { deckVersion?: number } | undefined)?.deckVersion);
       toast.success(
         variables.projectAudioTrack ? "Project audio saved." : "Project audio removed.",
       );
@@ -747,7 +867,7 @@ export function SlideAudioPanel({
       slideId,
       deckId,
       audioTrack: buildSlideAudioTrackInput(libraryItemId),
-      expectedVersion: deckVersion,
+      expectedVersion: getCurrentDeckVersion(),
     });
   }
 
@@ -757,7 +877,7 @@ export function SlideAudioPanel({
       slideId,
       deckId,
       audioTrack: null,
-      expectedVersion: deckVersion,
+      expectedVersion: getCurrentDeckVersion(),
     });
   }
 
@@ -767,7 +887,7 @@ export function SlideAudioPanel({
       slideId,
       deckId,
       audioTrack: buildSlideAudioTrackInput(slideAudioTrack.libraryItemId),
-      expectedVersion: deckVersion,
+      expectedVersion: getCurrentDeckVersion(),
     });
   }
 
@@ -776,7 +896,7 @@ export function SlideAudioPanel({
     setDeckAudioMutation.mutate({
       deckId,
       projectAudioTrack: buildDeckAudioTrackInput(libraryItemId),
-      expectedVersion: deckVersion,
+      expectedVersion: getCurrentDeckVersion(),
     });
   }
 
@@ -784,7 +904,7 @@ export function SlideAudioPanel({
     setDeckAudioMutation.mutate({
       deckId,
       projectAudioTrack: null,
-      expectedVersion: deckVersion,
+      expectedVersion: getCurrentDeckVersion(),
     });
   }
 
@@ -793,8 +913,79 @@ export function SlideAudioPanel({
     setDeckAudioMutation.mutate({
       deckId,
       projectAudioTrack: buildDeckAudioTrackInput(deckAudioTrack.libraryItemId),
-      expectedVersion: deckVersion,
+      expectedVersion: getCurrentDeckVersion(),
     });
+  }
+
+  function openGenerateAudioDialog() {
+    if (!slideId) {
+      return;
+    }
+    if (slideNoteDirty || !savedSlideNoteText) {
+      return;
+    }
+    setAudioGenerationDialogOpen(true);
+  }
+
+  async function handleSlideNoteAudioAction() {
+    if (!slideId) {
+      return;
+    }
+    if (slideNoteDirty) {
+      if (!onSaveSlideNote) {
+        toast.error("Save the slide note first.");
+        return;
+      }
+      const saved = await onSaveSlideNote();
+      if (!saved) {
+        return;
+      }
+      return;
+    }
+    openGenerateAudioDialog();
+  }
+
+  async function handleGenerateAudioFromSavedNote() {
+    if (!slideId) {
+      return;
+    }
+    if (slideNoteDirty) {
+      toast.error("Save the slide note first before regenerating audio.");
+      return;
+    }
+    if (!savedSlideNoteText) {
+      toast.error("Add and save a slide note first.");
+      return;
+    }
+
+    const scopedExtraParams = pickExtraParamsForModel(selectedAudioModel, audioExtraParams) ?? {};
+    const missingRequiredFields = getMissingRequiredModelFields(
+      audioModelFields,
+      { extraParams: scopedExtraParams },
+    );
+    if (missingRequiredFields.length > 0) {
+      toast.error(`Please fill required model inputs: ${missingRequiredFields.join(", ")}`);
+      return;
+    }
+
+    setIsGeneratingSlideAudio(true);
+    try {
+      await generateSlideAudioFromNoteMutation.mutateAsync({
+        deckId,
+        slideId,
+        expectedVersion: getCurrentDeckVersion(),
+        ...(audioModelId ? { model: audioModelId } : {}),
+        ...(Object.keys(scopedExtraParams).length > 0 ? { extraParams: scopedExtraParams } : {}),
+        ...(extractVoiceSelection(scopedExtraParams) ? { voice: extractVoiceSelection(scopedExtraParams) } : {}),
+      });
+      setAudioGenerationDialogOpen(false);
+      onAudioChanged?.();
+      toast.success(slideAudioTrack ? "Slide audio regenerated." : "Slide audio generated.");
+    } catch (error) {
+      toast.error(String((error as Error)?.message || error || "Failed to generate slide audio."));
+    } finally {
+      setIsGeneratingSlideAudio(false);
+    }
   }
 
   function openSlidePicker() {
@@ -828,9 +1019,10 @@ export function SlideAudioPanel({
 
     try {
       const fileBase64 = await readFileAsDataUrl(file);
+      const uploadExpectedVersion = getCurrentDeckVersion();
       const uploaded = await uploadAndAttachAssetMutation.mutateAsync({
         deckId,
-        expectedVersion: deckVersion,
+        expectedVersion: uploadExpectedVersion,
         slideId: target === "slide" ? slideId : null,
         fileName: file.name,
         fileType: file.type || "audio/*",
@@ -842,20 +1034,22 @@ export function SlideAudioPanel({
         throw new Error("Upload completed but audio item is invalid.");
       }
 
-      const nextExpectedVersion = deckVersion + 1;
+      const nextExpectedVersion = bumpDeckVersion();
       if (target === "slide") {
-        await setSlideAudioMutation.mutateAsync({
+        const result = await setSlideAudioMutation.mutateAsync({
           slideId: slideId!,
           deckId,
           audioTrack: buildSlideAudioTrackInput(libraryItemId),
           expectedVersion: nextExpectedVersion,
         });
+        commitDeckVersion((result as { deckVersion?: number } | undefined)?.deckVersion);
       } else {
-        await setDeckAudioMutation.mutateAsync({
+        const result = await setDeckAudioMutation.mutateAsync({
           deckId,
           projectAudioTrack: buildDeckAudioTrackInput(libraryItemId),
           expectedVersion: nextExpectedVersion,
         });
+        commitDeckVersion((result as { deckVersion?: number } | undefined)?.deckVersion);
       }
 
       const creditsCharged = Number((uploaded as any)?.billing?.creditsCharged ?? 0);
@@ -868,6 +1062,7 @@ export function SlideAudioPanel({
         toast.error(message);
         return;
       }
+      void onAudioChanged?.();
       toast.error(`Failed to upload audio: ${message}`);
     } finally {
       setUploadTarget(null);
@@ -882,6 +1077,12 @@ export function SlideAudioPanel({
     }
     void handleAudioUpload(uploadTarget, file);
   }
+
+  const slideNoteActionDisabled = (
+    !slideId
+    || isGeneratingSlideAudio
+    || (slideNoteDirty ? !onSaveSlideNote : !savedSlideNoteText)
+  );
 
   // ---------------------------------------------------------------------------
   // Render
@@ -900,6 +1101,18 @@ export function SlideAudioPanel({
         ) : slideAudioTrack == null ? (
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">No audio configured for this slide.</p>
+            <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 p-2 text-xs text-slate-600">
+              <div className="flex items-center justify-between gap-2">
+                <span className="truncate">
+                  {slideNoteDirty
+                    ? "Slide note has unsaved changes."
+                    : savedSlideNoteText
+                      ? "Saved slide note is ready for narration generation."
+                      : "Add and save a slide note to generate narration."}
+                </span>
+                <span>{savedSlideNoteText.length} chars</span>
+              </div>
+            </div>
             <div className="flex flex-wrap gap-2">
               <Button
                 size="sm"
@@ -921,6 +1134,16 @@ export function SlideAudioPanel({
               >
                 <Upload className="mr-1 h-3 w-3" />
                 Upload Audio
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void handleSlideNoteAudioAction()}
+                disabled={slideNoteActionDisabled}
+                data-testid="generate-slide-audio-from-note-btn"
+              >
+                {isGeneratingSlideAudio ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <RefreshCw className="mr-1 h-3 w-3" />}
+                {noteActionLabel}
               </Button>
             </div>
           </div>
@@ -972,6 +1195,27 @@ export function SlideAudioPanel({
                 <Upload className="mr-1 h-3 w-3" />
                 Upload
               </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-2 text-xs"
+                onClick={() => void handleSlideNoteAudioAction()}
+                disabled={slideNoteActionDisabled}
+                data-testid="regenerate-slide-audio-from-note-btn"
+              >
+                {isGeneratingSlideAudio ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <RefreshCw className="mr-1 h-3 w-3" />}
+                {noteActionLabel}
+              </Button>
+            </div>
+            <div className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-[11px] text-slate-600">
+              <span className="truncate">
+                {slideNoteDirty
+                  ? "Narration regenerate is locked until the slide note is saved."
+                  : savedSlideNoteText
+                    ? "Narration source: saved slide note."
+                    : "No saved slide note."}
+              </span>
+              <span>{savedSlideNoteText.length} chars</span>
             </div>
 
             {/* Volume */}
@@ -1211,6 +1455,66 @@ export function SlideAudioPanel({
         onSelect={handlePickerSelect}
         target={pickerTarget}
       />
+      <Dialog open={audioGenerationDialogOpen} onOpenChange={setAudioGenerationDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{slideAudioTrack ? "Regenerate Slide Audio" : "Generate Slide Audio"}</DialogTitle>
+            <DialogDescription>
+              Audio is generated from the last saved slide note only. Current play/export output still hides notes.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+              <div className="mb-2 flex items-center justify-between text-xs text-slate-500">
+                <span>Saved slide note preview</span>
+                <span>{savedSlideNoteText.length} chars</span>
+              </div>
+              <p className="max-h-40 overflow-y-auto whitespace-pre-wrap text-sm text-slate-700">
+                {savedSlideNoteText || "No saved slide note."}
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Audio model</Label>
+              <ImageModelCombobox
+                value={audioModelId}
+                onValueChange={setAudioModelId}
+                disabled={isGeneratingSlideAudio}
+                mediaType="audio"
+              />
+            </div>
+            <ModelInputFieldsPanel
+              enabled
+              model={selectedAudioModel}
+              fields={audioModelFields}
+              extraParams={audioExtraParams}
+              onChange={(key, value) => {
+                setAudioExtraParams((current) => ({ ...current, [key]: value }));
+              }}
+              panelTestId="slide-audio-model-fields"
+              titlePrefix="Voice & Model Inputs"
+              ariaLabelPrefix="Slide audio"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setAudioGenerationDialogOpen(false)}
+              disabled={isGeneratingSlideAudio}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleGenerateAudioFromSavedNote()}
+              disabled={isGeneratingSlideAudio || !savedSlideNoteText}
+            >
+              {isGeneratingSlideAudio ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
+              {slideAudioTrack ? "Regenerate Audio" : "Generate Audio"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <input
         ref={audioUploadInputRef}
         type="file"

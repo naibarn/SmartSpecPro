@@ -34,6 +34,7 @@ const serviceMocks = vi.hoisted(() => ({
   getPresentationDeckByLibraryItem: vi.fn(),
   updateSlideAudioTrack: vi.fn(),
   updateDeckProjectAudioTrack: vi.fn(),
+  generateSlideAudioFromSavedNote: vi.fn(),
 }));
 
 const templateServiceMocks = vi.hoisted(() => ({
@@ -68,6 +69,7 @@ vi.mock("../services/presentationService", async () => {
     getPresentationDeckByLibraryItem: serviceMocks.getPresentationDeckByLibraryItem,
     updateSlideAudioTrack: serviceMocks.updateSlideAudioTrack,
     updateDeckProjectAudioTrack: serviceMocks.updateDeckProjectAudioTrack,
+    generateSlideAudioFromSavedNote: serviceMocks.generateSlideAudioFromSavedNote,
   };
 });
 
@@ -199,6 +201,12 @@ describe("presentationRouter", () => {
     });
     serviceMocks.updateSlideAudioTrack.mockResolvedValue({ deckVersion: 2, slideVersion: 3 });
     serviceMocks.updateDeckProjectAudioTrack.mockResolvedValue({ deckVersion: 2 });
+    serviceMocks.generateSlideAudioFromSavedNote.mockResolvedValue({
+      deckVersion: 2,
+      slideVersion: 3,
+      libraryItemId: 901,
+      taskId: "audio-task-1",
+    });
   });
 
   it("returns disabled availability when feature flag is off", async () => {
@@ -825,6 +833,41 @@ describe("presentationRouter", () => {
         input: { deckId: 88, slideId: 10, expectedVersion: 2, audioTrack: null },
       }),
     ).rejects.toSatisfy((err: unknown) => err instanceof TRPCError && err.code === "CONFLICT");
+  });
+
+  it("generateSlideAudioFromNote forwards token, model options, and actor to service", async () => {
+    const fn = presentationRouter.generateSlideAudioFromNote as Function;
+    const result = await fn({
+      ctx: {
+        tenantId: "tenant-1",
+        user: { id: 10, role: "user" },
+        userToken: "session-token-123",
+        publicUrl: "https://app.example.com",
+      },
+      input: {
+        deckId: 88,
+        slideId: 10,
+        expectedVersion: 3,
+        model: "uvoice/tts-standard",
+        voice: "alloy",
+        extraParams: { voice: "alloy" },
+      },
+    });
+
+    expect(serviceMocks.generateSlideAudioFromSavedNote).toHaveBeenCalledWith(
+      {
+        deckId: 88,
+        slideId: 10,
+        expectedVersion: 3,
+        model: "uvoice/tts-standard",
+        voice: "alloy",
+        extraParams: { voice: "alloy" },
+        userToken: expect.any(String),
+        publicUrl: "https://app.example.com",
+      },
+      { userId: 10, tenantId: "tenant-1", role: "user" },
+    );
+    expect(result.libraryItemId).toBe(901);
   });
 
   // --- setDeckAudio ---

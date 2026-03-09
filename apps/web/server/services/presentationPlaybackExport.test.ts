@@ -42,6 +42,7 @@ function buildDeckDetail(overrides?: Partial<Record<string, unknown>>) {
       libraryItemId: 44,
       title: "Roadmap",
       description: null,
+      notes: "Internal deck note",
       version: 3,
       slideCount: 2,
       totalAssetBytes: 0,
@@ -102,6 +103,8 @@ describe("presentationPlaybackExport", () => {
     expect(payload.slides.map((slide) => slide.slideId)).toEqual([1, 2]);
     expect(payload.slides.map((slide) => slide.durationMs)).toEqual([3000, 2500]);
     expect(payload.slides.map((slide) => slide.transition)).toEqual(["cut", "fade"]);
+    expect(payload).not.toHaveProperty("notes");
+    expect(payload.slides[0]).not.toHaveProperty("notes");
   });
 
   it("resolves /api/storage/files sourceUrl into a presigned audio URL for play deck payload", async () => {
@@ -166,6 +169,36 @@ describe("presentationPlaybackExport", () => {
     expect(storagePresignGet).toHaveBeenCalledWith("audio/project/theme.mp3", 3600);
     expect(payload.slides[0]?.audioTrack?.url).toBe("https://signed.example.com/audio/project/theme.mp3");
     expect(payload.projectAudioTrack?.url).toBe("https://signed.example.com/audio/project/theme.mp3");
+    expect(payload).not.toHaveProperty("notes");
+    expect(payload.slides[0]).not.toHaveProperty("notes");
+  });
+
+  it("buildPresentationRenderSpec omits deck and slide notes from export payloads", () => {
+    const detail = buildDeckDetail({
+      deck: {
+        ...buildDeckDetail().deck,
+        notes: "Export-hidden deck note",
+      },
+      slides: [
+        {
+          ...buildDeckDetail().slides[0],
+          id: 1,
+          orderIndex: 0,
+          notes: "Export-hidden slide note",
+        },
+      ],
+    });
+
+    const renderSpec = buildPresentationRenderSpec({
+      deck: detail.deck,
+      slides: detail.slides,
+      format: "pdf",
+      width: 1280,
+      height: 720,
+    } as any);
+
+    expect(renderSpec).not.toHaveProperty("notes");
+    expect(renderSpec.slides[0]).not.toHaveProperty("notes");
   });
 
   it("degrades unsupported transition inputs and emits stable warning codes", async () => {
@@ -263,6 +296,116 @@ describe("presentationPlaybackExport", () => {
 
     expect(renderSpec.warnings).toEqual(expected.warnings);
     expect(renderSpec.slides).toEqual(expected.slides);
+  });
+
+  it("marks image-only slides with media motion as dynamic capture for mp4", () => {
+    const renderSpec = buildPresentationRenderSpec({
+      deck: buildDeckDetail().deck as any,
+      slides: [
+        {
+          id: 3,
+          deckId: 101,
+          orderIndex: 0,
+          version: 1,
+          title: "Motion image",
+          slideContent: {
+            durationMs: 3000,
+            elements: [
+              {
+                id: "img-motion-1",
+                type: "image",
+                x: 0,
+                y: 0,
+                width: 320,
+                height: 180,
+                src: "/api/storage/files/images/hero.png",
+                alt: "Hero",
+                mediaMotion: { preset: "zoom-in", intensity: 0.5 },
+              },
+            ],
+          },
+          notes: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as any,
+      ],
+      format: "mp4",
+    });
+
+    expect(renderSpec.hasDynamicVideo).toBe(true);
+  });
+
+  it("ignores invalid media motion presets when deciding mp4 dynamic capture", () => {
+    const renderSpec = buildPresentationRenderSpec({
+      deck: buildDeckDetail().deck as any,
+      slides: [
+        {
+          id: 31,
+          deckId: 101,
+          orderIndex: 0,
+          version: 1,
+          title: "Garbage motion",
+          slideContent: {
+            durationMs: 3000,
+            elements: [
+              {
+                id: "img-motion-invalid-1",
+                type: "image",
+                x: 0,
+                y: 0,
+                width: 320,
+                height: 180,
+                src: "/api/storage/files/images/hero.png",
+                alt: "Hero",
+                mediaMotion: { preset: "garbage", intensity: 0.5 } as any,
+              },
+            ],
+          },
+          notes: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as any,
+      ],
+      format: "mp4",
+    });
+
+    expect("hasDynamicVideo" in renderSpec).toBe(false);
+  });
+
+  it("keeps static image slides without motion off the dynamic capture path", () => {
+    const renderSpec = buildPresentationRenderSpec({
+      deck: buildDeckDetail().deck as any,
+      slides: [
+        {
+          id: 4,
+          deckId: 101,
+          orderIndex: 0,
+          version: 1,
+          title: "Static image",
+          slideContent: {
+            durationMs: 3000,
+            elements: [
+              {
+                id: "img-static-1",
+                type: "image",
+                x: 0,
+                y: 0,
+                width: 320,
+                height: 180,
+                src: "/api/storage/files/images/hero.png",
+                alt: "Hero",
+              },
+            ],
+          },
+          notes: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as any,
+      ],
+      format: "mp4",
+    });
+
+    expect(renderSpec.hasDynamicVideo).toBeUndefined();
   });
 
   it("keeps warning payload stable across repeated exports for the same deck content", async () => {

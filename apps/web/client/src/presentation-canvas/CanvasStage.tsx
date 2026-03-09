@@ -12,6 +12,7 @@ import {
 import type { PresentationElement, PresentationSlideBackground } from "@/lib/presentationEditorState";
 import type { SnapGuide } from "./snap/SnapEngine";
 import { CanvasObjects } from "./CanvasObjects";
+import type { CanvasMediaMotionTiming } from "./CanvasObjects";
 import { TransformHandles } from "./components/TransformHandles";
 import type { ArrangeDirection, PresentationCanvasSize } from "@/lib/presentationEditorState";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ interface CanvasStageProps {
   showElementFrames?: boolean;
   autoPlayVideos?: boolean;
   showVideoPlaybackToggle?: boolean;
+  mediaMotionTiming?: CanvasMediaMotionTiming;
   suppressTransformHandles?: boolean;
   showTransformDock?: boolean;
   showViewportControls?: boolean;
@@ -112,6 +114,7 @@ export function CanvasStage({
   showElementFrames = true,
   autoPlayVideos = false,
   showVideoPlaybackToggle = true,
+  mediaMotionTiming = { elapsedMs: 0, slideDurationMs: 3000 },
   suppressTransformHandles,
   showTransformDock: showTransformDockProp = true,
   showViewportControls = true,
@@ -752,6 +755,7 @@ export function CanvasStage({
                       autoPlayVideos={autoPlayVideos}
                       showVideoPlaybackToggle={showVideoPlaybackToggle}
                       clipTextToElementBounds={false}
+                      mediaMotionTiming={mediaMotionTiming}
                     />
                     {marqueeBounds ? (
                       <div

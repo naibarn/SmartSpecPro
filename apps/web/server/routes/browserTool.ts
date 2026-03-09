@@ -6,7 +6,7 @@
  * Flow:
  * 1. Validate request (userId, tenantId, actions)
  * 2. Verify X-Internal-Token header
- * 3. Check feature flag (browserAutomation must be enabled)
+ * 3. Check feature flag (browserTool must be enabled)
  * 4. Check concurrency limits (Redis semaphore)
  * 5. Check credit balance (hasEnoughCredits >= 20)
  * 6. Pre-reserve 20 credits via deductCredits({ sourceType: 'browser_automation', amount: 20 })
@@ -183,7 +183,7 @@ router.post("/api/internal/tools/browser", async (req: Request, res: Response) =
   }
 
   // Feature flag check
-  const browserEnabled = await getTenantFeatureFlag("browserAutomation", tenantId).catch(
+  const browserEnabled = await getTenantFeatureFlag("browserTool", tenantId).catch(
     () => false,
   );
   if (!browserEnabled) {

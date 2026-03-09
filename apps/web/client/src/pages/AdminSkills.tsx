@@ -65,6 +65,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
+import { SkillStudioDialog } from "@/components/skills/SkillStudioDialog";
 import {
   getAllowedExecutionModesForSkillCategory,
   getMediaModelTypeForSkillCategory,
@@ -118,6 +119,7 @@ interface Skill {
 interface FolderInfo {
   slug: string;
   hasSkillMd: boolean;
+  manifestFileName?: string;
   hasPython: boolean;
   hasJs: boolean;
   metadata?: {
@@ -174,7 +176,7 @@ const executionModeLabels: Record<
   "llm-only" | "media-generate" | "enhance-prompt" | "python",
   string
 > = {
-  "llm-only": "LLM Only (Custom Skill - uses skill.md as system prompt)",
+  "llm-only": "LLM Only (uses skill manifest markdown as system prompt)",
   "enhance-prompt": "Enhance Prompt (specialized prompt enhancement endpoint)",
   "media-generate": "Media Generate (LLM prompt + media API)",
   python: "Python (runs python/skill.py via subprocess)",
@@ -200,7 +202,7 @@ function getExecutionModeHelperText(
   if (executionMode === "python") {
     return "Runs python/skill.py as subprocess. Input: JSON stdin. Output: JSON stdout {success, output}.";
   }
-  return "Uses skill.md content as system prompt for LLM (default).";
+  return "Uses the skill manifest markdown as system prompt for LLM (default).";
 }
 
 function getMediaModelsForCategory(
@@ -237,6 +239,10 @@ export default function AdminSkills() {
   const [activeTab, setActiveTab] = useState("skills");
   const [rejectingSkill, setRejectingSkill] = useState<Skill | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [isStudioDialogOpen, setIsStudioDialogOpen] = useState(false);
+  const [studioMode, setStudioMode] = useState<"create" | "improve">("create");
+  const [studioTargetSkillId, setStudioTargetSkillId] = useState<number | null>(null);
+  const [previewProposal, setPreviewProposal] = useState<{ skillName: string; diffFile: string } | null>(null);
 
   // ZIP import state
   const [zipFile, setZipFile] = useState<File | null>(null);
@@ -274,6 +280,12 @@ export default function AdminSkills() {
     }
   }, [user, authLoading, setLocation]);
 
+  useEffect(() => {
+    if (!authLoading && user && !isAdmin) {
+      setLocation("/settings/skills");
+    }
+  }, [authLoading, isAdmin, setLocation, user]);
+
   // Fetch skills from database
   const { data: skills, isLoading } = trpc.skills.listFromDb.useQuery({
     category: filterCategory !== "all" ? filterCategory : undefined,
@@ -301,6 +313,13 @@ export default function AdminSkills() {
   const { data: pendingSkills } = trpc.skills.listPending.useQuery(undefined, {
     enabled: !!isAdmin,
   });
+  const { data: iscProposals } = trpc.skills.listIscProposals.useQuery(undefined, {
+    enabled: !!isAdmin,
+  });
+  const { data: proposalPreviewData } = trpc.skills.getIscProposalContent.useQuery(
+    previewProposal || { skillName: "__placeholder__", diffFile: "placeholder.diff" },
+    { enabled: !!previewProposal && !!isAdmin },
+  );
 
   // Fetch groups for sharing (used in edit dialog)
   const { data: userGroups } = trpc.groups.list.useQuery(
@@ -423,7 +442,7 @@ export default function AdminSkills() {
       setIsZipDialogOpen(false);
       setZipFile(null);
       setZipSlug("");
-      const formatLabel = data.importFormat === "claude" ? "Claude/OpenCode Skill" : "Custom GPT";
+      const formatLabel = data.importFormat === "shared-skill" ? "Shared Skill Bundle" : "Custom GPT";
       const extras = [];
       if (data.hasPython) extras.push("Python");
       if (data.hasJs) extras.push("JavaScript");
@@ -477,6 +496,25 @@ export default function AdminSkills() {
       toast({
         title: "Error",
         description: error.message || "Failed to reject skill",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const applyProposalMutation = trpc.skills.applyIscProposal.useMutation({
+    onSuccess: () => {
+      utils.skills.listFromDb.invalidate();
+      utils.skills.listIscProposals.invalidate();
+      toast({
+        title: "Proposal Applied",
+        description: "The ISC proposal has been applied and synced.",
+      });
+      setPreviewProposal(null);
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to apply proposal",
         variant: "destructive",
       });
     },
@@ -613,7 +651,13 @@ export default function AdminSkills() {
     return <Icon className="h-4 w-4" />;
   };
 
-  if (authLoading || !user) {
+  const openStudio = (nextMode: "create" | "improve", skillId?: number) => {
+    setStudioMode(nextMode);
+    setStudioTargetSkillId(skillId ?? null);
+    setIsStudioDialogOpen(true);
+  };
+
+  if (authLoading || !user || !isAdmin) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <RefreshCw className="h-8 w-8 animate-spin text-purple-500" />
@@ -641,6 +685,10 @@ export default function AdminSkills() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => openStudio("create")}>
+            <Sparkles className="mr-2 h-4 w-4" />
+            Skill Studio
+          </Button>
           <Button variant="outline" onClick={() => setIsZipDialogOpen(true)}>
             <Upload className="mr-2 h-4 w-4" />
             Import ZIP
@@ -661,6 +709,15 @@ export default function AdminSkills() {
           <TabsTrigger value="import">
             <FolderSync className="mr-2 h-4 w-4" />
             Import Folders
+          </TabsTrigger>
+          <TabsTrigger value="proposals">
+            <Sparkles className="mr-2 h-4 w-4" />
+            ISC Proposals
+            {iscProposals?.proposals && iscProposals.proposals.length > 0 && (
+              <Badge className="ml-2" variant="secondary">
+                {iscProposals.proposals.length}
+              </Badge>
+            )}
           </TabsTrigger>
           {isAdmin && (
             <TabsTrigger value="pending">
@@ -866,6 +923,15 @@ export default function AdminSkills() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
+                              {(isAdmin || skill.createdBy === Number(user?.id)) && skill.hasLocalFolder && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openStudio("improve", skill.id)}
+                                >
+                                  <Sparkles className="h-3 w-3 text-amber-600" />
+                                </Button>
+                              )}
                               {(isAdmin || skill.createdBy === Number(user?.id)) && (
                                 <Button
                                   variant="ghost"
@@ -937,7 +1003,7 @@ export default function AdminSkills() {
                   <TableRow>
                     <TableHead>Folder</TableHead>
                     <TableHead>Name</TableHead>
-                    <TableHead>Has skill.md</TableHead>
+                    <TableHead>Has Manifest</TableHead>
                     <TableHead>Has Python</TableHead>
                     <TableHead>Has JS</TableHead>
                     <TableHead>In Database</TableHead>
@@ -960,7 +1026,10 @@ export default function AdminSkills() {
                         </TableCell>
                         <TableCell>
                           {folder.hasSkillMd ? (
-                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="h-4 w-4 text-green-500" />
+                              <span className="text-xs text-muted-foreground">{folder.manifestFileName || "manifest"}</span>
+                            </div>
                           ) : (
                             <XCircle className="h-4 w-4 text-muted-foreground" />
                           )}
@@ -1001,6 +1070,72 @@ export default function AdminSkills() {
                               Import
                             </Button>
                           )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="proposals" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5" />
+                ISC Proposal Queue
+              </CardTitle>
+              <CardDescription>
+                Review and apply improvement proposals generated by Skill Studio.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Skill</TableHead>
+                    <TableHead>Owner</TableHead>
+                    <TableHead>Round</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {!iscProposals?.proposals?.length ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                        No pending ISC proposals.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    iscProposals.proposals.map((proposal) => (
+                      <TableRow key={`${proposal.skillName}-${proposal.diffFile}`}>
+                        <TableCell>
+                          <div className="font-medium">{proposal.skillName}</div>
+                          <div className="text-xs text-muted-foreground">{proposal.diffFile}</div>
+                        </TableCell>
+                        <TableCell>{proposal.ownerName || "Unknown"}</TableCell>
+                        <TableCell>{proposal.round || "-"}</TableCell>
+                        <TableCell>{proposal.createdAt}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setPreviewProposal({ skillName: proposal.skillName, diffFile: proposal.diffFile })}
+                            >
+                              Preview
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => applyProposalMutation.mutate({ skillName: proposal.skillName, diffFile: proposal.diffFile })}
+                              disabled={applyProposalMutation.isPending}
+                            >
+                              Apply
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -1110,6 +1245,28 @@ export default function AdminSkills() {
         )}
       </Tabs>
 
+      <SkillStudioDialog
+        open={isStudioDialogOpen}
+        onOpenChange={setIsStudioDialogOpen}
+        scope="admin"
+        initialMode={studioMode}
+        initialTargetSkillId={studioTargetSkillId}
+        availableSkills={(skills || []).map((skill: any) => ({
+          id: skill.id,
+          slug: skill.slug,
+          name: skill.name,
+          description: skill.description,
+          visibility: skill.visibility,
+          isOwner: skill.createdBy === Number(user?.id),
+          hasLocalFolder: skill.hasLocalFolder,
+        }))}
+        onCompleted={() => {
+          utils.skills.listFromDb.invalidate();
+          utils.skills.listPending.invalidate();
+          utils.skills.listIscProposals.invalidate();
+        }}
+      />
+
       {/* Reject Skill Dialog */}
       <Dialog open={!!rejectingSkill} onOpenChange={() => { setRejectingSkill(null); setRejectReason(""); }}>
         <DialogContent className="sm:max-w-md">
@@ -1149,6 +1306,36 @@ export default function AdminSkills() {
             >
               {rejectMutation.isPending ? "Rejecting..." : "Reject Skill"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!previewProposal} onOpenChange={() => setPreviewProposal(null)}>
+        <DialogContent className="sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Proposal Preview</DialogTitle>
+            <DialogDescription>
+              {previewProposal?.skillName} / {previewProposal?.diffFile}
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={proposalPreviewData?.content || ""}
+            readOnly
+            rows={20}
+            className="font-mono text-xs"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPreviewProposal(null)}>
+              Close
+            </Button>
+            {previewProposal && (
+              <Button
+                onClick={() => applyProposalMutation.mutate(previewProposal)}
+                disabled={applyProposalMutation.isPending}
+              >
+                Apply Proposal
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -2020,7 +2207,7 @@ export default function AdminSkills() {
             <DialogDescription className="space-y-2">
               <span className="block">Supports two formats:</span>
               <span className="block text-xs">
-                <strong>1. Claude/OpenCode:</strong> ZIP with skill.md, python/, js/ folders
+                <strong>1. Shared Skill Bundle:</strong> ZIP with `skill.md` or `SKILL.md`, plus optional python/, js/, CLAUDE.md, CODEX.md
               </span>
               <span className="block text-xs">
                 <strong>2. Custom GPT:</strong> ZIP with system prompt + knowledge files

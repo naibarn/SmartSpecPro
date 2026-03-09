@@ -34,6 +34,7 @@ const FLAG_GROUPS: { title: string; flags: FlagInfo[] }[] = [
     title: "AI Tools",
     flags: [
       { key: "browserTool", label: "Browser Automation", description: "AI-controlled web browsing" },
+      { key: "automationCopilot", label: "Automation Copilot", description: "LLM-driven browser task planner and executor" },
       { key: "canvas", label: "Canvas / AI Artifacts", description: "Interactive artifact rendering" },
       { key: "voiceChat", label: "Voice Chat Mode", description: "Real-time voice conversation" },
       { key: "crossAgency", label: "Cross-Agency Communication", description: "Agents calling other agents" },
@@ -43,6 +44,7 @@ const FLAG_GROUPS: { title: string; flags: FlagInfo[] }[] = [
   {
     title: "Integration",
     flags: [
+      { key: "responsesApi", label: "Responses API Gateway", description: "OpenAI-compatible Responses API proxy" },
       { key: "webhookTriggers", label: "Inbound Webhook Triggers", description: "Trigger agents via HTTP webhooks" },
       { key: "costDisplay", label: "Per-Response Cost Display", description: "Show token cost to users" },
     ],

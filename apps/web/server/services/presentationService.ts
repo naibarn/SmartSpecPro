@@ -1,10 +1,11 @@
 import crypto from "node:crypto";
-import { and, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull, sql, getTableColumns } from "drizzle-orm";
 
 import { getDb } from "../db";
 import {
   libraryItems,
   libraryContentVersions,
+  mediaModels,
   presentationAssetLinks,
   presentationDecks,
   presentationSlides,
@@ -34,6 +35,10 @@ import {
   type LibraryActor,
   type LibraryItemDto,
 } from "./libraryService";
+import { addMediaTaskToLibrary } from "./mediaLibraryService";
+import { calculateCreditCost } from "./pricingCalculator";
+import { deductCredits, hasEnoughCredits, refundCredits } from "./creditService";
+import { DEFAULT_MODELS, MEDIA_MODELS, mediaGenerationService, type MediaTask } from "./mediaGenerationService";
 import {
   PRESENTATION_CONFLICT_SCHEMA_VERSION,
   PRESENTATION_ERROR_CODE,
@@ -57,8 +62,26 @@ import {
   recordPresentationFailureMetric,
   recordPresentationLog,
 } from "./presentationObservability";
+import { resolveTtsTextFromSlideNote } from "./ttsText";
 
 type DbClient = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+const AUDIO_GENERATION_POLL_INTERVAL_MS = 2500;
+const AUDIO_GENERATION_POLL_TIMEOUT_MS = 180_000;
+let cachedPresentationDeckNotesColumnAvailable: boolean | null = null;
+const { notes: _presentationDeckNotesColumn, ...presentationDeckColumnsWithoutNotes } = getTableColumns(presentationDecks);
+
+function isMissingPresentationDeckNotesColumnError(error: unknown): boolean {
+  const code = String((error as any)?.code ?? "");
+  const message = String((error as any)?.message ?? "");
+  return (
+    code === "42703"
+    || (
+      message.includes("presentation_decks")
+      && message.includes("notes")
+      && message.toLowerCase().includes("column")
+    )
+  );
+}
 
 function normalizeSlideAudioTrackInput(
   audioTrack: AudioTrackInput | null | undefined,
@@ -98,6 +121,7 @@ export interface UpdatePresentationDeckMetadataInput {
   expectedVersion: number;
   title?: string;
   description?: string | null;
+  notes?: string | null;
 }
 
 export interface AddPresentationSlideInput {
@@ -393,6 +417,180 @@ function ensureExpectedDeckVersion(deck: PresentationDeck, expectedVersion: numb
   throwDeckVersionConflict(deck, expectedVersion);
 }
 
+async function hasPresentationDeckNotesColumn(dbClient?: DbClient): Promise<boolean> {
+  if (cachedPresentationDeckNotesColumnAvailable !== null) {
+    return cachedPresentationDeckNotesColumnAvailable;
+  }
+  const db = await resolveDb(dbClient);
+  try {
+    const result = await db.execute(sql`
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_name = 'presentation_decks'
+        AND column_name = 'notes'
+      LIMIT 1
+    `);
+    cachedPresentationDeckNotesColumnAvailable = Array.isArray(result)
+      ? result.length > 0
+      : ((result as any)?.rows?.length ?? 0) > 0;
+  } catch {
+    cachedPresentationDeckNotesColumnAvailable = true;
+  }
+  return cachedPresentationDeckNotesColumnAvailable;
+}
+
+async function buildPresentationDeckSelectShape(dbClient?: DbClient) {
+  const includeNotes = await hasPresentationDeckNotesColumn(dbClient);
+  if (includeNotes) {
+    return getTableColumns(presentationDecks);
+  }
+  return {
+    ...presentationDeckColumnsWithoutNotes,
+    notes: sql<string | null>`null::text`,
+  };
+}
+
+async function getAudioModelWithPricing(modelId: string): Promise<{
+  creditCost: number;
+  configJson: Record<string, any> | null;
+}> {
+  try {
+    const db = await getDb();
+    if (db) {
+      const [dbModel] = await db
+        .select({
+          creditCost: mediaModels.creditCost,
+          configJson: mediaModels.configJson,
+        })
+        .from(mediaModels)
+        .where(eq(mediaModels.modelId, modelId))
+        .limit(1);
+      if (dbModel) {
+        return {
+          creditCost: dbModel.creditCost,
+          configJson: dbModel.configJson as Record<string, any> | null,
+        };
+      }
+    }
+  } catch {
+    // Fall through to static fallback.
+  }
+
+  return {
+    creditCost: MEDIA_MODELS[modelId]?.creditCost ?? 10,
+    configJson: null,
+  };
+}
+
+async function resolveAudioModelMeta(modelId: string): Promise<{ provider: string }> {
+  const db = await getDb();
+  if (db) {
+    try {
+      const [dbModel] = await db
+        .select({
+          modelType: mediaModels.modelType,
+          provider: mediaModels.provider,
+          isEnabled: mediaModels.isEnabled,
+        })
+        .from(mediaModels)
+        .where(eq(mediaModels.modelId, modelId))
+        .limit(1);
+      if (dbModel) {
+        if (!dbModel.isEnabled) {
+          throw new PresentationServiceError(
+            PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
+            `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: model "${modelId}" is disabled`,
+          );
+        }
+        if (dbModel.modelType !== "audio") {
+          throw new PresentationServiceError(
+            PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
+            `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: model "${modelId}" is not an audio model`,
+          );
+        }
+        return { provider: dbModel.provider ?? MEDIA_MODELS[modelId]?.provider ?? "kie.ai" };
+      }
+    } catch (error) {
+      if (error instanceof PresentationServiceError) {
+        throw error;
+      }
+    }
+  }
+
+  const modelMeta = MEDIA_MODELS[modelId];
+  if (!modelMeta || modelMeta.type !== "audio") {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
+      `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: invalid audio model "${modelId}"`,
+    );
+  }
+
+  return { provider: modelMeta.provider };
+}
+
+function resolveConfiguredMaxPromptLength(configJson: Record<string, any> | null | undefined): number | null {
+  if (!configJson || typeof configJson !== "object") {
+    return null;
+  }
+  const raw = configJson.maxPromptLength;
+  const parsed = typeof raw === "number" || typeof raw === "string" ? Number(raw) : NaN;
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+  return Math.floor(parsed);
+}
+
+function extractMediaTaskFailureMessage(task: MediaTask): string | null {
+  if (typeof task.errorMessage === "string" && task.errorMessage.trim().length > 0) {
+    return task.errorMessage.trim();
+  }
+  const resultData = task.resultData;
+  if (!resultData || typeof resultData !== "object") {
+    return null;
+  }
+  for (const key of ["error", "errorMessage", "message", "detail", "failMsg"] as const) {
+    const value = resultData[key];
+    if (typeof value === "string" && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return null;
+}
+
+async function pollAudioTaskToCompletion(
+  taskId: string,
+  userToken: string,
+  actor: PresentationActor,
+): Promise<MediaTask> {
+  const deadline = Date.now() + AUDIO_GENERATION_POLL_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const task = await mediaGenerationService.getTask(
+      taskId,
+      userToken,
+      {
+        userId: actor.userId,
+        source: "presentation.generateSlideAudioFromSavedNote",
+        stage: "poll",
+      },
+    );
+    if (task.status === "completed") {
+      return task;
+    }
+    if (task.status === "failed" || task.status === "cancelled") {
+      throw new PresentationServiceError(
+        PRESENTATION_ERROR_CODE.AI_GENERATION_FAILED,
+        `${PRESENTATION_ERROR_CODE.AI_GENERATION_FAILED}: ${extractMediaTaskFailureMessage(task) || `audio generation ${task.status}`}`,
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, AUDIO_GENERATION_POLL_INTERVAL_MS));
+  }
+
+  throw new PresentationServiceError(
+    PRESENTATION_ERROR_CODE.AI_GENERATION_FAILED,
+    `${PRESENTATION_ERROR_CODE.AI_GENERATION_FAILED}: audio generation timed out`,
+  );
+}
+
 function buildPresentationTempMonthKey(date: Date): string {
   const year = date.getUTCFullYear();
   const month = String(date.getUTCMonth() + 1).padStart(2, "0");
@@ -669,13 +867,26 @@ async function getDeckByLibraryItemId(
   dbClient?: DbClient,
 ): Promise<PresentationDeck | null> {
   const db = await resolveDb(dbClient);
+  const selectShape = await buildPresentationDeckSelectShape(db);
   const rows = await db
-    .select()
+    .select(selectShape as any)
     .from(presentationDecks)
     .where(and(eq(presentationDecks.libraryItemId, libraryItemId), eq(presentationDecks.tenantId, tenantId)))
-    .limit(1);
+    .limit(1)
+    .catch(async (error) => {
+      if (!isMissingPresentationDeckNotesColumnError(error)) {
+        throw error;
+      }
+      cachedPresentationDeckNotesColumnAvailable = false;
+      const fallbackShape = await buildPresentationDeckSelectShape(db);
+      return db
+        .select(fallbackShape as any)
+        .from(presentationDecks)
+        .where(and(eq(presentationDecks.libraryItemId, libraryItemId), eq(presentationDecks.tenantId, tenantId)))
+        .limit(1);
+    });
 
-  return rows[0] ?? null;
+  return (rows[0] as PresentationDeck | undefined) ?? null;
 }
 
 async function getSlideById(
@@ -917,6 +1128,13 @@ export async function updatePresentationDeckMetadata(
 ): Promise<PresentationDeck> {
   const { deck, db } = await resolveDeckContext(input.deckId, actor, { write: true }, dbClient);
   ensureExpectedDeckVersion(deck, input.expectedVersion);
+  const notesColumnAvailable = await hasPresentationDeckNotesColumn(db);
+  if (input.notes !== undefined && !notesColumnAvailable) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
+      `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: presentation_decks.notes column is unavailable. Apply the latest database migration and retry.`,
+    );
+  }
   const updates: Partial<typeof presentationDecks.$inferInsert> = {
     updatedAt: new Date(),
     version: deck.version + 1,
@@ -928,21 +1146,42 @@ export async function updatePresentationDeckMetadata(
   if (input.description !== undefined) {
     updates.description = input.description;
   }
+  if (input.notes !== undefined) {
+    updates.notes = input.notes;
+  }
 
   const rows = await db
     .update(presentationDecks)
     .set(updates)
     .where(and(eq(presentationDecks.id, input.deckId), eq(presentationDecks.tenantId, actor.tenantId)))
-    .returning();
+    .returning((await buildPresentationDeckSelectShape(db)) as any)
+    .catch(async (error) => {
+      if (!isMissingPresentationDeckNotesColumnError(error)) {
+        throw error;
+      }
+      cachedPresentationDeckNotesColumnAvailable = false;
+      if (input.notes !== undefined) {
+        throw new PresentationServiceError(
+          PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
+          `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: presentation_decks.notes column is unavailable. Apply the latest database migration and retry.`,
+        );
+      }
+      return db
+        .update(presentationDecks)
+        .set(updates)
+        .where(and(eq(presentationDecks.id, input.deckId), eq(presentationDecks.tenantId, actor.tenantId)))
+        .returning((await buildPresentationDeckSelectShape(db)) as any);
+    });
 
-  if (!rows[0]) {
+  const updatedRow = rows[0] as PresentationDeck | undefined;
+  if (!updatedRow) {
     throw new PresentationServiceError(
       PRESENTATION_ERROR_CODE.NOT_FOUND,
       `${PRESENTATION_ERROR_CODE.NOT_FOUND}: deck ${input.deckId} not found`,
     );
   }
 
-  return rows[0];
+  return updatedRow;
 }
 
 export async function deletePresentationDeck(
@@ -1596,6 +1835,7 @@ async function clonePresentationDeckIntoNewLibraryItem(
       libraryItemId: createdItem.id,
       title: input.targetTitle,
       description: input.targetDescription ?? sourceItem.description,
+      notes: sourceDeck.notes,
     },
     db,
   );
@@ -1778,6 +2018,231 @@ export async function updateSlideAudioTrack(
   });
 
   return { deckVersion: newDeckVersion, slideVersion };
+}
+
+export interface GenerateSlideAudioFromSavedNoteInput {
+  deckId: number;
+  slideId: number;
+  expectedVersion: number;
+  model?: string;
+  voice?: string;
+  apiConfig?: Record<string, string>;
+  extraParams?: Record<string, unknown>;
+  publicUrl?: string | null;
+  userToken: string;
+}
+
+export async function generateSlideAudioFromSavedNote(
+  input: GenerateSlideAudioFromSavedNoteInput,
+  actor: PresentationActor,
+  dbClient?: DbClient,
+): Promise<{ deckVersion: number; slideVersion: number; libraryItemId: number; taskId: string }> {
+  const { deck } = await resolveDeckContext(input.deckId, actor, { write: true }, dbClient);
+  ensureExpectedDeckVersion(deck, input.expectedVersion);
+
+  const currentDetail = await getPresentationDeckDetail(input.deckId, actor, dbClient);
+  const currentSlide = currentDetail.slides.find((slide) => slide.id === input.slideId);
+  if (!currentSlide) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.NOT_FOUND,
+      `${PRESENTATION_ERROR_CODE.NOT_FOUND}: slide ${input.slideId} not found in deck ${input.deckId}`,
+    );
+  }
+
+  const savedNoteText = typeof currentSlide.notes === "string" ? currentSlide.notes.trim() : "";
+  if (!savedNoteText) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
+      `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: save a slide note before generating narration`,
+    );
+  }
+  const ttsText = resolveTtsTextFromSlideNote(savedNoteText);
+  if (!ttsText) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
+      `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: slide note is empty after TTS text cleanup`,
+    );
+  }
+
+  const modelId = input.model?.trim() || DEFAULT_MODELS.audio;
+  const modelMeta = await resolveAudioModelMeta(modelId);
+  const dbModel = await getAudioModelWithPricing(modelId);
+  const maxPromptLength = resolveConfiguredMaxPromptLength(dbModel.configJson);
+  if (maxPromptLength !== null && ttsText.length > maxPromptLength) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
+      `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: text length ${ttsText.length} exceeds model limit ${maxPromptLength} for ${modelId}`,
+    );
+  }
+
+  const creditCost = calculateCreditCost(dbModel, {
+    text: ttsText,
+    ...(input.extraParams ?? {}),
+  });
+  const hasCredits = await hasEnoughCredits(actor.userId, creditCost);
+  if (!hasCredits) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.AI_INSUFFICIENT_CREDITS,
+      `${PRESENTATION_ERROR_CODE.AI_INSUFFICIENT_CREDITS}: insufficient credits. Required: ${creditCost}`,
+    );
+  }
+
+  await deductCredits({
+    userId: actor.userId,
+    amount: creditCost,
+    description: `Async audio generation: ${modelId} (reserved)`,
+    sourceType: "media_audio",
+    metadata: {
+      model: modelId,
+      provider: modelMeta.provider,
+      textLength: ttsText.length,
+      endpoint: "presentation.generateSlideAudioFromSavedNote",
+      type: "reservation",
+      creditCost,
+      deckId: input.deckId,
+      slideId: input.slideId,
+    },
+  });
+
+  let libraryItemId: number | null = null;
+  try {
+    const traceId = crypto.randomUUID();
+    const task = await mediaGenerationService.generateAudioAsync(
+      {
+        text: ttsText,
+        model: modelId,
+        voice: input.voice,
+        apiConfig: {
+          ...(input.apiConfig ?? {}),
+          provider: modelMeta.provider,
+          trace_id: traceId,
+        },
+        extraParams: input.extraParams,
+        publicUrl: input.publicUrl ?? undefined,
+        auditContext: {
+          userId: actor.userId,
+          traceId,
+          source: "presentation.generateSlideAudioFromSavedNote",
+          stage: "submission",
+        },
+      },
+      input.userToken,
+    );
+
+    const completedTask = await pollAudioTaskToCompletion(task.id, input.userToken, actor);
+    const libraryResult = await addMediaTaskToLibrary(
+      {
+        mediaTaskId: completedTask.id,
+        userToken: input.userToken,
+        title: `${currentSlide.title?.trim() || `Slide ${currentSlide.orderIndex + 1}`} narration`,
+        visibility: "private",
+      },
+      actor,
+    );
+    libraryItemId = libraryResult.itemId;
+
+    const latestDetail = await getPresentationDeckDetail(input.deckId, actor, dbClient);
+    const latestSlide = latestDetail.slides.find((slide) => slide.id === input.slideId);
+    if (!latestSlide) {
+      throw new PresentationServiceError(
+        PRESENTATION_ERROR_CODE.NOT_FOUND,
+        `${PRESENTATION_ERROR_CODE.NOT_FOUND}: slide ${input.slideId} not found in deck ${input.deckId}`,
+      );
+    }
+    const latestSavedNote = typeof latestSlide.notes === "string" ? latestSlide.notes.trim() : "";
+    if (latestSlide.version !== currentSlide.version || latestSavedNote !== savedNoteText) {
+      throwSlideVersionConflict(latestDetail.deck, latestSlide, currentSlide.version);
+    }
+
+    const attached = await updateSlideAudioTrack(
+      {
+        deckId: input.deckId,
+        slideId: input.slideId,
+        expectedVersion: latestDetail.deck.version,
+        audioTrack: {
+          libraryItemId,
+          volume: 1,
+          startAtMs: 0,
+          endAtMs: null,
+        },
+      },
+      actor,
+      dbClient,
+    );
+
+    return {
+      ...attached,
+      libraryItemId,
+      taskId: completedTask.id,
+    };
+  } catch (error) {
+    if (libraryItemId != null) {
+      try {
+        const cleanupDb = await getDb();
+        await softDeleteLibraryItem(libraryItemId, actor, cleanupDb ?? undefined);
+      } catch (cleanupError) {
+        recordPresentationLog("presentation_generated_audio_cleanup_failed", {
+          tenantId: actor.tenantId,
+          userId: actor.userId,
+          deckId: input.deckId,
+          slideId: input.slideId,
+          libraryItemId,
+          error: String((cleanupError as Error)?.message || cleanupError || "unknown"),
+        });
+      }
+    }
+
+    if (
+      libraryItemId == null
+      && error instanceof PresentationServiceError
+      && error.code === PRESENTATION_ERROR_CODE.AI_GENERATION_FAILED
+    ) {
+      try {
+        await refundCredits({
+          userId: actor.userId,
+          amount: creditCost,
+          description: `Refund: Audio generation failed (${modelId})`,
+          sourceType: "media_audio",
+          metadata: {
+            model: modelId,
+            textLength: ttsText.length,
+            deckId: input.deckId,
+            slideId: input.slideId,
+            error: error.message,
+          },
+        });
+      } catch {
+        // Ignore refund failures and surface the original error.
+      }
+    }
+
+    if (error instanceof PresentationServiceError) {
+      throw error;
+    }
+
+    try {
+      await refundCredits({
+        userId: actor.userId,
+        amount: creditCost,
+        description: `Refund: Audio generation failed (${modelId})`,
+        sourceType: "media_audio",
+        metadata: {
+          model: modelId,
+          textLength: ttsText.length,
+          deckId: input.deckId,
+          slideId: input.slideId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+    } catch {
+      // Ignore refund failures and surface the original error.
+    }
+
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.AI_GENERATION_FAILED,
+      `${PRESENTATION_ERROR_CODE.AI_GENERATION_FAILED}: ${error instanceof Error ? error.message : "failed to generate slide audio"}`,
+    );
+  }
 }
 
 export interface UpdateDeckProjectAudioTrackInput {

@@ -12,6 +12,7 @@ import { skillRepositories, skills } from "../../drizzle/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { generateMarketplaceContent } from "../services/marketplaceContentGenerator";
 import { refreshSkillCache } from "../services/skillRegistry";
+import { mirrorExistingSkillManifest } from "../services/skillFiles";
 import { execSync, spawnSync } from "child_process";
 import crypto from "crypto";
 import fs from "fs";
@@ -297,13 +298,11 @@ export const skillRepositoriesRouter = router({
             // Sanitize version
             const version = typeof metadata.version === "string" ? metadata.version.substring(0, 20) : "1.0.0";
 
-            // Copy skill folder to SKILLS_DIR
+            // Copy the full skill bundle so shared Codex/Claude docs stay together.
             const destDir = path.join(SKILLS_DIR, slug);
-            if (!fs.existsSync(destDir)) {
-              fs.mkdirSync(destDir, { recursive: true });
-            }
-            // Copy skill.md as skill.md (lowercase)
-            fs.copyFileSync(skillMdPath, path.join(destDir, "skill.md"));
+            fs.mkdirSync(destDir, { recursive: true });
+            fs.cpSync(folderPath, destDir, { recursive: true, force: true });
+            mirrorExistingSkillManifest(destDir);
 
             const existing = existingSlugs.get(slug);
 

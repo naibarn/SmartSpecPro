@@ -52,6 +52,7 @@ class LLMImprover:
     research_cfg: Optional[Dict[str, Any]] = None
     safety_cfg: Optional[Dict[str, Any]] = None
     llm_override: Optional[dict] = None
+    improvement_request: str = ""
 
     def propose_patch(self, skill_name: str, report: EvaluationReport) -> PatchProposal:
         env_cfg = load_llm_config_from_env()
@@ -71,7 +72,7 @@ class LLMImprover:
             ask_user=bool(self.ask_user),
             safety=scfg
         ))
-        proposal = orch.propose_patch(skill_name, report)
+        proposal = orch.propose_patch(skill_name, report, self.improvement_request)
 
         vr = validate_patch(skill_name, proposal.patch_payload,
             restrict_under_skills=bool(scfg.get("restrict_paths_under_skills", True)),

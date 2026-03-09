@@ -1,4 +1,4 @@
-import { and, eq, gt, lte, sql } from "drizzle-orm";
+import { and, eq, gt, lte, sql, getTableColumns } from "drizzle-orm";
 
 import { getDb } from "../db";
 import {
@@ -18,6 +18,53 @@ import {
 import { PRESENTATION_LIMITS } from "@shared/presentation/constants";
 
 type DbClient = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+let cachedPresentationDeckNotesColumnAvailable: boolean | null = null;
+
+const { notes: _presentationDeckNotesColumn, ...presentationDeckColumnsWithoutNotes } = getTableColumns(presentationDecks);
+
+function isMissingPresentationDeckNotesColumnError(error: unknown): boolean {
+  const code = String((error as any)?.code ?? "");
+  const message = String((error as any)?.message ?? "");
+  return (
+    code === "42703"
+    || (
+      message.includes("presentation_decks")
+      && message.includes("notes")
+      && message.toLowerCase().includes("column")
+    )
+  );
+}
+
+async function hasPresentationDeckNotesColumn(dbClient?: DbClient): Promise<boolean> {
+  if (cachedPresentationDeckNotesColumnAvailable !== null) {
+    return cachedPresentationDeckNotesColumnAvailable;
+  }
+  const db = await resolveDb(dbClient);
+  try {
+    const result = await db.execute(sql`
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_name = 'presentation_decks'
+        AND column_name = 'notes'
+      LIMIT 1
+    `);
+    cachedPresentationDeckNotesColumnAvailable = Array.isArray(result) ? result.length > 0 : ((result as any)?.rows?.length ?? 0) > 0;
+  } catch {
+    cachedPresentationDeckNotesColumnAvailable = true;
+  }
+  return cachedPresentationDeckNotesColumnAvailable;
+}
+
+async function buildPresentationDeckSelectShape(dbClient?: DbClient) {
+  const includeNotes = await hasPresentationDeckNotesColumn(dbClient);
+  if (includeNotes) {
+    return getTableColumns(presentationDecks);
+  }
+  return {
+    ...presentationDeckColumnsWithoutNotes,
+    notes: sql<string | null>`null::text`,
+  };
+}
 
 export interface DeckByteTotalsStatus {
   warningExceeded: boolean;
@@ -57,6 +104,7 @@ export interface CreatePresentationDeckInput {
   libraryItemId: number;
   title: string;
   description?: string | null;
+  notes?: string | null;
 }
 
 export interface CreatePresentationSlideInput {
@@ -247,26 +295,44 @@ export async function createPresentationDeck(
   dbClient?: DbClient,
 ): Promise<PresentationDeck> {
   const db = await resolveDb(dbClient);
+  const notesColumnAvailable = await hasPresentationDeckNotesColumn(db);
+  const selectShape = await buildPresentationDeckSelectShape(db);
+  const values: Record<string, unknown> = {
+    tenantId: input.tenantId,
+    libraryItemId: input.libraryItemId,
+    title: input.title,
+    description: input.description ?? null,
+    version: 1,
+    slideCount: 0,
+    totalAssetBytes: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+  if (notesColumnAvailable) {
+    values.notes = input.notes ?? null;
+  }
   const [created] = await db
     .insert(presentationDecks)
-    .values({
-      tenantId: input.tenantId,
-      libraryItemId: input.libraryItemId,
-      title: input.title,
-      description: input.description ?? null,
-      version: 1,
-      slideCount: 0,
-      totalAssetBytes: 0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .returning();
+    .values(values as any)
+    .returning(selectShape as any)
+    .catch(async (error) => {
+      if (!isMissingPresentationDeckNotesColumnError(error)) {
+        throw error;
+      }
+      cachedPresentationDeckNotesColumnAvailable = false;
+      const { notes: _notes, ...fallbackValues } = values;
+      const fallbackShape = await buildPresentationDeckSelectShape(db);
+      return db
+        .insert(presentationDecks)
+        .values(fallbackValues as any)
+        .returning(fallbackShape as any);
+    });
 
   if (!created) {
     throw new Error("Failed to create presentation deck");
   }
 
-  return created;
+  return created as PresentationDeck;
 }
 
 export async function getPresentationDeckById(
@@ -275,13 +341,26 @@ export async function getPresentationDeckById(
   dbClient?: DbClient,
 ): Promise<PresentationDeck | null> {
   const db = await resolveDb(dbClient);
+  const selectShape = await buildPresentationDeckSelectShape(db);
   const rows = await db
-    .select()
+    .select(selectShape as any)
     .from(presentationDecks)
     .where(and(eq(presentationDecks.id, deckId), eq(presentationDecks.tenantId, tenantId)))
-    .limit(1);
+    .limit(1)
+    .catch(async (error) => {
+      if (!isMissingPresentationDeckNotesColumnError(error)) {
+        throw error;
+      }
+      cachedPresentationDeckNotesColumnAvailable = false;
+      const fallbackShape = await buildPresentationDeckSelectShape(db);
+      return db
+        .select(fallbackShape as any)
+        .from(presentationDecks)
+        .where(and(eq(presentationDecks.id, deckId), eq(presentationDecks.tenantId, tenantId)))
+        .limit(1);
+    });
 
-  return rows[0] ?? null;
+  return (rows[0] as PresentationDeck | undefined) ?? null;
 }
 
 export async function listPresentationSlides(

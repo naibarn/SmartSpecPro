@@ -2,7 +2,7 @@
 name: orchestra
 description: "AI Orchestra Conductor: analyzes tasks, dispatches specialized sub-agents, integrates results, manages file-based memory to survive context compaction, and automatically chains into deep-project, deep-plan, deep-plan-quick, and deep-implement when needed."
 license: MIT
-compatibility: "Claude Code (full features), Codex (general-purpose subagents), OpenCode (sequential mode)"
+compatibility: "Claude Code (full features), Standard (general-purpose subagents), OpenCode (sequential mode)"
 ---
 
 # Orchestra — AI Multi-Agent Conductor
@@ -148,11 +148,11 @@ Orchestra halts and waits for user input when any of these conditions occur. Do 
 
 ## Step 0: Banner + State Loading
 
-**Platform pre-check (for banner accuracy):** Before printing the banner, check if `orchestra/platform.md` exists at the project root. If it does, read its contents (`claude-code`, `codex`, or `open-code`) and substitute it into the banner line:
+**Platform pre-check (for banner accuracy):** Before printing the banner, check if `orchestra/platform.md` exists at the project root. If it does, read its contents (`claude-code`, `standard`, or `open-code`) and substitute it into the banner line:
 - Replace: `Platform: [detected / unknown — will prompt in Step 4]`
 - With: `Platform: detected ✓ — {value from platform.md}`
 
-If `orchestra/platform.md` does NOT exist, auto-detect the current runtime. In this Codex skill pack, default to `codex`, persist it, and continue without asking unless runtime evidence clearly shows another platform.
+If `orchestra/platform.md` does NOT exist, auto-detect the current runtime. In this skill pack, default to `standard`, persist it, and continue without asking unless runtime evidence clearly shows another platform.
 
 Print the orchestra banner. Then check whether `orchestra/snapshot.json` exists at the project root.
 
@@ -290,7 +290,7 @@ Read `references/sub-agent-dispatch.md` and `references/platform-compat.md`.
 
 Check whether `orchestra/platform.md` exists. If missing:
 - infer the current platform automatically
-- in this Codex skill pack, default to `codex`
+- in this skill pack, default to `standard`
 - write the detected value to `orchestra/platform.md`
 - ask the user only if runtime evidence is contradictory and dispatch strategy would materially change
 
@@ -312,8 +312,8 @@ Do NOT dump raw conversation history. Include only file paths, change descriptio
 | Platform | Method |
 |----------|--------|
 | `claude-code` | Task tool with specific `subagent_type`. All wave agents dispatched in a **single message** (multiple Task calls). Max 4 concurrent agents. |
-| `codex` | Prefer general-purpose sub-agents only when this Codex environment exposes them. Inject a condensed agent identity template. If no sub-agent tool is available, execute the role inline while preserving the same Task Packet and Result Report contracts. |
-| `open-code` | No Task tool. Conductor executes each agent role sequentially. For medium+ scope: warn "This task requires parallel agents. Consider switching to Claude Code or Codex. Proceeding sequentially." |
+| `standard` | Prefer general-purpose sub-agents only when this environment exposes them. Inject a condensed agent identity template. If no sub-agent tool is available, execute the role inline while preserving the same Task Packet and Result Report contracts. |
+| `open-code` | No Task tool. Conductor executes each agent role sequentially. For medium+ scope: warn "This task requires parallel agents. Consider switching to Claude Code or Standard mode. Proceeding sequentially." |
 
 **Parallelism hard constraints:**
 - Maximum 4 concurrent agents

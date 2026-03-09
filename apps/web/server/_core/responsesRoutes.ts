@@ -8,6 +8,7 @@
  * Feature: 032-Browser-Automation-Copilot, Section 03
  */
 
+import crypto from "node:crypto";
 import type { Express, Request, Response } from "express";
 import sanitizeHtml from "sanitize-html";
 import { enforceJsonBodyMaxBytes, rateLimit } from "./limits";
@@ -222,7 +223,7 @@ function parseResponsesUsage(data: any): {
   return {
     inputTokens: usage.input_tokens || 0,
     outputTokens: usage.output_tokens || 0,
-    totalTokens: usage.total_tokens ?? (usage.input_tokens + usage.output_tokens) ?? 0,
+    totalTokens: usage.total_tokens ?? ((usage.input_tokens || 0) + (usage.output_tokens || 0)),
   };
 }
 
@@ -359,7 +360,7 @@ export function registerResponsesRoutes(
       req.socket.setTimeout(SOCKET_TIMEOUT_MS);
       res.setTimeout(SOCKET_TIMEOUT_MS);
 
-      const traceId = getTraceId();
+      const traceId = getTraceId() ?? crypto.randomUUID();
       const startTime = Date.now();
 
       // --- Feature flag gating (fail-closed: deny on error) ---
@@ -593,13 +594,15 @@ async function proxyResponsesJson(
   let currentInput = body.input;
   let lastResponse: any = null;
   let budgetExceeded = false;
+  const tenantId = typeof (body as any)._tenantId === "string" && (body as any)._tenantId.trim().length > 0
+    ? String((body as any)._tenantId)
+    : "default";
 
   // --- Cache lookup: check before making API call ---
   const userPrompt = extractUserPrompt(body.input);
   if (userPrompt && !requiresFreshData(userPrompt)) {
     try {
       const searchCache = getSearchCache();
-      const tenantId = (body as any)._tenantId || "default";
       const cached = await searchCache.get(userId, tenantId, userPrompt);
       if (cached) {
         debugLog("responses", "Search cache hit", { userId, traceId });

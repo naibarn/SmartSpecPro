@@ -15,6 +15,8 @@ export interface TenantFeatureFlags {
   personaSystem: boolean; // F08 — AI persona system
   crossAgency: boolean; // F09 — Cross-agency communication
   channelRouter: boolean; // F10 — Channel routing rules
+  automationCopilot: boolean; // F11 — Automation Copilot (LLM-driven browser tasks)
+  responsesApi: boolean; // F12 — Responses API gateway (OpenAI-compatible)
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -34,6 +36,8 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "personaSystem",
   "crossAgency",
   "channelRouter",
+  "automationCopilot",
+  "responsesApi",
 ]);
 
 /**
@@ -52,4 +56,6 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   personaSystem: true,
   crossAgency: false,
   channelRouter: false,
+  automationCopilot: false,
+  responsesApi: false,
 };

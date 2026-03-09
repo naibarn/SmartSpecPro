@@ -1,4 +1,4 @@
-# Apply Interview Fixes (Codex)
+# Apply Interview Fixes
 
 Apply decisions recorded after section review triage.
 

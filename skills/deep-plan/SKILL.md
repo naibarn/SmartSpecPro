@@ -1,15 +1,15 @@
 ---
 name: deep-plan
-description: Creates detailed, sectionized, TDD-oriented implementation plans in Codex using a file-based workflow (no Claude TaskList dependency). Use when planning complex features that need thorough pre-implementation analysis.
+description: Creates detailed, sectionized, TDD-oriented implementation plans using a file-based workflow with autonomous decision-making. Use when planning complex features that need thorough pre-implementation analysis.
 license: MIT
 compatibility: "Requires uv (Python 3.11+). Review runs automatically: external LLM when credentials are available, otherwise self-review fallback."
 ---
 
-# Deep Planning Skill (Codex)
+# Deep Planning Skill
 
-Codex-adapted workflow: Research -> Interview -> Automated Review -> TDD Plan -> Section Split.
+File-based workflow: Research -> Interview -> Automated Review -> TDD Plan -> Section Split.
 
-This skill is a conversion of `deep-plan` to run without Claude-only task features.
+Enhanced planning skill with autonomous decision-making and file-based state management.
 
 ## CRITICAL: First Actions
 
@@ -21,29 +21,31 @@ Print this banner first:
 ⚠️  CONTEXT WARNING: This workflow is token-intensive. Consider compacting first.
 
 ═══════════════════════════════════════════════════════════════
-DEEP-PLAN (CODEX): AI-Assisted Implementation Planning
+DEEP-PLAN: AI-Assisted Implementation Planning
 ═══════════════════════════════════════════════════════════════
 Research -> Interview -> Automated Review -> TDD Plan
 ```
 
-Then perform a lightweight environment check directly:
+Then find and run validator:
 
 ```bash
-command -v uv >/dev/null && echo "uv: available" || echo "uv: missing"
-[ -n "${GEMINI_API_KEY:-}" ] && echo "gemini_auth: yes" || echo "gemini_auth: no"
-[ -n "${OPENAI_API_KEY:-}" ] && echo "openai_auth: yes" || echo "openai_auth: no"
+find "$(pwd)" -path "*/deep_plan/scripts/checks/validate-env.sh" -type f 2>/dev/null | head -1
+bash <script_path>
 ```
 
-Store:
-- `gemini_auth` (`yes` / `no`)
-- `openai_auth` (`yes` / `no`)
-- `valid` (`uv` available)
+Parse JSON output and store:
+- `plugin_root`
+- `gemini_auth`
+- `openai_auth`
+- `valid`, `errors`, `warnings`
 
 ### 2) Handle Environment Errors and Resolve Review Mode
 
 If `valid == false`:
 - show errors to user
-- stop on the critical error `uv not installed`
+- stop only on critical errors:
+  - `uv not installed`
+  - plugin root cannot be resolved
 
 Review is mandatory and automatic:
 - If any external review credential is available (`gemini_auth` or `openai_auth`), set `review_mode=external_llm`.
@@ -68,18 +70,25 @@ Run with a markdown spec file:
 
 Stop and wait for re-invocation.
 
-### 4) Setup Planning Session (Codex Mode)
+### 4) Setup Planning Session
 
-Determine the planning directory manually:
+Run:
 
-- If the input file is named `spec.md`, use its parent directory as `<planning_dir>`
-- Otherwise use `<spec_dir>/<spec_stem>.plan/` as `<planning_dir>`
-- Create `<planning_dir>` and `<planning_dir>/reviews/` if they do not exist
+```bash
+python3 {plugin_root}/scripts/checks/setup-session.py \
+  --file "<file_path>" \
+  --plugin-root "{plugin_root}" \
+  --review-mode "{review_mode}"
+```
 
-Infer session state from files already present in `<planning_dir>`:
-- `mode = "resume"` if any canonical planning artifacts already exist
-- otherwise `mode = "new"`
-- `resume_from_step` is the first incomplete stage in this order: `research-notes.md`, `interview-notes.md`, `implementation-spec.md`, `implementation-plan.md`, `reviews/iteration-1-summary.md`, `implementation-plan-tdd.md`, `sections/index.md`
+Parse JSON output:
+- `planning_dir`
+- `mode` (`new` or `resume`)
+- `resume_from_step`
+- `message`
+- `files_found`
+
+If `success == false`, show error and stop.
 
 Status message format:
 
@@ -95,7 +104,7 @@ Persist selected review mode:
 
 Artifact naming compatibility:
 - Canonical artifacts use neutral names (`research-notes.md`, `interview-notes.md`, `implementation-spec.md`, `implementation-plan.md`, etc.).
-- If the planning directory contains pre-existing legacy-named artifacts, treat them as valid equivalents.
+- If session output reports pre-existing legacy-named artifacts in `files_found`, treat them as valid equivalents.
 - On resume with legacy-only artifacts, canonicalize to neutral names first:
   - `claude-research.md` -> `research-notes.md`
   - `claude-interview.md` -> `interview-notes.md`
@@ -113,15 +122,14 @@ Detect existing planning artifacts in `<planning_dir>`:
 - `implementation-plan-tdd.md`
 - `sections/index.md`
 
-If any exist (or `mode == "resume"`), resolve planning intent automatically:
-- If `<planning_dir>/planning-intent.md` already exists and user did not request changing it this turn, reuse it.
-- Otherwise infer intent from the current codebase + spec state:
-  - `resume_progress` when the existing plan is still aligned and only incomplete
-  - `improve_existing_plan` when the spec/requirements changed materially but the current plan is still worth evolving
-  - `rebuild_from_spec` only when existing artifacts are internally inconsistent or the user explicitly asked to discard and rebuild
-- Ask the user only before destructive archival/reset (`rebuild_from_spec`) or when product intent is ambiguous.
+If any exist (or `mode == "resume"`), resolve planning intent:
+- If `<planning_dir>/planning-intent.md` already exists and user did not request changing it this turn, reuse it and do not ask again.
+- Otherwise ask user with a single-choice prompt:
+  - `resume_progress` = Resume from current progress
+  - `improve_existing_plan` = Improve existing plan (Recommended when requirements changed)
+  - `rebuild_from_spec` = Rebuild plan from spec (archive old plan files first)
 
-Write the chosen intent to:
+Write selection to:
 - `<planning_dir>/planning-intent.md`
 
 Use values:
@@ -130,8 +138,8 @@ Use values:
 - `rebuild_from_spec`
 
 If `planning_intent == improve_existing_plan`:
-- run a fresh interview round focused on deltas and unresolved product constraints
-- reuse previous answers automatically where they still fit the current codebase
+- run a fresh interview round focused on deltas and unresolved decisions
+- allow user to answer previous questions again (full or delta scope)
 - write transcript to `<planning_dir>/interview-refresh.md`
 - merge/append into `<planning_dir>/interview-notes.md` with clear timestamps
 - regenerate downstream artifacts from step 10 onward (`implementation-spec.md`, `implementation-plan.md`, reviews, TDD plan, sections)
@@ -140,20 +148,22 @@ If `planning_intent == rebuild_from_spec`:
 - archive existing plan artifacts into `<planning_dir>/archive/<timestamp>/`
 - restart generation from step 6 with current spec and latest interview answers
 
-### 5) Decision Style Handshake (Autonomous by Default)
+### 5) Decision Style Handshake (Required)
 
 Before running step 6+, resolve decision style:
-- If `<planning_dir>/decision-mode.md` exists and user did not request changing mode this turn, reuse it.
-- Otherwise default to `auto_by_default` and write it immediately.
-- Switch away from `auto_by_default` only if the user explicitly asks for tighter control this turn.
+- If `<planning_dir>/decision-mode.md` exists and user did not request changing mode this turn, reuse it and do not ask again.
+- Otherwise ask user with a single-choice prompt:
+  - `ask_every_choice` = Ask on every multi-option decision
+  - `smart_auto` = Smart auto-decide (Recommended)
+  - `auto_by_default` = Auto-decide by default, ask only for critical risk
 
 Store as `decision_mode` for this run and write:
 - `<planning_dir>/decision-mode.md`
 
 Use values:
-- `ask_every_choice` (only on explicit user request)
+- `ask_every_choice`
 - `smart_auto`
-- `auto_by_default` (default)
+- `auto_by_default`
 
 ## Workflow
 
@@ -161,23 +171,23 @@ All generated files are saved in `planning_dir`.
 
 ## Decision Policy (Applies to All Steps)
 
-Whenever a step has multiple valid options:
+Whenever a step has multiple valid implementation options:
 
 1) Evaluate option impact first:
 - `high-impact`: architecture, data model, migration/destructive behavior, security posture changes, major UX behavior changes, large scope/cost changes.
 - `low-impact`: formatting, ordering, naming, minor reversible process choices.
 
-2) Default to codebase-first autonomous decisions:
-- Prefer the option that matches existing repository conventions, minimizes diff surface, preserves tests/contracts, and keeps rollback simple.
-- Use current dependencies, file patterns, and established interfaces as the primary tie-breakers.
-- Treat purely technical tradeoffs as planner-owned decisions; do not ask the user to choose among them unless they explicitly requested control.
+2) Apply `decision_mode`:
+- `ask_every_choice`:
+  - always ask user with numbered options.
+- `smart_auto`:
+  - ask user for `high-impact` options.
+  - auto-decide `low-impact` options with concise rationale.
+- `auto_by_default`:
+  - auto-decide both low/high impact.
+  - ask user only if destructive/irreversible risk is present or confidence is low.
 
-3) Apply `decision_mode`:
-- `ask_every_choice`: ask only because the user explicitly requested that mode.
-- `smart_auto`: auto-decide technical options; ask only for product/scope/destructive decisions.
-- `auto_by_default`: auto-decide all technical options; ask only if destructive/irreversible risk is present, product intent is ambiguous, or confidence is genuinely low.
-
-4) Always log decisions:
+3) Always log decisions:
 - Write/update `<planning_dir>/decision-log.md` with:
   - step
   - options considered
@@ -185,29 +195,13 @@ Whenever a step has multiple valid options:
   - mode used (`asked` or `auto`)
   - rationale
 
-5) Adaptive preference:
-- Bias toward more automation by default.
-- If user requests more control/detail, bias toward more prompts for the remainder of the run.
+4) Adaptive preference:
+- If user repeatedly responds with quick numeric confirmations, bias toward more automation within current mode.
+- If user requests more control/detail, bias toward more prompts.
 - User can override anytime with:
   - `ask mode`
   - `smart auto`
   - `auto mode`
-
-6) Execution autonomy:
-- Do not ask the user for permission to inspect the codebase, search files, run safe read-only shell commands, or perform web research that is needed to produce a correct plan.
-- These are planner-owned execution steps and should happen automatically.
-- Ask only for destructive/irreversible actions, accepted-risk security bypasses, explicit cost/budget constraints, or genuine product ambiguity.
-
-7) Git/GitHub recovery bias:
-- Treat git history and the GitHub-backed repository as the default recovery path for plan artifacts and repo-local changes.
-- Do not pause just because a plan rewrite might later need rollback; keep the workflow recoverable and continue.
-- Ask only when the next action would discard work in a way git/GitHub cannot safely recover or when external state outside the repo is at risk.
-
-8) Backup-first data safety:
-- If a proposed implementation path introduces data-loss risk, require a concrete dump/export/copy backup step in the plan before the risky operation.
-- Prefer timestamped file backups with an explicit restore path.
-- Do not turn backup creation into a user confirmation gate; create the backup plan automatically and continue.
-- Use `../BACKUP-PLAYBOOK.md` for naming, logging, and command patterns when the plan needs a backup section.
 
 ## Question UX Rules (Required)
 
@@ -245,7 +239,7 @@ Transition rule:
 - Complete Stage A intake before plan rewrite.
 - Complete Stage B decisions before proceeding to review integration.
 
-## Parallel Execution Policy (Codex)
+## Parallel Execution Policy
 
 Use `multi_tool_use.parallel` automatically when operations are independent and low-risk.
 
@@ -398,9 +392,15 @@ If user accepts any item, update:
 
 ### 12) Context Check (Pre-Automated Review)
 
-Use the manual context-check protocol in `references/context-check.md` for the upcoming operation `Automated Review`.
+Run:
 
-If the protocol says to prompt the user, ask:
+```bash
+uv run {plugin_root}/scripts/checks/check-context-decision.py \
+  --planning-dir "<planning_dir>" \
+  --upcoming-operation "Automated Review"
+```
+
+If response action is `prompt`, ask user:
 1. Continue
 2. `/clear + re-run`
 
@@ -412,7 +412,10 @@ Read `references/external-review.md`.
 
 Follow `review_mode`:
 - `external_llm`:
-  - use any available external LLM in the current environment to produce `<planning_dir>/reviews/iteration-1-external-review.md`
+  - run:
+    ```bash
+    uv run {plugin_root}/scripts/llm_clients/review.py --planning-dir "<planning_dir>" --iteration 1
+    ```
   - collect files in `<planning_dir>/reviews/`
   - if external review execution fails or produces no usable review file, fallback immediately to `self_review`
 - `self_review`:
@@ -442,22 +445,20 @@ For each review improvement item, apply decision handling via `decision_mode`:
 - `smart_auto`: ask user for `high-impact` items, auto-decide `low-impact` items with rationale.
 - `auto_by_default`: auto-decide all items unless destructive/irreversible risk exists.
 
-Always present a short review improvement summary in the notes, including:
+Always present review improvement summary to user before proceeding, including:
 - what was auto-applied
+- what needs user decision
 - what was deferred and why
-- what would need explicit user input only if product intent is ambiguous
 
 Update:
 - `<planning_dir>/implementation-plan.md`
 
-### 15) Optional User Review Checkpoint
+### 15) User Review Checkpoint
 
-Summarize the plan changes and continue automatically.
+Ask user to review `implementation-plan.md` and confirm:
+- `Done reviewing`
 
-Only pause for explicit user review if:
-- the user asked to inspect the plan before TDD splitting
-- unresolved product-direction ambiguity remains
-- the next step would archive, discard, or materially rewrite prior artifacts
+Wait for confirmation before continuing.
 
 ### 16) Apply TDD Approach
 
@@ -470,9 +471,15 @@ Mirror plan structure with test stubs and verification criteria.
 
 ### 17) Context Check (Pre-Section Split)
 
-Use the manual context-check protocol in `references/context-check.md` for the upcoming operation `Section splitting`.
+Run:
 
-If prompted, continue automatically unless the context state looks genuinely unsafe; only then pause and offer `/clear + re-run`.
+```bash
+uv run {plugin_root}/scripts/checks/check-context-decision.py \
+  --planning-dir "<planning_dir>" \
+  --upcoming-operation "Section splitting"
+```
+
+If prompted, ask user Continue vs `/clear + re-run`.
 
 ### 18) Create Section Index
 
@@ -483,9 +490,9 @@ Create:
 
 Must start with a valid `SECTION_MANIFEST` block.
 
-### 19) Prepare Section Execution (Codex)
+### 19) Prepare Section Execution
 
-In Codex mode, skip task-list generation and execute directly from manifest:
+Skip task-list generation and execute directly from manifest:
 - parse section list from `sections/index.md`
 - verify order and dependencies
 
@@ -504,10 +511,11 @@ ls <planning_dir>/sections/section-*.md | wc -l
 
 ### 21) Final Status & Cleanup
 
-Verify section state manually:
-- every section listed in `sections/index.md` has a matching file in `<planning_dir>/sections/`
-- the file count matches the manifest
-- no section file is left empty or contains unresolved placeholder text
+Run:
+
+```bash
+uv run {plugin_root}/scripts/checks/check-sections.py --planning-dir "<planning_dir>"
+```
 
 Confirm section state is complete.
 

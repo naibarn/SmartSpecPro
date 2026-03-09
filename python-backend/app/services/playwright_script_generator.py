@@ -118,12 +118,16 @@ class PlaywrightScriptGenerator:
         vision_model: str,
     ) -> PlaywrightScript:
         """Generate a PlaywrightScript for the given URL and goal."""
+        logger.info("generate: start url=%s goal=%s", url[:80], goal[:60])
+
         # 1. SSRF check before anything
         await validate_url_with_dns(url, allowed_domains)
+        logger.info("generate: SSRF check passed")
 
         # 2. Check cache
         cached = await self._cache.get(tenant_id, url, goal)
         if cached is not None:
+            logger.info("generate: cache hit, returning cached script")
             actions = [
                 PlaywrightAction(**a) if isinstance(a, dict) else a
                 for a in cached.actions
@@ -131,22 +135,32 @@ class PlaywrightScriptGenerator:
             return PlaywrightScript(url=url, goal=goal, actions=actions)
 
         # 3. Open browser and generate
+        logger.info("generate: acquiring browser session")
         async with self._browser_pool.session(tenant_id) as context:
             page = await context.new_page()
+            logger.info("generate: page created, installing SSRF handler")
 
             # Install SSRF defense-in-depth route handler
             await self._install_ssrf_route_handler(page, allowed_domains)
 
             try:
-                await page.goto(url, wait_until="networkidle", timeout=30000)
-                await page.wait_for_load_state("domcontentloaded")
+                logger.info("generate: navigating to %s", url[:80])
+                await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                # Wait a short time for dynamic content to render
+                await page.wait_for_timeout(2000)
+                logger.info("generate: navigation done")
 
                 # 4. Inject overlays and capture screenshot
                 element_refs = await page.evaluate(_OVERLAY_INJECTION_JS)
                 screenshot_bytes = await page.screenshot(type="png")
                 screenshot_b64 = base64.b64encode(screenshot_bytes).decode()
+                logger.info(
+                    "generate: screenshot taken, %d elements found, %d bytes",
+                    len(element_refs), len(screenshot_bytes),
+                )
 
                 # 5. Call Vision LLM
+                logger.info("generate: calling Vision LLM model=%s", vision_model)
                 identified = await self._vision_llm_call(
                     screenshot_b64=screenshot_b64,
                     goal=goal,
@@ -154,6 +168,7 @@ class PlaywrightScriptGenerator:
                     element_refs=element_refs,
                     tenant_id=tenant_id,
                 )
+                logger.info("generate: Vision LLM returned %d elements", len(identified))
 
                 # 6. Filter low confidence elements
                 high_confidence = [
@@ -217,19 +232,30 @@ class PlaywrightScriptGenerator:
     async def _install_ssrf_route_handler(
         self, page: Any, allowed_domains: list[str]
     ) -> None:
-        """Install page.route handler for SSRF defense-in-depth (TOCTOU mitigation)."""
+        """Install page.route handler for SSRF defense-in-depth (TOCTOU mitigation).
+
+        Only blocks document navigations to disallowed domains.
+        Sub-resources (CSS, JS, images, fonts) are allowed through so pages render correctly.
+        """
         async def route_handler(route):
             from urllib.parse import urlparse
+
+            # Allow sub-resources (only block document navigations)
+            resource_type = route.request.resource_type
+            if resource_type not in ("document", "iframe"):
+                await route.continue_()
+                return
+
             request_url = route.request.url
             parsed = urlparse(request_url)
             hostname = parsed.hostname or ""
 
-            # Allow same-origin and data: URLs
+            # Allow data: and blob: URLs
             if parsed.scheme in ("data", "blob"):
                 await route.continue_()
                 return
 
-            # Check against allowed domains (simplified check)
+            # Check against allowed domains
             hostname_lower = hostname.lower()
             allowed = False
             for domain in allowed_domains:
@@ -245,6 +271,10 @@ class PlaywrightScriptGenerator:
             if allowed:
                 await route.continue_()
             else:
+                logger.warning(
+                    "SSRF blocked navigation to %s (not in allowed domains)",
+                    hostname_lower,
+                )
                 await route.abort("blockedbyclient")
 
         await page.route("**/*", route_handler)
@@ -288,6 +318,7 @@ class PlaywrightScriptGenerator:
             model=vision_model,
             user_id=user_id,
             tenant_id=tenant_id,
+            timeout=120,
         )
 
         content = result.get("choices", [{}])[0].get("message", {}).get("content", "")

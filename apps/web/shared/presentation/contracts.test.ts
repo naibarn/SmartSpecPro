@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   audioTrackInputSchema,
   presentationExportStatusResultSchema,
+  presentationMediaMotionSchema,
   presentationRenderSpecSchema,
   presentationSlideContentSchema,
   projectAudioTrackInputSchema,
@@ -238,6 +239,81 @@ describe("audio track and export contract schemas", () => {
       hasDynamicVideo: true,
       slides: [],
     });
+    expect(result.success).toBe(true);
+  });
+
+  it("presentationMediaMotionSchema accepts directional and diagonal pan presets", () => {
+    const result = presentationMediaMotionSchema.safeParse({
+      preset: "pan-up-left",
+      intensity: 0.5,
+      easing: "linear",
+      timingMode: "duration",
+      durationMs: 2000,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("presentationMediaMotionSchema accepts segmented intro/outro timing configuration", () => {
+    const result = presentationMediaMotionSchema.safeParse({
+      intro: {
+        preset: "zoom-in",
+        intensity: 0.5,
+        easing: "linear",
+        timingMode: "until-slide-end",
+      },
+      outro: {
+        preset: "pan-down-right",
+        intensity: 0.8,
+        easing: "ease-in-out",
+        timingMode: "duration",
+        durationMs: 1500,
+      },
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("presentationMediaMotionSchema rejects unsupported presets", () => {
+    const result = presentationMediaMotionSchema.safeParse({
+      preset: "spin",
+      intensity: 0.5,
+      easing: "linear",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("presentationSlideContentSchema accepts image/video elements with media motion", () => {
+    const result = presentationSlideContentSchema.safeParse({
+      elements: [
+        {
+          id: "img-1",
+          type: "image",
+          x: 0,
+          y: 0,
+          width: 320,
+          height: 180,
+          src: "https://example.com/image.jpg",
+          alt: "Image",
+          mediaMotion: {
+            intro: { preset: "zoom-in", intensity: 0.4, timingMode: "until-slide-end" },
+            outro: { preset: "pan-right", intensity: 0.5, durationMs: 1200 },
+          },
+        },
+        {
+          id: "vid-1",
+          type: "video",
+          x: 20,
+          y: 20,
+          width: 480,
+          height: 270,
+          src: "https://example.com/video.mp4",
+          mediaMotion: { preset: "pan-right", intensity: 0.7, easing: "linear" },
+        },
+      ],
+    });
+
     expect(result.success).toBe(true);
   });
 });

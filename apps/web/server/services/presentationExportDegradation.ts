@@ -4,6 +4,7 @@ import type {
   PresentationTransition,
 } from "@shared/presentation/contracts";
 import { categorizePresentationExportWarningCode } from "@shared/presentation/exportWarnings";
+import { hasActiveMediaMotion } from "@shared/presentation/mediaMotion";
 
 const ALLOWED_ELEMENT_TYPES = new Set(["text", "image", "video", "rect", "line"]);
 const WARNING_PRECEDENCE: Record<string, number> = {
@@ -15,7 +16,8 @@ const WARNING_PRECEDENCE: Record<string, number> = {
   W_SVG_PARSE_FAILED: 6,
   W_SVG_RASTERIZED: 7,
   W_SVG_PLACEHOLDER: 8,
-  W_SLIDE_READY_TIMEOUT: 9,
+  SLIDE_MEDIA_MOTION_STATIC_EXPORT_OMITTED: 9,
+  W_SLIDE_READY_TIMEOUT: 10,
 };
 
 export interface DegradedSlideshowSlide {
@@ -81,6 +83,9 @@ function collectElementWarnings(
   rawElements: unknown,
   warnings: PresentationExportWarning[],
   slideId: number,
+  options?: {
+    format?: "png" | "jpg" | "pdf" | "mp4";
+  },
 ): void {
   if (!Array.isArray(rawElements)) {
     return;
@@ -92,6 +97,9 @@ function collectElementWarnings(
   let hasSvgParseFailed = false;
   let hasSvgRasterized = false;
   let hasSvgPlaceholder = false;
+  let hasStaticExportMotionOmission = false;
+  const format = options?.format;
+  const omitsMotion = format === "png" || format === "jpg" || format === "pdf";
 
   const isLikelySvgMarkup = (value: string): boolean => {
     const normalized = value.trim().toLowerCase();
@@ -117,6 +125,14 @@ function collectElementWarnings(
     if (!ALLOWED_ELEMENT_TYPES.has(type)) {
       hasUnsupportedElement = true;
       continue;
+    }
+
+    if (
+      omitsMotion
+      && (type === "image" || type === "video")
+      && hasActiveMediaMotion((element as any).mediaMotion)
+    ) {
+      hasStaticExportMotionOmission = true;
     }
 
     if (type === "image") {
@@ -161,11 +177,17 @@ function collectElementWarnings(
   if (hasSvgPlaceholder) {
     pushWarning(warnings, "W_SVG_PLACEHOLDER", slideId);
   }
+  if (hasStaticExportMotionOmission) {
+    pushWarning(warnings, "SLIDE_MEDIA_MOTION_STATIC_EXPORT_OMITTED", slideId, `format=${String(format)}`);
+  }
 }
 
 export function degradeSlidesForExport(
   slides: PresentationSlide[],
   defaultDurationMs: number,
+  options?: {
+    format?: "png" | "jpg" | "pdf" | "mp4";
+  },
 ): DegradedSlideshowResult {
   const sorted = [...slides].sort((a, b) => {
     if (a.orderIndex === b.orderIndex) {
@@ -182,7 +204,7 @@ export function degradeSlidesForExport(
         : {};
     const transition = normalizeTransition(content.transition, warnings, slide.id);
     const durationMs = normalizeDurationMs(content.durationMs, defaultDurationMs, warnings, slide.id);
-    collectElementWarnings(content.elements, warnings, slide.id);
+    collectElementWarnings(content.elements, warnings, slide.id, options);
 
     return {
       slideId: slide.id,

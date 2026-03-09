@@ -54,6 +54,7 @@ type MockStatusData = {
   downloadUrl?: string | null;
   errorMessage?: string | null;
   outputBytes?: number | null;
+  warnings?: Array<{ code: string; slideId: number; detail?: string; category?: string }>;
 };
 
 function makeQueryMock(data?: MockStatusData) {
@@ -70,7 +71,7 @@ function makeQueryMock(data?: MockStatusData) {
           errorMessage: data.errorMessage ?? null,
           outputBytes: data.outputBytes ?? null,
           updatedAt: new Date(),
-          warnings: [],
+          warnings: data.warnings ?? [],
         }
       : undefined,
     isLoading: false,
@@ -454,5 +455,52 @@ describe("ExportDialog", () => {
 
     const createdAtText = screen.getByTestId("recent-export-created-at-501");
     expect(createdAtText.textContent ?? "").toMatch(/:\d{2}/);
+  });
+
+  it("shows a preflight warning when a static export format is selected for motion-bearing slides", () => {
+    render(<ExportDialog {...DEFAULT_PROPS} staticMotionWarningSlideCount={2} />);
+
+    fireEvent.click(screen.getByTestId("format-option-png"));
+
+    expect(screen.getByTestId("export-preflight-warning")).toHaveTextContent(
+      "Static exports flatten image and video motion into a still frame. Use MP4 to keep zoom and pan effects. (2 slides)",
+    );
+  });
+
+  it("does not show the static-motion preflight warning for MP4 exports", () => {
+    render(<ExportDialog {...DEFAULT_PROPS} staticMotionWarningSlideCount={2} />);
+
+    expect(screen.queryByTestId("export-preflight-warning")).toBeNull();
+  });
+
+  it("renders a human-readable media motion warning summary for static exports", () => {
+    let capturedOnSuccess: ((data: any) => void) | undefined;
+    vi.mocked(trpc.presentation.triggerExport.useMutation).mockImplementation(
+      (opts?: any) => {
+        capturedOnSuccess = opts?.onSuccess;
+        return makeMutationMock() as any;
+      },
+    );
+    vi.mocked(trpc.presentation.getExportStatus.useQuery).mockReturnValue(
+      makeQueryMock({
+        status: "done",
+        warnings: [
+          { code: "SLIDE_MEDIA_MOTION_STATIC_EXPORT_OMITTED", slideId: 2, category: "fallback_degraded" },
+          { code: "SLIDE_MEDIA_MOTION_STATIC_EXPORT_OMITTED", slideId: 4, category: "fallback_degraded" },
+        ],
+      }) as any,
+    );
+
+    render(<ExportDialog {...DEFAULT_PROPS} />);
+    act(() => {
+      capturedOnSuccess?.({
+        ...TRIGGER_SUCCESS_DATA,
+        format: "png",
+      });
+    });
+
+    expect(screen.getByTestId("export-warning-summary")).toHaveTextContent(
+      "Static exports flatten image and video motion into a still frame. Use MP4 to keep zoom and pan effects. (2 slides)",
+    );
   });
 });

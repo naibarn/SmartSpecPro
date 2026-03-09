@@ -14,12 +14,12 @@ default and should not ask the user unless runtime evidence is genuinely contrad
    → Yes: read it, use the stored platform name, skip to dispatch
    → No: proceed to step 2
 
-2. If the current skill pack/runtime is clearly Codex-oriented, default to `codex`
+2. If the current skill pack/runtime is standard-oriented, default to `standard`
    immediately and continue.
 
 3. If runtime evidence clearly points to another platform, use that platform name:
    a) claude-code  — Full features (native Task tool, parallel agents, worktree isolation)
-   b) codex        — If a general-purpose sub-agent tool is available, inject agent
+   b) standard     — If a general-purpose sub-agent tool is available, inject agent
                      identity templates; otherwise execute the same role inline
    c) open-code    — No sub-agent tool; conductor executes all roles sequentially inline
 
@@ -31,7 +31,7 @@ default and should not ask the user unless runtime evidence is genuinely contrad
 6. Never ask again for this session (or future sessions) until platform.md is deleted
 ```
 
-**Platform names are case-sensitive:** Use exactly `claude-code`, `codex`, or `open-code`.
+**Platform names are case-sensitive:** Use exactly `claude-code`, `standard`, or `open-code`.
 
 ---
 
@@ -79,13 +79,13 @@ Dispatch (single message, both Task calls simultaneously):
 
 ---
 
-## 3. Codex Mode
+## 3. Standard Mode
 
-If this Codex environment exposes a general-purpose sub-agent tool, use it — `subagent_type` must remain `general-purpose` for all agents. Preserve agent specialization by injecting the identity + constraints section from `../../sub-agents/agents/NAME.md` at the top of each Task Packet prompt. If no sub-agent tool is available, follow the open-code inline procedure while preserving the same Task Packet and Result Report contracts.
+If this environment exposes a general-purpose sub-agent tool, use it — `subagent_type` must remain `general-purpose` for all agents. Preserve agent specialization by injecting the identity + constraints section from `../../sub-agents/agents/NAME.md` at the top of each Task Packet prompt. If no sub-agent tool is available, follow the open-code inline procedure while preserving the same Task Packet and Result Report contracts.
 
 See `sub-agent-dispatch.md` Section 4 for the full template injection procedure.
 
-**Dispatch example for a frontend agent (codex):**
+**Dispatch example for a frontend agent (standard):**
 
 ```
 Task #1:
@@ -114,7 +114,7 @@ Task #1:
 ```
 
 Use condensed templates (identity + constraints only). Do not inject the full agent file —
-it inflates prompt size beyond what Codex handles reliably.
+it inflates prompt size beyond what Standard mode handles reliably.
 
 ---
 
@@ -130,7 +130,7 @@ tasks, print this exact warning and continue (do not block):
 ⚠️ This task requires parallel agents (medium+ scope). Open-code mode executes
 sequentially, which will take longer and may lose cross-agent contract discipline.
 
-Consider switching to Claude Code or Codex for better results.
+Consider switching to Claude Code or Standard mode for better results.
 Proceeding sequentially. You may want to use `/clear` between agent role
 transitions to manage context window size.
 ```
@@ -176,7 +176,7 @@ rm orchestra/platform.md
 ```
 
 **Or edit it directly with any text editor** — change its single-line contents to the new
-platform name (`claude-code`, `codex`, or `open-code`).
+platform name (`claude-code`, `standard`, or `open-code`).
 
 On the next invocation of `/orchestra`, the detection flow runs again (missing file →
 re-prompt). The conductor does not provide a built-in "change platform" command — file-based

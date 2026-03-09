@@ -1272,20 +1272,27 @@ export class MediaGenerationService {
     });
 
     try {
-      const task = await scheduleMediaWithLimiter(provider, "video" as RateLimiterMediaType, async () => {
-        const { data, status } = await this.postJson(userToken, "/api/v1/media/async/video", payload);
-        this.logMediaResponse({
-          request,
-          requestType: "generateVideoAsync",
-          mediaType: "video",
-          provider,
-          model: modelId,
-          statusCode: status,
-          success: true,
-          responsePayload: data,
-        });
-        return this.mapTask(data);
+      const { data, status } = await this.submitTaskWithRetry({
+        request,
+        requestType: "generateVideoAsync",
+        mediaType: "video",
+        provider,
+        model: modelId,
+        endpoint: "/api/v1/media/async/video",
+        userToken,
+        payload,
       });
+      this.logMediaResponse({
+        request,
+        requestType: "generateVideoAsync",
+        mediaType: "video",
+        provider,
+        model: modelId,
+        statusCode: status,
+        success: true,
+        responsePayload: data,
+      });
+      const task = this.mapTask(data);
 
       recordMediaUsage(provider, modelId, "video" as RateLimiterMediaType, true, 0);
       return task;

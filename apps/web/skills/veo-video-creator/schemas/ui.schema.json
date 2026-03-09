@@ -1,0 +1,451 @@
+{
+  "version": "1.0",
+  "skillId": "veo-video-creator",
+  "title": "VEO 3.1 Video Creator",
+  "titleTh": "สร้างวิดีโอ VEO 3.1",
+  "description": "Professional video creation optimized for Google Veo 3.1 with cinematic composition, native audio, multi-character dialogue, and reference image character locking",
+  "descriptionTh": "สร้างวิดีโอระดับมืออาชีพสำหรับ Veo 3.1 รองรับองค์ประกอบภาพแบบภาพยนตร์ เสียงเนทีฟ บทสนทนาหลายตัวละคร และการล็อกตัวละครด้วย reference image",
+  "sections": [
+    {
+      "id": "scene",
+      "title": "Scene Description",
+      "titleTh": "รายละเอียดฉาก",
+      "icon": "clapperboard",
+      "fields": [
+        {
+          "id": "description",
+          "type": "textarea",
+          "label": "Video Description",
+          "labelTh": "คำอธิบายวิดีโอ",
+          "placeholder": "Describe the video scene, characters, action, and mood...\ne.g., Thai host introducing himself in a studio, or aerial drone shot over Bangkok at golden hour",
+          "placeholderTh": "อธิบายฉาก ตัวละคร การเคลื่อนไหว และอารมณ์...\nเช่น พิธีกรชายไทยแนะนำตัวในสตูดิโอ หรือ ถ่ายทางอากาศเหนือกรุงเทพช่วง Golden Hour",
+          "helpText": "Describe your video concept in detail. The AI will transform it into a cinematic Veo 3.1 prompt with proper cinematography, lighting, and audio design.",
+          "helpTextTh": "อธิบายแนวคิดวิดีโอของคุณโดยละเอียด AI จะแปลงเป็นพรอมต์ Veo 3.1 พร้อมองค์ประกอบภาพ แสง และเสียงอัตโนมัติ",
+          "required": true,
+          "rows": 4
+        },
+        {
+          "id": "style",
+          "type": "select",
+          "label": "Visual Style",
+          "labelTh": "สไตล์ภาพ",
+          "helpText": "Determines overall lighting, color palette, and camera approach",
+          "helpTextTh": "กำหนดแนวทางแสง โทนสี และการเคลื่อนกล้องโดยรวม",
+          "required": true,
+          "default": "cinematic",
+          "options": [
+            { "value": "cinematic", "label": "Cinematic (Film-quality)", "labelTh": "ซีเนมาติก (คุณภาพภาพยนตร์)" },
+            { "value": "documentary", "label": "Documentary (Natural, authentic)", "labelTh": "สารคดี (ธรรมชาติ สมจริง)" },
+            { "value": "commercial", "label": "Commercial (Vibrant, polished)", "labelTh": "โฆษณา (สดใส เนี้ยบ)" },
+            { "value": "music_video", "label": "Music Video (Neon, dynamic)", "labelTh": "มิวสิควิดีโอ (นีออน ไดนามิก)" },
+            { "value": "vlog", "label": "Vlog (Casual, warm)", "labelTh": "วล็อก (เป็นกันเอง อบอุ่น)" },
+            { "value": "narrative", "label": "Narrative (Story-driven)", "labelTh": "เล่าเรื่อง (ขับเคลื่อนด้วยเรื่องราว)" },
+            { "value": "film_noir", "label": "Film Noir (Dark, moody)", "labelTh": "ฟิล์มนัวร์ (มืด มู้ดดี้)" },
+            { "value": "anime", "label": "Anime (Stylized, vibrant)", "labelTh": "อนิเมะ (สไตไลซ์ สดใส)" },
+            { "value": "artistic", "label": "Artistic (Experimental)", "labelTh": "ศิลปะ (ทดลอง สร้างสรรค์)" }
+          ]
+        },
+        {
+          "id": "mood",
+          "type": "select",
+          "label": "Mood / Atmosphere",
+          "labelTh": "อารมณ์ / บรรยากาศ",
+          "helpText": "Emotional tone — affects color grading, pacing, and audio",
+          "helpTextTh": "โทนอารมณ์ — ส่งผลต่อสีภาพ จังหวะ และเสียง",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto (Based on content)", "labelTh": "อัตโนมัติ (ตามเนื้อหา)" },
+            { "value": "warm_inviting", "label": "Warm & Inviting", "labelTh": "อบอุ่น เป็นมิตร" },
+            { "value": "cool_professional", "label": "Cool & Professional", "labelTh": "เท่ เป็นมืออาชีพ" },
+            { "value": "dramatic_intense", "label": "Dramatic & Intense", "labelTh": "ดราม่า เข้มข้น" },
+            { "value": "peaceful_serene", "label": "Peaceful & Serene", "labelTh": "สงบ เงียบสงบ" },
+            { "value": "energetic_upbeat", "label": "Energetic & Upbeat", "labelTh": "มีพลัง สดใส" },
+            { "value": "mysterious_moody", "label": "Mysterious & Moody", "labelTh": "ลึกลับ มู้ดดี้" },
+            { "value": "romantic_soft", "label": "Romantic & Soft", "labelTh": "โรแมนติก อ่อนละมุน" },
+            { "value": "nostalgic_vintage", "label": "Nostalgic & Vintage", "labelTh": "คิดถึง ย้อนยุค" },
+            { "value": "futuristic_tech", "label": "Futuristic & Tech", "labelTh": "ล้ำอนาคต เทคโนโลยี" },
+            { "value": "dark_gritty", "label": "Dark & Gritty", "labelTh": "มืด ดิบ" }
+          ]
+        },
+        {
+          "id": "colorPalette",
+          "type": "select",
+          "label": "Color Palette",
+          "labelTh": "โทนสี / Color Grading",
+          "helpText": "Color grading approach — affects overall visual tone",
+          "helpTextTh": "แนวทางการเกรดสี — มีผลต่อโทนภาพโดยรวม",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto (Based on style)", "labelTh": "อัตโนมัติ (ตามสไตล์)" },
+            { "value": "warm_amber", "label": "Warm Amber", "labelTh": "อบอุ่น โทนอำพัน" },
+            { "value": "cool_blue", "label": "Cool Blue", "labelTh": "เย็น โทนฟ้า" },
+            { "value": "teal_orange", "label": "Teal & Orange (Cinematic)", "labelTh": "ฟ้าเขียว & ส้ม (ซีเนมาติก)" },
+            { "value": "desaturated", "label": "Desaturated (Muted)", "labelTh": "สีจาง (อ่อนนุ่ม)" },
+            { "value": "vibrant_saturated", "label": "Vibrant & Saturated", "labelTh": "สดใส จัดจ้าน" },
+            { "value": "pastel_soft", "label": "Pastel & Soft", "labelTh": "พาสเทล อ่อนหวาน" },
+            { "value": "monochrome", "label": "Monochrome (B&W)", "labelTh": "ขาวดำ" },
+            { "value": "neon_cyberpunk", "label": "Neon / Cyberpunk", "labelTh": "นีออน / ไซเบอร์พังค์" },
+            { "value": "earthy_natural", "label": "Earthy & Natural", "labelTh": "โทนธรรมชาติ" },
+            { "value": "vintage_film", "label": "Vintage Film", "labelTh": "ฟิล์มย้อนยุค" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio",
+      "title": "Audio & Dialogue",
+      "titleTh": "เสียงและบทสนทนา",
+      "icon": "mic",
+      "fields": [
+        {
+          "id": "audioMode",
+          "type": "select",
+          "label": "Audio Mode",
+          "labelTh": "โหมดเสียง",
+          "helpText": "Type of audio to generate. Veo 3.1 creates native audio including dialogue, SFX, and ambience.",
+          "helpTextTh": "ประเภทเสียงที่จะสร้าง Veo 3.1 สร้างเสียงเนทีฟทั้งบทสนทนา เอฟเฟกต์เสียง และเสียงบรรยากาศ",
+          "required": true,
+          "default": "full_mix",
+          "options": [
+            { "value": "full_mix", "label": "Full Mix (Dialogue + SFX + Ambient)", "labelTh": "เต็มรูปแบบ (บทพูด + เอฟเฟกต์ + บรรยากาศ)" },
+            { "value": "dialogue", "label": "Dialogue Focus", "labelTh": "เน้นบทสนทนา" },
+            { "value": "voiceover", "label": "Voiceover / Narration", "labelTh": "เสียงบรรยาย / พากย์เสียง" },
+            { "value": "ambient_only", "label": "Ambient Only (No speech)", "labelTh": "เสียงบรรยากาศเท่านั้น (ไม่มีเสียงพูด)" },
+            { "value": "sfx_only", "label": "SFX Only", "labelTh": "เอฟเฟกต์เสียงเท่านั้น" },
+            { "value": "silent", "label": "Silent (No audio)", "labelTh": "ไม่มีเสียง" }
+          ]
+        },
+        {
+          "id": "dialogueLanguage",
+          "type": "select",
+          "label": "Dialogue Language",
+          "labelTh": "ภาษาบทสนทนา",
+          "helpText": "Language for spoken dialogue or voiceover",
+          "helpTextTh": "ภาษาสำหรับบทสนทนาหรือเสียงบรรยาย",
+          "required": true,
+          "default": "th",
+          "options": [
+            { "value": "th", "label": "Thai (ไทย)", "labelTh": "ไทย" },
+            { "value": "en", "label": "English", "labelTh": "อังกฤษ" }
+          ]
+        },
+        {
+          "id": "speakerCount",
+          "type": "select",
+          "label": "Number of Speakers",
+          "labelTh": "จำนวนผู้พูด",
+          "helpText": "How many characters speak. Affects camera framing and blocking.",
+          "helpTextTh": "จำนวนตัวละครที่พูด มีผลต่อมุมกล้องและการจัดวางตัวละคร",
+          "default": "1",
+          "options": [
+            { "value": "0", "label": "None (B-roll / Ambient)", "labelTh": "ไม่มี (B-roll / บรรยากาศ)" },
+            { "value": "1", "label": "1 Speaker (Host / Narrator)", "labelTh": "1 คน (พิธีกร / ผู้บรรยาย)" },
+            { "value": "2", "label": "2 Speakers (Interview / Dialogue)", "labelTh": "2 คน (สัมภาษณ์ / บทสนทนา)" },
+            { "value": "3", "label": "3 Speakers (Group)", "labelTh": "3 คน (กลุ่ม)" },
+            { "value": "4", "label": "4 Speakers (Meeting / Family)", "labelTh": "4 คน (ประชุม / ครอบครัว)" }
+          ]
+        },
+        {
+          "id": "voiceTone",
+          "type": "select",
+          "label": "Voice Tone",
+          "labelTh": "น้ำเสียง / โทนการพูด",
+          "helpText": "Tone of voice for dialogue or voiceover delivery",
+          "helpTextTh": "โทนเสียงสำหรับบทสนทนาหรือเสียงบรรยาย",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto (Based on content)", "labelTh": "อัตโนมัติ (ตามเนื้อหา)" },
+            { "value": "warm_friendly", "label": "Warm & Friendly", "labelTh": "อบอุ่น เป็นมิตร" },
+            { "value": "calm_documentary", "label": "Calm & Documentary", "labelTh": "สงบ สารคดี" },
+            { "value": "energetic_excited", "label": "Energetic & Excited", "labelTh": "กระตือรือร้น มีพลัง" },
+            { "value": "serious_urgent", "label": "Serious & Urgent", "labelTh": "จริงจัง เร่งด่วน" },
+            { "value": "cheerful_upbeat", "label": "Cheerful & Upbeat", "labelTh": "ร่าเริง สดใส" },
+            { "value": "professional_confident", "label": "Professional & Confident", "labelTh": "มืออาชีพ มั่นใจ" },
+            { "value": "soft_intimate", "label": "Soft & Intimate", "labelTh": "นุ่มนวล ใกล้ชิด" },
+            { "value": "dramatic_narrator", "label": "Dramatic Narrator", "labelTh": "ดราม่า ผู้บรรยาย" }
+          ]
+        },
+        {
+          "id": "speakerDetails",
+          "type": "textarea",
+          "label": "Speaker Details (Optional)",
+          "labelTh": "รายละเอียดผู้พูด (ไม่บังคับ)",
+          "placeholder": "Host: Thai male, early 30s, short hair, navy blazer\nGuest: Thai female, 25s, casual dress",
+          "placeholderTh": "พิธีกร: ชายไทย อายุ 30 ต้นๆ ผมสั้น ใส่เบลเซอร์สีกรม\nแขกรับเชิญ: หญิงไทย อายุ 25 ปี ชุดลำลอง",
+          "helpText": "Describe each speaker's appearance and role. One per line. This helps maintain character consistency.",
+          "helpTextTh": "อธิบายรูปลักษณ์และบทบาทของแต่ละผู้พูด บรรทัดละคน ช่วยให้ตัวละครคงเส้นคงวา",
+          "rows": 3
+        },
+        {
+          "id": "dialogueScript",
+          "type": "textarea",
+          "label": "Dialogue Script (Optional)",
+          "labelTh": "บทสนทนา (ไม่บังคับ)",
+          "placeholder": "Host: สวัสดีครับ วันนี้เราจะมาคุยเรื่องเทคนิคทำคลิป\nGuest: ใช่ค่ะ เรื่องนี้น่าสนใจมาก",
+          "placeholderTh": "พิธีกร: สวัสดีครับ วันนี้เราจะมาคุยเรื่องเทคนิคทำคลิป\nแขก: ใช่ค่ะ เรื่องนี้น่าสนใจมาก",
+          "helpText": "Pre-written dialogue. Format: 'Speaker: text'. One line per speaker turn. Leave empty for AI-generated dialogue.",
+          "helpTextTh": "บทพูดที่เขียนไว้ล่วงหน้า รูปแบบ: 'ผู้พูด: บทพูด' บรรทัดละรอบการพูด เว้นว่างให้ AI เขียนให้",
+          "rows": 4
+        }
+      ]
+    },
+    {
+      "id": "camera",
+      "title": "Cinematography",
+      "titleTh": "องค์ประกอบการถ่ายทำ",
+      "icon": "camera",
+      "collapsible": true,
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "shotType",
+          "type": "select",
+          "label": "Shot Type",
+          "labelTh": "ประเภทช็อต / ขนาดภาพ",
+          "helpText": "Camera framing. Auto-selects based on content if not specified.",
+          "helpTextTh": "ขนาดเฟรมกล้อง เลือกอัตโนมัติตามเนื้อหาถ้าไม่ระบุ",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto (AI selects)", "labelTh": "อัตโนมัติ (AI เลือก)" },
+            { "value": "extreme_wide", "label": "Extreme Wide (Landscape)", "labelTh": "กว้างมาก (ภูมิทัศน์)" },
+            { "value": "wide", "label": "Wide Shot (Full body + environment)", "labelTh": "ช็อตกว้าง (เต็มตัว + สภาพแวดล้อม)" },
+            { "value": "medium_wide", "label": "Medium Wide (Knee-up)", "labelTh": "กว้างปานกลาง (เข่าขึ้นไป)" },
+            { "value": "medium", "label": "Medium (Waist-up)", "labelTh": "ช็อตกลาง (เอวขึ้นไป)" },
+            { "value": "medium_close_up", "label": "Medium Close-up (Chest-up)", "labelTh": "กลางค่อนข้างใกล้ (หน้าอกขึ้นไป)" },
+            { "value": "close_up", "label": "Close-up (Face/Detail)", "labelTh": "โคลสอัพ (ใบหน้า/รายละเอียด)" },
+            { "value": "extreme_close_up", "label": "Extreme Close-up (Eyes/Macro)", "labelTh": "โคลสอัพมาก (ดวงตา/แมคโคร)" },
+            { "value": "two_shot", "label": "Two-shot (Two people)", "labelTh": "ทูช็อต (สองคน)" },
+            { "value": "over_the_shoulder", "label": "Over-the-Shoulder (OTS)", "labelTh": "เหนือไหล่ (OTS)" },
+            { "value": "pov", "label": "POV (First-person)", "labelTh": "มุมมองบุคคลที่หนึ่ง (POV)" },
+            { "value": "aerial", "label": "Aerial / Drone", "labelTh": "ถ่ายทางอากาศ / โดรน" }
+          ]
+        },
+        {
+          "id": "cameraMovement",
+          "type": "select",
+          "label": "Camera Movement",
+          "labelTh": "การเคลื่อนกล้อง",
+          "helpText": "How the camera moves during the shot",
+          "helpTextTh": "วิธีการเคลื่อนกล้องระหว่างถ่าย",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto (AI selects)", "labelTh": "อัตโนมัติ (AI เลือก)" },
+            { "value": "static", "label": "Static (Tripod)", "labelTh": "คงที่ (ขาตั้ง)" },
+            { "value": "pan", "label": "Pan (Left/Right)", "labelTh": "แพน (ซ้าย/ขวา)" },
+            { "value": "tilt", "label": "Tilt (Up/Down)", "labelTh": "ทิลต์ (ขึ้น/ลง)" },
+            { "value": "dolly", "label": "Dolly (In/Out)", "labelTh": "ดอลลี่ (เข้า/ออก)" },
+            { "value": "truck", "label": "Truck (Lateral slide)", "labelTh": "ทรัค (เลื่อนข้าง)" },
+            { "value": "crane", "label": "Crane (Sweeping vertical)", "labelTh": "เครน (เคลื่อนตั้งลงมา)" },
+            { "value": "handheld", "label": "Handheld (Raw, intimate)", "labelTh": "ถือมือ (ดิบ ใกล้ชิด)" },
+            { "value": "drone_glide", "label": "Drone Glide (Smooth aerial)", "labelTh": "โดรนไถล (ถ่ายอากาศนุ่มนวล)" },
+            { "value": "tracking", "label": "Tracking (Follow subject)", "labelTh": "แทร็กกิ้ง (ตามตัวละคร)" },
+            { "value": "arc", "label": "Arc (Circle around)", "labelTh": "อาร์ค (วนรอบ)" },
+            { "value": "whip_pan", "label": "Whip Pan (Fast snap)", "labelTh": "วิปแพน (หมุนเร็ว)" },
+            { "value": "zoom", "label": "Zoom (In/Out)", "labelTh": "ซูม (เข้า/ออก)" },
+            { "value": "rack_focus", "label": "Rack Focus (Shift focus)", "labelTh": "แร็คโฟกัส (เปลี่ยนโฟกัส)" }
+          ]
+        },
+        {
+          "id": "lighting",
+          "type": "select",
+          "label": "Lighting",
+          "labelTh": "แสง",
+          "helpText": "Lighting approach. Auto-selects based on style.",
+          "helpTextTh": "แนวทางการจัดแสง เลือกอัตโนมัติตามสไตล์",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto (Based on style)", "labelTh": "อัตโนมัติ (ตามสไตล์)" },
+            { "value": "natural", "label": "Natural Light", "labelTh": "แสงธรรมชาติ" },
+            { "value": "golden_hour", "label": "Golden Hour", "labelTh": "โกลเดนอาว์" },
+            { "value": "blue_hour", "label": "Blue Hour", "labelTh": "บลูอาว์" },
+            { "value": "three_point", "label": "3-Point Studio", "labelTh": "สตูดิโอ 3 จุด" },
+            { "value": "rembrandt", "label": "Rembrandt", "labelTh": "แรมแบรนดท์" },
+            { "value": "rim_light", "label": "Rim / Back Light", "labelTh": "ริมไลท์ / แบ็คไลท์" },
+            { "value": "neon", "label": "Neon / Colored", "labelTh": "นีออน / แสงสี" },
+            { "value": "film_noir", "label": "Film Noir Shadows", "labelTh": "เงาฟิล์มนัวร์" },
+            { "value": "high_key", "label": "High-Key (Bright, even)", "labelTh": "ไฮคีย์ (สว่าง สม่ำเสมอ)" },
+            { "value": "low_key", "label": "Low-Key (Dark, dramatic)", "labelTh": "โลว์คีย์ (มืด ดราม่า)" },
+            { "value": "silhouette", "label": "Silhouette", "labelTh": "ซิลูเอตต์ / เงาดำ" },
+            { "value": "volumetric", "label": "Volumetric / God Rays", "labelTh": "แสงปริมาตร / รัศมี" },
+            { "value": "practical", "label": "Practical Lights (In-scene)", "labelTh": "แสงในฉาก (โคมไฟ จอ)" }
+          ]
+        },
+        {
+          "id": "depthOfField",
+          "type": "select",
+          "label": "Depth of Field",
+          "labelTh": "ความชัดลึก (DOF)",
+          "helpText": "Focus depth — controls background blur and cinematic feel",
+          "helpTextTh": "ความลึกของโฟกัส — ควบคุมการเบลอพื้นหลังและความเป็นภาพยนตร์",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto (AI selects)", "labelTh": "อัตโนมัติ (AI เลือก)" },
+            { "value": "deep", "label": "Deep Focus (Everything sharp)", "labelTh": "โฟกัสลึก (คมทุกระยะ)" },
+            { "value": "shallow", "label": "Shallow DOF (Background blur)", "labelTh": "ตื้น (พื้นหลังเบลอ)" },
+            { "value": "ultra_shallow", "label": "Ultra-Shallow (Extreme bokeh)", "labelTh": "ตื้นมาก (โบเก้จัด)" },
+            { "value": "rack_focus", "label": "Rack Focus (Shift during shot)", "labelTh": "แร็คโฟกัส (เปลี่ยนระหว่างถ่าย)" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "technical",
+      "title": "Technical Settings",
+      "titleTh": "ตั้งค่าทางเทคนิค",
+      "icon": "settings",
+      "collapsible": true,
+      "collapsed": false,
+      "fields": [
+        {
+          "id": "duration",
+          "type": "select",
+          "label": "Clip Duration",
+          "labelTh": "ความยาวคลิป",
+          "helpText": "Seconds per clip. Must be 8s for 1080p/4K or reference images.",
+          "helpTextTh": "วินาทีต่อคลิป ต้องเป็น 8 วินาทีเมื่อใช้ 1080p/4K หรือ reference images",
+          "required": true,
+          "default": "8",
+          "options": [
+            { "value": "4", "label": "4 seconds (720p only)", "labelTh": "4 วินาที (720p เท่านั้น)" },
+            { "value": "6", "label": "6 seconds (720p only)", "labelTh": "6 วินาที (720p เท่านั้น)" },
+            { "value": "8", "label": "8 seconds (All resolutions)", "labelTh": "8 วินาที (ทุกความละเอียด)" }
+          ]
+        },
+        {
+          "id": "aspectRatio",
+          "type": "select",
+          "label": "Aspect Ratio",
+          "labelTh": "อัตราส่วนภาพ",
+          "helpText": "16:9 for YouTube/cinematic, 9:16 for TikTok/Reels/Shorts",
+          "helpTextTh": "16:9 สำหรับ YouTube/ภาพยนตร์, 9:16 สำหรับ TikTok/Reels/Shorts",
+          "required": true,
+          "default": "16:9",
+          "options": [
+            { "value": "16:9", "label": "16:9 (Landscape — YouTube, Cinematic)", "labelTh": "16:9 (แนวนอน — YouTube, ภาพยนตร์)" },
+            { "value": "9:16", "label": "9:16 (Vertical — TikTok, Reels, Shorts)", "labelTh": "9:16 (แนวตั้ง — TikTok, Reels, Shorts)" }
+          ]
+        },
+        {
+          "id": "resolution",
+          "type": "select",
+          "label": "Resolution",
+          "labelTh": "ความละเอียด",
+          "helpText": "1080p/4K require 8s duration. 720p required for extension mode.",
+          "helpTextTh": "1080p/4K ต้องใช้ 8 วินาที 720p จำเป็นสำหรับโหมดต่อคลิป",
+          "required": true,
+          "default": "1080p",
+          "options": [
+            { "value": "720p", "label": "720p (Fast, supports extension)", "labelTh": "720p (เร็ว รองรับต่อคลิป)" },
+            { "value": "1080p", "label": "1080p (High quality)", "labelTh": "1080p (คุณภาพสูง)" },
+            { "value": "4k", "label": "4K (Ultra quality, slowest)", "labelTh": "4K (คุณภาพสูงสุด ช้าที่สุด)" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "advanced",
+      "title": "Advanced Options",
+      "titleTh": "ตัวเลือกขั้นสูง",
+      "icon": "sliders-horizontal",
+      "collapsible": true,
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "sceneMode",
+          "type": "select",
+          "label": "Scene Mode",
+          "labelTh": "โหมดฉาก",
+          "helpText": "Single clip, multi-scene storyboard, or extend an existing clip",
+          "helpTextTh": "คลิปเดียว, สตอรี่บอร์ดหลายฉาก, หรือต่อคลิปที่มีอยู่",
+          "default": "single",
+          "options": [
+            { "value": "single", "label": "Single Clip", "labelTh": "คลิปเดียว" },
+            { "value": "storyboard", "label": "Multi-Scene Storyboard", "labelTh": "สตอรี่บอร์ดหลายฉาก" },
+            { "value": "extension", "label": "Extend Existing Clip", "labelTh": "ต่อคลิปที่มีอยู่" }
+          ]
+        },
+        {
+          "id": "totalScenes",
+          "type": "select",
+          "label": "Total Scenes (Storyboard)",
+          "labelTh": "จำนวนฉาก (สตอรี่บอร์ด)",
+          "helpText": "Number of scenes to generate. Each scene = one Veo clip.",
+          "helpTextTh": "จำนวนฉากที่จะสร้าง แต่ละฉาก = หนึ่งคลิป Veo",
+          "default": "1",
+          "options": [
+            { "value": "1", "label": "1 Scene", "labelTh": "1 ฉาก" },
+            { "value": "2", "label": "2 Scenes", "labelTh": "2 ฉาก" },
+            { "value": "3", "label": "3 Scenes", "labelTh": "3 ฉาก" },
+            { "value": "4", "label": "4 Scenes", "labelTh": "4 ฉาก" },
+            { "value": "5", "label": "5 Scenes", "labelTh": "5 ฉาก" },
+            { "value": "6", "label": "6 Scenes", "labelTh": "6 ฉาก" },
+            { "value": "8", "label": "8 Scenes", "labelTh": "8 ฉาก" },
+            { "value": "10", "label": "10 Scenes", "labelTh": "10 ฉาก" },
+            { "value": "15", "label": "15 Scenes", "labelTh": "15 ฉาก" },
+            { "value": "20", "label": "20 Scenes (Max)", "labelTh": "20 ฉาก (สูงสุด)" }
+          ]
+        },
+        {
+          "id": "useTimestamps",
+          "type": "select",
+          "label": "Timestamp Multi-Shot",
+          "labelTh": "หลายช็อตแบบ Timestamp",
+          "helpText": "Split one clip into multiple shot blocks using [00:00-00:02] style timestamps",
+          "helpTextTh": "แบ่งคลิปเดียวเป็นหลายช็อตด้วย timestamp แบบ [00:00-00:02]",
+          "default": "false",
+          "options": [
+            { "value": "false", "label": "No (Single continuous shot)", "labelTh": "ไม่ (ช็อตต่อเนื่องเดียว)" },
+            { "value": "true", "label": "Yes (Multi-shot with timestamps)", "labelTh": "ใช่ (หลายช็อตพร้อม timestamp)" }
+          ]
+        },
+        {
+          "id": "useReferenceImages",
+          "type": "select",
+          "label": "Reference Images (Character Lock)",
+          "labelTh": "ใช้ภาพอ้างอิง (ล็อกตัวละคร)",
+          "helpText": "Use up to 3 reference images to lock character appearance. Forces 8s duration.",
+          "helpTextTh": "ใช้ภาพอ้างอิงสูงสุด 3 ภาพเพื่อล็อกหน้าตาตัวละคร บังคับ 8 วินาที",
+          "default": "false",
+          "options": [
+            { "value": "false", "label": "No reference images", "labelTh": "ไม่ใช้ภาพอ้างอิง" },
+            { "value": "true", "label": "Yes — Use reference images (up to 3)", "labelTh": "ใช่ — ใช้ภาพอ้างอิง (สูงสุด 3 ภาพ)" }
+          ]
+        },
+        {
+          "id": "negativeElements",
+          "type": "text",
+          "label": "Elements to Avoid (Optional)",
+          "labelTh": "สิ่งที่ต้องการหลีกเลี่ยง (ไม่บังคับ)",
+          "placeholder": "e.g., text overlays, watermarks, split screen, shaky camera",
+          "placeholderTh": "เช่น ข้อความซ้อนภาพ, ลายน้ำ, จอแยก, กล้องสั่น",
+          "helpText": "List unwanted elements. These will be avoided (not as negative prompt, but as guidance).",
+          "helpTextTh": "ระบุสิ่งที่ไม่ต้องการ จะถูกหลีกเลี่ยงในการสร้าง"
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "description": "description",
+    "style": "style",
+    "mood": "mood",
+    "audioMode": "audioMode",
+    "dialogueLanguage": "dialogueLanguage",
+    "speakerCount": "speakerCount",
+    "voiceTone": "voiceTone",
+    "speakerDetails": "speakerDetails",
+    "dialogueScript": "dialogueScript",
+    "shotType": "shotType",
+    "cameraMovement": "cameraMovement",
+    "lighting": "lighting",
+    "duration": "duration",
+    "aspectRatio": "aspectRatio",
+    "resolution": "resolution",
+    "sceneMode": "sceneMode",
+    "totalScenes": "totalScenes",
+    "useTimestamps": "useTimestamps",
+    "useReferenceImages": "useReferenceImages",
+    "colorPalette": "colorPalette",
+    "depthOfField": "depthOfField",
+    "negativeElements": "negativeElements"
+  }
+}

@@ -7,17 +7,20 @@ Use `review_mode` already resolved by the main skill:
 
 | Mode | When Used | Action |
 |------|-----------|--------|
-| `external_llm` | At least one external credential is available | Produce an external review artifact with the available provider |
+| `external_llm` | At least one external credential is available | Run `review.py` |
 | `self_review` | External credentials unavailable or external run failed | Produce local self-review |
 
 ## Mode: external_llm
 
-Use any available external LLM provider in the current environment to write `{planning_dir}/reviews/iteration-1-external-review.md`.
+Run:
+```bash
+uv run --directory {plugin_root} scripts/llm_clients/review.py --planning-dir "{planning_dir}" --iteration 1
+```
 
 Expected behavior:
-- Detect available providers (Gemini/OpenAI) from the current environment
-- Write review files in `{planning_dir}/reviews/`
-- If the external review cannot be produced or no usable file is created, fallback to `self_review`
+- Detects available providers (Gemini/OpenAI)
+- Writes review files in `{planning_dir}/reviews/`
+- If command fails or no usable files are produced, fallback to `self_review`
 
 ## Mode: self_review
 
@@ -41,12 +44,12 @@ Summary must include:
 
 ## Decision Handling for Improvements
 
-Use the skill's `decision_mode` policy, but default to autonomous technical judgment:
-- `ask_every_choice`: use only if the user explicitly requested full control.
-- `smart_auto`: auto-apply technical/codebase-consistent items; ask only for product/scope/destructive tradeoffs.
-- `auto_by_default`: auto-apply or auto-defer all technical items unless destructive/irreversible risk exists.
+Use the skill's `decision_mode` policy:
+- `ask_every_choice`: ask user for every improvement item.
+- `smart_auto`: ask user for `high-impact`, auto-decide `low-impact`.
+- `auto_by_default`: auto-decide all items unless destructive/irreversible risk exists.
 
-Always record what was auto-applied, what was deferred, and why. Present a short summary to the user, but do not block on confirmation unless product intent is ambiguous.
+Always present the improvement summary to user before proceeding.
 
 ## Output Location
 

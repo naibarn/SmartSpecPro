@@ -12,6 +12,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTenant } from '@/contexts/TenantContext';
 import { getResolvedMenuItems } from '@/hooks/useMenuItems';
+import { useTenantFeatureFlags } from '@/hooks/useTenantFeatureFlag';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { JobCard } from '@/components/chat/JobCard';
@@ -109,6 +110,9 @@ export default function Dashboard() {
     { staleTime: 60_000 }
   );
 
+  // Tenant feature flags for menu gating
+  const tenantFlags = useTenantFeatureFlags();
+
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       setLocation('/login');
@@ -128,9 +132,9 @@ export default function Dashboard() {
   }
 
   const userRole = (user.role || 'user') as UserRole;
-  const mainMenuItems = getResolvedMenuItems(userRole, 'main', menuOverrides);
-  const adminMenuItems = getResolvedMenuItems(userRole, 'admin', menuOverrides);
-  const domainMenuItems = getResolvedMenuItems(userRole, 'domain-admin', menuOverrides);
+  const mainMenuItems = getResolvedMenuItems(userRole, 'main', menuOverrides, tenantFlags);
+  const adminMenuItems = getResolvedMenuItems(userRole, 'admin', menuOverrides, tenantFlags);
+  const domainMenuItems = getResolvedMenuItems(userRole, 'domain-admin', menuOverrides, tenantFlags);
 
   // Calculate real stats from media tasks
   const tasks = mediaTasksData?.tasks || [];

@@ -43,7 +43,7 @@ If ISC generates `python/skill.py`, that does **not** automatically mean the fin
   - `schemas/input.schema.json` — full input validation with enums, ranges, examples
   - `schemas/output.schema.json` — structured output specification
   - `schemas/ui.schema.json` — SmartAIHub UI form with Thai + English labels
-- **Phase 3 — skill.md:** Generates manifest with YAML frontmatter, input/output tables, usage examples
+- **Phase 3 — Manifest:** Generates `skill.md` + `SKILL.md` with YAML frontmatter, input/output tables, usage examples
 - **Phase 4 — Code:** Generates complete `python/skill.py` OR `js/skill.js` with stdlib only
 - **Phase 5 — Critic:** Second LLM pass reviews and fixes correctness, edge cases, security
 - **Phase 6 — Tests:** Generates `tests/tests.json` with structured assertions for happy path, edge cases, and error cases
@@ -66,6 +66,7 @@ skills/{skill-name}/
 │   ├── output.schema.json   ← MANDATORY (output structure spec)
 │   └── ui.schema.json       ← MANDATORY (SmartAIHub UI form, Thai + English)
 ├── skill.md                 ← manifest + YAML frontmatter
+├── SKILL.md                 ← uppercase alias for shared Codex/Claude bundles
 ├── python/skill.py          ← if language=python (respond() entry point)
 │   OR js/skill.js           ← if language=javascript
 └── tests/tests.json         ← 5-6 structured test cases (happy path + edge + error)
@@ -115,7 +116,7 @@ skills/{skill-name}/
 ```json
 {
   "success": true,
-  "output": "✅ Skill `thai-date-converter` created successfully!\n\n📁 Location: ...\n📄 Files created:\n  ✅ schemas/input.schema.json\n  ✅ schemas/output.schema.json\n  ✅ schemas/ui.schema.json\n  ✅ skill.md\n  ✅ python/skill.py\n  ✅ tests/tests.json",
+  "output": "✅ Skill `thai-date-converter` created successfully!\n\n📁 Location: ...\n📄 Files created:\n  ✅ schemas/input.schema.json\n  ✅ schemas/output.schema.json\n  ✅ schemas/ui.schema.json\n  ✅ skill.md\n  ✅ SKILL.md\n  ✅ python/skill.py\n  ✅ tests/tests.json",
   "skill_path": "/path/to/apps/web/skills/thai-date-converter"
 }
 ```

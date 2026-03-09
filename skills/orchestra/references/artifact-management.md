@@ -17,7 +17,7 @@ The `orchestra/` working directory is the single source of truth for an orchestr
 | `backlog.md` | Step 2 (when any planning/implementation chain is needed) | When items are resolved | Never | Pending items, expected artifact paths from automatic deep-* chains |
 | `decisions.md` | First auto-decision | Every auto-decision (append-only) | Never | Timestamped log of all conductor decisions |
 | `contracts.md` | Step 3 (contract definition) | Never after Wave 1 | Never | Agent interface contracts (frozen after Wave 1) |
-| `platform.md` | First platform detection | Never (permanent) | User deletes it | Detected platform (claude-code / codex / open-code) |
+| `platform.md` | First platform detection | Never (permanent) | User deletes it | Detected platform (claude-code / standard / open-code) |
 | `decision-mode.md` | First mode selection | Never (permanent) | Never | Decision mode (ask_every_choice / smart_auto / auto_by_default); user may edit the value but the file is never removed |
 | `risk_register.md` | When security gate triggers | Each security gate run | Never | All security findings regardless of verdict |
 | `snapshot.json` | Red-state CHC trigger | Every red-state checkpoint | Never | Structured machine-readable session checkpoint |

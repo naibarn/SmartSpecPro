@@ -83,6 +83,9 @@ import {
   Trash2,
   Settings2,
   ChevronDown,
+  Film,
+  Type,
+  Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -356,6 +359,8 @@ export function AIDraftModal({
 
   // Dynamic skill form params
   const [articleSkillParams, setArticleSkillParams] = useState<Record<string, any>>({});
+  const [mediaSkillParams, setMediaSkillParams] = useState<Record<string, any>>({});
+  const [mediaSkillOptionsOpen, setMediaSkillOptionsOpen] = useState(false);
 
   // Advanced style options default to OFF for this modal
   const [headerEnabled, setHeaderEnabled] = useState(false);
@@ -439,6 +444,16 @@ export function AIDraftModal({
   );
   const effectiveMediaSkillRecord = selectedExplicitMediaSkillRecord
     ?? (shouldUseDraftSkillForMedia(selectedDraftSkillRecord) ? selectedDraftSkillRecord : null);
+
+  // Fetch media skill schema for dynamic skill options
+  const mediaSkillSlug = effectiveMediaSkillRecord?.slug ?? "";
+  const mediaSkillSchemaQuery = trpc.skills.getInputSchema.useQuery(
+    { skillId: mediaSkillSlug },
+    { enabled: mediaSkillSlug !== "", staleTime: 300_000 },
+  );
+  const mediaSkillSchema = mediaSkillSchemaQuery.data?.hasSchema
+    ? (mediaSkillSchemaQuery.data.schema as SkillInputSchema)
+    : null;
   const articleSkillFieldState = useMemo(() => {
     if (!skillSchema?.sections) {
       return { hasLengthField: false, hasWordCountField: false };
@@ -1171,6 +1186,10 @@ export function AIDraftModal({
           !useCustomArticle && isArticleDraftSkill(selectedDraftSkillRecord) && Object.keys(articleSkillParams).length > 0
             ? articleSkillParams
             : undefined,
+        mediaSkillParams:
+          Object.keys(mediaSkillParams).length > 0
+            ? mediaSkillParams
+            : undefined,
       },
       {
         onSuccess: (data) => {
@@ -1222,6 +1241,7 @@ export function AIDraftModal({
     selectedWatermarkOption,
     watermarkClarityPercent,
     articleSkillParams,
+    mediaSkillParams,
   ]);
 
   const handleCancel = useCallback(() => {
@@ -1381,7 +1401,14 @@ export function AIDraftModal({
 
   // Config phase
   const configView = (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      {/* ── Section: Content ─────────────────────────── */}
+      <fieldset className="space-y-3">
+        <legend className="flex w-full items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
+          <Type className="h-3.5 w-3.5 text-teal-500" />
+          Content
+        </legend>
+
       {/* Topic */}
       <div className="space-y-1.5">
         <Label htmlFor="ai-topic">Topic</Label>
@@ -1473,6 +1500,14 @@ export function AIDraftModal({
           </SelectContent>
         </Select>
       </div>
+      </fieldset>
+
+      {/* ── Section: Skills & AI ─────────────────────── */}
+      <fieldset className="space-y-3 pt-1">
+        <legend className="flex w-full items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
+          <Sparkles className="h-3.5 w-3.5 text-teal-500" />
+          Skills &amp; AI
+        </legend>
 
       {/* Draft skill (searchable) */}
       {!useCustomArticle && (
@@ -1503,6 +1538,9 @@ export function AIDraftModal({
               }
               setSelectedArticleSkill(v);
               setArticleSkillParams({});
+              // Reset media skill params when draft skill changes (effective media skill may derive from it)
+              setMediaSkillParams({});
+              setMediaSkillOptionsOpen(false);
               localStorage.setItem("smartspec_aiDraft_articleSkill", v);
             }}
             placeholder="Select draft skill..."
@@ -1592,6 +1630,8 @@ export function AIDraftModal({
               localStorage.removeItem("smartspec_aiDraft_imageModel");
             }
             setSelectedImageSkill(v);
+            setMediaSkillParams({});
+            setMediaSkillOptionsOpen(false);
             localStorage.setItem("smartspec_aiDraft_imageSkill", v);
           }}
             placeholder="None"
@@ -1599,6 +1639,52 @@ export function AIDraftModal({
             emptyMessage="No compatible media skills found."
           />
       </div>
+
+      {/* Dynamic media skill options (from ui.schema.json) */}
+      {mediaSkillSchema && effectiveMediaSkillRecord && (
+        <Collapsible open={mediaSkillOptionsOpen} onOpenChange={setMediaSkillOptionsOpen}>
+          <div className="rounded-md border border-muted bg-muted/20 p-3">
+            <CollapsibleTrigger className="flex w-full items-center gap-1.5 text-sm font-medium transition-colors hover:text-foreground">
+              <Settings2 className="h-3.5 w-3.5 text-muted-foreground" />
+              <span>Skill Options ({effectiveMediaSkillRecord.name || effectiveMediaSkillRecord.slug})</span>
+              <Badge variant="outline" className="ml-1 text-[10px]">
+                {Object.keys(mediaSkillParams).length > 0 ? "Custom" : "Default"}
+              </Badge>
+              <ChevronDown
+                className={cn(
+                  "ml-auto h-3.5 w-3.5 transition-transform",
+                  mediaSkillOptionsOpen && "rotate-180",
+                )}
+              />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="mt-3 border-t border-muted pt-3">
+                <DynamicSkillForm
+                  schema={mediaSkillSchema}
+                  language={language === "th" ? "th" : "en"}
+                  values={mediaSkillParams}
+                  onChange={setMediaSkillParams}
+                  excludeFields={["description", "prompt", "topic", "subject"]}
+                  className="space-y-3"
+                />
+              </div>
+            </CollapsibleContent>
+            {!mediaSkillOptionsOpen && (
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Using default settings. Expand to customize.
+              </p>
+            )}
+          </div>
+        </Collapsible>
+      )}
+      </fieldset>
+
+      {/* ── Section: Media & Output ──────────────────── */}
+      <fieldset className="space-y-3 pt-1">
+        <legend className="flex w-full items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
+          <Film className="h-3.5 w-3.5 text-teal-500" />
+          Media &amp; Output
+        </legend>
 
       {/* Media model (image/video generation) */}
       <div className="space-y-1.5">
@@ -1738,6 +1824,14 @@ export function AIDraftModal({
         </div>
         {renderDynamicMediaModelInputs()}
       </div>
+      </fieldset>
+
+      {/* ── Section: Visual & References ─────────────── */}
+      <fieldset className="space-y-3 pt-1">
+        <legend className="flex w-full items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
+          <Palette className="h-3.5 w-3.5 text-teal-500" />
+          Visual &amp; References
+        </legend>
 
       {/* Image prompt context */}
       <div className="space-y-1.5">
@@ -1918,6 +2012,7 @@ export function AIDraftModal({
           ))}
         </div>
       </div>
+      </fieldset>
 
       {/* Advanced style options */}
       <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>

@@ -1,0 +1,287 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Nano Banana Infographic Creator Input Schema",
+  "description": "Input specification for creating professional infographics, slide illustrations, data charts, and visual assets optimized for Google Nano Banana 2/Pro (Gemini 3.1 Flash Image / Gemini 3 Pro Image)",
+  "type": "object",
+  "required": [
+    "description",
+    "contentType",
+    "aspectRatio",
+    "resolution",
+    "style"
+  ],
+  "properties": {
+    "description": {
+      "type": "string",
+      "title": "1. Content Description",
+      "description": "Describe the infographic, slide illustration, or chart you want to create. Can be in Thai or English — the AI will transform it into an optimized Nano Banana prompt.",
+      "minLength": 5,
+      "examples": [
+        "Create a minimal slide background for a business growth presentation",
+        "Bar chart showing quarterly revenue Q1-Q4 2026",
+        "5-step design thinking infographic in cartoon style with Thai labels",
+        "Photorealistic executive slide with 3 KPI metrics",
+        "Technology icon set for presentation slides",
+        "สร้างอินโฟกราฟิกสถิติอินเทอร์เน็ตประเทศไทย"
+      ]
+    },
+    "contentType": {
+      "type": "string",
+      "title": "2. Content Type",
+      "description": "Type of visual content to generate. Determines layout, style approach, and model selection.",
+      "enum": [
+        "slide_illustration",
+        "chart_bar",
+        "chart_line",
+        "chart_pie",
+        "chart_mixed",
+        "infographic_cartoon",
+        "infographic_education",
+        "photorealistic_slide",
+        "asset_header",
+        "asset_icons",
+        "timeline",
+        "process_flow"
+      ],
+      "enumDescriptions": {
+        "slide_illustration": "Slide background/key visual — minimal, modern, with negative space for text",
+        "chart_bar": "Bar chart — vertical/horizontal bars for comparisons",
+        "chart_line": "Line chart — trends, time series, growth curves",
+        "chart_pie": "Pie/donut chart — proportions, distributions, market share",
+        "chart_mixed": "Mixed chart — combination of bar, line, and area charts",
+        "infographic_cartoon": "Cartoon infographic — friendly, illustrated, educational",
+        "infographic_education": "Education infographic — step-by-step, process explanation",
+        "photorealistic_slide": "Photorealistic slide — studio photo background with data overlay",
+        "asset_header": "Header asset — banner/strip component for slides",
+        "asset_icons": "Icon set — consistent line/flat icons for slides",
+        "timeline": "Timeline/roadmap — chronological events, milestones",
+        "process_flow": "Process flow — workflow steps, decision trees"
+      },
+      "default": "slide_illustration"
+    },
+    "aspectRatio": {
+      "type": "string",
+      "title": "3. Aspect Ratio",
+      "description": "Image aspect ratio. 16:9 is standard for presentations. Extreme ratios (4:1, 8:1) only available on Nano Banana 2.",
+      "enum": ["1:1", "16:9", "9:16", "4:3", "3:4", "21:9"],
+      "enumDescriptions": {
+        "1:1": "Square — Social media, thumbnails",
+        "16:9": "Widescreen — Presentations, slides (Recommended)",
+        "9:16": "Portrait — Mobile, stories, vertical displays",
+        "4:3": "Standard — Classic presentations, documents",
+        "3:4": "Portrait Standard — Vertical documents",
+        "21:9": "Ultra-wide — Cinematic headers, banners"
+      },
+      "default": "16:9"
+    },
+    "resolution": {
+      "type": "string",
+      "title": "4. Resolution",
+      "description": "Output image resolution. Higher = better quality but slower generation. 4K recommended for print or large displays.",
+      "enum": ["512px", "1k", "2k", "4k"],
+      "enumDescriptions": {
+        "512px": "512px — Quick preview, fastest (Nano Banana 2 only)",
+        "1k": "1K — Standard web quality, fast generation",
+        "2k": "2K — High quality for presentations (Recommended)",
+        "4k": "4K — Ultra quality for print/large display, slowest"
+      },
+      "default": "2k"
+    },
+    "style": {
+      "type": "string",
+      "title": "5. Visual Style",
+      "description": "Overall visual design approach that determines colors, shapes, and composition.",
+      "enum": [
+        "minimal_modern",
+        "flat_corporate",
+        "cartoon_friendly",
+        "isometric",
+        "photorealistic",
+        "futuristic_clean",
+        "hand_drawn",
+        "gradient_abstract"
+      ],
+      "enumDescriptions": {
+        "minimal_modern": "Clean, geometric, negative space — Corporate slides, modern presentations",
+        "flat_corporate": "Professional flat design — Business reports, formal presentations",
+        "cartoon_friendly": "Colorful cartoon illustrations — Education, training, kids content",
+        "isometric": "3D isometric perspective — Tech diagrams, process flows",
+        "photorealistic": "Studio photography style — Pitch decks, executive reports",
+        "futuristic_clean": "Dark background, neon accents — Tech, AI, innovation",
+        "hand_drawn": "Sketchy, organic lines — Workshops, brainstorming, creative",
+        "gradient_abstract": "Bold gradients, abstract shapes — Trendy, modern, social media"
+      },
+      "default": "minimal_modern"
+    },
+    "model": {
+      "type": "string",
+      "title": "6. Model Selection",
+      "description": "Which Nano Banana model to use. Auto will select based on content type.",
+      "enum": ["auto", "google-banana-2", "google-nano-banana-pro"],
+      "enumDescriptions": {
+        "auto": "Auto-select — Flash for speed, Pro for text/data fidelity",
+        "google-banana-2": "Nano Banana 2 (Gemini 3.1 Flash Image) — Fast, good for bulk/simple",
+        "google-nano-banana-pro": "Nano Banana Pro (Gemini 3 Pro Image) — Best quality, text fidelity, data viz"
+      },
+      "default": "auto"
+    },
+    "outputFormat": {
+      "type": "string",
+      "title": "7. Output Format",
+      "description": "Image file format. PNG for text/charts (lossless), JPEG for photos (smaller), WebP for web.",
+      "enum": ["png", "jpeg", "webp"],
+      "enumDescriptions": {
+        "png": "PNG — Lossless, best for text, charts, icons (Recommended)",
+        "jpeg": "JPEG — Compressed, best for photorealistic images",
+        "webp": "WebP — Modern web format, smaller file size"
+      },
+      "default": "png"
+    },
+    "textLanguage": {
+      "type": "string",
+      "title": "8. Text Language in Image",
+      "description": "Language of text that appears IN the generated image (titles, labels, captions).",
+      "enum": ["en", "th", "both"],
+      "enumDescriptions": {
+        "en": "English only — Best text rendering quality",
+        "th": "Thai only — Requires Pro model for best results",
+        "both": "Both Thai and English — Bilingual labels"
+      },
+      "default": "en"
+    },
+    "useGoogleSearch": {
+      "type": "boolean",
+      "title": "9. Use Google Search (Real-time Data)",
+      "description": "Enable Google Search grounding to fetch current, factual data for charts and infographics. Best for statistics, market data, and trends.",
+      "default": false
+    },
+    "searchQuery": {
+      "type": "string",
+      "title": "10. Search Query (Optional)",
+      "description": "Specific data query for Google Search grounding. Leave empty for auto-generated queries from description.",
+      "examples": [
+        "Thailand GDP growth rate 2025-2026",
+        "Top 5 social media platforms usage Thailand 2026",
+        "Southeast Asia e-commerce market size comparison 2026"
+      ]
+    },
+    "chartData": {
+      "type": "string",
+      "title": "11. Chart Data (Optional)",
+      "description": "Pre-defined data for charts. Format: 'Label1=Value1, Label2=Value2' or leave empty for Google Search data.",
+      "examples": [
+        "Q1=120, Q2=150, Q3=210, Q4=260",
+        "Facebook=85%, YouTube=92%, LINE=95%, TikTok=70%, Instagram=55%",
+        "2020=100, 2021=130, 2022=160, 2023=200, 2024=250, 2025=310"
+      ]
+    },
+    "colorScheme": {
+      "type": "string",
+      "title": "12. Color Scheme",
+      "description": "Color palette preference for the infographic.",
+      "enum": [
+        "auto",
+        "blue_professional",
+        "green_nature",
+        "warm_amber",
+        "purple_creative",
+        "teal_modern",
+        "red_energy",
+        "monochrome",
+        "pastel_soft",
+        "dark_elegant",
+        "brand_custom"
+      ],
+      "enumDescriptions": {
+        "auto": "Auto-select based on content type and style",
+        "blue_professional": "Blue palette — Corporate, trustworthy, professional",
+        "green_nature": "Green palette — Health, nature, growth, sustainability",
+        "warm_amber": "Amber/orange palette — Warm, inviting, creative",
+        "purple_creative": "Purple palette — Creative, innovative, premium",
+        "teal_modern": "Teal/cyan palette — Modern, tech, fresh",
+        "red_energy": "Red palette — Urgency, energy, sales, performance",
+        "monochrome": "Grayscale — Elegant, minimalist, formal",
+        "pastel_soft": "Pastel tones — Friendly, gentle, education",
+        "dark_elegant": "Dark background — Premium, executive, dramatic",
+        "brand_custom": "Custom brand colors — Specify in description"
+      },
+      "default": "auto"
+    },
+    "numImages": {
+      "type": "integer",
+      "title": "13. Number of Images",
+      "description": "Number of image variations to generate.",
+      "minimum": 1,
+      "maximum": 4,
+      "default": 1
+    },
+    "negativeElements": {
+      "type": "string",
+      "title": "14. Elements to Avoid (Optional)",
+      "description": "List elements to avoid in the generated image.",
+      "examples": [
+        "logos, watermarks, stock photo look",
+        "characters, people, faces",
+        "gradients, shadows, 3D effects",
+        "text in image, numbers, labels"
+      ]
+    }
+  },
+  "examples": [
+    {
+      "description": "Create a minimal slide background for a business growth presentation with upward trend",
+      "contentType": "slide_illustration",
+      "aspectRatio": "16:9",
+      "resolution": "2k",
+      "style": "minimal_modern",
+      "model": "auto",
+      "outputFormat": "png",
+      "textLanguage": "en",
+      "useGoogleSearch": false,
+      "colorScheme": "blue_professional",
+      "numImages": 1
+    },
+    {
+      "description": "Bar chart comparing quarterly revenue growth Q1-Q4",
+      "contentType": "chart_bar",
+      "aspectRatio": "16:9",
+      "resolution": "4k",
+      "style": "flat_corporate",
+      "model": "google-nano-banana-pro",
+      "outputFormat": "png",
+      "textLanguage": "en",
+      "useGoogleSearch": false,
+      "chartData": "Q1=120, Q2=150, Q3=210, Q4=260",
+      "colorScheme": "blue_professional",
+      "numImages": 1
+    },
+    {
+      "description": "สร้างอินโฟกราฟิก 5 ขั้นตอน Design Thinking แบบการ์ตูน",
+      "contentType": "infographic_education",
+      "aspectRatio": "16:9",
+      "resolution": "2k",
+      "style": "cartoon_friendly",
+      "model": "google-nano-banana-pro",
+      "outputFormat": "png",
+      "textLanguage": "th",
+      "useGoogleSearch": false,
+      "colorScheme": "pastel_soft",
+      "numImages": 1
+    },
+    {
+      "description": "Thailand internet usage statistics by age group infographic with latest data",
+      "contentType": "chart_bar",
+      "aspectRatio": "16:9",
+      "resolution": "4k",
+      "style": "flat_corporate",
+      "model": "google-nano-banana-pro",
+      "outputFormat": "png",
+      "textLanguage": "both",
+      "useGoogleSearch": true,
+      "searchQuery": "Thailand internet users by age group percentage 2026",
+      "colorScheme": "teal_modern",
+      "numImages": 1
+    }
+  ],
+  "additionalProperties": false
+}

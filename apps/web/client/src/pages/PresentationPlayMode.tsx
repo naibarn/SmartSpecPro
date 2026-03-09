@@ -195,6 +195,11 @@ export default function PresentationPlayMode() {
   const audioRef = useRef<AudioTrackPlayer | null>(null);
   const lastIndexRef = useRef(0);
   const transitionFrameRef = useRef<number | null>(null);
+  const progressFrameRef = useRef<number | null>(null);
+  const slideStartedAtRef = useRef<number | null>(null);
+  const slideElapsedRef = useRef(0);
+  const timedSlideIndexRef = useRef<number | null>(null);
+  const [slideElapsedMs, setSlideElapsedMs] = useState(0);
 
   // -------------------------------------------------------------------------
   // Control bar auto-hide
@@ -273,14 +278,101 @@ export default function PresentationPlayMode() {
         window.cancelAnimationFrame(transitionFrameRef.current);
         transitionFrameRef.current = null;
       }
+      if (progressFrameRef.current != null) {
+        window.cancelAnimationFrame(progressFrameRef.current);
+        progressFrameRef.current = null;
+      }
       engineRef.current?.destroy();
       audioRef.current?.destroy();
       engineRef.current = null;
       audioRef.current = null;
       setIndexTransitioning(false);
+      slideStartedAtRef.current = null;
+      slideElapsedRef.current = 0;
+      setSlideElapsedMs(0);
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     };
   }, [playDeck, playbackSlides, resetHideTimer]);
+
+  useEffect(() => {
+    const activeSlide = playbackSlides[currentIndex];
+    const slideIndexChanged = timedSlideIndexRef.current !== currentIndex;
+    timedSlideIndexRef.current = currentIndex;
+
+    if (slideIndexChanged) {
+      slideStartedAtRef.current = null;
+      slideElapsedRef.current = 0;
+      setSlideElapsedMs(0);
+    }
+
+    if (!activeSlide) {
+      if (progressFrameRef.current != null) {
+        window.cancelAnimationFrame(progressFrameRef.current);
+        progressFrameRef.current = null;
+      }
+      slideStartedAtRef.current = null;
+      slideElapsedRef.current = 0;
+      setSlideElapsedMs(0);
+      return;
+    }
+
+    const durationMs = Math.max(1, Number(activeSlide.durationMs ?? 3000));
+
+    if (progressFrameRef.current != null) {
+      window.cancelAnimationFrame(progressFrameRef.current);
+      progressFrameRef.current = null;
+    }
+
+    if (playbackState === "SLIDE_TRANSITIONING" || playbackState === "ENDED") {
+      slideStartedAtRef.current = null;
+      slideElapsedRef.current = durationMs;
+      setSlideElapsedMs(durationMs);
+      return;
+    }
+
+    if (playbackState === "PAUSED") {
+      if (slideStartedAtRef.current != null) {
+        const elapsed = Math.max(0, Math.min(window.performance.now() - slideStartedAtRef.current, durationMs));
+        slideElapsedRef.current = elapsed;
+        setSlideElapsedMs(elapsed);
+      }
+      slideStartedAtRef.current = null;
+      return;
+    }
+
+    if (playbackState !== "PLAYING") {
+      slideStartedAtRef.current = null;
+      if (slideIndexChanged || playbackState === "IDLE") {
+        slideElapsedRef.current = 0;
+        setSlideElapsedMs(0);
+      }
+      return;
+    }
+
+    slideStartedAtRef.current = window.performance.now() - slideElapsedRef.current;
+
+    const tick = (now: number) => {
+      if (slideStartedAtRef.current == null) {
+        return;
+      }
+      const elapsed = Math.max(0, Math.min(now - slideStartedAtRef.current, durationMs));
+      slideElapsedRef.current = elapsed;
+      setSlideElapsedMs(elapsed);
+      if (elapsed >= durationMs) {
+        progressFrameRef.current = null;
+        return;
+      }
+      progressFrameRef.current = window.requestAnimationFrame(tick);
+    };
+
+    progressFrameRef.current = window.requestAnimationFrame(tick);
+    return () => {
+      if (progressFrameRef.current != null) {
+        window.cancelAnimationFrame(progressFrameRef.current);
+        progressFrameRef.current = null;
+      }
+    };
+  }, [currentIndex, playbackSlides, playbackState]);
 
   // -------------------------------------------------------------------------
   // Keyboard shortcuts
@@ -395,6 +487,10 @@ export default function PresentationPlayMode() {
     normalizedSlideContent.transition ?? (currentSlide as any)?.transition ?? "fade",
   );
   const isPlaying = playbackState === "PLAYING";
+  const mediaMotionTiming = {
+    elapsedMs: slideElapsedMs,
+    slideDurationMs: Number((currentSlide as any)?.durationMs ?? 3000),
+  };
   const transitionPhase: "steady" | "exit" | "enter" = indexTransitioning
     ? "enter"
     : playbackState === "SLIDE_TRANSITIONING"
@@ -445,6 +541,7 @@ export default function PresentationPlayMode() {
             showElementFrames={false}
             autoPlayVideos={true}
             showVideoPlaybackToggle={false}
+            mediaMotionTiming={mediaMotionTiming}
             showTransformDock={false}
             suppressTransformHandles={true}
             onSelectElement={() => {}}

@@ -38,12 +38,6 @@ Before writing the plan, these files will be in `{planning_dir}`:
   - `expand schema` -> `migrate/backfill` -> `validate` -> `contract old path`.
 - Include rollback/restore conditions and exact verification points.
 - Require automated migration/backfill steps where data movement is needed.
-- When backup is required, specify:
-  - backup location
-  - backup filename pattern
-  - backup command/export method
-  - restore command/steps
-  - validation after restore
 
 3. **Backward Compatibility Plan**
 - Explicitly preserve existing behavior unless intentionally changed.
@@ -55,21 +49,6 @@ Before writing the plan, these files will be in `{planning_dir}`:
 - Add post-migration reconciliation checks and mismatch handling.
 
 If no data-risk exists, state why backup/restore is not required for this scope.
-
-### Backup Naming Guidance
-
-When the plan includes a backup step, use timestamped names like:
-
-```text
-backup-{YYYYMMDD-HHMMSSZ}-{scope}-{purpose}.{ext}
-```
-
-Examples:
-- `backup-20260307-101530Z-users-pre-contract.sql`
-- `backup-20260307-101530Z-media-json-pre-rewrite.json`
-- `backup-20260307-101530Z-config-tree-pre-refactor.tar.gz`
-
-The plan should include enough detail that an implementer can create the backup without inventing missing conventions.
 
 ---
 

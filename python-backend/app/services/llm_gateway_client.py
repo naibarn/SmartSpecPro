@@ -175,6 +175,7 @@ class LLMGatewayClient:
         response_format: dict[str, Any] | None = None,
         temperature: float | None = None,
         trace_id: str | None = None,
+        timeout: int | None = None,
     ) -> dict[str, Any]:
         """POST /v1/chat/completions via internal HTTP."""
         headers = self._build_headers(user_id, tenant_id, trace_id)
@@ -186,7 +187,8 @@ class LLMGatewayClient:
             body["temperature"] = temperature
 
         response = await self._request_with_retry(
-            "POST", "/v1/chat/completions", json_body=body, headers=headers
+            "POST", "/v1/chat/completions", json_body=body, headers=headers,
+            timeout=timeout,
         )
         return response.json()
 

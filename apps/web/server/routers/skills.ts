@@ -60,6 +60,18 @@ import {
   getRecommendedExecutionModeForSkillCategory,
   isExecutionModeCompatibleWithSkillCategory,
 } from "@shared/skills/skillCategoryMetadata";
+import {
+  applyIscProposalDiff,
+  launchSkillStudioTask,
+  listIscProposalsWithOwners,
+  readIscProposalContent,
+} from "../services/skillStudioService";
+import {
+  hasRelativeSkillManifest,
+  mirrorExistingSkillManifest,
+  resolveSkillManifestPath,
+  writeSkillManifestFiles,
+} from "../services/skillFiles";
 
 // Skills directory path
 const SKILLS_DIR = path.resolve(process.cwd(), "skills");
@@ -1825,6 +1837,7 @@ export const skillsRouter = router({
         creditMultiplier: Number(skill.creditMultiplier) || 1,
         tags: skill.tags || [],
         triggerPatterns: skill.triggerPatterns || [],
+        hasLocalFolder: hasRelativeSkillManifest(path.join("skills", skill.slug)),
       }));
     }),
 
@@ -2564,6 +2577,7 @@ export const skillsRouter = router({
     const folders: Array<{
       slug: string;
       hasSkillMd: boolean;
+      manifestFileName?: string;
       hasPython: boolean;
       hasJs: boolean;
       metadata?: SkillMetadata;
@@ -2586,16 +2600,16 @@ export const skillsRouter = router({
 
       const slug = entry.name;
       const skillDir = path.join(SKILLS_DIR, slug);
-      const skillMdPath = path.join(skillDir, "skill.md");
+      const skillMdPath = resolveSkillManifestPath(skillDir);
       const pythonDir = path.join(skillDir, "python");
       const jsDir = path.join(skillDir, "js");
 
-      const hasSkillMd = fs.existsSync(skillMdPath);
+      const hasSkillMd = !!skillMdPath;
       const hasPython = fs.existsSync(pythonDir);
       const hasJs = fs.existsSync(jsDir);
 
       let metadata: SkillMetadata | undefined;
-      if (hasSkillMd) {
+      if (skillMdPath) {
         const content = fs.readFileSync(skillMdPath, "utf-8");
         const parsed = parseSkillFile(content);
         metadata = parsed.metadata;
@@ -2604,6 +2618,7 @@ export const skillsRouter = router({
       folders.push({
         slug,
         hasSkillMd,
+        manifestFileName: skillMdPath ? path.basename(skillMdPath) : undefined,
         hasPython,
         hasJs,
         metadata,
@@ -2624,10 +2639,7 @@ export const skillsRouter = router({
       if (!dbInstance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
 
       const skillDir = path.join(SKILLS_DIR, input.slug);
-      const skillMdPath = [
-        path.join(skillDir, "skill.md"),
-        path.join(skillDir, "SKILL.md"),
-      ].find(p => fs.existsSync(p)) || path.join(skillDir, "skill.md");
+      const skillMdPath = resolveSkillManifestPath(skillDir) || path.join(skillDir, "skill.md");
 
       if (!fs.existsSync(skillDir)) {
         throw new TRPCError({
@@ -2659,6 +2671,7 @@ export const skillsRouter = router({
         const parsed = parseSkillFile(content);
         metadata = { ...metadata, ...parsed.metadata };
         skillContent = parsed.content;
+        mirrorExistingSkillManifest(skillDir);
       }
 
       // Insert into database
@@ -2699,7 +2712,7 @@ export const skillsRouter = router({
   /**
    * Import skill from ZIP file (admin only)
    * Supports both:
-   * 1. Claude/OpenCode skills format (has skill.md)
+   * 1. Shared skill bundle format (Codex/Claude compatible manifest)
    * 2. SystemPrompt+KnowledgeBase format (Custom GPT)
    */
   importZip: adminProcedure
@@ -2759,16 +2772,16 @@ export const skillsRouter = router({
       let systemPrompt = "";
       let knowledgebase = "";
       const knowledgeFiles: string[] = [];
-      let importFormat: "claude" | "custom-gpt" = "custom-gpt";
+      let importFormat: "shared-skill" | "custom-gpt" = "custom-gpt";
 
       if (isClaudeFormat && skillMdEntry) {
-        // Claude/OpenCode skills format
-        importFormat = "claude";
+        // Shared skill bundle format
+        importFormat = "shared-skill";
         const skillMdContent = skillMdEntry.getData().toString("utf-8");
         const parsed = parseSkillFile(skillMdContent);
         metadata = { ...metadata, ...parsed.metadata };
         skillContent = skillMdContent;
-        // Body of skill.md IS the system prompt for Claude-format skills
+        // Body of the manifest markdown is the default LLM system prompt
         if (parsed.content) {
           systemPrompt = parsed.content;
         }
@@ -2835,29 +2848,30 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
         fs.mkdirSync(skillDir, { recursive: true });
       }
 
-      // Write skill.md if not claude format (claude format already has it in zip)
+      // Write manifest aliases if the ZIP did not already include one
       if (!isClaudeFormat) {
-        fs.writeFileSync(path.join(skillDir, "skill.md"), skillContent);
+        writeSkillManifestFiles(skillDir, skillContent);
       }
 
       // Extract the ZIP to the skill folder
       if (isClaudeFormat) {
-        // For Claude format, extract to root of skill folder
+        // For shared skill bundles, extract to root of skill folder
         zip.extractAllTo(skillDir, true);
+        mirrorExistingSkillManifest(skillDir);
       } else {
         // For Custom GPT format, extract to imported subfolder
         zip.extractAllTo(path.join(skillDir, "imported"), true);
-        fs.writeFileSync(path.join(skillDir, "skill.md"), skillContent);
+        writeSkillManifestFiles(skillDir, skillContent);
       }
 
       // Determine values based on format
       const skillName = metadata.name || input.slug.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
       const skillDescription = metadata.description || (isClaudeFormat
-        ? `Imported from Claude/OpenCode skill (${input.fileName})`
+        ? `Imported from shared skill bundle (${input.fileName})`
         : `Imported from Custom GPT (${input.fileName})`);
       const skillCategory = mapCategoryToEnum(metadata.category) as any || "other";
       const skillIcon = metadata.icon || (isClaudeFormat ? "sparkles" : "bot");
-      const skillTags = metadata.tags || (isClaudeFormat ? ["claude", "imported"] : ["custom-gpt", "imported"]);
+      const skillTags = metadata.tags || (isClaudeFormat ? ["shared-skill", "imported"] : ["custom-gpt", "imported"]);
 
       // Insert into database
       const [newSkill] = await dbInstance
@@ -2995,53 +3009,29 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
    *   apps/web/skills/intelligence-skill-creator/runs/proposals/<skill_name>/*.diff
    */
   listIscProposals: adminProcedure
-    .query(async () => {
-      const fsp = await import("fs/promises");
-      const pathLib = await import("path");
+    .query(async () => ({ proposals: await listIscProposalsWithOwners() })),
 
-      const proposalsRoot = pathLib.default.resolve(
-        process.cwd(),
-        "skills",
-        "intelligence-skill-creator",
-        "runs",
-        "proposals"
-      );
-
-      let skillDirs: string[] = [];
+  /**
+   * Preview an ISC proposal diff.
+   */
+  getIscProposalContent: adminProcedure
+    .input(z.object({
+      skillName: z.string().min(1).max(100).regex(/^[\w-]+$/),
+      diffFile: z.string().min(1).max(200).regex(/^[\w.\-]+\.diff$/),
+    }))
+    .query(async ({ input }) => {
       try {
-        skillDirs = await fsp.default.readdir(proposalsRoot);
-      } catch {
-        return { proposals: [] };
+        return {
+          skillName: input.skillName,
+          diffFile: input.diffFile,
+          content: await readIscProposalContent(input.skillName, input.diffFile),
+        };
+      } catch (error) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: error instanceof Error ? error.message : "Proposal not found",
+        });
       }
-
-      const proposals: Array<{
-        skillName: string;
-        diffFile: string;
-        diffRelPath: string;
-        createdAt: string;
-        round: number;
-      }> = [];
-
-      for (const skillName of skillDirs) {
-        const skillDir = pathLib.default.join(proposalsRoot, skillName);
-        const stat = await fsp.default.stat(skillDir).catch(() => null);
-        if (!stat?.isDirectory()) continue;
-
-        const files = (await fsp.default.readdir(skillDir)).filter((f) => f.endsWith(".diff"));
-        for (const file of files) {
-          // filename: 20260217T123000_r1.diff → parse timestamp + round
-          const m = file.match(/^(\d{8}T?\d{6})_r(\d+)\.diff$/);
-          proposals.push({
-            skillName,
-            diffFile: file,
-            diffRelPath: pathLib.default.join("skills", "intelligence-skill-creator", "runs", "proposals", skillName, file),
-            createdAt: m ? m[1] : file,
-            round: m ? parseInt(m[2], 10) : 0,
-          });
-        }
-      }
-
-      return { proposals: proposals.sort((a, b) => b.createdAt.localeCompare(a.createdAt)) };
     }),
 
   /**
@@ -3055,47 +3045,65 @@ ${knowledgeFiles.map((f) => `- ${f}`).join("\n") || "(No knowledge files found)"
       diffFile: z.string().min(1).max(200).regex(/^[\w.\-]+\.diff$/),
     }))
     .mutation(async ({ input }) => {
-      const pathLib = await import("path");
-      const fsp = await import("fs/promises");
-      const { spawnSync } = await import("child_process");
-
-      const iscRoot = pathLib.default.resolve(
-        process.cwd(),
-        "skills",
-        "intelligence-skill-creator"
-      );
-      const diffPath = pathLib.default.join(
-        iscRoot,
-        "runs",
-        "proposals",
-        input.skillName,
-        input.diffFile
-      );
-
-      // Verify diff file exists and is within expected directory (path traversal guard)
-      const resolvedDiff = pathLib.default.resolve(diffPath);
-      const expectedBase = pathLib.default.resolve(iscRoot, "runs", "proposals");
-      if (!resolvedDiff.startsWith(expectedBase)) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Invalid diff path" });
+      try {
+        const result = await applyIscProposalDiff(input.skillName, input.diffFile);
+        return { success: true, output: result.output };
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Apply failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        });
       }
+    }),
 
-      const diffContent = await fsp.default.readFile(resolvedDiff, "utf8").catch(() => null);
-      if (!diffContent) {
-        throw new TRPCError({ code: "NOT_FOUND", message: `Diff file not found: ${input.diffFile}` });
+  /**
+   * Launch the shared Skill Studio flow backed by Intelligence Skill Creator.
+   */
+  launchStudioTask: protectedProcedure
+    .input(z.object({
+      mode: z.enum(["create", "improve"]),
+      brief: z.string().min(10).max(20000),
+      targetSkillId: z.number().int().positive().optional(),
+      newSkillSlug: z.string().min(2).max(100).regex(/^[a-z0-9_-]+$/).optional(),
+      skillLanguage: z.enum(["auto", "python", "javascript"]).optional(),
+      complexity: z.enum(["simple", "moderate", "complex"]).optional(),
+      rounds: z.number().int().min(1).max(10).optional(),
+      allowTestExpansion: z.boolean().optional(),
+      askUser: z.boolean().optional(),
+      desiredVisibility: z.enum(["private", "pending_approval", "public"]).optional(),
+      autoApplyProposal: z.boolean().optional(),
+      specText: z.string().max(20000).optional(),
+      specFileName: z.string().max(255).optional(),
+      specFileContent: z.string().max(30000).optional(),
+      cloneFromSkillId: z.number().int().positive().optional(),
+      referenceSkillIds: z.array(z.number().int().positive()).max(4).optional(),
+      zipFileName: z.string().max(255).optional(),
+      zipBase64: z.string().max(12_000_000).optional(),
+      llmGatewayMode: z.enum(["system", "custom"]).optional(),
+      llmModelSearch: z.string().max(200).optional(),
+      llmBaseUrl: z.string().max(500).optional(),
+      llmModel: z.string().max(200).optional(),
+      llmApiKey: z.string().max(500).optional(),
+      llmTemperature: z.number().min(0).max(2).optional(),
+      llmTimeoutS: z.number().int().min(30).max(600).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await launchSkillStudioTask(
+          {
+            userId: ctx.user.id,
+            userRole: ctx.user.role,
+            userToken: ctx.userToken ?? null,
+            publicUrl: ctx.publicUrl ?? null,
+          },
+          input,
+        );
+      } catch (error) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: error instanceof Error ? error.message : "Failed to launch Skill Studio task",
+        });
       }
-
-      const result = spawnSync("patch", ["-N", "-r", "-", "-p0"], {
-        input: diffContent,
-        encoding: "utf8",
-        cwd: iscRoot,
-      });
-
-      if (result.status !== 0) {
-        const msg = (result.stderr || result.stdout || "patch failed").trim();
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Apply failed: ${msg}` });
-      }
-
-      return { success: true, output: (result.stdout || "").trim() };
     }),
 
   /**

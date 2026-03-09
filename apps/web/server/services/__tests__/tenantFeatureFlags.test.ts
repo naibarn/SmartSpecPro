@@ -25,6 +25,8 @@ describe("validateFeatureFlags", () => {
       personaSystem: true,
       crossAgency: false,
       channelRouter: true,
+      automationCopilot: true,
+      responsesApi: false,
     };
     const result = validateFeatureFlags(allFlags);
     expect(result).toEqual(allFlags);

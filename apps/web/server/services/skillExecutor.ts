@@ -289,6 +289,8 @@ export interface SkillExecutionResult {
   jobId?: string;
   /** Structured side-effect from a python skill (e.g. create_skill) */
   _action?: SkillCreateAction;
+  /** Extra machine-readable payload returned by the skill */
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -943,6 +945,15 @@ async function executePythonSkill(
           type: "text",
           message: parsed.output ?? stdout.trim(),
           ...(parsed._action ? { _action: parsed._action as SkillCreateAction } : {}),
+          ...((parsed.skill_path || parsed.skill_name || parsed.saved_proposals)
+            ? {
+                metadata: {
+                  ...(parsed.skill_path ? { skillPath: parsed.skill_path } : {}),
+                  ...(parsed.skill_name ? { skillName: parsed.skill_name } : {}),
+                  ...(parsed.saved_proposals ? { savedProposals: parsed.saved_proposals } : {}),
+                },
+              }
+            : {}),
         });
       } catch {
         // Non-JSON stdout — return raw output

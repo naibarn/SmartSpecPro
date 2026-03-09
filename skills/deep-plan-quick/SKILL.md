@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires git repository recommended; works with or without spec.md
 ---
 
-# Deep Plan Quick (Codex)
+# Deep Plan Quick
 
 Prompt-first, file-based planning for tasks that are too fuzzy to implement immediately but too small for the full deep-plan pipeline.
 

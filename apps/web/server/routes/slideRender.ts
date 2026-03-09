@@ -19,6 +19,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "../db";
 import { presentationSlides } from "../../drizzle/schema";
 import { verifyBearerToken } from "../_core/tokens";
+import { PRESENTATION_MEDIA_MOTION_RUNTIME_CONFIG } from "@shared/presentation/mediaMotion";
 
 const LOOPBACK_ADDRESSES = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
 
@@ -104,6 +105,11 @@ export function createSlideRenderRouter(): Router {
       .replace(/&/g, "\\u0026");
 
     // --- HTML response with inlined slide data and __slideReady sentinel ---
+    const mediaMotionRuntimeConfigJson = JSON.stringify(PRESENTATION_MEDIA_MOTION_RUNTIME_CONFIG)
+      .replace(/</g, "\\u003c")
+      .replace(/>/g, "\\u003e")
+      .replace(/&/g, "\\u0026");
+
     const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -151,6 +157,8 @@ export function createSlideRenderRouter(): Router {
 <script>
 window.__slideReady = false;
 ;(function() {
+  var MEDIA_MOTION_RUNTIME = ${mediaMotionRuntimeConfigJson};
+
   function asNumber(v, fallback) {
     var n = Number(v);
     return Number.isFinite(n) ? n : fallback;
@@ -174,6 +182,137 @@ window.__slideReady = false;
   function isLikelySvgMarkup(value) {
     var normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
     return normalized.indexOf("<svg") >= 0 && normalized.indexOf("</svg>") >= 0;
+  }
+
+  function normalizeMediaMotionSegment(motion) {
+    var preset = motion && typeof motion.preset === "string"
+      && MEDIA_MOTION_RUNTIME.validPresets.indexOf(motion.preset) >= 0
+      ? motion.preset
+      : "none";
+    var easing = motion && typeof motion.easing === "string"
+      && MEDIA_MOTION_RUNTIME.validEasings.indexOf(motion.easing) >= 0
+      ? motion.easing
+      : MEDIA_MOTION_RUNTIME.defaultEasing;
+    var timingMode = motion && typeof motion.timingMode === "string"
+      && MEDIA_MOTION_RUNTIME.validTimingModes.indexOf(motion.timingMode) >= 0
+      ? motion.timingMode
+      : MEDIA_MOTION_RUNTIME.defaultTimingMode;
+    return {
+      preset: preset,
+      intensity: clamp(asNumber(motion && motion.intensity, MEDIA_MOTION_RUNTIME.defaultIntensity), 0, 1),
+      easing: easing,
+      timingMode: timingMode,
+      durationMs: Math.round(clamp(
+        asNumber(motion && motion.durationMs, MEDIA_MOTION_RUNTIME.defaultDurationMs),
+        250,
+        120000
+      )),
+    };
+  }
+
+  function normalizeMediaMotion(motion) {
+    var hasSegments = motion && typeof motion === "object"
+      && (Object.prototype.hasOwnProperty.call(motion, "intro") || Object.prototype.hasOwnProperty.call(motion, "outro"));
+    return {
+      intro: hasSegments ? normalizeMediaMotionSegment(motion && motion.intro) : normalizeMediaMotionSegment(motion),
+      outro: hasSegments ? normalizeMediaMotionSegment(motion && motion.outro) : normalizeMediaMotionSegment(null),
+    };
+  }
+
+  function computeMediaMotionFrame(segment, progress) {
+    var normalized = normalizeMediaMotionSegment(segment);
+    var clampedProgress = clamp(asNumber(progress, 0), 0, 1);
+    var easedProgress = normalized.easing === "linear"
+      ? clampedProgress
+      : 0.5 - (Math.cos(Math.PI * clampedProgress) / 2);
+    var panTravelPercent = MEDIA_MOTION_RUNTIME.maxPanTravelPercent * normalized.intensity;
+    var zoomDelta = MEDIA_MOTION_RUNTIME.maxZoomDelta * normalized.intensity;
+    var panVector = MEDIA_MOTION_RUNTIME.panVectors[normalized.preset] || null;
+    if (panVector) {
+      var vectorMagnitude = Math.min(Math.hypot(panVector.x, panVector.y), Math.SQRT2);
+      var overscanDelta = MEDIA_MOTION_RUNTIME.maxPanOverscanDelta * normalized.intensity * vectorMagnitude;
+      return {
+        scaleMultiplier: 1 + overscanDelta,
+        translateXPercent: panVector.x * panTravelPercent * easedProgress,
+        translateYPercent: panVector.y * panTravelPercent * easedProgress,
+      };
+    }
+    switch (normalized.preset) {
+      case "zoom-in":
+        return { scaleMultiplier: 1 + (zoomDelta * easedProgress), translateXPercent: 0, translateYPercent: 0 };
+      case "zoom-out":
+        return { scaleMultiplier: 1 + (zoomDelta * (1 - easedProgress)), translateXPercent: 0, translateYPercent: 0 };
+      case "none":
+      default:
+        return { scaleMultiplier: 1, translateXPercent: 0, translateYPercent: 0 };
+    }
+  }
+
+  function computeMediaMotionPlaybackProgress(elapsedMs, durationMs) {
+    var safeElapsedMs = Math.max(0, asNumber(elapsedMs, 0));
+    var safeDurationMs = clamp(
+      asNumber(durationMs, MEDIA_MOTION_RUNTIME.maxAnimationWindowMs),
+      250,
+      120000
+    );
+    var effectiveDurationMs = Math.max(
+      1,
+      Math.min(safeDurationMs, MEDIA_MOTION_RUNTIME.maxAnimationWindowMs)
+    );
+    return clamp(safeElapsedMs / effectiveDurationMs, 0, 1);
+  }
+
+  function computeMediaMotionPhaseProgress(segment, phase, elapsedMs, durationMs) {
+    var safeElapsedMs = Math.max(0, asNumber(elapsedMs, 0));
+    var safeDurationMs = clamp(
+      asNumber(durationMs, MEDIA_MOTION_RUNTIME.defaultDurationMs),
+      250,
+      120000
+    );
+    if (segment.timingMode === "until-slide-end") {
+      return clamp(safeElapsedMs / safeDurationMs, 0, 1);
+    }
+    var effectiveDurationMs = Math.max(250, Math.min(asNumber(segment.durationMs, MEDIA_MOTION_RUNTIME.defaultDurationMs), safeDurationMs));
+    if (phase === "intro") {
+      return clamp(safeElapsedMs / effectiveDurationMs, 0, 1);
+    }
+    var startMs = Math.max(0, safeDurationMs - effectiveDurationMs);
+    return clamp((safeElapsedMs - startMs) / effectiveDurationMs, 0, 1);
+  }
+
+  function computeMediaMotionTimelineFrame(motion, elapsedMs, durationMs) {
+    var normalized = normalizeMediaMotion(motion);
+    var introFrame = computeMediaMotionFrame(
+      normalized.intro,
+      computeMediaMotionPhaseProgress(normalized.intro, "intro", elapsedMs, durationMs)
+    );
+    var outroFrame = computeMediaMotionFrame(
+      normalized.outro,
+      computeMediaMotionPhaseProgress(normalized.outro, "outro", elapsedMs, durationMs)
+    );
+    return {
+      scaleMultiplier: introFrame.scaleMultiplier * outroFrame.scaleMultiplier,
+      translateXPercent: introFrame.translateXPercent + outroFrame.translateXPercent,
+      translateYPercent: introFrame.translateYPercent + outroFrame.translateYPercent,
+    };
+  }
+
+  function applyMediaMotion(node, baseZoom, posX, posY, motion, elapsedMs, durationMs) {
+    var frame = computeMediaMotionTimelineFrame(motion, elapsedMs, durationMs);
+    node.style.transform = "translate(" + frame.translateXPercent + "%, " + frame.translateYPercent + "%) scale(" + (baseZoom * frame.scaleMultiplier) + ")";
+    node.style.transformOrigin = posX + "% " + posY + "%";
+  }
+
+  function registerMediaMotionNode(node, baseZoom, posX, posY, motion) {
+    if (!node) return;
+    motionNodes.push({
+      node: node,
+      baseZoom: baseZoom,
+      posX: posX,
+      posY: posY,
+      motion: motion || null,
+    });
+    applyMediaMotion(node, baseZoom, posX, posY, motion, 0, slideDurationMs);
   }
 
   function createSvgPlaceholder() {
@@ -222,6 +361,7 @@ window.__slideReady = false;
   }
   var query = new URLSearchParams(window.location.search || "");
   var renderMode = query.get("mode") === "record" ? "record" : "screenshot";
+  var slideDurationMs = clamp(asNumber(slide && slide.durationMs, 3000), 250, 120000);
   var READY_GATE_POLL_INTERVAL_MS = 200;
   var READY_GATE_SOFT_WAIT_MS = 5000;
   var READY_GATE_RETRY_DELAYS_MS = [750, 750];
@@ -240,6 +380,7 @@ window.__slideReady = false;
   var expectedTextNodeCount = 0;
   var readyGateChecker = null;
   var readyGateHardTimeout = null;
+  var motionNodes = [];
 
   window.__slideReadyState = {
     status: "pending",
@@ -350,6 +491,9 @@ window.__slideReady = false;
     var wrapper = document.createElement("div");
     applyBaseStyle(wrapper, el);
     wrapper.style.overflow = "hidden";
+    var posX = clamp(asNumber(el.imagePositionX, 50), 0, 100);
+    var posY = clamp(asNumber(el.imagePositionY, 50), 0, 100);
+    var zoom = clamp(asNumber(el.imageZoom, 1), 0.5, 3);
 
     if (typeof el.svgContent === "string" && el.svgContent.trim()) {
       if (!isLikelySvgMarkup(el.svgContent)) {
@@ -358,9 +502,11 @@ window.__slideReady = false;
       }
       var color = (typeof el.svgColor === "string" && el.svgColor.trim()) ? el.svgColor : "#ffffff";
       var svgNode = document.createElement("div");
+      svgNode.setAttribute("data-slide-media-id", typeof el.id === "string" ? el.id : "");
       svgNode.style.width = "100%";
       svgNode.style.height = "100%";
       svgNode.style.color = color;
+      registerMediaMotionNode(svgNode, zoom, posX, posY, el.mediaMotion);
       svgNode.innerHTML = el.svgContent.replace(/currentColor/g, color);
       wrapper.appendChild(svgNode);
       return wrapper;
@@ -372,20 +518,15 @@ window.__slideReady = false;
     }
 
     var img = document.createElement("img");
+    img.setAttribute("data-slide-media-id", typeof el.id === "string" ? el.id : "");
     img.alt = typeof el.alt === "string" ? el.alt : "";
     img.style.width = "100%";
     img.style.height = "100%";
     img.style.display = "block";
     // Keep default behavior aligned with editor canvas renderer.
     img.style.objectFit = typeof el.imageFit === "string" ? el.imageFit : "contain";
-    var posX = clamp(asNumber(el.imagePositionX, 50), 0, 100);
-    var posY = clamp(asNumber(el.imagePositionY, 50), 0, 100);
     img.style.objectPosition = posX + "% " + posY + "%";
-    var zoom = clamp(asNumber(el.imageZoom, 1), 0.5, 3);
-    if (zoom !== 1) {
-      img.style.transform = "scale(" + zoom + ")";
-      img.style.transformOrigin = posX + "% " + posY + "%";
-    }
+    registerMediaMotionNode(img, zoom, posX, posY, el.mediaMotion);
 
     img.src = src;
     if (/\.svg(?:$|[?#])/i.test(src)) {
@@ -420,6 +561,7 @@ window.__slideReady = false;
           imagePositionX: posX,
           imagePositionY: posY,
           imageZoom: zoom,
+          mediaMotion: el.mediaMotion,
         };
         return renderImage(asImage);
       }
@@ -435,6 +577,7 @@ window.__slideReady = false;
     wrapper.style.background = "#000";
 
     var video = document.createElement("video");
+    video.setAttribute("data-slide-media-id", typeof el.id === "string" ? el.id : "");
     video.src = src;
     if (poster) {
       video.poster = poster;
@@ -444,10 +587,7 @@ window.__slideReady = false;
     video.style.display = "block";
     video.style.objectFit = fit;
     video.style.objectPosition = posX + "% " + posY + "%";
-    if (zoom !== 1) {
-      video.style.transform = "scale(" + zoom + ")";
-      video.style.transformOrigin = posX + "% " + posY + "%";
-    }
+    registerMediaMotionNode(video, zoom, posX, posY, el.mediaMotion);
     video.muted = true;
     video.loop = el.loop === true;
     video.autoplay = true;
@@ -514,6 +654,7 @@ window.__slideReady = false;
 
   function renderElements() {
     canvas.innerHTML = "";
+    motionNodes = [];
     var elements = Array.isArray(slide && slide.elements) ? slide.elements : [];
     expectedTextNodeCount = 0;
     for (var i = 0; i < elements.length; i += 1) {
@@ -529,6 +670,27 @@ window.__slideReady = false;
       else if (el.type === "line") node = renderLine(el);
       if (node) canvas.appendChild(node);
     }
+  }
+
+  function startMediaMotionLoopIfNeeded() {
+    if (renderMode !== "record" || !motionNodes.length) {
+      return;
+    }
+    var startedAt = null;
+    var tick = function(timestamp) {
+      if (startedAt === null) {
+        startedAt = timestamp;
+      }
+      var elapsedMs = timestamp - startedAt;
+      for (var i = 0; i < motionNodes.length; i += 1) {
+        var item = motionNodes[i];
+        applyMediaMotion(item.node, item.baseZoom, item.posX, item.posY, item.motion, elapsedMs, slideDurationMs);
+      }
+      if (elapsedMs < slideDurationMs) {
+        requestAnimationFrame(tick);
+      }
+    };
+    requestAnimationFrame(tick);
   }
 
   function elapsedReadyMs() {
@@ -814,6 +976,7 @@ window.__slideReady = false;
   try {
     renderBackground();
     renderElements();
+    startMediaMotionLoopIfNeeded();
     fitCanvasToViewport();
     window.addEventListener("resize", fitCanvasToViewport);
   } catch (_err) {

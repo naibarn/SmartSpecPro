@@ -159,9 +159,9 @@ Use the `subagent_type` that matches the DOMAIN (see domain table above).
 
 ---
 
-### Mode: `codex`
+### Mode: `standard`
 
-If this Codex environment exposes a general-purpose sub-agent tool, do not rely on `subagent_type` specialization. Prepend only the condensed identity + constraints from the agent definition before the Task Packet. If no sub-agent tool is available, use the inline fallback described below:
+If this environment exposes a general-purpose sub-agent tool, do not rely on `subagent_type` specialization. Prepend only the condensed identity + constraints from the agent definition before the Task Packet. If no sub-agent tool is available, use the inline fallback described below:
 
 ```
 Task(
@@ -179,7 +179,7 @@ Task(
 )
 ```
 
-**Scope cap warning:** Codex agents have a smaller context window. If the injected identity + packet exceeds 8,000 tokens, split the packet into two dispatches (reduce FILES and CONSTRAINTS per dispatch). If the environment does not expose a sub-agent tool, run the role inline instead of forcing a fake Task call.
+**Scope cap warning:** Standard mode agents have a smaller context window. If the injected identity + packet exceeds 8,000 tokens, split the packet into two dispatches (reduce FILES and CONSTRAINTS per dispatch). If the environment does not expose a sub-agent tool, run the role inline instead of forcing a fake Task call.
 
 ---
 
@@ -412,7 +412,7 @@ QUALITY GATE:
 
 ## Skill Registration Note
 
-After section 06 creates the orchestra skill artifacts, verify whether `/orchestra` is discoverable in the active platform's skill system. In Claude Code this may rely on sibling skill auto-discovery; in Codex/open-code environments verify that the installed skill pack exposes `/orchestra` without additional manual registration.
+After section 06 creates the orchestra skill artifacts, verify whether `/orchestra` is discoverable in the active platform's skill system. In Claude Code this may rely on sibling skill auto-discovery; in standard/open-code environments verify that the installed skill pack exposes `/orchestra` without additional manual registration.
 
 If explicit registration is required, add an entry to `.claude/settings.json` analogous to the existing `"deep-plan"` entry. The acceptance criterion: invoking `/orchestra` displays the orchestra banner without a "skill not found" error.
 

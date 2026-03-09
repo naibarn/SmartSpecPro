@@ -72,7 +72,7 @@ export function shouldBlockSaveAttempt(
   nowMs: number,
 ): ConflictBlockReason | null {
   const normalized = normalizeConflictPolicy(state, nowMs);
-  if (normalized.phase === "stale_blocked") {
+  if (saveMode === "autosave" && normalized.phase === "stale_blocked") {
     return "stale_blocked";
   }
 

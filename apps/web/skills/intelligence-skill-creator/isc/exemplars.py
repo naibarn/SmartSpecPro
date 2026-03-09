@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List
 
-from .registry import canonical_skills_root, parse_skill_frontmatter
+from .registry import canonical_skills_root, parse_skill_frontmatter, resolve_skill_manifest_path
 
 
 @dataclass(frozen=True)
@@ -20,9 +20,9 @@ def _tokenize(text: str) -> set[str]:
 
 
 def _build_skill_summary(skill_dir: Path) -> str:
-    skill_md_path = skill_dir / "skill.md"
-    if not skill_md_path.exists():
-        return f"{skill_dir.name}: skill.md missing"
+    skill_md_path = resolve_skill_manifest_path(skill_dir)
+    if skill_md_path is None:
+        return f"{skill_dir.name}: manifest missing"
 
     text = skill_md_path.read_text(encoding="utf-8")
     frontmatter = parse_skill_frontmatter(text)
@@ -53,8 +53,8 @@ def select_relevant_skill_exemplars(
     for skill_dir in canonical_skills_root().iterdir():
         if not skill_dir.is_dir() or skill_dir.name in exclude_skill_names:
             continue
-        skill_md_path = skill_dir / "skill.md"
-        if not skill_md_path.exists():
+        skill_md_path = resolve_skill_manifest_path(skill_dir)
+        if skill_md_path is None:
             continue
         summary = _build_skill_summary(skill_dir)
         summary_tokens = _tokenize(summary)

@@ -1,0 +1,244 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "VEO Video Creator Output Schema",
+  "description": "Output format for Veo 3.1 optimized video prompts. The LLM returns this JSON structure after processing user inputs through the skill prompt.",
+  "oneOf": [
+    { "$ref": "#/definitions/singleSceneOutput" },
+    { "$ref": "#/definitions/storyboardOutput" }
+  ],
+  "definitions": {
+    "characterDescription": {
+      "type": "object",
+      "required": ["name", "description"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Character role name (e.g., Host, Guest, Narrator, Person A)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Visual description: age, build, hairstyle, wardrobe, accessories, distinguishing features"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "sceneBreakdown": {
+      "type": "object",
+      "required": ["shotType", "cameraMovement", "lighting", "mood"],
+      "properties": {
+        "shotType": {
+          "type": "string",
+          "description": "Camera framing used (e.g., medium close-up, two-shot, aerial wide shot)"
+        },
+        "cameraMovement": {
+          "type": "string",
+          "description": "Camera motion applied (e.g., static, dolly in, pan left, tracking)"
+        },
+        "lighting": {
+          "type": "string",
+          "description": "Lighting setup description (e.g., 3-point, golden hour, rim light)"
+        },
+        "depthOfField": {
+          "type": "string",
+          "description": "Focus depth applied (e.g., shallow with soft bokeh, deep focus, rack focus)"
+        },
+        "colorPalette": {
+          "type": "string",
+          "description": "Color grading applied (e.g., warm amber tones, teal and orange, desaturated)"
+        },
+        "mood": {
+          "type": "string",
+          "description": "Emotional tone of the scene (e.g., warm and professional, dramatic, serene)"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "timestampBlock": {
+      "type": "object",
+      "required": ["start", "end", "description"],
+      "properties": {
+        "start": {
+          "type": "string",
+          "pattern": "^\\d{2}:\\d{2}$",
+          "description": "Start time in MM:SS format (e.g., 00:00)"
+        },
+        "end": {
+          "type": "string",
+          "pattern": "^\\d{2}:\\d{2}$",
+          "description": "End time in MM:SS format (e.g., 00:03)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Shot description for this time segment"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "singleSceneOutput": {
+      "type": "object",
+      "required": ["prompt", "duration", "aspectRatio", "resolution", "style"],
+      "properties": {
+        "prompt": {
+          "type": "string",
+          "description": "Complete Veo 3.1 optimized prompt following the formula: [CINEMATOGRAPHY] + [SUBJECT] + [ACTION] + [CONTEXT] + [STYLE & LIGHTING] + [AUDIO]",
+          "minLength": 50
+        },
+        "duration": {
+          "type": "integer",
+          "enum": [4, 6, 8],
+          "description": "Clip duration in seconds. Must be 8 for 1080p/4K/reference images."
+        },
+        "aspectRatio": {
+          "type": "string",
+          "enum": ["16:9", "9:16"],
+          "description": "Video aspect ratio"
+        },
+        "resolution": {
+          "type": "string",
+          "enum": ["720p", "1080p", "4k"],
+          "description": "Output resolution. 720p required for extension mode."
+        },
+        "style": {
+          "type": "string",
+          "enum": ["cinematic", "documentary", "commercial", "music_video", "vlog", "narrative", "film_noir", "anime", "artistic"],
+          "description": "Visual style applied"
+        },
+        "audioDescription": {
+          "type": "string",
+          "description": "Brief summary of audio elements for UI display (e.g., Thai male host speaking, studio ambience)"
+        },
+        "characterDescriptions": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/characterDescription" },
+          "description": "Character details for consistency across clips. Empty array if no characters."
+        },
+        "sceneBreakdown": {
+          "$ref": "#/definitions/sceneBreakdown",
+          "description": "Structured breakdown of cinematography choices made"
+        },
+        "autoCorrections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of auto-corrections applied due to parameter conflicts (e.g., duration forced to 8s for 1080p). Omit if none."
+        },
+        "extensionNotes": {
+          "type": "string",
+          "description": "Notes for extension mode: what carries over, what to maintain. Only present when sceneMode is extension."
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "storyboardScene": {
+      "type": "object",
+      "required": ["sceneNumber", "prompt", "duration"],
+      "properties": {
+        "sceneNumber": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Sequential scene number"
+        },
+        "prompt": {
+          "type": "string",
+          "description": "Complete Veo 3.1 prompt for this scene",
+          "minLength": 50
+        },
+        "duration": {
+          "type": "integer",
+          "enum": [4, 6, 8],
+          "description": "Duration for this scene clip"
+        },
+        "timestampBlocks": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/timestampBlock" },
+          "description": "Optional timestamp blocks for multi-shot within this scene"
+        },
+        "audioDescription": {
+          "type": "string",
+          "description": "Brief audio summary for this scene"
+        },
+        "transitionNote": {
+          "type": "string",
+          "description": "How this scene transitions to the next (e.g., cut to, dissolve, fade to black)"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "storyboardOutput": {
+      "type": "object",
+      "required": ["scenes", "aspectRatio", "resolution", "style", "totalDuration"],
+      "properties": {
+        "scenes": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/storyboardScene" },
+          "minItems": 2,
+          "maxItems": 20,
+          "description": "Array of scene prompts in sequence"
+        },
+        "aspectRatio": {
+          "type": "string",
+          "enum": ["16:9", "9:16"],
+          "description": "Aspect ratio applied to all scenes"
+        },
+        "resolution": {
+          "type": "string",
+          "enum": ["720p", "1080p", "4k"],
+          "description": "Resolution applied to all scenes"
+        },
+        "style": {
+          "type": "string",
+          "enum": ["cinematic", "documentary", "commercial", "music_video", "vlog", "narrative", "film_noir", "anime", "artistic"],
+          "description": "Visual style applied to all scenes"
+        },
+        "characterDescriptions": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/characterDescription" },
+          "description": "Character details shared across all scenes for consistency"
+        },
+        "totalDuration": {
+          "type": "integer",
+          "description": "Total duration in seconds across all scenes"
+        },
+        "extensionStrategy": {
+          "type": "string",
+          "description": "How to assemble scenes: separate clips or extension chain"
+        },
+        "autoCorrections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Auto-corrections applied. Omit if none."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+
+  "examples": [
+    {
+      "prompt": "Medium close-up, eye-level, static tripod shot. Clean 3-point lighting with soft fill and subtle rim light on a neutral gray studio backdrop. A Thai male host, early 30s, short neat hair, wearing a casual navy blazer over a white t-shirt, warm friendly expression. Host says (Thai, warm and energetic): \"Hello everyone, today we will summarize 3 techniques for making clips.\" He gestures naturally with his right hand while speaking. Ambient: quiet studio room tone, very subtle air conditioning hum in background.",
+      "duration": 8,
+      "aspectRatio": "16:9",
+      "resolution": "1080p",
+      "style": "cinematic",
+      "audioDescription": "Thai male host speaking warmly, studio ambience",
+      "characterDescriptions": [
+        {
+          "name": "Host",
+          "description": "Thai male, early 30s, short neat hair, navy blazer, white t-shirt, friendly"
+        }
+      ],
+      "sceneBreakdown": {
+        "shotType": "medium close-up",
+        "cameraMovement": "static",
+        "lighting": "3-point, soft fill, rim light",
+        "depthOfField": "shallow, neutral gray backdrop softly blurred",
+        "colorPalette": "warm amber tones, clean skin tones",
+        "mood": "warm, professional, inviting"
+      }
+    }
+  ]
+}

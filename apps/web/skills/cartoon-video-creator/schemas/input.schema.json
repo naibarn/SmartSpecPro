@@ -1,0 +1,515 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Cartoon Video Creator Input Schema",
+  "description": "Complete input specification for creating 3D cartoon and animation videos optimized for Google Veo 3.1 with stylized characters, expressive animation, and cartoon-specific rendering",
+  "type": "object",
+  "required": [
+    "description",
+    "duration",
+    "aspectRatio",
+    "resolution",
+    "cartoonStyle",
+    "audioMode",
+    "dialogueLanguage"
+  ],
+  "properties": {
+    "description": {
+      "type": "string",
+      "title": "1. Scene Description",
+      "description": "Describe the cartoon scene, characters, action, expressions, and mood. Can be in Thai or English — the AI will transform it into an optimized Veo 3.1 cartoon prompt.",
+      "minLength": 5,
+      "examples": [
+        "ตัวละครการ์ตูน 3D หุ่นยนต์น้อยกำลังวาดรูป",
+        "สองตัวละครคุยกันในร้านกาแฟการ์ตูน มี speech bubbles",
+        "วิวเมืองการ์ตูนตอนกลางคืน สายฝนตกพรำ",
+        "สตอรี่บอร์ด 4 เฟรม นักสำรวจผจญภัยในป่า",
+        "A 3D cartoon mime performing invisible box routine"
+      ]
+    },
+    "duration": {
+      "type": "integer",
+      "title": "2. Clip Duration (seconds)",
+      "description": "Duration per clip. Must be 8s when using 1080p/4K or reference images.",
+      "enum": [4, 6, 8],
+      "enumDescriptions": {
+        "4": "4 seconds — Quick shot, 720p only",
+        "6": "6 seconds — Short scene, 720p only",
+        "8": "8 seconds — Full scene (Required for 1080p/4K/reference images)"
+      },
+      "default": 8
+    },
+    "aspectRatio": {
+      "type": "string",
+      "title": "3. Aspect Ratio",
+      "description": "Video aspect ratio. Affects composition and framing.",
+      "enum": ["16:9", "9:16"],
+      "enumDescriptions": {
+        "16:9": "Landscape — YouTube, presentations, widescreen",
+        "9:16": "Vertical — TikTok, Instagram Reels, YouTube Shorts"
+      },
+      "default": "16:9"
+    },
+    "resolution": {
+      "type": "string",
+      "title": "4. Resolution",
+      "description": "Output video resolution. 1080p/4K requires 8s duration.",
+      "enum": ["720p", "1080p", "4k"],
+      "enumDescriptions": {
+        "720p": "720p — Faster generation, supports 4/6/8s, required for extension",
+        "1080p": "1080p — High quality, 8s only",
+        "4k": "4K — Ultra quality, 8s only, longest generation"
+      },
+      "default": "1080p"
+    },
+    "cartoonStyle": {
+      "type": "string",
+      "title": "5. Cartoon Style",
+      "description": "3D cartoon rendering style that determines character proportions, materials, and overall look",
+      "enum": [
+        "pixar_3d",
+        "anime_3d",
+        "chibi",
+        "claymation",
+        "toy_figure",
+        "papercraft",
+        "storybook",
+        "retro_cartoon",
+        "low_poly"
+      ],
+      "enumDescriptions": {
+        "pixar_3d": "Pixar-quality 3D — Smooth skin, large eyes, expressive, family-friendly",
+        "anime_3d": "3D Anime — Cel-shaded, large eyes, dynamic poses, speed lines",
+        "chibi": "Chibi / Super-deformed — Oversized head, tiny body, ultra-cute",
+        "claymation": "Claymation — Clay textures, matte surface, stop-motion feel",
+        "toy_figure": "Toy Figure — Hard plastic, painted details, collectible look",
+        "papercraft": "Papercraft — Folded paper, layered cutouts, craft materials",
+        "storybook": "Storybook — Painterly textures, watercolor influence, fairy-tale",
+        "retro_cartoon": "Retro Cartoon — Vintage rubber-hose, classic cartoon physics",
+        "low_poly": "Low-Poly — Geometric faceted surfaces, modern minimal"
+      },
+      "default": "pixar_3d"
+    },
+    "audioMode": {
+      "type": "string",
+      "title": "6. Audio Mode",
+      "description": "Type of audio to generate with the cartoon video",
+      "enum": [
+        "full_mix",
+        "dialogue",
+        "voiceover",
+        "ambient_only",
+        "sfx_only",
+        "silent"
+      ],
+      "enumDescriptions": {
+        "full_mix": "Full Mix — Dialogue + cartoon SFX + ambient + music cues (Recommended)",
+        "dialogue": "Dialogue focus with cartoon SFX accents",
+        "voiceover": "Narrator voiceover with cartoon ambient",
+        "ambient_only": "Environment sounds only, no speech",
+        "sfx_only": "Cartoon sound effects only",
+        "silent": "No audio — visual only"
+      },
+      "default": "full_mix"
+    },
+    "dialogueLanguage": {
+      "type": "string",
+      "title": "7. Dialogue Language",
+      "description": "Language for character dialogue or voiceover",
+      "enum": ["th", "en"],
+      "enumDescriptions": {
+        "th": "Thai — ภาษาไทย",
+        "en": "English"
+      },
+      "default": "th"
+    },
+    "characterCount": {
+      "type": "integer",
+      "title": "8. Number of Characters",
+      "description": "Number of cartoon characters in the scene. 0 = environment-only (landscape/establishing shot). Affects framing and staging.",
+      "minimum": 0,
+      "maximum": 4,
+      "default": 1
+    },
+    "characterExpression": {
+      "type": "string",
+      "title": "9. Character Expression / Emotion",
+      "description": "Primary emotion for the main character. Cartoon expressions use exaggerated features.",
+      "enum": [
+        "auto",
+        "joy",
+        "sadness",
+        "surprise",
+        "anger",
+        "fear",
+        "confusion",
+        "love",
+        "determination",
+        "mischief",
+        "sleepy",
+        "excited"
+      ],
+      "enumDescriptions": {
+        "auto": "Auto-select based on scene content",
+        "joy": "Joy — Wide smile, squinted sparkling eyes, slight bounce",
+        "sadness": "Sadness — Droopy eyes, quivering lip, single teardrop",
+        "surprise": "Surprise — Eyes popping wide, dropped jaw, raised brows",
+        "anger": "Anger — Furrowed brows, gritted teeth, steam puffs, red tint",
+        "fear": "Fear — Wide eyes tiny pupils, trembling, sweat drops",
+        "confusion": "Confusion — Tilted head, floating question mark, scratching head",
+        "love": "Love — Heart-shaped eyes, floating hearts, rosy cheeks",
+        "determination": "Determination — Gleaming star eyes, clenched fist, power pose",
+        "mischief": "Mischief — Sly grin, one raised eyebrow, sneaky posture",
+        "sleepy": "Sleepy — Half-closed droopy eyes, yawning, Z-marks floating",
+        "excited": "Excited — Bouncing up and down, sparkle eyes, fists clenched"
+      },
+      "default": "auto"
+    },
+    "cartoonVoiceTone": {
+      "type": "string",
+      "title": "10. Voice Tone",
+      "description": "Voice character style for cartoon dialogue. Determines how character voices sound.",
+      "enum": [
+        "auto",
+        "squeaky_cute",
+        "deep_booming",
+        "cheerful_child",
+        "wise_elder",
+        "robotic_beep",
+        "villain_dramatic",
+        "narrator_warm",
+        "energetic_announcer",
+        "gentle_whisper"
+      ],
+      "enumDescriptions": {
+        "auto": "Auto-select based on character and style",
+        "squeaky_cute": "Squeaky & Cute — High-pitched, chibi/small character voice",
+        "deep_booming": "Deep & Booming — Large character, bass voice, powerful",
+        "cheerful_child": "Cheerful Child — Bright, youthful, energetic",
+        "wise_elder": "Wise Elder — Calm, warm, storyteller quality",
+        "robotic_beep": "Robotic — Mechanical beeps, synthesized voice",
+        "villain_dramatic": "Villain Dramatic — Dark, theatrical, menacing",
+        "narrator_warm": "Narrator Warm — Documentary-style, gentle narration",
+        "energetic_announcer": "Energetic Announcer — Loud, enthusiastic, broadcast",
+        "gentle_whisper": "Gentle Whisper — Soft, ASMR-like, intimate"
+      },
+      "default": "auto"
+    },
+    "characterDetails": {
+      "type": "string",
+      "title": "11. Character Details (Optional)",
+      "description": "Describe each character's appearance — shape, colors, accessories, distinctive features. Separate multiple characters with |. Example: 'Hero: round-faced boy, blue hair, red cape | Sidekick: small yellow robot, single eye'",
+      "examples": [
+        "Mime: round face, white face paint, black beret, striped shirt, red suspenders",
+        "Boy: spiky blue hair, green t-shirt, oversized backpack | Girl: twin red pigtails, yellow overalls",
+        "Robot: round blue metallic body, single green eye-screen, stubby arms, antenna on top"
+      ]
+    },
+    "dialogueScript": {
+      "type": "string",
+      "title": "12. Dialogue Script (Optional)",
+      "description": "Pre-written dialogue for characters. Format: 'Character: dialogue text'. Separate lines with |. Leave empty for AI-generated dialogue.",
+      "examples": [
+        "Robot: สวัสดีครับ วันนี้เราจะผจญภัยกัน!",
+        "Boy: ไปกันเถอะ! | Girl: รอด้วย!",
+        "Teacher: มาเรียนรู้กันนะคะ"
+      ]
+    },
+    "speechBubbles": {
+      "type": "boolean",
+      "title": "13. Show Speech Bubbles",
+      "description": "Include visible speech bubbles with text in the video. Best-effort rendering for text in video.",
+      "default": false
+    },
+    "shotType": {
+      "type": "string",
+      "title": "14. Shot Type",
+      "description": "Camera framing. Auto-selected if not specified.",
+      "enum": [
+        "auto",
+        "extreme_wide",
+        "wide",
+        "medium_wide",
+        "medium",
+        "medium_close_up",
+        "close_up",
+        "extreme_close_up",
+        "two_shot",
+        "group_shot",
+        "pov",
+        "birds_eye"
+      ],
+      "enumDescriptions": {
+        "auto": "Auto-select based on content and character count",
+        "extreme_wide": "Extreme wide — Establishing shot, full environment",
+        "wide": "Wide shot — Full characters + environment context",
+        "medium_wide": "Medium wide — Knee-up, group staging",
+        "medium": "Medium — Waist-up, standard dialogue framing",
+        "medium_close_up": "Medium close-up — Chest-up, expression focus",
+        "close_up": "Close-up — Face, expression detail, emotion",
+        "extreme_close_up": "Extreme close-up — Eyes/detail, comedy beat, reveal",
+        "two_shot": "Two-shot — Two characters framed together",
+        "group_shot": "Group shot — 3-4 characters, staggered layout",
+        "pov": "POV — First-person cartoon perspective",
+        "birds_eye": "Bird's eye / Isometric — Top-down or 3/4 view"
+      },
+      "default": "auto"
+    },
+    "cameraMovement": {
+      "type": "string",
+      "title": "15. Camera Movement",
+      "description": "Camera motion style. Auto-selected if not specified.",
+      "enum": [
+        "auto",
+        "static",
+        "slow_push_in",
+        "pan",
+        "tilt",
+        "orbit",
+        "crane_down",
+        "tracking",
+        "whip_pan",
+        "dolly_zoom",
+        "zoom"
+      ],
+      "enumDescriptions": {
+        "auto": "Auto-select based on content and style",
+        "static": "Static — Locked camera, classic cartoon staging",
+        "slow_push_in": "Slow push-in — Gradual zoom for emotional emphasis",
+        "pan": "Pan — Follow character movement left/right",
+        "tilt": "Tilt — Reveal tall environments bottom-to-top",
+        "orbit": "Orbit — Circle around character for hero reveal",
+        "crane_down": "Crane down — High to low reveal of character",
+        "tracking": "Tracking — Follow moving character",
+        "whip_pan": "Whip pan — Fast snap, comedy timing",
+        "dolly_zoom": "Dolly zoom — Vertigo effect for shock/surprise",
+        "zoom": "Zoom in/out — Focus shift, reveal"
+      },
+      "default": "auto"
+    },
+    "cartoonLighting": {
+      "type": "string",
+      "title": "16. Lighting Style",
+      "description": "Lighting approach optimized for cartoon rendering",
+      "enum": [
+        "auto",
+        "3_point_soft",
+        "flat_bright",
+        "dramatic_rim",
+        "golden_warm",
+        "cool_moonlight",
+        "neon_glow",
+        "dappled_forest",
+        "studio_product",
+        "campfire_warm",
+        "underwater_caustics"
+      ],
+      "enumDescriptions": {
+        "auto": "Auto-select based on style and mood",
+        "3_point_soft": "3-Point Soft — Classic studio, minimal harsh shadows",
+        "flat_bright": "Flat Bright — Even lighting, almost shadowless, upbeat",
+        "dramatic_rim": "Dramatic Rim — Strong backlight glow, hero moments",
+        "golden_warm": "Golden Warm — Amber fill, long soft shadows, sunset",
+        "cool_moonlight": "Cool Moonlight — Blue key with warm accents, night",
+        "neon_glow": "Neon Glow — Vivid colored light, cyberpunk/party",
+        "dappled_forest": "Dappled Forest — Broken light through leaves, nature",
+        "studio_product": "Studio Product — Clean white, character showcase",
+        "campfire_warm": "Campfire — Flickering orange from below, cozy night",
+        "underwater_caustics": "Underwater — Blue-green shifting patterns, aquatic"
+      },
+      "default": "auto"
+    },
+    "mood": {
+      "type": "string",
+      "title": "17. Mood / Atmosphere",
+      "description": "Emotional tone of the cartoon scene",
+      "enum": [
+        "auto",
+        "cheerful_fun",
+        "adventurous",
+        "cozy_warm",
+        "mysterious",
+        "dramatic_epic",
+        "peaceful_calm",
+        "silly_comedy",
+        "spooky_cute",
+        "romantic_sweet",
+        "futuristic_cool",
+        "nostalgic_retro"
+      ],
+      "enumDescriptions": {
+        "auto": "Auto-select based on content",
+        "cheerful_fun": "Cheerful & Fun — Bright, bouncy, upbeat",
+        "adventurous": "Adventurous — Exciting, bold, exploration",
+        "cozy_warm": "Cozy & Warm — Comfortable, gentle, homey",
+        "mysterious": "Mysterious — Curious, atmospheric, wonder",
+        "dramatic_epic": "Dramatic & Epic — Heroic, intense, climactic",
+        "peaceful_calm": "Peaceful & Calm — Serene, gentle, contemplative",
+        "silly_comedy": "Silly & Comedy — Slapstick, goofy, laugh-out-loud",
+        "spooky_cute": "Spooky Cute — Halloween-lite, friendly scary",
+        "romantic_sweet": "Romantic & Sweet — Hearts, soft glow, dreamy",
+        "futuristic_cool": "Futuristic & Cool — Sci-fi, tech, neon",
+        "nostalgic_retro": "Nostalgic & Retro — Vintage feel, warm memories"
+      },
+      "default": "auto"
+    },
+    "colorPalette": {
+      "type": "string",
+      "title": "18. Color Palette",
+      "description": "Color approach for the cartoon",
+      "enum": [
+        "auto",
+        "primary_vibrant",
+        "pastel_soft",
+        "warm_sunset",
+        "cool_ocean",
+        "candy_neon",
+        "earthy_natural",
+        "monochrome_ink",
+        "retro_vintage"
+      ],
+      "enumDescriptions": {
+        "auto": "Auto-select based on style and mood",
+        "primary_vibrant": "Primary Vibrant — Bold red/blue/yellow, high saturation",
+        "pastel_soft": "Pastel Soft — Gentle muted tones, dreamy",
+        "warm_sunset": "Warm Sunset — Amber, orange, gold tones",
+        "cool_ocean": "Cool Ocean — Blue, teal, aqua tones",
+        "candy_neon": "Candy Neon — Pink, cyan, purple, electric",
+        "earthy_natural": "Earthy Natural — Green, brown, warm neutrals",
+        "monochrome_ink": "Monochrome Ink — Black and white with spot color",
+        "retro_vintage": "Retro Vintage — Faded warm tones, film grain"
+      },
+      "default": "auto"
+    },
+    "materialStyle": {
+      "type": "string",
+      "title": "19. Material / Surface Style",
+      "description": "Surface material and texture for the cartoon rendering",
+      "enum": [
+        "auto",
+        "smooth_plastic",
+        "rough_clay",
+        "felt_fabric",
+        "glossy_toy",
+        "paper_craft",
+        "painted_wood"
+      ],
+      "enumDescriptions": {
+        "auto": "Auto-select based on cartoon style",
+        "smooth_plastic": "Smooth Plastic — Clean matte/satin finish (Pixar-like)",
+        "rough_clay": "Rough Clay — Textured clay with finger impressions",
+        "felt_fabric": "Felt Fabric — Soft textile look, handcrafted",
+        "glossy_toy": "Glossy Toy — Shiny hard plastic, collectible figure",
+        "paper_craft": "Paper Craft — Folded paper, cardboard, layered cutouts",
+        "painted_wood": "Painted Wood — Wooden toy, storybook illustration"
+      },
+      "default": "auto"
+    },
+    "useReferenceImages": {
+      "type": "boolean",
+      "title": "20. Use Reference Images",
+      "description": "Enable character locking via reference images (up to 3). Forces 8s duration. Preserves character appearance across clips.",
+      "default": false
+    },
+    "sceneMode": {
+      "type": "string",
+      "title": "21. Scene Mode",
+      "description": "How to structure the video output",
+      "enum": ["single", "storyboard", "extension"],
+      "enumDescriptions": {
+        "single": "Single clip — One complete cartoon scene",
+        "storyboard": "Multi-scene storyboard — Multiple clips with transition notes",
+        "extension": "Extension mode — Continue an existing cartoon clip"
+      },
+      "default": "single"
+    },
+    "totalScenes": {
+      "type": "integer",
+      "title": "22. Total Scenes (for storyboard)",
+      "description": "Number of scenes in storyboard mode. Each scene is one Veo generation.",
+      "minimum": 1,
+      "maximum": 20,
+      "default": 1
+    },
+    "useTimestamps": {
+      "type": "boolean",
+      "title": "23. Use Timestamp Multi-Panel",
+      "description": "Enable multi-panel timestamp blocks within a single clip (e.g., [00:00-00:02] panel 1... [00:02-00:04] panel 2...)",
+      "default": false
+    },
+    "negativeElements": {
+      "type": "string",
+      "title": "24. Elements to Avoid (Optional)",
+      "description": "List elements to avoid in generation (guidance, not negative prompt). E.g., 'realistic style, dark themes, text overlays'",
+      "examples": [
+        "realistic human proportions, photo-realistic skin",
+        "dark horror elements, blood, violence",
+        "text overlays, watermarks, split screen"
+      ]
+    }
+  },
+  "examples": [
+    {
+      "description": "3D cartoon mime character performing invisible box routine in studio",
+      "duration": 8,
+      "aspectRatio": "16:9",
+      "resolution": "1080p",
+      "cartoonStyle": "pixar_3d",
+      "audioMode": "sfx_only",
+      "dialogueLanguage": "th",
+      "characterCount": 1,
+      "characterExpression": "joy",
+      "characterDetails": "Mime: round face, white face paint, black beret, striped shirt, red suspenders",
+      "shotType": "medium",
+      "cameraMovement": "static",
+      "cartoonLighting": "3_point_soft",
+      "mood": "silly_comedy",
+      "materialStyle": "smooth_plastic"
+    },
+    {
+      "description": "สองตัวละครการ์ตูนคุยกันในร้านกาแฟ มี speech bubbles ภาษาไทย",
+      "duration": 8,
+      "aspectRatio": "16:9",
+      "resolution": "1080p",
+      "cartoonStyle": "pixar_3d",
+      "audioMode": "full_mix",
+      "dialogueLanguage": "th",
+      "characterCount": 2,
+      "characterExpression": "joy",
+      "speechBubbles": true,
+      "shotType": "two_shot",
+      "cameraMovement": "static",
+      "mood": "cheerful_fun",
+      "colorPalette": "primary_vibrant"
+    },
+    {
+      "description": "วิวเมืองการ์ตูน 3D ตอนกลางคืน สายฝนตกพรำ บรรยากาศอบอุ่น",
+      "duration": 8,
+      "aspectRatio": "16:9",
+      "resolution": "1080p",
+      "cartoonStyle": "storybook",
+      "audioMode": "ambient_only",
+      "dialogueLanguage": "th",
+      "characterCount": 0,
+      "shotType": "wide",
+      "cameraMovement": "pan",
+      "cartoonLighting": "cool_moonlight",
+      "mood": "peaceful_calm",
+      "colorPalette": "cool_ocean"
+    },
+    {
+      "description": "สตอรี่บอร์ด 4 เฟรม นักสำรวจเจออุปสรรคแล้วผ่านไปได้",
+      "duration": 8,
+      "aspectRatio": "16:9",
+      "resolution": "1080p",
+      "cartoonStyle": "pixar_3d",
+      "audioMode": "full_mix",
+      "dialogueLanguage": "th",
+      "characterCount": 1,
+      "characterExpression": "determination",
+      "useTimestamps": true,
+      "shotType": "auto",
+      "mood": "adventurous"
+    }
+  ],
+  "additionalProperties": false
+}

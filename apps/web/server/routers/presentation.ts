@@ -50,6 +50,7 @@ import {
   updateSlideInDeck,
   updateSlideAudioTrack,
   updateDeckProjectAudioTrack,
+  generateSlideAudioFromSavedNote,
 } from "../services/presentationService";
 import {
   convertOfficeSourceToPresentation,
@@ -798,6 +799,7 @@ export const presentationRouter = router({
       expectedVersion: z.number().int().nonnegative(),
       title: z.string().min(1).max(255).optional(),
       description: z.string().max(2000).nullable().optional(),
+      notes: z.string().max(20_000).nullable().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       try {
@@ -1087,6 +1089,36 @@ export const presentationRouter = router({
       try {
         ensureFeatureEnabled();
         return await updateSlideAudioTrack(input, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  generateSlideAudioFromNote: protectedProcedure
+    .input(z.object({
+      deckId: z.number().int().positive(),
+      slideId: z.number().int().positive(),
+      expectedVersion: z.number().int().nonnegative(),
+      model: z.string().min(1).optional(),
+      voice: z.string().min(1).optional(),
+      apiConfig: z.record(z.string()).optional(),
+      extraParams: z.record(z.any()).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        const userToken = getPresentationToken(ctx, ["media:generate"]);
+        return await generateSlideAudioFromSavedNote(
+          {
+            ...input,
+            userToken,
+            publicUrl: ctx.publicUrl ?? undefined,
+          },
+          toPresentationActor(ctx),
+        );
       } catch (error) {
         if (error instanceof PresentationServiceError) {
           throw mapPresentationServiceError(error);

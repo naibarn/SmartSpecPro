@@ -12,6 +12,7 @@ import asyncio
 import json
 import os
 from typing import Any
+from urllib.parse import urlparse
 
 import redis as sync_redis
 import structlog
@@ -31,12 +32,16 @@ def _get_redis() -> sync_redis.Redis:
 
 
 def _run_async(coro) -> Any:
-    """Run async coroutine in Celery worker — fresh loop per invocation."""
-    loop = asyncio.new_event_loop()
-    try:
-        return loop.run_until_complete(coro)
-    finally:
-        loop.close()
+    """Run async coroutine on the persistent worker event loop.
+
+    Playwright binds to the event loop where the browser was launched.
+    We MUST reuse the same loop — creating a new loop causes cross-loop
+    hangs on all Playwright operations.
+    """
+    from app.services.browser_pool import get_worker_loop
+
+    loop = get_worker_loop()
+    return loop.run_until_complete(coro)
 
 
 def _set_status(task_id: str, status: dict) -> None:
@@ -80,6 +85,7 @@ def automation_analyze_task(
     async def _analyze():
         from app.services.automation_copilot import AutomationCopilot
         from app.services.browser_pool import get_browser_pool
+        from app.services.llm_gateway_client import LLMGatewayClient
         from app.services.selector_cache import SelectorCache
         from app.services.playwright_script_generator import PlaywrightScriptGenerator
         from app.services.self_healing_executor import SelfHealingExecutor
@@ -87,6 +93,7 @@ def automation_analyze_task(
         import redis.asyncio as aioredis
 
         redis_client = aioredis.from_url(REDIS_URL)
+        gateway = LLMGatewayClient()
         try:
             pool = get_browser_pool()
             cache = SelectorCache(redis_client=redis_client)
@@ -99,6 +106,7 @@ def automation_analyze_task(
             copilot = AutomationCopilot(
                 script_generator=generator,
                 executor=executor,
+                gateway_client=gateway,
             )
 
             _set_status(task_id, {
@@ -120,6 +128,7 @@ def automation_analyze_task(
             _set_status(task_id, status_data)
             return status_data
         finally:
+            await gateway.aclose()
             await redis_client.close()
 
     try:
@@ -158,6 +167,7 @@ def automation_execute_task(
     async def _execute():
         from app.services.automation_copilot import AutomationCopilot, AutomationIntent
         from app.services.browser_pool import get_browser_pool
+        from app.services.llm_gateway_client import LLMGatewayClient
         from app.services.selector_cache import SelectorCache
         from app.services.playwright_script_generator import PlaywrightScriptGenerator
         from app.services.self_healing_executor import SelfHealingExecutor
@@ -165,49 +175,90 @@ def automation_execute_task(
         import redis.asyncio as aioredis
 
         redis_client = aioredis.from_url(REDIS_URL)
+        gateway = LLMGatewayClient()
         try:
             pool = get_browser_pool()
             cache = SelectorCache(redis_client=redis_client)
-            generator = PlaywrightScriptGenerator(browser_pool=pool, selector_cache=cache)
+            generator = PlaywrightScriptGenerator(
+                browser_pool=pool,
+                selector_cache=cache,
+                gateway_client=gateway,
+            )
             executor = SelfHealingExecutor(
                 browser_pool=pool,
                 selector_cache=cache,
                 vision_model=vision_model,
                 redis_client=redis_client,
+                gateway_client=gateway,
             )
             copilot = AutomationCopilot(
                 script_generator=generator,
                 executor=executor,
+                gateway_client=gateway,
             )
 
             intent = AutomationIntent.model_validate_json(intent_json)
+            logger.info(
+                "automation_execute_intent_parsed",
+                task_id=task_id,
+                intent_type=intent.intent_type,
+                browser_tasks_count=len(intent.browser_tasks) if intent.browser_tasks else 0,
+                allowed_domains_input=allowed_domains,
+            )
 
-            async def status_callback(status: str):
-                _set_status(task_id, {
+            # Always extract domains from intent URLs and merge with configured domains
+            effective_domains = set(allowed_domains)
+            if intent.browser_tasks:
+                for task in intent.browser_tasks:
+                    task_url = task.get("url", "") if isinstance(task, dict) else ""
+                    if task_url:
+                        parsed_url = urlparse(task_url)
+                        if parsed_url.hostname:
+                            effective_domains.add(parsed_url.hostname)
+                            # Also allow subdomains (e.g. *.google.com)
+                            parts = parsed_url.hostname.split(".")
+                            if len(parts) >= 2:
+                                effective_domains.add(f"*.{'.'.join(parts[-2:])}")
+            effective_domains = list(effective_domains)
+            logger.info(
+                "automation_effective_domains",
+                task_id=task_id,
+                input_domains=allowed_domains,
+                effective_domains=effective_domains,
+                browser_tasks_count=len(intent.browser_tasks) if intent.browser_tasks else 0,
+            )
+
+            async def status_callback(status: str, detail: str | None = None):
+                data = {
                     "status": status,
                     "tenant_id": tenant_id,
                     "user_id": user_id,
                     "execution_id": execution_id,
-                })
+                }
+                if detail:
+                    data["current_step"] = detail
+                _set_status(task_id, data)
+                logger.info("automation_status_update", task_id=task_id, status=status, detail=detail)
 
             # Build scripts
-            await status_callback("generating")
+            task_count = len(intent.browser_tasks) if intent.browser_tasks else 0
+            await status_callback("generating", f"Building scripts for {task_count} task(s)...")
             build_result = await copilot.build(
                 intent=intent,
                 execution_id=execution_id,
                 tenant_id=tenant_id,
                 user_id=user_id,
                 vision_model=vision_model,
-                allowed_domains=allowed_domains,
+                allowed_domains=effective_domains,
             )
 
             # Execute scripts
-            await status_callback("running")
+            await status_callback("running", "Executing automation scripts...")
             exec_result = await copilot.execute_scripts(
                 execution_id=execution_id,
                 tenant_id=tenant_id,
                 user_id=user_id,
-                allowed_domains=allowed_domains,
+                allowed_domains=effective_domains,
                 status_callback=status_callback,
             )
 
@@ -224,6 +275,7 @@ def automation_execute_task(
             _set_status(task_id, result_data)
             return result_data
         finally:
+            await gateway.aclose()
             await redis_client.close()
 
     try:

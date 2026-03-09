@@ -93,7 +93,9 @@ export function TemplateListPanel({ onSelectTemplate, onBack }: TemplateListPane
               <div className="flex items-center gap-1.5 text-sm font-medium">
                 {t.name}
                 {t.isPublic && (
-                  <Globe className="h-3 w-3 text-blue-400" title="Public template" />
+                  <span title="Public template">
+                    <Globe className="h-3 w-3 text-blue-400" />
+                  </span>
                 )}
               </div>
               {t.description && (

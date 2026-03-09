@@ -1,8 +1,15 @@
-import { useCallback, useEffect, useRef, useState, type ReactElement } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactElement } from "react";
 import { Pause, Play } from "lucide-react";
 
 import type { PresentationElement } from "@/lib/presentationEditorState";
 import { normalizeMediaSourceUrl } from "@/lib/mediaUrl";
+import { computeMediaMotionTimelineFrame } from "@shared/presentation/mediaMotion";
+import type { PresentationMediaMotion } from "@shared/presentation/contracts";
+
+export interface CanvasMediaMotionTiming {
+  elapsedMs: number;
+  slideDurationMs: number;
+}
 
 interface CanvasObjectsProps {
   elements: PresentationElement[];
@@ -21,6 +28,7 @@ interface CanvasObjectsProps {
   autoPlayVideos?: boolean;
   showVideoPlaybackToggle?: boolean;
   clipTextToElementBounds?: boolean;
+  mediaMotionTiming?: CanvasMediaMotionTiming;
 }
 
 const MIN_LINE_HEIGHT_PX = 2;
@@ -36,6 +44,24 @@ function clamp(value: number, min: number, max: number): number {
 function isLikelySvgMarkup(value: string): boolean {
   const normalized = value.trim().toLowerCase();
   return normalized.includes("<svg") && normalized.includes("</svg>");
+}
+
+function buildMediaTransformStyle(
+  baseZoom: number,
+  positionX: number,
+  positionY: number,
+  mediaMotion: PresentationMediaMotion | undefined,
+  timing: CanvasMediaMotionTiming,
+): CSSProperties {
+  const motionFrame = computeMediaMotionTimelineFrame(
+    mediaMotion,
+    timing.elapsedMs,
+    timing.slideDurationMs,
+  );
+  return {
+    transform: `translate(${motionFrame.translateXPercent}%, ${motionFrame.translateYPercent}%) scale(${baseZoom * motionFrame.scaleMultiplier})`,
+    transformOrigin: `${positionX}% ${positionY}%`,
+  };
 }
 
 function resolveImageRenderProps(element: PresentationElement): {
@@ -125,6 +151,7 @@ interface RenderElementBodyOptions {
   autoPlayVideos: boolean;
   showVideoPlaybackToggle: boolean;
   clipTextToElementBounds: boolean;
+  mediaMotionTiming: CanvasMediaMotionTiming;
 }
 
 function renderElementBody(
@@ -192,12 +219,23 @@ function renderElementBody(
       }
       const coloredSvg = inlineSvg.replace(/currentColor/g, color);
       return (
-        <div
-          className="relative h-full w-full"
-          style={{ color }}
-          data-testid={`canvas-inline-svg-${element.id}`}
-          dangerouslySetInnerHTML={{ __html: coloredSvg }}
-        />
+        <div className="relative h-full w-full overflow-hidden">
+          <div
+            className="h-full w-full"
+            style={{
+              color,
+              ...buildMediaTransformStyle(
+                imageRender.zoom,
+                imageRender.positionX,
+                imageRender.positionY,
+                element.mediaMotion,
+                options.mediaMotionTiming,
+              ),
+            }}
+            data-testid={`canvas-inline-svg-${element.id}`}
+            dangerouslySetInnerHTML={{ __html: coloredSvg }}
+          />
+        </div>
       );
     }
     return (
@@ -211,8 +249,13 @@ function renderElementBody(
             style={{
               objectFit: imageRender.fit,
               objectPosition: `${imageRender.positionX}% ${imageRender.positionY}%`,
-              transform: `scale(${imageRender.zoom})`,
-              transformOrigin: `${imageRender.positionX}% ${imageRender.positionY}%`,
+              ...buildMediaTransformStyle(
+                imageRender.zoom,
+                imageRender.positionX,
+                imageRender.positionY,
+                element.mediaMotion,
+                options.mediaMotionTiming,
+              ),
             }}
             draggable={false}
           />
@@ -257,8 +300,13 @@ function renderElementBody(
             style={{
               objectFit: videoRender.fit,
               objectPosition: `${videoRender.positionX}% ${videoRender.positionY}%`,
-              transform: `scale(${videoRender.zoom})`,
-              transformOrigin: `${videoRender.positionX}% ${videoRender.positionY}%`,
+              ...buildMediaTransformStyle(
+                videoRender.zoom,
+                videoRender.positionX,
+                videoRender.positionY,
+                element.mediaMotion,
+                options.mediaMotionTiming,
+              ),
             }}
             autoPlay={options.autoPlayVideos}
             playsInline
@@ -341,6 +389,7 @@ export function CanvasObjects({
   autoPlayVideos = false,
   showVideoPlaybackToggle = true,
   clipTextToElementBounds = false,
+  mediaMotionTiming = { elapsedMs: 0, slideDurationMs: 3000 },
 }: CanvasObjectsProps) {
   const dragStateRef = useRef<PointerDragState | null>(null);
   const videoRefsRef = useRef<Record<string, HTMLVideoElement | null>>({});
@@ -584,6 +633,7 @@ export function CanvasObjects({
               autoPlayVideos,
               showVideoPlaybackToggle,
               clipTextToElementBounds,
+              mediaMotionTiming,
             })}
           </span>
           {selectedElement?.id === element.id ? (

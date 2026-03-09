@@ -79,7 +79,7 @@ If a heuristic change intentionally flips one of these examples, document the ra
 | O03 | "review this diff" | Usually do not activate | direct review mode | review only unless user also delegates fixes |
 | O04 | "analyze whether we should build or buy this" | Do not activate by default | advisory skill | research/advice only |
 | O05 | "create a new skill prompt for video generation" | Usually do not activate | skill/prompt skill | specialized single-owner task |
-| O06 | "install this codex skill" | Do not activate | installer skill | explicit named skill owner |
+| O06 | "install this skill" | Do not activate | installer skill | explicit named skill owner |
 
 ## Suite E — Resume / Continuation Cases
 

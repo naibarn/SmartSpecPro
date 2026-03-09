@@ -5,7 +5,7 @@ Write section files using parallel subagents. By this point you have:
 - Individual section tasks (`section-{name}`) for each section
 - All sections within a batch depend on the batch task (parallel within batch)
 
-**How it works:** On platforms with sub-agent support, section tasks can run in parallel. On platforms without it, write the same section files sequentially. In all cases, save each section file directly to disk as soon as it is complete.
+**How it works:** A `SubagentStop` hook automatically writes section files when subagents complete. Claude launches subagents and verifies files exist - no manual JSON parsing needed.
 
 ## Task Structure
 
@@ -39,35 +39,35 @@ Find the batch task by subject "Run batch N section subagents" and mark it in pr
 TaskUpdate(taskId=<batch_task_id>, status="in_progress")
 ```
 
-### 2. Prepare Batch Prompts
+### 2. Run generate-batch-tasks.py
 
-Build one prompt or task brief per section in the batch. Each prompt should contain:
-- the section title and output filename
-- the relevant excerpts from `implementation-plan.md` and `implementation-plan-tdd.md`
-- any cross-section dependency notes from `sections/index.md`
+```bash
+uv run {plugin_root}/scripts/checks/generate-batch-tasks.py \
+  --planning-dir "<planning_dir>" \
+  --batch-num N
+```
 
-If you keep prompt files on disk, store them under `<planning_dir>/sections/.prompts/`.
+The script outputs JSON with `prompt_files` - an array of paths to the prompt files for this batch.
 
 ### 3. Launch Parallel Task Subagents
 
 **IMPORTANT:** Launch ALL Task calls in a single message to run them in parallel.
 
-If the platform exposes a sub-agent tool, launch one agent per section in a single batch. If it does not, write the same sections sequentially inline.
+For each prompt file path in the `prompt_files` array, make a Task call:
+- `subagent_type`: "section-writer"
+- `description`: "Write {section_filename}" (extract from the prompt file name)
+- `prompt`: "Read {prompt_file_path} and execute the instructions."
 
-For each section task, include:
-- section filename
-- section-specific brief
-- required dependencies / prior sections
-- expected output file path
-
-Example: If the batch has 5 sections and sub-agents are available, send a single dispatch batch with 5 section-writing tasks.
+Example: If the JSON output has 5 prompt files, send a single message with 5 Task tool calls.
 
 ### 4. Verify Files Were Written
 
-**Section files must be written explicitly to disk.** After each subagent (or inline section-writing pass) completes:
-1. Save the returned content to `{planning_dir}/sections/{filename}`
-2. Verify the file exists and is non-empty
-3. Record completion before continuing to the next section
+**The SubagentStop hook writes files automatically.** When each subagent completes, a hook:
+1. Parses the subagent's transcript for JSON output
+2. Extracts `sections_dir`, `filename`, and `content`
+3. Writes the file to `{sections_dir}/{filename}`
+
+**You must verify the files exist** - hooks run in isolation and don't report back to Claude.
 
 After all subagents in the batch complete, check which files were created:
 
@@ -85,14 +85,14 @@ Compare against expected filenames from the batch. For each file that exists:
 
 If any expected files are missing after subagents complete:
 
-**Step 1: Retry the same section brief**
-Re-dispatch or re-run only the missing section with the same prompt plus any failure context.
+**Step 1: Retry the subagent**
+Re-run `generate-batch-tasks.py --batch-num N` - it automatically generates prompts only for missing sections. Launch the subagent again.
 
 **Step 2: Manual fallback**
-If the file is still missing after retry, write the section manually:
-1. Reuse the section brief and plan artifacts
-2. Draft the section content directly
-3. Write to `{planning_dir}/sections/{filename}`
+If the file is still missing after retry, fall back to manual file writing:
+1. The subagent's response contains JSON with `content` field
+2. Parse the JSON and extract content
+3. Write to `{planning_dir}/sections/{filename}` using the Write tool
 
 ### 6. Mark Batch Complete
 
@@ -107,10 +107,11 @@ If there are more batches, repeat from step 1 with the next batch number.
 
 ## Final Verification
 
-After all batches complete, verify completion manually:
-- every manifest entry in `sections/index.md` has a corresponding file
-- the file count matches the manifest
-- no section file is empty or missing required headings
+After all batches complete, run check-sections.py to confirm `state == "complete"`:
+
+```bash
+uv run {plugin_root}/scripts/checks/check-sections.py --planning-dir "<planning_dir>"
+```
 
 ## Section File Requirements
 
@@ -121,9 +122,10 @@ Each section file must be **completely self-contained**. The implementer should 
 If sections aren't being written:
 
 1. **Check sections dir:** `ls {planning_dir}/sections/` - see what was written
-2. **Check prompt files:** `{planning_dir}/sections/.prompts/` - review what was sent to the section writer
-3. **Check section drafts or sub-agent output:** use the returned output as the manual fallback source
+2. **Check tracking files:** `ls section-writer-agents/` (should be empty after cleanup)
+3. **Check prompt files:** `{planning_dir}/sections/.prompts/` - review what was sent to subagent
+4. **Check subagent output:** The Task tool response contains the subagent's JSON output for manual fallback
 
 ## Prompt Files
 
-If you choose to store full prompt files in `<planning_dir>/sections/.prompts/`, keep them for debugging. They make retries and manual fallback much easier.
+The script writes full prompt files to `<planning_dir>/sections/.prompts/`. These persist (not temporary) and can be reviewed for debugging if a subagent produces unexpected output.

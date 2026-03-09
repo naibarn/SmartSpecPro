@@ -1,0 +1,485 @@
+{
+  "version": "1.0",
+  "skillId": "cartoon-video-creator",
+  "title": "Cartoon Video Creator",
+  "titleTh": "สร้างวิดีโอการ์ตูน 3D",
+  "description": "3D cartoon and animation video creation optimized for Google Veo 3.1 with stylized characters, expressive animation, cartoon lighting, and multi-character dialogue",
+  "descriptionTh": "สร้างวิดีโอการ์ตูนและแอนิเมชั่น 3D สำหรับ Veo 3.1 รองรับตัวละครสไตไลซ์ แอนิเมชั่นเชิงอารมณ์ แสงแบบการ์ตูน และบทสนทนาหลายตัวละคร",
+  "sections": [
+    {
+      "id": "scene",
+      "title": "Cartoon Scene",
+      "titleTh": "ฉากการ์ตูน",
+      "icon": "palette",
+      "fields": [
+        {
+          "id": "description",
+          "type": "textarea",
+          "label": "Scene Description",
+          "labelTh": "คำอธิบายฉาก",
+          "placeholder": "Describe the cartoon scene, characters, action, and mood...\ne.g., A cute 3D robot character trying to paint a picture, or two cartoon friends exploring a jungle",
+          "placeholderTh": "อธิบายฉากการ์ตูน ตัวละคร การเคลื่อนไหว และอารมณ์...\nเช่น หุ่นยนต์น้อย 3D กำลังวาดรูป หรือ เพื่อนการ์ตูนสองคนผจญภัยในป่า",
+          "helpText": "Describe your cartoon video concept. The AI will transform it into a Veo 3.1 prompt with cartoon-optimized composition, materials, lighting, and audio.",
+          "helpTextTh": "อธิบายแนวคิดวิดีโอการ์ตูน AI จะแปลงเป็นพรอมต์ Veo 3.1 พร้อมองค์ประกอบ วัสดุ แสง และเสียงเฉพาะสำหรับการ์ตูน",
+          "required": true,
+          "rows": 4
+        },
+        {
+          "id": "cartoonStyle",
+          "type": "select",
+          "label": "Cartoon Style",
+          "labelTh": "สไตล์การ์ตูน",
+          "helpText": "Determines character proportions, materials, rendering look, and overall feel",
+          "helpTextTh": "กำหนดสัดส่วนตัวละคร วัสดุ ลักษณะการเรนเดอร์ และบรรยากาศโดยรวม",
+          "required": true,
+          "default": "pixar_3d",
+          "options": [
+            { "value": "pixar_3d", "label": "Pixar 3D (Smooth, expressive, family)", "labelTh": "Pixar 3D (เนียน สื่ออารมณ์ ครอบครัว)" },
+            { "value": "anime_3d", "label": "3D Anime (Cel-shaded, dynamic)", "labelTh": "อนิเมะ 3D (เซลเชด ไดนามิก)" },
+            { "value": "chibi", "label": "Chibi (Oversized head, ultra-cute)", "labelTh": "ชิบิ (หัวโต น่ารักสุดๆ)" },
+            { "value": "claymation", "label": "Claymation (Clay, stop-motion)", "labelTh": "เคลย์แอนิเมชั่น (ดินน้ำมัน สต็อปโมชั่น)" },
+            { "value": "toy_figure", "label": "Toy Figure (Plastic, collectible)", "labelTh": "ฟิกเกอร์ (พลาสติก ของสะสม)" },
+            { "value": "papercraft", "label": "Papercraft (Paper, layered cutouts)", "labelTh": "เปเปอร์คราฟท์ (กระดาษ ตัดแปะ)" },
+            { "value": "storybook", "label": "Storybook (Painterly, fairy-tale)", "labelTh": "นิทาน (สีน้ำ เทพนิยาย)" },
+            { "value": "retro_cartoon", "label": "Retro (Vintage rubber-hose)", "labelTh": "เรโทร (การ์ตูนยุคคลาสสิก)" },
+            { "value": "low_poly", "label": "Low-Poly (Geometric, minimal)", "labelTh": "โลว์โพลี (เหลี่ยม มินิมอล)" }
+          ]
+        },
+        {
+          "id": "mood",
+          "type": "select",
+          "label": "Mood / Atmosphere",
+          "labelTh": "อารมณ์ / บรรยากาศ",
+          "helpText": "Emotional tone — affects color grading, animation style, and audio",
+          "helpTextTh": "โทนอารมณ์ — มีผลต่อสีภาพ สไตล์แอนิเมชั่น และเสียง",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto (Based on content)", "labelTh": "อัตโนมัติ (ตามเนื้อหา)" },
+            { "value": "cheerful_fun", "label": "Cheerful & Fun", "labelTh": "ร่าเริง สนุกสนาน" },
+            { "value": "adventurous", "label": "Adventurous", "labelTh": "ผจญภัย ตื่นเต้น" },
+            { "value": "cozy_warm", "label": "Cozy & Warm", "labelTh": "อบอุ่น สบายๆ" },
+            { "value": "mysterious", "label": "Mysterious", "labelTh": "ลึกลับ น่าค้นหา" },
+            { "value": "dramatic_epic", "label": "Dramatic & Epic", "labelTh": "ดราม่า ยิ่งใหญ่" },
+            { "value": "peaceful_calm", "label": "Peaceful & Calm", "labelTh": "สงบ เงียบสงบ" },
+            { "value": "silly_comedy", "label": "Silly & Comedy", "labelTh": "ตลก ขำขัน" },
+            { "value": "spooky_cute", "label": "Spooky Cute (Halloween)", "labelTh": "น่ากลัวน่ารัก (ฮาโลวีน)" },
+            { "value": "romantic_sweet", "label": "Romantic & Sweet", "labelTh": "โรแมนติก หวาน" },
+            { "value": "futuristic_cool", "label": "Futuristic & Cool", "labelTh": "ล้ำอนาคต เท่" },
+            { "value": "nostalgic_retro", "label": "Nostalgic & Retro", "labelTh": "คิดถึง ย้อนยุค" }
+          ]
+        },
+        {
+          "id": "colorPalette",
+          "type": "select",
+          "label": "Color Palette",
+          "labelTh": "โทนสี",
+          "helpText": "Color approach for the cartoon style",
+          "helpTextTh": "แนวทางสีสำหรับสไตล์การ์ตูน",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto (Based on style)", "labelTh": "อัตโนมัติ (ตามสไตล์)" },
+            { "value": "primary_vibrant", "label": "Primary Vibrant (Bold RGB)", "labelTh": "สีสดจัด (แดง เขียว น้ำเงิน)" },
+            { "value": "pastel_soft", "label": "Pastel Soft (Dreamy)", "labelTh": "พาสเทล (ฝันหวาน)" },
+            { "value": "warm_sunset", "label": "Warm Sunset (Amber, gold)", "labelTh": "อุ่นอาทิตย์ตก (อำพัน ทอง)" },
+            { "value": "cool_ocean", "label": "Cool Ocean (Blue, teal)", "labelTh": "เย็นมหาสมุทร (ฟ้า เขียวน้ำ)" },
+            { "value": "candy_neon", "label": "Candy Neon (Pink, cyan, purple)", "labelTh": "แคนดี้นีออน (ชมพู ฟ้า ม่วง)" },
+            { "value": "earthy_natural", "label": "Earthy Natural (Green, brown)", "labelTh": "โทนธรรมชาติ (เขียว น้ำตาล)" },
+            { "value": "monochrome_ink", "label": "Monochrome Ink (B&W + spot)", "labelTh": "ขาวดำ + จุดสี" },
+            { "value": "retro_vintage", "label": "Retro Vintage (Faded warm)", "labelTh": "เรโทร (สีจางอุ่น)" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "characters",
+      "title": "Characters & Dialogue",
+      "titleTh": "ตัวละครและบทสนทนา",
+      "icon": "users",
+      "fields": [
+        {
+          "id": "characterCount",
+          "type": "select",
+          "label": "Number of Characters",
+          "labelTh": "จำนวนตัวละคร",
+          "helpText": "How many characters appear. Affects camera framing and staging.",
+          "helpTextTh": "จำนวนตัวละครในฉาก มีผลต่อมุมกล้องและการจัดวาง",
+          "default": "1",
+          "options": [
+            { "value": "0", "label": "None (Environment only)", "labelTh": "ไม่มี (ฉากเท่านั้น)" },
+            { "value": "1", "label": "1 Character", "labelTh": "1 ตัวละคร" },
+            { "value": "2", "label": "2 Characters (Dialogue pair)", "labelTh": "2 ตัวละคร (คู่สนทนา)" },
+            { "value": "3", "label": "3 Characters (Group)", "labelTh": "3 ตัวละคร (กลุ่ม)" },
+            { "value": "4", "label": "4 Characters (Ensemble)", "labelTh": "4 ตัวละคร (กลุ่มใหญ่)" }
+          ]
+        },
+        {
+          "id": "characterExpression",
+          "type": "select",
+          "label": "Character Expression",
+          "labelTh": "อารมณ์ตัวละคร",
+          "helpText": "Primary emotion — cartoon expressions use exaggerated features",
+          "helpTextTh": "อารมณ์หลัก — การ์ตูนใช้การแสดงออกเกินจริงเพื่อสื่อสาร",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto (Based on scene)", "labelTh": "อัตโนมัติ (ตามฉาก)" },
+            { "value": "joy", "label": "Joy (Wide smile, sparkle eyes)", "labelTh": "สุข (ยิ้มกว้าง ตาเป็นประกาย)" },
+            { "value": "sadness", "label": "Sadness (Teary, droopy)", "labelTh": "เศร้า (น้ำตา ตาปรือ)" },
+            { "value": "surprise", "label": "Surprise (Eyes pop, jaw drop)", "labelTh": "ตกใจ (ตาโต ปากอ้า)" },
+            { "value": "anger", "label": "Anger (Red face, steam)", "labelTh": "โกรธ (หน้าแดง ควันออกหู)" },
+            { "value": "fear", "label": "Fear (Trembling, tiny pupils)", "labelTh": "กลัว (ตัวสั่น ตาเล็ก)" },
+            { "value": "confusion", "label": "Confusion (Head tilt, ?)", "labelTh": "งง (เอียงหัว ?)" },
+            { "value": "love", "label": "Love (Heart eyes, hearts)", "labelTh": "รัก (ตาหัวใจ หัวใจลอย)" },
+            { "value": "determination", "label": "Determination (Star eyes, fist)", "labelTh": "มุ่งมั่น (ตาเป็นดาว กำปั้น)" },
+            { "value": "mischief", "label": "Mischief (Sly grin)", "labelTh": "ซุกซน (ยิ้มแกล้ง)" },
+            { "value": "sleepy", "label": "Sleepy (Z-marks, yawn)", "labelTh": "ง่วง (Z ลอย หาว)" },
+            { "value": "excited", "label": "Excited (Bouncing, sparkle)", "labelTh": "ตื่นเต้น (กระโดด ประกาย)" }
+          ]
+        },
+        {
+          "id": "audioMode",
+          "type": "select",
+          "label": "Audio Mode",
+          "labelTh": "โหมดเสียง",
+          "helpText": "Type of audio. Veo 3.1 creates native audio including cartoon voices, SFX, and ambience.",
+          "helpTextTh": "ประเภทเสียง Veo 3.1 สร้างเสียงเนทีฟทั้งเสียงตัวละคร เอฟเฟกต์การ์ตูน และเสียงบรรยากาศ",
+          "required": true,
+          "default": "full_mix",
+          "options": [
+            { "value": "full_mix", "label": "Full Mix (Voice + SFX + Ambient)", "labelTh": "เต็มรูปแบบ (เสียงพูด + เอฟเฟกต์ + บรรยากาศ)" },
+            { "value": "dialogue", "label": "Dialogue + Cartoon SFX", "labelTh": "บทสนทนา + เอฟเฟกต์การ์ตูน" },
+            { "value": "voiceover", "label": "Voiceover / Narration", "labelTh": "เสียงบรรยาย / พากย์เสียง" },
+            { "value": "ambient_only", "label": "Ambient Only (No speech)", "labelTh": "เสียงบรรยากาศเท่านั้น" },
+            { "value": "sfx_only", "label": "Cartoon SFX Only", "labelTh": "เอฟเฟกต์การ์ตูนเท่านั้น" },
+            { "value": "silent", "label": "Silent (No audio)", "labelTh": "ไม่มีเสียง" }
+          ]
+        },
+        {
+          "id": "dialogueLanguage",
+          "type": "select",
+          "label": "Dialogue Language",
+          "labelTh": "ภาษาบทสนทนา",
+          "helpText": "Language for character dialogue or voiceover",
+          "helpTextTh": "ภาษาสำหรับบทสนทนาตัวละครหรือเสียงบรรยาย",
+          "required": true,
+          "default": "th",
+          "options": [
+            { "value": "th", "label": "Thai (ไทย)", "labelTh": "ไทย" },
+            { "value": "en", "label": "English", "labelTh": "อังกฤษ" }
+          ]
+        },
+        {
+          "id": "cartoonVoiceTone",
+          "type": "select",
+          "label": "Voice Tone",
+          "labelTh": "โทนเสียงตัวละคร",
+          "helpText": "Voice character for cartoon dialogue — affects how characters sound",
+          "helpTextTh": "ลักษณะเสียงสำหรับบทสนทนาการ์ตูน — กำหนดเสียงของตัวละคร",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto (Based on character)", "labelTh": "อัตโนมัติ (ตามตัวละคร)" },
+            { "value": "squeaky_cute", "label": "Squeaky & Cute (High-pitched)", "labelTh": "แหลมน่ารัก (เสียงสูง)" },
+            { "value": "deep_booming", "label": "Deep & Booming (Bass)", "labelTh": "ทุ้มกังวาน (เสียงต่ำ)" },
+            { "value": "cheerful_child", "label": "Cheerful Child (Bright)", "labelTh": "เด็กร่าเริง (สดใส)" },
+            { "value": "wise_elder", "label": "Wise Elder (Calm, warm)", "labelTh": "ผู้อาวุโส (สงบ อบอุ่น)" },
+            { "value": "robotic_beep", "label": "Robotic (Mechanical)", "labelTh": "หุ่นยนต์ (เสียงเครื่องจักร)" },
+            { "value": "villain_dramatic", "label": "Villain (Dark, theatrical)", "labelTh": "วายร้าย (มืด น่ากลัว)" },
+            { "value": "narrator_warm", "label": "Narrator (Warm, gentle)", "labelTh": "ผู้บรรยาย (อบอุ่น นุ่มนวล)" },
+            { "value": "energetic_announcer", "label": "Announcer (Loud, exciting)", "labelTh": "ผู้ประกาศ (ดัง ตื่นเต้น)" },
+            { "value": "gentle_whisper", "label": "Gentle Whisper (Soft, ASMR)", "labelTh": "กระซิบ (เบา นุ่ม)" }
+          ]
+        },
+        {
+          "id": "speechBubbles",
+          "type": "select",
+          "label": "Speech Bubbles",
+          "labelTh": "กรอบคำพูด (Speech Bubble)",
+          "helpText": "Show cartoon speech bubbles with text in the video",
+          "helpTextTh": "แสดงกรอบคำพูดการ์ตูนพร้อมข้อความในวิดีโอ",
+          "default": "false",
+          "options": [
+            { "value": "false", "label": "No speech bubbles", "labelTh": "ไม่แสดงกรอบคำพูด" },
+            { "value": "true", "label": "Yes — Show speech bubbles", "labelTh": "ใช่ — แสดงกรอบคำพูด" }
+          ]
+        },
+        {
+          "id": "characterDetails",
+          "type": "textarea",
+          "label": "Character Details (Optional)",
+          "labelTh": "รายละเอียดตัวละคร (ไม่บังคับ)",
+          "placeholder": "Hero: round-faced boy, spiky blue hair, red cape\nSidekick: small yellow robot, single eye, antenna",
+          "placeholderTh": "พระเอก: หน้ากลม ผมฟูสีน้ำเงิน ผ้าคลุมแดง\nไซด์คิก: หุ่นยนต์สีเหลืองตัวเล็ก ตาเดียว มีเสาอากาศ",
+          "helpText": "Describe each character's shape, colors, accessories. One per line. Helps maintain consistency across scenes.",
+          "helpTextTh": "อธิบายรูปร่าง สี อุปกรณ์เสริมของแต่ละตัวละคร บรรทัดละตัว ช่วยให้คงเส้นคงวาข้ามฉาก",
+          "rows": 3
+        },
+        {
+          "id": "dialogueScript",
+          "type": "textarea",
+          "label": "Dialogue Script (Optional)",
+          "labelTh": "บทสนทนา (ไม่บังคับ)",
+          "placeholder": "Robot: สวัสดีครับ วันนี้เราจะผจญภัยกัน!\nGirl: ไปกันเถอะ!",
+          "placeholderTh": "หุ่นยนต์: สวัสดีครับ วันนี้เราจะผจญภัยกัน!\nสาวน้อย: ไปกันเถอะ!",
+          "helpText": "Pre-written dialogue. Format: 'Character: text'. One line per turn. Leave empty for AI-generated dialogue.",
+          "helpTextTh": "บทพูดที่เขียนไว้ รูปแบบ: 'ตัวละคร: บทพูด' บรรทัดละรอบ เว้นว่างให้ AI เขียนให้",
+          "rows": 4
+        }
+      ]
+    },
+    {
+      "id": "camera",
+      "title": "Camera & Rendering",
+      "titleTh": "กล้องและการเรนเดอร์",
+      "icon": "camera",
+      "collapsible": true,
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "shotType",
+          "type": "select",
+          "label": "Shot Type",
+          "labelTh": "ประเภทช็อต / ขนาดภาพ",
+          "helpText": "Camera framing optimized for cartoon composition",
+          "helpTextTh": "ขนาดเฟรมกล้องเหมาะสำหรับองค์ประกอบการ์ตูน",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto (AI selects)", "labelTh": "อัตโนมัติ (AI เลือก)" },
+            { "value": "extreme_wide", "label": "Extreme Wide (Full environment)", "labelTh": "กว้างมาก (ฉากทั้งหมด)" },
+            { "value": "wide", "label": "Wide (Full body + environment)", "labelTh": "กว้าง (เต็มตัว + สภาพแวดล้อม)" },
+            { "value": "medium_wide", "label": "Medium Wide (Group staging)", "labelTh": "กว้างกลาง (จัดกลุ่มตัวละคร)" },
+            { "value": "medium", "label": "Medium (Waist-up, dialogue)", "labelTh": "กลาง (เอวขึ้นไป บทสนทนา)" },
+            { "value": "medium_close_up", "label": "Medium Close-up (Expression)", "labelTh": "กลางใกล้ (เน้นสีหน้า)" },
+            { "value": "close_up", "label": "Close-up (Face, emotion)", "labelTh": "โคลสอัพ (ใบหน้า อารมณ์)" },
+            { "value": "extreme_close_up", "label": "Extreme Close-up (Comedy beat)", "labelTh": "โคลสอัพมาก (จังหวะตลก)" },
+            { "value": "two_shot", "label": "Two-shot (Two characters)", "labelTh": "ทูช็อต (สองตัวละคร)" },
+            { "value": "group_shot", "label": "Group shot (3-4 characters)", "labelTh": "กลุ่ม (3-4 ตัวละคร)" },
+            { "value": "pov", "label": "POV (First-person cartoon)", "labelTh": "POV (มุมมองบุคคลที่หนึ่ง)" },
+            { "value": "birds_eye", "label": "Bird's Eye / Isometric", "labelTh": "มุมสูง / ไอโซเมตริก" }
+          ]
+        },
+        {
+          "id": "cameraMovement",
+          "type": "select",
+          "label": "Camera Movement",
+          "labelTh": "การเคลื่อนกล้อง",
+          "helpText": "Camera motion style for cartoon animation",
+          "helpTextTh": "สไตล์การเคลื่อนกล้องสำหรับแอนิเมชั่น",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto (AI selects)", "labelTh": "อัตโนมัติ (AI เลือก)" },
+            { "value": "static", "label": "Static (Classic cartoon staging)", "labelTh": "คงที่ (จัดฉากแบบคลาสสิก)" },
+            { "value": "slow_push_in", "label": "Slow Push-in (Emotional)", "labelTh": "ซูมช้า (เน้นอารมณ์)" },
+            { "value": "pan", "label": "Pan (Follow movement)", "labelTh": "แพน (ตามการเคลื่อนไหว)" },
+            { "value": "tilt", "label": "Tilt (Reveal height)", "labelTh": "ทิลต์ (เผยความสูง)" },
+            { "value": "orbit", "label": "Orbit (Circle for hero reveal)", "labelTh": "วนรอบ (เผยตัวละคร)" },
+            { "value": "crane_down", "label": "Crane Down (High to low)", "labelTh": "เครนลง (สูงลงต่ำ)" },
+            { "value": "tracking", "label": "Tracking (Follow character)", "labelTh": "ติดตาม (ตามตัวละคร)" },
+            { "value": "whip_pan", "label": "Whip Pan (Comedy snap)", "labelTh": "วิปแพน (หมุนเร็วตลก)" },
+            { "value": "dolly_zoom", "label": "Dolly Zoom (Shock effect)", "labelTh": "ดอลลี่ซูม (เอฟเฟกต์ตกใจ)" },
+            { "value": "zoom", "label": "Zoom In/Out", "labelTh": "ซูม เข้า/ออก" }
+          ]
+        },
+        {
+          "id": "cartoonLighting",
+          "type": "select",
+          "label": "Cartoon Lighting",
+          "labelTh": "แสงแบบการ์ตูน",
+          "helpText": "Lighting optimized for cartoon rendering",
+          "helpTextTh": "การจัดแสงเหมาะสำหรับการเรนเดอร์การ์ตูน",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto (Based on style)", "labelTh": "อัตโนมัติ (ตามสไตล์)" },
+            { "value": "3_point_soft", "label": "3-Point Soft (General)", "labelTh": "3 จุดนุ่มนวล (ทั่วไป)" },
+            { "value": "flat_bright", "label": "Flat Bright (Upbeat, cute)", "labelTh": "แบนสว่าง (สดใส น่ารัก)" },
+            { "value": "dramatic_rim", "label": "Dramatic Rim (Hero glow)", "labelTh": "ริมไลท์ดราม่า (เรืองแสงฮีโร่)" },
+            { "value": "golden_warm", "label": "Golden Warm (Sunset)", "labelTh": "ทองอุ่น (อาทิตย์ตก)" },
+            { "value": "cool_moonlight", "label": "Cool Moonlight (Night)", "labelTh": "แสงจันทร์เย็น (กลางคืน)" },
+            { "value": "neon_glow", "label": "Neon Glow (Cyber/Party)", "labelTh": "นีออนเรือง (ไซเบอร์/ปาร์ตี้)" },
+            { "value": "dappled_forest", "label": "Dappled Forest (Nature)", "labelTh": "แสงป่า (ธรรมชาติ)" },
+            { "value": "studio_product", "label": "Studio Product (Showcase)", "labelTh": "สตูดิโอ (โชว์ตัวละคร)" },
+            { "value": "campfire_warm", "label": "Campfire (Cozy night)", "labelTh": "กองไฟ (คืนอบอุ่น)" },
+            { "value": "underwater_caustics", "label": "Underwater (Aquatic)", "labelTh": "ใต้น้ำ (โลกใต้ทะเล)" }
+          ]
+        },
+        {
+          "id": "materialStyle",
+          "type": "select",
+          "label": "Material / Surface",
+          "labelTh": "วัสดุ / พื้นผิว",
+          "helpText": "Surface material and texture for the cartoon",
+          "helpTextTh": "วัสดุและพื้นผิวสำหรับการเรนเดอร์การ์ตูน",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto (Based on style)", "labelTh": "อัตโนมัติ (ตามสไตล์)" },
+            { "value": "smooth_plastic", "label": "Smooth Plastic (Pixar-like)", "labelTh": "พลาสติกเนียน (แบบ Pixar)" },
+            { "value": "rough_clay", "label": "Rough Clay (Handmade)", "labelTh": "ดินน้ำมัน (ทำมือ)" },
+            { "value": "felt_fabric", "label": "Felt Fabric (Soft textile)", "labelTh": "ผ้าสักหลาด (นุ่มนวล)" },
+            { "value": "glossy_toy", "label": "Glossy Toy (Shiny plastic)", "labelTh": "ของเล่นมันเงา (พลาสติกเงา)" },
+            { "value": "paper_craft", "label": "Paper Craft (Paper, cardboard)", "labelTh": "กระดาษ (กระดาษ กระดาษแข็ง)" },
+            { "value": "painted_wood", "label": "Painted Wood (Storybook)", "labelTh": "ไม้ทาสี (นิทาน)" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "technical",
+      "title": "Technical Settings",
+      "titleTh": "ตั้งค่าทางเทคนิค",
+      "icon": "settings",
+      "collapsible": true,
+      "collapsed": false,
+      "fields": [
+        {
+          "id": "duration",
+          "type": "select",
+          "label": "Clip Duration",
+          "labelTh": "ความยาวคลิป",
+          "helpText": "Seconds per clip. Must be 8s for 1080p/4K or reference images.",
+          "helpTextTh": "วินาทีต่อคลิป ต้องเป็น 8 วินาทีเมื่อใช้ 1080p/4K หรือ reference images",
+          "required": true,
+          "default": "8",
+          "options": [
+            { "value": "4", "label": "4 seconds (720p only)", "labelTh": "4 วินาที (720p เท่านั้น)" },
+            { "value": "6", "label": "6 seconds (720p only)", "labelTh": "6 วินาที (720p เท่านั้น)" },
+            { "value": "8", "label": "8 seconds (All resolutions)", "labelTh": "8 วินาที (ทุกความละเอียด)" }
+          ]
+        },
+        {
+          "id": "aspectRatio",
+          "type": "select",
+          "label": "Aspect Ratio",
+          "labelTh": "อัตราส่วนภาพ",
+          "helpText": "16:9 for YouTube/widescreen, 9:16 for TikTok/Reels/Shorts",
+          "helpTextTh": "16:9 สำหรับ YouTube/จอกว้าง, 9:16 สำหรับ TikTok/Reels/Shorts",
+          "required": true,
+          "default": "16:9",
+          "options": [
+            { "value": "16:9", "label": "16:9 (Landscape — YouTube, Widescreen)", "labelTh": "16:9 (แนวนอน — YouTube, จอกว้าง)" },
+            { "value": "9:16", "label": "9:16 (Vertical — TikTok, Reels, Shorts)", "labelTh": "9:16 (แนวตั้ง — TikTok, Reels, Shorts)" }
+          ]
+        },
+        {
+          "id": "resolution",
+          "type": "select",
+          "label": "Resolution",
+          "labelTh": "ความละเอียด",
+          "helpText": "1080p/4K require 8s duration. 720p required for extension mode.",
+          "helpTextTh": "1080p/4K ต้องใช้ 8 วินาที 720p จำเป็นสำหรับโหมดต่อคลิป",
+          "required": true,
+          "default": "1080p",
+          "options": [
+            { "value": "720p", "label": "720p (Fast, supports extension)", "labelTh": "720p (เร็ว รองรับต่อคลิป)" },
+            { "value": "1080p", "label": "1080p (High quality)", "labelTh": "1080p (คุณภาพสูง)" },
+            { "value": "4k", "label": "4K (Ultra quality, slowest)", "labelTh": "4K (คุณภาพสูงสุด ช้าที่สุด)" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "advanced",
+      "title": "Advanced Options",
+      "titleTh": "ตัวเลือกขั้นสูง",
+      "icon": "sliders-horizontal",
+      "collapsible": true,
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "sceneMode",
+          "type": "select",
+          "label": "Scene Mode",
+          "labelTh": "โหมดฉาก",
+          "helpText": "Single clip, multi-scene storyboard, or extend an existing clip",
+          "helpTextTh": "คลิปเดียว สตอรี่บอร์ดหลายฉาก หรือต่อคลิปที่มีอยู่",
+          "default": "single",
+          "options": [
+            { "value": "single", "label": "Single Clip", "labelTh": "คลิปเดียว" },
+            { "value": "storyboard", "label": "Multi-Scene Storyboard", "labelTh": "สตอรี่บอร์ดหลายฉาก" },
+            { "value": "extension", "label": "Extend Existing Clip", "labelTh": "ต่อคลิปที่มีอยู่" }
+          ]
+        },
+        {
+          "id": "totalScenes",
+          "type": "select",
+          "label": "Total Scenes (Storyboard)",
+          "labelTh": "จำนวนฉาก (สตอรี่บอร์ด)",
+          "helpText": "Number of scenes. Each scene = one Veo clip.",
+          "helpTextTh": "จำนวนฉาก แต่ละฉาก = หนึ่งคลิป Veo",
+          "default": "1",
+          "options": [
+            { "value": "1", "label": "1 Scene", "labelTh": "1 ฉาก" },
+            { "value": "2", "label": "2 Scenes", "labelTh": "2 ฉาก" },
+            { "value": "3", "label": "3 Scenes", "labelTh": "3 ฉาก" },
+            { "value": "4", "label": "4 Scenes", "labelTh": "4 ฉาก" },
+            { "value": "5", "label": "5 Scenes", "labelTh": "5 ฉาก" },
+            { "value": "6", "label": "6 Scenes", "labelTh": "6 ฉาก" },
+            { "value": "8", "label": "8 Scenes", "labelTh": "8 ฉาก" },
+            { "value": "10", "label": "10 Scenes", "labelTh": "10 ฉาก" },
+            { "value": "15", "label": "15 Scenes", "labelTh": "15 ฉาก" },
+            { "value": "20", "label": "20 Scenes (Max)", "labelTh": "20 ฉาก (สูงสุด)" }
+          ]
+        },
+        {
+          "id": "useTimestamps",
+          "type": "select",
+          "label": "Timestamp Multi-Panel",
+          "labelTh": "หลายเฟรมแบบ Timestamp",
+          "helpText": "Split one clip into multiple panels using [00:00-00:02] style timestamps",
+          "helpTextTh": "แบ่งคลิปเดียวเป็นหลายเฟรมด้วย timestamp แบบ [00:00-00:02]",
+          "default": "false",
+          "options": [
+            { "value": "false", "label": "No (Single continuous shot)", "labelTh": "ไม่ (ช็อตต่อเนื่องเดียว)" },
+            { "value": "true", "label": "Yes (Multi-panel with timestamps)", "labelTh": "ใช่ (หลายเฟรมพร้อม timestamp)" }
+          ]
+        },
+        {
+          "id": "useReferenceImages",
+          "type": "select",
+          "label": "Reference Images (Character Lock)",
+          "labelTh": "ภาพอ้างอิง (ล็อกตัวละคร)",
+          "helpText": "Use up to 3 reference images to lock character appearance. Forces 8s duration.",
+          "helpTextTh": "ใช้ภาพอ้างอิงสูงสุด 3 ภาพเพื่อล็อกหน้าตาตัวละคร บังคับ 8 วินาที",
+          "default": "false",
+          "options": [
+            { "value": "false", "label": "No reference images", "labelTh": "ไม่ใช้ภาพอ้างอิง" },
+            { "value": "true", "label": "Yes — Lock character appearance (up to 3)", "labelTh": "ใช่ — ล็อกหน้าตัวละคร (สูงสุด 3 ภาพ)" }
+          ]
+        },
+        {
+          "id": "negativeElements",
+          "type": "text",
+          "label": "Elements to Avoid (Optional)",
+          "labelTh": "สิ่งที่ต้องการหลีกเลี่ยง (ไม่บังคับ)",
+          "placeholder": "e.g., realistic style, dark themes, text overlays",
+          "placeholderTh": "เช่น สไตล์สมจริง ธีมมืด ข้อความซ้อนภาพ",
+          "helpText": "List unwanted elements. These will be avoided in generation.",
+          "helpTextTh": "ระบุสิ่งที่ไม่ต้องการ จะถูกหลีกเลี่ยงในการสร้าง"
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "description": "description",
+    "cartoonStyle": "cartoonStyle",
+    "mood": "mood",
+    "colorPalette": "colorPalette",
+    "characterCount": "characterCount",
+    "characterExpression": "characterExpression",
+    "audioMode": "audioMode",
+    "dialogueLanguage": "dialogueLanguage",
+    "cartoonVoiceTone": "cartoonVoiceTone",
+    "speechBubbles": "speechBubbles",
+    "characterDetails": "characterDetails",
+    "dialogueScript": "dialogueScript",
+    "shotType": "shotType",
+    "cameraMovement": "cameraMovement",
+    "cartoonLighting": "cartoonLighting",
+    "materialStyle": "materialStyle",
+    "duration": "duration",
+    "aspectRatio": "aspectRatio",
+    "resolution": "resolution",
+    "sceneMode": "sceneMode",
+    "totalScenes": "totalScenes",
+    "useTimestamps": "useTimestamps",
+    "useReferenceImages": "useReferenceImages",
+    "negativeElements": "negativeElements"
+  }
+}

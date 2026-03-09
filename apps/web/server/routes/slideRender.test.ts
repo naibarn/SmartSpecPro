@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import express from "express";
 import request from "supertest";
+import { JSDOM } from "jsdom";
 import { signBearerToken } from "../_core/tokens";
 
 // --------------------------------------------------------------------------
@@ -311,6 +312,215 @@ describe("GET /internal/slide-render/:deckId/:slideIndex", () => {
       .set("X-Internal-Token", token);
     expect(res.text).toContain("function normalizeMediaSrc(value)");
     expect(res.text).toContain("video.muted = true");
+  });
+
+  it("HTML response includes media-motion runtime and applies it to live media nodes", async () => {
+    const app = await buildApp();
+    const token = makeValidToken();
+    const res = await request(app)
+      .get(`/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}?mode=record`)
+      .set("X-Internal-Token", token);
+
+    expect(res.text).toContain("var MEDIA_MOTION_RUNTIME =");
+    expect(res.text).toContain("function normalizeMediaMotion(motion)");
+    expect(res.text).toContain("function startMediaMotionLoopIfNeeded()");
+    expect(res.text).toContain("\"pan-up-left\"");
+    expect(res.text).toContain("maxPanOverscanDelta");
+    expect(res.text).toContain("registerMediaMotionNode(video, zoom, posX, posY, el.mediaMotion)");
+    expect(res.text).toContain("registerMediaMotionNode(img, zoom, posX, posY, el.mediaMotion)");
+  });
+
+  it("record-mode runtime animates registered inline svg media nodes", async () => {
+    const slides = [makeSlide(0), makeSlide(1), {
+      ...makeSlide(2),
+      slideContent: {
+        durationMs: 4000,
+        elements: [
+          {
+            id: "svg-motion-1",
+            type: "image",
+            x: 0,
+            y: 0,
+            width: 320,
+            height: 180,
+            src: "",
+            svgContent: "<svg viewBox='0 0 10 10'><rect width='10' height='10' fill='currentColor' /></svg>",
+            svgColor: "#22c55e",
+            mediaMotion: { preset: "pan-right", intensity: 1, easing: "linear" },
+          },
+        ],
+      },
+    }, makeSlide(3)];
+    dbMocks.getDb.mockResolvedValue(dbMocks.makeChain(slides));
+
+    const app = await buildApp();
+    const token = makeValidToken();
+    const res = await request(app)
+      .get(`/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}?mode=record`)
+      .set("X-Internal-Token", token);
+
+    const rafQueue: FrameRequestCallback[] = [];
+    const dom = new JSDOM(res.text, {
+      url: `http://127.0.0.1/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}?mode=record`,
+      runScripts: "dangerously",
+      beforeParse(window) {
+        window.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+          rafQueue.push(callback);
+          return rafQueue.length;
+        }) as typeof window.requestAnimationFrame;
+        window.cancelAnimationFrame = vi.fn() as any;
+      },
+    });
+
+    const svgNode = dom.window.document.querySelector("[data-slide-media-id='svg-motion-1']") as HTMLDivElement | null;
+    expect(svgNode).not.toBeNull();
+    const initialTransform = svgNode?.style.transform ?? "";
+
+    expect(rafQueue.length).toBeGreaterThan(0);
+    let timestamp = 1000;
+    for (let step = 0; step < 6 && svgNode?.style.transform === initialTransform; step += 1) {
+      const pending = rafQueue.splice(0);
+      expect(pending.length).toBeGreaterThan(0);
+      for (const callback of pending) {
+        callback(timestamp);
+      }
+      timestamp += 1000;
+    }
+
+    expect(svgNode?.style.transform).not.toBe(initialTransform);
+    expect(svgNode?.style.transform).toContain("translate(");
+  });
+
+  it("record-mode runtime keeps long-slide raster image motion visible early for mp4 capture", async () => {
+    const slides = [makeSlide(0), makeSlide(1), {
+      ...makeSlide(2),
+      slideContent: {
+        durationMs: 10_000,
+        elements: [
+          {
+            id: "img-motion-1",
+            type: "image",
+            x: 0,
+            y: 0,
+            width: 320,
+            height: 180,
+            src: "https://cdn.example.com/motion-image.png",
+            alt: "Motion image",
+            mediaMotion: { preset: "zoom-in" },
+          },
+        ],
+      },
+    }, makeSlide(3)];
+    dbMocks.getDb.mockResolvedValue(dbMocks.makeChain(slides));
+
+    const app = await buildApp();
+    const token = makeValidToken();
+    const res = await request(app)
+      .get(`/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}?mode=record`)
+      .set("X-Internal-Token", token);
+
+    const rafQueue: FrameRequestCallback[] = [];
+    const dom = new JSDOM(res.text, {
+      url: `http://127.0.0.1/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}?mode=record`,
+      runScripts: "dangerously",
+      beforeParse(window) {
+        window.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+          rafQueue.push(callback);
+          return rafQueue.length;
+        }) as typeof window.requestAnimationFrame;
+        window.cancelAnimationFrame = vi.fn() as any;
+      },
+    });
+
+    const imageNode = dom.window.document.querySelector("[data-slide-media-id='img-motion-1']") as HTMLImageElement | null;
+    expect(imageNode).not.toBeNull();
+
+    let timestamp = 1000;
+    for (let step = 0; step < 3; step += 1) {
+      const pending = rafQueue.splice(0);
+      expect(pending.length).toBeGreaterThan(0);
+      for (const callback of pending) {
+        callback(timestamp);
+      }
+      timestamp += 500;
+    }
+
+    const scaleMatch = imageNode?.style.transform.match(/scale\(([^)]+)\)/);
+    expect(scaleMatch).not.toBeNull();
+    expect(Number(scaleMatch?.[1] ?? "0")).toBeGreaterThan(1.02);
+  });
+
+  it("record-mode runtime starts outro image motion near the end of the slide", async () => {
+    const slides = [makeSlide(0), makeSlide(1), {
+      ...makeSlide(2),
+      slideContent: {
+        durationMs: 10_000,
+        elements: [
+          {
+            id: "img-outro-1",
+            type: "image",
+            x: 0,
+            y: 0,
+            width: 320,
+            height: 180,
+            src: "https://cdn.example.com/motion-image.png",
+            alt: "Motion image",
+            mediaMotion: {
+              outro: { preset: "pan-left", intensity: 1, easing: "linear", durationMs: 2000 },
+            },
+          },
+        ],
+      },
+    }, makeSlide(3)];
+    dbMocks.getDb.mockResolvedValue(dbMocks.makeChain(slides));
+
+    const app = await buildApp();
+    const token = makeValidToken();
+    const res = await request(app)
+      .get(`/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}?mode=record`)
+      .set("X-Internal-Token", token);
+
+    const rafQueue: FrameRequestCallback[] = [];
+    const dom = new JSDOM(res.text, {
+      url: `http://127.0.0.1/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}?mode=record`,
+      runScripts: "dangerously",
+      beforeParse(window) {
+        window.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+          rafQueue.push(callback);
+          return rafQueue.length;
+        }) as typeof window.requestAnimationFrame;
+        window.cancelAnimationFrame = vi.fn() as any;
+      },
+    });
+
+    const imageNode = dom.window.document.querySelector("[data-slide-media-id='img-outro-1']") as HTMLImageElement | null;
+    expect(imageNode).not.toBeNull();
+
+    let timestamp = 1000;
+    const beforeOutroTransform = imageNode?.style.transform ?? "";
+    for (let step = 0; step < 7; step += 1) {
+      const pending = rafQueue.splice(0);
+      expect(pending.length).toBeGreaterThan(0);
+      for (const callback of pending) {
+        callback(timestamp);
+      }
+      timestamp += 1000;
+    }
+
+    expect(imageNode?.style.transform).toBe(beforeOutroTransform);
+
+    for (let step = 0; step < 4 && imageNode?.style.transform === beforeOutroTransform; step += 1) {
+      const pending = rafQueue.splice(0);
+      expect(pending.length).toBeGreaterThan(0);
+      for (const callback of pending) {
+        callback(timestamp);
+      }
+      timestamp += 1000;
+    }
+
+    const translateMatch = imageNode?.style.transform.match(/translate\(([-0-9.]+)%\,\s*0%\)/);
+    expect(translateMatch).not.toBeNull();
+    expect(Number(translateMatch?.[1] ?? "0")).toBeLessThan(-5.5);
   });
 
   it("HTML response includes svg validation and bounded placeholder fallback paths", async () => {

@@ -21,6 +21,7 @@ import {
   type ResolvedAudioTrack,
   type ResolvedProjectAudioTrack,
 } from "@shared/presentation/contracts";
+import { hasActiveMediaMotion } from "@shared/presentation/mediaMotion";
 import { eq, inArray } from "drizzle-orm";
 import type { PresentationDeck, PresentationSlide } from "../../drizzle/schema";
 import { libraryItems } from "../../drizzle/schema";
@@ -409,7 +410,11 @@ function hasRenderableVideoElements(slides: PresentationSlide[]): boolean {
     for (const rawElement of elements) {
       if (!rawElement || typeof rawElement !== "object") continue;
       const element = rawElement as Record<string, unknown>;
-      if (String(element.type ?? "").toLowerCase() !== "video") continue;
+      const type = String(element.type ?? "").toLowerCase();
+      if ((type === "image" || type === "video") && hasActiveMediaMotion(element.mediaMotion as any)) {
+        return true;
+      }
+      if (type !== "video") continue;
       const src = typeof element.src === "string" ? element.src.trim() : "";
       if (src.length > 0) {
         return true;
@@ -1022,7 +1027,7 @@ async function resolveSlideAudioData(
 
 export function buildPresentationRenderSpec(input: BuildRenderSpecInput): PresentationRenderSpec {
   const { width, height } = resolveRenderDimensions(input);
-  const degraded = degradeSlidesForExport(input.slides, DEFAULT_DURATION_MS);
+  const degraded = degradeSlidesForExport(input.slides, DEFAULT_DURATION_MS, { format: input.format });
   const hasDynamicVideo = input.format === "mp4" && hasRenderableVideoElements(input.slides);
 
   // Enrich degraded slides with resolved audio tracks when available.

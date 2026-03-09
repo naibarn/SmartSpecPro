@@ -142,6 +142,20 @@ class BrowserPool:
 
 
 _pool: BrowserPool | None = None
+_worker_loop: asyncio.AbstractEventLoop | None = None
+
+
+def get_worker_loop() -> asyncio.AbstractEventLoop:
+    """Return the persistent worker-scoped event loop.
+
+    Playwright's async API binds to the event loop where the browser was
+    launched.  All async operations (browser pool, Redis, HTTP) MUST run
+    on the same loop to avoid cross-loop hangs.
+    """
+    global _worker_loop
+    if _worker_loop is None or _worker_loop.is_closed():
+        _worker_loop = asyncio.new_event_loop()
+    return _worker_loop
 
 
 def get_browser_pool() -> BrowserPool:
@@ -149,3 +163,45 @@ def get_browser_pool() -> BrowserPool:
     if _pool is None:
         raise BrowserLaunchError("BrowserPool not initialized -- is this a Celery worker?")
     return _pool
+
+
+def init_browser_pool_sync() -> None:
+    """Initialize the BrowserPool singleton. Called from Celery worker_process_init signal."""
+    global _pool
+    if _pool is not None:
+        return
+
+    import os
+
+    import redis.asyncio as aioredis
+
+    redis_url = os.getenv("REDIS_URL", os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0"))
+    redis_client = aioredis.from_url(redis_url)
+
+    loop = get_worker_loop()
+    try:
+        pool = BrowserPool(redis_client=redis_client)
+        loop.run_until_complete(pool.start())
+        _pool = pool
+        logger.info("BrowserPool initialized via worker signal")
+    except Exception:
+        logger.warning("BrowserPool init skipped (Playwright not available)", exc_info=True)
+    # NOTE: Do NOT close the loop — it must stay alive for Playwright operations
+
+
+def shutdown_browser_pool_sync() -> None:
+    """Shut down the BrowserPool singleton. Called from Celery worker_process_shutdown signal."""
+    global _pool, _worker_loop
+    if _pool is None:
+        return
+
+    loop = get_worker_loop()
+    try:
+        loop.run_until_complete(asyncio.wait_for(_pool.stop(), timeout=5.0))
+    except Exception:
+        logger.warning("BrowserPool shutdown error (timeout or exception)", exc_info=True)
+    finally:
+        _pool = None
+        if _worker_loop is not None:
+            _worker_loop.close()
+            _worker_loop = None

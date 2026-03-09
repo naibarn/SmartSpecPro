@@ -11,6 +11,7 @@ from .models import SkillManifest
 ISC_ROOT = Path(__file__).resolve().parent.parent
 CANONICAL_SKILLS_DIR = ISC_ROOT.parent
 LEGACY_SKILLS_DIR = ISC_ROOT / "skills"
+MANIFEST_FILENAMES = ("skill.md", "SKILL.md")
 
 
 @dataclass(frozen=True)
@@ -40,12 +41,24 @@ def candidate_skill_roots() -> List[Path]:
 
 def _skill_dir_exists(skill_dir: Path) -> bool:
     return skill_dir.is_dir() and (
-        (skill_dir / "skill.md").exists() or (skill_dir / "manifest.json").exists()
+        any((skill_dir / file_name).exists() for file_name in MANIFEST_FILENAMES)
+        or (skill_dir / "manifest.json").exists()
     )
 
 
 def canonical_skill_dir(skill_name: str) -> Path:
     return canonical_skills_root() / skill_name
+
+
+def resolve_skill_manifest_path(skill_dir: Path) -> Optional[Path]:
+    for file_name in MANIFEST_FILENAMES:
+        candidate = skill_dir / file_name
+        if candidate.exists():
+            return candidate
+    manifest_json = skill_dir / "manifest.json"
+    if manifest_json.exists():
+        return manifest_json
+    return None
 
 
 def resolve_skill_dir(skill_name: str) -> Path:
@@ -63,10 +76,7 @@ def resolve_skill_files(skill_name: str) -> ResolvedSkillFiles:
         skill_dir / "js" / "skill.js",
         skill_dir / "skill.py",
     ]
-    manifest_candidates = [
-        skill_dir / "skill.md",
-        skill_dir / "manifest.json",
-    ]
+    manifest_candidates = [*(skill_dir / file_name for file_name in MANIFEST_FILENAMES), skill_dir / "manifest.json"]
     tests_candidates = [
         skill_dir / "tests" / "tests.json",
         skill_dir / "tests.json",
@@ -178,7 +188,7 @@ def load_manifest(skill_name: str) -> SkillManifest:
         raise FileNotFoundError(f"No manifest found for skill: {skill_name}")
 
     path = files.manifest_path
-    if path.name == "skill.md":
+    if path.name in MANIFEST_FILENAMES:
         data = parse_skill_frontmatter(path.read_text(encoding="utf-8"))
         return SkillManifest(
             name=data.get("name", skill_name),
@@ -229,6 +239,13 @@ def skill_path(skill_name: str) -> Path:
 def read_text(skill_name: str, rel_path: str) -> str:
     p = skill_path(skill_name) / rel_path
     return p.read_text(encoding="utf-8")
+
+
+def read_manifest_text(skill_name: str) -> str:
+    files = resolve_skill_files(skill_name)
+    if files.manifest_path is None:
+        raise FileNotFoundError(f"No manifest found for skill: {skill_name}")
+    return files.manifest_path.read_text(encoding="utf-8")
 
 
 def write_text(skill_name: str, rel_path: str, content: str) -> None:

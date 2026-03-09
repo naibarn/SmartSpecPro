@@ -1837,6 +1837,7 @@ export const presentationDecks = pgTable("presentation_decks", {
   libraryItemId: integer("library_item_id").notNull().references(() => libraryItems.id, { onDelete: "cascade" }),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
+  notes: text("notes"),
   version: integer("version").notNull().default(1),
   slideCount: integer("slide_count").notNull().default(0),
   totalAssetBytes: integer("total_asset_bytes").notNull().default(0),

@@ -6,7 +6,7 @@ Two primary modes:
                schemas/input.schema.json  (MANDATORY)
                schemas/output.schema.json (MANDATORY)
                schemas/ui.schema.json     (MANDATORY)
-               skill.md, python/skill.py OR js/skill.js, tests/tests.json
+               skill.md + SKILL.md, python/skill.py OR js/skill.js, tests/tests.json
 
   improve  — Iterative LLM + research improvement loop for existing skills in apps/web/skills/
 
@@ -272,11 +272,16 @@ def _create_skill(inp: dict, context: Any = None) -> str:
         f"{warnings_text}\n\n"
         f"---\n"
         f"💡 All 3 schemas (`input`, `output`, `ui`) are in `schemas/`. "
-        f"Edit `skill.md` to adjust triggers and metadata."
+        f"Edit `skill.md` or `SKILL.md` to adjust triggers and metadata."
     )
 
     return json.dumps(
-        {"success": True, "output": output, "skill_path": result.skill_path},
+        {
+            "success": True,
+            "output": output,
+            "skill_name": result.skill_name,
+            "skill_path": result.skill_path,
+        },
         ensure_ascii=False,
     )
 
@@ -348,6 +353,11 @@ def _improve_skill(inp: dict, context: Any = None) -> str:
 
     mode: str = inp.get("mode", "auto")
     rounds: int = int(inp.get("rounds", 3))
+    improvement_request: str = (
+        inp.get("improvement_request")
+        or inp.get("prompt")
+        or ""
+    ).strip()
     research_cfg = {
         "max_topics": int(inp.get("research_max_topics", 10)),
         "max_results_per_topic": int(inp.get("research_max_results", 3)),
@@ -368,6 +378,7 @@ def _improve_skill(inp: dict, context: Any = None) -> str:
             llm_override=llm_override,
             research_cfg=research_cfg,
             safety_cfg=_get_safety_cfg(inp),
+            improvement_request=improvement_request,
         )
     except Exception as e:
         _log(f"Improve failed: {e}")
@@ -401,7 +412,15 @@ def _improve_skill(inp: dict, context: Any = None) -> str:
     else:
         lines.append("- No patches generated (all tests passing or heuristic mode)")
 
-    return json.dumps({"success": True, "output": "\n".join(lines)}, ensure_ascii=False)
+    return json.dumps(
+        {
+            "success": True,
+            "output": "\n".join(lines),
+            "skill_name": skill_name,
+            "saved_proposals": saved,
+        },
+        ensure_ascii=False,
+    )
 
 
 def _convert_workflow_skill(inp: dict, context: Any = None) -> str:
@@ -556,7 +575,7 @@ def _help_response() -> str:
             ' "llm_gateway_mode": "system", "llm_model_search": "claude-sonnet-4-6"}\n'
             "```\n\n"
             "**Always generates:** `schemas/input.schema.json`, `schemas/output.schema.json`, "
-            "`schemas/ui.schema.json`, `skill.md`, `python/skill.py` or `js/skill.js`, "
+            "`schemas/ui.schema.json`, `skill.md`, `SKILL.md`, `python/skill.py` or `js/skill.js`, "
             "`tests/tests.json`\n\n"
             "### 🔄 Convert a Virtual Workflow to a skill\n"
             "Export a workflow from the Workflow Editor and paste the JSON:\n"

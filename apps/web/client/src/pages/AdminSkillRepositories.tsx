@@ -267,7 +267,7 @@ export default function AdminSkillRepositories() {
                   <SelectContent>
                     <SelectItem value="auto">Auto Detect</SelectItem>
                     <SelectItem value="antigravity">Antigravity</SelectItem>
-                    <SelectItem value="claude">Claude/OpenCode</SelectItem>
+                    <SelectItem value="claude">Shared Skill Bundle</SelectItem>
                     <SelectItem value="custom-gpt">Custom GPT</SelectItem>
                   </SelectContent>
                 </Select>

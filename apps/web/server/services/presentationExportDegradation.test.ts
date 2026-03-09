@@ -84,4 +84,66 @@ describe("presentationExportDegradation", () => {
 
     expect(result.warnings.map((warning) => warning.code)).not.toContain("SLIDE_ELEMENT_UNSUPPORTED");
   });
+
+  it("emits a warning when static export omits media motion", () => {
+    const result = degradeSlidesForExport(
+      [
+        {
+          id: 11,
+          deckId: 101,
+          orderIndex: 0,
+          version: 1,
+          title: "Motion slide",
+          slideContent: {
+            elements: [
+              {
+                id: "img-motion-1",
+                type: "image",
+                src: "/api/storage/files/images/hero.png",
+                mediaMotion: { preset: "zoom-in", intensity: 0.5 },
+              },
+            ],
+          },
+          notes: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as any,
+      ],
+      3000,
+      { format: "png" },
+    );
+
+    expect(result.warnings.map((warning) => warning.code)).toContain("SLIDE_MEDIA_MOTION_STATIC_EXPORT_OMITTED");
+  });
+
+  it("does not emit static-motion warnings for invalid media motion presets", () => {
+    const result = degradeSlidesForExport(
+      [
+        {
+          id: 12,
+          deckId: 101,
+          orderIndex: 0,
+          version: 1,
+          title: "Garbage motion slide",
+          slideContent: {
+            elements: [
+              {
+                id: "img-motion-invalid-1",
+                type: "image",
+                src: "/api/storage/files/images/hero.png",
+                mediaMotion: { preset: "garbage", intensity: 0.5 } as any,
+              },
+            ],
+          },
+          notes: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as any,
+      ],
+      3000,
+      { format: "png" },
+    );
+
+    expect(result.warnings.map((warning) => warning.code)).not.toContain("SLIDE_MEDIA_MOTION_STATIC_EXPORT_OMITTED");
+  });
 });

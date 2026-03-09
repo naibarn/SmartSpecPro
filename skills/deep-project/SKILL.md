@@ -11,7 +11,7 @@ Decomposes vague, high-level project requirements into well-scoped components to
 
 ---
 
-## CRITICAL: First Actions (Codex)
+## CRITICAL: First Actions
 
 **BEFORE using any other tools**, do these in order:
 

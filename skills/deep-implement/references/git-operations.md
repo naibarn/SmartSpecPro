@@ -1,4 +1,4 @@
-# Git Operations (Codex)
+# Git Operations
 
 Git safety and commit workflow for section-based implementation.
 

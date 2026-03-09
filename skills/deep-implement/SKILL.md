@@ -1,15 +1,15 @@
 ---
 name: deep-implement
-description: Implements code from deep-plan section files in Codex with TDD workflow, code review, and section-by-section git commits.
+description: Implements code from deep-plan section files with TDD workflow, code review, and section-by-section git commits.
 license: MIT
 compatibility: Requires git repository; recommended test toolchain for target project
 ---
 
-# Deep Implementation Skill (Codex)
+# Deep Implementation Skill
 
-Codex-adapted workflow: Preflight -> Implement Section (TDD) -> Review -> Fix -> Commit -> Record Progress.
+File-based workflow: Preflight -> Implement Section (TDD) -> Review -> Fix -> Commit -> Record Progress.
 
-This skill is a conversion of `deep-implement` to run in Codex without Claude-only task tools.
+Enhanced implementation skill with autonomous decision-making and file-based state management.
 
 ## CRITICAL: First Actions
 
@@ -21,7 +21,7 @@ Print this banner first:
 ⚠️  CONTEXT WARNING: This workflow is token-intensive. Consider compacting first.
 
 ═══════════════════════════════════════════════════════════════
-DEEP-IMPLEMENT (CODEX): Section-by-Section Implementation
+DEEP-IMPLEMENT: Section-by-Section Implementation
 ═══════════════════════════════════════════════════════════════
 Implements /deep-plan sections with:
   - TDD methodology
@@ -197,7 +197,7 @@ Transition rule:
 - Do not ask Stage B decisions during Stage A.
 - Complete Stage B decision before closing final summary.
 
-## Parallel Execution Policy (Codex)
+## Parallel Execution Policy
 
 Use `multi_tool_use.parallel` automatically when tasks are independent and low-risk.
 
@@ -398,7 +398,7 @@ If the chosen action is `defer`:
 
 ---
 
-## Codex-Specific Rules
+## Execution Rules
 
 - Do not use Claude-only tools (`TaskList`, `TaskUpdate`, `AskUserQuestion`).
 - Track progress with files in `planning_dir` instead.

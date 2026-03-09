@@ -1,4 +1,4 @@
-# Code Review Triage + User Checkpoint (Codex)
+# Code Review Triage + User Checkpoint
 
 Process review findings and involve user only when decisions require product/architecture tradeoffs.
 

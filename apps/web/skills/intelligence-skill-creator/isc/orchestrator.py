@@ -7,7 +7,7 @@ from .llm import OpenAICompatibleClient
 from .researcher import plan_research_topics, run_research, format_research_snippets
 from .agents import triage_failures, plan_patch_strategy, rank_research_snippets
 from .validator import validate_patch
-from .registry import read_text
+from .registry import read_manifest_text, read_text
 from .decider import ChoiceQuestion, ask_choice
 
 @dataclass
@@ -29,7 +29,7 @@ class Orchestrator:
             "require_respond_signature": True
         }
 
-    def propose_patch(self, skill_name: str, report: EvaluationReport) -> PatchProposal:
+    def propose_patch(self, skill_name: str, report: EvaluationReport, improvement_request: str = "") -> PatchProposal:
         triage = triage_failures(report)
         strategy = plan_patch_strategy(self.llm, triage)
 
@@ -53,7 +53,7 @@ class Orchestrator:
                 test_policy = f"custom: {choice}"
 
         try:
-            manifest = read_text(skill_name, "skill.md")
+            manifest = read_manifest_text(skill_name)
         except FileNotFoundError:
             try:
                 manifest = read_text(skill_name, "manifest.json")
@@ -118,6 +118,9 @@ RANKED RESEARCH:
 REPORT DIMENSIONS:
 {report.dimension_failures}
 
+USER REQUEST:
+{improvement_request or "(no additional user request provided)"}
+
 TEST POLICY:
 {test_policy}
 
@@ -125,6 +128,7 @@ Hard requirements:
 - Keep a valid public respond(...) entrypoint intact
 - skill code uses stdlib only
 - Make tests pass
+- Implement the user's requested improvement when provided
 Return JSON ONLY. Do not use markdown code blocks.
 """
 

@@ -15,6 +15,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
+import {
+  describePresentationExportWarning,
+} from "@shared/presentation/exportWarnings";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -27,6 +30,8 @@ interface ExportDialogProps {
   open: boolean;
   /** Called when the dialog is closed */
   onClose: () => void;
+  /** Number of slides whose media motion would be flattened by static formats */
+  staticMotionWarningSlideCount?: number;
   /** Optional callback to persist pending edits before starting export */
   onBeforeExport?: () => Promise<boolean> | boolean;
 }
@@ -60,6 +65,7 @@ const QUALITY_OPTIONS: Array<{ value: ExportQuality; label: string; description:
 
 // Formats for which the quality picker is shown
 const QUALITY_APPLICABLE_FORMATS: ExportFormat[] = ["mp4", "jpg"];
+const STATIC_EXPORT_FORMATS: ExportFormat[] = ["png", "jpg", "pdf"];
 
 const FORMAT_LABELS: Record<string, string> = {
   mp4: "MP4",
@@ -91,6 +97,7 @@ export function ExportDialog({
   deckId,
   open,
   onClose,
+  staticMotionWarningSlideCount = 0,
   onBeforeExport,
 }: ExportDialogProps) {
   // Format and quality selection
@@ -256,9 +263,38 @@ export function ExportDialog({
   const downloadUrl = statusData?.downloadUrl ?? null;
   const errorMessage = statusData?.errorMessage ?? null;
   const outputBytes = statusData?.outputBytes ?? null;
+  const warningSummaries = (() => {
+    const warnings = Array.isArray(statusData?.warnings) ? statusData.warnings : [];
+    const grouped = new Map<string, { count: number; message: string }>();
+    for (const warning of warnings) {
+      const key = String(warning.code || "").trim() || "unknown";
+      const current = grouped.get(key);
+      if (current) {
+        current.count += 1;
+        continue;
+      }
+      grouped.set(key, {
+        count: 1,
+        message: describePresentationExportWarning(warning),
+      });
+    }
+    return Array.from(grouped.entries()).map(([code, value]) => ({
+      code,
+      count: value.count,
+      message: value.message,
+    }));
+  })();
 
   const pastExports = listExportsQuery.data ?? [];
   const hasPastExports = pastExports.some((e) => e.status === "done" && e.downloadUrl);
+  const shouldShowStaticMotionPreflightWarning = (
+    dialogPhase === "selecting"
+    && staticMotionWarningSlideCount > 0
+    && STATIC_EXPORT_FORMATS.includes(format)
+  );
+  const staticMotionPreflightMessage = describePresentationExportWarning({
+    code: "SLIDE_MEDIA_MOTION_STATIC_EXPORT_OMITTED",
+  });
 
   // -------------------------------------------------------------------------
   // Phase: selecting
@@ -268,6 +304,14 @@ export function ExportDialog({
     return (
       <>
         <div className="space-y-6 py-4">
+          {shouldShowStaticMotionPreflightWarning ? (
+            <Alert data-testid="export-preflight-warning">
+              <AlertDescription>
+                {staticMotionPreflightMessage}
+                {staticMotionWarningSlideCount > 1 ? ` (${staticMotionWarningSlideCount} slides)` : ""}
+              </AlertDescription>
+            </Alert>
+          ) : null}
           {/* Format picker */}
           <div className="space-y-3">
             <p className="text-sm font-medium">Format</p>
@@ -402,6 +446,18 @@ export function ExportDialog({
     return (
       <>
         <div className="space-y-4 py-6">
+          {warningSummaries.length > 0 ? (
+            <Alert data-testid="export-warning-summary">
+              <AlertDescription className="space-y-2">
+                {warningSummaries.map((warning) => (
+                  <p key={warning.code}>
+                    {warning.message}
+                    {warning.count > 1 ? ` (${warning.count} slides)` : ""}
+                  </p>
+                ))}
+              </AlertDescription>
+            </Alert>
+          ) : null}
           <Progress
             value={progressPct}
             aria-valuenow={progressPct}
@@ -438,6 +494,18 @@ export function ExportDialog({
     return (
       <>
         <div className="space-y-4 py-6 text-center">
+          {warningSummaries.length > 0 ? (
+            <Alert data-testid="export-warning-summary">
+              <AlertDescription className="space-y-2 text-left">
+                {warningSummaries.map((warning) => (
+                  <p key={warning.code}>
+                    {warning.message}
+                    {warning.count > 1 ? ` (${warning.count} slides)` : ""}
+                  </p>
+                ))}
+              </AlertDescription>
+            </Alert>
+          ) : null}
           <p className="text-sm text-muted-foreground">Your export is ready.</p>
           {fileSizeMb && (
             <p className="text-xs text-muted-foreground">{fileSizeMb} MB</p>

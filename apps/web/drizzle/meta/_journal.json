@@ -414,6 +414,13 @@
       "when": 1772871600000,
       "tag": "0058_prompt_media_generation_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1772875200000,
+      "tag": "0059_presentation_deck_notes",
+      "breakpoints": true
     }
   ]
 }

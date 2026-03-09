@@ -1,0 +1,277 @@
+{
+  "version": "1.0",
+  "skillId": "nano-banana-infographic",
+  "title": "Nano Banana Infographic Creator",
+  "titleTh": "สร้างอินโฟกราฟิก Nano Banana",
+  "description": "Create professional infographics, slide illustrations, data charts, and visual assets using Google Nano Banana 2/Pro with optional Google Search for real-time data",
+  "descriptionTh": "สร้างอินโฟกราฟิก ภาพประกอบสไลด์ กราฟข้อมูล และชิ้นงานภาพระดับมืออาชีพด้วย Google Nano Banana 2/Pro รองรับ Google Search สำหรับข้อมูลเรียลไทม์",
+  "sections": [
+    {
+      "id": "content",
+      "title": "Content & Description",
+      "titleTh": "เนื้อหาและคำอธิบาย",
+      "icon": "layout-dashboard",
+      "fields": [
+        {
+          "id": "description",
+          "type": "textarea",
+          "label": "Description",
+          "labelTh": "คำอธิบาย",
+          "placeholder": "Describe your infographic, chart, or slide illustration...\ne.g., Bar chart of quarterly revenue growth, or 5-step process infographic for training materials",
+          "placeholderTh": "อธิบายอินโฟกราฟิก กราฟ หรือภาพประกอบสไลด์ที่ต้องการ...\nเช่น กราฟแท่งรายได้รายไตรมาส หรือ อินโฟกราฟิก 5 ขั้นตอนสำหรับสื่อการสอน",
+          "helpText": "Describe your visual concept in detail. The AI will transform it into an optimized Nano Banana prompt with proper layout, colors, and typography.",
+          "helpTextTh": "อธิบายแนวคิดภาพโดยละเอียด AI จะแปลงเป็นพรอมต์ Nano Banana ที่เหมาะสมพร้อมเลย์เอาต์ สี และตัวอักษรอัตโนมัติ",
+          "required": true,
+          "rows": 4
+        },
+        {
+          "id": "contentType",
+          "type": "select",
+          "label": "Content Type",
+          "labelTh": "ประเภทเนื้อหา",
+          "helpText": "What kind of visual are you creating? This affects layout, composition, and model selection.",
+          "helpTextTh": "คุณกำลังสร้างภาพประเภทไหน? มีผลต่อเลย์เอาต์ องค์ประกอบ และการเลือกโมเดล",
+          "required": true,
+          "default": "slide_illustration",
+          "options": [
+            { "value": "slide_illustration", "label": "Slide Illustration (Background/Key Visual)", "labelTh": "ภาพประกอบสไลด์ (พื้นหลัง/ภาพหลัก)" },
+            { "value": "chart_bar", "label": "Bar Chart", "labelTh": "กราฟแท่ง" },
+            { "value": "chart_line", "label": "Line Chart", "labelTh": "กราฟเส้น" },
+            { "value": "chart_pie", "label": "Pie / Donut Chart", "labelTh": "กราฟวงกลม / โดนัท" },
+            { "value": "chart_mixed", "label": "Mixed Chart (Bar + Line)", "labelTh": "กราฟผสม (แท่ง + เส้น)" },
+            { "value": "infographic_cartoon", "label": "Cartoon Infographic", "labelTh": "อินโฟกราฟิกแบบการ์ตูน" },
+            { "value": "infographic_education", "label": "Education Infographic (Steps/Process)", "labelTh": "อินโฟกราฟิกการศึกษา (ขั้นตอน/กระบวนการ)" },
+            { "value": "photorealistic_slide", "label": "Photorealistic Slide", "labelTh": "สไลด์ภาพเหมือนจริง" },
+            { "value": "asset_header", "label": "Header / Banner Asset", "labelTh": "ส่วนหัว / แบนเนอร์" },
+            { "value": "asset_icons", "label": "Icon Set", "labelTh": "ชุดไอคอน" },
+            { "value": "timeline", "label": "Timeline / Roadmap", "labelTh": "ไทม์ไลน์ / แผนงาน" },
+            { "value": "process_flow", "label": "Process Flow / Workflow", "labelTh": "ผังกระบวนการ / เวิร์คโฟลว์" }
+          ]
+        },
+        {
+          "id": "style",
+          "type": "select",
+          "label": "Visual Style",
+          "labelTh": "สไตล์ภาพ",
+          "helpText": "Overall design approach that determines colors, shapes, and feel.",
+          "helpTextTh": "แนวทางการออกแบบโดยรวมที่กำหนดสี รูปทรง และความรู้สึก",
+          "required": true,
+          "default": "minimal_modern",
+          "options": [
+            { "value": "minimal_modern", "label": "Minimal Modern (Clean, geometric)", "labelTh": "มินิมอลโมเดิร์น (สะอาด เรขาคณิต)" },
+            { "value": "flat_corporate", "label": "Flat Corporate (Professional)", "labelTh": "แฟลตคอร์ปอเรท (มืออาชีพ)" },
+            { "value": "cartoon_friendly", "label": "Cartoon Friendly (Colorful, fun)", "labelTh": "การ์ตูนสดใส (สีสัน สนุก)" },
+            { "value": "isometric", "label": "Isometric 3D", "labelTh": "ไอโซเมตริก 3 มิติ" },
+            { "value": "photorealistic", "label": "Photorealistic", "labelTh": "ภาพเหมือนจริง" },
+            { "value": "futuristic_clean", "label": "Futuristic (Dark, neon)", "labelTh": "ฟิวเจอริสติก (มืด นีออน)" },
+            { "value": "hand_drawn", "label": "Hand-Drawn Sketch", "labelTh": "ลายเส้นวาดมือ" },
+            { "value": "gradient_abstract", "label": "Gradient Abstract (Bold, trendy)", "labelTh": "กราเดียนท์แอ็บสแทรกต์ (ทันสมัย)" }
+          ]
+        },
+        {
+          "id": "colorScheme",
+          "type": "select",
+          "label": "Color Scheme",
+          "labelTh": "โทนสี",
+          "helpText": "Color palette for the design. Auto selects based on content and style.",
+          "helpTextTh": "จานสีสำหรับการออกแบบ อัตโนมัติเลือกตามเนื้อหาและสไตล์",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto (Based on content)", "labelTh": "อัตโนมัติ (ตามเนื้อหา)" },
+            { "value": "blue_professional", "label": "Blue Professional", "labelTh": "น้ำเงินมืออาชีพ" },
+            { "value": "green_nature", "label": "Green Nature / Growth", "labelTh": "เขียวธรรมชาติ / การเติบโต" },
+            { "value": "warm_amber", "label": "Warm Amber / Orange", "labelTh": "อบอุ่นอำพัน / ส้ม" },
+            { "value": "purple_creative", "label": "Purple Creative", "labelTh": "ม่วงสร้างสรรค์" },
+            { "value": "teal_modern", "label": "Teal Modern", "labelTh": "เทลโมเดิร์น" },
+            { "value": "red_energy", "label": "Red Energy / Sales", "labelTh": "แดงพลัง / การขาย" },
+            { "value": "monochrome", "label": "Monochrome (Grayscale)", "labelTh": "โมโนโครม (ขาวดำ)" },
+            { "value": "pastel_soft", "label": "Pastel Soft", "labelTh": "พาสเทลอ่อนหวาน" },
+            { "value": "dark_elegant", "label": "Dark Elegant", "labelTh": "มืดหรูหรา" },
+            { "value": "brand_custom", "label": "Custom (Specify in description)", "labelTh": "กำหนดเอง (ระบุในคำอธิบาย)" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "data",
+      "title": "Data & Search",
+      "titleTh": "ข้อมูลและการค้นหา",
+      "icon": "search",
+      "collapsible": true,
+      "collapsed": false,
+      "fields": [
+        {
+          "id": "useGoogleSearch",
+          "type": "select",
+          "label": "Google Search (Real-time Data)",
+          "labelTh": "Google Search (ข้อมูลเรียลไทม์)",
+          "helpText": "Enable Google Search grounding to fetch current statistics and factual data. Best for charts and data-driven infographics.",
+          "helpTextTh": "เปิดใช้ Google Search เพื่อดึงข้อมูลสถิติปัจจุบันและข้อเท็จจริง เหมาะสำหรับกราฟและอินโฟกราฟิกที่อิงข้อมูล",
+          "default": "false",
+          "options": [
+            { "value": "false", "label": "Off — Use my own data / no data needed", "labelTh": "ปิด — ใช้ข้อมูลของฉัน / ไม่ต้องการข้อมูล" },
+            { "value": "true", "label": "On — Fetch latest data via Google Search", "labelTh": "เปิด — ดึงข้อมูลล่าสุดผ่าน Google Search" }
+          ]
+        },
+        {
+          "id": "searchQuery",
+          "type": "text",
+          "label": "Search Query (Optional)",
+          "labelTh": "คำค้นหา (ไม่บังคับ)",
+          "placeholder": "e.g., Thailand GDP growth rate 2025-2026",
+          "placeholderTh": "เช่น อัตราการเติบโต GDP ประเทศไทย 2025-2026",
+          "helpText": "Specific data query when Google Search is enabled. Leave empty for auto-generated query from description.",
+          "helpTextTh": "คำค้นหาเฉพาะเมื่อเปิด Google Search เว้นว่างให้ AI สร้างจากคำอธิบายอัตโนมัติ"
+        },
+        {
+          "id": "chartData",
+          "type": "textarea",
+          "label": "Chart Data (Optional)",
+          "labelTh": "ข้อมูลกราฟ (ไม่บังคับ)",
+          "placeholder": "Q1=120, Q2=150, Q3=210, Q4=260\nor: Facebook=85%, YouTube=92%, LINE=95%",
+          "placeholderTh": "Q1=120, Q2=150, Q3=210, Q4=260\nหรือ: Facebook=85%, YouTube=92%, LINE=95%",
+          "helpText": "Pre-defined data for charts. Format: 'Label=Value' separated by commas. Leave empty when using Google Search.",
+          "helpTextTh": "ข้อมูลสำหรับกราฟ รูปแบบ: 'ชื่อ=ค่า' คั่นด้วยจุลภาค เว้นว่างเมื่อใช้ Google Search",
+          "rows": 3
+        }
+      ]
+    },
+    {
+      "id": "technical",
+      "title": "Technical Settings",
+      "titleTh": "ตั้งค่าทางเทคนิค",
+      "icon": "settings",
+      "collapsible": true,
+      "collapsed": false,
+      "fields": [
+        {
+          "id": "aspectRatio",
+          "type": "select",
+          "label": "Aspect Ratio",
+          "labelTh": "อัตราส่วนภาพ",
+          "helpText": "16:9 is standard for presentations. Other ratios for specific use cases.",
+          "helpTextTh": "16:9 เป็นมาตรฐานสำหรับพรีเซนเทชัน อัตราส่วนอื่นสำหรับกรณีเฉพาะ",
+          "required": true,
+          "default": "16:9",
+          "options": [
+            { "value": "1:1", "label": "1:1 (Square)", "labelTh": "1:1 (จัตุรัส)" },
+            { "value": "16:9", "label": "16:9 (Widescreen / Slides)", "labelTh": "16:9 (จอกว้าง / สไลด์)" },
+            { "value": "9:16", "label": "9:16 (Portrait / Mobile)", "labelTh": "9:16 (แนวตั้ง / มือถือ)" },
+            { "value": "4:3", "label": "4:3 (Standard / Classic)", "labelTh": "4:3 (มาตรฐาน / คลาสสิก)" },
+            { "value": "3:4", "label": "3:4 (Portrait Standard)", "labelTh": "3:4 (แนวตั้งมาตรฐาน)" },
+            { "value": "21:9", "label": "21:9 (Ultra-wide / Banner — Banana 2 only)", "labelTh": "21:9 (อัลตร้าไวด์ / แบนเนอร์ — Banana 2 เท่านั้น)" }
+          ]
+        },
+        {
+          "id": "resolution",
+          "type": "select",
+          "label": "Resolution",
+          "labelTh": "ความละเอียด",
+          "helpText": "Higher resolution = better quality but slower. 2K recommended for presentations, 4K for print.",
+          "helpTextTh": "ความละเอียดสูงขึ้น = คุณภาพดีขึ้นแต่ช้ากว่า แนะนำ 2K สำหรับพรีเซนเทชัน, 4K สำหรับงานพิมพ์",
+          "required": true,
+          "default": "2k",
+          "options": [
+            { "value": "512px", "label": "512px (Quick preview)", "labelTh": "512px (ตัวอย่างเร็ว)" },
+            { "value": "1k", "label": "1K (Standard web)", "labelTh": "1K (เว็บมาตรฐาน)" },
+            { "value": "2k", "label": "2K (Presentations — Recommended)", "labelTh": "2K (พรีเซนเทชัน — แนะนำ)" },
+            { "value": "4k", "label": "4K (Print / Large display)", "labelTh": "4K (งานพิมพ์ / จอใหญ่)" }
+          ]
+        },
+        {
+          "id": "model",
+          "type": "select",
+          "label": "Model",
+          "labelTh": "โมเดล",
+          "helpText": "Auto selects the best model. Pro is better for text, data, and Thai language. Flash is faster.",
+          "helpTextTh": "เลือกโมเดลที่เหมาะสมอัตโนมัติ Pro ดีกว่าสำหรับข้อความ ข้อมูล และภาษาไทย Flash เร็วกว่า",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto (AI selects best model)", "labelTh": "อัตโนมัติ (AI เลือกโมเดลที่ดีที่สุด)" },
+            { "value": "google-banana-2", "label": "Nano Banana 2 (Fast, Flash)", "labelTh": "Nano Banana 2 (เร็ว, Flash)" },
+            { "value": "google-nano-banana-pro", "label": "Nano Banana Pro (Quality, Text)", "labelTh": "Nano Banana Pro (คุณภาพ, ข้อความ)" }
+          ]
+        },
+        {
+          "id": "outputFormat",
+          "type": "select",
+          "label": "Output Format",
+          "labelTh": "รูปแบบไฟล์",
+          "helpText": "PNG for text/charts (lossless), JPEG for photos (smaller), WebP for web.",
+          "helpTextTh": "PNG สำหรับข้อความ/กราฟ (ไม่สูญเสีย), JPEG สำหรับภาพถ่าย (เล็กกว่า), WebP สำหรับเว็บ",
+          "default": "png",
+          "options": [
+            { "value": "png", "label": "PNG (Best for text/charts)", "labelTh": "PNG (ดีสุดสำหรับข้อความ/กราฟ)" },
+            { "value": "jpeg", "label": "JPEG (Best for photos)", "labelTh": "JPEG (ดีสุดสำหรับภาพถ่าย)" },
+            { "value": "webp", "label": "WebP (Smaller file size)", "labelTh": "WebP (ไฟล์เล็กกว่า)" }
+          ]
+        },
+        {
+          "id": "textLanguage",
+          "type": "select",
+          "label": "Text Language in Image",
+          "labelTh": "ภาษาข้อความในภาพ",
+          "helpText": "Language of text rendered inside the image. Thai requires Pro model for best results.",
+          "helpTextTh": "ภาษาของข้อความที่แสดงในภาพ ภาษาไทยต้องใช้โมเดล Pro เพื่อผลลัพธ์ที่ดีที่สุด",
+          "default": "en",
+          "options": [
+            { "value": "en", "label": "English", "labelTh": "อังกฤษ" },
+            { "value": "th", "label": "Thai (Requires Pro)", "labelTh": "ไทย (ต้องใช้ Pro)" },
+            { "value": "both", "label": "Both Thai & English", "labelTh": "ทั้งไทยและอังกฤษ" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "advanced",
+      "title": "Advanced Options",
+      "titleTh": "ตัวเลือกขั้นสูง",
+      "icon": "sliders-horizontal",
+      "collapsible": true,
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "numImages",
+          "type": "select",
+          "label": "Number of Variations",
+          "labelTh": "จำนวนรูปแบบ",
+          "helpText": "Generate multiple variations to choose from.",
+          "helpTextTh": "สร้างหลายรูปแบบเพื่อเลือก",
+          "default": "1",
+          "options": [
+            { "value": "1", "label": "1 image", "labelTh": "1 ภาพ" },
+            { "value": "2", "label": "2 variations", "labelTh": "2 รูปแบบ" },
+            { "value": "3", "label": "3 variations", "labelTh": "3 รูปแบบ" },
+            { "value": "4", "label": "4 variations", "labelTh": "4 รูปแบบ" }
+          ]
+        },
+        {
+          "id": "negativeElements",
+          "type": "text",
+          "label": "Elements to Avoid (Optional)",
+          "labelTh": "สิ่งที่ต้องการหลีกเลี่ยง (ไม่บังคับ)",
+          "placeholder": "e.g., logos, watermarks, people, 3D effects",
+          "placeholderTh": "เช่น โลโก้, ลายน้ำ, คน, เอฟเฟกต์ 3 มิติ",
+          "helpText": "List unwanted elements. These will be avoided in generation.",
+          "helpTextTh": "ระบุสิ่งที่ไม่ต้องการ จะถูกหลีกเลี่ยงในการสร้างภาพ"
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "description": "description",
+    "contentType": "contentType",
+    "style": "style",
+    "colorScheme": "colorScheme",
+    "useGoogleSearch": "useGoogleSearch",
+    "searchQuery": "searchQuery",
+    "chartData": "chartData",
+    "aspectRatio": "aspectRatio",
+    "resolution": "resolution",
+    "model": "model",
+    "outputFormat": "outputFormat",
+    "textLanguage": "textLanguage",
+    "numImages": "numImages",
+    "negativeElements": "negativeElements"
+  }
+}

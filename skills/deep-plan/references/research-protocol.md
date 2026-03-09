@@ -21,16 +21,14 @@ This document defines the research decision and execution flow for steps 6-7 of 
 
 ---
 
-## Codex Execution Rules (Takes Precedence)
+## Execution Rules (Takes Precedence)
 
-This reference may include legacy examples using `Task` or structured user prompts from older platforms.
-When running in Codex, apply these rules first:
+This reference may include legacy examples using `Task`/`AskUserQuestion`.
+Apply these rules first:
 
-- If user input is truly needed, ask via normal chat with compact numbered options (no Claude-only tools).
+- Ask users via normal chat with numbered options (no Claude-only tools).
 - Use direct repository inspection commands for codebase research.
 - Use web search tools for external research when needed.
-- Default to planner-owned research choices; ask the user only if they explicitly provided research constraints, budget limits, or domain priorities that materially change what should be investigated.
-- Do not ask for permission to perform necessary web searches, codebase inspection, or safe read-only shell commands. Those are required research actions, not approval checkpoints.
 - Use `multi_tool_use.parallel` for independent read-only research operations.
 - Keep write operations sequential (only parent flow writes `research-notes.md`).
 
@@ -64,25 +62,40 @@ If the spec is vague with no clear technologies, fall back to generic options:
 - "Security considerations for {feature_type}"
 - "Performance optimization patterns"
 
-### 6.2 Determine Codebase Research Automatically
+### 6.2 Ask About Codebase Research
 
-Inspect the repository directly to decide whether there is existing code to analyze.
+Ask user directly (normal chat) to determine if there's existing code to analyze:
 
-- If relevant modules, routes, schemas, tests, or patterns already exist, perform codebase research automatically.
-- If the repository truly lacks relevant code, treat it as a greenfield/new-module case and document that assumption in `research-notes.md`.
-- Do not ask the user this question unless the repository state is inaccessible or ambiguous.
+```
+question: "Is there existing code I should research first?"
+header: "Codebase"
+options:
+  - label: "Yes, research the codebase"
+    description: "Analyze existing patterns, conventions, dependencies, and testing setup"
+  - label: "No existing code"
+    description: "This is a new project or standalone feature"
+```
 
-### 6.3 Select Web Research Topics Automatically
+### 6.3 Ask About Web Research
 
-Use the derived topics to choose web research targets automatically. Prioritize topics that are:
-- version-sensitive or rapidly changing
-- security-sensitive
-- integration-heavy
-- not already answered clearly by the codebase
+Present the derived topics as multi-select options:
 
-Skip web research when the repository already provides a strong, current precedent and no external uncertainty remains.
+```
+question: "Should I research current best practices for any of these topics?"
+header: "Web Research"
+multiSelect: true
+options:
+  - label: "{derived_topic_1}"
+    description: "Based on spec mention of {X}"
+  - label: "{derived_topic_2}"
+    description: "Based on spec mention of {Y}"
+  - label: "{derived_topic_3}"
+    description: "Based on spec mention of {Z}"
+  - label: "Other (I'll specify)"
+    description: "Enter custom research topics"
+```
 
-Only ask the user for custom research topics if they explicitly want to steer the investigation.
+If user selects "Other", follow up with a free-text question to get their custom topics.
 
 ### 6.4 Handle "Minimal Research" Case
 
@@ -169,9 +182,9 @@ Structure the file however makes sense for the findings. The goal is to capture 
 | Case | Handling |
 |------|----------|
 | Spec file is vague | Present generic options based on any detected language/framework |
-| User selects no research | In autonomous mode, still perform mandatory baseline research before proceeding. |
+| User selects no research | Skip step 7, proceed to step 8 (interview). Still capture testing preferences for new projects. |
 | Web research subagent fails | Log warning, write file with only codebase research (if it succeeded) |
-| Both subagents fail | Log error, proceed with codebase/spec-only planning, and record the research gap plus confidence impact in `research-notes.md` |
+| Both subagents fail | Log error, ask user if they want to retry or proceed without research |
 | Only one research type selected | Run single subagent, write file with just that content |
 | WebFetch returns truncated content | Subagent handles internally - notes incomplete info and tries additional sources |
 

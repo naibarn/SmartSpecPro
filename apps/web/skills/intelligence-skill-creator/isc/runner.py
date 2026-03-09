@@ -30,7 +30,8 @@ def iterate_improve(project_root: Path, skill_name: str, mode: str="auto", round
                    ask_user: bool=False, allow_test_expansion: bool=False,
                    llm_override: Optional[dict]=None,
                    research_cfg: Optional[Dict[str, Any]]=None,
-                   safety_cfg: Optional[Dict[str, Any]]=None) -> RunResult:
+                   safety_cfg: Optional[Dict[str, Any]]=None,
+                   improvement_request: str="") -> RunResult:
     ws = make_workspace(project_root, skill_name)
     skill_dir = ws / "skills" / skill_name
     proposals: List[PatchProposal] = []
@@ -43,12 +44,14 @@ def iterate_improve(project_root: Path, skill_name: str, mode: str="auto", round
             proposal = HeuristicImprover().propose_patch(skill_name, report)
         elif mode == "llm":
             proposal = LLMImprover(ask_user=ask_user, allow_test_expansion=allow_test_expansion,
-                                   llm_override=llm_override, research_cfg=research_cfg, safety_cfg=safety_cfg
+                                   llm_override=llm_override, research_cfg=research_cfg, safety_cfg=safety_cfg,
+                                   improvement_request=improvement_request
                                   ).propose_patch(skill_name, report)
         else:
             try:
                 proposal = LLMImprover(ask_user=ask_user, allow_test_expansion=allow_test_expansion,
-                                       llm_override=llm_override, research_cfg=research_cfg, safety_cfg=safety_cfg
+                                       llm_override=llm_override, research_cfg=research_cfg, safety_cfg=safety_cfg,
+                                       improvement_request=improvement_request
                                       ).propose_patch(skill_name, report)
             except Exception:
                 proposal = HeuristicImprover().propose_patch(skill_name, report)

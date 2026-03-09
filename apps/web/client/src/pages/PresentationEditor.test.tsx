@@ -26,6 +26,7 @@ const mutationMocks = {
   triggerExport: vi.fn(),
   setSlideAudio: vi.fn(),
   setDeckAudio: vi.fn(),
+  generateSlideAudioFromNote: vi.fn(),
   relayoutSlide: vi.fn(),
   resolvePendingMedia: vi.fn(),
   generateImageAsync: vi.fn(),
@@ -381,7 +382,7 @@ vi.mock("@/lib/trpc", () => ({
           data: null,
           isLoading: false,
           error: null,
-          refetch: vi.fn().mockResolvedValue({ data: null }),
+          refetch: vi.fn().mockImplementation(async () => ({ data: null })),
         })),
       },
       listVersions: {
@@ -403,7 +404,7 @@ vi.mock("@/lib/trpc", () => ({
           data: queryState.deckByItem,
           isLoading: false,
           error: queryState.deckError,
-          refetch: vi.fn().mockResolvedValue({ data: queryState.deckByItem }),
+          refetch: vi.fn().mockImplementation(async () => ({ data: queryState.deckByItem })),
         })),
       },
       availability: {
@@ -505,6 +506,12 @@ vi.mock("@/lib/trpc", () => ({
       setDeckAudio: {
         useMutation: vi.fn(() => ({
           mutateAsync: mutationMocks.setDeckAudio,
+          isPending: false,
+        })),
+      },
+      generateSlideAudioFromNote: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: mutationMocks.generateSlideAudioFromNote,
           isPending: false,
         })),
       },
@@ -637,6 +644,7 @@ describe("PresentationEditor", () => {
     });
     mutationMocks.setSlideAudio.mockResolvedValue({});
     mutationMocks.setDeckAudio.mockResolvedValue({});
+    mutationMocks.generateSlideAudioFromNote.mockResolvedValue({});
     mutationMocks.relayoutSlide.mockResolvedValue({
       slide: { id: 71, version: 4 },
       warnings: [],
@@ -894,6 +902,38 @@ describe("PresentationEditor", () => {
       expect(screen.getByLabelText("Image URL")).toHaveAttribute("readonly");
       expect(screen.getByLabelText("Image Alt Text")).toHaveAttribute("readonly");
     });
+
+    expect(screen.getByLabelText("Image Motion Effect")).toHaveValue("none");
+    fireEvent.change(screen.getByLabelText("Image Motion Effect"), {
+      target: { value: "zoom-in" },
+    });
+    fireEvent.change(screen.getByLabelText("Image Motion Intensity"), {
+      target: { value: "0.6" },
+    });
+    fireEvent.change(screen.getByLabelText("Image Motion Easing"), {
+      target: { value: "linear" },
+    });
+    fireEvent.change(screen.getByLabelText("Image Motion Timing"), {
+      target: { value: "until-slide-end" },
+    });
+    fireEvent.change(screen.getByLabelText("Image Outro Motion Effect"), {
+      target: { value: "pan-right" },
+    });
+    fireEvent.change(screen.getByLabelText("Image Outro Motion Duration Seconds"), {
+      target: { value: "1.5" },
+    });
+
+    expect(screen.getByLabelText("Image Motion Effect")).toHaveValue("zoom-in");
+    expect(screen.getByLabelText("Image Motion Intensity")).toHaveValue("0.6");
+    expect(screen.getByLabelText("Image Motion Easing")).toHaveValue("linear");
+    expect(screen.getByLabelText("Image Motion Timing")).toHaveValue("until-slide-end");
+    expect(screen.getByLabelText("Image Outro Motion Effect")).toHaveValue("pan-right");
+    expect(screen.getByLabelText("Image Outro Motion Duration Seconds")).toHaveValue(1.5);
+
+    fireEvent.click(screen.getByRole("button", { name: /apply image hold then exit motion preset/i }));
+    expect(screen.getByLabelText("Image Motion Effect")).toHaveValue("none");
+    expect(screen.getByLabelText("Image Outro Motion Effect")).toHaveValue("pan-left");
+    expect(screen.getByLabelText("Image Outro Motion Duration Seconds")).toHaveValue(1.5);
   });
 
   it("inserts image from media history when available", async () => {
@@ -1086,7 +1126,39 @@ describe("PresentationEditor", () => {
     expect(screen.getByLabelText("Video Prompt")).toHaveValue("");
     expect(screen.getByLabelText("Video Model")).toBeInTheDocument();
     expect(screen.getByLabelText("Video Fit Mode")).toHaveValue("cover");
+    expect(screen.getByLabelText("Video Motion Effect")).toHaveValue("none");
     expect(screen.getByRole("button", { name: /regenerate video/i })).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Video Motion Effect"), {
+      target: { value: "pan-right" },
+    });
+    fireEvent.change(screen.getByLabelText("Video Motion Intensity"), {
+      target: { value: "0.75" },
+    });
+    fireEvent.change(screen.getByLabelText("Video Motion Easing"), {
+      target: { value: "linear" },
+    });
+    fireEvent.change(screen.getByLabelText("Video Motion Timing"), {
+      target: { value: "until-slide-end" },
+    });
+    fireEvent.change(screen.getByLabelText("Video Outro Motion Effect"), {
+      target: { value: "zoom-out" },
+    });
+    fireEvent.change(screen.getByLabelText("Video Outro Motion Duration Seconds"), {
+      target: { value: "1.2" },
+    });
+
+    expect(screen.getByLabelText("Video Motion Effect")).toHaveValue("pan-right");
+    expect(screen.getByLabelText("Video Motion Intensity")).toHaveValue("0.75");
+    expect(screen.getByLabelText("Video Motion Easing")).toHaveValue("linear");
+    expect(screen.getByLabelText("Video Motion Timing")).toHaveValue("until-slide-end");
+    expect(screen.getByLabelText("Video Outro Motion Effect")).toHaveValue("zoom-out");
+    expect(screen.getByLabelText("Video Outro Motion Duration Seconds")).toHaveValue(1.2);
+
+    fireEvent.click(screen.getByRole("button", { name: /apply video ken burns in motion preset/i }));
+    expect(screen.getByLabelText("Video Motion Effect")).toHaveValue("zoom-in");
+    expect(screen.getByLabelText("Video Motion Timing")).toHaveValue("until-slide-end");
+    expect(screen.getByLabelText("Video Outro Motion Effect")).toHaveValue("none");
 
     const playVideoButton = await screen.findByRole("button", { name: /play video element/i });
     fireEvent.click(playVideoButton);
@@ -1398,6 +1470,164 @@ describe("PresentationEditor", () => {
     expect(screen.getByRole("button", { name: /enter fullscreen/i })).toBeInTheDocument();
   });
 
+  it("animates video motion in slideshow overlay without remounting the video node", async () => {
+    vi.useFakeTimers();
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback: FrameRequestCallback) => (
+        window.setTimeout(() => callback(window.performance.now()), 16) as unknown as number
+      ));
+    const performanceNowSpy = vi
+      .spyOn(window.performance, "now")
+      .mockImplementation(() => Date.now());
+    const cancelAnimationFrameSpy = vi
+      .spyOn(window, "cancelAnimationFrame")
+      .mockImplementation((handle: number) => {
+        window.clearTimeout(handle);
+      });
+    queryState.deckByItem = {
+      ...buildDeckByItem(),
+      slides: [
+        {
+          id: 71,
+          deckId: 7,
+          orderIndex: 0,
+          version: 3,
+          title: "Intro",
+          slideContent: {
+            durationMs: 4000,
+            elements: [
+              {
+                id: "vid-motion-1",
+                type: "video",
+                x: 120,
+                y: 120,
+                width: 320,
+                height: 180,
+                src: "https://cdn.example.com/motion-video.mp4",
+                poster: "https://cdn.example.com/motion-video-poster.png",
+                title: "Motion clip",
+                muted: true,
+                mediaMotion: {
+                  preset: "pan-right",
+                  intensity: 1,
+                  easing: "linear",
+                },
+              },
+            ],
+          },
+          notes: null,
+        },
+      ],
+    } as any;
+
+    render(<PresentationEditor />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /play slideshow/i }));
+    });
+    expect(screen.getByTestId("slideshow-preview-overlay")).toBeInTheDocument();
+
+    const videoBefore = screen.getByTestId("readonly-video-vid-motion-1") as HTMLVideoElement;
+    const transformBefore = videoBefore.style.transform;
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1500);
+    });
+
+    const videoAfter = screen.getByTestId("readonly-video-vid-motion-1") as HTMLVideoElement;
+    expect(videoAfter).toBe(videoBefore);
+    expect(videoAfter.style.transform).not.toBe(transformBefore);
+    expect(videoAfter.style.transform).toContain("translate(");
+
+    requestAnimationFrameSpy.mockRestore();
+    performanceNowSpy.mockRestore();
+    cancelAnimationFrameSpy.mockRestore();
+  });
+
+  it("freezes slideshow media motion on pause and resumes from the same point", async () => {
+    vi.useFakeTimers();
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback: FrameRequestCallback) => (
+        window.setTimeout(() => callback(window.performance.now()), 16) as unknown as number
+      ));
+    const performanceNowSpy = vi
+      .spyOn(window.performance, "now")
+      .mockImplementation(() => Date.now());
+    const cancelAnimationFrameSpy = vi
+      .spyOn(window, "cancelAnimationFrame")
+      .mockImplementation((handle: number) => {
+        window.clearTimeout(handle);
+      });
+    queryState.deckByItem = {
+      ...buildDeckByItem(),
+      slides: [
+        {
+          id: 71,
+          deckId: 7,
+          orderIndex: 0,
+          version: 3,
+          title: "Intro",
+          slideContent: {
+            durationMs: 4000,
+            elements: [
+              {
+                id: "vid-pause-1",
+                type: "video",
+                x: 120,
+                y: 120,
+                width: 320,
+                height: 180,
+                src: "https://cdn.example.com/pause-video.mp4",
+                poster: "https://cdn.example.com/pause-video-poster.png",
+                title: "Pause clip",
+                muted: true,
+                mediaMotion: {
+                  preset: "pan-up-right",
+                  intensity: 1,
+                  easing: "linear",
+                },
+              },
+            ],
+          },
+          notes: null,
+        },
+      ],
+    } as any;
+
+    render(<PresentationEditor />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /play slideshow/i }));
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    const video = screen.getByTestId("readonly-video-vid-pause-1") as HTMLVideoElement;
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /pause slideshow/i }));
+    });
+    const transformWhilePaused = video.style.transform;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    expect(screen.getByTestId("readonly-video-vid-pause-1")).toBe(video);
+    expect(video.style.transform).toBe(transformWhilePaused);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /resume slideshow/i }));
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(600);
+    });
+    expect(video.style.transform).not.toBe(transformWhilePaused);
+
+    requestAnimationFrameSpy.mockRestore();
+    performanceNowSpy.mockRestore();
+    cancelAnimationFrameSpy.mockRestore();
+  });
+
   it("renders inline svg image elements in slideshow overlay instead of placeholder blocks", async () => {
     queryState.deckByItem = {
       ...buildDeckByItem(),
@@ -1437,6 +1667,321 @@ describe("PresentationEditor", () => {
 
     const svgHost = screen.getByTestId("readonly-svg-image-svg-1");
     expect(svgHost.querySelector("svg")).toBeInTheDocument();
+  });
+
+  it("animates inline svg image elements in slideshow overlay", async () => {
+    vi.useFakeTimers();
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback: FrameRequestCallback) => (
+        window.setTimeout(() => callback(window.performance.now()), 16) as unknown as number
+      ));
+    const performanceNowSpy = vi
+      .spyOn(window.performance, "now")
+      .mockImplementation(() => Date.now());
+    const cancelAnimationFrameSpy = vi
+      .spyOn(window, "cancelAnimationFrame")
+      .mockImplementation((handle: number) => {
+        window.clearTimeout(handle);
+      });
+    queryState.deckByItem = {
+      ...buildDeckByItem(),
+      slides: [
+        {
+          id: 71,
+          deckId: 7,
+          orderIndex: 0,
+          version: 3,
+          title: "Intro",
+          slideContent: {
+            durationMs: 4000,
+            elements: [
+              {
+                id: "svg-motion-1",
+                type: "image",
+                x: 120,
+                y: 120,
+                width: 260,
+                height: 180,
+                src: "",
+                alt: "Inline SVG Motion",
+                svgColor: "#22c55e",
+                svgContent: "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='currentColor' /></svg>",
+                mediaMotion: {
+                  preset: "pan-down-right",
+                  intensity: 1,
+                  easing: "linear",
+                },
+              },
+            ],
+          },
+          notes: null,
+        },
+      ],
+    } as any;
+
+    render(<PresentationEditor />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /play slideshow/i }));
+    });
+    expect(screen.getByTestId("slideshow-preview-overlay")).toBeInTheDocument();
+
+    const svgHost = screen.getByTestId("readonly-svg-image-svg-motion-1");
+    const transformBefore = svgHost.style.transform;
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1200);
+    });
+
+    expect(svgHost.style.transform).not.toBe(transformBefore);
+    expect(svgHost.style.transform).toContain("translate(");
+
+    requestAnimationFrameSpy.mockRestore();
+    performanceNowSpy.mockRestore();
+    cancelAnimationFrameSpy.mockRestore();
+  });
+
+  it("animates raster image elements visibly in slideshow overlay for long slides", async () => {
+    vi.useFakeTimers();
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback: FrameRequestCallback) => (
+        window.setTimeout(() => callback(window.performance.now()), 16) as unknown as number
+      ));
+    const performanceNowSpy = vi
+      .spyOn(window.performance, "now")
+      .mockImplementation(() => Date.now());
+    const cancelAnimationFrameSpy = vi
+      .spyOn(window, "cancelAnimationFrame")
+      .mockImplementation((handle: number) => {
+        window.clearTimeout(handle);
+      });
+    queryState.deckByItem = {
+      ...buildDeckByItem(),
+      slides: [
+        {
+          id: 71,
+          deckId: 7,
+          orderIndex: 0,
+          version: 3,
+          title: "Intro",
+          slideContent: {
+            durationMs: 10_000,
+            elements: [
+              {
+                id: "img-motion-1",
+                type: "image",
+                x: 120,
+                y: 120,
+                width: 320,
+                height: 180,
+                src: "https://cdn.example.com/motion-image.png",
+                alt: "Raster motion",
+                mediaMotion: {
+                  preset: "zoom-in",
+                },
+              },
+            ],
+          },
+          notes: null,
+        },
+      ],
+    } as any;
+
+    render(<PresentationEditor />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /play slideshow/i }));
+    });
+
+    const image = within(screen.getByTestId("slideshow-preview-overlay")).getByAltText("Raster motion") as HTMLImageElement;
+    expect(image.style.transform).toBe("translate(0%, 0%) scale(1)");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+
+    const scaleMatch = image.style.transform.match(/scale\(([^)]+)\)/);
+    expect(scaleMatch).not.toBeNull();
+    expect(Number(scaleMatch?.[1] ?? "0")).toBeGreaterThan(1.02);
+
+    requestAnimationFrameSpy.mockRestore();
+    performanceNowSpy.mockRestore();
+    cancelAnimationFrameSpy.mockRestore();
+  });
+
+  it("starts outro image motion near the end of the slideshow overlay", async () => {
+    vi.useFakeTimers();
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback: FrameRequestCallback) => (
+        window.setTimeout(() => callback(window.performance.now()), 16) as unknown as number
+      ));
+    const performanceNowSpy = vi
+      .spyOn(window.performance, "now")
+      .mockImplementation(() => Date.now());
+    const cancelAnimationFrameSpy = vi
+      .spyOn(window, "cancelAnimationFrame")
+      .mockImplementation((handle: number) => {
+        window.clearTimeout(handle);
+      });
+    queryState.deckByItem = {
+      ...buildDeckByItem(),
+      slides: [
+        {
+          id: 71,
+          deckId: 7,
+          orderIndex: 0,
+          version: 3,
+          title: "Intro",
+          slideContent: {
+            durationMs: 10_000,
+            elements: [
+              {
+                id: "img-outro-1",
+                type: "image",
+                x: 120,
+                y: 120,
+                width: 320,
+                height: 180,
+                src: "https://cdn.example.com/motion-image.png",
+                alt: "Raster outro motion",
+                mediaMotion: {
+                  outro: {
+                    preset: "pan-left",
+                    intensity: 1,
+                    easing: "linear",
+                    durationMs: 2000,
+                  },
+                },
+              },
+            ],
+          },
+          notes: null,
+        },
+      ],
+    } as any;
+
+    render(<PresentationEditor />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /play slideshow/i }));
+    });
+
+    const image = within(screen.getByTestId("slideshow-preview-overlay")).getByAltText("Raster outro motion") as HTMLImageElement;
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(7000);
+    });
+    expect(image.style.transform).toContain("translate(0%, 0%)");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    const translateMatch = image.style.transform.match(/translate\(([-0-9.]+)%\,\s*0%\)/);
+    expect(translateMatch).not.toBeNull();
+    expect(Number(translateMatch?.[1] ?? "0")).toBeLessThan(-5.5);
+
+    requestAnimationFrameSpy.mockRestore();
+    performanceNowSpy.mockRestore();
+    cancelAnimationFrameSpy.mockRestore();
+  });
+
+  it("resets slideshow media motion when jumping to another slide during playback", async () => {
+    vi.useFakeTimers();
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback: FrameRequestCallback) => (
+        window.setTimeout(() => callback(window.performance.now()), 16) as unknown as number
+      ));
+    const performanceNowSpy = vi
+      .spyOn(window.performance, "now")
+      .mockImplementation(() => Date.now());
+    const cancelAnimationFrameSpy = vi
+      .spyOn(window, "cancelAnimationFrame")
+      .mockImplementation((handle: number) => {
+        window.clearTimeout(handle);
+      });
+    queryState.deckByItem = {
+      ...buildDeckByItem(),
+      slides: [
+        {
+          id: 71,
+          deckId: 7,
+          orderIndex: 0,
+          version: 3,
+          title: "Intro",
+          slideContent: {
+            durationMs: 10_000,
+            elements: [
+              {
+                id: "img-slide-one",
+                type: "image",
+                x: 120,
+                y: 120,
+                width: 320,
+                height: 180,
+                src: "https://cdn.example.com/slide-one.png",
+                alt: "Slide one static",
+              },
+            ],
+          },
+          notes: null,
+        },
+        {
+          id: 72,
+          deckId: 7,
+          orderIndex: 1,
+          version: 3,
+          title: "Agenda",
+          slideContent: {
+            durationMs: 10_000,
+            elements: [
+              {
+                id: "img-slide-two",
+                type: "image",
+                x: 120,
+                y: 120,
+                width: 320,
+                height: 180,
+                src: "https://cdn.example.com/slide-two.png",
+                alt: "Slide two motion",
+                mediaMotion: {
+                  preset: "zoom-in",
+                },
+              },
+            ],
+          },
+          notes: null,
+        },
+      ],
+    } as any;
+
+    render(<PresentationEditor />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /play slideshow/i }));
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1200);
+    });
+
+    await act(async () => {
+      fireEvent.keyDown(window, { key: "ArrowRight" });
+    });
+
+    const image = within(screen.getByTestId("slideshow-preview-overlay")).getByAltText("Slide two motion") as HTMLImageElement;
+    expect(image.style.transform).toBe("translate(0%, 0%) scale(1)");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+
+    const scaleMatch = image.style.transform.match(/scale\(([^)]+)\)/);
+    expect(scaleMatch).not.toBeNull();
+    expect(Number(scaleMatch?.[1] ?? "0")).toBeGreaterThan(1.02);
+
+    requestAnimationFrameSpy.mockRestore();
+    performanceNowSpy.mockRestore();
+    cancelAnimationFrameSpy.mockRestore();
   });
 
   it("falls back to svg placeholder tile when inline svg markup is invalid", async () => {
@@ -1865,6 +2410,87 @@ describe("PresentationEditor", () => {
     await waitFor(() => {
       expect(mutationMocks.updateItem).toHaveBeenCalledWith({ id: 42, title: "Pitch V2" });
       expect(mutationMocks.updateDeck).toHaveBeenCalled();
+    });
+  });
+
+  it("opens presentation note dialog and saves deck notes through updateDeck", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open presentation note/i }));
+    fireEvent.change(
+      screen.getByPlaceholderText(/write presentation-level notes here/i),
+      { target: { value: "Full presentation note" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: /save note/i }));
+
+    await waitFor(() => {
+      expect(mutationMocks.updateDeck).toHaveBeenCalledWith({
+        deckId: 7,
+        expectedVersion: 5,
+        notes: "Full presentation note",
+      });
+    });
+  });
+
+  it("preserves local presentation note draft on conflict and allows explicit overwrite", async () => {
+    mutationMocks.updateDeck
+      .mockImplementationOnce(async () => {
+        queryState.deckByItem = {
+          ...buildDeckByItem(),
+          deck: {
+            ...buildDeckByItem().deck,
+            version: 6,
+            notes: "Remote note from another session",
+          },
+        } as any;
+        throw new Error("PRESENTATION_VERSION_CONFLICT: expected deck version 5 but latest is 6");
+      })
+      .mockResolvedValueOnce({});
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open presentation note/i }));
+    fireEvent.change(
+      screen.getByPlaceholderText(/write presentation-level notes here/i),
+      { target: { value: "My local note" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: /save note/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/a newer presentation note was saved elsewhere/i)).toBeInTheDocument();
+    });
+    expect(screen.getByDisplayValue("My local note")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /overwrite note/i }));
+
+    await waitFor(() => {
+      expect(mutationMocks.updateDeck).toHaveBeenNthCalledWith(2, {
+        deckId: 7,
+        expectedVersion: 6,
+        notes: "My local note",
+      });
+    });
+  });
+
+  it("opens slide note dialog and saves slide notes with the slide payload", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open slide note/i }));
+    fireEvent.change(
+      screen.getByPlaceholderText(/write slide-level notes here/i),
+      { target: { value: "Narration for intro slide" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: /save note/i }));
+
+    await waitFor(() => {
+      expect(mutationMocks.updateSlide).toHaveBeenCalledWith(
+        expect.objectContaining({
+          deckId: 7,
+          slideId: 71,
+          saveMode: "manual",
+          notes: "Narration for intro slide",
+        }),
+      );
     });
   });
 
@@ -2586,7 +3212,7 @@ describe("PresentationEditor", () => {
     expect(screen.queryByRole("button", { name: /reload latest slide/i })).not.toBeInTheDocument();
   });
 
-  it("blocks autosave and manual save when stale guard is active until reload", async () => {
+  it("continues blocking autosave after repeated conflicts but still lets manual save retry immediately", async () => {
     vi.useFakeTimers();
     mutationMocks.updateSlide
       .mockRejectedValueOnce(new Error("PRESENTATION_VERSION_CONFLICT: stale-1"))
@@ -2617,15 +3243,6 @@ describe("PresentationEditor", () => {
     expect(mutationMocks.updateSlide).toHaveBeenCalledTimes(2);
 
     fireEvent.click(screen.getByRole("button", { name: /save slide/i }));
-    expect(mutationMocks.updateSlide).toHaveBeenCalledTimes(2);
-
-    expect(screen.getByRole("button", { name: /reload latest slide/i })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /reload latest slide/i }));
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: /save slide/i }));
     await act(async () => {
       await Promise.resolve();
     });
@@ -2633,6 +3250,7 @@ describe("PresentationEditor", () => {
     expect(mutationMocks.updateSlide).toHaveBeenLastCalledWith(expect.objectContaining({
       saveMode: "manual",
     }));
+    expect(screen.queryByRole("button", { name: /reload latest slide/i })).not.toBeInTheDocument();
   });
 
   describe("Import button integration", () => {

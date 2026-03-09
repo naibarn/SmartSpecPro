@@ -6,7 +6,7 @@ import { CanvasObjects } from "./CanvasObjects";
 describe("CanvasObjects SVG rendering", () => {
   const noop = vi.fn();
 
-  function renderCanvas(elements: any[], options?: { autoPlayVideos?: boolean }) {
+  function renderCanvas(elements: any[], options?: { autoPlayVideos?: boolean; mediaMotionTiming?: { elapsedMs: number; slideDurationMs: number } }) {
     return render(
       <CanvasObjects
         elements={elements}
@@ -19,6 +19,7 @@ describe("CanvasObjects SVG rendering", () => {
         canvasWidth={1920}
         canvasHeight={1080}
         autoPlayVideos={options?.autoPlayVideos}
+        mediaMotionTiming={options?.mediaMotionTiming}
       />,
     );
   }
@@ -88,6 +89,69 @@ describe("CanvasObjects SVG rendering", () => {
 
     expect(playSpy).toHaveBeenCalled();
     playSpy.mockRestore();
+  });
+
+  it("applies shared diagonal motion transform to image elements", () => {
+    renderCanvas(
+      [
+        {
+          id: "img-motion-1",
+          type: "image",
+          x: 20,
+          y: 20,
+          width: 320,
+          height: 220,
+          src: "/uploads/images/demo.png",
+          alt: "Motion image",
+          imageZoom: 1,
+          mediaMotion: {
+            preset: "pan-up-right",
+            intensity: 1,
+            easing: "linear",
+          },
+        },
+      ],
+      { mediaMotionTiming: { elapsedMs: 1500, slideDurationMs: 3000 } },
+    );
+
+    const image = screen.getByTestId("canvas-image-img-motion-1");
+    expect(image).toHaveStyle({
+      transformOrigin: "50% 50%",
+    });
+    expect((image as HTMLImageElement).style.transform).toContain("translate(6%, -6%)");
+    expect((image as HTMLImageElement).style.transform).toContain("scale(");
+  });
+
+  it("applies motion transforms to valid inline svg image elements", () => {
+    renderCanvas(
+      [
+        {
+          id: "svg-motion-1",
+          type: "image",
+          x: 20,
+          y: 20,
+          width: 320,
+          height: 220,
+          src: "",
+          svgColor: "#22c55e",
+          svgContent: "<svg viewBox='0 0 10 10'><rect width='10' height='10' fill='currentColor' /></svg>",
+          imageZoom: 1,
+          mediaMotion: {
+            preset: "pan-down-left",
+            intensity: 1,
+            easing: "linear",
+          },
+        },
+      ],
+      { mediaMotionTiming: { elapsedMs: 1500, slideDurationMs: 3000 } },
+    );
+
+    const svg = screen.getByTestId("canvas-inline-svg-svg-motion-1");
+    expect(svg).toHaveStyle({
+      transformOrigin: "50% 50%",
+    });
+    expect((svg as HTMLDivElement).style.transform).toContain("translate(-6%, 6%)");
+    expect((svg as HTMLDivElement).style.transform).toContain("scale(");
   });
 
   it("uses Thai-safe text metrics in text elements to avoid clipped lower diacritics", () => {

@@ -1,6 +1,6 @@
-# Project Skill Backups
+# Project Skills
 
-This folder is the repo-backed backup for the Codex skill pack that is actively
+This folder is the repo-backed backup for the skill pack that is actively
 used from `~/.codex/skills`.
 
 Why this exists:
@@ -9,18 +9,16 @@ Why this exists:
 - changes to installed skills should be synced back here after each update
 
 Mirrored installed skills:
-- see [`mirrored-codex-skills.txt`](/home/dev/projects/SmartSpecPro/skills/mirrored-codex-skills.txt)
+- see [`mirrored-skills.txt`](/home/dev/projects/SmartSpecPro/skills/mirrored-skills.txt)
 
 Notes:
-- `deep-plan-codex` is kept here as a project-specific variant and is not part
-  of the installed mirror list above.
 - `.system` skills are intentionally not mirrored here because they are managed
   separately from the project skill pack.
 
 Sync command:
 
 ```bash
-bash skills/sync-installed-codex-skills.sh
+bash skills/sync-installed-skills.sh
 ```
 
 Run the sync script whenever any mirrored skill is changed under
@@ -33,7 +31,7 @@ backup do not drift.
 Publish back to installed runtime:
 
 ```bash
-bash skills/publish-to-installed-codex-skills.sh
+bash skills/publish-to-installed-skills.sh
 ```
 
 Validation command:
@@ -45,5 +43,5 @@ bash scripts/ci/validate_skill_pack_backup.sh
 Verify repo mirror vs installed runtime:
 
 ```bash
-bash skills/verify-installed-codex-skills-sync.sh
+bash skills/verify-installed-skills-sync.sh
 ```

@@ -1,0 +1,249 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Cartoon Video Creator Output Schema",
+  "description": "Output format for Veo 3.1 optimized cartoon/animation video prompts. The LLM returns this JSON structure after processing user inputs through the skill prompt.",
+  "oneOf": [
+    { "$ref": "#/definitions/singleSceneOutput" },
+    { "$ref": "#/definitions/storyboardOutput" }
+  ],
+  "definitions": {
+    "characterDescription": {
+      "type": "object",
+      "required": ["name", "description"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Character name or role (e.g., Hero, Robot, Explorer Girl)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Visual description: body shape, proportions, colors, accessories, distinctive features, material/surface"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "sceneBreakdown": {
+      "type": "object",
+      "required": ["shotType", "cameraMovement", "lighting", "mood"],
+      "properties": {
+        "shotType": {
+          "type": "string",
+          "description": "Camera framing (e.g., medium shot, two-shot, wide establishing shot)"
+        },
+        "cameraMovement": {
+          "type": "string",
+          "description": "Camera motion (e.g., static, slow push-in, orbit, whip pan)"
+        },
+        "lighting": {
+          "type": "string",
+          "description": "Lighting setup (e.g., 3-point soft, flat bright, dramatic rim, golden warm)"
+        },
+        "depthOfField": {
+          "type": "string",
+          "description": "Focus depth (e.g., shallow with colorful bokeh, deep focus, rack focus)"
+        },
+        "colorPalette": {
+          "type": "string",
+          "description": "Color approach (e.g., vibrant primary colors, pastel soft, warm sunset tones)"
+        },
+        "mood": {
+          "type": "string",
+          "description": "Emotional tone (e.g., cheerful and adventurous, cozy and warm, dramatic)"
+        },
+        "materials": {
+          "type": "string",
+          "description": "Surface materials used (e.g., smooth matte plastic, rough clay, felt fabric, glossy toy)"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "timestampBlock": {
+      "type": "object",
+      "required": ["start", "end", "description"],
+      "properties": {
+        "start": {
+          "type": "string",
+          "pattern": "^\\d{2}:\\d{2}$",
+          "description": "Start time in MM:SS format"
+        },
+        "end": {
+          "type": "string",
+          "pattern": "^\\d{2}:\\d{2}$",
+          "description": "End time in MM:SS format"
+        },
+        "description": {
+          "type": "string",
+          "description": "Panel/shot description for this time segment"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "singleSceneOutput": {
+      "type": "object",
+      "required": ["prompt", "duration", "aspectRatio", "resolution", "style"],
+      "properties": {
+        "prompt": {
+          "type": "string",
+          "description": "Complete Veo 3.1 cartoon-optimized prompt: [SHOT] + [CHARACTER] + [ACTION & EXPRESSION] + [ENVIRONMENT] + [STYLE & MATERIALS] + [LIGHTING] + [AUDIO]",
+          "minLength": 50
+        },
+        "duration": {
+          "type": "integer",
+          "enum": [4, 6, 8],
+          "description": "Clip duration in seconds. Must be 8 for 1080p/4K/reference images."
+        },
+        "aspectRatio": {
+          "type": "string",
+          "enum": ["16:9", "9:16"],
+          "description": "Video aspect ratio"
+        },
+        "resolution": {
+          "type": "string",
+          "enum": ["720p", "1080p", "4k"],
+          "description": "Output resolution. 720p required for extension mode."
+        },
+        "style": {
+          "type": "string",
+          "enum": ["pixar_3d", "anime_3d", "chibi", "claymation", "toy_figure", "papercraft", "storybook", "retro_cartoon", "low_poly"],
+          "description": "Cartoon style applied"
+        },
+        "audioDescription": {
+          "type": "string",
+          "description": "Brief summary of audio elements (e.g., cartoon SFX, Thai character voices, ambient)"
+        },
+        "characterDescriptions": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/characterDescription" },
+          "description": "Character details for consistency across clips. Empty array if no characters."
+        },
+        "sceneBreakdown": {
+          "$ref": "#/definitions/sceneBreakdown",
+          "description": "Structured breakdown of cartoon-specific rendering choices"
+        },
+        "autoCorrections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Auto-corrections applied due to parameter conflicts. Omit if none."
+        },
+        "extensionNotes": {
+          "type": "string",
+          "description": "Notes for extension mode. Only present when sceneMode is extension."
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "storyboardScene": {
+      "type": "object",
+      "required": ["sceneNumber", "prompt", "duration"],
+      "properties": {
+        "sceneNumber": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Sequential scene number"
+        },
+        "prompt": {
+          "type": "string",
+          "description": "Complete Veo 3.1 cartoon prompt for this scene",
+          "minLength": 50
+        },
+        "duration": {
+          "type": "integer",
+          "enum": [4, 6, 8],
+          "description": "Duration for this scene clip"
+        },
+        "timestampBlocks": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/timestampBlock" },
+          "description": "Optional timestamp blocks for multi-panel within this scene"
+        },
+        "audioDescription": {
+          "type": "string",
+          "description": "Brief audio summary for this scene"
+        },
+        "transitionNote": {
+          "type": "string",
+          "description": "Transition to next scene (e.g., panel wipe, dissolve, fade to white)"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "storyboardOutput": {
+      "type": "object",
+      "required": ["scenes", "aspectRatio", "resolution", "style", "totalDuration"],
+      "properties": {
+        "scenes": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/storyboardScene" },
+          "minItems": 2,
+          "maxItems": 20,
+          "description": "Array of scene prompts in sequence"
+        },
+        "aspectRatio": {
+          "type": "string",
+          "enum": ["16:9", "9:16"],
+          "description": "Aspect ratio applied to all scenes"
+        },
+        "resolution": {
+          "type": "string",
+          "enum": ["720p", "1080p", "4k"],
+          "description": "Resolution applied to all scenes"
+        },
+        "style": {
+          "type": "string",
+          "enum": ["pixar_3d", "anime_3d", "chibi", "claymation", "toy_figure", "papercraft", "storybook", "retro_cartoon", "low_poly"],
+          "description": "Cartoon style applied to all scenes"
+        },
+        "characterDescriptions": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/characterDescription" },
+          "description": "Character details shared across all scenes for consistency"
+        },
+        "totalDuration": {
+          "type": "integer",
+          "description": "Total duration in seconds across all scenes"
+        },
+        "extensionStrategy": {
+          "type": "string",
+          "description": "How to assemble scenes: separate clips or extension chain"
+        },
+        "autoCorrections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Auto-corrections applied. Omit if none."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+
+  "examples": [
+    {
+      "prompt": "Medium shot, eye-level, static camera. 3D cartoon style with smooth matte plastic skin and soft subsurface scattering. A male mime character with round face, white face paint, black beret, black and white striped shirt, red suspenders. Large expressive eyes, exaggerated smile showing joy. He performs an animated invisible box routine. Clean white-gray studio backdrop. 3-point soft lighting with warm fill. Cartoon SFX: comedic boing sounds, subtle slide whistle. Ambient: quiet studio room tone.",
+      "duration": 8,
+      "aspectRatio": "16:9",
+      "resolution": "1080p",
+      "style": "pixar_3d",
+      "audioDescription": "Cartoon comedy SFX, boing and slide whistle, studio ambience",
+      "characterDescriptions": [
+        {
+          "name": "Mime",
+          "description": "Male, round face, white face paint, black beret, striped shirt, red suspenders, large eyes, smooth plastic skin"
+        }
+      ],
+      "sceneBreakdown": {
+        "shotType": "medium shot",
+        "cameraMovement": "static",
+        "lighting": "3-point soft with warm fill",
+        "depthOfField": "shallow, clean studio background softly blurred",
+        "colorPalette": "high contrast black-white with red accent",
+        "mood": "comedic, playful, entertaining",
+        "materials": "smooth matte plastic skin, fabric shirt, felt beret"
+      }
+    }
+  ]
+}

@@ -14,6 +14,7 @@ const {
   mockAddMediaTaskToLibrary,
   mockAddSlideToDeck,
   mockGetPresentationDeckDetail,
+  mockUpdatePresentationDeckMetadata,
   mockUpdateSlideInDeck,
   mockHasEnoughCredits,
   mockDeductCreditsForModel,
@@ -40,6 +41,7 @@ const {
   mockAddMediaTaskToLibrary: vi.fn(),
   mockAddSlideToDeck: vi.fn(),
   mockGetPresentationDeckDetail: vi.fn(),
+  mockUpdatePresentationDeckMetadata: vi.fn(),
   mockUpdateSlideInDeck: vi.fn(),
   mockHasEnoughCredits: vi.fn(),
   mockDeductCreditsForModel: vi.fn(),
@@ -85,6 +87,7 @@ vi.mock("../mediaLibraryService", () => ({
 vi.mock("../presentationService", () => ({
   addSlideToDeck: mockAddSlideToDeck,
   getPresentationDeckDetail: mockGetPresentationDeckDetail,
+  updatePresentationDeckMetadata: mockUpdatePresentationDeckMetadata,
   updateSlideInDeck: mockUpdateSlideInDeck,
 }));
 
@@ -187,9 +190,9 @@ function buildMockActor(): PresentationActor {
 const MOCK_ARTICLE = "Title: Test\n\n1. Section One\nContent one\n\n2. Section Two\nContent two\n\n3. Section Three\nContent three";
 
 const MOCK_SLIDES = [
-  { templateId: "hero_center" as const, title: "Test", body: ["Content one"], graphicCategory: "Business" as const, imagePromptKeywords: "test image 1" },
-  { templateId: "split_right_image" as const, title: "Section Two", body: ["Content two"], graphicCategory: "Technology" as const, imagePromptKeywords: "test image 2" },
-  { templateId: "split_left_image" as const, title: "Section Three", body: ["Content three"], graphicCategory: "Nature" as const, imagePromptKeywords: "test image 3" },
+  { templateId: "hero_center" as const, title: "Test", body: ["Content one"], notes: "Narration one", graphicCategory: "Business" as const, imagePromptKeywords: "test image 1" },
+  { templateId: "split_right_image" as const, title: "Section Two", body: ["Content two"], notes: "Narration two", graphicCategory: "Technology" as const, imagePromptKeywords: "test image 2" },
+  { templateId: "split_left_image" as const, title: "Section Three", body: ["Content three"], notes: "Narration three", graphicCategory: "Nature" as const, imagePromptKeywords: "test image 3" },
 ];
 
 const MOCK_SVG = { id: "svg1", category: "Business", svgContent: "<svg></svg>", label: "test" };
@@ -307,8 +310,27 @@ function setupHappyPath() {
         }),
       }),
     }),
+    update: () => ({
+      set: () => ({
+        where: async () => [{ id: 1 }],
+      }),
+    }),
   }));
   mockAddSlideToDeck.mockResolvedValue({ id: 1, deckId: 1 });
+  mockUpdatePresentationDeckMetadata.mockResolvedValue({
+    id: 1,
+    tenantId: "test-tenant",
+    libraryItemId: 101,
+    title: "Test deck",
+    description: null,
+    notes: MOCK_ARTICLE,
+    version: 4,
+    slideCount: 3,
+    totalAssetBytes: 0,
+    projectAudioTrack: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
 }
 
 // ── Tests ───────────────────────────────────────────────────
@@ -1028,6 +1050,22 @@ describe("generateAIDraft - happy path", () => {
     // Phase 6: DB insertion
     expect(mockDbTransaction).toHaveBeenCalledTimes(1);
     expect(mockAddSlideToDeck).toHaveBeenCalledTimes(3);
+    expect(mockAddSlideToDeck.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        notes: "Title: Test 1. Section One Content one",
+      }),
+    );
+    expect((mockAddSlideToDeck.mock.calls[1]?.[0] as { notes: string }).notes).toBe("2. Section Two Content two");
+    expect((mockAddSlideToDeck.mock.calls[2]?.[0] as { notes: string }).notes).toBe("3. Section Three Content three");
+    expect(mockUpdatePresentationDeckMetadata).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deckId: 1,
+        expectedVersion: 3,
+        notes: MOCK_ARTICLE,
+      }),
+      actor,
+      expect.anything(),
+    );
   });
 
   it("plans slides directly from the topic for image prompt generation skills", async () => {
@@ -1479,14 +1517,21 @@ describe("generateAIDraft - happy path", () => {
     expect(firstInsertPayload?.slideContent?.elements?.some((element) => element.type === "video")).toBe(true);
   });
 
-  it("does not inject period separators into Thai narration sent to audio generation", async () => {
+  it("uses slide note as the audio source and normalizes TTS-unfriendly symbols", async () => {
     setupHappyPath();
+    const customArticle = [
+      "การสนับสนุนและข้อควรระวัง • กระตุ้นสมองและร่างกาย + เล่นของเล่นโมบายสีสดใส / พูดคุยใกล้ชิด",
+      "ข้อความบนสไลด์ที่ไม่ควรถูกใช้แทน note",
+      "สรุปย่อบนสไลด์",
+      "อีกบรรทัดหนึ่ง",
+    ].join(" ");
     mockCallLLMStructured.mockResolvedValueOnce({
       data: [
         {
           templateId: "hero_center" as const,
-          title: "การสนับสนุนและข้อควรระวัง",
-          body: ["กระตุ้นสมองและร่างกาย", "เล่นของเล่นโมบายสีสดใส"],
+          title: "ข้อความบนสไลด์ที่ไม่ควรถูกใช้แทน note",
+          body: ["สรุปย่อบนสไลด์", "อีกบรรทัดหนึ่ง"],
+          notes: "model note should be ignored for article-driven drafts",
           graphicCategory: "Health" as const,
           imagePromptKeywords: "thai narration",
         },
@@ -1500,6 +1545,8 @@ describe("generateAIDraft - happy path", () => {
         prompt: "พัฒนาการเด็ก",
         language: "th",
         numSlides: 1,
+        useCustomArticle: true,
+        customArticleText: customArticle,
         generateAudio: true,
         audioModel: "elevenlabs-tts",
       }),
@@ -1510,9 +1557,11 @@ describe("generateAIDraft - happy path", () => {
 
     const firstAudioCall = mockGenerateAudioAsync.mock.calls[0]?.[0] as { text?: string } | undefined;
     expect(firstAudioCall?.text).toBe(
-      "การสนับสนุนและข้อควรระวัง กระตุ้นสมองและร่างกาย เล่นของเล่นโมบายสีสดใส",
+      "การสนับสนุนและข้อควรระวัง, กระตุ้นสมองและร่างกาย, เล่นของเล่นโมบายสีสดใส, พูดคุยใกล้ชิด ข้อความบนสไลด์ที่ไม่ควรถูกใช้แทน note สรุปย่อบนสไลด์ อีกบรรทัดหนึ่ง",
     );
-    expect(firstAudioCall?.text).not.toContain(". ");
+    expect(firstAudioCall?.text).not.toContain("•");
+    expect(firstAudioCall?.text).not.toContain("+");
+    expect(firstAudioCall?.text).not.toContain("/");
   });
 
   it("updates Redis progress to completed", async () => {
@@ -1557,13 +1606,16 @@ describe("generateAIDraft - happy path", () => {
     expect(watermark.opacity).toBeCloseTo(0.25, 5);
   });
 
-  it("tops up sparse slide bodies so split output is not overly thin", async () => {
+  it("does not pad slide bodies with duplicate lines when content is sparse", async () => {
     setupHappyPath();
     await generateAIDraft(buildMockInput(), buildMockActor(), "test-token", "task-123");
 
     const firstLayoutCall = mockGenerateSlide.mock.calls[0]?.[0];
     expect(firstLayoutCall).toBeDefined();
-    expect(firstLayoutCall.slideData.body.length).toBeGreaterThanOrEqual(2);
+    // Body must have at least 1 line but should never contain duplicates
+    expect(firstLayoutCall.slideData.body.length).toBeGreaterThanOrEqual(1);
+    const bodySet = new Set(firstLayoutCall.slideData.body.map((l: string) => l.toLowerCase()));
+    expect(bodySet.size).toBe(firstLayoutCall.slideData.body.length);
   });
 
   it("renders visual-only slides without text chrome when hideTextOnSlides is enabled", async () => {
@@ -1821,6 +1873,33 @@ describe("generateAIDraft - Phase 2", () => {
 
   it("passes structured sections into layout input for multi-level typography", async () => {
     setupHappyPath();
+    mockExecuteWithFallback.mockResolvedValueOnce({
+      type: "success",
+      providerId: 1,
+      providerName: "test-provider",
+      response: {
+        id: "resp-th-article",
+        created: Date.now(),
+        model: "claude-sonnet-4-6",
+        choices: [{
+          index: 0,
+          message: {
+            role: "assistant",
+            content: [
+              "หัวข้อ: การดูแลเด็กที่มีความเสี่ยงด้านพัฒนาการ",
+              "1. บทนำ",
+              "ภาพรวม สาระหลักของบทความ",
+              "2. เด็กที่มีพัฒนาการล่าช้าหรือมีความเสี่ยง",
+              "เด็กคลอดก่อนกำหนด ควรติดตามพัฒนาการอย่างใกล้ชิด ปัญหากล้ามเนื้อ ควรได้รับกายภาพบำบัด",
+              "3. แนวทางช่วยเหลือ",
+              "บำบัดตั้งแต่เนิ่น ๆ ลดผลกระทบระยะยาว",
+            ].join("\n\n"),
+          },
+          finish_reason: "stop",
+        }],
+        usage: { prompt_tokens: 100, completion_tokens: 200 },
+      },
+    });
     mockCallLLMStructured.mockResolvedValueOnce({
       data: [
         {
@@ -1859,7 +1938,8 @@ describe("generateAIDraft - Phase 2", () => {
     const secondSlideCall = mockGenerateSlide.mock.calls[1]?.[0];
     expect(secondSlideCall).toBeDefined();
     expect(secondSlideCall.slideData.sections).toBeDefined();
-    expect(secondSlideCall.slideData.sections[0].heading).toBe("เด็กคลอดก่อนกำหนด");
+    expect(secondSlideCall.slideData.sections[0].heading).toContain("เด็กที่มีพัฒนาการล่าช้าหรือมีความเสี่ยง");
+    expect(secondSlideCall.slideData.body.some((line: string) => line.includes("เด็กคลอดก่อนกำหนด"))).toBe(true);
   });
 
   it("uses head+tail sampling for long article split input instead of hard 2000-word truncation", async () => {
@@ -2463,6 +2543,56 @@ describe("generateAIDraft - Phase 6", () => {
     expect(firstImage?.imagePrompt).toContain("test image 1");
     expect(firstImage?.imageModelId).toBe("flux-2.0");
     expect(firstImage?.imageReferenceUrls).toEqual(["/uploads/reference-seed.jpg"]);
+  });
+
+  it("builds slide notes from the saved presentation note and derives visible slide text from the same chunk", async () => {
+    setupHappyPath();
+    const customArticleText = [
+      "คู่มือ tummy time สำหรับทารก",
+      "1. เริ่มต้นอย่างอ่อนโยน",
+      "เริ่มจากช่วงเวลาสั้น ๆ บนพื้นราบมั่นคง ใช้ผ้ารองนุ่มพอดี",
+      "2. สร้างความมั่นใจ",
+      "อยู่ระดับสายตา พูดคุย และยิ้มให้ลูกเพื่อเพิ่มความมั่นใจ",
+    ].join("\n\n");
+    mockCallLLMStructured.mockResolvedValue({
+      data: [
+        {
+          templateId: "hero_center",
+          title: "เริ่ม tummy time",
+          body: [
+            "ทำบนพื้นราบมั่นคง",
+            "ใช้ผ้ารองนุ่มพอดี",
+            "อยู่ระดับสายตาและยิ้มให้ลูก",
+          ],
+          notes: "เริ่มจากช่วงเวลาสั้น ๆ",
+          graphicCategory: "Business",
+          imagePromptKeywords: "thai baby tummy time",
+        },
+      ],
+      tokensUsed: 300,
+      creditsUsed: 10,
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 1,
+        prompt: "tummy time",
+        language: "th",
+        useCustomArticle: true,
+        customArticleText,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const savedNotes = (mockAddSlideToDeck.mock.calls[0]?.[0] as { notes: string }).notes;
+    expect(savedNotes).toContain("คู่มือ tummy time สำหรับทารก");
+    expect(savedNotes).toContain("เริ่มจากช่วงเวลาสั้น ๆ");
+    const firstLayoutCall = mockGenerateSlide.mock.calls[0]?.[0] as { slideData: { body: string[]; title: string } };
+    expect(firstLayoutCall.slideData.title).toContain("tummy time");
+    expect(savedNotes).toContain("บนพื้นราบมั่นคง");
+    expect(firstLayoutCall.slideData.body.some((line) => line.includes("เริ่มจากช่วงเวลาสั้น ๆ"))).toBe(true);
   });
 });
 

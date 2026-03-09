@@ -1340,6 +1340,129 @@ export const mediaRouter = router({
       }
     }),
 
+  // Generate audio async (returns task ID)
+  generateAudioAsync: protectedProcedure
+    .input(
+      z.object({
+        text: z.string().min(1).max(50_000),
+        model: audioModelSchema.optional(),
+        voice: z.string().optional(),
+        speed: z.number().min(0.5).max(2.0).optional(),
+        apiConfig: z.record(z.string()).optional(),
+        extraParams: z.record(z.any()).optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const rateLimitKey = `user:${ctx.user.id}`;
+      if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Rate limit exceeded for media generation. Try again in ${Math.ceil(mediaGenerationLimiter.getResetTime(rateLimitKey) / 1000)} seconds.`,
+        });
+      }
+
+      const abuseResult = await checkAbuseGuard({
+        userId: ctx.user.id,
+        namespace: "media:audio_async",
+        promptHash: hashPrompt(input.text, input.model),
+      });
+      if (!abuseResult.allowed) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Request blocked: ${abuseResult.reason}. Retry after ${abuseResult.retryAfter}s.`,
+        });
+      }
+
+      const model = input.model || await getDefaultModelId("audio");
+      const modelMeta = await resolveModelMeta(model, "audio");
+      const dbModel = await getModelWithPricing(model);
+      const maxPromptLength = resolveConfiguredMaxPromptLength(dbModel.configJson);
+      if (maxPromptLength !== null && input.text.length > maxPromptLength) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Text length ${input.text.length} exceeds model limit ${maxPromptLength} for ${model}`,
+        });
+      }
+      const creditCost = calculateCreditCost(dbModel, {
+        text: input.text,
+        ...(input.extraParams ?? {}),
+      });
+
+      const hasCredits = await hasEnoughCredits(ctx.user.id, creditCost);
+      if (!hasCredits) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `Insufficient credits. Required: ${creditCost}`,
+        });
+      }
+
+      await deductCredits({
+        userId: ctx.user.id,
+        amount: creditCost,
+        description: `Async audio generation: ${model} (reserved)`,
+        sourceType: "media_audio",
+        metadata: {
+          model,
+          provider: modelMeta.provider,
+          textLength: input.text.length,
+          endpoint: "generateAudioAsync",
+          type: "reservation",
+          creditCost,
+        },
+      });
+
+      try {
+        const userToken = getUserToken(ctx);
+        const debugTraceId = crypto.randomUUID();
+        const apiConfigWithProvider = {
+          ...(input.apiConfig ?? {}),
+          provider: modelMeta.provider,
+          trace_id: debugTraceId,
+        };
+
+        return await mediaGenerationService.generateAudioAsync(
+          {
+            text: input.text,
+            model,
+            voice: input.voice,
+            speed: input.speed,
+            apiConfig: apiConfigWithProvider,
+            extraParams: input.extraParams,
+            publicUrl: ctx.publicUrl ?? undefined,
+            auditContext: {
+              userId: ctx.user.id,
+              traceId: debugTraceId,
+              source: "trpc.media.generateAudioAsync",
+              stage: "submission",
+            },
+          },
+          userToken
+        );
+      } catch (error) {
+        console.error("[Media] Audio generation failed, refunding credits:", error);
+        try {
+          await refundCredits({
+            userId: ctx.user.id,
+            amount: creditCost,
+            description: `Refund: Audio generation failed (${model})`,
+            sourceType: "media_audio",
+            metadata: {
+              model,
+              textLength: input.text.length,
+              error: error instanceof Error ? error.message : "Unknown error",
+            },
+          });
+        } catch (refundError) {
+          console.error("[Media] Failed to refund credits:", refundError);
+        }
+
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error instanceof Error ? error.message : "Async audio generation failed",
+        });
+      }
+    }),
+
   // Generate image async (returns task ID)
   generateImageAsync: protectedProcedure
     .input(
