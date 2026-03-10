@@ -325,3 +325,69 @@ async def test_executor_tracks_live_transfer_actions_in_policy_state(
     mock_browser_pool._mock_locator.set_input_files.assert_awaited_once_with(
         "/tmp/report.csv"
     )
+
+
+async def test_executor_promotes_download_surface_to_transfer_action(
+    mock_browser_pool,
+    mock_selector_cache,
+    status_callback,
+):
+    transfer_snapshots: list[tuple[str, int, str | None]] = []
+
+    async def capture_before_action(*, action, state, **_kwargs):
+        transfer_snapshots.append(
+            (action.action_type, state.external_send_count, getattr(action, "target_origin", None))
+        )
+
+    download = MagicMock()
+    download.url = "https://files.example.net/report.csv"
+
+    async def click_side_effect():
+        mock_browser_pool._mock_page.emit("download", download)
+
+    mock_browser_pool._mock_locator.click = AsyncMock(side_effect=click_side_effect)
+
+    policy_client = AsyncMock()
+    policy_client.enforce_before_action = AsyncMock(side_effect=capture_before_action)
+    policy_client.enforce_transition = AsyncMock()
+
+    executor = SelfHealingExecutor(
+        browser_pool=mock_browser_pool,
+        selector_cache=mock_selector_cache,
+        policy_client=policy_client,
+    )
+    script = PlaywrightScript(
+        url="https://example.com/start",
+        goal="download then copy data",
+        actions=[
+            PlaywrightAction(
+                action_type="click",
+                selector_css="#export",
+                selector_strategies=["#export"],
+                description="Export report",
+                confidence=0.9,
+            ),
+            PlaywrightAction(
+                action_type="clipboard_write",
+                selector_css="clipboard_write",
+                selector_strategies=["clipboard_write"],
+                description="Copy summary",
+                confidence=0.9,
+                value="summary text",
+            ),
+        ],
+    )
+
+    await executor.execute(
+        script=script,
+        execution_id="exec-1",
+        tenant_id="tenant-1",
+        allowed_domains=["example.com"],
+        status_callback=status_callback,
+    )
+
+    assert transfer_snapshots == [
+        ("click", 0, None),
+        ("download", 0, "https://files.example.net"),
+        ("clipboard_write", 1, None),
+    ]

@@ -162,12 +162,14 @@ class BrowserPolicyNodeClient:
           "action_type": action_type,
           "selector_css": getattr(action, "selector_css", None),
           "value": getattr(action, "value", None),
+          "target_origin": target_origin,
           "description": getattr(action, "description", None),
         }
         payload_preview = {
           "action_type": action_type,
           "selector_css": getattr(action, "selector_css", None),
           "value": getattr(action, "value", None),
+          "target_origin": target_origin,
         }
 
         return {
@@ -185,7 +187,7 @@ class BrowserPolicyNodeClient:
             "nonReadActionCount": state.non_read_action_count + (0 if action_type in {"goto", "extract_data"} else 1),
             "extractedRecordCount": state.extracted_record_count,
             "externalSendCount": state.external_send_count
-            + (1 if action_type in {"upload", "clipboard_write", "external_send"} else 0),
+            + (1 if action_type in {"upload", "download", "clipboard_write", "external_send"} else 0),
             "originTransitionCount": state.origin_transition_count,
             "normalizedAction": normalized_action,
             "payloadPreview": payload_preview,
@@ -445,6 +447,11 @@ class BrowserPolicyNodeClient:
 
     def _infer_target_origin(self, *, action: Any, fallback_origin: str | None) -> str | None:
         action_type = getattr(action, "action_type", "click")
+        explicit_target_origin = getattr(action, "target_origin", None)
+        if explicit_target_origin:
+            return self._get_origin(explicit_target_origin) or explicit_target_origin
+        if action_type == "download":
+            return None
         if action_type == "goto":
             return self._get_origin(getattr(action, "value", None) or getattr(action, "selector_css", None))
         return fallback_origin

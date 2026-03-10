@@ -5,9 +5,9 @@
 
 ## Findings
 
-- No correctness issues found in the landed helper-layer plus executor transfer-primitives diff after targeted Python tests passed.
+- No correctness issues found after promoting download surfaces into the live transfer path and rerunning the targeted Python executor/policy suite.
 
 ## Risks kept open
 
-- Live browser dispatch now covers upload and clipboard primitives, but download remains event-driven and iframe interactions still do not carry frame-scoped destination context into dispatch-time policy evaluation.
+- Live browser dispatch now covers upload, clipboard, and download transfer surfaces, but iframe interactions still do not carry frame-scoped destination context into dispatch-time policy evaluation.
 - Threshold enforcement is currently deterministic helper logic driven by caller-supplied counts; Redis-backed counters are still pending.

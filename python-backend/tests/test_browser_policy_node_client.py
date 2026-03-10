@@ -107,6 +107,37 @@ async def test_cached_approval_is_revalidated_before_reuse():
 
 
 @pytest.mark.asyncio
+async def test_download_payload_fails_closed_without_an_explicit_destination():
+    client = build_client()
+    page = SimpleNamespace(url="https://app.example.com/report")
+    action = SimpleNamespace(
+        action_type="download",
+        selector_css="download",
+        description="Download report",
+        value=None,
+        target_origin=None,
+    )
+
+    payload = await client._build_payload(
+        page=page,
+        action=action,
+        state=SimpleNamespace(
+            current_origin="https://app.example.com",
+            non_read_action_count=0,
+            extracted_record_count=0,
+            external_send_count=0,
+            origin_transition_count=0,
+        ),
+        transition_target_origin=None,
+    )
+
+    assert payload["currentOrigin"] == "https://app.example.com"
+    assert payload["targetOrigin"] is None
+    assert payload["transfersExternally"] is True
+    assert payload["externalSendCount"] == 1
+
+
+@pytest.mark.asyncio
 async def test_cached_approval_fails_closed_when_revoked_after_approval():
     client = build_client()
     client._approval_request_ids["corr-1"] = "req-1"

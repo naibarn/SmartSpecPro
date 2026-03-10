@@ -87,6 +87,7 @@ class PlaywrightAction(BaseModel):
     description: str
     confidence: float
     value: str | None = None
+    target_origin: str | None = None
 
 
 class PlaywrightScript(BaseModel):

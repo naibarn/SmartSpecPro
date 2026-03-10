@@ -23,11 +23,11 @@
 - task_id: sec05-live-transfer-enforcement
   section: section-05-data-handling-and-trust-controls
   task: enforce transfer, clipboard, and iframe trust controls on every live browser action and transition
-  blocked_by: upload and clipboard primitives now run through the live policy path, but download remains event-driven and iframe interactions still lack frame-scoped action context at dispatch time
-  unblock_condition: promote download and frame-targeted interactions to first-class executor actions or propagate frame-scoped context into action dispatch so every transfer-capable surface flows through the runtime policy callback with the right destination identity
+  blocked_by: upload, clipboard, and download transfer surfaces now run through the live policy path, but iframe interactions still lack frame-scoped action context at dispatch time
+  unblock_condition: propagate frame-scoped context into action dispatch so transfer-capable iframe interactions flow through the runtime policy callback with the right trust tier and destination identity
   status: blocked
   owner_step: section-05 follow-up
-  notes: pre-dispatch policy checks plus popup/frame/file-picker/download surfaces now run live, and upload/clipboard actions are first-class executor actions; the remaining gap is frame-scoped context and download-as-action coverage
+  notes: pre-dispatch policy checks plus popup/frame/file-picker/download surfaces now run live, and upload/clipboard/download actions are first-class transfer checks; the remaining gap is frame-scoped context
 
 - task_id: sec05-redis-action-counters
   section: section-05-data-handling-and-trust-controls

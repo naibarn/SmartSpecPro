@@ -91,3 +91,12 @@
 - decision taken: re-read approval state on every cached approval reuse and fail closed if the request was revoked, cancelled, rejected, or expired
 - mode used: auto
 - rationale: the current runtime already has the request id for each approval correlation key, so revalidating it is a small, local change that closes a real post-approval revocation gap without waiting for a larger operator-status transport.
+
+### Download transfer semantics
+- section: 05
+- options considered:
+  - leave browser downloads as generic event-driven prompts that inherit the page origin during policy evaluation
+  - promote downloads into transfer-aware synthetic actions with explicit destination semantics and counter updates, defaulting to fail closed when no trusted destination is known
+- decision taken: promote downloads into transfer-aware synthetic actions with explicit destination semantics and counter updates, defaulting to fail closed when no trusted destination is known
+- mode used: auto
+- rationale: this closes the concrete runtime gap for sensitive downloads with a small diff in the existing executor/policy seam, while avoiding speculative heuristics for frame-targeted interactions that still lack reliable dispatch metadata.

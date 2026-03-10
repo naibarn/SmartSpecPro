@@ -360,9 +360,16 @@ class SelfHealingExecutor:
             )
 
         def handle_download(_download: Any) -> None:
+            download_url = getattr(_download, "url", None)
+            if callable(download_url):
+                try:
+                    download_url = download_url()
+                except TypeError:
+                    download_url = None
             record_event(
                 "download",
                 "Browser download requires explicit policy approval",
+                self._get_origin(download_url) if isinstance(download_url, str) else None,
             )
 
         page_on("popup", handle_popup)
@@ -430,6 +437,7 @@ class SelfHealingExecutor:
                 selector_strategies=[action_type],
                 description=event["description"] or action_type,
                 confidence=1.0,
+                target_origin=target_origin,
             )
             await self._policy_client.enforce_before_action(
                 page=page,
@@ -437,6 +445,8 @@ class SelfHealingExecutor:
                 state=policy_state,
                 status_callback=status_callback,
             )
+            if action_type == "download":
+                policy_state.external_send_count += 1
 
     async def _diagnose_failure(
         self, page: Any, failed_action: PlaywrightAction, error: Exception
