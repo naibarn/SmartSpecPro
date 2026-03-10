@@ -34,11 +34,13 @@ This section makes policy decisions operationally trustworthy. It adds JSONL + D
 
 **Files**:
 - `python-backend/tests/test_browser_policy_audit_contract.py`
+- `python-backend/tests/test_browser_policy_node_client.py`
 - `python-backend/tests/test_browser_policy_revocation.py`
 
 ```python
 # Test: Python-side audit/event consumers can correlate policy decision, approval, and outcome records
 # Test: executor observes revocation and kill-switch state before dispatch
+# Test: cached browser approvals are revalidated before reuse so post-approval revocation fails closed
 ```
 
 ---
@@ -100,8 +102,10 @@ Hashes and digests may be logged; raw DOM, plaintext secrets, and full screensho
 - `apps/web/server/services/__tests__/browserPolicyMetrics.test.ts`
 - `apps/web/server/services/__tests__/browserIncidentControls.test.ts`
 - `python-backend/app/services/browser_policy_audit.py`
+- `python-backend/app/services/browser_policy_node_client.py`
 - `python-backend/app/services/browser_policy_incident_controls.py`
 - `python-backend/tests/test_browser_policy_audit_contract.py`
+- `python-backend/tests/test_browser_policy_node_client.py`
 - `python-backend/tests/test_browser_policy_revocation.py`
 
 ### Deviations from plan
@@ -112,9 +116,9 @@ Hashes and digests may be logged; raw DOM, plaintext secrets, and full screensho
 ### Tests added or updated
 
 - `npm --prefix apps/web test -- server/__tests__/browserPolicyAuditLogger.test.ts server/services/__tests__/browserPolicyMetrics.test.ts server/services/__tests__/browserIncidentControls.test.ts`
-- `UV_CACHE_DIR=/tmp/uv-cache DEBUG=false uv run --project python-backend pytest python-backend/tests/test_browser_policy_audit_contract.py python-backend/tests/test_browser_policy_revocation.py`
+- `UV_CACHE_DIR=/tmp/uv-cache DEBUG=false uv run --project python-backend pytest python-backend/tests/test_browser_policy_node_client.py python-backend/tests/test_self_healing_executor_policy_hooks.py python-backend/tests/unit/automation/test_self_healing_executor.py python-backend/tests/test_browser_policy_audit_contract.py python-backend/tests/test_browser_policy_revocation.py python-backend/tests/test_browser_policy_approval_resume.py`
 
 ### Known follow-ups
 
 - Persist browser-policy audit artifacts from the live decision path into JSONL and structured DB storage.
-- Wire kill switches, deny overrides, and approval revocation into live executor and approval polling paths.
+- Expose operator-visible approval-status and revocation telemetry from the live browser-policy runtime in addition to the now fail-closed approval revalidation.

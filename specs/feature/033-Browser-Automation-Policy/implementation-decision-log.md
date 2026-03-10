@@ -82,3 +82,12 @@
 - decision taken: implement the current executor primitives now for `upload`, `clipboard_write`, and `clipboard_read`, and thread their counter semantics through the existing policy client
 - mode used: auto
 - rationale: section 05 already has the transfer policy logic and thresholds, but the live executor only knew generic DOM actions. Adding the existing Playwright-backed upload and clipboard primitives is a small, reversible diff that activates real policy-controlled transfer behavior now without inventing a larger DSL or Redis-backed counter layer first.
+
+### Approval cache revalidation
+- section: 06
+- options considered:
+  - keep approved correlation keys as permanent in-memory bypasses until a richer incident-status channel exists
+  - re-read approval state on every cached approval reuse and fail closed if the request was revoked, cancelled, rejected, or expired
+- decision taken: re-read approval state on every cached approval reuse and fail closed if the request was revoked, cancelled, rejected, or expired
+- mode used: auto
+- rationale: the current runtime already has the request id for each approval correlation key, so revalidating it is a small, local change that closes a real post-approval revocation gap without waiting for a larger operator-status transport.

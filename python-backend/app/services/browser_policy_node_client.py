@@ -39,6 +39,12 @@ class BrowserPolicyExecutionState:
     origin_transition_count: int = 0
 
 
+@dataclass
+class BrowserApprovalStatusSnapshot:
+    status: ApprovalStatus
+    revoked: bool = False
+
+
 class BrowserPolicyNodeClient:
     def __init__(
         self,
@@ -249,10 +255,25 @@ class BrowserPolicyNodeClient:
         assert result.correlationKey is not None
 
         correlation_key = result.correlationKey
-        if correlation_key in self._approved_correlation_keys:
-            return
-
         request_id = self._approval_request_ids.get(correlation_key)
+        if correlation_key in self._approved_correlation_keys and request_id is not None:
+            approval_snapshot = await self._get_approval_status(request_id)
+            if approval_snapshot.status == ApprovalStatus.APPROVED and not approval_snapshot.revoked:
+                return
+
+            self._approved_correlation_keys.discard(correlation_key)
+            if approval_snapshot.revoked or approval_snapshot.status in {
+                ApprovalStatus.REJECTED,
+                ApprovalStatus.EXPIRED,
+                ApprovalStatus.CANCELLED,
+            }:
+                raise self._build_approval_denied_error(
+                    action=action,
+                    result=result,
+                    request_id=request_id,
+                    approval_snapshot=approval_snapshot,
+                )
+
         if request_id is None:
             request_id = await self._create_approval_request(result=result, action=action)
             self._approval_request_ids[correlation_key] = request_id
@@ -262,23 +283,20 @@ class BrowserPolicyNodeClient:
         )
 
         while True:
-            request_status = await self._get_approval_status(request_id)
-            if request_status == ApprovalStatus.APPROVED:
+            approval_snapshot = await self._get_approval_status(request_id)
+            if approval_snapshot.status == ApprovalStatus.APPROVED and not approval_snapshot.revoked:
                 self._approved_correlation_keys.add(correlation_key)
                 return
-            if request_status in {
+            if approval_snapshot.revoked or approval_snapshot.status in {
                 ApprovalStatus.REJECTED,
                 ApprovalStatus.EXPIRED,
                 ApprovalStatus.CANCELLED,
             }:
-                raise BrowserPolicyDeniedError(
-                    f"Browser approval denied for '{getattr(action, 'description', result.decision.actionType)}'",
-                    details={
-                        "decision": "require_approval",
-                        "reason_codes": result.decision.reasonCodes,
-                        "approval_request_id": request_id,
-                        "approval_status": request_status.value,
-                    },
+                raise self._build_approval_denied_error(
+                    action=action,
+                    result=result,
+                    request_id=request_id,
+                    approval_snapshot=approval_snapshot,
                 )
 
             await status_callback(
@@ -336,7 +354,44 @@ class BrowserPolicyNodeClient:
             )
             return request.id
 
-    async def _get_approval_status(self, request_id: str) -> ApprovalStatus:
+    def _build_approval_denied_error(
+        self,
+        *,
+        action: Any,
+        result: BrowserPolicyEvaluationResponse,
+        request_id: str,
+        approval_snapshot: BrowserApprovalStatusSnapshot,
+    ) -> BrowserPolicyDeniedError:
+        reason_codes = list(result.decision.reasonCodes)
+        approval_revoked = approval_snapshot.revoked or approval_snapshot.status == ApprovalStatus.CANCELLED
+        if approval_revoked and "approval_revoked" not in reason_codes:
+            reason_codes.append("approval_revoked")
+
+        if approval_revoked:
+            message = (
+                f"Browser approval was revoked for '{getattr(action, 'description', result.decision.actionType)}'"
+            )
+        elif approval_snapshot.status == ApprovalStatus.EXPIRED:
+            message = (
+                f"Browser approval expired for '{getattr(action, 'description', result.decision.actionType)}'"
+            )
+        else:
+            message = (
+                f"Browser approval denied for '{getattr(action, 'description', result.decision.actionType)}'"
+            )
+
+        return BrowserPolicyDeniedError(
+            message,
+            details={
+                "decision": "require_approval",
+                "reason_codes": reason_codes,
+                "approval_request_id": request_id,
+                "approval_status": approval_snapshot.status.value,
+                "approval_revoked": approval_revoked,
+            },
+        )
+
+    async def _get_approval_status(self, request_id: str) -> BrowserApprovalStatusSnapshot:
         async with AsyncSessionLocal() as session:
             service = ApprovalDBService(session)
             request = await service.get_request(request_id, tenant_id=self._tenant_id)
@@ -345,7 +400,10 @@ class BrowserPolicyNodeClient:
                     "Browser approval request disappeared before execution resumed",
                     details={"approval_request_id": request_id},
                 )
-            return request.status
+            return BrowserApprovalStatusSnapshot(
+                status=request.status,
+                revoked=request.revoked_at is not None,
+            )
 
     @staticmethod
     def _required_capabilities(action_type: str) -> list[str]:

@@ -50,11 +50,11 @@
 - task_id: sec06-live-incident-plumbing
   section: section-06-audit-observability-and-incident-controls
   task: wire kill switches, deny overrides, and approval revocation into live executor dispatch and approval polling
-  blocked_by: pre-dispatch incident checks and approval waits are now wired, but post-approval revocation monitoring and operator-facing polling/status surfaces still need browser-specific runtime coverage
-  unblock_condition: extend the current live seam to approval revocation rechecks and operator-visible status/audit reporting
+  blocked_by: pre-dispatch incident checks, approval waits, and cached-approval revalidation are now wired, but operator-facing polling/status surfaces still need browser-specific runtime coverage
+  unblock_condition: surface browser-specific approval/revocation status and audit telemetry through the live runtime so operators can observe and act on incident state directly
   status: blocked
   owner_step: section-06 follow-up
-  notes: kill-switch and deny logic now executes live through the Node policy runtime; the remaining gap is continuous incident visibility and revocation follow-through
+  notes: kill-switch and deny logic execute live through the Node policy runtime, and cached approvals now re-check DB state before reuse; the remaining gap is continuous operator-visible incident visibility
 
 - task_id: sec07-raw-sql-partition-migration
   section: section-07-rollout-migrations-and-release-gates
