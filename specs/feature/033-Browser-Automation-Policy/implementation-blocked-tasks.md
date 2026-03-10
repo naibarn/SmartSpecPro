@@ -55,3 +55,21 @@
   status: blocked
   owner_step: section-06 follow-up
   notes: fail-closed incident helper logic exists, but runtime invocation does not
+
+- task_id: sec07-raw-sql-partition-migration
+  section: section-07-rollout-migrations-and-release-gates
+  task: create the additive raw SQL migration for browser-policy decision storage, monthly partitions, and maintenance ownership
+  blocked_by: no browser-policy decision table or partition DDL exists yet
+  unblock_condition: define the final decision-storage schema and add the production migration path
+  status: blocked
+  owner_step: section-07 follow-up
+  notes: migration-plan metadata and readiness checks are implemented, but not the DDL itself
+
+- task_id: sec07-release-gate-integration
+  section: section-07-rollout-migrations-and-release-gates
+  task: invoke rollout and rollback readiness checks from deployment or feature-flag orchestration
+  blocked_by: no current deployment-control path consumes browser-policy rollout helper results
+  unblock_condition: connect release automation or operator tooling to the browser-policy rollout helpers
+  status: blocked
+  owner_step: section-07 follow-up
+  notes: gate and rollback helper logic is implemented and tested in isolation

@@ -37,3 +37,12 @@
 - decision taken: land deterministic helper artifacts and summaries first, then wire them into the runtime path once the execution seam exists
 - mode used: auto
 - rationale: the live browser execution seam is still missing, but the audit schema, integrity model, and fail-closed incident semantics can still be specified and tested now. This keeps section 06 moving without pretending the runtime plumbing is complete.
+
+### Rollout-gate shape
+- section: 07
+- options considered:
+  - defer all rollout and migration work until real partition DDL and deployment hooks exist
+  - encode the approved thresholds and rollback posture now as executable helpers, while recording raw-SQL and deployment integration as follow-up work
+- decision taken: encode the approved thresholds and rollback posture now as executable helpers, while recording raw-SQL and deployment integration as follow-up work
+- mode used: auto
+- rationale: threshold math and rollback posture are stable product rules that benefit from immediate executable tests. The raw SQL partition path and deployment orchestration remain separate operational work items and should stay explicit rather than implied.

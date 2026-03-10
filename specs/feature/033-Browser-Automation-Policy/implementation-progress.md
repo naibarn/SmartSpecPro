@@ -38,8 +38,15 @@
   blocked_summary: `sec04-copilot-live-hook`, `sec04-python-transition-hooks`, `sec05-live-transfer-enforcement`, `sec05-redis-action-counters`
 
 - section: section-06-audit-observability-and-incident-controls
-  commit: pending
+  commit: `ddbc701`
   test_command: `npm --prefix apps/web test -- server/__tests__/browserPolicyAuditLogger.test.ts server/services/__tests__/browserPolicyMetrics.test.ts server/services/__tests__/browserIncidentControls.test.ts` and `UV_CACHE_DIR=/tmp/uv-cache DEBUG=false uv run --project python-backend pytest python-backend/tests/test_browser_policy_audit_contract.py python-backend/tests/test_browser_policy_revocation.py`
   pass_fail: partial-pass
   notable_deviations: audit, metrics, and incident-control behavior landed as deterministic helper layers, but live JSONL/DB persistence and runtime wiring remain blocked on the missing decision path and storage DDL
   blocked_summary: `sec06-live-audit-persistence`, `sec06-live-incident-plumbing`
+
+- section: section-07-rollout-migrations-and-release-gates
+  commit: pending
+  test_command: `npm --prefix apps/web test -- drizzle/browserPolicyMigrations.test.ts server/__tests__/browserPolicyRolloutGates.test.ts server/__tests__/browserPolicyReleaseReadiness.test.ts` and `UV_CACHE_DIR=/tmp/uv-cache DEBUG=false uv run --project python-backend pytest python-backend/tests/integration/test_browser_policy_rollout.py python-backend/tests/integration/test_browser_policy_rollback.py`
+  pass_fail: partial-pass
+  notable_deviations: executable rollout and rollback helpers landed first, but raw SQL partition DDL and deployment-time gate invocation remain follow-up operational work
+  blocked_summary: `sec07-raw-sql-partition-migration`, `sec07-release-gate-integration`
