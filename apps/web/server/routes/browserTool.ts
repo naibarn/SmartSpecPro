@@ -23,6 +23,10 @@ import { deductCredits, refundCredits, hasEnoughCredits, drawFromReservation } f
 import { getRedisClient } from "../services/redis";
 import { getTenantFeatureFlag } from "../services/featureFlags";
 import { auditLogger } from "../services/auditLogger";
+import {
+  getBrowserToolLaunchGuardError,
+  isBrowserPolicyContractWired,
+} from "../services/browserPolicyLaunchGuard";
 import { getTraceId } from "../services/traceContext";
 import { ENV } from "../_core/env";
 
@@ -190,6 +194,18 @@ router.post("/api/internal/tools/browser", async (req: Request, res: Response) =
     res
       .status(403)
       .json({ error: "Browser automation is not enabled for this tenant.", code: "FEATURE_DISABLED" });
+    return;
+  }
+
+  const launchGuardError = getBrowserToolLaunchGuardError({
+    browserToolEnabled: browserEnabled,
+    browserPolicyContractWired: isBrowserPolicyContractWired(),
+  });
+  if (launchGuardError) {
+    res.status(launchGuardError.status).json({
+      error: launchGuardError.message,
+      code: launchGuardError.code,
+    });
     return;
   }
 
