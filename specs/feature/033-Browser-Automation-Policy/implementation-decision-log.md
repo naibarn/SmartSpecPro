@@ -28,3 +28,12 @@
 - decision taken: extract reusable trust-tier and rate-limit helpers, then compose them into the existing data-handling policy seam
 - mode used: auto
 - rationale: section 05 needs several related controls with shared reason codes across Node and Python. Keeping the logic in focused helpers keeps the diff smaller, makes service-level tests straightforward, and avoids baking threshold logic into one large engine function.
+
+### Audit and incident-control shape
+- section: 06
+- options considered:
+  - couple browser-policy audit, metrics, and incident control behavior directly to existing runtime services first
+  - land deterministic helper artifacts and summaries first, then wire them into the runtime path once the execution seam exists
+- decision taken: land deterministic helper artifacts and summaries first, then wire them into the runtime path once the execution seam exists
+- mode used: auto
+- rationale: the live browser execution seam is still missing, but the audit schema, integrity model, and fail-closed incident semantics can still be specified and tested now. This keeps section 06 moving without pretending the runtime plumbing is complete.

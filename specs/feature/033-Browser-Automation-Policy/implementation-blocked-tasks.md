@@ -37,3 +37,21 @@
   status: blocked
   owner_step: section-05 follow-up
   notes: deterministic threshold evaluation is implemented; stateful counting is deferred
+
+- task_id: sec06-live-audit-persistence
+  section: section-06-audit-observability-and-incident-controls
+  task: emit browser-policy audit artifacts from the live decision path into JSONL and structured DB persistence
+  blocked_by: the live browser decision path is not yet centralized, and no dedicated browser-policy decision table exists
+  unblock_condition: complete the per-action execution seam and add the backing decision-storage migration/DDL
+  status: blocked
+  owner_step: section-06 follow-up
+  notes: helper-layer artifact builders and integrity verification are implemented
+
+- task_id: sec06-live-incident-plumbing
+  section: section-06-audit-observability-and-incident-controls
+  task: wire kill switches, deny overrides, and approval revocation into live executor dispatch and approval polling
+  blocked_by: missing live execution callback and browser-specific approval endpoint plumbing
+  unblock_condition: connect runtime dispatch and approval status flows to the shared browser-policy helpers
+  status: blocked
+  owner_step: section-06 follow-up
+  notes: fail-closed incident helper logic exists, but runtime invocation does not
