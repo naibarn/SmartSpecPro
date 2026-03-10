@@ -114,8 +114,8 @@ Cross-site or otherwise untrusted iframe interactions should emit dedicated reas
 
 - Implemented deterministic helper-layer rate and trust controls first, then extended the live executor with upload and clipboard primitives once the section-04 cross-stack action hook existed.
 - Promoted download surfaces into the live transfer path as synthetic first-class actions before solving the broader frame-targeted dispatch problem, so sensitive downloads now fail closed when no trusted destination context exists.
-- Added frame-scoped action metadata and `frame_locator(...)` execution support before teaching the generator/runtime planner to emit that metadata automatically for iframe-targeted actions.
-- Threshold enforcement currently consumes caller-supplied counts; Redis-backed counters remain a follow-up once the live execution seam exists.
+- Added frame-scoped action metadata and `frame_locator(...)` execution support first, then taught the generator validation path to auto-enrich iframe-targeted actions with frame selector/origin/trust metadata when a selector resolves uniquely inside one iframe.
+- Redis-backed action counters now live in the Python executor under an execution-scoped browser-policy namespace; the Node runtime still evaluates the resulting counts from the shared payload rather than mutating Redis itself.
 
 ### Tests added or updated
 
@@ -125,5 +125,4 @@ Cross-site or otherwise untrusted iframe interactions should emit dedicated reas
 
 ### Known follow-ups
 
-- Emit frame selector/origin/trust metadata from the planning/generation path so iframe-targeted interactions consistently use the new frame-scoped dispatch support.
-- Replace caller-supplied threshold counters with Redis-backed workflow/action counters.
+- Consider tightening the iframe selector fallback heuristic for pages that contain multiple unnamed/same-origin iframes, since those cases still prefer explicit metadata over inference.

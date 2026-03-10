@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import inspect
 import json
 import logging
 import os
@@ -63,6 +64,48 @@ _OVERLAY_INJECTION_JS = """
     idx++;
   });
   return results;
+})()
+"""
+
+_FRAME_METADATA_SNAPSHOT_JS = """
+(() => {
+  const escapeCss = (value) => String(value)
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"');
+
+  return Array.from(document.querySelectorAll("iframe, frame")).map((el, index) => {
+    const tag = el.tagName.toLowerCase();
+    const src = el.getAttribute("src") || "";
+    let origin = null;
+    try {
+      origin = src ? new URL(src, window.location.href).origin : null;
+    } catch {
+      origin = null;
+    }
+
+    const dataTestId = el.getAttribute("data-testid");
+    const id = el.getAttribute("id");
+    const name = el.getAttribute("name");
+    let selectorCss = `${tag}:nth-of-type(${index + 1})`;
+    if (dataTestId) {
+      selectorCss = `${tag}[data-testid="${escapeCss(dataTestId)}"]`;
+    } else if (id) {
+      selectorCss = `${tag}#${escapeCss(id)}`;
+    } else if (name) {
+      selectorCss = `${tag}[name="${escapeCss(name)}"]`;
+    }
+
+    return {
+      tag,
+      src,
+      origin,
+      name,
+      dataTestId,
+      id,
+      sandboxed: el.hasAttribute("sandbox"),
+      selectorCss,
+    };
+  });
 })()
 """
 
@@ -380,6 +423,7 @@ class PlaywrightScriptGenerator:
         self, page: Any, actions: list[PlaywrightAction]
     ) -> bool:
         """Verify each selector resolves to >= 1 element in live DOM."""
+        page_origin = self._get_origin(self._get_page_url(page))
         for action in actions:
             try:
                 locator_root = page
@@ -391,7 +435,148 @@ class PlaywrightScriptGenerator:
                 locator = locator_root.locator(action.selector_css)
                 count = await locator.count()
                 if count == 0:
-                    return False
+                    if action.frame_selector_css:
+                        return False
+
+                    enriched = await self._enrich_action_from_iframe_context(
+                        page=page,
+                        action=action,
+                        page_origin=page_origin,
+                    )
+                    if not enriched or not action.frame_selector_css:
+                        return False
+
+                    frame_locator = getattr(page, "frame_locator", None)
+                    if not callable(frame_locator):
+                        return False
+                    locator_root = frame_locator(action.frame_selector_css)
+                    locator = locator_root.locator(action.selector_css)
+                    if await locator.count() == 0:
+                        return False
             except Exception:
                 return False
         return True
+
+    async def _enrich_action_from_iframe_context(
+        self,
+        *,
+        page: Any,
+        action: PlaywrightAction,
+        page_origin: str | None,
+    ) -> bool:
+        frames = getattr(page, "frames", None)
+        if callable(frames):
+            frames = frames()
+        if inspect.isawaitable(frames):
+            frames = await frames
+        if not isinstance(frames, list):
+            return False
+
+        main_frame = getattr(page, "main_frame", None)
+        matching_frames: list[Any] = []
+        for frame in frames:
+            if frame is main_frame:
+                continue
+            try:
+                locator = frame.locator(action.selector_css)
+                if await locator.count() > 0:
+                    matching_frames.append(frame)
+            except Exception:
+                continue
+
+        if len(matching_frames) != 1:
+            return False
+
+        frame = matching_frames[0]
+        frame_snapshot = await self._lookup_frame_snapshot(page, frame)
+        if frame_snapshot is None:
+            return False
+
+        frame_origin = self._get_page_url(frame) or frame_snapshot.get("src") or frame_snapshot.get("origin")
+        frame_sandboxed = bool(frame_snapshot.get("sandboxed"))
+        action.frame_selector_css = frame_snapshot.get("selectorCss")
+        action.frame_origin = frame_origin
+        action.frame_sandboxed = frame_sandboxed
+        action.iframe_trust_tier = self._resolve_iframe_trust_tier(
+            page_origin=page_origin,
+            frame_origin=frame_origin,
+            sandboxed=frame_sandboxed,
+        )
+        return bool(action.frame_selector_css)
+
+    async def _lookup_frame_snapshot(self, page: Any, frame: Any) -> dict[str, Any] | None:
+        try:
+            snapshots = await page.evaluate(_FRAME_METADATA_SNAPSHOT_JS)
+        except Exception:
+            return None
+        if not isinstance(snapshots, list) or not snapshots:
+            return None
+
+        frame_url = self._get_page_url(frame)
+        frame_origin = self._get_origin(frame_url)
+        frame_name = self._get_frame_name(frame)
+
+        def matches(snapshot: Any) -> bool:
+            if not isinstance(snapshot, dict):
+                return False
+            if frame_url and snapshot.get("src") == frame_url:
+                return True
+            if frame_name and snapshot.get("name") == frame_name:
+                return True
+            if frame_origin and snapshot.get("origin") == frame_origin:
+                return True
+            return False
+
+        matched = [snapshot for snapshot in snapshots if matches(snapshot)]
+        if len(matched) == 1:
+            return matched[0]
+        if len(snapshots) == 1 and isinstance(snapshots[0], dict):
+            return snapshots[0]
+        return None
+
+    @staticmethod
+    def _get_page_url(page: Any) -> str | None:
+        value = getattr(page, "url", None)
+        return value if isinstance(value, str) else None
+
+    @staticmethod
+    def _get_origin(url: str | None) -> str | None:
+        if not url:
+            return None
+        try:
+            from urllib.parse import urlparse
+
+            parsed = urlparse(url)
+            if not parsed.scheme or not parsed.netloc:
+                return None
+            return f"{parsed.scheme}://{parsed.netloc}"
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _get_frame_name(frame: Any) -> str | None:
+        value = getattr(frame, "name", None)
+        if callable(value):
+            try:
+                value = value()
+            except TypeError:
+                return None
+        return value if isinstance(value, str) and value else None
+
+    @staticmethod
+    def _resolve_iframe_trust_tier(
+        *,
+        page_origin: str | None,
+        frame_origin: str | None,
+        sandboxed: bool,
+    ) -> str:
+        from app.services.browser_policy_transfer_controls import resolve_iframe_trust_tier
+
+        resolved_frame_origin = (
+            PlaywrightScriptGenerator._get_origin(frame_origin) or frame_origin
+        )
+        return resolve_iframe_trust_tier(
+            parent_origin=page_origin,
+            frame_origin=resolved_frame_origin,
+            sandboxed=sandboxed,
+        )

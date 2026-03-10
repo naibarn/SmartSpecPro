@@ -109,3 +109,12 @@
 - decision taken: extend the action model and executor now so frame selector/origin/trust metadata can flow through dispatch-time policy checks and `frame_locator(...)` execution whenever that metadata is available
 - mode used: auto
 - rationale: the runtime gap was at dispatch time, not in the pure policy helpers. Adding optional frame metadata fields is a small compatible diff that unlocks correct enforcement for any caller that can supply iframe context, without guessing frame identity from incomplete DOM state.
+
+### Generator iframe metadata emission and Redis counters
+- section: 05
+- options considered:
+  - add a larger planning-stage DOM model before attempting iframe inference or stateful counters
+  - enrich actions opportunistically during selector validation when exactly one iframe matches, and back live rate-limit counts with an execution-scoped Redis namespace in the executor
+- decision taken: enrich actions opportunistically during selector validation when exactly one iframe matches, and back live rate-limit counts with an execution-scoped Redis namespace in the executor
+- mode used: auto
+- rationale: both gaps were local to the existing Python execution seam. Using the validation pass for unique iframe discovery keeps the diff small and fail-closed on ambiguity, while Redis hash counters provide durable threshold state without moving mutation logic into the Node runtime yet.

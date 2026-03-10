@@ -23,20 +23,20 @@
 - task_id: sec05-live-transfer-enforcement
   section: section-05-data-handling-and-trust-controls
   task: enforce transfer, clipboard, and iframe trust controls on every live browser action and transition
-  blocked_by: upload, clipboard, and download transfer surfaces run through the live policy path, and frame-scoped action metadata is now supported by the executor/runtime, but the planning/generation path still does not emit iframe metadata automatically
-  unblock_condition: emit frame selector/origin/trust metadata into Playwright actions so iframe-targeted interactions consistently reach the runtime policy callback with the right trust tier and destination identity
-  status: blocked
+  blocked_by: none
+  unblock_condition: implemented 2026-03-10 via generator-side iframe metadata enrichment and live frame-scoped executor dispatch
+  status: done
   owner_step: section-05 follow-up
-  notes: pre-dispatch policy checks plus popup/frame/file-picker/download surfaces now run live, upload/clipboard/download actions are first-class transfer checks, and frame-targeted actions can dispatch through `frame_locator(...)`; the remaining gap is automatic metadata emission
+  notes: pre-dispatch policy checks plus popup/frame/file-picker/download surfaces run live, upload/clipboard/download actions are first-class transfer checks, and generator validation now auto-emits frame selector/origin/trust metadata for uniquely matched iframe actions
 
 - task_id: sec05-redis-action-counters
   section: section-05-data-handling-and-trust-controls
   task: back section-05 thresholds with Redis-scoped workflow/action counters instead of caller-supplied counts
-  blocked_by: no browser-policy counter namespace or executor-side counter update path exists yet
-  unblock_condition: define Redis keying and mutation points in the live browser execution path
-  status: blocked
+  blocked_by: none
+  unblock_condition: implemented 2026-03-10 via execution-scoped Redis counter keys and executor-side mutation/hydration points before policy evaluation
+  status: done
   owner_step: section-05 follow-up
-  notes: deterministic threshold evaluation is implemented; stateful counting is deferred
+  notes: the live executor now hydrates and mutates `browser_policy:{tenant_id}:{execution_id}:counters` so policy thresholds use Redis-backed counts instead of transient caller state
 
 - task_id: sec06-live-audit-persistence
   section: section-06-audit-observability-and-incident-controls

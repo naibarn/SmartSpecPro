@@ -239,6 +239,57 @@ class TestSelectorValidation:
         result = await generator._validate_selectors(mock_page, actions)
         assert result is True
 
+    async def test_validate_selectors_enriches_unique_iframe_matches(self, generator):
+        mock_page = AsyncMock()
+        mock_page.url = "https://app.example.com/dashboard"
+        main_locator = AsyncMock()
+        main_locator.count = AsyncMock(return_value=0)
+        frame_locator_result = AsyncMock()
+        frame_locator_result.count = AsyncMock(return_value=1)
+        frame_scope = MagicMock()
+        frame_scope.locator = MagicMock(return_value=frame_locator_result)
+
+        matching_frame = MagicMock()
+        matching_frame.url = "https://docs.example.com/embed"
+        matching_frame.name = "partner-frame"
+        matching_frame.locator = MagicMock(return_value=frame_locator_result)
+
+        mock_page.locator = MagicMock(return_value=main_locator)
+        mock_page.frame_locator = MagicMock(return_value=frame_scope)
+        mock_page.frames = [MagicMock(), matching_frame]
+        mock_page.main_frame = mock_page.frames[0]
+        mock_page.evaluate = AsyncMock(
+            return_value=[
+                {
+                    "tag": "iframe",
+                    "src": "https://docs.example.com/embed",
+                    "origin": "https://docs.example.com",
+                    "name": "partner-frame",
+                    "dataTestId": "partner-frame",
+                    "id": None,
+                    "sandboxed": False,
+                    "selectorCss": 'iframe[data-testid="partner-frame"]',
+                }
+            ]
+        )
+
+        action = PlaywrightAction(
+            action_type="click",
+            selector_css="#approve",
+            selector_strategies=["#approve"],
+            description="Approve inside iframe",
+            confidence=0.9,
+        )
+
+        result = await generator._validate_selectors(mock_page, [action])
+
+        assert result is True
+        assert action.frame_selector_css == 'iframe[data-testid="partner-frame"]'
+        assert action.frame_origin == "https://docs.example.com/embed"
+        assert action.iframe_trust_tier == "same_site"
+        assert action.frame_sandboxed is False
+        mock_page.frame_locator.assert_called_once_with('iframe[data-testid="partner-frame"]')
+
 
 class TestSelectorStrategy:
     def test_build_selector_strategy_priority_order(self, generator):

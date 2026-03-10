@@ -33,6 +33,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+_BROWSER_POLICY_COUNTER_TTL_SECONDS = 24 * 60 * 60
+
 _DIAGNOSIS_SYSTEM_PROMPT = """\
 You are a browser automation failure diagnostician.
 
@@ -105,6 +107,7 @@ class SelfHealingExecutor:
         self._credits_used = 0
         extracted_data: dict | None = None
         screenshots: list[str] = []
+        await self._reset_policy_counter_state(tenant_id=tenant_id, execution_id=execution_id)
 
         async with self._browser_pool.session(tenant_id) as context:
             page = await context.new_page()
@@ -114,7 +117,13 @@ class SelfHealingExecutor:
                 heal_attempts = 0
                 while True:
                     success, failed_action, failed_idx, error, data = (
-                        await self._execute_script(page, script, execution_id, status_callback)
+                        await self._execute_script(
+                            page,
+                            script,
+                            execution_id,
+                            tenant_id,
+                            status_callback,
+                        )
                     )
                     if data:
                         extracted_data = data
@@ -169,6 +178,7 @@ class SelfHealingExecutor:
         page: Any,
         script: PlaywrightScript,
         execution_id: str,
+        tenant_id: str,
         status_callback: Callable[[str, str | None], Awaitable[None]],
     ) -> tuple[bool, PlaywrightAction | None, int, Exception | None, dict | None]:
         """Execute all actions. Returns (success, failed_action, failed_idx, error, data)."""
@@ -177,6 +187,11 @@ class SelfHealingExecutor:
         extracted_data: dict = {}
         policy_state = BrowserPolicyExecutionState(
             current_origin=self._get_origin(self._get_page_url(page))
+        )
+        await self._hydrate_policy_counter_state(
+            tenant_id=tenant_id,
+            execution_id=execution_id,
+            state=policy_state,
         )
         observed_policy_events = self._get_policy_surface_event_queue(page)
         observed_policy_events.clear()
@@ -193,6 +208,8 @@ class SelfHealingExecutor:
                 if self._policy_client is not None:
                     await self._drain_policy_surface_events(
                         page=page,
+                        tenant_id=tenant_id,
+                        execution_id=execution_id,
                         policy_state=policy_state,
                         observed_events=observed_policy_events,
                         status_callback=status_callback,
@@ -249,10 +266,25 @@ class SelfHealingExecutor:
 
                 if action.action_type not in {"goto", "extract_data"}:
                     policy_state.non_read_action_count += 1
+                    await self._increment_policy_counter(
+                        tenant_id=tenant_id,
+                        execution_id=execution_id,
+                        field="non_read_action_count",
+                    )
                 if action.action_type == "extract_data":
-                    policy_state.extracted_record_count = len(extracted_data)
+                    policy_state.extracted_record_count += 1
+                    await self._increment_policy_counter(
+                        tenant_id=tenant_id,
+                        execution_id=execution_id,
+                        field="extracted_record_count",
+                    )
                 if action.action_type in {"upload", "clipboard_write", "external_send"}:
                     policy_state.external_send_count += 1
+                    await self._increment_policy_counter(
+                        tenant_id=tenant_id,
+                        execution_id=execution_id,
+                        field="external_send_count",
+                    )
 
                 next_url = self._get_page_url(page)
                 next_origin = self._get_origin(next_url)
@@ -263,6 +295,11 @@ class SelfHealingExecutor:
                     and previous_url != next_url
                 ):
                     policy_state.origin_transition_count += 1
+                    await self._increment_policy_counter(
+                        tenant_id=tenant_id,
+                        execution_id=execution_id,
+                        field="origin_transition_count",
+                    )
                     await self._policy_client.enforce_transition(
                         action=action,
                         previous_origin=previous_origin,
@@ -273,6 +310,8 @@ class SelfHealingExecutor:
                 if self._policy_client is not None:
                     await self._drain_policy_surface_events(
                         page=page,
+                        tenant_id=tenant_id,
+                        execution_id=execution_id,
                         policy_state=policy_state,
                         observed_events=observed_policy_events,
                         status_callback=status_callback,
@@ -394,6 +433,8 @@ class SelfHealingExecutor:
         self,
         *,
         page: Any,
+        tenant_id: str,
+        execution_id: str,
         policy_state: BrowserPolicyExecutionState,
         observed_events: list[dict[str, Any]],
         status_callback: Callable[[str, str | None], Awaitable[None]],
@@ -423,6 +464,11 @@ class SelfHealingExecutor:
                     value=target_origin,
                 )
                 policy_state.origin_transition_count += 1
+                await self._increment_policy_counter(
+                    tenant_id=tenant_id,
+                    execution_id=execution_id,
+                    field="origin_transition_count",
+                )
                 await self._policy_client.enforce_transition(
                     action=synthetic_transition,
                     previous_origin=policy_state.current_origin,
@@ -448,6 +494,11 @@ class SelfHealingExecutor:
             )
             if action_type == "download":
                 policy_state.external_send_count += 1
+                await self._increment_policy_counter(
+                    tenant_id=tenant_id,
+                    execution_id=execution_id,
+                    field="external_send_count",
+                )
 
     async def _diagnose_failure(
         self, page: Any, failed_action: PlaywrightAction, error: Exception
@@ -591,3 +642,81 @@ class SelfHealingExecutor:
             return f"{parsed.scheme}://{parsed.netloc}"
         except ValueError:
             return None
+
+    async def _reset_policy_counter_state(
+        self,
+        *,
+        tenant_id: str,
+        execution_id: str,
+    ) -> None:
+        if self._policy_client is None or self._redis is None:
+            return
+        delete = getattr(self._redis, "delete", None)
+        if callable(delete):
+            await delete(self._browser_policy_counter_key(tenant_id, execution_id))
+
+    async def _hydrate_policy_counter_state(
+        self,
+        *,
+        tenant_id: str,
+        execution_id: str,
+        state: BrowserPolicyExecutionState,
+    ) -> None:
+        if self._policy_client is None or self._redis is None:
+            return
+        hgetall = getattr(self._redis, "hgetall", None)
+        if not callable(hgetall):
+            return
+        raw_state = await hgetall(self._browser_policy_counter_key(tenant_id, execution_id))
+        if not isinstance(raw_state, dict):
+            return
+        state.non_read_action_count = self._coerce_counter_value(
+            raw_state.get("non_read_action_count"),
+            fallback=state.non_read_action_count,
+        )
+        state.extracted_record_count = self._coerce_counter_value(
+            raw_state.get("extracted_record_count"),
+            fallback=state.extracted_record_count,
+        )
+        state.external_send_count = self._coerce_counter_value(
+            raw_state.get("external_send_count"),
+            fallback=state.external_send_count,
+        )
+        state.origin_transition_count = self._coerce_counter_value(
+            raw_state.get("origin_transition_count"),
+            fallback=state.origin_transition_count,
+        )
+
+    async def _increment_policy_counter(
+        self,
+        *,
+        tenant_id: str,
+        execution_id: str,
+        field: str,
+        amount: int = 1,
+    ) -> None:
+        if self._policy_client is None or self._redis is None:
+            return
+        hincrby = getattr(self._redis, "hincrby", None)
+        expire = getattr(self._redis, "expire", None)
+        if not callable(hincrby):
+            return
+        key = self._browser_policy_counter_key(tenant_id, execution_id)
+        await hincrby(key, field, amount)
+        if callable(expire):
+            await expire(key, _BROWSER_POLICY_COUNTER_TTL_SECONDS)
+
+    @staticmethod
+    def _browser_policy_counter_key(tenant_id: str, execution_id: str) -> str:
+        return f"browser_policy:{tenant_id}:{execution_id}:counters"
+
+    @staticmethod
+    def _coerce_counter_value(value: Any, *, fallback: int) -> int:
+        if value is None:
+            return fallback
+        if isinstance(value, bytes):
+            value = value.decode("utf-8", errors="ignore")
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return fallback

@@ -35,6 +35,7 @@ def mock_browser_pool():
     mock_page.screenshot = AsyncMock(return_value=b"\x89PNG\r\n" + b"\x00" * 50)
     mock_page.goto = AsyncMock()
     mock_page.evaluate = AsyncMock(return_value="clipboard text")
+    mock_page.on = MagicMock()
     mock_context.new_page = AsyncMock(return_value=mock_page)
 
     pool = AsyncMock()
@@ -62,6 +63,10 @@ def mock_selector_cache():
 def mock_redis():
     redis = AsyncMock()
     redis.get = AsyncMock(return_value=None)  # No cancellation by default
+    redis.hgetall = AsyncMock(return_value={})
+    redis.hincrby = AsyncMock(return_value=1)
+    redis.expire = AsyncMock(return_value=True)
+    redis.delete = AsyncMock(return_value=1)
     return redis
 
 
@@ -273,6 +278,77 @@ class TestSuccessfulExecution:
             "iframe[data-testid='partner-frame']"
         )
         mock_browser_pool._mock_locator.fill.assert_awaited_once_with("secret")
+
+    async def test_policy_counter_updates_persist_to_redis(
+        self, mock_browser_pool, mock_selector_cache, mock_redis, status_callback
+    ):
+        policy_client = AsyncMock()
+        policy_client.enforce_before_action = AsyncMock()
+        policy_client.enforce_transition = AsyncMock()
+        executor = SelfHealingExecutor(
+            browser_pool=mock_browser_pool,
+            selector_cache=mock_selector_cache,
+            redis_client=mock_redis,
+            policy_client=policy_client,
+        )
+        mock_browser_pool._mock_page.url = "https://example.com/start"
+
+        async def goto_side_effect(url: str):
+            mock_browser_pool._mock_page.url = url
+
+        mock_browser_pool._mock_page.goto = AsyncMock(side_effect=goto_side_effect)
+
+        script = PlaywrightScript(
+            url="https://example.com/start",
+            goal="navigate and transfer",
+            actions=[
+                PlaywrightAction(
+                    action_type="click",
+                    selector_css="#open",
+                    selector_strategies=["#open"],
+                    description="Open dialog",
+                    confidence=0.9,
+                ),
+                PlaywrightAction(
+                    action_type="extract_data",
+                    selector_css="#result",
+                    selector_strategies=["#result"],
+                    description="Extract result",
+                    confidence=0.9,
+                ),
+                PlaywrightAction(
+                    action_type="upload",
+                    selector_css="input[type=file]",
+                    selector_strategies=["input[type=file]"],
+                    description="Upload report",
+                    confidence=0.9,
+                    value="/tmp/report.csv",
+                ),
+                PlaywrightAction(
+                    action_type="goto",
+                    selector_css="https://example.com/next",
+                    selector_strategies=["https://example.com/next"],
+                    description="Go next",
+                    confidence=0.9,
+                    value="https://example.com/next",
+                ),
+            ],
+        )
+
+        await executor.execute(
+            script=script,
+            execution_id="exec-1",
+            tenant_id="tenant-1",
+            allowed_domains=["example.com"],
+            status_callback=status_callback,
+        )
+
+        counter_key = "browser_policy:tenant-1:exec-1:counters"
+        mock_redis.delete.assert_awaited_once_with(counter_key)
+        mock_redis.hincrby.assert_any_await(counter_key, "non_read_action_count", 1)
+        mock_redis.hincrby.assert_any_await(counter_key, "extracted_record_count", 1)
+        mock_redis.hincrby.assert_any_await(counter_key, "external_send_count", 1)
+        mock_redis.hincrby.assert_any_await(counter_key, "origin_transition_count", 1)
 
 
 class TestHealingLoop:

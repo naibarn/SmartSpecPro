@@ -5,9 +5,8 @@
 
 ## Findings
 
-- No correctness issues found after adding frame-scoped action metadata support to the executor/policy path and rerunning the targeted Python suite.
+- No correctness issues found after adding automatic iframe metadata emission in the generator path and Redis-backed counter persistence in the live executor, then rerunning the targeted Python suite.
 
 ## Risks kept open
 
-- Live browser dispatch can now evaluate frame-scoped actions when metadata is present, but the planning/generation path still does not emit iframe metadata automatically for those actions.
-- Threshold enforcement is currently deterministic helper logic driven by caller-supplied counts; Redis-backed counters are still pending.
+- The iframe auto-enrichment path intentionally fails closed when multiple candidate iframes match the same selector, so ambiguous multi-frame pages still depend on explicit metadata rather than heuristic selection.
