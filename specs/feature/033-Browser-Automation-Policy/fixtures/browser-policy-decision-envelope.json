@@ -1,0 +1,25 @@
+{
+  "version": "2026-03-10",
+  "tenantId": "tenant-123",
+  "userId": 7,
+  "workflowId": 42,
+  "executionId": "exec-123",
+  "traceId": "trace-123",
+  "actionType": "upload",
+  "actionClass": "restricted",
+  "pageSensitivity": "sensitive_data",
+  "decision": "require_approval",
+  "reasonCodes": ["restricted_action", "sensitive_data"],
+  "confidence": 0.82,
+  "riskScore": 82,
+  "evidence": {
+    "actionDigest": "digest-123",
+    "payloadPreviewHash": "preview-123",
+    "domFingerprint": "dom-123",
+    "screenshotHash": "shot-123"
+  },
+  "approval": {
+    "required": true,
+    "approvalTtlSeconds": 300
+  }
+}
