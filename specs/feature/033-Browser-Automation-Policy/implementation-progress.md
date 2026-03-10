@@ -22,3 +22,10 @@
   pass_fail: pass
   notable_deviations: approval model and helper primitives landed without endpoint-level browser approval plumbing yet
   blocked_summary: none
+
+- section: section-04-execution-surface-enforcement
+  commit: `3604daa`
+  test_command: `npm --prefix apps/web test -- server/__tests__/browserToolLaunchGuard.test.ts server/__tests__/browserToolDomainValidation.test.ts`
+  pass_fail: partial-pass
+  notable_deviations: only the raw-browser launch guard landed; Automation Copilot live-dispatch enforcement remains blocked on a cross-stack execution seam
+  blocked_summary: `sec04-copilot-live-hook`, `sec04-python-transition-hooks`
