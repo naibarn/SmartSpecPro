@@ -55,6 +55,10 @@ class ApprovalDBService:
         execution_id: Optional[str] = None,
         payload: Optional[dict] = None,
         extra_data: Optional[dict] = None,
+        action_digest: Optional[str] = None,
+        dom_fingerprint: Optional[str] = None,
+        screenshot_hash: Optional[str] = None,
+        correlation_key: Optional[str] = None,
         risk_level: str = "medium",
         risk_factors: Optional[List[str]] = None,
         required_approvers: int = 1,
@@ -75,6 +79,10 @@ class ApprovalDBService:
             execution_id: Associated execution ID
             payload: Request payload data
             extra_data: Additional metadata
+            action_digest: Stable digest for browser approval replay checks
+            dom_fingerprint: Stable DOM fingerprint for context validation
+            screenshot_hash: Optional screenshot digest for evidence correlation
+            correlation_key: Stable idempotency key for retries
             risk_level: Risk level ("low", "medium", "high", "critical")
             risk_factors: List of identified risk factors
             required_approvers: Number of approvals needed
@@ -104,6 +112,10 @@ class ApprovalDBService:
             status=ApprovalStatus.PENDING,
             payload=payload or {},
             extra_data=extra_data or {},
+            action_digest=action_digest,
+            dom_fingerprint=dom_fingerprint,
+            screenshot_hash=screenshot_hash,
+            correlation_key=correlation_key,
             risk_level=risk_level,
             risk_factors=risk_factors or [],
             required_approvers=required_approvers,

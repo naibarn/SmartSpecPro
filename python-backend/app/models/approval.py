@@ -72,6 +72,11 @@ class ApprovalRequest(Base):
     # Payload (what needs to be approved)
     payload = Column(JSON, default=dict)
     extra_data = Column(JSON, default=dict)
+    action_digest = Column(String(128), nullable=True)
+    dom_fingerprint = Column(String(255), nullable=True)
+    screenshot_hash = Column(String(255), nullable=True)
+    correlation_key = Column(String(255), nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
     
     # Risk assessment
     risk_level = Column(String(20), default="medium")  # low, medium, high, critical
@@ -99,6 +104,7 @@ class ApprovalRequest(Base):
         Index("idx_approval_request_tenant", "tenant_id"),
         Index("idx_approval_request_type", "request_type"),
         Index("idx_approval_request_execution", "execution_id"),
+        Index("idx_approval_request_correlation", "correlation_key"),
     )
 
 
