@@ -21,6 +21,7 @@ from app.services.browser_policy_contract import (
     BrowserPolicyEvaluationResponse,
     BrowserPolicyExecutionContext,
 )
+from app.services.browser_policy_transfer_controls import resolve_iframe_trust_tier
 
 NODEJS_INTERNAL_URL = os.environ.get("NODEJS_INTERNAL_URL", "http://localhost:3000").rstrip("/")
 INTERNAL_TOKEN = (
@@ -157,12 +158,19 @@ class BrowserPolicyNodeClient:
             action=action,
             fallback_origin=current_origin,
         )
+        iframe_trust_tier = self._resolve_iframe_trust_tier(
+            action=action,
+            current_origin=current_origin,
+        )
         action_type = getattr(action, "action_type", "click")
         normalized_action = {
           "action_type": action_type,
           "selector_css": getattr(action, "selector_css", None),
           "value": getattr(action, "value", None),
           "target_origin": target_origin,
+          "frame_selector_css": getattr(action, "frame_selector_css", None),
+          "frame_origin": getattr(action, "frame_origin", None),
+          "iframe_trust_tier": iframe_trust_tier,
           "description": getattr(action, "description", None),
         }
         payload_preview = {
@@ -170,6 +178,9 @@ class BrowserPolicyNodeClient:
           "selector_css": getattr(action, "selector_css", None),
           "value": getattr(action, "value", None),
           "target_origin": target_origin,
+          "frame_selector_css": getattr(action, "frame_selector_css", None),
+          "frame_origin": getattr(action, "frame_origin", None),
+          "iframe_trust_tier": iframe_trust_tier,
         }
 
         return {
@@ -180,6 +191,7 @@ class BrowserPolicyNodeClient:
             "actionDescription": getattr(action, "description", action_type),
             "currentOrigin": current_origin,
             "targetOrigin": target_origin,
+            "iframeTrustTier": iframe_trust_tier,
             "requiredCapabilities": self._required_capabilities(action_type),
             "writesData": action_type in {"fill", "select", "upload", "clipboard_write"},
             "touchesClipboard": "clipboard" in action_type,
@@ -450,11 +462,35 @@ class BrowserPolicyNodeClient:
         explicit_target_origin = getattr(action, "target_origin", None)
         if explicit_target_origin:
             return self._get_origin(explicit_target_origin) or explicit_target_origin
+        frame_origin = getattr(action, "frame_origin", None)
+        if frame_origin:
+            return self._get_origin(frame_origin) or frame_origin
         if action_type == "download":
             return None
         if action_type == "goto":
             return self._get_origin(getattr(action, "value", None) or getattr(action, "selector_css", None))
         return fallback_origin
+
+    def _resolve_iframe_trust_tier(
+        self,
+        *,
+        action: Any,
+        current_origin: str | None,
+    ) -> str | None:
+        explicit_tier = getattr(action, "iframe_trust_tier", None)
+        if explicit_tier:
+            return explicit_tier
+
+        frame_origin = getattr(action, "frame_origin", None)
+        if not frame_origin:
+            return None
+
+        resolved_frame_origin = self._get_origin(frame_origin) or frame_origin
+        return resolve_iframe_trust_tier(
+            parent_origin=current_origin,
+            frame_origin=resolved_frame_origin,
+            sandboxed=bool(getattr(action, "frame_sandboxed", False)),
+        )
 
     @staticmethod
     def _stable_hash(value: dict[str, Any]) -> str:

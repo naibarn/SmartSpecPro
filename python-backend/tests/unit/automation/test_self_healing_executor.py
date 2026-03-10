@@ -22,12 +22,15 @@ def mock_browser_pool():
     mock_context = AsyncMock()
     mock_page = AsyncMock()
     mock_locator = AsyncMock()
+    mock_frame_locator = MagicMock()
     mock_locator.count = AsyncMock(return_value=1)
     mock_locator.click = AsyncMock()
     mock_locator.fill = AsyncMock()
     mock_locator.set_input_files = AsyncMock()
     mock_locator.inner_text = AsyncMock(return_value="result text")
     mock_page.locator = MagicMock(return_value=mock_locator)
+    mock_frame_locator.locator = MagicMock(return_value=mock_locator)
+    mock_page.frame_locator = MagicMock(return_value=mock_frame_locator)
     mock_page.get_by_role = MagicMock(return_value=mock_locator)
     mock_page.screenshot = AsyncMock(return_value=b"\x89PNG\r\n" + b"\x00" * 50)
     mock_page.goto = AsyncMock()
@@ -43,6 +46,7 @@ def mock_browser_pool():
     pool.session = session_cm
     pool._mock_page = mock_page
     pool._mock_locator = mock_locator
+    pool._mock_frame_locator = mock_frame_locator
     return pool
 
 
@@ -235,6 +239,40 @@ class TestSuccessfulExecution:
         mock_browser_pool._mock_page.goto.assert_awaited_once_with(
             "https://example.com/dashboard"
         )
+
+    async def test_frame_targeted_actions_use_frame_locator(
+        self, executor, mock_browser_pool, status_callback
+    ):
+        script = PlaywrightScript(
+            url="http://example.com",
+            goal="fill a field in iframe",
+            actions=[
+                PlaywrightAction(
+                    action_type="fill",
+                    selector_css="#token",
+                    selector_strategies=["#token"],
+                    description="Fill token",
+                    confidence=0.9,
+                    value="secret",
+                    frame_selector_css="iframe[data-testid='partner-frame']",
+                    frame_origin="https://docs.example.com/embed",
+                    iframe_trust_tier="same_site",
+                ),
+            ],
+        )
+
+        await executor.execute(
+            script=script,
+            execution_id="exec-1",
+            tenant_id="t1",
+            allowed_domains=["example.com"],
+            status_callback=status_callback,
+        )
+
+        mock_browser_pool._mock_page.frame_locator.assert_called_once_with(
+            "iframe[data-testid='partner-frame']"
+        )
+        mock_browser_pool._mock_locator.fill.assert_awaited_once_with("secret")
 
 
 class TestHealingLoop:

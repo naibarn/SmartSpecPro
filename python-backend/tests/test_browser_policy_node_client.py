@@ -138,6 +138,39 @@ async def test_download_payload_fails_closed_without_an_explicit_destination():
 
 
 @pytest.mark.asyncio
+async def test_frame_scoped_payload_includes_frame_origin_and_trust_tier():
+    client = build_client()
+    page = SimpleNamespace(url="https://app.example.com/dashboard")
+    action = SimpleNamespace(
+        action_type="fill",
+        selector_css="#token",
+        description="Fill token",
+        value="abc",
+        frame_selector_css="iframe[data-testid='partner-frame']",
+        frame_origin="https://docs.example.com/embed",
+        iframe_trust_tier="same_site",
+    )
+
+    payload = await client._build_payload(
+        page=page,
+        action=action,
+        state=SimpleNamespace(
+            current_origin="https://app.example.com",
+            non_read_action_count=0,
+            extracted_record_count=0,
+            external_send_count=0,
+            origin_transition_count=0,
+        ),
+        transition_target_origin=None,
+    )
+
+    assert payload["currentOrigin"] == "https://app.example.com"
+    assert payload["targetOrigin"] == "https://docs.example.com"
+    assert payload["iframeTrustTier"] == "same_site"
+    assert payload["normalizedAction"]["frame_selector_css"] == "iframe[data-testid='partner-frame']"
+
+
+@pytest.mark.asyncio
 async def test_cached_approval_fails_closed_when_revoked_after_approval():
     client = build_client()
     client._approval_request_ids["corr-1"] = "req-1"

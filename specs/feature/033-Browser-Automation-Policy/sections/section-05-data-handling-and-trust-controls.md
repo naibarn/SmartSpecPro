@@ -108,20 +108,22 @@ Cross-site or otherwise untrusted iframe interactions should emit dedicated reas
 - `python-backend/tests/test_browser_policy_node_client.py`
 - `python-backend/tests/test_self_healing_executor_policy_hooks.py`
 - `python-backend/tests/unit/automation/test_self_healing_executor.py`
+- `python-backend/tests/unit/automation/test_playwright_script_generator.py`
 
 ### Deviations from plan
 
 - Implemented deterministic helper-layer rate and trust controls first, then extended the live executor with upload and clipboard primitives once the section-04 cross-stack action hook existed.
 - Promoted download surfaces into the live transfer path as synthetic first-class actions before solving the broader frame-targeted dispatch problem, so sensitive downloads now fail closed when no trusted destination context exists.
+- Added frame-scoped action metadata and `frame_locator(...)` execution support before teaching the generator/runtime planner to emit that metadata automatically for iframe-targeted actions.
 - Threshold enforcement currently consumes caller-supplied counts; Redis-backed counters remain a follow-up once the live execution seam exists.
 
 ### Tests added or updated
 
 - `npm --prefix apps/web test -- server/services/__tests__/browserActionRateLimit.test.ts server/services/__tests__/browserDataHandlingPolicy.test.ts server/services/__tests__/browserIframeTrustPolicy.test.ts server/services/__tests__/browserPolicyEngine.test.ts`
 - `UV_CACHE_DIR=/tmp/uv-cache DEBUG=false uv run --project python-backend pytest python-backend/tests/test_browser_policy_transfer_controls.py python-backend/tests/test_browser_policy_iframe_controls.py`
-- `UV_CACHE_DIR=/tmp/uv-cache DEBUG=false uv run --project python-backend pytest python-backend/tests/test_browser_policy_node_client.py python-backend/tests/test_self_healing_executor_policy_hooks.py python-backend/tests/unit/automation/test_self_healing_executor.py python-backend/tests/test_browser_policy_transfer_controls.py python-backend/tests/test_browser_policy_iframe_controls.py`
+- `UV_CACHE_DIR=/tmp/uv-cache DEBUG=false uv run --project python-backend pytest python-backend/tests/test_browser_policy_node_client.py python-backend/tests/test_self_healing_executor_policy_hooks.py python-backend/tests/unit/automation/test_self_healing_executor.py python-backend/tests/test_browser_policy_transfer_controls.py python-backend/tests/test_browser_policy_iframe_controls.py python-backend/tests/unit/automation/test_playwright_script_generator.py`
 
 ### Known follow-ups
 
-- Propagate frame-scoped context into action dispatch so iframe-targeted interactions carry their exact trust tier and destination identity into the live policy path.
+- Emit frame selector/origin/trust metadata from the planning/generation path so iframe-targeted interactions consistently use the new frame-scoped dispatch support.
 - Replace caller-supplied threshold counters with Redis-backed workflow/action counters.

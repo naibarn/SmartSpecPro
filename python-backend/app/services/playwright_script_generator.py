@@ -88,6 +88,10 @@ class PlaywrightAction(BaseModel):
     confidence: float
     value: str | None = None
     target_origin: str | None = None
+    frame_selector_css: str | None = None
+    frame_origin: str | None = None
+    iframe_trust_tier: str | None = None
+    frame_sandboxed: bool = False
 
 
 class PlaywrightScript(BaseModel):
@@ -378,7 +382,13 @@ class PlaywrightScriptGenerator:
         """Verify each selector resolves to >= 1 element in live DOM."""
         for action in actions:
             try:
-                locator = page.locator(action.selector_css)
+                locator_root = page
+                if action.frame_selector_css:
+                    frame_locator = getattr(page, "frame_locator", None)
+                    if not callable(frame_locator):
+                        return False
+                    locator_root = frame_locator(action.frame_selector_css)
+                locator = locator_root.locator(action.selector_css)
                 count = await locator.count()
                 if count == 0:
                     return False

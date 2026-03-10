@@ -100,3 +100,12 @@
 - decision taken: promote downloads into transfer-aware synthetic actions with explicit destination semantics and counter updates, defaulting to fail closed when no trusted destination is known
 - mode used: auto
 - rationale: this closes the concrete runtime gap for sensitive downloads with a small diff in the existing executor/policy seam, while avoiding speculative heuristics for frame-targeted interactions that still lack reliable dispatch metadata.
+
+### Frame-scoped dispatch metadata
+- section: 05
+- options considered:
+  - keep iframe policy enforcement limited to navigation/watcher events until the generator can emit frame-targeted actions
+  - extend the action model and executor now so frame selector/origin/trust metadata can flow through dispatch-time policy checks and `frame_locator(...)` execution whenever that metadata is available
+- decision taken: extend the action model and executor now so frame selector/origin/trust metadata can flow through dispatch-time policy checks and `frame_locator(...)` execution whenever that metadata is available
+- mode used: auto
+- rationale: the runtime gap was at dispatch time, not in the pure policy helpers. Adding optional frame metadata fields is a small compatible diff that unlocks correct enforcement for any caller that can supply iframe context, without guessing frame identity from incomplete DOM state.

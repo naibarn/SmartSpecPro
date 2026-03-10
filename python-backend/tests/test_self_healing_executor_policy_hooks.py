@@ -18,6 +18,7 @@ def mock_browser_pool():
     event_handlers: dict[str, list] = {}
 
     mock_locator = AsyncMock()
+    mock_frame_locator = MagicMock()
     mock_locator.count = AsyncMock(return_value=1)
     mock_locator.click = AsyncMock()
     mock_locator.fill = AsyncMock()
@@ -30,6 +31,8 @@ def mock_browser_pool():
     mock_page.goto = AsyncMock(side_effect=goto_side_effect)
     mock_page.evaluate = AsyncMock(return_value="clipboard text")
     mock_page.locator = MagicMock(return_value=mock_locator)
+    mock_frame_locator.locator = MagicMock(return_value=mock_locator)
+    mock_page.frame_locator = MagicMock(return_value=mock_frame_locator)
     mock_page.on = MagicMock(
         side_effect=lambda event_name, handler: event_handlers.setdefault(event_name, []).append(handler)
     )
@@ -47,6 +50,7 @@ def mock_browser_pool():
     pool.session = session_cm
     pool._mock_page = mock_page
     pool._mock_locator = mock_locator
+    pool._mock_frame_locator = mock_frame_locator
     return pool
 
 
@@ -391,3 +395,55 @@ async def test_executor_promotes_download_surface_to_transfer_action(
         ("download", 0, "https://files.example.net"),
         ("clipboard_write", 1, None),
     ]
+
+
+async def test_executor_preserves_frame_scoped_policy_metadata(
+    mock_browser_pool,
+    mock_selector_cache,
+    status_callback,
+):
+    observed_action = None
+
+    async def capture_before_action(*, action, **_kwargs):
+        nonlocal observed_action
+        observed_action = action
+
+    policy_client = AsyncMock()
+    policy_client.enforce_before_action = AsyncMock(side_effect=capture_before_action)
+    policy_client.enforce_transition = AsyncMock()
+
+    executor = SelfHealingExecutor(
+        browser_pool=mock_browser_pool,
+        selector_cache=mock_selector_cache,
+        policy_client=policy_client,
+    )
+    script = PlaywrightScript(
+        url="https://example.com/start",
+        goal="fill a field inside an iframe",
+        actions=[
+            PlaywrightAction(
+                action_type="fill",
+                selector_css="#token",
+                selector_strategies=["#token"],
+                description="Fill token",
+                confidence=0.9,
+                value="secret",
+                frame_selector_css="iframe[data-testid='partner-frame']",
+                frame_origin="https://docs.example.com/embed",
+                iframe_trust_tier="same_site",
+            ),
+        ],
+    )
+
+    await executor.execute(
+        script=script,
+        execution_id="exec-1",
+        tenant_id="tenant-1",
+        allowed_domains=["example.com"],
+        status_callback=status_callback,
+    )
+
+    assert observed_action is not None
+    assert observed_action.frame_selector_css == "iframe[data-testid='partner-frame']"
+    assert observed_action.frame_origin == "https://docs.example.com/embed"
+    assert observed_action.iframe_trust_tier == "same_site"

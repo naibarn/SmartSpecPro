@@ -222,7 +222,8 @@ class SelfHealingExecutor:
                         text if isinstance(text, str) else str(text)
                     )
                 else:
-                    locator = page.locator(action.selector_css)
+                    locator_root = self._get_locator_root(page, action)
+                    locator = locator_root.locator(action.selector_css)
                     count = await locator.count()
                     if count == 0:
                         raise SelectorNotFoundError(
@@ -538,7 +539,8 @@ class SelfHealingExecutor:
 
         # Validate new selector
         try:
-            locator = page.locator(css)
+            locator_root = self._get_locator_root(page, original_action)
+            locator = locator_root.locator(css)
             count = await locator.count()
             if count == 0:
                 return None
@@ -552,7 +554,24 @@ class SelfHealingExecutor:
             description=f"Healed: {original_action.description}",
             confidence=diagnosis.confidence,
             value=original_action.value,
+            target_origin=original_action.target_origin,
+            frame_selector_css=original_action.frame_selector_css,
+            frame_origin=original_action.frame_origin,
+            iframe_trust_tier=original_action.iframe_trust_tier,
+            frame_sandboxed=original_action.frame_sandboxed,
         )
+
+    @staticmethod
+    def _get_locator_root(page: Any, action: PlaywrightAction) -> Any:
+        if not action.frame_selector_css:
+            return page
+
+        frame_locator = getattr(page, "frame_locator", None)
+        if not callable(frame_locator):
+            raise SelectorNotFoundError(
+                f"Frame selector '{action.frame_selector_css}' cannot be resolved"
+            )
+        return frame_locator(action.frame_selector_css)
 
     @staticmethod
     def _get_page_url(page: Any) -> str | None:
