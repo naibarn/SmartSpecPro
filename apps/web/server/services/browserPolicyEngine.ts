@@ -27,6 +27,7 @@ export interface BrowserPolicyEvaluationInput {
   isFinancialPage?: boolean;
   isAdminPage?: boolean;
   containsSecrets?: boolean;
+  nonReadActionCount?: number;
   extractedRecordCount?: number;
   externalSendCount?: number;
   originTransitionCount?: number;
@@ -90,9 +91,11 @@ export function evaluateBrowserPolicy(
     currentOrigin: input.currentOrigin,
     targetOrigin: input.targetOrigin,
     iframeTrustTier: input.iframeTrustTier,
+    dataClass: input.dataClasses?.[0],
     extractedRecordCount: input.extractedRecordCount,
     externalSendCount: input.externalSendCount,
     originTransitionCount: input.originTransitionCount,
+    nonReadActionCount: input.nonReadActionCount,
     entitlement: context.entitlement,
   });
   dataHandling.reasonCodes.forEach((code) => reasonCodes.add(code));

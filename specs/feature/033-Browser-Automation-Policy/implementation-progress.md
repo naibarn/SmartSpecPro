@@ -29,3 +29,10 @@
   pass_fail: partial-pass
   notable_deviations: only the raw-browser launch guard landed; Automation Copilot live-dispatch enforcement remains blocked on a cross-stack execution seam
   blocked_summary: `sec04-copilot-live-hook`, `sec04-python-transition-hooks`
+
+- section: section-05-data-handling-and-trust-controls
+  commit: pending
+  test_command: `npm --prefix apps/web test -- server/services/__tests__/browserActionRateLimit.test.ts server/services/__tests__/browserDataHandlingPolicy.test.ts server/services/__tests__/browserIframeTrustPolicy.test.ts server/services/__tests__/browserPolicyEngine.test.ts` and `UV_CACHE_DIR=/tmp/uv-cache DEBUG=false uv run --project python-backend pytest python-backend/tests/test_browser_policy_transfer_controls.py python-backend/tests/test_browser_policy_iframe_controls.py`
+  pass_fail: partial-pass
+  notable_deviations: deterministic helper-layer trust and threshold controls landed first, but live executor wiring and Redis-backed counters remain blocked on the missing section-04 execution seam
+  blocked_summary: `sec04-copilot-live-hook`, `sec04-python-transition-hooks`, `sec05-live-transfer-enforcement`, `sec05-redis-action-counters`

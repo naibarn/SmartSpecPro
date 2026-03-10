@@ -19,3 +19,21 @@
   status: blocked
   owner_step: section-04 follow-up
   notes: required before Sections 05-07 can be honestly completed against live execution
+
+- task_id: sec05-live-transfer-enforcement
+  section: section-05-data-handling-and-trust-controls
+  task: enforce transfer, clipboard, and iframe trust controls on every live browser action and transition
+  blocked_by: the section-04 cross-stack execution seam still does not provide a per-action Node policy callback for the Python executor
+  unblock_condition: wire the live executor through the shared policy callback and invoke section-05 controls before dispatch and on transitions
+  status: blocked
+  owner_step: section-05 follow-up
+  notes: helper-layer logic and tests are in place, but production dispatch is not yet consuming them
+
+- task_id: sec05-redis-action-counters
+  section: section-05-data-handling-and-trust-controls
+  task: back section-05 thresholds with Redis-scoped workflow/action counters instead of caller-supplied counts
+  blocked_by: no browser-policy counter namespace or executor-side counter update path exists yet
+  unblock_condition: define Redis keying and mutation points in the live browser execution path
+  status: blocked
+  owner_step: section-05 follow-up
+  notes: deterministic threshold evaluation is implemented; stateful counting is deferred
