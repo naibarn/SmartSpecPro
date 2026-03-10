@@ -38,10 +38,28 @@ export const browserIframeTrustTierValues = [
   "sandboxed",
 ] as const;
 
+export const browserPolicyApprovalStateValues = [
+  "not_required",
+  "approved",
+  "pending",
+  "context_changed",
+  "revoked",
+  "expired",
+  "rejected",
+] as const;
+
+export const browserPolicyOutcomeValues = [
+  "blocked",
+  "executed",
+  "failed",
+] as const;
+
 export const browserPolicyDecisionSchema = z.enum(browserPolicyDecisionValues);
 export const browserActionClassSchema = z.enum(browserActionClassValues);
 export const browserPageSensitivitySchema = z.enum(browserPageSensitivityValues);
 export const browserIframeTrustTierSchema = z.enum(browserIframeTrustTierValues);
+export const browserPolicyApprovalStateSchema = z.enum(browserPolicyApprovalStateValues);
+export const browserPolicyOutcomeSchema = z.enum(browserPolicyOutcomeValues);
 
 export const browserPolicyConfigSchema = z.object({
   enabled: z.boolean().default(true),
@@ -120,6 +138,21 @@ export const browserPolicyExecutionContextSchema = z.object({
   entitlement: browserWorkflowEntitlementSchema,
 });
 
+export const browserPolicyAuditMetadataSchema = z.object({
+  traceId: z.string().min(1).optional(),
+  eventHash: z.string().min(1),
+  previousEventHash: z.string().min(1).nullable().optional(),
+  jsonlPersisted: z.boolean(),
+  dbPersisted: z.boolean(),
+  auditWriteFailed: z.boolean().default(false),
+});
+
+export const browserPolicyIncidentStatusSchema = z.object({
+  approvalState: browserPolicyApprovalStateSchema,
+  outcome: browserPolicyOutcomeSchema,
+  operatorMessage: z.string().min(1),
+});
+
 export const browserPolicyDecisionEnvelopeSchema = z.object({
   version: z.literal("2026-03-10"),
   tenantId: z.string().min(1),
@@ -159,6 +192,10 @@ export type BrowserPolicyDecision = z.infer<typeof browserPolicyDecisionSchema>;
 export type BrowserActionClass = z.infer<typeof browserActionClassSchema>;
 export type BrowserPageSensitivity = z.infer<typeof browserPageSensitivitySchema>;
 export type BrowserIframeTrustTier = z.infer<typeof browserIframeTrustTierSchema>;
+export type BrowserPolicyApprovalState = z.infer<typeof browserPolicyApprovalStateSchema>;
+export type BrowserPolicyOutcome = z.infer<typeof browserPolicyOutcomeSchema>;
+export type BrowserPolicyAuditMetadata = z.infer<typeof browserPolicyAuditMetadataSchema>;
+export type BrowserPolicyIncidentStatus = z.infer<typeof browserPolicyIncidentStatusSchema>;
 export type BrowserPolicyDecisionEnvelope = z.infer<typeof browserPolicyDecisionEnvelopeSchema>;
 
 export function normalizeBrowserPolicyConfig(

@@ -87,10 +87,16 @@ Release readiness must include prompt-injection, deceptive-label, hidden-auth-if
 
 ### Actual files changed
 
+- `apps/web/drizzle/0060_browser_policy_decision_partitions.sql`
 - `apps/web/drizzle/browserPolicyMigrationPlan.ts`
 - `apps/web/drizzle/browserPolicyMigrations.test.ts`
+- `apps/web/drizzle/schema.ts`
+- `apps/web/server/services/browserPolicyReleaseControl.ts`
 - `apps/web/server/services/browserPolicyRolloutGates.ts`
 - `apps/web/server/services/browserPolicyReleaseReadiness.ts`
+- `apps/web/server/services/tenantFeatureFlagService.ts`
+- `apps/web/server/services/__tests__/browserPolicyReleaseControl.test.ts`
+- `apps/web/server/services/__tests__/tenantFeatureFlagsUpdate.test.ts`
 - `apps/web/server/__tests__/browserPolicyRolloutGates.test.ts`
 - `apps/web/server/__tests__/browserPolicyReleaseReadiness.test.ts`
 - `python-backend/app/services/browser_policy_rollout.py`
@@ -99,8 +105,8 @@ Release readiness must include prompt-injection, deceptive-label, hidden-auth-if
 
 ### Deviations from plan
 
-- Landed executable migration-plan metadata and rollout-gate helpers before real raw SQL partition DDL and deployment-time gate enforcement.
-- The migration coverage is currently plan/readiness validation rather than execution against a live partitioned browser-policy decision table.
+- Landed executable migration-plan metadata and rollout-gate helpers before wiring them into feature-flag orchestration.
+- The raw SQL partition DDL for `browser_policy_decisions` now exists alongside query typing in Drizzle, while deployment/feature-flag promotion is still the remaining integration step.
 
 ### Tests added or updated
 
@@ -109,5 +115,4 @@ Release readiness must include prompt-injection, deceptive-label, hidden-auth-if
 
 ### Known follow-ups
 
-- Create the raw SQL migration and monthly partition maintenance path for browser-policy decision storage.
 - Invoke rollout and rollback readiness checks from deployment/feature-flag orchestration before promoting tenant-facing access.

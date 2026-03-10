@@ -2,6 +2,7 @@ export const browserPolicyMigrationPlan = {
   additiveOnly: true,
   ddlOwner: "raw_sql",
   partitionedTables: ["browser_policy_decisions"],
+  migrationTag: "0060_browser_policy_decision_partitions",
   maintenance: {
     primary: "pg_partman",
     fallback: "celery_beat",

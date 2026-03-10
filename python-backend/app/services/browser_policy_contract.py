@@ -13,6 +13,40 @@ BROWSER_APPROVAL_TTL_MAX_SECONDS = 900
 BROWSER_APPROVAL_DOM_DRIFT_THRESHOLD = 0.2
 
 
+class BrowserPolicyConfig(BaseModel):
+    enabled: bool = True
+    enforcementMode: Literal["observe", "read_only", "draft", "commit", "expanded"] = "observe"
+    defaultApprovalTtlSeconds: int = Field(
+        default=BROWSER_APPROVAL_TTL_DEFAULT_SECONDS,
+        ge=BROWSER_APPROVAL_TTL_MIN_SECONDS,
+        le=BROWSER_APPROVAL_TTL_MAX_SECONDS,
+    )
+    reviewCadenceDays: int = 90
+    killSwitchEnabled: bool = False
+    requireTamperEvidence: bool = True
+    evidenceRetentionDays: int = 365
+    allowedDomains: list[str] = Field(default_factory=list)
+    visionModel: str = "gpt-4o"
+    seededDefault: bool = False
+
+
+class BrowserPolicyRule(BaseModel):
+    id: int | None = None
+    priority: int = 100
+    enabled: bool = True
+    description: str | None = None
+    match: dict[str, object] = Field(default_factory=dict)
+    decision: Literal[
+        "allow",
+        "allow_with_redaction",
+        "require_approval",
+        "deny",
+        "escalate_for_review",
+    ]
+    reasonCode: str
+    actionClass: Literal["read", "draft", "commit", "restricted"] | None = None
+
+
 class BrowserWorkflowEntitlementConfig(BaseModel):
     approvalTtlSeconds: int = Field(
         default=BROWSER_APPROVAL_TTL_DEFAULT_SECONDS,
@@ -99,6 +133,43 @@ class BrowserApprovalPayload(BaseModel):
         ge=BROWSER_APPROVAL_TTL_MIN_SECONDS,
         le=BROWSER_APPROVAL_TTL_MAX_SECONDS,
     )
+
+
+class BrowserPolicyExecutionContext(BaseModel):
+    config: BrowserPolicyConfig
+    rules: list[BrowserPolicyRule] = Field(default_factory=list)
+    entitlement: BrowserWorkflowEntitlement
+
+
+class BrowserPolicyAuditMetadata(BaseModel):
+    traceId: str | None = None
+    eventHash: str
+    previousEventHash: str | None = None
+    jsonlPersisted: bool
+    dbPersisted: bool
+    auditWriteFailed: bool = False
+
+
+class BrowserPolicyIncidentStatus(BaseModel):
+    approvalState: Literal[
+        "not_required",
+        "approved",
+        "pending",
+        "context_changed",
+        "revoked",
+        "expired",
+        "rejected",
+    ]
+    outcome: Literal["blocked", "executed", "failed"]
+    operatorMessage: str
+
+
+class BrowserPolicyEvaluationResponse(BaseModel):
+    decision: BrowserPolicyDecisionEnvelope
+    approvalPayload: BrowserApprovalPayload | None = None
+    correlationKey: str | None = None
+    audit: BrowserPolicyAuditMetadata | None = None
+    incident: BrowserPolicyIncidentStatus | None = None
 
 
 class BrowserApprovalContextSnapshot(BaseModel):

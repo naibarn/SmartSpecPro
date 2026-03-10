@@ -249,12 +249,19 @@ class BrowserPolicyNodeClient:
             )
             return
 
+        await self._emit_operator_status(
+            result=result,
+            action=action,
+            status_callback=status_callback,
+        )
         reason = ", ".join(result.decision.reasonCodes) or "browser policy denied the action"
         raise BrowserPolicyDeniedError(
             f"Browser policy blocked '{getattr(action, 'description', result.decision.actionType)}': {reason}",
             details={
                 "decision": result.decision.decision,
                 "reason_codes": result.decision.reasonCodes,
+                "trace_id": result.decision.traceId,
+                "audit_event_hash": result.audit.eventHash if result.audit else None,
             },
         )
 
@@ -313,9 +320,12 @@ class BrowserPolicyNodeClient:
                     approval_snapshot=approval_snapshot,
                 )
 
-            await status_callback(
-                "running",
-                f"Awaiting browser approval for {getattr(action, 'description', result.decision.actionType)}",
+            await self._emit_operator_status(
+                result=result,
+                action=action,
+                status_callback=status_callback,
+                request_id=request_id,
+                approval_status=approval_snapshot.status,
             )
 
             if datetime.utcnow() >= deadline:
@@ -326,6 +336,8 @@ class BrowserPolicyNodeClient:
                         "reason_codes": result.decision.reasonCodes,
                         "approval_request_id": request_id,
                         "approval_status": ApprovalStatus.EXPIRED.value,
+                        "trace_id": result.decision.traceId,
+                        "audit_event_hash": result.audit.eventHash if result.audit else None,
                     },
                 )
 
@@ -402,6 +414,8 @@ class BrowserPolicyNodeClient:
                 "approval_request_id": request_id,
                 "approval_status": approval_snapshot.status.value,
                 "approval_revoked": approval_revoked,
+                "trace_id": result.decision.traceId,
+                "audit_event_hash": result.audit.eventHash if result.audit else None,
             },
         )
 
@@ -491,6 +505,50 @@ class BrowserPolicyNodeClient:
             frame_origin=resolved_frame_origin,
             sandboxed=bool(getattr(action, "frame_sandboxed", False)),
         )
+
+    async def _emit_operator_status(
+        self,
+        *,
+        result: BrowserPolicyEvaluationResponse,
+        action: Any,
+        status_callback: Callable[[str, str | None], Awaitable[None]],
+        request_id: str | None = None,
+        approval_status: ApprovalStatus | None = None,
+    ) -> None:
+        await status_callback(
+            "running",
+            self._build_operator_status_detail(
+                result=result,
+                action=action,
+                request_id=request_id,
+                approval_status=approval_status,
+            ),
+        )
+
+    @staticmethod
+    def _build_operator_status_detail(
+        *,
+        result: BrowserPolicyEvaluationResponse,
+        action: Any,
+        request_id: str | None = None,
+        approval_status: ApprovalStatus | None = None,
+    ) -> str:
+        base_message = (
+            result.incident.operatorMessage
+            if result.incident is not None
+            else f"Browser policy decision={result.decision.decision}"
+        )
+        action_label = getattr(action, "description", result.decision.actionType)
+        suffix: list[str] = [f"action={action_label}"]
+        if request_id:
+            suffix.append(f"approval_request_id={request_id}")
+        if approval_status is not None:
+            suffix.append(f"approval_status={approval_status.value}")
+        if result.audit is not None:
+            suffix.append(f"audit_event_hash={result.audit.eventHash}")
+        if result.decision.traceId:
+            suffix.append(f"trace_id={result.decision.traceId}")
+        return f"{base_message} ({', '.join(suffix)})"
 
     @staticmethod
     def _stable_hash(value: dict[str, Any]) -> str:

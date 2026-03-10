@@ -4,7 +4,7 @@ import { Router } from "express";
 import type { Request, Response } from "express";
 
 import { ENV } from "../_core/env";
-import { evaluateBrowserPolicyRuntime } from "../services/browserPolicyRuntime";
+import { evaluateAndPersistBrowserPolicyRuntime } from "../services/browserPolicyRuntime";
 
 const router = Router();
 
@@ -34,7 +34,7 @@ router.post("/api/internal/browser-policy/evaluate", async (req: Request, res: R
   }
 
   try {
-    const result = evaluateBrowserPolicyRuntime(req.body as never);
+    const result = await evaluateAndPersistBrowserPolicyRuntime(req.body as never);
     res.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Browser policy evaluation failed.";

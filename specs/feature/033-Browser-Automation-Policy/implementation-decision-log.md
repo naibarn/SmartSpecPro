@@ -118,3 +118,21 @@
 - decision taken: enrich actions opportunistically during selector validation when exactly one iframe matches, and back live rate-limit counts with an execution-scoped Redis namespace in the executor
 - mode used: auto
 - rationale: both gaps were local to the existing Python execution seam. Using the validation pass for unique iframe discovery keeps the diff small and fail-closed on ambiguity, while Redis hash counters provide durable threshold state without moving mutation logic into the Node runtime yet.
+
+### Live audit persistence and decision storage
+- section: 06
+- options considered:
+  - keep browser-policy audit persistence as helper artifacts until a full browser-specific audit pipeline exists
+  - persist decision-time audit artifacts directly from the internal Node evaluation route, using Redis-backed hash chaining plus a dedicated browser-policy decision table
+- decision taken: persist decision-time audit artifacts directly from the internal Node evaluation route, using Redis-backed hash chaining plus a dedicated browser-policy decision table
+- mode used: auto
+- rationale: the evaluation route is the narrowest shared enforcement seam and already owns the authoritative decision envelope. Persisting there avoids duplicating policy semantics in Python, while Redis-backed previous-hash state keeps the tamper-evident chain small and operationally cheap.
+
+### Incident telemetry propagation
+- section: 06
+- options considered:
+  - build a separate browser-specific operator polling endpoint for approval/revocation state
+  - attach incident and audit metadata to the existing evaluation response and thread it through Python task status updates and denial details
+- decision taken: attach incident and audit metadata to the existing evaluation response and thread it through Python task status updates and denial details
+- mode used: auto
+- rationale: task status polling already exists and is what operators see during Automation Copilot execution. Reusing that path keeps the change local, surfaces trace/event-hash context immediately, and avoids introducing another state channel that could drift from the underlying approval DB.

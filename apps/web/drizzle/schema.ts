@@ -3787,6 +3787,35 @@ export const browserWorkflowEntitlements = pgTable("browser_workflow_entitlement
 export type BrowserWorkflowEntitlement = typeof browserWorkflowEntitlements.$inferSelect;
 export type InsertBrowserWorkflowEntitlement = typeof browserWorkflowEntitlements.$inferInsert;
 
+export const browserPolicyDecisions = pgTable("browser_policy_decisions", {
+  id: serial("id").primaryKey(),
+  traceId: varchar("traceId", { length: 64 }),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").references(() => users.id),
+  workflowId: integer("workflowId"),
+  executionId: varchar("executionId", { length: 128 }),
+  actionType: varchar("actionType", { length: 64 }).notNull(),
+  actionClass: browserActionClassEnum("actionClass").notNull(),
+  pageSensitivity: browserPageSensitivityEnum("pageSensitivity").notNull(),
+  decision: browserPolicyDecisionEnum("decision").notNull(),
+  reasonCodes: jsonb("reasonCodes").$type<string[]>().default([]).notNull(),
+  approvalState: varchar("approvalState", { length: 32 }).notNull(),
+  outcome: varchar("outcome", { length: 16 }).notNull(),
+  evidence: jsonb("evidence").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+  previousEventHash: varchar("previousEventHash", { length: 128 }),
+  eventHash: varchar("eventHash", { length: 128 }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("browser_policy_decisions_event_hash_uq").on(t.eventHash),
+  index("browser_policy_decisions_tenant_created_idx").on(t.tenantId, t.createdAt),
+  index("browser_policy_decisions_trace_idx").on(t.traceId),
+  index("browser_policy_decisions_execution_idx").on(t.executionId),
+  index("browser_policy_decisions_decision_idx").on(t.decision, t.createdAt),
+]);
+
+export type BrowserPolicyDecisionRecord = typeof browserPolicyDecisions.$inferSelect;
+export type InsertBrowserPolicyDecisionRecord = typeof browserPolicyDecisions.$inferInsert;
+
 // Cloud Task Events — Tracks Cloud Tasks execution for observability and DLQ
 export const cloudTaskEvents = pgTable("cloud_task_events", {
   id: serial("id").primaryKey(),

@@ -41,29 +41,29 @@
 - task_id: sec06-live-audit-persistence
   section: section-06-audit-observability-and-incident-controls
   task: emit browser-policy audit artifacts from the live decision path into JSONL and structured DB persistence
-  blocked_by: the per-action execution seam now exists, but there is still no JSONL writer or dedicated browser-policy decision table/partition DDL
-  unblock_condition: attach audit artifact writing to the live Node evaluation path and add the browser-policy decision storage migration
-  status: blocked
+  blocked_by: none
+  unblock_condition: implemented 2026-03-10 via live Node runtime audit persistence plus the `browser_policy_decisions` storage path
+  status: done
   owner_step: section-06 follow-up
-  notes: runtime enforcement exists; durable audit persistence still does not
+  notes: the internal browser-policy evaluation route now writes aligned JSONL and DB audit artifacts, returns trace/event-hash metadata, and uses the dedicated decision-storage schema
 
 - task_id: sec06-live-incident-plumbing
   section: section-06-audit-observability-and-incident-controls
   task: wire kill switches, deny overrides, and approval revocation into live executor dispatch and approval polling
-  blocked_by: pre-dispatch incident checks, approval waits, and cached-approval revalidation are now wired, but operator-facing polling/status surfaces still need browser-specific runtime coverage
-  unblock_condition: surface browser-specific approval/revocation status and audit telemetry through the live runtime so operators can observe and act on incident state directly
-  status: blocked
+  blocked_by: none
+  unblock_condition: implemented 2026-03-10 via runtime incident metadata on the Node response plus Python-side status propagation during approval waits and denials
+  status: done
   owner_step: section-06 follow-up
-  notes: kill-switch and deny logic execute live through the Node policy runtime, and cached approvals now re-check DB state before reuse; the remaining gap is continuous operator-visible incident visibility
+  notes: kill-switch and deny logic execute live through the Node policy runtime, cached approvals still re-check DB state before reuse, and browser-specific approval/revocation status now reaches operator-facing task status/detail fields
 
 - task_id: sec07-raw-sql-partition-migration
   section: section-07-rollout-migrations-and-release-gates
   task: create the additive raw SQL migration for browser-policy decision storage, monthly partitions, and maintenance ownership
-  blocked_by: no browser-policy decision table or partition DDL exists yet
-  unblock_condition: define the final decision-storage schema and add the production migration path
-  status: blocked
+  blocked_by: none
+  unblock_condition: implemented 2026-03-10 via `0060_browser_policy_decision_partitions.sql` plus Drizzle typing for `browser_policy_decisions`
+  status: done
   owner_step: section-07 follow-up
-  notes: migration-plan metadata and readiness checks are implemented, but not the DDL itself
+  notes: the additive partitioned decision table, current/future monthly partitions, and pg_partman ownership comment now exist in raw SQL, with Drizzle schema typing for query-side access
 
 - task_id: sec07-release-gate-integration
   section: section-07-rollout-migrations-and-release-gates

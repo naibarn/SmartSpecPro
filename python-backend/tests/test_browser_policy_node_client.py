@@ -54,10 +54,6 @@ def build_result():
                     "screenshotHash": "shot-1",
                 },
             },
-            "approval": {
-                "required": True,
-                "approvalTtlSeconds": 300,
-            },
             "approvalPayload": {
                 "actionDescription": "Upload report",
                 "actionDigest": "digest-1",
@@ -70,6 +66,19 @@ def build_result():
                 "approvalTtlSeconds": 300,
             },
             "correlationKey": "corr-1",
+            "audit": {
+                "traceId": "trace-1",
+                "eventHash": "audit-hash-1",
+                "previousEventHash": "prev-audit-hash",
+                "jsonlPersisted": True,
+                "dbPersisted": True,
+                "auditWriteFailed": False,
+            },
+            "incident": {
+                "approvalState": "pending",
+                "outcome": "blocked",
+                "operatorMessage": "browser_policy outcome=blocked approval_state=pending trace_id=trace-1 reasons=external_upload",
+            },
         }
     )
 
@@ -198,7 +207,40 @@ async def test_cached_approval_fails_closed_when_revoked_after_approval():
         "approval_request_id": "req-1",
         "approval_status": "cancelled",
         "approval_revoked": True,
+        "trace_id": "trace-1",
+        "audit_event_hash": "audit-hash-1",
     }
     assert "corr-1" not in client._approved_correlation_keys
     client._create_approval_request.assert_not_called()
     status_callback.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_pending_browser_approval_status_includes_trace_and_audit_metadata():
+    client = build_client()
+    client._create_approval_request = AsyncMock(return_value="req-1")
+    client._get_approval_status = AsyncMock(
+        side_effect=[
+            BrowserApprovalStatusSnapshot(
+                status=ApprovalStatus.PENDING,
+                revoked=False,
+            ),
+            BrowserApprovalStatusSnapshot(
+                status=ApprovalStatus.APPROVED,
+                revoked=False,
+            ),
+        ]
+    )
+    status_callback = AsyncMock()
+
+    await client._wait_for_approval(
+        result=build_result(),
+        action=SimpleNamespace(action_type="upload", description="Upload report"),
+        status_callback=status_callback,
+    )
+
+    status_callback.assert_awaited_once()
+    detail = status_callback.await_args.args[1]
+    assert "approval_request_id=req-1" in detail
+    assert "audit_event_hash=audit-hash-1" in detail
+    assert "trace_id=trace-1" in detail

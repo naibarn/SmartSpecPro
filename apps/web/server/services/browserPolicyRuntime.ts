@@ -1,20 +1,36 @@
+import fs from "node:fs/promises";
+import path from "node:path";
+
+import { sql } from "drizzle-orm";
+
 import {
   type BrowserApprovalPayload,
+  type BrowserPolicyAuditMetadata,
+  type BrowserPolicyApprovalState,
   type BrowserPolicyDecisionEnvelope,
   type BrowserPolicyExecutionContext,
+  type BrowserPolicyIncidentStatus,
+  type BrowserPolicyOutcome,
   normalizeBrowserPolicyExecutionContext,
   normalizeBrowserWorkflowEntitlement,
 } from "../../shared/browserPolicy";
+import { getDb } from "../db";
 import {
   buildBrowserApprovalPayload,
   getBrowserApprovalCorrelationKey,
 } from "./browserApprovalPayload";
+import {
+  buildBrowserPolicyAuditArtifacts,
+  type BrowserPolicyAuditDbRecord,
+  type BrowserPolicyAuditEvent,
+} from "./browserPolicyAuditLogger";
 import { evaluateBrowserIncidentControls } from "./browserIncidentControls";
 import { evaluateBrowserPolicy, type BrowserPolicyEvaluationInput } from "./browserPolicyEngine";
 import {
   buildSeededBrowserPolicyConfig,
   loadTenantBrowserPolicyConfig,
 } from "./browserPolicyStore";
+import { getRedisClient } from "./redis";
 
 const DEFAULT_AUTOMATION_COPILOT_CAPABILITIES = [
   "navigate",
@@ -24,6 +40,12 @@ const DEFAULT_AUTOMATION_COPILOT_CAPABILITIES = [
   "hover",
   "extract_data",
 ];
+const DEFAULT_BROWSER_POLICY_AUDIT_PATH = (
+  process.env.BROWSER_POLICY_AUDIT_JSONL_PATH
+  || "logs/browser_policy_decisions.jsonl"
+).trim();
+const BROWSER_POLICY_AUDIT_HASH_TTL_SECONDS = 30 * 24 * 60 * 60;
+const BROWSER_POLICY_AUDIT_HASH_PREFIX = "browser-policy:audit:last-hash";
 
 function matchesAllowedDomain(targetOrigin: string, allowedDomains: string[]): boolean {
   if (allowedDomains.length === 0) {
@@ -106,6 +128,15 @@ export interface BrowserPolicyRuntimeResult {
   decision: BrowserPolicyDecisionEnvelope;
   approvalPayload?: BrowserApprovalPayload;
   correlationKey?: string;
+  audit?: BrowserPolicyAuditMetadata;
+  incident?: BrowserPolicyIncidentStatus;
+}
+
+export interface BrowserPolicyRuntimePersistenceDeps {
+  loadPreviousEventHash?: (scopeKey: string) => Promise<string | null>;
+  storeLatestEventHash?: (scopeKey: string, eventHash: string) => Promise<void>;
+  persistJsonlEvent?: (event: BrowserPolicyAuditEvent) => Promise<void>;
+  persistDbRecord?: (record: BrowserPolicyAuditDbRecord) => Promise<void>;
 }
 
 export function evaluateBrowserPolicyRuntime(
@@ -167,4 +198,186 @@ export function evaluateBrowserPolicyRuntime(
     approvalPayload,
     correlationKey: getBrowserApprovalCorrelationKey(approvalPayload),
   };
+}
+
+export async function evaluateAndPersistBrowserPolicyRuntime(
+  input: BrowserPolicyRuntimeInput,
+  deps: BrowserPolicyRuntimePersistenceDeps = {},
+): Promise<BrowserPolicyRuntimeResult> {
+  const result = evaluateBrowserPolicyRuntime(input);
+  const approvalState = resolveBrowserPolicyApprovalState(result.decision);
+  const outcome = resolveBrowserPolicyOutcome(result.decision);
+  const scopeKey = buildBrowserPolicyAuditScopeKey(result.decision);
+  const loadPreviousEventHash = deps.loadPreviousEventHash ?? defaultLoadPreviousEventHash;
+  const storeLatestEventHash = deps.storeLatestEventHash ?? defaultStoreLatestEventHash;
+  const persistJsonlEvent = deps.persistJsonlEvent ?? defaultPersistJsonlEvent;
+  const persistDbRecord = deps.persistDbRecord ?? defaultPersistDbRecord;
+  const previousEventHash = await loadPreviousEventHash(scopeKey).catch(() => null);
+  const artifacts = buildBrowserPolicyAuditArtifacts({
+    decision: result.decision,
+    approvalState,
+    outcome,
+    previousEventHash,
+  });
+
+  let jsonlPersisted = false;
+  let dbPersisted = false;
+
+  try {
+    await persistJsonlEvent(artifacts.jsonlEvent);
+    jsonlPersisted = true;
+  } catch {
+    jsonlPersisted = false;
+  }
+
+  try {
+    await persistDbRecord(artifacts.dbRecord);
+    dbPersisted = true;
+  } catch {
+    dbPersisted = false;
+  }
+
+  if (jsonlPersisted || dbPersisted) {
+    await storeLatestEventHash(scopeKey, artifacts.jsonlEvent.integrity.eventHash).catch(() => undefined);
+  }
+
+  return {
+    ...result,
+    audit: {
+      traceId: result.decision.traceId,
+      eventHash: artifacts.jsonlEvent.integrity.eventHash,
+      previousEventHash,
+      jsonlPersisted,
+      dbPersisted,
+      auditWriteFailed: !jsonlPersisted || !dbPersisted,
+    },
+    incident: {
+      approvalState,
+      outcome,
+      operatorMessage: buildBrowserPolicyOperatorMessage(result.decision, approvalState, outcome),
+    },
+  };
+}
+
+function buildBrowserPolicyAuditScopeKey(
+  decision: BrowserPolicyDecisionEnvelope,
+): string {
+  return [
+    decision.tenantId,
+    decision.executionId ?? "no-execution",
+    decision.traceId ?? "no-trace",
+  ].join(":");
+}
+
+function resolveBrowserPolicyApprovalState(
+  decision: BrowserPolicyDecisionEnvelope,
+): BrowserPolicyApprovalState {
+  if (decision.decision === "require_approval") {
+    return "pending";
+  }
+  if (decision.reasonCodes.includes("approval_context_changed")) {
+    return "context_changed";
+  }
+  if (decision.reasonCodes.includes("approval_revoked")) {
+    return "revoked";
+  }
+  if (decision.reasonCodes.includes("approval_expired")) {
+    return "expired";
+  }
+  if (decision.reasonCodes.includes("approval_rejected")) {
+    return "rejected";
+  }
+  return "not_required";
+}
+
+function resolveBrowserPolicyOutcome(
+  decision: BrowserPolicyDecisionEnvelope,
+): BrowserPolicyOutcome {
+  return decision.decision === "allow" || decision.decision === "allow_with_redaction"
+    ? "executed"
+    : "blocked";
+}
+
+function buildBrowserPolicyOperatorMessage(
+  decision: BrowserPolicyDecisionEnvelope,
+  approvalState: BrowserPolicyApprovalState,
+  outcome: BrowserPolicyOutcome,
+): string {
+  const reasonCodes = decision.reasonCodes.join(", ") || "none";
+  return `browser_policy outcome=${outcome} approval_state=${approvalState} trace_id=${decision.traceId ?? "n/a"} reasons=${reasonCodes}`;
+}
+
+async function defaultLoadPreviousEventHash(scopeKey: string): Promise<string | null> {
+  try {
+    const redis = getRedisClient();
+    return await redis.get(`${BROWSER_POLICY_AUDIT_HASH_PREFIX}:${scopeKey}`);
+  } catch {
+    return null;
+  }
+}
+
+async function defaultStoreLatestEventHash(
+  scopeKey: string,
+  eventHash: string,
+): Promise<void> {
+  const redis = getRedisClient();
+  await redis.set(
+    `${BROWSER_POLICY_AUDIT_HASH_PREFIX}:${scopeKey}`,
+    eventHash,
+    "EX",
+    BROWSER_POLICY_AUDIT_HASH_TTL_SECONDS,
+  );
+}
+
+async function defaultPersistJsonlEvent(event: BrowserPolicyAuditEvent): Promise<void> {
+  const auditPath = path.isAbsolute(DEFAULT_BROWSER_POLICY_AUDIT_PATH)
+    ? DEFAULT_BROWSER_POLICY_AUDIT_PATH
+    : path.join(process.cwd(), DEFAULT_BROWSER_POLICY_AUDIT_PATH);
+  await fs.mkdir(path.dirname(auditPath), { recursive: true });
+  await fs.appendFile(auditPath, `${JSON.stringify(event)}\n`, "utf8");
+}
+
+async function defaultPersistDbRecord(record: BrowserPolicyAuditDbRecord): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Database unavailable");
+  }
+
+  await db.execute(sql`
+    INSERT INTO browser_policy_decisions (
+      "traceId",
+      "tenantId",
+      "userId",
+      "workflowId",
+      "executionId",
+      "actionType",
+      "actionClass",
+      "pageSensitivity",
+      "decision",
+      "reasonCodes",
+      "approvalState",
+      "outcome",
+      "evidence",
+      "previousEventHash",
+      "eventHash",
+      "createdAt"
+    ) VALUES (
+      ${record.traceId ?? null},
+      ${record.tenantId},
+      ${record.userId ?? null},
+      ${record.workflowId ?? null},
+      ${record.executionId ?? null},
+      ${record.actionType},
+      ${record.actionClass},
+      ${record.pageSensitivity},
+      ${record.decision},
+      ${JSON.stringify(record.reasonCodes)}::jsonb,
+      ${record.approvalState},
+      ${record.outcome},
+      ${JSON.stringify(record.evidence)}::jsonb,
+      ${record.integrity.previousEventHash ?? null},
+      ${record.integrity.eventHash},
+      ${record.createdAt}
+    )
+  `);
 }

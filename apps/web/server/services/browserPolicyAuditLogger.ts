@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import type { BrowserPolicyDecisionEnvelope } from "../../shared/browserPolicy";
 
 export type BrowserPolicyApprovalState =
+  | "not_required"
   | "approved"
   | "pending"
   | "context_changed"

@@ -95,13 +95,22 @@ Hashes and digests may be logged; raw DOM, plaintext secrets, and full screensho
 
 ### Actual files changed
 
+- `apps/web/shared/browserPolicy.ts`
+- `apps/web/server/routes/browserPolicy.ts`
 - `apps/web/server/services/browserPolicyAuditLogger.ts`
 - `apps/web/server/services/browserPolicyMetrics.ts`
 - `apps/web/server/services/browserIncidentControls.ts`
+- `apps/web/server/services/browserPolicyRuntime.ts`
+- `apps/web/drizzle/0060_browser_policy_decision_partitions.sql`
+- `apps/web/drizzle/schema.ts`
+- `apps/web/drizzle/browserPolicyMigrationPlan.ts`
+- `apps/web/drizzle/browserPolicyMigrations.test.ts`
 - `apps/web/server/__tests__/browserPolicyAuditLogger.test.ts`
+- `apps/web/server/services/__tests__/browserPolicyRuntime.test.ts`
 - `apps/web/server/services/__tests__/browserPolicyMetrics.test.ts`
 - `apps/web/server/services/__tests__/browserIncidentControls.test.ts`
 - `python-backend/app/services/browser_policy_audit.py`
+- `python-backend/app/services/browser_policy_contract.py`
 - `python-backend/app/services/browser_policy_node_client.py`
 - `python-backend/app/services/browser_policy_incident_controls.py`
 - `python-backend/tests/test_browser_policy_audit_contract.py`
@@ -110,8 +119,8 @@ Hashes and digests may be logged; raw DOM, plaintext secrets, and full screensho
 
 ### Deviations from plan
 
-- Implemented deterministic audit-artifact, metrics-summary, and incident-control helpers first instead of wiring directly into live persistence and dispatch paths.
-- JSONL compatibility and DB-record shapes are represented as shared artifacts, but no dedicated browser-policy decision table or live writer hook exists yet.
+- Implemented deterministic audit-artifact, metrics-summary, and incident-control helpers first, then wired the live Node evaluation route to persist JSONL and structured DB records through the same artifact builder.
+- Operator-visible incident telemetry is surfaced through the live runtime response and propagated into Python-side approval wait status/details, rather than introducing a separate browser-specific polling channel.
 
 ### Tests added or updated
 
@@ -120,5 +129,4 @@ Hashes and digests may be logged; raw DOM, plaintext secrets, and full screensho
 
 ### Known follow-ups
 
-- Persist browser-policy audit artifacts from the live decision path into JSONL and structured DB storage.
-- Expose operator-visible approval-status and revocation telemetry from the live browser-policy runtime in addition to the now fail-closed approval revalidation.
+- Consider emitting post-decision outcome events after approved actions finish executing so the audit stream can distinguish approval-pending from approved-and-executed on the same logical action chain.
