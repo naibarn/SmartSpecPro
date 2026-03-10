@@ -27,6 +27,8 @@ import {
   getBrowserToolLaunchGuardError,
   isBrowserPolicyContractWired,
 } from "../services/browserPolicyLaunchGuard";
+import { assertBrowserPolicySurfaceReady } from "../services/browserPolicyReleaseControl";
+import { resolveEffectiveUserAutomationPolicy } from "../services/browserPolicyUserSettings";
 import { getTraceId } from "../services/traceContext";
 import { ENV } from "../_core/env";
 
@@ -196,6 +198,18 @@ router.post("/api/internal/tools/browser", async (req: Request, res: Response) =
       .json({ error: "Browser automation is not enabled for this tenant.", code: "FEATURE_DISABLED" });
     return;
   }
+  try {
+    await assertBrowserPolicySurfaceReady({
+      tenantId,
+      surface: "browserTool",
+    });
+  } catch (error) {
+    res.status(403).json({
+      error: error instanceof Error ? error.message : "Browser policy release gate blocked browser tool",
+      code: "RELEASE_GATE_BLOCKED",
+    });
+    return;
+  }
 
   const launchGuardError = getBrowserToolLaunchGuardError({
     browserToolEnabled: browserEnabled,
@@ -210,9 +224,17 @@ router.post("/api/internal/tools/browser", async (req: Request, res: Response) =
   }
 
   // Domain validation — BEFORE concurrency and credit checks (fail fast)
+  const effectivePolicy = await resolveEffectiveUserAutomationPolicy({
+    tenantId,
+    userId,
+    seededConfig: {
+      allowedDomains,
+    },
+  }).catch(() => null);
+  const effectiveAllowedDomains = effectivePolicy?.effectiveConfig.allowedDomains ?? allowedDomains;
   const domainError = validateBrowserDomains(
     actions as Array<{ action: string; url?: string }>,
-    allowedDomains,
+    effectiveAllowedDomains,
   );
   if (domainError) {
     res.status(domainError.status).json({
@@ -289,7 +311,7 @@ router.post("/api/internal/tools/browser", async (req: Request, res: Response) =
       body: JSON.stringify({
         session_id: sessionId,
         actions,
-        allowed_domains: allowedDomains,
+        allowed_domains: effectiveAllowedDomains,
         timeout,
         user_id: userId,
         tenant_id: tenantId,

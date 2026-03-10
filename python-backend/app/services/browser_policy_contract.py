@@ -30,6 +30,35 @@ class BrowserPolicyConfig(BaseModel):
     seededDefault: bool = False
 
 
+class BrowserPolicyUserCustomization(BaseModel):
+    allowPersonalDomainSubset: bool = True
+    allowModeCap: bool = True
+    allowTransferBlocks: bool = True
+    allowApprovalTtlCap: bool = True
+    allowActionApprovalEscalation: bool = True
+    allowPreferredVisionModel: bool = False
+
+
+class BrowserPolicyUserProfile(BaseModel):
+    enabled: bool = True
+    modeCap: Literal["observe", "read_only", "draft", "commit", "expanded"] | None = None
+    allowedDomainsSubset: list[str] = Field(default_factory=list)
+    blockedTransfers: list[
+        Literal["download", "upload", "clipboard", "external_send"]
+    ] = Field(default_factory=list)
+    requireApprovalForActionClasses: list[
+        Literal["read", "draft", "commit", "restricted"]
+    ] = Field(default_factory=list)
+    approvalTtlSecondsCap: int | None = Field(
+        default=None,
+        ge=BROWSER_APPROVAL_TTL_MIN_SECONDS,
+        le=BROWSER_APPROVAL_TTL_MAX_SECONDS,
+    )
+    preferredVisionModel: str | None = None
+    notifyOnApprovalRequests: bool = True
+    notifyOnPolicyIncidents: bool = True
+
+
 class BrowserPolicyRule(BaseModel):
     id: int | None = None
     priority: int = 100
@@ -139,6 +168,8 @@ class BrowserPolicyExecutionContext(BaseModel):
     config: BrowserPolicyConfig
     rules: list[BrowserPolicyRule] = Field(default_factory=list)
     entitlement: BrowserWorkflowEntitlement
+    userCustomization: BrowserPolicyUserCustomization | None = None
+    userProfile: BrowserPolicyUserProfile | None = None
 
 
 class BrowserPolicyAuditMetadata(BaseModel):
@@ -168,6 +199,11 @@ class BrowserPolicyEvaluationResponse(BaseModel):
     decision: BrowserPolicyDecisionEnvelope
     approvalPayload: BrowserApprovalPayload | None = None
     correlationKey: str | None = None
+    audit: BrowserPolicyAuditMetadata | None = None
+    incident: BrowserPolicyIncidentStatus | None = None
+
+
+class BrowserPolicyOutcomeResponse(BaseModel):
     audit: BrowserPolicyAuditMetadata | None = None
     incident: BrowserPolicyIncidentStatus | None = None
 

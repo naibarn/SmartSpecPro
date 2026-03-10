@@ -4,6 +4,7 @@
  */
 
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { router, adminProcedure, domainAdminProcedure, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { systemSettings, invoiceConfig, tenants } from "../../drizzle/schema";
@@ -11,6 +12,11 @@ import { eq, and, isNull } from "drizzle-orm";
 import { encrypt, decrypt } from "../services/crypto";
 import { validateGoogleOAuthFormat } from "../services/googleOAuthValidation";
 import { signBearerToken } from "../_core/tokens";
+import { loadTenantAutomationPolicyStatus, updateTenantAutomationPolicySettings } from "../services/browserPolicySettingsBridge";
+import {
+  browserPolicyConfigSchema,
+  browserPolicyUserCustomizationSchema,
+} from "../../shared/browserPolicy";
 
 // ============================================================
 // System Settings Router
@@ -118,6 +124,70 @@ async function assertVectorDbConfigEditAllowedOrThrow(params: {
     throw new Error(detail || "cutover_non_emergency_edit_blocked");
   }
   throw new Error(detail || `vectordb_cutover_guard_failed:${response.status}`);
+}
+
+async function resolveTenantAutomationPolicyTenantId(params: {
+  user: {
+    role: string;
+    registeredDomain?: string | null;
+    currentTenantId?: string | number | null;
+  };
+  ctxTenantId?: string | null;
+  requestedTenantId?: string | null;
+}): Promise<string> {
+  const requestedTenantId = params.requestedTenantId?.trim() || null;
+  if (params.user.role === "admin") {
+    const tenantId = requestedTenantId ?? params.ctxTenantId ?? String(params.user.currentTenantId ?? "").trim();
+    if (!tenantId) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+    }
+    return tenantId;
+  }
+
+  const registeredDomain = params.user.registeredDomain?.trim();
+  if (!registeredDomain) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "domain_admin must have a registeredDomain to manage tenant automation policy",
+    });
+  }
+
+  const db = await getDb();
+  if (!db) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database unavailable",
+    });
+  }
+
+  if (requestedTenantId) {
+    const [targetTenant] = await db
+      .select({ id: tenants.id, primaryDomain: tenants.primaryDomain })
+      .from(tenants)
+      .where(eq(tenants.id, requestedTenantId))
+      .limit(1);
+
+    if (!targetTenant || targetTenant.primaryDomain !== registeredDomain) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "domain_admin can only manage automation policy for their own tenant",
+      });
+    }
+    return targetTenant.id;
+  }
+
+  const [ownTenant] = await db
+    .select({ id: tenants.id })
+    .from(tenants)
+    .where(eq(tenants.primaryDomain, registeredDomain))
+    .limit(1);
+  if (!ownTenant) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "No tenant found for your registered domain",
+    });
+  }
+  return ownTenant.id;
 }
 
 export const systemSettingsRouter = router({
@@ -450,6 +520,54 @@ export const systemSettingsRouter = router({
         value: s.isSensitive && s.value ? "***configured***" : s.value,
         isConfigured: s.isSensitive && s.value ? true : undefined,
       }));
+    }),
+
+  getTenantAutomationPolicyStatus: domainAdminProcedure
+    .input(z.object({ tenantId: tenantIdInputSchema.optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const tenantId = await resolveTenantAutomationPolicyTenantId({
+        user: ctx.user!,
+        ctxTenantId: ctx.tenantId ?? null,
+        requestedTenantId: input?.tenantId ?? null,
+      });
+      return loadTenantAutomationPolicyStatus(tenantId);
+    }),
+
+  updateTenantAutomationPolicySettings: domainAdminProcedure
+    .input(z.object({
+      tenantId: tenantIdInputSchema.optional(),
+      enabled: browserPolicyConfigSchema.shape.enabled,
+      enforcementMode: browserPolicyConfigSchema.shape.enforcementMode,
+      defaultApprovalTtlSeconds: browserPolicyConfigSchema.shape.defaultApprovalTtlSeconds,
+      reviewCadenceDays: browserPolicyConfigSchema.shape.reviewCadenceDays,
+      killSwitchEnabled: browserPolicyConfigSchema.shape.killSwitchEnabled,
+      requireTamperEvidence: browserPolicyConfigSchema.shape.requireTamperEvidence,
+      evidenceRetentionDays: browserPolicyConfigSchema.shape.evidenceRetentionDays,
+      allowedDomains: browserPolicyConfigSchema.shape.allowedDomains,
+      visionModel: browserPolicyConfigSchema.shape.visionModel,
+      userCustomization: browserPolicyUserCustomizationSchema.optional(),
+      allowedVisionModels: z.array(z.string().min(1)).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = await resolveTenantAutomationPolicyTenantId({
+        user: ctx.user!,
+        ctxTenantId: ctx.tenantId ?? null,
+        requestedTenantId: input.tenantId ?? null,
+      });
+      const {
+        tenantId: _tenantId,
+        userCustomization,
+        allowedVisionModels,
+        ...config
+      } = input;
+
+      return updateTenantAutomationPolicySettings({
+        tenantId,
+        userId: ctx.user?.id ?? null,
+        config,
+        userCustomization,
+        allowedVisionModels,
+      });
     }),
 
   /**

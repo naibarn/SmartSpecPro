@@ -9,6 +9,11 @@ import { getDb } from "../db";
 import { users, creditTransactions } from "../../drizzle/schema";
 import { eq, desc, like, or, sql, and } from "drizzle-orm";
 import { addCredits, deductCredits, type TransactionType } from "../services/creditService";
+import { browserPolicyUserProfileSchema } from "../../shared/browserPolicy";
+import {
+  resolveEffectiveUserAutomationPolicy,
+  updateUserBrowserPolicyProfile,
+} from "../services/browserPolicyUserSettings";
 
 // Zod schemas
 const userFiltersSchema = z.object({
@@ -741,5 +746,32 @@ export const usersRouter = router({
 
       await db.update(users).set({ userPreferences: updated }).where(eq(users.id, ctx.user.id));
       return updated;
+    }),
+
+  getAutomationPreferences: protectedProcedure.query(async ({ ctx }) => {
+    const tenantId = ctx.tenantId ?? String(ctx.user.currentTenantId ?? "").trim();
+    if (!tenantId) {
+      throw new Error("Tenant context is required");
+    }
+
+    return resolveEffectiveUserAutomationPolicy({
+      tenantId,
+      userId: ctx.user.id,
+    });
+  }),
+
+  updateAutomationPreferences: protectedProcedure
+    .input(browserPolicyUserProfileSchema.partial())
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId ?? String(ctx.user.currentTenantId ?? "").trim();
+      if (!tenantId) {
+        throw new Error("Tenant context is required");
+      }
+
+      return updateUserBrowserPolicyProfile({
+        tenantId,
+        userId: ctx.user.id,
+        profile: input,
+      });
     }),
 });

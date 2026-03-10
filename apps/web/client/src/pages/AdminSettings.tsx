@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -75,6 +76,7 @@ import StorageSettingsPanel from "@/components/admin/StorageSettingsPanel";
 import InfrastructureSettingsPanel from "@/components/admin/InfrastructureSettingsPanel";
 import AgencyAdminPanel from "@/components/admin/AgencyAdminPanel";
 import TelegramConnectionsPanel from "@/components/admin/TelegramConnectionsPanel";
+import { TenantAutomationPolicyPanel } from "@/components/settings/TenantAutomationPolicyPanel";
 
 interface StripeSettings {
   secretKey?: string;
@@ -3131,202 +3133,10 @@ function MenuOverridesPanel() {
 // ============================================================
 
 function AutomationSettingsPanel() {
-  const { user } = useAuth();
-  const [visionModel, setVisionModel] = useState("gpt-4o");
-  const [allowedDomains, setAllowedDomains] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [modelSearch, setModelSearch] = useState("");
-
-  const settingsQuery = trpc.systemSettings.getSettingsByCategory.useQuery(
-    { category: "tenant_automation" },
-    { enabled: true },
-  );
-
-  const { data: modelsData, isLoading: modelsLoading } =
-    trpc.llmProviders.availableModels.useQuery(undefined, {
-      enabled: !!user && user.role === "admin",
-      staleTime: 60_000,
-    });
-  const updateMutation = trpc.systemSettings.updateSetting.useMutation({
-    onSuccess: () => {
-      toast.success("Automation settings saved");
-      settingsQuery.refetch();
-    },
-    onError: (err) => toast.error(err.message),
-  });
-
-  useEffect(() => {
-    if (settingsQuery.data) {
-      for (const s of settingsQuery.data) {
-        if (s.key === "automation_vision_model" && s.value) {
-          setVisionModel(s.value);
-        }
-        if (s.key === "allowed_domains" && s.value) {
-          setAllowedDomains(s.value);
-        }
-      }
-    }
-  }, [settingsQuery.data]);
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      await updateMutation.mutateAsync({
-        category: "tenant_automation",
-        key: "automation_vision_model",
-        value: visionModel,
-        description: "Vision model for automation copilot",
-      });
-      await updateMutation.mutateAsync({
-        category: "tenant_automation",
-        key: "allowed_domains",
-        value: allowedDomains,
-        description: "Allowed domains for automation (comma-separated)",
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Group models by provider for better readability
-  const allModels = modelsData?.models ?? [];
-  const filteredModels = modelSearch
-    ? allModels.filter(
-        (m: any) =>
-          m.id.toLowerCase().includes(modelSearch.toLowerCase()) ||
-          m.name.toLowerCase().includes(modelSearch.toLowerCase()) ||
-          m.providerDisplayName
-            ?.toLowerCase()
-            .includes(modelSearch.toLowerCase()),
-      )
-    : allModels;
-
-  // Group by provider
-  const groupedModels = filteredModels.reduce(
-    (acc: Record<string, typeof filteredModels>, m: any) => {
-      const key = m.providerDisplayName || m.provider || "Other";
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(m);
-      return acc;
-    },
-    {} as Record<string, typeof filteredModels>,
-  );
   return (
-    <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-      <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Bot className="h-5 w-5 text-purple-500" />
-          Automation Copilot
-        </CardTitle>
-        <CardDescription>
-          Configure vision model and domain restrictions for the Automation
-          Copilot.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6 pt-6">
-        <div className="space-y-2">
-          <Label>Vision Model</Label>
-          <Select value={visionModel} onValueChange={setVisionModel}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select vision model" />
-            </SelectTrigger>
-            <SelectContent className="max-h-[min(300px,var(--radix-select-content-available-height))]">
-              <div className="sticky top-0 z-10 bg-popover px-2 pb-1.5 pt-1">
-                <Input
-                  placeholder="Search models..."
-                  value={modelSearch}
-                  onChange={(e) => setModelSearch(e.target.value)}
-                  className="h-8 text-sm"
-                  onKeyDown={(e) => e.stopPropagation()}
-                />
-              </div>
-
-              {modelsLoading && (
-                <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Loading models...
-                </div>
-              )}
-
-              {!modelsLoading && allModels.length === 0 && (
-                <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                  No LLM providers configured.
-                  <br />
-                  <span className="text-xs">
-                    Set up providers in the LLM Providers settings first.
-                  </span>
-                </div>
-              )}
-
-              {!modelsLoading &&
-                allModels.length > 0 &&
-                filteredModels.length === 0 && (
-                  <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                    No models matching "{modelSearch}"
-                  </div>
-                )}
-
-              {Object.entries(groupedModels).map(
-                ([providerName, models]: [string, any[]]) => (
-                  <Fragment key={providerName}>
-                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                      {providerName}
-                    </div>
-                    {models.map((m: any) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        <span className="flex items-center gap-2">
-                          <span>{m.name || m.id}</span>
-                          {m.isDefault && (
-                            <Badge
-                              variant="secondary"
-                              className="ml-1 px-1 py-0 text-[10px]"
-                            >
-                              default
-                            </Badge>
-                          )}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </Fragment>
-                ),
-              )}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-gray-500">
-            The LLM model used to analyze screenshots and generate browser
-            selectors. Choose a model with vision/multimodal capability (e.g.,
-            GPT-4o, Claude Sonnet 4) for best results.
-          </p>
-          {visionModel && (
-            <p className="text-xs text-blue-600">
-              Currently selected: <strong>{visionModel}</strong>
-            </p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label>Allowed Domains</Label>
-          <Textarea
-            value={allowedDomains}
-            onChange={(e) => setAllowedDomains(e.target.value)}
-            placeholder="example.com, app.example.com"
-            rows={3}
-          />
-          <p className="text-xs text-gray-500">
-            Comma-separated list of domains the automation is allowed to visit.
-            Leave empty to deny all external URLs.
-          </p>
-        </div>
-
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? (
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-          ) : (
-            <Save className="h-4 w-4 mr-2" />
-          )}
-          Save Settings
-        </Button>
-      </CardContent>
-    </Card>
+    <TenantAutomationPolicyPanel
+      title="Automation Copilot"
+      description="Configure the tenant baseline browser-policy used by Automation Copilot and the browser tool."
+    />
   );
 }

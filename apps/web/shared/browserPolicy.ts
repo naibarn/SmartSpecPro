@@ -5,6 +5,13 @@ export const BROWSER_APPROVAL_TTL_MIN_SECONDS = 60;
 export const BROWSER_APPROVAL_TTL_MAX_SECONDS = 900;
 export const BROWSER_REVIEW_CADENCE_DEFAULT_DAYS = 90;
 export const BROWSER_APPROVAL_DOM_DRIFT_THRESHOLD = 0.2;
+export const browserPolicyEnforcementModeValues = [
+  "observe",
+  "read_only",
+  "draft",
+  "commit",
+  "expanded",
+] as const;
 
 export const browserPolicyDecisionValues = [
   "allow",
@@ -53,6 +60,12 @@ export const browserPolicyOutcomeValues = [
   "executed",
   "failed",
 ] as const;
+export const browserPolicyBlockedTransferValues = [
+  "download",
+  "upload",
+  "clipboard",
+  "external_send",
+] as const;
 
 export const browserPolicyDecisionSchema = z.enum(browserPolicyDecisionValues);
 export const browserActionClassSchema = z.enum(browserActionClassValues);
@@ -60,10 +73,12 @@ export const browserPageSensitivitySchema = z.enum(browserPageSensitivityValues)
 export const browserIframeTrustTierSchema = z.enum(browserIframeTrustTierValues);
 export const browserPolicyApprovalStateSchema = z.enum(browserPolicyApprovalStateValues);
 export const browserPolicyOutcomeSchema = z.enum(browserPolicyOutcomeValues);
+export const browserPolicyEnforcementModeSchema = z.enum(browserPolicyEnforcementModeValues);
+export const browserPolicyBlockedTransferSchema = z.enum(browserPolicyBlockedTransferValues);
 
 export const browserPolicyConfigSchema = z.object({
   enabled: z.boolean().default(true),
-  enforcementMode: z.enum(["observe", "read_only", "draft", "commit", "expanded"]).default("observe"),
+  enforcementMode: browserPolicyEnforcementModeSchema.default("observe"),
   defaultApprovalTtlSeconds: z
     .number()
     .int()
@@ -77,6 +92,33 @@ export const browserPolicyConfigSchema = z.object({
   allowedDomains: z.array(z.string()).default([]),
   visionModel: z.string().min(1).default("gpt-4o"),
   seededDefault: z.boolean().default(false),
+});
+
+export const browserPolicyUserCustomizationSchema = z.object({
+  allowPersonalDomainSubset: z.boolean().default(true),
+  allowModeCap: z.boolean().default(true),
+  allowTransferBlocks: z.boolean().default(true),
+  allowApprovalTtlCap: z.boolean().default(true),
+  allowActionApprovalEscalation: z.boolean().default(true),
+  allowPreferredVisionModel: z.boolean().default(false),
+});
+
+export const browserPolicyUserProfileSchema = z.object({
+  enabled: z.boolean().default(true),
+  modeCap: browserPolicyEnforcementModeSchema.nullable().default(null),
+  allowedDomainsSubset: z.array(z.string()).default([]),
+  blockedTransfers: z.array(browserPolicyBlockedTransferSchema).default([]),
+  requireApprovalForActionClasses: z.array(browserActionClassSchema).default([]),
+  approvalTtlSecondsCap: z
+    .number()
+    .int()
+    .min(BROWSER_APPROVAL_TTL_MIN_SECONDS)
+    .max(BROWSER_APPROVAL_TTL_MAX_SECONDS)
+    .nullable()
+    .default(null),
+  preferredVisionModel: z.string().min(1).nullable().default(null),
+  notifyOnApprovalRequests: z.boolean().default(true),
+  notifyOnPolicyIncidents: z.boolean().default(true),
 });
 
 export const browserPolicyRuleSchema = z.object({
@@ -136,6 +178,8 @@ export const browserPolicyExecutionContextSchema = z.object({
   config: browserPolicyConfigSchema,
   rules: z.array(browserPolicyRuleSchema).default([]),
   entitlement: browserWorkflowEntitlementSchema,
+  userCustomization: browserPolicyUserCustomizationSchema.optional(),
+  userProfile: browserPolicyUserProfileSchema.optional(),
 });
 
 export const browserPolicyAuditMetadataSchema = z.object({
@@ -186,6 +230,10 @@ export type BrowserPolicyConfig = z.infer<typeof browserPolicyConfigSchema>;
 export type BrowserPolicyRule = z.infer<typeof browserPolicyRuleSchema>;
 export type BrowserWorkflowEntitlement = z.infer<typeof browserWorkflowEntitlementSchema>;
 export type BrowserWorkflowEntitlementConfig = z.infer<typeof browserWorkflowEntitlementConfigSchema>;
+export type BrowserPolicyEnforcementMode = z.infer<typeof browserPolicyEnforcementModeSchema>;
+export type BrowserPolicyBlockedTransfer = z.infer<typeof browserPolicyBlockedTransferSchema>;
+export type BrowserPolicyUserCustomization = z.infer<typeof browserPolicyUserCustomizationSchema>;
+export type BrowserPolicyUserProfile = z.infer<typeof browserPolicyUserProfileSchema>;
 export type BrowserApprovalPayload = z.infer<typeof browserApprovalPayloadSchema>;
 export type BrowserPolicyExecutionContext = z.infer<typeof browserPolicyExecutionContextSchema>;
 export type BrowserPolicyDecision = z.infer<typeof browserPolicyDecisionSchema>;
@@ -202,6 +250,18 @@ export function normalizeBrowserPolicyConfig(
   config: Partial<BrowserPolicyConfig> | null | undefined,
 ): BrowserPolicyConfig {
   return browserPolicyConfigSchema.parse(config ?? {});
+}
+
+export function normalizeBrowserPolicyUserCustomization(
+  customization: Partial<BrowserPolicyUserCustomization> | null | undefined,
+): BrowserPolicyUserCustomization {
+  return browserPolicyUserCustomizationSchema.parse(customization ?? {});
+}
+
+export function normalizeBrowserPolicyUserProfile(
+  profile: Partial<BrowserPolicyUserProfile> | null | undefined,
+): BrowserPolicyUserProfile {
+  return browserPolicyUserProfileSchema.parse(profile ?? {});
 }
 
 export function normalizeBrowserWorkflowEntitlement(

@@ -59,8 +59,10 @@ import { GoogleDrivePanel } from '@/components/settings/GoogleDrivePanel';
 import { OneDrivePanel } from '@/components/settings/OneDrivePanel';
 import { BudgetPanel } from '@/components/settings/BudgetPanel';
 import { PersonasPanel } from '@/components/settings/PersonasPanel';
+import { TenantAutomationPolicyPanel } from '@/components/settings/TenantAutomationPolicyPanel';
+import { UserAutomationPreferencesPanel } from '@/components/settings/UserAutomationPreferencesPanel';
 
-type SettingsTab = 'profile' | 'account' | 'security' | 'preferences' | 'api' | 'billing' | 'integrations' | 'personas';
+type SettingsTab = 'profile' | 'account' | 'security' | 'preferences' | 'automation' | 'api' | 'billing' | 'integrations' | 'personas';
 
 type TwoFAStep = 'idle' | 'setup' | 'verify' | 'done' | 'disable' | 'regen';
 
@@ -551,6 +553,7 @@ export default function Settings() {
     { id: 'account', label: 'Account', icon: Mail },
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'preferences', label: 'Preferences', icon: Palette },
+    { id: 'automation', label: 'Automation', icon: Bot },
     { id: 'api', label: 'API Keys', icon: Key },
     { id: 'billing', label: 'Billing', icon: CreditCard },
     { id: 'integrations', label: 'Integrations', icon: Link2 },
@@ -1317,6 +1320,26 @@ export default function Settings() {
                     )}
                     Save Preferences
                   </Button>
+                </div>
+              )}
+
+              {activeTab === 'automation' && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Automation Policy</h2>
+                    <p className="text-gray-600">
+                      Manage your personal browser-policy overlay and, if you administer this tenant, the tenant baseline.
+                    </p>
+                  </div>
+
+                  {(user.role === 'admin' || user.role === 'domain_admin') && (
+                    <TenantAutomationPolicyPanel
+                      title="Tenant Automation Policy"
+                      description="Tenant baseline controls, rollout context, and the user customization envelope."
+                    />
+                  )}
+
+                  <UserAutomationPreferencesPanel />
                 </div>
               )}
 

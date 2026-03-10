@@ -241,6 +241,17 @@ export const users = pgTable("users", {
     translationModel?: string;
     telegramNotifyLevel?: "all" | "high_critical" | "critical_only" | "off";
     telegramDeliveryFailing?: boolean;
+    automationPolicy?: {
+      enabled?: boolean;
+      modeCap?: "observe" | "read_only" | "draft" | "commit" | "expanded" | null;
+      allowedDomainsSubset?: string[];
+      blockedTransfers?: Array<"download" | "upload" | "clipboard" | "external_send">;
+      requireApprovalForActionClasses?: Array<"read" | "draft" | "commit" | "restricted">;
+      approvalTtlSecondsCap?: number | null;
+      preferredVisionModel?: string | null;
+      notifyOnApprovalRequests?: boolean;
+      notifyOnPolicyIncidents?: boolean;
+    };
   }>().default({}),
 
   // Recovery contacts

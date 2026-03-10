@@ -23,6 +23,8 @@ import {
 import { getRedisClient, isRedisAvailable } from "../services/redis";
 import { buildAutomationCopilotBrowserPolicyContext } from "../services/browserPolicyRuntime";
 import { getTenantFeatureFlag } from "../services/featureFlags";
+import { assertBrowserPolicySurfaceReady } from "../services/browserPolicyReleaseControl";
+import { loadLegacyAutomationSettings } from "../services/browserPolicySettingsBridge";
 
 const PY_URL =
   process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
@@ -91,6 +93,15 @@ export const automationCopilotRouter = router({
           message: "Automation Copilot is disabled for this tenant",
         });
       }
+      await assertBrowserPolicySurfaceReady({
+        tenantId,
+        surface: "automationCopilot",
+      }).catch((error) => {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: error instanceof Error ? error.message : "Browser policy release gate blocked automation copilot",
+        });
+      });
 
       // Credit balance check
       const hasCreds = await hasEnoughCredits(ctx.user.id, MIN_CREDITS_TO_START);
@@ -180,6 +191,15 @@ export const automationCopilotRouter = router({
           message: "Automation Copilot is disabled for this tenant",
         });
       }
+      await assertBrowserPolicySurfaceReady({
+        tenantId,
+        surface: "automationCopilot",
+      }).catch((error) => {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: error instanceof Error ? error.message : "Browser policy release gate blocked automation copilot",
+        });
+      });
 
       // Pre-reserve credits via reservation pattern
       const hasCreds = await hasEnoughCredits(ctx.user.id, CREDIT_RESERVE_AMOUNT);
@@ -197,67 +217,14 @@ export const automationCopilotRouter = router({
         { taskId: input.taskId, executionId: input.executionId },
       );
 
-      // Fetch tenant allowed_domains from system_settings
-      let allowedDomains: string[] = [];
-      try {
-        const { getDb } = await import("../db");
-        const { systemSettings } = await import("../../drizzle/schema");
-        const { eq, and } = await import("drizzle-orm");
-        const db = await getDb();
-        if (db) {
-          const rows = await db
-            .select({ value: systemSettings.value })
-            .from(systemSettings)
-            .where(
-              and(
-                eq(systemSettings.category, "tenant_automation"),
-                eq(systemSettings.key, "allowed_domains"),
-              ),
-            )
-            .limit(1);
-          const row = rows[0];
-          if (row?.value) {
-            allowedDomains = row.value
-              .split(",")
-              .map((d: string) => d.trim())
-              .filter(Boolean);
-          }
-        }
-      } catch {
-        // If system_settings query fails, use empty list (deny all)
-      }
-
-      // Fetch vision model preference
-      let visionModel = "gpt-4o";
-      try {
-        const { getDb } = await import("../db");
-        const { systemSettings } = await import("../../drizzle/schema");
-        const { eq, and } = await import("drizzle-orm");
-        const db = await getDb();
-        if (db) {
-          const rows = await db
-            .select({ value: systemSettings.value })
-            .from(systemSettings)
-            .where(
-              and(
-                eq(systemSettings.category, "tenant_automation"),
-                eq(systemSettings.key, "automation_vision_model"),
-              ),
-            )
-            .limit(1);
-          const row = rows[0];
-          if (row?.value) {
-            visionModel = row.value;
-          }
-        }
-      } catch {
-        // Use default
-      }
+      const { allowedDomains, visionModel } = await loadLegacyAutomationSettings();
 
       const browserPolicyContext = await buildAutomationCopilotBrowserPolicyContext({
         tenantId,
+        userId: ctx.user.id,
         executionId: input.executionId,
         allowedDomains,
+        visionModel,
       });
 
       const res = await callPythonBackend(`${AUTOMATION_PREFIX}/execute`, {

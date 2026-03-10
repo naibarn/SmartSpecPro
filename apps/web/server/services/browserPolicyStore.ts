@@ -51,6 +51,7 @@ export interface TenantBrowserPolicyConfigResult {
   config: BrowserPolicyConfig | null;
   rules: BrowserPolicyRule[];
   source: "db" | "seeded";
+  metadata: Record<string, unknown>;
 }
 
 export function buildSeededBrowserPolicyConfig(
@@ -135,6 +136,7 @@ export async function loadTenantBrowserPolicyConfig(options: {
           : buildSeededBrowserPolicyConfig(options.seededConfig),
       rules: [],
       source: "seeded",
+      metadata: {},
     };
   }
 
@@ -183,6 +185,7 @@ export async function loadTenantBrowserPolicyConfig(options: {
     config,
     rules,
     source: configRow[0] ? "db" : "seeded",
+    metadata: (configRow[0]?.metadata as Record<string, unknown> | null | undefined) ?? {},
   };
 }
 
@@ -229,7 +232,13 @@ export async function lookupBrowserPolicyState(
         allowedCapabilities: entitlementRow[0].allowedCapabilities ?? [],
         forbiddenCapabilities: entitlementRow[0].forbiddenCapabilities ?? [],
         allowedDataClasses: entitlementRow[0].allowedDataClasses ?? [],
-        config: entitlementRow[0].config ?? {},
+        config: {
+          ...((entitlementRow[0].config ?? {}) as Partial<BrowserWorkflowEntitlement["config"]>),
+          approvalTtlSeconds: validateBrowserApprovalTtlSeconds(
+            (entitlementRow[0].config as Partial<BrowserWorkflowEntitlement["config"]> | null | undefined)
+              ?.approvalTtlSeconds,
+          ),
+        },
       })
     : null;
 
