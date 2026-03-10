@@ -99,21 +99,26 @@ Cross-site or otherwise untrusted iframe interactions should emit dedicated reas
 - `apps/web/server/services/__tests__/browserActionRateLimit.test.ts`
 - `apps/web/server/services/__tests__/browserDataHandlingPolicy.test.ts`
 - `apps/web/server/services/__tests__/browserIframeTrustPolicy.test.ts`
+- `python-backend/app/services/browser_policy_node_client.py`
 - `python-backend/app/services/browser_policy_transfer_controls.py`
+- `python-backend/app/services/self_healing_executor.py`
 - `python-backend/tests/test_browser_policy_transfer_controls.py`
 - `python-backend/tests/test_browser_policy_iframe_controls.py`
+- `python-backend/tests/test_self_healing_executor_policy_hooks.py`
+- `python-backend/tests/unit/automation/test_self_healing_executor.py`
 
 ### Deviations from plan
 
-- Implemented deterministic helper-layer rate and trust controls first instead of wiring directly into the live executor because the section-04 cross-stack action hook is still blocked.
+- Implemented deterministic helper-layer rate and trust controls first, then extended the live executor with upload and clipboard primitives once the section-04 cross-stack action hook existed.
 - Threshold enforcement currently consumes caller-supplied counts; Redis-backed counters remain a follow-up once the live execution seam exists.
 
 ### Tests added or updated
 
 - `npm --prefix apps/web test -- server/services/__tests__/browserActionRateLimit.test.ts server/services/__tests__/browserDataHandlingPolicy.test.ts server/services/__tests__/browserIframeTrustPolicy.test.ts server/services/__tests__/browserPolicyEngine.test.ts`
 - `UV_CACHE_DIR=/tmp/uv-cache DEBUG=false uv run --project python-backend pytest python-backend/tests/test_browser_policy_transfer_controls.py python-backend/tests/test_browser_policy_iframe_controls.py`
+- `UV_CACHE_DIR=/tmp/uv-cache DEBUG=false uv run --project python-backend pytest python-backend/tests/test_self_healing_executor_policy_hooks.py python-backend/tests/unit/automation/test_self_healing_executor.py python-backend/tests/unit/automation/test_automation_copilot.py python-backend/tests/test_browser_policy_transfer_controls.py python-backend/tests/test_browser_policy_iframe_controls.py`
 
 ### Known follow-ups
 
-- Wire these controls into the live Automation Copilot and Python executor path once the shared per-action policy callback exists.
+- Promote download and frame-targeted interactions to first-class executor actions or propagate frame-scoped context so the live policy path can evaluate their exact transfer destinations.
 - Replace caller-supplied threshold counters with Redis-backed workflow/action counters.

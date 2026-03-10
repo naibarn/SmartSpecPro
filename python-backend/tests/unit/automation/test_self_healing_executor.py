@@ -25,11 +25,13 @@ def mock_browser_pool():
     mock_locator.count = AsyncMock(return_value=1)
     mock_locator.click = AsyncMock()
     mock_locator.fill = AsyncMock()
+    mock_locator.set_input_files = AsyncMock()
     mock_locator.inner_text = AsyncMock(return_value="result text")
     mock_page.locator = MagicMock(return_value=mock_locator)
     mock_page.get_by_role = MagicMock(return_value=mock_locator)
     mock_page.screenshot = AsyncMock(return_value=b"\x89PNG\r\n" + b"\x00" * 50)
     mock_page.goto = AsyncMock()
+    mock_page.evaluate = AsyncMock(return_value="clipboard text")
     mock_context.new_page = AsyncMock(return_value=mock_page)
 
     pool = AsyncMock()
@@ -125,6 +127,114 @@ class TestSuccessfulExecution:
             status_callback=status_callback,
         )
         assert result.credits_used == 0  # No healing needed
+
+    async def test_upload_action_uses_set_input_files(
+        self, executor, mock_browser_pool, status_callback
+    ):
+        script = PlaywrightScript(
+            url="http://example.com",
+            goal="upload a file",
+            actions=[
+                PlaywrightAction(
+                    action_type="upload",
+                    selector_css="input[type=file]",
+                    selector_strategies=["input[type=file]"],
+                    description="Upload report",
+                    confidence=0.9,
+                    value="/tmp/report.csv",
+                ),
+            ],
+        )
+
+        await executor.execute(
+            script=script,
+            execution_id="exec-1",
+            tenant_id="t1",
+            allowed_domains=["example.com"],
+            status_callback=status_callback,
+        )
+
+        mock_browser_pool._mock_locator.set_input_files.assert_awaited_once_with(
+            "/tmp/report.csv"
+        )
+
+    async def test_clipboard_actions_use_page_evaluate(
+        self, executor, mock_browser_pool, status_callback
+    ):
+        mock_browser_pool._mock_page.locator = MagicMock(
+            side_effect=AssertionError("clipboard actions should not need a locator")
+        )
+        script = PlaywrightScript(
+            url="http://example.com",
+            goal="copy and read clipboard",
+            actions=[
+                PlaywrightAction(
+                    action_type="clipboard_write",
+                    selector_css="clipboard_write",
+                    selector_strategies=["clipboard_write"],
+                    description="Copy result",
+                    confidence=0.9,
+                    value="secret token",
+                ),
+                PlaywrightAction(
+                    action_type="clipboard_read",
+                    selector_css="clipboard_read",
+                    selector_strategies=["clipboard_read"],
+                    description="Read clipboard",
+                    confidence=0.9,
+                ),
+            ],
+        )
+
+        result = await executor.execute(
+            script=script,
+            execution_id="exec-1",
+            tenant_id="t1",
+            allowed_domains=["example.com"],
+            status_callback=status_callback,
+        )
+
+        mock_browser_pool._mock_page.evaluate.assert_any_await(
+            "(value) => navigator.clipboard.writeText(value)",
+            "secret token",
+        )
+        mock_browser_pool._mock_page.evaluate.assert_any_await(
+            "() => navigator.clipboard.readText()"
+        )
+        assert result.extracted_data == {"Read clipboard": "clipboard text"}
+
+    async def test_goto_action_does_not_require_locator_lookup(
+        self, executor, mock_browser_pool, status_callback
+    ):
+        mock_browser_pool._mock_page.locator = MagicMock(
+            side_effect=AssertionError("goto should not need a locator")
+        )
+        script = PlaywrightScript(
+            url="http://example.com",
+            goal="navigate elsewhere",
+            actions=[
+                PlaywrightAction(
+                    action_type="goto",
+                    selector_css="https://example.com/dashboard",
+                    selector_strategies=["https://example.com/dashboard"],
+                    description="Go to dashboard",
+                    confidence=0.9,
+                    value="https://example.com/dashboard",
+                ),
+            ],
+        )
+
+        await executor.execute(
+            script=script,
+            execution_id="exec-1",
+            tenant_id="t1",
+            allowed_domains=["example.com"],
+            status_callback=status_callback,
+        )
+
+        mock_browser_pool._mock_page.goto.assert_awaited_once_with(
+            "https://example.com/dashboard"
+        )
 
 
 class TestHealingLoop:

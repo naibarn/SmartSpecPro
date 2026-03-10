@@ -21,12 +21,14 @@ def mock_browser_pool():
     mock_locator.count = AsyncMock(return_value=1)
     mock_locator.click = AsyncMock()
     mock_locator.fill = AsyncMock()
+    mock_locator.set_input_files = AsyncMock()
     mock_locator.inner_text = AsyncMock(return_value="result text")
 
     async def goto_side_effect(url: str):
         mock_page.url = url
 
     mock_page.goto = AsyncMock(side_effect=goto_side_effect)
+    mock_page.evaluate = AsyncMock(return_value="clipboard text")
     mock_page.locator = MagicMock(return_value=mock_locator)
     mock_page.on = MagicMock(
         side_effect=lambda event_name, handler: event_handlers.setdefault(event_name, []).append(handler)
@@ -264,3 +266,62 @@ async def test_executor_stops_when_policy_blocks_action(
         )
 
     mock_browser_pool._mock_locator.click.assert_not_awaited()
+
+
+async def test_executor_tracks_live_transfer_actions_in_policy_state(
+    mock_browser_pool,
+    mock_selector_cache,
+    status_callback,
+):
+    transfer_snapshots: list[tuple[str, int]] = []
+
+    async def capture_before_action(*, action, state, **_kwargs):
+        transfer_snapshots.append((action.action_type, state.external_send_count))
+
+    policy_client = AsyncMock()
+    policy_client.enforce_before_action = AsyncMock(side_effect=capture_before_action)
+    policy_client.enforce_transition = AsyncMock()
+
+    executor = SelfHealingExecutor(
+        browser_pool=mock_browser_pool,
+        selector_cache=mock_selector_cache,
+        policy_client=policy_client,
+    )
+    script = PlaywrightScript(
+        url="https://example.com/start",
+        goal="upload and copy data",
+        actions=[
+            PlaywrightAction(
+                action_type="upload",
+                selector_css="input[type=file]",
+                selector_strategies=["input[type=file]"],
+                description="Upload report",
+                confidence=0.9,
+                value="/tmp/report.csv",
+            ),
+            PlaywrightAction(
+                action_type="clipboard_write",
+                selector_css="clipboard_write",
+                selector_strategies=["clipboard_write"],
+                description="Copy summary",
+                confidence=0.9,
+                value="summary text",
+            ),
+        ],
+    )
+
+    await executor.execute(
+        script=script,
+        execution_id="exec-1",
+        tenant_id="tenant-1",
+        allowed_domains=["example.com"],
+        status_callback=status_callback,
+    )
+
+    assert transfer_snapshots == [
+        ("upload", 0),
+        ("clipboard_write", 1),
+    ]
+    mock_browser_pool._mock_locator.set_input_files.assert_awaited_once_with(
+        "/tmp/report.csv"
+    )

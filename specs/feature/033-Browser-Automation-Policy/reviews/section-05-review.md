@@ -5,9 +5,9 @@
 
 ## Findings
 
-- No correctness issues found in the landed helper-layer diff after targeted Node and Python tests passed.
+- No correctness issues found in the landed helper-layer plus executor transfer-primitives diff after targeted Python tests passed.
 
 ## Risks kept open
 
-- Live browser dispatch still does not call the shared policy engine on every action and transition, so these controls are not yet active in the production executor path.
+- Live browser dispatch now covers upload and clipboard primitives, but download remains event-driven and iframe interactions still do not carry frame-scoped destination context into dispatch-time policy evaluation.
 - Threshold enforcement is currently deterministic helper logic driven by caller-supplied counts; Redis-backed counters are still pending.

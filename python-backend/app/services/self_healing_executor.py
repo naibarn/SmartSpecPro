@@ -208,35 +208,49 @@ class SelfHealingExecutor:
                 previous_origin = (
                     self._get_origin(previous_url) or policy_state.current_origin
                 )
-                locator = page.locator(action.selector_css)
-                count = await locator.count()
-                if count == 0:
-                    raise SelectorNotFoundError(
-                        f"Selector '{action.selector_css}' found 0 elements"
-                    )
 
-                if action.action_type == "click":
-                    await locator.click()
-                elif action.action_type == "fill":
-                    await locator.fill(action.value or "")
-                elif action.action_type == "select":
-                    await locator.select_option(action.value or "")
-                elif action.action_type == "hover":
-                    await locator.hover()
-                elif action.action_type == "extract_data":
-                    # Use only built-in locator methods (ADR-031-002)
-                    text = await locator.inner_text()
-                    extracted_data[action.description] = text
-                elif action.action_type == "goto":
+                if action.action_type == "goto":
                     await page.goto(action.value or action.selector_css)
+                elif action.action_type == "clipboard_write":
+                    await page.evaluate(
+                        "(value) => navigator.clipboard.writeText(value)",
+                        action.value or "",
+                    )
+                elif action.action_type == "clipboard_read":
+                    text = await page.evaluate("() => navigator.clipboard.readText()")
+                    extracted_data[action.description] = (
+                        text if isinstance(text, str) else str(text)
+                    )
                 else:
-                    await locator.click()  # Default to click
+                    locator = page.locator(action.selector_css)
+                    count = await locator.count()
+                    if count == 0:
+                        raise SelectorNotFoundError(
+                            f"Selector '{action.selector_css}' found 0 elements"
+                        )
+
+                    if action.action_type == "click":
+                        await locator.click()
+                    elif action.action_type == "fill":
+                        await locator.fill(action.value or "")
+                    elif action.action_type == "select":
+                        await locator.select_option(action.value or "")
+                    elif action.action_type == "upload":
+                        await locator.set_input_files(action.value or "")
+                    elif action.action_type == "hover":
+                        await locator.hover()
+                    elif action.action_type == "extract_data":
+                        # Use only built-in locator methods (ADR-031-002)
+                        text = await locator.inner_text()
+                        extracted_data[action.description] = text
+                    else:
+                        await locator.click()  # Default to click
 
                 if action.action_type not in {"goto", "extract_data"}:
                     policy_state.non_read_action_count += 1
                 if action.action_type == "extract_data":
                     policy_state.extracted_record_count = len(extracted_data)
-                if action.action_type == "upload":
+                if action.action_type in {"upload", "clipboard_write", "external_send"}:
                     policy_state.external_send_count += 1
 
                 next_url = self._get_page_url(page)

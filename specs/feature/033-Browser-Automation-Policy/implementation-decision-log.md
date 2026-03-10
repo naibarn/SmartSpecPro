@@ -73,3 +73,12 @@
 - decision taken: attach lightweight Playwright event watchers now and feed synthetic transition/prompt actions through the existing Node-owned policy client
 - mode used: auto
 - rationale: the current executor already exposes the relevant Playwright `page.on(...)` hooks, so waiting for a larger execution refactor would leave an avoidable runtime gap. Synthetic popup/frame transitions and prompt/file/download surfaces reuse the existing policy contract with a small diff and keep healing retries compatible by sharing one page-level event queue.
+
+### Live transfer primitive coverage
+- section: 05
+- options considered:
+  - leave upload and clipboard actions as policy-only concepts until the generator and executor gain a richer transfer model
+  - implement the current executor primitives now for `upload`, `clipboard_write`, and `clipboard_read`, and thread their counter semantics through the existing policy client
+- decision taken: implement the current executor primitives now for `upload`, `clipboard_write`, and `clipboard_read`, and thread their counter semantics through the existing policy client
+- mode used: auto
+- rationale: section 05 already has the transfer policy logic and thresholds, but the live executor only knew generic DOM actions. Adding the existing Playwright-backed upload and clipboard primitives is a small, reversible diff that activates real policy-controlled transfer behavior now without inventing a larger DSL or Redis-backed counter layer first.
