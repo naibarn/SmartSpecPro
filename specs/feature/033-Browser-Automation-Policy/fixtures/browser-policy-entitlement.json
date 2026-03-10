@@ -1,0 +1,16 @@
+{
+  "tenantId": "tenant-123",
+  "workflowId": 42,
+  "workflowName": "Browser QA Workflow",
+  "enabled": true,
+  "reviewCadenceDays": 90,
+  "allowedCapabilities": ["navigate", "extract_data", "upload_file"],
+  "forbiddenCapabilities": ["download_file"],
+  "allowedDataClasses": ["public", "internal"],
+  "config": {
+    "approvalTtlSeconds": 300,
+    "maxExtractedRecords": 100,
+    "maxExternalSends": 5,
+    "maxOriginTransitions": 4
+  }
+}

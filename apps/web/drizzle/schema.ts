@@ -95,6 +95,31 @@ export const policyActionEnum = pgEnum("policy_action", [
   "require_approval",
 ]);
 
+export const browserPolicyDecisionEnum = pgEnum("browser_policy_decision", [
+  "allow",
+  "allow_with_redaction",
+  "require_approval",
+  "deny",
+  "escalate_for_review",
+]);
+
+export const browserActionClassEnum = pgEnum("browser_action_class", [
+  "read",
+  "draft",
+  "commit",
+  "restricted",
+]);
+
+export const browserPageSensitivityEnum = pgEnum("browser_page_sensitivity", [
+  "none",
+  "auth",
+  "financial",
+  "admin",
+  "sensitive_data",
+  "communication",
+  "code",
+]);
+
 // Credit source type enum — categorizes what generated a credit transaction
 export const creditSourceTypeEnum = pgEnum("credit_source_type", [
   "chat",
@@ -3689,6 +3714,78 @@ export const workflowPolicyRules = pgTable("workflow_policy_rules", {
 
 export type WorkflowPolicyRule = typeof workflowPolicyRules.$inferSelect;
 export type InsertWorkflowPolicyRule = typeof workflowPolicyRules.$inferInsert;
+
+export const tenantBrowserPolicyConfig = pgTable("tenant_browser_policy_config", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().unique().references(() => tenants.id, { onDelete: "cascade" }),
+  enabled: boolean("enabled").default(true).notNull(),
+  enforcementMode: varchar("enforcementMode", { length: 32 }).default("observe").notNull(),
+  defaultApprovalTtlSeconds: integer("defaultApprovalTtlSeconds").default(300).notNull(),
+  reviewCadenceDays: integer("reviewCadenceDays").default(90).notNull(),
+  killSwitchEnabled: boolean("killSwitchEnabled").default(false).notNull(),
+  requireTamperEvidence: boolean("requireTamperEvidence").default(true).notNull(),
+  evidenceRetentionDays: integer("evidenceRetentionDays").default(365).notNull(),
+  allowedDomains: jsonb("allowedDomains").$type<string[]>().default([]).notNull(),
+  visionModel: varchar("visionModel", { length: 100 }).default("gpt-4o").notNull(),
+  seededDefault: boolean("seededDefault").default(false).notNull(),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("tenant_browser_policy_config_tenant_idx").on(t.tenantId),
+  check("tenant_browser_policy_config_ttl_bounds", sql`${t.defaultApprovalTtlSeconds} >= 60 AND ${t.defaultApprovalTtlSeconds} <= 900`),
+]);
+
+export type TenantBrowserPolicyConfig = typeof tenantBrowserPolicyConfig.$inferSelect;
+export type InsertTenantBrowserPolicyConfig = typeof tenantBrowserPolicyConfig.$inferInsert;
+
+export const tenantBrowserPolicyRules = pgTable("tenant_browser_policy_rules", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  priority: integer("priority").default(100).notNull(),
+  enabled: boolean("enabled").default(true).notNull(),
+  description: text("description"),
+  match: jsonb("match").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+  thresholds: jsonb("thresholds").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+  decision: browserPolicyDecisionEnum("decision").notNull(),
+  reasonCode: varchar("reasonCode", { length: 100 }).notNull(),
+  actionClass: browserActionClassEnum("actionClass"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("tenant_browser_policy_rules_tenant_idx").on(t.tenantId),
+  index("tenant_browser_policy_rules_priority_idx").on(t.tenantId, t.priority),
+  index("tenant_browser_policy_rules_enabled_idx").on(t.tenantId, t.enabled),
+]);
+
+export type TenantBrowserPolicyRule = typeof tenantBrowserPolicyRules.$inferSelect;
+export type InsertTenantBrowserPolicyRule = typeof tenantBrowserPolicyRules.$inferInsert;
+
+export const browserWorkflowEntitlements = pgTable("browser_workflow_entitlements", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  workflowId: integer("workflowId").notNull().references(() => workflows.id, { onDelete: "cascade" }),
+  workflowName: varchar("workflowName", { length: 255 }).notNull(),
+  businessOwner: varchar("businessOwner", { length: 255 }),
+  technicalOwner: varchar("technicalOwner", { length: 255 }),
+  riskRating: varchar("riskRating", { length: 32 }).default("medium").notNull(),
+  allowedCapabilities: jsonb("allowedCapabilities").$type<string[]>().default([]).notNull(),
+  forbiddenCapabilities: jsonb("forbiddenCapabilities").$type<string[]>().default([]).notNull(),
+  allowedDataClasses: jsonb("allowedDataClasses").$type<string[]>().default(["public", "internal"]).notNull(),
+  config: jsonb("config").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+  enabled: boolean("enabled").default(true).notNull(),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }),
+  reviewCadenceDays: integer("reviewCadenceDays").default(90).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("uq_browser_workflow_entitlements_tenant_workflow").on(t.tenantId, t.workflowId),
+  index("browser_workflow_entitlements_tenant_idx").on(t.tenantId),
+  index("browser_workflow_entitlements_workflow_idx").on(t.workflowId),
+]);
+
+export type BrowserWorkflowEntitlement = typeof browserWorkflowEntitlements.$inferSelect;
+export type InsertBrowserWorkflowEntitlement = typeof browserWorkflowEntitlements.$inferInsert;
 
 // Cloud Task Events — Tracks Cloud Tasks execution for observability and DLQ
 export const cloudTaskEvents = pgTable("cloud_task_events", {
