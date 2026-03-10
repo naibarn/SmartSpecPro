@@ -47,6 +47,12 @@ export interface BrowserPolicyLookupOptions {
   seededConfig?: Partial<BrowserPolicyConfig> | null;
 }
 
+export interface TenantBrowserPolicyConfigResult {
+  config: BrowserPolicyConfig | null;
+  rules: BrowserPolicyRule[];
+  source: "db" | "seeded";
+}
+
 export function buildSeededBrowserPolicyConfig(
   overrides: Partial<BrowserPolicyConfig> = {},
 ): BrowserPolicyConfig {
@@ -116,36 +122,27 @@ export function resolveBrowserPolicyState(
   };
 }
 
-export async function lookupBrowserPolicyState(
-  options: BrowserPolicyLookupOptions,
-): Promise<BrowserPolicyLookupResult> {
+export async function loadTenantBrowserPolicyConfig(options: {
+  tenantId: string;
+  seededConfig?: Partial<BrowserPolicyConfig> | null;
+}): Promise<TenantBrowserPolicyConfigResult> {
   const db = await getDb();
   if (!db) {
-    return resolveBrowserPolicyState({
-      seededConfig: options.seededConfig ?? null,
+    return {
+      config:
+        options.seededConfig == null
+          ? null
+          : buildSeededBrowserPolicyConfig(options.seededConfig),
       rules: [],
-      entitlement: null,
-      now: options.now,
-      requiredCapabilities: options.requiredCapabilities,
-      config: null,
-    });
+      source: "seeded",
+    };
   }
 
-  const [configRow, entitlementRow, ruleRows] = await Promise.all([
+  const [configRow, ruleRows] = await Promise.all([
     db
       .select()
       .from(tenantBrowserPolicyConfig)
       .where(eq(tenantBrowserPolicyConfig.tenantId, options.tenantId))
-      .limit(1),
-    db
-      .select()
-      .from(browserWorkflowEntitlements)
-      .where(
-        and(
-          eq(browserWorkflowEntitlements.tenantId, options.tenantId),
-          eq(browserWorkflowEntitlements.workflowId, options.workflowId),
-        ),
-      )
       .limit(1),
     db
       .select()
@@ -167,7 +164,59 @@ export async function lookupBrowserPolicyState(
         visionModel: configRow[0].visionModel,
         seededDefault: configRow[0].seededDefault,
       })
-    : null;
+    : options.seededConfig == null
+      ? null
+      : buildSeededBrowserPolicyConfig(options.seededConfig);
+
+  const rules = ruleRows.map((row) => ({
+    id: row.id,
+    priority: row.priority,
+    enabled: row.enabled,
+    description: row.description ?? undefined,
+    match: row.match ?? {},
+    decision: row.decision,
+    reasonCode: row.reasonCode,
+    actionClass: row.actionClass ?? undefined,
+  })) satisfies BrowserPolicyRule[];
+
+  return {
+    config,
+    rules,
+    source: configRow[0] ? "db" : "seeded",
+  };
+}
+
+export async function lookupBrowserPolicyState(
+  options: BrowserPolicyLookupOptions,
+): Promise<BrowserPolicyLookupResult> {
+  const db = await getDb();
+  if (!db) {
+    return resolveBrowserPolicyState({
+      seededConfig: options.seededConfig ?? null,
+      rules: [],
+      entitlement: null,
+      now: options.now,
+      requiredCapabilities: options.requiredCapabilities,
+      config: null,
+    });
+  }
+
+  const [{ config, rules }, entitlementRow] = await Promise.all([
+    loadTenantBrowserPolicyConfig({
+      tenantId: options.tenantId,
+      seededConfig: options.seededConfig ?? null,
+    }),
+    db
+      .select()
+      .from(browserWorkflowEntitlements)
+      .where(
+        and(
+          eq(browserWorkflowEntitlements.tenantId, options.tenantId),
+          eq(browserWorkflowEntitlements.workflowId, options.workflowId),
+        ),
+      )
+      .limit(1),
+  ]);
 
   const entitlement = entitlementRow[0]
     ? normalizeBrowserWorkflowEntitlement({
@@ -183,17 +232,6 @@ export async function lookupBrowserPolicyState(
         config: entitlementRow[0].config ?? {},
       })
     : null;
-
-  const rules = ruleRows.map((row) => ({
-    id: row.id,
-    priority: row.priority,
-    enabled: row.enabled,
-    description: row.description ?? undefined,
-    match: row.match ?? {},
-    decision: row.decision,
-    reasonCode: row.reasonCode,
-    actionClass: row.actionClass ?? undefined,
-  })) satisfies BrowserPolicyRule[];
 
   return resolveBrowserPolicyState({
     config,

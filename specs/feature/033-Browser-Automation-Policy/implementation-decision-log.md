@@ -46,3 +46,30 @@
 - decision taken: encode the approved thresholds and rollback posture now as executable helpers, while recording raw-SQL and deployment integration as follow-up work
 - mode used: auto
 - rationale: threshold math and rollback posture are stable product rules that benefit from immediate executable tests. The raw SQL partition path and deployment orchestration remain separate operational work items and should stay explicit rather than implied.
+
+### Live execution policy seam
+- section: 04
+- options considered:
+  - continue treating the browser-policy helpers as pre-runtime modules until a workflow-backed entitlement identity exists
+  - introduce an execution-scoped Automation Copilot policy context and a Node-owned internal evaluation endpoint so the Python executor can enforce decisions immediately
+- decision taken: introduce an execution-scoped Automation Copilot policy context and a Node-owned internal evaluation endpoint so the Python executor can enforce decisions immediately
+- mode used: auto
+- rationale: the repo already supports authenticated Python-to-Node internal calls, while Automation Copilot still lacks a stable workflow entitlement ID. An execution-scoped context keeps the runtime decision authority in Node, enables pre-dispatch and transition enforcement now, and fails closed for higher-risk capabilities that are not explicitly granted.
+
+### Approval wait strategy
+- section: 04
+- options considered:
+  - fail every `require_approval` decision immediately and leave human approval as a separate follow-up
+  - create approval requests from the live executor and wait on the existing approval DB state before dispatching the action
+- decision taken: create approval requests from the live executor and wait on the existing approval DB state before dispatching the action
+- mode used: auto
+- rationale: this reuses the existing approval system and polling model without inventing a second browser-specific approval transport. It keeps risky actions blocked until approved while preserving the current two-stack architecture.
+
+### Executor event-surface enforcement
+- section: 04
+- options considered:
+  - keep popup, iframe, and prompt events as documented follow-up work until the executor exposes richer native primitives
+  - attach lightweight Playwright event watchers now and feed synthetic transition/prompt actions through the existing Node-owned policy client
+- decision taken: attach lightweight Playwright event watchers now and feed synthetic transition/prompt actions through the existing Node-owned policy client
+- mode used: auto
+- rationale: the current executor already exposes the relevant Playwright `page.on(...)` hooks, so waiting for a larger execution refactor would leave an avoidable runtime gap. Synthetic popup/frame transitions and prompt/file/download surfaces reuse the existing policy contract with a small diff and keep healing retries compatible by sharing one page-level event queue.

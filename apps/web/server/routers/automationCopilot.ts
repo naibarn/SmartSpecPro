@@ -21,6 +21,7 @@ import {
   refundReservation,
 } from "../services/creditService";
 import { getRedisClient, isRedisAvailable } from "../services/redis";
+import { buildAutomationCopilotBrowserPolicyContext } from "../services/browserPolicyRuntime";
 import { getTenantFeatureFlag } from "../services/featureFlags";
 
 const PY_URL =
@@ -253,6 +254,12 @@ export const automationCopilotRouter = router({
         // Use default
       }
 
+      const browserPolicyContext = await buildAutomationCopilotBrowserPolicyContext({
+        tenantId,
+        executionId: input.executionId,
+        allowedDomains,
+      });
+
       const res = await callPythonBackend(`${AUTOMATION_PREFIX}/execute`, {
         method: "POST",
         body: {
@@ -264,6 +271,7 @@ export const automationCopilotRouter = router({
           user_id: ctx.user.id,
           vision_model: visionModel,
           allowed_domains: allowedDomains,
+          browser_policy_context: browserPolicyContext,
           reservation_id: reservation.reservationId,
         },
         timeoutMs: 60_000,

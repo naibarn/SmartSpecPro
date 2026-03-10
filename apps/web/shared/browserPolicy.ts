@@ -114,6 +114,12 @@ export const browserApprovalPayloadSchema = z.object({
     .max(BROWSER_APPROVAL_TTL_MAX_SECONDS),
 });
 
+export const browserPolicyExecutionContextSchema = z.object({
+  config: browserPolicyConfigSchema,
+  rules: z.array(browserPolicyRuleSchema).default([]),
+  entitlement: browserWorkflowEntitlementSchema,
+});
+
 export const browserPolicyDecisionEnvelopeSchema = z.object({
   version: z.literal("2026-03-10"),
   tenantId: z.string().min(1),
@@ -148,6 +154,7 @@ export type BrowserPolicyRule = z.infer<typeof browserPolicyRuleSchema>;
 export type BrowserWorkflowEntitlement = z.infer<typeof browserWorkflowEntitlementSchema>;
 export type BrowserWorkflowEntitlementConfig = z.infer<typeof browserWorkflowEntitlementConfigSchema>;
 export type BrowserApprovalPayload = z.infer<typeof browserApprovalPayloadSchema>;
+export type BrowserPolicyExecutionContext = z.infer<typeof browserPolicyExecutionContextSchema>;
 export type BrowserPolicyDecision = z.infer<typeof browserPolicyDecisionSchema>;
 export type BrowserActionClass = z.infer<typeof browserActionClassSchema>;
 export type BrowserPageSensitivity = z.infer<typeof browserPageSensitivitySchema>;
@@ -164,6 +171,12 @@ export function normalizeBrowserWorkflowEntitlement(
   entitlement: Partial<BrowserWorkflowEntitlement>,
 ): BrowserWorkflowEntitlement {
   return browserWorkflowEntitlementSchema.parse(entitlement);
+}
+
+export function normalizeBrowserPolicyExecutionContext(
+  context: Partial<BrowserPolicyExecutionContext>,
+): BrowserPolicyExecutionContext {
+  return browserPolicyExecutionContextSchema.parse(context);
 }
 
 export function validateBrowserApprovalTtlSeconds(ttl: number | null | undefined): number {

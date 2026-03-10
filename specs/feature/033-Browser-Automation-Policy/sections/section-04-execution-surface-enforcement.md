@@ -87,20 +87,33 @@ Approval and policy status changes should surface through existing polling flows
 ### Actual files changed
 
 - `apps/web/server/services/browserPolicyLaunchGuard.ts`
+- `apps/web/server/routes/browserPolicy.ts`
 - `apps/web/server/routes/browserTool.ts`
+- `apps/web/server/routers/automationCopilot.ts`
+- `apps/web/server/services/browserPolicyRuntime.ts`
+- `apps/web/server/services/browserPolicyStore.ts`
+- `apps/web/server/services/__tests__/browserPolicyRuntime.test.ts`
+- `apps/web/shared/browserPolicy.ts`
+- `python-backend/app/api/automation_copilot.py`
+- `python-backend/app/services/browser_policy_contract.py`
+- `python-backend/app/services/browser_policy_node_client.py`
+- `python-backend/app/services/self_healing_executor.py`
+- `python-backend/app/tasks/automation_copilot_task.py`
+- `python-backend/tests/test_self_healing_executor_policy_hooks.py`
 - `apps/web/server/__tests__/browserToolLaunchGuard.test.ts`
 - `apps/web/server/__tests__/browserToolDomainValidation.test.ts`
 
 ### Deviations from plan
 
-- Only the raw-browser launch guard portion landed in this pass.
-- Automation Copilot still lacks a live, action-by-action Node policy callback because the current execute request does not carry workflow entitlement identity and the Python executor does not yet invoke a Node-owned policy seam per dispatch.
+- The runtime hook uses an execution-scoped Automation Copilot policy context rather than a persisted workflow entitlement ID because the current Copilot execute path still has no stable workflow identity.
+- Pre-dispatch, URL transition, popup, iframe-navigation, and dialog/file-picker/download re-evaluation now run through a Node-owned internal policy endpoint, but the context still remains execution-scoped rather than workflow-backed.
 
 ### Tests added or updated
 
 - `npm --prefix apps/web test -- server/__tests__/browserToolLaunchGuard.test.ts server/__tests__/browserToolDomainValidation.test.ts`
+- `npm --prefix apps/web test -- server/routers/__tests__/automationCopilot.test.ts server/services/__tests__/browserPolicyRuntime.test.ts`
+- `UV_CACHE_DIR=/tmp/uv-cache DEBUG=false uv run --project python-backend pytest python-backend/tests/test_self_healing_executor_policy_hooks.py python-backend/tests/unit/automation/test_self_healing_executor.py python-backend/tests/unit/automation/test_automation_copilot.py`
 
 ### Known follow-ups
 
-- Wire the Automation Copilot execution path to the shared browser policy contract immediately before live action dispatch.
-- Add Python executor hooks for navigation, popup, redirect, frame, and prompt re-evaluation.
+- Replace the execution-scoped fallback entitlement with a persisted workflow/browser entitlement identity once the Copilot path can carry one.

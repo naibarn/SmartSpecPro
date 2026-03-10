@@ -45,8 +45,15 @@
   blocked_summary: `sec06-live-audit-persistence`, `sec06-live-incident-plumbing`
 
 - section: section-07-rollout-migrations-and-release-gates
-  commit: pending
+  commit: `35072ee`
   test_command: `npm --prefix apps/web test -- drizzle/browserPolicyMigrations.test.ts server/__tests__/browserPolicyRolloutGates.test.ts server/__tests__/browserPolicyReleaseReadiness.test.ts` and `UV_CACHE_DIR=/tmp/uv-cache DEBUG=false uv run --project python-backend pytest python-backend/tests/integration/test_browser_policy_rollout.py python-backend/tests/integration/test_browser_policy_rollback.py`
   pass_fail: partial-pass
   notable_deviations: executable rollout and rollback helpers landed first, but raw SQL partition DDL and deployment-time gate invocation remain follow-up operational work
   blocked_summary: `sec07-raw-sql-partition-migration`, `sec07-release-gate-integration`
+
+- section: section-04-execution-surface-enforcement follow-up
+  commit: `pending`
+  test_command: `npm --prefix apps/web test -- server/routers/__tests__/automationCopilot.test.ts server/services/__tests__/browserPolicyRuntime.test.ts` and `UV_CACHE_DIR=/tmp/uv-cache DEBUG=false uv run --project python-backend pytest python-backend/tests/test_self_healing_executor_policy_hooks.py python-backend/tests/unit/automation/test_self_healing_executor.py python-backend/tests/unit/automation/test_automation_copilot.py`
+  pass_fail: pass
+  notable_deviations: used an execution-scoped Automation Copilot browser-policy context instead of a persisted workflow entitlement so the Python executor can call a Node-owned policy endpoint immediately before dispatch, on URL transitions, and on popup/iframe/prompt surfaces without a second runtime contract
+  blocked_summary: `sec05-live-transfer-enforcement`, `sec05-redis-action-counters`, `sec06-live-audit-persistence`, `sec06-live-incident-plumbing`, `sec07-raw-sql-partition-migration`, `sec07-release-gate-integration`

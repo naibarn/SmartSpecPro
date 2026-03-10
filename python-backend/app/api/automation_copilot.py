@@ -79,6 +79,7 @@ class ExecuteRequest(BaseModel):
     user_id: int
     vision_model: str = Field(default="gpt-4o", max_length=100)
     allowed_domains: list[str] = Field(default_factory=list)
+    browser_policy_context: dict | None = None
     reservation_id: str | None = None
 
 
@@ -196,6 +197,7 @@ async def execute(
         body.intent_json,
         body.vision_model,
         body.allowed_domains,
+        body.browser_policy_context,
         body.reservation_id,
     )
     logger.info("automation_execute_enqueued", task_id=body.task_id, tenant_id=body.tenant_id)

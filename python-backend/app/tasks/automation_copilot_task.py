@@ -160,6 +160,7 @@ def automation_execute_task(
     intent_json: str,
     vision_model: str,
     allowed_domains: list[str],
+    browser_policy_context: dict | None = None,
     reservation_id: str | None = None,
 ) -> dict:
     """Phase 2: Generate scripts + execute with self-healing."""
@@ -167,6 +168,8 @@ def automation_execute_task(
     async def _execute():
         from app.services.automation_copilot import AutomationCopilot, AutomationIntent
         from app.services.browser_pool import get_browser_pool
+        from app.services.browser_policy_contract import BrowserPolicyExecutionContext
+        from app.services.browser_policy_node_client import BrowserPolicyNodeClient
         from app.services.llm_gateway_client import LLMGatewayClient
         from app.services.selector_cache import SelectorCache
         from app.services.playwright_script_generator import PlaywrightScriptGenerator
@@ -184,12 +187,25 @@ def automation_execute_task(
                 selector_cache=cache,
                 gateway_client=gateway,
             )
+            policy_client = (
+                BrowserPolicyNodeClient(
+                    tenant_id=tenant_id,
+                    user_id=user_id,
+                    execution_id=execution_id,
+                    policy_context=BrowserPolicyExecutionContext.model_validate(
+                        browser_policy_context
+                    ),
+                )
+                if browser_policy_context
+                else None
+            )
             executor = SelfHealingExecutor(
                 browser_pool=pool,
                 selector_cache=cache,
                 vision_model=vision_model,
                 redis_client=redis_client,
                 gateway_client=gateway,
+                policy_client=policy_client,
             )
             copilot = AutomationCopilot(
                 script_generator=generator,

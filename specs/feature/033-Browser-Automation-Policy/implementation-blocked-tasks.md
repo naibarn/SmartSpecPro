@@ -5,29 +5,29 @@
 - task_id: sec04-copilot-live-hook
   section: section-04-execution-surface-enforcement
   task: wire Automation Copilot execution to the shared browser policy contract immediately before live action dispatch
-  blocked_by: the current execute request and Python executor do not expose a stable workflow-entitlement identity or a Node-owned action-policy callback per dispatch
-  unblock_condition: add a cross-stack execution seam that carries workflow identity into execution and invokes policy evaluation on each live action / transition
-  status: blocked
+  blocked_by: none
+  unblock_condition: implemented 2026-03-10 via execution-scoped policy context + Node internal evaluation endpoint
+  status: done
   owner_step: section-04 follow-up
-  notes: raw browser launch guard is implemented; live Copilot enforcement is still missing
+  notes: Automation Copilot now passes a Node-owned browser-policy context into Python and evaluates each live action before dispatch
 
 - task_id: sec04-python-transition-hooks
   section: section-04-execution-surface-enforcement
   task: re-evaluate policy on navigation, redirect, popup, frame, and prompt transitions in the Python executor
-  blocked_by: no current per-action policy callback interface exists in the Python executor
-  unblock_condition: introduce a transition hook API in the executor that can consume browser-policy decisions or request them from Node
-  status: blocked
+  blocked_by: none
+  unblock_condition: implemented 2026-03-10 via Playwright popup/frame/dialog/filechooser/download watchers that route synthetic events through the Node-owned policy client
+  status: done
   owner_step: section-04 follow-up
-  notes: required before Sections 05-07 can be honestly completed against live execution
+  notes: URL transitions, popup creation, iframe navigation, and prompt/file/download surfaces now re-check policy before later browser steps continue
 
 - task_id: sec05-live-transfer-enforcement
   section: section-05-data-handling-and-trust-controls
   task: enforce transfer, clipboard, and iframe trust controls on every live browser action and transition
-  blocked_by: the section-04 cross-stack execution seam still does not provide a per-action Node policy callback for the Python executor
-  unblock_condition: wire the live executor through the shared policy callback and invoke section-05 controls before dispatch and on transitions
+  blocked_by: popup/frame/download/file-picker runtime coverage is now live, but explicit clipboard and richer upload/download action primitives are still absent from the executor vocabulary
+  unblock_condition: extend the live executor action vocabulary to clipboard and fully modeled transfer actions so every transfer-capable surface flows through the runtime policy callback
   status: blocked
   owner_step: section-05 follow-up
-  notes: helper-layer logic and tests are in place, but production dispatch is not yet consuming them
+  notes: pre-dispatch policy checks plus popup/frame/file-picker/download surfaces now run live; clipboard and fully modeled transfer actions remain
 
 - task_id: sec05-redis-action-counters
   section: section-05-data-handling-and-trust-controls
@@ -41,20 +41,20 @@
 - task_id: sec06-live-audit-persistence
   section: section-06-audit-observability-and-incident-controls
   task: emit browser-policy audit artifacts from the live decision path into JSONL and structured DB persistence
-  blocked_by: the live browser decision path is not yet centralized, and no dedicated browser-policy decision table exists
-  unblock_condition: complete the per-action execution seam and add the backing decision-storage migration/DDL
+  blocked_by: the per-action execution seam now exists, but there is still no JSONL writer or dedicated browser-policy decision table/partition DDL
+  unblock_condition: attach audit artifact writing to the live Node evaluation path and add the browser-policy decision storage migration
   status: blocked
   owner_step: section-06 follow-up
-  notes: helper-layer artifact builders and integrity verification are implemented
+  notes: runtime enforcement exists; durable audit persistence still does not
 
 - task_id: sec06-live-incident-plumbing
   section: section-06-audit-observability-and-incident-controls
   task: wire kill switches, deny overrides, and approval revocation into live executor dispatch and approval polling
-  blocked_by: missing live execution callback and browser-specific approval endpoint plumbing
-  unblock_condition: connect runtime dispatch and approval status flows to the shared browser-policy helpers
+  blocked_by: pre-dispatch incident checks and approval waits are now wired, but post-approval revocation monitoring and operator-facing polling/status surfaces still need browser-specific runtime coverage
+  unblock_condition: extend the current live seam to approval revocation rechecks and operator-visible status/audit reporting
   status: blocked
   owner_step: section-06 follow-up
-  notes: fail-closed incident helper logic exists, but runtime invocation does not
+  notes: kill-switch and deny logic now executes live through the Node policy runtime; the remaining gap is continuous incident visibility and revocation follow-through
 
 - task_id: sec07-raw-sql-partition-migration
   section: section-07-rollout-migrations-and-release-gates
