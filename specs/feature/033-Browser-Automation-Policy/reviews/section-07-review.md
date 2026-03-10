@@ -5,9 +5,8 @@
 
 ## Findings
 
-- No correctness issues found in the rollout-gate and rollback-readiness helper diff after targeted Node and Python tests passed.
+- No correctness issues found in the rollout-gate, raw-SQL migration, and feature-flag orchestration diff after targeted Node and Python tests passed.
 
 ## Risks kept open
 
-- The migration plan is executable metadata only; raw SQL partition DDL and maintenance jobs are still missing.
-- Release readiness and rollback checks are not yet invoked by deployment or feature-flag control paths.
+- The feature-flag orchestration path currently enforces promotion readiness for `automationCopilot`; if rollout control expands to other browser-policy entry points, they need to reuse the same release-control helper rather than bypassing it.

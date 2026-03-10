@@ -136,3 +136,12 @@
 - decision taken: attach incident and audit metadata to the existing evaluation response and thread it through Python task status updates and denial details
 - mode used: auto
 - rationale: task status polling already exists and is what operators see during Automation Copilot execution. Reusing that path keeps the change local, surfaces trace/event-hash context immediately, and avoids introducing another state channel that could drift from the underlying approval DB.
+
+### Release-gate orchestration hook
+- section: 07
+- options considered:
+  - leave rollout and release-readiness helpers as standalone utilities until a dedicated deployment controller exists
+  - enforce the helpers immediately in tenant feature-flag promotion for `automationCopilot`, sourcing readiness snapshots from Redis-backed control inputs
+- decision taken: enforce the helpers immediately in tenant feature-flag promotion for `automationCopilot`, sourcing readiness snapshots from Redis-backed control inputs
+- mode used: auto
+- rationale: the feature-flag service is already the control plane that promotes tenant-facing browser access today. Reusing it creates a real fail-closed orchestration path now, without inventing a parallel deployment abstraction that the repo does not yet have.

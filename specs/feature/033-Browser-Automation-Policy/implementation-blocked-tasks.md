@@ -68,8 +68,8 @@
 - task_id: sec07-release-gate-integration
   section: section-07-rollout-migrations-and-release-gates
   task: invoke rollout and rollback readiness checks from deployment or feature-flag orchestration
-  blocked_by: no current deployment-control path consumes browser-policy rollout helper results
-  unblock_condition: connect release automation or operator tooling to the browser-policy rollout helpers
-  status: blocked
+  blocked_by: none
+  unblock_condition: implemented 2026-03-10 via feature-flag promotion gating for `automationCopilot` backed by Redis-fed release and rollout readiness snapshots
+  status: done
   owner_step: section-07 follow-up
-  notes: gate and rollback helper logic is implemented and tested in isolation
+  notes: enabling `automationCopilot` now fails closed unless release-readiness and rollout-gate checks pass, giving feature-flag orchestration a concrete consumer of the rollout helpers

@@ -15,6 +15,7 @@ import {
   type TenantFeatureFlagKey,
   type TenantFeatureFlags,
 } from "../../shared/featureFlags";
+import { assertBrowserPolicyFeaturePromotionReady } from "./browserPolicyReleaseControl";
 import { setTenantFeatureFlag } from "./featureFlags";
 
 /**
@@ -134,6 +135,14 @@ export async function updateTenantFeatureFlags(
   tenantId: string,
   flagUpdates: Partial<TenantFeatureFlags>,
 ): Promise<TenantFeatureFlags> {
+  for (const [key, value] of Object.entries(flagUpdates) as [TenantFeatureFlagKey, boolean][]) {
+    await assertBrowserPolicyFeaturePromotionReady({
+      tenantId,
+      flagName: key,
+      nextValue: value,
+    });
+  }
+
   const db = await getDb();
   if (!db) {
     throw new Error("Database unavailable");

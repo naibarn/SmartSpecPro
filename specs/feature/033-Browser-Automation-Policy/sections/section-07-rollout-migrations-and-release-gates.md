@@ -105,8 +105,8 @@ Release readiness must include prompt-injection, deceptive-label, hidden-auth-if
 
 ### Deviations from plan
 
-- Landed executable migration-plan metadata and rollout-gate helpers before wiring them into feature-flag orchestration.
-- The raw SQL partition DDL for `browser_policy_decisions` now exists alongside query typing in Drizzle, while deployment/feature-flag promotion is still the remaining integration step.
+- Used tenant feature-flag promotion for `automationCopilot` as the first concrete orchestration hook, rather than waiting for a separate deployment-control service to exist.
+- The raw SQL partition DDL for `browser_policy_decisions` now exists alongside query typing in Drizzle, and feature-flag promotion consumes rollout plus release-readiness snapshots from Redis-backed control inputs.
 
 ### Tests added or updated
 
@@ -115,4 +115,4 @@ Release readiness must include prompt-injection, deceptive-label, hidden-auth-if
 
 ### Known follow-ups
 
-- Invoke rollout and rollback readiness checks from deployment/feature-flag orchestration before promoting tenant-facing access.
+- Expand the same release-control helper to any future browser-policy entry points beyond `automationCopilot` so rollout gates remain centralized.
