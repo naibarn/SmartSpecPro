@@ -56,12 +56,25 @@ export async function resolveProviders(modelId: string): Promise<ProviderCandida
   return result.candidates;
 }
 
+export interface ProviderHints {
+  /** Prefer this provider ID if available among candidates */
+  preferredProviderId?: number;
+  /** If true and preferredProviderId is set, return null when the pinned provider is unavailable */
+  strictProviderPin?: boolean;
+}
+
 /**
  * Get the first available provider for a model.
  * Tries model_provider_map first, falls back to legacy first-enabled provider.
  * This is a drop-in replacement for the old getActiveLlmProvider() pattern.
+ *
+ * When `hints.preferredProviderId` is set, that provider is preferred among candidates.
+ * When `hints.strictProviderPin` is also true, no other provider will be returned.
  */
-export async function getProviderForModel(modelId: string): Promise<ProviderCandidate | null> {
+export async function getProviderForModel(
+  modelId: string,
+  hints?: ProviderHints,
+): Promise<ProviderCandidate | null> {
   const resolvedModelId = await resolveEnabledLlmModelId([modelId]);
   if (!resolvedModelId) {
     return null;
@@ -70,6 +83,12 @@ export async function getProviderForModel(modelId: string): Promise<ProviderCand
   // 1. Try multi-provider routing
   const candidates = await resolveProviders(resolvedModelId);
   if (candidates.length > 0) {
+    // Apply provider pinning hints
+    if (hints?.preferredProviderId) {
+      const pinned = candidates.find((c) => c.providerId === hints.preferredProviderId);
+      if (pinned) return pinned;
+      if (hints.strictProviderPin) return null; // strict pin: no fallback
+    }
     return candidates[0];
   }
 

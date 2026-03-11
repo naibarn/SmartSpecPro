@@ -16,21 +16,25 @@ If skill invocations do not honor skill policy today, any future auto-routing la
 
 ## Primary files
 
-- `apps/web/server/routers/chat.ts`
-- `apps/web/server/services/skillRegistry.ts`
-- `packages/skills/src/types.ts`
-- `packages/skills/src/parser.ts`
+- `apps/web/server/routers/chat.ts` — Modified: uses `resolveSkillExecutionPolicy` + provider hints
+- `apps/web/server/services/skillExecutionPolicy.ts` — **NEW**: policy resolver
+- `apps/web/server/services/skillExecutionPolicy.test.ts` — **NEW**: 9 tests
+- `apps/web/server/services/enabledLlmModels.ts` — Modified: exported `loadEnabledLlmModelRows`
+- `apps/web/server/services/llmRouter.ts` — Modified: added `ProviderHints` to `getProviderForModel`
 
 ## Implementation notes
 
-- Introduce a single helper that resolves effective skill execution policy for chat-driven skill runs.
-- Make conversation model apply only to direct chat, not to skill invocation, unless future policy explicitly allows it.
-- Preserve backward compatibility for skills that still only expose legacy fields such as `defaultModel` or `llmModelId`, but map them into the new capability-first policy bridge.
-- Keep the immediate design small: do not add full planner logic here.
+- Introduced `resolveSkillExecutionPolicy()` helper that resolves the effective model for chat-driven skill runs with priority: skill.llmModelId > skill.defaultModel > conversationModel > system default.
+- Conversation model applies only to direct chat, not to skill invocation (reversed from previous behavior where conversation model had priority).
+- Preserved backward compatibility: legacy fields (defaultModel, llmModelId) are mapped through the policy bridge.
+- Extended `getProviderForModel()` with optional `ProviderHints` for preferredProviderId/strictProviderPin — strict pin prevents fallback to other providers.
+- Performance-optimized: single DB call via `loadEnabledLlmModelRows()`, all source detection is in-memory.
+- types.ts and parser.ts were NOT modified — the service-layer bridge is sufficient for section-01. Type-level changes deferred to section-02.
+- skillRegistry.ts was NOT modified — verified `dbSkillToDefinition` already populates all routing fields.
 
 ## Acceptance criteria
 
-1. skill invocation path resolves from skill policy first
-2. direct chat path remains unchanged
-3. provider pin fields are not silently lost in the skill path
-4. tests prove skill execution is no longer conversation-first
+1. ✅ skill invocation path resolves from skill policy first (via `resolveSkillExecutionPolicy`)
+2. ✅ direct chat path remains unchanged (only skill execution block modified in chat.ts)
+3. ✅ provider pin fields are not silently lost (passed as `ProviderHints` to `getProviderForModel`)
+4. ✅ tests prove skill execution is no longer conversation-first (9 tests, key: "does NOT let conversation model override skill llmModelId")

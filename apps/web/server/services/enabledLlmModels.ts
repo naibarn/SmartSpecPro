@@ -79,7 +79,7 @@ export function resolveEnabledLlmModelIdFromRows(input: {
   return rows[0]?.modelId ?? null;
 }
 
-async function loadEnabledLlmModelRows(): Promise<EnabledLlmModelRow[]> {
+export async function loadEnabledLlmModelRows(): Promise<EnabledLlmModelRow[]> {
   const db = await getDb();
   if (!db) {
     return [];

@@ -48,7 +48,7 @@ import { eq, and, like } from "drizzle-orm";
 import { checkRateLimit } from "../middleware/distributedRateLimit";
 import { auditLogger } from "../services/auditLogger";
 import { checkAbuseGuard, hashPrompt } from "../services/abuseGuard";
-import { resolveEnabledLlmModelId } from "../services/enabledLlmModels";
+import { resolveSkillExecutionPolicy } from "../services/skillExecutionPolicy";
 
 // ── Security: forbidden patterns in LLM-generated skillContent ───────────────
 const ISC_FORBIDDEN_PATTERNS = [
@@ -1426,18 +1426,19 @@ export const chatRouter = router({
           llmMessages.push({ role: "user", content: userPrompt || `Use ${skill.name}` });
         }
 
-        // Determine model: conversation model > skill-configured model > enabled default
+        // Determine model: skill policy first, conversation model as fallback
         let conversationModel: string | null | undefined;
-        // 1. Use skill's llmModelId or defaultModel if configured
-        const skillModelId = (skill as any).llmModelId || (skill as any).defaultModel;
-        // 2. Override with conversation model if available (user's active choice)
         if (input.conversationId) {
           const conversation = await getConversationById(input.conversationId, ctx.user.id);
           if (conversation?.model) {
             conversationModel = conversation.model;
           }
         }
-        const llmModel = await resolveEnabledLlmModelId([conversationModel, skillModelId]);
+        const executionPolicy = await resolveSkillExecutionPolicy({
+          skill,
+          conversationModel,
+        });
+        const llmModel = executionPolicy.modelId;
         if (!llmModel) {
           return {
             success: false,
@@ -1450,8 +1451,11 @@ export const chatRouter = router({
           };
         }
 
-        // Resolve provider using the same path as normal chat (with legacy fallback)
-        const provider = await getProviderForModel(llmModel);
+        // Resolve provider, applying skill-level provider pinning hints
+        const provider = await getProviderForModel(llmModel, {
+          preferredProviderId: executionPolicy.preferredProviderId,
+          strictProviderPin: executionPolicy.strictProviderPin,
+        });
         if (!provider) {
           return {
             success: false,
@@ -1464,7 +1468,7 @@ export const chatRouter = router({
           };
         }
 
-        debugLog("Chat", `[executeSkill] LLM skill '${input.skillId}' mode='${executionMode}', model=${llmModel}, providerModel=${provider.providerModelId}, provider=${provider.providerName}, refImages=${refImageUrls.length}`);
+        debugLog("Chat", `[executeSkill] LLM skill '${input.skillId}' mode='${executionMode}', model=${llmModel}, modelSource=${executionPolicy.modelSource}, providerModel=${provider.providerModelId}, provider=${provider.providerName}, refImages=${refImageUrls.length}`);
 
         try {
           // Call provider API directly (same approach as proxyChatWithCredits)
