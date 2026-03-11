@@ -54,6 +54,19 @@ vi.mock("../../services/agencyBridge", () => ({
   },
 }));
 
+const { mockCommitLibraryBackedPreview } = vi.hoisted(() => ({
+  mockCommitLibraryBackedPreview: vi.fn(),
+}));
+
+vi.mock("../../services/agencyCommitService", () => ({
+  AgencyPreviewCommitError: class AgencyPreviewCommitError extends Error {
+    constructor(public code: string, message: string) {
+      super(message);
+    }
+  },
+  commitLibraryBackedPreview: mockCommitLibraryBackedPreview,
+}));
+
 // Mock DB and Drizzle ORM
 const { mockDbSelect, mockDbInsert, mockDbUpdate, mockDbDelete, mockDbTransaction } =
   vi.hoisted(() => ({
@@ -129,6 +142,12 @@ vi.mock("../../../drizzle/schema", () => ({
     isArchived: "isArchived",
     createdAt: "createdAt",
     updatedAt: "updatedAt",
+  },
+  agencyRunArtifacts: {
+    id: "id",
+    runId: "runId",
+    agencyId: "agencyId",
+    tenantId: "tenantId",
   },
   agencyTools: {
     id: "id",
@@ -492,6 +511,125 @@ describe("agencyRouter", () => {
           lifecycleState: "preview_generated",
         }),
       );
+    });
+  });
+
+  describe("commitPreview", () => {
+    it("commits a research preview through the library-backed commit service", async () => {
+      mockBridgeGetRunDetails.mockResolvedValue({
+        runId: "run-001",
+        conversationId: "conv-001",
+        status: "completed",
+        response: "Research preview ready.",
+        creditsUsed: 0,
+        durationMs: 1200,
+        stepAttemptSnapshots: [],
+        structuredResult: {
+          version: "1.0",
+          intent: "research_report",
+          summary: "Research preview ready.",
+          payload: {
+            title: "Market scan",
+            executive_summary: "Demand is rising.",
+            sections: [],
+            key_findings: ["Demand is rising"],
+            recommendations: [],
+          },
+          artifacts: [],
+          references: [],
+          metrics: {},
+        },
+        previewArtifacts: [
+          {
+            id: "artifact-1",
+            intent: "research_report",
+            artifact_type: "report",
+            state: "preview_generated",
+            summary: "Research preview ready.",
+            commit_status: "not_committed",
+            commit_token: "commit-token-1",
+            payload_json: {
+              title: "Market scan",
+              executive_summary: "Demand is rising.",
+              sections: [],
+              key_findings: ["Demand is rising"],
+              recommendations: [],
+            },
+            provenance_json: [],
+            payload_storage_key: null,
+            committed_at: null,
+            expired_at: null,
+          },
+        ],
+      });
+
+      const conversationSelect = {
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([
+              { id: "conv-001", agencyId: "agency-001", userId: 1 },
+            ]),
+          }),
+        }),
+      };
+      const artifactSelect = {
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([
+              {
+                id: "artifact-1",
+                runId: "run-001",
+                tenantId: "tenant-001",
+                commitToken: "commit-token-1",
+                commitStatus: "not_committed",
+                targetType: null,
+                targetId: null,
+              },
+            ]),
+          }),
+        }),
+      };
+      mockDbSelect
+        .mockReturnValueOnce(conversationSelect as any)
+        .mockReturnValueOnce(artifactSelect as any);
+
+      mockCommitLibraryBackedPreview.mockResolvedValue({
+        artifactId: "artifact-1",
+        runId: "run-001",
+        commitToken: "commit-token-1",
+        status: "committed",
+        targetType: "library_item",
+        targetId: "501",
+      });
+
+      const handler = agencyRouter.commitPreview;
+      const result = await handler({
+        ctx: makeCtx(),
+        input: {
+          agencyId: "agency-001",
+          runId: "run-001",
+          artifactId: "artifact-1",
+          commitToken: "commit-token-1",
+        },
+      });
+
+      expect(mockCommitLibraryBackedPreview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          commitToken: "commit-token-1",
+          preview: expect.objectContaining({
+            previewType: "research",
+          }),
+        }),
+      );
+      expect(result).toEqual({
+        ok: true,
+        artifactId: "artifact-1",
+        runId: "run-001",
+        commitToken: "commit-token-1",
+        status: "committed",
+        targetType: "library_item",
+        targetId: "501",
+      });
     });
   });
 

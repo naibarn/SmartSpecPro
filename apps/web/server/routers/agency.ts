@@ -17,6 +17,7 @@ import {
   agencyAgentTools,
   agencyCommunicationFlows,
   agencyConversations,
+  agencyRunArtifacts,
   agencyTools,
   agencyVersions,
   agencyPermissions,
@@ -27,6 +28,10 @@ import {
 import { eq, and, desc, asc, inArray, sql, getTableColumns, count } from "drizzle-orm";
 import { agencyBridge } from "../services/agencyBridge";
 import type { RunResult } from "../services/agencyBridge";
+import {
+  AgencyPreviewCommitError,
+  commitLibraryBackedPreview,
+} from "../services/agencyCommitService";
 import { getTenantFeatureFlag, setTenantFeatureFlag } from "../services/featureFlags";
 import { buildAgencyPreview } from "../services/agencyPreviewService";
 import crypto from "crypto";
@@ -1454,15 +1459,99 @@ export const agencyRouter = router({
     .mutation(async ({ ctx, input }) => {
       const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
       await assertAgencyEnabled(tenantId);
+      const userId = ctx.user!.id;
+      const userToken = ctx.userToken ?? "";
+      const result = await agencyBridge.getRunDetails(input.agencyId, input.runId, userToken);
 
-      return {
-        ok: false,
-        status: "deferred",
-        runId: input.runId,
-        artifactId: input.artifactId,
-        commitToken: input.commitToken,
-        message: `Commit flow for preview ${input.artifactId} is not available until Sections 03-04 are applied`,
-      };
+      if (!result.conversationId) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Run conversation not found",
+        });
+      }
+
+      const [conv] = await db
+        .select()
+        .from(agencyConversations)
+        .where(
+          and(
+            eq(agencyConversations.id, result.conversationId),
+            eq(agencyConversations.agencyId, input.agencyId),
+            eq(agencyConversations.userId, userId),
+          ),
+        )
+        .limit(1);
+
+      if (!conv) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Conversation not found",
+        });
+      }
+
+      const [artifactRecord] = await db
+        .select()
+        .from(agencyRunArtifacts)
+        .where(
+          and(
+            eq(agencyRunArtifacts.id, input.artifactId),
+            eq(agencyRunArtifacts.runId, input.runId),
+            eq(agencyRunArtifacts.agencyId, input.agencyId),
+            eq(agencyRunArtifacts.tenantId, tenantId),
+          ),
+        )
+        .limit(1);
+
+      if (!artifactRecord) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Preview artifact not found",
+        });
+      }
+
+      const matchedArtifact = result.previewArtifacts.find((artifact) => artifact.id === input.artifactId);
+      const preview = matchedArtifact
+        ? buildAgencyPreview({
+          ...result,
+          previewArtifacts: [matchedArtifact],
+        })
+        : null;
+
+      try {
+        const commitResult = await commitLibraryBackedPreview({
+          actor: {
+            userId,
+            tenantId,
+            role: ctx.user?.role,
+          },
+          artifactRecord: {
+            id: artifactRecord.id,
+            runId: artifactRecord.runId,
+            tenantId: artifactRecord.tenantId,
+            commitToken: artifactRecord.commitToken,
+            commitStatus: artifactRecord.commitStatus,
+            targetType: artifactRecord.targetType,
+            targetId: artifactRecord.targetId,
+          },
+          commitToken: input.commitToken,
+          preview,
+        });
+
+        return {
+          ok: true,
+          ...commitResult,
+        };
+      } catch (error) {
+        if (error instanceof AgencyPreviewCommitError) {
+          const code = error.code === "PERMISSION_DENIED"
+            ? "FORBIDDEN"
+            : error.code === "ARTIFACT_NOT_FOUND"
+              ? "NOT_FOUND"
+              : "PRECONDITION_FAILED";
+          throw new TRPCError({ code, message: error.message });
+        }
+        throw error;
+      }
     }),
 
   // --- Admin ---

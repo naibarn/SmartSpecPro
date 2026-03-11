@@ -52,3 +52,26 @@
 - Decision taken: add `agency.commitPreview` now and return a `PRECONDITION_FAILED` placeholder message until the library and deck commit sections land.
 - Mode used: `auto`
 - Rationale: clients now have a stable mutation target from Section 02, while the actual write paths remain isolated to Sections 03-04 as planned.
+
+## Section 03 - Library-backed commit flows
+
+### Decision: Commit research and storyboard previews into markdown library items
+
+- Options considered: create a new dedicated agency artifact table, persist JSON-only committed blobs, or reuse the existing markdown library item path.
+- Decision taken: commit both preview types as `library_items.itemType = "md"` with canonical markdown stored as a `markdown_source` chunk.
+- Mode used: `auto`
+- Rationale: this matches the plan’s Phase 1 contract, reuses the existing document viewer path, and keeps the committed artifact shape compatible with existing library ACL patterns.
+
+### Decision: Use `library_links` on `agency_run_artifact` for idempotent duplicate suppression
+
+- Options considered: rely only on the run artifact commit status, add a new idempotency table, or reuse library source-link dedupe.
+- Decision taken: create library items with `sourceLink = { linkType: "agency_run_artifact", linkId: artifactId }` and treat already committed artifacts with the same token as idempotent.
+- Mode used: `auto`
+- Rationale: `library_links` already gives a tenant-scoped dedupe path that survives retries, while `agency_run_artifacts` remains the audit/state layer for preview lifecycle and target identifiers.
+
+### Decision: Default committed generated artifacts to non-indexed markdown writes
+
+- Options considered: enqueue normal library indexing immediately, block commit until an explicit indexing policy exists, or persist readable markdown without default indexing.
+- Decision taken: write markdown chunks directly without the standard indexing enqueue so committed generated research/storyboard artifacts stay excluded from ordinary RAG retrieval by default in Phase 1.
+- Mode used: `auto`
+- Rationale: the section requires safe default exclusion from retrieval, and direct markdown persistence keeps the artifact readable in-library without silently making generated summaries part of future research evidence.
