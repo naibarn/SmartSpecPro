@@ -496,7 +496,7 @@ async function processMessageServerSide(
     // 2b. Check credits
     const estimatedInputTokens = Math.ceil(params.content.length / 4);
     let effectiveConversationModel: string | null;
-    if (plannerResult && !plannerResult.shadowMode && plannerResult.resolvedModel) {
+    if (plannerResult?.resolvedModel) {
       effectiveConversationModel = plannerResult.resolvedModel;
     } else {
       effectiveConversationModel = await resolveEnabledLlmModelId([conversation.model]);

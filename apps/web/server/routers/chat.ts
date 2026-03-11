@@ -1476,9 +1476,9 @@ export const chatRouter = router({
           }
         }
 
-        // Model selection: active planner overrides, shadow mode uses legacy
+        // Model selection: planner is primary, legacy is fallback
         let llmModel: string | null;
-        if (plannerResult && !plannerResult.shadowMode && plannerResult.resolvedModel) {
+        if (plannerResult?.resolvedModel) {
           llmModel = plannerResult.resolvedModel;
         } else {
           llmModel = executionPolicy.modelId;

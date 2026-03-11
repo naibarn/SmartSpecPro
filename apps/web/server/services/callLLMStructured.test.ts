@@ -54,7 +54,7 @@ const fakePlannerResult = {
   plan: fakePlan,
   resolvedModel: "gpt-4o",
   snapshot: null,
-  shadowMode: true,
+  plannerLatencyMs: 5,
 };
 
 function setupSuccessfulLLMResponse(content = '{"name": "test"}') {
@@ -92,29 +92,29 @@ describe("callLLMStructured planner wiring", () => {
     );
   });
 
-  it("uses legacy model in shadow mode", async () => {
-    mockRunPlanner.mockResolvedValue({ ...fakePlannerResult, shadowMode: true });
+  it("uses planner-selected model when planner resolves a model", async () => {
+    mockRunPlanner.mockResolvedValue({ ...fakePlannerResult, resolvedModel: "gpt-4o" });
     mockRecordStepAttempt.mockResolvedValue(undefined);
     setupSuccessfulLLMResponse();
 
     await callLLMStructured({ ...baseParams, model: "claude-sonnet-4-6" });
 
-    // Should use original model, not planner's resolvedModel
+    // Should use planner's resolvedModel, not the original
     expect(mockExecuteWithFallback).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "claude-sonnet-4-6" }),
+      expect.objectContaining({ model: "gpt-4o" }),
     );
   });
 
-  it("uses planner model in active mode", async () => {
-    mockRunPlanner.mockResolvedValue({ ...fakePlannerResult, shadowMode: false, resolvedModel: "gpt-4o" });
+  it("uses original model when planner resolves null", async () => {
+    mockRunPlanner.mockResolvedValue({ ...fakePlannerResult, resolvedModel: null });
     mockRecordStepAttempt.mockResolvedValue(undefined);
     setupSuccessfulLLMResponse();
 
     await callLLMStructured({ ...baseParams, model: "claude-sonnet-4-6" });
 
-    // Should use planner's resolvedModel
+    // Should fall back to original model
     expect(mockExecuteWithFallback).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "gpt-4o" }),
+      expect.objectContaining({ model: "claude-sonnet-4-6" }),
     );
   });
 

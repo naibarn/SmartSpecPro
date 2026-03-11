@@ -7,8 +7,8 @@
  * Key guarantees:
  * - NEVER throws — all errors are caught and logged; returns null on failure
  * - Zero overhead when planner is disabled (feature flag check only)
- * - Shadow mode (default): plans and logs but does NOT override model selection
  * - Active mode: planner-selected model replaces legacy resolveEnabledLlmModelId()
+ * - Legacy fallback: resolveEnabledLlmModelId() used when planner is disabled/failed/no model
  */
 
 import { buildExecutionPlan, type TaskExecutionPlan } from "./taskExecutionPlanner";
@@ -30,7 +30,13 @@ export interface PlannerResult {
   plan: TaskExecutionPlan;
   resolvedModel: string | null;
   snapshot: ModelResolutionSnapshot | null;
-  shadowMode: boolean;
+  /**
+   * Wall-clock time (ms) from after the feature flag check to result return,
+   * covering plan build + DB insert + model resolution.
+   * Returned for caller logging/telemetry only — not persisted to task_step_attempts
+   * in this release. Promote to a stored column if p95 SLO enforcement is needed.
+   */
+  plannerLatencyMs: number;
 }
 
 export interface PlannerInput {
@@ -60,10 +66,8 @@ export async function runPlanner(
     );
     if (!enabled) return null;
 
-    const shadowMode = await getTenantFeatureFlag(
-      "TASK_PLANNER_SHADOW_MODE",
-      input.tenantId,
-    );
+    const startMs = Date.now();
+
     // 2. Build execution plan
     const plan = buildExecutionPlan({
       sourceType: input.sourceType,
@@ -98,7 +102,7 @@ export async function runPlanner(
       plan,
       resolvedModel: resolved?.modelId ?? null,
       snapshot,
-      shadowMode: shadowMode !== false, // default true
+      plannerLatencyMs: Date.now() - startMs,
     };
   } catch (err) {
     // Planner failure must never block the request

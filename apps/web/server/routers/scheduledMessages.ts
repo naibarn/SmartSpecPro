@@ -516,7 +516,7 @@ export const scheduledMessagesRouter = router({
       });
 
       let model: string | null;
-      if (plannerResult && !plannerResult.shadowMode && plannerResult.resolvedModel) {
+      if (plannerResult?.resolvedModel) {
         model = plannerResult.resolvedModel;
       } else {
         model = await resolveEnabledLlmModelId([input.model]);

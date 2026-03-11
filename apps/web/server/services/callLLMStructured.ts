@@ -98,7 +98,7 @@ The JSON must strictly conform to the expected schema.`;
   });
 
   let effectiveModel = model;
-  if (plannerResult && !plannerResult.shadowMode && plannerResult.resolvedModel) {
+  if (plannerResult?.resolvedModel) {
     effectiveModel = plannerResult.resolvedModel;
   }
 

@@ -501,7 +501,7 @@ export function registerResponsesRoutes(
         conversationModel: requestedModelId,
         hasTools: toolCount > 0,
       }).catch(() => null);
-      if (plannerResult && !plannerResult.shadowMode && plannerResult.resolvedModel) {
+      if (plannerResult?.resolvedModel) {
         model = plannerResult.resolvedModel;
       }
 

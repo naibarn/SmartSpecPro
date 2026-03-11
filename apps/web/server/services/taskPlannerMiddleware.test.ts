@@ -109,10 +109,8 @@ describe("taskPlannerMiddleware", () => {
       expect(mockBuildExecutionPlan).not.toHaveBeenCalled();
     });
 
-    it("returns PlannerResult with shadowMode=true when shadow flag is true", async () => {
-      mockGetTenantFeatureFlag
-        .mockResolvedValueOnce(true) // TASK_PLANNER_ENABLED
-        .mockResolvedValueOnce(true); // TASK_PLANNER_SHADOW_MODE
+    it("returns PlannerResult with plannerLatencyMs when enabled", async () => {
+      mockGetTenantFeatureFlag.mockResolvedValue(true);
       mockBuildExecutionPlan.mockReturnValue(fakePlan);
       mockCreateTaskRun.mockResolvedValue({ id: 42 });
       mockResolveModelFromPlan.mockReturnValue(fakeModel as any);
@@ -122,15 +120,16 @@ describe("taskPlannerMiddleware", () => {
       const result = await runPlanner(basePlannerInput);
 
       expect(result).not.toBeNull();
-      expect(result!.shadowMode).toBe(true);
+      expect(typeof result!.plannerLatencyMs).toBe("number");
+      expect(isFinite(result!.plannerLatencyMs)).toBe(true);
+      expect(result!.plannerLatencyMs).toBeGreaterThanOrEqual(0);
       expect(result!.taskRunId).toBe(42);
       expect(result!.resolvedModel).toBe("gpt-4o");
+      expect(result).not.toHaveProperty("shadowMode");
     });
 
-    it("returns PlannerResult with shadowMode=false when shadow flag is false", async () => {
-      mockGetTenantFeatureFlag
-        .mockResolvedValueOnce(true) // TASK_PLANNER_ENABLED
-        .mockResolvedValueOnce(false); // TASK_PLANNER_SHADOW_MODE
+    it("planner-selected model is always returned (no shadow mode check)", async () => {
+      mockGetTenantFeatureFlag.mockResolvedValue(true);
       mockBuildExecutionPlan.mockReturnValue(fakePlan);
       mockCreateTaskRun.mockResolvedValue({ id: 43 });
       mockResolveModelFromPlan.mockReturnValue(fakeModel as any);
@@ -140,13 +139,17 @@ describe("taskPlannerMiddleware", () => {
       const result = await runPlanner(basePlannerInput);
 
       expect(result).not.toBeNull();
-      expect(result!.shadowMode).toBe(false);
+      expect(result!.resolvedModel).toBe("gpt-4o");
+      // Only one feature flag check (TASK_PLANNER_ENABLED), no SHADOW_MODE
+      expect(mockGetTenantFeatureFlag).toHaveBeenCalledTimes(1);
+      expect(mockGetTenantFeatureFlag).toHaveBeenCalledWith(
+        "TASK_PLANNER_ENABLED",
+        "tenant-1",
+      );
     });
 
     it("returns null on internal error (never throws)", async () => {
-      mockGetTenantFeatureFlag
-        .mockResolvedValueOnce(true) // TASK_PLANNER_ENABLED
-        .mockResolvedValueOnce(true); // TASK_PLANNER_SHADOW_MODE
+      mockGetTenantFeatureFlag.mockResolvedValue(true);
       mockBuildExecutionPlan.mockImplementation(() => {
         throw new Error("plan build failed");
       });
@@ -157,9 +160,7 @@ describe("taskPlannerMiddleware", () => {
     });
 
     it("creates task_runs record via createTaskRun", async () => {
-      mockGetTenantFeatureFlag
-        .mockResolvedValueOnce(true)
-        .mockResolvedValueOnce(true);
+      mockGetTenantFeatureFlag.mockResolvedValue(true);
       mockBuildExecutionPlan.mockReturnValue(fakePlan);
       mockCreateTaskRun.mockResolvedValue({ id: 44 });
       mockResolveModelFromPlan.mockReturnValue(fakeModel as any);
@@ -180,9 +181,7 @@ describe("taskPlannerMiddleware", () => {
     });
 
     it("resolves model from plan via resolveModelFromPlan", async () => {
-      mockGetTenantFeatureFlag
-        .mockResolvedValueOnce(true)
-        .mockResolvedValueOnce(true);
+      mockGetTenantFeatureFlag.mockResolvedValue(true);
       mockBuildExecutionPlan.mockReturnValue(fakePlan);
       mockCreateTaskRun.mockResolvedValue({ id: 45 });
       mockResolveModelFromPlan.mockReturnValue(fakeModel as any);
@@ -198,9 +197,7 @@ describe("taskPlannerMiddleware", () => {
     });
 
     it("passes traceId from trace context", async () => {
-      mockGetTenantFeatureFlag
-        .mockResolvedValueOnce(true)
-        .mockResolvedValueOnce(true);
+      mockGetTenantFeatureFlag.mockResolvedValue(true);
       mockBuildExecutionPlan.mockReturnValue(fakePlan);
       mockCreateTaskRun.mockResolvedValue({ id: 46 });
       mockResolveModelFromPlan.mockReturnValue(fakeModel as any);
@@ -239,9 +236,7 @@ describe("taskPlannerMiddleware", () => {
     });
 
     it("handles null resolved model gracefully", async () => {
-      mockGetTenantFeatureFlag
-        .mockResolvedValueOnce(true)
-        .mockResolvedValueOnce(true);
+      mockGetTenantFeatureFlag.mockResolvedValue(true);
       mockBuildExecutionPlan.mockReturnValue(fakePlan);
       mockCreateTaskRun.mockResolvedValue({ id: 48 });
       mockResolveModelFromPlan.mockReturnValue(null);
@@ -252,6 +247,26 @@ describe("taskPlannerMiddleware", () => {
       expect(result).not.toBeNull();
       expect(result!.resolvedModel).toBeNull();
       expect(result!.snapshot).toBeNull();
+    });
+
+    it("legacy fallback only triggers when planner returns null", async () => {
+      // When planner is disabled, it returns null → caller should use legacy
+      mockGetTenantFeatureFlag.mockResolvedValue(false);
+
+      const result = await runPlanner(basePlannerInput);
+      expect(result).toBeNull();
+
+      // When planner is enabled and resolves a model, caller uses planner model
+      mockGetTenantFeatureFlag.mockResolvedValue(true);
+      mockBuildExecutionPlan.mockReturnValue(fakePlan);
+      mockCreateTaskRun.mockResolvedValue({ id: 49 });
+      mockResolveModelFromPlan.mockReturnValue(fakeModel as any);
+      mockBuildSnapshot.mockReturnValue(fakeSnapshot as any);
+      mockGetTraceId.mockReturnValue(undefined);
+
+      const result2 = await runPlanner(basePlannerInput);
+      expect(result2).not.toBeNull();
+      expect(result2!.resolvedModel).toBe("gpt-4o");
     });
   });
 

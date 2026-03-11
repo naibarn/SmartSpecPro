@@ -36,9 +36,9 @@ export async function handleChatWithRouter(params: HandlerParams): Promise<void>
     conversationModel: model,
   });
 
-  // Model selection: active mode uses planner, shadow/disabled uses legacy
+  // Model selection: planner is primary, legacy is fallback
   let effectiveModel: string | null;
-  if (plannerResult && !plannerResult.shadowMode && plannerResult.resolvedModel) {
+  if (plannerResult?.resolvedModel) {
     effectiveModel = plannerResult.resolvedModel;
   } else {
     effectiveModel = await resolveEnabledLlmModelId([model]);
@@ -144,9 +144,9 @@ export async function handleStreamWithRouter(params: HandlerParams): Promise<voi
     conversationModel: model,
   });
 
-  // Model selection: active mode uses planner, shadow/disabled uses legacy
+  // Model selection: planner is primary, legacy is fallback
   let effectiveModel: string | null;
-  if (plannerResult && !plannerResult.shadowMode && plannerResult.resolvedModel) {
+  if (plannerResult?.resolvedModel) {
     effectiveModel = plannerResult.resolvedModel;
   } else {
     effectiveModel = await resolveEnabledLlmModelId([model]);

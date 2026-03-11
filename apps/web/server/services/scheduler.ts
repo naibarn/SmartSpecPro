@@ -257,7 +257,7 @@ export async function deliverScheduledMessage(scheduleId: number): Promise<void>
   });
 
   let model: string | null;
-  if (plannerResult && !plannerResult.shadowMode && plannerResult.resolvedModel) {
+  if (plannerResult?.resolvedModel) {
     model = plannerResult.resolvedModel;
   } else {
     model = await resolveEnabledLlmModelId([schedule.modelId]);
