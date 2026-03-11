@@ -317,3 +317,129 @@ export interface AgencyDetectionResult {
   matchedTrigger: string | null;
   suggestedPrompt: string | null;
 }
+
+// --- Spec 038: CMS Output Schema Types ---
+
+/** Evidence entry attached to a claim */
+export interface EvidenceEntry {
+  source_type: "web" | "doi" | "api" | "pdf" | "internal_doc";
+  title: string;
+  url_or_id?: string;
+  quote?: string;
+  retrieved_at: string;
+}
+
+/** A claim in the content that may require citation */
+export interface ClaimEntry {
+  claim_id: string;
+  text: string;
+  importance: "critical" | "major" | "minor";
+  verification_status: "verified" | "partially_verified" | "unverified";
+  last_verified_at: string;
+  evidence: EvidenceEntry[];
+}
+
+/** Citation reference */
+export interface CitationEntry {
+  ref_id: string;
+  claim_ids: string[];
+  source_type: "web" | "doi" | "api" | "pdf" | "internal_doc";
+  title: string;
+  url_or_id?: string;
+  quote?: string;
+  retrieved_at: string;
+}
+
+/** Disclosure statement */
+export interface DisclosureEntry {
+  type: "none" | "affiliate" | "sponsored" | "provided_for_review";
+  statement_th?: string;
+  statement_en?: string;
+  methodology?: string;
+}
+
+/** SEO metadata */
+export interface SeoMetadata {
+  meta_title?: string;
+  meta_description?: string;
+  keywords?: string[];
+  canonical_url?: string;
+  og_image?: string;
+}
+
+/** ArticleCMS.v1 output schema */
+export interface ArticleCMSOutput {
+  schema_version: "ArticleCMS.v1";
+  locale: string;
+  title: string;
+  slug: string;
+  summary?: string;
+  body_markdown: string;
+  claims: ClaimEntry[];
+  citations: CitationEntry[];
+  last_verified_at: string;
+  disclosures: DisclosureEntry;
+  seo?: SeoMetadata;
+  tables?: Array<{ title: string; markdown: string }>;
+  media?: Array<{ type: string; url: string; alt: string }>;
+  refresh_policy?: { cadence_days: number; next_refresh_at: string };
+}
+
+/** Scoring rubric dimension */
+export interface ScoringDimension {
+  dimension: string;
+  score: number;
+  max_score: number;
+  comment?: string;
+}
+
+/** ProductReviewCMS.v1 output schema */
+export interface ProductReviewCMSOutput {
+  schema_version: "ProductReviewCMS.v1";
+  locale: string;
+  title: string;
+  slug: string;
+  product: {
+    brand: string;
+    model: string;
+    category: string;
+    market?: string;
+    price?: { amount: number; currency: string; checked_at?: string };
+  };
+  review: {
+    title: string;
+    summary: string;
+    verdict: string;
+    pros: string[];
+    cons: string[];
+    who_should_buy?: string;
+    who_should_avoid?: string;
+    scoring: {
+      overall: number;
+      max_score: number;
+      rubric: ScoringDimension[];
+    };
+    comparison_table_markdown?: string;
+    faq?: Array<{ question: string; answer: string }>;
+    body_markdown: string;
+  };
+  claims: ClaimEntry[];
+  citations: CitationEntry[];
+  last_verified_at: string;
+  disclosures: DisclosureEntry;
+  seo?: SeoMetadata;
+  structured_data_jsonld?: string;
+  refresh_policy?: { cadence_days: number; next_refresh_at: string };
+}
+
+/** CMS validation result */
+export interface CmsValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+  citation_coverage: number;
+  claims_total: number;
+  claims_with_evidence: number;
+  claims_unverified: number;
+  disclosure_complete: boolean;
+}
