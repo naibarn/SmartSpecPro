@@ -23,6 +23,7 @@ import { eq, and, lte, isNull, sql } from "drizzle-orm";
 import { deductCredits, hasEnoughCredits, calculateCreditsForLLM } from "./creditService";
 import { resolveEnabledLlmModelId } from "./enabledLlmModels";
 import { getProviderForModel } from "./llmRouter";
+import { runPlanner, recordStepAttempt } from "./taskPlannerMiddleware";
 import { decrypt } from "./crypto";
 import { signBearerToken } from "../_core/tokens";
 import crypto from "crypto";
@@ -243,7 +244,24 @@ export async function deliverScheduledMessage(scheduleId: number): Promise<void>
   }
 
   // ── LLM-powered alert: standard flow ──
-  const model = await resolveEnabledLlmModelId([schedule.modelId]);
+  const scheduleTenantId = typeof (schedule as any).tenantId === "string"
+    ? (schedule as any).tenantId
+    : "default";
+
+  // Run planner (returns null if disabled — zero overhead)
+  const plannerResult = await runPlanner({
+    sourceType: "scheduled",
+    userId: schedule.userId,
+    tenantId: scheduleTenantId,
+    conversationModel: schedule.modelId,
+  });
+
+  let model: string | null;
+  if (plannerResult && !plannerResult.shadowMode && plannerResult.resolvedModel) {
+    model = plannerResult.resolvedModel;
+  } else {
+    model = await resolveEnabledLlmModelId([schedule.modelId]);
+  }
   if (!model) {
     await logExecution(db, scheduleId, null, "failed", "No enabled LLM model configured");
     return;
@@ -308,6 +326,20 @@ export async function deliverScheduledMessage(scheduleId: number): Promise<void>
         outputTokens: completionTokens,
       },
     });
+
+    // Record step attempt for planner telemetry
+    if (plannerResult) {
+      recordStepAttempt({
+        taskRunId: plannerResult.taskRunId,
+        plan: plannerResult.plan,
+        model,
+        provider: provider.providerName,
+        inputTokens: promptTokens,
+        outputTokens: completionTokens,
+        snapshot: plannerResult.snapshot,
+        creditsUsed,
+      }).catch(() => {}); // fire-and-forget
+    }
 
     // Find or create conversation
     let convId = schedule.conversationId;

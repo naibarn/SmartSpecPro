@@ -5030,6 +5030,8 @@ export const taskRuns = pgTable("task_runs", {
   artifactIntent: varchar("artifactIntent", { length: 32 }),
   executionRoute: varchar("executionRoute", { length: 32 }),
   routeReason: text("routeReason"),
+  /** Trace ID for correlation with provider_usage_log */
+  traceId: varchar("traceId", { length: 64 }),
   /** Linked artifact references */
   presentationDeckId: integer("presentationDeckId"),
   artifactMessageId: integer("artifactMessageId"),

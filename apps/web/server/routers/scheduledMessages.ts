@@ -15,6 +15,7 @@ import { auditLogger } from "../services/auditLogger";
 import { deductCreditsForModel } from "../services/creditService";
 import { resolveEnabledLlmModelId } from "../services/enabledLlmModels";
 import { getProviderForModel } from "../services/llmRouter";
+import { runPlanner, recordStepAttempt } from "../services/taskPlannerMiddleware";
 
 /**
  * Validates cron expression for security and rate limiting
@@ -505,7 +506,21 @@ export const scheduledMessagesRouter = router({
       // Use the LLM to parse scheduling intent
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const model = await resolveEnabledLlmModelId([input.model]);
+
+      // Run planner (returns null if disabled — zero overhead)
+      const plannerResult = await runPlanner({
+        sourceType: "scheduled",
+        userId: ctx.user.id,
+        tenantId: ctx.tenantId || "default",
+        conversationModel: input.model,
+      });
+
+      let model: string | null;
+      if (plannerResult && !plannerResult.shadowMode && plannerResult.resolvedModel) {
+        model = plannerResult.resolvedModel;
+      } else {
+        model = await resolveEnabledLlmModelId([input.model]);
+      }
       if (!model) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No enabled LLM model configured" });
       }
@@ -614,6 +629,19 @@ Return ONLY the JSON, no markdown, no explanation.`;
       } catch (err) {
         // Non-blocking — don't fail the schedule parse if credit deduction fails
         console.error("[parseIntent] Credit deduction failed:", err);
+      }
+
+      // Record step attempt for planner telemetry
+      if (plannerResult) {
+        recordStepAttempt({
+          taskRunId: plannerResult.taskRunId,
+          plan: plannerResult.plan,
+          model,
+          provider: provider.providerName,
+          inputTokens,
+          outputTokens,
+          snapshot: plannerResult.snapshot,
+        }).catch(() => {}); // fire-and-forget
       }
 
       try {

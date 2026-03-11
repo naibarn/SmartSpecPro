@@ -11,6 +11,7 @@ import { eq } from "drizzle-orm";
 import { deductCredits, calculateCreditsForLLM } from "../services/creditService";
 import { resolveEnabledLlmModelId } from "../services/enabledLlmModels";
 import { getProviderForModel } from "../services/llmRouter";
+import { runPlanner, recordStepAttempt } from "../services/taskPlannerMiddleware";
 
 const LANGUAGE_NAMES: Record<string, string> = {
   th: "Thai", zh: "Chinese (Simplified)", "zh-TW": "Chinese (Traditional)",
@@ -53,8 +54,22 @@ export const translationRouter = router({
 
       const prefs = (user?.userPreferences as Record<string, any>) || {};
       const targetLang = input.targetLanguage || prefs.translationLanguage || "th";
-      const model = await resolveEnabledLlmModelId([prefs.translationModel]);
       const langName = LANGUAGE_NAMES[targetLang] || targetLang;
+
+      // Run planner (returns null if disabled — zero overhead)
+      const plannerResult = await runPlanner({
+        sourceType: "translation",
+        userId: ctx.user.id,
+        tenantId: ctx.tenantId || "default",
+        conversationModel: prefs.translationModel,
+      });
+
+      let model: string | null;
+      if (plannerResult && !plannerResult.shadowMode && plannerResult.resolvedModel) {
+        model = plannerResult.resolvedModel;
+      } else {
+        model = await resolveEnabledLlmModelId([prefs.translationModel]);
+      }
       if (!model) {
         throw new Error("No enabled LLM model available for translation");
       }
@@ -111,6 +126,20 @@ export const translationRouter = router({
         sourceType: "translation",
         metadata: { model, provider: provider.providerName, tokens: usage },
       });
+
+      // Record step attempt for planner telemetry
+      if (plannerResult) {
+        recordStepAttempt({
+          taskRunId: plannerResult.taskRunId,
+          plan: plannerResult.plan,
+          model,
+          provider: provider.providerName,
+          inputTokens: usage.prompt_tokens || 0,
+          outputTokens: usage.completion_tokens || 0,
+          snapshot: plannerResult.snapshot,
+          creditsUsed: credits,
+        }).catch(() => {}); // fire-and-forget
+      }
 
       return {
         translatedText,

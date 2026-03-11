@@ -1,0 +1,26 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/039-Planner-Runtime-Wiring/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/039-Planner-Runtime-Wiring/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-planner-middleware-and-chat-wiring",
+    "section-02-skill-execution-and-structured-llm-wiring",
+    "section-03-artifact-routing-and-presentation-wiring",
+    "section-04-agency-escalation-and-telemetry",
+    "section-05-active-mode-cutover-and-cleanup"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-03-11T11:58:49.039070+00:00"
+}

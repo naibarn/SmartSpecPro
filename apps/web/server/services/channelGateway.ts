@@ -41,6 +41,7 @@ import {
   calculateCreditsForLLM,
 } from "./creditService";
 import { resolveEnabledLlmModelId } from "./enabledLlmModels";
+import { runPlanner, recordStepAttempt } from "./taskPlannerMiddleware";
 import { agencyBridge } from "./agencyBridge";
 import {
   agencies,
@@ -436,9 +437,22 @@ async function processMessageServerSide(
       return { success: false, error: "Conversation not found" };
     }
 
-    // 2. Check credits
+    // 2. Run planner (returns null if disabled — zero overhead)
+    const plannerResult = await runPlanner({
+      sourceType: "channel",
+      userId: params.userId,
+      tenantId: params.tenantId,
+      conversationModel: conversation.model,
+    });
+
+    // 2b. Check credits
     const estimatedInputTokens = Math.ceil(params.content.length / 4);
-    const effectiveConversationModel = await resolveEnabledLlmModelId([conversation.model]);
+    let effectiveConversationModel: string | null;
+    if (plannerResult && !plannerResult.shadowMode && plannerResult.resolvedModel) {
+      effectiveConversationModel = plannerResult.resolvedModel;
+    } else {
+      effectiveConversationModel = await resolveEnabledLlmModelId([conversation.model]);
+    }
     if (!effectiveConversationModel) {
       return { success: false, error: "No enabled LLM model configured" };
     }
@@ -521,6 +535,20 @@ async function processMessageServerSide(
       sourceType: "chat",
       conversationId: params.conversationId,
     });
+
+    // 7b. Record step attempt for planner telemetry
+    if (plannerResult) {
+      recordStepAttempt({
+        taskRunId: plannerResult.taskRunId,
+        plan: plannerResult.plan,
+        model,
+        provider: (result as any).providerName,
+        inputTokens,
+        outputTokens,
+        snapshot: plannerResult.snapshot,
+        creditsUsed,
+      }).catch(() => {}); // fire-and-forget
+    }
 
     // 8. Save assistant message
     const assistantMessage = await createMessage({

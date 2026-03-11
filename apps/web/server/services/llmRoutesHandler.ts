@@ -10,11 +10,13 @@ import { executeWithFallback, type ExecuteResult, type ProviderCandidate } from 
 import { deductCreditsForModel } from "./creditService";
 import { resolveEnabledLlmModelId } from "./enabledLlmModels";
 import type { Message } from "../_core/llm";
+import { runPlanner, recordStepAttempt, type PlannerResult } from "./taskPlannerMiddleware";
 
 interface HandlerParams {
   model?: string;
   messages: Message[];
   userId: number;
+  tenantId: string;
   conversationId?: number;
   preferredProvider?: number;
   res: Response;
@@ -24,8 +26,24 @@ interface HandlerParams {
  * Handle a non-streaming (JSON) chat request through the router
  */
 export async function handleChatWithRouter(params: HandlerParams): Promise<void> {
-  const { model, messages, userId, conversationId, preferredProvider, res } = params;
-  const effectiveModel = await resolveEnabledLlmModelId([model]);
+  const { model, messages, userId, tenantId, conversationId, preferredProvider, res } = params;
+
+  // Run planner (returns null if disabled — zero overhead)
+  const plannerResult = await runPlanner({
+    sourceType: "chat",
+    userId,
+    tenantId,
+    conversationModel: model,
+  });
+
+  // Model selection: active mode uses planner, shadow/disabled uses legacy
+  let effectiveModel: string | null;
+  if (plannerResult && !plannerResult.shadowMode && plannerResult.resolvedModel) {
+    effectiveModel = plannerResult.resolvedModel;
+  } else {
+    effectiveModel = await resolveEnabledLlmModelId([model]);
+  }
+
   if (!effectiveModel) {
     res.status(503).json({ error: { message: "No enabled LLM model configured" } });
     return;
@@ -58,6 +76,21 @@ export async function handleChatWithRouter(params: HandlerParams): Promise<void>
         sourceType: "chat",
         conversationId,
       });
+
+      // Record step attempt for planner telemetry
+      if (plannerResult) {
+        recordStepAttempt({
+          taskRunId: plannerResult.taskRunId,
+          plan: plannerResult.plan,
+          model: effectiveModel,
+          provider: result.providerName,
+          inputTokens,
+          outputTokens,
+          costUsd: costUsd != null ? String(costUsd) : "0",
+          snapshot: plannerResult.snapshot,
+          creditsUsed,
+        }).catch(() => {}); // fire-and-forget
+      }
 
       // Append credit info to response
       if (data && typeof data === "object") {
@@ -101,8 +134,24 @@ export async function handleChatWithRouter(params: HandlerParams): Promise<void>
  * will be implemented when the router gains native streaming support.
  */
 export async function handleStreamWithRouter(params: HandlerParams): Promise<void> {
-  const { model, messages, userId, conversationId, preferredProvider, res } = params;
-  const effectiveModel = await resolveEnabledLlmModelId([model]);
+  const { model, messages, userId, tenantId, conversationId, preferredProvider, res } = params;
+
+  // Run planner (returns null if disabled — zero overhead)
+  const plannerResult = await runPlanner({
+    sourceType: "stream",
+    userId,
+    tenantId,
+    conversationModel: model,
+  });
+
+  // Model selection: active mode uses planner, shadow/disabled uses legacy
+  let effectiveModel: string | null;
+  if (plannerResult && !plannerResult.shadowMode && plannerResult.resolvedModel) {
+    effectiveModel = plannerResult.resolvedModel;
+  } else {
+    effectiveModel = await resolveEnabledLlmModelId([model]);
+  }
+
   if (!effectiveModel) {
     res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
     res.setHeader("Cache-Control", "no-cache, no-transform");
@@ -144,6 +193,21 @@ export async function handleStreamWithRouter(params: HandlerParams): Promise<voi
         sourceType: "chat",
         conversationId,
       });
+
+      // Record step attempt for planner telemetry
+      if (plannerResult) {
+        recordStepAttempt({
+          taskRunId: plannerResult.taskRunId,
+          plan: plannerResult.plan,
+          model: effectiveModel,
+          provider: result.providerName,
+          inputTokens,
+          outputTokens,
+          costUsd: costUsd != null ? String(costUsd) : "0",
+          snapshot: plannerResult.snapshot,
+          creditsUsed,
+        }).catch(() => {}); // fire-and-forget
+      }
 
       // Send the response as SSE data
       const content = data?.choices?.[0]?.message?.content ?? "";

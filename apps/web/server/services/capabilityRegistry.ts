@@ -105,6 +105,58 @@ export async function loadEnabledModelsWithCapabilities(): Promise<EnabledModelW
 }
 
 /**
+ * Load enabled models with capability metadata AND pricing data.
+ * Used by the task planner middleware for model resolution via resolveModelFromPlan().
+ */
+export async function loadEnabledModelsWithPricing(): Promise<
+  Array<EnabledModelWithCapabilities & { pricingInput: number; pricingOutput: number; isFree: boolean }>
+> {
+  const db = await getDb();
+  if (!db) return [];
+
+  const rows = await db
+    .select({
+      modelId: modelProviderMap.modelId,
+      providerModelId: modelProviderMap.providerModelId,
+      providerName: llmProviders.providerName,
+      contextLength: modelProviderMap.contextLength,
+      supportsResponses: modelProviderMap.supportsResponses,
+      supportsStructuredOutputs: modelProviderMap.supportsStructuredOutputs,
+      supportsWebSearch: modelProviderMap.supportsWebSearch,
+      supportsFunctionTools: modelProviderMap.supportsFunctionTools,
+      supportsCodeExecution: modelProviderMap.supportsCodeExecution,
+      supportsComputerUse: modelProviderMap.supportsComputerUse,
+      supportsBackground: modelProviderMap.supportsBackground,
+      pricingInput: modelProviderMap.pricingInput,
+      pricingOutput: modelProviderMap.pricingOutput,
+      isFree: modelProviderMap.isFree,
+    })
+    .from(modelProviderMap)
+    .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
+    .where(and(eq(modelProviderMap.isEnabled, true), eq(llmProviders.isEnabled, true)))
+    .orderBy(asc(llmProviders.sortOrder), asc(modelProviderMap.priority));
+
+  return rows.map((row) => ({
+    modelId: row.modelId,
+    providerModelId: row.providerModelId,
+    providerName: row.providerName,
+    capabilities: {
+      supportsResponses: row.supportsResponses ?? false,
+      supportsStructuredOutputs: row.supportsStructuredOutputs ?? false,
+      supportsWebSearch: row.supportsWebSearch ?? false,
+      supportsFunctionTools: row.supportsFunctionTools ?? false,
+      supportsCodeExecution: row.supportsCodeExecution ?? false,
+      supportsComputerUse: row.supportsComputerUse ?? false,
+      supportsBackground: row.supportsBackground ?? false,
+      contextLength: row.contextLength ?? undefined,
+    },
+    pricingInput: parseFloat(String(row.pricingInput)) || 0,
+    pricingOutput: parseFloat(String(row.pricingOutput)) || 0,
+    isFree: row.isFree ?? false,
+  }));
+}
+
+/**
  * Filter models by capability requirements.
  * All specified requirements must be met (AND logic).
  * For contextLength, the model's value must be >= the requirement.

@@ -24,6 +24,8 @@ export interface CreateTaskRunInput {
   sourceType: string;
   skillSlug?: string;
   conversationId?: number;
+  /** Trace ID for correlation with provider_usage_log */
+  traceId?: string;
   /** Section 04: artifact routing metadata */
   artifactIntent?: ArtifactIntent;
   executionRoute?: ExecutionRoute;
@@ -44,6 +46,7 @@ export async function createTaskRun(input: CreateTaskRunInput): Promise<{ id: nu
       planJson: input.plan,
       skillSlug: input.skillSlug,
       conversationId: input.conversationId,
+      traceId: input.traceId,
       artifactIntent: input.artifactIntent,
       executionRoute: input.executionRoute,
       routeReason: input.routeReason,
