@@ -32,6 +32,7 @@ import {
   AgencyPreviewCommitError,
   commitLibraryBackedPreview,
 } from "../services/agencyCommitService";
+import { commitPresentationPreview } from "../services/agencyDeckCommitService";
 import { getTenantFeatureFlag, setTenantFeatureFlag } from "../services/featureFlags";
 import { buildAgencyPreview } from "../services/agencyPreviewService";
 import crypto from "crypto";
@@ -1518,7 +1519,7 @@ export const agencyRouter = router({
         : null;
 
       try {
-        const commitResult = await commitLibraryBackedPreview({
+        const commitParams = {
           actor: {
             userId,
             tenantId,
@@ -1535,7 +1536,11 @@ export const agencyRouter = router({
           },
           commitToken: input.commitToken,
           preview,
-        });
+        };
+
+        const commitResult = preview?.previewType === "deck"
+          ? await commitPresentationPreview(commitParams)
+          : await commitLibraryBackedPreview(commitParams);
 
         return {
           ok: true,

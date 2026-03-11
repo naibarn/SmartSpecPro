@@ -75,3 +75,26 @@
 - Decision taken: write markdown chunks directly without the standard indexing enqueue so committed generated research/storyboard artifacts stay excluded from ordinary RAG retrieval by default in Phase 1.
 - Mode used: `auto`
 - Rationale: the section requires safe default exclusion from retrieval, and direct markdown persistence keeps the artifact readable in-library without silently making generated summaries part of future research evidence.
+
+## Section 04 - Deck preview and presentation commit
+
+### Decision: Commit deck previews through the presentation service stack, not a new import pipeline
+
+- Options considered: call the existing import pipeline, create bespoke deck SQL writes, or reuse presentation service helpers plus the shared layout engine.
+- Decision taken: create the backing presentation library item, call `createPresentationDeckForLibraryItem`, and then update/add slides using existing presentation service helpers with shared `generateSlide()` layout rendering.
+- Mode used: `auto`
+- Rationale: this keeps the preview contract centered on `AIPresentationSlide[]`, preserves current presentation lifecycle rules, and avoids introducing a second deck-construction path just for agency commits.
+
+### Decision: Reuse the auto-created first slide instead of deleting and recreating it
+
+- Options considered: delete the placeholder slide and recreate all slides, leave the placeholder untouched and append after it, or overwrite the first slide and append the rest.
+- Decision taken: update the initial slide with the first preview payload, then append remaining slides sequentially with version increments.
+- Mode used: `auto`
+- Rationale: this matches the existing `createPresentationDeckForLibraryItem` behavior, avoids orphan/extra blank slides, and keeps slide ordering deterministic without adding a new delete step.
+
+### Decision: Serialize both deck and library item identifiers into the persisted deck target
+
+- Options considered: store only `deckId`, add new artifact columns immediately, or serialize `{ deckId, libraryItemId }` into the existing `targetId` field.
+- Decision taken: keep `targetType = "presentation_deck"` and serialize both identifiers into `targetId`, while returning parsed `deckId` and `libraryItemId` in the commit response.
+- Mode used: `auto`
+- Rationale: the existing artifact index has only `targetType` and `targetId`; serializing both identifiers keeps the implementation additive for this section while still making both IDs durable and retry-safe.

@@ -821,8 +821,9 @@ async function resolveDb(dbClient?: DbClient): Promise<DbClient> {
 async function resolveReadableLibraryItem(
   libraryItemId: number,
   actor: PresentationActor,
+  dbClient?: DbClient,
 ): Promise<LibraryItemDto> {
-  const item = await getLibraryItemById(libraryItemId, actor);
+  const item = await getLibraryItemById(libraryItemId, actor, dbClient);
   if (!item) {
     throw new PresentationServiceError(
       PRESENTATION_ERROR_CODE.NOT_FOUND,
@@ -848,7 +849,7 @@ async function resolveDeckContext(
     );
   }
 
-  const libraryItem = await resolveReadableLibraryItem(deck.libraryItemId, actor);
+  const libraryItem = await resolveReadableLibraryItem(deck.libraryItemId, actor, db);
   if (!options.allowNonPresentationItem) {
     ensurePresentationItemType(libraryItem);
   }
@@ -924,7 +925,7 @@ export async function getPresentationDeckByLibraryItem(
   actor: PresentationActor,
   dbClient?: DbClient,
 ): Promise<PresentationDeckDetail | null> {
-  const item = await resolveReadableLibraryItem(libraryItemId, actor);
+  const item = await resolveReadableLibraryItem(libraryItemId, actor, dbClient);
   ensurePresentationItemType(item);
   ensureActiveLifecycle(item);
 
@@ -1084,7 +1085,7 @@ export async function createPresentationDeckForLibraryItem(
   actor: PresentationActor,
   dbClient?: DbClient,
 ): Promise<{ created: boolean; deck: PresentationDeck }> {
-  const item = await resolveReadableLibraryItem(input.libraryItemId, actor);
+  const item = await resolveReadableLibraryItem(input.libraryItemId, actor, dbClient);
   ensurePresentationItemType(item);
   ensureActiveLifecycle(item);
   await ensureWritePermission(item.id, actor);
@@ -1573,7 +1574,7 @@ export async function attachAssetToDeck(
 
   const { deck, db } = await resolveDeckContext(input.deckId, actor, { write: true }, dbClient);
   ensureExpectedDeckVersion(deck, input.expectedVersion);
-  await resolveReadableLibraryItem(input.libraryItemId, actor);
+  await resolveReadableLibraryItem(input.libraryItemId, actor, dbClient);
 
   const existingRows = await db
     .select()
@@ -1767,7 +1768,7 @@ async function clonePresentationDeckIntoNewLibraryItem(
   dbClient?: DbClient,
 ): Promise<ClonePresentationLibraryItemResult> {
   const db = await resolveDb(dbClient);
-  const sourceItem = await resolveReadableLibraryItem(input.sourceLibraryItemId, actor);
+  const sourceItem = await resolveReadableLibraryItem(input.sourceLibraryItemId, actor, dbClient);
   ensurePresentationItemType(sourceItem);
   ensureActiveLifecycle(sourceItem);
   if (input.requireSourceWrite) {
@@ -1896,7 +1897,7 @@ export async function createTemplateFromPresentation(
   actor: PresentationActor,
   dbClient?: DbClient,
 ): Promise<ClonePresentationLibraryItemResult> {
-  const sourceItem = await resolveReadableLibraryItem(input.sourceLibraryItemId, actor);
+  const sourceItem = await resolveReadableLibraryItem(input.sourceLibraryItemId, actor, dbClient);
   const templateTitle = sanitizeTitleInput(input.templateTitle, `${sourceItem.title} Template`);
 
   return clonePresentationDeckIntoNewLibraryItem(
@@ -1925,7 +1926,7 @@ export async function createPresentationFromTemplate(
   actor: PresentationActor,
   dbClient?: DbClient,
 ): Promise<ClonePresentationLibraryItemResult> {
-  const templateItem = await resolveReadableLibraryItem(input.templateLibraryItemId, actor);
+  const templateItem = await resolveReadableLibraryItem(input.templateLibraryItemId, actor, dbClient);
   const projectTitle = sanitizeTitleInput(input.title, `${templateItem.title} Copy`);
 
   return clonePresentationDeckIntoNewLibraryItem(

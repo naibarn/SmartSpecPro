@@ -200,6 +200,50 @@ describe("presentationService", () => {
     );
   });
 
+  it("uses the caller transaction when resolving the library item for deck creation", async () => {
+    const tx = {
+      select: vi.fn(() => ({
+        from: vi.fn(() => ({
+          where: vi.fn(() => ({
+            limit: vi.fn().mockResolvedValue([]),
+          })),
+        })),
+      })),
+    } as any;
+    libraryServiceMocks.getLibraryItemById.mockResolvedValue(buildPresentationLibraryItem());
+    persistenceMocks.getPresentationDeckById.mockResolvedValue(null);
+    persistenceMocks.createPresentationDeck.mockResolvedValue({
+      id: 101,
+      tenantId: actor.tenantId,
+      libraryItemId: 44,
+      title: "Deck",
+      description: null,
+      version: 1,
+      slideCount: 0,
+      totalAssetBytes: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    persistenceMocks.createPresentationSlide.mockResolvedValue({
+      id: 201,
+      deckId: 101,
+      orderIndex: 0,
+      version: 1,
+      title: "Slide 1",
+      slideContent: {
+        elements: [],
+        canvas: { preset: "9:16", width: 720, height: 1280 },
+      },
+      notes: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await createPresentationDeckForLibraryItem({ libraryItemId: 44 }, actor, tx);
+
+    expect(libraryServiceMocks.getLibraryItemById).toHaveBeenCalledWith(44, actor, tx);
+  });
+
   it("blocks slide updates when effective permission is read-only", async () => {
     persistenceMocks.getPresentationDeckById.mockResolvedValue({
       id: 101,

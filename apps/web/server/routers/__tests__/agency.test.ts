@@ -58,6 +58,10 @@ const { mockCommitLibraryBackedPreview } = vi.hoisted(() => ({
   mockCommitLibraryBackedPreview: vi.fn(),
 }));
 
+const { mockCommitPresentationPreview } = vi.hoisted(() => ({
+  mockCommitPresentationPreview: vi.fn(),
+}));
+
 vi.mock("../../services/agencyCommitService", () => ({
   AgencyPreviewCommitError: class AgencyPreviewCommitError extends Error {
     constructor(public code: string, message: string) {
@@ -65,6 +69,10 @@ vi.mock("../../services/agencyCommitService", () => ({
     }
   },
   commitLibraryBackedPreview: mockCommitLibraryBackedPreview,
+}));
+
+vi.mock("../../services/agencyDeckCommitService", () => ({
+  commitPresentationPreview: mockCommitPresentationPreview,
 }));
 
 // Mock DB and Drizzle ORM
