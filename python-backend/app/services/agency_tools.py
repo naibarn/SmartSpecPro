@@ -83,6 +83,14 @@ _BUILTIN_RISK_LEVELS: dict[str, str] = {
     "builtin-agency-call": "high",
 }
 
+_RETRIEVAL_SCOPE_BLOCKED_TOOL_IDS: dict[str, set[str]] = {
+    "library_only": {
+        "builtin-web-search",
+        "builtin-http-request",
+        "builtin-browser",
+    },
+}
+
 
 def _validate_tool_url(url: str) -> None:
     """Validate that a tool endpoint URL is safe (no SSRF).
@@ -328,6 +336,7 @@ async def resolve_tools_for_agent(
     agent_id: str,
     agency_whitelist: set[str],
     adapter=None,
+    retrieval_scope_mode: str | None = None,
 ) -> list[type]:
     """Resolve and construct tool bridges for a specific agent.
 
@@ -361,8 +370,17 @@ async def resolve_tools_for_agent(
     rows = result.all()
 
     tool_classes: list[type] = []
+    blocked_tool_ids = _RETRIEVAL_SCOPE_BLOCKED_TOOL_IDS.get(retrieval_scope_mode or "", set())
     for row in rows:
         tool_id: str = row.tool_id
+        if tool_id in blocked_tool_ids:
+            logger.info(
+                "agency_tool_filtered_by_retrieval_scope",
+                agent_id=agent_id,
+                tool_id=tool_id,
+                retrieval_scope_mode=retrieval_scope_mode,
+            )
+            continue
 
         # Merge base config (from agency_tools) with instance config (per-agent toolConfig).
         # Instance config takes priority — it carries runtime overrides like collectionId,
@@ -394,6 +412,7 @@ async def resolve_tools_for_agent(
         "agency_tools_resolved",
         agent_id=agent_id,
         tool_count=len(tool_classes),
+        retrieval_scope_mode=retrieval_scope_mode,
     )
 
     return tool_classes

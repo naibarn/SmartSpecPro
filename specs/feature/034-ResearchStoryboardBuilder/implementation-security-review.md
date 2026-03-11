@@ -3,8 +3,8 @@
 ## medium
 
 - file/path: `python-backend/app/services/agency_service.py`, `apps/web/server/services/agencyExperienceTemplateService.ts`, `apps/web/server/routers/agency.ts`
-  risk: Retrieval scope is persisted and transmitted correctly, but enforcement is still prompt-level runtime guidance. A tool-capable agency run could still violate the intended `library_only` boundary if a downstream tool path ignores prompt instructions.
-  recommended_fix_direction: Promote retrieval scope into explicit backend/tool execution policy checks so library-only and fallback modes are enforced below the prompt layer.
+  risk: Retrieval scope now filters direct external retrieval tools during Python tool resolution for `library_only` runs, but enforcement is still incomplete for indirect external access paths. Tool-capable runs could still bypass the intended boundary through future tool additions or tool types that are not yet mapped into the retrieval-scope policy.
+  recommended_fix_direction: Expand retrieval-scope policy from the current direct tool filter into a centralized backend execution policy that covers every external-access tool path, including future additions.
 
 ## low
 

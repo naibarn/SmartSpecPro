@@ -110,6 +110,61 @@ class TestAgencyServiceLoadAgency:
 class TestAgencyServiceExecuteRun:
     """Tests for AgencyService.execute_run()."""
 
+    async def test_execute_run_passes_retrieval_scope_mode_to_tool_resolution(self):
+        """execute_run enforces retrieval scope at tool-resolution time."""
+        from app.services.agency_service import AgencyService, RunContext
+
+        mock_db = _make_mock_db()
+        service = AgencyService(db=mock_db)
+
+        service.load_agency = AsyncMock(return_value=MagicMock(
+            agency_id="a1", tenant_id="t1", name="Test",
+            system_prompt="", communication_flows=[],
+            max_run_time_seconds=600, user_id=1, conversation_id="c1",
+            credit_multiplier=1.0, creator_fee_credits=0, creator_id=None, platform_share_pct=20,
+        ))
+        service._load_agents = AsyncMock(return_value=[{
+            "id": "agent-1",
+            "name": "Researcher",
+            "instructions": "Research topics",
+            "model": "gpt-4o-mini",
+            "model_settings": None,
+            "is_entry_point": True,
+        }])
+        service._load_flows = AsyncMock(return_value=[])
+        service._load_tool_whitelist = AsyncMock(return_value={"builtin-document-search"})
+
+        mock_agent = MagicMock(name="Agent1")
+        mock_agent._is_entry_point = True
+        service.adapter.create_agent = MagicMock(return_value=mock_agent)
+        service.adapter.create_agency = MagicMock()
+        service.adapter.run = AsyncMock(return_value=MagicMock(
+            run_id="run-1", response="ok", agent_name="Agent1",
+            total_tokens=50, step_count=1, duration_ms=300,
+        ))
+        service.credit_manager.pre_check = AsyncMock(return_value=True)
+        service.credit_manager.estimate_run_cost = MagicMock(return_value=0.1)
+        service.credit_manager.apply_multiplier_markup = AsyncMock()
+
+        mock_resolve_tools = AsyncMock(return_value=[])
+        with patch("app.services.agency_service.resolve_tools_for_agent", mock_resolve_tools):
+            with patch("app.services.agency_service.create_persistence_hooks", return_value=(AsyncMock(), AsyncMock())):
+                ctx = RunContext(
+                    user_id=1,
+                    tenant_id="t1",
+                    conversation_id="c1",
+                    user_token="tok",
+                    run_metadata={
+                        "retrieval_scope": {
+                            "effectiveMode": "library_only",
+                        }
+                    },
+                )
+                await service.execute_run("a1", "Hello", ctx)
+
+        mock_resolve_tools.assert_awaited_once()
+        assert mock_resolve_tools.await_args.kwargs["retrieval_scope_mode"] == "library_only"
+
     async def test_execute_run_full_lifecycle(self):
         """execute_run: load -> construct -> pre-check -> execute -> markup."""
         from app.services.agency_service import AgencyService, RunContext
@@ -449,6 +504,56 @@ class TestAgencyPreviewPersistencePolicy:
         event_types = [event["event"] for event in events]
         assert "preview_ready" in event_types
         assert event_types.index("preview_ready") < event_types.index("run_finished")
+
+    async def test_execute_run_stream_passes_retrieval_scope_mode_to_tool_resolution(self):
+        """streaming runs apply retrieval scope before tool construction."""
+        from app.services.agency_service import AgencyService, RunContext
+
+        async def _stream():
+            yield {"type": "response.output_text.delta", "delta": "Hello"}
+
+        mock_db = _make_mock_db()
+        service = AgencyService(db=mock_db)
+
+        service.load_agency = AsyncMock(return_value=MagicMock(
+            agency_id="a1", tenant_id="t1", name="Test",
+            system_prompt="", communication_flows=[],
+            max_run_time_seconds=600, user_id=1, conversation_id="c1",
+            credit_multiplier=1.0, creator_fee_credits=0, creator_id=None, platform_share_pct=20,
+        ))
+        service._load_agents = AsyncMock(return_value=[{
+            "id": "agent-1",
+            "name": "Researcher",
+            "instructions": "Research topics",
+            "model": "gpt-4o-mini",
+            "model_settings": None,
+            "is_entry_point": True,
+        }])
+        service._load_flows = AsyncMock(return_value=[])
+        service._load_tool_whitelist = AsyncMock(return_value={"builtin-document-search"})
+        service.adapter.create_agent = MagicMock(return_value=MagicMock(name="Agent1"))
+        service.adapter.create_agency = MagicMock()
+        service.adapter.run_stream = MagicMock(return_value=_stream())
+        service.credit_manager.apply_multiplier_markup = AsyncMock()
+
+        mock_resolve_tools = AsyncMock(return_value=[])
+        with patch("app.services.agency_service.resolve_tools_for_agent", mock_resolve_tools):
+            with patch("app.services.agency_service.create_persistence_hooks", return_value=(AsyncMock(), AsyncMock())):
+                ctx = RunContext(
+                    user_id=1,
+                    tenant_id="t1",
+                    conversation_id="c1",
+                    user_token="tok",
+                    run_metadata={
+                        "retrieval_scope": {
+                            "effectiveMode": "library_only",
+                        }
+                    },
+                )
+                _ = [event async for event in service.execute_run_stream("a1", "Hello", ctx)]
+
+        mock_resolve_tools.assert_awaited_once()
+        assert mock_resolve_tools.await_args.kwargs["retrieval_scope_mode"] == "library_only"
 
 
 class TestAgencyServiceCreditPreCheckFailed:

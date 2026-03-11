@@ -120,6 +120,15 @@ class AgencyService:
         return f"{system_prompt}\n\nRun retrieval scope:\n- {scope_instruction}".strip()
 
     @staticmethod
+    def _get_retrieval_scope_mode(run_metadata: dict[str, Any] | None) -> str | None:
+        retrieval_scope = (run_metadata or {}).get("retrieval_scope")
+        if not isinstance(retrieval_scope, dict):
+            return None
+
+        effective_mode = str(retrieval_scope.get("effectiveMode") or "").strip()
+        return effective_mode or None
+
+    @staticmethod
     def _json_value(value):
         if value is None:
             return None
@@ -580,6 +589,7 @@ class AgencyService:
 
         # 4. Resolve tools for each agent
         agency_whitelist = await self._load_tool_whitelist(agency_id)
+        retrieval_scope_mode = self._get_retrieval_scope_mode(context.run_metadata)
         agent_tools: dict[str, list[type]] = {}
         for agent_data in agents_data:
             tools = await resolve_tools_for_agent(
@@ -587,6 +597,7 @@ class AgencyService:
                 agent_id=agent_data["id"],
                 agency_whitelist=agency_whitelist,
                 adapter=self.adapter,
+                retrieval_scope_mode=retrieval_scope_mode,
             )
             agent_tools[agent_data["id"]] = tools
 
@@ -815,6 +826,7 @@ class AgencyService:
                 return
 
             agency_whitelist = await self._load_tool_whitelist(agency_id)
+            retrieval_scope_mode = self._get_retrieval_scope_mode(context.run_metadata)
             agent_tools: dict[str, list[type]] = {}
             for agent_data in agents_data:
                 tools = await resolve_tools_for_agent(
@@ -822,6 +834,7 @@ class AgencyService:
                     agent_id=agent_data["id"],
                     agency_whitelist=agency_whitelist,
                     adapter=self.adapter,
+                    retrieval_scope_mode=retrieval_scope_mode,
                 )
                 agent_tools[agent_data["id"]] = tools
 

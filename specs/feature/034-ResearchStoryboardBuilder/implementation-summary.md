@@ -19,11 +19,12 @@
 ## Remaining risks and deferred items
 
 - Broader Python agency unit suites still show unrelated failures and occasional hangs under the reduced `--noconftest` harness used in this environment, so full-suite signoff remains deferred.
+- Retrieval-scope hardening is improved: `library_only` runs now drop direct external retrieval tools during Python tool resolution, but centralized enforcement across every external-access path is still deferred.
 - Post-implementation security review is recorded in `implementation-security-review.md`.
 - Chosen post-review action: `defer`
 
 ## Suggested next steps
 
 1. Stabilize the broader Python agency test harness so router/model/lifecycle suites can serve as the default regression command for future changes.
-2. Move retrieval-scope enforcement below the prompt layer into explicit backend/tool policy checks.
+2. Extend retrieval-scope enforcement from the current direct-tool filtering into a centralized backend policy for all external-access tools.
 3. Replace slug-derived built-in template provenance with a dedicated persisted identifier.

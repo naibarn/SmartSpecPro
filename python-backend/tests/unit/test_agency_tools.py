@@ -166,3 +166,67 @@ class TestToolResolution:
         # Each tool should be a class
         for t in tools:
             assert isinstance(t, type)
+
+    async def test_resolve_filters_external_retrieval_tools_for_library_only_scope(self):
+        """library_only removes external retrieval tools at resolution time."""
+        from app.services.agency_tools import resolve_tools_for_agent
+
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.all.return_value = [
+            MagicMock(
+                tool_id="builtin-web-search",
+                tool_type="builtin",
+                risk_level="medium",
+                requires_approval=False,
+                base_config=None,
+                instance_config=None,
+            ),
+            MagicMock(
+                tool_id="builtin-document-search",
+                tool_type="builtin",
+                risk_level="low",
+                requires_approval=False,
+                base_config=None,
+                instance_config=None,
+            ),
+        ]
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        tools = await resolve_tools_for_agent(
+            db=mock_db,
+            agent_id="agent-1",
+            agency_whitelist={"builtin-web-search", "builtin-document-search"},
+            retrieval_scope_mode="library_only",
+        )
+
+        resolved_tool_ids = [tool._tool_config.tool_id for tool in tools]
+        assert resolved_tool_ids == ["builtin-document-search"]
+
+    async def test_resolve_keeps_web_search_when_scope_allows_fallback(self):
+        """tenant_accessible keeps web-search available for fallback-capable templates."""
+        from app.services.agency_tools import resolve_tools_for_agent
+
+        mock_db = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.all.return_value = [
+            MagicMock(
+                tool_id="builtin-web-search",
+                tool_type="builtin",
+                risk_level="medium",
+                requires_approval=False,
+                base_config=None,
+                instance_config=None,
+            ),
+        ]
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        tools = await resolve_tools_for_agent(
+            db=mock_db,
+            agent_id="agent-1",
+            agency_whitelist={"builtin-web-search"},
+            retrieval_scope_mode="tenant_accessible",
+        )
+
+        resolved_tool_ids = [tool._tool_config.tool_id for tool in tools]
+        assert resolved_tool_ids == ["builtin-web-search"]
