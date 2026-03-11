@@ -329,6 +329,7 @@ export const webhookTriggersRouter = router({
             sourceType: "webhook",
             userId,
             tenantId,
+            isAgencyEscalation: true,
           }).catch(() => null);
           const testTaskMetadata = testPlannerResult
             ? buildAgencyTaskMetadata({

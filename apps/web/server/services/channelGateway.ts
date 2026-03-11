@@ -178,6 +178,7 @@ async function ingest(event: ChatIngressEvent): Promise<IngestResult> {
               sourceType: "channel",
               userId: connection.userId,
               tenantId: connection.tenantId,
+              isAgencyEscalation: true,
             }).catch(() => null);
             const routeTaskMetadata = routePlannerResult
               ? buildAgencyTaskMetadata({
@@ -266,6 +267,7 @@ async function ingest(event: ChatIngressEvent): Promise<IngestResult> {
           sourceType: "channel",
           userId: connection.userId,
           tenantId: connection.tenantId,
+          isAgencyEscalation: true,
         }).catch(() => null);
         const agencyTaskMetadata = agencyPlannerResult
           ? buildAgencyTaskMetadata({

@@ -21,13 +21,12 @@ import type {
 
 // ── Feature flag constants ──────────────────────────────────────
 
-/** Global flag: enables planner-driven agency escalation */
-export const PLANNER_AGENCY_ESCALATION_FLAG =
-  "PLANNER_AGENCY_ESCALATION_ENABLED";
-
-/** Per-task-type flag prefix: e.g. PLANNER_AGENCY_ESCALATION:skill */
-export const PLANNER_AGENCY_ESCALATION_TASK_PREFIX =
-  "PLANNER_AGENCY_ESCALATION";
+/**
+ * Typed feature flag key (camelCase, matches TenantFeatureFlags in featureFlags.ts)
+ * that gates planner-driven agency escalation.
+ * Checked in taskPlannerMiddleware.runPlanner() when isAgencyEscalation=true.
+ */
+export const PLANNER_AGENCY_ESCALATION_FLAG = "taskPlannerAgencyEscalation";
 
 // ── Escalation decision ─────────────────────────────────────────
 

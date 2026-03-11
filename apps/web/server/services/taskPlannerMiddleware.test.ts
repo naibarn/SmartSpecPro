@@ -268,6 +268,52 @@ describe("taskPlannerMiddleware", () => {
       expect(result2).not.toBeNull();
       expect(result2!.resolvedModel).toBe("gpt-4o");
     });
+
+    it("returns null for agency escalation when taskPlannerAgencyEscalation=false", async () => {
+      // taskPlannerEnabled=true but taskPlannerAgencyEscalation=false
+      mockGetTenantFeatureFlag
+        .mockResolvedValueOnce(true)  // taskPlannerEnabled
+        .mockResolvedValueOnce(false); // taskPlannerAgencyEscalation
+
+      const result = await runPlanner({ ...basePlannerInput, isAgencyEscalation: true });
+
+      expect(result).toBeNull();
+      expect(mockGetTenantFeatureFlag).toHaveBeenCalledTimes(2);
+      expect(mockGetTenantFeatureFlag).toHaveBeenNthCalledWith(2, "taskPlannerAgencyEscalation", "tenant-1");
+    });
+
+    it("proceeds for agency escalation when both flags are true", async () => {
+      // Both flags enabled
+      mockGetTenantFeatureFlag.mockResolvedValue(true);
+      mockBuildExecutionPlan.mockReturnValue(fakePlan);
+      mockCreateTaskRun.mockResolvedValue({ id: 50 });
+      mockResolveModelFromPlan.mockReturnValue(fakeModel as any);
+      mockBuildSnapshot.mockReturnValue(fakeSnapshot as any);
+      mockGetTraceId.mockReturnValue(undefined);
+
+      const result = await runPlanner({ ...basePlannerInput, isAgencyEscalation: true });
+
+      expect(result).not.toBeNull();
+      expect(result!.resolvedModel).toBe("gpt-4o");
+      // Two flag checks: taskPlannerEnabled + taskPlannerAgencyEscalation
+      expect(mockGetTenantFeatureFlag).toHaveBeenCalledTimes(2);
+      expect(mockGetTenantFeatureFlag).toHaveBeenNthCalledWith(2, "taskPlannerAgencyEscalation", "tenant-1");
+    });
+
+    it("skips agency escalation flag check when isAgencyEscalation is not set", async () => {
+      mockGetTenantFeatureFlag.mockResolvedValue(true);
+      mockBuildExecutionPlan.mockReturnValue(fakePlan);
+      mockCreateTaskRun.mockResolvedValue({ id: 51 });
+      mockResolveModelFromPlan.mockReturnValue(fakeModel as any);
+      mockBuildSnapshot.mockReturnValue(fakeSnapshot as any);
+      mockGetTraceId.mockReturnValue(undefined);
+
+      await runPlanner(basePlannerInput); // no isAgencyEscalation
+
+      // Only taskPlannerEnabled checked — no second flag check
+      expect(mockGetTenantFeatureFlag).toHaveBeenCalledTimes(1);
+      expect(mockGetTenantFeatureFlag).toHaveBeenCalledWith("taskPlannerEnabled", "tenant-1");
+    });
   });
 
   describe("recordStepAttempt", () => {

@@ -78,9 +78,9 @@ describe("agencyEscalation", () => {
   });
 
   describe("PLANNER_AGENCY_ESCALATION_FLAG", () => {
-    it("is a well-known string constant", () => {
+    it("matches the typed feature flag key (camelCase)", () => {
       expect(PLANNER_AGENCY_ESCALATION_FLAG).toBe(
-        "PLANNER_AGENCY_ESCALATION_ENABLED",
+        "taskPlannerAgencyEscalation",
       );
     });
   });

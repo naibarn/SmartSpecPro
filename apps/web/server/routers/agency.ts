@@ -1411,6 +1411,7 @@ export const agencyRouter = router({
         sourceType: "agency",
         userId,
         tenantId,
+        isAgencyEscalation: true,
       }).catch(() => null);
 
       const taskMetadata = plannerResult

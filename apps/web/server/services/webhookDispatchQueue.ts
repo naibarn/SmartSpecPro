@@ -78,6 +78,7 @@ export async function processWebhookDispatch(job: Job<WebhookDispatchJob>): Prom
       sourceType: "webhook",
       userId,
       tenantId,
+      isAgencyEscalation: true,
     }).catch(() => null);
     const taskMetadata = plannerResult
       ? buildAgencyTaskMetadata({

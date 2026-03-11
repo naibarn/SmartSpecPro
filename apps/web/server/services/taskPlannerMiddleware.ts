@@ -47,6 +47,12 @@ export interface PlannerInput {
   skillSlug?: string;
   hasTools?: boolean;
   executionPolicy?: { modelId?: string; mode?: string };
+  /**
+   * When true, runPlanner() additionally checks the `taskPlannerAgencyEscalation`
+   * feature flag before proceeding. Pass this for agency-bound call sites so that
+   * operators can independently gate planner tracking for agency runs.
+   */
+  isAgencyEscalation?: boolean;
 }
 
 // ── Core orchestrator ─────────────────────────────────────────────────
@@ -65,6 +71,15 @@ export async function runPlanner(
       input.tenantId,
     );
     if (!enabled) return null;
+
+    // 1b. For agency-bound calls, also require the agency escalation flag
+    if (input.isAgencyEscalation) {
+      const escalationEnabled = await getTenantFeatureFlag(
+        "taskPlannerAgencyEscalation",
+        input.tenantId,
+      );
+      if (!escalationEnabled) return null;
+    }
 
     const startMs = Date.now();
 
