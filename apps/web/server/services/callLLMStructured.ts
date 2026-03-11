@@ -3,6 +3,7 @@ import type { Message } from "../_core/llm";
 import { executeWithFallback, resolveProviders } from "./llmRouter";
 import { deductCreditsForModel } from "./creditService";
 import { auditLogger } from "./auditLogger";
+import { runPlanner, recordStepAttempt } from "./taskPlannerMiddleware";
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -87,6 +88,20 @@ The JSON must strictly conform to the expected schema.`;
     }
   }
 
+  // Wire task planner ONCE before the retry loop
+  const plannerResult = await runPlanner({
+    sourceType: "skill",
+    userId,
+    tenantId,
+    conversationModel: model,
+    skillSlug: (billingMetadata?.skillSlug as string) ?? undefined,
+  });
+
+  let effectiveModel = model;
+  if (plannerResult && !plannerResult.shadowMode && plannerResult.resolvedModel) {
+    effectiveModel = plannerResult.resolvedModel;
+  }
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const isRetry = attempt > 0;
 
@@ -101,7 +116,7 @@ The JSON must strictly conform to the expected schema.`;
     ];
 
     const result = await executeWithFallback({
-      model,
+      model: effectiveModel,
       messages,
       stream: false,
       userId,
@@ -150,6 +165,21 @@ The JSON must strictly conform to the expected schema.`;
       sourceType: "skill",
     });
     totalCredits += creditsUsed;
+
+    // Record step attempt for each retry (per-attempt tracking)
+    if (plannerResult) {
+      recordStepAttempt({
+        taskRunId: plannerResult.taskRunId,
+        plan: plannerResult.plan,
+        model: effectiveModel,
+        provider: result.providerName,
+        inputTokens,
+        outputTokens,
+        costUsd: costUsd?.toString(),
+        snapshot: plannerResult.snapshot,
+        creditsUsed,
+      }).catch(() => {});
+    }
 
     lastRawResponse = content;
 

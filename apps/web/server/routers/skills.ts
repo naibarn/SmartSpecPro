@@ -364,8 +364,9 @@ async function callLLMWithVision(
   userPrompt: string,
   imageUrls: string[] = [],
   model?: string,
-  maxTokens: number = 2000
-): Promise<{ content: string; usage: { promptTokens: number; completionTokens: number } }> {
+  maxTokens: number = 2000,
+  options?: { extraBodyParams?: Record<string, unknown>; systemPromptSuffix?: string }
+): Promise<{ content: string; usage: { promptTokens: number; completionTokens: number }; rawResponse?: any }> {
   const useModel = resolveVisionModelId(await getVisionModelOptions(), model);
   if (!useModel) {
     throw new Error("No enabled vision model configured");
@@ -390,8 +391,12 @@ async function callLLMWithVision(
     });
   }
 
+  const finalSystemPrompt = options?.systemPromptSuffix
+    ? systemPrompt + options.systemPromptSuffix
+    : systemPrompt;
+
   const messages = [
-    { role: "system", content: systemPrompt },
+    { role: "system", content: finalSystemPrompt },
     { role: "user", content: userContent }
   ];
 
@@ -411,6 +416,7 @@ async function callLLMWithVision(
       messages,
       max_tokens: maxTokens,
       temperature: 0.7,
+      ...(options?.extraBodyParams ?? {}),
     }),
   });
 
@@ -448,7 +454,8 @@ async function callLLMWithVision(
     usage: {
       promptTokens: usage.prompt_tokens || 0,
       completionTokens: usage.completion_tokens || 0,
-    }
+    },
+    rawResponse: data,
   };
 }
 
@@ -1606,13 +1613,39 @@ export const skillsRouter = router({
           });
         }
 
+        // Check if skill requires web search grounding
+        let webSearchOptions: { extraBodyParams?: Record<string, unknown>; systemPromptSuffix?: string } | undefined;
+        let requiresWebSearch = false;
+
+        if (skill.folderPath) {
+          const skillMdPath = path.resolve(process.cwd(), skill.folderPath, "skill.md");
+          if (fs.existsSync(skillMdPath)) {
+            try {
+              const rawMd = fs.readFileSync(skillMdPath, "utf-8");
+              const parsedMd = parseSkillFile(rawMd);
+              const execPolicy = (parsedMd.metadata as any).execution_policy;
+              requiresWebSearch = execPolicy?.requires_web_search === true;
+            } catch { /* non-critical */ }
+          }
+        }
+
+        if (requiresWebSearch) {
+          const provider = await getProviderForModel(visionModel);
+          if (provider) {
+            const { detectProviderFamily, buildWebSearchParams } = await import("../services/webSearchToolInjector");
+            const family = detectProviderFamily(provider.providerName);
+            webSearchOptions = buildWebSearchParams(family);
+          }
+        }
+
         // Call LLM with substituted system prompt
         const result = await callLLMWithVision(
           systemPrompt,
           userPrompt,
           input.referenceImages || [],
           visionModel,
-          4000 // Higher token limit for complex outputs
+          4000, // Higher token limit for complex outputs
+          webSearchOptions,
         );
 
 
@@ -1657,12 +1690,27 @@ export const skillsRouter = router({
                 }
               }
 
+              // Extract citations from raw LLM response if web search was used
+              let extractedCitations: any[] | undefined;
+              if (requiresWebSearch && result.rawResponse) {
+                try {
+                  const { extractCitationsFromResponse } = await import("../services/citationExtractor");
+                  const { detectProviderFamily: detectFamily } = await import("../services/webSearchToolInjector");
+                  const providerObj = await getProviderForModel(visionModel);
+                  const family = providerObj ? detectFamily(providerObj.providerName) : "other";
+                  if (family !== "other") {
+                    extractedCitations = extractCitationsFromResponse(result.rawResponse, family as "openai" | "gemini" | "anthropic" | "kimi");
+                  }
+                } catch { /* non-critical */ }
+              }
+
               const { processContentOutput } = await import("../services/contentOutputProcessor");
               const processed = processContentOutput({
                 llmOutput: result.content,
                 outputFormat,
                 skillSlug: input.skillId,
                 contentQuality: contentQuality as any,
+                ...(extractedCitations?.length ? { extractedCitations } : {}),
               });
 
               processedContent = typeof processed.content === "string"

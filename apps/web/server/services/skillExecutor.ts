@@ -23,6 +23,7 @@ import {
   getModelsByTypeAsync,
 } from "./modelRegistry";
 import { calculateCreditCost } from "./pricingCalculator";
+import { runPlanner, recordStepAttempt } from "./taskPlannerMiddleware";
 import {
   isSandboxEnabled,
   shouldUseSandboxForFeature,
@@ -381,19 +382,19 @@ export async function executeSkill(
   switch (skill.type) {
     case "image-generation":
       console.log(`[SkillExecutor] Routing to executeImageGeneration`);
-      return executeImageGeneration(skill, params, userId, userToken);
+      return executeImageGeneration(skill, params, userId, userToken, tenantId);
 
     case "video-generation":
       console.log(`[SkillExecutor] Routing to executeVideoGeneration`);
-      return executeVideoGeneration(skill, params, userId, userToken);
+      return executeVideoGeneration(skill, params, userId, userToken, tenantId);
 
     case "image-video-generation":
       console.log(`[SkillExecutor] Skill type is image-video-generation, routing to video generation`);
-      return executeVideoGeneration(skill, params, userId, userToken);
+      return executeVideoGeneration(skill, params, userId, userToken, tenantId);
 
     case "audio-generation":
       console.log(`[SkillExecutor] Routing to executeAudioGeneration`);
-      return executeAudioGeneration(params, userId, userToken);
+      return executeAudioGeneration(params, userId, userToken, tenantId);
 
     case "automation":
     case "chat-assistant":
@@ -427,10 +428,19 @@ async function executeImageGeneration(
   skill: SkillDefinition,
   params: SkillExecutionParams,
   userId: number,
-  userToken: string
+  userToken: string,
+  tenantId?: string,
 ): Promise<SkillExecutionResult> {
   // Ensure model cache is loaded from DB before any lookups
   await getModelsByTypeAsync("image");
+
+  // Wire task planner for media tracking
+  const plannerResult = await runPlanner({
+    sourceType: "media",
+    userId,
+    tenantId: tenantId || "default",
+    skillSlug: skill.id,
+  });
 
   // Get model from params or defaults
   const modelInput = params.model || skill.defaultModel;
@@ -509,6 +519,19 @@ async function executeImageGeneration(
     // Extract URLs
     const urls = result.data?.map((d) => d.url).filter((u): u is string => !!u) || [];
 
+    // Record step attempt for planner tracking
+    if (plannerResult) {
+      recordStepAttempt({
+        taskRunId: plannerResult.taskRunId,
+        plan: plannerResult.plan,
+        model: String(model),
+        inputTokens: 0,
+        outputTokens: 0,
+        snapshot: plannerResult.snapshot,
+        creditsUsed: result.creditsUsed || creditCost,
+      }).catch(() => {});
+    }
+
     return {
       success: true,
       skillId: skill.id,
@@ -536,10 +559,19 @@ async function executeVideoGeneration(
   skill: SkillDefinition,
   params: SkillExecutionParams,
   userId: number,
-  userToken: string
+  userToken: string,
+  tenantId?: string,
 ): Promise<SkillExecutionResult> {
   // Ensure model cache is loaded from DB before any lookups
   await getModelsByTypeAsync("video");
+
+  // Wire task planner for media tracking
+  const plannerResult = await runPlanner({
+    sourceType: "media",
+    userId,
+    tenantId: tenantId || "default",
+    skillSlug: skill.id,
+  });
 
   // Get model from params or defaults
   const modelInput = params.model || skill.defaultModel;
@@ -626,6 +658,19 @@ async function executeVideoGeneration(
       status: task.status,
     });
 
+    // Record step attempt for planner tracking
+    if (plannerResult) {
+      recordStepAttempt({
+        taskRunId: plannerResult.taskRunId,
+        plan: plannerResult.plan,
+        model: String(model),
+        inputTokens: 0,
+        outputTokens: 0,
+        snapshot: plannerResult.snapshot,
+        creditsUsed: creditCost,
+      }).catch(() => {});
+    }
+
     return {
       success: true,
       skillId: skill.id,
@@ -656,10 +701,19 @@ async function executeVideoGeneration(
 export async function executeAudioGeneration(
   params: SkillExecutionParams,
   userId: number,
-  userToken: string
+  userToken: string,
+  tenantId?: string,
 ): Promise<SkillExecutionResult> {
   // Ensure model cache is loaded from DB before any lookups
   await getModelsByTypeAsync("audio");
+
+  // Wire task planner for media tracking
+  const plannerResult = await runPlanner({
+    sourceType: "media",
+    userId,
+    tenantId: tenantId || "default",
+    skillSlug: "audio-generation",
+  });
 
   // Get model from params or defaults
   const modelInput = params.model;
@@ -728,6 +782,19 @@ export async function executeAudioGeneration(
 
     // Extract URL
     const url = result.data?.[0]?.url;
+
+    // Record step attempt for planner tracking
+    if (plannerResult) {
+      recordStepAttempt({
+        taskRunId: plannerResult.taskRunId,
+        plan: plannerResult.plan,
+        model: String(model),
+        inputTokens: 0,
+        outputTokens: 0,
+        snapshot: plannerResult.snapshot,
+        creditsUsed: result.creditsUsed || audioCreditCost,
+      }).catch(() => {});
+    }
 
     return {
       success: true,

@@ -49,6 +49,7 @@ import { checkRateLimit } from "../middleware/distributedRateLimit";
 import { auditLogger } from "../services/auditLogger";
 import { checkAbuseGuard, hashPrompt } from "../services/abuseGuard";
 import { resolveSkillExecutionPolicy } from "../services/skillExecutionPolicy";
+import { runPlanner, recordStepAttempt } from "../services/taskPlannerMiddleware";
 
 // ── Security: forbidden patterns in LLM-generated skillContent ───────────────
 const ISC_FORBIDDEN_PATTERNS = [
@@ -1438,7 +1439,28 @@ export const chatRouter = router({
           skill,
           conversationModel,
         });
-        const llmModel = executionPolicy.modelId;
+
+        // Wire task planner for skill execution tracking
+        const skillTenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+        const plannerResult = await runPlanner({
+          sourceType: "skill",
+          userId: ctx.user.id,
+          tenantId: skillTenantId,
+          conversationModel,
+          skillSlug: input.skillId,
+          executionPolicy: {
+            modelId: executionPolicy.modelId ?? undefined,
+            mode: executionPolicy.modelSource,
+          },
+        });
+
+        // Model selection: active planner overrides, shadow mode uses legacy
+        let llmModel: string | null;
+        if (plannerResult && !plannerResult.shadowMode && plannerResult.resolvedModel) {
+          llmModel = plannerResult.resolvedModel;
+        } else {
+          llmModel = executionPolicy.modelId;
+        }
         if (!llmModel) {
           return {
             success: false,
@@ -1572,6 +1594,21 @@ export const chatRouter = router({
             skillSlug: input.skillId,
             sourceType: "skill",
           });
+
+          // Record step attempt for planner tracking
+          if (plannerResult) {
+            recordStepAttempt({
+              taskRunId: plannerResult.taskRunId,
+              plan: plannerResult.plan,
+              model: llmModel,
+              provider: provider.providerName,
+              inputTokens,
+              outputTokens,
+              costUsd: llmData?.usage?.cost?.toString(),
+              snapshot: plannerResult.snapshot,
+              creditsUsed,
+            }).catch(() => {});
+          }
 
           // Save as assistant message in conversation
           if (input.conversationId) {
