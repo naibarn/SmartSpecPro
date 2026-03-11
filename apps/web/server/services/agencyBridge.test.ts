@@ -120,5 +120,62 @@ describe("AgencyBridge", () => {
       const result = await bridge.executeRun(baseParams);
       expect(result.stepAttemptSnapshots).toEqual([]);
     });
+
+    it("normalizes canonical response and structured result metadata", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          run_id: "run-1",
+          status: "completed",
+          response: "Research preview ready.",
+          output: "Research preview ready.",
+          credits_used: 0,
+          duration_ms: 500,
+          structured_result: {
+            version: "1.0",
+            intent: "research_report",
+            summary: "Research preview ready.",
+            payload: { title: "Market scan" },
+            artifacts: [{ artifact_type: "research_report", title: "Market scan" }],
+            references: [],
+            metrics: {},
+          },
+          preview_artifacts: [{
+            id: "artifact-1",
+            intent: "research_report",
+            artifact_type: "research_report",
+            state: "preview_generated",
+            summary: "Research preview ready.",
+            commit_status: "not_committed",
+            commit_token: "commit-token-1",
+          }],
+        }),
+      });
+
+      const result = await bridge.executeRun(baseParams);
+
+      expect(result.response).toBe("Research preview ready.");
+      expect(result.structuredResult?.intent).toBe("research_report");
+      expect(result.previewArtifacts[0]?.state).toBe("preview_generated");
+    });
+
+    it("falls back to legacy output when canonical response is absent", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          run_id: "run-1",
+          status: "completed",
+          output: "Legacy output text",
+          credits_used: 0,
+          duration_ms: 500,
+        }),
+      });
+
+      const result = await bridge.executeRun(baseParams);
+
+      expect(result.response).toBe("Legacy output text");
+      expect(result.structuredResult).toBeNull();
+      expect(result.previewArtifacts).toEqual([]);
+    });
   });
 });

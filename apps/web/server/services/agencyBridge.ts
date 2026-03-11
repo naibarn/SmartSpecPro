@@ -32,6 +32,28 @@ export interface StepAttemptSnapshot {
   credits_used: number;
 }
 
+export interface StructuredRunResult {
+  version: string;
+  intent: string;
+  summary: string;
+  payload: Record<string, unknown>;
+  artifacts: Array<Record<string, unknown>>;
+  references: Array<Record<string, unknown>>;
+  metrics: Record<string, unknown>;
+}
+
+export interface PreviewArtifactMetadata {
+  id: string;
+  intent: string;
+  artifact_type: string;
+  state: string;
+  summary: string | null;
+  commit_status: string;
+  commit_token: string;
+  target_type?: string | null;
+  target_id?: string | null;
+}
+
 export interface RunResult {
   runId: string;
   status: string;
@@ -40,6 +62,8 @@ export interface RunResult {
   durationMs: number;
   /** Step-attempt snapshots from agency execution (for billing reconciliation) */
   stepAttemptSnapshots: StepAttemptSnapshot[];
+  structuredResult: StructuredRunResult | null;
+  previewArtifacts: PreviewArtifactMetadata[];
 }
 
 interface RunFilters {
@@ -146,10 +170,12 @@ export class AgencyBridge {
     return {
       runId: data.run_id,
       status: data.status,
-      response: data.response,
+      response: data.response ?? data.output ?? "",
       creditsUsed: data.credits_used ?? 0,
       durationMs: data.duration_ms ?? 0,
       stepAttemptSnapshots: data.step_attempt_snapshots ?? [],
+      structuredResult: data.structured_result ?? null,
+      previewArtifacts: data.preview_artifacts ?? [],
     };
   }
 
@@ -202,10 +228,12 @@ export class AgencyBridge {
     return {
       runId: data.run_id ?? data.id,
       status: data.status,
-      response: data.response ?? "",
+      response: data.response ?? data.output ?? "",
       creditsUsed: data.credits_used ?? data.totalCreditsUsed ?? 0,
       durationMs: data.duration_ms ?? data.durationMs ?? 0,
       stepAttemptSnapshots: data.step_attempt_snapshots ?? [],
+      structuredResult: data.structured_result ?? null,
+      previewArtifacts: data.preview_artifacts ?? [],
     };
   }
 }

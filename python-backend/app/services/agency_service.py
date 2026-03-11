@@ -7,6 +7,7 @@ execute run -> apply multiplier markup -> record results.
 Agency objects are instantiated per-request (never reused).
 """
 
+import json
 import uuid
 import time
 from datetime import datetime, timezone
@@ -27,6 +28,7 @@ from app.services.agency_swarm_adapter import (
 )
 from app.services.agency_credits import AgencyCreditManager
 from app.services.agency_persistence import create_persistence_hooks
+from app.services.agency_result_envelope import parse_agency_result_envelope
 from app.services.agency_tools import resolve_tools_for_agent
 from app.services.agency_audit import log_agency_event, reconcile_credits
 from app.services.agency_orchestrator import AgencyOrchestrator, should_use_orchestrator
@@ -78,6 +80,45 @@ class AgencyService:
             gateway_url=settings.SMARTSPEC_WEB_GATEWAY_URL or "",
             gateway_token=settings.SMARTSPEC_WEB_GATEWAY_TOKEN or "",
         )
+
+    @staticmethod
+    def _json_value(value):
+        if value is None:
+            return None
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except json.JSONDecodeError:
+                return value
+        return value
+
+    @staticmethod
+    def _build_preview_artifact(
+        *,
+        run_id: str,
+        agency_id: str,
+        conversation_id: str,
+        tenant_id: str,
+        envelope: dict,
+    ) -> dict:
+        first_artifact = (envelope.get("artifacts") or [{}])[0]
+        return {
+            "id": str(uuid.uuid4()),
+            "run_id": run_id,
+            "conversation_id": conversation_id,
+            "agency_id": agency_id,
+            "tenant_id": tenant_id,
+            "intent": envelope["intent"],
+            "artifact_type": first_artifact.get("artifact_type") or envelope["intent"],
+            "state": "preview_generated",
+            "summary": envelope.get("summary"),
+            "payload_json": envelope.get("payload") or {},
+            "provenance_json": envelope.get("references") or [],
+            "commit_status": "not_committed",
+            "commit_token": uuid.uuid4().hex,
+            "target_type": None,
+            "target_id": None,
+        }
 
     async def load_agency(self, agency_id: str, tenant_id: str) -> AgencyConfig:
         """Load agency definition from PostgreSQL via read-only queries.
@@ -373,6 +414,50 @@ class AgencyService:
             )
 
             elapsed_ms = int((time.monotonic() - start_time) * 1000)
+            parse_outcome = parse_agency_result_envelope(result.response)
+            structured_result = None
+            preview_artifacts: list[dict] = []
+            parse_status = "not_present"
+            parse_error = None
+            parse_intent = None
+            parse_summary = None
+
+            if parse_outcome.found:
+                parse_status = "parsed" if parse_outcome.valid else "invalid"
+                parse_error = parse_outcome.error
+
+            if parse_outcome.text_response:
+                result.response = parse_outcome.text_response
+
+            if parse_outcome.valid and parse_outcome.envelope:
+                structured_result = parse_outcome.envelope.model_dump(mode="json")
+                parse_intent = structured_result["intent"]
+                parse_summary = structured_result["summary"]
+                preview_artifacts = [
+                    self._build_preview_artifact(
+                        run_id=run_id,
+                        agency_id=agency_id,
+                        conversation_id=context.conversation_id,
+                        tenant_id=context.tenant_id,
+                        envelope=structured_result,
+                    )
+                ]
+
+            result.structured_result = structured_result
+            result.preview_artifacts = [
+                {
+                    "id": artifact["id"],
+                    "intent": artifact["intent"],
+                    "artifact_type": artifact["artifact_type"],
+                    "state": artifact["state"],
+                    "summary": artifact["summary"],
+                    "commit_status": artifact["commit_status"],
+                    "commit_token": artifact["commit_token"],
+                    "target_type": artifact["target_type"],
+                    "target_id": artifact["target_id"],
+                }
+                for artifact in preview_artifacts
+            ]
 
             # 10. Apply multiplier markup
             # NOTE: total_gateway_cost is 0.0 here because per-call costs are
@@ -393,7 +478,12 @@ class AgencyService:
                     SET status = 'completed',
                         completed_at = :completed_at,
                         duration_ms = :duration_ms,
-                        step_count = :step_count
+                        step_count = :step_count,
+                        structured_result = CAST(:structured_result AS JSON),
+                        structured_result_parse_status = :structured_result_parse_status,
+                        structured_result_intent = :structured_result_intent,
+                        structured_result_summary = :structured_result_summary,
+                        structured_result_error = :structured_result_error
                     WHERE id = :id
                 """),
                 {
@@ -401,8 +491,38 @@ class AgencyService:
                     "completed_at": datetime.now(timezone.utc),
                     "duration_ms": elapsed_ms,
                     "step_count": result.step_count,
+                    "structured_result": json.dumps(structured_result) if structured_result else None,
+                    "structured_result_parse_status": parse_status,
+                    "structured_result_intent": parse_intent,
+                    "structured_result_summary": parse_summary,
+                    "structured_result_error": parse_error,
                 },
             )
+
+            for artifact in preview_artifacts:
+                await self.db.execute(
+                    text("""
+                        INSERT INTO agency_run_artifacts
+                            (id, run_id, conversation_id, agency_id, tenant_id,
+                             artifact_type, intent, state, summary,
+                             payload_json, provenance_json,
+                             commit_status, commit_token, target_type, target_id,
+                             created_at, updated_at)
+                        VALUES
+                            (:id, :run_id, :conversation_id, :agency_id, :tenant_id,
+                             :artifact_type, :intent, :state, :summary,
+                             CAST(:payload_json AS JSON), CAST(:provenance_json AS JSON),
+                             :commit_status, :commit_token, :target_type, :target_id,
+                             :created_at, :updated_at)
+                    """),
+                    {
+                        **artifact,
+                        "payload_json": json.dumps(artifact["payload_json"]),
+                        "provenance_json": json.dumps(artifact["provenance_json"]),
+                        "created_at": datetime.now(timezone.utc),
+                        "updated_at": datetime.now(timezone.utc),
+                    },
+                )
             await self.db.commit()
 
             logger.info(
@@ -795,7 +915,13 @@ class AgencyService:
                        COALESCE(total_credits_used, 0) as total_credits_used,
                        started_at, completed_at, duration_ms,
                        error_type, error_message,
-                       COALESCE(step_count, 0) as step_count
+                       COALESCE(step_count, 0) as step_count,
+                       structured_result,
+                       structured_result_parse_status,
+                       structured_result_intent,
+                       structured_result_summary,
+                       structured_result_error,
+                       conversation_id
                 FROM agency_runs
                 WHERE id = :run_id
                   AND agency_id = :agency_id
@@ -807,6 +933,30 @@ class AgencyService:
         if not row:
             raise AgencyNotFoundError(f"Run {run_id} not found")
 
+        response_result = await self.db.execute(
+            text("""
+                SELECT content
+                FROM agency_messages
+                WHERE conversation_id = :conversation_id
+                  AND role = 'assistant'
+                ORDER BY created_at DESC
+                LIMIT 1
+            """),
+            {"conversation_id": row.conversation_id},
+        )
+        response_row = response_result.first()
+
+        artifacts_result = await self.db.execute(
+            text("""
+                SELECT id, intent, artifact_type, state, summary,
+                       commit_status, commit_token, target_type, target_id
+                FROM agency_run_artifacts
+                WHERE run_id = :run_id
+                ORDER BY created_at ASC
+            """),
+            {"run_id": run_id},
+        )
+
         return {
             "id": row.id,
             "status": row.status,
@@ -817,6 +967,27 @@ class AgencyService:
             "error_type": row.error_type,
             "error_message": row.error_message,
             "step_count": row.step_count,
+            "response": response_row.content if response_row else "",
+            "output": response_row.content if response_row else "",
+            "structured_result": self._json_value(row.structured_result),
+            "structured_result_parse_status": row.structured_result_parse_status,
+            "structured_result_intent": row.structured_result_intent,
+            "structured_result_summary": row.structured_result_summary,
+            "structured_result_error": row.structured_result_error,
+            "preview_artifacts": [
+                {
+                    "id": artifact.id,
+                    "intent": artifact.intent,
+                    "artifact_type": artifact.artifact_type,
+                    "state": artifact.state,
+                    "summary": artifact.summary,
+                    "commit_status": artifact.commit_status,
+                    "commit_token": artifact.commit_token,
+                    "target_type": artifact.target_type,
+                    "target_id": artifact.target_id,
+                }
+                for artifact in artifacts_result.all()
+            ],
         }
 
     async def cancel_run(

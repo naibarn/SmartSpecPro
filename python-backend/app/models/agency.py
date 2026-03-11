@@ -118,6 +118,11 @@ class AgencyRun(Base):
     step_count = Column(Integer, nullable=True)
     retry_count = Column(Integer, nullable=True)
     run_metadata = Column("metadata", JSON, nullable=True)
+    structured_result = Column(JSON, nullable=True)
+    structured_result_parse_status = Column(String(20), nullable=True)
+    structured_result_intent = Column(String(50), nullable=True)
+    structured_result_summary = Column(Text, nullable=True)
+    structured_result_error = Column(Text, nullable=True)
 
     __table_args__ = (
         Index("agency_runs_conv_idx", "conversation_id"),
@@ -146,4 +151,75 @@ class AgencyRun(Base):
             "stepCount": self.step_count,
             "retryCount": self.retry_count,
             "metadata": self.run_metadata,
+            "structuredResult": self.structured_result,
+            "structuredResultParseStatus": self.structured_result_parse_status,
+            "structuredResultIntent": self.structured_result_intent,
+            "structuredResultSummary": self.structured_result_summary,
+            "structuredResultError": self.structured_result_error,
+        }
+
+
+class AgencyRunArtifact(Base):
+    """Run-scoped preview and commit tracking for structured agency outputs."""
+
+    __tablename__ = "agency_run_artifacts"
+
+    id = Column(String(36), primary_key=True)
+    run_id = Column(String(36), nullable=False, index=True)
+    conversation_id = Column(String(36), nullable=False, index=True)
+    agency_id = Column(String(36), nullable=False, index=True)
+    tenant_id = Column(String(36), nullable=False, index=True)
+    artifact_type = Column(String(50), nullable=False)
+    intent = Column(String(50), nullable=False)
+    state = Column(String(32), nullable=False, default="preview_generated")
+    summary = Column(Text, nullable=True)
+    payload_json = Column(JSON, nullable=True)
+    payload_storage_key = Column(String(255), nullable=True)
+    provenance_json = Column(JSON, nullable=True)
+    commit_status = Column(String(32), nullable=False, default="not_committed")
+    commit_token = Column(String(64), nullable=False, unique=True)
+    target_type = Column(String(64), nullable=True)
+    target_id = Column(String(128), nullable=True)
+    committed_at = Column(DateTime(timezone=True), nullable=True)
+    expired_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    __table_args__ = (
+        Index("agency_run_artifacts_run_idx", "run_id"),
+        Index("agency_run_artifacts_conversation_idx", "conversation_id"),
+        Index("agency_run_artifacts_tenant_idx", "tenant_id"),
+    )
+
+    def to_dict(self):
+        """Convert to dictionary for API responses."""
+        return {
+            "id": self.id,
+            "runId": self.run_id,
+            "conversationId": self.conversation_id,
+            "agencyId": self.agency_id,
+            "tenantId": self.tenant_id,
+            "artifactType": self.artifact_type,
+            "intent": self.intent,
+            "state": self.state,
+            "summary": self.summary,
+            "payloadJson": self.payload_json,
+            "payloadStorageKey": self.payload_storage_key,
+            "provenanceJson": self.provenance_json,
+            "commitStatus": self.commit_status,
+            "commitToken": self.commit_token,
+            "targetType": self.target_type,
+            "targetId": self.target_id,
+            "committedAt": self.committed_at.isoformat() if self.committed_at else None,
+            "expiredAt": self.expired_at.isoformat() if self.expired_at else None,
+            "createdAt": self.created_at.isoformat() if self.created_at else None,
+            "updatedAt": self.updated_at.isoformat() if self.updated_at else None,
         }

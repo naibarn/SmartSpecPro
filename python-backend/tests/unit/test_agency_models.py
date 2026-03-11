@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.pool import StaticPool
 from app.core.database import Base
-from app.models.agency import AgencyMessage, AgencyRun, AgencyRunStatus
+from app.models.agency import AgencyMessage, AgencyRun, AgencyRunArtifact, AgencyRunStatus
 
 
 @pytest.fixture(scope="function")
@@ -23,7 +23,7 @@ async def agency_db():
         await conn.run_sync(
             lambda sync_conn: Base.metadata.create_all(
                 sync_conn,
-                tables=[AgencyMessage.__table__, AgencyRun.__table__],
+                tables=[AgencyMessage.__table__, AgencyRun.__table__, AgencyRunArtifact.__table__],
             )
         )
     session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -134,3 +134,34 @@ class TestAgencyRun:
         assert "status" in d
         assert "conversationId" in d
         assert "agencyId" in d
+        assert "structuredResult" in d
+        assert "structuredResultParseStatus" in d
+
+
+@pytest.mark.unit
+@pytest.mark.agency
+class TestAgencyRunArtifact:
+    """Tests for the agency_run_artifacts SQLAlchemy model."""
+
+    async def test_create_preview_artifact(self, agency_db):
+        """agency_run_artifacts persists preview metadata additively."""
+        artifact = AgencyRunArtifact(
+            id="artifact-1",
+            run_id="run-1",
+            conversation_id="conv-uuid-1234",
+            agency_id="agency-uuid-1234",
+            tenant_id="tenant-uuid-1234",
+            artifact_type="research_report",
+            intent="research_report",
+            state="preview_generated",
+            commit_status="not_committed",
+            commit_token="commit-token-1",
+            summary="Research preview ready.",
+        )
+        agency_db.add(artifact)
+        await agency_db.commit()
+        await agency_db.refresh(artifact)
+
+        assert artifact.id == "artifact-1"
+        assert artifact.state == "preview_generated"
+        assert artifact.commit_status == "not_committed"

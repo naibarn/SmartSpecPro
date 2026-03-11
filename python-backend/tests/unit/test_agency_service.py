@@ -244,6 +244,71 @@ class TestAgencyServiceExecuteRun:
         # create_agency should be called twice (per-request)
         assert service.adapter.create_agency.call_count == 2
 
+    async def test_execute_run_normalizes_structured_result_and_preview_artifact(self):
+        """Structured envelopes are normalized into readable text plus preview metadata."""
+        from app.services.agency_result_envelope import AgencyEnvelopeParseOutcome, AgencyResultEnvelope
+        from app.services.agency_service import AgencyService, RunContext
+
+        mock_db = _make_mock_db()
+        service = AgencyService(db=mock_db)
+
+        service.load_agency = AsyncMock(return_value=MagicMock(
+            agency_id="a1", tenant_id="t1", name="Test",
+            system_prompt="", communication_flows=[],
+            max_run_time_seconds=600, user_id=1, conversation_id="c1",
+            credit_multiplier=1.0, creator_fee_credits=0, creator_id=None, platform_share_pct=20,
+        ))
+        service._load_agents = AsyncMock(return_value=[])
+        service._load_flows = AsyncMock(return_value=[])
+        service._load_tool_whitelist = AsyncMock(return_value=set())
+
+        mock_agent = MagicMock(name="Agent1")
+        mock_agent._is_entry_point = True
+        service.adapter.create_agent = MagicMock(return_value=mock_agent)
+        service.adapter.create_agency = MagicMock()
+
+        mock_run_result = MagicMock(
+            run_id="run-1",
+            response="```agency-result\n{\"version\":\"1.0\",\"intent\":\"research_report\",\"summary\":\"Research preview ready.\",\"payload\":{\"title\":\"Market scan\"},\"artifacts\":[{\"artifact_type\":\"research_report\",\"title\":\"Market scan\"}],\"references\":[],\"metrics\":{}}\n```",
+            agent_name="Agent1",
+            total_tokens=50,
+            step_count=1,
+            duration_ms=300,
+        )
+        service.adapter.run = AsyncMock(return_value=mock_run_result)
+        service.credit_manager.pre_check = AsyncMock(return_value=True)
+        service.credit_manager.estimate_run_cost = MagicMock(return_value=0.1)
+        service.credit_manager.apply_multiplier_markup = AsyncMock()
+
+        envelope = AgencyResultEnvelope(
+            version="1.0",
+            intent="research_report",
+            summary="Research preview ready.",
+            payload={"title": "Market scan"},
+            artifacts=[{"artifact_type": "research_report", "title": "Market scan"}],
+            references=[],
+            metrics={},
+        )
+
+        with patch("app.services.agency_service.resolve_tools_for_agent", AsyncMock(return_value=[])):
+            with patch("app.services.agency_service.create_persistence_hooks", return_value=(AsyncMock(), AsyncMock())):
+                with patch(
+                    "app.services.agency_service.parse_agency_result_envelope",
+                    return_value=AgencyEnvelopeParseOutcome(
+                        found=True,
+                        valid=True,
+                        text_response="Research preview ready.",
+                        envelope=envelope,
+                        error=None,
+                    ),
+                ):
+                    ctx = RunContext(user_id=1, tenant_id="t1", conversation_id="c1", user_token="tok")
+                    result = await service.execute_run("a1", "Hi", ctx)
+
+        assert result.response == "Research preview ready."
+        assert result.structured_result["intent"] == "research_report"
+        assert result.preview_artifacts[0]["state"] == "preview_generated"
+
 
 class TestAgencyServiceCreditPreCheckFailed:
     """Tests for credit pre-check failure."""

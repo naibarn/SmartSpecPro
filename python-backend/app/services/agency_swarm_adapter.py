@@ -19,7 +19,7 @@ import uuid
 from typing import Any, Callable
 
 import structlog
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # ── agency-swarm imports (ONLY in this file) ────────────────────────
 from agency_swarm import Agent, Agency
@@ -79,6 +79,8 @@ class RunResult(BaseModel):
     total_tokens: int = 0
     step_count: int = 0
     duration_ms: int = 0
+    structured_result: dict[str, Any] | None = None
+    preview_artifacts: list[dict[str, Any]] = Field(default_factory=list)
 
 
 # ── Adapter ─────────────────────────────────────────────────────────

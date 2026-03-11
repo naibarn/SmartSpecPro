@@ -4443,6 +4443,46 @@ export type AgencyConversation = typeof agencyConversations.$inferSelect;
 export type InsertAgencyConversation = typeof agencyConversations.$inferInsert;
 
 /**
+ * Agency Run Artifacts -- run-scoped preview and commit tracking for structured outputs.
+ *
+ * `runId` points at the Python-owned `agency_runs` table, so it is intentionally
+ * stored without a database foreign key in Drizzle.
+ */
+export const agencyRunArtifacts = pgTable("agency_run_artifacts", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  runId: varchar("runId", { length: 36 }).notNull(),
+  conversationId: varchar("conversationId", { length: 36 }).notNull()
+    .references(() => agencyConversations.id, { onDelete: "cascade" }),
+  agencyId: varchar("agencyId", { length: 36 }).notNull()
+    .references(() => agencies.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 36 }).notNull()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  artifactType: varchar("artifactType", { length: 50 }).notNull(),
+  intent: varchar("intent", { length: 50 }).notNull(),
+  state: varchar("state", { length: 32 }).notNull().default("preview_generated"),
+  summary: text("summary"),
+  payloadJson: json("payloadJson").$type<Record<string, unknown>>(),
+  payloadStorageKey: varchar("payloadStorageKey", { length: 255 }),
+  provenanceJson: json("provenanceJson").$type<Record<string, unknown>[]>(),
+  commitStatus: varchar("commitStatus", { length: 32 }).notNull().default("not_committed"),
+  commitToken: varchar("commitToken", { length: 64 }).notNull(),
+  targetType: varchar("targetType", { length: 64 }),
+  targetId: varchar("targetId", { length: 128 }),
+  committedAt: timestamp("committedAt", { withTimezone: true }),
+  expiredAt: timestamp("expiredAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("agency_run_artifacts_commit_token_idx").on(t.commitToken),
+  index("agency_run_artifacts_run_idx").on(t.runId),
+  index("agency_run_artifacts_conversation_idx").on(t.conversationId),
+  index("agency_run_artifacts_tenant_idx").on(t.tenantId),
+]);
+
+export type AgencyRunArtifact = typeof agencyRunArtifacts.$inferSelect;
+export type InsertAgencyRunArtifact = typeof agencyRunArtifacts.$inferInsert;
+
+/**
  * Agency Versions -- Immutable snapshots of an agency graph for version history.
  * Max 50 versions per agency (oldest pruned on insert).
  */

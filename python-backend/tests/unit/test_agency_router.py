@@ -207,8 +207,10 @@ class TestAgencyRunEndpoint:
 
     @patch("app.api.agencies.AgencyService")
     def test_returns_run_result_with_run_id(self, MockService):
-        """Successful run returns JSON with run_id, status, and output."""
+        """Successful run returns JSON with normalized response and compatibility output."""
         mock_result = _make_run_result()
+        mock_result.structured_result = None
+        mock_result.preview_artifacts = []
         mock_svc = MagicMock()
         mock_svc.execute_run = AsyncMock(return_value=mock_result)
         MockService.return_value = mock_svc
@@ -224,9 +226,53 @@ class TestAgencyRunEndpoint:
         data = resp.json()
         assert "run_id" in data
         assert data["status"] == "completed"
+        assert data["response"] == "The analysis is complete."
         assert data["output"] == "The analysis is complete."
+        assert data["structured_result"] is None
+        assert data["preview_artifacts"] == []
         assert "credits_used" in data
         assert "duration_ms" in data
+
+    @patch("app.api.agencies.AgencyService")
+    def test_returns_structured_result_metadata_when_present(self, MockService):
+        """Structured runs expose the additive envelope and preview metadata."""
+        mock_result = _make_run_result()
+        mock_result.response = "Research preview ready."
+        mock_result.structured_result = {
+            "version": "1.0",
+            "intent": "research_report",
+            "summary": "Research preview ready.",
+            "payload": {"title": "Market scan"},
+            "artifacts": [{"artifact_type": "research_report", "title": "Market scan"}],
+            "references": [],
+            "metrics": {},
+        }
+        mock_result.preview_artifacts = [{
+            "id": "artifact-1",
+            "intent": "research_report",
+            "artifact_type": "research_report",
+            "state": "preview_generated",
+            "summary": "Research preview ready.",
+            "commit_status": "not_committed",
+            "commit_token": "commit-token-1",
+        }]
+        mock_svc = MagicMock()
+        mock_svc.execute_run = AsyncMock(return_value=mock_result)
+        MockService.return_value = mock_svc
+
+        app, _ = _build_app()
+        client = TestClient(app)
+        resp = client.post(
+            "/api/v1/agencies/agency-1/run",
+            json={"message": "Analyze this topic"},
+        )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["response"] == "Research preview ready."
+        assert data["output"] == "Research preview ready."
+        assert data["structured_result"]["intent"] == "research_report"
+        assert data["preview_artifacts"][0]["state"] == "preview_generated"
 
     def test_returns_422_for_missing_message(self):
         """Missing 'message' field in request body returns 422."""

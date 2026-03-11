@@ -87,9 +87,12 @@ class AgencyRunResponse(BaseModel):
     run_id: str
     conversation_id: str
     status: str  # completed / failed
+    response: str
     output: str
     credits_used: float
     duration_ms: int
+    structured_result: Optional[dict] = None
+    preview_artifacts: list[dict] = Field(default_factory=list)
 
 
 class AgencyRunSummary(BaseModel):
@@ -104,6 +107,19 @@ class AgencyRunSummary(BaseModel):
     error_type: Optional[str] = None
     error_message: Optional[str] = None
     step_count: int = 0
+
+
+class AgencyRunDetailResponse(AgencyRunSummary):
+    """Detailed run response with normalized output contract."""
+
+    response: str = ""
+    output: str = ""
+    structured_result: Optional[dict] = None
+    structured_result_parse_status: Optional[str] = None
+    structured_result_intent: Optional[str] = None
+    structured_result_summary: Optional[str] = None
+    structured_result_error: Optional[str] = None
+    preview_artifacts: list[dict] = Field(default_factory=list)
 
 
 class AgencyRunListResponse(BaseModel):
@@ -281,9 +297,12 @@ async def run_agency(
         run_id=result.run_id,
         conversation_id=conversation_id,
         status="completed",
+        response=result.response,
         output=result.response,
         credits_used=0.0,  # Per-call deduction by gateway; reconciled in section-06
         duration_ms=result.duration_ms,
+        structured_result=result.structured_result,
+        preview_artifacts=result.preview_artifacts,
     )
 
 
@@ -395,7 +414,7 @@ async def get_run(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     _flag: None = Depends(require_agency_feature),
-) -> AgencyRunSummary:
+) -> AgencyRunDetailResponse:
     """Get details for a specific run."""
     service = AgencyService(db=db)
     try:
@@ -407,7 +426,7 @@ async def get_run(
     except AgencyNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
 
-    return AgencyRunSummary(**result)
+    return AgencyRunDetailResponse(**result)
 
 
 @router.post("/{agency_id}/runs/{run_id}/cancel")
