@@ -5029,3 +5029,31 @@ export const taskStepAttempts = pgTable("task_step_attempts", {
   index("task_step_attempts_run_idx").on(t.taskRunId),
   index("task_step_attempts_model_idx").on(t.effectiveModel),
 ]);
+
+// ── Spec 038: Content Artifacts (Citation-Gated Quality) ──────────────
+
+export const contentArtifactStatusEnum = pgEnum("content_artifact_status", [
+  "active",
+  "stale",
+  "archived",
+]);
+
+export const contentArtifacts = pgTable("content_artifacts", {
+  id: serial("id").primaryKey(),
+  tenantId: text("tenantId").notNull(),
+  userId: integer("userId").notNull(),
+  skillSlug: text("skillSlug").notNull(),
+  outputFormat: text("outputFormat").notNull(),
+  contentJson: jsonb("contentJson"),
+  qualityScore: jsonb("qualityScore"),
+  lastVerifiedAt: timestamp("lastVerifiedAt", { withTimezone: true }),
+  refreshCadenceDays: integer("refreshCadenceDays").default(30),
+  nextRefreshAt: timestamp("nextRefreshAt", { withTimezone: true }),
+  status: contentArtifactStatusEnum("status").notNull().default("active"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("content_artifacts_tenant_idx").on(t.tenantId),
+  index("content_artifacts_status_idx").on(t.status),
+  index("content_artifacts_next_refresh_idx").on(t.nextRefreshAt),
+]);
