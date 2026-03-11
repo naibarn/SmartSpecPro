@@ -125,6 +125,64 @@ export interface SkillDefinition {
 
   /** Database ID if from database */
   dbId?: number;
+
+  /**
+   * Capability-first execution policy for planner-based model selection.
+   * When present, the planner uses this to resolve allowed models
+   * instead of relying solely on llmModelId/defaultModel.
+   */
+  executionPolicy?: SkillExecutionPolicyConfig;
+}
+
+/**
+ * Skill execution policy configuration from skill.md frontmatter.
+ *
+ * Modes:
+ * - `requirements`: resolve from capability requirements (default)
+ * - `fixed`: use a specific model only
+ * - `hybrid`: prefer fixed model, fall back to requirements-based
+ */
+export interface SkillExecutionPolicyConfig {
+  mode?: "requirements" | "fixed" | "hybrid";
+
+  /** Capability requirements for model selection */
+  requirements?: {
+    supportsResponses?: boolean;
+    supportsStructuredOutputs?: boolean;
+    supportsWebSearch?: boolean;
+    supportsFunctionTools?: boolean;
+    supportsCodeExecution?: boolean;
+    supportsComputerUse?: boolean;
+    supportsBackground?: boolean;
+    contextLength?: number;
+  };
+
+  /** Fixed model ID (for fixed/hybrid modes) */
+  fixedModel?: string;
+
+  /** Whether conversation model can override this policy */
+  allowConversationOverride?: boolean;
+
+  /** Preferred strategy: "cheapest", "fastest", "best" */
+  preferredStrategy?: "cheapest" | "fastest" | "best";
+
+  /** Ordered preferred model IDs */
+  preferredProfiles?: string[];
+
+  /** Fallback model IDs */
+  allowedFallbackProfiles?: string[];
+
+  /** Models that must NOT be used */
+  disallowedModels?: string[];
+
+  /** Budget class: "economy", "standard", "premium" */
+  budgetClass?: "economy" | "standard" | "premium";
+
+  /** Whether tenant admin can override */
+  overrideableByTenant?: boolean;
+
+  /** Fallback behavior: "error" | "use_default" */
+  fallbackPolicy?: "error" | "use_default";
 }
 
 /**
@@ -161,6 +219,9 @@ export interface SkillMetadata {
   strict_provider_pin?: boolean;
   strictProviderPin?: boolean;
   config?: Record<string, unknown>;
+  // Execution policy (capability-first model selection)
+  execution_policy?: SkillExecutionPolicyConfig;
+  executionPolicy?: SkillExecutionPolicyConfig;
   // Sandbox-related frontmatter fields
   sandbox_profile?: string;
   requires_network?: boolean;

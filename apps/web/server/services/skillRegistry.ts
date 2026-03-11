@@ -102,6 +102,7 @@ function dbSkillToDefinition(dbSkill: {
   requiresBrowser?: boolean | null;
   maxRuntimeSeconds?: number | null;
   maxInputMb?: number | null;
+  executionPolicyJson?: Record<string, any> | null;
 }): SkillDefinition {
   const skillType = categoryToSkillType(dbSkill.category) as SkillType;
   const mediaType = SKILL_TO_MEDIA_TYPE[skillType];
@@ -160,6 +161,7 @@ function dbSkillToDefinition(dbSkill: {
     requiresBrowser: dbSkill.requiresBrowser ?? undefined,
     maxRuntimeSeconds: dbSkill.maxRuntimeSeconds ?? undefined,
     maxInputMb: dbSkill.maxInputMb ?? undefined,
+    executionPolicy: dbSkill.executionPolicyJson ?? undefined,
   };
 }
 
@@ -315,6 +317,7 @@ export async function autoSyncSkillsFromFolder(): Promise<{
         preferredProviderId: routingConfig.preferredProviderId ?? null,
         strictProviderPin: routingConfig.strictProviderPin ?? false,
         chainTo: getMetadataChainTarget(metadata) ?? null,
+        executionPolicyJson: metadata.execution_policy ?? metadata.executionPolicy ?? null,
         importSource: "folder" as const,
       };
 
@@ -357,6 +360,7 @@ export async function autoSyncSkillsFromFolder(): Promise<{
             ...(filePreferredProviderId !== undefined ? { preferredProviderId: filePreferredProviderId } : {}),
             ...(fileStrictProviderPin !== undefined ? { strictProviderPin: fileStrictProviderPin } : {}),
             ...(getMetadataChainTarget(metadata) !== undefined ? { chainTo: getMetadataChainTarget(metadata) } : {}),
+            ...((metadata.execution_policy ?? metadata.executionPolicy) !== undefined ? { executionPolicyJson: metadata.execution_policy ?? metadata.executionPolicy } : {}),
           }).where(eq(skillsTable.slug, folder.slug));
           result.synced.push(folder.slug);
           console.log(`[SkillRegistry] Updated skill content (hash changed): ${folder.slug}`);

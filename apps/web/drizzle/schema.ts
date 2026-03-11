@@ -597,6 +597,29 @@ export const modelProviderMap = pgTable("model_provider_map", {
   /** Maximum context window size */
   contextLength: integer("contextLength"),
 
+  // ── Capability metadata (for planner-based model selection) ──
+
+  /** Supports OpenAI Responses API */
+  supportsResponses: boolean("supportsResponses").default(false),
+
+  /** Supports structured output / JSON mode */
+  supportsStructuredOutputs: boolean("supportsStructuredOutputs").default(false),
+
+  /** Supports built-in web search */
+  supportsWebSearch: boolean("supportsWebSearch").default(false),
+
+  /** Supports function/tool calling */
+  supportsFunctionTools: boolean("supportsFunctionTools").default(false),
+
+  /** Supports code execution sandbox */
+  supportsCodeExecution: boolean("supportsCodeExecution").default(false),
+
+  /** Supports computer use / browser automation */
+  supportsComputerUse: boolean("supportsComputerUse").default(false),
+
+  /** Supports background/async processing */
+  supportsBackground: boolean("supportsBackground").default(false),
+
   /** Whether this mapping is active */
   isEnabled: boolean("isEnabled").default(true).notNull(),
 
@@ -2445,6 +2468,21 @@ export const skills = pgTable("skills", {
   maxRuntimeSeconds: integer("maxRuntimeSeconds"),
   /** Maximum input file size in MB (overrides profile default) */
   maxInputMb: integer("maxInputMb"),
+
+  /** Capability-first execution policy (parsed from skill.md frontmatter) */
+  executionPolicyJson: json("executionPolicyJson").$type<{
+    mode?: "requirements" | "fixed" | "hybrid";
+    requirements?: Record<string, boolean | number>;
+    fixedModel?: string;
+    allowConversationOverride?: boolean;
+    preferredStrategy?: string;
+    preferredProfiles?: string[];
+    allowedFallbackProfiles?: string[];
+    disallowedModels?: string[];
+    budgetClass?: string;
+    overrideableByTenant?: boolean;
+    fallbackPolicy?: string;
+  }>(),
 
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
