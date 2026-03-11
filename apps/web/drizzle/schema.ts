@@ -4986,6 +4986,13 @@ export const taskRuns = pgTable("task_runs", {
   skillSlug: varchar("skillSlug", { length: 100 }),
   conversationId: integer("conversationId"),
   totalCreditsUsed: integer("totalCreditsUsed").default(0),
+  /** Artifact routing metadata */
+  artifactIntent: varchar("artifactIntent", { length: 32 }),
+  executionRoute: varchar("executionRoute", { length: 32 }),
+  routeReason: text("routeReason"),
+  /** Linked artifact references */
+  presentationDeckId: integer("presentationDeckId"),
+  artifactMessageId: integer("artifactMessageId"),
   completedAt: timestamp("completedAt", { withTimezone: true }),
   errorMessage: text("errorMessage"),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),

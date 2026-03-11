@@ -13,6 +13,7 @@ import { taskRuns, taskStepAttempts } from "../../drizzle/schema";
 import type { TaskExecutionPlan, TaskBillingMetadata } from "./taskExecutionPlanner";
 import { validatePlanVersion } from "./taskExecutionPlanner";
 import type { ModelResolutionSnapshot } from "./modelResolver";
+import type { ArtifactIntent, ExecutionRoute } from "./artifactRouter";
 
 // ── Create task run ──────────────────────────────────────────────────
 
@@ -23,6 +24,10 @@ export interface CreateTaskRunInput {
   sourceType: string;
   skillSlug?: string;
   conversationId?: number;
+  /** Section 04: artifact routing metadata */
+  artifactIntent?: ArtifactIntent;
+  executionRoute?: ExecutionRoute;
+  routeReason?: string;
 }
 
 export async function createTaskRun(input: CreateTaskRunInput): Promise<{ id: number }> {
@@ -39,6 +44,9 @@ export async function createTaskRun(input: CreateTaskRunInput): Promise<{ id: nu
       planJson: input.plan,
       skillSlug: input.skillSlug,
       conversationId: input.conversationId,
+      artifactIntent: input.artifactIntent,
+      executionRoute: input.executionRoute,
+      routeReason: input.routeReason,
     })
     .returning({ id: taskRuns.id });
 
@@ -166,6 +174,26 @@ export async function loadValidatedPlan(
   if (!validatePlanVersion(row.planJson)) return null;
 
   return row.planJson as TaskExecutionPlan;
+}
+
+// ── Link artifact to task run (Section 04) ───────────────────────────
+
+export async function linkArtifactToTaskRun(
+  taskRunId: number,
+  artifact: { presentationDeckId?: number; artifactMessageId?: number },
+): Promise<void> {
+  const hasDeckId = artifact.presentationDeckId != null;
+  const hasMsgId = artifact.artifactMessageId != null;
+  if (!hasDeckId && !hasMsgId) return;
+
+  const db = await getDb();
+  if (!db) return;
+
+  const updates: Record<string, unknown> = { updatedAt: new Date() };
+  if (hasDeckId) updates.presentationDeckId = artifact.presentationDeckId;
+  if (hasMsgId) updates.artifactMessageId = artifact.artifactMessageId;
+
+  await db.update(taskRuns).set(updates).where(eq(taskRuns.id, taskRunId));
 }
 
 // ── Build billing metadata from task context ─────────────────────────
