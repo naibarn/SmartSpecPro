@@ -11,6 +11,17 @@ enabledByDefault: true
 priority: 50
 creditMultiplier: 1.0
 execution_mode: llm-only
+execution_policy:
+  requires_web_search: true
+  requires_citations: true
+  requires_structured_output: true
+  thinking_level_hint: "low"
+  output_format: "cms_article"
+content_quality:
+  citation_required_for: ["critical", "major"]
+  min_citation_coverage: 0.5
+  disclosure_required: false
+  refresh_cadence_days: 30
 ---
 
 # Lifestyle Article Writer
@@ -167,6 +178,20 @@ Lifestyle content often touches regulated areas. These MUST include disclaimers:
 - Attribute well-known methods: "The KonMari method suggests...", "According to Mediterranean diet principles..."
 - Generated content must be original
 
+
+
+## CMS JSON Output Mode (ArticleCMS.v1)
+
+When `response_mode` is `"cms_json"`, output a single JSON object conforming to ArticleCMS.v1 schema instead of markdown. The JSON must include:
+
+- `locale`, `title`, `slug`, `last_verified_at`
+- `body_markdown`: The full article body in Markdown
+- `claims[]`: Each factual claim with importance ("critical", "major", "minor") and verification_status
+- `citations[]`: Web sources used with citation_id, url, title, source_type, accessed_at
+- `disclosures`: { type, details? }
+- `seo`: { meta_title (≤60 chars), meta_description (≤160 chars), keywords[] }
+
+When `response_mode` is `"markdown"` (default), output as before — no change to existing behavior.
 ## Output Format
 
 ### When output_format is markdown (default):

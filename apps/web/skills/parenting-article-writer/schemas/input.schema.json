@@ -120,10 +120,12 @@
     "response_mode": {
       "type": "string",
       "title": "Response mode",
-      "description": "Choose the output mode: a standard human-readable article or a structured JSON object.",
+      "description": "Choose the output mode: a standard human-readable article, a structured JSON object, or CMS-formatted JSON.",
       "enum": [
         "standard_article",
-        "json"
+        "json",
+        "markdown",
+        "cms_json"
       ],
       "default": "standard_article"
     },
@@ -145,6 +147,19 @@
         "type": "string",
         "format": "uri"
       }
+    },
+    "seo_keywords": {
+      "type": "array",
+      "title": "SEO Keywords",
+      "description": "Optional keywords for SEO optimization.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "target_audience": {
+      "type": "string",
+      "title": "Target Audience",
+      "description": "Describe the intended audience for the article."
     }
   }
 }

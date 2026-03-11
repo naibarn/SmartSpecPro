@@ -14,29 +14,47 @@
       "type": "string",
       "title": "Language",
       "description": "Output language. Use 'en' for English or 'th' for Thai.",
-      "enum": ["en", "th"],
+      "enum": [
+        "en",
+        "th"
+      ],
       "default": "en"
     },
     "genre": {
       "type": "string",
       "title": "Genre",
       "description": "The story genre. Determines tone, vocabulary, and narrative conventions.",
-      "enum": ["fiction", "sci_fi", "fantasy", "romance", "thriller", "drama", "fairy_tale", "fable", "adventure"],
+      "enum": [
+        "fiction",
+        "sci_fi",
+        "fantasy",
+        "romance",
+        "thriller",
+        "drama",
+        "fairy_tale",
+        "fable",
+        "adventure"
+      ],
       "default": "fiction"
     },
     "mood": {
       "type": "string",
       "title": "Mood",
       "description": "The emotional atmosphere of the story.",
-      "enum": ["lighthearted", "dark", "suspenseful", "heartwarming", "mysterious", "dramatic"],
+      "enum": [
+        "lighthearted",
+        "dark",
+        "suspenseful",
+        "heartwarming",
+        "mysterious",
+        "dramatic"
+      ],
       "default": "dramatic"
     },
     "target_audience": {
       "type": "string",
       "title": "Target Audience",
-      "description": "Who the story is written for. Affects vocabulary and content appropriateness.",
-      "enum": ["children", "young_adult", "adult"],
-      "default": "adult"
+      "description": "Describe the intended audience for the article."
     },
     "include_dialogue": {
       "type": "boolean",
@@ -48,7 +66,11 @@
       "type": "string",
       "title": "Length",
       "description": "Approximate story length.",
-      "enum": ["short", "medium", "long"],
+      "enum": [
+        "short",
+        "medium",
+        "long"
+      ],
       "default": "medium"
     },
     "word_count": {
@@ -65,6 +87,24 @@
       "items": {
         "type": "string",
         "format": "uri"
+      }
+    },
+    "response_mode": {
+      "type": "string",
+      "title": "Response Mode",
+      "description": "Choose 'markdown' for readable text or 'cms_json' for structured CMS output.",
+      "enum": [
+        "markdown",
+        "cms_json"
+      ],
+      "default": "markdown"
+    },
+    "seo_keywords": {
+      "type": "array",
+      "title": "SEO Keywords",
+      "description": "Optional keywords for SEO optimization.",
+      "items": {
+        "type": "string"
       }
     }
   }

@@ -14,21 +14,35 @@
       "type": "string",
       "title": "Language",
       "description": "Output language. Use 'en' for English or 'th' for Thai.",
-      "enum": ["en", "th"],
+      "enum": [
+        "en",
+        "th"
+      ],
       "default": "en"
     },
     "documentary_style": {
       "type": "string",
       "title": "Documentary Style",
       "description": "The documentary approach that shapes narrative structure and perspective.",
-      "enum": ["investigative", "observational", "biographical", "historical", "nature", "social_issue"],
+      "enum": [
+        "investigative",
+        "observational",
+        "biographical",
+        "historical",
+        "nature",
+        "social_issue"
+      ],
       "default": "investigative"
     },
     "narrator_voice": {
       "type": "string",
       "title": "Narrator Voice",
       "description": "The narration style and tone.",
-      "enum": ["formal", "conversational", "dramatic"],
+      "enum": [
+        "formal",
+        "conversational",
+        "dramatic"
+      ],
       "default": "formal"
     },
     "include_interview_segments": {
@@ -41,7 +55,11 @@
       "type": "string",
       "title": "Length",
       "description": "Approximate script length.",
-      "enum": ["short", "medium", "long"],
+      "enum": [
+        "short",
+        "medium",
+        "long"
+      ],
       "default": "medium"
     },
     "word_count": {
@@ -59,6 +77,29 @@
         "type": "string",
         "format": "uri"
       }
+    },
+    "response_mode": {
+      "type": "string",
+      "title": "Response Mode",
+      "description": "Choose 'markdown' for readable text or 'cms_json' for structured CMS output.",
+      "enum": [
+        "markdown",
+        "cms_json"
+      ],
+      "default": "markdown"
+    },
+    "seo_keywords": {
+      "type": "array",
+      "title": "SEO Keywords",
+      "description": "Optional keywords for SEO optimization.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "target_audience": {
+      "type": "string",
+      "title": "Target Audience",
+      "description": "Describe the intended audience for the article."
     }
   }
 }

@@ -11,6 +11,17 @@ enabledByDefault: true
 priority: 50
 creditMultiplier: 1.0
 execution_mode: llm-only
+execution_policy:
+  requires_web_search: false
+  requires_citations: false
+  requires_structured_output: true
+  thinking_level_hint: "medium"
+  output_format: "cms_article"
+content_quality:
+  citation_required_for: []
+  min_citation_coverage: 0.0
+  disclosure_required: false
+
 ---
 
 # Creative Story Writer
@@ -111,6 +122,20 @@ These rules are non-negotiable and apply to ALL generated stories:
 - If the story involves health, legal, or financial themes: do not present fictional scenarios as advice
 - Historical fiction should note creative liberties where key facts are altered
 
+
+
+## CMS JSON Output Mode (ArticleCMS.v1)
+
+When `response_mode` is `"cms_json"`, output a single JSON object conforming to ArticleCMS.v1 schema instead of markdown. The JSON must include:
+
+- `locale`, `title`, `slug`, `last_verified_at`
+- `body_markdown`: The full article body in Markdown
+- `claims[]`: Each factual claim with importance ("critical", "major", "minor") and verification_status
+- `citations[]`: Web sources used with citation_id, url, title, source_type, accessed_at
+- `disclosures`: { type, details? }
+- `seo`: { meta_title (≤60 chars), meta_description (≤160 chars), keywords[] }
+
+When `response_mode` is `"markdown"` (default), output as before — no change to existing behavior.
 ## Output Format
 
 ```

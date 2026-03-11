@@ -14,14 +14,21 @@
       "type": "string",
       "title": "Language",
       "description": "Output language. Use 'en' for English or 'th' for Thai.",
-      "enum": ["en", "th"],
+      "enum": [
+        "en",
+        "th"
+      ],
       "default": "en"
     },
     "length": {
       "type": "string",
       "title": "Length",
       "description": "Approximate article length.",
-      "enum": ["short", "medium", "long"],
+      "enum": [
+        "short",
+        "medium",
+        "long"
+      ],
       "default": "medium"
     },
     "word_count": {
@@ -35,13 +42,31 @@
       "type": "string",
       "title": "Storytelling Structure",
       "description": "The narrative structure for the article. Leave empty for random selection.",
-      "enum": ["hpso", "aida", "pas", "hook_insight_tip", "before_after", "story_flow", "my_why", "complain_recall", "fab", "star", "scr", "inverted_pyramid", "listicle", "qa_flow"]
+      "enum": [
+        "hpso",
+        "aida",
+        "pas",
+        "hook_insight_tip",
+        "before_after",
+        "story_flow",
+        "my_why",
+        "complain_recall",
+        "fab",
+        "star",
+        "scr",
+        "inverted_pyramid",
+        "listicle",
+        "qa_flow"
+      ]
     },
     "output_format": {
       "type": "string",
       "title": "Output Format",
       "description": "Preferred output format. Markdown uses headings and formatting. Plain text is optimized for text-to-speech.",
-      "enum": ["markdown", "plain_text"],
+      "enum": [
+        "markdown",
+        "plain_text"
+      ],
       "default": "markdown"
     },
     "reference_images": {
@@ -52,6 +77,29 @@
         "type": "string",
         "format": "uri"
       }
+    },
+    "response_mode": {
+      "type": "string",
+      "title": "Response Mode",
+      "description": "Choose 'markdown' for readable text or 'cms_json' for structured CMS output.",
+      "enum": [
+        "markdown",
+        "cms_json"
+      ],
+      "default": "markdown"
+    },
+    "seo_keywords": {
+      "type": "array",
+      "title": "SEO Keywords",
+      "description": "Optional keywords for SEO optimization.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "target_audience": {
+      "type": "string",
+      "title": "Target Audience",
+      "description": "Describe the intended audience for the article."
     }
   }
 }
