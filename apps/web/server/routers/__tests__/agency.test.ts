@@ -19,6 +19,7 @@ vi.mock("../../_core/trpc", () => {
     router: (routes: any) => routes,
     protectedProcedure: createProcedure(),
     adminProcedure: createProcedure(),
+    publicProcedure: createProcedure(),
   };
 });
 
@@ -36,11 +37,12 @@ vi.mock("../../services/featureFlags", () => ({
   setTenantFeatureFlag: mockSetTenantFeatureFlag,
 }));
 
-const { mockBridgeExecuteRun, mockBridgeCancelRun, mockBridgeListRuns } =
+const { mockBridgeExecuteRun, mockBridgeCancelRun, mockBridgeListRuns, mockBridgeGetRunDetails } =
   vi.hoisted(() => ({
     mockBridgeExecuteRun: vi.fn(),
     mockBridgeCancelRun: vi.fn(),
     mockBridgeListRuns: vi.fn(),
+    mockBridgeGetRunDetails: vi.fn(),
   }));
 
 vi.mock("../../services/agencyBridge", () => ({
@@ -48,6 +50,7 @@ vi.mock("../../services/agencyBridge", () => ({
     executeRun: mockBridgeExecuteRun,
     cancelRun: mockBridgeCancelRun,
     listRuns: mockBridgeListRuns,
+    getRunDetails: mockBridgeGetRunDetails,
   },
 }));
 
@@ -141,6 +144,11 @@ vi.mock("../../../drizzle/schema", () => ({
     key: "key",
     value: "value",
   },
+  users: {
+    id: "id",
+    name: "name",
+    email: "email",
+  },
   agencyTemplates: {
     id: "id",
     tenantId: "tenantId",
@@ -156,7 +164,15 @@ vi.mock("drizzle-orm", () => ({
   and: vi.fn((...args: any[]) => ({ type: "and", args })),
   desc: vi.fn((col: any) => ({ type: "desc", col })),
   inArray: vi.fn((...args: any[]) => ({ type: "inArray", args })),
-  sql: vi.fn(),
+  sql: Object.assign(
+    (...args: any[]) => ({
+      type: "sql",
+      args,
+      as: (alias: string) => ({ type: "sql", args, alias }),
+    }),
+    { raw: vi.fn() },
+  ),
+  getTableColumns: vi.fn((table: Record<string, unknown>) => table),
 }));
 
 // crypto.randomUUID() is used for ID generation - mock it for deterministic tests
@@ -221,6 +237,7 @@ describe("agencyRouter", () => {
       // Chain the query builder
       const chain = {
         from: vi.fn().mockReturnThis(),
+        leftJoin: vi.fn().mockReturnThis(),
         where: vi.fn().mockReturnThis(),
         orderBy: vi.fn().mockReturnThis(),
         limit: vi.fn().mockReturnThis(),
@@ -234,7 +251,12 @@ describe("agencyRouter", () => {
         input: { limit: 50, offset: 0 },
       });
 
-      expect(result.agencies).toEqual(mockAgencies);
+      expect(result.agencies).toEqual([
+        {
+          ...mockAgencies[0],
+          canEdit: false,
+        },
+      ]);
     });
   });
 
@@ -244,6 +266,7 @@ describe("agencyRouter", () => {
 
       const chain = {
         from: vi.fn().mockReturnThis(),
+        leftJoin: vi.fn().mockReturnThis(),
         where: vi.fn().mockReturnThis(),
         orderBy: vi.fn().mockReturnThis(),
         limit: vi.fn().mockReturnThis(),
@@ -265,6 +288,9 @@ describe("agencyRouter", () => {
         response: "Analysis complete",
         creditsUsed: 5,
         durationMs: 1200,
+        stepAttemptSnapshots: [],
+        structuredResult: null,
+        previewArtifacts: [],
       };
       mockBridgeExecuteRun.mockResolvedValue(mockRunResult);
 
@@ -301,7 +327,171 @@ describe("agencyRouter", () => {
           userId: 1,
         }),
       );
-      expect(result).toEqual(mockRunResult);
+      expect(result).toEqual({
+        ...mockRunResult,
+        preview: null,
+      });
+    });
+
+    it("adds a preview DTO when the bridge returns structured preview metadata", async () => {
+      mockBridgeExecuteRun.mockResolvedValue({
+        runId: "run-001",
+        status: "completed",
+        response: "Research preview ready.",
+        creditsUsed: 0,
+        durationMs: 1200,
+        stepAttemptSnapshots: [],
+        structuredResult: {
+          version: "1.0",
+          intent: "research_report",
+          summary: "Research preview ready.",
+          payload: {
+            title: "Market scan",
+            executive_summary: "The market is moving quickly.",
+            sections: [],
+            key_findings: ["Demand is rising"],
+            recommendations: [],
+          },
+          artifacts: [],
+          references: [],
+          metrics: {},
+        },
+        previewArtifacts: [
+          {
+            id: "artifact-1",
+            intent: "research_report",
+            artifact_type: "report",
+            state: "preview_generated",
+            summary: "Research preview ready.",
+            commit_status: "not_committed",
+            commit_token: "commit-token-1",
+            payload_json: {
+              title: "Market scan",
+              executive_summary: "The market is moving quickly.",
+              sections: [],
+              key_findings: ["Demand is rising"],
+              recommendations: [],
+            },
+            provenance_json: [],
+            payload_storage_key: null,
+            committed_at: null,
+            expired_at: null,
+          },
+        ],
+      });
+
+      const convChain = {
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockResolvedValue([
+          {
+            id: "conv-001",
+            agencyId: "agency-001",
+            userId: 1,
+          },
+        ]),
+      };
+      mockDbSelect.mockReturnValue(convChain);
+
+      const handler = agencyRouter.sendMessage;
+      const result = await handler({
+        ctx: makeCtx(),
+        input: {
+          agencyId: "agency-001",
+          conversationId: "conv-001",
+          message: "Analyze this",
+        },
+      });
+
+      expect(result.preview).toEqual(
+        expect.objectContaining({
+          previewType: "research",
+          lifecycleState: "preview_generated",
+          summaryText: "Research preview ready.",
+        }),
+      );
+    });
+  });
+
+  describe("getRunPreview", () => {
+    it("returns a run preview DTO sourced from the Python bridge", async () => {
+      mockBridgeGetRunDetails.mockResolvedValue({
+        runId: "run-001",
+        conversationId: "conv-001",
+        status: "completed",
+        response: "Research preview ready.",
+        creditsUsed: 0,
+        durationMs: 1200,
+        stepAttemptSnapshots: [],
+        structuredResult: {
+          version: "1.0",
+          intent: "research_report",
+          summary: "Research preview ready.",
+          payload: {
+            title: "Market scan",
+            executive_summary: "The market is moving quickly.",
+            sections: [],
+            key_findings: ["Demand is rising"],
+            recommendations: [],
+          },
+          artifacts: [],
+          references: [],
+          metrics: {},
+        },
+        previewArtifacts: [
+          {
+            id: "artifact-1",
+            intent: "research_report",
+            artifact_type: "report",
+            state: "preview_generated",
+            summary: "Research preview ready.",
+            commit_status: "not_committed",
+            commit_token: "commit-token-1",
+            payload_json: {
+              title: "Market scan",
+              executive_summary: "The market is moving quickly.",
+              sections: [],
+              key_findings: ["Demand is rising"],
+              recommendations: [],
+            },
+            provenance_json: [],
+            payload_storage_key: null,
+            committed_at: null,
+            expired_at: null,
+          },
+        ],
+      });
+
+      const convChain = {
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockResolvedValue([
+          {
+            id: "conv-001",
+            agencyId: "agency-001",
+            userId: 1,
+          },
+        ]),
+      };
+      mockDbSelect.mockReturnValue(convChain);
+
+      const handler = agencyRouter.getRunPreview;
+      const result = await handler({
+        ctx: makeCtx(),
+        input: { agencyId: "agency-001", runId: "run-001" },
+      });
+
+      expect(mockBridgeGetRunDetails).toHaveBeenCalledWith(
+        "agency-001",
+        "run-001",
+        "user-jwt-token",
+      );
+      expect(result.preview).toEqual(
+        expect.objectContaining({
+          previewType: "research",
+          lifecycleState: "preview_generated",
+        }),
+      );
     });
   });
 

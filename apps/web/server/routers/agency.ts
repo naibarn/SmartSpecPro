@@ -28,6 +28,7 @@ import { eq, and, desc, asc, inArray, sql, getTableColumns, count } from "drizzl
 import { agencyBridge } from "../services/agencyBridge";
 import type { RunResult } from "../services/agencyBridge";
 import { getTenantFeatureFlag, setTenantFeatureFlag } from "../services/featureFlags";
+import { buildAgencyPreview } from "../services/agencyPreviewService";
 import crypto from "crypto";
 import { generateAgencySvg } from "../lib/agencySvgGenerator";
 import { createNotification } from "../services/notificationService";
@@ -1389,7 +1390,79 @@ export const agencyRouter = router({
         console.error("[Agency] emitEgress failed:", err);
       }
 
-      return result;
+      return {
+        ...result,
+        preview: buildAgencyPreview(result),
+      };
+    }),
+
+  getRunPreview: protectedProcedure
+    .input(
+      z.object({
+        agencyId: z.string().uuid(),
+        runId: z.string().uuid(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      await assertAgencyEnabled(tenantId);
+      const userId = ctx.user!.id;
+      const userToken = ctx.userToken ?? "";
+      const result = await agencyBridge.getRunDetails(input.agencyId, input.runId, userToken);
+
+      if (!result.conversationId) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Run conversation not found",
+        });
+      }
+
+      const [conv] = await db
+        .select()
+        .from(agencyConversations)
+        .where(
+          and(
+            eq(agencyConversations.id, result.conversationId),
+            eq(agencyConversations.agencyId, input.agencyId),
+            eq(agencyConversations.userId, userId),
+          ),
+        )
+        .limit(1);
+
+      if (!conv) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Conversation not found",
+        });
+      }
+
+      return {
+        ...result,
+        preview: buildAgencyPreview(result),
+      };
+    }),
+
+  commitPreview: protectedProcedure
+    .input(
+      z.object({
+        agencyId: z.string().uuid(),
+        runId: z.string().uuid(),
+        artifactId: z.string().uuid(),
+        commitToken: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+      await assertAgencyEnabled(tenantId);
+
+      return {
+        ok: false,
+        status: "deferred",
+        runId: input.runId,
+        artifactId: input.artifactId,
+        commitToken: input.commitToken,
+        message: `Commit flow for preview ${input.artifactId} is not available until Sections 03-04 are applied`,
+      };
     }),
 
   // --- Admin ---

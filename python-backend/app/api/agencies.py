@@ -112,6 +112,7 @@ class AgencyRunSummary(BaseModel):
 class AgencyRunDetailResponse(AgencyRunSummary):
     """Detailed run response with normalized output contract."""
 
+    conversation_id: Optional[str] = None
     response: str = ""
     output: str = ""
     structured_result: Optional[dict] = None

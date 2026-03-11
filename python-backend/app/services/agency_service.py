@@ -11,7 +11,7 @@ import json
 import uuid
 import time
 from datetime import datetime, timezone
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator
 
 import structlog
 from pydantic import BaseModel
@@ -73,6 +73,11 @@ class RunContext(BaseModel):
 class AgencyService:
     """Orchestrates agency lifecycle: load, construct, execute, record."""
 
+    INLINE_PREVIEW_PAYLOAD_THRESHOLD_BYTES = 64 * 1024
+    MAX_DIRECT_PREVIEW_PERSISTENCE_BYTES = 5 * 1024 * 1024
+    RUN_STRUCTURED_RESULT_PAYLOAD_STORAGE_KEY = "run_structured_result_payload"
+    SUMMARY_ONLY_PREVIEW_STORAGE_KEY = "preview_summary_only"
+
     def __init__(self, db: AsyncSession):
         self.db = db
         self.adapter = AgencySwarmAdapter()
@@ -93,6 +98,47 @@ class AgencyService:
         return value
 
     @staticmethod
+    def _compact_preview_artifact(artifact: dict) -> dict:
+        return {
+            "id": artifact["id"],
+            "intent": artifact["intent"],
+            "artifact_type": artifact["artifact_type"],
+            "state": artifact["state"],
+            "summary": artifact["summary"],
+            "payload_json": artifact.get("payload_json"),
+            "payload_storage_key": artifact.get("payload_storage_key"),
+            "provenance_json": artifact.get("provenance_json"),
+            "commit_status": artifact["commit_status"],
+            "commit_token": artifact["commit_token"],
+            "target_type": artifact.get("target_type"),
+            "target_id": artifact.get("target_id"),
+            "committed_at": artifact.get("committed_at"),
+            "expired_at": artifact.get("expired_at"),
+        }
+
+    @classmethod
+    def _build_preview_payload_storage(
+        cls,
+        payload: Any,
+        summary: str | None,
+    ) -> tuple[dict | None, str | None]:
+        if payload is None:
+            return {}, None
+
+        payload_bytes = len(json.dumps(payload).encode("utf-8"))
+        if payload_bytes <= cls.INLINE_PREVIEW_PAYLOAD_THRESHOLD_BYTES:
+            return payload, None
+
+        if payload_bytes <= cls.MAX_DIRECT_PREVIEW_PERSISTENCE_BYTES:
+            return None, cls.RUN_STRUCTURED_RESULT_PAYLOAD_STORAGE_KEY
+
+        return {
+            "truncated": True,
+            "summary": summary,
+            "reason": "preview payload exceeded max direct persistence size",
+        }, cls.SUMMARY_ONLY_PREVIEW_STORAGE_KEY
+
+    @staticmethod
     def _build_preview_artifact(
         *,
         run_id: str,
@@ -102,6 +148,10 @@ class AgencyService:
         envelope: dict,
     ) -> dict:
         first_artifact = (envelope.get("artifacts") or [{}])[0]
+        payload_json, payload_storage_key = AgencyService._build_preview_payload_storage(
+            envelope.get("payload"),
+            envelope.get("summary"),
+        )
         return {
             "id": str(uuid.uuid4()),
             "run_id": run_id,
@@ -112,13 +162,186 @@ class AgencyService:
             "artifact_type": first_artifact.get("artifact_type") or envelope["intent"],
             "state": "preview_generated",
             "summary": envelope.get("summary"),
-            "payload_json": envelope.get("payload") or {},
+            "payload_json": payload_json,
+            "payload_storage_key": payload_storage_key,
             "provenance_json": envelope.get("references") or [],
             "commit_status": "not_committed",
             "commit_token": uuid.uuid4().hex,
             "target_type": None,
             "target_id": None,
+            "committed_at": None,
+            "expired_at": None,
         }
+
+    def _normalize_structured_preview_result(
+        self,
+        *,
+        response_text: str,
+        run_id: str,
+        agency_id: str,
+        conversation_id: str,
+        tenant_id: str,
+    ) -> dict:
+        parse_outcome = parse_agency_result_envelope(response_text)
+        structured_result = None
+        preview_artifacts: list[dict] = []
+        parse_status = "not_present"
+        parse_error = None
+        parse_intent = None
+        parse_summary = None
+        normalized_response = response_text
+
+        if parse_outcome.found:
+            parse_status = "parsed" if parse_outcome.valid else "invalid"
+            parse_error = parse_outcome.error
+
+        if parse_outcome.text_response:
+            normalized_response = parse_outcome.text_response
+
+        if parse_outcome.valid and parse_outcome.envelope:
+            structured_result = parse_outcome.envelope.model_dump(mode="json")
+            parse_intent = structured_result["intent"]
+            parse_summary = structured_result["summary"]
+            preview_artifacts = [
+                self._build_preview_artifact(
+                    run_id=run_id,
+                    agency_id=agency_id,
+                    conversation_id=conversation_id,
+                    tenant_id=tenant_id,
+                    envelope=structured_result,
+                )
+            ]
+
+        return {
+            "response": normalized_response,
+            "structured_result": structured_result,
+            "preview_artifacts": preview_artifacts,
+            "parse_status": parse_status,
+            "parse_error": parse_error,
+            "parse_intent": parse_intent,
+            "parse_summary": parse_summary,
+        }
+
+    async def _insert_running_run_record(
+        self,
+        *,
+        run_id: str,
+        agency_id: str,
+        context: RunContext,
+    ) -> None:
+        await self.db.execute(
+            text("""
+                INSERT INTO agency_runs
+                    (id, conversation_id, user_id, agency_id, tenant_id,
+                     status, started_at)
+                VALUES
+                    (:id, :conv_id, :user_id, :agency_id, :tenant_id,
+                     'running', :started_at)
+            """),
+            {
+                "id": run_id,
+                "conv_id": context.conversation_id,
+                "user_id": context.user_id,
+                "agency_id": agency_id,
+                "tenant_id": context.tenant_id,
+                "started_at": datetime.now(timezone.utc),
+            },
+        )
+        await self.db.commit()
+
+    async def _persist_completed_run(
+        self,
+        *,
+        run_id: str,
+        completed_at: datetime,
+        elapsed_ms: int,
+        step_count: int,
+        structured_result: dict | None,
+        parse_status: str,
+        parse_intent: str | None,
+        parse_summary: str | None,
+        parse_error: str | None,
+        preview_artifacts: list[dict],
+    ) -> None:
+        await self.db.execute(
+            text("""
+                UPDATE agency_runs
+                SET status = 'completed',
+                    completed_at = :completed_at,
+                    duration_ms = :duration_ms,
+                    step_count = :step_count,
+                    structured_result = CAST(:structured_result AS JSON),
+                    structured_result_parse_status = :structured_result_parse_status,
+                    structured_result_intent = :structured_result_intent,
+                    structured_result_summary = :structured_result_summary,
+                    structured_result_error = :structured_result_error
+                WHERE id = :id
+            """),
+            {
+                "id": run_id,
+                "completed_at": completed_at,
+                "duration_ms": elapsed_ms,
+                "step_count": step_count,
+                "structured_result": json.dumps(structured_result) if structured_result else None,
+                "structured_result_parse_status": parse_status,
+                "structured_result_intent": parse_intent,
+                "structured_result_summary": parse_summary,
+                "structured_result_error": parse_error,
+            },
+        )
+
+        for artifact in preview_artifacts:
+            await self.db.execute(
+                text("""
+                    INSERT INTO agency_run_artifacts
+                        (id, run_id, conversation_id, agency_id, tenant_id,
+                         artifact_type, intent, state, summary,
+                         payload_json, payload_storage_key, provenance_json,
+                         commit_status, commit_token, target_type, target_id,
+                         committed_at, expired_at, created_at, updated_at)
+                    VALUES
+                        (:id, :run_id, :conversation_id, :agency_id, :tenant_id,
+                         :artifact_type, :intent, :state, :summary,
+                         CAST(:payload_json AS JSON), :payload_storage_key, CAST(:provenance_json AS JSON),
+                         :commit_status, :commit_token, :target_type, :target_id,
+                         :committed_at, :expired_at, :created_at, :updated_at)
+                """),
+                {
+                    **artifact,
+                    "payload_json": json.dumps(artifact["payload_json"]) if artifact["payload_json"] is not None else None,
+                    "provenance_json": json.dumps(artifact["provenance_json"]),
+                    "created_at": completed_at,
+                    "updated_at": completed_at,
+                },
+            )
+        await self.db.commit()
+
+    async def _mark_failed_run(
+        self,
+        *,
+        run_id: str,
+        elapsed_ms: int,
+        exc: Exception,
+    ) -> None:
+        await self.db.execute(
+            text("""
+                UPDATE agency_runs
+                SET status = 'failed',
+                    completed_at = :completed_at,
+                    duration_ms = :duration_ms,
+                    error_type = :error_type,
+                    error_message = :error_message
+                WHERE id = :id
+            """),
+            {
+                "id": run_id,
+                "completed_at": datetime.now(timezone.utc),
+                "duration_ms": elapsed_ms,
+                "error_type": type(exc).__name__,
+                "error_message": str(exc)[:500],
+            },
+        )
+        await self.db.commit()
 
     async def load_agency(self, agency_id: str, tenant_id: str) -> AgencyConfig:
         """Load agency definition from PostgreSQL via read-only queries.
@@ -373,25 +596,11 @@ class AgencyService:
         )
 
         # 8. Create run record (status: running)
-        await self.db.execute(
-            text("""
-                INSERT INTO agency_runs
-                    (id, conversation_id, user_id, agency_id, tenant_id,
-                     status, started_at)
-                VALUES
-                    (:id, :conv_id, :user_id, :agency_id, :tenant_id,
-                     'running', :started_at)
-            """),
-            {
-                "id": run_id,
-                "conv_id": context.conversation_id,
-                "user_id": context.user_id,
-                "agency_id": agency_id,
-                "tenant_id": context.tenant_id,
-                "started_at": datetime.now(timezone.utc),
-            },
+        await self._insert_running_run_record(
+            run_id=run_id,
+            agency_id=agency_id,
+            context=context,
         )
-        await self.db.commit()
 
         # Audit: run started
         log_agency_event(
@@ -414,49 +623,19 @@ class AgencyService:
             )
 
             elapsed_ms = int((time.monotonic() - start_time) * 1000)
-            parse_outcome = parse_agency_result_envelope(result.response)
-            structured_result = None
-            preview_artifacts: list[dict] = []
-            parse_status = "not_present"
-            parse_error = None
-            parse_intent = None
-            parse_summary = None
+            normalized = self._normalize_structured_preview_result(
+                response_text=result.response,
+                run_id=run_id,
+                agency_id=agency_id,
+                conversation_id=context.conversation_id,
+                tenant_id=context.tenant_id,
+            )
 
-            if parse_outcome.found:
-                parse_status = "parsed" if parse_outcome.valid else "invalid"
-                parse_error = parse_outcome.error
-
-            if parse_outcome.text_response:
-                result.response = parse_outcome.text_response
-
-            if parse_outcome.valid and parse_outcome.envelope:
-                structured_result = parse_outcome.envelope.model_dump(mode="json")
-                parse_intent = structured_result["intent"]
-                parse_summary = structured_result["summary"]
-                preview_artifacts = [
-                    self._build_preview_artifact(
-                        run_id=run_id,
-                        agency_id=agency_id,
-                        conversation_id=context.conversation_id,
-                        tenant_id=context.tenant_id,
-                        envelope=structured_result,
-                    )
-                ]
-
-            result.structured_result = structured_result
+            result.response = normalized["response"]
+            result.structured_result = normalized["structured_result"]
             result.preview_artifacts = [
-                {
-                    "id": artifact["id"],
-                    "intent": artifact["intent"],
-                    "artifact_type": artifact["artifact_type"],
-                    "state": artifact["state"],
-                    "summary": artifact["summary"],
-                    "commit_status": artifact["commit_status"],
-                    "commit_token": artifact["commit_token"],
-                    "target_type": artifact["target_type"],
-                    "target_id": artifact["target_id"],
-                }
-                for artifact in preview_artifacts
+                self._compact_preview_artifact(artifact)
+                for artifact in normalized["preview_artifacts"]
             ]
 
             # 10. Apply multiplier markup
@@ -472,58 +651,18 @@ class AgencyService:
             )
 
             # 11. Update run record (status: completed)
-            await self.db.execute(
-                text("""
-                    UPDATE agency_runs
-                    SET status = 'completed',
-                        completed_at = :completed_at,
-                        duration_ms = :duration_ms,
-                        step_count = :step_count,
-                        structured_result = CAST(:structured_result AS JSON),
-                        structured_result_parse_status = :structured_result_parse_status,
-                        structured_result_intent = :structured_result_intent,
-                        structured_result_summary = :structured_result_summary,
-                        structured_result_error = :structured_result_error
-                    WHERE id = :id
-                """),
-                {
-                    "id": run_id,
-                    "completed_at": datetime.now(timezone.utc),
-                    "duration_ms": elapsed_ms,
-                    "step_count": result.step_count,
-                    "structured_result": json.dumps(structured_result) if structured_result else None,
-                    "structured_result_parse_status": parse_status,
-                    "structured_result_intent": parse_intent,
-                    "structured_result_summary": parse_summary,
-                    "structured_result_error": parse_error,
-                },
+            await self._persist_completed_run(
+                run_id=run_id,
+                completed_at=datetime.now(timezone.utc),
+                elapsed_ms=elapsed_ms,
+                step_count=result.step_count,
+                structured_result=normalized["structured_result"],
+                parse_status=normalized["parse_status"],
+                parse_intent=normalized["parse_intent"],
+                parse_summary=normalized["parse_summary"],
+                parse_error=normalized["parse_error"],
+                preview_artifacts=normalized["preview_artifacts"],
             )
-
-            for artifact in preview_artifacts:
-                await self.db.execute(
-                    text("""
-                        INSERT INTO agency_run_artifacts
-                            (id, run_id, conversation_id, agency_id, tenant_id,
-                             artifact_type, intent, state, summary,
-                             payload_json, provenance_json,
-                             commit_status, commit_token, target_type, target_id,
-                             created_at, updated_at)
-                        VALUES
-                            (:id, :run_id, :conversation_id, :agency_id, :tenant_id,
-                             :artifact_type, :intent, :state, :summary,
-                             CAST(:payload_json AS JSON), CAST(:provenance_json AS JSON),
-                             :commit_status, :commit_token, :target_type, :target_id,
-                             :created_at, :updated_at)
-                    """),
-                    {
-                        **artifact,
-                        "payload_json": json.dumps(artifact["payload_json"]),
-                        "provenance_json": json.dumps(artifact["provenance_json"]),
-                        "created_at": datetime.now(timezone.utc),
-                        "updated_at": datetime.now(timezone.utc),
-                    },
-                )
-            await self.db.commit()
 
             logger.info(
                 "agency_service_run_completed",
@@ -569,25 +708,7 @@ class AgencyService:
             # Update run record (status: failed)
             elapsed_ms = int((time.monotonic() - start_time) * 1000)
             try:
-                await self.db.execute(
-                    text("""
-                        UPDATE agency_runs
-                        SET status = 'failed',
-                            completed_at = :completed_at,
-                            duration_ms = :duration_ms,
-                            error_type = :error_type,
-                            error_message = :error_message
-                        WHERE id = :id
-                    """),
-                    {
-                        "id": run_id,
-                        "completed_at": datetime.now(timezone.utc),
-                        "duration_ms": elapsed_ms,
-                        "error_type": type(exc).__name__,
-                        "error_message": str(exc)[:500],
-                    },
-                )
-                await self.db.commit()
+                await self._mark_failed_run(run_id=run_id, elapsed_ms=elapsed_ms, exc=exc)
             except Exception:
                 logger.error("agency_run_record_update_failed", run_id=run_id)
 
@@ -617,10 +738,9 @@ class AgencyService:
 
         Event types: run_started, token, run_finished, run_error.
 
-        Note: Heartbeat, credit pre-check, and run records for streaming
-        are implemented in the SSE router layer (section-07).
         """
         run_id = str(uuid.uuid4())
+        start_time = time.monotonic()
 
         try:
             # Load and construct (same as execute_run)
@@ -705,6 +825,12 @@ class AgencyService:
                 persistence_hooks=(load_cb, save_cb),
             )
 
+            await self._insert_running_run_record(
+                run_id=run_id,
+                agency_id=agency_id,
+                context=context,
+            )
+
             yield {"event": "run_started", "data": {"run_id": run_id, "agency_id": agency_id}}
 
             # Get streaming response
@@ -719,6 +845,7 @@ class AgencyService:
             current_agent_name = ""
             event_count = 0
             token_count = 0
+            response_parts: list[str] = []
             async for event in stream:
                 event_count += 1
                 etype = getattr(event, "type", "")
@@ -753,6 +880,7 @@ class AgencyService:
                         delta = getattr(raw, "delta", "")
                         if delta:
                             token_count += 1
+                            response_parts.append(delta)
                             yield {"event": "token", "data": {"token": delta, "agent_name": current_agent_name}}
 
                 elif etype == "run_item_stream_event":
@@ -785,6 +913,7 @@ class AgencyService:
                                     text = getattr(part, "text", "")
                                     if text and token_count == 0:
                                         # Only use message_output if we got no deltas
+                                        response_parts.append(text)
                                         yield {"event": "token", "data": {"token": text, "agent_name": current_agent_name}}
 
                 elif etype == "agent_updated_stream_event":
@@ -799,6 +928,49 @@ class AgencyService:
                 total_events=event_count,
                 tokens_yielded=token_count,
             )
+
+            normalized = self._normalize_structured_preview_result(
+                response_text="".join(response_parts),
+                run_id=run_id,
+                agency_id=agency_id,
+                conversation_id=context.conversation_id,
+                tenant_id=context.tenant_id,
+            )
+            elapsed_ms = int((time.monotonic() - start_time) * 1000)
+
+            await self.credit_manager.apply_multiplier_markup(
+                user_id=context.user_id,
+                agency_id=agency_id,
+                total_gateway_cost=0.0,
+                multiplier=agency_config.credit_multiplier,
+            )
+
+            await self._persist_completed_run(
+                run_id=run_id,
+                completed_at=datetime.now(timezone.utc),
+                elapsed_ms=elapsed_ms,
+                step_count=event_count,
+                structured_result=normalized["structured_result"],
+                parse_status=normalized["parse_status"],
+                parse_intent=normalized["parse_intent"],
+                parse_summary=normalized["parse_summary"],
+                parse_error=normalized["parse_error"],
+                preview_artifacts=normalized["preview_artifacts"],
+            )
+
+            if normalized["preview_artifacts"]:
+                first_artifact = normalized["preview_artifacts"][0]
+                yield {
+                    "event": "preview_ready",
+                    "data": {
+                        "run_id": run_id,
+                        "preview_artifact_ids": [
+                            artifact["id"] for artifact in normalized["preview_artifacts"]
+                        ],
+                        "intent": first_artifact["intent"],
+                        "summary": first_artifact["summary"],
+                    },
+                }
 
             yield {"event": "run_finished", "data": {"run_id": run_id}}
 
@@ -821,6 +993,14 @@ class AgencyService:
                 agency_id=agency_id,
                 error=str(exc),
             )
+            try:
+                await self._mark_failed_run(
+                    run_id=run_id,
+                    elapsed_ms=int((time.monotonic() - start_time) * 1000),
+                    exc=exc,
+                )
+            except Exception:
+                logger.error("agency_run_stream_record_update_failed", run_id=run_id)
             yield {
                 "event": "run_error",
                 "data": {
@@ -949,7 +1129,9 @@ class AgencyService:
         artifacts_result = await self.db.execute(
             text("""
                 SELECT id, intent, artifact_type, state, summary,
-                       commit_status, commit_token, target_type, target_id
+                       payload_json, payload_storage_key, provenance_json,
+                       commit_status, commit_token, target_type, target_id,
+                       committed_at, expired_at
                 FROM agency_run_artifacts
                 WHERE run_id = :run_id
                 ORDER BY created_at ASC
@@ -959,6 +1141,7 @@ class AgencyService:
 
         return {
             "id": row.id,
+            "conversation_id": row.conversation_id,
             "status": row.status,
             "total_credits_used": float(row.total_credits_used),
             "started_at": row.started_at.isoformat() if row.started_at else None,
@@ -981,10 +1164,15 @@ class AgencyService:
                     "artifact_type": artifact.artifact_type,
                     "state": artifact.state,
                     "summary": artifact.summary,
+                    "payload_json": self._json_value(artifact.payload_json),
+                    "payload_storage_key": artifact.payload_storage_key,
+                    "provenance_json": self._json_value(artifact.provenance_json),
                     "commit_status": artifact.commit_status,
                     "commit_token": artifact.commit_token,
                     "target_type": artifact.target_type,
                     "target_id": artifact.target_id,
+                    "committed_at": artifact.committed_at.isoformat() if artifact.committed_at else None,
+                    "expired_at": artifact.expired_at.isoformat() if artifact.expired_at else None,
                 }
                 for artifact in artifacts_result.all()
             ],

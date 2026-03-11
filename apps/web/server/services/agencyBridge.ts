@@ -50,12 +50,18 @@ export interface PreviewArtifactMetadata {
   summary: string | null;
   commit_status: string;
   commit_token: string;
+  payload_json?: Record<string, unknown> | null;
+  payload_storage_key?: string | null;
+  provenance_json?: Array<Record<string, unknown>> | null;
   target_type?: string | null;
   target_id?: string | null;
+  committed_at?: string | null;
+  expired_at?: string | null;
 }
 
 export interface RunResult {
   runId: string;
+  conversationId?: string;
   status: string;
   response: string;
   creditsUsed: number;
@@ -169,6 +175,7 @@ export class AgencyBridge {
 
     return {
       runId: data.run_id,
+      conversationId: data.conversation_id,
       status: data.status,
       response: data.response ?? data.output ?? "",
       creditsUsed: data.credits_used ?? 0,
@@ -227,6 +234,7 @@ export class AgencyBridge {
 
     return {
       runId: data.run_id ?? data.id,
+      conversationId: data.conversation_id,
       status: data.status,
       response: data.response ?? data.output ?? "",
       creditsUsed: data.credits_used ?? data.totalCreditsUsed ?? 0,

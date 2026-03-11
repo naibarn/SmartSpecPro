@@ -310,6 +310,147 @@ class TestAgencyServiceExecuteRun:
         assert result.preview_artifacts[0]["state"] == "preview_generated"
 
 
+class TestAgencyPreviewPersistencePolicy:
+    """Tests for preview payload persistence sizing and streaming preview events."""
+
+    def test_build_preview_artifact_uses_run_payload_indirection_for_large_payload(self):
+        from app.services.agency_service import AgencyService
+
+        payload = {
+            "title": "Market scan",
+            "executive_summary": "Large research payload",
+            "sections": [
+                {
+                    "heading": "Overview",
+                    "content": "x" * 70_000,
+                    "sources": ["doc-1"],
+                },
+            ],
+            "key_findings": ["Demand is rising"],
+            "recommendations": [],
+        }
+        envelope = {
+            "intent": "research_report",
+            "summary": "Research preview ready.",
+            "payload": payload,
+            "references": [],
+        }
+
+        artifact = AgencyService._build_preview_artifact(
+            run_id="run-1",
+            agency_id="agency-1",
+            conversation_id="conv-1",
+            tenant_id="tenant-1",
+            envelope=envelope,
+        )
+
+        assert artifact["payload_json"] is None
+        assert artifact["payload_storage_key"] == "run_structured_result_payload"
+
+    def test_build_preview_artifact_summarizes_payloads_over_max_size(self):
+        from app.services.agency_service import AgencyService
+
+        payload = {
+            "title": "Market scan",
+            "executive_summary": "Oversized payload",
+            "sections": [
+                {
+                    "heading": "Overview",
+                    "content": "x" * (5 * 1024 * 1024 + 512),
+                    "sources": ["doc-1"],
+                },
+            ],
+            "key_findings": ["Demand is rising"],
+            "recommendations": [],
+        }
+        envelope = {
+            "intent": "research_report",
+            "summary": "Research preview ready.",
+            "payload": payload,
+            "references": [],
+        }
+
+        artifact = AgencyService._build_preview_artifact(
+            run_id="run-1",
+            agency_id="agency-1",
+            conversation_id="conv-1",
+            tenant_id="tenant-1",
+            envelope=envelope,
+        )
+
+        assert artifact["payload_storage_key"] == "preview_summary_only"
+        assert artifact["payload_json"]["truncated"] is True
+
+    async def test_execute_run_stream_emits_preview_ready_before_run_finished(self):
+        from app.services.agency_result_envelope import AgencyEnvelopeParseOutcome, AgencyResultEnvelope
+        from app.services.agency_service import AgencyService, RunContext
+
+        class _RawResponse:
+            type = "response.output_text.delta"
+
+            def __init__(self, delta: str):
+                self.delta = delta
+
+        class _StreamEvent:
+            type = "raw_response_event"
+
+            def __init__(self, delta: str):
+                self.data = _RawResponse(delta)
+
+        async def _stream():
+            yield _StreamEvent("Research ")
+            yield _StreamEvent("preview ready.")
+
+        mock_db = _make_mock_db()
+        service = AgencyService(db=mock_db)
+
+        service.load_agency = AsyncMock(return_value=MagicMock(
+            agency_id="a1", tenant_id="t1", name="Test",
+            system_prompt="", communication_flows=[],
+            max_run_time_seconds=600, user_id=1, conversation_id="c1",
+            credit_multiplier=1.0, creator_fee_credits=0, creator_id=None, platform_share_pct=20,
+        ))
+        service._load_agents = AsyncMock(return_value=[])
+        service._load_flows = AsyncMock(return_value=[])
+        service._load_tool_whitelist = AsyncMock(return_value=set())
+        service.adapter.create_agency = MagicMock()
+        service.adapter.run_stream = MagicMock(return_value=_stream())
+        service.credit_manager.apply_multiplier_markup = AsyncMock()
+
+        with patch("app.services.agency_service.resolve_tools_for_agent", AsyncMock(return_value=[])):
+            with patch("app.services.agency_service.create_persistence_hooks", return_value=(AsyncMock(), AsyncMock())):
+                with patch(
+                    "app.services.agency_service.parse_agency_result_envelope",
+                    return_value=AgencyEnvelopeParseOutcome(
+                        found=True,
+                        valid=True,
+                        text_response="Research preview ready.",
+                        error=None,
+                        envelope=AgencyResultEnvelope(
+                            version="1.0",
+                            intent="research_report",
+                            summary="Research preview ready.",
+                            payload={
+                                "title": "Market scan",
+                                "executive_summary": "The market is moving quickly.",
+                                "sections": [],
+                                "key_findings": ["Demand is rising"],
+                                "recommendations": [],
+                            },
+                            artifacts=[],
+                            references=[],
+                            metrics={},
+                        ),
+                    ),
+                ):
+                    ctx = RunContext(user_id=1, tenant_id="t1", conversation_id="c1", user_token="tok")
+                    events = [event async for event in service.execute_run_stream("a1", "Hello", ctx)]
+
+        event_types = [event["event"] for event in events]
+        assert "preview_ready" in event_types
+        assert event_types.index("preview_ready") < event_types.index("run_finished")
+
+
 class TestAgencyServiceCreditPreCheckFailed:
     """Tests for credit pre-check failure."""
 

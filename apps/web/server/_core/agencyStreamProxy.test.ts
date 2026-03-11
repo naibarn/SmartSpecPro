@@ -182,6 +182,33 @@ describe("agencyStreamProxy", () => {
     }
   });
 
+  it("passes preview_ready events through without altering legacy events", async () => {
+    const sseBody = [
+      `event: token\ndata: {"content":"hello"}\n\n`,
+      `event: preview_ready\ndata: {"run_id":"abc","preview_artifact_ids":["artifact-1"],"intent":"research_report","summary":"Preview ready"}\n\n`,
+      `event: run_finished\ndata: {"run_id":"abc"}\n\n`,
+    ].join("");
+
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(makeSSEStream(sseBody), {
+        status: 200,
+        headers: { "content-type": "text/event-stream" },
+      }),
+    );
+
+    const app = createApp();
+    const { server, base } = await startServer(app);
+
+    try {
+      const res = await httpRequest(base, "/api/v1/agency/stream", requestBody);
+      expect(res.body).toContain(`event: token\ndata: {"content":"hello"}\n\n`);
+      expect(res.body).toContain(`event: preview_ready\ndata: {"run_id":"abc","preview_artifact_ids":["artifact-1"],"intent":"research_report","summary":"Preview ready"}\n\n`);
+      expect(res.body).toContain(`event: run_finished\ndata: {"run_id":"abc"}\n\n`);
+    } finally {
+      server.close();
+    }
+  });
+
   it("checks feature flag — returns 404 when disabled", async () => {
     mockGetFeatureFlag.mockResolvedValue(false);
     const fetchSpy = vi.fn();
