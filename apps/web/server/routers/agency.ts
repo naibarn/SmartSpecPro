@@ -38,6 +38,10 @@ import {
   resolveAgencyRetrievalScope,
 } from "../services/agencyExperienceTemplateService";
 import { getTenantFeatureFlag, setTenantFeatureFlag } from "../services/featureFlags";
+import {
+  expireRunPreviewArtifacts,
+  recordAgencyPreviewMetric,
+} from "../services/agencyPreviewLifecycleService";
 import { buildAgencyPreview } from "../services/agencyPreviewService";
 import crypto from "crypto";
 import { generateAgencySvg } from "../lib/agencySvgGenerator";
@@ -297,7 +301,10 @@ export const agencyRouter = router({
     .query(async ({ ctx }) => {
       const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
       await assertAgencyEnabled(tenantId);
-      await ensureBuiltInAgencyExperienceTemplates(db);
+      const templateExposureEnabled = await getTenantFeatureFlag("AGENCY_TEMPLATE_EXPERIENCES_ENABLED", tenantId);
+      if (templateExposureEnabled) {
+        await ensureBuiltInAgencyExperienceTemplates(db);
+      }
 
       const { agencyTemplates } = await import("../../drizzle/schema");
 
@@ -669,7 +676,10 @@ export const agencyRouter = router({
       const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
       const userId = ctx.user!.id;
       await assertAgencyEnabled(tenantId);
-      await ensureBuiltInAgencyExperienceTemplates(db);
+      const templateExposureEnabled = await getTenantFeatureFlag("AGENCY_TEMPLATE_EXPERIENCES_ENABLED", tenantId);
+      if (templateExposureEnabled) {
+        await ensureBuiltInAgencyExperienceTemplates(db);
+      }
 
       const { agencyTemplates, agentTemplates } = await import("../../drizzle/schema");
 
@@ -1432,9 +1442,18 @@ export const agencyRouter = router({
         console.error("[Agency] emitEgress failed:", err);
       }
 
+      const preview = buildAgencyPreview(result);
+      recordAgencyPreviewMetric("structured_result_parse", {
+        agencyId: input.agencyId,
+        tenantId,
+        runId: result.runId,
+        status: result.structuredResult ? "success" : "none",
+        hasPreview: Boolean(preview),
+      });
+
       return {
         ...result,
-        preview: buildAgencyPreview(result),
+        preview,
       };
     }),
 
@@ -1450,6 +1469,19 @@ export const agencyRouter = router({
       await assertAgencyEnabled(tenantId);
       const userId = ctx.user!.id;
       const userToken = ctx.userToken ?? "";
+      const expiredCount = await expireRunPreviewArtifacts({
+        runId: input.runId,
+        tenantId,
+        dbClient: db,
+      });
+      if (expiredCount > 0) {
+        recordAgencyPreviewMetric("preview_expired", {
+          agencyId: input.agencyId,
+          tenantId,
+          runId: input.runId,
+          count: expiredCount,
+        });
+      }
       const result = await agencyBridge.getRunDetails(input.agencyId, input.runId, userToken);
 
       if (!result.conversationId) {
@@ -1498,6 +1530,19 @@ export const agencyRouter = router({
       await assertAgencyEnabled(tenantId);
       const userId = ctx.user!.id;
       const userToken = ctx.userToken ?? "";
+      const expiredCount = await expireRunPreviewArtifacts({
+        runId: input.runId,
+        tenantId,
+        dbClient: db,
+      });
+      if (expiredCount > 0) {
+        recordAgencyPreviewMetric("preview_expired", {
+          agencyId: input.agencyId,
+          tenantId,
+          runId: input.runId,
+          count: expiredCount,
+        });
+      }
       const result = await agencyBridge.getRunDetails(input.agencyId, input.runId, userToken);
 
       if (!result.conversationId) {
@@ -1554,6 +1599,38 @@ export const agencyRouter = router({
         })
         : null;
 
+      if (preview?.previewType === "deck") {
+        const deckCommitEnabled = await getTenantFeatureFlag("AGENCY_DECK_COMMIT_ENABLED", tenantId);
+        if (!deckCommitEnabled) {
+          recordAgencyPreviewMetric("commit_blocked", {
+            agencyId: input.agencyId,
+            tenantId,
+            runId: input.runId,
+            artifactId: input.artifactId,
+            reason: "deck_commit_disabled",
+          });
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Deck commit is disabled for this tenant",
+          });
+        }
+      } else if (preview) {
+        const libraryCommitEnabled = await getTenantFeatureFlag("AGENCY_LIBRARY_COMMIT_ENABLED", tenantId);
+        if (!libraryCommitEnabled) {
+          recordAgencyPreviewMetric("commit_blocked", {
+            agencyId: input.agencyId,
+            tenantId,
+            runId: input.runId,
+            artifactId: input.artifactId,
+            reason: "library_commit_disabled",
+          });
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Preview commit is disabled for this tenant",
+          });
+        }
+      }
+
       try {
         const commitParams = {
           actor: {
@@ -1578,12 +1655,29 @@ export const agencyRouter = router({
           ? await commitPresentationPreview(commitParams)
           : await commitLibraryBackedPreview(commitParams);
 
+        recordAgencyPreviewMetric("commit_success", {
+          agencyId: input.agencyId,
+          tenantId,
+          runId: input.runId,
+          artifactId: input.artifactId,
+          previewType: preview?.previewType ?? null,
+          targetType: commitResult.targetType,
+          duplicateSuppressed: artifactRecord.commitStatus === "committed",
+        });
+
         return {
           ok: true,
           ...commitResult,
         };
       } catch (error) {
         if (error instanceof AgencyPreviewCommitError) {
+          recordAgencyPreviewMetric("commit_failure", {
+            agencyId: input.agencyId,
+            tenantId,
+            runId: input.runId,
+            artifactId: input.artifactId,
+            reason: error.code,
+          });
           const code = error.code === "PERMISSION_DENIED"
             ? "FORBIDDEN"
             : error.code === "ARTIFACT_NOT_FOUND"

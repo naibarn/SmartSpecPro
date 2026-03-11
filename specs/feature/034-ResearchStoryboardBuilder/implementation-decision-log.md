@@ -121,3 +121,26 @@
 - Decision taken: derive the built-in experience from the cloned slug prefix, resolve a bounded scope mode server-side, store it in `agency_runs.metadata`, and append a prompt-level runtime instruction for the run.
 - Mode used: `auto`
 - Rationale: this keeps the rollout additive and auditable in the current schema, while still giving template-derived runs a concrete backend scope contract instead of leaving scope behavior as UI-only state.
+
+## Section 06 - Observability, rollout, and retention
+
+### Decision: Make preview expiration opportunistic in Phase 1
+
+- Options considered: build a dedicated cleanup worker immediately, expire previews lazily on preview read/commit, or defer expiration entirely.
+- Decision taken: add `expireRunPreviewArtifacts()` and run it from preview-read and commit paths before loading preview details.
+- Mode used: `auto`
+- Rationale: this gives the feature a real retention boundary and stale-preview behavior now without adding scheduler/job complexity in the same section.
+
+### Decision: Split preview rollout gates from commit rollout gates
+
+- Options considered: one coarse global feature flag, separate gates for preview/library commit/deck commit/template exposure, or no rollout gating.
+- Decision taken: keep preview behavior active while gating library commit, deck commit, and template exposure independently through tenant feature flags.
+- Mode used: `auto`
+- Rationale: the implementation plan explicitly calls for preview-only rollout ahead of commit exposure, and separate gates reduce blast radius for deck commit and platform-template rollout.
+
+### Decision: Emit lightweight structured telemetry instead of a new metrics backend integration
+
+- Options considered: integrate directly with a metrics backend, log nothing beyond existing errors, or emit structured preview lifecycle events through the application log now.
+- Decision taken: add `recordAgencyPreviewMetric()` and emit structured log events for parse outcomes, expiration, commit success, commit failure, and blocked commit attempts.
+- Mode used: `auto`
+- Rationale: this satisfies the section’s observability requirement with minimal code and leaves room to bind the events into counters/dashboards later if operators need more formal aggregation.

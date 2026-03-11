@@ -70,6 +70,14 @@ const {
   mockResolveAgencyRetrievalScope: vi.fn().mockResolvedValue(null),
 }));
 
+const {
+  mockExpireRunPreviewArtifacts,
+  mockRecordAgencyPreviewMetric,
+} = vi.hoisted(() => ({
+  mockExpireRunPreviewArtifacts: vi.fn().mockResolvedValue(0),
+  mockRecordAgencyPreviewMetric: vi.fn(),
+}));
+
 vi.mock("../../services/agencyCommitService", () => ({
   AgencyPreviewCommitError: class AgencyPreviewCommitError extends Error {
     constructor(public code: string, message: string) {
@@ -86,6 +94,11 @@ vi.mock("../../services/agencyDeckCommitService", () => ({
 vi.mock("../../services/agencyExperienceTemplateService", () => ({
   ensureBuiltInAgencyExperienceTemplates: mockEnsureBuiltInAgencyExperienceTemplates,
   resolveAgencyRetrievalScope: mockResolveAgencyRetrievalScope,
+}));
+
+vi.mock("../../services/agencyPreviewLifecycleService", () => ({
+  expireRunPreviewArtifacts: mockExpireRunPreviewArtifacts,
+  recordAgencyPreviewMetric: mockRecordAgencyPreviewMetric,
 }));
 
 // Mock DB and Drizzle ORM
@@ -435,6 +448,85 @@ describe("agencyRouter", () => {
       );
     });
 
+    it("emits a structured-result parse metric for preview-capable runs", async () => {
+      mockBridgeExecuteRun.mockResolvedValue({
+        runId: "run-001",
+        status: "completed",
+        response: "Research preview ready.",
+        creditsUsed: 0,
+        durationMs: 1200,
+        stepAttemptSnapshots: [],
+        structuredResult: {
+          version: "1.0",
+          intent: "research_report",
+          summary: "Research preview ready.",
+          payload: {
+            title: "Market scan",
+            executive_summary: "Demand is rising.",
+            sections: [],
+            key_findings: [],
+            recommendations: [],
+          },
+          artifacts: [],
+          references: [],
+          metrics: {},
+        },
+        previewArtifacts: [
+          {
+            id: "artifact-1",
+            intent: "research_report",
+            artifact_type: "report",
+            state: "preview_generated",
+            summary: "Research preview ready.",
+            commit_status: "not_committed",
+            commit_token: "commit-token-1",
+            payload_json: {
+              title: "Market scan",
+              executive_summary: "Demand is rising.",
+              sections: [],
+              key_findings: [],
+              recommendations: [],
+            },
+            provenance_json: [],
+            payload_storage_key: null,
+            committed_at: null,
+            expired_at: null,
+          },
+        ],
+      });
+
+      const convChain = {
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockResolvedValue([
+          {
+            id: "conv-001",
+            agencyId: "agency-001",
+            userId: 1,
+          },
+        ]),
+      };
+      mockDbSelect.mockReturnValue(convChain);
+
+      const handler = agencyRouter.sendMessage;
+      await handler({
+        ctx: makeCtx(),
+        input: {
+          agencyId: "agency-001",
+          conversationId: "conv-001",
+          message: "Analyze this",
+        },
+      });
+
+      expect(mockRecordAgencyPreviewMetric).toHaveBeenCalledWith(
+        "structured_result_parse",
+        expect.objectContaining({
+          status: "success",
+          hasPreview: true,
+        }),
+      );
+    });
+
     it("adds a preview DTO when the bridge returns structured preview metadata", async () => {
       mockBridgeExecuteRun.mockResolvedValue({
         runId: "run-001",
@@ -713,6 +805,144 @@ describe("agencyRouter", () => {
         targetType: "library_item",
         targetId: "501",
       });
+    });
+
+    it("can block deck commit behind a rollout flag while preview reads stay enabled", async () => {
+      mockGetTenantFeatureFlag.mockImplementation((flag) => {
+        if (flag === "AGENCY_DECK_COMMIT_ENABLED") return Promise.resolve(false);
+        return Promise.resolve(true);
+      });
+      mockBridgeGetRunDetails.mockResolvedValue({
+        runId: "run-001",
+        conversationId: "conv-001",
+        status: "completed",
+        response: "Deck preview ready.",
+        creditsUsed: 0,
+        durationMs: 900,
+        stepAttemptSnapshots: [],
+        structuredResult: {
+          version: "1.0",
+          intent: "presentation_deck",
+          summary: "Deck preview ready.",
+          payload: {
+            title: "Quarterly strategy deck",
+            description: "Board review",
+            language: "en",
+            style_preset: "editorial-clean",
+            slides: [
+              {
+                templateId: "hero_center",
+                title: "Overview",
+                body: ["Revenue up"],
+                notes: "Start here",
+                graphicCategory: "Business",
+                imagePromptKeywords: "business chart",
+              },
+            ],
+          },
+          artifacts: [],
+          references: [],
+          metrics: {},
+        },
+        previewArtifacts: [
+          {
+            id: "artifact-1",
+            intent: "presentation_deck",
+            artifact_type: "deck",
+            state: "preview_generated",
+            summary: "Deck preview ready.",
+            commit_status: "not_committed",
+            commit_token: "commit-token-1",
+            payload_json: {
+              title: "Quarterly strategy deck",
+              description: "Board review",
+              language: "en",
+              style_preset: "editorial-clean",
+              slides: [
+                {
+                  templateId: "hero_center",
+                  title: "Overview",
+                  body: ["Revenue up"],
+                  notes: "Start here",
+                  graphicCategory: "Business",
+                  imagePromptKeywords: "business chart",
+                },
+              ],
+            },
+            provenance_json: [],
+            payload_storage_key: null,
+            committed_at: null,
+            expired_at: null,
+          },
+        ],
+      });
+
+      const conversationSelect = {
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([
+              { id: "conv-001", agencyId: "agency-001", userId: 1 },
+            ]),
+          }),
+        }),
+      };
+      const artifactSelect = {
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([
+              {
+                id: "artifact-1",
+                runId: "run-001",
+                tenantId: "tenant-001",
+                commitToken: "commit-token-1",
+                commitStatus: "not_committed",
+                targetType: null,
+                targetId: null,
+              },
+            ]),
+          }),
+        }),
+      };
+
+      const previewHandler = agencyRouter.getRunPreview;
+      mockDbSelect.mockReturnValueOnce(conversationSelect as any);
+      const previewResult = await previewHandler({
+        ctx: makeCtx(),
+        input: {
+          agencyId: "agency-001",
+          runId: "run-001",
+        },
+      });
+
+      expect(previewResult.preview).toEqual(
+        expect.objectContaining({
+          previewType: "deck",
+        }),
+      );
+
+      mockDbSelect
+        .mockReturnValueOnce(conversationSelect as any)
+        .mockReturnValueOnce(artifactSelect as any);
+
+      const commitHandler = agencyRouter.commitPreview;
+      await expect(
+        commitHandler({
+          ctx: makeCtx(),
+          input: {
+            agencyId: "agency-001",
+            runId: "run-001",
+            artifactId: "artifact-1",
+            commitToken: "commit-token-1",
+          },
+        }),
+      ).rejects.toThrow(/disabled/i);
+
+      expect(mockRecordAgencyPreviewMetric).toHaveBeenCalledWith(
+        "commit_blocked",
+        expect.objectContaining({
+          reason: "deck_commit_disabled",
+        }),
+      );
     });
   });
 
