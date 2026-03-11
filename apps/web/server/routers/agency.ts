@@ -33,6 +33,10 @@ import {
   commitLibraryBackedPreview,
 } from "../services/agencyCommitService";
 import { commitPresentationPreview } from "../services/agencyDeckCommitService";
+import {
+  ensureBuiltInAgencyExperienceTemplates,
+  resolveAgencyRetrievalScope,
+} from "../services/agencyExperienceTemplateService";
 import { getTenantFeatureFlag, setTenantFeatureFlag } from "../services/featureFlags";
 import { buildAgencyPreview } from "../services/agencyPreviewService";
 import crypto from "crypto";
@@ -293,6 +297,7 @@ export const agencyRouter = router({
     .query(async ({ ctx }) => {
       const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
       await assertAgencyEnabled(tenantId);
+      await ensureBuiltInAgencyExperienceTemplates(db);
 
       const { agencyTemplates } = await import("../../drizzle/schema");
 
@@ -664,6 +669,7 @@ export const agencyRouter = router({
       const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
       const userId = ctx.user!.id;
       await assertAgencyEnabled(tenantId);
+      await ensureBuiltInAgencyExperienceTemplates(db);
 
       const { agencyTemplates, agentTemplates } = await import("../../drizzle/schema");
 
@@ -698,6 +704,24 @@ export const agencyRouter = router({
           position: ta.position as any,
         }));
         await db.insert(agencyAgents).values(inserts);
+
+        const toolAssignments = templateAgents.flatMap((ta: any, index: number) => {
+          const clonedAgentId = inserts[index]?.id;
+          if (!clonedAgentId || !Array.isArray(ta.defaultTools)) {
+            return [];
+          }
+          return ta.defaultTools
+            .filter((toolId: unknown): toolId is string => typeof toolId === "string" && toolId.length > 0)
+            .map((toolId: string) => ({
+              id: crypto.randomUUID(),
+              agentId: clonedAgentId,
+              toolId,
+            }));
+        });
+
+        if (toolAssignments.length > 0) {
+          await db.insert(agencyAgentTools).values(toolAssignments);
+        }
       }
 
       return { id: newAgencyId, slug };
@@ -1330,6 +1354,9 @@ export const agencyRouter = router({
         agencyId: z.string().uuid(),
         conversationId: z.string().uuid(),
         message: z.string().min(1).max(10000),
+        retrievalScopeOverride: z.object({
+          mode: z.enum(["tenant_accessible", "library_only", "web_fallback"]),
+        }).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -1358,10 +1385,19 @@ export const agencyRouter = router({
         });
       }
 
+      const resolvedRetrievalScope = await resolveAgencyRetrievalScope({
+        agencyId: input.agencyId,
+        tenantId,
+        userId,
+        overrideMode: input.retrievalScopeOverride?.mode ?? null,
+        dbClient: db,
+      });
+
       const result = await agencyBridge.executeRun({
         agencyId: input.agencyId,
         conversationId: input.conversationId,
         message: input.message,
+        retrievalScope: resolvedRetrievalScope,
         userToken,
         tenantId,
         userId,

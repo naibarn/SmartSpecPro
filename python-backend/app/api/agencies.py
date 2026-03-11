@@ -67,6 +67,9 @@ class AgencyRunRequest(BaseModel):
     task_metadata: Optional[TaskMetadata] = Field(
         None, description="Planner metadata from Node.js task execution system"
     )
+    retrieval_scope: Optional[dict] = Field(
+        None, description="Resolved template retrieval scope for immutable run audit metadata"
+    )
 
     @property
     def safe_persona_prefix(self) -> Optional[str]:
@@ -261,6 +264,10 @@ async def run_agency(
         tenant_id=user.currentTenantId or "",
         conversation_id=conversation_id,
         user_token=credentials.credentials,
+        run_metadata={
+            **({"planner": request.task_metadata.model_dump(exclude_none=True)} if request.task_metadata else {}),
+            **({"retrieval_scope": request.retrieval_scope} if request.retrieval_scope else {}),
+        } or None,
     )
 
     # Log planner metadata for telemetry (if provided)
@@ -324,6 +331,10 @@ async def stream_agency(
         tenant_id=user.currentTenantId or "",
         conversation_id=conversation_id,
         user_token=credentials.credentials,
+        run_metadata={
+            **({"planner": request.task_metadata.model_dump(exclude_none=True)} if request.task_metadata else {}),
+            **({"retrieval_scope": request.retrieval_scope} if request.retrieval_scope else {}),
+        } or None,
     )
 
     # Pre-check credits before starting stream

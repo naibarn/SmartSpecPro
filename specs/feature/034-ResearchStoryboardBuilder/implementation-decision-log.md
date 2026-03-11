@@ -98,3 +98,26 @@
 - Decision taken: keep `targetType = "presentation_deck"` and serialize both identifiers into `targetId`, while returning parsed `deckId` and `libraryItemId` in the commit response.
 - Mode used: `auto`
 - Rationale: the existing artifact index has only `targetType` and `targetId`; serializing both identifiers keeps the implementation additive for this section while still making both IDs durable and retry-safe.
+
+## Section 05 - Template seeding and scope resolution
+
+### Decision: Seed built-in experiences lazily from the router instead of requiring a separate seed job
+
+- Options considered: require an external seed script, seed templates opportunistically on template reads/clones, or block the feature until a migration-managed seed system exists.
+- Decision taken: add `ensureBuiltInAgencyExperienceTemplates()` and call it from `listTemplates` and `createFromTemplate`.
+- Mode used: `auto`
+- Rationale: the repo already exposes agency template reads through the router, and lazy seeding keeps the feature self-starting without introducing a separate operational step for this section.
+
+### Decision: Clone template `defaultTools` into `agency_agent_tools`
+
+- Options considered: leave cloned drafts without tool assignments, invent a new template-tool table, or reuse the existing `defaultTools` array on `agent_templates`.
+- Decision taken: map each template agent’s `defaultTools` into real `agency_agent_tools` rows when cloning a tenant draft.
+- Mode used: `auto`
+- Rationale: this preserves the curated tool surface for the built-in experiences while keeping the implementation aligned with the existing template schema and draft-cloning flow.
+
+### Decision: Resolve built-in retrieval scope from cloned agency identity and persist it as run metadata
+
+- Options considered: add new schema columns for template provenance immediately, rely only on UI state without backend persistence, or derive the built-in experience from the cloned agency slug and persist a resolved scope object per run.
+- Decision taken: derive the built-in experience from the cloned slug prefix, resolve a bounded scope mode server-side, store it in `agency_runs.metadata`, and append a prompt-level runtime instruction for the run.
+- Mode used: `auto`
+- Rationale: this keeps the rollout additive and auditable in the current schema, while still giving template-derived runs a concrete backend scope contract instead of leaving scope behavior as UI-only state.

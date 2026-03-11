@@ -8,6 +8,7 @@
 
 import { ENV } from "../_core/env";
 import type { AgencyTaskMetadata } from "./agencyEscalation";
+import type { ResolvedAgencyRetrievalScope } from "./agencyExperienceTemplateService";
 
 const PYTHON_BACKEND_URL = (ENV.pythonBackendUrl || "http://localhost:8000").replace(/\/+$/, "");
 const GATEWAY_TOKEN = ENV.webGatewayToken;
@@ -22,6 +23,7 @@ interface RunParams {
   userId: number;
   /** Task metadata from the planner — propagated to Python agency service */
   taskMetadata?: AgencyTaskMetadata;
+  retrievalScope?: ResolvedAgencyRetrievalScope | null;
 }
 
 export interface StepAttemptSnapshot {
@@ -154,6 +156,9 @@ export class AgencyBridge {
     };
     if (params.taskMetadata) {
       body.task_metadata = params.taskMetadata;
+    }
+    if (params.retrievalScope) {
+      body.retrieval_scope = params.retrievalScope;
     }
 
     let response: Response;

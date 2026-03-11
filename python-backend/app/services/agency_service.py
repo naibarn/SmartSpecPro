@@ -65,6 +65,7 @@ class RunContext(BaseModel):
     tenant_id: str
     conversation_id: str
     user_token: str
+    run_metadata: dict[str, Any] | None = None
 
 
 # ── Service ────────────────────────────────────────────────────────
@@ -85,6 +86,38 @@ class AgencyService:
             gateway_url=settings.SMARTSPEC_WEB_GATEWAY_URL or "",
             gateway_token=settings.SMARTSPEC_WEB_GATEWAY_TOKEN or "",
         )
+
+    @staticmethod
+    def _apply_retrieval_scope_instruction(
+        system_prompt: str,
+        run_metadata: dict[str, Any] | None,
+    ) -> str:
+        retrieval_scope = (run_metadata or {}).get("retrieval_scope")
+        if not isinstance(retrieval_scope, dict):
+            return system_prompt
+
+        effective_mode = str(retrieval_scope.get("effectiveMode") or "").strip()
+        if not effective_mode:
+            return system_prompt
+
+        instructions = {
+            "tenant_accessible": (
+                "Use tenant-authorized library sources first. "
+                "You may widen to explicit web fallback only when needed, and cite any external sources separately."
+            ),
+            "library_only": (
+                "This run is restricted to tenant-authorized library sources only. "
+                "Do not use web search or any external source outside the library."
+            ),
+            "web_fallback": (
+                "Use tenant-authorized library sources first, then use web search only as a fallback when the library is insufficient."
+            ),
+        }
+        scope_instruction = instructions.get(effective_mode)
+        if not scope_instruction:
+            return system_prompt
+
+        return f"{system_prompt}\n\nRun retrieval scope:\n- {scope_instruction}".strip()
 
     @staticmethod
     def _json_value(value):
@@ -233,10 +266,10 @@ class AgencyService:
             text("""
                 INSERT INTO agency_runs
                     (id, conversation_id, user_id, agency_id, tenant_id,
-                     status, started_at)
+                     status, started_at, metadata)
                 VALUES
                     (:id, :conv_id, :user_id, :agency_id, :tenant_id,
-                     'running', :started_at)
+                     'running', :started_at, CAST(:run_metadata AS JSON))
             """),
             {
                 "id": run_id,
@@ -245,6 +278,7 @@ class AgencyService:
                 "agency_id": agency_id,
                 "tenant_id": context.tenant_id,
                 "started_at": datetime.now(timezone.utc),
+                "run_metadata": json.dumps(context.run_metadata) if context.run_metadata else None,
             },
         )
         await self.db.commit()
@@ -494,6 +528,10 @@ class AgencyService:
         agency_config = await self.load_agency(agency_id, context.tenant_id)
         agency_config.user_id = context.user_id
         agency_config.conversation_id = context.conversation_id
+        agency_config.system_prompt = self._apply_retrieval_scope_instruction(
+            agency_config.system_prompt,
+            context.run_metadata,
+        )
 
         # 2. Load agent definitions (separate query, not duplicated from load_agency)
         agents_data = await self._load_agents(agency_id)
@@ -747,6 +785,10 @@ class AgencyService:
             agency_config = await self.load_agency(agency_id, context.tenant_id)
             agency_config.user_id = context.user_id
             agency_config.conversation_id = context.conversation_id
+            agency_config.system_prompt = self._apply_retrieval_scope_instruction(
+                agency_config.system_prompt,
+                context.run_metadata,
+            )
 
             agents_data = await self._load_agents(agency_id)
 

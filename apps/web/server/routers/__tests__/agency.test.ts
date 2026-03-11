@@ -62,6 +62,14 @@ const { mockCommitPresentationPreview } = vi.hoisted(() => ({
   mockCommitPresentationPreview: vi.fn(),
 }));
 
+const {
+  mockEnsureBuiltInAgencyExperienceTemplates,
+  mockResolveAgencyRetrievalScope,
+} = vi.hoisted(() => ({
+  mockEnsureBuiltInAgencyExperienceTemplates: vi.fn().mockResolvedValue(undefined),
+  mockResolveAgencyRetrievalScope: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock("../../services/agencyCommitService", () => ({
   AgencyPreviewCommitError: class AgencyPreviewCommitError extends Error {
     constructor(public code: string, message: string) {
@@ -73,6 +81,11 @@ vi.mock("../../services/agencyCommitService", () => ({
 
 vi.mock("../../services/agencyDeckCommitService", () => ({
   commitPresentationPreview: mockCommitPresentationPreview,
+}));
+
+vi.mock("../../services/agencyExperienceTemplateService", () => ({
+  ensureBuiltInAgencyExperienceTemplates: mockEnsureBuiltInAgencyExperienceTemplates,
+  resolveAgencyRetrievalScope: mockResolveAgencyRetrievalScope,
 }));
 
 // Mock DB and Drizzle ORM
@@ -358,6 +371,68 @@ describe("agencyRouter", () => {
         ...mockRunResult,
         preview: null,
       });
+    });
+
+    it("passes resolved template retrieval scope into the bridge request", async () => {
+      mockResolveAgencyRetrievalScope.mockResolvedValue({
+        version: 1,
+        experienceKey: "deep_research",
+        templateDefault: "tenant_accessible",
+        userOverride: "library_only",
+        effectiveMode: "library_only",
+        permissionFilter: {
+          tenantId: "tenant-001",
+          userId: 1,
+        },
+      });
+      mockBridgeExecuteRun.mockResolvedValue({
+        runId: "run-001",
+        status: "completed",
+        response: "Scoped analysis complete",
+        creditsUsed: 2,
+        durationMs: 800,
+        stepAttemptSnapshots: [],
+        structuredResult: null,
+        previewArtifacts: [],
+      });
+
+      const convChain = {
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockResolvedValue([
+          {
+            id: "conv-001",
+            agencyId: "agency-001",
+            userId: 1,
+          },
+        ]),
+      };
+      mockDbSelect.mockReturnValue(convChain);
+
+      const handler = agencyRouter.sendMessage;
+      await handler({
+        ctx: makeCtx(),
+        input: {
+          agencyId: "agency-001",
+          conversationId: "conv-001",
+          message: "Analyze tenant sources only",
+          retrievalScopeOverride: {
+            mode: "library_only",
+          },
+        },
+      });
+
+      expect(mockBridgeExecuteRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          retrievalScope: expect.objectContaining({
+            effectiveMode: "library_only",
+            permissionFilter: {
+              tenantId: "tenant-001",
+              userId: 1,
+            },
+          }),
+        }),
+      );
     });
 
     it("adds a preview DTO when the bridge returns structured preview metadata", async () => {
@@ -786,31 +861,60 @@ describe("agencyRouter", () => {
   });
 
   describe("createFromTemplate", () => {
-    it("throws NOT_FOUND when template feature flag is disabled", async () => {
-      // Mock getTenantFeatureFlag to return true for AGENCY_SWARM_ENABLED 
-      // but false for AGENCY_TEMPLATES_ENABLED
-      mockGetTenantFeatureFlag.mockImplementation((flag) => {
-        if (flag === "AGENCY_SWARM_ENABLED") return Promise.resolve(true);
-        if (flag === "AGENCY_TEMPLATES_ENABLED") return Promise.resolve(false);
-        return Promise.resolve(false);
+    it("clones built-in template tools into the new tenant draft", async () => {
+      mockDbSelect
+        .mockReturnValueOnce({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([
+              {
+                id: "platform-deep-research",
+                name: "Deep Research",
+                description: "Template",
+                systemPrompt: "Prompt",
+              },
+            ]),
+          }),
+        } as any)
+        .mockReturnValueOnce({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([
+              {
+                id: "tpl-agent-1",
+                name: "Deep Research Lead",
+                description: "Lead",
+                instructions: "Use RAG",
+                defaultModel: "gpt-4.1-mini",
+                isEntryPoint: true,
+                position: { x: 0, y: 0 },
+                defaultTools: ["builtin-rag-knowledge", "builtin-document-search"],
+              },
+            ]),
+          }),
+        } as any);
+
+      const insertCalls: Array<{ table: any; values: any[] | Record<string, unknown> }> = [];
+      mockDbInsert.mockImplementation((table: any) => ({
+        values: vi.fn((values: any) => {
+          insertCalls.push({ table, values });
+          return Promise.resolve(undefined);
+        }),
+      }));
+
+      const handler = agencyRouter.createFromTemplate;
+      const result = await handler({
+        ctx: makeCtx(),
+        input: { agencyTemplateId: "platform-deep-research" },
       });
 
-      const handler = agencyRouter.createFromTemplate;
-      await expect(
-        handler({ ctx: makeCtx(), input: { templateId: "test-template" } }),
-      ).rejects.toThrow(/not found/i);
-    });
-
-    it("throws NOT_FOUND when template does not exist", async () => {
-      // Both flags true
-      mockGetTenantFeatureFlag.mockResolvedValue(true);
-
-      // We rely on the actual implementation of getTemplateById returning undefined
-      // for an unknown ID since we're not mocking `../../skills/agency-templates/index`
-      const handler = agencyRouter.createFromTemplate;
-      await expect(
-        handler({ ctx: makeCtx(), input: { templateId: "non-existent-template" } }),
-      ).rejects.toThrow(/Template not found/);
+      expect(mockEnsureBuiltInAgencyExperienceTemplates).toHaveBeenCalled();
+      expect(result).toHaveProperty("id");
+      expect(insertCalls).toHaveLength(3);
+      expect(insertCalls[2]?.values).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ toolId: "builtin-rag-knowledge" }),
+          expect.objectContaining({ toolId: "builtin-document-search" }),
+        ]),
+      );
     });
   });
 });
