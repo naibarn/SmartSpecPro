@@ -22,12 +22,13 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileCheck, AlertTriangle, BarChart3, RefreshCw } from "lucide-react";
+import { FileCheck, AlertTriangle, BarChart3, RefreshCw, DollarSign } from "lucide-react";
 
 export default function ContentQualityDashboard() {
   const overview = trpc.contentQuality.getOverview.useQuery();
   const bySkill = trpc.contentQuality.getBySkill.useQuery();
   const staleList = trpc.contentQuality.getStaleList.useQuery();
+  const costBreakdown = trpc.contentQuality.getCostBreakdown.useQuery();
   const refreshMutation = trpc.contentArtifacts.refresh.useMutation({
     onSuccess: () => {
       staleList.refetch();
@@ -219,6 +220,41 @@ export default function ContentQualityDashboard() {
             <p className="text-muted-foreground text-sm py-4 text-center flex items-center justify-center gap-2">
               <FileCheck className="h-4 w-4 text-green-500" />
               All content is up to date
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Cost Breakdown */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5" />
+            Skill Execution Costs (30 days)
+          </CardTitle>
+          <CardDescription>
+            Token usage and cost from skill executions via providerUsageLog
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {costBreakdown.data && costBreakdown.data.length > 0 ? (
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              {costBreakdown.data.map((item: any) => (
+                <div key={item.request_type} className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">{item.request_type}</p>
+                  <p className="text-lg font-bold">${item.total_cost_usd.toFixed(4)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {item.request_count} requests &middot; {(item.total_tokens / 1000).toFixed(1)}k tokens
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Avg ${item.avg_cost_per_request.toFixed(4)}/req
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-sm py-4 text-center">
+              No skill execution cost data in the last 30 days
             </p>
           )}
         </CardContent>

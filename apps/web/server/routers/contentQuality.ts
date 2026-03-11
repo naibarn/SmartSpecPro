@@ -7,7 +7,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "../_core/trpc";
 import { db } from "../db";
-import { contentArtifacts } from "../../drizzle/schema";
+import { contentArtifacts, providerUsageLog } from "../../drizzle/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
 
 function getTenantId(ctx: { tenantId: string | null }): string {
@@ -120,5 +120,43 @@ export const contentQualityRouter = router({
         )
         .groupBy(sql`DATE(${contentArtifacts.createdAt})`)
         .orderBy(sql`DATE(${contentArtifacts.createdAt})`);
+    }),
+
+  getCostBreakdown: adminProcedure
+    .input(
+      z
+        .object({
+          days: z.number().min(1).max(365).optional(),
+        })
+        .optional()
+    )
+    .query(async ({ input }) => {
+      const days = input?.days ?? 30;
+      const rows: { requestType: string | null; total_cost_usd: string; total_tokens: number; request_count: number }[] = await db
+        .select({
+          requestType: providerUsageLog.requestType,
+          total_cost_usd: sql<string>`COALESCE(SUM(${providerUsageLog.costUsd}), 0)::text`,
+          total_tokens: sql<number>`COALESCE(SUM(${providerUsageLog.inputTokens} + ${providerUsageLog.outputTokens}), 0)::int`,
+          request_count: sql<number>`count(*)::int`,
+        })
+        .from(providerUsageLog)
+        .where(
+          and(
+            eq(providerUsageLog.requestType, "skill"),
+            sql`${providerUsageLog.createdAt} >= NOW() - INTERVAL '${sql.raw(String(days))} days'`
+          )
+        )
+        .groupBy(providerUsageLog.requestType)
+        .orderBy(desc(sql`SUM(${providerUsageLog.costUsd})`));
+
+      return rows.map((r) => ({
+        request_type: r.requestType ?? "unknown",
+        total_cost_usd: parseFloat(r.total_cost_usd),
+        total_tokens: r.total_tokens,
+        request_count: r.request_count,
+        avg_cost_per_request: r.request_count > 0
+          ? Math.round((parseFloat(r.total_cost_usd) / r.request_count) * 10000) / 10000
+          : 0,
+      }));
     }),
 });
