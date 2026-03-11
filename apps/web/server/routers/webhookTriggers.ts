@@ -28,6 +28,8 @@ import {
 import { getTenantFeatureFlag } from "../services/featureFlags";
 import { channelGateway } from "../services/channelGateway";
 import { agencyBridge } from "../services/agencyBridge";
+import { runPlanner, recordStepAttempt } from "../services/taskPlannerMiddleware";
+import { buildAgencyTaskMetadata } from "../services/agencyEscalation";
 import { ENV } from "../_core/env";
 
 const WEBHOOK_BASE_URL = "https://smartaihub.app/api/webhooks/trigger";
@@ -323,6 +325,19 @@ export const webhookTriggersRouter = router({
 
       try {
         if (trigger.targetType === "agency" && trigger.targetAgencyId) {
+          const testPlannerResult = await runPlanner({
+            sourceType: "webhook",
+            userId,
+            tenantId,
+          }).catch(() => null);
+          const testTaskMetadata = testPlannerResult
+            ? buildAgencyTaskMetadata({
+                taskRunId: testPlannerResult.taskRunId,
+                plan: testPlannerResult.plan,
+                routeReason: "agency:webhook_test",
+              })
+            : undefined;
+
           const result = await agencyBridge.executeRun({
             agencyId: trigger.targetAgencyId,
             conversationId: trigger.targetAgencyId,
@@ -330,7 +345,17 @@ export const webhookTriggersRouter = router({
             userToken: "",
             tenantId,
             userId,
+            taskMetadata: testTaskMetadata,
           });
+          if (testPlannerResult) {
+            recordStepAttempt({
+              taskRunId: testPlannerResult.taskRunId,
+              plan: testPlannerResult.plan,
+              model: "agency",
+              inputTokens: 0,
+              outputTokens: 0,
+            }).catch(() => {});
+          }
           dispatchResult = { ok: true, executionId: result.runId };
 
         } else if (trigger.targetType === "chat" && trigger.targetConversationId) {

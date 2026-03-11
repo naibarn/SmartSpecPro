@@ -13,7 +13,20 @@
     "section-04-agency-escalation-and-telemetry",
     "section-05-active-mode-cutover-and-cleanup"
   ],
-  "sections_state": {},
+  "sections_state": {
+    "section-01-planner-middleware-and-chat-wiring": {
+      "status": "complete",
+      "commit_hash": "56ae4b7c"
+    },
+    "section-02-skill-execution-and-structured-llm-wiring": {
+      "status": "complete",
+      "commit_hash": "3fe448a0"
+    },
+    "section-03-artifact-routing-and-presentation-wiring": {
+      "status": "complete",
+      "commit_hash": "f5c76949"
+    }
+  },
   "pre_commit": {
     "present": false,
     "type": "none",

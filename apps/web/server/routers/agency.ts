@@ -28,6 +28,8 @@ import {
 import { eq, and, desc, asc, inArray, sql, getTableColumns, count } from "drizzle-orm";
 import { agencyBridge } from "../services/agencyBridge";
 import type { RunResult } from "../services/agencyBridge";
+import { runPlanner, recordStepAttempt } from "../services/taskPlannerMiddleware";
+import { buildAgencyTaskMetadata } from "../services/agencyEscalation";
 import {
   AgencyPreviewCommitError,
   commitLibraryBackedPreview,
@@ -692,6 +694,7 @@ export const agencyRouter = router({
       await db.insert(agencies).values({
         id: newAgencyId,
         tenantId,
+        sourceTemplateId: template.id,
         name: template.name,
         slug,
         description: template.description,
@@ -1403,6 +1406,22 @@ export const agencyRouter = router({
         dbClient: db,
       });
 
+      // Wire task planner for agency execution tracking
+      const plannerResult = await runPlanner({
+        sourceType: "agency",
+        userId,
+        tenantId,
+      }).catch(() => null);
+
+      const taskMetadata = plannerResult
+        ? buildAgencyTaskMetadata({
+            taskRunId: plannerResult.taskRunId,
+            plan: plannerResult.plan,
+            routeReason: "agency:direct_request",
+          })
+        : undefined;
+
+      const agencyStartTime = Date.now();
       const result = await agencyBridge.executeRun({
         agencyId: input.agencyId,
         conversationId: input.conversationId,
@@ -1411,7 +1430,19 @@ export const agencyRouter = router({
         userToken,
         tenantId,
         userId,
+        taskMetadata,
       });
+
+      if (plannerResult) {
+        recordStepAttempt({
+          taskRunId: plannerResult.taskRunId,
+          plan: plannerResult.plan,
+          model: "agency",
+          inputTokens: 0,
+          outputTokens: 0,
+          durationMs: Date.now() - agencyStartTime,
+        }).catch(() => {});
+      }
 
       // --- Channel bridge fan-out (section-08) ---
       try {

@@ -17,6 +17,8 @@ import { webhookTriggers, webhookTriggerLogs } from "../../drizzle/schema";
 import { deductCredits } from "./creditService";
 import { channelGateway } from "./channelGateway";
 import { agencyBridge } from "./agencyBridge";
+import { runPlanner, recordStepAttempt } from "./taskPlannerMiddleware";
+import { buildAgencyTaskMetadata } from "./agencyEscalation";
 import { stripSecrets } from "./webhookTriggerService";
 import { auditLogger } from "./auditLogger";
 import { ENV } from "../_core/env";
@@ -72,6 +74,19 @@ export async function processWebhookDispatch(job: Job<WebhookDispatchJob>): Prom
   // ── Dispatch to configured target ─────────────────────────────────────
 
   if (targetType === "agency" && targetAgencyId) {
+    const plannerResult = await runPlanner({
+      sourceType: "webhook",
+      userId,
+      tenantId,
+    }).catch(() => null);
+    const taskMetadata = plannerResult
+      ? buildAgencyTaskMetadata({
+          taskRunId: plannerResult.taskRunId,
+          plan: plannerResult.plan,
+          routeReason: "agency:webhook_dispatch",
+        })
+      : undefined;
+
     const result = await agencyBridge.executeRun({
       agencyId: targetAgencyId,
       conversationId: targetAgencyId, // agencyId as server-side conv fallback
@@ -79,8 +94,19 @@ export async function processWebhookDispatch(job: Job<WebhookDispatchJob>): Prom
       userToken: "",                  // server-side dispatch — no user session
       tenantId,
       userId,
+      taskMetadata,
     });
     targetExecutionId = result.runId;
+
+    if (plannerResult) {
+      recordStepAttempt({
+        taskRunId: plannerResult.taskRunId,
+        plan: plannerResult.plan,
+        model: "agency",
+        inputTokens: 0,
+        outputTokens: 0,
+      }).catch(() => {});
+    }
 
   } else if (targetType === "chat" && targetConversationId) {
     await channelGateway.processMessageServerSide({

@@ -42,6 +42,7 @@ import {
 } from "./creditService";
 import { resolveEnabledLlmModelId } from "./enabledLlmModels";
 import { runPlanner, recordStepAttempt } from "./taskPlannerMiddleware";
+import { buildAgencyTaskMetadata } from "./agencyEscalation";
 import { agencyBridge } from "./agencyBridge";
 import {
   agencies,
@@ -173,6 +174,19 @@ async function ingest(event: ChatIngressEvent): Promise<IngestResult> {
         if (routeResult.targetType === "agency" && routeResult.targetId) {
           // Override: route to the specified agency regardless of channel binding
           try {
+            const routePlannerResult = await runPlanner({
+              sourceType: "channel",
+              userId: connection.userId,
+              tenantId: connection.tenantId,
+            }).catch(() => null);
+            const routeTaskMetadata = routePlannerResult
+              ? buildAgencyTaskMetadata({
+                  taskRunId: routePlannerResult.taskRunId,
+                  plan: routePlannerResult.plan,
+                  routeReason: "agency:channel_router_override",
+                })
+              : undefined;
+
             const result = await agencyBridge.executeRun({
               agencyId: routeResult.targetId,
               conversationId: channel.agencyConversationId ?? routeResult.targetId,
@@ -180,7 +194,17 @@ async function ingest(event: ChatIngressEvent): Promise<IngestResult> {
               userToken: "",
               tenantId: connection.tenantId,
               userId: connection.userId,
+              taskMetadata: routeTaskMetadata,
             });
+            if (routePlannerResult) {
+              recordStepAttempt({
+                taskRunId: routePlannerResult.taskRunId,
+                plan: routePlannerResult.plan,
+                model: "agency",
+                inputTokens: 0,
+                outputTokens: 0,
+              }).catch(() => {});
+            }
             if (result.response) {
               await emitEgress({
                 eventId: crypto.randomUUID(),
@@ -238,6 +262,19 @@ async function ingest(event: ChatIngressEvent): Promise<IngestResult> {
           return { ok: false, error: "Agency conversation not found", errorCode: "pipeline_error" };
         }
 
+        const agencyPlannerResult = await runPlanner({
+          sourceType: "channel",
+          userId: connection.userId,
+          tenantId: connection.tenantId,
+        }).catch(() => null);
+        const agencyTaskMetadata = agencyPlannerResult
+          ? buildAgencyTaskMetadata({
+              taskRunId: agencyPlannerResult.taskRunId,
+              plan: agencyPlannerResult.plan,
+              routeReason: "agency:channel_gateway",
+            })
+          : undefined;
+
         const result = await agencyBridge.executeRun({
           agencyId: agencyConv.agencyId,
           conversationId: channel.agencyConversationId,
@@ -245,7 +282,18 @@ async function ingest(event: ChatIngressEvent): Promise<IngestResult> {
           userToken: "", // Server-side call — no user token needed
           tenantId: connection.tenantId,
           userId: connection.userId,
+          taskMetadata: agencyTaskMetadata,
         });
+
+        if (agencyPlannerResult) {
+          recordStepAttempt({
+            taskRunId: agencyPlannerResult.taskRunId,
+            plan: agencyPlannerResult.plan,
+            model: "agency",
+            inputTokens: 0,
+            outputTokens: 0,
+          }).catch(() => {});
+        }
 
         // Emit the agency response to Telegram
         if (result.response) {
