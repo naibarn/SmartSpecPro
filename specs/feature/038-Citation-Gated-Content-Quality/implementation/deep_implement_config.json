@@ -1,0 +1,31 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/038-Citation-Gated-Content-Quality/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/038-Citation-Gated-Content-Quality/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-skill-schema-enhancement",
+    "section-02-cms-output-schemas",
+    "section-03-web-search-grounding",
+    "section-04-thinking-reasoning-controls",
+    "section-05-output-processing-pipeline",
+    "section-06-seo-jsonld-generator",
+    "section-07-reviewer-skills-upgrade",
+    "section-08-article-writer-skills-upgrade",
+    "section-09-refresh-cadence-system",
+    "section-10-quality-dashboard"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-03-11T08:12:08.159004+00:00"
+}

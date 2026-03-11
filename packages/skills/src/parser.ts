@@ -24,12 +24,17 @@ export function parseSkillFile(content: string): { metadata: SkillMetadata; cont
         // Validate and merge Spec 038 execution_policy content fields
         const execPolicy = metadata.execution_policy ?? metadata.executionPolicy;
         if (execPolicy && typeof execPolicy === "object") {
-          const contentFields = parseExecutionPolicyContentFields(execPolicy as Record<string, unknown>);
-          if (contentFields) {
-            const w = (contentFields as any).__warnings as string[] | undefined;
-            if (w) {
-              warnings.push(...w);
-              delete (contentFields as any).__warnings;
+          const { fields: validatedFields, warnings: epWarnings } = parseExecutionPolicyContentFields(execPolicy as Record<string, unknown>);
+          warnings.push(...epWarnings);
+          // Write validated fields back, stripping invalid enum values
+          if (validatedFields) {
+            Object.assign(execPolicy, validatedFields);
+          }
+          // Remove invalid enum values that weren't in validatedFields
+          if (epWarnings.length > 0) {
+            for (const w of epWarnings) {
+              if (w.includes("thinking_level_hint")) delete (execPolicy as any).thinking_level_hint;
+              if (w.includes("output_format")) delete (execPolicy as any).output_format;
             }
           }
         }
@@ -206,14 +211,16 @@ const VALID_THINKING_LEVELS = ["minimal", "low", "medium", "high"] as const;
 const VALID_OUTPUT_FORMATS = ["cms_article", "cms_review", "markdown", "json"] as const;
 const VALID_CITATION_LEVELS = ["critical", "major", "minor"] as const;
 
+type Spec038PolicyFields = Pick<SkillExecutionPolicyConfig, "requires_web_search" | "requires_citations" | "requires_structured_output" | "thinking_level_hint" | "output_format" | "max_tokens_hint">;
+
 /**
  * Parse and validate execution_policy fields from Spec 038 (content quality).
- * Invalid enum values are silently dropped (warning-level, not error).
+ * Invalid enum values are stripped and reported as warnings.
  */
 export function parseExecutionPolicyContentFields(
   raw: Record<string, unknown> | undefined
-): Pick<SkillExecutionPolicyConfig, "requires_web_search" | "requires_citations" | "requires_structured_output" | "thinking_level_hint" | "output_format" | "max_tokens_hint"> | undefined {
-  if (!raw || typeof raw !== "object") return undefined;
+): { fields: Spec038PolicyFields | undefined; warnings: string[] } {
+  if (!raw || typeof raw !== "object") return { fields: undefined, warnings: [] };
 
   const result: Record<string, unknown> = {};
   const warnings: string[] = [];
@@ -245,11 +252,10 @@ export function parseExecutionPolicyContentFields(
     if (!isNaN(num) && num > 0) result.max_tokens_hint = num;
   }
 
-  if (warnings.length > 0) {
-    (result as Record<string, unknown>).__warnings = warnings;
-  }
-
-  return Object.keys(result).length > 0 ? result as any : undefined;
+  return {
+    fields: Object.keys(result).length > 0 ? result as Spec038PolicyFields : undefined,
+    warnings,
+  };
 }
 
 /**

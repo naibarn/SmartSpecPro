@@ -174,34 +174,49 @@ content_quality:
 });
 
 describe("parseExecutionPolicyContentFields", () => {
-  it("returns undefined for undefined input", () => {
-    expect(parseExecutionPolicyContentFields(undefined)).toBeUndefined();
+  it("returns undefined fields for undefined input", () => {
+    const { fields, warnings } = parseExecutionPolicyContentFields(undefined);
+    expect(fields).toBeUndefined();
+    expect(warnings).toHaveLength(0);
   });
 
-  it("returns undefined for empty object", () => {
-    expect(parseExecutionPolicyContentFields({})).toBeUndefined();
+  it("returns undefined fields for empty object", () => {
+    const { fields, warnings } = parseExecutionPolicyContentFields({});
+    expect(fields).toBeUndefined();
+    expect(warnings).toHaveLength(0);
   });
 
   it("parses valid fields", () => {
-    const result = parseExecutionPolicyContentFields({
+    const { fields, warnings } = parseExecutionPolicyContentFields({
       requires_web_search: true,
       thinking_level_hint: "low",
       output_format: "markdown",
     });
-    expect(result).toEqual({
+    expect(fields).toEqual({
       requires_web_search: true,
       thinking_level_hint: "low",
       output_format: "markdown",
     });
+    expect(warnings).toHaveLength(0);
   });
 
   it("coerces booleans", () => {
-    const result = parseExecutionPolicyContentFields({
+    const { fields } = parseExecutionPolicyContentFields({
       requires_web_search: 1,
       requires_citations: 0,
     });
-    expect(result!.requires_web_search).toBe(true);
-    expect(result!.requires_citations).toBe(false);
+    expect(fields!.requires_web_search).toBe(true);
+    expect(fields!.requires_citations).toBe(false);
+  });
+
+  it("returns warnings for invalid enum values", () => {
+    const { fields, warnings } = parseExecutionPolicyContentFields({
+      thinking_level_hint: "extreme",
+      requires_web_search: true,
+    });
+    expect(fields).toEqual({ requires_web_search: true });
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("thinking_level_hint");
   });
 });
 
