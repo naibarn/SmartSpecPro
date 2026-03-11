@@ -7,6 +7,7 @@
  */
 
 import { ENV } from "../_core/env";
+import type { AgencyTaskMetadata } from "./agencyEscalation";
 
 const PYTHON_BACKEND_URL = (ENV.pythonBackendUrl || "http://localhost:8000").replace(/\/+$/, "");
 const GATEWAY_TOKEN = ENV.webGatewayToken;
@@ -19,6 +20,16 @@ interface RunParams {
   userToken: string;
   tenantId: string;
   userId: number;
+  /** Task metadata from the planner — propagated to Python agency service */
+  taskMetadata?: AgencyTaskMetadata;
+}
+
+export interface StepAttemptSnapshot {
+  model_id: string;
+  provider: string;
+  input_tokens: number;
+  output_tokens: number;
+  credits_used: number;
 }
 
 export interface RunResult {
@@ -27,6 +38,8 @@ export interface RunResult {
   response: string;
   creditsUsed: number;
   durationMs: number;
+  /** Step-attempt snapshots from agency execution (for billing reconciliation) */
+  stepAttemptSnapshots: StepAttemptSnapshot[];
 }
 
 interface RunFilters {
@@ -105,15 +118,20 @@ export class AgencyBridge {
   async executeRun(params: RunParams): Promise<RunResult> {
     const url = `${PYTHON_BACKEND_URL}/api/v1/agencies/${params.agencyId}/run`;
 
+    const body: Record<string, unknown> = {
+      conversation_id: params.conversationId,
+      message: params.message,
+    };
+    if (params.taskMetadata) {
+      body.task_metadata = params.taskMetadata;
+    }
+
     let response: Response;
     try {
       response = await fetch(url, {
         method: "POST",
         headers: makeHeadersWithMeta(params.userToken, params.tenantId, params.userId),
-        body: JSON.stringify({
-          conversation_id: params.conversationId,
-          message: params.message,
-        }),
+        body: JSON.stringify(body),
         signal: AbortSignal.timeout(RUN_TIMEOUT_MS),
       });
     } catch (err: any) {
@@ -131,6 +149,7 @@ export class AgencyBridge {
       response: data.response,
       creditsUsed: data.credits_used ?? 0,
       durationMs: data.duration_ms ?? 0,
+      stepAttemptSnapshots: data.step_attempt_snapshots ?? [],
     };
   }
 
@@ -186,6 +205,7 @@ export class AgencyBridge {
       response: data.response ?? "",
       creditsUsed: data.credits_used ?? data.totalCreditsUsed ?? 0,
       durationMs: data.duration_ms ?? data.durationMs ?? 0,
+      stepAttemptSnapshots: data.step_attempt_snapshots ?? [],
     };
   }
 }

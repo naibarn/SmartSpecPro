@@ -132,6 +132,9 @@ export interface SkillDefinition {
    * instead of relying solely on llmModelId/defaultModel.
    */
   executionPolicy?: SkillExecutionPolicyConfig;
+
+  /** Content quality constraints for citation-gated publishing */
+  contentQuality?: SkillContentQuality;
 }
 
 /**
@@ -183,6 +186,44 @@ export interface SkillExecutionPolicyConfig {
 
   /** Fallback behavior: "error" | "use_default" */
   fallbackPolicy?: "error" | "use_default";
+
+  // --- Spec 038: Citation-gated content quality fields ---
+
+  /** Whether this skill requires web search grounding for citations */
+  requires_web_search?: boolean;
+
+  /** Whether this skill requires citations on claims */
+  requires_citations?: boolean;
+
+  /** Whether this skill requires structured (JSON) output */
+  requires_structured_output?: boolean;
+
+  /** Hint for provider thinking/reasoning level */
+  thinking_level_hint?: "minimal" | "low" | "medium" | "high";
+
+  /** Output format hint for CMS integration */
+  output_format?: "cms_article" | "cms_review" | "markdown" | "json";
+
+  /** Hint for max tokens to request from the model */
+  max_tokens_hint?: number;
+}
+
+/**
+ * Content quality constraints for citation-gated publishing.
+ * Declared in skill.md frontmatter under `content_quality:`.
+ */
+export interface SkillContentQuality {
+  /** Claim severity levels that require citations */
+  citation_required_for?: ("critical" | "major" | "minor")[];
+
+  /** Minimum fraction of claims that must have citations (0.0 - 1.0) */
+  min_citation_coverage?: number;
+
+  /** Whether the output must include a disclosure statement */
+  disclosure_required?: boolean;
+
+  /** How often (days) this content should be refreshed. null = never */
+  refresh_cadence_days?: number;
 }
 
 /**
@@ -228,6 +269,9 @@ export interface SkillMetadata {
   requires_browser?: boolean;
   max_runtime_seconds?: number;
   max_input_mb?: number;
+  // Content quality constraints (Spec 038)
+  content_quality?: SkillContentQuality;
+  contentQuality?: SkillContentQuality;
 }
 
 export interface SkillDetectionResult {

@@ -39,6 +39,18 @@ logger = structlog.get_logger(__name__)
 _PERSONA_BLOCKED_PATTERNS = ["[SYSTEM]", "[INST]", "<<SYS>>", "</s>", "[/INST]"]
 
 
+class TaskMetadata(BaseModel):
+    """Planner metadata propagated from Node.js into agency runs."""
+
+    task_run_id: Optional[int] = Field(None, description="Task run ID for linking")
+    task_type: Optional[str] = Field(None, description="Planner task type")
+    execution_strategy: Optional[str] = Field(None, description="cheapest|fastest|best")
+    capability_requirements: Optional[dict] = Field(None, description="Required model capabilities")
+    budget_class: Optional[str] = Field(None, description="economy|standard|premium")
+    route_reason: Optional[str] = Field(None, description="Why this task was routed to agency")
+    plan_version: Optional[int] = Field(None, description="Plan schema version")
+
+
 class AgencyRunRequest(BaseModel):
     """Request body for POST /run and POST /stream."""
 
@@ -51,6 +63,9 @@ class AgencyRunRequest(BaseModel):
     )
     persona_prefix: Optional[str] = Field(
         None, max_length=3000, description="Persona prompt prefix to prepend to agent instructions"
+    )
+    task_metadata: Optional[TaskMetadata] = Field(
+        None, description="Planner metadata from Node.js task execution system"
     )
 
     @property
@@ -230,6 +245,18 @@ async def run_agency(
         conversation_id=conversation_id,
         user_token=credentials.credentials,
     )
+
+    # Log planner metadata for telemetry (if provided)
+    if request.task_metadata:
+        logger.info(
+            "agency_run_with_planner_metadata",
+            agency_id=agency_id,
+            task_run_id=request.task_metadata.task_run_id,
+            task_type=request.task_metadata.task_type,
+            execution_strategy=request.task_metadata.execution_strategy,
+            route_reason=request.task_metadata.route_reason,
+            budget_class=request.task_metadata.budget_class,
+        )
 
     try:
         result = await with_retry(

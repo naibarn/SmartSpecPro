@@ -39,7 +39,14 @@ EdgeRow = dict[str, Any]
 class ExecutionContext:
     """Mutable context passed between nodes during execution."""
 
-    def __init__(self, input_message: str, user_token: str, tenant_id: str, user_id: int = 0):
+    def __init__(
+        self,
+        input_message: str,
+        user_token: str,
+        tenant_id: str,
+        user_id: int = 0,
+        task_metadata: dict[str, Any] | None = None,
+    ):
         self.input = input_message
         self.user_token = user_token
         self.tenant_id = tenant_id
@@ -47,6 +54,10 @@ class ExecutionContext:
         self.results: dict[str, str] = {}   # node_id → result text
         self.knowledge: list[dict] = []     # populated by knowledge_base nodes
         self.history: list[dict] = []       # conversation history
+        # Planner metadata from Node.js (task_run_id, strategy, requirements, etc.)
+        self.task_metadata: dict[str, Any] = task_metadata or {}
+        # Step-attempt snapshots collected during execution (for billing reconciliation)
+        self.step_attempts: list[dict[str, Any]] = []
 
     def get_context_text(self) -> str:
         """Build a context string from accumulated knowledge and results."""
@@ -95,12 +106,31 @@ class AgencyOrchestrator:
             for n in self.nodes.values()
         )
 
-    async def run(self, message: str, user_token: str, tenant_id: str, user_id: int = 0) -> str:
+    async def run(
+        self,
+        message: str,
+        user_token: str,
+        tenant_id: str,
+        user_id: int = 0,
+        task_metadata: dict[str, Any] | None = None,
+    ) -> str:
         """Execute the agency graph starting from the entry node.
 
         Returns final response text.
         """
-        ctx = ExecutionContext(message, user_token, tenant_id, user_id=user_id)
+        ctx = ExecutionContext(
+            message, user_token, tenant_id,
+            user_id=user_id, task_metadata=task_metadata,
+        )
+
+        if task_metadata:
+            logger.info(
+                "agency_orchestrator_with_planner_context",
+                task_run_id=task_metadata.get("task_run_id"),
+                execution_strategy=task_metadata.get("execution_strategy"),
+                budget_class=task_metadata.get("budget_class"),
+            )
+
         result = await self._execute_node(self.entry_node, ctx)
         return result or ""
 

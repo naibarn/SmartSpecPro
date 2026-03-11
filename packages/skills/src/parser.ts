@@ -6,19 +6,45 @@
  */
 
 import yaml from "js-yaml";
-import type { SkillMetadata, TriggerRule, PatternRule } from "./types";
+import type { SkillMetadata, TriggerRule, PatternRule, SkillExecutionPolicyConfig, SkillContentQuality } from "./types";
 
 /**
  * Parse a skill.md file — extract YAML frontmatter and markdown content
  */
-export function parseSkillFile(content: string): { metadata: SkillMetadata; content: string } {
+export function parseSkillFile(content: string): { metadata: SkillMetadata; content: string; warnings?: string[] } {
   if (content.startsWith("---")) {
     const parts = content.split("---");
     if (parts.length >= 3) {
       try {
         const frontmatter = yaml.load(parts[1], { schema: yaml.JSON_SCHEMA }) as SkillMetadata;
         const body = parts.slice(2).join("---").trim();
-        return { metadata: frontmatter || {}, content: body };
+        const metadata = frontmatter || {} as SkillMetadata;
+        const warnings: string[] = [];
+
+        // Validate and merge Spec 038 execution_policy content fields
+        const execPolicy = metadata.execution_policy ?? metadata.executionPolicy;
+        if (execPolicy && typeof execPolicy === "object") {
+          const contentFields = parseExecutionPolicyContentFields(execPolicy as Record<string, unknown>);
+          if (contentFields) {
+            const w = (contentFields as any).__warnings as string[] | undefined;
+            if (w) {
+              warnings.push(...w);
+              delete (contentFields as any).__warnings;
+            }
+          }
+        }
+
+        // Validate content_quality
+        const rawCQ = metadata.content_quality ?? metadata.contentQuality;
+        if (rawCQ && typeof rawCQ === "object") {
+          const { quality, warnings: cqWarnings } = parseContentQuality(rawCQ as Record<string, unknown>);
+          warnings.push(...cqWarnings);
+          // Replace raw YAML with validated version (or clear if invalid)
+          metadata.content_quality = quality;
+          metadata.contentQuality = quality;
+        }
+
+        return { metadata, content: body, warnings: warnings.length > 0 ? warnings : undefined };
       } catch {
         return { metadata: {} as SkillMetadata, content };
       }
@@ -174,6 +200,101 @@ export function parseTriggerPatternsLegacy(patterns: string[] | null | undefined
       }
     })
     .filter((r): r is RegExp => r !== null);
+}
+
+const VALID_THINKING_LEVELS = ["minimal", "low", "medium", "high"] as const;
+const VALID_OUTPUT_FORMATS = ["cms_article", "cms_review", "markdown", "json"] as const;
+const VALID_CITATION_LEVELS = ["critical", "major", "minor"] as const;
+
+/**
+ * Parse and validate execution_policy fields from Spec 038 (content quality).
+ * Invalid enum values are silently dropped (warning-level, not error).
+ */
+export function parseExecutionPolicyContentFields(
+  raw: Record<string, unknown> | undefined
+): Pick<SkillExecutionPolicyConfig, "requires_web_search" | "requires_citations" | "requires_structured_output" | "thinking_level_hint" | "output_format" | "max_tokens_hint"> | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+
+  const result: Record<string, unknown> = {};
+  const warnings: string[] = [];
+
+  if ("requires_web_search" in raw) result.requires_web_search = Boolean(raw.requires_web_search);
+  if ("requires_citations" in raw) result.requires_citations = Boolean(raw.requires_citations);
+  if ("requires_structured_output" in raw) result.requires_structured_output = Boolean(raw.requires_structured_output);
+
+  if ("thinking_level_hint" in raw) {
+    const val = String(raw.thinking_level_hint);
+    if ((VALID_THINKING_LEVELS as readonly string[]).includes(val)) {
+      result.thinking_level_hint = val;
+    } else {
+      warnings.push(`Invalid thinking_level_hint: "${val}"`);
+    }
+  }
+
+  if ("output_format" in raw) {
+    const val = String(raw.output_format);
+    if ((VALID_OUTPUT_FORMATS as readonly string[]).includes(val)) {
+      result.output_format = val;
+    } else {
+      warnings.push(`Invalid output_format: "${val}"`);
+    }
+  }
+
+  if ("max_tokens_hint" in raw) {
+    const num = Number(raw.max_tokens_hint);
+    if (!isNaN(num) && num > 0) result.max_tokens_hint = num;
+  }
+
+  if (warnings.length > 0) {
+    (result as Record<string, unknown>).__warnings = warnings;
+  }
+
+  return Object.keys(result).length > 0 ? result as any : undefined;
+}
+
+/**
+ * Parse and validate content_quality fields from Spec 038.
+ */
+export function parseContentQuality(
+  raw: Record<string, unknown> | undefined
+): { quality: SkillContentQuality | undefined; warnings: string[] } {
+  if (!raw || typeof raw !== "object") return { quality: undefined, warnings: [] };
+
+  const result: SkillContentQuality = {};
+  const warnings: string[] = [];
+
+  if ("citation_required_for" in raw && Array.isArray(raw.citation_required_for)) {
+    const valid = raw.citation_required_for.filter((v: unknown) =>
+      (VALID_CITATION_LEVELS as readonly string[]).includes(String(v))
+    );
+    const invalid = raw.citation_required_for.filter((v: unknown) =>
+      !(VALID_CITATION_LEVELS as readonly string[]).includes(String(v))
+    );
+    if (invalid.length > 0) {
+      warnings.push(`Invalid citation_required_for values: ${invalid.join(", ")}`);
+    }
+    if (valid.length > 0) result.citation_required_for = valid as ("critical" | "major" | "minor")[];
+  }
+
+  if ("min_citation_coverage" in raw) {
+    const num = Number(raw.min_citation_coverage);
+    if (!isNaN(num) && num >= 0 && num <= 1) {
+      result.min_citation_coverage = num;
+    } else {
+      warnings.push(`Invalid min_citation_coverage: "${raw.min_citation_coverage}" (must be 0.0-1.0)`);
+    }
+  }
+
+  if ("disclosure_required" in raw) result.disclosure_required = Boolean(raw.disclosure_required);
+  if ("refresh_cadence_days" in raw) {
+    const num = Number(raw.refresh_cadence_days);
+    if (!isNaN(num) && num > 0) result.refresh_cadence_days = num;
+  }
+
+  return {
+    quality: Object.keys(result).length > 0 ? result : undefined,
+    warnings,
+  };
 }
 
 /**
