@@ -1600,7 +1600,7 @@ export const chatRouter = router({
             recordStepAttempt({
               taskRunId: plannerResult.taskRunId,
               plan: plannerResult.plan,
-              model: llmModel,
+              model: llmModel ?? "unknown",
               provider: provider.providerName,
               inputTokens,
               outputTokens,

@@ -168,6 +168,9 @@ The JSON must strictly conform to the expected schema.`;
 
     // Record step attempt for each retry (per-attempt tracking)
     if (plannerResult) {
+      const attemptSnapshot = plannerResult.snapshot
+        ? { ...plannerResult.snapshot, attemptIndex: attempt }
+        : null;
       recordStepAttempt({
         taskRunId: plannerResult.taskRunId,
         plan: plannerResult.plan,
@@ -176,7 +179,7 @@ The JSON must strictly conform to the expected schema.`;
         inputTokens,
         outputTokens,
         costUsd: costUsd?.toString(),
-        snapshot: plannerResult.snapshot,
+        snapshot: attemptSnapshot,
         creditsUsed,
       }).catch(() => {});
     }
