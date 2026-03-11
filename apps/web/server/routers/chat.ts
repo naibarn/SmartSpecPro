@@ -50,6 +50,8 @@ import { auditLogger } from "../services/auditLogger";
 import { checkAbuseGuard, hashPrompt } from "../services/abuseGuard";
 import { resolveSkillExecutionPolicy } from "../services/skillExecutionPolicy";
 import { runPlanner, recordStepAttempt } from "../services/taskPlannerMiddleware";
+import { classifyArtifactIntent, selectExecutionRoute } from "../services/artifactRouter";
+import { updateTaskRunArtifact } from "../services/taskRunStore";
 
 // ── Security: forbidden patterns in LLM-generated skillContent ───────────────
 const ISC_FORBIDDEN_PATTERNS = [
@@ -1453,6 +1455,26 @@ export const chatRouter = router({
             mode: executionPolicy.modelSource,
           },
         });
+
+        // Artifact classification for presentation/report skills
+        if (plannerResult) {
+          const artifactIntent = classifyArtifactIntent({
+            sourceType: "skill",
+            skillSlug: input.skillId,
+          });
+          if (artifactIntent !== "chat_reply") {
+            const artifactRoute = selectExecutionRoute({
+              artifactIntent,
+              complexity: plannerResult.plan.complexity,
+              modelSupportsStructuredOutput: true,
+            });
+            updateTaskRunArtifact(plannerResult.taskRunId, {
+              artifactIntent,
+              executionRoute: artifactRoute.route,
+              routeReason: artifactRoute.routeReason,
+            }).catch(() => {});
+          }
+        }
 
         // Model selection: active planner overrides, shadow mode uses legacy
         let llmModel: string | null;

@@ -55,6 +55,8 @@ import {
   applyWatermarkToSlideContent,
   extractWatermarkFromSlideContent,
 } from "./presentationWatermarkService";
+import { runPlanner, recordStepAttempt } from "./taskPlannerMiddleware";
+import { linkArtifactToTaskRun } from "./taskRunStore";
 
 // ── Constants ──────────────────────────────────────────────
 
@@ -2691,6 +2693,9 @@ async function invokeSkillTextLLM(params: {
   preferredProviderId?: number;
   strictProviderPin?: boolean;
   billingContext?: SkillLLMBillingContext;
+  taskRunId?: number;
+  plannerPlan?: import("./taskExecutionPlanner").TaskExecutionPlan;
+  plannerSnapshot?: import("./modelResolver").ModelResolutionSnapshot | null;
 }): Promise<string> {
   if (params.strictProviderPin && params.preferredProviderId) {
     const candidates = await resolveProviders(params.model).catch(() => []);
@@ -2758,6 +2763,20 @@ async function invokeSkillTextLLM(params: {
     });
   } catch (err) {
     throw new BillingChargeError(`LLM credit deduction failed: ${sanitizeErrorMessage(err)}`);
+  }
+
+  // Record step attempt for planner tracking
+  if (params.taskRunId && params.plannerPlan) {
+    recordStepAttempt({
+      taskRunId: params.taskRunId,
+      plan: params.plannerPlan,
+      model: params.model,
+      provider: result.providerName,
+      inputTokens,
+      outputTokens,
+      costUsd: costUsd?.toString(),
+      snapshot: params.plannerSnapshot,
+    }).catch(() => {});
   }
 
   const content = result.response?.choices?.[0]?.message?.content;
@@ -4461,6 +4480,16 @@ export async function generateAIDraft(
       return;
     }
 
+    // ── Planner: create one task_run for the entire presentation ──
+    const plannerResult = await runPlanner({
+      sourceType: "presentation",
+      userId: actor.userId,
+      tenantId: actor.tenantId,
+      conversationModel: DEFAULT_TEXT_MODEL,
+      skillSlug: "ai-presentation",
+    }).catch(() => null);
+    const taskRunId = plannerResult?.taskRunId;
+
     // ── Phase 1: Draft Source Preparation ────────────────
     if (await isCancelled()) { await setCancelled(); return; }
 
@@ -4590,6 +4619,9 @@ export async function generateAIDraft(
             stage: "article_generation",
             promptPreview: articlePrompt.slice(0, 500),
           },
+          taskRunId,
+          plannerPlan: plannerResult?.plan,
+          plannerSnapshot: plannerResult?.snapshot,
         });
       } catch (err) {
         const sanitizedError = sanitizeErrorMessage(err);
@@ -4844,6 +4876,9 @@ export async function generateAIDraft(
                     slideIndex: index,
                     promptPreview: baseImagePrompt.slice(0, 500),
                   },
+                  taskRunId,
+                  plannerPlan: plannerResult?.plan,
+                  plannerSnapshot: plannerResult?.snapshot,
                 }),
                 IMAGE_PROMPT_ENHANCE_TIMEOUT_MS,
                 "image_prompt_enhancement_timeout",
@@ -5434,6 +5469,13 @@ export async function generateAIDraft(
         },
       });
       return;
+    }
+
+    // Link artifact to task run on success
+    if (taskRunId) {
+      linkArtifactToTaskRun(taskRunId, {
+        presentationDeckId: input.deckId,
+      }).catch(() => {});
     }
 
     // ── Success ─────────────────────────────────────────

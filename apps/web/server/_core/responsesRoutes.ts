@@ -32,6 +32,7 @@ import {
   DEFAULT_MAX_SEARCH_CALLS_PER_REQUEST,
 } from "../services/searchResultCache";
 import { getRedisClient } from "../services/redis";
+import { runPlanner, recordStepAttempt } from "../services/taskPlannerMiddleware";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -489,6 +490,21 @@ export function registerResponsesRoutes(
         traceId,
       });
 
+      // --- Task planner wiring ---
+      const toolCount = Array.isArray(sanitizedBody.tools)
+        ? (sanitizedBody.tools as unknown[]).length
+        : 0;
+      const plannerResult = await runPlanner({
+        sourceType: "responses",
+        userId,
+        tenantId,
+        conversationModel: requestedModelId,
+        hasTools: toolCount > 0,
+      }).catch(() => null);
+      if (plannerResult && !plannerResult.shadowMode && plannerResult.resolvedModel) {
+        model = plannerResult.resolvedModel;
+      }
+
       // Update sanitized body with resolved model
       sanitizedBody.model = model;
 
@@ -535,6 +551,7 @@ export function registerResponsesRoutes(
             startTime,
             internalToken,
             deps,
+            plannerResult,
           );
         } else {
           await proxyResponsesJson(
@@ -550,6 +567,7 @@ export function registerResponsesRoutes(
             startTime,
             internalToken,
             deps,
+            plannerResult,
           );
         }
       } catch (err: any) {
@@ -583,6 +601,7 @@ async function proxyResponsesJson(
   startTime: number,
   internalToken: string,
   deps: any,
+  plannerResult?: import("../services/taskPlannerMiddleware").PlannerResult | null,
 ) {
   const controller = new AbortController();
   req.on("close", () => controller.abort());
@@ -812,6 +831,20 @@ async function proxyResponsesJson(
     sourceType: "browser_automation",
   });
 
+  // Record step attempt for planner tracking
+  if (plannerResult) {
+    recordStepAttempt({
+      taskRunId: plannerResult.taskRunId,
+      plan: plannerResult.plan,
+      model: plannerResult.resolvedModel ?? requestedModelId,
+      provider: provider.providerName,
+      inputTokens: budget.totalInputTokens,
+      outputTokens: budget.totalOutputTokens,
+      durationMs: totalMs,
+      snapshot: plannerResult.snapshot,
+    }).catch(() => {});
+  }
+
   // Log web_search cost separately if any
   if (budget.webSearchCalls > 0) {
     const searchCredits = calculateCreditsFromCost(searchCostUsd);
@@ -947,6 +980,7 @@ async function proxyResponsesStream(
   startTime: number,
   internalToken: string,
   deps: any,
+  plannerResult?: import("../services/taskPlannerMiddleware").PlannerResult | null,
 ) {
   const controller = new AbortController();
   let clientDisconnected = false;
@@ -1218,6 +1252,20 @@ async function proxyResponsesStream(
       outputTokens: budget.totalOutputTokens,
       sourceType: "browser_automation",
     });
+
+    // Record step attempt for planner tracking
+    if (plannerResult) {
+      recordStepAttempt({
+        taskRunId: plannerResult.taskRunId,
+        plan: plannerResult.plan,
+        model: plannerResult.resolvedModel ?? requestedModelId,
+        provider: provider.providerName,
+        inputTokens: budget.totalInputTokens,
+        outputTokens: budget.totalOutputTokens,
+        durationMs: totalMs,
+        snapshot: plannerResult.snapshot,
+      }).catch(() => {});
+    }
 
     // Log web_search cost
     if (budget.webSearchCalls > 0) {

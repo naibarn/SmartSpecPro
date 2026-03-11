@@ -179,6 +179,30 @@ export async function loadValidatedPlan(
   return row.planJson as TaskExecutionPlan;
 }
 
+// ── Update artifact metadata on task run ─────────────────────────────
+
+export async function updateTaskRunArtifact(
+  taskRunId: number,
+  artifact: {
+    artifactIntent: ArtifactIntent;
+    executionRoute: ExecutionRoute;
+    routeReason: string;
+  },
+): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+
+  await db
+    .update(taskRuns)
+    .set({
+      artifactIntent: artifact.artifactIntent,
+      executionRoute: artifact.executionRoute,
+      routeReason: artifact.routeReason,
+      updatedAt: new Date(),
+    })
+    .where(eq(taskRuns.id, taskRunId));
+}
+
 // ── Link artifact to task run (Section 04) ───────────────────────────
 
 export async function linkArtifactToTaskRun(
