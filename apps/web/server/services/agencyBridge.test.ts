@@ -54,6 +54,48 @@ describe("AgencyBridge", () => {
       expect(body.task_metadata).toEqual(taskMetadata);
     });
 
+    it("sends resolved retrieval scope when provided", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          run_id: "run-1",
+          status: "completed",
+          response: "done",
+          credits_used: 5,
+          duration_ms: 1000,
+        }),
+      });
+
+      await bridge.executeRun({
+        ...baseParams,
+        retrievalScope: {
+          version: 1,
+          experienceKey: "deep_research",
+          templateDefault: "tenant_accessible",
+          userOverride: "library_only",
+          effectiveMode: "library_only",
+          permissionFilter: {
+            tenantId: "tenant-1",
+            userId: 42,
+          },
+        },
+      });
+
+      const [, options] = mockFetch.mock.calls[0];
+      const body = JSON.parse(options.body);
+      expect(body.retrieval_scope).toEqual({
+        version: 1,
+        experienceKey: "deep_research",
+        templateDefault: "tenant_accessible",
+        userOverride: "library_only",
+        effectiveMode: "library_only",
+        permissionFilter: {
+          tenantId: "tenant-1",
+          userId: 42,
+        },
+      });
+    });
+
     it("omits task_metadata when not provided", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -71,6 +113,7 @@ describe("AgencyBridge", () => {
       const [, options] = mockFetch.mock.calls[0];
       const body = JSON.parse(options.body);
       expect(body.task_metadata).toBeUndefined();
+      expect(body.retrieval_scope).toBeUndefined();
     });
 
     it("returns step attempt snapshots when present in response", async () => {

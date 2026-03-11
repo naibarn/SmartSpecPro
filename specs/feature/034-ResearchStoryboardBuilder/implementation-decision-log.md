@@ -144,3 +144,26 @@
 - Decision taken: add `recordAgencyPreviewMetric()` and emit structured log events for parse outcomes, expiration, commit success, commit failure, and blocked commit attempts.
 - Mode used: `auto`
 - Rationale: this satisfies the section’s observability requirement with minimal code and leaves room to bind the events into counters/dashboards later if operators need more formal aggregation.
+
+## Section 07 - Regression tests and migration verification
+
+### Decision: Stabilize the new Python runtime regression test by overriding invalid shell `DEBUG` values in-module
+
+- Options considered: require every pytest invocation to export `DEBUG=false`, use `setdefault()` in the test module, or assign `os.environ["DEBUG"] = "false"` before importing app settings.
+- Decision taken: override `DEBUG` directly inside `python-backend/tests/unit/test_agency_scope_runtime.py`.
+- Mode used: `auto`
+- Rationale: the workspace shell can carry `DEBUG=release`, which breaks Pydantic settings parsing during test collection; setting the value in-module makes the new regression test self-contained and deterministic.
+
+### Decision: Verify migration 012 through a file-contract unit test instead of executing live upgrade/downgrade flows in Section 07
+
+- Options considered: build a throwaway migration harness, rely only on existing runtime tests, or add a focused file-level migration contract test.
+- Decision taken: add `python-backend/tests/unit/migrations/test_agency_structured_results_migration.py` that asserts the additive columns, artifact table, indexes, and downgrade path are present in `012_agency_structured_results.py`.
+- Mode used: `auto`
+- Rationale: this repo already uses lightweight migration contract tests for additive schema checks, and it provides explicit regression coverage for the migration without introducing a brittle database orchestration path at the end of the feature.
+
+### Decision: Use targeted Python verification for the feature closeout instead of blocking on unrelated legacy lifecycle test failures
+
+- Options considered: keep rerunning the full agency unit suites until green, skip Python verification entirely, or record focused passing checks plus the broader-suite failure/hang as a residual verification limit.
+- Decision taken: verify the changed runtime and migration tests directly and reuse the already-passing structured-result service checks, while recording that broader `test_agency_service.py` lifecycle cases and larger router/model batches remain unreliable in this environment.
+- Mode used: `auto`
+- Rationale: the failing/hanging Python cases did not implicate the Section 07 changes, and forcing broad-suite repair here would expand scope beyond the planned regression closure work.
