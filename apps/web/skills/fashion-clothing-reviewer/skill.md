@@ -11,6 +11,17 @@ enabledByDefault: true
 priority: 50
 creditMultiplier: 1.0
 execution_mode: llm-only
+execution_policy:
+  requires_web_search: true
+  requires_citations: true
+  requires_structured_output: true
+  thinking_level_hint: "medium"
+  output_format: "cms_review"
+content_quality:
+  citation_required_for: ["critical", "major"]
+  min_citation_coverage: 0.7
+  disclosure_required: true
+  refresh_cadence_days: 30
 ---
 
 # Fashion & Clothing Reviewer
@@ -278,6 +289,40 @@ When reviewing secondhand or vintage items:
 - **NEVER reproduce text from brand websites, Shopee listings, Lazada descriptions, or other published reviews**
 - The review voice must be original and conversational
 
+
+
+## CMS JSON Output Mode (ProductReviewCMS.v1)
+
+When `response_mode` is `"cms_json"`, output a single JSON object conforming to ProductReviewCMS.v1 schema instead of markdown/plain text. The JSON must include:
+
+- `locale`, `title`, `slug`, `last_verified_at`
+- `product`: { brand, model, category, price? }
+- `review`: { title, summary, verdict, body_markdown, pros[], cons[], scoring }
+- `claims[]`: Each factual claim with importance and verification_status
+- `citations[]`: Web sources used
+- `disclosures`: { type, details? }
+- `seo`: { meta_title, meta_description, keywords[] }
+- `faq[]`: Optional FAQ items
+
+### Category-specific scoring rubric:
+```yaml
+scoring:
+  overall: <0-10>
+  max_score: 10
+  dimensions:
+    - name: "วัสดุ"
+      max_score: 10
+    - name: "ตัดเย็บ"
+      max_score: 10
+    - name: "ความพอดี"
+      max_score: 10
+    - name: "ความคุ้มค่า"
+      max_score: 10
+    - name: "ความทนทาน"
+      max_score: 10
+```
+
+When `response_mode` is `"markdown"` (default), output as before — no change to existing behavior.
 ## Output Format
 
 ### When output_format is markdown (default):

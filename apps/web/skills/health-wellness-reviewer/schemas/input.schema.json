@@ -14,28 +14,62 @@
       "type": "string",
       "title": "Language",
       "description": "Output language. Use 'en' for English or 'th' for Thai.",
-      "enum": ["en", "th"],
+      "enum": [
+        "en",
+        "th"
+      ],
       "default": "th"
     },
     "product_category": {
       "type": "string",
       "title": "Product Category",
       "description": "The health and wellness category to tailor the review angle and mandatory disclaimers.",
-      "enum": ["general", "supplement", "vitamin", "health_device", "fitness_equip", "personal_care", "massage", "sleep", "weight"],
+      "enum": [
+        "general",
+        "supplement",
+        "vitamin",
+        "health_device",
+        "fitness_equip",
+        "personal_care",
+        "massage",
+        "sleep",
+        "weight"
+      ],
       "default": "general"
     },
     "review_angle": {
       "type": "string",
       "title": "Review Angle",
       "description": "The storytelling perspective for the review.",
-      "enum": ["problem_solution", "daily_life", "comparison", "first_impression", "long_term"],
+      "enum": [
+        "problem_solution",
+        "daily_life",
+        "comparison",
+        "first_impression",
+        "long_term"
+      ],
       "default": "problem_solution"
     },
     "storytelling_style": {
       "type": "string",
       "title": "Storytelling Style",
       "description": "The narrative structure for the review. Leave empty for random selection.",
-      "enum": ["hpso", "aida", "pas", "hook_insight_tip", "before_after", "story_flow", "my_why", "complain_recall", "fab", "star", "scr", "inverted_pyramid", "listicle", "qa_flow"]
+      "enum": [
+        "hpso",
+        "aida",
+        "pas",
+        "hook_insight_tip",
+        "before_after",
+        "story_flow",
+        "my_why",
+        "complain_recall",
+        "fab",
+        "star",
+        "scr",
+        "inverted_pyramid",
+        "listicle",
+        "qa_flow"
+      ]
     },
     "include_pricing": {
       "type": "boolean",
@@ -47,7 +81,11 @@
       "type": "string",
       "title": "Length",
       "description": "Approximate review length.",
-      "enum": ["short", "medium", "long"],
+      "enum": [
+        "short",
+        "medium",
+        "long"
+      ],
       "default": "medium"
     },
     "word_count": {
@@ -61,7 +99,10 @@
       "type": "string",
       "title": "Output Format",
       "description": "Preferred output format. Markdown uses headings and formatting. Plain text is optimized for text-to-speech.",
-      "enum": ["markdown", "plain_text"],
+      "enum": [
+        "markdown",
+        "plain_text"
+      ],
       "default": "markdown"
     },
     "product_specs": {
@@ -77,6 +118,39 @@
         "type": "string",
         "format": "uri"
       }
+    },
+    "response_mode": {
+      "type": "string",
+      "title": "Response Mode",
+      "description": "Choose 'markdown' for readable text or 'cms_json' for structured CMS output.",
+      "enum": [
+        "markdown",
+        "cms_json"
+      ],
+      "default": "markdown"
+    },
+    "disclosure_type": {
+      "type": "string",
+      "title": "Disclosure Type",
+      "description": "Disclosure about the review relationship with the product.",
+      "enum": [
+        "none",
+        "affiliate",
+        "sponsored",
+        "provided_for_review"
+      ],
+      "default": "none"
+    },
+    "price_thb": {
+      "type": "number",
+      "title": "Price (THB)",
+      "description": "Product price in Thai Baht for value assessment."
+    },
+    "price_checked_at": {
+      "type": "string",
+      "title": "Price Checked Date",
+      "description": "Date when the price was last verified.",
+      "format": "date"
     }
   }
 }
