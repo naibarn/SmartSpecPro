@@ -7,7 +7,7 @@
  */
 
 import { z } from "zod";
-import { router, adminProcedure, rateLimitedAdminProcedure } from "../_core/trpc";
+import { router, adminProcedure, rateLimitedAdminProcedure, protectedProcedure } from "../_core/trpc";
 import { getDb } from "../db";
 import { systemSettings } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
@@ -774,6 +774,15 @@ export const infrastructureRouter = router({
 
       return { success: true as const, results };
     }),
+
+  // ----------------------------------------------------------
+  // Content Automation Feature Flag
+  // ----------------------------------------------------------
+
+  getContentAutomationEnabled: protectedProcedure.query(async () => {
+    const enabled = await getFeatureFlag("ENABLE_CONTENT_AUTOMATION");
+    return { contentAutomation: enabled };
+  }),
 
   // ----------------------------------------------------------
   // Deploy Mode Management

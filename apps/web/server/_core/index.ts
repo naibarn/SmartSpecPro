@@ -18,6 +18,7 @@ import { registerLLMRoutes } from "./llmRoutes";
 import { registerMCPRoutes } from "./mcpRoutes";
 import { registerMediaJobRoutes } from "../routers/mediaJobs";
 import { registerAgencyStreamRoutes } from "./agencyStreamProxy";
+import { registerContentAutomationRoutes } from "../routers/contentAutomationRoutes";
 
 import { createWebhookRouter } from "../routes/webhooks";
 import { createWebhookTriggerRouter } from "../routes/webhookTrigger";
@@ -401,6 +402,7 @@ registerLLMRoutes(app);
 registerMCPRoutes(app);
 registerMediaJobRoutes(app);
 registerAgencyStreamRoutes(app);
+registerContentAutomationRoutes(app);
 
 // Proxy remote images through same-origin endpoint so browser canvas operations
 // (split/crop preview) work even when source host doesn't expose CORS headers.
