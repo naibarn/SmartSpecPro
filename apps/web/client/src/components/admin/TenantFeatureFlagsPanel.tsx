@@ -42,6 +42,13 @@ const FLAG_GROUPS: { title: string; flags: FlagInfo[] }[] = [
     ],
   },
   {
+    title: "Planner",
+    flags: [
+      { key: "taskPlannerEnabled", label: "Task Planner", description: "Active model selection via task execution planner" },
+      { key: "taskPlannerAgencyEscalation", label: "Planner Agency Escalation", description: "Escalate to agency orchestration when planner detects multi-step tasks" },
+    ],
+  },
+  {
     title: "Integration",
     flags: [
       { key: "responsesApi", label: "Responses API Gateway", description: "OpenAI-compatible Responses API proxy" },

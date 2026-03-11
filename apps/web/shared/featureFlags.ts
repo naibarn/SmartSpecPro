@@ -17,6 +17,8 @@ export interface TenantFeatureFlags {
   channelRouter: boolean; // F10 — Channel routing rules
   automationCopilot: boolean; // F11 — Automation Copilot (LLM-driven browser tasks)
   responsesApi: boolean; // F12 — Responses API gateway (OpenAI-compatible)
+  taskPlannerEnabled: boolean; // F13 — Task Planner (active model selection via task execution planner)
+  taskPlannerAgencyEscalation: boolean; // F14 — Agency escalation via planner
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -38,6 +40,8 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "channelRouter",
   "automationCopilot",
   "responsesApi",
+  "taskPlannerEnabled",
+  "taskPlannerAgencyEscalation",
 ]);
 
 /**
@@ -58,4 +62,6 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   channelRouter: false,
   automationCopilot: false,
   responsesApi: false,
+  taskPlannerEnabled: false,
+  taskPlannerAgencyEscalation: false,
 };

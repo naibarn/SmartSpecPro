@@ -95,14 +95,14 @@ describe("taskPlannerMiddleware", () => {
   });
 
   describe("runPlanner", () => {
-    it("returns null when TASK_PLANNER_ENABLED=false", async () => {
+    it("returns null when taskPlannerEnabled=false", async () => {
       mockGetTenantFeatureFlag.mockResolvedValue(false);
 
       const result = await runPlanner(basePlannerInput);
 
       expect(result).toBeNull();
       expect(mockGetTenantFeatureFlag).toHaveBeenCalledWith(
-        "TASK_PLANNER_ENABLED",
+        "taskPlannerEnabled",
         "tenant-1",
       );
       // Should not call any planner modules
@@ -140,10 +140,10 @@ describe("taskPlannerMiddleware", () => {
 
       expect(result).not.toBeNull();
       expect(result!.resolvedModel).toBe("gpt-4o");
-      // Only one feature flag check (TASK_PLANNER_ENABLED), no SHADOW_MODE
+      // Only one feature flag check (taskPlannerEnabled), no SHADOW_MODE
       expect(mockGetTenantFeatureFlag).toHaveBeenCalledTimes(1);
       expect(mockGetTenantFeatureFlag).toHaveBeenCalledWith(
-        "TASK_PLANNER_ENABLED",
+        "taskPlannerEnabled",
         "tenant-1",
       );
     });

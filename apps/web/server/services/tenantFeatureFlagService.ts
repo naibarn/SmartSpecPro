@@ -31,6 +31,8 @@ const REDIS_SYNCED_FLAGS: ReadonlySet<TenantFeatureFlagKey> = new Set([
   "webhookTriggers",
   "voiceChat",
   "channelRouter",
+  "taskPlannerEnabled",
+  "taskPlannerAgencyEscalation",
 ]);
 
 /**

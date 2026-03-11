@@ -61,7 +61,7 @@ export async function runPlanner(
   try {
     // 1. Check feature flag — zero overhead when disabled
     const enabled = await getTenantFeatureFlag(
-      "TASK_PLANNER_ENABLED",
+      "taskPlannerEnabled",
       input.tenantId,
     );
     if (!enabled) return null;

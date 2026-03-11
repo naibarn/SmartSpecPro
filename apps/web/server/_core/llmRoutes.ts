@@ -21,6 +21,7 @@ import { getTraceId } from "../services/traceContext";
 import { logRequest as logCostRequest } from "../services/costTracker";
 import { registerResponsesRoutes } from "./responsesRoutes";
 import { resolveEnabledLlmModelId } from "../services/enabledLlmModels";
+import { runPlanner } from "../services/taskPlannerMiddleware";
 
 // --- Provider-specific Rate Limiter with Queue System ---
 // Uses Bottleneck with Redis for distributed rate limiting when available
@@ -858,10 +859,22 @@ async function proxyChatWithCredits(
     );
   }
 
-  const requestedModelId = await resolveEnabledLlmModelId([req.body?.model, provider.defaultModel]);
-  if (!requestedModelId) {
+  const legacyModelId = await resolveEnabledLlmModelId([req.body?.model, provider.defaultModel]);
+  if (!legacyModelId) {
     throw new Error("No enabled LLM model configured");
   }
+
+  // Wire task planner — may override model selection
+  const tenantId = (req as any).tenantId ?? "default";
+  const plannerResult = await runPlanner({
+    sourceType: "chat",
+    userId,
+    tenantId,
+    conversationModel: legacyModelId,
+    skillSlug: skillUsed,
+    hasTools: false,
+  });
+  const requestedModelId = plannerResult?.resolvedModel ?? legacyModelId;
 
   // Resolve the provider-specific model ID and API style from database
   let model = requestedModelId;
