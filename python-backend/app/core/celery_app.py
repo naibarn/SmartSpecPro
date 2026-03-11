@@ -93,6 +93,8 @@ celery_app.conf.update(
         "poll_onedrive_changes": {"queue": "media"},
         # Approval timeout checker -> celery queue (lightweight, periodic)
         "app.tasks.approval_timeout_tasks.check_expired_approvals": {"queue": "celery"},
+        # Browser policy audit partition maintenance -> celery queue
+        "app.tasks.browser_policy_maintenance_tasks.ensure_browser_policy_decision_partitions": {"queue": "celery"},
         # Presentation headless rendering (CPU + Playwright + FFmpeg)
         "app.tasks.presentation_render.render_presentation": {"queue": "presentation_export"},
         # Presentation import (PPTX/Google Slides -> slides JSON)
@@ -157,6 +159,10 @@ beat_schedule = {
     "check-expired-approvals": {
         "task": "app.tasks.approval_timeout_tasks.check_expired_approvals",
         "schedule": 300.0,  # Every 5 minutes - auto-reject expired workflow approvals
+    },
+    "ensure-browser-policy-decision-partitions": {
+        "task": "app.tasks.browser_policy_maintenance_tasks.ensure_browser_policy_decision_partitions",
+        "schedule": crontab(minute=0, hour="*/6"),  # Every 6 hours - keep current/future partitions warm
     },
     # Sandbox maintenance tasks
     "cleanup-expired-sandbox-jobs": {

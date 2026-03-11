@@ -59,7 +59,7 @@ vi.mock("../_core/trpc", () => {
   };
 });
 
-import { multiProviderRouter } from "./multiProvider";
+import { groupModelMappingsByModelId, type ModelMappingListRow, multiProviderRouter } from "./multiProvider";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -74,12 +74,73 @@ function mockSelectChain(result: any[]) {
   mockDbSelect.mockReturnValue({ from: fromMock });
 }
 
+describe("groupModelMappingsByModelId", () => {
+  it("groups rows by canonical model id", () => {
+    const rows: ModelMappingListRow[] = [
+      {
+        id: 1,
+        modelId: "gpt-5",
+        providerId: 10,
+        providerName: "openai",
+        providerDisplayName: "OpenAI",
+        modelName: "GPT-5",
+        providerModelId: "gpt-5",
+        pricingInput: "1.25",
+        pricingOutput: "10",
+        isFree: false,
+        contextLength: 128000,
+        isEnabled: true,
+        priority: 0,
+        apiStyle: "responses",
+      },
+      {
+        id: 2,
+        modelId: "gpt-5",
+        providerId: 11,
+        providerName: "openrouter",
+        providerDisplayName: "OpenRouter",
+        modelName: "GPT-5",
+        providerModelId: "openai/gpt-5",
+        pricingInput: "1.15",
+        pricingOutput: "9.5",
+        isFree: false,
+        contextLength: 128000,
+        isEnabled: false,
+        priority: 1,
+        apiStyle: "chat-completions",
+      },
+      {
+        id: 3,
+        modelId: "claude-sonnet-4",
+        providerId: 12,
+        providerName: "anthropic",
+        providerDisplayName: "Anthropic",
+        modelName: "Claude Sonnet 4",
+        providerModelId: "claude-sonnet-4",
+        pricingInput: "3",
+        pricingOutput: "15",
+        isFree: false,
+        contextLength: 200000,
+        isEnabled: true,
+        priority: 0,
+        apiStyle: "messages",
+      },
+    ];
+
+    const grouped = groupModelMappingsByModelId(rows);
+
+    expect(Object.keys(grouped)).toEqual(["gpt-5", "claude-sonnet-4"]);
+    expect(grouped["gpt-5"]).toHaveLength(2);
+    expect(grouped["claude-sonnet-4"]?.[0]?.providerDisplayName).toBe("Anthropic");
+  });
+});
+
 describe("listModelMappings", () => {
   it("returns mappings grouped by modelId", async () => {
     const rows = [
-      { id: 1, modelId: "gpt-4o", providerId: 1, providerName: "OpenRouter", modelName: "GPT-4o", providerModelId: "openai/gpt-4o", pricingInput: "2.50", pricingOutput: "10.00", isFree: false, contextLength: 128000, isEnabled: true, priority: 0 },
-      { id: 2, modelId: "gpt-4o", providerId: 2, providerName: "Zen", modelName: "GPT-4o", providerModelId: "gpt-4o", pricingInput: "2.50", pricingOutput: "10.00", isFree: false, contextLength: 128000, isEnabled: true, priority: 1 },
-      { id: 3, modelId: "kimi-k2.5", providerId: 2, providerName: "Zen", modelName: "Kimi K2.5", providerModelId: "kimi-k2.5", pricingInput: "0", pricingOutput: "0", isFree: true, contextLength: 128000, isEnabled: true, priority: 0 },
+      { id: 1, modelId: "gpt-4o", providerId: 1, providerName: "OpenRouter", providerDisplayName: "OpenRouter", modelName: "GPT-4o", providerModelId: "openai/gpt-4o", pricingInput: "2.50", pricingOutput: "10.00", isFree: false, contextLength: 128000, isEnabled: true, priority: 0, apiStyle: "chat-completions" },
+      { id: 2, modelId: "gpt-4o", providerId: 2, providerName: "Zen", providerDisplayName: "Zen", modelName: "GPT-4o", providerModelId: "gpt-4o", pricingInput: "2.50", pricingOutput: "10.00", isFree: false, contextLength: 128000, isEnabled: true, priority: 1, apiStyle: "chat-completions" },
+      { id: 3, modelId: "kimi-k2.5", providerId: 2, providerName: "Zen", providerDisplayName: "Zen", modelName: "Kimi K2.5", providerModelId: "kimi-k2.5", pricingInput: "0", pricingOutput: "0", isFree: true, contextLength: 128000, isEnabled: true, priority: 0, apiStyle: "chat-completions" },
     ];
     mockSelectChain(rows);
 
@@ -159,6 +220,25 @@ describe("deleteModelMapping", () => {
   });
 });
 
+describe("bulkSetModelMappingsEnabled", () => {
+  it("updates multiple mappings in one mutation", async () => {
+    const whereMock = vi.fn().mockResolvedValue(undefined);
+    const setMock = vi.fn().mockReturnValue({ where: whereMock });
+    mockDbUpdate.mockReturnValue({ set: setMock });
+
+    const fn = multiProviderRouter.bulkSetModelMappingsEnabled as Function;
+    const result = await fn({
+      ctx: { user: { role: "admin" } },
+      input: { ids: [1, 2, 2, 3], isEnabled: false },
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.updatedCount).toBe(3);
+    expect(result.isEnabled).toBe(false);
+    expect(mockDbUpdate).toHaveBeenCalled();
+  });
+});
+
 describe("listRoutingRules", () => {
   it("returns rules sorted by specificity", async () => {
     const rules = [
@@ -174,7 +254,6 @@ describe("listRoutingRules", () => {
     const fn = multiProviderRouter.listRoutingRules as Function;
     const result = await fn({ ctx: { user: { role: "admin" } } });
 
-    // Exact match first, then glob, then wildcard
     expect(result[0].modelPattern).toBe("gpt-4o");
     expect(result[1].modelPattern).toBe("gpt-*");
     expect(result[2].modelPattern).toBe("*");
@@ -235,18 +314,12 @@ describe("getProviderHealth", () => {
 });
 
 describe("getAvailableModelsWithProviders", () => {
-  function mockAvailableModelsQueries(mappedRows: any[], providerRows: any[]) {
+  function mockAvailableModelsQuery(mappedRows: any[]) {
     const mappedOrderByMock = vi.fn().mockResolvedValue(mappedRows);
     const mappedWhereMock = vi.fn().mockReturnValue({ orderBy: mappedOrderByMock });
     const mappedJoinMock = vi.fn().mockReturnValue({ where: mappedWhereMock });
     const mappedFromMock = vi.fn().mockReturnValue({ innerJoin: mappedJoinMock });
-
-    const providerWhereMock = vi.fn().mockResolvedValue(providerRows);
-    const providerFromMock = vi.fn().mockReturnValue({ where: providerWhereMock });
-
-    mockDbSelect
-      .mockImplementationOnce(() => ({ from: mappedFromMock }))
-      .mockImplementationOnce(() => ({ from: providerFromMock }));
+    mockDbSelect.mockImplementationOnce(() => ({ from: mappedFromMock }));
   }
 
   it("returns models grouped with providers", async () => {
@@ -254,7 +327,7 @@ describe("getAvailableModelsWithProviders", () => {
       { modelId: "gpt-4o", modelName: "GPT-4o", providerId: 1, providerName: "OpenRouter", providerModelId: "openai/gpt-4o", pricingInput: "2.50", pricingOutput: "10.00", isFree: false, isEnabled: true, contextLength: 128000 },
       { modelId: "kimi-k2.5", modelName: "Kimi K2.5", providerId: 2, providerName: "Zen", providerModelId: "kimi-k2.5", pricingInput: "0", pricingOutput: "0", isFree: true, isEnabled: true, contextLength: 128000 },
     ];
-    mockAvailableModelsQueries(rows, []);
+    mockAvailableModelsQuery(rows);
 
     const fn = multiProviderRouter.getAvailableModelsWithProviders as Function;
     const result = await fn({ ctx: { user: { id: 1 } } });
@@ -265,13 +338,21 @@ describe("getAvailableModelsWithProviders", () => {
   });
 
   it("excludes disabled models", async () => {
-    // The query already filters by isEnabled, so this tests the WHERE clause
-    mockAvailableModelsQueries([], []);
+    mockAvailableModelsQuery([]);
 
     const fn = multiProviderRouter.getAvailableModelsWithProviders as Function;
     const result = await fn({ ctx: { user: { id: 1 } } });
 
     expect(result).toHaveLength(0);
+  });
+
+  it("does not re-add provider models outside enabled mappings", async () => {
+    mockAvailableModelsQuery([]);
+
+    const fn = multiProviderRouter.getAvailableModelsWithProviders as Function;
+    const result = await fn({ ctx: { user: { id: 1 } } });
+
+    expect(result).toEqual([]);
   });
 });
 

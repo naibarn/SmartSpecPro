@@ -290,10 +290,15 @@ function renderElementBody(
       <div className="relative h-full w-full bg-black/85">
         {hasSource ? (
           <video
-            ref={(node) => options.setVideoRef(element.id, node)}
+            ref={(node) => {
+              options.setVideoRef(element.id, node);
+            }}
             src={resolvedSource}
             poster={resolvedPoster || undefined}
-            muted={options.autoPlayVideos ? true : (element.muted ?? true)}
+            // React's muted prop uses setAttribute which doesn't reliably sync
+            // the DOM property. The useEffect + onPlay handler set it imperatively.
+            // For autoplay, start muted so the browser allows it; onPlay unmutes.
+            muted={element.muted ?? true}
             loop={element.loop ?? false}
             preload={options.autoPlayVideos ? "auto" : "metadata"}
             className="h-full w-full"
@@ -321,7 +326,19 @@ function renderElementBody(
                 });
               }
             }}
-            onPlay={() => options.onVideoPlayStateChange(element.id, true)}
+            onPlay={(event) => {
+              options.onVideoPlayStateChange(element.id, true);
+              // After autoplay starts (muted), unmute if user enabled audio.
+              // Use the captured video node + rAF to unmute AFTER React's
+              // batched re-render completes, preventing the render cycle from
+              // resetting the muted property.
+              if (element.muted === false) {
+                const videoNode = event.currentTarget;
+                requestAnimationFrame(() => {
+                  videoNode.muted = false;
+                });
+              }
+            }}
             onPause={() => options.onVideoPlayStateChange(element.id, false)}
             onEnded={() => options.onVideoPlayStateChange(element.id, false)}
           />
@@ -421,6 +438,12 @@ export function CanvasObjects({
     const playingFromState = Boolean(videoPlaybackMap[elementId]);
     const isPlaying = playingFromState || (!video.paused && !video.ended);
     if (!isPlaying) {
+      // Ensure muted state is correct BEFORE play — React's muted prop is
+      // unreliable (uses setAttribute which doesn't work for this property).
+      const element = elements.find((el) => el.id === elementId);
+      if (element && element.type === "video") {
+        video.muted = element.muted ?? true;
+      }
       const playPromise = video.play();
       if (playPromise && typeof playPromise.catch === "function") {
         playPromise.catch(() => {
@@ -430,7 +453,7 @@ export function CanvasObjects({
       return;
     }
     video.pause();
-  }, [videoPlaybackMap]);
+  }, [videoPlaybackMap, elements]);
 
   useEffect(() => {
     const activeVideoIds = new Set(
@@ -451,6 +474,28 @@ export function CanvasObjects({
       }
     }
   }, [elements]);
+
+  // Sync muted property imperatively when elements change.
+  // React's muted JSX prop uses setAttribute which doesn't work for the
+  // HTMLVideoElement.muted IDL property. This useEffect is the source of
+  // truth for the muted DOM state in editor mode. In autoplay mode (PlayMode),
+  // the onPlay handler takes over after playback begins.
+  useEffect(() => {
+    for (const element of elements) {
+      if (element.type !== "video") continue;
+      const video = videoRefsRef.current[element.id];
+      if (!video) continue;
+      // In autoplay mode, only sync muted=true (to allow autoplay).
+      // Unmuting is handled by the onPlay handler after playback starts.
+      if (autoPlayVideos) {
+        if (video.paused) {
+          video.muted = true;
+        }
+      } else {
+        video.muted = element.muted ?? true;
+      }
+    }
+  }, [elements, autoPlayVideos]);
 
   useEffect(() => {
     if (!autoPlayVideos) {

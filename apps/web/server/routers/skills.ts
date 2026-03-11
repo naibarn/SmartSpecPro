@@ -30,6 +30,7 @@ import {
 import { db, getDb } from "../db";
 import {
   llmProviders,
+  modelProviderMap,
   skills,
   skillPermissions,
   userGroups,
@@ -40,6 +41,7 @@ import {
 import { eq, asc, desc, like, or, and, sql, inArray } from "drizzle-orm";
 import { deductCredits, calculateCreditsForLLM, hasEnoughCredits } from "../services/creditService";
 import { getProviderForModel } from "../services/llmRouter";
+import { buildModelLookupCandidates } from "../services/modelLookup";
 import { getUploadsDir } from "../storage";
 import crypto from "crypto";
 import fs from "fs";
@@ -72,6 +74,8 @@ import {
   resolveSkillManifestPath,
   writeSkillManifestFiles,
 } from "../services/skillFiles";
+import { refreshModelCache } from "../services/modelRegistry";
+import { resolveMediaTypeFromSkillCategory, sanitizeMediaModelSelection } from "../services/mediaModelSelection";
 
 // Skills directory path
 const SKILLS_DIR = path.resolve(process.cwd(), "skills");
@@ -183,77 +187,86 @@ type VisionModelOption = {
   supportsVision?: boolean;
 };
 
-const FALLBACK_VISION_MODELS: VisionModelOption[] = [
-  { id: "openai/gpt-4o", name: "GPT-4o", provider: "openai", providerDisplayName: "OpenAI", isDefault: true, supportsVision: true },
-  { id: "openai/gpt-4o-mini", name: "GPT-4o Mini", provider: "openai", providerDisplayName: "OpenAI", supportsVision: true },
-  { id: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet", provider: "anthropic", providerDisplayName: "Anthropic", supportsVision: true },
-];
-
 async function getVisionModelOptions(): Promise<VisionModelOption[]> {
-  const providers = await db
+  const rows = await db
     .select({
+      modelId: modelProviderMap.modelId,
+      modelName: modelProviderMap.modelName,
+      providerModelId: modelProviderMap.providerModelId,
       providerName: llmProviders.providerName,
       displayName: llmProviders.displayName,
       defaultModel: llmProviders.defaultModel,
-      availableModels: llmProviders.availableModels,
       configJson: llmProviders.configJson,
-      sortOrder: llmProviders.sortOrder,
-      id: llmProviders.id,
     })
-    .from(llmProviders)
-    .where(eq(llmProviders.isEnabled, true))
-    .orderBy(asc(llmProviders.sortOrder), asc(llmProviders.id));
+    .from(modelProviderMap)
+    .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
+    .where(and(eq(modelProviderMap.isEnabled, true), eq(llmProviders.isEnabled, true)))
+    .orderBy(asc(llmProviders.sortOrder), asc(modelProviderMap.priority), asc(modelProviderMap.id));
 
-  const allModels: VisionModelOption[] = [];
+  const allModels = new Map<string, VisionModelOption>();
   const visionPatterns = [
     "gpt-4o", "gpt-4-vision", "gpt-4-turbo", "gpt-5",
     "claude-3", "claude-haiku", "claude-sonnet", "claude-opus",
     "gemini", "llava", "qwen-vl",
   ];
 
-  for (const provider of providers) {
-    const config = provider.configJson as { supportsVision?: boolean } | null;
-    const models = provider.availableModels || [];
+  for (const row of rows) {
+    const config = row.configJson as { supportsVision?: boolean } | null;
+    const modelId = row.modelId;
+    const fullModelId = modelId.includes("/") ? modelId : `${row.providerName}/${modelId}`;
+    const supportsVision = config?.supportsVision ||
+      [modelId, row.providerModelId, row.modelName].some((value) =>
+        visionPatterns.some((pattern) => value.toLowerCase().includes(pattern.toLowerCase())),
+      );
 
-    if (models.length > 0) {
-      for (const model of models) {
-        const modelId = typeof model === "string" ? model : model.id;
-        const modelName = typeof model === "string" ? model : model.name;
-        const supportsVision = config?.supportsVision ||
-          visionPatterns.some(pattern => modelId.toLowerCase().includes(pattern.toLowerCase()));
-        const fullModelId = modelId.includes("/") ? modelId : `${provider.providerName}/${modelId}`;
-
-        allModels.push({
-          id: fullModelId,
-          name: modelName,
-          provider: provider.providerName,
-          providerDisplayName: provider.displayName,
-          isDefault: modelId === provider.defaultModel || fullModelId === provider.defaultModel,
-          supportsVision,
-        });
-      }
+    if (allModels.has(fullModelId)) {
       continue;
     }
 
-    if (provider.defaultModel) {
-      const fullModelId = provider.defaultModel.includes("/")
-        ? provider.defaultModel
-        : `${provider.providerName}/${provider.defaultModel}`;
+    allModels.set(fullModelId, {
+      id: fullModelId,
+      name: row.modelName,
+      provider: row.providerName,
+      providerDisplayName: row.displayName,
+      isDefault: modelId === row.defaultModel || fullModelId === row.defaultModel || row.providerModelId === row.defaultModel,
+      supportsVision,
+    });
+  }
 
-      allModels.push({
-        id: fullModelId,
-        name: provider.defaultModel,
-        provider: provider.providerName,
-        providerDisplayName: provider.displayName,
-        isDefault: true,
-        supportsVision: visionPatterns.some(pattern =>
-          provider.defaultModel?.toLowerCase().includes(pattern.toLowerCase())
-        ),
-      });
+  return Array.from(allModels.values());
+}
+
+function resolveVisionModelId(
+  models: VisionModelOption[],
+  preferredModelId?: string | null,
+): string | null {
+  const supportedModels = models.filter((model) => model.supportsVision);
+  if (supportedModels.length === 0) {
+    return null;
+  }
+
+  const preferredCandidates = new Set(buildModelLookupCandidates(preferredModelId ?? ""));
+  if (preferredModelId?.trim()) {
+    preferredCandidates.add(preferredModelId.trim());
+  }
+
+  if (preferredCandidates.size > 0) {
+    const preferredMatch = supportedModels.find((model) => {
+      const modelCandidates = new Set(buildModelLookupCandidates(model.id));
+      modelCandidates.add(model.id);
+      for (const candidate of preferredCandidates) {
+        if (modelCandidates.has(candidate)) {
+          return true;
+        }
+      }
+      return false;
+    });
+    if (preferredMatch) {
+      return preferredMatch.id;
     }
   }
 
-  return allModels.length > 0 ? allModels : FALLBACK_VISION_MODELS;
+  return supportedModels.find((model) => model.isDefault)?.id || supportedModels[0]?.id || null;
 }
 
 function decryptApiKey(text: string): string {
@@ -339,7 +352,10 @@ async function callLLMWithVision(
   model?: string,
   maxTokens: number = 2000
 ): Promise<{ content: string; usage: { promptTokens: number; completionTokens: number } }> {
-  const useModel = model || "gpt-4o-mini";
+  const useModel = resolveVisionModelId(await getVisionModelOptions(), model);
+  if (!useModel) {
+    throw new Error("No enabled vision model configured");
+  }
   const provider = await getProviderForModel(useModel);
   if (!provider) {
     throw new Error("No LLM provider configured");
@@ -1139,17 +1155,13 @@ export const skillsRouter = router({
   }),
 
   // Get available LLM models for skill execution (Advanced Mode)
-  // Returns ALL models from enabled providers - Auto Prompt works with any model
-  // (vision capability is a bonus when reference images are provided)
+  // Returns only enabled models from enabled providers.
   getVisionModels: protectedProcedure.query(async () => {
     try {
       return { models: await getVisionModelOptions() };
     } catch (error) {
       console.error("[Skills] Error fetching models:", error);
-      // Return fallback models on error
-      return {
-        models: FALLBACK_VISION_MODELS,
-      };
+      return { models: [] };
     }
   }),
 
@@ -1161,11 +1173,19 @@ export const skillsRouter = router({
       await syncSingleSkillIfChanged(input.skillId);
 
       try {
+        await refreshModelCache().catch((error) => {
+          console.warn("[Skills] Failed to refresh media model cache before loading skill config", {
+            skillId: input.skillId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
+
         const [skill] = await db
         .select({
           id: skills.id,
           slug: skills.slug,
           name: skills.name,
+          category: skills.category,
           defaultModel: skills.defaultModel,
           llmModelId: skills.llmModelId,
           preferredProviderId: skills.preferredProviderId,
@@ -1186,12 +1206,23 @@ export const skillsRouter = router({
           };
         }
 
+        const mediaType = resolveMediaTypeFromSkillCategory(skill.category);
+        const sanitizedSelection = mediaType
+          ? sanitizeMediaModelSelection(mediaType, {
+            availableModels: skill.availableModels,
+            defaultModel: skill.defaultModel,
+          })
+          : {
+            availableModels: skill.availableModels,
+            defaultModel: skill.defaultModel,
+          };
+
         return {
-          defaultModel: skill.defaultModel,
-          llmModelId: skill.llmModelId || skill.defaultModel,
+          defaultModel: sanitizedSelection.defaultModel,
+          llmModelId: skill.llmModelId || sanitizedSelection.defaultModel,
           preferredProviderId: skill.preferredProviderId ?? null,
           strictProviderPin: skill.strictProviderPin ?? false,
-          availableModels: skill.availableModels,
+          availableModels: sanitizedSelection.availableModels,
         };
       } catch (error) {
         console.error("[Skills] Error fetching skill config:", error);
@@ -1276,7 +1307,13 @@ export const skillsRouter = router({
 
         // Call LLM with vision support
         // Use user-selected model or default to openai/gpt-4o for vision capability
-        const visionModel = input.model || "openai/gpt-4o";
+        const visionModel = resolveVisionModelId(await getVisionModelOptions(), input.model);
+        if (!visionModel) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "No enabled vision model configured",
+          });
+        }
 
         // Calculate max_tokens based on prompt_count and maxPromptLength
         // If maxPromptLength is provided (from model config), use it to constrain output
@@ -1545,7 +1582,13 @@ export const skillsRouter = router({
       let userPrompt = "Please execute the skill based on the inputs provided in the system prompt template and generate the output as specified.";
 
       try {
-        const visionModel = input.model || "openai/gpt-4o";
+        const visionModel = resolveVisionModelId(await getVisionModelOptions(), input.model);
+        if (!visionModel) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "No enabled vision model configured",
+          });
+        }
 
         // Call LLM with substituted system prompt
         const result = await callLLMWithVision(

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure, adminProcedure } from "../_core/trpc";
 import { db, getDb } from "../db";
 import { llmProviders, modelProviderMap } from "../../drizzle/schema";
-import { eq, asc, desc, sql, count } from "drizzle-orm";
+import { eq, asc, desc, sql, count, and } from "drizzle-orm";
 import {
   syncProviderModels,
   syncAllProviderModels,
@@ -14,6 +14,76 @@ import {
   getCleanupPreview,
 } from "../services/modelSyncService";
 import { encrypt, decrypt } from "../services/crypto";
+
+interface AvailableProviderModel {
+  id: string;
+  name: string;
+  contextLength?: number;
+}
+
+interface EnabledProviderRow {
+  id: number;
+  providerName: string;
+  displayName: string;
+  availableModels: AvailableProviderModel[] | null;
+  configJson: Record<string, unknown> | null;
+  defaultModel: string | null;
+}
+
+interface EnabledMappedModelRow {
+  providerId: number;
+  providerName: string;
+  providerDisplayName: string;
+  modelId: string;
+  modelName: string;
+  contextLength: number | null;
+}
+
+export function mergeAvailableLlmModels(input: {
+  providers: EnabledProviderRow[];
+  mappedModels?: EnabledMappedModelRow[];
+}): Array<{
+  id: string;
+  name: string;
+  provider: string;
+  providerDisplayName: string;
+  contextLength?: number;
+  isDefault?: boolean;
+}> {
+  const providersById = new Map(input.providers.map((provider) => [provider.id, provider]));
+  const merged = new Map<string, {
+    id: string;
+    name: string;
+    provider: string;
+    providerDisplayName: string;
+    contextLength?: number;
+    isDefault?: boolean;
+  }>();
+
+  for (const mappedModel of input.mappedModels ?? []) {
+    const provider = providersById.get(mappedModel.providerId);
+    if (!provider) {
+      continue;
+    }
+
+    const key = `${provider.id}:${mappedModel.modelId}`;
+    merged.set(key, {
+      id: mappedModel.modelId,
+      name: mappedModel.modelName,
+      provider: mappedModel.providerName,
+      providerDisplayName: mappedModel.providerDisplayName,
+      contextLength: mappedModel.contextLength ?? undefined,
+      isDefault: mappedModel.modelId === provider.defaultModel,
+    });
+  }
+
+  return Array.from(merged.values()).sort((left, right) => {
+    if (left.providerDisplayName !== right.providerDisplayName) {
+      return left.providerDisplayName.localeCompare(right.providerDisplayName);
+    }
+    return left.name.localeCompare(right.name);
+  });
+}
 
 /** Block SSRF: reject URLs pointing to private/internal networks */
 function validateExternalUrl(url: string): void {
@@ -142,55 +212,49 @@ const PROVIDER_TEMPLATES = [
 ];
 
 export const llmProvidersRouter = router({
-  // Get all available models from enabled providers (for Desktop App model selector)
-  // This is a public endpoint that returns flattened model list
+  // Get all enabled mapped models from enabled providers (for Desktop App model selector)
   availableModels: protectedProcedure.query(async () => {
     const dbInstance = await getDb();
     if (!dbInstance) return { models: [], providers: [] };
-    const providers = await dbInstance
-      .select({
-        providerName: llmProviders.providerName,
-        displayName: llmProviders.displayName,
-        availableModels: llmProviders.availableModels,
-        configJson: llmProviders.configJson,
-        defaultModel: llmProviders.defaultModel,
-      })
-      .from(llmProviders)
-      .where(eq(llmProviders.isEnabled, true))
-      .orderBy(asc(llmProviders.sortOrder));
-    
-    // Flatten models from all providers
-    const models: Array<{
-      id: string;
-      name: string;
-      provider: string;
-      providerDisplayName: string;
-      contextLength?: number;
-      isDefault?: boolean;
-    }> = [];
-    
-    for (const provider of providers) {
-      const providerModels = provider.availableModels as Array<{
-        id: string;
-        name: string;
-        contextLength?: number;
-      }> || [];
-      
-      for (const model of providerModels) {
-        models.push({
-          id: model.id,
-          name: model.name,
-          provider: provider.providerName,
-          providerDisplayName: provider.displayName,
-          contextLength: model.contextLength,
-          isDefault: model.id === provider.defaultModel,
-        });
-      }
-    }
+    const [providers, mappedModels] = await Promise.all([
+      dbInstance
+        .select({
+          id: llmProviders.id,
+          providerName: llmProviders.providerName,
+          displayName: llmProviders.displayName,
+          availableModels: llmProviders.availableModels,
+          configJson: llmProviders.configJson,
+          defaultModel: llmProviders.defaultModel,
+        })
+        .from(llmProviders)
+        .where(eq(llmProviders.isEnabled, true))
+        .orderBy(asc(llmProviders.sortOrder)),
+      dbInstance
+        .select({
+          providerId: modelProviderMap.providerId,
+          providerName: llmProviders.providerName,
+          providerDisplayName: llmProviders.displayName,
+          modelId: modelProviderMap.modelId,
+          modelName: modelProviderMap.modelName,
+          contextLength: modelProviderMap.contextLength,
+        })
+        .from(modelProviderMap)
+        .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
+        .where(and(eq(modelProviderMap.isEnabled, true), eq(llmProviders.isEnabled, true)))
+        .orderBy(asc(modelProviderMap.modelName), asc(modelProviderMap.priority)),
+    ]);
+
+    const enabledProviders = providers as EnabledProviderRow[];
+    const models = mergeAvailableLlmModels({
+      providers: enabledProviders,
+      mappedModels: mappedModels.filter((row) =>
+        enabledProviders.some((provider) => provider.id === row.providerId),
+      ) as EnabledMappedModelRow[],
+    });
     
     return {
       models,
-      providers: providers.map(p => ({
+      providers: enabledProviders.map(p => ({
         name: p.providerName,
         displayName: p.displayName,
         isPrimary: (p.configJson as any)?.isPrimary === true,

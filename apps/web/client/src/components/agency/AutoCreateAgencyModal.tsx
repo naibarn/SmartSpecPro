@@ -208,7 +208,7 @@ export function AutoCreateAgencyModal({ open, onOpenChange, onCreated, defaultMo
       const data = await autoCreateMutation.mutateAsync({
         requirement: requirement.trim(),
         specFileBase64: attachedFile?.base64,
-        model: defaultModel || "gpt-4o",
+        ...(defaultModel ? { model: defaultModel } : {}),
         skipInterview: false,
       });
       setTaskId(data.taskId);

@@ -3432,8 +3432,8 @@ function buildSlideSectionsFromBody(
     const parsed = parseStructuredSectionFromLine(current);
     if (parsed) {
       sections.push({
-        heading: parsed.heading.slice(0, 180),
-        details: parsed.details.map((detail) => detail.slice(0, 260)),
+        heading: parsed.heading,
+        details: parsed.details,
       });
       index += 1;
       continue;
@@ -3442,15 +3442,15 @@ function buildSlideSectionsFromBody(
     const next = normalizeCoverageText(body[index + 1] ?? "");
     if (next.length >= 12 && next.toLowerCase() !== current.toLowerCase()) {
       sections.push({
-        heading: current.slice(0, 180),
-        details: [next.slice(0, 260)],
+        heading: current,
+        details: [next],
       });
       index += 2;
       continue;
     }
 
     sections.push({
-      heading: current.slice(0, 180),
+      heading: current,
       details: [],
     });
     index += 1;
@@ -3546,7 +3546,7 @@ function deriveBodyFromCanonicalNote(note: string, templateId: LayoutTemplateId)
   const unique: string[] = [];
   const seen = new Set<string>();
   for (const candidate of candidates) {
-    const normalized = normalizeCoverageText(candidate).slice(0, 400);
+    const normalized = normalizeCoverageText(candidate);
     const key = normalized.toLowerCase();
     if (!normalized || seen.has(key)) {
       continue;
@@ -3808,8 +3808,8 @@ function applyCanonicalArticleTextToSlides(
       sections = mdStructure.sections
         .filter((s) => s.heading.length > 0)
         .map((s) => ({
-          heading: s.heading.slice(0, 180),
-          details: s.bodyLines.slice(0, 4).map((d) => d.slice(0, 260)),
+          heading: s.heading,
+          details: s.bodyLines.slice(0, 6),
         }));
       if (sections.length === 0) {
         sections = buildSlideSectionsFromBody(body, slide.templateId);
@@ -3837,21 +3837,21 @@ function normalizeSlideHierarchy(slide: AIPresentationSlide): AIPresentationSlid
   const title = normalizeSlideText(slide.title).slice(0, 200) || "Key Insight";
   const titleLower = title.toLowerCase();
   const body = clampBodyLinesForTemplate(slide.body, slide.templateId)
-    .map((line) => normalizeSlideText(line).slice(0, 400))
+    .map((line) => normalizeSlideText(line))
     .filter((line) => line.length > 0 && line.toLowerCase() !== titleLower);
   const notes = normalizeSlideText(slide.notes ?? "").slice(0, 5_000);
   const maxSections = slide.templateId === "hero_center" ? 2 : 6;
 
   const explicitSections = (slide.sections ?? [])
     .map((section) => {
-      const heading = normalizeSlideText(section.heading).slice(0, 180);
+      const heading = normalizeSlideText(section.heading);
       if (!heading) {
         return null;
       }
       const details = section.details
-        .map((detail) => normalizeSlideText(detail).slice(0, 260))
+        .map((detail) => normalizeSlideText(detail))
         .filter((detail) => detail.length > 0 && detail.toLowerCase() !== heading.toLowerCase())
-        .slice(0, 4);
+        .slice(0, 6);
       // Keep sections even with empty details — heading-only sections are valid
       return { heading, details };
     })

@@ -4,6 +4,8 @@ import {
   browserWorkflowEntitlements,
   tenantBrowserPolicyConfig,
   tenantBrowserPolicyRules,
+  type TenantBrowserPolicyConfig,
+  type TenantBrowserPolicyRule,
 } from "../../drizzle/schema";
 import {
   type BrowserPolicyConfig,
@@ -52,6 +54,28 @@ export interface TenantBrowserPolicyConfigResult {
   rules: BrowserPolicyRule[];
   source: "db" | "seeded";
   metadata: Record<string, unknown>;
+  storageStatus: "ready" | "schema_missing";
+}
+
+export function isRecoverableBrowserPolicySchemaError(error: unknown): boolean {
+  const code = String((error as { code?: unknown } | null)?.code ?? "");
+  const message = String((error as { message?: unknown } | null)?.message ?? "").toLowerCase();
+
+  if (code === "42P01" || code === "42703" || code === "42704") {
+    return true;
+  }
+
+  const mentionsBrowserPolicyTables =
+    message.includes("tenant_browser_policy_config")
+    || message.includes("tenant_browser_policy_rules");
+
+  return mentionsBrowserPolicyTables
+    && (
+      message.includes("does not exist")
+      || message.includes("column")
+      || message.includes("relation")
+      || message.includes("table")
+    );
 }
 
 export function buildSeededBrowserPolicyConfig(
@@ -128,30 +152,55 @@ export async function loadTenantBrowserPolicyConfig(options: {
   seededConfig?: Partial<BrowserPolicyConfig> | null;
 }): Promise<TenantBrowserPolicyConfigResult> {
   const db = await getDb();
+  const seededFallback =
+    options.seededConfig == null
+      ? null
+      : buildSeededBrowserPolicyConfig(options.seededConfig);
+
   if (!db) {
     return {
-      config:
-        options.seededConfig == null
-          ? null
-          : buildSeededBrowserPolicyConfig(options.seededConfig),
+      config: seededFallback,
       rules: [],
       source: "seeded",
       metadata: {},
+      storageStatus: "ready",
     };
   }
 
-  const [configRow, ruleRows] = await Promise.all([
-    db
-      .select()
-      .from(tenantBrowserPolicyConfig)
-      .where(eq(tenantBrowserPolicyConfig.tenantId, options.tenantId))
-      .limit(1),
-    db
-      .select()
-      .from(tenantBrowserPolicyRules)
-      .where(eq(tenantBrowserPolicyRules.tenantId, options.tenantId))
-      .orderBy(asc(tenantBrowserPolicyRules.priority)),
-  ]);
+  let configRow: TenantBrowserPolicyConfig[];
+  let ruleRows: TenantBrowserPolicyRule[];
+
+  try {
+    [configRow, ruleRows] = await Promise.all([
+      db
+        .select()
+        .from(tenantBrowserPolicyConfig)
+        .where(eq(tenantBrowserPolicyConfig.tenantId, options.tenantId))
+        .limit(1),
+      db
+        .select()
+        .from(tenantBrowserPolicyRules)
+        .where(eq(tenantBrowserPolicyRules.tenantId, options.tenantId))
+        .orderBy(asc(tenantBrowserPolicyRules.priority)),
+    ]);
+  } catch (error) {
+    if (!isRecoverableBrowserPolicySchemaError(error)) {
+      throw error;
+    }
+
+    console.warn("[BrowserPolicy] Tenant policy schema not ready, falling back to seeded config", {
+      tenantId: options.tenantId,
+      error: String((error as { message?: unknown } | null)?.message ?? error),
+    });
+
+    return {
+      config: seededFallback,
+      rules: [],
+      source: "seeded",
+      metadata: {},
+      storageStatus: "schema_missing",
+    };
+  }
 
   const config = configRow[0]
     ? normalizeBrowserPolicyConfig({
@@ -168,7 +217,7 @@ export async function loadTenantBrowserPolicyConfig(options: {
       })
     : options.seededConfig == null
       ? null
-      : buildSeededBrowserPolicyConfig(options.seededConfig);
+      : seededFallback;
 
   const rules = ruleRows.map((row) => ({
     id: row.id,
@@ -186,6 +235,7 @@ export async function loadTenantBrowserPolicyConfig(options: {
     rules,
     source: configRow[0] ? "db" : "seeded",
     metadata: (configRow[0]?.metadata as Record<string, unknown> | null | undefined) ?? {},
+    storageStatus: "ready",
   };
 }
 

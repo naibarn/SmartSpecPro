@@ -264,6 +264,66 @@ function getBodyLetterSpacing(canvasWidth: number, canvasHeight: number, thaiTex
   return isPortraitCanvas(canvasWidth, canvasHeight) ? 0.12 : 0.05;
 }
 
+/**
+ * Fuzzy text overlap check for Thai and mixed-language text.
+ * Returns true if two strings share >50% of their meaningful tokens,
+ * or if one is a substring of the other.
+ */
+function hasFuzzyTextOverlap(a: string, b: string): boolean {
+  const la = a.toLowerCase();
+  const lb = b.toLowerCase();
+  // Substring check
+  if (la.length >= 10 && lb.length >= 10 && (la.includes(lb) || lb.includes(la))) {
+    return true;
+  }
+  // Token overlap check (Thai + Latin tokens ≥2 chars)
+  const tokensA = new Set((la.match(/[a-z0-9\u0e00-\u0e7f]{2,}/g) ?? []));
+  const tokensB = new Set((lb.match(/[a-z0-9\u0e00-\u0e7f]{2,}/g) ?? []));
+  if (tokensA.size < 2 || tokensB.size < 2) {
+    return false;
+  }
+  const smaller = tokensA.size <= tokensB.size ? tokensA : tokensB;
+  const larger = tokensA.size <= tokensB.size ? tokensB : tokensA;
+  let overlap = 0;
+  for (const token of smaller) {
+    if (larger.has(token)) {
+      overlap += 1;
+    }
+  }
+  return overlap / smaller.size > 0.5;
+}
+
+/**
+ * Split a very long body line into shorter chunks at space boundaries.
+ * Prevents single 500+ char lines that cause layout overflow.
+ */
+function splitLongBodyLine(line: string, targetLen: number = 150, minLen: number = 30): string[] {
+  if (line.length <= targetLen * 1.5) {
+    return [line];
+  }
+  const words = line.split(/\s+/);
+  if (words.length <= 1) {
+    return [line];
+  }
+  const chunks: string[] = [];
+  let chunk = "";
+  for (const word of words) {
+    if (chunk && (chunk.length + 1 + word.length) > targetLen) {
+      const trimmed = chunk.trim();
+      if (trimmed.length >= minLen) {
+        chunks.push(trimmed);
+      }
+      chunk = word;
+    } else {
+      chunk = chunk ? `${chunk} ${word}` : word;
+    }
+  }
+  if (chunk.trim().length >= minLen) {
+    chunks.push(chunk.trim());
+  }
+  return chunks.length > 0 ? chunks : [line];
+}
+
 function compactBodyLines(body: string[], maxLines: number): string[] {
   const cleaned = body
     .map((line) => line.trim())
@@ -271,12 +331,11 @@ function compactBodyLines(body: string[], maxLines: number): string[] {
   if (cleaned.length <= maxLines) {
     return cleaned;
   }
+  // Merge overflow lines into last line — no character truncation.
+  // fitBodyRowsToHeight handles fitting by reducing font size.
   const head = cleaned.slice(0, Math.max(0, maxLines - 1));
   const tail = cleaned.slice(Math.max(0, maxLines - 1)).join(" • ");
-  const compactTail = tail.length > 500
-    ? `${tail.slice(0, 499).trimEnd()}…`
-    : tail;
-  return [...head, compactTail];
+  return [...head, tail];
 }
 
 function normalizeLayoutText(value: string): string {
@@ -290,6 +349,7 @@ function normalizeLayoutText(value: string): string {
     .replace(/^\s*>\s?/gm, "")                       // > blockquote
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")         // [link](url)
     .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")        // ![alt](img)
+    .replace(/^\d+\s*[).\-]\s*/gm, "")              // numbered prefix: "4. ", "2) "
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -311,8 +371,8 @@ function parseSectionFromBodyLine(line: string): SlideSectionBlock | null {
       continue;
     }
     return {
-      heading: heading.slice(0, 180),
-      details: [detail.slice(0, 260)],
+      heading,
+      details: [detail],
     };
   }
   return null;
@@ -333,7 +393,7 @@ function deriveSectionsFromBodyLines(bodyLines: string[], maxSections: number): 
       index += 1;
       continue;
     }
-    sections.push({ heading: current.slice(0, 180), details: [] });
+    sections.push({ heading: current, details: [] });
     index += 1;
   }
   return sections;
@@ -342,11 +402,11 @@ function deriveSectionsFromBodyLines(bodyLines: string[], maxSections: number): 
 function resolveSlideSections(slideData: AIPresentationSlide, maxSections: number): SlideSectionBlock[] {
   const explicit = (slideData.sections ?? [])
     .map((section) => {
-      const heading = normalizeLayoutText(section.heading).slice(0, 180);
+      const heading = normalizeLayoutText(section.heading);
       const details = section.details
-        .map((detail) => normalizeLayoutText(detail).slice(0, 260))
+        .map((detail) => normalizeLayoutText(detail))
         .filter((detail) => detail.length > 0)
-        .slice(0, 4);
+        .slice(0, 6);
       if (!heading) {
         return null;
       }
@@ -373,15 +433,17 @@ function resolveSlideSubtitleAndBodyLines(
   const hasExplicitSections = Array.isArray(slideData.sections) && slideData.sections.length > 0;
   const structuredFirstBody = parseSectionFromBodyLine(slideData.body[0] ?? "");
   const allowSubtitleFromSections = hasExplicitSections || Boolean(structuredFirstBody);
-  const subtitleCandidate = sections[0]?.heading ? normalizeLayoutText(sections[0].heading) : "";
+  const subtitleRaw = sections[0]?.heading ? normalizeLayoutText(sections[0].heading) : "";
   const titleKey = normalizeLayoutText(slideData.title).toLowerCase();
-  // Strip numbered list prefix (e.g. "1)", "2.", "A)") before comparing subtitle to title.
-  // This prevents "1) คำตอบสั้น ๆ..." appearing as subtitle when title is "คำตอบสั้น ๆ..."
-  const subtitleCandidateNormalized = subtitleCandidate.replace(/^\d+\s*[).\-]\s*|^[a-zA-Z]\s*[).\-]\s*/i, "").trim();
+  // Strip numbered list prefix (e.g. "1)", "2.", "A)") so subtitle matches title style
+  const subtitleCandidate = subtitleRaw.replace(/^\d+\s*[).\-]\s*|^[a-zA-Z]\s*[).\-]\s*/i, "").trim();
+  // Fuzzy dedup: reject subtitle if it matches title exactly OR has high token overlap
+  const subtitleMatchesTitle = !subtitleCandidate
+    || subtitleCandidate.toLowerCase() === titleKey
+    || hasFuzzyTextOverlap(subtitleCandidate, normalizeLayoutText(slideData.title));
   const subtitle = allowSubtitleFromSections
     && subtitleCandidate
-    && subtitleCandidateNormalized.toLowerCase() !== titleKey
-    && subtitleCandidate.toLowerCase() !== titleKey
+    && !subtitleMatchesTitle
     ? subtitleCandidate
     : null;
 
@@ -419,6 +481,7 @@ function resolveSlideSubtitleAndBodyLines(
   const bodyLineLowers = new Set(
     (slideData.body ?? []).map((line) => normalizeLayoutText(line).toLowerCase()),
   );
+  const titleText = normalizeLayoutText(slideData.title);
   const deduped = dedupedRaw.filter((line) => {
     const lower = line.toLowerCase();
     // Only apply substring dedup for lines long enough to be meaningful matches
@@ -428,8 +491,16 @@ function resolveSlideSubtitleAndBodyLines(
     if (longEnough && titleKey && (lower.includes(titleKey) || titleKey.includes(lower))) {
       return false;
     }
+    // Reject via fuzzy token overlap with title (catches Thai near-duplicates)
+    if (longEnough && titleText && hasFuzzyTextOverlap(line, titleText)) {
+      return false;
+    }
     // Reject if line is substring of subtitle or vice versa
     if (longEnough && subtitleLower && (lower.includes(subtitleLower) || subtitleLower.includes(lower))) {
+      return false;
+    }
+    // Reject via fuzzy token overlap with subtitle
+    if (longEnough && subtitle && hasFuzzyTextOverlap(line, subtitle)) {
       return false;
     }
     // Reject "heading: detail" composites where the heading is itself a body line
@@ -451,12 +522,19 @@ function resolveSlideSubtitleAndBodyLines(
       if (lower.length >= 10 && titleKey && (lower.includes(titleKey) || titleKey.includes(lower))) {
         return false;
       }
+      if (lower.length >= 10 && titleText && hasFuzzyTextOverlap(line, titleText)) {
+        return false;
+      }
       return lower.length > 0;
     });
 
+  // Split very long lines into manageable chunks so fitBodyRowsToHeight can work properly
+  const rawLines = deduped.length > 0 ? deduped : fallbackLines;
+  const splitLines = rawLines.flatMap((line) => splitLongBodyLine(line, 150, 30));
+
   return {
     subtitle,
-    bodyLines: compactBodyLines(deduped.length > 0 ? deduped : fallbackLines, maxBodyLines),
+    bodyLines: compactBodyLines(splitLines, maxBodyLines),
   };
 }
 
@@ -745,7 +823,8 @@ function buildHeroCenter(ctx: TemplateContext): SlideElement[] {
   const { contentArea, slideData, preset, scale, canvasWidth, canvasHeight } = ctx;
   const elements: SlideElement[] = [];
   const portrait = isPortraitCanvas(canvasWidth, canvasHeight);
-  const { subtitle, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 10 : 12);
+  // Hero center: concise body overlay on image — keep lines limited
+  const { subtitle, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 5 : 6);
   const thaiText = hasThaiCharacters(`${slideData.title}\n${subtitle ?? ""}\n${bodyLines.join("\n")}`);
   const titleLineHeight = getTitleLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLineHeightRatio = getBodyLineHeight(canvasWidth, canvasHeight, thaiText);
@@ -814,7 +893,7 @@ function buildHeroCenter(ctx: TemplateContext): SlideElement[] {
     : 0;
   const subtitleGap = subtitle ? Math.round(12 * scale.scaleY) : 0;
   const bodyGap = Math.round((portrait ? 10 : 8) * scale.scaleY);
-  const baseBodyFontSize = scaleBodyFontSize(portrait ? 32 : 28, scale, canvasWidth, canvasHeight);
+  const baseBodyFontSize = scaleBodyFontSize(portrait ? 18 : 16, scale, canvasWidth, canvasHeight);
   const bodyTop = titleY + titleHeight + subtitleGap + subtitleHeight + Math.round(18 * scale.scaleY);
   const bodyBottomLimit = contentArea.y + contentArea.height - Math.round(40 * scale.scaleY);
   const availableBodyHeight = Math.max(
@@ -825,12 +904,12 @@ function buildHeroCenter(ctx: TemplateContext): SlideElement[] {
     lines: bodyLines,
     width: titleWidth,
     baseFontSize: baseBodyFontSize,
-    minFontSize: portrait ? 24 : 18,
-    maxFontSize: portrait ? 52 : 42,
+    minFontSize: portrait ? 12 : 11,
+    maxFontSize: portrait ? 18 : 16,
     lineHeightRatio: bodyLineHeightRatio,
     gapPx: bodyGap,
     availableHeightPx: availableBodyHeight,
-    maxLinesPerRow: thaiText ? 3 : 2,
+    maxLinesPerRow: thaiText ? 6 : 5,
   });
   const bodyFontSize = bodyFit.fontSize;
   const bodyRows = bodyFit.rows;
@@ -892,9 +971,22 @@ function buildHeroCenter(ctx: TemplateContext): SlideElement[] {
     );
   }
 
-  // 5. Body text
+  // 5. Body text — hard-clamp to bodyBottomLimit so rows never overlap
   let bodyY = bodyTop;
-  for (const row of bodyRows) {
+  for (let i = 0; i < bodyRows.length; i++) {
+    const row = bodyRows[i]!;
+    // Skip rows that would overflow below the bottom boundary
+    if (bodyY + row.height > bodyBottomLimit + bodyGap) {
+      // Add ellipsis to the last placed text element if rows were dropped
+      if (i > 0 && elements.length > 0) {
+        const lastTextEl = elements[elements.length - 1];
+        if (lastTextEl && lastTextEl.type === "text" && !lastTextEl.text.endsWith("…")) {
+          const trimmed = lastTextEl.text.replace(/[,.\s…]+$/, "");
+          elements[elements.length - 1] = { ...lastTextEl, text: `${trimmed}…` };
+        }
+      }
+      break;
+    }
     elements.push(
       makeTextElement({
         x: titleX,
@@ -1038,12 +1130,13 @@ function buildSplitRightImage(ctx: TemplateContext): SlideElement[] {
     );
   }
 
-  // 4. Body text
+  // 4. Body text — hard-clamp to bottom boundary so rows never overlap
   const bodyGap = Math.round(8 * scale.scaleY);
   const bodyTop = titleY + titleHeight + subtitleGap + subtitleHeight + Math.round(20 * scale.scaleY);
+  const bodyBottomLimit = contentArea.y + contentArea.height - Math.round(32 * scale.scaleY);
   const availableBodyHeight = Math.max(
     Math.round(52 * scale.scaleY),
-    (contentArea.y + contentArea.height - Math.round(32 * scale.scaleY)) - bodyTop,
+    bodyBottomLimit - bodyTop,
   );
   const bodyFit = fitBodyRowsToHeight({
     lines: bodyLines,
@@ -1059,7 +1152,18 @@ function buildSplitRightImage(ctx: TemplateContext): SlideElement[] {
   const bodyFontSize = bodyFit.fontSize;
   const bodyRows = bodyFit.rows;
   let bodyY = bodyTop;
-  for (const row of bodyRows) {
+  for (let i = 0; i < bodyRows.length; i++) {
+    const row = bodyRows[i]!;
+    if (bodyY + row.height > bodyBottomLimit + bodyGap) {
+      if (i > 0 && elements.length > 0) {
+        const lastTextEl = elements[elements.length - 1];
+        if (lastTextEl && lastTextEl.type === "text" && !lastTextEl.text.endsWith("…")) {
+          const trimmed = lastTextEl.text.replace(/[,.\s…]+$/, "");
+          elements[elements.length - 1] = { ...lastTextEl, text: `${trimmed}…` };
+        }
+      }
+      break;
+    }
     elements.push(
       makeTextElement({
         x: titleX,
@@ -1239,12 +1343,13 @@ function buildSplitLeftImage(ctx: TemplateContext): SlideElement[] {
     );
   }
 
-  // 5. Body text on right
+  // 5. Body text on right — hard-clamp to bottom boundary so rows never overlap
   const bodyGap = Math.round(8 * scale.scaleY);
   const bodyTop = titleY + titleHeight + subtitleGap + subtitleHeight + Math.round(20 * scale.scaleY);
+  const bodyBottomLimit = contentArea.y + contentArea.height - Math.round(32 * scale.scaleY);
   const availableBodyHeight = Math.max(
     Math.round(52 * scale.scaleY),
-    (contentArea.y + contentArea.height - Math.round(32 * scale.scaleY)) - bodyTop,
+    bodyBottomLimit - bodyTop,
   );
   const bodyFit = fitBodyRowsToHeight({
     lines: bodyLines,
@@ -1260,7 +1365,18 @@ function buildSplitLeftImage(ctx: TemplateContext): SlideElement[] {
   const bodyFontSize = bodyFit.fontSize;
   const bodyRows = bodyFit.rows;
   let bodyY = bodyTop;
-  for (const row of bodyRows) {
+  for (let i = 0; i < bodyRows.length; i++) {
+    const row = bodyRows[i]!;
+    if (bodyY + row.height > bodyBottomLimit + bodyGap) {
+      if (i > 0 && elements.length > 0) {
+        const lastTextEl = elements[elements.length - 1];
+        if (lastTextEl && lastTextEl.type === "text" && !lastTextEl.text.endsWith("…")) {
+          const trimmed = lastTextEl.text.replace(/[,.\s…]+$/, "");
+          elements[elements.length - 1] = { ...lastTextEl, text: `${trimmed}…` };
+        }
+      }
+      break;
+    }
     elements.push(
       makeTextElement({
         x: titleX,
@@ -1418,14 +1534,16 @@ function buildTopImageTextBottom(ctx: TemplateContext): SlideElement[] {
     );
   }
 
+  // Body text — hard-clamp to bottom boundary so rows never overlap
   const bodyGap = Math.round(8 * scale.scaleY);
   const bodyTop = titleY + titleHeight + subtitleGap + subtitleHeight + Math.round(14 * scale.scaleY);
-  const availableBodyHeight = Math.max(56, (bottomY + bottomHeight - Math.round(26 * scale.scaleY)) - bodyTop);
+  const bodyBottomLimit = bottomY + bottomHeight - Math.round(26 * scale.scaleY);
+  const availableBodyHeight = Math.max(56, bodyBottomLimit - bodyTop);
   const bodyFit = fitBodyRowsToHeight({
     lines: bodyLines,
     width: titleWidth,
     baseFontSize: scaleBodyFontSize(26, scale, canvasWidth, canvasHeight),
-    minFontSize: portrait ? 20 : 16,
+    minFontSize: portrait ? 14 : 12,
     maxFontSize: portrait ? 34 : 24,
     lineHeightRatio: bodyLineHeightRatio,
     gapPx: bodyGap,
@@ -1434,7 +1552,18 @@ function buildTopImageTextBottom(ctx: TemplateContext): SlideElement[] {
   });
 
   let bodyY = bodyTop;
-  for (const row of bodyFit.rows) {
+  for (let i = 0; i < bodyFit.rows.length; i++) {
+    const row = bodyFit.rows[i]!;
+    if (bodyY + row.height > bodyBottomLimit + bodyGap) {
+      if (i > 0 && elements.length > 0) {
+        const lastTextEl = elements[elements.length - 1];
+        if (lastTextEl && lastTextEl.type === "text" && !lastTextEl.text.endsWith("…")) {
+          const trimmed = lastTextEl.text.replace(/[,.\s…]+$/, "");
+          elements[elements.length - 1] = { ...lastTextEl, text: `${trimmed}…` };
+        }
+      }
+      break;
+    }
     elements.push(
       makeTextElement({
         x: titleX,
@@ -1575,14 +1704,16 @@ function buildBottomImageTextTop(ctx: TemplateContext): SlideElement[] {
     );
   }
 
+  // Body text — hard-clamp to top-section boundary so rows never overlap
   const bodyGap = Math.round(8 * scale.scaleY);
   const bodyTop = titleY + titleHeight + subtitleGap + subtitleHeight + Math.round(14 * scale.scaleY);
-  const availableBodyHeight = Math.max(56, (contentArea.y + topHeight - Math.round(22 * scale.scaleY)) - bodyTop);
+  const bodyBottomLimit = contentArea.y + topHeight - Math.round(22 * scale.scaleY);
+  const availableBodyHeight = Math.max(56, bodyBottomLimit - bodyTop);
   const bodyFit = fitBodyRowsToHeight({
     lines: bodyLines,
     width: titleWidth,
     baseFontSize: scaleBodyFontSize(26, scale, canvasWidth, canvasHeight),
-    minFontSize: portrait ? 20 : 16,
+    minFontSize: portrait ? 14 : 12,
     maxFontSize: portrait ? 34 : 24,
     lineHeightRatio: bodyLineHeightRatio,
     gapPx: bodyGap,
@@ -1591,7 +1722,18 @@ function buildBottomImageTextTop(ctx: TemplateContext): SlideElement[] {
   });
 
   let bodyY = bodyTop;
-  for (const row of bodyFit.rows) {
+  for (let i = 0; i < bodyFit.rows.length; i++) {
+    const row = bodyFit.rows[i]!;
+    if (bodyY + row.height > bodyBottomLimit + bodyGap) {
+      if (i > 0 && elements.length > 0) {
+        const lastTextEl = elements[elements.length - 1];
+        if (lastTextEl && lastTextEl.type === "text" && !lastTextEl.text.endsWith("…")) {
+          const trimmed = lastTextEl.text.replace(/[,.\s…]+$/, "");
+          elements[elements.length - 1] = { ...lastTextEl, text: `${trimmed}…` };
+        }
+      }
+      break;
+    }
     elements.push(
       makeTextElement({
         x: titleX,

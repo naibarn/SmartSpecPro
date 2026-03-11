@@ -9,6 +9,7 @@ import { getDb } from "../db";
 import { users, creditTransactions } from "../../drizzle/schema";
 import { eq, desc, like, or, sql, and } from "drizzle-orm";
 import { addCredits, deductCredits, type TransactionType } from "../services/creditService";
+import { resolveEnabledLlmModelId } from "../services/enabledLlmModels";
 import { browserPolicyUserProfileSchema } from "../../shared/browserPolicy";
 import {
   resolveEffectiveUserAutomationPolicy,
@@ -742,7 +743,10 @@ export const usersRouter = router({
       const updated = { ...current };
 
       if (input.translationLanguage !== undefined) updated.translationLanguage = input.translationLanguage;
-      if (input.translationModel !== undefined) updated.translationModel = input.translationModel;
+      if (input.translationModel !== undefined) {
+        updated.translationModel =
+          (await resolveEnabledLlmModelId([input.translationModel])) || undefined;
+      }
 
       await db.update(users).set({ userPreferences: updated }).where(eq(users.id, ctx.user.id));
       return updated;

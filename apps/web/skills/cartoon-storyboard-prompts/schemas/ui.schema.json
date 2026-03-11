@@ -1,0 +1,340 @@
+{
+  "version": "1.0",
+  "skillId": "cartoon-storyboard-prompts",
+  "title": "Cartoon Storyboard Image Prompts",
+  "titleTh": "สร้าง Storyboard การ์ตูน พร้อม Image Prompt",
+  "description": "Generate cartoon/3D storyboard with per-scene image prompts optimized for Nano Banana 2/Pro. Maintains character and environment consistency across all scenes.",
+  "descriptionTh": "สร้าง Storyboard การ์ตูน/3D พร้อม Image Prompt ต่อฉาก สำหรับ Nano Banana 2/Pro รักษาความคงที่ของตัวละครและฉากตลอดเรื่อง",
+  "sections": [
+    {
+      "id": "story",
+      "title": "Story Concept",
+      "titleTh": "แนวคิดเรื่องราว",
+      "icon": "book-open",
+      "fields": [
+        {
+          "id": "storyIdea",
+          "type": "textarea",
+          "label": "Story Idea",
+          "labelTh": "ไอเดียเรื่องราว",
+          "placeholder": "e.g., A cat barista runs a tiny coffee shop in a rainy alley, today a mysterious customer arrives...",
+          "placeholderTh": "เช่น แมวบาริสต้าเปิดร้านกาแฟเล็กๆ ในตรอกวันฝนตก วันนี้มีลูกค้าปริศนาเดินเข้ามา...",
+          "helpText": "Describe the story, plot, or scenario you want to visualize. Include characters, setting, and key events.",
+          "helpTextTh": "อธิบายเรื่องราว พล็อต หรือสถานการณ์ที่ต้องการ ระบุตัวละคร สถานที่ และเหตุการณ์สำคัญ",
+          "required": true,
+          "rows": 4
+        },
+        {
+          "id": "reference_images",
+          "type": "images",
+          "label": "Reference Images",
+          "labelTh": "ภาพอ้างอิง",
+          "helpText": "Upload character or environment references. 1st image = primary character, 2nd+ = other characters or settings.",
+          "helpTextTh": "แนบภาพอ้างอิงตัวละครหรือสถานที่ ภาพแรก = ตัวละครหลัก ภาพถัดไป = ตัวละครอื่นหรือฉาก",
+          "maxImages": 5
+        },
+        {
+          "id": "language",
+          "type": "select",
+          "label": "Storyboard Language",
+          "labelTh": "ภาษา Storyboard",
+          "helpText": "Language for storyboard text. Image prompts are always in English.",
+          "helpTextTh": "ภาษาของเนื้อเรื่อง (Image Prompt จะเป็นอังกฤษเสมอ)",
+          "default": "th",
+          "options": [
+            { "value": "th", "label": "Thai (ไทย)", "labelTh": "ภาษาไทย" },
+            { "value": "en", "label": "English", "labelTh": "ภาษาอังกฤษ" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "character",
+      "title": "Character Type",
+      "titleTh": "ประเภทตัวละคร",
+      "icon": "user",
+      "fields": [
+        {
+          "id": "characterType",
+          "type": "select",
+          "label": "Character Type",
+          "labelTh": "ประเภทตัวละคร",
+          "helpText": "What kind of characters appear in the story? This affects how the Character Sheet is built.",
+          "helpTextTh": "ตัวละครเป็นประเภทไหน? มีผลต่อการสร้าง Character Sheet",
+          "default": "human",
+          "options": [
+            { "value": "human", "label": "Human Characters", "labelTh": "คน / มนุษย์" },
+            { "value": "animal", "label": "Animal Characters (Talking Animals)", "labelTh": "สัตว์ (สัตว์พูดได้)" },
+            { "value": "anthropomorphic_object", "label": "Living Objects (Fruit, Food, Gadgets with face & limbs)", "labelTh": "สิ่งของมีชีวิต (ผลไม้ อาหาร อุปกรณ์ มีหน้า มีแขนขา)" },
+            { "value": "mythical_creature", "label": "Mythical / Fantasy Creatures", "labelTh": "สิ่งมีชีวิตในตำนาน / แฟนตาซี" },
+            { "value": "robot_mech", "label": "Robot / Mech", "labelTh": "หุ่นยนต์ / เมค" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "narrative",
+      "title": "Narrative Style",
+      "titleTh": "แนวการเล่าเรื่อง",
+      "icon": "sparkles",
+      "fields": [
+        {
+          "id": "narrativeStyle",
+          "type": "select",
+          "label": "Storytelling Structure",
+          "labelTh": "โครงสร้างการเล่าเรื่อง",
+          "helpText": "How the story unfolds across scenes. Pick the structure that best fits your idea.",
+          "helpTextTh": "วิธีดำเนินเรื่องผ่านฉากต่างๆ เลือกโครงสร้างที่เหมาะกับไอเดีย",
+          "default": "classic_arc",
+          "options": [
+            { "value": "classic_arc", "label": "Classic Arc (Setup - Conflict - Resolution)", "labelTh": "เปิดเรื่อง - ปมขัดแย้ง - คลี่คลาย (คลาสสิก)" },
+            { "value": "in_medias_res", "label": "In Medias Res (Start in the middle of action)", "labelTh": "เริ่มกลางเรื่อง (ย้อนกลับอธิบาย)" },
+            { "value": "parallel_timeline", "label": "Parallel Timeline (Two stories converge)", "labelTh": "เส้นเรื่องคู่ขนาน (สองเรื่องมาบรรจบ)" },
+            { "value": "twist_ending", "label": "Twist Ending (Surprise at the end)", "labelTh": "จุดพลิกตอนจบ (เซอร์ไพรส์)" },
+            { "value": "loop_story", "label": "Loop / Cycle (Ending = Beginning)", "labelTh": "วนลูป (จบกลับมาเริ่มต้น)" },
+            { "value": "day_in_the_life", "label": "Day in the Life (Follow a character's routine)", "labelTh": "หนึ่งวันของ... (ตามชีวิตตัวละคร)" },
+            { "value": "before_after", "label": "Before & After (Transformation story)", "labelTh": "ก่อน-หลัง (เรื่องการเปลี่ยนแปลง)" },
+            { "value": "countdown", "label": "Countdown / Ticking Clock (Urgency builds)", "labelTh": "นับถอยหลัง (ความเร่งด่วน)" },
+            { "value": "pov_switch", "label": "POV Switch (Same event, different perspectives)", "labelTh": "สลับมุมมอง (เหตุการณ์เดียว หลายมุม)" },
+            { "value": "silent_visual", "label": "Silent Visual (No dialogue, pure imagery)", "labelTh": "เล่าด้วยภาพล้วน (ไม่มีบทพูด)" },
+            { "value": "montage_sequence", "label": "Montage (Quick cuts showing progression)", "labelTh": "มอนทาจ (ตัดฉากเร็ว แสดงความก้าวหน้า)" },
+            { "value": "interview_cutaway", "label": "Interview + Cutaway (Talking head + scenes)", "labelTh": "สัมภาษณ์สลับฉาก (พูดหน้ากล้อง + ภาพประกอบ)" },
+            { "value": "flashback", "label": "Flashback (Present triggers memory)", "labelTh": "ย้อนความทรงจำ (ปัจจุบันกระตุ้นอดีต)" },
+            { "value": "quest_journey", "label": "Quest / Journey (Hero sets out on a mission)", "labelTh": "การผจญภัย (ออกเดินทางทำภารกิจ)" },
+            { "value": "duet_split_screen", "label": "Duet / Split Screen (Two sides shown together)", "labelTh": "จอแบ่งครึ่ง (แสดงสองฝั่งพร้อมกัน)" },
+            { "value": "rant_monologue", "label": "Rant / Reaction Monologue (Complain & emote)", "labelTh": "บ่น / แสดงอารมณ์ (พูดบ่นโมโหไปเรื่อยๆ)" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "visual_style",
+      "title": "Visual Style",
+      "titleTh": "สไตล์ภาพ",
+      "icon": "palette",
+      "fields": [
+        {
+          "id": "cartoonStyle",
+          "type": "select",
+          "label": "Cartoon Style",
+          "labelTh": "สไตล์การ์ตูน",
+          "helpText": "The overall visual style for all scenes",
+          "helpTextTh": "รูปแบบภาพสำหรับทุกฉาก",
+          "required": true,
+          "default": "pixar_3d",
+          "options": [
+            { "value": "pixar_3d", "label": "Pixar 3D (Premium Quality)", "labelTh": "Pixar 3D (คุณภาพสูง)" },
+            { "value": "cartoon_3d", "label": "3D Cartoon (Vibrant & Clean)", "labelTh": "การ์ตูน 3D (สดใส สะอาดตา)" },
+            { "value": "chibi_3d", "label": "Chibi 3D (Cute & Tiny)", "labelTh": "จิบิ 3D (น่ารัก ตัวจิ๋ว)" },
+            { "value": "claymation", "label": "Claymation (Clay/Plasticine)", "labelTh": "ดินน้ำมัน (Claymation)" },
+            { "value": "anime", "label": "Anime (Cel-shaded Japanese)", "labelTh": "อนิเมะ (แบบญี่ปุ่น)" },
+            { "value": "cartoon_2d", "label": "2D Cartoon (Classic Flat)", "labelTh": "การ์ตูน 2D (แบนคลาสสิก)" },
+            { "value": "comic", "label": "Comic Book (Panels & Action)", "labelTh": "คอมิก (แอ็กชัน)" },
+            { "value": "watercolor_cartoon", "label": "Watercolor Cartoon (Soft & Dreamy)", "labelTh": "สีน้ำ (นุ่มนวล)" },
+            { "value": "minimalist_cartoon", "label": "Minimalist (Simple & Geometric)", "labelTh": "มินิมอล (เรียบง่าย)" },
+            { "value": "retro_cartoon", "label": "Retro Cartoon (Vintage 50s-70s)", "labelTh": "การ์ตูนย้อนยุค (50s-70s)" },
+            { "value": "disney_classic", "label": "Disney Classic (Hand-drawn Golden Era)", "labelTh": "ดิสนีย์คลาสสิก (วาดมือยุคทอง)" },
+            { "value": "studio_ghibli", "label": "Studio Ghibli (Watercolor Anime)", "labelTh": "สตูดิโอจิบลิ (สีน้ำอนิเมะ)" },
+            { "value": "low_poly_3d", "label": "Low Poly 3D (Geometric Facets)", "labelTh": "Low Poly 3D (เหลี่ยมเรขาคณิต)" },
+            { "value": "voxel", "label": "Voxel Art (3D Pixel Blocks)", "labelTh": "ว็อกเซล (บล็อก 3D แบบ Minecraft)" },
+            { "value": "paper_craft", "label": "Paper Craft / Cut-out (Layered Paper)", "labelTh": "กระดาษตัดแปะ (งานเลเยอร์กระดาษ)" },
+            { "value": "sticker_art", "label": "Sticker / Die-cut Art (White Border)", "labelTh": "สติ๊กเกอร์ (ขอบขาวน่ารัก)" },
+            { "value": "graffiti_street", "label": "Graffiti / Street Art (Spray Paint)", "labelTh": "กราฟฟิตี้ / สตรีทอาร์ต" },
+            { "value": "neon_glow", "label": "Neon Glow (Glowing Outlines on Dark)", "labelTh": "นีออนเรืองแสง (เส้นเรืองบนพื้นมืด)" },
+            { "value": "isometric_3d", "label": "Isometric 3D (Flat Angle Diorama)", "labelTh": "ไอโซเมตริก 3D (มุมเฉียง ดิโอราม่า)" },
+            { "value": "pixel_art", "label": "Pixel Art (Retro Game Style)", "labelTh": "พิกเซลอาร์ต (แนวเกมย้อนยุค)" }
+          ]
+        },
+        {
+          "id": "mood",
+          "type": "select",
+          "label": "Mood",
+          "labelTh": "อารมณ์ภาพ",
+          "helpText": "Overall emotional atmosphere",
+          "helpTextTh": "อารมณ์โดยรวมของ Storyboard",
+          "default": "happy",
+          "options": [
+            { "value": "happy", "label": "Happy & Cheerful", "labelTh": "สดใส สนุกสนาน" },
+            { "value": "dramatic", "label": "Dramatic & Intense", "labelTh": "ดราม่า เข้มข้น" },
+            { "value": "mysterious", "label": "Mysterious & Eerie", "labelTh": "ลึกลับ น่าค้นหา" },
+            { "value": "romantic", "label": "Romantic & Warm", "labelTh": "โรแมนติก อบอุ่น" },
+            { "value": "action", "label": "Action & Dynamic", "labelTh": "แอ็กชัน มีชีวิตชีวา" },
+            { "value": "horror", "label": "Horror & Dark", "labelTh": "สยองขวัญ มืดมน" },
+            { "value": "calm", "label": "Calm & Peaceful", "labelTh": "สงบ ผ่อนคลาย" },
+            { "value": "epic", "label": "Epic & Grand", "labelTh": "ยิ่งใหญ่ อลังการ" }
+          ]
+        },
+        {
+          "id": "colorPalette",
+          "type": "select",
+          "label": "Color Palette",
+          "labelTh": "โทนสี",
+          "helpText": "Dominant color scheme for all scenes",
+          "helpTextTh": "โทนสีหลักที่ใช้ตลอด Storyboard",
+          "default": "vibrant",
+          "options": [
+            { "value": "vibrant", "label": "Vibrant (Saturated & Bold)", "labelTh": "สดใส (สีจัด)" },
+            { "value": "pastel", "label": "Pastel (Soft & Gentle)", "labelTh": "พาสเทล (นุ่มนวล)" },
+            { "value": "warm", "label": "Warm (Orange/Red/Yellow)", "labelTh": "โทนอุ่น (ส้ม/แดง/เหลือง)" },
+            { "value": "cool", "label": "Cool (Blue/Green/Purple)", "labelTh": "โทนเย็น (ฟ้า/เขียว/ม่วง)" },
+            { "value": "monochrome", "label": "Monochrome (Single Hue)", "labelTh": "โมโนโครม (สีเดียว)" },
+            { "value": "earthy", "label": "Earthy (Natural Tones)", "labelTh": "ธรรมชาติ (สีดิน)" },
+            { "value": "neon", "label": "Neon (Electric & Bright)", "labelTh": "นีออน (สดจ้า)" },
+            { "value": "vintage", "label": "Vintage (Muted & Aged)", "labelTh": "วินเทจ (เก่าคลาสสิก)" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "scene_settings",
+      "title": "Scene Settings",
+      "titleTh": "ตั้งค่าฉาก",
+      "icon": "layout-grid",
+      "fields": [
+        {
+          "id": "sceneCount",
+          "type": "slider",
+          "label": "Number of Scenes",
+          "labelTh": "จำนวนฉาก",
+          "helpText": "How many scenes/panels to generate (3 = mini story, 6 = standard, 12 = detailed)",
+          "helpTextTh": "จำนวนฉากที่ต้องการ (3 = เรื่องสั้น, 6 = มาตรฐาน, 12 = ละเอียด)",
+          "min": 3,
+          "max": 12,
+          "step": 1,
+          "default": 6
+        },
+        {
+          "id": "aspectRatio",
+          "type": "select",
+          "label": "Aspect Ratio",
+          "labelTh": "อัตราส่วนภาพ",
+          "helpText": "Image dimensions per scene",
+          "helpTextTh": "สัดส่วนภาพของแต่ละฉาก",
+          "default": "16:9",
+          "options": [
+            { "value": "16:9", "label": "16:9 (Widescreen)", "labelTh": "16:9 (จอกว้าง)" },
+            { "value": "9:16", "label": "9:16 (Vertical/Mobile)", "labelTh": "9:16 (แนวตั้ง/มือถือ)" },
+            { "value": "1:1", "label": "1:1 (Square)", "labelTh": "1:1 (จัตุรัส)" },
+            { "value": "3:4", "label": "3:4 (Portrait)", "labelTh": "3:4 (แนวตั้ง)" },
+            { "value": "4:3", "label": "4:3 (Landscape)", "labelTh": "4:3 (แนวนอน)" },
+            { "value": "21:9", "label": "21:9 (Ultra-wide Cinematic)", "labelTh": "21:9 (ซีเนมาติกกว้างพิเศษ)" }
+          ]
+        },
+        {
+          "id": "resolution",
+          "type": "select",
+          "label": "Resolution",
+          "labelTh": "ความละเอียด",
+          "helpText": "Higher resolution = better detail but more credits",
+          "helpTextTh": "ความละเอียดสูงขึ้น = รายละเอียดดีขึ้น แต่ใช้เครดิตมากขึ้น",
+          "default": "2k",
+          "options": [
+            { "value": "1k", "label": "1K (1024px — Fast)", "labelTh": "1K (1024px — เร็ว)" },
+            { "value": "2k", "label": "2K (2048px — Recommended)", "labelTh": "2K (2048px — แนะนำ)" },
+            { "value": "4k", "label": "4K (4096px — Production)", "labelTh": "4K (4096px — งานจริง)" }
+          ]
+        },
+        {
+          "id": "outputFormat",
+          "type": "select",
+          "label": "Image Format",
+          "labelTh": "รูปแบบไฟล์",
+          "default": "png",
+          "options": [
+            { "value": "png", "label": "PNG (Best for cartoon/transparency)", "labelTh": "PNG (ดีที่สุดสำหรับการ์ตูน)" },
+            { "value": "jpg", "label": "JPG (Smaller file size)", "labelTh": "JPG (ไฟล์เล็กกว่า)" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "camera_lighting",
+      "title": "Camera & Lighting",
+      "titleTh": "กล้องและแสง",
+      "icon": "camera",
+      "defaultCollapsed": true,
+      "fields": [
+        {
+          "id": "lightingPreset",
+          "type": "select",
+          "label": "Lighting",
+          "labelTh": "แสง",
+          "helpText": "Base lighting setup applied to all scenes",
+          "helpTextTh": "รูปแบบแสงพื้นฐานที่ใช้ทุกฉาก",
+          "default": "natural",
+          "options": [
+            { "value": "natural", "label": "Natural Daylight", "labelTh": "แสงธรรมชาติ" },
+            { "value": "studio_3point", "label": "Studio 3-Point", "labelTh": "สตูดิโอ 3 จุด" },
+            { "value": "golden_hour", "label": "Golden Hour (Warm Sunset)", "labelTh": "โกลเด้นอาวร์ (พระอาทิตย์ตก)" },
+            { "value": "dramatic_chiaroscuro", "label": "Dramatic Chiaroscuro", "labelTh": "ดราม่า คอนทราสต์สูง" },
+            { "value": "soft_diffused", "label": "Soft Diffused", "labelTh": "แสงนุ่ม กระจาย" },
+            { "value": "neon_cyberpunk", "label": "Neon / Cyberpunk", "labelTh": "นีออน / ไซเบอร์พังก์" },
+            { "value": "moonlit", "label": "Moonlit Night", "labelTh": "แสงจันทร์" },
+            { "value": "backlit_silhouette", "label": "Backlit Silhouette", "labelTh": "แบ็คไลท์ ซิลูเอท" }
+          ]
+        },
+        {
+          "id": "cameraWork",
+          "type": "select",
+          "label": "Camera Style",
+          "labelTh": "สไตล์กล้อง",
+          "helpText": "How camera angles vary across scenes",
+          "helpTextTh": "แนวทางมุมกล้องตลอด Storyboard",
+          "default": "varied",
+          "options": [
+            { "value": "varied", "label": "Varied (Mix of angles)", "labelTh": "หลากหลาย (ผสมมุมต่างๆ)" },
+            { "value": "static_medium", "label": "Static Medium (Consistent)", "labelTh": "มีเดียมคงที่ (สม่ำเสมอ)" },
+            { "value": "cinematic", "label": "Cinematic (Dramatic DoF)", "labelTh": "ซีเนมาติก (เบลอหลัง)" },
+            { "value": "overhead", "label": "Overhead (Bird's Eye)", "labelTh": "มุมสูง (มองลง)" },
+            { "value": "pov", "label": "POV (First Person)", "labelTh": "มุมมองตัวละคร (POV)" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "extras",
+      "title": "Text & Extras",
+      "titleTh": "ข้อความและอื่นๆ",
+      "icon": "message-square",
+      "defaultCollapsed": true,
+      "fields": [
+        {
+          "id": "includeSpeechBubbles",
+          "type": "boolean",
+          "label": "Include Speech Bubbles",
+          "labelTh": "ใส่ Speech Bubbles",
+          "helpText": "Add dialogue bubbles with text in each scene",
+          "helpTextTh": "เพิ่มกรอบคำพูดพร้อมข้อความในแต่ละฉาก",
+          "default": false
+        },
+        {
+          "id": "includeTextCaption",
+          "type": "boolean",
+          "label": "Include Captions",
+          "labelTh": "ใส่คำบรรยาย",
+          "helpText": "Add title or description caption in each scene",
+          "helpTextTh": "เพิ่มข้อความหัวข้อหรือคำบรรยายในแต่ละฉาก",
+          "default": false
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "storyIdea": "storyIdea",
+    "language": "language",
+    "characterType": "characterType",
+    "cartoonStyle": "cartoonStyle",
+    "sceneCount": "sceneCount",
+    "aspectRatio": "aspectRatio",
+    "resolution": "resolution",
+    "outputFormat": "outputFormat",
+    "mood": "mood",
+    "lightingPreset": "lightingPreset",
+    "colorPalette": "colorPalette",
+    "cameraWork": "cameraWork",
+    "narrativeStyle": "narrativeStyle",
+    "includeSpeechBubbles": "includeSpeechBubbles",
+    "includeTextCaption": "includeTextCaption",
+    "reference_images": "reference_images"
+  }
+}

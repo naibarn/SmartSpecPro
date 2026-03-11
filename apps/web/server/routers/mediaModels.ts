@@ -84,7 +84,97 @@ type ModelFieldOption = {
   label: string;
 };
 
+type MediaProviderStatusRow = {
+  providerName: string;
+  displayName: string;
+  isEnabled: boolean;
+  hasApiKey: boolean;
+  lastTestResult: { success?: boolean; message?: string } | null;
+};
+
+type MediaModelProviderReadiness =
+  | "ready"
+  | "provider_not_found"
+  | "provider_disabled"
+  | "missing_api_key"
+  | "test_failed";
+
 const modelFieldOptionsCache = new Map<string, { expiresAt: number; options: ModelFieldOption[] }>();
+
+function normalizeMediaProviderName(providerName: string | null | undefined): string {
+  const normalized = String(providerName ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s.-]+/g, "_");
+  if (!normalized) {
+    return "";
+  }
+  if (normalized === "kie" || normalized === "kie_ai" || normalized === "kieai") {
+    return "kie_ai";
+  }
+  if (normalized === "uvoice" || normalized === "u_voice" || normalized === "uvoice_ai" || normalized === "uvoiceapp") {
+    return "uvoice";
+  }
+  if (
+    normalized === "byteplus"
+    || normalized === "modelark"
+    || normalized === "byteplus_modelark"
+    || normalized === "byteplus_model_ark"
+  ) {
+    return "byteplus_modelark";
+  }
+  return normalized;
+}
+
+function getProviderReadiness(provider: MediaProviderStatusRow | undefined): {
+  providerReady: boolean;
+  providerReadiness: MediaModelProviderReadiness;
+  providerReadinessMessage: string | null;
+  providerDisplayName: string | null;
+} {
+  if (!provider) {
+    return {
+      providerReady: false,
+      providerReadiness: "provider_not_found",
+      providerReadinessMessage: "Provider record not found",
+      providerDisplayName: null,
+    };
+  }
+
+  if (!provider.isEnabled) {
+    return {
+      providerReady: false,
+      providerReadiness: "provider_disabled",
+      providerReadinessMessage: "Provider is disabled",
+      providerDisplayName: provider.displayName,
+    };
+  }
+
+  if (!provider.hasApiKey) {
+    return {
+      providerReady: false,
+      providerReadiness: "missing_api_key",
+      providerReadinessMessage: "Provider has no API key configured",
+      providerDisplayName: provider.displayName,
+    };
+  }
+
+  if (provider.lastTestResult && provider.lastTestResult.success === false) {
+    return {
+      providerReady: false,
+      providerReadiness: "test_failed",
+      providerReadinessMessage: provider.lastTestResult.message || "Latest provider health test failed",
+      providerDisplayName: provider.displayName,
+    };
+  }
+
+  return {
+    providerReady: true,
+    providerReadiness: "ready",
+    providerReadinessMessage: provider.lastTestResult?.message || null,
+    providerDisplayName: provider.displayName,
+  };
+}
 
 function getPathValue(source: unknown, path: string): unknown {
   if (!path) return source;
@@ -310,7 +400,31 @@ export const mediaModelsRouter = router({
           .where(conditions.length > 0 ? and(...conditions) : undefined)
           .orderBy(asc(mediaModels.sortOrder), asc(mediaModels.priority));
 
-        return models;
+        const providers = await db
+          .select({
+            providerName: mediaProviders.providerName,
+            displayName: mediaProviders.displayName,
+            isEnabled: mediaProviders.isEnabled,
+            hasApiKey: mediaProviders.hasApiKey,
+            lastTestResult: mediaProviders.lastTestResult,
+          })
+          .from(mediaProviders)
+          .orderBy(asc(mediaProviders.sortOrder), asc(mediaProviders.displayName));
+
+        const providerRows = providers as MediaProviderStatusRow[];
+        const providersByName = new Map<string, MediaProviderStatusRow>(
+          providerRows.map((provider: MediaProviderStatusRow) => [normalizeMediaProviderName(provider.providerName), provider]),
+        );
+
+        return models.map((model: typeof models[number]) => {
+          const provider = providersByName.get(normalizeMediaProviderName(model.provider));
+          const readiness = getProviderReadiness(provider);
+          return {
+            ...model,
+            ...readiness,
+            providerConfigFound: Boolean(provider),
+          };
+        });
       } catch (error: any) {
         console.warn("[MediaModels] List query failed:", error.message);
         return [];
@@ -511,6 +625,57 @@ export const mediaModelsRouter = router({
     }),
 
   /**
+   * Disable all models whose backing provider is not ready for runtime use.
+   */
+  disableUnavailable: adminProcedure
+    .mutation(async () => {
+      const [models, providers] = await Promise.all([
+        db.select().from(mediaModels).orderBy(asc(mediaModels.id)),
+        db.select({
+          providerName: mediaProviders.providerName,
+          displayName: mediaProviders.displayName,
+          isEnabled: mediaProviders.isEnabled,
+          hasApiKey: mediaProviders.hasApiKey,
+          lastTestResult: mediaProviders.lastTestResult,
+        }).from(mediaProviders),
+      ]);
+
+      const providerRows = providers as MediaProviderStatusRow[];
+      const providersByName = new Map<string, MediaProviderStatusRow>(
+        providerRows.map((provider: MediaProviderStatusRow) => [normalizeMediaProviderName(provider.providerName), provider]),
+      );
+
+      const unavailableEnabledModels = models.filter((model: typeof models[number]) => {
+        if (!model.isEnabled) {
+          return false;
+        }
+        const provider = providersByName.get(normalizeMediaProviderName(model.provider));
+        return !getProviderReadiness(provider).providerReady;
+      });
+
+      for (const model of unavailableEnabledModels) {
+        await db
+          .update(mediaModels)
+          .set({
+            isEnabled: false,
+            updatedAt: new Date(),
+          })
+          .where(eq(mediaModels.id, model.id));
+      }
+
+      if (unavailableEnabledModels.length > 0) {
+        clearModelCache();
+        clearSkillRegistryCache();
+      }
+
+      return {
+        success: true,
+        disabledCount: unavailableEnabledModels.length,
+        disabledModelIds: unavailableEnabledModels.map((model: typeof unavailableEnabledModels[number]) => model.modelId),
+      };
+    }),
+
+  /**
    * Reorder models (update sortOrder)
    */
   reorder: adminProcedure
@@ -540,11 +705,30 @@ export const mediaModelsRouter = router({
    */
   stats: adminProcedure.query(async () => {
     try {
-      const models = await db.select().from(mediaModels);
+      const [models, providers] = await Promise.all([
+        db.select().from(mediaModels),
+        db.select({
+          providerName: mediaProviders.providerName,
+          displayName: mediaProviders.displayName,
+          isEnabled: mediaProviders.isEnabled,
+          hasApiKey: mediaProviders.hasApiKey,
+          lastTestResult: mediaProviders.lastTestResult,
+        }).from(mediaProviders),
+      ]);
+
+      const providerRows = providers as MediaProviderStatusRow[];
+      const providersByName = new Map<string, MediaProviderStatusRow>(
+        providerRows.map((provider: MediaProviderStatusRow) => [normalizeMediaProviderName(provider.providerName), provider]),
+      );
+      const unavailable = models.filter((model: typeof models[number]) => {
+        const provider = providersByName.get(normalizeMediaProviderName(model.provider));
+        return !getProviderReadiness(provider).providerReady;
+      }).length;
 
       return {
         total: models.length,
         enabled: models.filter((m: (typeof models)[number]) => m.isEnabled).length,
+        unavailable,
         byType: {
           image: models.filter((m: (typeof models)[number]) => m.modelType === "image").length,
           video: models.filter((m: (typeof models)[number]) => m.modelType === "video").length,
@@ -557,6 +741,7 @@ export const mediaModelsRouter = router({
       return {
         total: 0,
         enabled: 0,
+        unavailable: 0,
         byType: { image: 0, video: 0, audio: 0 },
         providers: [],
       };

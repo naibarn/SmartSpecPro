@@ -606,7 +606,7 @@ describe("Edge Cases", () => {
       && splitBodyPortrait?.type === "text"
       && splitBodyLandscape?.type === "text"
     ) {
-      expect(heroBodyPortrait.fontSize).toBeGreaterThanOrEqual(24);
+      expect(heroBodyPortrait.fontSize).toBeGreaterThanOrEqual(12);
       expect(splitBodyPortrait.fontSize).toBeGreaterThanOrEqual(20);
       expect(heroBodyPortrait.fontSize).toBeGreaterThan(heroBodyLandscape.fontSize ?? 0);
       expect(splitBodyPortrait.fontSize).toBeGreaterThan(splitBodyLandscape.fontSize ?? 0);

@@ -98,7 +98,11 @@ def _safe_delay_ms(v: object, default: int = 0) -> int:
     time_limit=720,              # 12 min: SIGKILL
     acks_late=True,
     reject_on_worker_lost=True,
-    max_retries=0,               # No retries — renders are deterministic; retry = new job
+    max_retries=2,               # Retry up to 2× for transient Playwright/FFmpeg failures
+    autoretry_for=(OSError, TimeoutError, subprocess.SubprocessError),
+    retry_backoff=30,            # 30s, 60s exponential backoff
+    retry_backoff_max=120,
+    retry_jitter=True,
     queue="presentation_export",
 )
 def render_presentation(self, render_spec: dict, quality: str, format: str) -> dict:
@@ -627,6 +631,7 @@ def _encode_mp4_with_optional_audio(
     # ------------------------------------------------------------------
     slide_audio_tracks: list[dict] = []
     cumulative_ms = 0
+    video_element_audio_idx = 0
 
     for i, slide in enumerate(slides):
         duration_ms = slide.get("durationMs", 3000)
@@ -652,6 +657,44 @@ def _encode_mp4_with_optional_audio(
                     slide_index=i,
                     error=str(exc),
                 )
+
+        # Download audio from unmuted video elements on this slide.
+        # The video files are downloaded, then FFmpeg extracts audio for mixing.
+        ve_audio_specs = slide.get("videoElementAudioTracks") or []
+        for ve_spec in ve_audio_specs:
+            ve_url = ve_spec.get("url", "") if isinstance(ve_spec, dict) else ""
+            if not ve_url:
+                continue
+            try:
+                ve_dl_path = _download_audio(ve_url, tmp_dir, 1000 + video_element_audio_idx)
+                # Extract audio stream from the video file into a separate audio file.
+                ve_audio_path = os.path.join(tmp_dir, f"ve_audio_{video_element_audio_idx}.aac")
+                extract_cmd = [
+                    "ffmpeg", "-y",
+                    "-i", ve_dl_path,
+                    "-vn",
+                    "-c:a", "aac", "-b:a", "192k",
+                    "-t", f"{duration_ms / 1000.0:.3f}",
+                    ve_audio_path,
+                ]
+                subprocess.run(extract_cmd, check=True, capture_output=True, timeout=120)
+                slide_audio_tracks.append(
+                    {
+                        "path": ve_audio_path,
+                        "start_ms": cumulative_ms,
+                        "end_ms": None,
+                        "volume": _safe_volume(ve_spec.get("volume", 1.0) if isinstance(ve_spec, dict) else 1.0),
+                    }
+                )
+                video_element_audio_idx += 1
+            except Exception as exc:
+                logger.warning(
+                    "audio_extract_failed_video_element",
+                    slide_index=i,
+                    url=ve_url[:100],
+                    error=str(exc),
+                )
+
         cumulative_ms += duration_ms
 
     has_project = project_audio_path is not None

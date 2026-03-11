@@ -127,7 +127,7 @@ class AutomationCopilot:
         tenant_id: str,
         user_id: int,
         allowed_domains: list[str],
-        status_callback: Callable[[str], Awaitable[None]],
+        status_callback: Callable[[str, str | None], Awaitable[None]],
     ) -> Any:
         """Run all generated scripts via SelfHealingExecutor."""
         scripts = self._scripts.get(execution_id, [])

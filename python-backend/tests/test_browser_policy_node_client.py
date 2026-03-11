@@ -8,6 +8,7 @@ from app.services.automation_exceptions import BrowserPolicyDeniedError
 from app.services.browser_policy_contract import (
     BrowserPolicyEvaluationResponse,
     BrowserPolicyExecutionContext,
+    BrowserPolicyOutcomeResponse,
 )
 from app.services.browser_policy_node_client import (
     BrowserApprovalStatusSnapshot,
@@ -244,3 +245,43 @@ async def test_pending_browser_approval_status_includes_trace_and_audit_metadata
     assert "approval_request_id=req-1" in detail
     assert "audit_event_hash=audit-hash-1" in detail
     assert "trace_id=trace-1" in detail
+
+
+@pytest.mark.asyncio
+async def test_record_action_outcome_posts_approved_execution_metadata():
+    client = build_client()
+    client._persist_action_outcome = AsyncMock(
+        return_value=BrowserPolicyOutcomeResponse.model_validate(
+            {
+                "audit": {
+                    "traceId": "trace-1",
+                    "eventHash": "outcome-hash-1",
+                    "previousEventHash": "audit-hash-1",
+                    "jsonlPersisted": True,
+                    "dbPersisted": True,
+                    "auditWriteFailed": False,
+                },
+                "incident": {
+                    "approvalState": "approved",
+                    "outcome": "executed",
+                    "operatorMessage": "browser_policy outcome=executed approval_state=approved trace_id=trace-1 reasons=external_upload",
+                },
+            }
+        )
+    )
+    status_callback = AsyncMock()
+
+    response = await client.record_action_outcome(
+        result=build_result(),
+        action=SimpleNamespace(action_type="upload", description="Upload report"),
+        approval_state="approved",
+        outcome="executed",
+        status_callback=status_callback,
+    )
+
+    assert response is not None
+    client._persist_action_outcome.assert_awaited_once()
+    status_callback.assert_awaited_once()
+    detail = status_callback.await_args.args[1]
+    assert "approval_state=approved" in detail
+    assert "audit_event_hash=outcome-hash-1" in detail

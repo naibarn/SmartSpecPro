@@ -1,8 +1,8 @@
 {
-  "version": "1.2.2",
+  "version": "1.3.0",
   "skillId": "smart-landscape-designer-single-prompt",
   "title": "Smart Landscape Designer",
-  "description": "Generate one copy-ready landscape image prompt, with structured reference image attachments and a single-string output.",
+  "description": "Generate one copy-ready landscape image prompt, with reference images from any source and a single-string output.",
   "sections": [
     {
       "id": "request",
@@ -75,39 +75,24 @@
       "fields": [
         {
           "id": "reference_images",
-          "type": "array",
+          "type": "images",
           "label": "Reference Images",
-          "helpText": "Attach image files in the runtime UI. This array stores the fixed reference role and optional notes for each attachment in the same order.",
+          "labelTh": "รูปอ้างอิง",
+          "helpText": "Upload, pick from library, or paste URLs. All images are treated as visual references for landscape design.",
+          "helpTextTh": "อัปโหลด, เลือกจากไลบรารี, หรือวาง URL รูปทั้งหมดจะใช้เป็นภาพอ้างอิงสำหรับออกแบบภูมิทัศน์",
           "default": [],
-          "minItems": 0,
-          "maxItems": 8,
-          "itemLabel": "Reference Image",
-          "itemFields": [
-            {
-              "id": "file",
-              "type": "file",
-              "label": "Attach Image",
-              "helpText": "Attach one image file. The file itself is handled by the runtime; the JSON payload stores only role and notes.",
-              "accept": "image/*",
-              "multiple": false,
-              "default": null
-            },
-            {
-              "id": "role",
-              "type": "text",
-              "label": "Image Role",
-              "helpText": "Fixed for this skill.",
-              "default": "reference",
-              "readOnly": true
-            },
-            {
-              "id": "notes",
-              "type": "text",
-              "label": "Notes",
-              "placeholder": "Example: use this as inspiration for planting style and materials only",
-              "default": ""
-            }
-          ]
+          "maxImages": 8
+        },
+        {
+          "id": "referenceNotes",
+          "type": "textarea",
+          "label": "Reference Notes (optional)",
+          "labelTh": "โน้ตเกี่ยวกับรูปอ้างอิง (ไม่บังคับ)",
+          "placeholder": "Example: Image 1 — use planting style only. Image 2 — use as material reference for the walkway.",
+          "helpText": "Optional notes about how to use the reference images. You can mention specific images by number.",
+          "helpTextTh": "โน้ตเพิ่มเติมเกี่ยวกับการใช้รูปอ้างอิง สามารถระบุเจาะจงรูปได้โดยอ้างหมายเลข",
+          "default": "",
+          "rows": 2
         }
       ]
     },
@@ -378,6 +363,7 @@
     "userRequest": "userRequest",
     "outputLanguage": "outputLanguage",
     "reference_images": "reference_images",
+    "referenceNotes": "referenceNotes",
     "intent": "intent",
     "modeOverride": "modeOverride",
     "variationType": "variationType",

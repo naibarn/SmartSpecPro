@@ -285,6 +285,7 @@ class TestSuccessfulExecution:
         policy_client = AsyncMock()
         policy_client.enforce_before_action = AsyncMock()
         policy_client.enforce_transition = AsyncMock()
+        policy_client.record_action_outcome = AsyncMock()
         executor = SelfHealingExecutor(
             browser_pool=mock_browser_pool,
             selector_cache=mock_selector_cache,

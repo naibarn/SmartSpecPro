@@ -12,6 +12,7 @@ function normalize(value: string | null | undefined): string {
 
 const CATEGORY_ALLOWED_EXECUTION_MODES: Partial<Record<string, SkillExecutionMode[]>> = {
   article_generation: ["llm-only"],
+  product_review: ["llm-only"],
   prompt_enhancement: ["llm-only", "enhance-prompt"],
   image_prompt_generation: ["llm-only", "enhance-prompt"],
   video_prompt_generation: ["llm-only", "enhance-prompt"],

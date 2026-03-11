@@ -16,6 +16,7 @@ import { debugLog, debugError } from "./logger";
 import { auditLogger } from "../services/auditLogger";
 import { getTraceId } from "../services/traceContext";
 import { logRequest as logCostRequest } from "../services/costTracker";
+import { resolveEnabledLlmModelId } from "../services/enabledLlmModels";
 import { getFeatureFlag, getTenantFeatureFlag } from "../services/featureFlags";
 import {
   deductCreditsForModel,
@@ -438,10 +439,17 @@ export function registerResponsesRoutes(
         });
       }
 
-      const requestedModelId =
-        (sanitizedBody.model as string) ||
-        provider.defaultModel ||
-        "gpt-4o-mini";
+      const requestedModelId = await resolveEnabledLlmModelId([
+        sanitizedBody.model as string | undefined,
+        provider.defaultModel,
+      ]);
+      if (!requestedModelId) {
+        return res.status(503).json({
+          error: {
+            message: "No enabled LLM model configured.",
+          },
+        });
+      }
       let model = requestedModelId;
       let apiStyle: ApiStyle | undefined;
 

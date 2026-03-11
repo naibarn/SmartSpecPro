@@ -33,6 +33,13 @@ import {
   Loader2,
   Sparkles,
   Upload,
+  Type,
+  ImageIcon,
+  Video,
+  RectangleHorizontal,
+  Minus,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -2066,6 +2073,30 @@ export function PropertyPanel({
       data-testid="canvas-property-panel"
       style={{ fontFamily: "Inter, system-ui, sans-serif" }}
     >
+      {/* ── Element Info ── */}
+      <div className="flex items-center gap-2.5 px-1.5 py-1.5 rounded-lg bg-zinc-800/70 border border-zinc-700/50">
+        <div className={cn(
+          "flex h-7 w-7 items-center justify-center rounded-md shrink-0",
+          selectedElement.type === "text" && "bg-blue-500/25 text-blue-300",
+          selectedElement.type === "image" && "bg-green-500/25 text-green-300",
+          selectedElement.type === "video" && "bg-purple-500/25 text-purple-300",
+          selectedElement.type === "rect" && "bg-amber-500/25 text-amber-300",
+          selectedElement.type === "line" && "bg-zinc-500/25 text-zinc-300",
+        )}>
+          {selectedElement.type === "text" && <Type className="h-4 w-4" />}
+          {selectedElement.type === "image" && <ImageIcon className="h-4 w-4" />}
+          {selectedElement.type === "video" && <Video className="h-4 w-4" />}
+          {selectedElement.type === "rect" && <RectangleHorizontal className="h-4 w-4" />}
+          {selectedElement.type === "line" && <Minus className="h-4 w-4" />}
+        </div>
+        <div className="flex flex-col min-w-0">
+          <span className="text-xs font-semibold text-white capitalize">{selectedElement.type} Element</span>
+          <span className="text-[10px] text-zinc-300 font-mono select-all cursor-text" title={selectedElement.id}>
+            {selectedElement.id.length > 12 ? `${selectedElement.id.slice(0, 8)}…` : selectedElement.id}
+          </span>
+        </div>
+      </div>
+
       {/* ── Position & Size ── */}
       <Section label="Transform">
         <div className="grid grid-cols-2 gap-1.5">
@@ -3126,6 +3157,38 @@ export function PropertyPanel({
               <option value="cover">Cover (Crop)</option>
               <option value="fill">Fill</option>
             </select>
+          </label>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-center justify-between rounded-md border border-zinc-700 bg-zinc-900/60 px-2 py-1.5 text-xs text-zinc-200 cursor-pointer">
+              <span className="flex items-center gap-1.5">
+                {selectedElement.muted === false ? (
+                  <Volume2 className="h-3.5 w-3.5 text-blue-400" />
+                ) : (
+                  <VolumeX className="h-3.5 w-3.5 text-zinc-400" />
+                )}
+                Audio
+              </span>
+              <input
+                type="checkbox"
+                aria-label="Video Audio Enabled"
+                checked={selectedElement.muted === false}
+                onChange={(event) => onPatchSelected({ muted: !event.target.checked } as PresentationElementPatch)}
+              />
+            </label>
+            <span className="text-[10px] text-zinc-500">
+              Enable audio for videos with sound (e.g. Veo 3.1, Sora 2).
+            </span>
+          </div>
+
+          <label className="flex items-center justify-between rounded-md border border-zinc-700 bg-zinc-900/60 px-2 py-1.5 text-xs text-zinc-200 cursor-pointer">
+            <span>Loop</span>
+            <input
+              type="checkbox"
+              aria-label="Video Loop"
+              checked={selectedElement.loop ?? false}
+              onChange={(event) => onPatchSelected({ loop: event.target.checked } as PresentationElementPatch)}
+            />
           </label>
 
           <MediaMotionControls

@@ -2253,6 +2253,7 @@ export const skillCategoryEnum = pgEnum("skill_category", [
   "image_video_generation", // Generate both Image and Video
   "audio_generation",      // Generate Text To Speech
   "article_generation",    // Generate source articles / presentation drafts
+  "product_review",        // Product review generation (household, beauty, fashion, etc.)
   "sound_effects",         // Generate Sound Effects
   "prompt_enhancement",    // Enhance prompts
   "code_assistant",        // Code help

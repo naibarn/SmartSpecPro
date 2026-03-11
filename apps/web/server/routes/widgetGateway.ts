@@ -413,7 +413,6 @@ function handleWidgetConnection(ws: WebSocket, upgradeOrigin: string): void {
               const conv = await createConversation({
                 userId,
                 title: `Widget Chat (${session!.visitorSessionId.slice(0, 8)})`,
-                model: "gpt-4o-mini",
               });
               session!.conversationId = conv.id;
             }

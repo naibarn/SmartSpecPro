@@ -438,13 +438,21 @@ export default function AdminLLMProviders() {
         Back to Dashboard
       </Button>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <Settings className="h-8 w-8" />
-          LLM Provider Configuration
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Configure API keys, settings, and model versions for LLM providers
-        </p>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <Settings className="h-8 w-8" />
+              LLM Provider Configuration
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Configure API keys, endpoints, and provider-level defaults for LLM providers
+            </p>
+          </div>
+          <Button onClick={() => setLocation("/admin/llm-models")}>
+            <Cpu className="h-4 w-4 mr-2" />
+            Manage LLM Models
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -721,10 +729,25 @@ export default function AdminLLMProviders() {
         </div>
       )}
 
+      <Card className="mt-8 border-dashed">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">LLM Model Availability</CardTitle>
+          <CardDescription>
+            เปิดหรือปิดแต่ละ LLM model แยกจาก provider page และรองรับ bulk enable/disable ได้ที่หน้า dedicated models admin
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" onClick={() => setLocation("/admin/llm-models")}>
+            <Cpu className="h-4 w-4 mr-2" />
+            Open LLM Models Page
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Multi-Provider Routing */}
       <div className="mt-8">
-        <h2 className="text-xl font-semibold mb-4">Multi-Provider Routing</h2>
-        <MultiProviderAdmin />
+        <h2 className="text-xl font-semibold mb-4">Routing, Health, and Usage</h2>
+        <MultiProviderAdmin tabs={["rules", "health", "usage"]} defaultTab="rules" />
       </div>
 
       {/* Edit/Create Dialog */}

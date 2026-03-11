@@ -7,6 +7,7 @@ import { auditLogger } from "./auditLogger";
 import { decrypt } from "./crypto";
 import { getTraceId } from "./traceContext";
 import { calculateCreditsFromCost } from "./creditService";
+import { resolveEnabledLlmModelId } from "./enabledLlmModels";
 import { buildModelProviderMapLookupCondition } from "./modelLookup";
 import type { Message } from "../_core/llm";
 
@@ -61,8 +62,13 @@ export async function resolveProviders(modelId: string): Promise<ProviderCandida
  * This is a drop-in replacement for the old getActiveLlmProvider() pattern.
  */
 export async function getProviderForModel(modelId: string): Promise<ProviderCandidate | null> {
+  const resolvedModelId = await resolveEnabledLlmModelId([modelId]);
+  if (!resolvedModelId) {
+    return null;
+  }
+
   // 1. Try multi-provider routing
-  const candidates = await resolveProviders(modelId);
+  const candidates = await resolveProviders(resolvedModelId);
   if (candidates.length > 0) {
     return candidates[0];
   }
@@ -94,7 +100,7 @@ export async function getProviderForModel(modelId: string): Promise<ProviderCand
     providerName: provider.providerName,
     baseUrl: provider.baseUrl,
     apiKey,
-    providerModelId: modelId || provider.defaultModel || "gpt-4o-mini",
+    providerModelId: resolvedModelId,
     pricingInput: 0,
     pricingOutput: 0,
     isFree: false,
@@ -303,7 +309,12 @@ export async function executeWithFallback(params: {
   conversationId?: number;
   preferredProvider?: number;
 }): Promise<ExecuteResult> {
-  const { candidates, maxFallbacks } = await resolveProvidersWithRule(params.model);
+  const resolvedModel = await resolveEnabledLlmModelId([params.model]);
+  if (!resolvedModel) {
+    return { type: "error", error: "No enabled LLM model configured", statusCode: 503 };
+  }
+
+  const { candidates, maxFallbacks } = await resolveProvidersWithRule(resolvedModel);
   const failureDetails: AttemptFailureDetail[] = [];
 
   // If preferredProvider, filter to just that one
@@ -567,7 +578,7 @@ export async function executeWithFallback(params: {
   auditLogger.log({
     eventType: "llm_response",
     userId: params.userId,
-    model: params.model,
+    model: resolvedModel,
     statusCode: 502,
     errorType: "all_providers_failed",
     errorMessage: aggregatedError.slice(0, 500),

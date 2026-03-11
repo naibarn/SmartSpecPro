@@ -8,6 +8,7 @@
     "userRequest",
     "outputLanguage",
     "reference_images",
+    "referenceNotes",
     "intent",
     "modeOverride",
     "preserveArchitecture",
@@ -39,34 +40,16 @@
     "reference_images": {
       "type": "array",
       "default": [],
-      "description": "Reference images with their purposes. Image files are attached by the runtime outside the JSON payload. Each array item describes the corresponding attached image in the same order.",
+      "description": "URLs of reference images. All images are treated as visual references for the landscape design. Can be uploaded, selected from library, or pasted as URLs.",
       "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "role",
-          "notes"
-        ],
-        "default": {
-          "role": "reference",
-          "notes": ""
-        },
-        "properties": {
-          "role": {
-            "type": "string",
-            "enum": [
-              "reference"
-            ],
-            "default": "reference",
-            "description": "Purpose of the reference image. For this skill, every attached image is treated as a reference image."
-          },
-          "notes": {
-            "type": "string",
-            "default": "",
-            "description": "Additional notes about the image."
-          }
-        }
+        "type": "string",
+        "description": "URL of a reference image."
       }
+    },
+    "referenceNotes": {
+      "type": "string",
+      "default": "",
+      "description": "Optional notes about how to use the reference images. Can mention specific images by number (e.g. 'Image 1 — use planting style only')."
     },
     "intent": {
       "type": "string",

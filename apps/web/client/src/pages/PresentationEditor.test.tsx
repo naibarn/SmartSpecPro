@@ -1885,6 +1885,87 @@ describe("PresentationEditor", () => {
     cancelAnimationFrameSpy.mockRestore();
   });
 
+  it("auto-advances through all slides and stops after the last one", async () => {
+    vi.useFakeTimers();
+    const requestAnimationFrameSpy = vi
+      .spyOn(window, "requestAnimationFrame")
+      .mockImplementation((callback: FrameRequestCallback) => (
+        window.setTimeout(() => callback(window.performance.now()), 16) as unknown as number
+      ));
+    const performanceNowSpy = vi
+      .spyOn(window.performance, "now")
+      .mockImplementation(() => Date.now());
+    const cancelAnimationFrameSpy = vi
+      .spyOn(window, "cancelAnimationFrame")
+      .mockImplementation((handle: number) => {
+        window.clearTimeout(handle);
+      });
+    queryState.deckByItem = {
+      ...buildDeckByItem(),
+      slides: [
+        {
+          id: 71, deckId: 7, orderIndex: 0, version: 3, title: "Slide A",
+          slideContent: { durationMs: 2000, elements: [{ id: "t-a", type: "text", x: 10, y: 10, width: 200, height: 60, text: "A", color: "#000" }] },
+          notes: null,
+        },
+        {
+          id: 72, deckId: 7, orderIndex: 1, version: 1, title: "Slide B",
+          slideContent: { durationMs: 2000, elements: [{ id: "t-b", type: "text", x: 10, y: 10, width: 200, height: 60, text: "B", color: "#000" }] },
+          notes: null,
+        },
+        {
+          id: 73, deckId: 7, orderIndex: 2, version: 1, title: "Slide C",
+          slideContent: { durationMs: 2000, elements: [{ id: "t-c", type: "text", x: 10, y: 10, width: 200, height: 60, text: "C", color: "#000" }] },
+          notes: null,
+        },
+      ],
+    } as any;
+
+    render(<PresentationEditor />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /play slideshow/i }));
+    });
+
+    // Overlay should be visible, showing slide 1 of 3
+    expect(screen.getByTestId("slideshow-preview-overlay")).toBeInTheDocument();
+    expect(screen.getByText("Slide 1 / 3")).toBeInTheDocument();
+
+    // At 1000ms (halfway through slide A), should still be on slide 1
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+    expect(screen.getByText("Slide 1 / 3")).toBeInTheDocument();
+
+    // Advance past slide A duration (remaining 1000ms + buffer)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1100);
+    });
+
+    // Should now be on slide 2 (NOT skip to slide 3 or close)
+    expect(screen.getByTestId("slideshow-preview-overlay")).toBeInTheDocument();
+    expect(screen.getByText("Slide 2 / 3")).toBeInTheDocument();
+
+    // Advance past slide B duration (2000ms)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2100);
+    });
+
+    // Should now be on slide 3
+    expect(screen.getByTestId("slideshow-preview-overlay")).toBeInTheDocument();
+    expect(screen.getByText("Slide 3 / 3")).toBeInTheDocument();
+
+    // Advance past slide C duration (2000ms) — should close overlay
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2100);
+    });
+
+    expect(screen.queryByTestId("slideshow-preview-overlay")).not.toBeInTheDocument();
+
+    requestAnimationFrameSpy.mockRestore();
+    performanceNowSpy.mockRestore();
+    cancelAnimationFrameSpy.mockRestore();
+  });
+
   it("resets slideshow media motion when jumping to another slide during playback", async () => {
     vi.useFakeTimers();
     const requestAnimationFrameSpy = vi

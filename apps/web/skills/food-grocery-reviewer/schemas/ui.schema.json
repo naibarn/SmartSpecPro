@@ -1,0 +1,210 @@
+{
+  "version": "1.0",
+  "skillId": "food-grocery-reviewer",
+  "title": "Food & Grocery Reviewer",
+  "titleTh": "รีวิวอาหารและของกิน",
+  "description": "Write honest, story-driven reviews for food products, snacks, and beverages",
+  "descriptionTh": "เขียนรีวิวอาหาร ขนม เครื่องดื่ม แบบเล่าเรื่อง จริงใจ เหมือนเพื่อนเล่าให้ฟัง",
+  "sections": [
+    {
+      "id": "product",
+      "title": "Product Info",
+      "titleTh": "ข้อมูลสินค้า",
+      "icon": "utensils",
+      "fields": [
+        {
+          "id": "topic",
+          "type": "textarea",
+          "label": "Product Name or Description",
+          "labelTh": "ชื่อสินค้า หรือรายละเอียดสินค้า",
+          "placeholder": "e.g., Mama Tom Yum instant noodles, Oishi green tea, Lay's nori seaweed chips",
+          "placeholderTh": "เช่น มาม่าต้มยำ, โออิชิ ชาเขียว, เลย์รสสาหร่าย",
+          "helpText": "Enter the product name, brand, or describe it. You can also attach product images below.",
+          "helpTextTh": "ใส่ชื่อสินค้า ยี่ห้อ หรืออธิบายสั้นๆ หรือจะแนบรูปสินค้าด้านล่างแทนก็ได้",
+          "required": false,
+          "rows": 2
+        },
+        {
+          "id": "reference_images",
+          "type": "images",
+          "label": "Product Images (Optional)",
+          "labelTh": "รูปสินค้า (ไม่บังคับ)",
+          "helpText": "Attach product photos. The AI will analyze the images to identify the product and write a review based on what it sees.",
+          "helpTextTh": "แนบรูปสินค้า ระบบจะวิเคราะห์รูปเพื่อระบุสินค้าและเขียนรีวิวตามที่เห็นในภาพ",
+          "multiple": true,
+          "accept": "image/*"
+        },
+        {
+          "id": "product_specs",
+          "type": "textarea",
+          "label": "Product Specifications (Optional)",
+          "labelTh": "คุณสมบัติสินค้า (ไม่บังคับ)",
+          "placeholder": "e.g., Sugar-free, contains stevia, 0 calories, 330ml can, halal certified",
+          "placeholderTh": "เช่น ไม่มีน้ำตาล ใช้สตีเวีย 0 แคลอรี กระป๋อง 330 มล. ฮาลาล",
+          "helpText": "Describe the real specs, ingredients, and nutritional info. The review will only mention what you specify here.",
+          "helpTextTh": "ระบุคุณสมบัติจริงของสินค้า ส่วนประกอบ โภชนาการ ระบบจะเขียนรีวิวตามข้อมูลนี้เท่านั้น",
+          "required": false,
+          "rows": 3
+        },
+        {
+          "id": "product_category",
+          "type": "select",
+          "label": "Product Category",
+          "labelTh": "หมวดหมู่สินค้า",
+          "helpText": "Helps tailor the review to the right audience and context",
+          "helpTextTh": "ช่วยให้รีวิวตรงกลุ่มเป้าหมายและบริบทการใช้งาน",
+          "required": true,
+          "default": "general",
+          "options": [
+            { "value": "general", "label": "General Food", "labelTh": "อาหารทั่วไป" },
+            { "value": "snack", "label": "Snacks & Chips", "labelTh": "ขนมขบเคี้ยว" },
+            { "value": "beverage", "label": "Beverages", "labelTh": "เครื่องดื่ม" },
+            { "value": "instant_meal", "label": "Instant Meals", "labelTh": "อาหารสำเร็จรูป" },
+            { "value": "condiment", "label": "Condiments & Sauces", "labelTh": "เครื่องปรุงและซอส" },
+            { "value": "ingredient", "label": "Cooking Ingredients", "labelTh": "วัตถุดิบประกอบอาหาร" },
+            { "value": "frozen", "label": "Frozen Food", "labelTh": "อาหารแช่แข็ง" },
+            { "value": "canned", "label": "Canned Food", "labelTh": "อาหารกระป๋อง" },
+            { "value": "bakery", "label": "Bread & Bakery", "labelTh": "ขนมปังและเบเกอรี่" },
+            { "value": "dairy", "label": "Dairy Products", "labelTh": "ผลิตภัณฑ์นม" },
+            { "value": "health_food", "label": "Health Food", "labelTh": "อาหารเพื่อสุขภาพ" },
+            { "value": "imported", "label": "Imported Food", "labelTh": "อาหารนำเข้า" }
+          ]
+        },
+        {
+          "id": "language",
+          "type": "select",
+          "label": "Language",
+          "labelTh": "ภาษา",
+          "helpText": "Review output language",
+          "helpTextTh": "ภาษาที่ใช้เขียนรีวิว",
+          "required": true,
+          "default": "th",
+          "options": [
+            { "value": "th", "label": "Thai (ภาษาไทย)", "labelTh": "ภาษาไทย" },
+            { "value": "en", "label": "English", "labelTh": "อังกฤษ" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "style",
+      "title": "Review Style",
+      "titleTh": "สไตล์รีวิว",
+      "icon": "message-circle",
+      "fields": [
+        {
+          "id": "review_angle",
+          "type": "select",
+          "label": "Review Angle",
+          "labelTh": "มุมมองรีวิว",
+          "helpText": "The storytelling perspective for the review",
+          "helpTextTh": "มุมมองในการเล่าเรื่องรีวิว",
+          "required": true,
+          "default": "problem_solution",
+          "options": [
+            { "value": "problem_solution", "label": "Problem and Solution", "labelTh": "ปัญหาและทางแก้" },
+            { "value": "daily_life", "label": "Daily Meal Routine", "labelTh": "มื้ออาหารประจำวัน" },
+            { "value": "comparison", "label": "Compared to Others", "labelTh": "เทียบกับของที่เคยกิน" },
+            { "value": "first_impression", "label": "First Bite/Sip", "labelTh": "ลองคำแรก" },
+            { "value": "long_term", "label": "Repeat Purchase Review", "labelTh": "รีวิวหลังซื้อซ้ำ" }
+          ]
+        },
+        {
+          "id": "storytelling_style",
+          "type": "select",
+          "label": "Storytelling Structure (optional)",
+          "labelTh": "โครงสร้างการเล่าเรื่อง (ไม่บังคับ)",
+          "helpText": "Leave empty for random selection.",
+          "helpTextTh": "ไม่เลือกก็ได้ ระบบจะสุ่มให้",
+          "required": false,
+          "options": [
+            { "value": "hpso", "label": "Hook - Problem - Solution - Outcome", "labelTh": "เปิด - ปัญหา - ทางออก - ผลลัพธ์" },
+            { "value": "aida", "label": "Attention - Interest - Desire - Action", "labelTh": "ดึงดูด - สนใจ - อยากได้ - ลงมือ" },
+            { "value": "pas", "label": "Problem - Agitate - Solution", "labelTh": "ปัญหา - ขยี้ - ทางออก" },
+            { "value": "hook_insight_tip", "label": "Hook - Insight - Tip", "labelTh": "เปิด - เจาะลึก - ทิป" },
+            { "value": "before_after", "label": "Before - After - Bridge", "labelTh": "ก่อน - หลัง - เชื่อมโยง" },
+            { "value": "story_flow", "label": "Story Flow", "labelTh": "เล่าเรื่อง" },
+            { "value": "my_why", "label": "My Why - My Way - Your Turn", "labelTh": "เหตุผลของฉัน - วิธีของฉัน - ถึงคุณแล้ว" },
+            { "value": "complain_recall", "label": "Complain - Recall - Press - Gentle", "labelTh": "บ่น - ย้อน - ขยี้ - อ่อนโยน" },
+            { "value": "fab", "label": "Features - Advantages - Benefits", "labelTh": "คุณสมบัติ - ข้อได้เปรียบ - ประโยชน์" },
+            { "value": "star", "label": "Situation - Task - Action - Result", "labelTh": "สถานการณ์ - ภารกิจ - การลงมือ - ผลลัพธ์" },
+            { "value": "scr", "label": "Situation - Complication - Resolution", "labelTh": "สถานการณ์ - ปมปัญหา - ทางออก" },
+            { "value": "inverted_pyramid", "label": "Lead - Details - Background", "labelTh": "ใจความสำคัญ - รายละเอียด - ภูมิหลัง" },
+            { "value": "listicle", "label": "Intro - Numbered Tips - Wrap-up", "labelTh": "เปิด - เคล็ดลับเรียงข้อ - สรุป" },
+            { "value": "qa_flow", "label": "Question - Explore - Answer - Takeaway", "labelTh": "ตั้งคำถาม - สำรวจ - คำตอบ - สิ่งที่ได้" }
+          ]
+        },
+        {
+          "id": "include_pricing",
+          "type": "boolean",
+          "label": "Include Pricing Info",
+          "labelTh": "ระบุราคาโดยประมาณ",
+          "helpText": "Add approximate pricing and value-for-money assessment",
+          "helpTextTh": "เพิ่มข้อมูลราคาโดยประมาณและความคุ้มค่า",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "options",
+      "title": "Options",
+      "titleTh": "ตัวเลือกเพิ่มเติม",
+      "icon": "settings",
+      "fields": [
+        {
+          "id": "length",
+          "type": "select",
+          "label": "Review Length",
+          "labelTh": "ความยาวรีวิว",
+          "helpText": "Short is about 1 min read, medium 1.5 min, long up to 3 min",
+          "helpTextTh": "สั้น ประมาณ 1 นาที, กลาง 1.5 นาที, ยาว สูงสุด 3 นาที",
+          "required": true,
+          "default": "medium",
+          "options": [
+            { "value": "short", "label": "Short (about 1 min)", "labelTh": "สั้น (ประมาณ 1 นาที)" },
+            { "value": "medium", "label": "Medium (about 1.5 min)", "labelTh": "กลาง (ประมาณ 1.5 นาที)" },
+            { "value": "long", "label": "Long (up to 3 min)", "labelTh": "ยาว (สูงสุด 3 นาที)" }
+          ]
+        },
+        {
+          "id": "word_count",
+          "type": "number",
+          "label": "Maximum Words (optional)",
+          "labelTh": "จำนวนคำสูงสุด (ไม่บังคับ)",
+          "helpText": "If set, the review will not exceed this word count.",
+          "helpTextTh": "หากกำหนด ระบบจะสร้างรีวิวไม่เกินจำนวนคำนี้",
+          "min": 80,
+          "max": 3000,
+          "step": 10
+        },
+        {
+          "id": "output_format",
+          "type": "select",
+          "label": "Output Format",
+          "labelTh": "รูปแบบผลลัพธ์",
+          "helpText": "Markdown uses headings and formatting. Plain text is clean for TTS narration.",
+          "helpTextTh": "Markdown ใช้หัวข้อและจัดรูปแบบ ข้อความธรรมดาเหมาะสำหรับอ่านออกเสียง",
+          "required": true,
+          "default": "markdown",
+          "options": [
+            { "value": "markdown", "label": "Markdown", "labelTh": "Markdown" },
+            { "value": "plain_text", "label": "Plain Text (TTS-friendly)", "labelTh": "ข้อความธรรมดา (เหมาะกับอ่านออกเสียง)" }
+          ]
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "topic": "topic",
+    "reference_images": "reference_images",
+    "product_specs": "product_specs",
+    "language": "language",
+    "product_category": "product_category",
+    "review_angle": "review_angle",
+    "storytelling_style": "storytelling_style",
+    "include_pricing": "include_pricing",
+    "output_format": "output_format",
+    "length": "length",
+    "word_count": "word_count"
+  }
+}

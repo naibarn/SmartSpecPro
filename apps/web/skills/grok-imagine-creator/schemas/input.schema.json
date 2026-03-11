@@ -1,0 +1,342 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Grok Imagine Creator Input Schema",
+  "description": "Input specification for generating optimized prompts for the Grok Imagine API — supports text-to-image, image-to-image, text-to-video, image-to-video, and upscale modes",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["description", "mode"],
+  "properties": {
+    "mode": {
+      "type": "string",
+      "title": "1. Generation Mode",
+      "description": "Generation type: text-to-image, image-to-image, text-to-video, image-to-video, or upscale",
+      "enum": ["text-to-image", "image-to-image", "text-to-video", "image-to-video", "upscale"],
+      "enumDescriptions": {
+        "text-to-image": "Generate image(s) from text description only",
+        "image-to-image": "Transform a reference image based on text instructions",
+        "text-to-video": "Generate video from text description only",
+        "image-to-video": "Animate a reference image into a video",
+        "upscale": "Enhance resolution of a previously generated video (360p to 720p) — pipeline step only"
+      },
+      "default": "text-to-image"
+    },
+    "description": {
+      "type": "string",
+      "title": "2. Creative Brief",
+      "description": "Main creative brief describing what to generate. For video upscale pipeline, describe what to preserve and enhancement preferences.",
+      "minLength": 5,
+      "maxLength": 5000,
+      "examples": [
+        "A serene Japanese garden at sunset with cherry blossoms falling gently",
+        "Transform this photo into an anime-style illustration",
+        "A Thai street food vendor cooking pad thai at night market with neon lights",
+        "Animate this portrait — the character slowly turns and smiles at camera",
+        "Generate a cinematic video of a drone flyover and upscale to 720p"
+      ]
+    },
+    "outputLanguage": {
+      "type": "string",
+      "title": "3. Prompt Language",
+      "description": "Language for the generated prompt",
+      "enum": ["en", "th"],
+      "enumDescriptions": {
+        "en": "English — full English prompt",
+        "th": "Thai — Thai with technical terms in English"
+      },
+      "default": "en"
+    },
+    "style": {
+      "type": "string",
+      "title": "4. Visual Style",
+      "description": "Visual style preset that determines lighting, color, and overall aesthetic",
+      "enum": ["cinematic", "anime", "cartoon", "realistic", "documentary", "artistic", "commercial", "fantasy", "noir", "vintage"],
+      "enumDescriptions": {
+        "cinematic": "Film-like quality, dramatic lighting, shallow depth of field",
+        "anime": "Japanese animation style, cel-shaded, vibrant colors",
+        "cartoon": "Western cartoon style, bold outlines, exaggerated features",
+        "realistic": "Photorealistic, natural lighting, high detail",
+        "documentary": "Observational, natural, unposed look",
+        "artistic": "Painterly, abstract, or mixed-media aesthetic",
+        "commercial": "Clean, polished, product-focused look",
+        "fantasy": "Mythical, magical, otherworldly atmosphere",
+        "noir": "High contrast, shadows, moody black-and-white feel",
+        "vintage": "Retro film grain, muted tones, period-appropriate look"
+      },
+      "default": "cinematic"
+    },
+    "aspectRatio": {
+      "type": "string",
+      "title": "5. Aspect Ratio",
+      "description": "Output aspect ratio — affects composition and framing",
+      "enum": ["16:9", "9:16", "3:2", "2:3", "1:1"],
+      "enumDescriptions": {
+        "16:9": "Landscape / Widescreen — YouTube, cinematic",
+        "9:16": "Portrait / Mobile — TikTok, Reels, Shorts",
+        "3:2": "Classic photo — traditional photography",
+        "2:3": "Portrait photo — vertical photography",
+        "1:1": "Square — Instagram, profile images"
+      },
+      "default": "16:9"
+    },
+    "grokMode": {
+      "type": "string",
+      "title": "6. Grok Mode",
+      "description": "Grok content generation mode. Spicy is only available for text-to-video without image inputs. Fun is available for all modes.",
+      "enum": ["normal", "fun", "spicy"],
+      "enumDescriptions": {
+        "normal": "Standard balanced output",
+        "fun": "More creative, playful, exaggerated results (all modes)",
+        "spicy": "Edgier, bolder creative choices (text-to-video only, no image inputs)"
+      },
+      "default": "normal"
+    },
+    "duration": {
+      "type": "integer",
+      "title": "7. Video Duration (seconds)",
+      "description": "Video length in seconds. Only 6, 10, or 15 are supported by Grok Imagine. Video modes only.",
+      "enum": [6, 10, 15],
+      "enumDescriptions": {
+        "6": "6 seconds — Quick clip, one clear action",
+        "10": "10 seconds — Short sequence with 1-2 beats",
+        "15": "15 seconds — Mini narrative with beginning, middle, and end"
+      },
+      "default": 6
+    },
+    "resolution": {
+      "type": "string",
+      "title": "8. Video Resolution",
+      "description": "Video resolution. Video modes only.",
+      "enum": ["480p", "720p"],
+      "enumDescriptions": {
+        "480p": "480p — Faster generation, lower credits",
+        "720p": "720p — Best quality, higher credits"
+      },
+      "default": "720p"
+    },
+    "cameraMovement": {
+      "type": "string",
+      "title": "9. Camera Movement",
+      "description": "Camera motion style. Video modes only.",
+      "enum": ["auto", "static", "pan", "tilt", "dolly", "tracking", "crane", "drone", "handheld", "zoom", "whip_pan", "arc"],
+      "enumDescriptions": {
+        "auto": "Auto-select based on content and style",
+        "static": "Static fixed camera — stable, professional",
+        "pan": "Pan left/right — horizontal sweep, reveal",
+        "tilt": "Tilt up/down — vertical sweep, reveal height",
+        "dolly": "Dolly in/out — move closer or farther",
+        "tracking": "Tracking — follow subject movement",
+        "crane": "Crane — sweeping vertical rise/fall",
+        "drone": "Drone — smooth aerial glide",
+        "handheld": "Handheld — natural shake, raw, intimate",
+        "zoom": "Zoom in/out — focus shift, reveal",
+        "whip_pan": "Whip pan — fast snap transition",
+        "arc": "Arc — circle around subject"
+      },
+      "default": "auto"
+    },
+    "shotType": {
+      "type": "string",
+      "title": "10. Shot Type",
+      "description": "Shot framing type — camera distance from subject",
+      "enum": ["auto", "wide", "medium", "close_up", "extreme_close_up", "two_shot", "over_the_shoulder", "pov", "aerial", "establishing"],
+      "enumDescriptions": {
+        "auto": "Auto-select based on content",
+        "wide": "Wide shot — full body, environment context",
+        "medium": "Medium shot — waist-up, conversation",
+        "close_up": "Close-up — face/detail, emotion",
+        "extreme_close_up": "Extreme close-up — eyes, small details, macro",
+        "two_shot": "Two-shot — two people in frame",
+        "over_the_shoulder": "Over-the-shoulder — conversation perspective",
+        "pov": "POV — first-person perspective",
+        "aerial": "Aerial — bird's eye view",
+        "establishing": "Establishing shot — sets the scene"
+      },
+      "default": "auto"
+    },
+    "characters": {
+      "type": "string",
+      "title": "11. Character Descriptions",
+      "description": "Character descriptions, one per line in format: Name: visual description",
+      "examples": [
+        "Mia: Young Thai woman, long black hair, white linen shirt, warm smile",
+        "Ana: Young woman, long black hair, blue dress, cheerful\nBob: Tall man, short brown hair, suit, serious"
+      ],
+      "default": ""
+    },
+    "characterConsistency": {
+      "type": "boolean",
+      "title": "12. Character Consistency",
+      "description": "Include character sheet in prompt for visual consistency across generations",
+      "default": false
+    },
+    "reference_images": {
+      "type": "array",
+      "title": "13. Reference Images",
+      "description": "Reference image URLs for image-to-image or image-to-video modes. Not used for upscale (upscale uses internal task_id from pipeline).",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      },
+      "maxItems": 3,
+      "default": []
+    },
+    "referenceNotes": {
+      "type": "string",
+      "title": "14. Reference Notes",
+      "description": "Instructions on how to use reference images — what to keep, what to change",
+      "examples": [
+        "Keep the background but change the character's outfit to red",
+        "Maintain the pose and expression, change the lighting to golden hour"
+      ],
+      "default": ""
+    },
+    "negativeElements": {
+      "type": "string",
+      "title": "15. Elements to Avoid",
+      "description": "Elements to avoid in the generation. Describe what IS wanted rather than what isn't when possible.",
+      "examples": [
+        "blurry, low quality, watermark, text overlay, distorted faces",
+        "dark scenes, horror elements, violence"
+      ],
+      "default": ""
+    },
+    "numberOfVariations": {
+      "type": "integer",
+      "title": "16. Number of Variations",
+      "description": "Number of prompt variations to generate with different approaches",
+      "enum": [1, 2, 3, 4],
+      "enumDescriptions": {
+        "1": "Single prompt",
+        "2": "2 variations with different angles",
+        "3": "3 variations with diverse approaches",
+        "4": "4 variations for maximum choice"
+      },
+      "default": 1
+    },
+    "lighting": {
+      "type": "string",
+      "title": "17. Lighting Style",
+      "description": "Lighting style preference for the scene",
+      "enum": ["auto", "natural", "golden_hour", "blue_hour", "studio", "neon", "dramatic", "soft", "rim_light", "silhouette"],
+      "enumDescriptions": {
+        "auto": "Auto-select based on style and mood",
+        "natural": "Natural available light",
+        "golden_hour": "Warm golden sunset light",
+        "blue_hour": "Cool twilight blue tones",
+        "studio": "Studio lighting setup",
+        "neon": "Neon signs, colored light reflections",
+        "dramatic": "High contrast, directional, moody",
+        "soft": "Soft diffused light, minimal shadows",
+        "rim_light": "Edge/back lighting for subject separation",
+        "silhouette": "Backlit subject outline, dark foreground"
+      },
+      "default": "auto"
+    },
+    "colorPalette": {
+      "type": "string",
+      "title": "18. Color Palette",
+      "description": "Color mood preference — affects overall tone and feel",
+      "enum": ["auto", "warm", "cool", "vibrant", "pastel", "monochrome", "teal_orange", "earthy", "neon_cyberpunk", "vintage_film"],
+      "enumDescriptions": {
+        "auto": "Auto-select based on style and mood",
+        "warm": "Warm amber and orange tones — cozy, inviting",
+        "cool": "Cool blue and gray tones — professional, clean",
+        "vibrant": "Punchy, vivid, saturated colors — energetic",
+        "pastel": "Soft pastel tones — dreamy, gentle, romantic",
+        "monochrome": "Black and white or near-monochrome — artistic",
+        "teal_orange": "Teal shadows + orange highlights — cinematic blockbuster",
+        "earthy": "Greens, browns, warm neutrals — organic, nature",
+        "neon_cyberpunk": "Neon pink, cyan, purple — futuristic, nightlife",
+        "vintage_film": "Faded highlights, lifted blacks, film grain — retro"
+      },
+      "default": "auto"
+    },
+    "mood": {
+      "type": "string",
+      "title": "19. Mood / Atmosphere",
+      "description": "Overall emotional tone of the scene",
+      "enum": ["auto", "warm_inviting", "dramatic", "peaceful", "energetic", "mysterious", "romantic", "nostalgic", "futuristic", "dark_gritty"],
+      "enumDescriptions": {
+        "auto": "Auto-select based on content",
+        "warm_inviting": "Warm tones, welcoming, comfortable",
+        "dramatic": "High contrast, tension, intense",
+        "peaceful": "Soft, calm, contemplative, serene",
+        "energetic": "Vibrant, dynamic, exciting, upbeat",
+        "mysterious": "Dark, enigmatic, atmospheric, moody",
+        "romantic": "Soft focus, warm pastels, gentle",
+        "nostalgic": "Desaturated, film grain, retro feel",
+        "futuristic": "Blue/cyan tones, clean lines, tech aesthetic",
+        "dark_gritty": "Desaturated, raw, urban, noir-influenced"
+      },
+      "default": "auto"
+    },
+    "pipeline": {
+      "type": "string",
+      "title": "20. Pipeline Execution Depth",
+      "description": "Controls how far the system should execute: prompt only, prompt + generate, or prompt + generate + upscale (video only). Upscale pipeline is available for text-to-video and image-to-video modes only.",
+      "enum": ["prompt_only", "prompt_and_generate", "prompt_generate_upscale"],
+      "enumDescriptions": {
+        "prompt_only": "Generate optimized prompt only — no media generation",
+        "prompt_and_generate": "Generate prompt and automatically create the media (image or video)",
+        "prompt_generate_upscale": "Generate prompt, create video, then upscale 360p→720p (video modes only)"
+      },
+      "default": "prompt_only"
+    }
+  },
+  "examples": [
+    {
+      "mode": "text-to-image",
+      "description": "A serene Japanese garden at sunset with cherry blossoms falling gently onto a koi pond",
+      "style": "cinematic",
+      "aspectRatio": "16:9",
+      "lighting": "golden_hour",
+      "mood": "peaceful",
+      "outputLanguage": "en"
+    },
+    {
+      "mode": "text-to-video",
+      "description": "A street food vendor in Bangkok cooking pad thai at a night market, neon signs reflecting on wet pavement",
+      "style": "cinematic",
+      "duration": 10,
+      "resolution": "720p",
+      "aspectRatio": "16:9",
+      "cameraMovement": "tracking",
+      "mood": "energetic",
+      "outputLanguage": "en"
+    },
+    {
+      "mode": "image-to-image",
+      "description": "Transform this photo into a Studio Ghibli anime style with soft watercolor backgrounds",
+      "style": "anime",
+      "aspectRatio": "16:9",
+      "reference_images": ["https://example.com/photo.jpg"],
+      "referenceNotes": "Keep the composition and character pose, change art style to anime",
+      "outputLanguage": "en",
+      "pipeline": "prompt_and_generate"
+    },
+    {
+      "mode": "image-to-video",
+      "description": "The character slowly turns to face the camera and smiles warmly",
+      "style": "realistic",
+      "duration": 6,
+      "resolution": "720p",
+      "characters": "Mia: Young Thai woman, long black hair, white linen shirt",
+      "characterConsistency": true,
+      "reference_images": ["https://example.com/portrait.jpg"],
+      "outputLanguage": "en",
+      "pipeline": "prompt_and_generate"
+    },
+    {
+      "mode": "text-to-video",
+      "description": "A Thai street food chef flipping pad thai in a wok with flames, neon night market behind",
+      "style": "cinematic",
+      "duration": 10,
+      "resolution": "720p",
+      "aspectRatio": "16:9",
+      "cameraMovement": "tracking",
+      "mood": "energetic",
+      "outputLanguage": "en",
+      "pipeline": "prompt_generate_upscale"
+    }
+  ]
+}

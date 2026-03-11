@@ -37,18 +37,6 @@ export function ModelPicker({ value, onChange, className, compact }: ModelPicker
     const modelsByProvider = useMemo(() => {
         if (!modelsData?.models) return {};
 
-        // Default fallback models if none exist yet
-        if (modelsData.models.length === 0) {
-            return {
-                "Built-in": [
-                    { id: "gpt-4o", name: "GPT-4o", provider: "openai" },
-                    { id: "gpt-4o-mini", name: "GPT-4o Mini", provider: "openai" },
-                    { id: "claude-3-5-sonnet-latest", name: "Claude 3.5 Sonnet", provider: "anthropic" },
-                    { id: "claude-3-5-haiku-latest", name: "Claude 3.5 Haiku", provider: "anthropic" },
-                ]
-            };
-        }
-
         const grouped: Record<string, Array<{ id: string; name: string; provider: string }>> = {};
         for (const model of modelsData.models) {
             const provider = model.providerDisplayName || model.provider || "Other";

@@ -1030,14 +1030,41 @@ export function buildPresentationRenderSpec(input: BuildRenderSpecInput): Presen
   const degraded = degradeSlidesForExport(input.slides, DEFAULT_DURATION_MS, { format: input.format });
   const hasDynamicVideo = input.format === "mp4" && hasRenderableVideoElements(input.slides);
 
-  // Enrich degraded slides with resolved audio tracks when available.
+  // Build a map of slide ID → unmuted video element audio tracks for MP4 export.
+  const videoAudioBySlideId = new Map<number, Array<{ url: string; volume: number }>>();
+  if (input.format === "mp4") {
+    for (const slide of input.slides) {
+      const content =
+        slide.slideContent && typeof slide.slideContent === "object" && !Array.isArray(slide.slideContent)
+          ? (slide.slideContent as Record<string, unknown>)
+          : null;
+      const elements = Array.isArray(content?.elements) ? (content.elements as Array<Record<string, unknown>>) : [];
+      const tracks: Array<{ url: string; volume: number }> = [];
+      for (const el of elements) {
+        if (String(el?.type ?? "").toLowerCase() !== "video") continue;
+        if (el.muted !== false) continue; // only include explicitly unmuted videos
+        const src = typeof el.src === "string" ? el.src.trim() : "";
+        if (!src) continue;
+        tracks.push({ url: src, volume: 1 });
+      }
+      if (tracks.length > 0) {
+        videoAudioBySlideId.set(slide.id, tracks.slice(0, 4));
+      }
+    }
+  }
+
+  // Enrich degraded slides with resolved audio tracks and video element audio when available.
   // The slideAudioMap is keyed by slideId and contains already-resolved tracks
   // (url present) or tracks that still carry libraryItemId (resolved later by
   // resolveAudioUrls inside defaultEnqueueExportJob).
   const enrichedSlides = degraded.slides.map((slide) => {
     const audioTrack = input.slideAudioMap?.get(slide.slideId);
-    if (!audioTrack) return slide;
-    return { ...slide, audioTrack };
+    const videoElementAudioTracks = videoAudioBySlideId.get(slide.slideId);
+    return {
+      ...slide,
+      ...(audioTrack ? { audioTrack } : {}),
+      ...(videoElementAudioTracks ? { videoElementAudioTracks } : {}),
+    };
   });
 
   const slideshowPayload = presentationSlideshowPayloadSchema.parse({

@@ -1,0 +1,134 @@
+{
+  "version": "1.0",
+  "skillId": "marketing-article-writer",
+  "title": "Marketing Article Writer",
+  "titleTh": "ผู้เขียนบทความการตลาด",
+  "description": "Write marketing-focused content for pitch decks and strategy briefings",
+  "descriptionTh": "เขียนเนื้อหาการตลาดสำหรับ pitch deck และการบรรยายกลยุทธ์",
+  "sections": [
+    {
+      "id": "article",
+      "title": "Article",
+      "titleTh": "บทความ",
+      "icon": "file-text",
+      "fields": [
+        {
+          "id": "topic",
+          "type": "textarea",
+          "label": "Topic",
+          "labelTh": "หัวข้อ",
+          "placeholder": "e.g., Social media campaign strategy, Brand positioning analysis, Content marketing ROI",
+          "placeholderTh": "เช่น กลยุทธ์แคมเปญโซเชียลมีเดีย, การวิเคราะห์การวางตำแหน่งแบรนด์, ROI ของ Content Marketing",
+          "helpText": "What marketing topic should the article cover?",
+          "helpTextTh": "บทความควรครอบคลุมหัวข้อการตลาดอะไร?",
+          "required": true,
+          "rows": 2
+        },
+        {
+          "id": "reference_images",
+          "type": "images",
+          "label": "Reference Images (Optional)",
+          "labelTh": "รูปภาพอ้างอิง (ไม่บังคับ)",
+          "helpText": "Attach reference images (campaigns, ads, branding) to guide article content.",
+          "helpTextTh": "แนบรูปภาพอ้างอิง (แคมเปญ โฆษณา แบรนดิ้ง) เพื่อให้บทความสอดคล้องกับรูปภาพ",
+          "multiple": true,
+          "accept": "image/*"
+        },
+        {
+          "id": "language",
+          "type": "select",
+          "label": "Language",
+          "labelTh": "ภาษา",
+          "helpText": "Article output language",
+          "helpTextTh": "ภาษาที่ใช้เขียนบทความ",
+          "required": true,
+          "default": "en",
+          "options": [
+            { "value": "en", "label": "English", "labelTh": "อังกฤษ" },
+            { "value": "th", "label": "Thai (ภาษาไทย)", "labelTh": "ภาษาไทย" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "style",
+      "title": "Article Style",
+      "titleTh": "สไตล์บทความ",
+      "icon": "wand2",
+      "fields": [
+        {
+          "id": "storytelling_style",
+          "type": "select",
+          "label": "Storytelling Structure (optional)",
+          "labelTh": "โครงสร้างการเล่าเรื่อง (ไม่บังคับ)",
+          "helpText": "Leave empty for random selection. Each structure creates a different narrative flow.",
+          "helpTextTh": "ไม่เลือกก็ได้ ระบบจะสุ่มให้ แต่ละแบบให้ flow การเล่าเรื่องต่างกัน",
+          "required": false,
+          "options": [
+            { "value": "hpso", "label": "Hook - Problem - Solution - Outcome", "labelTh": "เปิด - ปัญหา - ทางออก - ผลลัพธ์" },
+            { "value": "aida", "label": "Attention - Interest - Desire - Action", "labelTh": "ดึงดูด - สนใจ - อยากได้ - ลงมือ" },
+            { "value": "pas", "label": "Problem - Agitate - Solution", "labelTh": "ปัญหา - ขยี้ - ทางออก" },
+            { "value": "hook_insight_tip", "label": "Hook - Insight - Tip", "labelTh": "เปิด - เจาะลึก - ทิป" },
+            { "value": "before_after", "label": "Before - After - Bridge", "labelTh": "ก่อน - หลัง - เชื่อมโยง" },
+            { "value": "story_flow", "label": "Story Flow (Hook - Backstory - Turning Point)", "labelTh": "เล่าเรื่อง (เปิด - ที่มา - จุดเปลี่ยน)" },
+            { "value": "my_why", "label": "My Why - My Way - Your Turn", "labelTh": "เหตุผลของฉัน - วิธีของฉัน - ถึงคุณแล้ว" },
+            { "value": "complain_recall", "label": "Complain - Recall - Press - Gentle", "labelTh": "บ่น - ย้อน - ขยี้ - อ่อนโยน" },
+            { "value": "fab", "label": "Features - Advantages - Benefits", "labelTh": "คุณสมบัติ - ข้อได้เปรียบ - ประโยชน์" },
+            { "value": "star", "label": "Situation - Task - Action - Result", "labelTh": "สถานการณ์ - ภารกิจ - การลงมือ - ผลลัพธ์" },
+            { "value": "scr", "label": "Situation - Complication - Resolution", "labelTh": "สถานการณ์ - ปมปัญหา - ทางออก" },
+            { "value": "inverted_pyramid", "label": "Lead - Details - Background", "labelTh": "ใจความสำคัญ - รายละเอียด - ภูมิหลัง" },
+            { "value": "listicle", "label": "Intro - Numbered Tips - Wrap-up", "labelTh": "เปิด - เคล็ดลับเรียงข้อ - สรุป" },
+            { "value": "qa_flow", "label": "Question - Explore - Answer - Takeaway", "labelTh": "ตั้งคำถาม - สำรวจ - คำตอบ - สิ่งที่ได้" }
+          ]
+        },
+        {
+          "id": "length",
+          "type": "select",
+          "label": "Article Length",
+          "labelTh": "ความยาวบทความ",
+          "required": true,
+          "default": "medium",
+          "options": [
+            { "value": "short", "label": "Short (~500 words)", "labelTh": "สั้น (~500 คำ)" },
+            { "value": "medium", "label": "Medium (~1,000 words)", "labelTh": "กลาง (~1,000 คำ)" },
+            { "value": "long", "label": "Long (~2,000 words)", "labelTh": "ยาว (~2,000 คำ)" }
+          ]
+        },
+        {
+          "id": "word_count",
+          "type": "number",
+          "label": "Maximum Words (optional)",
+          "labelTh": "จำนวนคำสูงสุด (ไม่บังคับ)",
+          "helpText": "If set, the generated article must not exceed this number of words.",
+          "helpTextTh": "หากกำหนด ระบบจะสร้างบทความไม่เกินจำนวนคำนี้",
+          "min": 120,
+          "max": 8000,
+          "step": 10
+        },
+        {
+          "id": "output_format",
+          "type": "select",
+          "label": "Output Format",
+          "labelTh": "รูปแบบผลลัพธ์",
+          "helpText": "Markdown uses headings and formatting. Plain text is clean for TTS narration.",
+          "helpTextTh": "Markdown ใช้หัวข้อและจัดรูปแบบ ข้อความธรรมดาเหมาะสำหรับอ่านออกเสียง",
+          "required": true,
+          "default": "markdown",
+          "options": [
+            { "value": "markdown", "label": "Markdown", "labelTh": "Markdown" },
+            { "value": "plain_text", "label": "Plain Text (TTS-friendly)", "labelTh": "ข้อความธรรมดา (เหมาะกับอ่านออกเสียง)" }
+          ]
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "topic": "topic",
+    "reference_images": "reference_images",
+    "language": "language",
+    "storytelling_style": "storytelling_style",
+    "output_format": "output_format",
+    "length": "length",
+    "word_count": "word_count"
+  }
+}

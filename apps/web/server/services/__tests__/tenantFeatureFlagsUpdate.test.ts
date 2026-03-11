@@ -68,6 +68,18 @@ describe("updateTenantFeatureFlags", () => {
     });
   });
 
+  it("checks browser policy promotion gates before enabling browser tool", async () => {
+    const { updateTenantFeatureFlags } = await import("../tenantFeatureFlagService");
+
+    await updateTenantFeatureFlags("tenant-1", { browserTool: true });
+
+    expect(mockAssertBrowserPolicyFeaturePromotionReady).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      flagName: "browserTool",
+      nextValue: true,
+    });
+  });
+
   it("does not call browser policy promotion gates for unrelated flags", async () => {
     const { updateTenantFeatureFlags } = await import("../tenantFeatureFlagService");
 

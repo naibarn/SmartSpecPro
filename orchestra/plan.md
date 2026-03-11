@@ -1,33 +1,20 @@
 # Orchestra Plan
 
 ## Task
-Investigate in detail why Presentation Edit shows divergent text across slide content, slide notes, and presentation note for AI-generated presentations.
+Move Reference Images from "Visual & References" section to right after Topic in "Content" section, add thumbnail previews, and pass reference images to article generation skill execution.
 
 ## Classification
-- scope: medium
-- risk: medium
-- affected_domains: backend AI generation, backend presentation persistence, frontend presentation editor, shared presentation contracts
-- estimated_file_count: 8
-- chosen_route: multi-agent-waves
-- task_summary: trace the AI draft and editor data flow to explain exactly where slide text, slide note, and presentation note diverge
-- bug_route: true
+- scope: small
+- risk: low
+- affected_domains: [frontend]
+- estimated_file_count: 1-2
+- chosen_route: single agent (conductor direct edit)
+- task_summary: Relocate Reference Images UI to Content section, enhance with thumbnails, pass to article generate skill
+- bug_route: N/A
 
-## Intent Signals
-- Explicit orchestra invocation by skill name
-- Bug/error investigation request
-- Cross-domain request covering AI draft generation, persistence, and editor rendering
-- Requires analysis before any safe code change
-
-## Task Classification
-- Scope: medium
-- Risk: medium
-- Affected domains: CMD-2 Backend, CMD-1 Frontend, shared presentation contracts
-- Estimated file count: 8
-- Chosen route: multi-agent-waves
-- Bug route: true
-- Classification notes: The problem is a known feature-area bug with unclear root cause across multiple flows. It spans AI generation, persistence, and editor state, but does not currently indicate auth or destructive data risk.
-
-## Wave Plan
-- Wave 1: Trace backend AI draft flow for article -> presentation note -> slide plan -> slide note -> slide content transformations
-- Wave 2: Trace frontend/editor load-save-display flow for deck note and slide note, then compare against backend expectations
-- Wave 3: Integrate findings into a root-cause report with concrete file/line references and recommended remediation options
+## Changes Required
+1. CUT the Reference Images block (lines ~1995-2096) from "Visual & References" section
+2. PASTE it into "Content" section right after Topic textarea (after line ~1478)
+3. Update description to clarify multi-purpose use (article gen, image gen, video start/stop frame)
+4. Pass referenceImageUrls to the handleGenerateArticle executeSkill call
+5. Thumbnails already exist in current implementation (grid with img tags) — they're already there

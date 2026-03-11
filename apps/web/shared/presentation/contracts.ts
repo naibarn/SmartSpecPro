@@ -396,6 +396,12 @@ export const presentationSlideContentSchema = z.object({
   visualOnly: z.boolean().optional(),
 }).strict();
 
+/** Audio extracted from an unmuted video element on the slide, for mixing into MP4 export. */
+export const videoElementAudioTrackSchema = z.object({
+  url: z.string().min(1).max(4_096),
+  volume: z.number().finite().min(0).max(1).default(1),
+}).strict();
+
 export const presentationSlideshowSlideSchema = z.object({
   slideId: z.number().int().positive(),
   orderIndex: z.number().int().nonnegative(),
@@ -404,6 +410,8 @@ export const presentationSlideshowSlideSchema = z.object({
   transition: presentationTransitionSchema,
   /** Resolved audio track for this slide. Only present in getPlayDeck response, not in export flows. */
   audioTrack: resolvedAudioTrackSchema.nullable().optional(),
+  /** Audio from unmuted video elements on this slide. Mixed into MP4 export by FFmpeg. */
+  videoElementAudioTracks: z.array(videoElementAudioTrackSchema).max(4).optional(),
 });
 
 export const presentationSlideshowPayloadSchema = z.object({

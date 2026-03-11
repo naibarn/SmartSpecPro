@@ -9,6 +9,8 @@ import { eq, and, sql, ilike, or, count, inArray } from "drizzle-orm";
 import { sanitizeBrandText } from "./brandingSanitizer";
 import path from "path";
 import { hasRelativeSkillManifest } from "./skillFiles";
+import { refreshModelCache } from "./modelRegistry";
+import { resolveMediaTypeFromSkillCategory, sanitizeMediaModelSelection } from "./mediaModelSelection";
 
 // Per-user cache with TTL
 const userVisibleCache = new Map<number, { skillIds: number[], expiry: number }>();
@@ -20,6 +22,32 @@ function invalidateUserCache(userId: number) {
 
 function hasLocalSkillFolder(slug: string): boolean {
   return hasRelativeSkillManifest(path.join("skills", slug));
+}
+
+function sanitizeSkillMediaModelConfig<T extends {
+  category?: string | null;
+  availableModels?: string[] | null;
+  defaultModel?: string | null;
+}>(skill: T): T & {
+  availableModels: string[] | null;
+  defaultModel: string | null;
+} {
+  const mediaType = resolveMediaTypeFromSkillCategory(skill.category);
+  if (!mediaType) {
+    return {
+      ...skill,
+      availableModels: skill.availableModels ?? null,
+      defaultModel: skill.defaultModel ?? null,
+    };
+  }
+
+  return {
+    ...skill,
+    ...sanitizeMediaModelSelection(mediaType, {
+      availableModels: skill.availableModels,
+      defaultModel: skill.defaultModel,
+    }),
+  };
 }
 
 async function requireDb() {
@@ -146,6 +174,13 @@ export async function getUserVisibleSkills(
   const db = await requireDb();
   const { search, category, limit = 50, offset = 0 } = options;
 
+  await refreshModelCache().catch((error) => {
+    console.warn("[UserSkillService] Failed to refresh media model cache before loading visible skills", {
+      userId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
+
   // Ensure user has visibility rows (lazy init)
   await ensureUserInitialized(userId);
 
@@ -205,7 +240,7 @@ export async function getUserVisibleSkills(
 
   return {
     skills: items.map((item) => ({
-      ...item,
+      ...sanitizeSkillMediaModelConfig(item),
       name: sanitizeBrandText(item.name || ""),
       description: sanitizeBrandText(item.description || ""),
     })),
@@ -224,6 +259,13 @@ export async function getAllSkillsForUser(
 ) {
   const db = await requireDb();
   const { search, category, limit = 20, offset = 0 } = options;
+
+  await refreshModelCache().catch((error) => {
+    console.warn("[UserSkillService] Failed to refresh media model cache before loading browseable skills", {
+      userId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
 
   const conditions: any[] = [eq(skillsTable.isEnabled, true)];
 
@@ -317,7 +359,7 @@ export async function getAllSkillsForUser(
 
   return {
     skills: items.map((s) => ({
-      ...s,
+      ...sanitizeSkillMediaModelConfig(s),
       name: sanitizeBrandText(s.name || ""),
       description: sanitizeBrandText(s.description || ""),
       visible: s.visible ?? false,

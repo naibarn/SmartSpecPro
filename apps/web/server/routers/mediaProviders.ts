@@ -447,28 +447,32 @@ function validateExternalUrl(url: string): void {
 }
 
 // Test functions for each provider
-async function testKieAI(apiKey: string, baseUrl: string): Promise<{ success: boolean; message: string; balance?: number }> {
-  // Kie AI uses Bearer token authentication
+export async function testKieAI(apiKey: string, baseUrl: string): Promise<{ success: boolean; message: string }> {
+  // Kie AI uses a jobs API. Probe createTask with an intentionally invalid payload:
+  // 400/422 means auth + endpoint are reachable without spending credits.
   validateExternalUrl(baseUrl);
-  const response = await fetch(`${baseUrl}/account/balance`, {
-    method: "GET",
+  const response = await fetch(`${baseUrl}/jobs/createTask`, {
+    method: "POST",
     headers: {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
+    body: JSON.stringify({
+      model: "__healthcheck__",
+      input: {},
+    }),
   });
 
-  if (!response.ok) {
-    const text = await response.text();
-    return { success: false, message: `API error: ${response.status} - ${text}` };
+  if (response.ok) {
+    return { success: true, message: "Connection successful" };
   }
 
-  const data = await response.json();
-  return {
-    success: true,
-    message: "Connection successful",
-    balance: data.balance || data.credits,
-  };
+  const text = await response.text();
+  if (response.status === 400 || response.status === 422) {
+    return { success: true, message: "Authentication verified (validation error expected for health check)" };
+  }
+
+  return { success: false, message: `API error: ${response.status} - ${text}` };
 }
 
 async function testFalAI(apiKey: string): Promise<{ success: boolean; message: string }> {

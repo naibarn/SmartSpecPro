@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { pickEnabledModelId } from "@/lib/enabledModelSelection";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -992,6 +993,14 @@ export default function MediaStudio() {
 
   // Query for vision-capable LLM models (for Auto Prompt model selection)
   const { data: visionModels } = trpc.skills.getVisionModels.useQuery();
+  const enabledVisionModelIds = useMemo(
+    () => (visionModels?.models ?? []).map((model: any) => model.id),
+    [visionModels?.models],
+  );
+  const defaultVisionModelId = useMemo(() => {
+    const defaultModel = visionModels?.models?.find((model: any) => model.isDefault) || visionModels?.models?.[0];
+    return defaultModel?.id || "";
+  }, [visionModels?.models]);
 
   // Query for skill's default model configuration
   const { data: skillConfig } = trpc.skills.getSkillConfig.useQuery(
@@ -1191,16 +1200,39 @@ export default function MediaStudio() {
   // Set default LLM model when skill config loads (from Skills Management default)
   // Only set default if user hasn't manually selected a model
   useEffect(() => {
-    if (llmModelManuallySet) return; // Don't override user's manual selection
-
-    if (skillConfig?.defaultModel) {
-      setSelectedLlmModel(skillConfig.defaultModel);
-    } else if (visionModels?.models?.length && !selectedLlmModel) {
-      // Fallback to first available vision model
-      const defaultModel = visionModels.models.find((m: any) => m.isDefault) || visionModels.models[0];
-      setSelectedLlmModel(defaultModel.id);
+    if (!visionModels?.models) {
+      return;
     }
-  }, [skillConfig, visionModels, llmModelManuallySet]);
+
+    if (enabledVisionModelIds.length === 0) {
+      if (selectedLlmModel) {
+        setSelectedLlmModel("");
+      }
+      return;
+    }
+
+    if (llmModelManuallySet) {
+      const nextModelId = pickEnabledModelId({
+        preferredId: selectedLlmModel,
+        allowedIds: enabledVisionModelIds,
+        fallbackIds: [defaultVisionModelId],
+      });
+      if (nextModelId !== selectedLlmModel) {
+        setSelectedLlmModel(nextModelId);
+      }
+      return;
+    }
+
+    const nextModelId = pickEnabledModelId({
+      preferredId: skillConfig?.defaultModel,
+      allowedIds: enabledVisionModelIds,
+      fallbackIds: [selectedLlmModel, defaultVisionModelId],
+    });
+
+    if (nextModelId !== selectedLlmModel) {
+      setSelectedLlmModel(nextModelId);
+    }
+  }, [defaultVisionModelId, enabledVisionModelIds, llmModelManuallySet, selectedLlmModel, setSelectedLlmModel, skillConfig?.defaultModel, visionModels?.models]);
 
   // Reference image limits per tab (video allows more for storyboards)
   const maxReferenceImages = activeTab === "video" ? 25 : 5;

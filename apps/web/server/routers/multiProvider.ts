@@ -2,9 +2,36 @@ import { z } from "zod";
 import { router, protectedProcedure, adminProcedure } from "../_core/trpc";
 import { db } from "../db";
 import { modelProviderMap, llmProviders, routingRules } from "../../drizzle/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, inArray } from "drizzle-orm";
 import { getHealthSummary } from "../services/providerHealth";
 import { getAdminUsageStats, getUserUsageStats } from "../services/costTracker";
+
+export interface ModelMappingListRow {
+  id: number;
+  modelId: string;
+  providerId: number;
+  providerName: string;
+  providerDisplayName: string;
+  modelName: string;
+  providerModelId: string;
+  pricingInput: string;
+  pricingOutput: string;
+  isFree: boolean;
+  contextLength: number | null;
+  isEnabled: boolean;
+  priority: number;
+  apiStyle: "chat-completions" | "responses" | "messages" | "gemini";
+}
+
+export function groupModelMappingsByModelId(rows: ModelMappingListRow[]) {
+  return rows.reduce<Record<string, ModelMappingListRow[]>>((grouped, row) => {
+    if (!grouped[row.modelId]) {
+      grouped[row.modelId] = [];
+    }
+    grouped[row.modelId]!.push(row);
+    return grouped;
+  }, {});
+}
 
 export const multiProviderRouter = router({
   // --- Model Mapping CRUD (Admin) ---
@@ -16,6 +43,7 @@ export const multiProviderRouter = router({
         modelId: modelProviderMap.modelId,
         providerId: modelProviderMap.providerId,
         providerName: llmProviders.providerName,
+        providerDisplayName: llmProviders.displayName,
         modelName: modelProviderMap.modelName,
         providerModelId: modelProviderMap.providerModelId,
         pricingInput: modelProviderMap.pricingInput,
@@ -30,14 +58,28 @@ export const multiProviderRouter = router({
       .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
       .orderBy(asc(modelProviderMap.modelId), asc(modelProviderMap.priority));
 
-    // Group by modelId
-    const grouped: Record<string, typeof rows> = {};
-    for (const row of rows) {
-      if (!grouped[row.modelId]) grouped[row.modelId] = [];
-      grouped[row.modelId].push(row);
-    }
-    return grouped;
+    return groupModelMappingsByModelId(rows as ModelMappingListRow[]);
   }),
+
+  bulkSetModelMappingsEnabled: adminProcedure
+    .input(z.object({
+      ids: z.array(z.number().int()).min(1).max(500),
+      isEnabled: z.boolean(),
+    }))
+    .mutation(async ({ input }) => {
+      const uniqueIds = Array.from(new Set(input.ids));
+
+      await db
+        .update(modelProviderMap)
+        .set({ isEnabled: input.isEnabled })
+        .where(inArray(modelProviderMap.id, uniqueIds));
+
+      return {
+        success: true,
+        updatedCount: uniqueIds.length,
+        isEnabled: input.isEnabled,
+      };
+    }),
 
   upsertModelMapping: adminProcedure
     .input(
@@ -212,7 +254,7 @@ export const multiProviderRouter = router({
   // --- User Endpoints ---
 
   getAvailableModelsWithProviders: protectedProcedure.query(async () => {
-    // 1. Get explicitly configured models from model_provider_map
+    // Return only enabled mappings from enabled providers.
     const mappedRows = await db
       .select({
         modelId: modelProviderMap.modelId,
@@ -231,60 +273,13 @@ export const multiProviderRouter = router({
       .where(and(eq(modelProviderMap.isEnabled, true), eq(llmProviders.isEnabled, true)))
       .orderBy(asc(modelProviderMap.modelId), asc(modelProviderMap.priority));
 
-    // 2. Get all enabled providers with their availableModels
-    const providers = await db
-      .select({
-        id: llmProviders.id,
-        providerName: llmProviders.providerName,
-        availableModels: llmProviders.availableModels,
-      })
-      .from(llmProviders)
-      .where(eq(llmProviders.isEnabled, true));
-
-    // 3. Build a map of explicitly configured models (from model_provider_map)
-    const configuredModels = new Set<string>();
     const modelProviders: Record<string, { modelId: string; modelName: string; providers: any[] }> = {};
 
     for (const row of mappedRows) {
-      const key = `${row.modelId}:${row.providerId}`;
-      configuredModels.add(key);
-
       if (!modelProviders[row.modelId]) {
         modelProviders[row.modelId] = { modelId: row.modelId, modelName: row.modelName, providers: [] };
       }
       modelProviders[row.modelId].providers.push(row);
-    }
-
-    // 4. Add models from provider.availableModels that aren't in model_provider_map
-    for (const provider of providers) {
-      if (!provider.availableModels || !Array.isArray(provider.availableModels)) continue;
-
-      for (const model of provider.availableModels as any[]) {
-        if (!model.id || !model.name) continue;
-
-        const key = `${model.id}:${provider.id}`;
-
-        // Skip if already configured in model_provider_map
-        if (configuredModels.has(key)) continue;
-
-        // Add unconfigured model with provider info
-        if (!modelProviders[model.id]) {
-          modelProviders[model.id] = { modelId: model.id, modelName: model.name, providers: [] };
-        }
-
-        modelProviders[model.id].providers.push({
-          modelId: model.id,
-          modelName: model.name,
-          providerId: provider.id,
-          providerName: provider.providerName,
-          providerModelId: model.id,
-          pricingInput: model.pricing?.input?.toString() || "0",
-          pricingOutput: model.pricing?.output?.toString() || "0",
-          isFree: (model.pricing?.input === 0 && model.pricing?.output === 0) || false,
-          isEnabled: true,
-          contextLength: model.contextLength || null,
-        });
-      }
     }
 
     return Object.values(modelProviders);

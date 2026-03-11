@@ -31,6 +31,7 @@ import 'reactflow/dist/style.css';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { trpc } from '@/lib/trpc';
+import { pickEnabledModelId } from '@/lib/enabledModelSelection';
 import {
   GitBranch,
   Save,
@@ -199,6 +200,10 @@ function FlowEditor() {
       providers: modelData.providers || [],
     }));
   }, [availableModelsData]);
+  const enabledWorkflowModelIds = useMemo(
+    () => llmModels.map((model) => model.modelId),
+    [llmModels],
+  );
 
   // tRPC mutations
   const compileMutation = (trpc as any).workflow.compile.useMutation();
@@ -262,6 +267,31 @@ function FlowEditor() {
       }
     }
   }, [loadWorkflowQuery.data, setNodes, setEdges]);
+
+  useEffect(() => {
+    if (modelsLoading) {
+      return;
+    }
+
+    if (enabledWorkflowModelIds.length === 0) {
+      if (defaultModel) {
+        setDefaultModel('');
+        localStorage.removeItem('workflow-default-model');
+      }
+      return;
+    }
+
+    const nextModelId = pickEnabledModelId({
+      preferredId: defaultModel,
+      allowedIds: enabledWorkflowModelIds,
+      fallbackIds: [enabledWorkflowModelIds[0]],
+    });
+
+    if (nextModelId !== defaultModel) {
+      setDefaultModel(nextModelId);
+      localStorage.setItem('workflow-default-model', nextModelId);
+    }
+  }, [defaultModel, enabledWorkflowModelIds, modelsLoading]);
 
   // Selected node
   const selectedNode = nodes.find(n => n.id === selectedNodeId);

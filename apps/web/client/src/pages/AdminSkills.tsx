@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
+import { pickEnabledModelId } from "@/lib/enabledModelSelection";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -54,6 +55,7 @@ import {
   Globe,
   Bot,
   Zap,
+  Star,
   FolderSync,
   Check,
   ChevronsUpDown,
@@ -140,6 +142,7 @@ const categoryIcons: Record<string, typeof Sparkles> = {
   image_video_generation: Video,
   audio_generation: Music,
   article_generation: FileText,
+  product_review: Star,
   sound_effects: Music,
   prompt_enhancement: Sparkles,
   code_assistant: Code,
@@ -159,6 +162,7 @@ const categoryLabels: Record<string, string> = {
   image_video_generation: "Image/Video Generation",
   audio_generation: "Audio Generation",
   article_generation: "Article Generation",
+  product_review: "Product Review",
   sound_effects: "Sound Effects",
   prompt_enhancement: "Prompt Enhancement",
   code_assistant: "Code Assistant",
@@ -308,6 +312,57 @@ export default function AdminSkills() {
   const { data: imageModels } = trpc.mediaModels.list.useQuery({ type: "image" });
   const { data: videoModels } = trpc.mediaModels.list.useQuery({ type: "video" });
   const { data: audioModels } = trpc.mediaModels.list.useQuery({ type: "audio" });
+
+  useEffect(() => {
+    if (!editingSkill) {
+      return;
+    }
+
+    if (editingSkill.executionMode === "media-generate") {
+      const mediaType = getMediaModelTypeForSkillCategory(editingSkill.category);
+      if (mediaType === "image" && !imageModels) return;
+      if (mediaType === "video" && !videoModels) return;
+      if (mediaType === "audio" && !audioModels) return;
+      if (mediaType === "image-video" && (!imageModels || !videoModels)) return;
+
+      const mediaModelIds = getMediaModelsForCategory(
+        editingSkill.category,
+        imageModels,
+        videoModels,
+        audioModels,
+      ).map((model: any) => model.modelId);
+      const nextDefaultModel = pickEnabledModelId({
+        preferredId: editingSkill.defaultModel,
+        allowedIds: mediaModelIds,
+      });
+
+      if ((nextDefaultModel || null) !== editingSkill.defaultModel) {
+        setEditingSkill({
+          ...editingSkill,
+          defaultModel: nextDefaultModel || null,
+        });
+      }
+      return;
+    }
+
+    if (!visionModels?.models) {
+      return;
+    }
+
+    const llmModelIds = (visionModels?.models ?? []).map((model) => model.id);
+    const nextLlmModelId = pickEnabledModelId({
+      preferredId: editingSkill.llmModelId || editingSkill.defaultModel,
+      allowedIds: llmModelIds,
+    });
+
+    if ((nextLlmModelId || null) !== (editingSkill.llmModelId || editingSkill.defaultModel || null)) {
+      setEditingSkill({
+        ...editingSkill,
+        defaultModel: nextLlmModelId || null,
+        llmModelId: nextLlmModelId || null,
+      });
+    }
+  }, [audioModels, editingSkill, imageModels, videoModels, visionModels?.models]);
 
   // Fetch pending skills for admin approval tab
   const { data: pendingSkills } = trpc.skills.listPending.useQuery(undefined, {

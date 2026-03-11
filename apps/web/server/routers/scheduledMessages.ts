@@ -13,6 +13,8 @@ import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import { createScheduledJob, cancelScheduledJob } from "../services/scheduler";
 import { auditLogger } from "../services/auditLogger";
 import { deductCreditsForModel } from "../services/creditService";
+import { resolveEnabledLlmModelId } from "../services/enabledLlmModels";
+import { getProviderForModel } from "../services/llmRouter";
 
 /**
  * Validates cron expression for security and rate limiting
@@ -92,6 +94,9 @@ export const scheduledMessagesRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const resolvedModelId = input.isSimpleReminder
+        ? undefined
+        : (await resolveEnabledLlmModelId([input.modelId])) || undefined;
 
       // SECURITY: Authorization check for targetUserId
       if (input.targetUserId && input.targetUserId !== ctx.user.id) {
@@ -157,7 +162,7 @@ export const scheduledMessagesRouter = router({
         isRecurring: input.isRecurring,
         isSimpleReminder: input.isSimpleReminder,
         priority: input.priority,
-        modelId: input.isSimpleReminder ? undefined : (input.modelId || undefined),
+        modelId: resolvedModelId,
         skillId: input.skillId || "chat-alert",
         dynamicParams: input.dynamicParams || undefined,
         emailNotify: input.emailNotify,
@@ -287,6 +292,11 @@ export const scheduledMessagesRouter = router({
       const { id, ...updates } = input;
       const updateData: any = { ...updates, updatedAt: new Date() };
       if (updates.scheduledAt) updateData.scheduledAt = new Date(updates.scheduledAt);
+      if (updates.modelId !== undefined) {
+        updateData.modelId = updates.isSimpleReminder
+          ? undefined
+          : (await resolveEnabledLlmModelId([updates.modelId])) || undefined;
+      }
 
       await db.update(scheduledMessages).set(updateData).where(eq(scheduledMessages.id, id));
 
@@ -493,28 +503,17 @@ export const scheduledMessagesRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       // Use the LLM to parse scheduling intent
-      const { llmProviders: llmProvidersTable } = await import("../../drizzle/schema");
-      const { decrypt } = await import("../services/crypto");
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-
-      const providers = await db
-        .select()
-        .from(llmProvidersTable)
-        .where(eq(llmProvidersTable.isEnabled, true))
-        .limit(1);
-
-      if (!providers.length || !providers[0].apiKeyEncrypted) {
+      const model = await resolveEnabledLlmModelId([input.model]);
+      if (!model) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No enabled LLM model configured" });
+      }
+      const provider = await getProviderForModel(model);
+      if (!provider) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No LLM provider configured" });
       }
-
-      const provider = providers[0];
-      const encryptedApiKey = provider.apiKeyEncrypted;
-      if (!encryptedApiKey) {
-        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No LLM provider configured" });
-      }
-      const apiKey = decrypt(encryptedApiKey);
-      const model = input.model || provider.defaultModel || "gpt-4o-mini";
+      const apiKey = provider.apiKey;
 
       const systemPrompt = `You are a scheduling assistant. Parse the user's scheduling intent and return ONLY a valid JSON object:
 {

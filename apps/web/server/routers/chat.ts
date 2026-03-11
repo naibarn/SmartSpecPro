@@ -48,6 +48,7 @@ import { eq, and, like } from "drizzle-orm";
 import { checkRateLimit } from "../middleware/distributedRateLimit";
 import { auditLogger } from "../services/auditLogger";
 import { checkAbuseGuard, hashPrompt } from "../services/abuseGuard";
+import { resolveEnabledLlmModelId } from "../services/enabledLlmModels";
 
 // ── Security: forbidden patterns in LLM-generated skillContent ───────────────
 const ISC_FORBIDDEN_PATTERNS = [
@@ -1358,8 +1359,8 @@ export const chatRouter = router({
           .where(eq(skillsTable.slug, input.skillId))
           .limit(1);
 
-        // Build LLM messages
-        const llmMessages: Array<{ role: string; content: string }> = [];
+        // Build LLM messages — content can be string or multimodal array
+        const llmMessages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }> = [];
         let userPrompt = input.prompt || "";
 
         // For image_prompt_engineer, use the specialized prompt builder
@@ -1390,9 +1391,10 @@ export const chatRouter = router({
           }
 
           // Format dynamicParams as additional context in the user prompt
+          // Exclude reference_images — they are sent as multimodal image_url content parts instead
           if (Object.keys(mergedExtraParams).length > 0) {
             const paramSummary = Object.entries(mergedExtraParams)
-              .filter(([, v]) => v !== undefined && v !== null && v !== "")
+              .filter(([k, v]) => v !== undefined && v !== null && v !== "" && k !== "reference_images")
               .map(([k, v]) => `- ${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`)
               .join("\n");
             if (paramSummary) {
@@ -1401,15 +1403,51 @@ export const chatRouter = router({
           }
         }
 
-        llmMessages.push({ role: "user", content: userPrompt || `Use ${skill.name}` });
+        // Build user message — multimodal with images when referenceImageUrls provided
+        // Also check dynamicParams.reference_images (from ImageSourcePicker / skill form)
+        const refImageUrls: string[] = (input.referenceImageUrls && input.referenceImageUrls.length > 0)
+          ? input.referenceImageUrls
+          : (Array.isArray(mergedExtraParams.reference_images)
+            ? (mergedExtraParams.reference_images as unknown[]).filter((u): u is string => typeof u === "string" && u.length > 0)
+            : []);
+        const hasRefImages = refImageUrls.length > 0;
+        if (hasRefImages) {
+          const baseUrl = (ctx.publicUrl || "").replace(/\/+$/, "");
+          const contentParts: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
+            { type: "text", text: userPrompt || `Use ${skill.name}` },
+          ];
+          for (const imgUrl of refImageUrls) {
+            // Convert relative URLs (e.g. /uploads/...) to absolute for external LLM API
+            const absoluteUrl = imgUrl.startsWith("http") ? imgUrl : `${baseUrl}${imgUrl}`;
+            contentParts.push({ type: "image_url", image_url: { url: absoluteUrl } });
+          }
+          llmMessages.push({ role: "user", content: contentParts });
+        } else {
+          llmMessages.push({ role: "user", content: userPrompt || `Use ${skill.name}` });
+        }
 
-        // Determine model: use conversation model or a default
-        let llmModel = "gpt-4o-mini";
+        // Determine model: conversation model > skill-configured model > enabled default
+        let conversationModel: string | null | undefined;
+        // 1. Use skill's llmModelId or defaultModel if configured
+        const skillModelId = (skill as any).llmModelId || (skill as any).defaultModel;
+        // 2. Override with conversation model if available (user's active choice)
         if (input.conversationId) {
           const conversation = await getConversationById(input.conversationId, ctx.user.id);
           if (conversation?.model) {
-            llmModel = conversation.model;
+            conversationModel = conversation.model;
           }
+        }
+        const llmModel = await resolveEnabledLlmModelId([conversationModel, skillModelId]);
+        if (!llmModel) {
+          return {
+            success: false,
+            skillId: input.skillId,
+            type: "text" as const,
+            error: "No enabled LLM model available. Please check model settings.",
+            message: undefined as string | undefined,
+            resultUrl: undefined as string | undefined,
+            resultUrls: undefined as string[] | undefined,
+          };
         }
 
         // Resolve provider using the same path as normal chat (with legacy fallback)
@@ -1426,7 +1464,7 @@ export const chatRouter = router({
           };
         }
 
-        debugLog("Chat", `[executeSkill] LLM skill '${input.skillId}' mode='${executionMode}', model=${llmModel}, providerModel=${provider.providerModelId}, provider=${provider.providerName}`);
+        debugLog("Chat", `[executeSkill] LLM skill '${input.skillId}' mode='${executionMode}', model=${llmModel}, providerModel=${provider.providerModelId}, provider=${provider.providerName}, refImages=${refImageUrls.length}`);
 
         try {
           // Call provider API directly (same approach as proxyChatWithCredits)
@@ -1577,6 +1615,14 @@ export const chatRouter = router({
       // This ensures the Python backend receives a valid token signed with the same secret
       const userToken = ctx.userToken || createSkillToken(ctx.user.id);
 
+      // Resolve referenceImageUrls: prefer top-level input, fall back to dynamicParams.reference_images
+      const resolvedRefImageUrls: string[] | undefined = (input.referenceImageUrls && input.referenceImageUrls.length > 0)
+        ? input.referenceImageUrls
+        : (Array.isArray(mergedExtraParams.reference_images)
+          ? (mergedExtraParams.reference_images as unknown[]).filter((u): u is string => typeof u === "string" && u.length > 0)
+          : undefined)
+        || undefined;
+
       // Python skills: run asynchronously to prevent HTTP timeout (Cloudflare 100s limit).
       // We return a taskId immediately; the client polls chat.getSkillTaskResult until done.
       if (isPythonMode) {
@@ -1589,7 +1635,7 @@ export const chatRouter = router({
           voice: input.voice,
           quality: (input.quality ?? mergedExtraParams.quality) as string | undefined,
           style: (input.style ?? mergedExtraParams.style) as string | undefined,
-          referenceImageUrls: input.referenceImageUrls,
+          referenceImageUrls: resolvedRefImageUrls,
           referenceStyleUrl: input.referenceStyleUrl,
           resolution: input.resolution,
           apiConfig: input.apiConfig,
@@ -1647,7 +1693,7 @@ export const chatRouter = router({
           voice: input.voice,
           quality: (input.quality ?? mergedExtraParams.quality) as string | undefined,
           style: (input.style ?? mergedExtraParams.style) as string | undefined,
-          referenceImageUrls: input.referenceImageUrls,
+          referenceImageUrls: resolvedRefImageUrls,
           referenceStyleUrl: input.referenceStyleUrl,
           resolution: input.resolution,
           apiConfig: input.apiConfig,

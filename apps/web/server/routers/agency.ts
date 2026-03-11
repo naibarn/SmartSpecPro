@@ -1898,7 +1898,7 @@ export const agencyRouter = router({
       z.object({
         requirement: z.string().min(10).max(10000),
         specFileBase64: z.string().max(10_000_000).optional(),
-        model: z.string().max(100).optional().default("gpt-4o"),
+        model: z.string().max(100).optional(),
         skipInterview: z.boolean().default(false),
       }),
     )

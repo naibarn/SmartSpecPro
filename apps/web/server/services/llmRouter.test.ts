@@ -1,12 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Hoisted mocks
-const { mockDbSelect, mockHealthIsAvailable, mockHealthRecordSuccess, mockHealthRecordFailure, mockFetch } = vi.hoisted(() => ({
+const {
+  mockDbSelect,
+  mockHealthIsAvailable,
+  mockHealthRecordSuccess,
+  mockHealthRecordFailure,
+  mockFetch,
+  mockResolveEnabledLlmModelId,
+} = vi.hoisted(() => ({
   mockDbSelect: vi.fn(),
   mockHealthIsAvailable: vi.fn().mockReturnValue(true),
   mockHealthRecordSuccess: vi.fn(),
   mockHealthRecordFailure: vi.fn(),
   mockFetch: vi.fn(),
+  mockResolveEnabledLlmModelId: vi.fn(async (preferredModelIds?: Array<string | null | undefined>) => {
+    const candidate = preferredModelIds?.find((value): value is string => typeof value === "string" && value.trim().length > 0);
+    return candidate ?? "gpt-4o";
+  }),
 }));
 
 vi.mock("../db", () => ({
@@ -19,6 +30,10 @@ vi.mock("./providerHealth", () => ({
   isAvailable: mockHealthIsAvailable,
   recordSuccess: mockHealthRecordSuccess,
   recordFailure: mockHealthRecordFailure,
+}));
+
+vi.mock("./enabledLlmModels", () => ({
+  resolveEnabledLlmModelId: mockResolveEnabledLlmModelId,
 }));
 
 vi.mock("./costTracker", () => ({
@@ -41,6 +56,10 @@ vi.stubGlobal("fetch", mockFetch);
 beforeEach(() => {
   vi.clearAllMocks();
   mockHealthIsAvailable.mockReturnValue(true);
+  mockResolveEnabledLlmModelId.mockImplementation(async (preferredModelIds?: Array<string | null | undefined>) => {
+    const candidate = preferredModelIds?.find((value): value is string => typeof value === "string" && value.trim().length > 0);
+    return candidate ?? "gpt-4o";
+  });
 });
 
 // --- Helpers ---

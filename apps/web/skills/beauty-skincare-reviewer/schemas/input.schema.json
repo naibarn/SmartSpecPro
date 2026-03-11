@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/skills/beauty-skincare-reviewer/schemas/input.schema.json",
+  "title": "Beauty & Skincare Reviewer - Input Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "topic": {
+      "type": "string",
+      "title": "Product Name or Description",
+      "description": "The beauty or skincare product to review. Can be a product name, brand and line, or a general description."
+    },
+    "language": {
+      "type": "string",
+      "title": "Language",
+      "description": "Output language. Use 'en' for English or 'th' for Thai.",
+      "enum": ["en", "th"],
+      "default": "th"
+    },
+    "product_type": {
+      "type": "string",
+      "title": "Product Type",
+      "description": "The type of beauty or skincare product.",
+      "enum": ["skincare", "makeup", "haircare", "bodycare", "fragrance", "sunscreen", "tools", "supplement", "general"],
+      "default": "general"
+    },
+    "skin_type": {
+      "type": "string",
+      "title": "Skin Type",
+      "description": "Target skin type for the review. Helps tailor the review perspective.",
+      "enum": ["oily", "dry", "combination", "sensitive", "normal", "acne_prone", "all"],
+      "default": "all"
+    },
+    "review_focus": {
+      "type": "string",
+      "title": "Review Focus",
+      "description": "The main angle or focus of the review.",
+      "enum": ["ingredients", "texture", "routine_fit", "value", "comparison", "first_impression", "long_term"],
+      "default": "first_impression"
+    },
+    "include_ingredients": {
+      "type": "boolean",
+      "title": "Include Ingredient Analysis",
+      "description": "Whether to include analysis of key active ingredients and their benefits.",
+      "default": false
+    },
+    "include_pricing": {
+      "type": "boolean",
+      "title": "Include Pricing Info",
+      "description": "Whether to include approximate pricing and value-for-money assessment.",
+      "default": false
+    },
+    "storytelling_style": {
+      "type": "string",
+      "title": "Storytelling Style",
+      "description": "The narrative structure for the review. Leave empty for random selection.",
+      "enum": ["hpso", "aida", "pas", "hook_insight_tip", "before_after", "story_flow", "my_why", "complain_recall", "fab", "star", "scr", "inverted_pyramid", "listicle", "qa_flow"]
+    },
+    "length": {
+      "type": "string",
+      "title": "Length",
+      "description": "Approximate review length.",
+      "enum": ["short", "medium", "long"],
+      "default": "medium"
+    },
+    "word_count": {
+      "type": "integer",
+      "title": "Maximum words (optional)",
+      "description": "If provided, the review must not exceed this word count. Overrides length preset.",
+      "minimum": 80,
+      "maximum": 3000
+    },
+    "output_format": {
+      "type": "string",
+      "title": "Output Format",
+      "description": "Preferred output format. Markdown uses headings and formatting. Plain text is optimized for text-to-speech.",
+      "enum": ["markdown", "plain_text"],
+      "default": "markdown"
+    },
+    "product_specs": {
+      "type": "string",
+      "title": "Product Specifications (optional)",
+      "description": "Describe the product's real specifications: key ingredients, concentration, size, pH, certifications. The review will be based on these facts to prevent inaccurate claims."
+    },
+    "reference_images": {
+      "type": "array",
+      "title": "Product Images",
+      "description": "Optional product images. When provided, the review will be based on visual analysis of the actual product shown.",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      }
+    }
+  }
+}

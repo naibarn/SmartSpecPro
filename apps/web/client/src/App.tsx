@@ -45,6 +45,7 @@ const AdminGallery = lazy(() => import("./pages/AdminGallery"));
 const AdminUsers = lazy(() => import("./pages/AdminUsers"));
 const AdminPackages = lazy(() => import("./pages/AdminPackages"));
 const AdminLLMProviders = lazy(() => import("./pages/AdminLLMProviders"));
+const AdminLLMModels = lazy(() => import("./pages/AdminLLMModels"));
 const AdminMediaProviders = lazy(() => import("./pages/AdminMediaProviders"));
 const AdminMediaModels = lazy(() => import("./pages/AdminMediaModels"));
 const AdminSkills = lazy(() => import("./pages/AdminSkills"));
@@ -147,6 +148,7 @@ function Router() {
         <Route path="/admin/users" component={AdminUsers} />
         <Route path="/admin/packages" component={AdminPackages} />
         <Route path="/admin/llm-providers" component={AdminLLMProviders} />
+        <Route path="/admin/llm-models" component={AdminLLMModels} />
         <Route path="/admin/media-providers" component={AdminMediaProviders} />
         <Route path="/admin/media-models" component={AdminMediaModels} />
         <Route path="/admin/skills" component={AdminSkills} />

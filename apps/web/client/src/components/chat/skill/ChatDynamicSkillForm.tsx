@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import DynamicSkillForm, { SkillInputSchema } from '@/components/media/DynamicSkillForm';
 import { useImageUpload } from './hooks/useImageUpload';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, X, Upload } from 'lucide-react';
+import { Loader2, X, Upload, Languages } from 'lucide-react';
 import { toast } from 'sonner';
 
 export interface ChatDynamicSkillFormProps {
@@ -14,6 +14,8 @@ export interface ChatDynamicSkillFormProps {
   isLoading?: boolean;
   error?: string | null;
   onClearError?: () => void;
+  /** Language for form labels. Defaults to "th". */
+  language?: "en" | "th";
 }
 
 export function ChatDynamicSkillForm({
@@ -23,7 +25,9 @@ export function ChatDynamicSkillForm({
   isLoading,
   error,
   onClearError,
+  language: initialLanguage = "th",
 }: ChatDynamicSkillFormProps) {
+  const [language, setLanguage] = useState<"en" | "th">(initialLanguage);
   const { upload, isUploading, uploadProgress, error: uploadError, retry, reset, validateFile } = useImageUpload();
 
   const handleImageUpload = async (files: FileList): Promise<string[]> => {
@@ -101,6 +105,18 @@ export function ChatDynamicSkillForm({
 
       {/* Form */}
       <div className="bg-muted/30 rounded-lg p-4">
+        {/* Language toggle for form labels */}
+        <div className="flex justify-end mb-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => setLanguage(language === "th" ? "en" : "th")}
+          >
+            <Languages className="h-3.5 w-3.5" />
+            {language === "th" ? "TH" : "EN"}
+          </Button>
+        </div>
         <DynamicSkillForm
           schema={schema}
           values={values}
@@ -108,7 +124,7 @@ export function ChatDynamicSkillForm({
           onImageUpload={handleImageUpload}
           excludeFields={[]}
           className="space-y-4"
-          language="en"
+          language={language}
         />
       </div>
 

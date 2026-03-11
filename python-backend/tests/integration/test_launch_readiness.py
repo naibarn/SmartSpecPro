@@ -113,6 +113,16 @@ class TestGate5OrphanReconciler:
         schedule = celery_app.conf.beat_schedule
         assert "cleanup-expired-sandbox-jobs" in schedule
 
+    def test_browser_policy_partition_maintenance_in_beat_schedule(self):
+        """Celery beat schedule includes browser policy partition maintenance."""
+        from app.core.celery_app import celery_app
+
+        schedule = celery_app.conf.beat_schedule
+        assert "ensure-browser-policy-decision-partitions" in schedule
+        assert "ensure_browser_policy_decision_partitions" in schedule[
+            "ensure-browser-policy-decision-partitions"
+        ]["task"]
+
     def test_sandbox_queue_in_required_queues(self):
         """The sandbox queue is listed in REQUIRED_QUEUES."""
         from app.core.celery_app import REQUIRED_QUEUES

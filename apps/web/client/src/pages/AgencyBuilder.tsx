@@ -20,6 +20,7 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { pickEnabledModelId } from "@/lib/enabledModelSelection";
 import { useAuth } from "@/contexts/AuthContext";
 import { BaseAgencyNode } from "@/components/agency/nodes/BaseAgencyNode";
 import type { AgencyNodeData } from "@/components/agency/nodes/types";
@@ -188,6 +189,17 @@ function AgencyCanvas() {
   const [agencyStatus, setAgencyStatus] = useState<"draft" | "published" | "archived">("draft");
   const [defaultModel, setDefaultModel] = useState("");
   const [creatorFeeCredits, setCreatorFeeCredits] = useState(0);
+  const { data: llmModelsData } = trpc.llmProviders.availableModels.useQuery(undefined, {
+    staleTime: 60_000,
+  });
+  const enabledAgencyModelIds = useMemo(
+    () => (llmModelsData?.models ?? []).map((model) => model.id),
+    [llmModelsData?.models],
+  );
+  const defaultAgencyModelId = useMemo(() => {
+    const defaultModelOption = llmModelsData?.models?.find((model) => model.isDefault);
+    return defaultModelOption?.id || llmModelsData?.models?.[0]?.id || "";
+  }, [llmModelsData?.models]);
   // useReactFlow() is more reliable than onInit — always returns the live instance from context
   const rfInstance = useReactFlow();
   const [versionHistoryOpen, setVersionHistoryOpen] = useState(false);
@@ -309,6 +321,29 @@ function AgencyCanvas() {
     setEdges(flowEdges);
     nodeCounterRef.current = agentNodes.length;
   }, [agencyData, setNodes, setEdges]);
+
+  useEffect(() => {
+    if (!llmModelsData?.models) {
+      return;
+    }
+
+    if (enabledAgencyModelIds.length === 0) {
+      if (defaultModel) {
+        setDefaultModel("");
+      }
+      return;
+    }
+
+    const nextModelId = pickEnabledModelId({
+      preferredId: defaultModel,
+      allowedIds: enabledAgencyModelIds,
+      fallbackIds: [defaultAgencyModelId],
+    });
+
+    if (nextModelId !== defaultModel) {
+      setDefaultModel(nextModelId);
+    }
+  }, [defaultAgencyModelId, defaultModel, enabledAgencyModelIds, llmModelsData?.models]);
 
   // Node and edge types (memoized to prevent React Flow re-renders)
   const nodeTypes: NodeTypes = useMemo(
@@ -539,7 +574,7 @@ function AgencyCanvas() {
       description: n.data.description || undefined,
       nodeType: n.data.nodeType ?? "agent",
       instructions: n.data.instructions || undefined,
-      model: n.data.model || (["agent", "supervisor"].includes(n.data.nodeType ?? "agent") ? (defaultModel || "gpt-4o-mini") : undefined),
+      model: n.data.model || (["agent", "supervisor"].includes(n.data.nodeType ?? "agent") ? (defaultModel || undefined) : undefined),
       modelSettings: n.data.modelSettings,
       isEntryPoint: n.data.isEntryPoint ?? false,
       isOptional: n.data.isOptional ?? false,

@@ -70,6 +70,7 @@ import {
   Activity,
   RefreshCw,
   RotateCcw,
+  AlertTriangle,
 } from "lucide-react";
 
 interface MediaModel {
@@ -87,6 +88,11 @@ interface MediaModel {
   voices: string[] | null;
   configJson: Record<string, any> | null;
   isEnabled: boolean;
+  providerReady?: boolean;
+  providerReadiness?: "ready" | "provider_not_found" | "provider_disabled" | "missing_api_key" | "test_failed";
+  providerReadinessMessage?: string | null;
+  providerDisplayName?: string | null;
+  providerConfigFound?: boolean;
   priority: number;
   sortOrder: number;
   createdAt: string;
@@ -323,6 +329,30 @@ function parseVoiceCatalogValues(raw: string): ParsedBulkOption[] {
     return parsed;
   }
   return splitDelimitedTextValues(raw).map((value) => ({ value, label: value }));
+}
+
+function summarizeProviderReadinessMessage(message: string | null | undefined): string | null {
+  if (!message) return null;
+  const trimmed = message.trim();
+  if (!trimmed) return null;
+
+  const apiErrorMatch = trimmed.match(/^API error:\s*(\d+)\s*-\s*(\{.*\})$/i);
+  if (apiErrorMatch) {
+    const [, statusCode, jsonPayload] = apiErrorMatch;
+    try {
+      const parsed = JSON.parse(jsonPayload) as {
+        message?: string;
+        path?: string;
+        error?: string;
+      };
+      const suffix = parsed.path || parsed.message || parsed.error;
+      return suffix ? `API ${statusCode} · ${suffix}` : `API ${statusCode}`;
+    } catch {
+      return `API ${statusCode}`;
+    }
+  }
+
+  return trimmed;
 }
 
 function createEmptyInputFieldDraft(): InputFieldDraft {
@@ -1029,6 +1059,24 @@ export default function AdminMediaModels() {
   const toggleEnabledMutation = trpc.mediaModels.toggleEnabled.useMutation({
     onSuccess: () => {
       refetch();
+      trpcUtils.mediaModels.list.invalidate();
+    },
+  });
+
+  const disableUnavailableMutation = trpc.mediaModels.disableUnavailable.useMutation({
+    onSuccess: (data) => {
+      toast.success("Unavailable models disabled", {
+        description: data.disabledCount > 0
+          ? `Disabled ${data.disabledCount} model(s) whose providers are not runtime-ready.`
+          : "No enabled models required disabling.",
+      });
+      refetch();
+      trpcUtils.mediaModels.list.invalidate();
+    },
+    onError: (error) => {
+      toast.error("Failed to disable unavailable models", {
+        description: error.message,
+      });
     },
   });
 
@@ -1308,16 +1356,30 @@ export default function AdminMediaModels() {
               Manage AI models for image, video, and audio generation skills
             </p>
           </div>
-          <Button onClick={() => setIsCreateDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Model
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => disableUnavailableMutation.mutate()}
+              disabled={disableUnavailableMutation.isPending}
+            >
+              {disableUnavailableMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <AlertTriangle className="mr-2 h-4 w-4 text-amber-600" />
+              )}
+              Disable Unavailable
+            </Button>
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Model
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Stats Cards */}
       {stats && (
-        <div className="grid gap-4 md:grid-cols-5 mb-8">
+        <div className="grid gap-4 md:grid-cols-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Models</CardTitle>
@@ -1361,6 +1423,15 @@ export default function AdminMediaModels() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.byType.audio}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Provider Unavailable</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.unavailable}</div>
             </CardContent>
           </Card>
         </div>
@@ -1559,6 +1630,7 @@ export default function AdminMediaModels() {
                   <TableHead>Type</TableHead>
                   <TableHead>Operation</TableHead>
                   <TableHead>Provider</TableHead>
+                  <TableHead>Provider Readiness</TableHead>
                   <TableHead>Credits</TableHead>
                   <TableHead>Aliases</TableHead>
                   <TableHead>Status</TableHead>
@@ -1595,7 +1667,37 @@ export default function AdminMediaModels() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm">{model.provider}</span>
+                      <div className="space-y-1">
+                        <span className="text-sm">{model.providerDisplayName || model.provider}</span>
+                        {model.providerDisplayName && model.providerDisplayName !== model.provider && (
+                          <div className="text-xs text-muted-foreground font-mono">{model.provider}</div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {model.providerReady ? (
+                        <Badge variant="outline" className="border-green-200 text-green-700">
+                          Ready
+                        </Badge>
+                      ) : (
+                        <div className="max-w-[260px] space-y-1">
+                          <Badge variant="outline" className="border-amber-200 text-amber-700">
+                            {model.providerReadiness === "provider_disabled" && "Provider Disabled"}
+                            {model.providerReadiness === "missing_api_key" && "Missing API Key"}
+                            {model.providerReadiness === "provider_not_found" && "Provider Missing"}
+                            {model.providerReadiness === "test_failed" && "Health Test Failed"}
+                            {!model.providerReadiness && "Not Ready"}
+                          </Badge>
+                          {model.providerReadinessMessage && (
+                            <div
+                              className="text-xs leading-5 text-muted-foreground whitespace-normal break-all"
+                              title={model.providerReadinessMessage}
+                            >
+                              {summarizeProviderReadinessMessage(model.providerReadinessMessage)}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
@@ -1637,6 +1739,7 @@ export default function AdminMediaModels() {
                           size="sm"
                           onClick={() => toggleEnabledMutation.mutate({ id: model.id })}
                           disabled={toggleEnabledMutation.isPending}
+                          title={model.isEnabled ? "Disable model" : "Enable model"}
                         >
                           {model.isEnabled ? (
                             <XCircle className="h-4 w-4 text-amber-500" />

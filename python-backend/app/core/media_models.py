@@ -23,6 +23,9 @@ class VideoModel(str, Enum):
     VEO_3_1 = "veo-3-1"
     SORA_2 = "sora-2"
     KLING_2_6 = "kling-2.6"
+    GROK_IMAGINE_T2V = "grok-imagine/text-to-video"
+    GROK_IMAGINE_I2V = "grok-imagine/image-to-video"
+    GROK_IMAGINE_UPSCALE = "grok-imagine/upscale"
 
 
 class AudioModel(str, Enum):
@@ -106,7 +109,32 @@ MODEL_METADATA: Dict[str, Dict[str, Any]] = {
         "supports_durations": [5, 10],
         "supports_aspect_ratios": ["16:9", "9:16"],
     },
-    
+    VideoModel.GROK_IMAGINE_T2V.value: {
+        "type": "video",
+        "name": "Grok Imagine Text-to-Video",
+        "provider": "kie.ai",
+        "description": "xAI's text-to-video generation via Grok Imagine",
+        "supports_durations": [6, 10, 15],
+        "supports_resolutions": ["480p", "720p"],
+        "supports_aspect_ratios": ["16:9", "9:16", "3:2", "2:3", "1:1"],
+    },
+    VideoModel.GROK_IMAGINE_I2V.value: {
+        "type": "video",
+        "name": "Grok Imagine Image-to-Video",
+        "provider": "kie.ai",
+        "description": "xAI's image-to-video generation via Grok Imagine — animate a reference image",
+        "supports_durations": [6, 10, 15],
+        "supports_resolutions": ["480p", "720p"],
+        "supports_aspect_ratios": ["16:9", "9:16", "3:2", "2:3", "1:1"],
+    },
+    VideoModel.GROK_IMAGINE_UPSCALE.value: {
+        "type": "video",
+        "name": "Grok Imagine Video Upscale",
+        "provider": "kie.ai",
+        "description": "Upscale a previously generated Grok Imagine video from 360p to 720p",
+        "supports_resolutions": ["720p"],
+    },
+
     # Audio models
     AudioModel.ELEVENLABS_TTS.value: {
         "type": "audio",

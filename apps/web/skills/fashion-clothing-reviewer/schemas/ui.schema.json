@@ -1,0 +1,318 @@
+{
+  "version": "1.0",
+  "skillId": "fashion-clothing-reviewer",
+  "title": "Fashion & Clothing Reviewer",
+  "titleTh": "รีวิวเสื้อผ้าและแฟชั่น",
+  "description": "Write honest, story-driven reviews for clothing, shoes, bags, accessories, and fashion items with fabric analysis and fit guidance",
+  "descriptionTh": "เขียนรีวิวเสื้อผ้า รองเท้า กระเป๋า เครื่องประดับ และสินค้าแฟชั่นแบบเล่าเรื่อง พร้อมวิเคราะห์เนื้อผ้าและความพอดีตัว",
+  "sections": [
+    {
+      "id": "product",
+      "title": "Product Info",
+      "titleTh": "ข้อมูลสินค้า",
+      "icon": "shirt",
+      "fields": [
+        {
+          "id": "topic",
+          "type": "textarea",
+          "label": "Product Name or Description",
+          "labelTh": "ชื่อสินค้า หรือรายละเอียดสินค้า",
+          "placeholder": "e.g., Oversized linen blazer, Running shoes with boost sole, Leather crossbody bag",
+          "placeholderTh": "เช่น เบลเซอร์ลินินทรงโอเวอร์ไซส์, รองเท้าวิ่งพื้น boost, กระเป๋าสะพายหนังแท้",
+          "helpText": "Enter the product name, brand, or describe it. You can also just attach product images below.",
+          "helpTextTh": "ใส่ชื่อสินค้า ยี่ห้อ หรืออธิบายสั้นๆ หรือจะแนบรูปสินค้าด้านล่างแทนก็ได้",
+          "required": false,
+          "rows": 2
+        },
+        {
+          "id": "reference_images",
+          "type": "images",
+          "label": "Product Images (Optional)",
+          "labelTh": "รูปสินค้า (ไม่บังคับ)",
+          "helpText": "Attach product photos. The AI will analyze fabric texture, stitching, design details, and styling to write a more accurate review.",
+          "helpTextTh": "แนบรูปสินค้า ระบบจะวิเคราะห์เนื้อผ้า ตะเข็บ ดีไซน์ และการจัดสไตล์เพื่อเขียนรีวิวให้ตรงจริง",
+          "multiple": true,
+          "accept": "image/*"
+        },
+        {
+          "id": "product_specs",
+          "type": "textarea",
+          "label": "Product Specifications (Optional but Recommended)",
+          "labelTh": "คุณสมบัติสินค้า (ไม่บังคับ แต่แนะนำ)",
+          "placeholder": "e.g., 100% organic cotton, 250gsm, pre-shrunk, Oeko-Tex certified, runs 1 size large, machine wash cold",
+          "placeholderTh": "เช่น ผ้าฝ้ายออร์แกนิก 100% หนา 250 แกรม ผ่านการหดตัวแล้ว ได้รับ Oeko-Tex ใส่ใหญ่กว่าไซส์ 1 ไซส์ ซักเครื่องน้ำเย็นได้",
+          "helpText": "Describe fabric composition, weight, special features, sizing notes, care instructions. The review will only claim what you specify here.",
+          "helpTextTh": "ระบุส่วนผสมผ้า น้ำหนัก คุณสมบัติพิเศษ ข้อมูลไซส์ วิธีดูแล ระบบจะรีวิวตามข้อมูลจริงที่คุณระบุเท่านั้น",
+          "required": false,
+          "rows": 4
+        },
+        {
+          "id": "clothing_type",
+          "type": "select",
+          "label": "Clothing Type",
+          "labelTh": "ประเภทสินค้า",
+          "helpText": "Helps tailor the review vocabulary and focus areas",
+          "helpTextTh": "ช่วยปรับมุมรีวิวและคำศัพท์ให้เหมาะกับประเภทสินค้า",
+          "required": true,
+          "default": "general",
+          "options": [
+            { "value": "general", "label": "General Fashion", "labelTh": "แฟชั่นทั่วไป" },
+            { "value": "tops", "label": "Tops (Shirts, Blouses, Sweaters)", "labelTh": "เสื้อ (เชิ้ต, เบลาส์, สเวตเตอร์)" },
+            { "value": "bottoms", "label": "Bottoms (Jeans, Pants, Skirts)", "labelTh": "กางเกงและกระโปรง (ยีนส์, กางเกง, กระโปรง)" },
+            { "value": "dresses", "label": "Dresses and Jumpsuits", "labelTh": "ชุดเดรสและจั๊มสูท" },
+            { "value": "outerwear", "label": "Outerwear (Jackets, Coats, Blazers)", "labelTh": "เสื้อคลุม (แจ็คเก็ต, โค้ท, เบลเซอร์)" },
+            { "value": "activewear", "label": "Activewear and Sportswear", "labelTh": "ชุดออกกำลังกายและกีฬา" },
+            { "value": "intimates", "label": "Intimates and Sleepwear", "labelTh": "ชุดชั้นในและชุดนอน" },
+            { "value": "shoes", "label": "Shoes (Sneakers, Heels, Boots)", "labelTh": "รองเท้า (สนีกเกอร์, ส้นสูง, บูท)" },
+            { "value": "bags", "label": "Bags (Handbags, Backpacks, Wallets)", "labelTh": "กระเป๋า (กระเป๋าถือ, เป้, กระเป๋าสตางค์)" },
+            { "value": "accessories", "label": "Accessories (Scarves, Hats, Belts)", "labelTh": "เครื่องประดับ (ผ้าพันคอ, หมวก, เข็มขัด)" },
+            { "value": "jewelry", "label": "Jewelry (Necklaces, Rings, Earrings)", "labelTh": "จิวเวลรี่ (สร้อยคอ, แหวน, ต่างหู)" },
+            { "value": "watches", "label": "Watches", "labelTh": "นาฬิกา" }
+          ]
+        },
+        {
+          "id": "language",
+          "type": "select",
+          "label": "Language",
+          "labelTh": "ภาษา",
+          "helpText": "Review output language",
+          "helpTextTh": "ภาษาที่ใช้เขียนรีวิว",
+          "required": true,
+          "default": "th",
+          "options": [
+            { "value": "th", "label": "Thai (ภาษาไทย)", "labelTh": "ภาษาไทย" },
+            { "value": "en", "label": "English", "labelTh": "อังกฤษ" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "details",
+      "title": "Product Details",
+      "titleTh": "รายละเอียดสินค้า",
+      "icon": "ruler",
+      "fields": [
+        {
+          "id": "fabric_material",
+          "type": "select",
+          "label": "Primary Fabric / Material",
+          "labelTh": "เนื้อผ้า / วัสดุหลัก",
+          "helpText": "Select the main fabric or material. You can add more detail in Product Specifications above.",
+          "helpTextTh": "เลือกเนื้อผ้าหรือวัสดุหลัก สามารถเพิ่มรายละเอียดในช่องคุณสมบัติสินค้าด้านบน",
+          "required": false,
+          "default": "other",
+          "options": [
+            { "value": "other", "label": "Other / Mixed / Not Sure", "labelTh": "อื่นๆ / ผสม / ไม่แน่ใจ" },
+            { "value": "cotton", "label": "Cotton", "labelTh": "ผ้าฝ้าย (Cotton)" },
+            { "value": "polyester", "label": "Polyester", "labelTh": "โพลีเอสเตอร์ (Polyester)" },
+            { "value": "silk", "label": "Silk", "labelTh": "ผ้าไหม (Silk)" },
+            { "value": "linen", "label": "Linen", "labelTh": "ผ้าลินิน (Linen)" },
+            { "value": "denim", "label": "Denim", "labelTh": "ผ้าเดนิม (Denim)" },
+            { "value": "leather", "label": "Genuine Leather", "labelTh": "หนังแท้ (Genuine Leather)" },
+            { "value": "faux_leather", "label": "Faux Leather / Vegan Leather", "labelTh": "หนังเทียม (Faux Leather)" },
+            { "value": "suede", "label": "Suede", "labelTh": "หนังกลับ (Suede)" },
+            { "value": "wool", "label": "Wool", "labelTh": "ขนสัตว์ / วูล (Wool)" },
+            { "value": "nylon", "label": "Nylon", "labelTh": "ไนลอน (Nylon)" },
+            { "value": "spandex_elastane", "label": "Spandex / Elastane", "labelTh": "สแปนเด็กซ์ / อีลาสเทน" },
+            { "value": "recycled_materials", "label": "Recycled / Eco Materials", "labelTh": "วัสดุรีไซเคิล / อีโค" },
+            { "value": "synthetic_blend", "label": "Synthetic Blend", "labelTh": "ผ้าสังเคราะห์ผสม" }
+          ]
+        },
+        {
+          "id": "special_features",
+          "type": "multi-select",
+          "label": "Special Features (Optional)",
+          "labelTh": "คุณสมบัติพิเศษ (ไม่บังคับ)",
+          "helpText": "Select all technical properties that apply to this item. Only selected features will be mentioned in the review.",
+          "helpTextTh": "เลือกคุณสมบัติเชิงเทคนิคที่ตรงกับสินค้า ระบบจะกล่าวถึงเฉพาะคุณสมบัติที่เลือกเท่านั้น",
+          "required": false,
+          "options": [
+            { "value": "waterproof", "label": "Waterproof", "labelTh": "กันน้ำ" },
+            { "value": "water_resistant", "label": "Water Resistant", "labelTh": "สะท้อนน้ำ" },
+            { "value": "uv_protection", "label": "UV Protection", "labelTh": "กัน UV" },
+            { "value": "breathable", "label": "Breathable", "labelTh": "ระบายอากาศ" },
+            { "value": "stretch", "label": "Stretch / Elastic", "labelTh": "ยืดหยุ่น" },
+            { "value": "wrinkle_resistant", "label": "Wrinkle Resistant", "labelTh": "กันยับ" },
+            { "value": "quick_dry", "label": "Quick Dry", "labelTh": "แห้งเร็ว" },
+            { "value": "thermal", "label": "Thermal / Insulating", "labelTh": "เก็บความร้อน" },
+            { "value": "reflective", "label": "Reflective", "labelTh": "สะท้อนแสง" },
+            { "value": "antimicrobial", "label": "Antimicrobial / Odor Resistant", "labelTh": "ยับยั้งแบคทีเรีย / กันกลิ่น" },
+            { "value": "recycled_material", "label": "Recycled Material", "labelTh": "วัสดุรีไซเคิล" },
+            { "value": "organic", "label": "Organic / Eco-Certified", "labelTh": "ออร์แกนิก / ได้รับการรับรอง Eco" }
+          ]
+        },
+        {
+          "id": "condition",
+          "type": "select",
+          "label": "Product Condition",
+          "labelTh": "สภาพสินค้า",
+          "helpText": "Is the item new, secondhand, vintage, or handmade?",
+          "helpTextTh": "สินค้าเป็นของใหม่ มือสอง วินเทจ หรือทำมือ?",
+          "required": true,
+          "default": "new",
+          "options": [
+            { "value": "new", "label": "Brand New", "labelTh": "ของใหม่" },
+            { "value": "secondhand_preloved", "label": "Secondhand / Preloved", "labelTh": "มือสอง / พรีเลิฟ" },
+            { "value": "vintage", "label": "Vintage", "labelTh": "วินเทจ" },
+            { "value": "restored", "label": "Restored / Upcycled", "labelTh": "ซ่อมแซม / อัพไซเคิล" },
+            { "value": "handmade_custom", "label": "Handmade / Custom", "labelTh": "ทำมือ / สั่งตัด" }
+          ]
+        },
+        {
+          "id": "fit_profile",
+          "type": "select",
+          "label": "Fit Profile Perspective",
+          "labelTh": "มุมมองรูปร่าง/ไซส์",
+          "helpText": "Tailor the review for this body type or sizing perspective",
+          "helpTextTh": "ปรับมุมรีวิวให้เหมาะกับรูปร่างหรือไซส์นี้",
+          "required": true,
+          "default": "all",
+          "options": [
+            { "value": "all", "label": "All Body Types", "labelTh": "ทุกรูปร่าง" },
+            { "value": "petite", "label": "Petite", "labelTh": "ตัวเล็ก (Petite)" },
+            { "value": "tall", "label": "Tall", "labelTh": "ตัวสูง (Tall)" },
+            { "value": "plus_size", "label": "Plus Size", "labelTh": "พลัสไซส์ (Plus Size)" },
+            { "value": "standard", "label": "Standard / Regular", "labelTh": "มาตรฐาน (Standard)" },
+            { "value": "athletic", "label": "Athletic Build", "labelTh": "หุ่นนักกีฬา (Athletic)" }
+          ]
+        },
+        {
+          "id": "include_care_guide",
+          "type": "boolean",
+          "label": "Include Care Guide",
+          "labelTh": "ระบุวิธีดูแลรักษา",
+          "helpText": "Add washing and care instructions based on fabric type",
+          "helpTextTh": "เพิ่มคำแนะนำการซัก ดูแลรักษา ตามชนิดผ้า",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "style",
+      "title": "Review Style",
+      "titleTh": "สไตล์รีวิว",
+      "icon": "message-circle",
+      "fields": [
+        {
+          "id": "review_focus",
+          "type": "select",
+          "label": "Review Focus",
+          "labelTh": "จุดเน้นรีวิว",
+          "helpText": "The main angle or focus of the review",
+          "helpTextTh": "มุมมองหลักในการเขียนรีวิว",
+          "required": true,
+          "default": "first_impression",
+          "options": [
+            { "value": "first_impression", "label": "First Impression / Unboxing", "labelTh": "ความประทับใจแรก / แกะกล่อง" },
+            { "value": "fit_comfort", "label": "Fit & Comfort", "labelTh": "ความพอดีตัวและใส่สบาย" },
+            { "value": "material_quality", "label": "Material & Build Quality", "labelTh": "คุณภาพเนื้อผ้าและการตัดเย็บ" },
+            { "value": "styling_versatility", "label": "Styling Versatility", "labelTh": "มิกซ์แอนด์แมทช์ได้หลากหลาย" },
+            { "value": "durability_value", "label": "Durability & Value", "labelTh": "ความทนทานและความคุ้มค่า" },
+            { "value": "long_term", "label": "Long-term Review (After Many Washes)", "labelTh": "รีวิวระยะยาว (หลังซักหลายครั้ง)" },
+            { "value": "comparison", "label": "Before vs After (Experience Change)", "labelTh": "เทียบก่อน-หลังใช้" }
+          ]
+        },
+        {
+          "id": "storytelling_style",
+          "type": "select",
+          "label": "Storytelling Structure (optional)",
+          "labelTh": "โครงสร้างการเล่าเรื่อง (ไม่บังคับ)",
+          "helpText": "Leave empty for random selection. Each structure creates a different narrative flow.",
+          "helpTextTh": "ไม่เลือกก็ได้ ระบบจะสุ่มให้ แต่ละแบบให้ flow การเล่าเรื่องต่างกัน",
+          "required": false,
+          "options": [
+            { "value": "hpso", "label": "Hook - Problem - Solution - Outcome", "labelTh": "เปิด - ปัญหา - ทางออก - ผลลัพธ์" },
+            { "value": "aida", "label": "Attention - Interest - Desire - Action", "labelTh": "ดึงดูด - สนใจ - อยากได้ - ลงมือ" },
+            { "value": "pas", "label": "Problem - Agitate - Solution", "labelTh": "ปัญหา - ขยี้ - ทางออก" },
+            { "value": "hook_insight_tip", "label": "Hook - Insight - Tip", "labelTh": "เปิด - เจาะลึก - ทิป" },
+            { "value": "before_after", "label": "Before - After - Bridge", "labelTh": "ก่อน - หลัง - เชื่อมโยง" },
+            { "value": "story_flow", "label": "Story Flow (Hook - Backstory - Turning Point)", "labelTh": "เล่าเรื่อง (เปิด - ที่มา - จุดเปลี่ยน)" },
+            { "value": "my_why", "label": "My Why - My Way - Your Turn", "labelTh": "เหตุผลของฉัน - วิธีของฉัน - ถึงคุณแล้ว" },
+            { "value": "complain_recall", "label": "Complain - Recall - Press - Gentle", "labelTh": "บ่น - ย้อน - ขยี้ - อ่อนโยน" },
+            { "value": "fab", "label": "Features - Advantages - Benefits", "labelTh": "คุณสมบัติ - ข้อได้เปรียบ - ประโยชน์" },
+            { "value": "star", "label": "Situation - Task - Action - Result", "labelTh": "สถานการณ์ - ภารกิจ - การลงมือ - ผลลัพธ์" },
+            { "value": "scr", "label": "Situation - Complication - Resolution", "labelTh": "สถานการณ์ - ปมปัญหา - ทางออก" },
+            { "value": "inverted_pyramid", "label": "Lead - Details - Background", "labelTh": "ใจความสำคัญ - รายละเอียด - ภูมิหลัง" },
+            { "value": "listicle", "label": "Intro - Numbered Tips - Wrap-up", "labelTh": "เปิด - เคล็ดลับเรียงข้อ - สรุป" },
+            { "value": "qa_flow", "label": "Question - Explore - Answer - Takeaway", "labelTh": "ตั้งคำถาม - สำรวจ - คำตอบ - สิ่งที่ได้" }
+          ]
+        },
+        {
+          "id": "include_pricing",
+          "type": "boolean",
+          "label": "Include Pricing Info",
+          "labelTh": "ระบุราคาโดยประมาณ",
+          "helpText": "Add approximate pricing, cost-per-wear analysis, and value assessment",
+          "helpTextTh": "เพิ่มข้อมูลราคาโดยประมาณ ราคาต่อครั้งที่ใส่ และความคุ้มค่า",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "options",
+      "title": "Options",
+      "titleTh": "ตัวเลือกเพิ่มเติม",
+      "icon": "settings",
+      "fields": [
+        {
+          "id": "length",
+          "type": "select",
+          "label": "Review Length",
+          "labelTh": "ความยาวรีวิว",
+          "helpText": "Short is about 1 min read, medium 1.5 min, long up to 3 min",
+          "helpTextTh": "สั้น ประมาณ 1 นาที, กลาง 1.5 นาที, ยาว สูงสุด 3 นาที",
+          "required": true,
+          "default": "medium",
+          "options": [
+            { "value": "short", "label": "Short (about 1 min)", "labelTh": "สั้น (ประมาณ 1 นาที)" },
+            { "value": "medium", "label": "Medium (about 1.5 min)", "labelTh": "กลาง (ประมาณ 1.5 นาที)" },
+            { "value": "long", "label": "Long (up to 3 min)", "labelTh": "ยาว (สูงสุด 3 นาที)" }
+          ]
+        },
+        {
+          "id": "word_count",
+          "type": "number",
+          "label": "Maximum Words (optional)",
+          "labelTh": "จำนวนคำสูงสุด (ไม่บังคับ)",
+          "helpText": "If set, the review will not exceed this word count.",
+          "helpTextTh": "หากกำหนด ระบบจะสร้างรีวิวไม่เกินจำนวนคำนี้",
+          "min": 80,
+          "max": 3000,
+          "step": 10
+        },
+        {
+          "id": "output_format",
+          "type": "select",
+          "label": "Output Format",
+          "labelTh": "รูปแบบผลลัพธ์",
+          "helpText": "Markdown uses headings and formatting. Plain text is clean for TTS narration.",
+          "helpTextTh": "Markdown ใช้หัวข้อและจัดรูปแบบ ข้อความธรรมดาเหมาะสำหรับอ่านออกเสียง",
+          "required": true,
+          "default": "markdown",
+          "options": [
+            { "value": "markdown", "label": "Markdown", "labelTh": "Markdown" },
+            { "value": "plain_text", "label": "Plain Text (TTS-friendly)", "labelTh": "ข้อความธรรมดา (เหมาะกับอ่านออกเสียง)" }
+          ]
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "topic": "topic",
+    "reference_images": "reference_images",
+    "product_specs": "product_specs",
+    "language": "language",
+    "clothing_type": "clothing_type",
+    "fabric_material": "fabric_material",
+    "special_features": "special_features",
+    "condition": "condition",
+    "fit_profile": "fit_profile",
+    "review_focus": "review_focus",
+    "include_care_guide": "include_care_guide",
+    "include_pricing": "include_pricing",
+    "storytelling_style": "storytelling_style",
+    "output_format": "output_format",
+    "length": "length",
+    "word_count": "word_count"
+  }
+}

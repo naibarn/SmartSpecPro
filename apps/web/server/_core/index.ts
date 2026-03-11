@@ -25,6 +25,7 @@ import { createTelegramWebhookRouter } from "../routes/telegramWebhook";
 import { createChannelWebhookRouter } from "../routes/channelWebhook";
 import { createVoiceSessionRouter, handleVoiceUpgrade, shutdownVoiceGateway } from "../routes/voiceGateway";
 import { createWidgetInitRouter, handleWidgetUpgrade } from "../routes/widgetGateway";
+import browserPolicyRouter from "../routes/browserPolicy";
 import browserToolRouter from "../routes/browserTool";
 import "../services/telegramLinkService"; // Register /start link handler
 import "../services/channelAdapters/telegram"; // Register Telegram adapter
@@ -387,6 +388,7 @@ app.use("/api/voice", createVoiceSessionRouter());
 // Widget gateway: init token endpoint
 app.use("/api/widget", express.json({ limit: "100kb" }), createWidgetInitRouter());
 
+app.use(express.json({ limit: "1mb" }), browserPolicyRouter);
 app.use(browserToolRouter);
 
 // Cloud Tasks handler routes (called by Cloud Tasks with OIDC auth)

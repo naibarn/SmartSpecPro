@@ -1,0 +1,146 @@
+{
+  "version": "1.0",
+  "skillId": "documentary-script-writer",
+  "title": "Documentary Script Writer",
+  "titleTh": "นักเขียนสคริปต์สารคดี",
+  "description": "Write documentary scripts that blend facts with compelling storytelling",
+  "descriptionTh": "เขียนสคริปต์สารคดีที่ผสมผสานข้อเท็จจริงกับการเล่าเรื่องที่น่าสนใจ",
+  "sections": [
+    {
+      "id": "documentary",
+      "title": "Documentary",
+      "titleTh": "สารคดี",
+      "icon": "video",
+      "fields": [
+        {
+          "id": "topic",
+          "type": "textarea",
+          "label": "Topic / Subject",
+          "labelTh": "หัวข้อ / เรื่องราว",
+          "placeholder": "e.g., The disappearing coral reefs of Southeast Asia, The rise of street food culture in Bangkok, The life of Nikola Tesla",
+          "placeholderTh": "เช่น แนวปะการังที่หายไปในเอเชียตะวันออกเฉียงใต้, วัฒนธรรมอาหารริมทางในกรุงเทพฯ, ชีวิตของนิโคลา เทสลา",
+          "helpText": "Describe the documentary subject. Can be an event, person, place, phenomenon, or social issue.",
+          "helpTextTh": "อธิบายหัวข้อสารคดี สามารถเป็นเหตุการณ์ บุคคล สถานที่ ปรากฏการณ์ หรือประเด็นสังคม",
+          "required": true,
+          "rows": 3
+        },
+        {
+          "id": "reference_images",
+          "type": "images",
+          "label": "Reference Images (Optional)",
+          "labelTh": "รูปภาพอ้างอิง (ไม่บังคับ)",
+          "helpText": "Attach reference images (locations, people, events) to incorporate into the documentary script.",
+          "helpTextTh": "แนบรูปภาพอ้างอิง (สถานที่ บุคคล เหตุการณ์) เพื่อสอดแทรกในสคริปต์สารคดี",
+          "multiple": true,
+          "accept": "image/*"
+        },
+        {
+          "id": "language",
+          "type": "select",
+          "label": "Language",
+          "labelTh": "ภาษา",
+          "helpText": "Script output language",
+          "helpTextTh": "ภาษาที่ใช้เขียนสคริปต์",
+          "required": true,
+          "default": "en",
+          "options": [
+            { "value": "en", "label": "English", "labelTh": "อังกฤษ" },
+            { "value": "th", "label": "Thai (ภาษาไทย)", "labelTh": "ภาษาไทย" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "approach",
+      "title": "Documentary Approach",
+      "titleTh": "แนวทางสารคดี",
+      "icon": "sparkles",
+      "fields": [
+        {
+          "id": "documentary_style",
+          "type": "select",
+          "label": "Documentary Style",
+          "labelTh": "สไตล์สารคดี",
+          "helpText": "Shapes the narrative structure, tone, and perspective",
+          "helpTextTh": "กำหนดโครงสร้างเรื่องเล่า โทนเสียง และมุมมอง",
+          "required": true,
+          "default": "investigative",
+          "options": [
+            { "value": "investigative", "label": "Investigative", "labelTh": "สืบสวน เจาะลึก" },
+            { "value": "observational", "label": "Observational", "labelTh": "สังเกตการณ์ บันทึกเหตุการณ์" },
+            { "value": "biographical", "label": "Biographical", "labelTh": "ชีวประวัติ" },
+            { "value": "historical", "label": "Historical", "labelTh": "ประวัติศาสตร์" },
+            { "value": "nature", "label": "Nature & Environment", "labelTh": "ธรรมชาติ และสิ่งแวดล้อม" },
+            { "value": "social_issue", "label": "Social Issue", "labelTh": "ประเด็นสังคม" }
+          ]
+        },
+        {
+          "id": "narrator_voice",
+          "type": "select",
+          "label": "Narrator Voice",
+          "labelTh": "สไตล์ผู้บรรยาย",
+          "helpText": "The narration tone and delivery style",
+          "helpTextTh": "โทนเสียงและสไตล์การบรรยาย",
+          "required": true,
+          "default": "formal",
+          "options": [
+            { "value": "formal", "label": "Formal (Authoritative)", "labelTh": "เป็นทางการ (น่าเชื่อถือ)" },
+            { "value": "conversational", "label": "Conversational (Friendly)", "labelTh": "สนทนา (เป็นกันเอง)" },
+            { "value": "dramatic", "label": "Dramatic (Cinematic)", "labelTh": "ดราม่า (แบบภาพยนตร์)" }
+          ]
+        },
+        {
+          "id": "include_interview_segments",
+          "type": "boolean",
+          "label": "Include Interview Segments",
+          "labelTh": "มีบทสัมภาษณ์",
+          "helpText": "Add realistic interview quotes from experts and subjects for multiple perspectives",
+          "helpTextTh": "เพิ่มบทสัมภาษณ์จากผู้เชี่ยวชาญและผู้ที่เกี่ยวข้องเพื่อหลากหลายมุมมอง",
+          "default": true
+        }
+      ]
+    },
+    {
+      "id": "style",
+      "title": "Length",
+      "titleTh": "ความยาว",
+      "icon": "wand2",
+      "fields": [
+        {
+          "id": "length",
+          "type": "select",
+          "label": "Script Length",
+          "labelTh": "ความยาวสคริปต์",
+          "required": true,
+          "default": "medium",
+          "options": [
+            { "value": "short", "label": "Short (~500 words)", "labelTh": "สั้น (~500 คำ)" },
+            { "value": "medium", "label": "Medium (~1,000 words)", "labelTh": "กลาง (~1,000 คำ)" },
+            { "value": "long", "label": "Long (~2,000 words)", "labelTh": "ยาว (~2,000 คำ)" }
+          ]
+        },
+        {
+          "id": "word_count",
+          "type": "number",
+          "label": "Maximum Words (optional)",
+          "labelTh": "จำนวนคำสูงสุด (ไม่บังคับ)",
+          "helpText": "If set, the script must not exceed this number of words.",
+          "helpTextTh": "หากกำหนด ระบบจะสร้างสคริปต์ไม่เกินจำนวนคำนี้",
+          "min": 120,
+          "max": 8000,
+          "step": 10
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "topic": "topic",
+    "reference_images": "reference_images",
+    "language": "language",
+    "documentary_style": "documentary_style",
+    "narrator_voice": "narrator_voice",
+    "include_interview_segments": "include_interview_segments",
+    "length": "length",
+    "word_count": "word_count"
+  }
+}

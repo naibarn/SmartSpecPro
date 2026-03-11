@@ -8,10 +8,11 @@
 import type { Response } from "express";
 import { executeWithFallback, type ExecuteResult, type ProviderCandidate } from "./llmRouter";
 import { deductCreditsForModel } from "./creditService";
+import { resolveEnabledLlmModelId } from "./enabledLlmModels";
 import type { Message } from "../_core/llm";
 
 interface HandlerParams {
-  model: string;
+  model?: string;
   messages: Message[];
   userId: number;
   conversationId?: number;
@@ -24,9 +25,14 @@ interface HandlerParams {
  */
 export async function handleChatWithRouter(params: HandlerParams): Promise<void> {
   const { model, messages, userId, conversationId, preferredProvider, res } = params;
+  const effectiveModel = await resolveEnabledLlmModelId([model]);
+  if (!effectiveModel) {
+    res.status(503).json({ error: { message: "No enabled LLM model configured" } });
+    return;
+  }
 
   const result = await executeWithFallback({
-    model,
+    model: effectiveModel,
     messages,
     stream: false,
     userId,
@@ -44,7 +50,7 @@ export async function handleChatWithRouter(params: HandlerParams): Promise<void>
       // Deduct credits (0 for free models)
       const { creditsUsed } = await deductCreditsForModel({
         userId,
-        model,
+        model: effectiveModel,
         provider: result.providerName,
         inputTokens,
         outputTokens,
@@ -96,6 +102,15 @@ export async function handleChatWithRouter(params: HandlerParams): Promise<void>
  */
 export async function handleStreamWithRouter(params: HandlerParams): Promise<void> {
   const { model, messages, userId, conversationId, preferredProvider, res } = params;
+  const effectiveModel = await resolveEnabledLlmModelId([model]);
+  if (!effectiveModel) {
+    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.write(`event: error\ndata: ${JSON.stringify({ error: "No enabled LLM model configured", statusCode: 503 })}\n\n`);
+    res.end();
+    return;
+  }
 
   // Set SSE headers
   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
@@ -103,7 +118,7 @@ export async function handleStreamWithRouter(params: HandlerParams): Promise<voi
   res.setHeader("Connection", "keep-alive");
 
   const result = await executeWithFallback({
-    model,
+    model: effectiveModel,
     messages,
     stream: true,
     userId,
@@ -121,7 +136,7 @@ export async function handleStreamWithRouter(params: HandlerParams): Promise<voi
       // Deduct credits
       const { creditsUsed } = await deductCreditsForModel({
         userId,
-        model,
+        model: effectiveModel,
         provider: result.providerName,
         inputTokens,
         outputTokens,

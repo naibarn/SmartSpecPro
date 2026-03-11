@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/skills/documentary-script-writer/schemas/input.schema.json",
+  "title": "Documentary Script Writer - Input Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "topic": {
+      "type": "string",
+      "title": "Topic / Subject",
+      "description": "The documentary subject to explore and write about."
+    },
+    "language": {
+      "type": "string",
+      "title": "Language",
+      "description": "Output language. Use 'en' for English or 'th' for Thai.",
+      "enum": ["en", "th"],
+      "default": "en"
+    },
+    "documentary_style": {
+      "type": "string",
+      "title": "Documentary Style",
+      "description": "The documentary approach that shapes narrative structure and perspective.",
+      "enum": ["investigative", "observational", "biographical", "historical", "nature", "social_issue"],
+      "default": "investigative"
+    },
+    "narrator_voice": {
+      "type": "string",
+      "title": "Narrator Voice",
+      "description": "The narration style and tone.",
+      "enum": ["formal", "conversational", "dramatic"],
+      "default": "formal"
+    },
+    "include_interview_segments": {
+      "type": "boolean",
+      "title": "Include Interview Segments",
+      "description": "Whether to include realistic interview quotes from fictional experts and subjects.",
+      "default": true
+    },
+    "length": {
+      "type": "string",
+      "title": "Length",
+      "description": "Approximate script length.",
+      "enum": ["short", "medium", "long"],
+      "default": "medium"
+    },
+    "word_count": {
+      "type": "integer",
+      "title": "Maximum words (optional)",
+      "description": "If provided, the script must not exceed this word count. Overrides length preset.",
+      "minimum": 120,
+      "maximum": 8000
+    },
+    "reference_images": {
+      "type": "array",
+      "title": "Reference Images",
+      "description": "Optional array of reference image URLs. When provided, visual context from these images will be incorporated into the documentary script.",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      }
+    }
+  }
+}

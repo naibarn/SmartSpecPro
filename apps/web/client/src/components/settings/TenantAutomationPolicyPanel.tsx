@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
+import { pickEnabledModelId } from "@/lib/enabledModelSelection";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,16 +17,29 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Bot, Loader2, Save } from "lucide-react";
+import { Bot, Loader2, Plus, Save, X } from "lucide-react";
 
 interface TenantAutomationPolicyPanelProps {
   title?: string;
   description?: string;
 }
 
+interface AvailableVisionModel {
+  id: string;
+  name?: string;
+  provider?: string;
+  providerDisplayName?: string;
+}
+
+function normalizeModelSearchText(value: string | null | undefined): string {
+  return (value ?? "")
+    .toLowerCase()
+    .replace(/[\s./:_-]+/g, "");
+}
+
 export function TenantAutomationPolicyPanel({
-  title = "Tenant Automation Policy",
-  description = "Configure tenant baseline browser-policy and the user customization envelope.",
+  title = "Tenant Baseline Policy",
+  description = "Configure the tenant-wide browser-policy baseline and define which personal restrictions users may apply for themselves.",
 }: TenantAutomationPolicyPanelProps) {
   const { user } = useAuth();
   const canManageTenantPolicy = user?.role === "admin" || user?.role === "domain_admin";
@@ -38,9 +52,9 @@ export function TenantAutomationPolicyPanel({
   const [evidenceRetentionDays, setEvidenceRetentionDays] = useState(365);
   const [killSwitchEnabled, setKillSwitchEnabled] = useState(false);
   const [requireTamperEvidence, setRequireTamperEvidence] = useState(true);
-  const [visionModel, setVisionModel] = useState("gpt-4o");
+  const [visionModel, setVisionModel] = useState("");
   const [allowedDomains, setAllowedDomains] = useState("");
-  const [allowedVisionModels, setAllowedVisionModels] = useState("");
+  const [allowedVisionModels, setAllowedVisionModels] = useState<string[]>([]);
   const [allowPersonalDomainSubset, setAllowPersonalDomainSubset] = useState(true);
   const [allowModeCap, setAllowModeCap] = useState(true);
   const [allowTransferBlocks, setAllowTransferBlocks] = useState(true);
@@ -49,6 +63,7 @@ export function TenantAutomationPolicyPanel({
   const [allowPreferredVisionModel, setAllowPreferredVisionModel] = useState(false);
   const [saving, setSaving] = useState(false);
   const [modelSearch, setModelSearch] = useState("");
+  const [allowlistSearch, setAllowlistSearch] = useState("");
 
   const policyStatusQuery = trpc.systemSettings.getTenantAutomationPolicyStatus.useQuery(undefined, {
     enabled: canManageTenantPolicy,
@@ -60,11 +75,14 @@ export function TenantAutomationPolicyPanel({
     });
   const updateMutation = trpc.systemSettings.updateTenantAutomationPolicySettings.useMutation({
     onSuccess: () => {
-      toast.success("Automation policy saved");
+      toast.success("Tenant baseline policy saved");
       policyStatusQuery.refetch();
     },
     onError: (err) => toast.error(err.message),
   });
+  const tenantStorageUnavailable = policyStatusQuery.data?.storageStatus === "schema_missing";
+  const tenantPolicyStatusUnavailable =
+    policyStatusQuery.isError || !policyStatusQuery.data || tenantStorageUnavailable;
 
   useEffect(() => {
     const config = policyStatusQuery.data?.policyConfig;
@@ -90,7 +108,7 @@ export function TenantAutomationPolicyPanel({
     }
     const allowedModels = policyStatusQuery.data?.allowedVisionModels;
     if (allowedModels) {
-      setAllowedVisionModels(allowedModels.join(", "));
+      setAllowedVisionModels(allowedModels);
     }
   }, [policyStatusQuery.data]);
 
@@ -98,17 +116,27 @@ export function TenantAutomationPolicyPanel({
     return null;
   }
 
-  const allModels = modelsData?.models ?? [];
+  const allModels = (modelsData?.models ?? []) as AvailableVisionModel[];
+  const matchesModelSearch = (model: AvailableVisionModel, search: string) => {
+    const normalizedSearch = normalizeModelSearchText(search);
+    if (!normalizedSearch) {
+      return true;
+    }
+
+    return [
+      model.id,
+      model.name,
+      model.providerDisplayName,
+      model.provider,
+    ].some((value) => normalizeModelSearchText(value).includes(normalizedSearch));
+  };
   const filteredModels = modelSearch
     ? allModels.filter(
-        (model: any) =>
-          model.id.toLowerCase().includes(modelSearch.toLowerCase())
-          || model.name.toLowerCase().includes(modelSearch.toLowerCase())
-          || model.providerDisplayName?.toLowerCase().includes(modelSearch.toLowerCase()),
+        (model) => matchesModelSearch(model, modelSearch),
       )
     : allModels;
   const groupedModels = filteredModels.reduce(
-    (acc: Record<string, typeof filteredModels>, model: any) => {
+    (acc: Record<string, typeof filteredModels>, model) => {
       const key = model.providerDisplayName || model.provider || "Other";
       if (!acc[key]) acc[key] = [];
       acc[key].push(model);
@@ -116,6 +144,46 @@ export function TenantAutomationPolicyPanel({
     },
     {} as Record<string, typeof filteredModels>,
   );
+  const allowlistResults = allModels
+    .filter((model) => !allowedVisionModels.includes(model.id))
+    .filter((model) => matchesModelSearch(model, allowlistSearch))
+    .slice(0, allowlistSearch.trim() ? 12 : 8);
+  const selectedAllowlistModels = allowedVisionModels.map((modelId) => ({
+    id: modelId,
+    details: allModels.find((model) => model.id === modelId) ?? null,
+  }));
+
+  useEffect(() => {
+    if (!modelsData?.models) {
+      return;
+    }
+
+    const availableModelIds = allModels.map((model) => model.id);
+    const nextVisionModel = pickEnabledModelId({
+      preferredId: visionModel,
+      allowedIds: availableModelIds,
+      fallbackIds: [availableModelIds[0]],
+    });
+    const nextAllowedVisionModels = allowedVisionModels.filter((modelId) => availableModelIds.includes(modelId));
+
+    if (nextVisionModel !== visionModel) {
+      setVisionModel(nextVisionModel);
+    }
+    if (nextAllowedVisionModels.length !== allowedVisionModels.length) {
+      setAllowedVisionModels(nextAllowedVisionModels);
+    }
+  }, [allModels, allowedVisionModels, modelsData?.models, visionModel]);
+
+  const addAllowedVisionModel = (modelId: string) => {
+    setAllowedVisionModels((current) =>
+      current.includes(modelId) ? current : [...current, modelId],
+    );
+    setAllowlistSearch("");
+  };
+
+  const removeAllowedVisionModel = (modelId: string) => {
+    setAllowedVisionModels((current) => current.filter((value) => value !== modelId));
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -133,10 +201,7 @@ export function TenantAutomationPolicyPanel({
           .map((domain) => domain.trim())
           .filter(Boolean),
         visionModel,
-        allowedVisionModels: allowedVisionModels
-          .split(",")
-          .map((model) => model.trim())
-          .filter(Boolean),
+        allowedVisionModels,
         userCustomization: {
           allowPersonalDomainSubset,
           allowModeCap,
@@ -161,19 +226,31 @@ export function TenantAutomationPolicyPanel({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6 pt-6">
+        {policyStatusQuery.isError && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+            Tenant-wide policy status could not be loaded. Saving stays disabled until browser-policy storage is available.
+          </div>
+        )}
+
+        {tenantStorageUnavailable && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Tenant baseline storage is not ready in this environment yet. Personal user preferences still work, but tenant-wide baseline saves stay disabled until the browser-policy migration is applied.
+          </div>
+        )}
+
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <Label>Browser Policy Enabled</Label>
-                <p className="text-xs text-slate-500">Master enable for tenant browser-policy evaluation.</p>
+                <Label>Tenant Baseline Enabled</Label>
+                <p className="text-xs text-slate-500">Master enable for tenant-wide browser-policy evaluation.</p>
               </div>
               <Switch checked={policyEnabled} onCheckedChange={setPolicyEnabled} />
             </div>
             <div className="flex items-center justify-between gap-3">
               <div>
                 <Label>Kill Switch</Label>
-                <p className="text-xs text-slate-500">Immediately fail closed for tenant browser actions.</p>
+                <p className="text-xs text-slate-500">Immediately fail closed for all browser actions in this tenant.</p>
               </div>
               <Switch checked={killSwitchEnabled} onCheckedChange={setKillSwitchEnabled} />
             </div>
@@ -285,12 +362,68 @@ export function TenantAutomationPolicyPanel({
           </div>
           <div className="space-y-2">
             <Label>Vision Model Allowlist</Label>
-            <Textarea
-              value={allowedVisionModels}
-              onChange={(e) => setAllowedVisionModels(e.target.value)}
-              placeholder="gpt-4o, gpt-4.1, claude-sonnet-4"
-              rows={4}
-            />
+            <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 space-y-3">
+              <Input
+                value={allowlistSearch}
+                onChange={(e) => setAllowlistSearch(e.target.value)}
+                placeholder="Search system models to add..."
+              />
+              <div className="flex flex-wrap gap-2">
+                {selectedAllowlistModels.length > 0 ? selectedAllowlistModels.map(({ id, details }) => (
+                  <Badge
+                    key={id}
+                    variant="secondary"
+                    className="flex items-center gap-2 rounded-full px-3 py-1"
+                  >
+                    <span>{details?.name || id}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeAllowedVisionModel(id)}
+                      className="rounded-full p-0.5 text-slate-500 transition hover:bg-slate-200 hover:text-slate-800"
+                      aria-label={`Remove ${id}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                )) : (
+                  <p className="text-sm text-slate-500">No allowlist models selected yet.</p>
+                )}
+              </div>
+              <div className="max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white">
+                {modelsLoading ? (
+                  <div className="flex items-center justify-center py-6 text-sm text-slate-500">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading models...
+                  </div>
+                ) : allowlistResults.length > 0 ? (
+                  allowlistResults.map((model) => (
+                    <button
+                      key={model.id}
+                      type="button"
+                      onClick={() => addAllowedVisionModel(model.id)}
+                      className="flex w-full items-center justify-between gap-3 border-b border-slate-100 px-3 py-2 text-left transition hover:bg-slate-50 last:border-b-0"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium text-slate-900">
+                          {model.name || model.id}
+                        </div>
+                        <div className="truncate text-xs text-slate-500">
+                          {model.providerDisplayName || model.provider || "Other"} · {model.id}
+                        </div>
+                      </div>
+                      <span className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-700">
+                        <Plus className="h-3 w-3" />
+                        Add
+                      </span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-3 py-6 text-sm text-slate-500">
+                    No matching models found in the system registry.
+                  </div>
+                )}
+              </div>
+            </div>
             <p className="text-xs text-slate-500">
               Users can only pick personal overrides from this set when user-level model selection is enabled.
             </p>
@@ -301,7 +434,7 @@ export function TenantAutomationPolicyPanel({
           <div>
             <h3 className="text-sm font-semibold text-slate-800">User Customization Policy</h3>
             <p className="text-xs text-slate-500">
-              Tenant admins define which controls users may narrow for themselves.
+              Define which personal restrictions users are allowed to add on top of the tenant baseline.
             </p>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
@@ -340,13 +473,16 @@ export function TenantAutomationPolicyPanel({
           </p>
         </div>
 
-        <Button onClick={handleSave} disabled={saving || policyStatusQuery.isLoading}>
+        <Button
+          onClick={handleSave}
+          disabled={saving || policyStatusQuery.isLoading || tenantPolicyStatusUnavailable}
+        >
           {saving ? (
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
           ) : (
             <Save className="h-4 w-4 mr-2" />
           )}
-          Save Tenant Policy
+          Save Tenant Baseline
         </Button>
       </CardContent>
     </Card>

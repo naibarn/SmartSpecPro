@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { pickEnabledModelId } from "@/lib/enabledModelSelection";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -59,10 +60,30 @@ export function UserAutomationPreferencesPanel() {
     setApproveCommit(profile.requireApprovalForActionClasses.includes("commit"));
     setApproveRestricted(profile.requireApprovalForActionClasses.includes("restricted"));
     setApprovalTtlCap(profile.approvalTtlSecondsCap ? String(profile.approvalTtlSecondsCap) : "");
-    setPreferredVisionModel(profile.preferredVisionModel ?? "inherit");
+    setPreferredVisionModel(
+      pickEnabledModelId({
+        preferredId: profile.preferredVisionModel ?? "",
+        allowedIds: automationPrefsQuery.data?.allowedVisionModels ?? [],
+      }) || "inherit",
+    );
     setNotifyOnApprovalRequests(profile.notifyOnApprovalRequests);
     setNotifyOnPolicyIncidents(profile.notifyOnPolicyIncidents);
   }, [automationPrefsQuery.data]);
+
+  useEffect(() => {
+    if (preferredVisionModel === "inherit") {
+      return;
+    }
+
+    const nextModelId = pickEnabledModelId({
+      preferredId: preferredVisionModel,
+      allowedIds: automationPrefsQuery.data?.allowedVisionModels ?? [],
+    });
+
+    if (nextModelId !== preferredVisionModel) {
+      setPreferredVisionModel(nextModelId || "inherit");
+    }
+  }, [automationPrefsQuery.data?.allowedVisionModels, preferredVisionModel]);
 
   const handleSave = async () => {
     const blockedTransfers = [
@@ -97,6 +118,34 @@ export function UserAutomationPreferencesPanel() {
   const effectiveConfig = automationPrefsQuery.data?.effectiveConfig;
   const inheritedConfig = automationPrefsQuery.data?.inheritedConfig;
   const allowedVisionModels = automationPrefsQuery.data?.allowedVisionModels ?? [];
+  const personalControls = [
+    {
+      label: "Domain subset",
+      enabled: customization?.allowPersonalDomainSubset ?? false,
+    },
+    {
+      label: "Mode cap",
+      enabled: customization?.allowModeCap ?? false,
+    },
+    {
+      label: "Transfer blocks",
+      enabled: customization?.allowTransferBlocks ?? false,
+    },
+    {
+      label: "Shorter approval TTL",
+      enabled: customization?.allowApprovalTtlCap ?? false,
+    },
+    {
+      label: "Extra approval escalation",
+      enabled: customization?.allowActionApprovalEscalation ?? false,
+    },
+    {
+      label: "Preferred vision model",
+      enabled: customization?.allowPreferredVisionModel ?? false,
+    },
+  ];
+  const enabledPersonalControls = personalControls.filter((control) => control.enabled);
+  const lockedPersonalControls = personalControls.filter((control) => !control.enabled);
 
   return (
     <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
@@ -106,10 +155,33 @@ export function UserAutomationPreferencesPanel() {
           Personal Automation Preferences
         </CardTitle>
         <CardDescription>
-          Narrow your own browser-policy settings without exceeding tenant safety limits.
+          These preferences apply only to your account. They can only narrow the tenant safety baseline, never expand it.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6 pt-6">
+        <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-4 space-y-3">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-800">What you can change</h3>
+            <p className="text-xs text-slate-500">
+              Personal settings are limited by your tenant's baseline policy. You can only make your own access stricter.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {enabledPersonalControls.length > 0 ? enabledPersonalControls.map((control) => (
+              <Badge key={control.label} variant="secondary">
+                {control.label}
+              </Badge>
+            )) : (
+              <Badge variant="outline">No tenant-approved personal overrides</Badge>
+            )}
+          </div>
+          {lockedPersonalControls.length > 0 && (
+            <p className="text-xs text-slate-600">
+              Tenant-managed only: {lockedPersonalControls.map((control) => control.label).join(", ")}
+            </p>
+          )}
+        </div>
+
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
             <div className="flex items-center justify-between gap-3">
@@ -251,7 +323,7 @@ export function UserAutomationPreferencesPanel() {
           <div className="flex flex-wrap gap-2">
             <Badge variant="secondary">Effective mode: {effectiveConfig?.enforcementMode ?? "observe"}</Badge>
             <Badge variant="outline">Effective approval TTL: {effectiveConfig?.defaultApprovalTtlSeconds ?? 300}s</Badge>
-            <Badge variant="outline">Effective model: {effectiveConfig?.visionModel ?? "gpt-4o"}</Badge>
+            <Badge variant="outline">Effective model: {effectiveConfig?.visionModel ?? "Not configured"}</Badge>
           </div>
           <p className="text-xs text-slate-600">
             Effective domains: {(effectiveConfig?.allowedDomains ?? []).join(", ") || "none"}

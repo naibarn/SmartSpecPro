@@ -25,6 +25,16 @@
           "rows": 2
         },
         {
+          "id": "reference_images",
+          "type": "images",
+          "label": "Reference Images (Optional)",
+          "labelTh": "รูปภาพอ้างอิง (ไม่บังคับ)",
+          "helpText": "Attach reference images to guide article content. The article will be written to align with these images.",
+          "helpTextTh": "แนบรูปภาพอ้างอิงเพื่อให้บทความสอดคล้องกับรูปภาพ หากไม่แนบจะเขียนตามหัวข้อเท่านั้น",
+          "multiple": true,
+          "accept": "image/*"
+        },
+        {
           "id": "language",
           "type": "select",
           "label": "Language",
@@ -202,6 +212,7 @@
   ],
   "outputMapping": {
     "topic": "topic",
+    "reference_images": "reference_images",
     "language": "language",
     "age_unit": "age_unit",
     "age_min": "age_min",

@@ -1,0 +1,247 @@
+{
+  "version": "1.0",
+  "skillId": "beauty-skincare-reviewer",
+  "title": "Beauty & Skincare Reviewer",
+  "titleTh": "รีวิวเครื่องสำอางและสกินแคร์",
+  "description": "Write honest, story-driven reviews for beauty and skincare products with ingredient insights and skin type guidance",
+  "descriptionTh": "เขียนรีวิวเครื่องสำอางและสกินแคร์แบบเล่าเรื่อง จริงใจ พร้อมวิเคราะห์ส่วนผสมและแนะนำตามสภาพผิว",
+  "sections": [
+    {
+      "id": "product",
+      "title": "Product Info",
+      "titleTh": "ข้อมูลสินค้า",
+      "icon": "sparkles",
+      "fields": [
+        {
+          "id": "topic",
+          "type": "textarea",
+          "label": "Product Name or Description",
+          "labelTh": "ชื่อสินค้า หรือรายละเอียดสินค้า",
+          "placeholder": "e.g., Centella Asiatica serum, cushion foundation SPF50, vitamin C toner",
+          "placeholderTh": "เช่น เซรั่มเซนเทลล่า, คุชชั่นกันแดด SPF50, โทนเนอร์วิตามินซี",
+          "helpText": "Enter the product name, brand, or describe it. You can also just attach product images below.",
+          "helpTextTh": "ใส่ชื่อสินค้า ยี่ห้อ หรืออธิบายสั้นๆ หรือจะแนบรูปสินค้าด้านล่างแทนก็ได้",
+          "required": false,
+          "rows": 2
+        },
+        {
+          "id": "reference_images",
+          "type": "images",
+          "label": "Product Images (Optional)",
+          "labelTh": "รูปสินค้า (ไม่บังคับ)",
+          "helpText": "Attach product photos. The AI will analyze packaging, texture, color, and branding to write a more accurate review.",
+          "helpTextTh": "แนบรูปสินค้า ระบบจะวิเคราะห์แพ็กเกจ เนื้อสัมผัส สี และแบรนด์เพื่อเขียนรีวิวให้ตรงจริง",
+          "multiple": true,
+          "accept": "image/*"
+        },
+        {
+          "id": "product_specs",
+          "type": "textarea",
+          "label": "Product Specifications (Optional)",
+          "labelTh": "คุณสมบัติสินค้า (ไม่บังคับ)",
+          "placeholder": "e.g., Niacinamide 10%, Zinc PCA 1%, 30ml, fragrance-free, pH 5.5, EWG verified",
+          "placeholderTh": "เช่น ไนอาซินาไมด์ 10% ซิงค์ 1% ขนาด 30 มล. ไม่มีน้ำหอม pH 5.5",
+          "helpText": "Describe the real specs: ingredients, concentration, size, certifications. The review will be factually grounded in what you specify.",
+          "helpTextTh": "ระบุส่วนผสม ความเข้มข้น ขนาด การรับรอง ระบบจะเขียนรีวิวตามข้อมูลจริงที่คุณระบุ ป้องกันการกล่าวอ้างเกินจริง",
+          "required": false,
+          "rows": 3
+        },
+        {
+          "id": "product_type",
+          "type": "select",
+          "label": "Product Type",
+          "labelTh": "ประเภทสินค้า",
+          "helpText": "Helps tailor the review vocabulary and focus areas",
+          "helpTextTh": "ช่วยปรับมุมรีวิวและคำศัพท์ให้เหมาะกับประเภทสินค้า",
+          "required": true,
+          "default": "general",
+          "options": [
+            { "value": "general", "label": "General Beauty", "labelTh": "ความงามทั่วไป" },
+            { "value": "skincare", "label": "Skincare (Serum, Toner, Cream)", "labelTh": "สกินแคร์ (เซรั่ม, โทนเนอร์, ครีม)" },
+            { "value": "makeup", "label": "Makeup (Foundation, Lip, Eye)", "labelTh": "เมคอัพ (รองพื้น, ลิป, อาย)" },
+            { "value": "sunscreen", "label": "Sunscreen / UV Protection", "labelTh": "กันแดด / ป้องกัน UV" },
+            { "value": "haircare", "label": "Haircare (Shampoo, Treatment)", "labelTh": "ผลิตภัณฑ์ผม (แชมพู, ทรีทเมนต์)" },
+            { "value": "bodycare", "label": "Bodycare (Lotion, Scrub, Soap)", "labelTh": "ผลิตภัณฑ์บำรุงผิวกาย (โลชั่น, สครับ, สบู่)" },
+            { "value": "fragrance", "label": "Fragrance / Perfume", "labelTh": "น้ำหอม" },
+            { "value": "supplement", "label": "Beauty Supplement (Collagen, Vitamins)", "labelTh": "อาหารเสริมความงาม (คอลลาเจน, วิตามิน)" },
+            { "value": "tools", "label": "Beauty Tools (Brushes, Devices)", "labelTh": "อุปกรณ์ความงาม (แปรง, เครื่องมือ)" }
+          ]
+        },
+        {
+          "id": "language",
+          "type": "select",
+          "label": "Language",
+          "labelTh": "ภาษา",
+          "helpText": "Review output language",
+          "helpTextTh": "ภาษาที่ใช้เขียนรีวิว",
+          "required": true,
+          "default": "th",
+          "options": [
+            { "value": "th", "label": "Thai (ภาษาไทย)", "labelTh": "ภาษาไทย" },
+            { "value": "en", "label": "English", "labelTh": "อังกฤษ" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "skin",
+      "title": "Skin Profile",
+      "titleTh": "สภาพผิว",
+      "icon": "droplets",
+      "fields": [
+        {
+          "id": "skin_type",
+          "type": "select",
+          "label": "Target Skin Type",
+          "labelTh": "สภาพผิวเป้าหมาย",
+          "helpText": "Tailor the review for this skin type perspective",
+          "helpTextTh": "ปรับมุมรีวิวให้เหมาะกับสภาพผิวนี้",
+          "required": true,
+          "default": "all",
+          "options": [
+            { "value": "all", "label": "All Skin Types", "labelTh": "ทุกสภาพผิว" },
+            { "value": "oily", "label": "Oily Skin", "labelTh": "ผิวมัน" },
+            { "value": "dry", "label": "Dry Skin", "labelTh": "ผิวแห้ง" },
+            { "value": "combination", "label": "Combination Skin", "labelTh": "ผิวผสม" },
+            { "value": "sensitive", "label": "Sensitive Skin", "labelTh": "ผิวแพ้ง่าย" },
+            { "value": "normal", "label": "Normal Skin", "labelTh": "ผิวธรรมดา" },
+            { "value": "acne_prone", "label": "Acne-Prone Skin", "labelTh": "ผิวเป็นสิวง่าย" }
+          ]
+        },
+        {
+          "id": "include_ingredients",
+          "type": "boolean",
+          "label": "Include Ingredient Analysis",
+          "labelTh": "วิเคราะห์ส่วนผสมสำคัญ",
+          "helpText": "Add analysis of key active ingredients and their benefits for the skin",
+          "helpTextTh": "เพิ่มการวิเคราะห์ส่วนผสมหลักและประโยชน์ต่อผิว",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "style",
+      "title": "Review Style",
+      "titleTh": "สไตล์รีวิว",
+      "icon": "message-circle",
+      "fields": [
+        {
+          "id": "review_focus",
+          "type": "select",
+          "label": "Review Focus",
+          "labelTh": "จุดเน้นรีวิว",
+          "helpText": "The main angle or focus of the review",
+          "helpTextTh": "มุมมองหลักในการเขียนรีวิว",
+          "required": true,
+          "default": "first_impression",
+          "options": [
+            { "value": "first_impression", "label": "First Impression / Unboxing", "labelTh": "ความประทับใจแรก / แกะกล่อง" },
+            { "value": "texture", "label": "Texture & Sensory Experience", "labelTh": "เนื้อสัมผัสและประสบการณ์การใช้" },
+            { "value": "ingredients", "label": "Ingredient Deep Dive", "labelTh": "เจาะลึกส่วนผสม" },
+            { "value": "routine_fit", "label": "Routine Integration", "labelTh": "ใช้ร่วมกับรูทีนอย่างไร" },
+            { "value": "value", "label": "Value for Money", "labelTh": "ความคุ้มค่า" },
+            { "value": "comparison", "label": "Before vs After", "labelTh": "เทียบก่อน-หลังใช้" },
+            { "value": "long_term", "label": "Long-term Review", "labelTh": "รีวิวหลังใช้จริงระยะยาว" }
+          ]
+        },
+        {
+          "id": "storytelling_style",
+          "type": "select",
+          "label": "Storytelling Structure (optional)",
+          "labelTh": "โครงสร้างการเล่าเรื่อง (ไม่บังคับ)",
+          "helpText": "Leave empty for random selection. Each structure creates a different narrative flow.",
+          "helpTextTh": "ไม่เลือกก็ได้ ระบบจะสุ่มให้ แต่ละแบบให้ flow การเล่าเรื่องต่างกัน",
+          "required": false,
+          "options": [
+            { "value": "hpso", "label": "Hook - Problem - Solution - Outcome", "labelTh": "เปิด - ปัญหา - ทางออก - ผลลัพธ์" },
+            { "value": "aida", "label": "Attention - Interest - Desire - Action", "labelTh": "ดึงดูด - สนใจ - อยากได้ - ลงมือ" },
+            { "value": "pas", "label": "Problem - Agitate - Solution", "labelTh": "ปัญหา - ขยี้ - ทางออก" },
+            { "value": "hook_insight_tip", "label": "Hook - Insight - Tip", "labelTh": "เปิด - เจาะลึก - ทิป" },
+            { "value": "before_after", "label": "Before - After - Bridge", "labelTh": "ก่อน - หลัง - เชื่อมโยง" },
+            { "value": "story_flow", "label": "Story Flow (Hook - Backstory - Turning Point)", "labelTh": "เล่าเรื่อง (เปิด - ที่มา - จุดเปลี่ยน)" },
+            { "value": "my_why", "label": "My Why - My Way - Your Turn", "labelTh": "เหตุผลของฉัน - วิธีของฉัน - ถึงคุณแล้ว" },
+            { "value": "complain_recall", "label": "Complain - Recall - Press - Gentle", "labelTh": "บ่น - ย้อน - ขยี้ - อ่อนโยน" },
+            { "value": "fab", "label": "Features - Advantages - Benefits", "labelTh": "คุณสมบัติ - ข้อได้เปรียบ - ประโยชน์" },
+            { "value": "star", "label": "Situation - Task - Action - Result", "labelTh": "สถานการณ์ - ภารกิจ - การลงมือ - ผลลัพธ์" },
+            { "value": "scr", "label": "Situation - Complication - Resolution", "labelTh": "สถานการณ์ - ปมปัญหา - ทางออก" },
+            { "value": "inverted_pyramid", "label": "Lead - Details - Background", "labelTh": "ใจความสำคัญ - รายละเอียด - ภูมิหลัง" },
+            { "value": "listicle", "label": "Intro - Numbered Tips - Wrap-up", "labelTh": "เปิด - เคล็ดลับเรียงข้อ - สรุป" },
+            { "value": "qa_flow", "label": "Question - Explore - Answer - Takeaway", "labelTh": "ตั้งคำถาม - สำรวจ - คำตอบ - สิ่งที่ได้" }
+          ]
+        },
+        {
+          "id": "include_pricing",
+          "type": "boolean",
+          "label": "Include Pricing Info",
+          "labelTh": "ระบุราคาโดยประมาณ",
+          "helpText": "Add approximate pricing, price-per-ml analysis, and value assessment",
+          "helpTextTh": "เพิ่มข้อมูลราคาโดยประมาณ ราคาต่อ ml และความคุ้มค่า",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "options",
+      "title": "Options",
+      "titleTh": "ตัวเลือกเพิ่มเติม",
+      "icon": "settings",
+      "fields": [
+        {
+          "id": "length",
+          "type": "select",
+          "label": "Review Length",
+          "labelTh": "ความยาวรีวิว",
+          "helpText": "Short is about 1 min read, medium 1.5 min, long up to 3 min",
+          "helpTextTh": "สั้น ประมาณ 1 นาที, กลาง 1.5 นาที, ยาว สูงสุด 3 นาที",
+          "required": true,
+          "default": "medium",
+          "options": [
+            { "value": "short", "label": "Short (about 1 min)", "labelTh": "สั้น (ประมาณ 1 นาที)" },
+            { "value": "medium", "label": "Medium (about 1.5 min)", "labelTh": "กลาง (ประมาณ 1.5 นาที)" },
+            { "value": "long", "label": "Long (up to 3 min)", "labelTh": "ยาว (สูงสุด 3 นาที)" }
+          ]
+        },
+        {
+          "id": "word_count",
+          "type": "number",
+          "label": "Maximum Words (optional)",
+          "labelTh": "จำนวนคำสูงสุด (ไม่บังคับ)",
+          "helpText": "If set, the review will not exceed this word count.",
+          "helpTextTh": "หากกำหนด ระบบจะสร้างรีวิวไม่เกินจำนวนคำนี้",
+          "min": 80,
+          "max": 3000,
+          "step": 10
+        },
+        {
+          "id": "output_format",
+          "type": "select",
+          "label": "Output Format",
+          "labelTh": "รูปแบบผลลัพธ์",
+          "helpText": "Markdown uses headings and formatting. Plain text is clean for TTS narration.",
+          "helpTextTh": "Markdown ใช้หัวข้อและจัดรูปแบบ ข้อความธรรมดาเหมาะสำหรับอ่านออกเสียง",
+          "required": true,
+          "default": "markdown",
+          "options": [
+            { "value": "markdown", "label": "Markdown", "labelTh": "Markdown" },
+            { "value": "plain_text", "label": "Plain Text (TTS-friendly)", "labelTh": "ข้อความธรรมดา (เหมาะกับอ่านออกเสียง)" }
+          ]
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "topic": "topic",
+    "reference_images": "reference_images",
+    "product_specs": "product_specs",
+    "language": "language",
+    "product_type": "product_type",
+    "skin_type": "skin_type",
+    "review_focus": "review_focus",
+    "include_ingredients": "include_ingredients",
+    "include_pricing": "include_pricing",
+    "storytelling_style": "storytelling_style",
+    "output_format": "output_format",
+    "length": "length",
+    "word_count": "word_count"
+  }
+}

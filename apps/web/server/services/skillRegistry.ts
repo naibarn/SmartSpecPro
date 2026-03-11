@@ -11,7 +11,8 @@
 import { getDb } from "../db";
 import { skills as skillsTable } from "../../drizzle/schema";
 import { eq, desc } from "drizzle-orm";
-import { getModelIdsByType, getDefaultModel } from "./modelRegistry";
+import { getDefaultModel, getModelIdsByType, refreshModelCache } from "./modelRegistry";
+import { sanitizeMediaModelSelection } from "./mediaModelSelection";
 import fs from "fs";
 import crypto from "crypto";
 import path from "path";
@@ -57,6 +58,10 @@ function shouldBackfillBuiltInCategory(
   }
   if (slug === "video-prompt-engineer") {
     return currentCategory === "video_generation" && nextCategory === "video_prompt_generation";
+  }
+  // Allow reviewer skills to migrate from article_generation to product_review
+  if (nextCategory === "product_review" && currentCategory === "article_generation") {
+    return true;
   }
   return false;
 }
@@ -114,6 +119,15 @@ function dbSkillToDefinition(dbSkill: {
       const defaultModelDef = getDefaultModel(mediaType);
       defaultModel = defaultModelDef?.id;
     }
+  }
+
+  if (mediaType) {
+    const sanitizedSelection = sanitizeMediaModelSelection(mediaType, {
+      availableModels: models,
+      defaultModel,
+    });
+    models = sanitizedSelection.availableModels ?? undefined;
+    defaultModel = sanitizedSelection.defaultModel ?? undefined;
   }
 
   return {
@@ -499,6 +513,8 @@ async function loadSkillsFromDatabase(): Promise<SkillDefinition[]> {
       console.warn("[SkillRegistry] Database not available");
       return [];
     }
+
+    await refreshModelCache();
 
     // Run auto-sync first if not done
     if (!_autoSyncCompleted) {

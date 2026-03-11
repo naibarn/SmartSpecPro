@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import type { ReactNode } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Command,
@@ -16,6 +17,7 @@ export interface ComboboxItem {
   value: string;
   label: string;
   description?: string;
+  icon?: ReactNode;
 }
 
 interface SearchableComboboxProps {
@@ -97,14 +99,19 @@ export function SearchableCombobox({
                 >
                   <Check
                     className={cn(
-                      "mr-2 h-4 w-4",
+                      "mr-2 h-4 w-4 shrink-0",
                       value === item.value ? "opacity-100" : "opacity-0",
                     )}
                   />
-                  <div className="flex flex-col">
-                    <span>{item.label}</span>
+                  {item.icon && (
+                    <span className="mr-2 flex shrink-0 items-center">
+                      {item.icon}
+                    </span>
+                  )}
+                  <div className="flex min-w-0 flex-col">
+                    <span className="truncate">{item.label}</span>
                     {item.description && (
-                      <span className="text-xs text-muted-foreground line-clamp-1">
+                      <span className="truncate text-xs text-muted-foreground">
                         {item.description}
                       </span>
                     )}

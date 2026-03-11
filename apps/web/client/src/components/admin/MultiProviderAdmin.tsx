@@ -8,40 +8,69 @@
  * 4. Usage Stats — Aggregated usage dashboard
  */
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { trpc } from "../../lib/trpc";
 import { formatModelCost } from "../../lib/modelPricing";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Checkbox } from "../ui/checkbox";
+import { Badge } from "../ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import {
+  filterFlatModelMappings,
+  filterModelMappingGroups,
+} from "./multiProviderAdminModelMappings";
 
 type Tab = "mappings" | "rules" | "health" | "usage";
+const ALL_TABS: Tab[] = ["mappings", "rules", "health", "usage"];
+const TAB_LABELS: Record<Tab, string> = {
+  mappings: "Model Mappings",
+  rules: "Routing Rules",
+  health: "Provider Health",
+  usage: "Usage Stats",
+};
 
-export function MultiProviderAdmin() {
-  const [activeTab, setActiveTab] = useState<Tab>("mappings");
+interface MultiProviderAdminProps {
+  tabs?: Tab[];
+  defaultTab?: Tab;
+}
+
+export function MultiProviderAdmin({ tabs = ALL_TABS, defaultTab }: MultiProviderAdminProps) {
+  const resolvedTabs = tabs.length > 0 ? tabs : ALL_TABS;
+  const initialTab = resolvedTabs.includes(defaultTab ?? resolvedTabs[0]!) ? (defaultTab ?? resolvedTabs[0]!) : resolvedTabs[0]!;
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
+
+  useEffect(() => {
+    if (!resolvedTabs.includes(activeTab)) {
+      setActiveTab(initialTab);
+    }
+  }, [activeTab, initialTab, resolvedTabs]);
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 border-b border-border">
-        {(["mappings", "rules", "health", "usage"] as Tab[]).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === tab
-                ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {tab === "mappings" ? "Model Mappings" :
-             tab === "rules" ? "Routing Rules" :
-             tab === "health" ? "Provider Health" :
-             "Usage Stats"}
-          </button>
-        ))}
-      </div>
+      {resolvedTabs.length > 1 && (
+        <div className="flex gap-2 border-b border-border">
+          {resolvedTabs.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === tab
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {TAB_LABELS[tab]}
+            </button>
+          ))}
+        </div>
+      )}
 
-      {activeTab === "mappings" && <ModelMappingsTab />}
-      {activeTab === "rules" && <RoutingRulesTab />}
-      {activeTab === "health" && <ProviderHealthTab />}
-      {activeTab === "usage" && <UsageStatsTab />}
+      {activeTab === "mappings" && resolvedTabs.includes("mappings") && <ModelMappingsTab />}
+      {activeTab === "rules" && resolvedTabs.includes("rules") && <RoutingRulesTab />}
+      {activeTab === "health" && resolvedTabs.includes("health") && <ProviderHealthTab />}
+      {activeTab === "usage" && resolvedTabs.includes("usage") && <UsageStatsTab />}
     </div>
   );
 }
@@ -77,15 +106,65 @@ const emptyMappingForm: MappingForm = {
 };
 
 function ModelMappingsTab() {
+  type MappingView = "all" | "groups";
+
   const { data: mappings, isLoading } = trpc.multiProvider.listModelMappings.useQuery();
   const { data: providers } = trpc.llmProviders.adminList.useQuery();
   const upsertMutation = trpc.multiProvider.upsertModelMapping.useMutation();
   const deleteMutation = trpc.multiProvider.deleteModelMapping.useMutation();
+  const bulkSetEnabledMutation = trpc.multiProvider.bulkSetModelMappingsEnabled.useMutation();
   const utils = trpc.useUtils();
 
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState<MappingForm>(emptyMappingForm);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [providerFilter, setProviderFilter] = useState("all");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [mappingView, setMappingView] = useState<MappingView>("all");
+
+  const allMappingIds = useMemo(
+    () => Object.values(mappings ?? {}).flatMap((rows) => rows.map((row) => row.id)),
+    [mappings],
+  );
+
+  useEffect(() => {
+    const validIds = new Set(allMappingIds);
+    setSelectedIds((previous) => {
+      const next = new Set(Array.from(previous).filter((id) => validIds.has(id)));
+      return next.size === previous.size ? previous : next;
+    });
+  }, [allMappingIds]);
+
+  const filteredMappings = useMemo(
+    () => filterFlatModelMappings({
+      groupedMappings: mappings,
+      searchQuery,
+      providerFilter,
+    }),
+    [mappings, providerFilter, searchQuery],
+  );
+
+  const filteredGroups = useMemo(
+    () => filterModelMappingGroups({
+      groupedMappings: mappings,
+      searchQuery,
+      providerFilter,
+    }),
+    [mappings, providerFilter, searchQuery],
+  );
+
+  const visibleMappingIds = useMemo(() => filteredMappings.map((mapping) => mapping.id), [filteredMappings]);
+  const visibleSelectedCount = useMemo(
+    () => visibleMappingIds.filter((id) => selectedIds.has(id)).length,
+    [selectedIds, visibleMappingIds],
+  );
+  const totalVisibleEnabled = useMemo(
+    () => filteredMappings.filter((mapping) => mapping.isEnabled).length,
+    [filteredMappings],
+  );
+  const allFilteredSelected = visibleMappingIds.length > 0 && visibleSelectedCount === visibleMappingIds.length;
+  const someFilteredSelected = visibleSelectedCount > 0 && !allFilteredSelected;
 
   const resetForm = () => {
     setForm(emptyMappingForm);
@@ -93,21 +172,43 @@ function ModelMappingsTab() {
     setShowForm(false);
   };
 
-  const handleEdit = (m: any) => {
-    setForm({
-      modelId: m.modelId ?? "",
-      modelName: m.modelName ?? "",
-      providerId: String(m.providerId ?? ""),
-      providerModelId: m.providerModelId ?? "",
-      pricingInput: String(m.pricingInput ?? 0),
-      pricingOutput: String(m.pricingOutput ?? 0),
-      isFree: !!m.isFree,
-      contextLength: String(m.contextLength ?? 128000),
-      isEnabled: m.isEnabled !== false,
-      priority: String(m.priority ?? 0),
-      apiStyle: m.apiStyle ?? "chat-completions",
+  const invalidateMappingQueries = async () => {
+    await Promise.all([
+      utils.multiProvider.listModelMappings.invalidate(),
+      utils.multiProvider.getAvailableModelsWithProviders.invalidate(),
+      utils.llmProviders.adminList.invalidate(),
+    ]);
+  };
+
+  const setSelectionForIds = (ids: number[], checked: boolean) => {
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      ids.forEach((id) => {
+        if (checked) {
+          next.add(id);
+        } else {
+          next.delete(id);
+        }
+      });
+      return next;
     });
-    setEditId(m.id);
+  };
+
+  const handleEdit = (mapping: any) => {
+    setForm({
+      modelId: mapping.modelId ?? "",
+      modelName: mapping.modelName ?? "",
+      providerId: String(mapping.providerId ?? ""),
+      providerModelId: mapping.providerModelId ?? "",
+      pricingInput: String(mapping.pricingInput ?? 0),
+      pricingOutput: String(mapping.pricingOutput ?? 0),
+      isFree: !!mapping.isFree,
+      contextLength: String(mapping.contextLength ?? 128000),
+      isEnabled: mapping.isEnabled !== false,
+      priority: String(mapping.priority ?? 0),
+      apiStyle: mapping.apiStyle ?? "chat-completions",
+    });
+    setEditId(mapping.id);
     setShowForm(true);
   };
 
@@ -126,17 +227,119 @@ function ModelMappingsTab() {
       priority: Number(form.priority) || 0,
       apiStyle: form.apiStyle,
     });
-    utils.multiProvider.listModelMappings.invalidate();
+    await invalidateMappingQueries();
     resetForm();
+  };
+
+  const handleSetEnabled = async (ids: number[], isEnabled: boolean) => {
+    if (ids.length === 0) {
+      toast.error("Select at least one model mapping first");
+      return;
+    }
+
+    const uniqueIds = Array.from(new Set(ids));
+    await bulkSetEnabledMutation.mutateAsync({ ids: uniqueIds, isEnabled });
+    await invalidateMappingQueries();
+    toast.success(
+      `${isEnabled ? "Enabled" : "Disabled"} ${uniqueIds.length} model mapping${uniqueIds.length > 1 ? "s" : ""}`,
+    );
+    setSelectedIds((previous) => new Set(Array.from(previous).filter((id) => !uniqueIds.includes(id))));
   };
 
   if (isLoading) return <div className="p-4 text-sm text-muted-foreground">Loading...</div>;
 
-  const groups = mappings ? Object.entries(mappings) : [];
-
   return (
     <div className="space-y-4">
-      {/* Add / Edit form */}
+      <div className="rounded-lg border border-border bg-muted/20 p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-1 flex-col gap-3 md:flex-row">
+            <Input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search model id, display name, provider, or provider model id"
+              className="md:max-w-md"
+            />
+            <select
+              className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={providerFilter}
+              onChange={(event) => setProviderFilter(event.target.value)}
+            >
+              <option value="all">All providers</option>
+              {providers?.map((provider: any) => (
+                <option key={provider.id} value={String(provider.id)}>
+                  {provider.displayName} ({provider.providerName})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <label className="flex items-center gap-2 rounded-md border border-border bg-background px-3 text-sm">
+              <Checkbox
+                checked={allFilteredSelected ? true : someFilteredSelected ? "indeterminate" : false}
+                onCheckedChange={(checked) => setSelectionForIds(visibleMappingIds, checked === true)}
+                aria-label="Select all filtered model mappings"
+              />
+              <span>Select Filtered</span>
+            </label>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectionForIds(visibleMappingIds, true)}
+              disabled={visibleMappingIds.length === 0}
+            >
+              Select All
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectionForIds(visibleMappingIds, false)}
+              disabled={visibleSelectedCount === 0}
+            >
+              Clear Filtered
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleSetEnabled(visibleMappingIds, true)}
+              disabled={visibleMappingIds.length === 0 || bulkSetEnabledMutation.isPending}
+            >
+              {bulkSetEnabledMutation.isPending ? "Working..." : "Enable Visible"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleSetEnabled(visibleMappingIds, false)}
+              disabled={visibleMappingIds.length === 0 || bulkSetEnabledMutation.isPending}
+            >
+              {bulkSetEnabledMutation.isPending ? "Working..." : "Disable Visible"}
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => handleSetEnabled(Array.from(selectedIds), true)}
+              disabled={selectedIds.size === 0 || bulkSetEnabledMutation.isPending}
+            >
+              {bulkSetEnabledMutation.isPending ? "Working..." : "Enable Selected"}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => handleSetEnabled(Array.from(selectedIds), false)}
+              disabled={selectedIds.size === 0 || bulkSetEnabledMutation.isPending}
+            >
+              {bulkSetEnabledMutation.isPending ? "Working..." : "Disable Selected"}
+            </Button>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Badge variant="secondary">{visibleMappingIds.length} visible models</Badge>
+          <Badge variant="secondary">{totalVisibleEnabled} enabled in view</Badge>
+          <Badge variant="secondary">{filteredGroups.length} groups</Badge>
+          <Badge variant={selectedIds.size > 0 ? "default" : "secondary"}>
+            {selectedIds.size} selected
+          </Badge>
+        </div>
+      </div>
+
       {showForm ? (
         <div className="rounded-lg border border-border p-4 space-y-3 bg-muted/30">
           <h4 className="text-sm font-medium">{editId ? "Edit Mapping" : "Add Model Mapping"}</h4>
@@ -268,62 +471,213 @@ function ModelMappingsTab() {
           </div>
         </div>
       ) : (
-        <button
-          onClick={() => setShowForm(true)}
-          className="rounded bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-        >
+        <Button onClick={() => setShowForm(true)} className="w-fit" size="sm">
           + Add Model Mapping
-        </button>
+        </Button>
       )}
 
-      {/* Existing mappings list */}
-      {groups.length === 0 ? (
-        <p className="p-4 text-sm text-muted-foreground">No model mappings configured.</p>
-      ) : (
-        groups.map(([modelId, models]) => (
-          <div key={modelId} className="rounded-lg border border-border p-4">
-            <h3 className="text-sm font-medium">{modelId}</h3>
-            <div className="mt-2 space-y-2">
-              {(models as any[]).map((m: any) => (
-                <div key={m.id} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">{m.providerName}</span>
-                    {m.isFree && (
-                      <span className="rounded bg-green-500/10 px-1.5 py-0.5 text-xs text-green-500">FREE</span>
-                    )}
-                    <span className="text-xs text-muted-foreground">
-                      {formatModelCost(m.pricingInput, m.pricingOutput, m.isFree)}
-                    </span>
-                    {m.apiStyle && m.apiStyle !== "chat-completions" && (
-                      <span className="rounded bg-blue-500/10 px-1.5 py-0.5 text-xs text-blue-500">{m.apiStyle}</span>
-                    )}
-                    {!m.isEnabled && (
-                      <span className="rounded bg-yellow-500/10 px-1.5 py-0.5 text-xs text-yellow-500">disabled</span>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleEdit(m)}
-                      className="text-xs text-blue-500 hover:text-blue-400"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={async () => {
-                        await deleteMutation.mutateAsync({ id: m.id });
-                        utils.multiProvider.listModelMappings.invalidate();
-                      }}
-                      className="text-xs text-red-500 hover:text-red-400"
-                    >
-                      Delete
-                    </button>
+      <Tabs value={mappingView} onValueChange={(value) => setMappingView(value as MappingView)} className="space-y-4">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="all">All Models</TabsTrigger>
+          <TabsTrigger value="groups">Group Controls</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="all" className="space-y-3">
+          {filteredMappings.length === 0 ? (
+            <p className="p-4 text-sm text-muted-foreground">No model mappings match the current filters.</p>
+          ) : (
+            filteredMappings.map((mapping) => (
+              <div
+                key={mapping.id}
+                className="flex flex-col gap-3 rounded-lg border border-border p-4 lg:flex-row lg:items-center lg:justify-between"
+              >
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    checked={selectedIds.has(mapping.id)}
+                    onCheckedChange={(checked) => setSelectionForIds([mapping.id], checked === true)}
+                    aria-label={`Select mapping ${mapping.modelId} on ${mapping.providerDisplayName ?? mapping.providerName}`}
+                  />
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-semibold">{mapping.modelId}</span>
+                      <Badge variant="secondary">{mapping.providerDisplayName ?? mapping.providerName}</Badge>
+                      {mapping.modelName && mapping.modelName !== mapping.modelId && (
+                        <Badge variant="outline">{mapping.modelName}</Badge>
+                      )}
+                      <Badge variant={mapping.isEnabled ? "default" : "outline"}>
+                        {mapping.isEnabled ? "Enabled" : "Disabled"}
+                      </Badge>
+                      {mapping.isFree && (
+                        <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/10">Free</Badge>
+                      )}
+                      {mapping.apiStyle !== "chat-completions" && (
+                        <Badge variant="secondary">{mapping.apiStyle}</Badge>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Provider model: <code>{mapping.providerModelId}</code>
+                    </div>
+                    <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                      <span>{formatModelCost(mapping.pricingInput, mapping.pricingOutput, mapping.isFree)}</span>
+                      <span>Context: {(mapping.contextLength ?? 0).toLocaleString()}</span>
+                      <span>Priority: {mapping.priority}</span>
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        ))
-      )}
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant={mapping.isEnabled ? "outline" : "default"}
+                    size="sm"
+                    onClick={() => handleSetEnabled([mapping.id], !mapping.isEnabled)}
+                    disabled={bulkSetEnabledMutation.isPending}
+                  >
+                    {mapping.isEnabled ? "Disable" : "Enable"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEdit(mapping)}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={async () => {
+                      await deleteMutation.mutateAsync({ id: mapping.id });
+                      await invalidateMappingQueries();
+                      toast.success("Model mapping deleted");
+                    }}
+                    disabled={deleteMutation.isPending}
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </TabsContent>
+
+        <TabsContent value="groups" className="space-y-4">
+          {filteredGroups.length === 0 ? (
+            <p className="p-4 text-sm text-muted-foreground">No model groups match the current filters.</p>
+          ) : (
+            filteredGroups.map((group) => {
+              const groupIds = group.models.map((mapping) => mapping.id);
+              const selectedInGroup = groupIds.filter((id) => selectedIds.has(id)).length;
+              const allGroupSelected = groupIds.length > 0 && selectedInGroup === groupIds.length;
+              const someGroupSelected = selectedInGroup > 0 && !allGroupSelected;
+
+              return (
+                <div key={group.modelId} className="rounded-lg border border-border p-4">
+                  <div className="flex flex-col gap-3 border-b border-border/60 pb-3 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-start gap-3">
+                      <Checkbox
+                        checked={allGroupSelected ? true : someGroupSelected ? "indeterminate" : false}
+                        onCheckedChange={(checked) => setSelectionForIds(groupIds, checked === true)}
+                        aria-label={`Select all mappings for ${group.modelId}`}
+                      />
+                      <div>
+                        <h3 className="text-sm font-medium">{group.modelId}</h3>
+                        <div className="mt-1 flex flex-wrap gap-2">
+                          <Badge variant="secondary">{group.models.length} mappings</Badge>
+                          <Badge variant={group.enabledCount > 0 ? "default" : "secondary"}>
+                            {group.enabledCount} enabled
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSetEnabled(groupIds, true)}
+                        disabled={bulkSetEnabledMutation.isPending}
+                      >
+                        Enable Group
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSetEnabled(groupIds, false)}
+                        disabled={bulkSetEnabledMutation.isPending}
+                      >
+                        Disable Group
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {group.models.map((mapping) => (
+                      <div key={mapping.id} className="flex flex-col gap-3 rounded-md border border-border/60 p-3 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex items-start gap-3">
+                          <Checkbox
+                            checked={selectedIds.has(mapping.id)}
+                            onCheckedChange={(checked) => setSelectionForIds([mapping.id], checked === true)}
+                            aria-label={`Select mapping ${mapping.modelId} on ${mapping.providerDisplayName ?? mapping.providerName}`}
+                          />
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-sm font-medium">
+                                {mapping.providerDisplayName ?? mapping.providerName}
+                              </span>
+                              {!mapping.isEnabled && (
+                                <Badge variant="outline">Disabled</Badge>
+                              )}
+                              {mapping.isFree && (
+                                <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/10">Free</Badge>
+                              )}
+                              {mapping.apiStyle !== "chat-completions" && (
+                                <Badge variant="secondary">{mapping.apiStyle}</Badge>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              Provider model: <code>{mapping.providerModelId}</code>
+                            </div>
+                            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                              <span>{formatModelCost(mapping.pricingInput, mapping.pricingOutput, mapping.isFree)}</span>
+                              <span>Context: {(mapping.contextLength ?? 0).toLocaleString()}</span>
+                              <span>Priority: {mapping.priority}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleSetEnabled([mapping.id], !mapping.isEnabled)}
+                            disabled={bulkSetEnabledMutation.isPending}
+                          >
+                            {mapping.isEnabled ? "Disable" : "Enable"}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(mapping)}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={async () => {
+                              await deleteMutation.mutateAsync({ id: mapping.id });
+                              await invalidateMappingQueries();
+                              toast.success("Model mapping deleted");
+                            }}
+                            disabled={deleteMutation.isPending}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

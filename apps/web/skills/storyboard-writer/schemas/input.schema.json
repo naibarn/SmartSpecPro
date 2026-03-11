@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/skills/storyboard-writer/schemas/input.schema.json",
+  "title": "Storyboard Writer - Input Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "topic": {
+      "type": "string",
+      "title": "Topic / Concept",
+      "description": "The story concept, product, or scenario to storyboard."
+    },
+    "language": {
+      "type": "string",
+      "title": "Language",
+      "description": "Output language. Use 'en' for English or 'th' for Thai.",
+      "enum": ["en", "th"],
+      "default": "en"
+    },
+    "style": {
+      "type": "string",
+      "title": "Production Style",
+      "description": "The visual production style that determines visual language and pacing.",
+      "enum": ["cinematic", "animated", "documentary", "commercial", "social_media", "explainer"],
+      "default": "cinematic"
+    },
+    "total_scenes": {
+      "type": "integer",
+      "title": "Total Scenes (optional)",
+      "description": "Target number of scenes. If not set, determined by length.",
+      "minimum": 5,
+      "maximum": 15
+    },
+    "include_camera_direction": {
+      "type": "boolean",
+      "title": "Include Camera Direction",
+      "description": "Whether to include camera angles and movements for each scene.",
+      "default": false
+    },
+    "include_sound_design": {
+      "type": "boolean",
+      "title": "Include Sound Design",
+      "description": "Whether to include sound effects and music cues for each scene.",
+      "default": false
+    },
+    "length": {
+      "type": "string",
+      "title": "Length",
+      "description": "Approximate storyboard length.",
+      "enum": ["short", "medium", "long"],
+      "default": "medium"
+    },
+    "word_count": {
+      "type": "integer",
+      "title": "Maximum words (optional)",
+      "description": "If provided, the storyboard must not exceed this word count. Overrides length preset.",
+      "minimum": 120,
+      "maximum": 8000
+    },
+    "reference_images": {
+      "type": "array",
+      "title": "Reference Images",
+      "description": "Optional array of reference image URLs. When provided, visual elements from these images will be incorporated into the storyboard scenes.",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      }
+    }
+  }
+}

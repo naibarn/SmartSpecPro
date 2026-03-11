@@ -89,6 +89,7 @@ describe("browserPolicySettingsBridge", () => {
       rules: [],
       source: "db",
       metadata: {},
+      storageStatus: "ready",
     });
     mockGetBrowserPolicySurfaceGateStatus.mockResolvedValue({
       surface: "automationCopilot",
@@ -129,7 +130,44 @@ describe("browserPolicySettingsBridge", () => {
     );
     expect(updateSet).not.toHaveBeenCalled();
     expect(result.policyConfig.enforcementMode).toBe("read_only");
+    expect(result.storageStatus).toBe("ready");
     expect(result.legacyUiConnected).toBe(true);
     expect(result.userCustomization.allowPersonalDomainSubset).toBe(true);
+  });
+
+  it("returns a friendly error when tenant browser policy storage is not ready", async () => {
+    const schemaError = Object.assign(
+      new Error('column "metadata" does not exist'),
+      { code: "42703" },
+    );
+    const selectLimit = vi.fn().mockRejectedValue(schemaError);
+    const selectWhere = vi.fn(() => ({ limit: selectLimit }));
+    const selectFrom = vi.fn(() => ({ where: selectWhere }));
+    const select = vi.fn(() => ({ from: selectFrom }));
+    mockGetDb.mockResolvedValue({ select });
+
+    const { updateTenantAutomationPolicySettings } = await import(
+      "../browserPolicySettingsBridge"
+    );
+
+    await expect(
+      updateTenantAutomationPolicySettings({
+        tenantId: "tenant-1",
+        userId: 7,
+        config: {
+          enabled: true,
+          enforcementMode: "read_only",
+          defaultApprovalTtlSeconds: 420,
+          reviewCadenceDays: 30,
+          killSwitchEnabled: false,
+          requireTamperEvidence: true,
+          evidenceRetentionDays: 180,
+          allowedDomains: ["example.com"],
+          visionModel: "gpt-4o-mini",
+        },
+      }),
+    ).rejects.toThrow(
+      "Tenant-wide browser policy storage is not ready in this environment yet. Apply the browser policy database migration before saving tenant-wide settings.",
+    );
   });
 });

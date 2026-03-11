@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/skills/real-estate-reviewer/schemas/input.schema.json",
+  "title": "Real Estate Reviewer - Input Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "topic": {
+      "type": "string",
+      "title": "Project or Property Name",
+      "description": "The real estate project or property to review. Can be a project name, location, or a general description."
+    },
+    "language": {
+      "type": "string",
+      "title": "Language",
+      "description": "Output language. Use 'en' for English or 'th' for Thai.",
+      "enum": ["en", "th"],
+      "default": "th"
+    },
+    "product_category": {
+      "type": "string",
+      "title": "Property Type",
+      "description": "The real estate category to tailor the analysis framework.",
+      "enum": ["general", "single_house", "townhouse", "condo_highrise", "condo_lowrise", "land_residential", "land_agricultural", "land_commercial", "estate", "mixed_use"],
+      "default": "general"
+    },
+    "review_angle": {
+      "type": "string",
+      "title": "Review Angle",
+      "description": "The analysis perspective for the review.",
+      "enum": ["buyer_perspective", "investor_perspective", "family_perspective", "comparison_area", "site_visit"],
+      "default": "buyer_perspective"
+    },
+    "include_pricing": {
+      "type": "boolean",
+      "title": "Include Pricing Info",
+      "description": "Whether to include approximate pricing and value analysis.",
+      "default": false
+    },
+    "length": {
+      "type": "string",
+      "title": "Length",
+      "description": "Approximate review length.",
+      "enum": ["short", "medium", "long"],
+      "default": "medium"
+    },
+    "word_count": {
+      "type": "integer",
+      "title": "Maximum words (optional)",
+      "description": "If provided, the review must not exceed this word count. Overrides length preset.",
+      "minimum": 80,
+      "maximum": 3000
+    },
+    "output_format": {
+      "type": "string",
+      "title": "Output Format",
+      "description": "Preferred output format. Markdown uses headings and formatting. Plain text is optimized for text-to-speech.",
+      "enum": ["markdown", "plain_text"],
+      "default": "markdown"
+    },
+    "property_details": {
+      "type": "string",
+      "title": "Property Details (optional)",
+      "description": "Describe the property's details: bedrooms, area, project name, year built, location, title deed type. The review will be based on these facts."
+    },
+    "reference_images": {
+      "type": "array",
+      "title": "Property Images",
+      "description": "Optional property images. When provided, the review will be based on visual analysis of the actual property shown.",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      }
+    }
+  }
+}

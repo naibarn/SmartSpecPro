@@ -9,6 +9,7 @@ import { getDb } from "../db";
 import { users } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { deductCredits, calculateCreditsForLLM } from "../services/creditService";
+import { resolveEnabledLlmModelId } from "../services/enabledLlmModels";
 import { getProviderForModel } from "../services/llmRouter";
 
 const LANGUAGE_NAMES: Record<string, string> = {
@@ -52,8 +53,11 @@ export const translationRouter = router({
 
       const prefs = (user?.userPreferences as Record<string, any>) || {};
       const targetLang = input.targetLanguage || prefs.translationLanguage || "th";
-      const model = prefs.translationModel || "gpt-4o-mini";
+      const model = await resolveEnabledLlmModelId([prefs.translationModel]);
       const langName = LANGUAGE_NAMES[targetLang] || targetLang;
+      if (!model) {
+        throw new Error("No enabled LLM model available for translation");
+      }
 
       // Detect direction
       const textIsEnglish = isLikelyEnglish(input.text);

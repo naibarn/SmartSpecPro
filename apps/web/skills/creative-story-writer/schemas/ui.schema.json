@@ -1,0 +1,168 @@
+{
+  "version": "1.0",
+  "skillId": "creative-story-writer",
+  "title": "Creative Story Writer",
+  "titleTh": "นักเขียนเรื่องสั้น",
+  "description": "Write short stories and creative fiction for storytelling presentations",
+  "descriptionTh": "เขียนเรื่องสั้นและนิยายสร้างสรรค์สำหรับการนำเสนอแบบเล่าเรื่อง",
+  "sections": [
+    {
+      "id": "story",
+      "title": "Story",
+      "titleTh": "เรื่องสั้น",
+      "icon": "book-open",
+      "fields": [
+        {
+          "id": "topic",
+          "type": "textarea",
+          "label": "Topic / Premise",
+          "labelTh": "หัวข้อ / แนวคิดเรื่อง",
+          "placeholder": "e.g., A lonely lighthouse keeper discovers a message in a bottle, A child who can talk to animals, A time traveler stuck in ancient Egypt",
+          "placeholderTh": "เช่น ผู้ดูแลประภาคารผู้โดดเดี่ยวพบข้อความในขวด, เด็กที่พูดกับสัตว์ได้, นักเดินทางข้ามเวลาที่ติดอยู่ในอียิปต์โบราณ",
+          "helpText": "Describe the story premise, theme, or concept. Can be a simple idea or a detailed scenario.",
+          "helpTextTh": "อธิบายแนวคิด ธีม หรือสถานการณ์ของเรื่อง สามารถเป็นไอเดียง่ายๆ หรือสถานการณ์ที่ละเอียดก็ได้",
+          "required": true,
+          "rows": 3
+        },
+        {
+          "id": "reference_images",
+          "type": "images",
+          "label": "Reference Images (Optional)",
+          "labelTh": "รูปภาพอ้างอิง (ไม่บังคับ)",
+          "helpText": "Attach reference images to inspire the story. Visual elements will be woven into the narrative.",
+          "helpTextTh": "แนบรูปภาพอ้างอิงเพื่อสร้างแรงบันดาลใจให้เรื่อง องค์ประกอบภาพจะถูกสอดแทรกในเนื้อเรื่อง",
+          "multiple": true,
+          "accept": "image/*"
+        },
+        {
+          "id": "language",
+          "type": "select",
+          "label": "Language",
+          "labelTh": "ภาษา",
+          "helpText": "Story output language",
+          "helpTextTh": "ภาษาที่ใช้เขียนเรื่อง",
+          "required": true,
+          "default": "en",
+          "options": [
+            { "value": "en", "label": "English", "labelTh": "อังกฤษ" },
+            { "value": "th", "label": "Thai (ภาษาไทย)", "labelTh": "ภาษาไทย" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "genre_mood",
+      "title": "Genre & Mood",
+      "titleTh": "แนวเรื่อง & อารมณ์",
+      "icon": "sparkles",
+      "fields": [
+        {
+          "id": "genre",
+          "type": "select",
+          "label": "Genre",
+          "labelTh": "แนวเรื่อง",
+          "helpText": "Determines narrative conventions, tone, and vocabulary",
+          "helpTextTh": "กำหนดขนบการเล่าเรื่อง โทนเสียง และคำศัพท์",
+          "required": true,
+          "default": "fiction",
+          "options": [
+            { "value": "fiction", "label": "General Fiction", "labelTh": "นิยายทั่วไป" },
+            { "value": "sci_fi", "label": "Science Fiction", "labelTh": "นิยายวิทยาศาสตร์" },
+            { "value": "fantasy", "label": "Fantasy", "labelTh": "แฟนตาซี" },
+            { "value": "romance", "label": "Romance", "labelTh": "โรแมนซ์" },
+            { "value": "thriller", "label": "Thriller / Suspense", "labelTh": "ระทึกขวัญ" },
+            { "value": "drama", "label": "Drama", "labelTh": "ดราม่า" },
+            { "value": "fairy_tale", "label": "Fairy Tale", "labelTh": "เทพนิยาย" },
+            { "value": "fable", "label": "Fable / Moral Story", "labelTh": "นิทานสอนใจ" },
+            { "value": "adventure", "label": "Adventure", "labelTh": "ผจญภัย" }
+          ]
+        },
+        {
+          "id": "mood",
+          "type": "select",
+          "label": "Mood",
+          "labelTh": "อารมณ์",
+          "helpText": "The emotional atmosphere of the story",
+          "helpTextTh": "บรรยากาศทางอารมณ์ของเรื่อง",
+          "required": true,
+          "default": "dramatic",
+          "options": [
+            { "value": "lighthearted", "label": "Lighthearted", "labelTh": "สดใส ร่าเริง" },
+            { "value": "dark", "label": "Dark", "labelTh": "มืดหม่น" },
+            { "value": "suspenseful", "label": "Suspenseful", "labelTh": "ลุ้นระทึก" },
+            { "value": "heartwarming", "label": "Heartwarming", "labelTh": "อบอุ่นหัวใจ" },
+            { "value": "mysterious", "label": "Mysterious", "labelTh": "ลึกลับ" },
+            { "value": "dramatic", "label": "Dramatic", "labelTh": "เข้มข้น ดราม่า" }
+          ]
+        },
+        {
+          "id": "target_audience",
+          "type": "select",
+          "label": "Target Audience",
+          "labelTh": "กลุ่มเป้าหมาย",
+          "helpText": "Adjusts vocabulary complexity and content appropriateness",
+          "helpTextTh": "ปรับระดับคำศัพท์และเนื้อหาให้เหมาะสมกับกลุ่มผู้อ่าน",
+          "required": true,
+          "default": "adult",
+          "options": [
+            { "value": "children", "label": "Children", "labelTh": "เด็ก" },
+            { "value": "young_adult", "label": "Young Adult", "labelTh": "วัยรุ่น" },
+            { "value": "adult", "label": "Adult", "labelTh": "ผู้ใหญ่" }
+          ]
+        },
+        {
+          "id": "include_dialogue",
+          "type": "boolean",
+          "label": "Include Character Dialogue",
+          "labelTh": "มีบทสนทนาตัวละคร",
+          "helpText": "Add natural dialogue between characters",
+          "helpTextTh": "เพิ่มบทสนทนาระหว่างตัวละครในเรื่อง",
+          "default": true
+        }
+      ]
+    },
+    {
+      "id": "style",
+      "title": "Length",
+      "titleTh": "ความยาว",
+      "icon": "wand2",
+      "fields": [
+        {
+          "id": "length",
+          "type": "select",
+          "label": "Story Length",
+          "labelTh": "ความยาวเรื่อง",
+          "required": true,
+          "default": "medium",
+          "options": [
+            { "value": "short", "label": "Short (~500 words)", "labelTh": "สั้น (~500 คำ)" },
+            { "value": "medium", "label": "Medium (~1,000 words)", "labelTh": "กลาง (~1,000 คำ)" },
+            { "value": "long", "label": "Long (~2,000 words)", "labelTh": "ยาว (~2,000 คำ)" }
+          ]
+        },
+        {
+          "id": "word_count",
+          "type": "number",
+          "label": "Maximum Words (optional)",
+          "labelTh": "จำนวนคำสูงสุด (ไม่บังคับ)",
+          "helpText": "If set, the story must not exceed this number of words.",
+          "helpTextTh": "หากกำหนด ระบบจะสร้างเรื่องไม่เกินจำนวนคำนี้",
+          "min": 120,
+          "max": 8000,
+          "step": 10
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "topic": "topic",
+    "reference_images": "reference_images",
+    "language": "language",
+    "genre": "genre",
+    "mood": "mood",
+    "target_audience": "target_audience",
+    "include_dialogue": "include_dialogue",
+    "length": "length",
+    "word_count": "word_count"
+  }
+}

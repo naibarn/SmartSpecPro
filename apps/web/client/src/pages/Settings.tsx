@@ -3,7 +3,7 @@
  * User settings and preferences
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useSearch } from 'wouter';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
+import { pickEnabledModelId } from '@/lib/enabledModelSelection';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -59,7 +60,6 @@ import { GoogleDrivePanel } from '@/components/settings/GoogleDrivePanel';
 import { OneDrivePanel } from '@/components/settings/OneDrivePanel';
 import { BudgetPanel } from '@/components/settings/BudgetPanel';
 import { PersonasPanel } from '@/components/settings/PersonasPanel';
-import { TenantAutomationPolicyPanel } from '@/components/settings/TenantAutomationPolicyPanel';
 import { UserAutomationPreferencesPanel } from '@/components/settings/UserAutomationPreferencesPanel';
 
 type SettingsTab = 'profile' | 'account' | 'security' | 'preferences' | 'automation' | 'api' | 'billing' | 'integrations' | 'personas';
@@ -462,6 +462,10 @@ export default function Settings() {
   const { data: modelsData } = trpc.llmProviders.availableModels.useQuery(undefined, {
     enabled: isAuthenticated,
   });
+  const enabledTranslationModelIds = useMemo(
+    () => (modelsData?.models ?? []).map((model) => model.id),
+    [modelsData?.models],
+  );
   const updatePrefsMutation = trpc.users.updatePreferences.useMutation({
     onSuccess: () => toast.success('Translation preferences saved'),
     onError: (err: any) => toast.error(err.message),
@@ -517,11 +521,32 @@ export default function Settings() {
   }, [telegramStatus.data]);
 
   useEffect(() => {
-    if (prefsData) {
-      setTranslationLanguage(prefsData.translationLanguage || '');
-      setTranslationModel(prefsData.translationModel || '');
+    if (!prefsData || !modelsData?.models) {
+      return;
     }
-  }, [prefsData]);
+
+    setTranslationLanguage(prefsData.translationLanguage || '');
+    setTranslationModel(
+      pickEnabledModelId({
+        preferredId: prefsData.translationModel || '',
+        allowedIds: enabledTranslationModelIds,
+      }),
+    );
+  }, [enabledTranslationModelIds, modelsData?.models, prefsData]);
+
+  useEffect(() => {
+    if (!modelsData?.models) {
+      return;
+    }
+
+    const nextModelId = pickEnabledModelId({
+      preferredId: translationModel,
+      allowedIds: enabledTranslationModelIds,
+    });
+    if (nextModelId !== translationModel) {
+      setTranslationModel(nextModelId);
+    }
+  }, [enabledTranslationModelIds, modelsData?.models, translationModel]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -1328,18 +1353,36 @@ export default function Settings() {
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900 mb-2">Automation Policy</h2>
                     <p className="text-gray-600">
-                      Manage your personal browser-policy overlay and, if you administer this tenant, the tenant baseline.
+                      Manage only your own automation restrictions here. Tenant-wide browser policy is configured separately by administrators.
                     </p>
                   </div>
 
-                  {(user.role === 'admin' || user.role === 'domain_admin') && (
-                    <TenantAutomationPolicyPanel
-                      title="Tenant Automation Policy"
-                      description="Tenant baseline controls, rollout context, and the user customization envelope."
-                    />
-                  )}
-
                   <UserAutomationPreferencesPanel />
+
+                  {(user.role === 'admin' || user.role === 'domain_admin') && (
+                    <div className="rounded-2xl border border-sky-200 bg-sky-50/80 p-4">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-base font-semibold text-sky-950">Tenant-wide policy is managed separately</h3>
+                            <Badge variant="outline" className="border-sky-300 bg-white text-sky-800">
+                              Admin only
+                            </Badge>
+                          </div>
+                          <p className="mt-1 text-sm text-sky-900">
+                            This page is reserved for personal user preferences. Tenant-wide automation policy now lives in Admin Settings to avoid mixing user and tenant scope.
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          className="border-sky-300 bg-white text-sky-900 hover:bg-sky-100"
+                          onClick={() => setLocation('/admin/settings')}
+                        >
+                          Open Admin Settings
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

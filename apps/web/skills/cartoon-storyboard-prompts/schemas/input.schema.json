@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/cartoon-storyboard-prompts/input.schema.json",
+  "title": "CartoonStoryboardPromptsInput",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "storyIdea",
+    "cartoonStyle"
+  ],
+  "properties": {
+    "storyIdea": {
+      "type": "string",
+      "minLength": 5,
+      "description": "แนวคิดเรื่องราว/พล็อต/สถานการณ์ที่ต้องการสร้างเป็น Storyboard"
+    },
+    "language": {
+      "type": "string",
+      "description": "ภาษาของ Storyboard (Image Prompt จะเป็นภาษาอังกฤษเสมอ)",
+      "default": "th",
+      "enum": ["th", "en"]
+    },
+    "cartoonStyle": {
+      "type": "string",
+      "description": "สไตล์การ์ตูน/3D ที่ต้องการ",
+      "default": "pixar_3d",
+      "enum": [
+        "pixar_3d",
+        "cartoon_3d",
+        "chibi_3d",
+        "claymation",
+        "anime",
+        "cartoon_2d",
+        "comic",
+        "watercolor_cartoon",
+        "minimalist_cartoon",
+        "retro_cartoon",
+        "disney_classic",
+        "studio_ghibli",
+        "low_poly_3d",
+        "voxel",
+        "paper_craft",
+        "sticker_art",
+        "graffiti_street",
+        "neon_glow",
+        "isometric_3d",
+        "pixel_art"
+      ]
+    },
+    "characterType": {
+      "type": "string",
+      "description": "ประเภทตัวละคร — คน, สัตว์, หรือสิ่งของมีชีวิต (Anthropomorphic Objects)",
+      "default": "human",
+      "enum": [
+        "human",
+        "animal",
+        "anthropomorphic_object",
+        "mythical_creature",
+        "robot_mech"
+      ]
+    },
+    "sceneCount": {
+      "type": "integer",
+      "minimum": 3,
+      "maximum": 12,
+      "default": 6,
+      "description": "จำนวนฉาก/แพนเนลใน Storyboard"
+    },
+    "aspectRatio": {
+      "type": "string",
+      "enum": ["16:9", "9:16", "1:1", "3:4", "4:3", "21:9"],
+      "default": "16:9",
+      "description": "อัตราส่วนภาพของแต่ละฉาก"
+    },
+    "resolution": {
+      "type": "string",
+      "enum": ["1k", "2k", "4k"],
+      "default": "2k",
+      "description": "ความละเอียดเป้าหมาย"
+    },
+    "outputFormat": {
+      "type": "string",
+      "enum": ["png", "jpg"],
+      "default": "png",
+      "description": "รูปแบบไฟล์ภาพ"
+    },
+    "mood": {
+      "type": "string",
+      "enum": [
+        "happy",
+        "dramatic",
+        "mysterious",
+        "romantic",
+        "action",
+        "horror",
+        "calm",
+        "epic"
+      ],
+      "default": "happy",
+      "description": "อารมณ์โดยรวมของ Storyboard"
+    },
+    "lightingPreset": {
+      "type": "string",
+      "enum": [
+        "natural",
+        "studio_3point",
+        "golden_hour",
+        "dramatic_chiaroscuro",
+        "soft_diffused",
+        "neon_cyberpunk",
+        "moonlit",
+        "backlit_silhouette"
+      ],
+      "default": "natural",
+      "description": "รูปแบบแสงพื้นฐาน"
+    },
+    "colorPalette": {
+      "type": "string",
+      "enum": [
+        "vibrant",
+        "pastel",
+        "warm",
+        "cool",
+        "monochrome",
+        "earthy",
+        "neon",
+        "vintage"
+      ],
+      "default": "vibrant",
+      "description": "โทนสีหลักของภาพ"
+    },
+    "cameraWork": {
+      "type": "string",
+      "enum": [
+        "varied",
+        "static_medium",
+        "cinematic",
+        "overhead",
+        "pov"
+      ],
+      "default": "varied",
+      "description": "แนวทางมุมกล้องตลอด Storyboard"
+    },
+    "narrativeStyle": {
+      "type": "string",
+      "description": "แนวทางการเล่าเรื่อง/โครงสร้างการดำเนินเรื่อง",
+      "default": "classic_arc",
+      "enum": [
+        "classic_arc",
+        "in_medias_res",
+        "parallel_timeline",
+        "twist_ending",
+        "loop_story",
+        "day_in_the_life",
+        "before_after",
+        "countdown",
+        "pov_switch",
+        "silent_visual",
+        "montage_sequence",
+        "interview_cutaway",
+        "flashback",
+        "quest_journey",
+        "duet_split_screen",
+        "rant_monologue"
+      ]
+    },
+    "includeSpeechBubbles": {
+      "type": "boolean",
+      "default": false,
+      "description": "ใส่ Speech Bubbles ในภาพ"
+    },
+    "includeTextCaption": {
+      "type": "boolean",
+      "default": false,
+      "description": "ใส่ข้อความบรรยาย/หัวข้อในภาพ"
+    },
+    "reference_images": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      },
+      "description": "ภาพอ้างอิงสำหรับตัวละครหรือสถานที่ (ภาพแรก = ตัวละครหลัก)"
+    }
+  }
+}

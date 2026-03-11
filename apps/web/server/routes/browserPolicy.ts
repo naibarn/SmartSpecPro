@@ -4,7 +4,10 @@ import { Router } from "express";
 import type { Request, Response } from "express";
 
 import { ENV } from "../_core/env";
-import { evaluateAndPersistBrowserPolicyRuntime } from "../services/browserPolicyRuntime";
+import {
+  evaluateAndPersistBrowserPolicyRuntime,
+  persistBrowserPolicyOutcomeRuntime,
+} from "../services/browserPolicyRuntime";
 
 const router = Router();
 
@@ -41,6 +44,24 @@ router.post("/api/internal/browser-policy/evaluate", async (req: Request, res: R
     res.status(400).json({
       error: message,
       code: "BROWSER_POLICY_EVALUATION_FAILED",
+    });
+  }
+});
+
+router.post("/api/internal/browser-policy/outcome", async (req: Request, res: Response) => {
+  if (!verifyInternalToken(req)) {
+    res.status(401).json({ error: "Unauthorized.", code: "UNAUTHORIZED" });
+    return;
+  }
+
+  try {
+    const result = await persistBrowserPolicyOutcomeRuntime(req.body as never);
+    res.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Browser policy outcome persistence failed.";
+    res.status(400).json({
+      error: message,
+      code: "BROWSER_POLICY_OUTCOME_FAILED",
     });
   }
 });

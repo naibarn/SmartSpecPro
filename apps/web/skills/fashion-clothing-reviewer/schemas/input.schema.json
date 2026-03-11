@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/skills/fashion-clothing-reviewer/schemas/input.schema.json",
+  "title": "Fashion & Clothing Reviewer - Input Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "topic": {
+      "type": "string",
+      "title": "Product Name or Description",
+      "description": "The fashion item to review. Can be a product name, brand and model, or a general description."
+    },
+    "language": {
+      "type": "string",
+      "title": "Language",
+      "description": "Output language. Use 'en' for English or 'th' for Thai.",
+      "enum": ["en", "th"],
+      "default": "th"
+    },
+    "clothing_type": {
+      "type": "string",
+      "title": "Clothing Type",
+      "description": "The type of fashion item.",
+      "enum": ["tops", "bottoms", "dresses", "outerwear", "shoes", "bags", "accessories", "jewelry", "watches", "intimates", "activewear", "general"],
+      "default": "general"
+    },
+    "product_specs": {
+      "type": "string",
+      "title": "Product Specifications (optional)",
+      "description": "Describe the product's real specifications: fabric composition, weight, special features, sizing details, care instructions, certifications. The review will be factually grounded in what you specify."
+    },
+    "fabric_material": {
+      "type": "string",
+      "title": "Fabric / Material",
+      "description": "The primary fabric or material of the item.",
+      "enum": ["cotton", "polyester", "silk", "linen", "denim", "leather", "faux_leather", "suede", "wool", "nylon", "spandex_elastane", "recycled_materials", "synthetic_blend", "other"],
+      "default": "other"
+    },
+    "special_features": {
+      "type": "array",
+      "title": "Special Features (optional)",
+      "description": "Technical properties of the item. Select all that apply.",
+      "items": {
+        "type": "string",
+        "enum": ["waterproof", "water_resistant", "uv_protection", "breathable", "stretch", "wrinkle_resistant", "quick_dry", "thermal", "reflective", "antimicrobial", "recycled_material", "organic"]
+      }
+    },
+    "condition": {
+      "type": "string",
+      "title": "Product Condition",
+      "description": "Whether the item is new, secondhand, vintage, etc.",
+      "enum": ["new", "secondhand_preloved", "vintage", "restored", "handmade_custom"],
+      "default": "new"
+    },
+    "fit_profile": {
+      "type": "string",
+      "title": "Fit Profile",
+      "description": "Target body type or fit perspective for the review.",
+      "enum": ["petite", "tall", "plus_size", "standard", "athletic", "all"],
+      "default": "all"
+    },
+    "review_focus": {
+      "type": "string",
+      "title": "Review Focus",
+      "description": "The main angle or focus of the review.",
+      "enum": ["fit_comfort", "material_quality", "styling_versatility", "durability_value", "first_impression", "long_term", "comparison"],
+      "default": "first_impression"
+    },
+    "include_care_guide": {
+      "type": "boolean",
+      "title": "Include Care Guide",
+      "description": "Whether to include washing and care instructions in the review.",
+      "default": false
+    },
+    "include_pricing": {
+      "type": "boolean",
+      "title": "Include Pricing Info",
+      "description": "Whether to include approximate pricing and value-for-money assessment.",
+      "default": false
+    },
+    "storytelling_style": {
+      "type": "string",
+      "title": "Storytelling Style",
+      "description": "The narrative structure for the review. Leave empty for random selection.",
+      "enum": ["hpso", "aida", "pas", "hook_insight_tip", "before_after", "story_flow", "my_why", "complain_recall", "fab", "star", "scr", "inverted_pyramid", "listicle", "qa_flow"]
+    },
+    "length": {
+      "type": "string",
+      "title": "Length",
+      "description": "Approximate review length.",
+      "enum": ["short", "medium", "long"],
+      "default": "medium"
+    },
+    "word_count": {
+      "type": "integer",
+      "title": "Maximum words (optional)",
+      "description": "If provided, the review must not exceed this word count. Overrides length preset.",
+      "minimum": 80,
+      "maximum": 3000
+    },
+    "output_format": {
+      "type": "string",
+      "title": "Output Format",
+      "description": "Preferred output format. Markdown uses headings and formatting. Plain text is optimized for text-to-speech.",
+      "enum": ["markdown", "plain_text"],
+      "default": "markdown"
+    },
+    "reference_images": {
+      "type": "array",
+      "title": "Product Images",
+      "description": "Optional product images. When provided, the review will be based on visual analysis of the actual item shown.",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      }
+    }
+  }
+}

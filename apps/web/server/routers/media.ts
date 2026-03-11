@@ -29,6 +29,13 @@ import { eq, asc, and } from "drizzle-orm";
 import { shouldUseSandbox, dispatchToSandbox } from "../services/sandbox/dispatchService";
 import { checkAbuseGuard, hashPrompt } from "../services/abuseGuard";
 import { decrypt } from "../services/crypto";
+import {
+  getAllModelsAsync,
+  getDefaultModel,
+  getModelMetadata,
+  getModelsByTypeAsync,
+  refreshModelCache,
+} from "../services/modelRegistry";
 
 // Helper to create secure token for Python backend (fallback)
 function createMediaToken(userId: number): string {
@@ -125,6 +132,34 @@ function resolveConfiguredMaxPromptLength(configJson: Record<string, any> | null
   }
 
   return Math.floor(parsed);
+}
+
+function toMediaModelResponse(model: {
+  id: string;
+  type: MediaType;
+  name: string;
+  description: string;
+  provider: string;
+  creditCost: number;
+  supportsAspectRatios?: string[];
+  supportsSizes?: string[];
+  supportsDurations?: number[];
+  supportsVoices?: string[];
+  configJson?: Record<string, unknown>;
+}) {
+  return {
+    id: model.id,
+    type: model.type,
+    name: model.name,
+    description: model.description,
+    provider: model.provider,
+    creditCost: model.creditCost,
+    supportsAspectRatios: model.supportsAspectRatios,
+    supportsSizes: model.supportsSizes,
+    supportsDurations: model.supportsDurations,
+    supportsVoices: model.supportsVoices,
+    configJson: model.configJson,
+  };
 }
 
 type ModelFieldOption = {
@@ -913,9 +948,31 @@ export const mediaRouter = router({
           defaults: { image: defaultImage, video: defaultVideo, audio: defaultAudio },
         };
       }
-      // Fallback to hardcoded registry if DB unavailable
-      const models = mediaGenerationService.getModels(input?.type);
-      return { models, defaults: DEFAULT_MODELS };
+      await refreshModelCache().catch(() => {});
+      const registryModels = input?.type
+        ? await getModelsByTypeAsync(input.type)
+        : await getAllModelsAsync();
+      const models = registryModels.map((model) => toMediaModelResponse({
+        id: model.id,
+        type: model.type,
+        name: model.name,
+        description: model.description,
+        provider: model.provider,
+        creditCost: model.creditCost,
+        supportsAspectRatios: model.aspectRatios,
+        supportsSizes: model.sizes,
+        supportsDurations: model.durations,
+        supportsVoices: model.voices,
+        configJson: model.configJson,
+      }));
+      return {
+        models,
+        defaults: {
+          image: getDefaultModel("image")?.id ?? DEFAULT_MODELS.image,
+          video: getDefaultModel("video")?.id ?? DEFAULT_MODELS.video,
+          audio: getDefaultModel("audio")?.id ?? DEFAULT_MODELS.audio,
+        },
+      };
     }),
 
   // Get single model details
@@ -961,14 +1018,15 @@ export const mediaRouter = router({
         }
       }
 
-      const model = mediaGenerationService.getModel(input.modelId);
+      await refreshModelCache().catch(() => {});
+      const model = getModelMetadata(input.modelId);
       if (!model) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: `Model ${input.modelId} not found`,
         });
       }
-      return model;
+      return toMediaModelResponse(model);
     }),
 
   // Generate image (synchronous)

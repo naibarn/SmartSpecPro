@@ -62,3 +62,7 @@ class FeatureDisabledError(AutomationError):
 
 class CancellationRequestedError(AutomationError):
     pass
+
+
+class BrowserPolicyDeniedError(AutomationError):
+    pass

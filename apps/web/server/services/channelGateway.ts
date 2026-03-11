@@ -40,6 +40,7 @@ import {
   deductCreditsForModel,
   calculateCreditsForLLM,
 } from "./creditService";
+import { resolveEnabledLlmModelId } from "./enabledLlmModels";
 import { agencyBridge } from "./agencyBridge";
 import {
   agencies,
@@ -437,10 +438,14 @@ async function processMessageServerSide(
 
     // 2. Check credits
     const estimatedInputTokens = Math.ceil(params.content.length / 4);
+    const effectiveConversationModel = await resolveEnabledLlmModelId([conversation.model]);
+    if (!effectiveConversationModel) {
+      return { success: false, error: "No enabled LLM model configured" };
+    }
     const estimatedCredits = calculateCreditsForLLM(
       estimatedInputTokens,
       0,
-      conversation.model || "gpt-4o-mini",
+      effectiveConversationModel,
     );
     const canAfford = await hasEnoughCredits(params.userId, estimatedCredits);
     if (!canAfford) {
@@ -465,7 +470,7 @@ async function processMessageServerSide(
     );
 
     // 5. Call LLM (non-streaming)
-    const model = (conversation as any).model || "gpt-4o-mini";
+    const model = effectiveConversationModel;
     let result = await executeWithFallback({
       model,
       messages: context as any[],

@@ -7,6 +7,7 @@ import inspect
 import json
 import logging
 import os
+from contextlib import suppress
 from typing import TYPE_CHECKING, Any, Awaitable, Callable
 
 from pydantic import BaseModel
@@ -204,6 +205,7 @@ class SelfHealingExecutor:
                 if cancel_val == b"1":
                     raise CancellationRequestedError("Execution cancelled by user")
 
+            policy_result = None
             try:
                 if self._policy_client is not None:
                     await self._drain_policy_surface_events(
@@ -214,7 +216,7 @@ class SelfHealingExecutor:
                         observed_events=observed_policy_events,
                         status_callback=status_callback,
                     )
-                    await self._policy_client.enforce_before_action(
+                    policy_result = await self._policy_client.enforce_before_action(
                         page=page,
                         action=action,
                         state=policy_state,
@@ -316,11 +318,27 @@ class SelfHealingExecutor:
                         observed_events=observed_policy_events,
                         status_callback=status_callback,
                     )
+                    await self._record_policy_action_outcome(
+                        action=action,
+                        policy_result=policy_result,
+                        status_callback=status_callback,
+                        approval_state="approved",
+                        outcome="executed",
+                    )
                 policy_state.current_origin = next_origin or previous_origin
 
             except (CancellationRequestedError, KeyboardInterrupt):
                 raise
             except Exception as exc:
+                if self._policy_client is not None:
+                    with suppress(Exception):
+                        await self._record_policy_action_outcome(
+                            action=action,
+                            policy_result=policy_result,
+                            status_callback=status_callback,
+                            approval_state="approved",
+                            outcome="failed",
+                        )
                 return (False, action, idx, exc, extracted_data if extracted_data else None)
 
         return (True, None, -1, None, extracted_data if extracted_data else None)
@@ -486,7 +504,7 @@ class SelfHealingExecutor:
                 confidence=1.0,
                 target_origin=target_origin,
             )
-            await self._policy_client.enforce_before_action(
+            policy_result = await self._policy_client.enforce_before_action(
                 page=page,
                 action=synthetic_action,
                 state=policy_state,
@@ -499,6 +517,13 @@ class SelfHealingExecutor:
                     execution_id=execution_id,
                     field="external_send_count",
                 )
+            await self._record_policy_action_outcome(
+                action=synthetic_action,
+                policy_result=policy_result,
+                status_callback=status_callback,
+                approval_state="approved",
+                outcome="executed",
+            )
 
     async def _diagnose_failure(
         self, page: Any, failed_action: PlaywrightAction, error: Exception
@@ -705,6 +730,31 @@ class SelfHealingExecutor:
         await hincrby(key, field, amount)
         if callable(expire):
             await expire(key, _BROWSER_POLICY_COUNTER_TTL_SECONDS)
+
+    async def _record_policy_action_outcome(
+        self,
+        *,
+        action: PlaywrightAction,
+        policy_result: Any,
+        status_callback: Callable[[str, str | None], Awaitable[None]],
+        approval_state: str,
+        outcome: str,
+    ) -> None:
+        if self._policy_client is None:
+            return
+        decision = getattr(getattr(policy_result, "decision", None), "decision", None)
+        if decision != "require_approval":
+            return
+        record_outcome = getattr(self._policy_client, "record_action_outcome", None)
+        if not callable(record_outcome):
+            return
+        await record_outcome(
+            result=policy_result,
+            action=action,
+            approval_state=approval_state,
+            outcome=outcome,
+            status_callback=status_callback,
+        )
 
     @staticmethod
     def _browser_policy_counter_key(tenant_id: str, execution_id: str) -> str:

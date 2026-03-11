@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/skills/creative-story-writer/schemas/input.schema.json",
+  "title": "Creative Story Writer - Input Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "topic": {
+      "type": "string",
+      "title": "Topic / Premise",
+      "description": "The story premise, theme, or concept to build the story around."
+    },
+    "language": {
+      "type": "string",
+      "title": "Language",
+      "description": "Output language. Use 'en' for English or 'th' for Thai.",
+      "enum": ["en", "th"],
+      "default": "en"
+    },
+    "genre": {
+      "type": "string",
+      "title": "Genre",
+      "description": "The story genre. Determines tone, vocabulary, and narrative conventions.",
+      "enum": ["fiction", "sci_fi", "fantasy", "romance", "thriller", "drama", "fairy_tale", "fable", "adventure"],
+      "default": "fiction"
+    },
+    "mood": {
+      "type": "string",
+      "title": "Mood",
+      "description": "The emotional atmosphere of the story.",
+      "enum": ["lighthearted", "dark", "suspenseful", "heartwarming", "mysterious", "dramatic"],
+      "default": "dramatic"
+    },
+    "target_audience": {
+      "type": "string",
+      "title": "Target Audience",
+      "description": "Who the story is written for. Affects vocabulary and content appropriateness.",
+      "enum": ["children", "young_adult", "adult"],
+      "default": "adult"
+    },
+    "include_dialogue": {
+      "type": "boolean",
+      "title": "Include Dialogue",
+      "description": "Whether to include character dialogue in the story.",
+      "default": true
+    },
+    "length": {
+      "type": "string",
+      "title": "Length",
+      "description": "Approximate story length.",
+      "enum": ["short", "medium", "long"],
+      "default": "medium"
+    },
+    "word_count": {
+      "type": "integer",
+      "title": "Maximum words (optional)",
+      "description": "If provided, the story must not exceed this word count. Overrides length preset.",
+      "minimum": 120,
+      "maximum": 8000
+    },
+    "reference_images": {
+      "type": "array",
+      "title": "Reference Images",
+      "description": "Optional array of reference image URLs. When provided, the story should weave visual elements from these images into the narrative.",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      }
+    }
+  }
+}

@@ -1,0 +1,152 @@
+{
+  "version": "1.0",
+  "skillId": "storyboard-writer",
+  "title": "Storyboard Writer",
+  "titleTh": "นักเขียนสตอรี่บอร์ด",
+  "description": "Create scene-by-scene visual storyboards for video and animation",
+  "descriptionTh": "สร้างสตอรี่บอร์ดวางแผนฉากสำหรับวิดีโอและแอนิเมชัน",
+  "sections": [
+    {
+      "id": "storyboard",
+      "title": "Storyboard",
+      "titleTh": "สตอรี่บอร์ด",
+      "icon": "clapperboard",
+      "fields": [
+        {
+          "id": "topic",
+          "type": "textarea",
+          "label": "Topic / Concept",
+          "labelTh": "หัวข้อ / แนวคิด",
+          "placeholder": "e.g., A day in the life of a coffee farmer, Product launch for a smartwatch, A child discovering the ocean for the first time",
+          "placeholderTh": "เช่น หนึ่งวันของชาวไร่กาแฟ, เปิดตัวผลิตภัณฑ์สมาร์ทวอทช์, เด็กน้อยที่ได้เห็นทะเลครั้งแรก",
+          "helpText": "Describe the story, product, or scenario to create a visual storyboard for.",
+          "helpTextTh": "อธิบายเรื่องราว ผลิตภัณฑ์ หรือสถานการณ์ที่ต้องการวางแผนฉาก",
+          "required": true,
+          "rows": 3
+        },
+        {
+          "id": "reference_images",
+          "type": "images",
+          "label": "Reference Images (Optional)",
+          "labelTh": "รูปภาพอ้างอิง (ไม่บังคับ)",
+          "helpText": "Attach reference images for visual style, setting, or characters to incorporate into scenes.",
+          "helpTextTh": "แนบรูปภาพอ้างอิงสำหรับสไตล์ภาพ ฉากหลัง หรือตัวละครเพื่อสอดแทรกในฉาก",
+          "multiple": true,
+          "accept": "image/*"
+        },
+        {
+          "id": "language",
+          "type": "select",
+          "label": "Language",
+          "labelTh": "ภาษา",
+          "helpText": "Storyboard output language",
+          "helpTextTh": "ภาษาที่ใช้เขียนสตอรี่บอร์ด",
+          "required": true,
+          "default": "en",
+          "options": [
+            { "value": "en", "label": "English", "labelTh": "อังกฤษ" },
+            { "value": "th", "label": "Thai (ภาษาไทย)", "labelTh": "ภาษาไทย" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "production",
+      "title": "Production Style",
+      "titleTh": "สไตล์การผลิต",
+      "icon": "film",
+      "fields": [
+        {
+          "id": "style",
+          "type": "select",
+          "label": "Production Style",
+          "labelTh": "สไตล์การผลิต",
+          "helpText": "Determines visual language, pacing, and narrative approach",
+          "helpTextTh": "กำหนดภาษาภาพ จังหวะ และแนวทางการเล่าเรื่อง",
+          "required": true,
+          "default": "cinematic",
+          "options": [
+            { "value": "cinematic", "label": "Cinematic (Film)", "labelTh": "ภาพยนตร์ (Cinematic)" },
+            { "value": "animated", "label": "Animated / Cartoon", "labelTh": "แอนิเมชัน / การ์ตูน" },
+            { "value": "documentary", "label": "Documentary", "labelTh": "สารคดี" },
+            { "value": "commercial", "label": "Commercial / Ad", "labelTh": "โฆษณา" },
+            { "value": "social_media", "label": "Social Media (Short-form)", "labelTh": "โซเชียลมีเดีย (คลิปสั้น)" },
+            { "value": "explainer", "label": "Explainer / Tutorial", "labelTh": "อธิบาย / สอนการใช้งาน" }
+          ]
+        },
+        {
+          "id": "total_scenes",
+          "type": "number",
+          "label": "Total Scenes (optional)",
+          "labelTh": "จำนวนฉากทั้งหมด (ไม่บังคับ)",
+          "helpText": "Target number of scenes (5-15). If not set, determined by length.",
+          "helpTextTh": "จำนวนฉากเป้าหมาย (5-15) หากไม่กำหนดจะขึ้นกับความยาว",
+          "min": 5,
+          "max": 15,
+          "step": 1
+        }
+      ]
+    },
+    {
+      "id": "options",
+      "title": "Scene Options",
+      "titleTh": "ตัวเลือกฉาก",
+      "icon": "settings",
+      "fields": [
+        {
+          "id": "include_camera_direction",
+          "type": "boolean",
+          "label": "Include Camera Direction",
+          "labelTh": "ระบุมุมกล้อง",
+          "helpText": "Add camera angles and movements (close-up, wide shot, pan, zoom, etc.)",
+          "helpTextTh": "เพิ่มมุมกล้องและการเคลื่อนกล้อง (ใกล้, กว้าง, แพน, ซูม ฯลฯ)",
+          "default": false
+        },
+        {
+          "id": "include_sound_design",
+          "type": "boolean",
+          "label": "Include Sound Design",
+          "labelTh": "ระบุเสียงประกอบ",
+          "helpText": "Add sound effects, music cues, and ambient audio descriptions",
+          "helpTextTh": "เพิ่มเอฟเฟกต์เสียง เพลงประกอบ และเสียงบรรยากาศ",
+          "default": false
+        },
+        {
+          "id": "length",
+          "type": "select",
+          "label": "Storyboard Length",
+          "labelTh": "ความยาวสตอรี่บอร์ด",
+          "required": true,
+          "default": "medium",
+          "options": [
+            { "value": "short", "label": "Short (5-6 scenes)", "labelTh": "สั้น (5-6 ฉาก)" },
+            { "value": "medium", "label": "Medium (8-10 scenes)", "labelTh": "กลาง (8-10 ฉาก)" },
+            { "value": "long", "label": "Long (12-15 scenes)", "labelTh": "ยาว (12-15 ฉาก)" }
+          ]
+        },
+        {
+          "id": "word_count",
+          "type": "number",
+          "label": "Maximum Words (optional)",
+          "labelTh": "จำนวนคำสูงสุด (ไม่บังคับ)",
+          "helpText": "If set, the storyboard must not exceed this number of words.",
+          "helpTextTh": "หากกำหนด ระบบจะสร้างสตอรี่บอร์ดไม่เกินจำนวนคำนี้",
+          "min": 120,
+          "max": 8000,
+          "step": 10
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "topic": "topic",
+    "reference_images": "reference_images",
+    "language": "language",
+    "style": "style",
+    "total_scenes": "total_scenes",
+    "include_camera_direction": "include_camera_direction",
+    "include_sound_design": "include_sound_design",
+    "length": "length",
+    "word_count": "word_count"
+  }
+}

@@ -20,6 +20,7 @@ from app.services.automation_exceptions import BrowserPolicyDeniedError
 from app.services.browser_policy_contract import (
     BrowserPolicyEvaluationResponse,
     BrowserPolicyExecutionContext,
+    BrowserPolicyOutcomeResponse,
 )
 from app.services.browser_policy_transfer_controls import resolve_iframe_trust_tier
 
@@ -75,7 +76,7 @@ class BrowserPolicyNodeClient:
         action: Any,
         state: BrowserPolicyExecutionState,
         status_callback: Callable[[str, str | None], Awaitable[None]],
-    ) -> None:
+    ) -> BrowserPolicyEvaluationResponse:
         payload = await self._build_payload(
             page=page,
             action=action,
@@ -88,6 +89,7 @@ class BrowserPolicyNodeClient:
             action=action,
             status_callback=status_callback,
         )
+        return result
 
     async def enforce_transition(
         self,
@@ -97,9 +99,9 @@ class BrowserPolicyNodeClient:
         next_origin: str | None,
         state: BrowserPolicyExecutionState,
         status_callback: Callable[[str, str | None], Awaitable[None]],
-    ) -> None:
+    ) -> BrowserPolicyEvaluationResponse | None:
         if not previous_origin or not next_origin:
-            return
+            return None
 
         payload = {
             "tenantId": self._tenant_id,
@@ -143,6 +145,36 @@ class BrowserPolicyNodeClient:
             action=action,
             status_callback=status_callback,
         )
+        return result
+
+    async def record_action_outcome(
+        self,
+        *,
+        result: BrowserPolicyEvaluationResponse,
+        action: Any,
+        approval_state: str,
+        outcome: str,
+        status_callback: Callable[[str, str | None], Awaitable[None]],
+    ) -> BrowserPolicyOutcomeResponse | None:
+        if result.decision.decision != "require_approval" or result.audit is None:
+            return None
+
+        response = await self._persist_action_outcome(
+            result=result,
+            approval_state=approval_state,
+            outcome=outcome,
+        )
+        if response.incident is not None:
+            await status_callback(
+                "running",
+                self._build_operator_status_detail_from_incident(
+                    result=result,
+                    action=action,
+                    incident=response.incident.operatorMessage,
+                    audit_event_hash=response.audit.eventHash if response.audit else None,
+                ),
+            )
+        return response
 
     async def _build_payload(
         self,
@@ -230,6 +262,37 @@ class BrowserPolicyNodeClient:
             )
         response.raise_for_status()
         return BrowserPolicyEvaluationResponse.model_validate(response.json())
+
+    async def _persist_action_outcome(
+        self,
+        *,
+        result: BrowserPolicyEvaluationResponse,
+        approval_state: str,
+        outcome: str,
+    ) -> BrowserPolicyOutcomeResponse:
+        headers = {}
+        if self._internal_token:
+            headers["x-internal-token"] = self._internal_token
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(
+                f"{self._base_url}/api/internal/browser-policy/outcome",
+                headers=headers,
+                json={
+                    "decision": result.decision.model_dump(mode="json"),
+                    "approvalState": approval_state,
+                    "outcome": outcome,
+                    "previousEventHash": result.audit.eventHash if result.audit else None,
+                    "requireTamperEvidence": self._policy_context.config.requireTamperEvidence,
+                },
+            )
+
+        if response.is_error:
+            if self._policy_context.config.requireTamperEvidence:
+                response.raise_for_status()
+            return BrowserPolicyOutcomeResponse()
+
+        return BrowserPolicyOutcomeResponse.model_validate(response.json())
 
     async def _resolve_decision(
         self,
@@ -549,6 +612,21 @@ class BrowserPolicyNodeClient:
         if result.decision.traceId:
             suffix.append(f"trace_id={result.decision.traceId}")
         return f"{base_message} ({', '.join(suffix)})"
+
+    @staticmethod
+    def _build_operator_status_detail_from_incident(
+        *,
+        result: BrowserPolicyEvaluationResponse,
+        action: Any,
+        incident: str,
+        audit_event_hash: str | None,
+    ) -> str:
+        suffix: list[str] = [f"action={getattr(action, 'description', result.decision.actionType)}"]
+        if audit_event_hash:
+            suffix.append(f"audit_event_hash={audit_event_hash}")
+        if result.decision.traceId:
+            suffix.append(f"trace_id={result.decision.traceId}")
+        return f"{incident} ({', '.join(suffix)})"
 
     @staticmethod
     def _stable_hash(value: dict[str, Any]) -> str:

@@ -86,6 +86,10 @@ import {
   Film,
   Type,
   Palette,
+  Volume2,
+  FileText,
+  ImageIcon,
+  Video,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -130,6 +134,23 @@ const ARTICLE_WORDS_PER_SLIDE_EN = 108;
 const ARTICLE_WORDS_PER_SLIDE_TH = 92;
 const MAX_MEDIA_REFERENCES = 5;
 const TOTAL_AI_DRAFT_PHASES = 7;
+
+function getSkillCategoryIcon(skill: VisibleSkillOption | null | undefined) {
+  const cap = classifyDraftSkillCapability(skill);
+  const cls = "h-4 w-4";
+  switch (cap) {
+    case "article":
+      return <FileText className={`${cls} text-blue-500`} />;
+    case "prompt":
+      return <Sparkles className={`${cls} text-amber-500`} />;
+    case "image":
+      return <ImageIcon className={`${cls} text-emerald-500`} />;
+    case "video":
+      return <Video className={`${cls} text-purple-500`} />;
+    default:
+      return undefined;
+  }
+}
 
 function clampInteger(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) {
@@ -327,6 +348,10 @@ export function AIDraftModal({
   const [topic, setTopic] = useState("");
   const [useCustomArticle, setUseCustomArticle] = useState(false);
   const [customArticleText, setCustomArticleText] = useState("");
+  const [articleGenSkill, setArticleGenSkill] = useState(() => loadSavedValue("smartspec_aiDraft_articleGenSkill"));
+  const [articleGenParams, setArticleGenParams] = useState<Record<string, any>>({});
+  const [articleGenAdvancedOpen, setArticleGenAdvancedOpen] = useState(false);
+  const [isGeneratingArticle, setIsGeneratingArticle] = useState(false);
   const [hideTextOnSlides, setHideTextOnSlides] = useState(false);
   const [numSlides, setNumSlides] = useState(5);
   const [language, setLanguage] = useState<"auto" | "en" | "th">("auto");
@@ -418,6 +443,29 @@ export function AIDraftModal({
     {
       enabled: isOpen,
     },
+  );
+
+  // Fetch skill input schema for article generate skill (inside "Use Your Own Article")
+  const articleGenSchemaQuery = trpc.skills.getInputSchema.useQuery(
+    { skillId: articleGenSkill },
+    { enabled: articleGenSkill !== "" && useCustomArticle, staleTime: 300_000 },
+  );
+  const articleGenSchema = articleGenSchemaQuery.data?.hasSchema
+    ? (articleGenSchemaQuery.data.schema as SkillInputSchema)
+    : null;
+
+  // Article generate skill items — reuse draftSkillItems (article-capable skills)
+  const articleGenSkillItems = useMemo(
+    () =>
+      skills
+        .filter((skill) => isSupportedDraftSkill(skill))
+        .map((s) => ({
+          value: s.slug,
+          label: s.name,
+          description: `${getDraftSkillModeLabel(s)}${s.description ? ` - ${s.description}` : ""}`,
+          icon: getSkillCategoryIcon(s),
+        })),
+    [skills],
   );
 
   // Fetch skill input schema for dynamic form
@@ -533,22 +581,8 @@ export function AIDraftModal({
     if (savedContext && !imagePromptContext) {
       setImagePromptContext(savedContext);
     }
-    const savedRefs = localStorage.getItem("smartspec_aiDraft_referenceImages");
-    if (savedRefs && referenceImages.length === 0) {
-      try {
-        const parsed = JSON.parse(savedRefs);
-        if (Array.isArray(parsed)) {
-          const normalized = parsed
-            .filter((item) => item && typeof item.url === "string" && typeof item.name === "string")
-            .slice(0, MAX_MEDIA_REFERENCES);
-          if (normalized.length > 0) {
-            setReferenceImages(normalized);
-          }
-        }
-      } catch {
-        // ignore corrupted localStorage payload
-      }
-    }
+    // Reference images are cleared on each modal open (see isOpen reset effect)
+    // No localStorage restore — users add images fresh per-task
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -561,6 +595,7 @@ export function AIDraftModal({
           value: s.slug,
           label: s.name,
           description: `${getDraftSkillModeLabel(s)}${s.description ? ` - ${s.description}` : ""}`,
+          icon: getSkillCategoryIcon(s),
         })),
     [skills],
   );
@@ -574,6 +609,7 @@ export function AIDraftModal({
           value: s.slug,
           label: s.name,
           description: `${getDraftSkillModeLabel(s)}${s.description ? ` - ${s.description}` : ""}`,
+          icon: getSkillCategoryIcon(s),
         })),
     ],
     [skills],
@@ -739,6 +775,36 @@ export function AIDraftModal({
   const generateDraft = trpc.presentation.ai.generateDraft.useMutation();
   const cancelDraft = trpc.presentation.ai.cancelDraft.useMutation();
   const uploadReferenceMutation = trpc.ai.upload.useMutation();
+  const executeSkillMutation = trpc.chat.executeSkill.useMutation();
+
+  // Handler: generate article content using the selected skill
+  const handleGenerateArticle = useCallback(async () => {
+    if (!articleGenSkill || isGeneratingArticle) return;
+    setIsGeneratingArticle(true);
+    try {
+      const result = await executeSkillMutation.mutateAsync({
+        skillId: articleGenSkill,
+        prompt: topic.trim() || undefined,
+        dynamicParams: Object.keys(articleGenParams).length > 0
+          ? articleGenParams
+          : undefined,
+        referenceImageUrls:
+          normalizedReferenceImageUrls.length > 0
+            ? normalizedReferenceImageUrls
+            : undefined,
+      });
+      if (result.success && result.message) {
+        setCustomArticleText(result.message);
+        toast.success("Article generated successfully");
+      } else {
+        toast.error(result.error || "Failed to generate article");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate article");
+    } finally {
+      setIsGeneratingArticle(false);
+    }
+  }, [articleGenSkill, isGeneratingArticle, topic, articleGenParams, normalizedReferenceImageUrls, executeSkillMutation]);
 
   // Polling progress
   const progressQuery = trpc.presentation.ai.getDraftProgress.useQuery(
@@ -839,9 +905,13 @@ export function AIDraftModal({
     setGenerateAudio(false);
     setHideTextOnSlides(false);
     setAudioModelExtraParams({});
+    // Clear reference images on each fresh open — users add images per-task
+    setReferenceImages([]);
+    localStorage.removeItem("smartspec_aiDraft_referenceImages");
     setSelectedReferenceLibraryUrl("");
     setReferenceLibrarySearchQuery("");
     setDebouncedReferenceLibrarySearchQuery("");
+    setReferenceUrlInput("");
     setHeaderEnabled(false);
     setShowDeckTitle(false);
     setFooterEnabled(false);
@@ -1416,13 +1486,176 @@ export function AIDraftModal({
           id="ai-topic"
           className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[80px] w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
           placeholder={useCustomArticle
-            ? "Topic is optional when you provide your own article."
+            ? "Topic is optional when you provide your own article, or enter a topic to generate one with a skill."
             : "Describe what your presentation should be about..."}
           maxLength={1000}
           value={topic}
           onChange={(e) => setTopic(e.target.value)}
-          disabled={useCustomArticle}
         />
+      </div>
+
+      {/* Reference images — placed early so they feed into article gen, image gen, and video gen */}
+      <div className="space-y-2">
+        <Label>Reference Images (optional)</Label>
+        <p className="text-xs text-muted-foreground">
+          Attach up to {MAX_MEDIA_REFERENCES} images as shared references. These are used across all phases: article generation (content aligned with images), image generation (style/character consistency), and video generation (start frame, or start + end frames).
+        </p>
+        {/* Add image actions row */}
+        <div className="flex flex-wrap gap-2">
+          <input
+            ref={referenceFileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={handleReferenceFileUpload}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => referenceFileInputRef.current?.click()}
+            disabled={uploadReferenceMutation.isPending || referenceImages.length >= MAX_MEDIA_REFERENCES}
+          >
+            {uploadReferenceMutation.isPending ? (
+              <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Upload className="mr-1 h-3.5 w-3.5" />
+            )}
+            Upload
+          </Button>
+          <Collapsible>
+            <CollapsibleTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={referenceImages.length >= MAX_MEDIA_REFERENCES}
+              >
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                From Library
+                <ChevronDown className="ml-1 h-3 w-3" />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="mt-2 rounded-md border bg-background p-2">
+                <Input
+                  placeholder="Search library images..."
+                  value={referenceLibrarySearchQuery}
+                  onChange={(e) => setReferenceLibrarySearchQuery(e.target.value)}
+                  className="mb-2 h-8 text-xs"
+                />
+                <div className="grid max-h-[200px] grid-cols-4 gap-1.5 overflow-y-auto sm:grid-cols-5">
+                  {referenceLibraryQuery.isLoading ? (
+                    <div className="col-span-full flex items-center justify-center py-4 text-xs text-muted-foreground">
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                      Loading...
+                    </div>
+                  ) : (referenceLibraryQuery.data?.results ?? []).length === 0 ? (
+                    <p className="col-span-full py-4 text-center text-xs text-muted-foreground">No images found.</p>
+                  ) : (
+                    ((referenceLibraryQuery.data?.results ?? []) as Array<{
+                      source_url?: string | null;
+                      title?: string | null;
+                    }>).map((item) => {
+                      const url = String(item.source_url || "").trim();
+                      if (!url) return null;
+                      const alreadyAdded = referenceImages.some((r) => r.url === url);
+                      return (
+                        <button
+                          key={url}
+                          type="button"
+                          disabled={alreadyAdded || referenceImages.length >= MAX_MEDIA_REFERENCES}
+                          className={cn(
+                            "group relative aspect-square overflow-hidden rounded-md border transition-all",
+                            alreadyAdded
+                              ? "cursor-not-allowed border-teal-500 opacity-60"
+                              : "cursor-pointer border-transparent hover:border-teal-400 hover:ring-1 hover:ring-teal-400",
+                          )}
+                          onClick={() => {
+                            if (!alreadyAdded) {
+                              handleAddReferenceFromLibrary(url);
+                            }
+                          }}
+                        >
+                          <img
+                            src={url}
+                            alt={String(item.title || "Library image")}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                          />
+                          {alreadyAdded && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                              <Check className="h-4 w-4 text-white" />
+                            </div>
+                          )}
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent px-1 py-0.5">
+                            <p className="truncate text-[9px] leading-tight text-white">
+                              {String(item.title || url.split("/").pop() || "Image")}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+          <div className="flex min-w-[160px] flex-1 items-center gap-2">
+            <Input
+              placeholder="https://... or /uploads/..."
+              value={referenceUrlInput}
+              onChange={(e) => setReferenceUrlInput(e.target.value)}
+              className="h-8 text-xs"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAddReferenceUrl();
+                }
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAddReferenceUrl}
+              disabled={!referenceUrlInput.trim() || referenceImages.length >= MAX_MEDIA_REFERENCES}
+            >
+              <Plus className="mr-1 h-3.5 w-3.5" />
+              URL
+            </Button>
+          </div>
+        </div>
+
+        {referenceImages.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {referenceImages.map((item, index) => (
+              <div key={item.url} className="group relative w-20">
+                <div className="aspect-square overflow-hidden rounded-md border bg-muted">
+                  <img
+                    src={item.url}
+                    alt={item.name}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute -right-1.5 -top-1.5 h-5 w-5 rounded-full opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
+                  onClick={() => handleRemoveReferenceImage(item.url)}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+                <p className="mt-0.5 truncate text-center text-[10px] text-muted-foreground">
+                  {index === 0 && referenceImages.length > 1 ? "1st ref" : index === 1 && referenceImages.length > 1 ? "2nd ref" : item.name}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="space-y-2 rounded-md border border-muted bg-muted/20 p-3">
@@ -1440,19 +1673,102 @@ export function AIDraftModal({
           />
         </div>
         {useCustomArticle && (
-          <div className="space-y-1.5">
-            <Label htmlFor="ai-custom-article">Article Content</Label>
-            <textarea
-              id="ai-custom-article"
-              className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[180px] w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-              placeholder="Paste your article here..."
-              maxLength={20000}
-              value={customArticleText}
-              onChange={(e) => setCustomArticleText(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              The system will reuse your article, split it into slide-sized sections, and continue the normal draft flow.
-            </p>
+          <div className="space-y-3">
+            {/* Article Generate with Skill */}
+            <div className="space-y-2 rounded-md border border-dashed border-teal-300/50 bg-teal-50/30 p-3 dark:bg-teal-950/10">
+              <Label className="text-sm font-medium">Article Generate (optional)</Label>
+              <p className="text-xs text-muted-foreground">
+                Select a skill to generate an article or prompt. The output will fill the Article Content field below.
+              </p>
+              <SearchableCombobox
+                items={[{ value: "", label: "None — paste manually" }, ...articleGenSkillItems]}
+                value={articleGenSkill || ""}
+                onValueChange={(v) => {
+                  setArticleGenSkill(v);
+                  setArticleGenParams({});
+                  setArticleGenAdvancedOpen(false);
+                  localStorage.setItem("smartspec_aiDraft_articleGenSkill", v);
+                }}
+                placeholder="Select a skill to generate article..."
+                searchPlaceholder="Search skills..."
+                emptyMessage="No skills found."
+              />
+
+              {/* Dynamic skill advanced options */}
+              {articleGenSkill && articleGenSchema && (
+                <Collapsible open={articleGenAdvancedOpen} onOpenChange={setArticleGenAdvancedOpen}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground">
+                      <Settings2 className="h-3.5 w-3.5" />
+                      Advanced Options
+                      <ChevronDown className={cn("h-3 w-3 transition-transform", articleGenAdvancedOpen && "rotate-180")} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="mt-2 rounded-md border border-muted bg-background p-3">
+                      <DynamicSkillForm
+                        schema={articleGenSchema}
+                        language={language === "th" ? "th" : "en"}
+                        values={articleGenParams}
+                        onChange={setArticleGenParams}
+                        excludeFields={["topic", "prompt", "subject", "reference_images"]}
+                        className="space-y-3"
+                      />
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+
+              {/* Generate button */}
+              {articleGenSkill && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 border-teal-300 text-teal-700 hover:bg-teal-50 dark:border-teal-700 dark:text-teal-400 dark:hover:bg-teal-950/30"
+                  disabled={isGeneratingArticle || (!topic.trim() && Object.keys(articleGenParams).length === 0)}
+                  onClick={handleGenerateArticle}
+                >
+                  {isGeneratingArticle ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Generate Article
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+
+            {/* Article Content textarea */}
+            <div className="space-y-1.5">
+              <Label htmlFor="ai-custom-article">Article Content</Label>
+              <textarea
+                id="ai-custom-article"
+                className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[180px] w-full rounded-md border px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                placeholder="Paste your article here, or use a skill above to generate one..."
+                maxLength={20000}
+                value={customArticleText}
+                onChange={(e) => setCustomArticleText(e.target.value)}
+              />
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <p>
+                  The system will reuse your article, split it into slide-sized sections, and continue the normal draft flow.
+                </p>
+                <span className="shrink-0 pl-3 tabular-nums">
+                  {(() => {
+                    const text = customArticleText.trim();
+                    const chars = text.length;
+                    const words = text ? text.split(/\s+/).length : 0;
+                    return `${words.toLocaleString()} words / ${chars.toLocaleString()} chars`;
+                  })()}
+                </span>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -1574,7 +1890,7 @@ export function AIDraftModal({
             language={language === "th" ? "th" : "en"}
             values={articleSkillParams}
             onChange={setArticleSkillParams}
-            excludeFields={["topic", "prompt", "subject"]}
+            excludeFields={["topic", "prompt", "subject", "reference_images"]}
             className="space-y-3"
           />
           {wordCountRecommendationHint && (
@@ -1664,7 +1980,7 @@ export function AIDraftModal({
                   language={language === "th" ? "th" : "en"}
                   values={mediaSkillParams}
                   onChange={setMediaSkillParams}
-                  excludeFields={["description", "prompt", "topic", "subject"]}
+                  excludeFields={["description", "prompt", "topic", "subject", "reference_images"]}
                   className="space-y-3"
                 />
               </div>
@@ -1715,71 +2031,6 @@ export function AIDraftModal({
             }
           }}
         />
-      </div>
-
-      <div className="space-y-2 rounded-md border border-muted bg-muted/20 p-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <Label className="text-sm">Generate Slide Audio</Label>
-            <p className="text-xs text-muted-foreground">
-              Create voice narration for each slide.
-            </p>
-          </div>
-          <Switch
-            aria-label="Generate audio"
-            checked={generateAudio}
-            onCheckedChange={setGenerateAudio}
-          />
-        </div>
-        {generateAudio && (
-          <div className="space-y-1.5">
-            <Label>Audio Model (optional)</Label>
-            <p className="text-xs text-muted-foreground">
-              Choose the audio generation model for this draft. For UVoice, this is also where you select the tier: Standard, Natural, or Premium.
-            </p>
-            <ImageModelCombobox
-              value={audioModel}
-              mediaType="audio"
-              onValueChange={(value) => {
-                setAudioModel(value);
-                if (value) {
-                  localStorage.setItem("smartspec_aiDraft_audioModel", value);
-                } else {
-                  localStorage.removeItem("smartspec_aiDraft_audioModel");
-                }
-              }}
-            />
-            {selectedUvoiceTierLabel ? (
-              <div
-                className="flex items-center gap-2 text-xs"
-                data-testid="uvoice-tier-row"
-              >
-                <span className="text-muted-foreground">Selected UVoice tier</span>
-                <Badge variant="secondary">{selectedUvoiceTierLabel}</Badge>
-              </div>
-            ) : null}
-            {audioModels.length === 0 && !audioModelsQuery.isLoading ? (
-              <p className="text-xs text-muted-foreground">No audio models available.</p>
-            ) : null}
-            {!audioModel && defaultAudioModelId ? (
-              <p className="text-xs text-muted-foreground">
-                Using default audio model: {defaultAudioModelId}
-              </p>
-            ) : null}
-            {selectedUvoiceTierLabel ? (
-              <p className="text-xs text-muted-foreground" data-testid="uvoice-tier-hint">
-                UVoice tier selected: {selectedUvoiceTierLabel}. Voice ID options below are filtered to this tier only.
-              </p>
-            ) : (
-              audioModels.some((model) => model.provider?.trim().toLowerCase() === "uvoice") ? (
-                <p className="text-xs text-muted-foreground" data-testid="uvoice-tier-hint">
-                  For UVoice, choose the tier here via Audio Model: Standard, Natural, or Premium.
-                </p>
-              ) : null
-            )}
-            {renderDynamicAudioModelInputs()}
-          </div>
-        )}
       </div>
 
       <div className="space-y-1.5">
@@ -1858,108 +2109,6 @@ export function AIDraftModal({
         />
       </div>
 
-      {/* Reference images */}
-      <div className="space-y-2">
-        <Label>Reference Images (optional)</Label>
-        <p className="text-xs text-muted-foreground">
-          Attach up to 5 images to guide character/style consistency for compatible models.
-        </p>
-        <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">Add from Library</Label>
-          <SearchableCombobox
-            items={referenceLibraryItems}
-            value={selectedReferenceLibraryUrl}
-            onValueChange={(value) => {
-              setSelectedReferenceLibraryUrl(value);
-              handleAddReferenceFromLibrary(value);
-            }}
-            placeholder="Search image from Library..."
-            searchPlaceholder="Search library images..."
-            emptyMessage={referenceLibraryQuery.isLoading ? "Loading library..." : "No images found."}
-            disabled={referenceImages.length >= MAX_MEDIA_REFERENCES}
-            searchValue={referenceLibrarySearchQuery}
-            onSearchValueChange={setReferenceLibrarySearchQuery}
-          />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <input
-            ref={referenceFileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={handleReferenceFileUpload}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => referenceFileInputRef.current?.click()}
-            disabled={uploadReferenceMutation.isPending || referenceImages.length >= MAX_MEDIA_REFERENCES}
-          >
-            {uploadReferenceMutation.isPending ? (
-              <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Upload className="mr-1 h-3.5 w-3.5" />
-            )}
-            Upload Image
-          </Button>
-          <div className="flex min-w-[280px] flex-1 items-center gap-2">
-            <Input
-              placeholder="https://... or /uploads/..."
-              value={referenceUrlInput}
-              onChange={(e) => setReferenceUrlInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleAddReferenceUrl();
-                }
-              }}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleAddReferenceUrl}
-              disabled={!referenceUrlInput.trim() || referenceImages.length >= MAX_MEDIA_REFERENCES}
-            >
-              <Plus className="mr-1 h-3.5 w-3.5" />
-              Add URL
-            </Button>
-          </div>
-        </div>
-
-        {referenceImages.length > 0 && (
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {referenceImages.map((item) => (
-              <div key={item.url} className="rounded-md border p-2">
-                <div className="aspect-video overflow-hidden rounded bg-muted">
-                  <img
-                    src={item.url}
-                    alt={item.name}
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                  />
-                </div>
-                <div className="mt-1 flex items-center justify-between gap-2">
-                  <div className="truncate text-xs text-muted-foreground">
-                    {item.name}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={() => handleRemoveReferenceImage(item.url)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
 
       {/* Style preset selector */}
       <div className="space-y-1.5">
@@ -2175,6 +2324,79 @@ export function AIDraftModal({
         </CollapsibleContent>
       </Collapsible>
 
+      {/* ── Section: Slide Audio ─────────────────────── */}
+      <fieldset className="space-y-3 pt-1">
+        <legend className="flex w-full items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
+          <Volume2 className="h-3.5 w-3.5 text-teal-500" />
+          Slide Audio
+        </legend>
+
+      <div className="space-y-2 rounded-md border border-muted bg-muted/20 p-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <Label className="text-sm">Generate Slide Audio</Label>
+            <p className="text-xs text-muted-foreground">
+              Create voice narration for each slide.
+            </p>
+          </div>
+          <Switch
+            aria-label="Generate audio"
+            checked={generateAudio}
+            onCheckedChange={setGenerateAudio}
+          />
+        </div>
+        {generateAudio && (
+          <div className="space-y-1.5">
+            <Label>Audio Model (optional)</Label>
+            <p className="text-xs text-muted-foreground">
+              Choose the audio generation model for this draft. For UVoice, this is also where you select the tier: Standard, Natural, or Premium.
+            </p>
+            <ImageModelCombobox
+              value={audioModel}
+              mediaType="audio"
+              onValueChange={(value) => {
+                setAudioModel(value);
+                if (value) {
+                  localStorage.setItem("smartspec_aiDraft_audioModel", value);
+                } else {
+                  localStorage.removeItem("smartspec_aiDraft_audioModel");
+                }
+              }}
+            />
+            {selectedUvoiceTierLabel ? (
+              <div
+                className="flex items-center gap-2 text-xs"
+                data-testid="uvoice-tier-row"
+              >
+                <span className="text-muted-foreground">Selected UVoice tier</span>
+                <Badge variant="secondary">{selectedUvoiceTierLabel}</Badge>
+              </div>
+            ) : null}
+            {audioModels.length === 0 && !audioModelsQuery.isLoading ? (
+              <p className="text-xs text-muted-foreground">No audio models available.</p>
+            ) : null}
+            {!audioModel && defaultAudioModelId ? (
+              <p className="text-xs text-muted-foreground">
+                Using default audio model: {defaultAudioModelId}
+              </p>
+            ) : null}
+            {selectedUvoiceTierLabel ? (
+              <p className="text-xs text-muted-foreground" data-testid="uvoice-tier-hint">
+                UVoice tier selected: {selectedUvoiceTierLabel}. Voice ID options below are filtered to this tier only.
+              </p>
+            ) : (
+              audioModels.some((model) => model.provider?.trim().toLowerCase() === "uvoice") ? (
+                <p className="text-xs text-muted-foreground" data-testid="uvoice-tier-hint">
+                  For UVoice, choose the tier here via Audio Model: Standard, Natural, or Premium.
+                </p>
+              ) : null
+            )}
+            {renderDynamicAudioModelInputs()}
+          </div>
+        )}
+      </div>
+      </fieldset>
+
       {/* Non-empty deck warning */}
       {currentSlideCount > 0 && (
         <Alert>
@@ -2281,7 +2503,7 @@ export function AIDraftModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="flex max-h-[85vh] max-w-2xl flex-col overflow-hidden p-0">
+      <DialogContent className="flex max-h-[90vh] w-[95vw] max-w-[calc(100%-2rem)] sm:max-w-4xl flex-col overflow-hidden p-0">
         <DialogHeader className="shrink-0 px-6 pt-6 pb-2">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5" />
@@ -2292,7 +2514,7 @@ export function AIDraftModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-6 py-4">
           {taskId ? progressView : configView}
         </div>
 

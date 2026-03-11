@@ -136,6 +136,15 @@
         "no"
       ],
       "default": "no"
+    },
+    "reference_images": {
+      "type": "array",
+      "title": "Reference Images",
+      "description": "Optional array of reference image URLs. When provided, the article should be written to align with and describe the content shown in these images.",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      }
     }
   }
 }

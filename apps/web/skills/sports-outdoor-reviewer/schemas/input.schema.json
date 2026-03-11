@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/skills/sports-outdoor-reviewer/schemas/input.schema.json",
+  "title": "Sports & Outdoor Reviewer - Input Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "topic": {
+      "type": "string",
+      "title": "Product Name or Description",
+      "description": "The sports or outdoor product to review. Can be a product name, brand and model, or a general description."
+    },
+    "language": {
+      "type": "string",
+      "title": "Language",
+      "description": "Output language. Use 'en' for English or 'th' for Thai.",
+      "enum": ["en", "th"],
+      "default": "th"
+    },
+    "product_category": {
+      "type": "string",
+      "title": "Product Category",
+      "description": "The sports or outdoor category to tailor the review angle.",
+      "enum": ["general", "fitness", "running", "cycling", "swimming", "camping", "team_sport", "outdoor", "protective", "sportswear"],
+      "default": "general"
+    },
+    "review_angle": {
+      "type": "string",
+      "title": "Review Angle",
+      "description": "The storytelling perspective for the review.",
+      "enum": ["problem_solution", "daily_life", "comparison", "first_impression", "long_term"],
+      "default": "problem_solution"
+    },
+    "storytelling_style": {
+      "type": "string",
+      "title": "Storytelling Style",
+      "description": "The narrative structure for the review. Leave empty for random selection.",
+      "enum": ["hpso", "aida", "pas", "hook_insight_tip", "before_after", "story_flow", "my_why", "complain_recall", "fab", "star", "scr", "inverted_pyramid", "listicle", "qa_flow"]
+    },
+    "include_pricing": {
+      "type": "boolean",
+      "title": "Include Pricing Info",
+      "description": "Whether to include approximate pricing and value-for-money assessment.",
+      "default": false
+    },
+    "length": {
+      "type": "string",
+      "title": "Length",
+      "description": "Approximate review length.",
+      "enum": ["short", "medium", "long"],
+      "default": "medium"
+    },
+    "word_count": {
+      "type": "integer",
+      "title": "Maximum words (optional)",
+      "description": "If provided, the review must not exceed this word count. Overrides length preset.",
+      "minimum": 80,
+      "maximum": 3000
+    },
+    "output_format": {
+      "type": "string",
+      "title": "Output Format",
+      "description": "Preferred output format. Markdown uses headings and formatting. Plain text is optimized for text-to-speech.",
+      "enum": ["markdown", "plain_text"],
+      "default": "markdown"
+    },
+    "product_specs": {
+      "type": "string",
+      "title": "Product Specifications (optional)",
+      "description": "Describe the product's real specifications, features, materials, and characteristics. The review will be based on these facts to prevent inaccurate claims."
+    },
+    "reference_images": {
+      "type": "array",
+      "title": "Product Images",
+      "description": "Optional product images. When provided, the review will be based on visual analysis of the actual product shown.",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      }
+    }
+  }
+}

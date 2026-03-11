@@ -21,6 +21,7 @@ import {
 } from "../../drizzle/schema";
 import { eq, and, lte, isNull, sql } from "drizzle-orm";
 import { deductCredits, hasEnoughCredits, calculateCreditsForLLM } from "./creditService";
+import { resolveEnabledLlmModelId } from "./enabledLlmModels";
 import { getProviderForModel } from "./llmRouter";
 import { decrypt } from "./crypto";
 import { signBearerToken } from "../_core/tokens";
@@ -157,6 +158,7 @@ export async function deliverScheduledMessage(scheduleId: number): Promise<void>
 
       const content = result.message || "Skill executed successfully";
       const creditsUsed = result.creditsUsed || 0;
+      const resolvedScheduleModel = await resolveEnabledLlmModelId([schedule.modelId]);
 
       // Find or create conversation
       let convId = schedule.conversationId;
@@ -166,7 +168,7 @@ export async function deliverScheduledMessage(scheduleId: number): Promise<void>
           .values({
             userId,
             title: `Alert: ${schedule.description || schedule.prompt.slice(0, 40)}`,
-            model: schedule.modelId || "gpt-4o-mini",
+            model: resolvedScheduleModel || null,
           })
           .returning({ id: conversations.id });
         convId = newConv.id;
@@ -182,7 +184,7 @@ export async function deliverScheduledMessage(scheduleId: number): Promise<void>
         conversationId: convId,
         role: "user",
         content: `[Scheduled] ${schedule.prompt}`,
-        modelUsed: schedule.modelId || "gpt-4o-mini",
+        modelUsed: resolvedScheduleModel || undefined,
       });
 
       // Save assistant response message
@@ -190,7 +192,7 @@ export async function deliverScheduledMessage(scheduleId: number): Promise<void>
         conversationId: convId,
         role: "assistant",
         content,
-        modelUsed: schedule.modelId || "gpt-4o-mini",
+        modelUsed: resolvedScheduleModel || undefined,
         inputTokens: 0,
         outputTokens: 0,
         creditsUsed: creditsUsed.toString(),
@@ -241,7 +243,11 @@ export async function deliverScheduledMessage(scheduleId: number): Promise<void>
   }
 
   // ── LLM-powered alert: standard flow ──
-  const model = schedule.modelId || "gpt-4o-mini";
+  const model = await resolveEnabledLlmModelId([schedule.modelId]);
+  if (!model) {
+    await logExecution(db, scheduleId, null, "failed", "No enabled LLM model configured");
+    return;
+  }
   const provider = await getProviderForModel(model);
 
   if (!provider) {

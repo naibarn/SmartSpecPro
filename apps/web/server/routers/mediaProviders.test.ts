@@ -31,7 +31,7 @@ vi.mock("../services/crypto", () => ({
   decrypt: vi.fn((v: string) => v.replace("encrypted:", "")),
 }));
 
-import { PROVIDER_TEMPLATES, testBytePlusModelArk, testUVoice } from "./mediaProviders";
+import { PROVIDER_TEMPLATES, testBytePlusModelArk, testKieAI, testUVoice } from "./mediaProviders";
 
 describe("PROVIDER_TEMPLATES — BytePlus ModelArk entry", () => {
   const bytePlusTemplate = PROVIDER_TEMPLATES.find(
@@ -151,6 +151,65 @@ describe("testConnection switch — byteplus_modelark routing", () => {
       (t) => t.providerName === "kie_ai"
     );
     expect(kieTemplate).toBeDefined();
+  });
+});
+
+describe("testKieAI", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("treats 400 validation from /jobs/createTask as a healthy authenticated response", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        text: async () => "model is invalid",
+      }),
+    );
+
+    const result = await testKieAI("test-key", "https://api.kie.ai/api/v1");
+
+    expect(result).toEqual({
+      success: true,
+      message: "Authentication verified (validation error expected for health check)",
+    });
+  });
+
+  it("uses POST /jobs/createTask with bearer auth", async () => {
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      text: async () => "model is invalid",
+    });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    await testKieAI("my-secret-key", "https://api.kie.ai/api/v1");
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [url, options] = fetchSpy.mock.calls[0];
+    expect(url).toBe("https://api.kie.ai/api/v1/jobs/createTask");
+    expect(options.method).toBe("POST");
+    expect(options.headers["Authorization"]).toBe("Bearer my-secret-key");
+    expect(JSON.parse(options.body)).toEqual({
+      model: "__healthcheck__",
+      input: {},
+    });
+  });
+
+  it("returns failure on 401", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        text: async () => "unauthorized",
+      }),
+    );
+
+    const result = await testKieAI("bad-key", "https://api.kie.ai/api/v1");
+    expect(result.success).toBe(false);
   });
 });
 

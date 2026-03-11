@@ -19,6 +19,7 @@ import {
   EntityMemory,
 } from "../../drizzle/schema";
 import { sanitizeEntityForStorage, filterEntityFacts } from "./piiFilter";
+import { resolveEnabledLlmModelId } from "./enabledLlmModels";
 import { buildModelProviderMapLookupCondition } from "./modelLookup";
 
 // Configuration
@@ -930,79 +931,85 @@ export async function processConversationMemory(
             const apiKey = decrypt(provider.apiKeyEncrypted);
             if (apiKey) {
               const summaryModel = await getSummaryModel();
-              const base = provider.baseUrl.replace(/\/+$/, "");
-              const chatUrl = base.includes("/v1") ? `${base}/chat/completions` : `${base}/v1/chat/completions`;
+              if (summaryModel) {
+                const base = provider.baseUrl.replace(/\/+$/, "");
+                const chatUrl = base.includes("/v1") ? `${base}/chat/completions` : `${base}/v1/chat/completions`;
 
-              const llmResponse = await fetch(chatUrl, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${apiKey}`,
-                },
-                body: JSON.stringify({
-                  model: summaryModel,
-                  messages: [
-                    { role: "system", content: "You are a precise summarization assistant. Create concise summaries of conversation history." },
-                    { role: "user", content: summaryPrompt },
-                  ],
-                  max_tokens: 800,
-                  temperature: 0.3,
-                }),
-              });
+                const llmResponse = await fetch(chatUrl, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${apiKey}`,
+                  },
+                  body: JSON.stringify({
+                    model: summaryModel,
+                    messages: [
+                      { role: "system", content: "You are a precise summarization assistant. Create concise summaries of conversation history." },
+                      { role: "user", content: summaryPrompt },
+                    ],
+                    max_tokens: 800,
+                    temperature: 0.3,
+                  }),
+                });
 
-              if (llmResponse.ok) {
-                const llmData = await llmResponse.json() as {
-                  choices?: Array<{ message?: { content?: string } }>;
-                  usage?: { total_tokens?: number; prompt_tokens?: number; completion_tokens?: number };
-                };
-                const summaryText = llmData?.choices?.[0]?.message?.content?.trim();
+                if (llmResponse.ok) {
+                  const llmData = await llmResponse.json() as {
+                    choices?: Array<{ message?: { content?: string } }>;
+                    usage?: { total_tokens?: number; prompt_tokens?: number; completion_tokens?: number };
+                  };
+                  const summaryText = llmData?.choices?.[0]?.message?.content?.trim();
 
-                if (summaryText && summaryText.length >= 20) {
-                  // Get message range
-                  const messageRangeStart = messagesToSummarize[0].id;
-                  const messageRangeEnd = messagesToSummarize[messagesToSummarize.length - 1].id;
-                  const tokensUsed = llmData?.usage?.total_tokens || 0;
+                  if (summaryText && summaryText.length >= 20) {
+                    // Get message range
+                    const messageRangeStart = messagesToSummarize[0].id;
+                    const messageRangeEnd = messagesToSummarize[messagesToSummarize.length - 1].id;
+                    const tokensUsed = llmData?.usage?.total_tokens || 0;
 
-                  // Save the summary
-                  await saveSummary(
-                    conversationId,
-                    summaryText,
-                    messageRangeStart,
-                    messageRangeEnd,
-                    messagesToSummarize.length,
-                    tokensUsed
-                  );
+                    // Save the summary
+                    await saveSummary(
+                      conversationId,
+                      summaryText,
+                      messageRangeStart,
+                      messageRangeEnd,
+                      messagesToSummarize.length,
+                      tokensUsed,
+                    );
 
-                  summarized = true;
-                  compacted = true;
-                  compactedMessageCount = messagesToSummarize.length;
+                    summarized = true;
+                    compacted = true;
+                    compactedMessageCount = messagesToSummarize.length;
 
-                  console.log(`[Memory] Generated and saved summary for ${messagesToSummarize.length} messages in conversation ${conversationId}`);
+                    console.log(`[Memory] Generated and saved summary for ${messagesToSummarize.length} messages in conversation ${conversationId}`);
 
-                  // Deduct credits for the summarization call
-                  try {
-                    const usage = llmData?.usage;
-                    if (usage && userId > 0) {
-                      const { calculateCreditsFromCost, calculateCreditsForLLM } = await import("./creditService");
-                      const credits = calculateCreditsForLLM(usage.prompt_tokens || 0, usage.completion_tokens || 0, summaryModel);
-                      if (credits > 0) {
-                        const { deductCredits } = await import("./creditService");
-                        await deductCredits({
-                          userId,
-                          amount: credits,
-                          description: `Memory summarization: ${summaryModel}`,
-                          metadata: { model: summaryModel, type: "summarization" },
-                        });
+                    // Deduct credits for the summarization call
+                    try {
+                      const usage = llmData?.usage;
+                      if (usage && userId > 0) {
+                        const { calculateCreditsForLLM } = await import("./creditService");
+                        const credits = calculateCreditsForLLM(
+                          usage.prompt_tokens || 0,
+                          usage.completion_tokens || 0,
+                          summaryModel,
+                        );
+                        if (credits > 0) {
+                          const { deductCredits } = await import("./creditService");
+                          await deductCredits({
+                            userId,
+                            amount: credits,
+                            description: `Memory summarization: ${summaryModel}`,
+                            metadata: { model: summaryModel, type: "summarization" },
+                          });
+                        }
                       }
+                    } catch (creditErr) {
+                      console.error("[Memory] Failed to deduct summarization credits:", creditErr);
                     }
-                  } catch (creditErr) {
-                    console.error("[Memory] Failed to deduct summarization credits:", creditErr);
+                  } else {
+                    console.warn("[Memory] Summary generation returned empty or too short result");
                   }
                 } else {
-                  console.warn("[Memory] Summary generation returned empty or too short result");
+                  console.error("[Memory] Summary LLM call failed:", llmResponse.status);
                 }
-              } else {
-                console.error("[Memory] Summary LLM call failed:", llmResponse.status);
               }
             }
           } else {
@@ -1081,12 +1088,12 @@ export async function processConversationMemory(
 
 /**
  * Get the configured summary model from system settings.
- * Falls back to "gpt-4o-mini" if not configured.
+ * Returns an enabled model or `null` when none are available.
  */
-export async function getSummaryModel(): Promise<string> {
+export async function getSummaryModel(): Promise<string | null> {
   try {
     const db = await getDb();
-    if (!db) return "gpt-4o-mini";
+    if (!db) return null;
 
     const { systemSettings } = await import("../../drizzle/schema");
     const [setting] = await db
@@ -1098,9 +1105,9 @@ export async function getSummaryModel(): Promise<string> {
       ))
       .limit(1);
 
-    return setting?.value || "gpt-4o-mini";
+    return await resolveEnabledLlmModelId([setting?.value]);
   } catch {
-    return "gpt-4o-mini";
+    return null;
   }
 }
 
@@ -1269,6 +1276,9 @@ Consolidated summary:`;
     if (!apiKey) return { consolidated: false };
 
     const summaryModel = await getSummaryModel();
+    if (!summaryModel) {
+      return { consolidated: false };
+    }
     const base = provider.baseUrl.replace(/\/+$/, "");
     const chatUrl = base.includes("/v1") ? `${base}/chat/completions` : `${base}/v1/chat/completions`;
 

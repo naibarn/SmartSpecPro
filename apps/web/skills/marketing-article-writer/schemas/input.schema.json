@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/skills/marketing-article-writer/schemas/input.schema.json",
+  "title": "Marketing Article Writer - Input Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "topic": {
+      "type": "string",
+      "title": "Topic",
+      "description": "The marketing article topic."
+    },
+    "language": {
+      "type": "string",
+      "title": "Language",
+      "description": "Output language. Use 'en' for English or 'th' for Thai.",
+      "enum": ["en", "th"],
+      "default": "en"
+    },
+    "length": {
+      "type": "string",
+      "title": "Length",
+      "description": "Approximate article length.",
+      "enum": ["short", "medium", "long"],
+      "default": "medium"
+    },
+    "word_count": {
+      "type": "integer",
+      "title": "Maximum words (optional)",
+      "description": "If provided, the article must not exceed this word count. Overrides length preset.",
+      "minimum": 120,
+      "maximum": 8000
+    },
+    "storytelling_style": {
+      "type": "string",
+      "title": "Storytelling Structure",
+      "description": "The narrative structure for the article. Leave empty for random selection.",
+      "enum": ["hpso", "aida", "pas", "hook_insight_tip", "before_after", "story_flow", "my_why", "complain_recall", "fab", "star", "scr", "inverted_pyramid", "listicle", "qa_flow"]
+    },
+    "output_format": {
+      "type": "string",
+      "title": "Output Format",
+      "description": "Preferred output format. Markdown uses headings and formatting. Plain text is optimized for text-to-speech.",
+      "enum": ["markdown", "plain_text"],
+      "default": "markdown"
+    },
+    "reference_images": {
+      "type": "array",
+      "title": "Reference Images",
+      "description": "Optional array of reference image URLs. When provided, the article should incorporate and describe the marketing materials, campaigns, or branding shown in these images.",
+      "items": {
+        "type": "string",
+        "format": "uri"
+      }
+    }
+  }
+}

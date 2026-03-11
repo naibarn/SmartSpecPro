@@ -5,7 +5,7 @@ description: Generate copy-ready landscape image prompts from user requests and 
 category: image_prompt_generation
 execution_mode: llm-only
 icon: image
-version: "1.2.2"
+version: "1.3.0"
 author: SmartAIHub
 isAutoTrigger: false
 enabledByDefault: true
@@ -13,7 +13,7 @@ priority: 55
 creditMultiplier: 1.0
 ---
 
-# Smart Landscape Designer Skill V1.2.2
+# Smart Landscape Designer Skill V1.3.0
 
 This is a vendor-neutral agent skill for generating **one copy-ready landscape image prompt as a single raw string**.
 
@@ -33,12 +33,11 @@ It is designed to work across Gemini, OpenAI, Claude, and OpenCode style runtime
 - `schemas/ui.schema.json`
 - `review_report.md`
 
-## What changed in this version
-- Keeps the output as **one final prompt string only**
-- Replaces separate image fields with a single `reference_images` array
-- Uses structured image metadata with `role` and `notes`
-- Sets the image `role` to a fixed value of `reference` for this skill
-- Keeps the actual image attachments outside the JSON payload so the runtime can pass them natively
+## What changed in V1.3.0
+- **Simplified reference images** — `reference_images` is now a flat array of image URLs (strings) instead of an array of objects with `role`/`notes`
+- **New ImageSourcePicker** — users can pick images from Upload, Library (personal/shared/group), or paste URLs
+- **Removed hidden `role` field** — every image is always treated as `reference`; no need to show a read-only field
+- **Added `referenceNotes`** — a single optional textarea for notes about all reference images (mention images by number)
 - Retains `Output Language`, `Mode Override`, and the clearer variation controls
 
 ## Input contract
@@ -47,9 +46,8 @@ The runtime must send JSON matching `schemas/input.schema.json`.
 Key inputs:
 - `userRequest`: the landscape change or creation request
 - `outputLanguage`: the language of the final returned prompt (`en` or `th`)
-- `reference_images`: ordered metadata for attached images
-  - `role`: always `reference` for this skill
-  - `notes`: optional notes for that image
+- `reference_images`: flat array of image URLs (strings) — all treated as visual references
+- `referenceNotes`: optional free-text notes about how to use the reference images
 - `modeOverride`: defaults to `mode5_text_to_landscape`
 - `variationType`: controls how the skill chooses one final prompt
 - `numberOfOptions`: how many internal candidates may be drafted before selecting the final prompt
@@ -60,9 +58,9 @@ Key inputs:
 All input fields, including nested constraint fields, have explicit defaults.
 
 ## Attachment handling
-Actual image files are attached in the runtime UI, not as text values in JSON.
-The JSON payload stores only the ordered metadata in `reference_images`.
-The runtime should keep the attachment order aligned with the `reference_images` array order.
+Reference images are selected via the ImageSourcePicker UI (upload, library, or URL).
+The JSON payload stores image URLs in the `reference_images` array.
+The `referenceNotes` field provides optional context about how to use each image.
 
 ## Output contract
 Return output matching `schemas/output.schema.json`.
@@ -95,6 +93,6 @@ Do not produce:
 Before returning:
 1. Check that the output schema is satisfied.
 2. Check that the output is a single string only.
-3. Check that image attachments are represented as `reference_images` metadata in the input schema and UI schema.
+3. Check that `reference_images` URLs and `referenceNotes` are considered when present.
 4. Check that preservation wording appears when required.
 5. Check that every input field has a default.

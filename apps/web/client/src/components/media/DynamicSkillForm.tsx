@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ImageSourcePicker } from "./ImageSourcePicker";
 import {
   Select,
   SelectContent,
@@ -822,7 +823,7 @@ export default function DynamicSkillForm({
               min={field.min ?? 0}
               max={field.max ?? 100}
               step={field.step ?? 1}
-              className="py-2 [&_[data-slot=slider-track]]:bg-gray-300 dark:[&_[data-slot=slider-track]]:bg-gray-600 [&_[data-slot=slider-thumb]]:size-5 [&_[data-slot=slider-thumb]]:border-2"
+              className="py-2 [&_[data-slot=slider-track]]:h-2 [&_[data-slot=slider-track]]:rounded-full [&_[data-slot=slider-track]]:bg-gray-200 dark:[&_[data-slot=slider-track]]:bg-gray-600 [&_[data-slot=slider-range]]:bg-teal-500 [&_[data-slot=slider-range]]:h-full [&_[data-slot=slider-thumb]]:size-5 [&_[data-slot=slider-thumb]]:border-2 [&_[data-slot=slider-thumb]]:border-teal-500 [&_[data-slot=slider-thumb]]:bg-white [&_[data-slot=slider-thumb]]:rounded-full"
             />
           </div>
         );
@@ -1045,66 +1046,24 @@ export default function DynamicSkillForm({
 
       case "files":
       case "images":
-      case "imageUpload":
+      case "imageUpload": {
         const imageUrls: string[] = Array.isArray(value) ? value : [];
         const maxImages = field.maxImages || field.maxCount || 5;
-        const isMultiple = field.multiple !== false;
         return (
-          <div key={field.id} className="space-y-1.5">
-            <Label className="flex items-center gap-1.5">
-              {label} {isMultiple && `(${imageUrls.length}/${maxImages})`}
-              {field.required && <span className="text-red-500">*</span>}
-            </Label>
-            <div className="flex flex-wrap gap-2">
-              {imageUrls.map((url, idx) => (
-                <div key={idx} className="relative group">
-                  <img
-                    src={url}
-                    alt={`Image ${idx + 1}`}
-                    className="h-16 w-16 rounded-lg object-cover border"
-                  />
-                  <button
-                    onClick={() => {
-                      const newUrls = imageUrls.filter((_, i) => i !== idx);
-                      updateValue(field.id, newUrls);
-                    }}
-                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </div>
-              ))}
-              {imageUrls.length < maxImages && (
-                <Button
-                  variant="outline"
-                  className="h-16 w-16"
-                  onClick={() => {
-                    const input = document.createElement("input");
-                    input.type = "file";
-                    input.accept = field.accept || "image/*";
-                    input.multiple = isMultiple;
-                    input.onchange = (e) =>
-                      handleFileChange(
-                        e as unknown as React.ChangeEvent<HTMLInputElement>,
-                        field.id
-                      );
-                    input.click();
-                  }}
-                  disabled={isUploading}
-                >
-                  {isUploading ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <ImagePlus className="h-5 w-5" />
-                  )}
-                </Button>
-              )}
-            </div>
-            {description && (
-              <p className="text-xs text-muted-foreground">{description}</p>
-            )}
-          </div>
+          <ImageSourcePicker
+            key={field.id}
+            value={imageUrls}
+            onChange={(urls) => updateValue(field.id, urls)}
+            maxImages={maxImages}
+            isUploading={isUploading}
+            onUpload={onImageUpload}
+            label={label}
+            helpText={description}
+            required={field.required}
+            language={language}
+          />
         );
+      }
 
       case "model-search":
         return (
@@ -1249,10 +1208,13 @@ export default function DynamicSkillForm({
 
   return (
     <div className={cn("space-y-4", className)}>
-      {schema.sections.map((section) => renderSection(section))}
-
-      {/* Reference Images */}
-      {renderReferenceImages()}
+      {schema.sections.map((section, idx) => (
+        <React.Fragment key={section.id}>
+          {renderSection(section)}
+          {/* Show external reference images right after the first section (near topic) */}
+          {idx === 0 && renderReferenceImages()}
+        </React.Fragment>
+      ))}
 
       {/* Hidden file input */}
       <input

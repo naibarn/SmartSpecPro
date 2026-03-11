@@ -19,6 +19,7 @@ import {
   InsertEntityMemory,
   tenants,
 } from "../../drizzle/schema";
+import { resolveEnabledLlmModelId } from "./enabledLlmModels";
 
 // ==================== Google Drive Integration ====================
 
@@ -71,13 +72,14 @@ export async function createConversation(data: {
 }): Promise<Conversation> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  const resolvedModel = await resolveEnabledLlmModelId([data.model]);
 
   const [conversation] = await db
     .insert(conversations)
     .values({
       userId: data.userId,
       title: data.title || "New Chat",
-      model: data.model || "gpt-4o-mini",
+      model: resolvedModel || null,
       systemPrompt: data.systemPrompt,
       projectId: data.projectId,
     })
@@ -158,10 +160,15 @@ export async function updateConversation(
 ): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  const updateData = { ...data } as Partial<InsertConversation>;
+  if ("model" in updateData) {
+    updateData.model =
+      (await resolveEnabledLlmModelId([updateData.model as string | null | undefined])) || null;
+  }
 
   await db
     .update(conversations)
-    .set({ ...data, updatedAt: new Date() })
+    .set({ ...updateData, updatedAt: new Date() })
     .where(and(eq(conversations.id, id), eq(conversations.userId, userId)));
 }
 

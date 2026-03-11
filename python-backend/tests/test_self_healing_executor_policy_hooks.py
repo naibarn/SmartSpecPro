@@ -1,6 +1,7 @@
 """Runtime browser policy hooks for the self-healing executor."""
 
 from contextlib import asynccontextmanager
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -72,6 +73,7 @@ def policy_client():
     client = AsyncMock()
     client.enforce_before_action = AsyncMock()
     client.enforce_transition = AsyncMock()
+    client.record_action_outcome = AsyncMock()
     return client
 
 
@@ -354,6 +356,7 @@ async def test_executor_promotes_download_surface_to_transfer_action(
     policy_client = AsyncMock()
     policy_client.enforce_before_action = AsyncMock(side_effect=capture_before_action)
     policy_client.enforce_transition = AsyncMock()
+    policy_client.record_action_outcome = AsyncMock()
 
     executor = SelfHealingExecutor(
         browser_pool=mock_browser_pool,
@@ -411,6 +414,7 @@ async def test_executor_preserves_frame_scoped_policy_metadata(
     policy_client = AsyncMock()
     policy_client.enforce_before_action = AsyncMock(side_effect=capture_before_action)
     policy_client.enforce_transition = AsyncMock()
+    policy_client.record_action_outcome = AsyncMock()
 
     executor = SelfHealingExecutor(
         browser_pool=mock_browser_pool,
@@ -447,3 +451,49 @@ async def test_executor_preserves_frame_scoped_policy_metadata(
     assert observed_action.frame_selector_css == "iframe[data-testid='partner-frame']"
     assert observed_action.frame_origin == "https://docs.example.com/embed"
     assert observed_action.iframe_trust_tier == "same_site"
+
+
+async def test_executor_records_approved_outcome_after_policy_gated_action(
+    mock_browser_pool,
+    mock_selector_cache,
+    status_callback,
+):
+    policy_result = SimpleNamespace(
+        decision=SimpleNamespace(decision="require_approval"),
+        audit=SimpleNamespace(eventHash="decision-hash-1"),
+    )
+    policy_client = AsyncMock()
+    policy_client.enforce_before_action = AsyncMock(return_value=policy_result)
+    policy_client.enforce_transition = AsyncMock()
+    policy_client.record_action_outcome = AsyncMock()
+
+    executor = SelfHealingExecutor(
+        browser_pool=mock_browser_pool,
+        selector_cache=mock_selector_cache,
+        policy_client=policy_client,
+    )
+    script = PlaywrightScript(
+        url="https://example.com/start",
+        goal="click submit",
+        actions=[
+            PlaywrightAction(
+                action_type="click",
+                selector_css="#submit",
+                selector_strategies=["#submit"],
+                description="Click submit",
+                confidence=0.9,
+            ),
+        ],
+    )
+
+    await executor.execute(
+        script=script,
+        execution_id="exec-1",
+        tenant_id="tenant-1",
+        allowed_domains=["example.com"],
+        status_callback=status_callback,
+    )
+
+    policy_client.record_action_outcome.assert_awaited_once()
+    assert policy_client.record_action_outcome.await_args.kwargs["approval_state"] == "approved"
+    assert policy_client.record_action_outcome.await_args.kwargs["outcome"] == "executed"

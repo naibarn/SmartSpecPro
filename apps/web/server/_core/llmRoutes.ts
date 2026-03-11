@@ -5,7 +5,7 @@ import { ENV } from "./env";
 import { authorizeRequest, AuthResult } from "./authz";
 import { enforceJsonBodyMaxBytes, rateLimit } from "./limits";
 import { getUserByOpenId, getUserById, getDb, db } from "../db";
-import { llmProviders } from "../../drizzle/schema";
+import { llmProviders, modelProviderMap } from "../../drizzle/schema";
 import { eq, asc, and } from "drizzle-orm";
 import {
   getCreditBalance,
@@ -20,6 +20,7 @@ import { auditLogger } from "../services/auditLogger";
 import { getTraceId } from "../services/traceContext";
 import { logRequest as logCostRequest } from "../services/costTracker";
 import { registerResponsesRoutes } from "./responsesRoutes";
+import { resolveEnabledLlmModelId } from "../services/enabledLlmModels";
 
 // --- Provider-specific Rate Limiter with Queue System ---
 // Uses Bottleneck with Redis for distributed rate limiting when available
@@ -857,7 +858,10 @@ async function proxyChatWithCredits(
     );
   }
 
-  const requestedModelId = req.body?.model || provider.defaultModel || "gpt-4o-mini";
+  const requestedModelId = await resolveEnabledLlmModelId([req.body?.model, provider.defaultModel]);
+  if (!requestedModelId) {
+    throw new Error("No enabled LLM model configured");
+  }
 
   // Resolve the provider-specific model ID and API style from database
   let model = requestedModelId;
@@ -1300,33 +1304,29 @@ export function registerLLMRoutes(app: Express) {
     }
 
     try {
-      // Fetch enabled providers with their models from database
-      const providers = await db
+      const rows = await db
         .select({
           providerName: llmProviders.providerName,
-          availableModels: llmProviders.availableModels,
-          defaultModel: llmProviders.defaultModel,
+          modelId: modelProviderMap.modelId,
         })
-        .from(llmProviders)
-        .where(eq(llmProviders.isEnabled, true))
-        .orderBy(asc(llmProviders.sortOrder));
+        .from(modelProviderMap)
+        .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
+        .where(and(eq(modelProviderMap.isEnabled, true), eq(llmProviders.isEnabled, true)))
+        .orderBy(asc(llmProviders.sortOrder), asc(modelProviderMap.priority), asc(modelProviderMap.id));
 
       const models: Array<{ id: string; object: string; owned_by?: string }> = [];
+      const seenModels = new Set<string>();
 
-      for (const provider of providers) {
-        const providerModels = (provider.availableModels as Array<{ id: string; name: string }>) || [];
-        for (const model of providerModels) {
-          models.push({
-            id: model.id,
-            object: "model",
-            owned_by: provider.providerName,
-          });
+      for (const row of rows) {
+        if (seenModels.has(row.modelId)) {
+          continue;
         }
-      }
-
-      // If no models configured, return a sensible default
-      if (models.length === 0) {
-        models.push({ id: "gpt-4o-mini", object: "model" });
+        seenModels.add(row.modelId);
+        models.push({
+          id: row.modelId,
+          object: "model",
+          owned_by: row.providerName,
+        });
       }
 
       res.json({
@@ -1335,10 +1335,9 @@ export function registerLLMRoutes(app: Express) {
       });
     } catch (error) {
       console.error("[LLM] Failed to fetch models:", error);
-      // Fallback to default models
       res.json({
         object: "list",
-        data: [{ id: "gpt-4o-mini", object: "model" }],
+        data: [],
       });
     }
   });
@@ -1782,7 +1781,7 @@ export function registerLLMRoutes(app: Express) {
           return res.status(404).json({ error: { message: "Conversation not found" } });
         }
 
-        const effectiveModel = modelUsed || conversation.model || "gpt-4o-mini";
+        const effectiveModel = modelUsed || conversation.model || undefined;
         const creditsUsed = calculateCreditsForLLM(inputTokens || 0, outputTokens || 0, effectiveModel);
         if (creditsUsed > 0) {
           await updateConversationCredits(conversationId, creditsUsed);
@@ -1860,7 +1859,7 @@ export function registerLLMRoutes(app: Express) {
         }
 
         // Calculate credits for tracking (use actual model for accurate cost)
-        const effectiveModel = modelUsed || conversation.model || "gpt-4o-mini";
+        const effectiveModel = modelUsed || conversation.model || undefined;
         const creditsUsed = calculateCreditsForLLM(inputTokens || 0, outputTokens || 0, effectiveModel);
 
         // Update conversation credits tracking
@@ -2275,7 +2274,7 @@ Be comprehensive but avoid redundancy.`;
 
       try {
         await handleChatWithRouter({
-          model: req.body?.model || "gpt-4o-mini",
+          model: req.body?.model,
           messages: req.body?.messages || [],
           userId: check.userId,
           conversationId: req.body?.conversationId ? Number(req.body.conversationId) : undefined,
@@ -2300,7 +2299,7 @@ Be comprehensive but avoid redundancy.`;
 
       try {
         await handleStreamWithRouter({
-          model: req.body?.model || "gpt-4o-mini",
+          model: req.body?.model,
           messages: req.body?.messages || [],
           userId: check.userId,
           conversationId: req.body?.conversationId ? Number(req.body.conversationId) : undefined,

@@ -588,7 +588,7 @@ window.__slideReady = false;
     video.style.objectFit = fit;
     video.style.objectPosition = posX + "% " + posY + "%";
     registerMediaMotionNode(video, zoom, posX, posY, el.mediaMotion);
-    video.muted = true;
+    video.muted = el.muted !== false;
     video.loop = el.loop === true;
     video.autoplay = true;
     video.playsInline = true;

@@ -1,0 +1,182 @@
+{
+  "version": "1.0",
+  "skillId": "real-estate-reviewer",
+  "title": "Real Estate Reviewer",
+  "titleTh": "รีวิวอสังหาริมทรัพย์",
+  "description": "Write comprehensive reviews for real estate projects, condos, and land",
+  "descriptionTh": "เขียนรีวิวอสังหาริมทรัพย์ โครงการบ้าน คอนโด ที่ดิน อย่างครอบคลุม",
+  "sections": [
+    {
+      "id": "property",
+      "title": "Property Info",
+      "titleTh": "ข้อมูลโครงการ",
+      "icon": "building-2",
+      "fields": [
+        {
+          "id": "topic",
+          "type": "textarea",
+          "label": "Project or Property Name",
+          "labelTh": "ชื่อโครงการ หรือรายละเอียดอสังหาฯ",
+          "placeholder": "e.g., The Line Phahol-Pradipat, Villaggio Bangna, Land plot Chiang Mai",
+          "placeholderTh": "เช่น เดอะไลน์ พหล-ประดิพัทธ์, วิลลาจจิโอ บางนา, ที่ดินเชียงใหม่",
+          "helpText": "Enter the project name, location, or describe the property.",
+          "helpTextTh": "ใส่ชื่อโครงการ ทำเล หรืออธิบายสั้นๆ",
+          "required": false,
+          "rows": 2
+        },
+        {
+          "id": "reference_images",
+          "type": "images",
+          "label": "Property Images (Optional)",
+          "labelTh": "รูปโครงการ (ไม่บังคับ)",
+          "helpText": "Attach property photos. The AI will analyze architecture, layout, and surroundings to write the review.",
+          "helpTextTh": "แนบรูปโครงการ ระบบจะวิเคราะห์สถาปัตยกรรม ผังห้อง และสภาพแวดล้อมจากภาพ",
+          "multiple": true,
+          "accept": "image/*"
+        },
+        {
+          "id": "property_details",
+          "type": "textarea",
+          "label": "Property Details (Optional)",
+          "labelTh": "รายละเอียดทรัพย์สิน (ไม่บังคับ)",
+          "placeholder": "e.g., 3-bedroom single house, 60 sq wah, 180 sqm, built 2022, Bangna-Trad Road",
+          "placeholderTh": "เช่น บ้านเดี่ยว 3 ห้องนอน 60 ตร.วา 180 ตร.ม. สร้างปี 2565 ถ.บางนา-ตราด",
+          "helpText": "Describe bedrooms, area, year built, location, title deed type. The review will use these as facts.",
+          "helpTextTh": "ระบุห้องนอน พื้นที่ ปีสร้าง ทำเล ประเภทโฉนด ระบบจะเขียนรีวิวตามข้อมูลนี้",
+          "required": false,
+          "rows": 3
+        },
+        {
+          "id": "product_category",
+          "type": "select",
+          "label": "Property Type",
+          "labelTh": "ประเภทอสังหาริมทรัพย์",
+          "helpText": "Helps tailor the analysis framework",
+          "helpTextTh": "ช่วยปรับกรอบการวิเคราะห์ให้เหมาะสม",
+          "required": true,
+          "default": "general",
+          "options": [
+            { "value": "general", "label": "General", "labelTh": "ทั่วไป" },
+            { "value": "single_house", "label": "Single House", "labelTh": "บ้านเดี่ยว" },
+            { "value": "townhouse", "label": "Townhouse", "labelTh": "ทาวน์เฮ้าส์" },
+            { "value": "condo_highrise", "label": "Condo (High-rise)", "labelTh": "คอนโด (ตึกสูง)" },
+            { "value": "condo_lowrise", "label": "Condo (Low-rise)", "labelTh": "คอนโด (ตึกเตี้ย)" },
+            { "value": "land_residential", "label": "Residential Land", "labelTh": "ที่ดินที่อยู่อาศัย" },
+            { "value": "land_agricultural", "label": "Agricultural Land", "labelTh": "ที่ดินเกษตร" },
+            { "value": "land_commercial", "label": "Commercial Land", "labelTh": "ที่ดินพาณิชย์" },
+            { "value": "estate", "label": "Housing Estate", "labelTh": "หมู่บ้านจัดสรร" },
+            { "value": "mixed_use", "label": "Mixed Use", "labelTh": "มิกซ์ยูส" }
+          ]
+        },
+        {
+          "id": "language",
+          "type": "select",
+          "label": "Language",
+          "labelTh": "ภาษา",
+          "helpText": "Review output language",
+          "helpTextTh": "ภาษาที่ใช้เขียนรีวิว",
+          "required": true,
+          "default": "th",
+          "options": [
+            { "value": "th", "label": "Thai (ภาษาไทย)", "labelTh": "ภาษาไทย" },
+            { "value": "en", "label": "English", "labelTh": "อังกฤษ" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "style",
+      "title": "Review Style",
+      "titleTh": "สไตล์รีวิว",
+      "icon": "message-circle",
+      "fields": [
+        {
+          "id": "review_angle",
+          "type": "select",
+          "label": "Review Angle",
+          "labelTh": "มุมมองรีวิว",
+          "helpText": "The analysis perspective for the review",
+          "helpTextTh": "มุมมองในการวิเคราะห์",
+          "required": true,
+          "default": "buyer_perspective",
+          "options": [
+            { "value": "buyer_perspective", "label": "Buyer's Perspective", "labelTh": "มุมผู้ซื้อ" },
+            { "value": "investor_perspective", "label": "Investor's Perspective", "labelTh": "มุมนักลงทุน" },
+            { "value": "family_perspective", "label": "Family Living", "labelTh": "มุมครอบครัว" },
+            { "value": "comparison_area", "label": "Area Comparison", "labelTh": "เทียบทำเล" },
+            { "value": "site_visit", "label": "Site Visit Report", "labelTh": "รายงานดูโครงการ" }
+          ]
+        },
+        {
+          "id": "include_pricing",
+          "type": "boolean",
+          "label": "Include Pricing Info",
+          "labelTh": "ระบุราคาโดยประมาณ",
+          "helpText": "Add approximate pricing and value analysis",
+          "helpTextTh": "เพิ่มข้อมูลราคาโดยประมาณและการวิเคราะห์ความคุ้มค่า",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "options",
+      "title": "Options",
+      "titleTh": "ตัวเลือกเพิ่มเติม",
+      "icon": "settings",
+      "fields": [
+        {
+          "id": "length",
+          "type": "select",
+          "label": "Review Length",
+          "labelTh": "ความยาวรีวิว",
+          "helpText": "Short is about 1 min read, medium 1.5 min, long up to 3 min",
+          "helpTextTh": "สั้น ประมาณ 1 นาที, กลาง 1.5 นาที, ยาว สูงสุด 3 นาที",
+          "required": true,
+          "default": "medium",
+          "options": [
+            { "value": "short", "label": "Short (about 1 min)", "labelTh": "สั้น (ประมาณ 1 นาที)" },
+            { "value": "medium", "label": "Medium (about 1.5 min)", "labelTh": "กลาง (ประมาณ 1.5 นาที)" },
+            { "value": "long", "label": "Long (up to 3 min)", "labelTh": "ยาว (สูงสุด 3 นาที)" }
+          ]
+        },
+        {
+          "id": "word_count",
+          "type": "number",
+          "label": "Maximum Words (optional)",
+          "labelTh": "จำนวนคำสูงสุด (ไม่บังคับ)",
+          "helpText": "If set, the review will not exceed this word count.",
+          "helpTextTh": "หากกำหนด ระบบจะสร้างรีวิวไม่เกินจำนวนคำนี้",
+          "min": 80,
+          "max": 3000,
+          "step": 10
+        },
+        {
+          "id": "output_format",
+          "type": "select",
+          "label": "Output Format",
+          "labelTh": "รูปแบบผลลัพธ์",
+          "helpText": "Markdown uses headings and formatting. Plain text is clean for TTS narration.",
+          "helpTextTh": "Markdown ใช้หัวข้อและจัดรูปแบบ ข้อความธรรมดาเหมาะสำหรับอ่านออกเสียง",
+          "required": true,
+          "default": "markdown",
+          "options": [
+            { "value": "markdown", "label": "Markdown", "labelTh": "Markdown" },
+            { "value": "plain_text", "label": "Plain Text (TTS-friendly)", "labelTh": "ข้อความธรรมดา (เหมาะกับอ่านออกเสียง)" }
+          ]
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "topic": "topic",
+    "reference_images": "reference_images",
+    "property_details": "property_details",
+    "language": "language",
+    "product_category": "product_category",
+    "review_angle": "review_angle",
+    "include_pricing": "include_pricing",
+    "output_format": "output_format",
+    "length": "length",
+    "word_count": "word_count"
+  }
+}

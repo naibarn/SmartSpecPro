@@ -1318,9 +1318,19 @@ function renderReadonlySlideElement(
           }}
           preload="auto"
           autoPlay
-          muted
+          muted={element.muted ?? true}
           loop={element.loop ?? true}
           playsInline
+          onPlay={(event) => {
+            // Browsers block unmuted autoplay. Start muted then unmute
+            // after playback begins if the element has audio enabled.
+            if (element.muted === false) {
+              const videoNode = event.currentTarget;
+              requestAnimationFrame(() => {
+                videoNode.muted = false;
+              });
+            }
+          }}
         />
       </div>
     );
@@ -4431,10 +4441,8 @@ export default function PresentationEditor() {
       setExportMessage("No slides available for playback.");
       return;
     }
-    const startIndex = Math.max(
-      0,
-      slides.findIndex((slide) => slide.id === selectedSlideId),
-    );
+    // Always start from the beginning so the entire deck plays through.
+    const startIndex = 0;
     if (playbackTransitionFrameRef.current != null) {
       window.cancelAnimationFrame(playbackTransitionFrameRef.current);
       playbackTransitionFrameRef.current = null;
@@ -4651,6 +4659,11 @@ export default function PresentationEditor() {
         setExportMessage("Slideshow preview completed.");
         return;
       }
+      // Reset elapsed BEFORE advancing so the next render's timer effect
+      // reads 0 instead of the stale elapsed value from the finished slide.
+      // Without this, remainingMs computes as 0 and every subsequent slide
+      // fires immediately, cascading to handleStopSlideshow().
+      playbackSlideElapsedRef.current = 0;
       setPlaybackSlideIndex((current) => Math.min(latestSlides.length - 1, current + 1));
     }, remainingMs);
 
@@ -6241,7 +6254,7 @@ export default function PresentationEditor() {
         className="hidden"
         onChange={(event) => handleLocalUploadInputChange("video", event)}
       />
-      <header className="flex shrink-0 items-center gap-2 border-b border-slate-800 bg-slate-950 px-3 py-1.5 text-slate-100">
+      <header className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-slate-800 bg-slate-950 px-3 py-1.5 text-slate-100 scrollbar-none" style={{ scrollbarWidth: "none" }}>
         {isMobileViewport ? (
           <Button
             size="icon"
@@ -6330,7 +6343,7 @@ export default function PresentationEditor() {
             <Music className="h-3 w-3" />
           </span>
         ) : null}
-        <div className="ml-auto flex shrink-0 items-center gap-1">
+        <div className="ml-auto flex items-center gap-1">
           <Button
             onClick={() => setIsDeckNoteDialogOpen(true)}
             aria-label="Open Presentation Note"

@@ -6,6 +6,7 @@
 import { useState, useEffect, Fragment } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
+import { pickEnabledModelId } from "@/lib/enabledModelSelection";
 import { trpc } from "../lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -404,13 +405,32 @@ export default function AdminSettings() {
   const { data: modelsData } = trpc.llmProviders.availableModels.useQuery(undefined, {
     enabled: !!user && user.role === "admin",
   });
+  const enabledAiSummaryModelIds = (modelsData?.models ?? []).map((model: any) => model.id);
+  const defaultAiSummaryModelId =
+    modelsData?.models?.find((model: any) => model.isDefault)?.id ||
+    modelsData?.models?.[0]?.id ||
+    "";
 
   useEffect(() => {
-    if (aiSettings) {
-      const summaryModelSetting = aiSettings.find((s: any) => s.key === "summaryModel");
-      if (summaryModelSetting?.value) setAiSummaryModel(summaryModelSetting.value);
+    if (!aiSettings || !modelsData?.models) {
+      return;
     }
-  }, [aiSettings]);
+
+    const summaryModelSetting = aiSettings.find((s: any) => s.key === "summaryModel");
+    setAiSummaryModel(
+      pickEnabledModelId({
+        preferredId: summaryModelSetting?.value,
+        allowedIds: enabledAiSummaryModelIds,
+        fallbackIds: [defaultAiSummaryModelId],
+      }),
+    );
+  }, [aiSettings, defaultAiSummaryModelId, enabledAiSummaryModelIds, modelsData?.models]);
+
+  const resolvedAiSummaryModel = pickEnabledModelId({
+    preferredId: aiSummaryModel,
+    allowedIds: enabledAiSummaryModelIds,
+    fallbackIds: [defaultAiSummaryModelId],
+  });
 
   // Vector Database settings
   type VectorDbProvider = "chromadb" | "pgvector" | "cloudflare_vectorize";
@@ -2222,7 +2242,7 @@ export default function AdminSettings() {
 
                   <Select value={aiSummaryModel || ""} onValueChange={setAiSummaryModel}>
                     <SelectTrigger className="w-full max-w-md">
-                      <SelectValue placeholder="Select model (default: gpt-4o-mini)" />
+                      <SelectValue placeholder="Select model" />
                     </SelectTrigger>
                     <SelectContent>
                       {modelsData?.models
@@ -2235,9 +2255,6 @@ export default function AdminSettings() {
                             {m.id}
                           </SelectItem>
                         ))}
-                      {(!modelsData?.models || modelsData.models.length === 0) && (
-                        <SelectItem value="gpt-4o-mini">gpt-4o-mini (default)</SelectItem>
-                      )}
                       {modelsData?.models &&
                        modelsData.models.length > 0 &&
                        modelsData.models.filter((m: any) =>
@@ -2252,17 +2269,17 @@ export default function AdminSettings() {
                   </Select>
                 </div>
 
-                <Button
-                  onClick={() => {
-                    updateAiSettingMutation.mutate({
-                      category: "ai" as any,
-                      key: "summaryModel",
-                      value: aiSummaryModel || "gpt-4o-mini",
-                    });
-                  }}
-                  disabled={updateAiSettingMutation.isPending}
-                  className="gap-2"
-                >
+                  <Button
+                    onClick={() => {
+                      updateAiSettingMutation.mutate({
+                        category: "ai" as any,
+                        key: "summaryModel",
+                        value: resolvedAiSummaryModel,
+                      });
+                    }}
+                    disabled={updateAiSettingMutation.isPending || !resolvedAiSummaryModel}
+                    className="gap-2"
+                  >
                   {updateAiSettingMutation.isPending ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
@@ -3135,8 +3152,8 @@ function MenuOverridesPanel() {
 function AutomationSettingsPanel() {
   return (
     <TenantAutomationPolicyPanel
-      title="Automation Copilot"
-      description="Configure the tenant baseline browser-policy used by Automation Copilot and the browser tool."
+      title="Tenant Baseline Policy"
+      description="Configure the tenant-wide browser-policy baseline used by Automation Copilot and the browser tool."
     />
   );
 }

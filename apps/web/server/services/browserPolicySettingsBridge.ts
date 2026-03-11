@@ -12,6 +12,7 @@ import {
 import { getDb } from "../db";
 import {
   buildSeededBrowserPolicyConfig,
+  isRecoverableBrowserPolicySchemaError,
   loadTenantBrowserPolicyConfig,
 } from "./browserPolicyStore";
 import {
@@ -78,6 +79,7 @@ export async function loadLegacyAutomationSettings(): Promise<LegacyAutomationSe
 export interface TenantAutomationPolicyStatus {
   tenantId: string | null;
   legacySettings: LegacyAutomationSettings;
+  storageStatus: "ready" | "schema_missing";
   policyConfig: Pick<
     BrowserPolicyConfig,
     | "enabled"
@@ -127,9 +129,10 @@ export async function loadTenantAutomationPolicyStatus(
     : {
         config: seededConfig,
         rules: [],
-        source: "seeded" as const,
-        metadata: {},
-      };
+      source: "seeded" as const,
+      metadata: {},
+      storageStatus: "ready" as const,
+    };
 
   const effectiveConfig = policyState.config ?? seededConfig;
   const userCustomization = resolveBrowserPolicyUserCustomization(policyState.metadata);
@@ -145,6 +148,7 @@ export async function loadTenantAutomationPolicyStatus(
   return {
     tenantId: normalizedTenantId,
     legacySettings,
+    storageStatus: policyState.storageStatus,
     policyConfig: {
       enabled: effectiveConfig.enabled,
       enforcementMode: effectiveConfig.enforcementMode,
@@ -228,11 +232,29 @@ export async function updateTenantAutomationPolicySettings(input: {
     ...input.config,
   });
 
-  const existing = await db
-    .select()
-    .from(tenantBrowserPolicyConfig)
-    .where(eq(tenantBrowserPolicyConfig.tenantId, input.tenantId))
-    .limit(1);
+  let existing: Array<{
+    id: number;
+    metadata: Record<string, unknown> | null;
+  }>;
+
+  try {
+    existing = await db
+      .select({
+        id: tenantBrowserPolicyConfig.id,
+        metadata: tenantBrowserPolicyConfig.metadata,
+      })
+      .from(tenantBrowserPolicyConfig)
+      .where(eq(tenantBrowserPolicyConfig.tenantId, input.tenantId))
+      .limit(1);
+  } catch (error) {
+    if (!isRecoverableBrowserPolicySchemaError(error)) {
+      throw error;
+    }
+
+    throw new Error(
+      "Tenant-wide browser policy storage is not ready in this environment yet. Apply the browser policy database migration before saving tenant-wide settings.",
+    );
+  }
 
   const persistedValues = {
     enabled: normalizedConfig.enabled,

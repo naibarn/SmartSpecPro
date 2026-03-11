@@ -44,6 +44,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { pickEnabledModelId } from "@/lib/enabledModelSelection";
 import { ImageLightbox } from "./media/ImageLightbox";
 import { SafeMarkdown } from "./SafeMarkdown";
 import { LLMArtifactViewer, parseArtifacts, stripArtifactTags, type LLMArtifact } from "./artifacts/LLMArtifactViewer";
@@ -325,22 +326,65 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
     originalMessages: Array<{ role: string; content: string }>;
   }
   const [fallbackRequest, setFallbackRequest] = useState<FallbackRequestData | null>(null);
+  const enabledModelIds = useMemo(
+    () => (modelsData?.models ?? []).map((model) => model.id),
+    [modelsData?.models],
+  );
+  const defaultEnabledModelId = useMemo(() => {
+    const defaultModel = modelsData?.models?.find((model) => model.isDefault);
+    return defaultModel?.id || modelsData?.models?.[0]?.id || "";
+  }, [modelsData?.models]);
 
-  // Sync selected model with conversation model
+  // Sync selected model with the conversation only when the stored model is still enabled.
   useEffect(() => {
-    if (conversation?.model) {
-      setSelectedModel(conversation.model);
-    } else if (!selectedModel && modelsData?.models && modelsData.models.length > 0) {
-      const defaultModel = modelsData.models.find(m => m.isDefault);
-      setSelectedModel(defaultModel?.id || modelsData.models[0].id);
+    if (!modelsData?.models || !conversationId || enabledModelIds.length === 0) {
+      return;
     }
-  }, [conversation?.model, modelsData?.models]);
+
+    const nextModelId = pickEnabledModelId({
+      preferredId: conversation?.model,
+      allowedIds: enabledModelIds,
+      fallbackIds: [defaultEnabledModelId],
+    });
+
+    if (nextModelId && nextModelId !== selectedModel) {
+      setSelectedModel(nextModelId);
+    }
+  }, [conversationId, conversation?.model, defaultEnabledModelId, enabledModelIds, modelsData?.models, selectedModel]);
+
+  // Sanitize stale localStorage state when the enabled model catalog changes.
+  useEffect(() => {
+    if (!modelsData?.models) {
+      return;
+    }
+
+    if (enabledModelIds.length === 0) {
+      if (selectedModel) {
+        setSelectedModel("");
+        localStorage.removeItem("smartspec_lastModel");
+      }
+      return;
+    }
+
+    const nextModelId = pickEnabledModelId({
+      preferredId: selectedModel,
+      allowedIds: enabledModelIds,
+      fallbackIds: [conversation?.model, defaultEnabledModelId],
+    });
+
+    if (nextModelId !== selectedModel) {
+      setSelectedModel(nextModelId);
+    }
+  }, [conversation?.model, defaultEnabledModelId, enabledModelIds, modelsData?.models, selectedModel]);
 
   // Persist selected model to localStorage
   useEffect(() => {
     if (selectedModel) {
       localStorage.setItem("smartspec_lastModel", selectedModel);
+      return;
     }
+
+    localStorage.removeItem("smartspec_lastModel");
   }, [selectedModel]);
 
   useEffect(() => {
@@ -943,8 +987,9 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
 
     // Include conversationId so server can save the message at end of streaming
     // Use selectedModel which reflects user's current selection
+    const effectiveModel = selectedModel || conversation?.model || undefined;
     const body: Record<string, any> = {
-      model: selectedModel || conversation?.model || "gpt-4o-mini",
+      ...(effectiveModel ? { model: effectiveModel } : {}),
       messages: apiMessages,
       stream: true,
       conversationId,
@@ -1062,7 +1107,7 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
           role: "assistant" as const,
           content: fullContent,
           creditsUsed: creditsUsed.toString(),
-          modelUsed: selectedModel || conversation?.model || "gpt-4o-mini",
+          modelUsed: selectedModel || conversation?.model || undefined,
           skillUsed: skillUsed,
           artifacts: inlineArtifacts.length > 0
             ? inlineArtifacts.map((a) => ({ id: a.identifier, type: a.type as any, title: a.title, content: a.content }))
@@ -1152,7 +1197,9 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
         credentials: "include",
         body: JSON.stringify({
           messages: apiMessages,
-          modelA: selectedModel || conversation?.model || "gpt-4o-mini",
+          ...(selectedModel || conversation?.model
+            ? { modelA: selectedModel || conversation?.model }
+            : {}),
           modelB: brainstormPartnerModel,
           conversationId,
           maxRounds: 3,
@@ -2345,8 +2392,9 @@ export function ChatView({ conversationId, onTitleUpdate }: ChatViewProps) {
                     const lastUserMsg = messages.filter(m => m.role === "user").pop();
                     if (lastUserMsg) {
                       // Trigger re-send by simulating submit with preferredProvider
+                      const effectiveModel = selectedModel || conversation?.model || undefined;
                       const body: Record<string, any> = {
-                        model: selectedModel || conversation?.model || "gpt-4o-mini",
+                        ...(effectiveModel ? { model: effectiveModel } : {}),
                         messages: fallbackRequest.originalMessages,
                         stream: true,
                         conversationId,
