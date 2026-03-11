@@ -4955,3 +4955,70 @@ export const automationTemplates = pgTable("automation_templates", {
 
 export type AutomationTemplate = typeof automationTemplates.$inferSelect;
 export type InsertAutomationTemplate = typeof automationTemplates.$inferInsert;
+
+// ── Task Execution Intelligence (Spec 037 §03) ────────────────────────
+
+export const taskRunStatusEnum = pgEnum("task_run_status", [
+  "planned",
+  "running",
+  "completed",
+  "failed",
+  "cancelled",
+]);
+
+export const stepAttemptStatusEnum = pgEnum("step_attempt_status", [
+  "pending",
+  "running",
+  "completed",
+  "failed",
+  "skipped",
+]);
+
+export const taskRuns = pgTable("task_runs", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull().references(() => users.id),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id),
+  taskType: varchar("taskType", { length: 32 }).notNull(),
+  sourceType: varchar("sourceType", { length: 32 }).notNull(),
+  status: taskRunStatusEnum("status").notNull().default("planned"),
+  /** Immutable plan JSON — frozen at creation, never modified */
+  planJson: jsonb("planJson").notNull(),
+  skillSlug: varchar("skillSlug", { length: 100 }),
+  conversationId: integer("conversationId"),
+  totalCreditsUsed: integer("totalCreditsUsed").default(0),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
+  errorMessage: text("errorMessage"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("task_runs_user_idx").on(t.userId),
+  index("task_runs_tenant_idx").on(t.tenantId),
+  index("task_runs_status_idx").on(t.status),
+  index("task_runs_created_idx").on(t.createdAt),
+]);
+
+export type TaskRun = typeof taskRuns.$inferSelect;
+export type InsertTaskRun = typeof taskRuns.$inferInsert;
+
+export const taskStepAttempts = pgTable("task_step_attempts", {
+  id: serial("id").primaryKey(),
+  taskRunId: integer("taskRunId").notNull().references(() => taskRuns.id, { onDelete: "cascade" }),
+  attemptIndex: integer("attemptIndex").notNull().default(0),
+  /** Resolved model snapshot — frozen at attempt start */
+  resolvedModelSnapshot: jsonb("resolvedModelSnapshot"),
+  effectiveModel: varchar("effectiveModel", { length: 128 }),
+  provider: varchar("provider", { length: 128 }),
+  strategy: varchar("strategy", { length: 32 }),
+  inputTokens: integer("inputTokens").default(0),
+  outputTokens: integer("outputTokens").default(0),
+  creditsUsed: integer("creditsUsed").default(0),
+  costUsd: numeric("costUsd", { precision: 12, scale: 8 }).default("0"),
+  durationMs: integer("durationMs"),
+  status: stepAttemptStatusEnum("status").notNull().default("pending"),
+  fallbackReason: text("fallbackReason"),
+  errorMessage: text("errorMessage"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("task_step_attempts_run_idx").on(t.taskRunId),
+  index("task_step_attempts_model_idx").on(t.effectiveModel),
+]);

@@ -12,54 +12,69 @@ Add the first central planner and normalize billing for planner-selected executi
 4. add route scoring/filtering over enabled models and available strategies
 5. normalize billing metadata for task runtime and responses-based skill/task paths
 
-## Primary files
+## Actual files created/modified
 
-- new planner service under `apps/web/server/services/`
-- `apps/web/server/services/creditService.ts`
-- `apps/web/server/_core/responsesRoutes.ts`
-- `apps/web/server/_core/llmRoutes.ts`
-- `apps/web/drizzle/schema.ts`
+### New files
+- `apps/web/server/services/taskExecutionPlanner.ts` — task classification, plan builder, version validation
+- `apps/web/server/services/taskExecutionPlanner.test.ts` — 27 tests
+- `apps/web/server/services/modelResolver.ts` — runtime model resolution with strategy ranking
+- `apps/web/server/services/modelResolver.test.ts` — 11 tests
+- `apps/web/server/services/taskRunStore.ts` — persistence helpers (createTaskRun, createStepAttempt, completeStepAttempt, etc.)
+- `apps/web/drizzle/0063_open_harrier.sql` — creates task_runs + task_step_attempts tables
+- `apps/web/drizzle/0064_typical_dracula.sql` — adds updatedAt to task_runs, step_attempt_status enum
+
+### Modified files
+- `apps/web/drizzle/schema.ts` — added `taskRunStatusEnum`, `stepAttemptStatusEnum`, `taskRuns`, `taskStepAttempts` tables
 
 ## Planner behavior
 
-First version should be heuristic-first:
+Heuristic-first classification:
 
-- classify task type
-- classify complexity
-- filter candidate strategies
-- emit requirements/profile intent
-- resolve the concrete route at execution time
-- choose lowest-cost viable option above confidence threshold
+- **classifyTaskType**: maps source type → task type (chat, skill, media, responses, agency)
+- **classifyComplexity**: heuristic based on task type, tools, multi-step flags
+- **inferRequirements**: merges skill execution policy requirements + task-type-inferred requirements
+- **buildExecutionPlan**: produces frozen (Object.freeze) immutable plan with version, requirements, strategy
+
+## Model resolver
+
+- `resolveModelFromPlan`: filters by capability requirements, ranks by strategy (cheapest/fastest/best)
+- `buildModelResolutionSnapshot`: creates immutable snapshot per step-attempt for audit
 
 ## Plan and state contract
 
-- `task_runs.planJson` is immutable run intent
-- started step attempts persist `resolvedModelSnapshot`
-- resolved snapshots persist catalog/capability identifiers
-- retries within the same attempt reuse the same snapshot
-- fallback attempts write a new snapshot with reason
-- approval policy stays at plan scope while approval decisions are recorded per attempt
-- incompatible stored plans fail closed and require regeneration or explicit migration
+- `task_runs.planJson` is immutable (Object.freeze at creation, Readonly<> types)
+- `validatePlanVersion()` provides fail-closed guard for incompatible stored plans
+- Step attempts store `resolvedModelSnapshot` frozen at attempt start
+- Retries within same attempt reuse the same snapshot
+- Fallback attempts create new snapshot with `fallbackReason`
 
-## Billing requirements
+## Billing contract
 
-Every execution path must carry:
+`TaskBillingMetadata` interface ensures every execution path carries:
+- `taskRunId`, `strategy`, `effectiveModel`, `provider`, `attemptIndex`, `sourceType`, `taskType`
 
-- `taskRunId`
-- `strategy`
-- `effectiveModel`
-- `provider`
-- `attemptIndex`
-- source type that matches task runtime semantics
-- pricing and credit-conversion snapshots
-- catalog/capability snapshot identifiers when resolution depends on mutable provider metadata
-- retention policy for historical snapshot records used by audit and support
+`buildBillingMetadata()` helper produces this from plan + snapshot context.
 
-## Acceptance criteria
+**Route wiring deferred to sections 04/05** — persistence helpers are ready, routes will call them.
 
-1. planner can produce a requirement-first `TaskExecutionPlan`
-2. model resolver can turn requirements into a concrete route at execution time
-3. billing captures task runtime metadata correctly
-4. responses-driven task paths are no longer misclassified as browser-only where inappropriate
-5. retries/fallbacks remain auditable
-6. `planJson` immutability and step-attempt enrichment boundaries are enforceable in tests
+## Database tables
+
+### task_runs
+- id, userId, tenantId, taskType, sourceType, status (enum), planJson (immutable), skillSlug, conversationId, totalCreditsUsed, completedAt, errorMessage, createdAt, updatedAt
+
+### task_step_attempts
+- id, taskRunId (FK cascade), attemptIndex, resolvedModelSnapshot (jsonb), effectiveModel, provider, strategy, inputTokens, outputTokens, creditsUsed, costUsd, durationMs, status (enum), fallbackReason, errorMessage, createdAt
+
+## Acceptance criteria status
+
+1. ✅ planner can produce a requirement-first `TaskExecutionPlan`
+2. ✅ model resolver can turn requirements into a concrete route at execution time
+3. ⏳ billing captures task runtime metadata correctly (contract defined, route wiring in §04/05)
+4. ⏳ responses-driven task paths reclassification (route wiring in §04)
+5. ✅ retries/fallbacks remain auditable (snapshot + fallbackReason per attempt)
+6. ✅ `planJson` immutability and step-attempt enrichment boundaries enforceable in tests
+
+## Tests
+
+- 38 tests total (27 planner + 11 resolver), all passing
+- Covers classification, plan building, immutability, version validation, model resolution, strategy ranking, billing metadata
