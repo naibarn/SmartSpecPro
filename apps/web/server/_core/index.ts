@@ -20,6 +20,7 @@ import { registerMediaJobRoutes } from "../routers/mediaJobs";
 import { registerAgencyStreamRoutes } from "./agencyStreamProxy";
 import { registerContentAutomationRoutes } from "../routers/contentAutomationRoutes";
 import { registerAutoDraftToolRoute } from "../routers/autoDraftTool";
+import { registerModelSuggestToolRoute } from "../routers/modelSuggestTool";
 
 import { createWebhookRouter } from "../routes/webhooks";
 import { createWebhookTriggerRouter } from "../routes/webhookTrigger";
@@ -405,6 +406,7 @@ registerMediaJobRoutes(app);
 registerAgencyStreamRoutes(app);
 registerContentAutomationRoutes(app);
 registerAutoDraftToolRoute(app);
+registerModelSuggestToolRoute(app);
 
 // Proxy remote images through same-origin endpoint so browser canvas operations
 // (split/crop preview) work even when source host doesn't expose CORS headers.
