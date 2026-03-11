@@ -12,6 +12,8 @@
 
 import type { SkillExecutionPolicyConfig } from "@smartspec/skills";
 import type { CapabilityRequirements } from "./capabilityRegistry";
+import type { ThinkingLevel } from "./thinkingLevelMapper";
+import { resolveThinkingLevel } from "./thinkingLevelMapper";
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -38,6 +40,7 @@ export interface TaskExecutionPlan {
   readonly requirements: Readonly<CapabilityRequirements>;
   readonly strategy: ExecutionStrategy;
   readonly budgetClass?: BudgetClass;
+  readonly thinkingLevel?: ThinkingLevel;
   readonly disallowedModels?: readonly string[];
   readonly context?: Readonly<{
     skillSlug?: string;
@@ -134,12 +137,16 @@ export function buildExecutionPlan(input: TaskClassificationInput): TaskExecutio
     (input.executionPolicy?.preferredStrategy as ExecutionStrategy) ?? "cheapest";
   const budgetClass = input.executionPolicy?.budgetClass as BudgetClass | undefined;
 
+  const thinkingHint = input.executionPolicy?.thinking_level_hint as ThinkingLevel | undefined;
+  const thinkingLevel = resolveThinkingLevel(thinkingHint, complexity);
+
   const plan: TaskExecutionPlan = {
     version: 1,
     taskType,
     complexity,
     requirements,
     strategy,
+    thinkingLevel,
     createdAt: new Date().toISOString(),
     ...(budgetClass ? { budgetClass } : {}),
     ...(input.executionPolicy?.disallowedModels?.length

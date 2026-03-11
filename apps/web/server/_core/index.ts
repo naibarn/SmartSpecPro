@@ -57,6 +57,7 @@ import { initWebhookDispatchQueue, closeWebhookDispatchQueue } from "../services
 import { initializeTrashPurgeJob, shutdownTrashPurgeWorker } from "../jobs/purgeOldTrashItems";
 import { initializeGDriveCleanupJob, shutdownGDriveCleanupWorker } from "../jobs/gdriveSessionCleanup";
 import { initializePendingApprovalAlertJob } from "../jobs/pendingApprovalAlert";
+import { initializeContentRefreshJob } from "../jobs/contentRefreshJob";
 import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
 import { startHistoryCollection } from "../services/llmQueue";
 import { createTasksRouter } from "../routes/tasks";
@@ -1137,6 +1138,13 @@ async function main() {
     await initializeGDriveCleanupJob();
   } catch (error) {
     console.error("[Startup] Failed to initialize GDrive cleanup job:", error);
+  }
+
+  // Initialize content staleness checker (every 6h) — Spec 038
+  try {
+    await initializeContentRefreshJob();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize content refresh job:", error);
   }
 
   if (process.env.NODE_ENV === "development") {

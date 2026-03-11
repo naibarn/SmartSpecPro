@@ -74,6 +74,8 @@ import { widgetRouter } from "./routers/widget";
 import { webhookTriggersRouter } from "./routers/webhookTriggers";
 import { channelRouterRouter } from "./routers/channelRouter";
 import { tenantFeatureFlagsRouter } from "./routers/tenantFeatureFlags";
+import { contentArtifactsRouter } from "./routers/contentArtifacts";
+import { contentQualityRouter } from "./routers/contentQuality";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -1782,6 +1784,8 @@ export const appRouter = router({
   persona: personaRouter,
   tenantFeatureFlags: tenantFeatureFlagsRouter,
   automationCopilot: automationCopilotRouter,
+  contentArtifacts: contentArtifactsRouter,
+  contentQuality: contentQualityRouter,
 });
 
 export type AppRouter = typeof appRouter;

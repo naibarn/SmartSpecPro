@@ -11,7 +11,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@smartspec/ui/components/card";
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -19,9 +19,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@smartspec/ui/components/table";
-import { Button } from "@smartspec/ui/components/button";
-import { Badge } from "@smartspec/ui/components/badge";
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { FileCheck, AlertTriangle, BarChart3, RefreshCw } from "lucide-react";
 
 export default function ContentQualityDashboard() {
@@ -111,7 +111,7 @@ export default function ContentQualityDashboard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {bySkill.data.map((row) => (
+                {bySkill.data.map((row: any) => (
                   <TableRow key={row.skill_slug}>
                     <TableCell className="font-medium">
                       {row.skill_slug}
@@ -170,7 +170,7 @@ export default function ContentQualityDashboard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {staleList.data.map((item) => {
+                {staleList.data.map((item: any) => {
                   const overdue = item.nextRefreshAt
                     ? Math.floor(
                         (Date.now() - new Date(item.nextRefreshAt).getTime()) /

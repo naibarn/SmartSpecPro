@@ -38,7 +38,7 @@ export const contentArtifactsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       return saveArtifact({
-        tenantId: ctx.tenantId,
+        tenantId: ctx.tenantId ?? "default",
         userId: ctx.user.id,
         skillSlug: input.skillSlug,
         outputFormat: input.outputFormat,
@@ -69,7 +69,7 @@ export const contentArtifactsRouter = router({
     )
     .query(async ({ ctx, input }) => {
       return listArtifacts({
-        tenantId: ctx.tenantId,
+        tenantId: ctx.tenantId ?? "default",
         status: input.status,
         skillSlug: input.skillSlug,
         limit: input.limit,
@@ -78,7 +78,7 @@ export const contentArtifactsRouter = router({
     }),
 
   getStale: protectedProcedure.query(async ({ ctx }) => {
-    return getStaleArtifacts(ctx.tenantId);
+    return getStaleArtifacts(ctx.tenantId ?? "default");
   }),
 
   refresh: protectedProcedure

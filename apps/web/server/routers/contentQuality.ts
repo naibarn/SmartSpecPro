@@ -6,15 +6,19 @@
 
 import { z } from "zod";
 import { router, adminProcedure } from "../_core/trpc";
-import { db } from "../_core/db";
+import { db } from "../db";
 import { contentArtifacts } from "../../drizzle/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
 
+function getTenantId(ctx: { tenantId: string | null }): string {
+  return ctx.tenantId ?? "default";
+}
+
 export const contentQualityRouter = router({
   getOverview: adminProcedure.query(async ({ ctx }) => {
-    const tenantId = ctx.tenantId;
+    const tenantId = getTenantId(ctx);
 
-    const rows = await db
+    const rows: { status: string; count: number }[] = await db
       .select({
         status: contentArtifacts.status,
         count: sql<number>`count(*)::int`,
@@ -23,9 +27,9 @@ export const contentQualityRouter = router({
       .where(eq(contentArtifacts.tenantId, tenantId))
       .groupBy(contentArtifacts.status);
 
-    const total = rows.reduce((sum, r) => sum + r.count, 0);
-    const active = rows.find((r) => r.status === "active")?.count ?? 0;
-    const stale = rows.find((r) => r.status === "stale")?.count ?? 0;
+    const total = rows.reduce((sum: number, r: { count: number }) => sum + r.count, 0);
+    const active = rows.find((r: { status: string }) => r.status === "active")?.count ?? 0;
+    const stale = rows.find((r: { status: string }) => r.status === "stale")?.count ?? 0;
 
     // Avg citation coverage from qualityScore JSONB
     const [coverageRow] = await db
@@ -39,12 +43,13 @@ export const contentQualityRouter = router({
       total_artifacts: total,
       active,
       stale,
-      archived: rows.find((r) => r.status === "archived")?.count ?? 0,
+      archived: rows.find((r: { status: string }) => r.status === "archived")?.count ?? 0,
       avg_citation_coverage: Math.round((coverageRow?.avg_coverage ?? 0) * 100) / 100,
     };
   }),
 
   getBySkill: adminProcedure.query(async ({ ctx }) => {
+    const tenantId = getTenantId(ctx);
     const rows = await db
       .select({
         skill_slug: contentArtifacts.skillSlug,
@@ -54,11 +59,11 @@ export const contentQualityRouter = router({
         last_generated: sql<string>`MAX(${contentArtifacts.createdAt})::text`,
       })
       .from(contentArtifacts)
-      .where(eq(contentArtifacts.tenantId, ctx.tenantId))
+      .where(eq(contentArtifacts.tenantId, tenantId))
       .groupBy(contentArtifacts.skillSlug)
       .orderBy(desc(sql`count(*)`));
 
-    return rows.map((r) => ({
+    return rows.map((r: { avg_citation_coverage: number; skill_slug: string; count: number; stale_count: number; last_generated: string | null }) => ({
       ...r,
       avg_citation_coverage: Math.round(r.avg_citation_coverage * 100) / 100,
     }));
@@ -74,12 +79,13 @@ export const contentQualityRouter = router({
         .optional()
     )
     .query(async ({ ctx, input }) => {
+      const tenantId = getTenantId(ctx);
       return db
         .select()
         .from(contentArtifacts)
         .where(
           and(
-            eq(contentArtifacts.tenantId, ctx.tenantId),
+            eq(contentArtifacts.tenantId, tenantId),
             eq(contentArtifacts.status, "stale")
           )
         )
@@ -97,6 +103,7 @@ export const contentQualityRouter = router({
         .optional()
     )
     .query(async ({ ctx, input }) => {
+      const tenantId = getTenantId(ctx);
       const days = input?.days ?? 30;
       return db
         .select({
@@ -107,7 +114,7 @@ export const contentQualityRouter = router({
         .from(contentArtifacts)
         .where(
           and(
-            eq(contentArtifacts.tenantId, ctx.tenantId),
+            eq(contentArtifacts.tenantId, tenantId),
             sql`${contentArtifacts.createdAt} >= NOW() - INTERVAL '${sql.raw(String(days))} days'`
           )
         )

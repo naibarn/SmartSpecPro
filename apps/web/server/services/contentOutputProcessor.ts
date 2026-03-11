@@ -17,6 +17,10 @@ import {
   calculateCitationCoverage,
 } from "@smartspec/skills";
 import type { ExtractedCitation } from "./citationExtractor";
+import {
+  generateProductReviewJsonLd,
+  generateArticleJsonLd,
+} from "./jsonLdGenerator";
 
 export interface ContentProcessingInput {
   llmOutput: string;
@@ -115,6 +119,21 @@ export function processContentOutput(
 
   // Step 5: SEO metadata
   const seoComplete = ensureSeoMetadata(parsed);
+
+  // Step 6: JSON-LD structured data
+  try {
+    if (input.outputFormat === "cms_review" && !parsed.structured_data_jsonld) {
+      parsed.structured_data_jsonld = generateProductReviewJsonLd(
+        parsed as unknown as ProductReviewCMSOutput
+      );
+    } else if (input.outputFormat === "cms_article" && !parsed.structured_data_jsonld) {
+      parsed.structured_data_jsonld = generateArticleJsonLd(
+        parsed as unknown as ArticleCMSOutput
+      );
+    }
+  } catch {
+    // JSON-LD generation is non-critical — don't fail the pipeline
+  }
 
   return {
     content: parsed as ArticleCMSOutput | ProductReviewCMSOutput,

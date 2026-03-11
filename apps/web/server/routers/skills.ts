@@ -72,6 +72,8 @@ import {
   hasRelativeSkillManifest,
   mirrorExistingSkillManifest,
   resolveSkillManifestPath,
+  resolveSkillDirCandidates,
+  updateSkillManifestFiles,
   writeSkillManifestFiles,
 } from "../services/skillFiles";
 import { refreshModelCache } from "../services/modelRegistry";
@@ -142,6 +144,8 @@ function mapCategoryToEnum(category?: string): string {
     "audio-generation": "audio_generation",
     "article_generation": "article_generation",
     "article-generation": "article_generation",
+    "product_review": "product_review",
+    "product-review": "product_review",
     "sound_effects": "sound_effects",
     "sound-effects": "sound_effects",
     "code_assistant": "code_assistant",
@@ -165,6 +169,7 @@ function mapCategoryToEnum(category?: string): string {
   if ((cat.includes("image") || cat.includes("photo") || cat.includes("visual")) && cat.includes("prompt")) return "image_prompt_generation";
   if ((cat.includes("video") || cat.includes("film") || cat.includes("movie")) && cat.includes("prompt")) return "video_prompt_generation";
   if (cat.includes("code") || cat.includes("dev") || cat.includes("engineer") || cat.includes("programming")) return "code_assistant";
+  if (cat.includes("review") || cat.includes("reviewer") || (cat.includes("product") && !cat.includes("prompt"))) return "product_review";
   if (cat.includes("write") || cat.includes("content") || cat.includes("blog") || cat.includes("copy")) return "article_generation";
   if (cat.includes("data") || cat.includes("analy")) return "data_analysis";
   if (cat.includes("image") || cat.includes("photo") || cat.includes("visual")) return "image_generation";
@@ -176,6 +181,15 @@ function mapCategoryToEnum(category?: string): string {
   if (cat.includes("doc") || cat.includes("document")) return "document_analysis";
   if (cat.includes("automat") || cat.includes("workflow")) return "automation";
   return "other";
+}
+
+/**
+ * Determine CMS output format from skill category.
+ */
+function determineCmsFormat(category: string): "cms_article" | "cms_review" | "markdown" {
+  if (category === "product_review") return "cms_review";
+  if (category === "article_generation") return "cms_article";
+  return "markdown";
 }
 
 type VisionModelOption = {
@@ -1525,6 +1539,8 @@ export const skillsRouter = router({
           skillContent: skills.skillContent,
           systemPrompt: skills.systemPrompt,
           folderPath: skills.folderPath,
+          category: skills.category,
+          executionPolicyJson: skills.executionPolicyJson,
         })
         .from(skills)
         .where(eq(skills.slug, input.skillId))
@@ -1621,13 +1637,70 @@ export const skillsRouter = router({
           },
         });
 
+        // Post-process CMS output if response_mode is cms_json
+        const responseMode = mergedUserInputs.response_mode as string | undefined;
+        let processedContent = result.content;
+        let qualityReport: Record<string, unknown> | undefined;
+
+        if (responseMode === "cms_json" && skill.category) {
+          try {
+            const outputFormat = determineCmsFormat(skill.category);
+            if (outputFormat !== "markdown") {
+              // Load content_quality from skill frontmatter
+              let contentQuality: Record<string, unknown> | undefined;
+              if (skill.folderPath) {
+                const skillMdPath = path.resolve(process.cwd(), skill.folderPath, "skill.md");
+                if (fs.existsSync(skillMdPath)) {
+                  const rawMd = fs.readFileSync(skillMdPath, "utf-8");
+                  const parsedMd = parseSkillFile(rawMd);
+                  contentQuality = (parsedMd.metadata as any).content_quality;
+                }
+              }
+
+              const { processContentOutput } = await import("../services/contentOutputProcessor");
+              const processed = processContentOutput({
+                llmOutput: result.content,
+                outputFormat,
+                skillSlug: input.skillId,
+                contentQuality: contentQuality as any,
+              });
+
+              processedContent = typeof processed.content === "string"
+                ? processed.content
+                : JSON.stringify(processed.content, null, 2);
+              qualityReport = processed.quality as unknown as Record<string, unknown>;
+
+              // Save artifact if quality gate passed
+              if (processed.quality.quality_gate_passed) {
+                try {
+                  const { saveArtifact } = await import("../services/contentArtifactStore");
+                  await saveArtifact({
+                    tenantId: ctx.tenantId ?? "default",
+                    userId,
+                    skillSlug: input.skillId,
+                    outputFormat,
+                    contentJson: processed.content,
+                    qualityScore: processed.quality,
+                    refreshCadenceDays: contentQuality?.refresh_cadence_days as number | undefined,
+                  });
+                } catch (artifactError) {
+                  console.warn("[Skills] Failed to save content artifact:", artifactError);
+                }
+              }
+            }
+          } catch (processingError) {
+            console.warn("[Skills] CMS post-processing failed, returning raw content:", processingError);
+          }
+        }
+
         return {
           success: true,
-          content: result.content,
+          content: processedContent,
           skillId: input.skillId,
           skillName: skill.name,
           creditsUsed,
           usage: result.usage,
+          ...(qualityReport ? { qualityReport } : {}),
         };
       } catch (error) {
         console.error("[Skills] executeCustomSkill error:", error);
@@ -2385,6 +2458,7 @@ export const skillsRouter = router({
 
       const [currentSkill] = await dbInstance
         .select({
+          folderPath: skills.folderPath,
           preferredProviderId: skills.preferredProviderId,
           category: skills.category,
           executionMode: skills.executionMode,
@@ -2485,6 +2559,39 @@ export const skillsRouter = router({
         updateObj.visibility = updateData.visibility;
         if (updateData.visibility === "pending_approval") {
           updateObj.requestedPublishAt = new Date();
+        }
+      }
+
+      if (currentSkill.folderPath && hasRelativeSkillManifest(currentSkill.folderPath)) {
+        const skillDir = resolveSkillDirCandidates(currentSkill.folderPath)
+          .find((candidate) => !!resolveSkillManifestPath(candidate));
+
+        if (skillDir) {
+          const manifestResult = updateSkillManifestFiles(
+            skillDir,
+            {
+              name: updateData.name,
+              description: updateData.description,
+              category: updateData.category !== undefined ? mapCategoryToEnum(updateData.category) : undefined,
+              version: updateData.version,
+              author: updateData.author,
+              icon: updateData.icon,
+              tags: updateData.tags,
+              auto_trigger: updateData.isAutoTrigger,
+              trigger_patterns: updateData.triggerPatterns,
+              enabled_by_default: updateData.enabledByDefault,
+              credit_multiplier: updateData.creditMultiplier,
+              priority: updateData.priority,
+              execution_mode: updateData.executionMode,
+              default_model: updateData.defaultModel,
+              llm_model_id: updateData.llmModelId,
+              preferred_provider_id: updateData.preferredProviderId,
+              strict_provider_pin: updateData.strictProviderPin,
+            },
+            updateData.skillContent,
+          );
+
+          updateObj.contentHash = crypto.createHash("md5").update(manifestResult.content).digest("hex");
         }
       }
 
