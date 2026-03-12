@@ -21,6 +21,8 @@ import {
   AutoDraftRequestSchema,
   canvasPresetToSize,
 } from "@shared/contentAutomation/types";
+import { suggestModel } from "./modelSuggestTool";
+import { getDefaultModel } from "../services/modelRegistry";
 
 const FALLBACK_ARTICLE_SKILL = "general-article-writer";
 
@@ -199,6 +201,32 @@ export async function autoDraftToolHandler(req: Request, res: Response): Promise
     return;
   }
 
+  // Resolve image model: agent-specified → suggested → default
+  let imageModel: string | undefined = input.image_model_id;
+  let recommendedModel: string | undefined;
+
+  if (!input.image_model_id) {
+    try {
+      const suggestResult = await suggestModel("image", "balanced");
+      recommendedModel = suggestResult.recommended?.model_id;
+      imageModel = recommendedModel ?? getDefaultModel("image")?.id;
+    } catch {
+      imageModel = getDefaultModel("image")?.id;
+    }
+  }
+
+  emitAuditLog(
+    "auto_draft.model_selected",
+    {
+      agentModel: input.image_model_id ?? null,
+      recommendedModel: recommendedModel ?? null,
+      imageModelUsed: imageModel ?? null,
+      diverged: !!input.image_model_id && recommendedModel !== undefined && input.image_model_id !== recommendedModel,
+    },
+    userId,
+    tenantId,
+  );
+
   try {
     // 14. Build GenerateAIDraftInput and await generateAIDraft (blocking)
     const draftInput = {
@@ -209,7 +237,7 @@ export async function autoDraftToolHandler(req: Request, res: Response): Promise
       language: (input.language as "auto" | "en" | "th") ?? "auto",
       articleSkillId,
       imageSkillId,
-      imageModel: input.image_model_id,
+      imageModel,
       canvasWidth: canvasDims.width,
       canvasHeight: canvasDims.height,
       stylePresetId: (input.style_preset ?? "dark-professional") as never,
