@@ -295,9 +295,17 @@ describe("verifyInternalToken security", () => {
     expect(statusMock).toHaveBeenCalledWith(401);
   });
 
-  it("returns false (401) when token header is missing", async () => {
+  it("returns false (401) when token header is empty string", async () => {
     const req = buildRequest();
     (req.headers as Record<string, string>)["x-internal-token"] = "";
+    const { res, statusMock } = buildResponse();
+    await modelSuggestHandler(req, res);
+    expect(statusMock).toHaveBeenCalledWith(401);
+  });
+
+  it("returns false (401) when token header is absent (undefined)", async () => {
+    const req = buildRequest();
+    delete (req.headers as Record<string, unknown>)["x-internal-token"];
     const { res, statusMock } = buildResponse();
     await modelSuggestHandler(req, res);
     expect(statusMock).toHaveBeenCalledWith(401);
