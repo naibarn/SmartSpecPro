@@ -23,6 +23,7 @@ import { registerAutoDraftToolRoute } from "../routers/autoDraftTool";
 import { registerModelSuggestToolRoute } from "../routers/modelSuggestTool";
 import { registerFileParseToolRoute } from "../routers/fileParseTool";
 import { registerScheduleDraftToolRoute } from "../routers/scheduleDraftTool";
+import { registerSkillDiscoveryToolRoute } from "../routers/skillDiscoveryTool";
 
 import { createWebhookRouter } from "../routes/webhooks";
 import { createWebhookTriggerRouter } from "../routes/webhookTrigger";
@@ -411,6 +412,7 @@ registerAutoDraftToolRoute(app);
 registerModelSuggestToolRoute(app);
 registerFileParseToolRoute(app);
 registerScheduleDraftToolRoute(app);
+registerSkillDiscoveryToolRoute(app);
 
 // Proxy remote images through same-origin endpoint so browser canvas operations
 // (split/crop preview) work even when source host doesn't expose CORS headers.

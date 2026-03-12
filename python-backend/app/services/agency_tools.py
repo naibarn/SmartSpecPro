@@ -71,6 +71,7 @@ _BUILTIN_ENDPOINTS: dict[str, str] = {
     "builtin-model-suggest": "/api/internal/tools/model-suggest",
     "builtin-file-parse": "/api/internal/tools/file-parse",
     "builtin-schedule-draft": "/api/internal/tools/schedule-draft",
+    "builtin-skill-discovery": "/api/internal/tools/skill-discovery",
 }
 
 _BUILTIN_RISK_LEVELS: dict[str, str] = {
@@ -89,6 +90,7 @@ _BUILTIN_RISK_LEVELS: dict[str, str] = {
     "builtin-model-suggest": "low",
     "builtin-file-parse": "medium",
     "builtin-schedule-draft": "high",
+    "builtin-skill-discovery": "low",
 }
 
 _RETRIEVAL_SCOPE_BLOCKED_TOOL_IDS: dict[str, set[str]] = {

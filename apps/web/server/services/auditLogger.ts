@@ -82,6 +82,8 @@ export type AuditEventType =
   | "widget_origin_rejected"
   | "widget_init_error"
   | "widget_ingest_error"
+  | "model_suggest_response"
+  | "auto_draft.model_selected"
   | "error";
 
 export interface AuditLogEntry {

@@ -7,6 +7,8 @@ import { getModelsByTypeAsync } from "../services/modelRegistry";
 import type { MediaType } from "../services/modelRegistry";
 import { contentAutomationGate } from "../middleware/contentAutomationGate";
 import { ModelSuggestRequestSchema } from "@shared/contentAutomation/types";
+import { auditLogger } from "../services/auditLogger";
+import { getTraceId } from "../services/traceContext";
 
 export function creditCostToTier(creditCost: number): "low" | "medium" | "high" {
   if (creditCost <= 5) return "low";
@@ -105,9 +107,39 @@ export async function modelSuggestHandler(req: Request, res: Response): Promise<
     return;
   }
 
-  const { purpose, quality_preference } = parseResult.data;
-  const result = await suggestModel(purpose, quality_preference);
-  res.json({ success: true, ...result });
+  const { purpose, quality_preference, userId, tenantId } = parseResult.data;
+
+  // Safety net: suggestModel() resolves all errors internally
+  let result: SuggestResult;
+  try {
+    result = await suggestModel(purpose, quality_preference);
+  } catch (err) {
+    const raw = err instanceof Error ? err.message : String(err);
+    const sanitized = raw
+      .replace(/[a-z][a-z0-9+\-.]*:\/\/[^\s]+/gi, "[redacted]")
+      .slice(0, 200);
+    res.status(500).json({ success: false, error: sanitized });
+    return;
+  }
+
+  auditLogger.log({
+    eventType: "model_suggest_response",
+    traceId: getTraceId() ?? undefined,
+    userId,
+    metadata: {
+      tenantId,
+      purpose,
+      recommendedModelId: result.recommended?.model_id ?? null,
+      alternativeCount: result.alternatives.length,
+    },
+  });
+
+  res.json({
+    success: true,
+    recommended: result.recommended,
+    alternatives: result.alternatives,
+    ...(result.message ? { message: result.message } : {}),
+  });
 }
 
 export function registerModelSuggestToolRoute(app: Express): void {

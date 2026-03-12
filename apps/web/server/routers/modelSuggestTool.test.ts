@@ -13,10 +13,19 @@ vi.mock("../middleware/contentAutomationGate", () => ({
   contentAutomationGate: vi.fn((_req, _res, next) => next()),
 }));
 
+vi.mock("../services/auditLogger", () => ({
+  auditLogger: { log: vi.fn() },
+}));
+
+vi.mock("../services/traceContext", () => ({
+  getTraceId: vi.fn().mockReturnValue("test-trace-id"),
+}));
+
 import { modelSuggestHandler, creditCostToTier, suggestModel } from "./modelSuggestTool";
 import { getModelsByTypeAsync } from "../services/modelRegistry";
 import { contentAutomationGate } from "../middleware/contentAutomationGate";
 import { ENV } from "../_core/env";
+import { auditLogger } from "../services/auditLogger";
 
 const MOCK_MODELS = [
   { id: "img-model-1", name: "Fast Image", type: "image", provider: "openai", creditCost: 3, priority: 1, isEnabled: true, description: "Fast image model" },
@@ -353,4 +362,71 @@ describe("creditCostToTier", () => {
     expect(creditCostToTier(21)).toBe("high");
     expect(creditCostToTier(100)).toBe("high");
   });
+});
+
+describe("modelSuggestHandler audit logging", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getModelsByTypeAsync).mockResolvedValue(MOCK_MODELS as never);
+  });
+
+  it("emits 'model_suggest_response' audit event on successful response", async () => {
+    const req = buildRequest({ purpose: "image", userId: 42, tenantId: "tenant-1" });
+    const { res } = buildResponse();
+
+    await modelSuggestHandler(req, res);
+
+    expect(vi.mocked(auditLogger.log)).toHaveBeenCalledOnce();
+    expect(vi.mocked(auditLogger.log)).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: "model_suggest_response", traceId: "test-trace-id" }),
+    );
+  });
+
+  it("audit event metadata includes purpose and recommendedModelId", async () => {
+    const req = buildRequest({ purpose: "image", userId: 42, tenantId: "tenant-1" });
+    const { res } = buildResponse();
+
+    await modelSuggestHandler(req, res);
+
+    const call = vi.mocked(auditLogger.log).mock.calls[0][0];
+    expect(call.metadata).toMatchObject({
+      purpose: "image",
+      recommendedModelId: "img-model-1", // priority=1 is first
+    });
+  });
+
+  it("audit event metadata recommendedModelId is null when no models available", async () => {
+    vi.mocked(getModelsByTypeAsync).mockResolvedValue([]);
+    const req = buildRequest({ purpose: "image", userId: 42, tenantId: "tenant-1" });
+    const { res } = buildResponse();
+
+    await modelSuggestHandler(req, res);
+
+    const call = vi.mocked(auditLogger.log).mock.calls[0][0];
+    expect(call.metadata).toMatchObject({ recommendedModelId: null });
+  });
+
+  it("does NOT emit audit event when authentication fails", async () => {
+    const req = buildRequest();
+    (req.headers as Record<string, string>)["x-internal-token"] = "wrong-token";
+    const { res } = buildResponse();
+
+    await modelSuggestHandler(req, res);
+
+    expect(vi.mocked(auditLogger.log)).not.toHaveBeenCalled();
+  });
+});
+
+describe("modelSuggestHandler error handling", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getModelsByTypeAsync).mockResolvedValue(MOCK_MODELS as never);
+  });
+
+  // Safety net: suggestModel() resolves all errors internally so the handler's catch
+  // block is logically unreachable in normal operation. These tests are pending to
+  // avoid circular mocking fragility. Error sanitization is covered in suggestModel().
+  it.todo("returns 500 with sanitized message when suggestModel throws (unreachable safety net)");
+  it.todo("500 error message does not contain URLs (unreachable safety net)");
+  it.todo("500 error string is at most 200 characters (unreachable safety net)");
 });
