@@ -21,6 +21,9 @@ const {
   mockListModelFieldOptionsData,
   mockListModelFieldOptionsIsLoading,
   mockListModelFieldOptionsRefetch,
+  mockContentAutomationEnabled,
+  mockAgencyList,
+  mockSendAgencyMessageMutate,
 } = vi.hoisted(() => ({
   mockGenerateDraftMutate: vi.fn(),
   mockCancelDraftMutate: vi.fn(),
@@ -180,6 +183,13 @@ const {
   },
   mockListModelFieldOptionsIsLoading: { current: false },
   mockListModelFieldOptionsRefetch: vi.fn(),
+  mockContentAutomationEnabled: { current: false },
+  mockAgencyList: {
+    current: [
+      { id: 1, slug: "auto-draft-agent", name: "Auto Draft Agent" },
+    ] as unknown[],
+  },
+  mockSendAgencyMessageMutate: vi.fn(),
 }));
 
 vi.mock("@/lib/trpc", () => ({
@@ -207,6 +217,14 @@ vi.mock("@/lib/trpc", () => ({
       availability: {
         useQuery: vi.fn(() => ({
           data: mockAvailabilityData.current,
+        })),
+      },
+    },
+    chat: {
+      executeSkill: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: vi.fn(),
+          isPending: false,
         })),
       },
     },
@@ -254,6 +272,28 @@ vi.mock("@/lib/trpc", () => ({
         useQuery: vi.fn(() => ({
           data: mockLibraryImagesData.current,
           isLoading: false,
+        })),
+      },
+    },
+    infrastructure: {
+      getContentAutomationEnabled: {
+        useQuery: vi.fn(() => ({
+          data: mockContentAutomationEnabled.current
+            ? { contentAutomation: true }
+            : { contentAutomation: false },
+        })),
+      },
+    },
+    agency: {
+      list: {
+        useQuery: vi.fn(() => ({
+          data: mockContentAutomationEnabled.current ? mockAgencyList.current : [],
+        })),
+      },
+      sendMessage: {
+        useMutation: vi.fn(() => ({
+          mutate: mockSendAgencyMessageMutate,
+          isPending: false,
         })),
       },
     },
@@ -445,6 +485,11 @@ beforeEach(() => {
       ...buildVisibleDraftSkills(),
     ],
   };
+  mockContentAutomationEnabled.current = false;
+  mockAgencyList.current = [
+    { id: 1, slug: "auto-draft-agent", name: "Auto Draft Agent" },
+  ];
+  mockSendAgencyMessageMutate.mockReset();
 });
 
 describe("G.1 Modal Rendering", () => {
@@ -1151,4 +1196,62 @@ describe("G.9 Advanced media options", () => {
     );
   });
 
+});
+
+describe("Auto mode", () => {
+  it("auto mode toggle is hidden when content automation flag is disabled", () => {
+    mockContentAutomationEnabled.current = false;
+    render(<AIDraftModal {...defaultProps} />);
+    expect(screen.queryByRole("switch", { name: /auto mode/i })).not.toBeInTheDocument();
+  });
+
+  it("auto mode toggle renders when content automation flag is enabled", () => {
+    mockContentAutomationEnabled.current = true;
+    render(<AIDraftModal {...defaultProps} />);
+    expect(screen.getByRole("switch", { name: /auto mode/i })).toBeInTheDocument();
+  });
+
+  it("hides skill and model fieldsets when auto mode is on", () => {
+    mockContentAutomationEnabled.current = true;
+    render(<AIDraftModal {...defaultProps} />);
+    fireEvent.click(screen.getByRole("switch", { name: /auto mode/i }));
+    expect(screen.queryByText(/Draft Skill/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Media Skill Override/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Media Model/i)).not.toBeInTheDocument();
+  });
+
+  it("shows Auto Generate button (not Generate) when auto mode is on", () => {
+    mockContentAutomationEnabled.current = true;
+    render(<AIDraftModal {...defaultProps} />);
+    fireEvent.click(screen.getByRole("switch", { name: /auto mode/i }));
+    expect(screen.getByRole("button", { name: /auto generate/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^generate$/i })).not.toBeInTheDocument();
+  });
+
+  it("calls sendMessage (not generateDraft) when Auto Generate is clicked", async () => {
+    mockContentAutomationEnabled.current = true;
+    render(<AIDraftModal {...defaultProps} />);
+    fireEvent.click(screen.getByRole("switch", { name: /auto mode/i }));
+
+    const textarea = screen.getByPlaceholderText(/describe/i);
+    fireEvent.change(textarea, { target: { value: "Automation test topic" } });
+
+    const autoBtn = screen.getByRole("button", { name: /auto generate/i });
+    fireEvent.click(autoBtn);
+
+    expect(mockSendAgencyMessageMutate).toHaveBeenCalledTimes(1);
+    expect(mockGenerateDraftMutate).not.toHaveBeenCalled();
+  });
+
+  it("Auto Generate button is disabled when auto-draft-agent is not found", () => {
+    mockContentAutomationEnabled.current = true;
+    mockAgencyList.current = [];
+    render(<AIDraftModal {...defaultProps} />);
+    fireEvent.click(screen.getByRole("switch", { name: /auto mode/i }));
+
+    const textarea = screen.getByPlaceholderText(/describe/i);
+    fireEvent.change(textarea, { target: { value: "test topic" } });
+
+    expect(screen.getByRole("button", { name: /auto generate/i })).toBeDisabled();
+  });
 });

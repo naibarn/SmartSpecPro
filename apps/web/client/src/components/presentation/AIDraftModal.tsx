@@ -90,6 +90,7 @@ import {
   FileText,
   ImageIcon,
   Video,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -343,6 +344,10 @@ export function AIDraftModal({
     }
     return localStorage.getItem(key) || "";
   };
+
+  // Auto mode state
+  const [autoMode, setAutoMode] = useState(false);
+  const [agencyRunId, setAgencyRunId] = useState<string | null>(null);
 
   // Config state
   const [topic, setTopic] = useState("");
@@ -777,6 +782,28 @@ export function AIDraftModal({
   const uploadReferenceMutation = trpc.ai.upload.useMutation();
   const executeSkillMutation = trpc.chat.executeSkill.useMutation();
 
+  // Content automation feature flag + agency integration
+  const { data: contentAutomationData } = trpc.infrastructure.getContentAutomationEnabled.useQuery(
+    undefined,
+    { staleTime: 5 * 60 * 1000 }
+  );
+  const contentAutomationEnabled = contentAutomationData?.contentAutomation ?? false;
+
+  const { data: agencyList } = trpc.agency.list.useQuery(
+    {},
+    { enabled: contentAutomationEnabled }
+  );
+  const autoDraftAgent = agencyList?.find((a: any) => a.slug === "auto-draft-agent");
+
+  const sendAgencyMessage = trpc.agency.sendMessage.useMutation({
+    onSuccess: (result: any) => {
+      setAgencyRunId(result.runId ?? null);
+    },
+    onError: (err: any) => {
+      toast.error(err.message ?? "Auto Draft failed");
+    },
+  });
+
   // Handler: generate article content using the selected skill
   const handleGenerateArticle = useCallback(async () => {
     if (!articleGenSkill || isGeneratingArticle) return;
@@ -1152,6 +1179,24 @@ export function AIDraftModal({
     [referenceImages.length, uploadReferenceMutation, persistReferenceImages],
   );
 
+  const handleAutoModeChange = useCallback((enabled: boolean) => {
+    setAutoMode(enabled);
+    if (!enabled) {
+      setAgencyRunId(null);
+    }
+  }, []);
+
+  const handleAutoGenerate = useCallback(() => {
+    if (!autoDraftAgent) return;
+    if (!topic.trim() || topic.trim().length < 3) {
+      toast.error("กรุณาระบุหัวข้อ (อย่างน้อย 3 ตัวอักษร)");
+      return;
+    }
+    const conversationId = crypto.randomUUID();
+    const message = topic.trim();
+    sendAgencyMessage.mutate({ agencyId: (autoDraftAgent as any).id, conversationId, message });
+  }, [autoDraftAgent, topic, sendAgencyMessage]);
+
   const handleGenerate = useCallback(() => {
     if (advancedMediaOptionsEnabled) {
       const missingRequiredFields = getMissingRequiredModelFields(selectedMediaModelFields, {
@@ -1479,6 +1524,23 @@ export function AIDraftModal({
           Content
         </legend>
 
+      {/* Auto mode toggle */}
+      {contentAutomationEnabled && (
+        <div className="flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+          <div>
+            <p className="text-sm font-medium text-blue-900">Auto mode</p>
+            <p className="text-xs text-blue-600">
+              AI จะเลือก skill, model, style ให้อัตโนมัติ
+            </p>
+          </div>
+          <Switch
+            checked={autoMode}
+            onCheckedChange={handleAutoModeChange}
+            aria-label="Auto mode"
+          />
+        </div>
+      )}
+
       {/* Topic */}
       <div className="space-y-1.5">
         <Label htmlFor="ai-topic">Topic</Label>
@@ -1658,6 +1720,7 @@ export function AIDraftModal({
         )}
       </div>
 
+      {!autoMode && (<>
       <div className="space-y-2 rounded-md border border-muted bg-muted/20 p-3">
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -1816,9 +1879,11 @@ export function AIDraftModal({
           </SelectContent>
         </Select>
       </div>
+      </>)}
       </fieldset>
 
       {/* ── Section: Skills & AI ─────────────────────── */}
+      {!autoMode && (
       <fieldset className="space-y-3 pt-1">
         <legend className="flex w-full items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
           <Sparkles className="h-3.5 w-3.5 text-teal-500" />
@@ -1994,8 +2059,10 @@ export function AIDraftModal({
         </Collapsible>
       )}
       </fieldset>
+      )}
 
       {/* ── Section: Media & Output ──────────────────── */}
+      {!autoMode && (
       <fieldset className="space-y-3 pt-1">
         <legend className="flex w-full items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
           <Film className="h-3.5 w-3.5 text-teal-500" />
@@ -2076,6 +2143,7 @@ export function AIDraftModal({
         {renderDynamicMediaModelInputs()}
       </div>
       </fieldset>
+      )}
 
       {/* ── Section: Visual & References ─────────────── */}
       <fieldset className="space-y-3 pt-1">
@@ -2515,11 +2583,22 @@ export function AIDraftModal({
         </DialogHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-6 py-4">
-          {taskId ? progressView : configView}
+          {agencyRunId ? (
+            <div className="flex flex-col items-center gap-4 py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+              <p className="text-sm text-muted-foreground">AI กำลังสร้างงาน...</p>
+              <Button variant="outline" size="sm" onClick={() => {
+                setAgencyRunId(null);
+                setAutoMode(false);
+              }}>
+                ยกเลิก
+              </Button>
+            </div>
+          ) : taskId ? progressView : configView}
         </div>
 
         <DialogFooter className="shrink-0 border-t px-6 pt-4 pb-6">
-          {!taskId && (
+          {!taskId && !agencyRunId && !autoMode && (
             <Button
               onClick={handleGenerate}
               disabled={!canGenerate || isFinalizingCompletion}
@@ -2531,6 +2610,21 @@ export function AIDraftModal({
                 <Sparkles className="mr-1 h-3.5 w-3.5" />
               )}
               Generate
+            </Button>
+          )}
+
+          {!taskId && !agencyRunId && autoMode && (
+            <Button
+              onClick={handleAutoGenerate}
+              disabled={!autoDraftAgent || sendAgencyMessage.isPending || topic.trim().length < 3}
+              aria-label="Auto Generate"
+            >
+              {sendAgencyMessage.isPending ? (
+                <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Zap className="mr-1 h-3.5 w-3.5" />
+              )}
+              Auto Generate
             </Button>
           )}
 

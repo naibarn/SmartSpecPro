@@ -56,21 +56,23 @@ export type AutoDraftResponse = z.infer<typeof AutoDraftResponseSchema>;
 export const ModelSuggestRequestSchema = z.object({
   purpose: z.enum(["image", "video", "audio", "text"]),
   quality_preference: z.enum(["speed", "balanced", "quality"]).optional().default("balanced"),
-  tenant_id: z.string().optional(),
 });
 
 export type ModelSuggestRequest = z.infer<typeof ModelSuggestRequestSchema>;
 
 const modelEntrySchema = z.object({
-  id: z.string(),
+  model_id: z.string(),
   name: z.string(),
   provider: z.string(),
   cost_tier: z.enum(["low", "medium", "high"]),
+  description: z.string(),
 });
 
 export const ModelSuggestResponseSchema = z.object({
-  recommended: modelEntrySchema,
+  success: z.boolean(),
+  recommended: modelEntrySchema.nullable(),
   alternatives: z.array(modelEntrySchema).max(3),
+  message: z.string().optional(),
 });
 
 export type ModelSuggestResponse = z.infer<typeof ModelSuggestResponseSchema>;
