@@ -79,11 +79,12 @@ function verifyInternalToken(req: Request): boolean {
   if (!expected) return false;
   const token = req.headers["x-internal-token"] as string | undefined;
   if (!token) return false;
-  try {
-    return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expected));
-  } catch {
-    return false;
-  }
+  // Hash both values with SHA-256 to ensure equal-length 32-byte buffers.
+  // This prevents a length oracle attack where timingSafeEqual throws
+  // RangeError on length mismatch, leaking the expected token's length.
+  const tokenHash = crypto.createHash("sha256").update(token).digest();
+  const expectedHash = crypto.createHash("sha256").update(expected).digest();
+  return crypto.timingSafeEqual(tokenHash, expectedHash);
 }
 
 export async function modelSuggestHandler(req: Request, res: Response): Promise<void> {

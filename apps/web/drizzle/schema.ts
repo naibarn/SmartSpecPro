@@ -4347,6 +4347,7 @@ export type InsertTenantSandboxPolicy = typeof tenantSandboxPolicies.$inferInser
 export const agencies = pgTable("agencies", {
   id: varchar("id", { length: 36 }).primaryKey(),
   tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  sourceTemplateId: varchar("sourceTemplateId", { length: 36 }).references(() => agencyTemplates.id, { onDelete: "set null" }),
   slug: varchar("slug", { length: 100 }).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
@@ -5278,3 +5279,124 @@ export const contentArtifacts = pgTable("content_artifacts", {
   index("content_artifacts_status_idx").on(t.status),
   index("content_artifacts_next_refresh_idx").on(t.nextRefreshAt),
 ]);
+
+// ============================================================
+// Spec 035: Content Automation Engine — Level 3 Schema (Phase 2 forward-design)
+// Tables created in Phase 1 for schema readiness; not yet referenced
+// by application code. Will be activated in Phase 2.
+// ============================================================
+
+export const contentSpecStatusEnum = pgEnum("content_spec_status", [
+  "active",
+  "paused",
+  "archived",
+]);
+
+export const contentAutomationRunStatusEnum = pgEnum("content_automation_run_status", [
+  "pending",
+  "running",
+  "completed",
+  "failed",
+  "export_failed",
+]);
+
+/**
+ * Content Specs — Level 3 Content Automation Engine definitions.
+ * One row per user-defined automation spec (recurring or one-time).
+ */
+export const contentSpecs = pgTable("content_specs", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  specData: jsonb("spec_data").$type<Record<string, unknown>>().notNull().default({}),
+  status: contentSpecStatusEnum("status").notNull().default("active"),
+  version: integer("version").notNull().default(1),
+  nextRun: timestamp("next_run", { withTimezone: true }),
+  lastRun: timestamp("last_run", { withTimezone: true }),
+  totalRuns: integer("total_runs").notNull().default(0),
+  totalItemsCreated: integer("total_items_created").notNull().default(0),
+  consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+  webhookSecretEncrypted: text("webhook_secret_encrypted"),
+  dailyCreditLimit: integer("daily_credit_limit"),
+  monthlyCreditLimit: integer("monthly_credit_limit"),
+  creditsUsedToday: integer("credits_used_today").notNull().default(0),
+  creditsUsedMonth: integer("credits_used_month").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("content_specs_status_next_run_idx").on(t.status, t.nextRun),
+  index("content_specs_tenant_idx").on(t.tenantId),
+  index("content_specs_user_idx").on(t.userId),
+]);
+
+export type ContentSpec = typeof contentSpecs.$inferSelect;
+export type InsertContentSpec = typeof contentSpecs.$inferInsert;
+
+/**
+ * Content Automation Runs — execution history for each fired content spec.
+ */
+export const contentAutomationRuns = pgTable("content_automation_runs", {
+  id: serial("id").primaryKey(),
+  specId: integer("spec_id").notNull().references(() => contentSpecs.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  scheduleItemIndex: integer("schedule_item_index").notNull().default(0),
+  status: contentAutomationRunStatusEnum("status").notNull().default("pending"),
+  topicsResolved: jsonb("topics_resolved").$type<string[]>().default([]),
+  itemsRequested: integer("items_requested").notNull().default(0),
+  itemsCompleted: integer("items_completed").notNull().default(0),
+  itemsFailed: integer("items_failed").notNull().default(0),
+  outputArtifacts: jsonb("output_artifacts").$type<Array<{ deck_id: number; topic: string; slide_count: number }>>().default([]),
+  exportUrls: jsonb("export_urls").$type<Array<{ deck_id: number; url: string; format: string }>>().default([]),
+  itemErrors: jsonb("item_errors").$type<Array<{ topic: string; error: string; index: number }>>().default([]),
+  creditsUsed: numeric("credits_used", { precision: 10, scale: 4 }).default("0"),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("content_automation_runs_spec_created_idx").on(t.specId, t.createdAt),
+  index("content_automation_runs_tenant_idx").on(t.tenantId),
+  index("content_automation_runs_created_at_idx").on(t.createdAt),
+  index("content_automation_runs_status_idx").on(t.status),
+]);
+
+export type ContentAutomationRun = typeof contentAutomationRuns.$inferSelect;
+export type InsertContentAutomationRun = typeof contentAutomationRuns.$inferInsert;
+
+/**
+ * Auto Draft Schedules — recurring or one-time auto-draft schedules managed by the Content Automation Engine.
+ */
+export const autoDraftSchedules = pgTable(
+  "auto_draft_schedules",
+  {
+    id: serial("id").primaryKey(),
+    tenantId: varchar("tenantId", { length: 128 }).notNull(),
+    userId: integer("userId")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    topicTemplate: text("topicTemplate").notNull(),
+    scheduleType: varchar("scheduleType", { length: 20 }).notNull(),
+    cronExpression: varchar("cronExpression", { length: 100 }),
+    runAt: timestamp("runAt", { withTimezone: true }),
+    timezone: varchar("timezone", { length: 64 }).default("UTC").notNull(),
+    draftParams: jsonb("draftParams").$type<Record<string, unknown>>().notNull(),
+    notifyEmail: boolean("notifyEmail").default(true).notNull(),
+    notifyWebhookUrl: text("notifyWebhookUrl"),
+    webhookSecretEncrypted: text("webhookSecretEncrypted"),
+    status: varchar("status", { length: 20 }).default("active").notNull(),
+    nextRun: timestamp("nextRun", { withTimezone: true }),
+    lastRun: timestamp("lastRun", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("auto_draft_schedules_status_next_run_idx").on(table.status, table.nextRun),
+    index("auto_draft_schedules_tenant_idx").on(table.tenantId),
+    index("auto_draft_schedules_user_idx").on(table.userId),
+  ],
+);
+
+export type AutoDraftSchedule = typeof autoDraftSchedules.$inferSelect;
+export type InsertAutoDraftSchedule = typeof autoDraftSchedules.$inferInsert;

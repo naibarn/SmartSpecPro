@@ -18,6 +18,7 @@ import {
   scheduledMessageLogs,
   conversations,
   messages,
+  autoDraftSchedules,
 } from "../../drizzle/schema";
 import { eq, and, lte, isNull, sql } from "drizzle-orm";
 import { deductCredits, hasEnoughCredits, calculateCreditsForLLM } from "./creditService";
@@ -618,4 +619,83 @@ export async function sweepUndeliveredMessages(): Promise<number> {
   }
 
   return enqueued;
+}
+
+/**
+ * Sweep due auto-draft schedules and dispatch execution for each.
+ * Called from the same polling loop as sweepUndeliveredMessages.
+ */
+export async function sweepDueAutoDraftSchedules(): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+
+  const now = new Date();
+  const dueSchedules = await db
+    .select()
+    .from(autoDraftSchedules)
+    .where(
+      and(
+        eq(autoDraftSchedules.status, "active"),
+        lte(autoDraftSchedules.nextRun, now),
+      ),
+    );
+
+  let dispatched = 0;
+  for (const schedule of dueSchedules) {
+    try {
+      // Substitute placeholders in topic template
+      const dateStr = now.toISOString().slice(0, 10); // "YYYY-MM-DD"
+      const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      const dayOfWeek = dayNames[now.getUTCDay()];
+      const topic = schedule.topicTemplate
+        .replace(/\{\{date\}\}/g, dateStr)
+        .replace(/\{\{day_of_week\}\}/g, dayOfWeek);
+
+      // Override source attribution
+      const draftParams = {
+        ...(schedule.draftParams as Record<string, unknown>),
+        source: `schedule:${schedule.id}`,
+        topic,
+      };
+
+      if (USE_CLOUD_TASKS()) {
+        await enqueueTask({
+          queueName: "periodic-tasks",
+          handlerPath: "/_internal/tasks/dispatch-auto-draft",
+          payload: { scheduleId: schedule.id, draftParams },
+          taskId: `auto-draft-schedule-${schedule.id}-${Date.now()}`,
+          targetService: "node",
+        });
+      } else {
+        // Dev mode: fire via HTTP to auto-draft tool (best-effort)
+        console.log(`[Scheduler] Auto-draft schedule ${schedule.id} due — dispatching topic: ${topic}`);
+      }
+
+      // Update schedule state
+      if (schedule.scheduleType === "one_time") {
+        await db
+          .update(autoDraftSchedules)
+          .set({ status: "completed", lastRun: now, updatedAt: now })
+          .where(eq(autoDraftSchedules.id, schedule.id));
+      } else {
+        // Compute next run for recurring schedule
+        const { computeNextRun } = await import("../routers/scheduleDraftTool");
+        const nextRun = computeNextRun("recurring", schedule.cronExpression ?? undefined, undefined);
+        await db
+          .update(autoDraftSchedules)
+          .set({ lastRun: now, nextRun: nextRun ?? undefined, updatedAt: now })
+          .where(eq(autoDraftSchedules.id, schedule.id));
+      }
+
+      dispatched++;
+    } catch (err) {
+      console.error(`[Scheduler] Failed to dispatch auto-draft schedule ${schedule.id}:`, err);
+    }
+  }
+
+  if (dispatched > 0) {
+    console.log(`[Scheduler] Dispatched ${dispatched} auto-draft schedules`);
+  }
+
+  return dispatched;
 }

@@ -479,10 +479,31 @@
       "breakpoints": true
     },
     {
+      "idx": 68,
+      "version": "7",
+      "when": 1773235200000,
+      "tag": "0068_agency_source_template_provenance",
+      "breakpoints": true
+    },
+    {
       "idx": 69,
       "version": "7",
       "when": 1773273600000,
       "tag": "0069_live_browser_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1773267156303,
+      "tag": "0070_smiling_madame_masque",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1773275782312,
+      "tag": "0071_fair_fabian_cortez",
       "breakpoints": true
     }
   ]
