@@ -436,7 +436,7 @@ async function executeImageGeneration(
 
   // Wire task planner for media tracking
   const plannerResult = await runPlanner({
-    sourceType: "media",
+    sourceType: "media_image",
     userId,
     tenantId: tenantId || "default",
     skillSlug: skill.id,
@@ -567,7 +567,7 @@ async function executeVideoGeneration(
 
   // Wire task planner for media tracking
   const plannerResult = await runPlanner({
-    sourceType: "media",
+    sourceType: "media_video",
     userId,
     tenantId: tenantId || "default",
     skillSlug: skill.id,
@@ -709,7 +709,7 @@ export async function executeAudioGeneration(
 
   // Wire task planner for media tracking
   const plannerResult = await runPlanner({
-    sourceType: "media",
+    sourceType: "media_audio",
     userId,
     tenantId: tenantId || "default",
     skillSlug: "audio-generation",

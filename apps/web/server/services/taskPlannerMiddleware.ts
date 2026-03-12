@@ -65,6 +65,10 @@ export async function runPlanner(
   input: PlannerInput,
 ): Promise<PlannerResult | null> {
   try {
+    // Guard: invalid inputs would corrupt task_run records and break tenant isolation
+    if (!Number.isFinite(input.userId) || input.userId <= 0) return null;
+    if (!input.tenantId || !input.tenantId.trim()) return null;
+
     // 1. Check feature flag — zero overhead when disabled
     const enabled = await getTenantFeatureFlag(
       "taskPlannerEnabled",

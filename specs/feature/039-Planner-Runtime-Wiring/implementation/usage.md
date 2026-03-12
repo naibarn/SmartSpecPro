@@ -142,7 +142,7 @@ When the planner is enabled and a request is processed:
 | `id` | Auto-increment PK |
 | `userId` | ID of the user who made the request |
 | `tenantId` | Tenant the request belongs to |
-| `sourceType` | Where the request came from (`chat`, `skill`, `translation`, `channel`, `responses`, `agency`, `webhook`, `scheduled`, `structured`, `presentation`) |
+| `sourceType` | Where the request came from (`chat`, `stream`, `skill`, `translation`, `channel`, `responses`, `agency`, `webhook`, `scheduled`, `media_image`, `media_video`, `media_audio`, `presentation`) |
 | `skillSlug` | Skill ID if a skill was used (nullable) |
 | `traceId` | Correlation ID linking to audit log entries |
 | `createdAt` | Timestamp |
@@ -196,11 +196,11 @@ GROUP BY sa."modelId"
 ORDER BY uses DESC;
 
 -- Skill vs media cost split
--- Note: skill text calls use sourceType='skill', media generation uses sourceType='media'
+-- Note: skill text calls use sourceType='skill', media generation uses specific subtypes
 SELECT
   CASE
     WHEN tr."sourceType" = 'skill' THEN 'skill (text/structured)'
-    WHEN tr."sourceType" = 'media' THEN 'media (image/video/audio)'
+    WHEN tr."sourceType" IN ('media_image', 'media_video', 'media_audio') THEN 'media (' || tr."sourceType" || ')'
     ELSE tr."sourceType"
   END AS source_label,
   COUNT(*) AS requests,
@@ -209,7 +209,7 @@ SELECT
 FROM task_runs tr
 JOIN task_step_attempts sa ON sa."taskRunId" = tr.id
 WHERE tr."tenantId" = 'your-tenant-id'
-  AND tr."sourceType" IN ('skill', 'media')
+  AND tr."sourceType" IN ('skill', 'media_image', 'media_video', 'media_audio')
   AND tr."createdAt" > NOW() - INTERVAL '7 days'
 GROUP BY source_label
 ORDER BY total_cost_usd DESC;
@@ -232,9 +232,9 @@ The planner is wired into **19 call sites** across all LLM execution paths:
 | | `scheduledMessages.*` | `"scheduled"` | — |
 | **Services** | `callLLMStructured()` (JSON-mode LLM) | `"skill"` | — |
 | | `scheduler` (background jobs) | `"scheduled"` | — |
-| | `skillExecutor` — image skill | `"media"` | — |
-| | `skillExecutor` — video skill | `"media"` | — |
-| | `skillExecutor` — audio skill | `"media"` | — |
+| | `skillExecutor` — image skill | `"media_image"` | — |
+| | `skillExecutor` — video skill | `"media_video"` | — |
+| | `skillExecutor` — audio skill | `"media_audio"` | — |
 | | `aiPresentationService` | `"presentation"` | — |
 | **Responses API** | `/api/responses` (OpenAI-compatible) | `"responses"` | — |
 | **Channel Gateway** | Telegram/LINE/Slack chat pipeline | `"channel"` | — |
@@ -244,7 +244,7 @@ The planner is wired into **19 call sites** across all LLM execution paths:
 | **Webhooks** | `webhookDispatchQueue` → agency target | `"webhook"` | ✅ |
 | | `webhookTriggers` test trigger → agency | `"webhook"` | ✅ |
 
-> **Note on media skills:** `skillExecutor` uses `sourceType: "media"` (not `"skill"`) for image, video, and audio generation tasks. When querying cost breakdowns, include both `"skill"` and `"media"` to capture all skill-related runs. `callLLMStructured()` (JSON-mode structured output) uses `"skill"`.
+> **Note on media skills:** `skillExecutor` uses specific subtypes (`"media_image"`, `"media_video"`, `"media_audio"`) — not the generic `"media"`. `aiPresentationService` also uses these subtypes. When querying cost breakdowns, use `sourceType IN ('media_image', 'media_video', 'media_audio')` to capture all media generation runs. `callLLMStructured()` (JSON-mode structured output) uses `"skill"`, not `"structured"`.
 
 Rows marked ✅ require `taskPlannerAgencyEscalation = true` to activate planner tracking.
 
