@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import type { Express, Request, Response } from "express";
 
 import { ENV } from "../_core/env";
+import { debugError } from "../_core/logger";
 import { getModelsByTypeAsync } from "../services/modelRegistry";
 import type { MediaType } from "../services/modelRegistry";
 import { contentAutomationGate } from "../middleware/contentAutomationGate";
@@ -11,6 +12,66 @@ export function creditCostToTier(creditCost: number): "low" | "medium" | "high" 
   if (creditCost <= 5) return "low";
   if (creditCost <= 20) return "medium";
   return "high";
+}
+
+interface ModelEntry {
+  model_id: string;
+  name: string;
+  provider: string;
+  cost_tier: "low" | "medium" | "high";
+  description: string;
+}
+
+interface SuggestResult {
+  recommended: ModelEntry | null;
+  alternatives: ModelEntry[];
+  message?: string;
+}
+
+export async function suggestModel(
+  purpose: "image" | "video" | "audio" | "text",
+  quality_preference?: "speed" | "balanced" | "quality",
+): Promise<SuggestResult> {
+  if (purpose === "text") {
+    return {
+      recommended: null,
+      alternatives: [],
+      message: "Text model selection is handled by the LLM router. Use the default model.",
+    };
+  }
+
+  try {
+    const models = await getModelsByTypeAsync(purpose as MediaType);
+
+    if (models.length === 0) {
+      return { recommended: null, alternatives: [] };
+    }
+
+    const sorted = [...models].sort((a, b) => {
+      if (quality_preference === "speed") {
+        return (a.creditCost ?? 0) - (b.creditCost ?? 0);
+      }
+      // "quality", "balanced", or omitted: sort by priority (lower = higher priority)
+      return (a.priority ?? 99) - (b.priority ?? 99);
+    });
+
+    const toEntry = (m: (typeof sorted)[number]): ModelEntry => ({
+      model_id: m.id,
+      name: m.name,
+      provider: m.provider,
+      cost_tier: creditCostToTier(m.creditCost),
+      description: m.description ?? "",
+    });
+
+    const [top, ...rest] = sorted;
+    return {
+      recommended: toEntry(top),
+      alternatives: rest.slice(0, 3).map(toEntry),
+    };
+  } catch (err) {
+    debugError("[suggestModel] model registry lookup failed", err);
+    return { recommended: null, alternatives: [] };
+  }
 }
 
 function verifyInternalToken(req: Request): boolean {
@@ -42,59 +103,10 @@ export async function modelSuggestHandler(req: Request, res: Response): Promise<
     });
     return;
   }
+
   const { purpose, quality_preference } = parseResult.data;
-
-  // 3. Handle "text" purpose — not in media model registry
-  if (purpose === "text") {
-    res.json({
-      success: true,
-      recommended: null,
-      alternatives: [],
-      message: "Text model selection is handled by the LLM router. Use the default model.",
-    });
-    return;
-  }
-
-  // 4. Fetch models by type
-  const models = await getModelsByTypeAsync(purpose as MediaType);
-
-  if (models.length === 0) {
-    res.json({
-      success: true,
-      recommended: null,
-      alternatives: [],
-      message: `No models available for purpose: ${purpose}`,
-    });
-    return;
-  }
-
-  // 5. Rank models by quality_preference
-  const sorted = [...models].sort((a, b) => {
-    if (quality_preference === "speed") {
-      // Lower creditCost = faster/cheaper
-      return (a.creditCost ?? 0) - (b.creditCost ?? 0);
-    }
-    // "quality" and "balanced": sort by priority (lower = higher priority)
-    return (a.priority ?? 0) - (b.priority ?? 0);
-  });
-
-  // 6. Build response (no raw creditCost exposed)
-  const toEntry = (m: typeof sorted[number]) => ({
-    model_id: m.id,
-    name: m.name,
-    provider: m.provider,
-    cost_tier: creditCostToTier(m.creditCost),
-    description: m.description ?? "",
-  });
-
-  const [top, ...rest] = sorted;
-  const alternatives = rest.slice(0, 3).map(toEntry);
-
-  res.json({
-    success: true,
-    recommended: toEntry(top),
-    alternatives,
-  });
+  const result = await suggestModel(purpose, quality_preference);
+  res.json({ success: true, ...result });
 }
 
 export function registerModelSuggestToolRoute(app: Express): void {

@@ -13,7 +13,7 @@ vi.mock("../middleware/contentAutomationGate", () => ({
   contentAutomationGate: vi.fn((_req, _res, next) => next()),
 }));
 
-import { modelSuggestHandler, creditCostToTier } from "./modelSuggestTool";
+import { modelSuggestHandler, creditCostToTier, suggestModel } from "./modelSuggestTool";
 import { getModelsByTypeAsync } from "../services/modelRegistry";
 import { contentAutomationGate } from "../middleware/contentAutomationGate";
 
@@ -174,6 +174,101 @@ describe("modelSuggestTool handler", () => {
         expect(model).not.toHaveProperty("cost_per_unit");
       }
     });
+  });
+});
+
+describe("suggestModel() standalone function", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getModelsByTypeAsync).mockResolvedValue(MOCK_MODELS as never);
+  });
+
+  it("quality_preference='speed' returns cheapest model as recommended", async () => {
+    const result = await suggestModel("image", "speed");
+    // img-model-4 has creditCost=1, the cheapest
+    expect(result.recommended).not.toBeNull();
+    expect(result.recommended!.model_id).toBe("img-model-4");
+  });
+
+  it("quality_preference='quality' returns lowest-priority-number model as recommended", async () => {
+    const result = await suggestModel("image", "quality");
+    // img-model-1 has priority=1 (lowest number = highest priority)
+    expect(result.recommended!.model_id).toBe("img-model-1");
+  });
+
+  it("quality_preference='balanced' produces same order as 'quality'", async () => {
+    const quality = await suggestModel("image", "quality");
+    const balanced = await suggestModel("image", "balanced");
+    expect(balanced.recommended!.model_id).toBe(quality.recommended!.model_id);
+  });
+
+  it("omitting quality_preference defaults to 'balanced' behaviour", async () => {
+    const balanced = await suggestModel("image", "balanced");
+    const omitted = await suggestModel("image");
+    expect(omitted.recommended!.model_id).toBe(balanced.recommended!.model_id);
+  });
+
+  it("returns at most 3 alternatives even with 5+ models available", async () => {
+    const sixModels = [
+      ...MOCK_MODELS,
+      { id: "img-model-5", name: "Extra 5", type: "image", provider: "openai", creditCost: 2, priority: 5, isEnabled: true, description: "Extra 5" },
+      { id: "img-model-6", name: "Extra 6", type: "image", provider: "openai", creditCost: 3, priority: 6, isEnabled: true, description: "Extra 6" },
+    ];
+    vi.mocked(getModelsByTypeAsync).mockResolvedValue(sixModels as never);
+    const result = await suggestModel("image");
+    expect(result.alternatives.length).toBeLessThanOrEqual(3);
+  });
+
+  it("returns recommended: null when model list is empty", async () => {
+    vi.mocked(getModelsByTypeAsync).mockResolvedValue([]);
+    const result = await suggestModel("image");
+    expect(result.recommended).toBeNull();
+  });
+
+  it("returns alternatives: [] when model list is empty", async () => {
+    vi.mocked(getModelsByTypeAsync).mockResolvedValue([]);
+    const result = await suggestModel("image");
+    expect(result.alternatives).toEqual([]);
+  });
+
+  it("purpose='text' returns recommended: null with message, never calls getModelsByTypeAsync", async () => {
+    const result = await suggestModel("text");
+    expect(result.recommended).toBeNull();
+    expect(getModelsByTypeAsync).not.toHaveBeenCalled();
+  });
+
+  it("purpose='text' returns a non-empty message string", async () => {
+    const result = await suggestModel("text");
+    expect(result.message).toBeTruthy();
+    expect(typeof result.message).toBe("string");
+  });
+
+  it("model without priority field sorts after models with explicit priority (priority ?? 99)", async () => {
+    // Use only 2 models so no-priority-model is guaranteed to appear in alternatives
+    const twoModelsWithNoPriority = [
+      { id: "explicit-priority", name: "Has Priority", type: "image", provider: "openai", creditCost: 5, priority: 1, isEnabled: true, description: "Has priority" },
+      { id: "no-priority-model", name: "No Priority", type: "image", provider: "openai", creditCost: 5, priority: undefined, isEnabled: true, description: "No priority" },
+    ];
+    vi.mocked(getModelsByTypeAsync).mockResolvedValue(twoModelsWithNoPriority as never);
+    const result = await suggestModel("image", "quality");
+    // explicit-priority (priority=1) should be recommended over no-priority (priority=99)
+    expect(result.recommended!.model_id).toBe("explicit-priority");
+    // no-priority-model should be in alternatives (it sorted after)
+    const altIds = result.alternatives.map((m) => m.model_id);
+    expect(altIds).toContain("no-priority-model");
+  });
+
+  it("getModelsByTypeAsync throwing returns { recommended: null, alternatives: [] } without re-throwing", async () => {
+    vi.mocked(getModelsByTypeAsync).mockRejectedValue(new Error("Registry down"));
+    await expect(suggestModel("image")).resolves.toEqual({ recommended: null, alternatives: [] });
+  });
+
+  it("response entries never contain raw creditCost field", async () => {
+    const result = await suggestModel("image");
+    const all = [result.recommended, ...result.alternatives].filter(Boolean);
+    for (const entry of all) {
+      expect(entry).not.toHaveProperty("creditCost");
+    }
   });
 });
 
