@@ -1,6 +1,6 @@
 # Task Planner Runtime Wiring — Operator & Developer Usage Guide
 
-> Spec 039 | Status: **Production-ready** (all 5 sections implemented)
+> Spec 039 | Status: **Production-ready** (all 5 sections implemented, 19 call sites wired)
 > Last updated: 2026-03-12
 
 ---
@@ -194,36 +194,57 @@ WHERE tr."tenantId" = 'your-tenant-id'
   AND tr."createdAt" > NOW() - INTERVAL '7 days'
 GROUP BY sa."modelId"
 ORDER BY uses DESC;
+
+-- Skill vs media cost split
+-- Note: skill text calls use sourceType='skill', media generation uses sourceType='media'
+SELECT
+  CASE
+    WHEN tr."sourceType" = 'skill' THEN 'skill (text/structured)'
+    WHEN tr."sourceType" = 'media' THEN 'media (image/video/audio)'
+    ELSE tr."sourceType"
+  END AS source_label,
+  COUNT(*) AS requests,
+  SUM(sa."creditsUsed") AS total_credits,
+  SUM(sa."costUsd"::numeric) AS total_cost_usd
+FROM task_runs tr
+JOIN task_step_attempts sa ON sa."taskRunId" = tr.id
+WHERE tr."tenantId" = 'your-tenant-id'
+  AND tr."sourceType" IN ('skill', 'media')
+  AND tr."createdAt" > NOW() - INTERVAL '7 days'
+GROUP BY source_label
+ORDER BY total_cost_usd DESC;
 ```
 
 ---
 
 ## Entry Points Covered
 
-The planner is wired into **21 call sites** across all LLM execution paths:
+The planner is wired into **19 call sites** across all LLM execution paths:
 
-| Category | Entry Point | `isAgencyEscalation` |
-|---|---|:---:|
-| **Frontend Chat** | `/api/llm/stream` (legacy gateway) | — |
-| | `/api/llm/v2/stream` (v2 gateway, non-streaming) | — |
-| | `/api/llm/v2/stream` (v2 gateway, streaming) | — |
-| **tRPC** | `chat.sendMessage` (direct chat) | — |
-| | `chat.sendMessage` (skill execution) | — |
-| | `translation.*` | — |
-| | `scheduledMessages.*` | — |
-| **Services** | `callLLMStructured()` (JSON-mode LLM) | — |
-| | `scheduler` (background jobs) | — |
-| | `skillExecutor` — direct execution | — |
-| | `skillExecutor` — media skill | — |
-| | `skillExecutor` — structured skill | — |
-| | `aiPresentationService` | — |
-| **Responses API** | `/api/responses` (OpenAI-compatible) | — |
-| **Channel Gateway** | Telegram/LINE/Slack chat pipeline | — |
-| | Channel router → agency override | ✅ |
-| | Channel agency pipeline | ✅ |
-| **Agency** | `agency.sendMessage` (direct request) | ✅ |
-| **Webhooks** | `webhookDispatchQueue` → agency target | ✅ |
-| | `webhookTriggers` test trigger → agency | ✅ |
+| Category | Entry Point | `sourceType` | `isAgencyEscalation` |
+|---|---|---|:---:|
+| **Frontend Chat** | `/api/llm/stream` (legacy gateway) | `"chat"` | — |
+| | `/api/llm/v2/stream` (v2 gateway, non-streaming) | `"chat"` | — |
+| | `/api/llm/v2/stream` (v2 gateway, streaming) | `"stream"` | — |
+| **tRPC** | `chat.sendMessage` (direct chat) | `"chat"` | — |
+| | `chat.sendMessage` (skill execution) | `"skill"` | — |
+| | `translation.*` | `"translation"` | — |
+| | `scheduledMessages.*` | `"scheduled"` | — |
+| **Services** | `callLLMStructured()` (JSON-mode LLM) | `"skill"` | — |
+| | `scheduler` (background jobs) | `"scheduled"` | — |
+| | `skillExecutor` — image skill | `"media"` | — |
+| | `skillExecutor` — video skill | `"media"` | — |
+| | `skillExecutor` — audio skill | `"media"` | — |
+| | `aiPresentationService` | `"presentation"` | — |
+| **Responses API** | `/api/responses` (OpenAI-compatible) | `"responses"` | — |
+| **Channel Gateway** | Telegram/LINE/Slack chat pipeline | `"channel"` | — |
+| | Channel router → agency override | `"channel"` | ✅ |
+| | Channel agency pipeline | `"channel"` | ✅ |
+| **Agency** | `agency.sendMessage` (direct request) | `"agency"` | ✅ |
+| **Webhooks** | `webhookDispatchQueue` → agency target | `"webhook"` | ✅ |
+| | `webhookTriggers` test trigger → agency | `"webhook"` | ✅ |
+
+> **Note on media skills:** `skillExecutor` uses `sourceType: "media"` (not `"skill"`) for image, video, and audio generation tasks. When querying cost breakdowns, include both `"skill"` and `"media"` to capture all skill-related runs. `callLLMStructured()` (JSON-mode structured output) uses `"skill"`.
 
 Rows marked ✅ require `taskPlannerAgencyEscalation = true` to activate planner tracking.
 
