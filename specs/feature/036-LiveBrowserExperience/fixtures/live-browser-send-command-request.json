@@ -1,0 +1,13 @@
+{
+  "sessionId": "lbs_demo_123",
+  "sessionVersion": 7,
+  "idempotencyKey": "cmd-uuid",
+  "actor": {
+    "actorType": "user",
+    "actorId": "42"
+  },
+  "command": {
+    "type": "natural_language",
+    "text": "Open the second hotel option and compare cancellation policy"
+  }
+}

@@ -95,6 +95,8 @@ celery_app.conf.update(
         "app.tasks.approval_timeout_tasks.check_expired_approvals": {"queue": "celery"},
         # Browser policy audit partition maintenance -> celery queue
         "app.tasks.browser_policy_maintenance_tasks.ensure_browser_policy_decision_partitions": {"queue": "celery"},
+        "app.tasks.live_browser_tasks.publish_live_browser_readiness_snapshot": {"queue": "celery"},
+        "app.tasks.live_browser_tasks.run_live_browser_maintenance": {"queue": "celery"},
         # Presentation headless rendering (CPU + Playwright + FFmpeg)
         "app.tasks.presentation_render.render_presentation": {"queue": "presentation_export"},
         # Presentation import (PPTX/Google Slides -> slides JSON)
@@ -163,6 +165,14 @@ beat_schedule = {
     "ensure-browser-policy-decision-partitions": {
         "task": "app.tasks.browser_policy_maintenance_tasks.ensure_browser_policy_decision_partitions",
         "schedule": crontab(minute=0, hour="*/6"),  # Every 6 hours - keep current/future partitions warm
+    },
+    "publish-live-browser-readiness": {
+        "task": "app.tasks.live_browser_tasks.publish_live_browser_readiness_snapshot",
+        "schedule": crontab(minute="*/1"),
+    },
+    "run-live-browser-maintenance": {
+        "task": "app.tasks.live_browser_tasks.run_live_browser_maintenance",
+        "schedule": crontab(minute="*/5"),
     },
     # Sandbox maintenance tasks
     "cleanup-expired-sandbox-jobs": {

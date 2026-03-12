@@ -120,6 +120,73 @@ export const browserPageSensitivityEnum = pgEnum("browser_page_sensitivity", [
   "code",
 ]);
 
+export const liveBrowserSourceTypeEnum = pgEnum("live_browser_source_type", [
+  "automation",
+  "workflow",
+  "agency",
+]);
+
+export const liveBrowserSessionStatusEnum = pgEnum("live_browser_session_status", [
+  "created",
+  "provisioning",
+  "ready",
+  "agent_running",
+  "waiting_for_human",
+  "human_controlling",
+  "waiting_for_runtime_recovery",
+  "failed_recovery_required",
+  "completed",
+  "cancelled",
+  "failed",
+  "expired",
+]);
+
+export const liveBrowserControlModeEnum = pgEnum("live_browser_control_mode", [
+  "observe",
+  "approve_only",
+  "takeover",
+  "agent_control",
+]);
+
+export const liveBrowserAssistRequestTypeEnum = pgEnum("live_browser_assist_request_type", [
+  "decision",
+  "field_input",
+  "review_page",
+  "takeover_required",
+]);
+
+export const liveBrowserActorTypeEnum = pgEnum("live_browser_actor_type", [
+  "agent",
+  "user",
+  "system",
+  "policy",
+]);
+
+export const liveBrowserEventTypeEnum = pgEnum("live_browser_event_type", [
+  "session_created",
+  "session_state_changed",
+  "stream_ready",
+  "frame_updated",
+  "url_changed",
+  "command_queued",
+  "command_started",
+  "command_completed",
+  "command_failed",
+  "assist_requested",
+  "assist_resolved",
+  "approval_requested",
+  "approval_resolved",
+  "takeover_started",
+  "takeover_lease_expiring",
+  "takeover_ended",
+  "incident",
+  "agent_started",
+  "agent_resumed",
+  "navigation_completed",
+  "session_completed",
+  "session_failed",
+]);
+
 // Credit source type enum — categorizes what generated a credit transaction
 export const creditSourceTypeEnum = pgEnum("credit_source_type", [
   "chat",
@@ -3865,6 +3932,118 @@ export const browserPolicyDecisions = pgTable("browser_policy_decisions", {
 
 export type BrowserPolicyDecisionRecord = typeof browserPolicyDecisions.$inferSelect;
 export type InsertBrowserPolicyDecisionRecord = typeof browserPolicyDecisions.$inferInsert;
+
+export const liveBrowserSessions = pgTable("live_browser_sessions", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  sourceType: liveBrowserSourceTypeEnum("sourceType").notNull(),
+  sourceId: varchar("sourceId", { length: 128 }),
+  status: liveBrowserSessionStatusEnum("status").default("created").notNull(),
+  controlMode: liveBrowserControlModeEnum("controlMode").default("observe").notNull(),
+  sessionVersion: integer("sessionVersion").default(1).notNull(),
+  controllerActorType: liveBrowserActorTypeEnum("controllerActorType"),
+  controllerActorId: varchar("controllerActorId", { length: 64 }),
+  controllerConnectionId: varchar("controllerConnectionId", { length: 128 }),
+  controllerLeaseExpiresAt: timestamp("controllerLeaseExpiresAt", { withTimezone: true }),
+  runtimeOwnerId: varchar("runtimeOwnerId", { length: 128 }),
+  runtimeOwnerClaimedAt: timestamp("runtimeOwnerClaimedAt", { withTimezone: true }),
+  pauseReason: varchar("pauseReason", { length: 128 }),
+  pendingAssistRequestId: varchar("pendingAssistRequestId", { length: 64 }),
+  pendingApprovalRequestId: varchar("pendingApprovalRequestId", { length: 64 }),
+  policyContextJson: jsonb("policyContextJson").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+  browserContextRef: jsonb("browserContextRef").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+  streamRef: jsonb("streamRef").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+  activeTabCount: integer("activeTabCount").default(1).notNull(),
+  startedAt: timestamp("startedAt", { withTimezone: true }).defaultNow().notNull(),
+  lastActivityAt: timestamp("lastActivityAt", { withTimezone: true }).defaultNow().notNull(),
+  endedAt: timestamp("endedAt", { withTimezone: true }),
+  endReason: varchar("endReason", { length: 128 }),
+}, (t) => [
+  index("live_browser_sessions_tenant_status_idx").on(t.tenantId, t.status),
+  index("live_browser_sessions_user_activity_idx").on(t.userId, t.lastActivityAt),
+  index("live_browser_sessions_runtime_owner_idx").on(t.runtimeOwnerId, t.runtimeOwnerClaimedAt),
+]);
+
+export type LiveBrowserSessionRecord = typeof liveBrowserSessions.$inferSelect;
+export type InsertLiveBrowserSessionRecord = typeof liveBrowserSessions.$inferInsert;
+
+export const liveBrowserIdempotencyKeys = pgTable("live_browser_idempotency_keys", {
+  id: serial("id").primaryKey(),
+  sessionId: varchar("sessionId", { length: 64 }).notNull().references(() => liveBrowserSessions.id, { onDelete: "cascade" }),
+  idempotencyKey: varchar("idempotencyKey", { length: 128 }).notNull(),
+  commandType: varchar("commandType", { length: 64 }).notNull(),
+  responseJson: jsonb("responseJson").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+}, (t) => [
+  uniqueIndex("uq_live_browser_idempotency_keys_session_key").on(t.sessionId, t.idempotencyKey),
+  index("live_browser_idempotency_keys_expires_idx").on(t.expiresAt),
+]);
+
+export type LiveBrowserIdempotencyKeyRecord = typeof liveBrowserIdempotencyKeys.$inferSelect;
+export type InsertLiveBrowserIdempotencyKeyRecord = typeof liveBrowserIdempotencyKeys.$inferInsert;
+
+export const liveBrowserEvents = pgTable("live_browser_events", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  sessionId: varchar("sessionId", { length: 64 }).notNull().references(() => liveBrowserSessions.id, { onDelete: "cascade" }),
+  sessionVersionAt: integer("sessionVersionAt").notNull(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  eventType: liveBrowserEventTypeEnum("eventType").notNull(),
+  actorType: liveBrowserActorTypeEnum("actorType").notNull(),
+  actorId: varchar("actorId", { length: 64 }),
+  payloadJson: jsonb("payloadJson").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+  screenshotRef: varchar("screenshotRef", { length: 255 }),
+  cursor: varchar("cursor", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("uq_live_browser_events_session_cursor").on(t.sessionId, t.cursor),
+  index("live_browser_events_session_created_idx").on(t.sessionId, t.createdAt),
+  index("live_browser_events_session_version_idx").on(t.sessionId, t.sessionVersionAt),
+]);
+
+export type LiveBrowserEventRecord = typeof liveBrowserEvents.$inferSelect;
+export type InsertLiveBrowserEventRecord = typeof liveBrowserEvents.$inferInsert;
+
+export const liveBrowserAssistRequests = pgTable("live_browser_assist_requests", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  sessionId: varchar("sessionId", { length: 64 }).notNull().references(() => liveBrowserSessions.id, { onDelete: "cascade" }),
+  sessionVersionAt: integer("sessionVersionAt").notNull(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  requestType: liveBrowserAssistRequestTypeEnum("requestType").notNull(),
+  status: varchar("status", { length: 32 }).default("pending").notNull(),
+  prompt: text("prompt").notNull(),
+  contextJson: jsonb("contextJson").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+  responseJson: jsonb("responseJson").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+  resolvedSessionVersionAt: integer("resolvedSessionVersionAt"),
+  requestedAt: timestamp("requestedAt", { withTimezone: true }).defaultNow().notNull(),
+  resolvedAt: timestamp("resolvedAt", { withTimezone: true }),
+}, (t) => [
+  index("live_browser_assist_requests_session_status_idx").on(t.sessionId, t.status),
+  index("live_browser_assist_requests_session_requested_idx").on(t.sessionId, t.requestedAt),
+]);
+
+export type LiveBrowserAssistRequestRecord = typeof liveBrowserAssistRequests.$inferSelect;
+export type InsertLiveBrowserAssistRequestRecord = typeof liveBrowserAssistRequests.$inferInsert;
+
+export const liveBrowserControlTransfers = pgTable("live_browser_control_transfers", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  sessionId: varchar("sessionId", { length: 64 }).notNull().references(() => liveBrowserSessions.id, { onDelete: "cascade" }),
+  sessionVersionAt: integer("sessionVersionAt").notNull(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  fromActorType: liveBrowserActorTypeEnum("fromActorType").notNull(),
+  fromActorId: varchar("fromActorId", { length: 64 }),
+  toActorType: liveBrowserActorTypeEnum("toActorType").notNull(),
+  toActorId: varchar("toActorId", { length: 64 }),
+  reason: varchar("reason", { length: 128 }).notNull(),
+  policyCheckHash: varchar("policyCheckHash", { length: 128 }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("live_browser_control_transfers_session_created_idx").on(t.sessionId, t.createdAt),
+]);
+
+export type LiveBrowserControlTransferRecord = typeof liveBrowserControlTransfers.$inferSelect;
+export type InsertLiveBrowserControlTransferRecord = typeof liveBrowserControlTransfers.$inferInsert;
 
 // Cloud Task Events — Tracks Cloud Tasks execution for observability and DLQ
 export const cloudTaskEvents = pgTable("cloud_task_events", {

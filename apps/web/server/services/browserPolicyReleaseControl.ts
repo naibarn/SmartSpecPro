@@ -5,7 +5,7 @@ import {
 } from "./browserPolicyRolloutGates";
 import { getRedisClient } from "./redis";
 
-export type BrowserPolicyControlledSurface = "automationCopilot" | "browserTool";
+export type BrowserPolicyControlledSurface = "automationCopilot" | "browserTool" | "liveBrowser";
 
 const DEFAULT_BROWSER_POLICY_ROLLOUT_TRANSITION: BrowserPolicyRolloutTransition = (
   process.env.BROWSER_POLICY_ROLLOUT_TRANSITION || "observe_to_read_only"
@@ -13,6 +13,7 @@ const DEFAULT_BROWSER_POLICY_ROLLOUT_TRANSITION: BrowserPolicyRolloutTransition 
 const BROWSER_POLICY_CONTROLLED_SURFACES = new Set<BrowserPolicyControlledSurface>([
   "automationCopilot",
   "browserTool",
+  "liveBrowser",
 ]);
 
 function parseJsonObject(raw: string | null): Record<string, unknown> {

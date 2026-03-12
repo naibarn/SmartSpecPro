@@ -1,0 +1,39 @@
+{
+  "sessionId": "lbs_demo_123",
+  "tenantId": "tenant-123",
+  "userId": 42,
+  "sourceType": "automation",
+  "sourceId": "auto-task-123",
+  "status": "human_controlling",
+  "controlMode": "takeover",
+  "sessionVersion": 12,
+  "controllerActorType": "user",
+  "controllerActorId": "42",
+  "controllerConnectionId": "conn-123",
+  "controllerLeaseExpiresAt": "2026-03-10T12:04:00Z",
+  "pauseReason": "manual_selection_required",
+  "pendingAssistRequestId": null,
+  "pendingApprovalRequestId": "approval-123",
+  "policyContext": {
+    "enforcementMode": "draft",
+    "reasonCodes": [
+      "restricted_action"
+    ]
+  },
+  "browserContextRef": {
+    "provider": "managed-provider",
+    "sessionRef": "provider-session-123",
+    "activeTabId": "tab-2"
+  },
+  "stream": {
+    "viewerToken": "viewer-signed-token",
+    "controllerToken": "controller-signed-token",
+    "expiresAt": "2026-03-10T12:05:00Z",
+    "leaseExpiresAt": "2026-03-10T12:04:00Z"
+  },
+  "activeTabCount": 2,
+  "startedAt": "2026-03-10T11:59:00Z",
+  "lastActivityAt": "2026-03-10T12:00:30Z",
+  "endedAt": null,
+  "endReason": null
+}

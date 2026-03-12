@@ -182,6 +182,7 @@ function Router() {
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/chat" component={Chat} />
         <Route path="/automation" component={AutomationPage} />
+        <Route path="/automation/live/:sessionId" component={AutomationPage} />
         <Route path="/agencies" component={AgencyBrowser} />
         <Route path="/agencies/templates" component={AgencyTemplates} />
         <Route path="/agencies/marketplace" component={AgencyMarketplace} />

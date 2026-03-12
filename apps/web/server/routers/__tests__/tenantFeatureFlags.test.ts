@@ -19,7 +19,7 @@ describe("updateFeatureFlags mutation — validation", () => {
     expect(result).toEqual({ voiceChat: true });
   });
 
-  it("accepts all 10 recognized flags", () => {
+  it("accepts all recognized flags", () => {
     const all = {
       multiChannel: true,
       chatWidget: true,
@@ -31,7 +31,12 @@ describe("updateFeatureFlags mutation — validation", () => {
       personaSystem: false,
       crossAgency: true,
       channelRouter: true,
-    };
+      liveBrowser: true,
+      automationCopilot: true,
+      responsesApi: false,
+      taskPlannerEnabled: true,
+      taskPlannerAgencyEscalation: false,
+    } as const;
     const result = validateFeatureFlags(all);
     expect(result).toEqual(all);
   });
@@ -133,7 +138,8 @@ describe("getFeatureFlagDefaults", () => {
     const falseKeys: (keyof typeof FEATURE_FLAG_DEFAULTS)[] = [
       "multiChannel", "chatWidget", "browserTool", "canvas",
       "voiceChat", "webhookTriggers", "crossAgency", "channelRouter",
-      "automationCopilot", "responsesApi",
+      "liveBrowser", "automationCopilot", "responsesApi",
+      "taskPlannerEnabled", "taskPlannerAgencyEscalation",
     ];
     for (const key of falseKeys) {
       expect(FEATURE_FLAG_DEFAULTS[key]).toBe(false);

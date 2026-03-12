@@ -77,6 +77,13 @@ from .sandbox import (
 
 # Agency-Swarm multi-agent orchestration
 from .agency import AgencyMessage, AgencyRun, AgencyRunStatus
+from .live_browser import (
+    LiveBrowserAssistRequest,
+    LiveBrowserControlTransfer,
+    LiveBrowserEvent,
+    LiveBrowserIdempotencyKey,
+    LiveBrowserSession,
+)
 
 __all__ = [
     # Existing
@@ -161,4 +168,10 @@ __all__ = [
     "AgencyMessage",
     "AgencyRun",
     "AgencyRunStatus",
+    # Live Browser
+    "LiveBrowserSession",
+    "LiveBrowserEvent",
+    "LiveBrowserIdempotencyKey",
+    "LiveBrowserAssistRequest",
+    "LiveBrowserControlTransfer",
 ]

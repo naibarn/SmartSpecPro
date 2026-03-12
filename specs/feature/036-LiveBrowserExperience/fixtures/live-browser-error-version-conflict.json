@@ -1,0 +1,9 @@
+{
+  "accepted": false,
+  "error": {
+    "code": "session_version_conflict",
+    "message": "Session version mismatch: expected 11, got 10",
+    "currentSessionVersion": 11,
+    "retryable": true
+  }
+}
