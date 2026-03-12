@@ -67,6 +67,10 @@ _BUILTIN_ENDPOINTS: dict[str, str] = {
     "builtin-voice": "/api/internal/tools/voice",
     "builtin-browser": "/api/internal/tools/browser",
     "builtin-agency-call": None,  # No HTTP endpoint -- handled internally via execute_agency_call()
+    "builtin-auto-draft": "/api/internal/tools/auto-draft",
+    "builtin-model-suggest": "/api/internal/tools/model-suggest",
+    "builtin-file-parse": "/api/internal/tools/file-parse",
+    "builtin-schedule-draft": "/api/internal/tools/schedule-draft",
 }
 
 _BUILTIN_RISK_LEVELS: dict[str, str] = {
@@ -81,6 +85,10 @@ _BUILTIN_RISK_LEVELS: dict[str, str] = {
     "builtin-voice": "medium",
     "builtin-browser": "high",
     "builtin-agency-call": "high",
+    "builtin-auto-draft": "medium",
+    "builtin-model-suggest": "low",
+    "builtin-file-parse": "medium",
+    "builtin-schedule-draft": "high",
 }
 
 _RETRIEVAL_SCOPE_BLOCKED_TOOL_IDS: dict[str, set[str]] = {
