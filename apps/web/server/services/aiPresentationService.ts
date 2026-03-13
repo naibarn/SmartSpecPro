@@ -26,6 +26,7 @@ import {
 } from "@shared/presentation/draftSkillCapabilities";
 import {
   PRESENTATION_COMPONENT_AI_GUIDANCE,
+  PRESENTATION_COMPONENT_LAYOUT_FAMILIES,
   PRESENTATION_COMPONENT_MEDIA_SLOTS,
   PRESENTATION_COMPONENT_MEDIA_SLOT_TYPES,
 } from "@shared/presentation/componentRecipes";
@@ -2011,6 +2012,14 @@ function adaptRelayoutSlideForRecipe(
       maxBodyLines = 2;
       adaptationLabel = "infographic grid";
       break;
+    case "sectioned-explainer":
+      maxSections = 3;
+      headingChars = 96;
+      detailChars = 220;
+      maxDetails = 2;
+      maxBodyLines = 4;
+      adaptationLabel = "sectioned explainer";
+      break;
     default:
       return { slide, adapted: false };
   }
@@ -2141,6 +2150,11 @@ function getRelayoutRecipeSuitability(
       if (metricSignals < 2) return reject("Stat cards need multiple metric signals.");
       if (bodyCount > 4 || maxDetailChars > 80 || noteChars > 220) {
         return reject("Stat cards work best with short metric labels only.");
+      }
+      return { suitable: true };
+    case "sectioned-explainer":
+      if ((bodyCharTotal + detailCharTotal) > 1_200 || noteChars > 900 || sectionCount > 4) {
+        return reject("Sectioned explainer still needs a bounded long-form narrative.");
       }
       return { suitable: true };
     case "quote-callout":
@@ -2923,6 +2937,20 @@ function scoreAIComponentRecipes(options: {
   const metricSignals = detectMetricSignals(allLines);
   const quoteLikeTitle = /["“”']/.test(options.slide.title);
   const quoteLikeBody = options.slide.body.some((line) => /["“”']/.test(line));
+  const noteChars = normalizeSlideText(options.slide.notes ?? "").length;
+  const bodyCharTotal = options.slide.body.reduce((sum, line) => sum + normalizeSlideText(line).length, 0);
+  const maxBodyChars = options.slide.body.reduce((max, line) => Math.max(max, normalizeSlideText(line).length), 0);
+  const detailCharTotal = (options.slide.sections ?? [])
+    .flatMap((section) => section.details)
+    .reduce((sum, detail) => sum + normalizeSlideText(detail).length, 0);
+  const maxDetailChars = (options.slide.sections ?? [])
+    .flatMap((section) => section.details)
+    .reduce((max, detail) => Math.max(max, normalizeSlideText(detail).length), 0);
+  const longTextLines = [
+    ...options.slide.body.filter((line) => normalizeSlideText(line).length >= 70),
+    ...(options.slide.sections ?? []).flatMap((section) => section.details)
+      .filter((line) => normalizeSlideText(line).length >= 100),
+  ].length;
 
   const scores: Record<AIPresentationComponentRecipeId, number> = {
     "process-steps": 0,
@@ -2930,6 +2958,7 @@ function scoreAIComponentRecipes(options: {
     "feature-highlights": 0,
     "infographic-grid": 0,
     "stat-cards": 0,
+    "sectioned-explainer": 0,
     "profile-summary": 0,
     "quote-callout": 0,
     "video-spotlight": 0,
@@ -2961,6 +2990,51 @@ function scoreAIComponentRecipes(options: {
   }
   if (bodyCount >= 2 && bodyCount <= 4 && metricSignals >= 1) {
     scores["stat-cards"] += 2;
+  }
+
+  const longFormStructureSignal = sectionCount >= 2 || bodyCount >= 5;
+  const longFormDensitySignal = (bodyCharTotal + detailCharTotal) >= 260
+    || longTextLines >= 2
+    || (longFormStructureSignal && noteChars >= 140);
+  if (longFormDensitySignal && longFormStructureSignal) {
+    if (sectionCount >= 2) {
+      scores["sectioned-explainer"] += 6;
+    }
+    if (sectionCount >= 2 && bodyCount >= 3 && (bodyCharTotal + detailCharTotal) >= 220) {
+      scores["sectioned-explainer"] += 4;
+    }
+    if ((bodyCharTotal + detailCharTotal) >= 360 || noteChars >= 180) {
+      scores["sectioned-explainer"] += 3;
+    }
+    if (longTextLines >= 2) {
+      scores["sectioned-explainer"] += 3;
+    }
+    if (h2Count >= 2 || h3Count >= 2) {
+      scores["sectioned-explainer"] += 2;
+    }
+    if (sectionCount >= 3) {
+      scores["sectioned-explainer"] += 2;
+    }
+  } else if (sectionCount >= 2 && maxBodyChars < 60 && maxDetailChars < 90 && noteChars < 140) {
+    scores["sectioned-explainer"] -= 6;
+  } else if (sectionCount >= 2) {
+    scores["sectioned-explainer"] -= 3;
+  }
+  if (sectionCount >= 4 && maxDetailChars < 100 && noteChars < 200) {
+    scores["sectioned-explainer"] -= 10;
+  }
+  if (metricSignals >= 2 && bodyCount <= 4 && noteChars < 180 && longTextLines === 0) {
+    scores["sectioned-explainer"] -= 12;
+  }
+  if (
+    (textIncludesAnyKeyword(haystack, TIMELINE_RECIPE_KEYWORDS) || /\b(?:q[1-4]|20\d{2})\b/i.test(haystack))
+    && sectionCount >= 2
+    && sectionCount <= 4
+    && noteChars < 220
+    && maxDetailChars <= 96
+    && longTextLines === 0
+  ) {
+    scores["sectioned-explainer"] -= 10;
   }
 
   if (textIncludesAnyKeyword(haystack, QUOTE_RECIPE_KEYWORDS)) {
@@ -3045,6 +3119,10 @@ function scoreAIComponentRecipes(options: {
   if (h2Count >= 3 && bodyCount >= 3) {
     scores["infographic-grid"] += 2;
   }
+  if (options.slide.templateId === "feature_boxes_right" && sectionCount >= 4 && bodyCount <= 2 && noteChars < 140) {
+    scores["infographic-grid"] += 4;
+    scores["sectioned-explainer"] -= 20;
+  }
 
   return (Object.entries(scores) as Array<[AIPresentationComponentRecipeId, number]>)
     .map(([recipeId, score]) => ({ recipeId, score }))
@@ -3075,6 +3153,9 @@ function aiComponentRecipeHasMediaSlot(recipeId: AIPresentationComponentRecipeId
 }
 
 function getAIComponentRecipeActivationThreshold(recipeId: AIPresentationComponentRecipeId): number {
+  if (recipeId === "sectioned-explainer") {
+    return 6;
+  }
   if (aiComponentRecipeHasMediaSlot(recipeId)) {
     return AUTO_MEDIA_RECIPE_THRESHOLD;
   }
@@ -3082,6 +3163,14 @@ function getAIComponentRecipeActivationThreshold(recipeId: AIPresentationCompone
     return 7;
   }
   return AUTO_TEXT_RECIPE_THRESHOLD;
+}
+
+function resolveLayoutModeForRecipe(
+  recipeId: AIPresentationComponentRecipeId,
+): PresentationAILayoutMode {
+  return PRESENTATION_COMPONENT_LAYOUT_FAMILIES[recipeId] === "long_form"
+    ? "long_form_block"
+    : "structured_block";
 }
 
 function resolveAIComponentRecipeForSlide(options: {
@@ -3094,7 +3183,7 @@ function resolveAIComponentRecipeForSlide(options: {
     slideIndex: options.slideIndex,
     enabledModes: {
       structured_block: true,
-      long_form_block: false,
+      long_form_block: true,
       llm_layout_dsl: false,
       full_slide_media: false,
     },
@@ -3106,6 +3195,34 @@ function resolveAIComponentRecipeForSlide(options: {
   const structuredModeCandidate = layoutModeSelection.candidateModes.find(
     (candidate) => candidate.mode === "structured_block",
   );
+  const sectionCount = options.slide.sections?.length ?? 0;
+  const bodyCount = options.slide.body.filter((line) => line.trim().length > 0).length;
+  const detailLines = (options.slide.sections ?? [])
+    .flatMap((section) => section.details)
+    .map((line) => normalizeSlideText(line))
+    .filter((line) => line.length > 0);
+  const maxDetailChars = detailLines.reduce((max, line) => Math.max(max, line.length), 0);
+  const allLines = [
+    options.slide.title,
+    ...options.slide.body,
+    options.slide.notes ?? "",
+    ...(options.slide.sections ?? []).flatMap((section) => [section.heading, ...section.details]),
+    ...(options.slide.markdownHierarchy ?? []).map((entry) => entry.text),
+  ]
+    .map((line) => normalizeSlideText(line))
+    .filter((line) => line.length > 0);
+  const haystack = allLines.join(" ").toLowerCase();
+  const numberedBodyLines = options.slide.body.filter((line) => /^\s*(\d+[).\-]|step\s+\d+)/i.test(line)).length;
+  const metricSignals = detectMetricSignals(allLines);
+  const timelineKeywordSignal = Number(textIncludesAnyKeyword(haystack, TIMELINE_RECIPE_KEYWORDS));
+  const timelineMarkerCount = Array.from(
+    haystack.matchAll(/\b(?:q[1-4]|20\d{2}|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\b/gi),
+  ).length;
+  const timelineSignals = timelineKeywordSignal + Math.min(4, timelineMarkerCount);
+  const processSignals = numberedBodyLines + Number(textIncludesAnyKeyword(haystack, PROCESS_RECIPE_KEYWORDS));
+  const narrativeChars = options.slide.body.reduce((sum, line) => sum + normalizeSlideText(line).length, 0)
+    + detailLines.reduce((sum, line) => sum + line.length, 0);
+  const noteChars = normalizeSlideText(options.slide.notes ?? "").length;
   const hasLongFormTextPressure = layoutModeSelection.profile.longParagraphCount >= 2
     || layoutModeSelection.profile.maxParagraphChars >= 140
     || layoutModeSelection.profile.avgParagraphChars >= 95;
@@ -3114,6 +3231,9 @@ function resolveAIComponentRecipeForSlide(options: {
     || layoutModeSelection.recommendedMode === "llm_layout_dsl"
   ) && structuredModeCandidate?.fitStatus === "unsafe"
     && hasLongFormTextPressure;
+  const heuristicCandidates = suppressCompactRecipeSelection
+    ? candidates.filter((candidate) => PRESENTATION_COMPONENT_LAYOUT_FAMILIES[candidate.recipeId] === "long_form")
+    : candidates;
   if (options.slideIndex === 0) {
     return {
       mode: layoutModeSelection.mode,
@@ -3124,7 +3244,77 @@ function resolveAIComponentRecipeForSlide(options: {
       candidateModes: layoutModeSelection.candidateModes,
     };
   }
-  if (suppressCompactRecipeSelection) {
+  if (
+    options.slide.templateId === "feature_boxes_right"
+    && sectionCount >= 4
+    && bodyCount <= 2
+    && maxDetailChars <= 96
+    && narrativeChars <= 260
+  ) {
+    return {
+      mode: "structured_block",
+      recommendedMode: layoutModeSelection.recommendedMode,
+      componentRecipeId: "infographic-grid",
+      selectionMode: "heuristic",
+      selectionReason: "Balanced four-section framework matched the infographic-grid block.",
+      candidateRecipes: candidates,
+      candidateModes: layoutModeSelection.candidateModes,
+    };
+  }
+  if (
+    metricSignals >= 2
+    && bodyCount >= 2
+    && bodyCount <= 4
+    && noteChars < 240
+    && processSignals === 0
+  ) {
+    return {
+      mode: "structured_block",
+      recommendedMode: layoutModeSelection.recommendedMode,
+      componentRecipeId: "stat-cards",
+      selectionMode: "heuristic",
+      selectionReason: "Compact metric-heavy copy matched the stat-cards block.",
+      candidateRecipes: candidates,
+      candidateModes: layoutModeSelection.candidateModes,
+    };
+  }
+  if (
+    (timelineKeywordSignal >= 1 || timelineMarkerCount >= 2)
+    && metricSignals < 2
+    && sectionCount >= 2
+    && sectionCount <= 6
+    && noteChars < 220
+    && maxDetailChars <= 96
+    && narrativeChars <= 420
+  ) {
+    return {
+      mode: "structured_block",
+      recommendedMode: layoutModeSelection.recommendedMode,
+      componentRecipeId: "timeline-flow",
+      selectionMode: "heuristic",
+      selectionReason: "Roadmap and milestone signals matched the timeline-flow block.",
+      candidateRecipes: candidates,
+      candidateModes: layoutModeSelection.candidateModes,
+    };
+  }
+  if (
+    sectionCount >= 3
+    && bodyCount >= 4
+    && metricSignals < 2
+    && timelineSignals < 2
+    && (narrativeChars >= 300 || noteChars >= 180)
+  ) {
+    return {
+      mode: "long_form_block",
+      recommendedMode: layoutModeSelection.recommendedMode,
+      componentRecipeId: "sectioned-explainer",
+      selectionMode: "heuristic",
+      selectionReason: "Dense multi-section copy crossed the long-form boundary and was routed into sectioned-explainer.",
+      candidateRecipes: candidates,
+      candidateModes: layoutModeSelection.candidateModes,
+    };
+  }
+  if (suppressCompactRecipeSelection && heuristicCandidates.length === 0) {
     return {
       mode: layoutModeSelection.mode,
       recommendedMode: layoutModeSelection.recommendedMode,
@@ -3136,7 +3326,7 @@ function resolveAIComponentRecipeForSlide(options: {
   }
   if (isSupportedAIComponentRecipeId(options.slide.componentRecipeId)) {
     return {
-      mode: layoutModeSelection.mode,
+      mode: resolveLayoutModeForRecipe(options.slide.componentRecipeId),
       recommendedMode: layoutModeSelection.recommendedMode,
       componentRecipeId: options.slide.componentRecipeId,
       selectionMode: "llm",
@@ -3146,10 +3336,10 @@ function resolveAIComponentRecipeForSlide(options: {
     };
   }
 
-  const topCandidate = candidates[0];
+  const topCandidate = heuristicCandidates[0] ?? candidates[0];
   if (topCandidate && topCandidate.score >= getAIComponentRecipeActivationThreshold(topCandidate.recipeId)) {
     return {
-      mode: layoutModeSelection.mode,
+      mode: resolveLayoutModeForRecipe(topCandidate.recipeId),
       recommendedMode: layoutModeSelection.recommendedMode,
       componentRecipeId: topCandidate.recipeId,
       selectionMode: "heuristic",

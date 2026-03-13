@@ -206,10 +206,10 @@ export function buildPresentationContentProfile(
     ...sections.map((section) => section.heading),
   ].filter((line) => line.length > 0);
   const signals = buildSignalScores(textLines);
-  const denseTextCandidate = totalChars >= 420
-    || paragraphCount >= 5
-    || longParagraphCount >= 2
-    || (sectionCount >= 2 && totalChars >= 320);
+  const denseTextCandidate = totalChars >= 360
+    || paragraphCount >= 6
+    || longParagraphCount >= 1
+    || (sectionCount >= 2 && totalChars >= 260);
   const visualFirstCandidate = totalChars <= 160
     && paragraphCount <= 3
     && sectionCount <= 1

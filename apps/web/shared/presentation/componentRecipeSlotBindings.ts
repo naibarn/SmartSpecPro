@@ -1,7 +1,10 @@
 import type {
   PresentationComponentSlotBinding,
 } from "./contracts";
-import type { BuiltInPresentationComponentId } from "./componentRecipes";
+import {
+  PRESENTATION_COMPONENT_SLOT_BUDGETS,
+  type BuiltInPresentationComponentId,
+} from "./componentRecipes";
 
 export interface PresentationRecipeNarrativeSection {
   heading: string;
@@ -36,6 +39,19 @@ function clampListItems(items: string[], maxItems: number): string[] {
   return unique;
 }
 
+function budgetFor(componentId: BuiltInPresentationComponentId, slotId: string): { maxChars?: number; maxItems?: number } {
+  return PRESENTATION_COMPONENT_SLOT_BUDGETS[componentId]?.[slotId] ?? {};
+}
+
+function clampTextToBudget(componentId: BuiltInPresentationComponentId, slotId: string, value: string): string {
+  const normalized = value.trim();
+  const maxChars = budgetFor(componentId, slotId).maxChars;
+  if (!maxChars || normalized.length <= maxChars) {
+    return normalized;
+  }
+  return normalized.slice(0, maxChars).trim();
+}
+
 function resolveIndexedDetailFallback(
   input: PresentationRecipeNarrativeInput,
   sections: PresentationRecipeNarrativeSection[],
@@ -68,6 +84,148 @@ function resolveCompactLeadText(
   ];
   const picked = candidates.find((value) => value?.trim())?.trim() ?? "";
   return picked.slice(0, maxChars);
+}
+
+function normalizeNarrativeKey(value: string | null | undefined): string {
+  return String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function buildUniqueNarrativeCandidates(
+  input: PresentationRecipeNarrativeInput,
+  sections: PresentationRecipeNarrativeSection[],
+  body: string[],
+): string[] {
+  const blocked = new Set<string>([
+    normalizeNarrativeKey(input.title),
+    ...sections.map((section) => normalizeNarrativeKey(section.heading)),
+  ]);
+  const rawNoteLines = String(input.notes ?? "")
+    .replace(/\r/g, "\n")
+    .split(/\n+/)
+    .map((line) => line.replace(/^[-*]\s+/, "").trim())
+    .filter(Boolean);
+  const candidates = [
+    ...body,
+    ...sections.flatMap((section) => section.details),
+    ...rawNoteLines,
+  ];
+  const unique: string[] = [];
+  const seen = new Set<string>();
+  for (const candidate of candidates) {
+    const normalized = candidate.trim();
+    const key = normalizeNarrativeKey(normalized);
+    if (!normalized || seen.has(key) || blocked.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    unique.push(normalized);
+  }
+  return unique;
+}
+
+function resolveCompactStoryText(
+  input: PresentationRecipeNarrativeInput,
+  sections: PresentationRecipeNarrativeSection[],
+  body: string[],
+  maxChars: number,
+): string {
+  const candidates = buildUniqueNarrativeCandidates(input, sections, body);
+  const parts: string[] = [];
+  let total = 0;
+  for (const candidate of candidates) {
+    const nextLength = total + candidate.length + (parts.length > 0 ? 1 : 0);
+    if (nextLength > maxChars) {
+      break;
+    }
+    parts.push(candidate);
+    total = nextLength;
+    if (parts.length >= 3) {
+      break;
+    }
+  }
+  return parts.join(" ").slice(0, maxChars);
+}
+
+function resolveCaptionText(
+  input: PresentationRecipeNarrativeInput,
+  sections: PresentationRecipeNarrativeSection[],
+  body: string[],
+): string {
+  const titleKey = normalizeNarrativeKey(input.title);
+  const candidates = [
+    sections[1]?.heading,
+    sections[0]?.details?.[0],
+    body[0],
+    input.graphicCategory,
+  ];
+  const picked = candidates.find((value) => {
+    const normalized = normalizeNarrativeKey(value);
+    return normalized.length > 0 && normalized !== titleKey;
+  })?.trim() ?? "";
+  return picked.slice(0, 120);
+}
+
+function createSectionedExplainerSlotBindings(
+  input: PresentationRecipeNarrativeInput,
+): PresentationComponentSlotBinding[] {
+  const sections = input.sections ?? [];
+  const body = clampListItems(input.body, 8);
+  const narrativeCandidates = buildUniqueNarrativeCandidates(input, sections, body);
+  const bodyIntro = body.slice(0, 2).join(" ");
+  const introText = clampTextToBudget(
+    "sectioned-explainer",
+    "intro",
+    input.notes?.trim() || bodyIntro || narrativeCandidates[0] || "",
+  );
+  const resolveSection = (index: number) => {
+    const section = sections[index];
+    const heading = clampTextToBudget(
+      "sectioned-explainer",
+      `section${index + 1}-heading`,
+      section?.heading || body[index] || `Section ${index + 1}`,
+    );
+    const detailSource = section?.details?.join(" ") || narrativeCandidates[index + 1] || body[index + 1] || "";
+    const detail = clampTextToBudget(
+      "sectioned-explainer",
+      `section${index + 1}-body`,
+      detailSource,
+    );
+    return { heading, detail };
+  };
+  const section1 = resolveSection(0);
+  const section2 = resolveSection(1);
+  const section3 = resolveSection(2);
+  const takeawayCandidates = clampListItems([
+    ...body,
+    ...sections.flatMap((section) => section.details),
+  ], budgetFor("sectioned-explainer", "takeaways").maxItems ?? 4)
+    .filter((line) => ![
+      section1.detail,
+      section2.detail,
+      section3.detail,
+    ].includes(line.trim()))
+    .map((line) => clampTextToBudget("sectioned-explainer", "takeaways", line));
+
+  return [
+    {
+      slotId: "eyebrow",
+      type: "text",
+      text: clampTextToBudget("sectioned-explainer", "eyebrow", sections[0]?.heading || input.graphicCategory || "Explainer"),
+    },
+    { slotId: "title", type: "text", text: clampTextToBudget("sectioned-explainer", "title", input.title) },
+    { slotId: "intro", type: "text", text: introText },
+    { slotId: "section1-heading", type: "text", text: section1.heading },
+    { slotId: "section1-body", type: "text", text: section1.detail },
+    { slotId: "section2-heading", type: "text", text: section2.heading },
+    { slotId: "section2-body", type: "text", text: section2.detail },
+    { slotId: "section3-heading", type: "text", text: section3.heading },
+    { slotId: "section3-body", type: "text", text: section3.detail },
+    { slotId: "takeaways-title", type: "text", text: "Key Takeaways" },
+    { slotId: "takeaways", type: "list", items: takeawayCandidates.slice(0, budgetFor("sectioned-explainer", "takeaways").maxItems ?? 4) },
+  ];
 }
 
 function createProfileSummarySlotBindings(
@@ -330,17 +488,18 @@ function createFramedImageStorySlotBindings(
 ): PresentationComponentSlotBinding[] {
   const sections = input.sections ?? [];
   const body = clampListItems(input.body, 6);
-  const highlights = clampListItems([
-    ...sections.flatMap((section) => section.details),
-    ...body.slice(1),
-  ], 4);
+  const compactStory = resolveCompactStoryText(input, sections, body, 360);
+  const highlights = clampListItems(
+    buildUniqueNarrativeCandidates(input, sections, body).filter((line) => line !== compactStory).slice(0, 4),
+    3,
+  );
 
   return [
     { slotId: "kicker", type: "text", text: (sections[0]?.heading || input.graphicCategory || "").slice(0, 80) },
     { slotId: "headline", type: "text", text: input.title.slice(0, 200) },
-    { slotId: "story", type: "text", text: (input.notes || body.slice(0, 2).join(" ")).slice(0, 900) },
+    { slotId: "story", type: "text", text: compactStory || resolveCompactLeadText(input, sections, body, 220) },
     { slotId: "photo", type: "image", src: input.mediaUrl ?? "", alt: input.title.slice(0, 512) || "Story image" },
-    { slotId: "caption", type: "text", text: (body[0] || sections[1]?.heading || input.graphicCategory || "").slice(0, 160) },
+    { slotId: "caption", type: "text", text: resolveCaptionText(input, sections, body) },
     { slotId: "highlights", type: "list", items: highlights },
   ];
 }
@@ -350,6 +509,7 @@ function createPhotoCollageSlotBindings(
 ): PresentationComponentSlotBinding[] {
   const sections = input.sections ?? [];
   const body = clampListItems(input.body, 6);
+  const compactStory = resolveCompactStoryText(input, sections, body, 260);
   const [primaryMediaUrl, secondaryMediaUrl] = [
     input.mediaUrls?.[0] ?? input.mediaUrl ?? "",
     input.mediaUrls?.[1] ?? input.mediaUrls?.[0] ?? input.mediaUrl ?? "",
@@ -358,10 +518,10 @@ function createPhotoCollageSlotBindings(
   return [
     { slotId: "kicker", type: "text", text: (sections[0]?.heading || input.graphicCategory || "").slice(0, 80) },
     { slotId: "headline", type: "text", text: input.title.slice(0, 200) },
-    { slotId: "body", type: "text", text: (input.notes || body.slice(0, 2).join(" ")).slice(0, 900) },
+    { slotId: "body", type: "text", text: compactStory || resolveCompactLeadText(input, sections, body, 180) },
     { slotId: "primary-photo", type: "image", src: primaryMediaUrl, alt: input.title.slice(0, 512) || "Primary photo" },
     { slotId: "secondary-photo", type: "image", src: secondaryMediaUrl, alt: input.title.slice(0, 512) || "Secondary photo" },
-    { slotId: "caption", type: "text", text: (body[0] || sections[1]?.heading || input.graphicCategory || "").slice(0, 160) },
+    { slotId: "caption", type: "text", text: resolveCaptionText(input, sections, body) },
   ];
 }
 
@@ -380,6 +540,8 @@ export function buildPresentationComponentRecipeSlotBindings(
       return createInfographicGridSlotBindings(input);
     case "stat-cards":
       return createStatCardsSlotBindings(input);
+    case "sectioned-explainer":
+      return createSectionedExplainerSlotBindings(input);
     case "profile-summary":
       return createProfileSummarySlotBindings(input);
     case "quote-callout":

@@ -6,6 +6,7 @@ export const BUILT_IN_PRESENTATION_COMPONENT_IDS = [
   "feature-highlights",
   "infographic-grid",
   "stat-cards",
+  "sectioned-explainer",
   "profile-summary",
   "quote-callout",
   "video-spotlight",
@@ -40,6 +41,14 @@ export const PRESENTATION_COMPONENT_MEDIA_SLOT_TYPES: Partial<
 export interface PresentationComponentMediaFrameStyle {
   mediaShape: PresentationMediaShape;
   mediaCornerRadius?: number;
+}
+
+export type PresentationComponentLayoutFamily = "compact" | "long_form";
+
+export interface PresentationComponentSlotBudget {
+  maxChars?: number;
+  maxItems?: number;
+  preferredLines?: number;
 }
 
 export const PRESENTATION_COMPONENT_MEDIA_FRAME_STYLES: Partial<
@@ -90,6 +99,10 @@ export const PRESENTATION_COMPONENT_AI_GUIDANCE: Record<
     label: "Stat Cards",
     useWhen: "Use for KPI snapshots, metric highlights, campaign numbers, or any slide dominated by a few strong numbers.",
   },
+  "sectioned-explainer": {
+    label: "Sectioned Explainer",
+    useWhen: "Use for dense educational copy, article-style explainers, Thai long-form guidance, or any slide with multiple text-heavy sections that must stay editable.",
+  },
   "profile-summary": {
     label: "Profile Summary",
     useWhen: "Use for speaker bios, team intros, founder profiles, resumes, or slides with contact and background details.",
@@ -113,6 +126,150 @@ export const PRESENTATION_COMPONENT_AI_GUIDANCE: Record<
   "photo-collage": {
     label: "Photo Collage",
     useWhen: "Use for editorial collages, moodboards, campaign lookbooks, or slides that pair two related images with short supporting copy.",
+  },
+};
+
+export const PRESENTATION_COMPONENT_LAYOUT_FAMILIES: Record<
+  BuiltInPresentationComponentId,
+  PresentationComponentLayoutFamily
+> = {
+  "process-steps": "compact",
+  "timeline-flow": "compact",
+  "feature-highlights": "compact",
+  "infographic-grid": "compact",
+  "stat-cards": "compact",
+  "sectioned-explainer": "long_form",
+  "profile-summary": "compact",
+  "quote-callout": "compact",
+  "video-spotlight": "compact",
+  "poster-spotlight": "compact",
+  "framed-image-story": "compact",
+  "photo-collage": "compact",
+};
+
+export const PRESENTATION_COMPONENT_SLOT_BUDGETS: Record<
+  BuiltInPresentationComponentId,
+  Record<string, PresentationComponentSlotBudget>
+> = {
+  "process-steps": {
+    title: { maxChars: 72, preferredLines: 2 },
+    subtitle: { maxChars: 180, preferredLines: 3 },
+    "step1-label": { maxChars: 24, preferredLines: 1 },
+    "step1-title": { maxChars: 180, preferredLines: 2 },
+    "step1-body": { maxChars: 260, preferredLines: 4 },
+    "step2-label": { maxChars: 24, preferredLines: 1 },
+    "step2-title": { maxChars: 180, preferredLines: 2 },
+    "step2-body": { maxChars: 260, preferredLines: 4 },
+    "step3-label": { maxChars: 24, preferredLines: 1 },
+    "step3-title": { maxChars: 180, preferredLines: 2 },
+    "step3-body": { maxChars: 260, preferredLines: 4 },
+  },
+  "timeline-flow": {
+    eyebrow: { maxChars: 80, preferredLines: 1 },
+    title: { maxChars: 200, preferredLines: 2 },
+    subtitle: { maxChars: 180, preferredLines: 3 },
+    "milestone1-date": { maxChars: 80, preferredLines: 1 },
+    "milestone1-title": { maxChars: 180, preferredLines: 2 },
+    "milestone1-body": { maxChars: 260, preferredLines: 4 },
+    "milestone2-date": { maxChars: 80, preferredLines: 1 },
+    "milestone2-title": { maxChars: 180, preferredLines: 2 },
+    "milestone2-body": { maxChars: 260, preferredLines: 4 },
+    "milestone3-date": { maxChars: 80, preferredLines: 1 },
+    "milestone3-title": { maxChars: 180, preferredLines: 2 },
+    "milestone3-body": { maxChars: 260, preferredLines: 4 },
+  },
+  "feature-highlights": {
+    badge: { maxChars: 80, preferredLines: 1 },
+    title: { maxChars: 200, preferredLines: 2 },
+    "feature1-title": { maxChars: 180, preferredLines: 2 },
+    "feature1-body": { maxChars: 260, preferredLines: 4 },
+    "feature2-title": { maxChars: 180, preferredLines: 2 },
+    "feature2-body": { maxChars: 260, preferredLines: 4 },
+    "feature3-title": { maxChars: 180, preferredLines: 2 },
+    "feature3-body": { maxChars: 260, preferredLines: 4 },
+  },
+  "infographic-grid": {
+    eyebrow: { maxChars: 80, preferredLines: 1 },
+    title: { maxChars: 200, preferredLines: 2 },
+    summary: { maxChars: 180, preferredLines: 3 },
+    "item1-title": { maxChars: 180, preferredLines: 2 },
+    "item1-body": { maxChars: 220, preferredLines: 4 },
+    "item2-title": { maxChars: 180, preferredLines: 2 },
+    "item2-body": { maxChars: 220, preferredLines: 4 },
+    "item3-title": { maxChars: 180, preferredLines: 2 },
+    "item3-body": { maxChars: 220, preferredLines: 4 },
+    "item4-title": { maxChars: 180, preferredLines: 2 },
+    "item4-body": { maxChars: 220, preferredLines: 4 },
+  },
+  "stat-cards": {
+    eyebrow: { maxChars: 80, preferredLines: 1 },
+    title: { maxChars: 200, preferredLines: 2 },
+    "stat1-value": { maxChars: 40, preferredLines: 1 },
+    "stat1-label": { maxChars: 120, preferredLines: 2 },
+    "stat2-value": { maxChars: 40, preferredLines: 1 },
+    "stat2-label": { maxChars: 120, preferredLines: 2 },
+    "stat3-value": { maxChars: 40, preferredLines: 1 },
+    "stat3-label": { maxChars: 120, preferredLines: 2 },
+  },
+  "sectioned-explainer": {
+    eyebrow: { maxChars: 80, preferredLines: 1 },
+    title: { maxChars: 220, preferredLines: 2 },
+    intro: { maxChars: 520, preferredLines: 8 },
+    "section1-heading": { maxChars: 120, preferredLines: 2 },
+    "section1-body": { maxChars: 420, preferredLines: 8 },
+    "section2-heading": { maxChars: 120, preferredLines: 2 },
+    "section2-body": { maxChars: 420, preferredLines: 8 },
+    "section3-heading": { maxChars: 120, preferredLines: 2 },
+    "section3-body": { maxChars: 420, preferredLines: 8 },
+    "takeaways-title": { maxChars: 80, preferredLines: 1 },
+    takeaways: { maxItems: 4, maxChars: 180, preferredLines: 6 },
+  },
+  "profile-summary": {
+    portrait: {},
+    name: { maxChars: 200, preferredLines: 2 },
+    role: { maxChars: 200, preferredLines: 2 },
+    "contact-title": { maxChars: 180, preferredLines: 1 },
+    "contact-items": { maxItems: 3, maxChars: 160, preferredLines: 4 },
+    "about-title": { maxChars: 180, preferredLines: 1 },
+    "about-body": { maxChars: 800, preferredLines: 8 },
+    "highlights-title": { maxChars: 180, preferredLines: 1 },
+    "highlights-items": { maxItems: 4, maxChars: 180, preferredLines: 6 },
+  },
+  "quote-callout": {
+    quote: { maxChars: 320, preferredLines: 5 },
+    eyebrow: { maxChars: 80, preferredLines: 1 },
+    attribution: { maxChars: 200, preferredLines: 2 },
+  },
+  "video-spotlight": {
+    tag: { maxChars: 80, preferredLines: 1 },
+    headline: { maxChars: 200, preferredLines: 2 },
+    body: { maxChars: 800, preferredLines: 6 },
+    clip: {},
+    benefits: { maxItems: 4, maxChars: 180, preferredLines: 6 },
+  },
+  "poster-spotlight": {
+    eyebrow: { maxChars: 80, preferredLines: 1 },
+    headline: { maxChars: 200, preferredLines: 2 },
+    subhead: { maxChars: 800, preferredLines: 6 },
+    hero: {},
+    benefits: { maxItems: 4, maxChars: 180, preferredLines: 6 },
+    cta: { maxChars: 120, preferredLines: 2 },
+  },
+  "framed-image-story": {
+    kicker: { maxChars: 80, preferredLines: 1 },
+    headline: { maxChars: 200, preferredLines: 2 },
+    story: { maxChars: 360, preferredLines: 5 },
+    photo: {},
+    caption: { maxChars: 120, preferredLines: 2 },
+    highlights: { maxItems: 3, maxChars: 160, preferredLines: 5 },
+  },
+  "photo-collage": {
+    kicker: { maxChars: 80, preferredLines: 1 },
+    headline: { maxChars: 200, preferredLines: 2 },
+    body: { maxChars: 260, preferredLines: 4 },
+    "primary-photo": {},
+    "secondary-photo": {},
+    caption: { maxChars: 120, preferredLines: 2 },
   },
 };
 
@@ -179,6 +336,19 @@ export const PRESENTATION_COMPONENT_SLOT_TARGETS: Record<
     "stat2-label": ["stat-2-label"],
     "stat3-value": ["stat-3-value"],
     "stat3-label": ["stat-3-label"],
+  },
+  "sectioned-explainer": {
+    eyebrow: ["eyebrow-bg", "eyebrow"],
+    title: ["title"],
+    intro: ["intro"],
+    "section1-heading": ["section-1-heading"],
+    "section1-body": ["section-1-body"],
+    "section2-heading": ["section-2-heading"],
+    "section2-body": ["section-2-body"],
+    "section3-heading": ["section-3-heading"],
+    "section3-body": ["section-3-body"],
+    "takeaways-title": ["takeaways-title"],
+    takeaways: ["takeaways-card", "takeaways"],
   },
   "profile-summary": {
     portrait: ["portrait-image", "portrait-frame", "portrait-placeholder"],

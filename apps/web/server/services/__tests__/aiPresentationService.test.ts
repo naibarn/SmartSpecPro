@@ -4022,8 +4022,25 @@ describe("generateAIDraft - Phase 2", () => {
     });
   });
 
-  it("records long-form routing candidates and avoids compact component recipes for dense slides", async () => {
+  it("routes dense section-heavy slides into the sectioned-explainer long-form recipe", async () => {
     setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
+      if (skillId === "prompt-planner") {
+        return {
+          id: "prompt-planner",
+          name: "Prompt Planner",
+          category: "prompt_enhancement",
+          executionMode: "enhance-prompt",
+          systemPrompt: "Plan slides from the prompt.",
+        };
+      }
+      return {
+        id: "general-article-writer",
+        name: "General Article Writer",
+        systemPrompt: "You are a versatile article writer.",
+        executionMode: "llm-only",
+      };
+    });
     mockCallLLMStructured.mockResolvedValue({
       data: [
         {
@@ -4041,8 +4058,15 @@ describe("generateAIDraft - Phase 2", () => {
             "สร้างกิจวัตรก่อนนอน: ทำให้กิจกรรมตอนก่อนนอนมีความซ้ำซ้อน เช่น อ่านหนังสือ เล่าเรื่อง หรืออาบน้ำ เพื่อสร้างความรู้สึกผ่อนคลายให้กับลูก",
             "กำหนดเวลาเข้านอน: ตั้งเวลาเข้านอนที่สม่ำเสมอทุกวัน เพื่อช่วยให้ร่างกายสร้างนิสัยในการนอน",
             "สร้างสภาพแวดล้อมที่เอื้อต่อการนอน: ห้องนอนควรเงียบ สบาย และมีอุณหภูมิที่เหมาะสม",
+            "ใช้เสียงเพลงหรือเสียงธรรมชาติ: เสียงที่อ่อนโยนสามารถช่วยให้เด็กผ่อนคลายและนอนหลับได้ดีขึ้นเมื่อใช้ร่วมกับกิจวัตรที่คงที่",
           ],
-          notes: "บทความนี้เหมาะสำหรับพ่อแม่และผู้ดูแลที่ต้องการคำอธิบายยาวและค่อยเป็นค่อยไปมากกว่าการ์ดสั้น",
+          notes: "บทความนี้เหมาะสำหรับพ่อแม่และผู้ดูแลที่ต้องการคำอธิบายยาวและค่อยเป็นค่อยไปมากกว่าการ์ดสั้น รวมถึงต้องการเห็นบริบท ข้อผิดพลาดที่พบบ่อย และคำแนะนำเชิงปฏิบัติอยู่ในหน้าเดียวแบบยังแก้ไขข้อความต่อได้",
+          markdownHierarchy: [
+            { level: "h2", text: "กิจวัตรก่อนนอน" },
+            { level: "body", text: "ทำกิจกรรมเดิมในเวลาใกล้เคียงกันเพื่อสร้างสัญญาณก่อนนอน" },
+            { level: "h2", text: "ความผิดพลาดที่พบบ่อย" },
+            { level: "body", text: "อย่าตอบสนองทันทีทุกครั้งโดยไม่มีแผน เพราะเด็กจะยังไม่ได้ฝึกกลับไปนอนเอง" },
+          ],
           sections: [
             {
               heading: "ความผิดพลาดที่พบบ่อย",
@@ -4055,6 +4079,12 @@ describe("generateAIDraft - Phase 2", () => {
               heading: "ใครควรอ่านสไลด์นี้",
               details: [
                 "พ่อแม่หรือผู้ดูแลเด็กเล็กที่กำลังฝึกนิสัยการนอนของลูก",
+              ],
+            },
+            {
+              heading: "สิ่งที่ควรทำต่อ",
+              details: [
+                "เลือกเพียงหนึ่งถึงสองแนวทางแล้วทำซ้ำอย่างสม่ำเสมอเพื่อให้เด็กไม่สับสนกับสัญญาณก่อนนอน",
               ],
             },
           ],
@@ -4089,14 +4119,13 @@ describe("generateAIDraft - Phase 2", () => {
     expect(secondInsertPayload.slideContent?.aiDesign).toMatchObject({
       source: "draft-with-ai",
       taskId: "task-123",
-      mode: "structured_block",
-      selectionMode: "none",
+      mode: "long_form_block",
+      componentRecipeId: "sectioned-explainer",
+      selectionMode: "heuristic",
     });
-    expect(secondInsertPayload.slideContent?.aiDesign?.componentRecipeId).toBeUndefined();
     expect(secondInsertPayload.slideContent?.aiDesign?.candidateModes).toEqual(expect.arrayContaining([
       expect.objectContaining({
         mode: "long_form_block",
-        blockedBy: "feature_flag",
       }),
     ]));
   });

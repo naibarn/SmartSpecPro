@@ -257,6 +257,185 @@ describe("Component recipe rendering", () => {
     ]));
   });
 
+  it("renders sectioned-explainer slides as first-class long-form components", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        componentRecipeId: "sectioned-explainer",
+        title: "คู่มือการนอนของเด็กเล็ก",
+        body: [
+          "สร้างกิจวัตรก่อนนอนให้สม่ำเสมอด้วยกิจกรรมเดิมในเวลาใกล้เคียงกันทุกวัน",
+          "สังเกตสัญญาณง่วงและปรับสภาพแวดล้อมห้องให้เงียบ สบาย และมืดเพียงพอ",
+          "คุยกับผู้ดูแลทุกคนให้ใช้แนวทางเดียวกันเพื่อลดความสับสนของเด็ก",
+        ],
+        notes: "บทความนี้เหมาะสำหรับพ่อแม่และผู้ดูแลที่ต้องการคำอธิบายยาวและค่อยเป็นค่อยไปมากกว่าการ์ดสั้น",
+        sections: [
+          {
+            heading: "ความผิดพลาดที่พบบ่อย",
+            details: [
+              "ตอบสนองเร็วเกินไปทุกครั้งจนเด็กไม่ได้ฝึกกลับไปนอนเอง",
+              "เวลาเข้านอนไม่คงที่ทำให้วงจรการนอนเปลี่ยนบ่อย",
+            ],
+          },
+          {
+            heading: "ใครควรอ่านสไลด์นี้",
+            details: [
+              "พ่อแม่หรือผู้ดูแลเด็กเล็กที่กำลังฝึกนิสัยการนอนของลูก",
+            ],
+          },
+        ],
+      }),
+      imageUrl: null,
+    }));
+
+    expect(result.slideContent.components?.[0]?.componentId).toBe("sectioned-explainer");
+    const renderable = getPresentationSlideRenderableElements(result.slideContent);
+    expect(renderable.elements.some((element) => element.type === "text" && element.id.includes("section-1-heading"))).toBe(true);
+    expect(renderable.elements.some((element) => element.type === "text" && element.id.includes("takeaways"))).toBe(true);
+  });
+
+  it("expands poster-spotlight text regions when the recipe copy is dense", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        componentRecipeId: "poster-spotlight",
+        title: "Membership launch for families who need a more flexible onboarding explanation",
+        body: [
+          "Premium support tailored for first-time parents",
+          "Priority booking for pediatric consultations",
+          "Clear follow-up guidance after each milestone",
+          "Join today with a simple enrollment flow",
+        ],
+        notes: "This plan is designed for families who need more context, longer onboarding guidance, and a clearer explanation of what happens after sign-up so the layout must reserve more room for text without dropping the hero image.",
+      }),
+      imageUrl: "https://example.com/poster.jpg",
+    }));
+
+    const fallback = result.slideContent.components?.[0]?.fallbackElements ?? [];
+    const hero = fallback.find((element) => element.id.endsWith("::hero-image"));
+    const headline = fallback.find((element) => element.id.endsWith("::headline"));
+    const benefits = fallback.find((element) => element.id.endsWith("::benefits"));
+    expect(hero?.type).toBe("image");
+    expect(headline?.type).toBe("text");
+    expect(benefits?.type).toBe("text");
+    if (hero?.type === "image" && headline?.type === "text" && benefits?.type === "text") {
+      expect(hero.width).toBeLessThan(520);
+      expect(headline.width).toBeGreaterThan(560);
+      expect(benefits.width).toBeGreaterThan(520);
+    }
+  });
+
+  it("expands framed-image-story to use more of the canvas for dense narratives", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_left_image",
+        componentRecipeId: "framed-image-story",
+        title: "Who is this guidance for",
+        body: [
+          "Parents and caregivers with infants aged four to six months",
+          "Everyday signals that make night waking feel more stressful",
+        ],
+        notes: "This editorial slide needs room for a fuller explanation of the family context, the sleep concern they are comparing against, and the practical nuance behind why some babies still wake frequently at night despite longer sleep stretches.",
+        sections: [
+          { heading: "Family context", details: ["Parents and caregivers with infants aged four to six months"] },
+          { heading: "Common concern", details: ["Night waking can still happen even when sleep stretches are improving"] },
+        ],
+      }),
+      imageUrl: "https://example.com/story.jpg",
+    }));
+
+    const fallback = result.slideContent.components?.[0]?.fallbackElements ?? [];
+    const photo = fallback.find((element) => element.id.endsWith("::photo-image"));
+    const story = fallback.find((element) => element.id.endsWith("::story"));
+    const highlights = fallback.find((element) => element.id.endsWith("::highlights"));
+    expect(photo?.type).toBe("image");
+    expect(story?.type).toBe("text");
+    expect(highlights?.type).toBe("text");
+    if (photo?.type === "image" && story?.type === "text" && highlights?.type === "text") {
+      expect(photo.width).toBeLessThan(530);
+      expect(story.width).toBeGreaterThan(620);
+      expect(highlights.width).toBeGreaterThan(900);
+    }
+  });
+
+  it("expands photo-collage text area when the body copy is dense", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_left_image",
+        componentRecipeId: "photo-collage",
+        title: "Campaign lookbook with narrative context",
+        body: [
+          "A two-frame editorial story that still needs a longer explanation",
+          "The text must cover why the images matter and what readers should notice",
+        ],
+        notes: "This collage layout should keep both images, but it also needs a much wider text column and a caption area that can carry more explanation than the compact default version.",
+      }),
+      imageUrl: "https://example.com/collage.jpg",
+      imageUrls: [
+        "https://example.com/collage-primary.jpg",
+        "https://example.com/collage-secondary.jpg",
+      ],
+    }));
+
+    const fallback = result.slideContent.components?.[0]?.fallbackElements ?? [];
+    const primary = fallback.find((element) => element.id.endsWith("::primary-image"));
+    const body = fallback.find((element) => element.id.endsWith("::body"));
+    const caption = fallback.find((element) => element.id.endsWith("::caption"));
+    expect(primary?.type).toBe("image");
+    expect(body?.type).toBe("text");
+    expect(caption?.type).toBe("text");
+    if (primary?.type === "image" && body?.type === "text" && caption?.type === "text") {
+      expect(primary.width).toBeLessThan(560);
+      expect(body.width).toBeGreaterThan(620);
+      expect(caption.width).toBeGreaterThan(620);
+    }
+  });
+
+  it("keeps the first and final note segments visible for dense repaired portrait slides", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "bottom_image_text_top",
+        title: "ขั้นตอนปฏิบัติ / เคล็ดลับ",
+        body: [
+          "1. สร้างกิจวัตรก่อนนอน: ทำให้กิจกรรมตอนก่อนนอนมีความซ้ำซ้อน เช่น อ่านหนังสือ เล่าเรื่อง หรืออาบน้ำ เพื่อสร้างความรู้สึกผ่อนคลายให้กับลูก",
+          "2. กำหนดเวลาเข้านอน: ตั้งเวลาเข้านอนที่สม่ำเสมอทุกวัน เพื่อช่วยให้ร่างกายสร้างนิสัยในการนอน",
+          "3. สร้างสภาพแวดล้อมที่เอื้อต่อการนอน: ห้องนอนควรเงียบ สบาย และมีอุณหภูมิที่เหมาะสม",
+          "4. ไม่ต้องตอบสนองทันทีเมื่อเด็กตื่น: หากเด็กตื่นขึ้นในกลางคืน ให้รอสักครู่ก่อนที่จะเข้าไปดูเพื่อดูว่าเขาจะกลับไปนอนเองได้หรือไม่",
+          "5. ใช้เสียงเพลงหรือเสียงธรรมชาติ: เสียงที่อ่อนโยนสามารถช่วยให้เด็กผ่อนคลายและนอนหลับได้ดีขึ้น",
+          "ความผิดพลาดที่พบบ่อย",
+          "- ให้เด็กนอนในที่นอนที่ไม่ปลอดภัย: ควรให้เด็กนอนในที่นอนที่เหมาะสมและปลอดภัย",
+          "- นิสัยการให้อาหารตลอดคืน: หลีกเลี่ยงการให้อาหารเด็กเมื่อเขาตื่นกลางคืนเพื่อลดการตื่นบ่อย",
+          "- ไม่มีกิจวัตรชัดเจน: การไม่มีกิจวัตรก่อนนอนอาจทำให้เด็กไม่รู้ว่าเมื่อไหร่ถึงเวลานอน",
+        ],
+        notes: "ขั้นตอนปฏิบัติ / เคล็ดลับ 1. สร้างกิจวัตรก่อนนอน: ทำให้กิจกรรมตอนก่อนนอนมีความซ้ำซ้อน เช่น อ่านหนังสือ เล่าเรื่อง หรืออาบน้ำ เพื่อสร้างความรู้สึกผ่อนคลายให้กับลูก 2. กำหนดเวลาเข้านอน: ตั้งเวลาเข้านอนที่สม่ำเสมอทุกวัน เพื่อช่วยให้ร่างกายสร้างนิสัยในการนอน 3. สร้างสภาพแวดล้อมที่เอื้อต่อการนอน: ห้องนอนควรเงียบ สบาย และมีอุณหภูมิที่เหมาะสม 4. ไม่ต้องตอบสนองทันทีเมื่อเด็กตื่น: หากเด็กตื่นขึ้นในกลางคืน ให้รอสักครู่ก่อนที่จะเข้าไปดูเพื่อดูว่าเขาจะกลับไปนอนเองได้หรือไม่ 5. ใช้เสียงเพลงหรือเสียงธรรมชาติ: เสียงที่อ่อนโยนสามารถช่วยให้เด็กผ่อนคลายและนอนหลับได้ดีขึ้น ความผิดพลาดที่พบบ่อย - ให้เด็กนอนในที่นอนที่ไม่ปลอดภัย: ควรให้เด็กนอนในที่นอนที่เหมาะสมและปลอดภัย - นิสัยการให้อาหารตลอดคืน: หลีกเลี่ยงการให้อาหารเด็กเมื่อเขาตื่นกลางคืนเพื่อลดการตื่นบ่อย - ไม่มีกิจวัตรชัดเจน: การไม่มีกิจวัตรก่อนนอนอาจทำให้เด็กไม่รู้ว่าเมื่อไหร่ถึงเวลานอน",
+        markdownHierarchy: [
+          { level: "body", text: "1. สร้างกิจวัตรก่อนนอน: ทำให้กิจกรรมตอนก่อนนอนมีความซ้ำซ้อน เช่น อ่านหนังสือ เล่าเรื่อง หรืออาบน้ำ เพื่อสร้างความรู้สึกผ่อนคลายให้กับลูก" },
+          { level: "body", text: "2. กำหนดเวลาเข้านอน: ตั้งเวลาเข้านอนที่สม่ำเสมอทุกวัน เพื่อช่วยให้ร่างกายสร้างนิสัยในการนอน" },
+          { level: "body", text: "3. สร้างสภาพแวดล้อมที่เอื้อต่อการนอน: ห้องนอนควรเงียบ สบาย และมีอุณหภูมิที่เหมาะสม" },
+          { level: "body", text: "4. ไม่ต้องตอบสนองทันทีเมื่อเด็กตื่น: หากเด็กตื่นขึ้นในกลางคืน ให้รอสักครู่ก่อนที่จะเข้าไปดูเพื่อดูว่าเขาจะกลับไปนอนเองได้หรือไม่" },
+          { level: "body", text: "5. ใช้เสียงเพลงหรือเสียงธรรมชาติ: เสียงที่อ่อนโยนสามารถช่วยให้เด็กผ่อนคลายและนอนหลับได้ดีขึ้น" },
+          { level: "body", text: "ความผิดพลาดที่พบบ่อย" },
+          { level: "body", text: "- ให้เด็กนอนในที่นอนที่ไม่ปลอดภัย: ควรให้เด็กนอนในที่นอนที่เหมาะสมและปลอดภัย" },
+          { level: "body", text: "- นิสัยการให้อาหารตลอดคืน: หลีกเลี่ยงการให้อาหารเด็กเมื่อเขาตื่นกลางคืนเพื่อลดการตื่นบ่อย" },
+          { level: "body", text: "- ไม่มีกิจวัตรชัดเจน: การไม่มีกิจวัตรก่อนนอนอาจทำให้เด็กไม่รู้ว่าเมื่อไหร่ถึงเวลานอน" },
+        ],
+        graphicCategory: "Education",
+        imagePromptKeywords: "calm bedtime tips for babies and parents",
+      }),
+      imageUrl: "https://example.com/bedtime.jpg",
+      canvasWidth: 720,
+      canvasHeight: 1280,
+    }));
+
+    const renderedText = result.slideContent.elements
+      .filter((element) => element.type === "text")
+      .map((element) => element.text)
+      .join("\n");
+
+    expect(renderedText).toContain("สร้างกิจวัตรก่อนนอน");
+    expect(renderedText).toContain("ไม่มีกิจวัตรชัดเจน");
+  });
+
   it("renders non-media component recipes as first-class components", () => {
     const recipes = [
       {
@@ -1054,6 +1233,73 @@ describe("Edge Cases", () => {
       const current = bodyTexts[index]!;
       expect(previous.y + previous.height).toBeLessThanOrEqual(current.y + 2);
     }
+  });
+
+  it("allocates full title height for very long Thai headings instead of clamping to three lines", () => {
+    const longTitle = "ขั้นตอนปฏิบัติ / เคล็ดลับ สำหรับการช่วยให้เด็กนอนหลับดีขึ้นในเวลากลางคืนอย่างสม่ำเสมอโดยไม่ทำให้กิจวัตรก่อนนอนซับซ้อนเกินไปสำหรับครอบครัวที่ต้องดูแลการตื่นกลางคืนบ่อย พร้อมแนวทางสร้างความต่อเนื่องของเวลานอน กิจวัตร และสภาพแวดล้อมให้เหมาะสมกับเด็กแต่ละคน";
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        title: longTitle,
+        body: [
+          "สรุปใจความสำคัญสำหรับผู้ดูแล",
+          "ใช้กิจวัตรเดิมในเวลาที่ใกล้เคียงกันทุกวันเพื่อให้ร่างกายเด็กคาดเดาได้",
+        ],
+      }),
+      canvasWidth: 720,
+      canvasHeight: 1280,
+    }));
+
+    const titleText = result.slideContent.elements.find(
+      (element) => element.type === "text" && element.text === longTitle,
+    );
+    const firstBodyText = result.slideContent.elements.find(
+      (element) => element.type === "text" && element.text.includes("สรุปใจความสำคัญสำหรับผู้ดูแล"),
+    );
+
+    expect(titleText).toBeDefined();
+    expect(firstBodyText).toBeDefined();
+    if (titleText?.type === "text" && firstBodyText?.type === "text") {
+      expect(titleText.height).toBeGreaterThan(150);
+      expect(firstBodyText.y).toBeGreaterThanOrEqual(titleText.y + titleText.height);
+    }
+  });
+
+  it("keeps the first structured step and trailing note content visible in dense portrait note-repair layouts", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "bottom_image_text_top",
+        title: "ขั้นตอนปฏิบัติ / เคล็ดลับ",
+        notes: "ขั้นตอนปฏิบัติ / เคล็ดลับ 1. สร้างกิจวัตรก่อนนอน: ทำให้กิจกรรมตอนก่อนนอนมีความซ้ำซ้อน เช่น อ่านหนังสือ เล่าเรื่อง หรืออาบน้ำ เพื่อสร้างความรู้สึกผ่อนคลายให้กับลูก 2. กำหนดเวลาเข้านอน: ตั้งเวลาเข้านอนที่สม่ำเสมอทุกวัน เพื่อช่วยให้ร่างกายสร้างนิสัยในการนอน 3. สร้างสภาพแวดล้อมที่เอื้อต่อการนอน: ห้องนอนควรเงียบ สบาย และมีอุณหภูมิที่เหมาะสม 4. ไม่ต้องตอบสนองทันทีเมื่อเด็กตื่น: หากเด็กตื่นขึ้นในกลางคืน ให้รอสักครู่ก่อนที่จะเข้าไปดูเพื่อดูว่าเขาจะกลับไปนอนเองได้หรือไม่ 5. ใช้เสียงเพลงหรือเสียงธรรมชาติ: เสียงที่อ่อนโยนสามารถช่วยให้เด็กผ่อนคลายและนอนหลับได้ดีขึ้น ความผิดพลาดที่พบบ่อย - ให้เด็กนอนในที่นอนที่ไม่ปลอดภัย: ควรให้เด็กนอนในที่นอนที่เหมาะสมและปลอดภัย - นิสัยการให้อาหารตลอดคืน: หลีกเลี่ยงการให้อาหารเด็กเมื่อเขาตื่นกลางคืนเพื่อลดการตื่นบ่อย - ไม่มีกิจวัตรชัดเจน: การไม่มีกิจวัตรก่อนนอนอาจทำให้เด็กไม่รู้ว่าเมื่อไหร่ถึงเวลานอน",
+        body: [
+          "สร้างกิจวัตรก่อนนอน: ทำให้กิจกรรมตอนก่อนนอนมีความซ้ำซ้อน เช่น อ่านหนังสือ เล่าเรื่อง หรืออาบน้ำ เพื่อสร้างความรู้สึกผ่อนคลายให้กับลูก",
+          "กำหนดเวลาเข้านอน: ตั้งเวลาเข้านอนที่สม่ำเสมอทุกวัน เพื่อช่วยให้ร่างกายสร้างนิสัยในการนอน",
+          "สร้างสภาพแวดล้อมที่เอื้อต่อการนอน: ห้องนอนควรเงียบ สบาย และมีอุณหภูมิที่เหมาะสม",
+          "ไม่ต้องตอบสนองทันทีเมื่อเด็กตื่น: หากเด็กตื่นขึ้นในกลางคืน ให้รอสักครู่ก่อนที่จะเข้าไปดูเพื่อดูว่าเขาจะกลับไปนอนเองได้หรือไม่",
+          "ใช้เสียงเพลงหรือเสียงธรรมชาติ: เสียงที่อ่อนโยนสามารถช่วยให้เด็กผ่อนคลายและนอนหลับได้ดีขึ้น ความผิดพลาดที่พบบ่อย - ให้เด็กนอนในที่นอนที่ไม่ปลอดภัย: ควรให้เด็กนอนในที่นอนที่เหมาะสมและปลอดภัย - นิสัยการให้อาหารตลอดคืน: หลีกเลี่ยงการให้อาหารเด็กเมื่อเขาตื่นกลางคืนเพื่อลดการตื่นบ่อย - ไม่มีกิจวัตรชัดเจน: การไม่มีกิจวัตรก่อนนอนอาจทำให้เด็กไม่รู้ว่าเมื่อไหร่ถึงเวลานอน",
+        ],
+        sections: [
+          { heading: "สร้างกิจวัตรก่อนนอน", details: ["ทำให้กิจกรรมตอนก่อนนอนมีความซ้ำซ้อน เช่น อ่านหนังสือ เล่าเรื่อง หรืออาบน้ำ เพื่อสร้างความรู้สึกผ่อนคลายให้กับลูก"] },
+          { heading: "กำหนดเวลาเข้านอน", details: ["ตั้งเวลาเข้านอนที่สม่ำเสมอทุกวัน เพื่อช่วยให้ร่างกายสร้างนิสัยในการนอน"] },
+          { heading: "สร้างสภาพแวดล้อมที่เอื้อต่อการนอน", details: ["ห้องนอนควรเงียบ สบาย และมีอุณหภูมิที่เหมาะสม"] },
+          { heading: "ไม่ต้องตอบสนองทันทีเมื่อเด็กตื่น", details: ["หากเด็กตื่นขึ้นในกลางคืน ให้รอสักครู่ก่อนที่จะเข้าไปดูเพื่อดูว่าเขาจะกลับไปนอนเองได้หรือไม่"] },
+          { heading: "ใช้เสียงเพลงหรือเสียงธรรมชาติ", details: ["เสียงที่อ่อนโยนสามารถช่วยให้เด็กผ่อนคลายและนอนหลับได้ดีขึ้น ความผิดพลาดที่พบบ่อย - ให้เด็กนอนในที่นอนที่ไม่ปลอดภัย: ควรให้เด็กนอนในที่นอนที่เหมาะสมและปลอดภัย - นิสัยการให้อาหารตลอดคืน: หลีกเลี่ยงการให้อาหารเด็กเมื่อเขาตื่นกลางคืนเพื่อลดการตื่นบ่อย - ไม่มีกิจวัตรชัดเจน: การไม่มีกิจวัตรก่อนนอนอาจทำให้เด็กไม่รู้ว่าเมื่อไหร่ถึงเวลานอน"] },
+        ],
+      }),
+      canvasWidth: 720,
+      canvasHeight: 1280,
+    }));
+
+    const textElements = result.slideContent.elements
+      .filter((element): element is Extract<typeof result.slideContent.elements[number], { type: "text" }> => element.type === "text");
+    const subtitleLike = textElements.find((element) => element.text === "สร้างกิจวัตรก่อนนอน");
+    const firstStepBody = textElements.find((element) => element.text.includes("สร้างกิจวัตรก่อนนอน:"));
+    const trailingBody = textElements.find((element) => element.text.includes("ไม่มีกิจวัตรก่อนนอนอาจทำให้เด็กไม่รู้ว่าเมื่อไหร่ถึงเวลานอน"));
+
+    expect(subtitleLike).toBeUndefined();
+    expect(firstStepBody).toBeDefined();
+    expect(trailingBody).toBeDefined();
+    expect(trailingBody?.text.endsWith("…")).toBe(false);
   });
 
   it("fits long process-step text into cards without using oversized subtitle notes", () => {

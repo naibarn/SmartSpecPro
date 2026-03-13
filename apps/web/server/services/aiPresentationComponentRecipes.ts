@@ -242,6 +242,37 @@ function fitTextBox(config: {
   };
 }
 
+function fitListTextBox(config: {
+  items: string[];
+  width: number;
+  height: number;
+  baseFontSize: number;
+  minFontSize: number;
+  lineHeight: number;
+  maxLines: number;
+  bulletPrefix?: string;
+}): { text: string; fontSize: number } {
+  const bulletPrefix = config.bulletPrefix ?? "• ";
+  const text = config.items
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => `${bulletPrefix}${item}`)
+    .join("\n");
+  return fitTextBox({
+    text,
+    width: config.width,
+    height: config.height,
+    baseFontSize: config.baseFontSize,
+    minFontSize: config.minFontSize,
+    lineHeight: config.lineHeight,
+    maxLines: config.maxLines,
+  });
+}
+
+function countTextCharacters(values: Array<string | null | undefined>): number {
+  return values.reduce((sum, value) => sum + String(value ?? "").trim().length, 0);
+}
+
 function makeRect(
   frame: LayoutFrame,
   componentInstanceId: string,
@@ -444,6 +475,18 @@ function createStatCardsSlotBindings(
   });
 }
 
+function createSectionedExplainerSlotBindings(
+  slideData: AIPresentationSlide,
+): PresentationComponentSlotBinding[] {
+  return buildPresentationComponentRecipeSlotBindings("sectioned-explainer", {
+    title: slideData.title,
+    body: slideData.body,
+    notes: slideData.notes,
+    sections: slideData.sections,
+    graphicCategory: slideData.graphicCategory,
+  });
+}
+
 function createQuoteCalloutSlotBindings(
   slideData: AIPresentationSlide,
 ): PresentationComponentSlotBinding[] {
@@ -483,6 +526,264 @@ function createPhotoCollageSlotBindings(
     mediaUrl: mediaUrls[0] ?? null,
     mediaUrls,
   });
+}
+
+function buildSectionedExplainerFallback(
+  componentId: string,
+  slotBindings: PresentationComponentSlotBinding[],
+  stylePreset: SlideStylePreset,
+  contentArea: ContentArea,
+): PresentationSlideElement[] {
+  const frame = getLayoutFrame(contentArea);
+  const intro = fitTextBox({
+    text: componentTextSlot(slotBindings, "intro", ""),
+    width: 292,
+    height: 246,
+    baseFontSize: 20,
+    minFontSize: 15,
+    lineHeight: 1.5,
+    maxLines: 10,
+  });
+  const section1Body = fitTextBox({
+    text: componentTextSlot(slotBindings, "section1-body", ""),
+    width: 638,
+    height: 96,
+    baseFontSize: 19,
+    minFontSize: 14,
+    lineHeight: 1.46,
+    maxLines: 6,
+  });
+  const section2Body = fitTextBox({
+    text: componentTextSlot(slotBindings, "section2-body", ""),
+    width: 638,
+    height: 96,
+    baseFontSize: 19,
+    minFontSize: 14,
+    lineHeight: 1.46,
+    maxLines: 6,
+  });
+  const section3Body = fitTextBox({
+    text: componentTextSlot(slotBindings, "section3-body", ""),
+    width: 638,
+    height: 96,
+    baseFontSize: 19,
+    minFontSize: 14,
+    lineHeight: 1.46,
+    maxLines: 6,
+  });
+  const takeaways = fitListTextBox({
+    items: componentListSlot(slotBindings, "takeaways", []),
+    width: 286,
+    height: 118,
+    baseFontSize: 17,
+    minFontSize: 13,
+    lineHeight: 1.42,
+    maxLines: 7,
+    bulletPrefix: "• ",
+  });
+
+  return [
+    makeRect(frame, componentId, {
+      suffix: "canvas-bg",
+      x: 72,
+      y: 64,
+      width: 1136,
+      height: 592,
+      fill: "rgba(248,250,252,0.98)",
+      stroke: stylePreset.colors.secondary,
+      strokeWidth: 2,
+    }),
+    makeRect(frame, componentId, {
+      suffix: "eyebrow-bg",
+      x: 96,
+      y: 90,
+      width: 200,
+      height: 34,
+      fill: stylePreset.colors.secondary,
+      stroke: stylePreset.colors.primary,
+      strokeWidth: 2,
+    }),
+    makeText(frame, componentId, {
+      suffix: "eyebrow",
+      x: 116,
+      y: 98,
+      width: 160,
+      height: 18,
+      text: componentTextSlot(slotBindings, "eyebrow", ""),
+      color: stylePreset.colors.background,
+      fontSize: 16,
+      fontWeight: "700",
+      textAlign: "center",
+    }),
+    makeText(frame, componentId, {
+      suffix: "title",
+      x: 96,
+      y: 140,
+      width: 1030,
+      height: 58,
+      text: componentTextSlot(slotBindings, "title", ""),
+      color: stylePreset.colors.text,
+      fontSize: 44,
+      fontFamily: stylePreset.typography.titleFontFamily,
+      fontWeight: "700",
+      lineHeight: 1.1,
+    }),
+    makeRect(frame, componentId, {
+      suffix: "intro-card",
+      x: 96,
+      y: 214,
+      width: 330,
+      height: 212,
+      fill: stylePreset.colors.backgroundAlt,
+      stroke: stylePreset.colors.primary,
+      strokeWidth: 2,
+    }),
+    makeText(frame, componentId, {
+      suffix: "intro",
+      x: 120,
+      y: 236,
+      width: 282,
+      height: 168,
+      text: intro.text,
+      color: stylePreset.colors.text,
+      fontSize: intro.fontSize,
+      fontFamily: stylePreset.typography.bodyFontFamily,
+      fontWeight: "500",
+      lineHeight: 1.5,
+    }),
+    makeRect(frame, componentId, {
+      suffix: "takeaways-card",
+      x: 96,
+      y: 444,
+      width: 330,
+      height: 176,
+      fill: "#ffffff",
+      stroke: stylePreset.colors.secondary,
+      strokeWidth: 2,
+    }),
+    makeText(frame, componentId, {
+      suffix: "takeaways-title",
+      x: 120,
+      y: 464,
+      width: 184,
+      height: 24,
+      text: componentTextSlot(slotBindings, "takeaways-title", ""),
+      color: stylePreset.colors.primary,
+      fontSize: 19,
+      fontWeight: "700",
+    }),
+    makeText(frame, componentId, {
+      suffix: "takeaways",
+      x: 120,
+      y: 498,
+      width: 282,
+      height: 108,
+      text: takeaways.text,
+      color: stylePreset.colors.text,
+      fontSize: takeaways.fontSize,
+      fontFamily: stylePreset.typography.bodyFontFamily,
+      fontWeight: "500",
+      lineHeight: 1.42,
+    }),
+    makeRect(frame, componentId, {
+      suffix: "sections-card",
+      x: 458,
+      y: 214,
+      width: 654,
+      height: 406,
+      fill: "#ffffff",
+      stroke: "#cbd5e1",
+      strokeWidth: 2,
+    }),
+    makeText(frame, componentId, {
+      suffix: "section-1-heading",
+      x: 486,
+      y: 240,
+      width: 590,
+      height: 24,
+      text: componentTextSlot(slotBindings, "section1-heading", ""),
+      color: stylePreset.colors.primary,
+      fontSize: 24,
+      fontWeight: "700",
+    }),
+    makeText(frame, componentId, {
+      suffix: "section-1-body",
+      x: 486,
+      y: 272,
+      width: 590,
+      height: 94,
+      text: section1Body.text,
+      color: stylePreset.colors.text,
+      fontSize: section1Body.fontSize,
+      fontFamily: stylePreset.typography.bodyFontFamily,
+      fontWeight: "500",
+      lineHeight: 1.46,
+    }),
+    makeRect(frame, componentId, {
+      suffix: "section-1-divider",
+      x: 486,
+      y: 380,
+      width: 590,
+      height: 2,
+      fill: "#e2e8f0",
+    }),
+    makeText(frame, componentId, {
+      suffix: "section-2-heading",
+      x: 486,
+      y: 398,
+      width: 590,
+      height: 24,
+      text: componentTextSlot(slotBindings, "section2-heading", ""),
+      color: stylePreset.colors.primary,
+      fontSize: 24,
+      fontWeight: "700",
+    }),
+    makeText(frame, componentId, {
+      suffix: "section-2-body",
+      x: 486,
+      y: 430,
+      width: 590,
+      height: 94,
+      text: section2Body.text,
+      color: stylePreset.colors.text,
+      fontSize: section2Body.fontSize,
+      fontFamily: stylePreset.typography.bodyFontFamily,
+      fontWeight: "500",
+      lineHeight: 1.46,
+    }),
+    makeRect(frame, componentId, {
+      suffix: "section-2-divider",
+      x: 486,
+      y: 538,
+      width: 590,
+      height: 2,
+      fill: "#e2e8f0",
+    }),
+    makeText(frame, componentId, {
+      suffix: "section-3-heading",
+      x: 486,
+      y: 556,
+      width: 590,
+      height: 24,
+      text: componentTextSlot(slotBindings, "section3-heading", ""),
+      color: stylePreset.colors.primary,
+      fontSize: 24,
+      fontWeight: "700",
+    }),
+    makeText(frame, componentId, {
+      suffix: "section-3-body",
+      x: 486,
+      y: 588,
+      width: 590,
+      height: 72,
+      text: section3Body.text,
+      color: stylePreset.colors.text,
+      fontSize: section3Body.fontSize,
+      fontFamily: stylePreset.typography.bodyFontFamily,
+      fontWeight: "500",
+      lineHeight: 1.44,
+    }),
+  ];
 }
 
 function buildProfileSummaryFallback(
@@ -1483,15 +1784,79 @@ function buildPosterSpotlightFallback(
   const hero = componentImageSlot(slotBindings, "hero", { src: "", alt: "Hero visual" });
   const benefits = componentListSlot(slotBindings, "benefits", []);
   const heroFrameStyle = PRESENTATION_COMPONENT_MEDIA_FRAME_STYLES["poster-spotlight"]?.hero;
+  const headlineText = componentTextSlot(slotBindings, "headline", "");
+  const subheadText = componentTextSlot(slotBindings, "subhead", "");
+  const ctaText = componentTextSlot(slotBindings, "cta", "");
+  const denseLayout = countTextCharacters([
+    headlineText,
+    subheadText,
+    ctaText,
+    ...benefits,
+  ]) >= 150 || benefits.length >= 4;
+  const layout = denseLayout
+    ? {
+        canvas: { x: 48, y: 46, width: 1184, height: 628 },
+        eyebrow: { x: 96, y: 86, width: 220, height: 40 },
+        headline: { x: 96, y: 154, width: 620, height: 168 },
+        subhead: { x: 96, y: 336, width: 604, height: 120 },
+        benefits: { x: 96, y: 476, width: 604, height: 132 },
+        cta: { x: 96, y: 622, width: 320, height: 40 },
+        hero: { x: 766, y: 86, width: 360, height: 540 },
+      }
+    : {
+        canvas: { x: 96, y: 64, width: 1088, height: 592 },
+        eyebrow: { x: 140, y: 108, width: 208, height: 38 },
+        headline: { x: 140, y: 180, width: 506, height: 140 },
+        subhead: { x: 140, y: 336, width: 492, height: 82 },
+        benefits: { x: 140, y: 452, width: 456, height: 126 },
+        cta: { x: 140, y: 596, width: 286, height: 40 },
+        hero: { x: 728, y: 84, width: 384, height: 552 },
+      };
+  const fittedHeadline = fitTextBox({
+    text: headlineText,
+    width: layout.headline.width,
+    height: layout.headline.height,
+    baseFontSize: denseLayout ? 48 : 50,
+    minFontSize: denseLayout ? 28 : 30,
+    lineHeight: 1.06,
+    maxLines: denseLayout ? 4 : 3,
+  });
+  const fittedSubhead = fitTextBox({
+    text: subheadText,
+    width: layout.subhead.width,
+    height: layout.subhead.height,
+    baseFontSize: 22,
+    minFontSize: 16,
+    lineHeight: 1.34,
+    maxLines: denseLayout ? 5 : 3,
+  });
+  const fittedBenefits = fitListTextBox({
+    items: benefits,
+    width: layout.benefits.width - 52,
+    height: layout.benefits.height - 36,
+    baseFontSize: 20,
+    minFontSize: 15,
+    lineHeight: 1.34,
+    maxLines: denseLayout ? 7 : 5,
+  });
+  const fittedCta = fitTextBox({
+    text: ctaText,
+    width: layout.cta.width - 48,
+    height: layout.cta.height - 12,
+    baseFontSize: 18,
+    minFontSize: 14,
+    lineHeight: 1.16,
+    maxLines: 2,
+  });
 
   const mediaElements = hero.src.trim()
     ? [
       makeImage(frame, componentId, {
         suffix: "hero-image",
-        x: 728,
-        y: 84,
-        width: 384,
-        height: 552,
+        x: layout.hero.x,
+        y: layout.hero.y,
+        width: layout.hero.width,
+        height: layout.hero.height,
         src: hero.src,
         alt: hero.alt,
         mediaShape: heroFrameStyle?.mediaShape,
@@ -1501,19 +1866,19 @@ function buildPosterSpotlightFallback(
     : [
       makeRect(frame, componentId, {
         suffix: "hero-frame",
-        x: 728,
-        y: 84,
-        width: 384,
-        height: 552,
+        x: layout.hero.x,
+        y: layout.hero.y,
+        width: layout.hero.width,
+        height: layout.hero.height,
         fill: stylePreset.colors.secondary,
         stroke: stylePreset.colors.primary,
         strokeWidth: 3,
       }),
       makeText(frame, componentId, {
         suffix: "hero-placeholder",
-        x: 788,
-        y: 332,
-        width: 264,
+        x: layout.hero.x + 60,
+        y: layout.hero.y + Math.round((layout.hero.height / 2) - 26),
+        width: layout.hero.width - 120,
         height: 42,
         text: "Drop or pick a hero image",
         color: stylePreset.colors.text,
@@ -1527,29 +1892,29 @@ function buildPosterSpotlightFallback(
   return [
     makeRect(frame, componentId, {
       suffix: "canvas-bg",
-      x: 96,
-      y: 64,
-      width: 1088,
-      height: 592,
+      x: layout.canvas.x,
+      y: layout.canvas.y,
+      width: layout.canvas.width,
+      height: layout.canvas.height,
       fill: stylePreset.colors.backgroundAlt,
       stroke: stylePreset.colors.primary,
       strokeWidth: 2,
     }),
     makeRect(frame, componentId, {
       suffix: "eyebrow-bg",
-      x: 140,
-      y: 108,
-      width: 208,
-      height: 38,
+      x: layout.eyebrow.x,
+      y: layout.eyebrow.y,
+      width: layout.eyebrow.width,
+      height: layout.eyebrow.height,
       fill: stylePreset.colors.secondary,
       stroke: stylePreset.colors.primary,
       strokeWidth: 2,
     }),
     makeText(frame, componentId, {
       suffix: "eyebrow",
-      x: 156,
-      y: 116,
-      width: 176,
+      x: layout.eyebrow.x + 16,
+      y: layout.eyebrow.y + 8,
+      width: layout.eyebrow.width - 32,
       height: 22,
       text: componentTextSlot(slotBindings, "eyebrow", ""),
       color: stylePreset.colors.text,
@@ -1560,72 +1925,72 @@ function buildPosterSpotlightFallback(
     }),
     makeText(frame, componentId, {
       suffix: "headline",
-      x: 140,
-      y: 180,
-      width: 506,
-      height: 140,
-      text: componentTextSlot(slotBindings, "headline", ""),
+      x: layout.headline.x,
+      y: layout.headline.y,
+      width: layout.headline.width,
+      height: layout.headline.height,
+      text: fittedHeadline.text,
       color: stylePreset.colors.text,
-      fontSize: 50,
+      fontSize: fittedHeadline.fontSize,
       fontFamily: stylePreset.typography.titleFontFamily,
       fontWeight: "700",
-      lineHeight: 1.05,
+      lineHeight: 1.06,
     }),
     makeText(frame, componentId, {
       suffix: "subhead",
-      x: 140,
-      y: 336,
-      width: 492,
-      height: 82,
-      text: componentTextSlot(slotBindings, "subhead", ""),
+      x: layout.subhead.x,
+      y: layout.subhead.y,
+      width: layout.subhead.width,
+      height: layout.subhead.height,
+      text: fittedSubhead.text,
       color: stylePreset.colors.textMuted,
-      fontSize: 22,
+      fontSize: fittedSubhead.fontSize,
       fontFamily: stylePreset.typography.bodyFontFamily,
       fontWeight: "500",
       lineHeight: 1.34,
     }),
     makeRect(frame, componentId, {
       suffix: "benefits-panel",
-      x: 140,
-      y: 452,
-      width: 456,
-      height: 126,
+      x: layout.benefits.x,
+      y: layout.benefits.y,
+      width: layout.benefits.width,
+      height: layout.benefits.height,
       fill: stylePreset.colors.background,
       stroke: stylePreset.colors.primary,
       strokeWidth: 2,
     }),
     makeText(frame, componentId, {
       suffix: "benefits",
-      x: 168,
-      y: 478,
-      width: 404,
-      height: 76,
-      text: benefits.map((item) => `• ${item}`).join("\n"),
+      x: layout.benefits.x + 24,
+      y: layout.benefits.y + 24,
+      width: layout.benefits.width - 52,
+      height: layout.benefits.height - 36,
+      text: fittedBenefits.text,
       color: stylePreset.colors.text,
-      fontSize: 20,
+      fontSize: fittedBenefits.fontSize,
       fontFamily: stylePreset.typography.bodyFontFamily,
       fontWeight: "500",
-      lineHeight: 1.36,
+      lineHeight: 1.34,
     }),
     makeRect(frame, componentId, {
       suffix: "cta-bg",
-      x: 140,
-      y: 596,
-      width: 286,
-      height: 40,
+      x: layout.cta.x,
+      y: layout.cta.y,
+      width: layout.cta.width,
+      height: layout.cta.height,
       fill: stylePreset.colors.primary,
       stroke: stylePreset.colors.secondary,
       strokeWidth: 2,
     }),
     makeText(frame, componentId, {
       suffix: "cta",
-      x: 164,
-      y: 604,
-      width: 238,
+      x: layout.cta.x + 24,
+      y: layout.cta.y + 8,
+      width: layout.cta.width - 48,
       height: 22,
-      text: componentTextSlot(slotBindings, "cta", ""),
+      text: fittedCta.text,
       color: stylePreset.colors.background,
-      fontSize: 18,
+      fontSize: fittedCta.fontSize,
       fontFamily: stylePreset.typography.bodyFontFamily,
       fontWeight: "700",
       textAlign: "center",
@@ -1644,15 +2009,79 @@ function buildFramedImageStoryFallback(
   const photo = componentImageSlot(slotBindings, "photo", { src: "", alt: "Story image" });
   const highlights = componentListSlot(slotBindings, "highlights", []);
   const photoFrameStyle = PRESENTATION_COMPONENT_MEDIA_FRAME_STYLES["framed-image-story"]?.photo;
+  const headlineText = componentTextSlot(slotBindings, "headline", "");
+  const storyText = componentTextSlot(slotBindings, "story", "");
+  const captionText = componentTextSlot(slotBindings, "caption", "");
+  const denseLayout = countTextCharacters([
+    headlineText,
+    storyText,
+    captionText,
+    ...highlights,
+  ]) >= 170 || highlights.length >= 2;
+  const layout = denseLayout
+    ? {
+        canvas: { x: 44, y: 44, width: 1192, height: 632 },
+        photo: { x: 72, y: 92, width: 360, height: 304 },
+        kicker: { x: 468, y: 92, width: 214, height: 38 },
+        headline: { x: 468, y: 152, width: 668, height: 124 },
+        story: { x: 468, y: 290, width: 668, height: 156 },
+        caption: { x: 72, y: 420, width: 360, height: 64 },
+        highlights: { x: 72, y: 506, width: 1064, height: 112 },
+      }
+    : {
+        canvas: { x: 88, y: 78, width: 1104, height: 564 },
+        photo: { x: 120, y: 112, width: 424, height: 420 },
+        kicker: { x: 606, y: 118, width: 204, height: 36 },
+        headline: { x: 606, y: 178, width: 470, height: 114 },
+        story: { x: 606, y: 308, width: 470, height: 114 },
+        caption: { x: 120, y: 552, width: 424, height: 42 },
+        highlights: { x: 606, y: 452, width: 470, height: 142 },
+      };
+  const fittedHeadline = fitTextBox({
+    text: headlineText,
+    width: layout.headline.width,
+    height: layout.headline.height,
+    baseFontSize: denseLayout ? 42 : 44,
+    minFontSize: denseLayout ? 28 : 30,
+    lineHeight: 1.1,
+    maxLines: denseLayout ? 4 : 3,
+  });
+  const fittedStory = fitTextBox({
+    text: storyText,
+    width: layout.story.width,
+    height: layout.story.height,
+    baseFontSize: 21,
+    minFontSize: 15,
+    lineHeight: 1.38,
+    maxLines: denseLayout ? 7 : 5,
+  });
+  const fittedCaption = fitTextBox({
+    text: captionText,
+    width: layout.caption.width - 44,
+    height: layout.caption.height - 14,
+    baseFontSize: 17,
+    minFontSize: 13,
+    lineHeight: 1.22,
+    maxLines: denseLayout ? 3 : 2,
+  });
+  const fittedHighlights = fitListTextBox({
+    items: highlights,
+    width: layout.highlights.width - 56,
+    height: layout.highlights.height - 44,
+    baseFontSize: 19,
+    minFontSize: 15,
+    lineHeight: 1.34,
+    maxLines: denseLayout ? 6 : 5,
+  });
 
   const photoElements = photo.src.trim()
     ? [
       makeImage(frame, componentId, {
         suffix: "photo-image",
-        x: 120,
-        y: 112,
-        width: 424,
-        height: 420,
+        x: layout.photo.x,
+        y: layout.photo.y,
+        width: layout.photo.width,
+        height: layout.photo.height,
         src: photo.src,
         alt: photo.alt,
         mediaShape: photoFrameStyle?.mediaShape,
@@ -1662,19 +2091,19 @@ function buildFramedImageStoryFallback(
     : [
       makeRect(frame, componentId, {
         suffix: "photo-frame",
-        x: 120,
-        y: 112,
-        width: 424,
-        height: 420,
+        x: layout.photo.x,
+        y: layout.photo.y,
+        width: layout.photo.width,
+        height: layout.photo.height,
         fill: stylePreset.colors.backgroundAlt,
         stroke: stylePreset.colors.textMuted,
         strokeWidth: 4,
       }),
       makeText(frame, componentId, {
         suffix: "photo-placeholder",
-        x: 184,
-        y: 300,
-        width: 296,
+        x: layout.photo.x + 42,
+        y: layout.photo.y + Math.round((layout.photo.height / 2) - 20),
+        width: layout.photo.width - 84,
         height: 40,
         text: "Drop or pick a story image",
         color: stylePreset.colors.text,
@@ -1688,10 +2117,10 @@ function buildFramedImageStoryFallback(
   return [
     makeRect(frame, componentId, {
       suffix: "canvas-bg",
-      x: 88,
-      y: 78,
-      width: 1104,
-      height: 564,
+      x: layout.canvas.x,
+      y: layout.canvas.y,
+      width: layout.canvas.width,
+      height: layout.canvas.height,
       fill: stylePreset.colors.backgroundAlt,
       stroke: stylePreset.colors.primary,
       strokeWidth: 2,
@@ -1699,19 +2128,19 @@ function buildFramedImageStoryFallback(
     ...photoElements,
     makeRect(frame, componentId, {
       suffix: "kicker-bg",
-      x: 606,
-      y: 118,
-      width: 204,
-      height: 36,
+      x: layout.kicker.x,
+      y: layout.kicker.y,
+      width: layout.kicker.width,
+      height: layout.kicker.height,
       fill: stylePreset.colors.background,
       stroke: stylePreset.colors.primary,
       strokeWidth: 2,
     }),
     makeText(frame, componentId, {
       suffix: "kicker",
-      x: 626,
-      y: 126,
-      width: 164,
+      x: layout.kicker.x + 20,
+      y: layout.kicker.y + 8,
+      width: layout.kicker.width - 40,
       height: 20,
       text: componentTextSlot(slotBindings, "kicker", ""),
       color: stylePreset.colors.primary,
@@ -1722,75 +2151,76 @@ function buildFramedImageStoryFallback(
     }),
     makeText(frame, componentId, {
       suffix: "headline",
-      x: 606,
-      y: 178,
-      width: 470,
-      height: 114,
-      text: componentTextSlot(slotBindings, "headline", ""),
+      x: layout.headline.x,
+      y: layout.headline.y,
+      width: layout.headline.width,
+      height: layout.headline.height,
+      text: fittedHeadline.text,
       color: stylePreset.colors.text,
-      fontSize: 44,
+      fontSize: fittedHeadline.fontSize,
       fontFamily: stylePreset.typography.titleFontFamily,
       fontWeight: "700",
       lineHeight: 1.1,
     }),
     makeText(frame, componentId, {
       suffix: "story",
-      x: 606,
-      y: 308,
-      width: 470,
-      height: 114,
-      text: componentTextSlot(slotBindings, "story", ""),
+      x: layout.story.x,
+      y: layout.story.y,
+      width: layout.story.width,
+      height: layout.story.height,
+      text: fittedStory.text,
       color: stylePreset.colors.textMuted,
-      fontSize: 21,
+      fontSize: fittedStory.fontSize,
       fontFamily: stylePreset.typography.bodyFontFamily,
       fontWeight: "500",
-      lineHeight: 1.4,
+      lineHeight: 1.38,
     }),
     makeRect(frame, componentId, {
       suffix: "caption-bg",
-      x: 120,
-      y: 552,
-      width: 424,
-      height: 42,
+      x: layout.caption.x,
+      y: layout.caption.y,
+      width: layout.caption.width,
+      height: layout.caption.height,
       fill: stylePreset.colors.secondary,
       stroke: stylePreset.colors.primary,
       strokeWidth: 2,
     }),
     makeText(frame, componentId, {
       suffix: "caption",
-      x: 146,
-      y: 562,
-      width: 372,
-      height: 22,
-      text: componentTextSlot(slotBindings, "caption", ""),
+      x: layout.caption.x + 22,
+      y: layout.caption.y + 10,
+      width: layout.caption.width - 44,
+      height: layout.caption.height - 14,
+      text: fittedCaption.text,
       color: stylePreset.colors.text,
-      fontSize: 17,
+      fontSize: fittedCaption.fontSize,
       fontFamily: stylePreset.typography.bodyFontFamily,
       fontWeight: "600",
       textAlign: "center",
+      lineHeight: 1.22,
     }),
     makeRect(frame, componentId, {
       suffix: "highlights-panel",
-      x: 606,
-      y: 452,
-      width: 470,
-      height: 142,
+      x: layout.highlights.x,
+      y: layout.highlights.y,
+      width: layout.highlights.width,
+      height: layout.highlights.height,
       fill: stylePreset.colors.background,
       stroke: stylePreset.colors.primary,
       strokeWidth: 2,
     }),
     makeText(frame, componentId, {
       suffix: "highlights",
-      x: 634,
-      y: 480,
-      width: 414,
-      height: 86,
-      text: highlights.map((item) => `• ${item}`).join("\n"),
+      x: layout.highlights.x + 28,
+      y: layout.highlights.y + 24,
+      width: layout.highlights.width - 56,
+      height: layout.highlights.height - 44,
+      text: fittedHighlights.text,
       color: stylePreset.colors.text,
-      fontSize: 19,
+      fontSize: fittedHighlights.fontSize,
       fontFamily: stylePreset.typography.bodyFontFamily,
       fontWeight: "500",
-      lineHeight: 1.38,
+      lineHeight: 1.34,
     }),
   ];
 }
@@ -1806,15 +2236,69 @@ function buildPhotoCollageFallback(
   const secondaryPhoto = componentImageSlot(slotBindings, "secondary-photo", { src: "", alt: "Secondary photo" });
   const primaryFrameStyle = PRESENTATION_COMPONENT_MEDIA_FRAME_STYLES["photo-collage"]?.["primary-photo"];
   const secondaryFrameStyle = PRESENTATION_COMPONENT_MEDIA_FRAME_STYLES["photo-collage"]?.["secondary-photo"];
+  const headlineText = componentTextSlot(slotBindings, "headline", "");
+  const bodyText = componentTextSlot(slotBindings, "body", "");
+  const captionText = componentTextSlot(slotBindings, "caption", "");
+  const denseLayout = countTextCharacters([
+    headlineText,
+    bodyText,
+    captionText,
+  ]) >= 150;
+  const layout = denseLayout
+    ? {
+        canvas: { x: 44, y: 44, width: 1192, height: 632 },
+        kicker: { x: 72, y: 72, width: 204, height: 38 },
+        primary: { x: 72, y: 132, width: 360, height: 274 },
+        secondary: { x: 72, y: 430, width: 220, height: 146 },
+        headline: { x: 468, y: 126, width: 660, height: 118 },
+        body: { x: 468, y: 270, width: 660, height: 186 },
+        caption: { x: 468, y: 486, width: 660, height: 72 },
+      }
+    : {
+        canvas: { x: 72, y: 78, width: 1136, height: 564 },
+        kicker: { x: 112, y: 96, width: 188, height: 36 },
+        primary: { x: 112, y: 152, width: 494, height: 360 },
+        secondary: { x: 864, y: 108, width: 248, height: 198 },
+        headline: { x: 112, y: 530, width: 520, height: 72 },
+        body: { x: 656, y: 346, width: 456, height: 126 },
+        caption: { x: 864, y: 524, width: 248, height: 44 },
+      };
+  const fittedHeadline = fitTextBox({
+    text: headlineText,
+    width: layout.headline.width,
+    height: layout.headline.height,
+    baseFontSize: denseLayout ? 40 : 40,
+    minFontSize: denseLayout ? 26 : 28,
+    lineHeight: 1.1,
+    maxLines: denseLayout ? 4 : 3,
+  });
+  const fittedBody = fitTextBox({
+    text: bodyText,
+    width: layout.body.width,
+    height: layout.body.height,
+    baseFontSize: 21,
+    minFontSize: 15,
+    lineHeight: 1.36,
+    maxLines: denseLayout ? 8 : 6,
+  });
+  const fittedCaption = fitTextBox({
+    text: captionText,
+    width: layout.caption.width - 44,
+    height: layout.caption.height - 16,
+    baseFontSize: 16,
+    minFontSize: 13,
+    lineHeight: 1.22,
+    maxLines: denseLayout ? 3 : 2,
+  });
 
   const primaryElements = primaryPhoto.src.trim()
     ? [
       makeImage(frame, componentId, {
         suffix: "primary-image",
-        x: 112,
-        y: 152,
-        width: 494,
-        height: 360,
+        x: layout.primary.x,
+        y: layout.primary.y,
+        width: layout.primary.width,
+        height: layout.primary.height,
         src: primaryPhoto.src,
         alt: primaryPhoto.alt,
         imageFit: "cover",
@@ -1825,19 +2309,19 @@ function buildPhotoCollageFallback(
     : [
       makeRect(frame, componentId, {
         suffix: "primary-frame",
-        x: 112,
-        y: 152,
-        width: 494,
-        height: 360,
+        x: layout.primary.x,
+        y: layout.primary.y,
+        width: layout.primary.width,
+        height: layout.primary.height,
         fill: stylePreset.colors.backgroundAlt,
         stroke: stylePreset.colors.primary,
         strokeWidth: 3,
       }),
       makeText(frame, componentId, {
         suffix: "primary-placeholder",
-        x: 216,
-        y: 318,
-        width: 286,
+        x: layout.primary.x + 36,
+        y: layout.primary.y + Math.round((layout.primary.height / 2) - 20),
+        width: layout.primary.width - 72,
         height: 40,
         text: "Drop a primary image",
         color: stylePreset.colors.text,
@@ -1852,10 +2336,10 @@ function buildPhotoCollageFallback(
     ? [
       makeImage(frame, componentId, {
         suffix: "secondary-image",
-        x: 864,
-        y: 108,
-        width: 248,
-        height: 198,
+        x: layout.secondary.x,
+        y: layout.secondary.y,
+        width: layout.secondary.width,
+        height: layout.secondary.height,
         src: secondaryPhoto.src,
         alt: secondaryPhoto.alt,
         imageFit: "cover",
@@ -1866,19 +2350,19 @@ function buildPhotoCollageFallback(
     : [
       makeRect(frame, componentId, {
         suffix: "secondary-frame",
-        x: 864,
-        y: 108,
-        width: 248,
-        height: 198,
+        x: layout.secondary.x,
+        y: layout.secondary.y,
+        width: layout.secondary.width,
+        height: layout.secondary.height,
         fill: stylePreset.colors.backgroundAlt,
         stroke: stylePreset.colors.secondary,
         strokeWidth: 3,
       }),
       makeText(frame, componentId, {
         suffix: "secondary-placeholder",
-        x: 900,
-        y: 190,
-        width: 176,
+        x: layout.secondary.x + 20,
+        y: layout.secondary.y + Math.round((layout.secondary.height / 2) - 16),
+        width: layout.secondary.width - 40,
         height: 34,
         text: "Detail image",
         color: stylePreset.colors.secondary,
@@ -1892,29 +2376,29 @@ function buildPhotoCollageFallback(
   return [
     makeRect(frame, componentId, {
       suffix: "canvas-bg",
-      x: 72,
-      y: 78,
-      width: 1136,
-      height: 564,
+      x: layout.canvas.x,
+      y: layout.canvas.y,
+      width: layout.canvas.width,
+      height: layout.canvas.height,
       fill: stylePreset.colors.backgroundAlt,
       stroke: stylePreset.colors.primary,
       strokeWidth: 2,
     }),
     makeRect(frame, componentId, {
       suffix: "kicker-bg",
-      x: 112,
-      y: 96,
-      width: 188,
-      height: 36,
+      x: layout.kicker.x,
+      y: layout.kicker.y,
+      width: layout.kicker.width,
+      height: layout.kicker.height,
       fill: stylePreset.colors.background,
       stroke: stylePreset.colors.primary,
       strokeWidth: 2,
     }),
     makeText(frame, componentId, {
       suffix: "kicker",
-      x: 130,
-      y: 104,
-      width: 152,
+      x: layout.kicker.x + 18,
+      y: layout.kicker.y + 8,
+      width: layout.kicker.width - 36,
       height: 20,
       text: componentTextSlot(slotBindings, "kicker", ""),
       color: stylePreset.colors.primary,
@@ -1927,52 +2411,53 @@ function buildPhotoCollageFallback(
     ...secondaryElements,
     makeText(frame, componentId, {
       suffix: "headline",
-      x: 112,
-      y: 530,
-      width: 520,
-      height: 72,
-      text: componentTextSlot(slotBindings, "headline", ""),
+      x: layout.headline.x,
+      y: layout.headline.y,
+      width: layout.headline.width,
+      height: layout.headline.height,
+      text: fittedHeadline.text,
       color: stylePreset.colors.text,
-      fontSize: 40,
+      fontSize: fittedHeadline.fontSize,
       fontFamily: stylePreset.typography.titleFontFamily,
       fontWeight: "700",
       lineHeight: 1.1,
     }),
     makeText(frame, componentId, {
       suffix: "body",
-      x: 656,
-      y: 346,
-      width: 456,
-      height: 126,
-      text: componentTextSlot(slotBindings, "body", ""),
+      x: layout.body.x,
+      y: layout.body.y,
+      width: layout.body.width,
+      height: layout.body.height,
+      text: fittedBody.text,
       color: stylePreset.colors.textMuted,
-      fontSize: 21,
+      fontSize: fittedBody.fontSize,
       fontFamily: stylePreset.typography.bodyFontFamily,
       fontWeight: "500",
-      lineHeight: 1.38,
+      lineHeight: 1.36,
     }),
     makeRect(frame, componentId, {
       suffix: "caption-bg",
-      x: 864,
-      y: 524,
-      width: 248,
-      height: 44,
+      x: layout.caption.x,
+      y: layout.caption.y,
+      width: layout.caption.width,
+      height: layout.caption.height,
       fill: stylePreset.colors.background,
       stroke: stylePreset.colors.secondary,
       strokeWidth: 2,
     }),
     makeText(frame, componentId, {
       suffix: "caption",
-      x: 888,
-      y: 534,
-      width: 200,
-      height: 22,
-      text: componentTextSlot(slotBindings, "caption", ""),
+      x: layout.caption.x + 22,
+      y: layout.caption.y + 10,
+      width: layout.caption.width - 44,
+      height: layout.caption.height - 16,
+      text: fittedCaption.text,
       color: stylePreset.colors.text,
-      fontSize: 16,
+      fontSize: fittedCaption.fontSize,
       fontFamily: stylePreset.typography.bodyFontFamily,
       fontWeight: "600",
       textAlign: "center",
+      lineHeight: 1.22,
     }),
   ];
 }
@@ -2013,6 +2498,10 @@ export function buildAIRecipeComponentInstance(input: {
     case "stat-cards":
       slotBindings = createStatCardsSlotBindings(input.slideData);
       fallbackElements = buildStatCardsFallback(componentId, slotBindings, input.stylePreset, input.contentArea);
+      break;
+    case "sectioned-explainer":
+      slotBindings = createSectionedExplainerSlotBindings(input.slideData);
+      fallbackElements = buildSectionedExplainerFallback(componentId, slotBindings, input.stylePreset, input.contentArea);
       break;
     case "profile-summary":
       slotBindings = createProfileSummarySlotBindings(input.slideData, input.mediaUrl);

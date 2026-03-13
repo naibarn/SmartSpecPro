@@ -220,6 +220,7 @@ import {
   BUILT_IN_PRESENTATION_COMPONENT_IDS,
   PRESENTATION_COMPONENT_AI_GUIDANCE,
   PRESENTATION_COMPONENT_MEDIA_SLOT_TYPES,
+  type BuiltInPresentationComponentId,
 } from "@shared/presentation/componentRecipes";
 import { type PresentationCustomBlockVisibility } from "@shared/presentation/customBlocks";
 import {
@@ -340,7 +341,10 @@ function getSlideshowPreviewTransitionStyle(
 }
 
 type AutoLayoutScope = "current" | "all";
-type AutoLayoutTemplateChoice = "auto" | (typeof AI_LAYOUT_TEMPLATE_IDS)[number];
+type AutoLayoutTemplateChoice =
+  | "auto"
+  | `template:${(typeof AI_LAYOUT_TEMPLATE_IDS)[number]}`
+  | `block:${BuiltInPresentationComponentId}`;
 type AutoLayoutStyleChoice = "auto" | (typeof AI_STYLE_PRESET_IDS)[number];
 type AutoLayoutCropShapeChoice = (typeof AI_GEOMETRIC_CROP_SHAPES)[number];
 type AutoLayoutAccentShapeChoice = (typeof AI_GEOMETRIC_ACCENT_SHAPES)[number];
@@ -351,6 +355,20 @@ const AUTO_LAYOUT_TEMPLATE_LABELS: Record<(typeof AI_LAYOUT_TEMPLATE_IDS)[number
   top_image_text_bottom: "Image Top / Text Bottom",
   bottom_image_text_top: "Text Top / Image Bottom",
   feature_boxes_right: "Feature Boxes Right",
+};
+const AUTO_LAYOUT_BLOCK_LABELS: Record<BuiltInPresentationComponentId, string> = {
+  "process-steps": "Block: Process Steps",
+  "timeline-flow": "Block: Timeline Flow",
+  "feature-highlights": "Block: Feature Highlights",
+  "infographic-grid": "Block: Infographic Grid",
+  "stat-cards": "Block: Stat Cards",
+  "sectioned-explainer": "Block: Sectioned Explainer",
+  "profile-summary": "Block: Profile Summary",
+  "quote-callout": "Block: Quote Callout",
+  "video-spotlight": "Block: Video Spotlight",
+  "poster-spotlight": "Block: Poster Spotlight",
+  "framed-image-story": "Block: Framed Image Story",
+  "photo-collage": "Block: Photo Collage",
 };
 const AUTO_LAYOUT_CROP_SHAPE_LABELS: Record<AutoLayoutCropShapeChoice, string> = {
   auto: "Auto choose",
@@ -364,6 +382,23 @@ const AUTO_LAYOUT_ACCENT_SHAPE_LABELS: Record<AutoLayoutAccentShapeChoice, strin
   circle: "Circle",
   triangle: "Triangle",
 };
+
+function resolveAutoLayoutTemplateSelection(choice: AutoLayoutTemplateChoice): {
+  templateId?: (typeof AI_LAYOUT_TEMPLATE_IDS)[number];
+  componentRecipeId?: BuiltInPresentationComponentId;
+} {
+  if (choice === "auto") {
+    return {};
+  }
+  if (choice.startsWith("template:")) {
+    return {
+      templateId: choice.slice("template:".length) as (typeof AI_LAYOUT_TEMPLATE_IDS)[number],
+    };
+  }
+  return {
+    componentRecipeId: choice.slice("block:".length) as BuiltInPresentationComponentId,
+  };
+}
 const UNSAVED_PRESENTATION_WARNING =
   "คุณมีการแก้ไขสไลด์ที่ยังไม่ได้บันทึก หากออกตอนนี้ข้อมูลที่แก้ไขจะหายไป ต้องการออกจากโปรเจกต์หรือไม่?";
 
@@ -389,6 +424,43 @@ interface MediaHistoryTaskLike {
   prompt?: string | null;
   resultUrl?: string | null;
   resultData?: Record<string, unknown> | null;
+}
+
+function ResponsiveSvgPreview({
+  svg,
+  className,
+  testId,
+}: {
+  svg: string;
+  className?: string;
+  testId?: string;
+}) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+    const svgNode = container.querySelector("svg");
+    if (!(svgNode instanceof SVGSVGElement)) {
+      return;
+    }
+    svgNode.style.display = "block";
+    svgNode.style.width = "100%";
+    svgNode.style.maxWidth = "100%";
+    svgNode.style.height = "auto";
+    svgNode.setAttribute("preserveAspectRatio", svgNode.getAttribute("preserveAspectRatio") || "xMidYMid meet");
+  }, [svg]);
+
+  return (
+    <div
+      ref={containerRef}
+      className={className}
+      data-testid={testId}
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+  );
 }
 
 interface PresentationSavedVersionLike {
@@ -907,6 +979,284 @@ function inferAIOverrideMediaUrl(
     return image?.src?.trim() || undefined;
   }
   return undefined;
+}
+
+function truncateAIOverrideText(value: string, maxChars: number): string {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxChars) {
+    return normalized;
+  }
+  const sliced = normalized.slice(0, maxChars + 1);
+  const lastBoundary = Math.max(
+    sliced.lastIndexOf(" "),
+    sliced.lastIndexOf("،"),
+    sliced.lastIndexOf("，"),
+    sliced.lastIndexOf("。"),
+    sliced.lastIndexOf(","),
+    sliced.lastIndexOf("."),
+    sliced.lastIndexOf(":"),
+    sliced.lastIndexOf(";"),
+  );
+  return (lastBoundary >= Math.floor(maxChars * 0.55) ? sliced.slice(0, lastBoundary) : sliced.slice(0, maxChars)).trim();
+}
+
+function splitAIOverrideSentenceChunks(value: string, maxChars: number, maxItems: number): string[] {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return [];
+  }
+  const initialParts = normalized
+    .split(/(?<=[.!?。！？])\s+|\s+[•▪◦·-]\s+|\n+/)
+    .map((part) => truncateAIOverrideText(part, maxChars))
+    .filter(Boolean);
+  if (initialParts.length > 0) {
+    return initialParts.slice(0, maxItems);
+  }
+  const chunks: string[] = [];
+  let cursor = normalized;
+  while (cursor.length > 0 && chunks.length < maxItems) {
+    const nextChunk = truncateAIOverrideText(cursor, maxChars);
+    if (!nextChunk) {
+      break;
+    }
+    chunks.push(nextChunk);
+    cursor = cursor.slice(nextChunk.length).trim();
+  }
+  return chunks;
+}
+
+function recipeSupportsAvailableMedia(
+  recipeId: BuiltInPresentationComponentId,
+  options: { hasImage: boolean; hasVideo: boolean },
+): boolean {
+  const mediaTypes = new Set(Object.values(PRESENTATION_COMPONENT_MEDIA_SLOT_TYPES[recipeId] ?? {}));
+  if (mediaTypes.size === 0) {
+    return true;
+  }
+  if (mediaTypes.size === 1 && mediaTypes.has("image")) {
+    return options.hasImage;
+  }
+  if (mediaTypes.size === 1 && mediaTypes.has("video")) {
+    return options.hasVideo;
+  }
+  return (
+    (!mediaTypes.has("image") || options.hasImage)
+    && (!mediaTypes.has("video") || options.hasVideo)
+  );
+}
+
+function inferAIOverrideRecipeId(options: {
+  title: string;
+  body: string[];
+  sections: Array<{ heading: string; details: string[] }>;
+  hasImage: boolean;
+  hasVideo: boolean;
+}): BuiltInPresentationComponentId {
+  const bodyCount = options.body.filter(Boolean).length;
+  const sectionCount = options.sections.length;
+  const longBodyLineCount = options.body.filter((line) => line.length > 120).length;
+  const joinedText = `${options.title}\n${options.body.join("\n")}`.toLowerCase();
+  const looksNumeric = /\b\d+(?:[%.,]\d+)?\b/.test(joinedText);
+
+  if (options.hasVideo) {
+    return "video-spotlight";
+  }
+  if (sectionCount >= 2 && (bodyCount >= 3 || longBodyLineCount > 0) && !options.hasImage) {
+    return "sectioned-explainer";
+  }
+  if (sectionCount >= 2 && sectionCount <= 3) {
+    return "process-steps";
+  }
+  if (sectionCount >= 4) {
+    return options.hasImage ? "framed-image-story" : "infographic-grid";
+  }
+  if (looksNumeric && bodyCount <= 4) {
+    return "stat-cards";
+  }
+  if (options.hasImage && bodyCount >= 5) {
+    return "framed-image-story";
+  }
+  if (options.hasImage && (bodyCount >= 2 || longBodyLineCount > 0)) {
+    return "poster-spotlight";
+  }
+  if (bodyCount <= 2) {
+    return "quote-callout";
+  }
+  if (bodyCount <= 4) {
+    return "feature-highlights";
+  }
+  return options.hasImage ? "framed-image-story" : "infographic-grid";
+}
+
+function adaptAIOverrideNarrativeForRecipe(
+  recipeId: BuiltInPresentationComponentId,
+  narrative: {
+    title: string;
+    body: string[];
+    notes?: string;
+    sections?: Array<{ heading: string; details: string[] }>;
+    graphicCategory?: string;
+  },
+): {
+  title: string;
+  body: string[];
+  notes?: string;
+  sections?: Array<{ heading: string; details: string[] }>;
+  graphicCategory?: string;
+} {
+  const cleanTitle = truncateAIOverrideText(narrative.title || "Key Insight", 96) || "Key Insight";
+  const cleanBody = narrative.body
+    .map((line) => truncateAIOverrideText(line, 180))
+    .filter(Boolean);
+  const cleanSections = (narrative.sections ?? [])
+    .map((section) => ({
+      heading: truncateAIOverrideText(section.heading, 72),
+      details: section.details
+        .map((detail) => truncateAIOverrideText(detail, 140))
+        .filter(Boolean),
+    }))
+    .filter((section) => section.heading && section.details.length > 0);
+
+  const deriveSectionsFromBody = (maxSections: number, detailChars: number) => {
+    const sectionLines = cleanSections.flatMap((section) => (
+      section.details.length > 0
+        ? [{
+          heading: truncateAIOverrideText(section.heading, 56),
+          details: section.details.slice(0, 2).map((detail) => truncateAIOverrideText(detail, detailChars)),
+        }]
+        : []
+    ));
+    if (sectionLines.length > 0) {
+      return sectionLines.slice(0, maxSections);
+    }
+    return cleanBody.slice(0, maxSections).map((line, index) => {
+      const chunks = splitAIOverrideSentenceChunks(line, detailChars, 2);
+      const heading = truncateAIOverrideText(chunks[0] ?? line, 56);
+      const details = (chunks.length > 1 ? chunks.slice(1) : [truncateAIOverrideText(line, detailChars)])
+        .filter(Boolean)
+        .slice(0, 2);
+      return {
+        heading: heading || `Point ${index + 1}`,
+        details,
+      };
+    });
+  };
+
+  switch (recipeId) {
+    case "process-steps":
+      return {
+        title: truncateAIOverrideText(cleanTitle, 72),
+        body: cleanBody.slice(0, 1).map((line) => truncateAIOverrideText(line, 120)),
+        ...(narrative.notes ? { notes: narrative.notes } : {}),
+        sections: deriveSectionsFromBody(3, 120).slice(0, 3),
+        ...(narrative.graphicCategory ? { graphicCategory: narrative.graphicCategory } : {}),
+      };
+    case "timeline-flow":
+      return {
+        title: truncateAIOverrideText(cleanTitle, 72),
+        body: cleanBody.slice(0, 1).map((line) => truncateAIOverrideText(line, 120)),
+        ...(narrative.notes ? { notes: narrative.notes } : {}),
+        sections: deriveSectionsFromBody(4, 110).slice(0, 4),
+        ...(narrative.graphicCategory ? { graphicCategory: narrative.graphicCategory } : {}),
+      };
+    case "feature-highlights":
+      return {
+        title: truncateAIOverrideText(cleanTitle, 76),
+        body: cleanBody.slice(0, 1).map((line) => truncateAIOverrideText(line, 110)),
+        ...(narrative.notes ? { notes: narrative.notes } : {}),
+        sections: deriveSectionsFromBody(3, 96).slice(0, 3),
+        ...(narrative.graphicCategory ? { graphicCategory: narrative.graphicCategory } : {}),
+      };
+    case "infographic-grid":
+      return {
+        title: truncateAIOverrideText(cleanTitle, 76),
+        body: cleanBody.slice(0, 2).map((line) => truncateAIOverrideText(line, 104)),
+        ...(narrative.notes ? { notes: narrative.notes } : {}),
+        sections: deriveSectionsFromBody(4, 96).slice(0, 4),
+        ...(narrative.graphicCategory ? { graphicCategory: narrative.graphicCategory } : {}),
+      };
+    case "poster-spotlight":
+    case "video-spotlight":
+      return {
+        title: truncateAIOverrideText(cleanTitle, 68),
+        body: cleanBody
+          .flatMap((line) => splitAIOverrideSentenceChunks(line, 110, 2))
+          .slice(0, 3),
+        ...(narrative.notes ? { notes: narrative.notes } : {}),
+        ...(narrative.graphicCategory ? { graphicCategory: narrative.graphicCategory } : {}),
+      };
+    case "framed-image-story":
+      return {
+        title: truncateAIOverrideText(cleanTitle, 74),
+        body: cleanBody
+          .flatMap((line) => splitAIOverrideSentenceChunks(line, 118, 2))
+          .slice(0, 4),
+        ...(narrative.notes ? { notes: narrative.notes } : {}),
+        ...(cleanSections.length > 0 ? { sections: cleanSections.slice(0, 2) } : {}),
+        ...(narrative.graphicCategory ? { graphicCategory: narrative.graphicCategory } : {}),
+      };
+    case "photo-collage":
+      return {
+        title: truncateAIOverrideText(cleanTitle, 64),
+        body: cleanBody
+          .flatMap((line) => splitAIOverrideSentenceChunks(line, 90, 2))
+          .slice(0, 2),
+        ...(narrative.notes ? { notes: narrative.notes } : {}),
+        ...(cleanSections.length > 0 ? { sections: cleanSections.slice(0, 1) } : {}),
+        ...(narrative.graphicCategory ? { graphicCategory: narrative.graphicCategory } : {}),
+      };
+    case "quote-callout":
+      return {
+        title: truncateAIOverrideText(cleanTitle, 62),
+        body: cleanBody
+          .flatMap((line) => splitAIOverrideSentenceChunks(line, 120, 2))
+          .slice(0, 2),
+        ...(narrative.notes ? { notes: narrative.notes } : {}),
+        ...(narrative.graphicCategory ? { graphicCategory: narrative.graphicCategory } : {}),
+      };
+    case "stat-cards":
+      return {
+        title: truncateAIOverrideText(cleanTitle, 68),
+        body: cleanBody.slice(0, 4).map((line) => truncateAIOverrideText(line, 84)),
+        ...(narrative.notes ? { notes: narrative.notes } : {}),
+        ...(cleanSections.length > 0 ? { sections: cleanSections.slice(0, 3) } : {}),
+        ...(narrative.graphicCategory ? { graphicCategory: narrative.graphicCategory } : {}),
+      };
+    case "sectioned-explainer":
+      return {
+        title: truncateAIOverrideText(cleanTitle, 96),
+        body: cleanBody
+          .flatMap((line) => splitAIOverrideSentenceChunks(line, 180, 2))
+          .slice(0, 6),
+        ...(narrative.notes ? { notes: narrative.notes } : {}),
+        ...(cleanSections.length > 0 ? {
+          sections: cleanSections.slice(0, 3).map((section) => ({
+            heading: truncateAIOverrideText(section.heading, 96),
+            details: section.details
+              .flatMap((detail) => splitAIOverrideSentenceChunks(detail, 220, 2))
+              .slice(0, 2),
+          })),
+        } : {}),
+        ...(narrative.graphicCategory ? { graphicCategory: narrative.graphicCategory } : {}),
+      };
+    case "profile-summary":
+      return {
+        title: truncateAIOverrideText(cleanTitle, 68),
+        body: cleanBody
+          .flatMap((line) => splitAIOverrideSentenceChunks(line, 92, 2))
+          .slice(0, 4),
+        ...(narrative.notes ? { notes: narrative.notes } : {}),
+        ...(narrative.graphicCategory ? { graphicCategory: narrative.graphicCategory } : {}),
+      };
+    default:
+      return {
+        title: cleanTitle,
+        body: cleanBody.slice(0, 6),
+        ...(narrative.notes ? { notes: narrative.notes } : {}),
+        ...(cleanSections.length > 0 ? { sections: cleanSections.slice(0, 4) } : {}),
+        ...(narrative.graphicCategory ? { graphicCategory: narrative.graphicCategory } : {}),
+      };
+  }
 }
 
 function createUniqueCustomBlockLabel(
@@ -1830,10 +2180,12 @@ export default function PresentationEditor() {
   const [customBlockLibraryState, setCustomBlockLibraryState] = useState<{
     search: string;
     scope: "All" | "Built-in" | "Mine" | "Team";
-    sortOrder: "Featured" | "Newest" | "A-Z" | "Most Used";
+    activityFilter: "All" | "Governed" | "Featured" | "Transferred";
+    sortOrder: "Featured" | "Newest" | "A-Z" | "Most Used" | "Recent Activity";
   }>({
     search: "",
     scope: "All",
+    activityFilter: "All",
     sortOrder: "Featured",
   });
   const createDeckMutation = trpc.presentation.createDeck.useMutation();
@@ -1858,6 +2210,8 @@ export default function PresentationEditor() {
       ? "newest"
       : customBlockLibraryState.sortOrder === "Most Used"
         ? "most_used"
+      : customBlockLibraryState.sortOrder === "Recent Activity"
+        ? "recent_activity"
       : customBlockLibraryState.sortOrder === "A-Z"
         ? "a_z"
         : "featured",
@@ -1870,6 +2224,7 @@ export default function PresentationEditor() {
   const updateCustomBlockMutation = trpc.presentation.updateCustomBlock.useMutation();
   const trackCustomBlockUseMutation = trpc.presentation.trackCustomBlockUse.useMutation();
   const relayoutSlideMutation = trpc.presentation.ai.relayoutSlide.useMutation();
+  const repairSlideFromNoteMutation = trpc.presentation.ai.repairSlideFromNote.useMutation();
   const resolvePendingMediaMutation = trpc.presentation.ai.resolvePendingMedia.useMutation();
   const updateItemMutation = trpc.library.updateItem.useMutation();
 
@@ -1916,6 +2271,10 @@ export default function PresentationEditor() {
     preLayoutState: CanvasCommandState;
     postLayoutState: CanvasCommandState;
   } | null>(null);
+  const restoredAutoLayoutHistoryRef = useRef<{
+    slideId: number;
+    slideVersion: number | null;
+  } | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [expectedSlideVersion, setExpectedSlideVersion] = useState<number | null>(null);
   const [conflictPolicy, setConflictPolicy] = useState(() => createConflictPolicyState());
@@ -1943,10 +2302,12 @@ export default function PresentationEditor() {
   const [projectTitleDraft, setProjectTitleDraft] = useState("");
   const [deckNoteDraft, setDeckNoteDraft] = useState("");
   const [slideNoteDraft, setSlideNoteDraft] = useState("");
+  const [slideNoteRepairStatusIndex, setSlideNoteRepairStatusIndex] = useState(0);
   const [isProjectTitleEditing, setIsProjectTitleEditing] = useState(false);
   const [isProjectTitleSaving, setIsProjectTitleSaving] = useState(false);
   const [isDeckNoteDialogOpen, setIsDeckNoteDialogOpen] = useState(false);
   const [isSlideNoteDialogOpen, setIsSlideNoteDialogOpen] = useState(false);
+  const [isAILayoutPreviewDialogOpen, setIsAILayoutPreviewDialogOpen] = useState(false);
   const [isDeckNoteSaving, setIsDeckNoteSaving] = useState(false);
   const [deckNoteConflict, setDeckNoteConflict] = useState<DeckNoteConflictState | null>(null);
   const [autoDeckInitAttempted, setAutoDeckInitAttempted] = useState(false);
@@ -2309,6 +2670,32 @@ export default function PresentationEditor() {
   ), [draftSignature, persistedSlideSignature]);
   const slideNoteDirty = (selectedSlide?.notes ?? "") !== slideNoteDraft;
   const hasSavedSlideNote = Boolean((selectedSlide?.notes ?? "").trim()) && !slideNoteDirty;
+  const slideNoteRepairBusy = repairSlideFromNoteMutation.isPending;
+  const slideNoteRepairStatuses = [
+    "Analyzing slide note...",
+    "Structuring title and content...",
+    "Generating image...",
+    "Composing slide layout...",
+  ] as const;
+  const slideNoteRepairStatusLabel = slideNoteRepairStatuses[
+    Math.min(slideNoteRepairStatusIndex, slideNoteRepairStatuses.length - 1)
+  ] ?? slideNoteRepairStatuses[0];
+
+  useEffect(() => {
+    if (!slideNoteRepairBusy) {
+      setSlideNoteRepairStatusIndex(0);
+      return;
+    }
+
+    setSlideNoteRepairStatusIndex(0);
+    const intervalId = window.setInterval(() => {
+      setSlideNoteRepairStatusIndex((current) => (
+        current >= slideNoteRepairStatuses.length - 1 ? current : current + 1
+      ));
+    }, 1600);
+
+    return () => window.clearInterval(intervalId);
+  }, [slideNoteRepairBusy]);
   const deckNoteDirty = (deck?.notes ?? "") !== deckNoteDraft;
   const unsavedCachedSlideIds = (() => {
     const result: number[] = [];
@@ -2358,6 +2745,12 @@ export default function PresentationEditor() {
     const firstComponentId = draftComponents[0]?.componentId;
     return isBuiltInPresentationComponentId(firstComponentId) ? firstComponentId : undefined;
   }, [draftComponents]);
+  const renderableDraftMedia = useMemo(
+    () => getRenderableSlideElements(draftContent).filter((element) => element.type === "image" || element.type === "video"),
+    [draftContent],
+  );
+  const draftHasImage = renderableDraftMedia.some((element) => element.type === "image" && !element.svgContent);
+  const draftHasVideo = renderableDraftMedia.some((element) => element.type === "video");
   const renderableDraftElements = useMemo(
     () => getRenderableSlideElements(draftContent),
     [draftContent],
@@ -2381,18 +2774,43 @@ export default function PresentationEditor() {
       : null),
     [aiRecipeOverrideChoice],
   );
+  const parsedAIOverrideSections = useMemo(
+    () => parseSlideNarrativeSectionsFromNotes(slideNoteDraft || selectedSlide?.notes),
+    [selectedSlide?.notes, slideNoteDraft],
+  );
+  const aiOverrideBodyLines = useMemo(
+    () => selectedSlide ? collectSlideBodyLinesForAIOverride(selectedSlide.title, draftContent) : [],
+    [draftContent, selectedSlide],
+  );
+  const inferredAILayoutRecipeId = useMemo(
+    () => inferAIOverrideRecipeId({
+      title: selectedSlide?.title ?? "Key Insight",
+      body: aiOverrideBodyLines,
+      sections: parsedAIOverrideSections,
+      hasImage: draftHasImage,
+      hasVideo: draftHasVideo,
+    }),
+    [aiOverrideBodyLines, draftHasImage, draftHasVideo, parsedAIOverrideSections, selectedSlide?.title],
+  );
   useEffect(() => {
-    const nextChoice = slideAIDesign?.componentRecipeId;
-    if (isBuiltInPresentationComponentId(nextChoice)) {
-      setAiRecipeOverrideChoice(nextChoice);
-      return;
-    }
-    if (currentComponentRecipeId) {
-      setAiRecipeOverrideChoice(currentComponentRecipeId);
-      return;
-    }
-    setAiRecipeOverrideChoice("");
-  }, [currentComponentRecipeId, selectedSlide?.id, slideAIDesign?.componentRecipeId]);
+    const candidates = [
+      slideAIDesign?.componentRecipeId,
+      currentComponentRecipeId,
+      inferredAILayoutRecipeId,
+    ];
+    const nextChoice = candidates.find((candidate): candidate is BuiltInPresentationComponentId => (
+      isBuiltInPresentationComponentId(candidate)
+      && recipeSupportsAvailableMedia(candidate, { hasImage: draftHasImage, hasVideo: draftHasVideo })
+    ));
+    setAiRecipeOverrideChoice(nextChoice ?? inferredAILayoutRecipeId);
+  }, [
+    currentComponentRecipeId,
+    draftHasImage,
+    draftHasVideo,
+    inferredAILayoutRecipeId,
+    selectedSlide?.id,
+    slideAIDesign?.componentRecipeId,
+  ]);
   useEffect(() => {
     if (Array.isArray(customBlocksQuery.data)) {
       setCustomBlocks(customBlocksQuery.data.map(clonePresentationCustomBlock));
@@ -2424,6 +2842,20 @@ export default function PresentationEditor() {
     }
     return source;
   }, [draftComponents, selectedComponent]);
+  const currentAILayoutRecipeId = useMemo(
+    () => {
+      const aiRecipeId = slideAIDesign?.componentRecipeId;
+      if (
+        isBuiltInPresentationComponentId(aiRecipeId)
+        && recipeSupportsAvailableMedia(aiRecipeId, { hasImage: draftHasImage, hasVideo: draftHasVideo })
+      ) {
+        return aiRecipeId;
+      }
+      return currentComponentRecipeId ?? inferredAILayoutRecipeId ?? null;
+    },
+    [currentComponentRecipeId, draftHasImage, draftHasVideo, inferredAILayoutRecipeId, slideAIDesign?.componentRecipeId],
+  );
+  const showAILayoutPanel = Boolean(selectedSlide);
   const selectedComponentBounds = useMemo(
     () => selectedComponent ? getComponentBounds(selectedComponent) : null,
     [selectedComponent],
@@ -2668,6 +3100,29 @@ export default function PresentationEditor() {
     () => normalizeCanvasSize(draftContent.canvas),
     [draftContent.canvas],
   );
+  const aiOverridePreviewNarrative = useMemo(() => {
+    if (!selectedSlide || !aiRecipeOverrideChoice) {
+      return null;
+    }
+    const persistedNarrative = slideAIDesign?.narrative;
+    const fallbackBody = aiOverrideBodyLines.length > 0
+      ? aiOverrideBodyLines
+      : parsedAIOverrideSections.flatMap((section) => section.details).slice(0, 8);
+    return adaptAIOverrideNarrativeForRecipe(aiRecipeOverrideChoice, {
+      title: persistedNarrative?.title || selectedSlide.title,
+      body: persistedNarrative?.body?.length ? [...persistedNarrative.body] : (fallbackBody.length > 0 ? fallbackBody : [selectedSlide.title]),
+      notes: persistedNarrative?.notes ?? (slideNoteDraft.trim() || undefined),
+      sections: persistedNarrative?.sections?.length ? persistedNarrative.sections : parsedAIOverrideSections,
+      graphicCategory: persistedNarrative?.graphicCategory,
+    });
+  }, [
+    aiOverrideBodyLines,
+    aiRecipeOverrideChoice,
+    parsedAIOverrideSections,
+    selectedSlide,
+    slideAIDesign?.narrative,
+    slideNoteDraft,
+  ]);
   const aiRecipePreviewElements = useMemo(() => {
     if (!aiRecipeOverrideChoice) {
       return null;
@@ -2676,20 +3131,21 @@ export default function PresentationEditor() {
     if (
       reusableBuiltInComponent
       && reusableBuiltInComponent.componentId === aiRecipeOverrideChoice
+      && selectedComponentId === reusableBuiltInComponent.id
     ) {
       return reusableBuiltInComponent.fallbackElements;
     }
 
-    if (slideAIDesign?.narrative) {
+    if (aiOverridePreviewNarrative) {
       return buildBuiltInPresentationComponentInstanceFromNarrative(aiRecipeOverrideChoice, {
         canvas: activeCanvasSize,
         instanceId: `preview-${aiRecipeOverrideChoice}`,
         narrative: {
-          title: slideAIDesign.narrative.title,
-          body: [...slideAIDesign.narrative.body],
-          notes: slideAIDesign.narrative.notes,
-          sections: slideAIDesign.narrative.sections,
-          graphicCategory: slideAIDesign.narrative.graphicCategory,
+          title: aiOverridePreviewNarrative.title,
+          body: [...aiOverridePreviewNarrative.body],
+          notes: aiOverridePreviewNarrative.notes,
+          sections: aiOverridePreviewNarrative.sections,
+          graphicCategory: aiOverridePreviewNarrative.graphicCategory,
           mediaUrl: inferAIOverrideMediaUrl(draftContent, aiRecipeOverrideChoice),
         },
       }).fallbackElements;
@@ -2699,7 +3155,14 @@ export default function PresentationEditor() {
       canvas: activeCanvasSize,
       instanceId: `preview-${aiRecipeOverrideChoice}`,
     }).fallbackElements;
-  }, [activeCanvasSize, aiRecipeOverrideChoice, draftContent, reusableBuiltInComponent, slideAIDesign?.narrative]);
+  }, [
+    activeCanvasSize,
+    aiOverridePreviewNarrative,
+    aiRecipeOverrideChoice,
+    draftContent,
+    reusableBuiltInComponent,
+    selectedComponentId,
+  ]);
   const aiRecipePreviewSource = useMemo(() => (
     aiRecipePreviewElements
       ? {
@@ -2714,10 +3177,55 @@ export default function PresentationEditor() {
       ? { previewSource: aiRecipePreviewSource }
       : undefined,
     {
-      enabled: Boolean(aiRecipePreviewSource) && slideAIDesign?.source === "draft-with-ai",
+      enabled: Boolean(aiRecipePreviewSource),
       staleTime: 30_000,
     },
   );
+  const aiLayoutPanelPreviewWidth = activeCanvasSize.height > activeCanvasSize.width ? 220 : 272;
+  const aiLayoutDialogPreviewWidth = activeCanvasSize.height > activeCanvasSize.width ? 420 : 820;
+
+  function renderAILayoutPreview(size: "panel" | "dialog") {
+    if (!aiRecipePreviewDefinition) {
+      return null;
+    }
+
+    const previewTestId = size === "dialog" ? "ai-layout-preview-dialog" : "ai-layout-preview";
+    const previewWidth = size === "dialog" ? aiLayoutDialogPreviewWidth : aiLayoutPanelPreviewWidth;
+    const previewClassName = size === "dialog"
+      ? "mt-3 max-h-[70vh] overflow-auto rounded-md border border-slate-200 bg-slate-50 p-4"
+      : "mt-2";
+
+    if (aiRecipeCanonicalPreviewQuery.data?.svg) {
+      return (
+        <ResponsiveSvgPreview
+          svg={aiRecipeCanonicalPreviewQuery.data.svg}
+          className={previewClassName}
+          testId={previewTestId}
+        />
+      );
+    }
+
+    if (aiRecipePreviewElements) {
+      return (
+        <SlideElementPreview
+          elements={aiRecipePreviewElements}
+          canvasSize={activeCanvasSize}
+          background={draftContent.background}
+          targetWidth={previewWidth}
+          testId={previewTestId}
+          className={previewClassName}
+        />
+      );
+    }
+
+    return (
+      <ResponsiveSvgPreview
+        svg={aiRecipePreviewDefinition.previewSvg}
+        className={previewClassName}
+        testId={previewTestId}
+      />
+    );
+  }
   const slidesById = useMemo(() => {
     const map = new Map<number, (typeof slides)[number]>();
     for (const slide of slides) {
@@ -3169,6 +3677,23 @@ export default function PresentationEditor() {
     const nextSelected = next.elements[0]?.id ? [next.elements[0].id] : [];
     const nextState = createCanvasCommandState(next, nextSelected);
     selectSingleComponent(nextSelected.length === 0 ? (next.components?.[0]?.id ?? null) : null);
+
+    const restoredAutoLayoutHistory = restoredAutoLayoutHistoryRef.current;
+    if (
+      restoredAutoLayoutHistory
+      && restoredAutoLayoutHistory.slideId === selectedSlide.id
+      && (
+        restoredAutoLayoutHistory.slideVersion === null
+        || restoredAutoLayoutHistory.slideVersion === selectedSlide.version
+      )
+    ) {
+      restoredAutoLayoutHistoryRef.current = null;
+      setCommandState(commandBusRef.current.getState());
+      setSaveState("idle");
+      setExpectedSlideVersion(selectedSlide.version);
+      setSlideNoteDraft(cachedDraft?.notes ?? selectedSlide.notes ?? "");
+      return;
+    }
 
     // If auto layout just ran, restore undo history so the user can Ctrl+Z back to pre-layout state.
     const pendingUndo = pendingAutoLayoutUndoRef.current;
@@ -3998,28 +4523,29 @@ export default function PresentationEditor() {
       return;
     }
 
-    const persistedNarrative = slideAIDesign?.narrative;
-    const parsedSections = parseSlideNarrativeSectionsFromNotes(slideNoteDraft);
-    const body = collectSlideBodyLinesForAIOverride(selectedSlide.title, draftContent);
-    const fallbackBody = body.length > 0
-      ? body
-      : parsedSections.flatMap((section) => section.details).slice(0, 8);
-    const narrative = persistedNarrative
+    const baseNarrative = aiOverridePreviewNarrative
       ? {
-        title: persistedNarrative.title,
-        body: [...persistedNarrative.body],
-        notes: persistedNarrative.notes ?? (slideNoteDraft.trim() || undefined),
-        sections: persistedNarrative.sections,
-        graphicCategory: persistedNarrative.graphicCategory,
-        mediaUrl: inferAIOverrideMediaUrl(draftContent, recipeId),
+        ...aiOverridePreviewNarrative,
+        body: [...aiOverridePreviewNarrative.body],
+        sections: aiOverridePreviewNarrative.sections?.map((section) => ({
+          heading: section.heading,
+          details: [...section.details],
+        })),
       }
-      : {
+      : adaptAIOverrideNarrativeForRecipe(recipeId, {
         title: selectedSlide.title,
-        body: fallbackBody.length > 0 ? fallbackBody : [selectedSlide.title],
+        body: aiOverrideBodyLines.length > 0 ? aiOverrideBodyLines : [selectedSlide.title],
         notes: slideNoteDraft.trim() || undefined,
-        sections: parsedSections.length > 0 ? parsedSections : undefined,
-        mediaUrl: inferAIOverrideMediaUrl(draftContent, recipeId),
-      };
+        sections: parsedAIOverrideSections,
+      });
+    const narrative = {
+      title: baseNarrative.title,
+      body: [...baseNarrative.body],
+      notes: baseNarrative.notes,
+      sections: baseNarrative.sections,
+      graphicCategory: baseNarrative.graphicCategory,
+      mediaUrl: inferAIOverrideMediaUrl(draftContent, recipeId),
+    };
     const nextComponent = buildBuiltInPresentationComponentInstanceFromNarrative(recipeId, {
       canvas: activeCanvasSize,
       instanceId: nextComponentId(recipeId),
@@ -4042,22 +4568,20 @@ export default function PresentationEditor() {
         selectionMode: "manual-override",
         selectionReason: `Manual override applied in Presentation Edit: ${PRESENTATION_COMPONENT_AI_GUIDANCE[recipeId]?.label ?? recipeId}.`,
         candidateRecipes: slideAIDesign?.candidateRecipes,
-        narrative: persistedNarrative
-          ? {
-            ...persistedNarrative,
-            body: [...persistedNarrative.body],
-            sections: persistedNarrative.sections?.map((section) => ({
-              heading: section.heading,
-              details: [...section.details],
-            })),
-          }
-          : {
-            title: narrative.title,
-            body: [...narrative.body],
-            ...(narrative.notes ? { notes: narrative.notes } : {}),
-            ...(narrative.sections ? { sections: narrative.sections } : {}),
-            ...(narrative.graphicCategory ? { graphicCategory: narrative.graphicCategory } : {}),
-          },
+        narrative: {
+          title: narrative.title,
+          body: [...narrative.body],
+          ...(narrative.notes ? { notes: narrative.notes } : {}),
+          ...(narrative.sections
+            ? {
+              sections: narrative.sections.map((section) => ({
+                heading: section.heading,
+                details: [...section.details],
+              })),
+            }
+            : {}),
+          ...(narrative.graphicCategory ? { graphicCategory: narrative.graphicCategory } : {}),
+        },
         overrideHistory: [
           ...(slideAIDesign?.overrideHistory ?? []),
           {
@@ -5376,6 +5900,7 @@ export default function PresentationEditor() {
     let appliedCount = 0;
     // Capture state before layout so undo can return to it after refreshDeck() resets command bus.
     const preLayoutState = commandBusRef.current.getState();
+    const templateSelection = resolveAutoLayoutTemplateSelection(templateChoice);
 
     try {
       for (const [index, slide] of targetSlides.entries()) {
@@ -5387,7 +5912,8 @@ export default function PresentationEditor() {
             slideId: slide.id,
             expectedVersion,
             ...(styleChoice !== "auto" ? { stylePresetId: styleChoice } : {}),
-            ...(templateChoice !== "auto" ? { templateId: templateChoice } : {}),
+            ...(templateSelection.templateId ? { templateId: templateSelection.templateId } : {}),
+            ...(templateSelection.componentRecipeId ? { componentRecipeId: templateSelection.componentRecipeId } : {}),
             includeSvg,
             includeGeometricCrop,
             ...(includeGeometricCrop ? { geometricCropShape: cropShapeChoice } : {}),
@@ -5464,6 +5990,20 @@ export default function PresentationEditor() {
           refreshDeck(),
           trpcUtils.presentation.listVersions.invalidate(),
         ]);
+        const pendingUndo = pendingAutoLayoutUndoRef.current;
+        if (pendingUndo) {
+          pendingAutoLayoutUndoRef.current = null;
+          commandBusRef.current.reset(pendingUndo.preLayoutState);
+          const restored = commandBusRef.current.execute({
+            id: "restore-post-auto-layout-after-refresh",
+            apply: () => pendingUndo.postLayoutState,
+          });
+          restoredAutoLayoutHistoryRef.current = {
+            slideId: selectedId,
+            slideVersion: slideVersionById.get(selectedId) ?? null,
+          };
+          setCommandState(restored);
+        }
       }
 
       if (appliedCount > 0) {
@@ -5487,6 +6027,110 @@ export default function PresentationEditor() {
       }
     } finally {
       setAutoLayoutProgress(null);
+    }
+  }
+
+  async function handleRepairSlideFromNote() {
+    if (!deck || !selectedSlide) {
+      toast.error("No active slide to repair.");
+      return;
+    }
+
+    const selectedId = selectedSlide.id;
+    const currentDraftNote = slideNoteDraft.trim();
+    const savedNote = String(selectedSlide.notes ?? "").trim();
+    if (!currentDraftNote && !savedNote) {
+      toast.error("Add and save a slide note first.");
+      return;
+    }
+
+    if (slideNoteDirty) {
+      const saved = await handleSaveSlide({ silent: true });
+      if (!saved) {
+        toast.error("Save the slide note first.");
+        return;
+      }
+    }
+
+    let expectedVersion = Number.isFinite(Number(selectedSlide.version))
+      ? Number(selectedSlide.version)
+      : 0;
+    if (typeof deckQuery.refetch === "function") {
+      const latest = await deckQuery.refetch();
+      const latestSlides = Array.isArray((latest.data as any)?.slides)
+        ? (latest.data as any).slides
+        : [];
+      const latestSlide = latestSlides.find((slide: any) => Number(slide?.id) === selectedId);
+      const nextVersion = Number(latestSlide?.version);
+      if (Number.isFinite(nextVersion) && nextVersion >= 0) {
+        expectedVersion = nextVersion;
+      }
+    }
+
+    const preLayoutState = commandBusRef.current.getState();
+
+    try {
+      const result = await repairSlideFromNoteMutation.mutateAsync({
+        deckId: deck.id,
+        slideId: selectedId,
+        expectedVersion,
+      });
+      const updatedSlide = (result as any)?.slide;
+      const nextVersion = Number(updatedSlide?.version);
+      const nextContent = ensureSlideContent((updatedSlide?.slideContent ?? selectedSlide.slideContent) as PresentationSlideContent);
+      const nextSelected = nextContent.elements[0]?.id ? [nextContent.elements[0].id] : [];
+      executeCommand({
+        id: "apply-slide-note-repair",
+        apply: (state) => ({
+          ...state,
+          content: nextContent,
+          selectedElementIds: nextSelected,
+          snapGuides: [],
+        }),
+      });
+      pendingAutoLayoutUndoRef.current = {
+        preLayoutState,
+        postLayoutState: commandBusRef.current.getState(),
+      };
+      clearCachedSlideDraft(selectedId);
+      if (Number.isFinite(nextVersion)) {
+        setExpectedSlideVersion(nextVersion);
+      }
+      autosaveController.markPersisted(
+        buildDraftSignature(
+          selectedId,
+          nextContent,
+          String(updatedSlide?.notes ?? selectedSlide.notes ?? slideNoteDraft),
+        ),
+      );
+      setSaveState("saved");
+      await Promise.all([
+        refreshDeck(),
+        trpcUtils.presentation.listVersions.invalidate(),
+      ]);
+      const pendingUndo = pendingAutoLayoutUndoRef.current;
+      if (pendingUndo) {
+        pendingAutoLayoutUndoRef.current = null;
+        commandBusRef.current.reset(pendingUndo.preLayoutState);
+        const restored = commandBusRef.current.execute({
+          id: "restore-post-slide-repair-after-refresh",
+          apply: () => pendingUndo.postLayoutState,
+        });
+        restoredAutoLayoutHistoryRef.current = {
+          slideId: selectedId,
+          slideVersion: Number.isFinite(nextVersion) ? nextVersion : null,
+        };
+        setCommandState(restored);
+      }
+      toast.success("Slide regenerated from saved note.");
+      const resultWarnings = Array.isArray((result as any)?.warnings)
+        ? (result as any).warnings.filter((warning: unknown) => typeof warning === "string")
+        : [];
+      if (resultWarnings.length > 0) {
+        toast.info(resultWarnings[0] as string);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Slide regeneration failed.");
     }
   }
 
@@ -7253,26 +7897,28 @@ export default function PresentationEditor() {
           <p className="mt-1 text-[11px] text-slate-500">Timing, transitions, and background for the current slide.</p>
         </div>
       ) : null}
-      {slideAIDesign?.source === "draft-with-ai" ? (
+      {showAILayoutPanel ? (
         <div className="rounded-md border border-sky-200 bg-sky-50/70 p-3" data-testid="ai-layout-panel">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">AI Layout</p>
               <p className="mt-1 text-[11px] text-sky-700">
-                Current recipe: {isBuiltInPresentationComponentId(slideAIDesign.componentRecipeId)
-                  ? (PRESENTATION_COMPONENT_AI_GUIDANCE[slideAIDesign.componentRecipeId]?.label ?? slideAIDesign.componentRecipeId)
+                Current recipe: {currentAILayoutRecipeId
+                  ? (PRESENTATION_COMPONENT_AI_GUIDANCE[currentAILayoutRecipeId]?.label ?? currentAILayoutRecipeId)
                   : "Plain template"}
               </p>
-              <p className="mt-1 text-[11px] text-sky-700">
-                Selection mode: {slideAIDesign.selectionMode}
-              </p>
-              {slideAIDesign.selectionReason ? (
+              {slideAIDesign?.selectionMode ? (
+                <p className="mt-1 text-[11px] text-sky-700">
+                  Selection mode: {slideAIDesign.selectionMode}
+                </p>
+              ) : null}
+              {slideAIDesign?.selectionReason ? (
                 <p className="mt-1 text-[11px] text-sky-700">
                   {slideAIDesign.selectionReason}
                 </p>
               ) : null}
             </div>
-            {slideAIDesign.generatedAt ? (
+            {slideAIDesign?.generatedAt ? (
               <span className="shrink-0 rounded-full border border-sky-200 bg-white px-2 py-1 text-[10px] text-sky-700">
                 {new Date(slideAIDesign.generatedAt).toLocaleDateString("en-US", {
                   month: "short",
@@ -7281,7 +7927,7 @@ export default function PresentationEditor() {
               </span>
             ) : null}
           </div>
-          {slideAIDesign.candidateRecipes?.length ? (
+          {slideAIDesign?.candidateRecipes?.length ? (
             <div className="mt-3 space-y-1">
               <p className="text-[11px] font-medium text-sky-800">Candidate recipes</p>
               <div className="flex flex-wrap gap-1.5">
@@ -7302,38 +7948,30 @@ export default function PresentationEditor() {
             <div className="mt-3 rounded-md border border-sky-200 bg-white p-2">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-[11px] font-medium text-sky-800">Preview</p>
-                <div className="text-right text-[10px] text-sky-600">
-                  <div>{aiRecipePreviewDefinition.label}</div>
-                  {aiRecipeCanonicalPreviewQuery.data ? (
-                    <div data-testid="ai-layout-preview-metadata">
-                      Canonical {aiRecipeCanonicalPreviewQuery.data.rendererVersion}
-                      {" · "}
-                      {aiRecipeCanonicalPreviewQuery.data.previewHash.slice(0, 8)}
-                    </div>
-                  ) : null}
+                <div className="flex items-center gap-2">
+                  <div className="text-right text-[10px] text-sky-600">
+                    <div>{aiRecipePreviewDefinition.label}</div>
+                    {aiRecipeCanonicalPreviewQuery.data ? (
+                      <div data-testid="ai-layout-preview-metadata">
+                        Canonical {aiRecipeCanonicalPreviewQuery.data.rendererVersion}
+                        {" · "}
+                        {aiRecipeCanonicalPreviewQuery.data.previewHash.slice(0, 8)}
+                      </div>
+                    ) : null}
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 border-sky-200 bg-white px-2 text-[11px] text-sky-800 hover:bg-sky-100"
+                    onClick={() => setIsAILayoutPreviewDialogOpen(true)}
+                  >
+                    <Maximize2 className="mr-1 h-3.5 w-3.5" />
+                    Open Large Preview
+                  </Button>
                 </div>
               </div>
-              {aiRecipeCanonicalPreviewQuery.data?.svg ? (
-                <div
-                  className="mt-2 overflow-hidden rounded-md border border-slate-200 bg-slate-50"
-                  data-testid="ai-layout-preview"
-                  dangerouslySetInnerHTML={{ __html: aiRecipeCanonicalPreviewQuery.data.svg }}
-                />
-              ) : aiRecipePreviewElements ? (
-                <SlideElementPreview
-                  elements={aiRecipePreviewElements}
-                  canvasSize={activeCanvasSize}
-                  background={draftContent.background}
-                  testId="ai-layout-preview"
-                  className="mt-2"
-                />
-              ) : (
-                <div
-                  className="mt-2 overflow-hidden rounded-md border border-slate-200 bg-slate-50"
-                  data-testid="ai-layout-preview"
-                  dangerouslySetInnerHTML={{ __html: aiRecipePreviewDefinition.previewSvg }}
-                />
-              )}
+              {renderAILayoutPreview("panel")}
             </div>
           ) : null}
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
@@ -7535,25 +8173,30 @@ export default function PresentationEditor() {
       onDeleteComponent={handleDeleteComponent}
     />
   );
-  const componentCanvasOverlay = selectedComponent && selectedComponentBounds && selectedComponentDefinition ? (
-    <ComponentCanvasOverlay
-      component={selectedComponent}
-      componentLabel={selectedComponentDefinition.label}
-      componentBounds={selectedComponentBounds}
-      slotAreas={selectedComponentCanvasSlots}
-      activeSlotId={selectedComponentSlotId}
-      onSelectSlot={(slotId) => handleSelectComponentSlot(selectedComponent.id, slotId)}
-      onClearSlot={() => setSelectedComponentSlotId(null)}
-      onUpdateTextSlot={handleUpdateSelectedCanvasSlotText}
-      onUpdateImageSlot={handleUpdateSelectedCanvasSlotImage}
-      onUpdateVideoSlot={handleUpdateSelectedCanvasSlotVideo}
-      onUpdateListSlot={handleUpdateSelectedCanvasSlotList}
-      imageAssets={mergedImageLibraryAssets}
-      videoAssets={mergedVideoLibraryAssets}
-      onPickImageAsset={handlePickSelectedCanvasImageAsset}
-      onPickVideoAsset={handlePickSelectedCanvasVideoAsset}
-    />
-  ) : null;
+  const componentCanvasOverlay = selectedComponent && selectedComponentBounds && selectedComponentDefinition
+    ? ({ interactionScale }: { interactionScale: number }) => (
+      <ComponentCanvasOverlay
+        component={selectedComponent}
+        componentLabel={selectedComponentDefinition.label}
+        interactionScale={interactionScale}
+        componentBounds={selectedComponentBounds}
+        slotAreas={selectedComponentCanvasSlots}
+        activeSlotId={selectedComponentSlotId}
+        onSelectSlot={(slotId) => handleSelectComponentSlot(selectedComponent.id, slotId)}
+        onClearSlot={() => setSelectedComponentSlotId(null)}
+        onMoveComponent={handleMoveSelection}
+        onEndComponentDrag={handleDragEnd}
+        onUpdateTextSlot={handleUpdateSelectedCanvasSlotText}
+        onUpdateImageSlot={handleUpdateSelectedCanvasSlotImage}
+        onUpdateVideoSlot={handleUpdateSelectedCanvasSlotVideo}
+        onUpdateListSlot={handleUpdateSelectedCanvasSlotList}
+        imageAssets={mergedImageLibraryAssets}
+        videoAssets={mergedVideoLibraryAssets}
+        onPickImageAsset={handlePickSelectedCanvasImageAsset}
+        onPickVideoAsset={handlePickSelectedCanvasVideoAsset}
+      />
+    )
+    : null;
   const elementPropertiesPanel = selectedElement ? (
     <div className="space-y-3">
       {componentInspectorPanel}
@@ -8377,6 +9020,69 @@ export default function PresentationEditor() {
           </div>
         </div>
       ) : null}
+      <Dialog open={isAILayoutPreviewDialogOpen} onOpenChange={setIsAILayoutPreviewDialogOpen}>
+        <DialogContent className="flex max-h-[92vh] w-[min(96vw,1320px)] max-w-[min(96vw,1320px)] flex-col overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>AI Layout Preview</DialogTitle>
+            <DialogDescription>
+              Review the rebuilt block layout in a larger canvas and apply recipe overrides without the narrow sidebar preview.
+            </DialogDescription>
+          </DialogHeader>
+          {aiRecipePreviewDefinition ? (
+            <div className="flex min-h-0 flex-1 flex-col space-y-3 overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-sky-200 bg-sky-50 px-3 py-2">
+                <div>
+                  <p className="text-sm font-semibold text-sky-900">{aiRecipePreviewDefinition.label}</p>
+                  {aiRecipeCanonicalPreviewQuery.data ? (
+                    <p className="text-xs text-sky-700">
+                      Canonical {aiRecipeCanonicalPreviewQuery.data.rendererVersion}
+                      {" · "}
+                      {aiRecipeCanonicalPreviewQuery.data.previewHash.slice(0, 8)}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex min-w-[260px] flex-1 flex-col gap-2 sm:flex-row sm:items-end sm:justify-end">
+                  <label className="flex-1 sm:max-w-xs">
+                    <span className="text-[11px] font-medium text-sky-800">Override recipe</span>
+                    <select
+                      aria-label="AI Layout Recipe Override Dialog"
+                      className="mt-1 h-9 w-full rounded border border-sky-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none"
+                      value={aiRecipeOverrideChoice}
+                      onChange={(event) => setAiRecipeOverrideChoice(event.target.value as BuiltInPresentationComponentId)}
+                    >
+                      {BUILT_IN_PRESENTATION_COMPONENT_IDS.map((recipeId) => (
+                        <option key={recipeId} value={recipeId}>
+                          {PRESENTATION_COMPONENT_AI_GUIDANCE[recipeId]?.label ?? recipeId}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <Button
+                    size="sm"
+                    className="h-9"
+                    disabled={!aiRecipeOverrideChoice}
+                    onClick={() => {
+                      if (!aiRecipeOverrideChoice) {
+                        return;
+                      }
+                      handleApplyAIRecipeOverride(aiRecipeOverrideChoice);
+                    }}
+                  >
+                    Rebuild AI Layout
+                  </Button>
+                </div>
+              </div>
+              <div className="min-h-0 flex-1 overflow-auto">
+                {renderAILayoutPreview("dialog")}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-sm text-slate-500">
+              No AI layout preview is available for this slide yet.
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={isReorderDialogOpen}
         onOpenChange={(open) => {
@@ -8495,8 +9201,13 @@ export default function PresentationEditor() {
                   <SelectContent>
                     <SelectItem value="auto">Auto choose</SelectItem>
                     {AI_LAYOUT_TEMPLATE_IDS.map((templateId) => (
-                      <SelectItem key={templateId} value={templateId}>
+                      <SelectItem key={templateId} value={`template:${templateId}`}>
                         {AUTO_LAYOUT_TEMPLATE_LABELS[templateId]}
+                      </SelectItem>
+                    ))}
+                    {BUILT_IN_PRESENTATION_COMPONENT_IDS.map((componentId) => (
+                      <SelectItem key={componentId} value={`block:${componentId}`}>
+                        {AUTO_LAYOUT_BLOCK_LABELS[componentId]}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -8945,6 +9656,12 @@ export default function PresentationEditor() {
               rows={14}
               disabled={!selectedSlide}
             />
+            {slideNoteRepairBusy ? (
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span>{slideNoteRepairStatusLabel}</span>
+              </div>
+            ) : null}
           </div>
           <DialogFooter>
             <Button
@@ -8962,6 +9679,15 @@ export default function PresentationEditor() {
               onClick={() => setIsSlideNoteDialogOpen(false)}
             >
               Close
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => void handleRepairSlideFromNote()}
+              disabled={!selectedSlide || slideNoteRepairBusy || (!slideNoteDraft.trim() && !(selectedSlide?.notes ?? "").trim())}
+            >
+              {slideNoteRepairBusy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
+              {slideNoteDirty ? "Save + Generate" : "Generate Slide"}
             </Button>
             <Button
               type="button"
