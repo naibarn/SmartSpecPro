@@ -150,6 +150,7 @@ export interface SkillExecutionPolicyConfig {
 
   /** Capability requirements for model selection */
   requirements?: {
+    supportsVision?: boolean;
     supportsResponses?: boolean;
     supportsStructuredOutputs?: boolean;
     supportsWebSearch?: boolean;
@@ -271,6 +272,9 @@ export interface SkillMetadata {
   max_input_mb?: number;
   // Content quality constraints (Spec 038)
   content_quality?: SkillContentQuality;
+  // Model requirements convenience alias (Feature 041)
+  model_requirements?: Record<string, unknown>;
+  modelRequirements?: Record<string, unknown>;
   contentQuality?: SkillContentQuality;
 }
 

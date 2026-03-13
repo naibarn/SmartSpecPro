@@ -2558,12 +2558,29 @@ export const skillsRouter = router({
         visibility: z.enum(["private", "pending_approval", "public", "rejected"]).optional(),
         // Spec 038: Content Quality & Execution Policy
         executionPolicy: z.object({
+          // Spec 038 fields
           thinking_level_hint: z.enum(["low", "medium", "high"]).nullable().optional(),
           requires_web_search: z.boolean().optional(),
           min_citation_coverage: z.number().min(0).max(1).optional(),
           refresh_cadence_days: z.number().min(1).max(365).optional(),
           disclosure_required: z.boolean().optional(),
           response_mode: z.enum(["markdown", "cms_json"]).optional(),
+          // Feature 041: Capability requirements
+          requirements: z.object({
+            supportsVision: z.boolean().optional(),
+            supportsFunctionTools: z.boolean().optional(),
+            supportsStructuredOutputs: z.boolean().optional(),
+            supportsWebSearch: z.boolean().optional(),
+            supportsCodeExecution: z.boolean().optional(),
+            supportsComputerUse: z.boolean().optional(),
+            supportsBackground: z.boolean().optional(),
+            supportsResponses: z.boolean().optional(),
+            contextLength: z.number().int().min(1000).max(2000000).optional(),
+          }).nullable().optional(),
+          // Feature 041: Execution mode
+          mode: z.enum(["requirements", "fixed", "hybrid"]).optional(),
+          // Feature 041: Conversation override flag
+          allowConversationOverride: z.boolean().optional(),
         }).optional(),
       })
     )
@@ -2690,12 +2707,23 @@ export const skillsRouter = router({
 
         updateObj.executionPolicyJson = {
           ...existing,
+          // Spec 038 fields
           thinking_level_hint: updateData.executionPolicy.thinking_level_hint,
           requires_web_search: updateData.executionPolicy.requires_web_search,
           min_citation_coverage: updateData.executionPolicy.min_citation_coverage,
           refresh_cadence_days: updateData.executionPolicy.refresh_cadence_days,
           disclosure_required: updateData.executionPolicy.disclosure_required,
           response_mode: updateData.executionPolicy.response_mode,
+          // Feature 041 fields
+          ...(updateData.executionPolicy.requirements !== undefined
+            ? { requirements: updateData.executionPolicy.requirements }
+            : {}),
+          ...(updateData.executionPolicy.mode !== undefined
+            ? { mode: updateData.executionPolicy.mode }
+            : {}),
+          ...(updateData.executionPolicy.allowConversationOverride !== undefined
+            ? { allowConversationOverride: updateData.executionPolicy.allowConversationOverride }
+            : {}),
         };
       }
 
