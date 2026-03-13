@@ -687,6 +687,12 @@ export const modelProviderMap = pgTable("model_provider_map", {
   /** Supports background/async processing */
   supportsBackground: boolean("supportsBackground").default(false),
 
+  /** Supports vision / image input */
+  supportsVision: boolean("supportsVision").default(false),
+
+  /** Whether priority was manually set by admin (locks against auto-reassignment) */
+  priorityLocked: boolean("priorityLocked").default(false),
+
   /** Whether this mapping is active */
   isEnabled: boolean("isEnabled").default(true).notNull(),
 
