@@ -1,5 +1,6 @@
 import {
   presentationSlideContentSchema,
+  type PresentationComponentInstance,
   type PresentationSlideContent,
   type PresentationSlideElement,
 } from "./contracts";
@@ -42,14 +43,18 @@ function normalizeElement(element: PresentationSlideElement): PresentationSlideE
       src: element.src,
       alt: element.alt,
       imageFit: element.imageFit,
+      mediaShape: element.mediaShape,
+      mediaCornerRadius: element.mediaCornerRadius,
       imagePositionX: element.imagePositionX,
       imagePositionY: element.imagePositionY,
       imageZoom: element.imageZoom,
       imagePrompt: element.imagePrompt,
       imageModelId: element.imageModelId,
       imageReferenceUrls: element.imageReferenceUrls,
+      imageExtraParams: element.imageExtraParams,
       svgContent: element.svgContent,
       svgColor: element.svgColor,
+      mediaMotion: element.mediaMotion,
     };
   }
 
@@ -68,6 +73,17 @@ function normalizeElement(element: PresentationSlideElement): PresentationSlideE
       title: element.title,
       muted: element.muted,
       loop: element.loop,
+      videoFit: element.videoFit,
+      mediaShape: element.mediaShape,
+      mediaCornerRadius: element.mediaCornerRadius,
+      videoPositionX: element.videoPositionX,
+      videoPositionY: element.videoPositionY,
+      videoZoom: element.videoZoom,
+      videoPrompt: element.videoPrompt,
+      videoModelId: element.videoModelId,
+      videoReferenceUrls: element.videoReferenceUrls,
+      videoExtraParams: element.videoExtraParams,
+      mediaMotion: element.mediaMotion,
     };
   }
 
@@ -102,11 +118,39 @@ function normalizeElement(element: PresentationSlideElement): PresentationSlideE
   };
 }
 
+function normalizeComponent(component: PresentationComponentInstance): PresentationComponentInstance {
+  return {
+    id: component.id,
+    componentId: component.componentId,
+    componentType: component.componentType,
+    definitionRevision: component.definitionRevision,
+    slotBindings: component.slotBindings.map((binding) => ({ ...binding })),
+    fallbackElements: component.fallbackElements.map((element) => normalizeElement(element)),
+    preview: component.preview
+      ? {
+        previewHash: component.preview.previewHash,
+        target: component.preview.target,
+        status: component.preview.status,
+        artifactUri: component.preview.artifactUri,
+        rendererVersion: component.preview.rendererVersion,
+        fontCatalogVersion: component.preview.fontCatalogVersion,
+        definitionRevision: component.preview.definitionRevision,
+        staleReason: component.preview.staleReason,
+        createdAt: component.preview.createdAt,
+        updatedAt: component.preview.updatedAt,
+        attemptCount: component.preview.attemptCount,
+      }
+      : undefined,
+  };
+}
+
 export function normalizePresentationSlideContent(input: unknown): PresentationSlideContent {
   const parsed = presentationSlideContentSchema.parse(input);
 
   return {
     elements: parsed.elements.map((element) => normalizeElement(element)),
+    components: parsed.components?.map((component) => normalizeComponent(component)),
+    renderOrder: parsed.renderOrder ? [...parsed.renderOrder] : undefined,
     canvas: parsed.canvas
       ? {
         preset: parsed.canvas.preset,
@@ -116,6 +160,29 @@ export function normalizePresentationSlideContent(input: unknown): PresentationS
       : undefined,
     transition: parsed.transition,
     durationMs: parsed.durationMs,
+    pendingMediaJobs: parsed.pendingMediaJobs?.map((job) => ({ ...job })),
+    background: parsed.background ? { ...parsed.background } : undefined,
     visualOnly: parsed.visualOnly,
+    aiDesign: parsed.aiDesign
+      ? {
+        ...parsed.aiDesign,
+        candidateRecipes: parsed.aiDesign.candidateRecipes?.map((candidate) => ({ ...candidate })),
+        overrideHistory: parsed.aiDesign.overrideHistory?.map((entry) => ({ ...entry })),
+        narrative: parsed.aiDesign.narrative
+          ? {
+            ...parsed.aiDesign.narrative,
+            body: [...parsed.aiDesign.narrative.body],
+            sections: parsed.aiDesign.narrative.sections?.map((section) => ({
+              heading: section.heading,
+              details: [...section.details],
+            })),
+            mediaPlan: parsed.aiDesign.narrative.mediaPlan?.map((entry) => ({
+              slotId: entry.slotId,
+              prompt: entry.prompt,
+            })),
+          }
+          : undefined,
+      }
+      : undefined,
   };
 }

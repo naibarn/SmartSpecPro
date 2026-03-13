@@ -29,6 +29,10 @@ const mutationMocks = {
   generateSlideAudioFromNote: vi.fn(),
   relayoutSlide: vi.fn(),
   resolvePendingMedia: vi.fn(),
+  saveCustomBlock: vi.fn(),
+  deleteCustomBlock: vi.fn(),
+  updateCustomBlock: vi.fn(),
+  trackCustomBlockUse: vi.fn(),
   generateImageAsync: vi.fn(),
   generateVideoAsync: vi.fn(),
   uploadReference: vi.fn(),
@@ -251,6 +255,15 @@ const queryState = {
   deckByItem: buildDeckByItem(),
   deckError: null as Error | null,
   presentationVersions: buildPresentationVersions(),
+  customBlocks: [] as any[],
+  customBlockPreview: {
+    artifactKey: "",
+    artifactUrl: "",
+    previewHash: "preview-hash-1",
+    rendererVersion: "server-svg-v1",
+    generatedAt: "2026-03-13T00:00:00.000Z",
+    svg: "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1280 720\"><rect width=\"1280\" height=\"720\" fill=\"#ffffff\" /><text x=\"120\" y=\"180\" font-size=\"52\" fill=\"#111827\">Canonical Preview</text></svg>",
+  } as any,
 };
 
 vi.mock("wouter", () => ({
@@ -278,6 +291,7 @@ vi.mock("@/lib/trpc", () => ({
       },
       presentation: {
         listVersions: { invalidate: vi.fn().mockResolvedValue(undefined) },
+        listCustomBlocks: { invalidate: vi.fn().mockResolvedValue(undefined) },
       },
       media: {
         getTask: {
@@ -407,6 +421,36 @@ vi.mock("@/lib/trpc", () => ({
           refetch: vi.fn().mockImplementation(async () => ({ data: queryState.deckByItem })),
         })),
       },
+      listCustomBlocks: {
+        useQuery: vi.fn(() => ({
+          data: queryState.customBlocks,
+          isLoading: false,
+          isError: false,
+          error: null,
+        })),
+      },
+      renderCustomBlockPreview: {
+        useQuery: vi.fn((input?: any, options?: any) => {
+          if (options?.enabled === false || !input?.previewSource) {
+            return {
+              data: undefined,
+              isLoading: false,
+              isError: false,
+              error: null,
+            };
+          }
+          const firstText = input.previewSource.fallbackElements.find((element: any) => element.type === "text")?.text || "Canonical Preview";
+          return {
+            data: {
+              ...queryState.customBlockPreview,
+              svg: `<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1280 720\"><rect width=\"1280\" height=\"720\" fill=\"#ffffff\" /><text x=\"120\" y=\"180\" font-size=\"52\" fill=\"#111827\">${firstText}</text></svg>`,
+            },
+            isLoading: false,
+            isError: false,
+            error: null,
+          };
+        }),
+      },
       availability: {
         useQuery: vi.fn(() => ({
           data: {
@@ -434,6 +478,30 @@ vi.mock("@/lib/trpc", () => ({
       addSlide: {
         useMutation: vi.fn(() => ({
           mutateAsync: mutationMocks.addSlide,
+          isPending: false,
+        })),
+      },
+      saveCustomBlock: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: mutationMocks.saveCustomBlock,
+          isPending: false,
+        })),
+      },
+      deleteCustomBlock: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: mutationMocks.deleteCustomBlock,
+          isPending: false,
+        })),
+      },
+      updateCustomBlock: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: mutationMocks.updateCustomBlock,
+          isPending: false,
+        })),
+      },
+      trackCustomBlockUse: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: mutationMocks.trackCustomBlockUse,
           isPending: false,
         })),
       },
@@ -661,6 +729,94 @@ describe("PresentationEditor", () => {
       unresolvedAssets: [],
       warnings: [],
     });
+    mutationMocks.saveCustomBlock.mockImplementation(async (input: any) => ({
+      id: "901",
+      label: input.label,
+      description: input.description,
+      category: "Custom",
+      componentId: input.componentId,
+      slotBindings: input.slotBindings,
+      visibility: input.visibility,
+      isPinned: false,
+      isTeamFeatured: false,
+      usageCount: 0,
+      favoriteUserIds: [],
+      isFavorite: false,
+      ownerUserId: 1,
+      canDelete: true,
+      canFeature: input.visibility === "team",
+      canTransferOwnership: input.visibility === "team",
+      savedAt: "2026-03-13T00:00:00.000Z",
+      preview: {
+        artifactKey: "presentation/custom-block-previews/tenant-1/1/preview.svg",
+        artifactUrl: "/api/storage/files/presentation/custom-block-previews/tenant-1/1/preview.svg",
+        previewHash: "hash-1",
+        rendererVersion: "server-svg-v1",
+        generatedAt: "2026-03-13T00:00:00.000Z",
+      },
+    }));
+    mutationMocks.deleteCustomBlock.mockResolvedValue({ deleted: true });
+    mutationMocks.updateCustomBlock.mockImplementation(async (input: any) => ({
+      id: input.blockId,
+      label: "Intro Block",
+      description: "Saved from AI Layout.",
+      category: "Custom",
+      componentId: "quote-callout",
+      slotBindings: [
+        { slotId: "quote", type: "text", text: "Saved quote" },
+        { slotId: "eyebrow", type: "text", text: "Saved eyebrow" },
+        { slotId: "attribution", type: "text", text: "Saved attribution" },
+      ],
+      visibility: "team",
+      isPinned: input.isPinned ?? false,
+      isTeamFeatured: input.isTeamFeatured ?? false,
+      usageCount: 2,
+      favoriteUserIds: input.favorite ? [1] : [],
+      isFavorite: Boolean(input.favorite),
+      ownerUserId: input.transferToUserId ?? 1,
+      canDelete: (input.transferToUserId ?? 1) === 1,
+      canFeature: input.transferToUserId === undefined,
+      canTransferOwnership: input.transferToUserId === undefined,
+      savedAt: "2026-03-13T00:00:00.000Z",
+      preview: {
+        artifactKey: "presentation/custom-block-previews/tenant-1/1/preview.svg",
+        artifactUrl: "/api/storage/files/presentation/custom-block-previews/tenant-1/1/preview.svg",
+        previewHash: "hash-1",
+        rendererVersion: "server-svg-v1",
+        generatedAt: "2026-03-13T00:00:00.000Z",
+      },
+    }));
+    mutationMocks.trackCustomBlockUse.mockImplementation(async (input: any) => ({
+      id: input.blockId,
+      label: "Intro Block",
+      description: "Saved from AI Layout.",
+      category: "Custom",
+      componentId: "quote-callout",
+      slotBindings: [
+        { slotId: "quote", type: "text", text: "Saved quote" },
+        { slotId: "eyebrow", type: "text", text: "Saved eyebrow" },
+        { slotId: "attribution", type: "text", text: "Saved attribution" },
+      ],
+      visibility: "team",
+      isPinned: false,
+      isTeamFeatured: false,
+      usageCount: 3,
+      lastUsedAt: "2026-03-13T01:00:00.000Z",
+      favoriteUserIds: [],
+      isFavorite: false,
+      ownerUserId: 1,
+      canDelete: true,
+      canFeature: true,
+      canTransferOwnership: true,
+      savedAt: "2026-03-13T00:00:00.000Z",
+      preview: {
+        artifactKey: "presentation/custom-block-previews/tenant-1/1/preview.svg",
+        artifactUrl: "/api/storage/files/presentation/custom-block-previews/tenant-1/1/preview.svg",
+        previewHash: "hash-1",
+        rendererVersion: "server-svg-v1",
+        generatedAt: "2026-03-13T00:00:00.000Z",
+      },
+    }));
     mutationMocks.generateImageAsync.mockResolvedValue({
       taskId: "media-task-1",
       status: "queued",
@@ -684,6 +840,15 @@ describe("PresentationEditor", () => {
     queryState.deckByItem = buildDeckByItem();
     queryState.deckError = null;
     queryState.presentationVersions = buildPresentationVersions();
+    queryState.customBlocks = [];
+    queryState.customBlockPreview = {
+      artifactKey: "",
+      artifactUrl: "",
+      previewHash: "preview-hash-1",
+      rendererVersion: "server-svg-v1",
+      generatedAt: "2026-03-13T00:00:00.000Z",
+      svg: "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1280 720\"><rect width=\"1280\" height=\"720\" fill=\"#ffffff\" /><text x=\"120\" y=\"180\" font-size=\"52\" fill=\"#111827\">Canonical Preview</text></svg>",
+    };
   });
 
   it("renders labeled controls for slide and canvas editing", () => {
@@ -964,6 +1129,657 @@ describe("PresentationEditor", () => {
     });
   });
 
+  it("inserts a block preset from the blocks library as a mixed multi-selection", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open blocks library/i }));
+    fireEvent.click(screen.getByRole("button", { name: /insert process steps block/i }));
+
+    expect(await screen.findByText("Step 01")).toBeInTheDocument();
+    expect(screen.getByText("Prepare inputs")).toBeInTheDocument();
+    expect(screen.getByText(/mixed object types selected\. property editing is disabled for safety\./i)).toBeInTheDocument();
+  });
+
+  it("inserts an editable component block and updates its slots without flattening to loose element selection", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open blocks library/i }));
+    expect(screen.getByTestId("block-preview-profile-summary")).toBeInTheDocument();
+    expect(screen.getByTestId("block-preview-poster-spotlight")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /insert editable profile summary block/i }));
+
+    expect(await screen.findByText(/components on slide/i)).toBeInTheDocument();
+    const nameInput = screen.getByLabelText("Profile Summary Name");
+    fireEvent.change(nameInput, { target: { value: "Jane Doe" } });
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Jane Doe")).toBeInTheDocument();
+      expect(screen.getAllByText("Jane Doe").length).toBeGreaterThan(0);
+    });
+
+    expect(screen.queryByText(/mixed object types selected\. property editing is disabled for safety\./i)).not.toBeInTheDocument();
+  });
+
+  it("inserts poster spotlight blocks through the editable component path", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open blocks library/i }));
+    fireEvent.click(screen.getByRole("button", { name: /insert editable poster spotlight block/i }));
+
+    expect(await screen.findByText(/components on slide/i)).toBeInTheDocument();
+    expect(screen.getAllByText("Campaign Spotlight").length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("Poster Spotlight CTA")).toHaveValue("Book a free consult");
+  });
+
+  it("shows AI layout telemetry and lets users rebuild the slide with a different recipe", async () => {
+    queryState.deckByItem.slides[0].slideContent = {
+      elements: [
+        { id: "bg-1", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#eff6ff" },
+        { id: "img-1", type: "image", x: 740, y: 90, width: 360, height: 520, src: "https://cdn.example.com/hero.png", alt: "Hero", imageFit: "cover" },
+        { id: "title-1", type: "text", x: 120, y: 140, width: 440, height: 120, text: "Campaign Spotlight", color: "#111827", fontSize: 52 },
+        { id: "body-1", type: "text", x: 120, y: 280, width: 420, height: 140, text: "Priority support\nPremium access\nJoin today", color: "#334155", fontSize: 28 },
+      ],
+      aiDesign: {
+        source: "draft-with-ai",
+        taskId: "task-123",
+        componentRecipeId: "poster-spotlight",
+        selectionMode: "heuristic",
+        selectionReason: "Poster recipe best matched promo copy.",
+        candidateRecipes: [
+          { recipeId: "poster-spotlight", score: 9 },
+          { recipeId: "quote-callout", score: 4 },
+        ],
+        narrative: {
+          title: "Campaign Spotlight",
+          body: ["Narrative Quote Line", "Premium access", "Join today"],
+          notes: "Original AI notes",
+          templateId: "split_right_image",
+        },
+        generatedAt: "2026-03-12T10:00:00.000Z",
+      },
+      background: {
+        type: "color",
+        value: "#dbeafe",
+      },
+    };
+
+    render(<PresentationEditor />);
+
+    expect(await screen.findByTestId("ai-layout-panel")).toBeInTheDocument();
+    expect(screen.getByText(/current recipe: poster spotlight/i)).toBeInTheDocument();
+    expect(screen.getByTestId("ai-layout-preview")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("AI Layout Recipe Override"), {
+      target: { value: "quote-callout" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /rebuild ai layout/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Quote Callout Quote")).toBeInTheDocument();
+    });
+    expect(screen.getByLabelText("Quote Callout Quote")).toHaveValue("Narrative Quote Line");
+    expect(toastMocks.success).toHaveBeenCalledWith(expect.stringMatching(/applied ai layout/i));
+  });
+
+  it("renders live AI preview content and saves rebuilt AI layouts as reusable custom blocks", async () => {
+    queryState.deckByItem.slides[0].slideContent = {
+      elements: [
+        { id: "bg-1", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#eff6ff" },
+        { id: "img-1", type: "image", x: 740, y: 90, width: 360, height: 520, src: "https://cdn.example.com/hero.png", alt: "Hero", imageFit: "cover" },
+        { id: "title-1", type: "text", x: 120, y: 140, width: 440, height: 120, text: "Campaign Spotlight", color: "#111827", fontSize: 52 },
+      ],
+      aiDesign: {
+        source: "draft-with-ai",
+        taskId: "task-234",
+        componentRecipeId: "poster-spotlight",
+        selectionMode: "heuristic",
+        selectionReason: "Poster recipe best matched promo copy.",
+        candidateRecipes: [
+          { recipeId: "poster-spotlight", score: 9 },
+          { recipeId: "quote-callout", score: 4 },
+        ],
+        narrative: {
+          title: "Campaign Spotlight",
+          body: ["Narrative Quote Line", "Premium access", "Join today"],
+          notes: "Original AI notes",
+          templateId: "split_right_image",
+        },
+        generatedAt: "2026-03-12T10:00:00.000Z",
+      },
+      background: {
+        type: "color",
+        value: "#dbeafe",
+      },
+    };
+
+    render(<PresentationEditor />);
+
+    await screen.findByTestId("ai-layout-panel");
+    fireEvent.change(screen.getByLabelText("AI Layout Recipe Override"), {
+      target: { value: "quote-callout" },
+    });
+
+    await waitFor(() => {
+      expect(within(screen.getByTestId("ai-layout-preview")).getByText("Narrative Quote Line")).toBeInTheDocument();
+    });
+    expect(screen.getByTestId("ai-layout-preview-metadata")).toHaveTextContent("Canonical server-svg-v1");
+    expect(screen.getByTestId("ai-layout-preview-metadata")).toHaveTextContent("preview-");
+
+    fireEvent.click(screen.getByRole("button", { name: /rebuild ai layout/i }));
+    await screen.findByLabelText("Quote Callout Quote");
+
+    fireEvent.click(screen.getByRole("button", { name: /save as my block/i }));
+    await waitFor(() => {
+      expect(mutationMocks.saveCustomBlock).toHaveBeenCalledWith(expect.objectContaining({
+        visibility: "private",
+        previewSource: expect.objectContaining({
+          canvas: expect.objectContaining({ width: expect.any(Number), height: expect.any(Number) }),
+          fallbackElements: expect.any(Array),
+          background: { type: "color", value: "#dbeafe" },
+        }),
+      }));
+      expect(toastMocks.success).toHaveBeenCalledWith(expect.stringMatching(/saved custom block/i));
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /open blocks library/i }));
+    expect(await screen.findByText("Intro Block")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /insert editable intro block/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Quote Callout Quote")).toHaveValue("Narrative Quote Line");
+    });
+  });
+
+  it("tracks usage when inserting a saved custom block and exposes its updated usage badge", async () => {
+    queryState.customBlocks = [
+      {
+        id: "901",
+        label: "Intro Block",
+        description: "Saved from AI Layout.",
+        category: "Custom",
+        componentId: "quote-callout",
+        slotBindings: [
+          { slotId: "quote", type: "text", text: "Saved quote" },
+          { slotId: "eyebrow", type: "text", text: "Saved eyebrow" },
+          { slotId: "attribution", type: "text", text: "Saved attribution" },
+        ],
+        visibility: "team",
+        isPinned: false,
+        isTeamFeatured: false,
+        usageCount: 2,
+        favoriteUserIds: [],
+        isFavorite: false,
+        ownerUserId: 1,
+        canDelete: true,
+        canFeature: true,
+        canTransferOwnership: true,
+        savedAt: "2026-03-13T00:00:00.000Z",
+        preview: {
+          artifactKey: "presentation/custom-block-previews/tenant-1/1/preview.svg",
+          artifactUrl: "/api/storage/files/presentation/custom-block-previews/tenant-1/1/preview.svg",
+          previewHash: "hash-1",
+          rendererVersion: "server-svg-v1",
+          generatedAt: "2026-03-13T00:00:00.000Z",
+        },
+      },
+    ];
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open blocks library/i }));
+    expect(await screen.findByText("Used 2x")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /insert editable intro block/i }));
+
+    await waitFor(() => {
+      expect(mutationMocks.trackCustomBlockUse).toHaveBeenCalledWith({ blockId: "901" });
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /open blocks library/i }));
+    expect(await screen.findByText("Used 3x")).toBeInTheDocument();
+  });
+
+  it("lets users favorite and pin saved custom blocks from the blocks library", async () => {
+    queryState.customBlocks = [
+      {
+        id: "901",
+        label: "Intro Block",
+        description: "Saved from AI Layout.",
+        category: "Custom",
+        componentId: "quote-callout",
+        slotBindings: [
+          { slotId: "quote", type: "text", text: "Saved quote" },
+          { slotId: "eyebrow", type: "text", text: "Saved eyebrow" },
+          { slotId: "attribution", type: "text", text: "Saved attribution" },
+        ],
+        visibility: "team",
+        isPinned: false,
+        isTeamFeatured: false,
+        usageCount: 2,
+        favoriteUserIds: [],
+        isFavorite: false,
+        ownerUserId: 1,
+        canDelete: true,
+        canFeature: true,
+        canTransferOwnership: true,
+        savedAt: "2026-03-13T00:00:00.000Z",
+        preview: {
+          artifactKey: "presentation/custom-block-previews/tenant-1/1/preview.svg",
+          artifactUrl: "/api/storage/files/presentation/custom-block-previews/tenant-1/1/preview.svg",
+          previewHash: "hash-1",
+          rendererVersion: "server-svg-v1",
+          generatedAt: "2026-03-13T00:00:00.000Z",
+        },
+      },
+    ];
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open blocks library/i }));
+    fireEvent.click(screen.getByTestId("favorite-custom-block-901"));
+
+    await waitFor(() => {
+      expect(mutationMocks.updateCustomBlock).toHaveBeenCalledWith({
+        blockId: "901",
+        favorite: true,
+      });
+      expect(screen.getByText("Favorite")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("pin-custom-block-901"));
+    await waitFor(() => {
+      expect(mutationMocks.updateCustomBlock).toHaveBeenCalledWith({
+        blockId: "901",
+        isPinned: true,
+      });
+      expect(screen.getByText("Pinned")).toBeInTheDocument();
+    });
+  });
+
+  it("lets owners feature team blocks and transfer ownership from the blocks library", async () => {
+    queryState.customBlocks = [
+      {
+        id: "901",
+        label: "Intro Block",
+        description: "Saved from AI Layout.",
+        category: "Custom",
+        componentId: "quote-callout",
+        slotBindings: [
+          { slotId: "quote", type: "text", text: "Saved quote" },
+        ],
+        visibility: "team",
+        isPinned: false,
+        isTeamFeatured: false,
+        usageCount: 2,
+        favoriteUserIds: [],
+        isFavorite: false,
+        ownerUserId: 1,
+        canDelete: true,
+        canFeature: true,
+        canTransferOwnership: true,
+        savedAt: "2026-03-13T00:00:00.000Z",
+        preview: {
+          artifactKey: "presentation/custom-block-previews/tenant-1/1/preview.svg",
+          artifactUrl: "/api/storage/files/presentation/custom-block-previews/tenant-1/1/preview.svg",
+          previewHash: "hash-1",
+          rendererVersion: "server-svg-v1",
+          generatedAt: "2026-03-13T00:00:00.000Z",
+        },
+      },
+    ];
+    const promptSpy = vi.spyOn(window, "prompt").mockReturnValue("22");
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open blocks library/i }));
+    fireEvent.click(screen.getByTestId("feature-custom-block-901"));
+
+    await waitFor(() => {
+      expect(mutationMocks.updateCustomBlock).toHaveBeenCalledWith({
+        blockId: "901",
+        isTeamFeatured: true,
+      });
+      expect(screen.getByText("Featured")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("transfer-custom-block-901"));
+
+    await waitFor(() => {
+      expect(promptSpy).toHaveBeenCalledWith("Transfer block to user ID");
+      expect(mutationMocks.updateCustomBlock).toHaveBeenCalledWith({
+        blockId: "901",
+        transferToUserId: 22,
+      });
+    });
+
+    promptSpy.mockRestore();
+  });
+
+  it("supports crop mode interactions on canvas for image elements", async () => {
+    queryState.deckByItem.slides[0].slideContent = {
+      elements: [
+        {
+          id: "img-1",
+          type: "image",
+          x: 120,
+          y: 90,
+          width: 420,
+          height: 480,
+          src: "https://cdn.example.com/hero.png",
+          alt: "Hero",
+          imageFit: "cover",
+          imagePositionX: 50,
+          imagePositionY: 50,
+          imageZoom: 1,
+        },
+      ],
+    };
+
+    render(<PresentationEditor />);
+
+    const canvasElement = await screen.findByRole("button", { name: /select canvas element 1: hero/i });
+    fireEvent.pointerDown(canvasElement, { button: 0, pointerId: 1, clientX: 140, clientY: 160 });
+    fireEvent.pointerUp(window, { pointerId: 1, clientX: 140, clientY: 160 });
+
+    fireEvent.click(screen.getByRole("button", { name: /enter crop mode/i }));
+    expect(screen.getByTestId("canvas-crop-toolbar")).toBeInTheDocument();
+    expect(screen.getByText("Content Mode")).toBeInTheDocument();
+
+    const zoomInput = screen.getByLabelText("Image Crop Zoom") as HTMLInputElement;
+    expect(Number(zoomInput.value)).toBeCloseTo(1, 5);
+
+    fireEvent.click(screen.getByLabelText("Zoom In Crop"));
+    await waitFor(() => {
+      expect(Number((screen.getByLabelText("Image Crop Zoom") as HTMLInputElement).value)).toBeGreaterThan(1);
+    });
+
+    const focusXInput = screen.getByLabelText("Image Crop Focus X") as HTMLInputElement;
+    expect(Number(focusXInput.value)).toBe(50);
+
+    fireEvent.click(screen.getByLabelText("Move Crop Content Right"));
+    await waitFor(() => {
+      expect(Number((screen.getByLabelText("Image Crop Focus X") as HTMLInputElement).value)).toBeGreaterThan(50);
+    });
+
+    fireEvent.pointerDown(canvasElement, { button: 0, pointerId: 7, clientX: 150, clientY: 170 });
+    fireEvent.pointerMove(window, { pointerId: 7, clientX: 210, clientY: 170 });
+    fireEvent.pointerUp(window, { pointerId: 7, clientX: 210, clientY: 170 });
+
+    await waitFor(() => {
+      expect(Number((screen.getByLabelText("Image Crop Focus X") as HTMLInputElement).value)).not.toBe(50);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /edit frame/i }));
+    expect(screen.getByText("Frame Mode")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /edit content/i }));
+    expect(screen.getByText("Content Mode")).toBeInTheDocument();
+  });
+
+  it("exposes image opacity in Properties and updates the selected element", async () => {
+    queryState.deckByItem.slides[0].slideContent = {
+      elements: [
+        {
+          id: "img-1",
+          type: "image",
+          x: 120,
+          y: 90,
+          width: 420,
+          height: 480,
+          src: "https://cdn.example.com/hero.png",
+          alt: "Hero",
+          opacity: 1,
+        },
+      ],
+    };
+
+    render(<PresentationEditor />);
+
+    const canvasElement = await screen.findByRole("button", { name: /select canvas element 1: hero/i });
+    fireEvent.pointerDown(canvasElement, { button: 0, pointerId: 1, clientX: 140, clientY: 160 });
+    fireEvent.pointerUp(window, { pointerId: 1, clientX: 140, clientY: 160 });
+
+    const opacityInput = screen.getByLabelText(/image opacity/i) as HTMLInputElement;
+    expect(Number(opacityInput.value)).toBeCloseTo(1, 5);
+
+    fireEvent.change(opacityInput, { target: { value: "0.35" } });
+
+    await waitFor(() => {
+      expect(Number((screen.getByLabelText(/image opacity/i) as HTMLInputElement).value)).toBeCloseTo(0.35, 5);
+    });
+    expect(screen.getByText("35%")).toBeInTheDocument();
+  });
+
+  it("supports selecting component slots from canvas overlays and editing them inline", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open blocks library/i }));
+    fireEvent.click(screen.getByRole("button", { name: /insert editable quote callout block/i }));
+
+    await screen.findByText(/components on slide/i);
+    fireEvent.click(screen.getByTestId("component-slot-overlay-quote"));
+
+    const canvasSlotEditor = await screen.findByTestId("component-slot-canvas-editor");
+    expect(canvasSlotEditor).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Canvas Slot Editor Quote"), {
+      target: { value: "Canvas overlay update" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByDisplayValue("Canvas overlay update").length).toBeGreaterThan(1);
+      expect(screen.getAllByText("Canvas overlay update").length).toBeGreaterThan(0);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /close canvas slot editor/i }));
+    await waitFor(() => {
+      expect(screen.queryByTestId("component-slot-canvas-editor")).not.toBeInTheDocument();
+    });
+  });
+
+  it("supports picking image slot assets from the canvas overlay library picker", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open blocks library/i }));
+    fireEvent.click(screen.getByRole("button", { name: /insert editable profile summary block/i }));
+
+    await screen.findByText(/components on slide/i);
+    fireEvent.click(screen.getByTestId("component-slot-overlay-portrait"));
+
+    const pickerButton = await screen.findByRole("button", {
+      name: /use image asset hero image for portrait image/i,
+    });
+    fireEvent.click(pickerButton);
+
+    await waitFor(() => {
+      expect(screen.getAllByDisplayValue("https://cdn.example.com/hero.png").length).toBeGreaterThan(1);
+      expect(screen.getAllByDisplayValue("Hero Image").length).toBeGreaterThan(0);
+    });
+  });
+
+  it("supports dragging an image asset from the library onto an image slot overlay", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open blocks library/i }));
+    fireEvent.click(screen.getByRole("button", { name: /insert editable profile summary block/i }));
+    await screen.findByText(/components on slide/i);
+
+    fireEvent.click(screen.getByRole("button", { name: /open photos library/i }));
+
+    const dataTransfer = createDragDataTransfer();
+    const draggableAsset = screen.getByRole("button", { name: /drag image hero image to canvas/i });
+    const portraitSlotOverlay = screen.getByTestId("component-slot-overlay-portrait");
+
+    fireEvent.dragStart(draggableAsset, { dataTransfer });
+    fireEvent.dragOver(portraitSlotOverlay, { dataTransfer });
+    fireEvent.drop(portraitSlotOverlay, { dataTransfer });
+
+    await waitFor(() => {
+      expect(screen.getAllByDisplayValue("https://cdn.example.com/hero.png").length).toBeGreaterThan(0);
+      expect(screen.getAllByDisplayValue("Hero Image").length).toBeGreaterThan(0);
+    });
+  });
+
+  it("supports picking video slot assets from the canvas overlay library picker", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open blocks library/i }));
+    fireEvent.click(screen.getByRole("button", { name: /insert editable video spotlight block/i }));
+
+    await screen.findByText(/components on slide/i);
+    fireEvent.click(screen.getByTestId("component-slot-overlay-clip"));
+
+    const pickerButton = await screen.findByRole("button", {
+      name: /use video asset teaser clip for video clip/i,
+    });
+    fireEvent.click(pickerButton);
+
+    await waitFor(() => {
+      expect(screen.getAllByDisplayValue("https://cdn.example.com/teaser.mp4").length).toBeGreaterThan(0);
+      expect(screen.getAllByDisplayValue("https://cdn.example.com/teaser-thumb.png").length).toBeGreaterThan(0);
+      expect(screen.getAllByDisplayValue("Teaser Clip").length).toBeGreaterThan(0);
+    });
+  });
+
+  it("supports dragging a video asset from the library onto a video slot overlay", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open blocks library/i }));
+    fireEvent.click(screen.getByRole("button", { name: /insert editable video spotlight block/i }));
+    await screen.findByText(/components on slide/i);
+
+    fireEvent.click(screen.getByRole("button", { name: /open videos library/i }));
+
+    const dataTransfer = createDragDataTransfer();
+    const draggableAsset = screen.getByRole("button", { name: /drag video teaser clip to canvas/i });
+    const clipSlotOverlay = screen.getByTestId("component-slot-overlay-clip");
+
+    fireEvent.dragStart(draggableAsset, { dataTransfer });
+    fireEvent.dragOver(clipSlotOverlay, { dataTransfer });
+    fireEvent.drop(clipSlotOverlay, { dataTransfer });
+
+    await waitFor(() => {
+      expect(screen.getAllByDisplayValue("https://cdn.example.com/teaser.mp4").length).toBeGreaterThan(0);
+      expect(screen.getAllByDisplayValue("Teaser Clip").length).toBeGreaterThan(0);
+    });
+  });
+
+  it("moves and deletes an editable component as one unit from canvas selection", async () => {
+    render(<PresentationEditor />);
+
+    const getCanvasObjects = () =>
+      Array.from(document.querySelectorAll("[data-canvas-object='true']")) as HTMLElement[];
+    const baselineCount = getCanvasObjects().length;
+
+    fireEvent.click(screen.getByRole("button", { name: /open blocks library/i }));
+    fireEvent.click(screen.getByRole("button", { name: /insert editable quote callout block/i }));
+
+    await screen.findByText(/components on slide/i);
+    const selectComponentButton = screen.getByRole("button", { name: /select component quote callout/i });
+    const quoteCanvasObject = screen.getByRole("button", {
+      name: /lead with one idea per slide and let the visual support the sentence/i,
+    });
+
+    expect(quoteCanvasObject).toBeTruthy();
+    expect(getCanvasObjects().length).toBeGreaterThan(baselineCount);
+    const beforeLeft = (quoteCanvasObject as HTMLElement).style.left;
+
+    fireEvent.click(selectComponentButton);
+    fireEvent.click(within(screen.getByTestId("canvas-transform-handles")).getByRole("button", { name: /move selection right/i }));
+
+    await waitFor(() => {
+      expect((screen.getByRole("button", {
+        name: /lead with one idea per slide and let the visual support the sentence/i,
+      }) as HTMLElement).style.left).not.toBe(beforeLeft);
+    });
+
+    fireEvent.keyDown(window, { key: "Delete" });
+
+    await waitFor(() => {
+      expect(screen.queryByText(/components on slide/i)).not.toBeInTheDocument();
+      expect(document.querySelectorAll("[data-canvas-object='true']")).toHaveLength(baselineCount);
+    });
+  });
+
+  it("detaches an editable component into regular elements for further editing", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open blocks library/i }));
+    fireEvent.click(screen.getByRole("button", { name: /insert editable profile summary block/i }));
+
+    await screen.findByText(/components on slide/i);
+    const beforeCount = document.querySelectorAll("[data-canvas-object='true']").length;
+    expect(beforeCount).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole("button", { name: /detach component profile summary to elements/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(/components on slide/i)).not.toBeInTheDocument();
+      expect(screen.getByText(/mixed object types selected\. property editing is disabled for safety\./i)).toBeInTheDocument();
+    });
+
+    expect(document.querySelectorAll("[data-canvas-object='true']")).toHaveLength(beforeCount);
+  });
+
+  it("resizes, rotates, and preserves component geometry across slot edits before duplicating", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open blocks library/i }));
+    fireEvent.click(screen.getByRole("button", { name: /insert editable quote callout block/i }));
+
+    await screen.findByText(/components on slide/i);
+    fireEvent.click(screen.getByRole("button", { name: /select component quote callout/i }));
+
+    const getQuoteCanvasObject = () => screen.getByRole("button", {
+      name: /editorial callout/i,
+    }) as HTMLElement;
+    const quoteCanvasObject = getQuoteCanvasObject();
+    expect(quoteCanvasObject).toBeTruthy();
+
+    const beforeWidth = quoteCanvasObject.style.width;
+    const transformHandles = within(screen.getByTestId("canvas-transform-handles"));
+    fireEvent.click(transformHandles.getByRole("button", { name: /wider/i }));
+    fireEvent.click(transformHandles.getByRole("button", { name: /rotate \+15/i }));
+
+    await waitFor(() => {
+      expect(getQuoteCanvasObject().style.width).not.toBe(beforeWidth);
+      expect(getQuoteCanvasObject().style.transform).toContain("rotate(15deg)");
+    });
+
+    const transformedWidth = getQuoteCanvasObject().style.width;
+    const transformedRotation = getQuoteCanvasObject().style.transform;
+    fireEvent.change(screen.getByLabelText("Quote Callout Quote"), {
+      target: { value: "Updated component quote" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Updated component quote")).toBeInTheDocument();
+      expect(getQuoteCanvasObject().style.width).toBe(transformedWidth);
+      expect(getQuoteCanvasObject().style.transform).toBe(transformedRotation);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /duplicate selection/i }));
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("button", { name: /select component quote callout/i })).toHaveLength(2);
+    });
+  });
+
+  it("supports copy and paste shortcuts for editable components", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open blocks library/i }));
+    fireEvent.click(screen.getByRole("button", { name: /insert editable quote callout block/i }));
+
+    await screen.findByText(/components on slide/i);
+    fireEvent.click(screen.getByRole("button", { name: /select component quote callout/i }));
+
+    fireEvent.keyDown(window, { key: "c", ctrlKey: true });
+    fireEvent.keyDown(window, { key: "v", ctrlKey: true });
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("button", { name: /select component quote callout/i })).toHaveLength(2);
+    });
+  });
+
   it("shows source badges on asset cards (History/Library/Shared)", async () => {
     queryState.libraryMediaList = {
       ...buildLibraryMediaList(),
@@ -1006,6 +1822,8 @@ describe("PresentationEditor", () => {
     render(<PresentationEditor />);
     fireEvent.click(screen.getByRole("button", { name: /auto layout slide/i }));
 
+    expect(screen.getByText("Support media clarity: 16%")).toBeInTheDocument();
+
     const watermarkTitle = screen.getByText("Watermark");
     const watermarkRow = watermarkTitle.closest("div")?.parentElement as HTMLElement;
     const watermarkSwitch = within(watermarkRow).getByRole("switch");
@@ -1026,6 +1844,7 @@ describe("PresentationEditor", () => {
       format: "png",
       clarityPercent: 20,
     });
+    expect(payload?.supplementalMediaClarityPercent).toBe(16);
   });
 
   it("explains visual-only Auto Layout behavior in the dialog", async () => {
@@ -2513,6 +3332,22 @@ describe("PresentationEditor", () => {
     });
   });
 
+  it("allows dragging the presentation note dialog by its header", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open presentation note/i }));
+
+    const dialog = await screen.findByRole("dialog", { name: /presentation note/i });
+    const header = within(dialog).getByText("Presentation Note").closest('[data-slot="dialog-header"]');
+    expect(header).not.toBeNull();
+
+    fireEvent.mouseDown(header as HTMLElement, { button: 0, clientX: 120, clientY: 140 });
+    fireEvent.mouseMove(window, { clientX: 185, clientY: 225 });
+    fireEvent.mouseUp(window);
+
+    expect(dialog).toHaveStyle({ transform: "translate(65px, 85px)" });
+  });
+
   it("preserves local presentation note draft on conflict and allows explicit overwrite", async () => {
     mutationMocks.updateDeck
       .mockImplementationOnce(async () => {
@@ -2573,6 +3408,22 @@ describe("PresentationEditor", () => {
         }),
       );
     });
+  });
+
+  it("allows dragging the slide note dialog by its header", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open slide note/i }));
+
+    const dialog = await screen.findByRole("dialog", { name: /slide note/i });
+    const header = within(dialog).getByText("Slide Note").closest('[data-slot="dialog-header"]');
+    expect(header).not.toBeNull();
+
+    fireEvent.mouseDown(header as HTMLElement, { button: 0, clientX: 80, clientY: 90 });
+    fireEvent.mouseMove(window, { clientX: 140, clientY: 160 });
+    fireEvent.mouseUp(window);
+
+    expect(dialog).toHaveStyle({ transform: "translate(60px, 70px)" });
   });
 
   it("supports saving current presentation as template", async () => {
@@ -2669,6 +3520,53 @@ describe("PresentationEditor", () => {
     fireEvent.keyDown(window, { key: "x", ctrlKey: true });
     await waitFor(() => {
       expect(getCanvasObjects()).toHaveLength(1);
+    });
+  });
+
+  it("renders component fallback elements on the editor canvas without flattening saved slide content", async () => {
+    queryState.deckByItem = {
+      ...buildDeckByItem(),
+      slides: [
+        {
+          id: 71,
+          deckId: 7,
+          orderIndex: 0,
+          version: 3,
+          title: "Intro",
+          slideContent: {
+            elements: [],
+            components: [
+              {
+                id: "component-1",
+                componentId: "hero",
+                componentType: "hero",
+                definitionRevision: 2,
+                slotBindings: [{ slotId: "title", type: "text", text: "Hello component" }],
+                fallbackElements: [
+                  {
+                    id: "component-title",
+                    type: "text",
+                    x: 20,
+                    y: 20,
+                    width: 300,
+                    height: 60,
+                    text: "Hello component",
+                    color: "#111827",
+                  },
+                ],
+              },
+            ],
+          },
+          notes: null,
+        },
+        buildDeckByItem().slides[1],
+      ],
+    } as any;
+
+    render(<PresentationEditor />);
+
+    await waitFor(() => {
+      expect(Array.from(document.querySelectorAll("[data-canvas-object='true']"))).toHaveLength(1);
     });
   });
 

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BUILT_IN_PRESENTATION_COMPONENT_IDS } from "./componentRecipes";
 
 // ── Layout template IDs used by AI generation ──────────────
 export const AI_LAYOUT_TEMPLATE_IDS = [
@@ -9,6 +10,11 @@ export const AI_LAYOUT_TEMPLATE_IDS = [
   "bottom_image_text_top",
   "feature_boxes_right",
 ] as const;
+
+export const AI_COMPONENT_RECIPE_IDS = BUILT_IN_PRESENTATION_COMPONENT_IDS;
+export const AIPresentationComponentRecipeIdSchema = z.enum(
+  AI_COMPONENT_RECIPE_IDS,
+);
 
 // ── SVG graphic categories available in the catalog ────────
 export const AI_SVG_CATEGORIES = [
@@ -143,9 +149,24 @@ export type SlideStylePresetFooter = z.infer<
 
 export const AIPresentationSlideSchema = z.object({
   templateId: z.enum(AI_LAYOUT_TEMPLATE_IDS),
+  componentRecipeId: AIPresentationComponentRecipeIdSchema.optional(),
+  mediaPlan: z.array(z.object({
+    slotId: z.string().min(1).max(64),
+    prompt: z.string().min(1).max(500),
+  }).strict()).max(8).optional(),
   title: z.string().min(1).max(200),
   body: z.array(z.string()).min(1).max(10),
   notes: z.string().min(1).max(5_000).optional(),
+  markdownHierarchy: z
+    .array(
+      z.object({
+        level: z.enum(["h2", "h3", "body"]),
+        text: z.string().min(1).max(260),
+      }),
+    )
+    .min(1)
+    .max(24)
+    .optional(),
   sections: z
     .array(
       z.object({
@@ -161,6 +182,9 @@ export const AIPresentationSlideSchema = z.object({
 });
 
 export type AIPresentationSlide = z.infer<typeof AIPresentationSlideSchema>;
+export type AIPresentationComponentRecipeId = z.infer<
+  typeof AIPresentationComponentRecipeIdSchema
+>;
 
 export const AIPresentationSchema = z
   .array(AIPresentationSlideSchema)

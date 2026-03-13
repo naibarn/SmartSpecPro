@@ -71,6 +71,14 @@ import {
   resolvePendingMediaForDeck,
 } from "../services/aiPresentationService";
 import {
+  deletePresentationCustomBlock,
+  listPresentationCustomBlocks,
+  renderPresentationCustomBlockPreview,
+  savePresentationCustomBlock,
+  trackPresentationCustomBlockUse,
+  updatePresentationCustomBlock,
+} from "../services/presentationCustomBlockService";
+import {
   AI_GEOMETRIC_ACCENT_SHAPES,
   AI_GEOMETRIC_CROP_SHAPES,
   AI_LAYOUT_TEMPLATE_IDS,
@@ -78,6 +86,14 @@ import {
   AIWatermarkSchema,
   GenerateAIDraftInputSchema,
 } from "@shared/presentation/aiTypes";
+import {
+  presentationCustomBlockCreateInputSchema,
+  presentationCustomBlockDeleteInputSchema,
+  presentationCustomBlockListInputSchema,
+  presentationCustomBlockRenderPreviewInputSchema,
+  presentationCustomBlockTrackUseInputSchema,
+  presentationCustomBlockUpdateInputSchema,
+} from "@shared/presentation/customBlocks";
 
 const DOCUMENT_MANAGEMENT_ROUTE_BASE =
   "/document-management?scope=my_library&sort=updated_desc&mode=editor&doc=";
@@ -394,6 +410,7 @@ export const presentationRouter = router({
         includeGeometricAccents: z.boolean().optional(),
         geometricAccentShape: z.enum(AI_GEOMETRIC_ACCENT_SHAPES).optional(),
         watermark: AIWatermarkSchema.optional(),
+        supplementalMediaClarityPercent: z.number().int().min(5).max(100).optional(),
         layoutSeed: z.number().int().optional(),
       }))
       .mutation(async ({ input, ctx }) => {
@@ -431,6 +448,7 @@ export const presentationRouter = router({
             includeGeometricAccents: input.includeGeometricAccents,
             geometricAccentShape: input.geometricAccentShape,
             watermark: input.watermark,
+            supplementalMediaClarityPercent: input.supplementalMediaClarityPercent,
             layoutSeed: input.layoutSeed,
           });
 
@@ -555,6 +573,91 @@ export const presentationRouter = router({
       try {
         ensureFeatureEnabled();
         return await getPresentationDeckDetail(input.deckId, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  listCustomBlocks: protectedProcedure
+    .input(presentationCustomBlockListInputSchema.optional())
+    .query(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await listPresentationCustomBlocks(input ?? {}, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  saveCustomBlock: protectedProcedure
+    .input(presentationCustomBlockCreateInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await savePresentationCustomBlock(input, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  renderCustomBlockPreview: protectedProcedure
+    .input(presentationCustomBlockRenderPreviewInputSchema)
+    .query(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        void ctx;
+        return await renderPresentationCustomBlockPreview(input);
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  deleteCustomBlock: protectedProcedure
+    .input(presentationCustomBlockDeleteInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await deletePresentationCustomBlock(input.blockId, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  updateCustomBlock: protectedProcedure
+    .input(presentationCustomBlockUpdateInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await updatePresentationCustomBlock(input, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
+  trackCustomBlockUse: protectedProcedure
+    .input(presentationCustomBlockTrackUseInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await trackPresentationCustomBlockUse(input, toPresentationActor(ctx));
       } catch (error) {
         if (error instanceof PresentationServiceError) {
           throw mapPresentationServiceError(error);

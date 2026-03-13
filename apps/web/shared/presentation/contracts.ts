@@ -209,6 +209,14 @@ const presentationElementSizeSchema = z.number().finite().min(0).max(100_000);
 const presentationElementOpacitySchema = z.number().finite().min(0).max(1);
 const presentationElementRotationSchema = z.number().finite().min(-3600).max(3600);
 const presentationCanvasDimensionSchema = z.number().int().positive().max(10_000);
+export const presentationMediaShapeSchema = z.enum([
+  "rect",
+  "rounded",
+  "circle",
+  "ellipse",
+  "diamond",
+  "star",
+]);
 
 export const presentationCanvasSizeSchema = z.object({
   preset: presentationCanvasPresetSchema.optional(),
@@ -252,6 +260,8 @@ export const presentationImageElementSchema = z.object({
   src: z.string().max(4_096),
   alt: z.string().max(512),
   imageFit: z.enum(["contain", "cover", "fill"]).optional(),
+  mediaShape: presentationMediaShapeSchema.optional(),
+  mediaCornerRadius: z.number().finite().min(0).max(1_000).optional(),
   imagePositionX: z.number().finite().min(0).max(100).optional(),
   imagePositionY: z.number().finite().min(0).max(100).optional(),
   imageZoom: z.number().finite().min(0.5).max(3).optional(),
@@ -282,6 +292,8 @@ export const presentationVideoElementSchema = z.object({
   videoModelId: z.string().max(256).optional(),
   videoReferenceUrls: z.array(z.string().max(2_048)).max(5).optional(),
   videoFit: z.enum(["contain", "cover", "fill"]).optional(),
+  mediaShape: presentationMediaShapeSchema.optional(),
+  mediaCornerRadius: z.number().finite().min(0).max(1_000).optional(),
   videoPositionX: z.number().finite().min(0).max(100).optional(),
   videoPositionY: z.number().finite().min(0).max(100).optional(),
   videoZoom: z.number().finite().min(0.5).max(3).optional(),
@@ -363,12 +375,107 @@ export const presentationSlideElementSchema = z.discriminatedUnion("type", [
   presentationLineElementSchema,
 ]);
 
+export const presentationComponentSlotTypeSchema = z.enum([
+  "text",
+  "image",
+  "video",
+  "icon",
+  "list",
+]);
+
+export const presentationComponentTextSlotBindingSchema = z.object({
+  slotId: z.string().min(1).max(64),
+  type: z.literal("text"),
+  text: z.string().max(10_000),
+}).strict();
+
+export const presentationComponentImageSlotBindingSchema = z.object({
+  slotId: z.string().min(1).max(64),
+  type: z.literal("image"),
+  src: z.string().max(4_096),
+  alt: z.string().max(512).optional(),
+}).strict();
+
+export const presentationComponentVideoSlotBindingSchema = z.object({
+  slotId: z.string().min(1).max(64),
+  type: z.literal("video"),
+  src: z.string().max(4_096),
+  poster: z.string().max(4_096).optional(),
+  title: z.string().max(512).optional(),
+}).strict();
+
+export const presentationComponentIconSlotBindingSchema = z.object({
+  slotId: z.string().min(1).max(64),
+  type: z.literal("icon"),
+  name: z.string().min(1).max(128),
+  src: z.string().max(4_096).optional(),
+}).strict();
+
+export const presentationComponentListSlotBindingSchema = z.object({
+  slotId: z.string().min(1).max(64),
+  type: z.literal("list"),
+  items: z.array(z.string().max(2_000)).max(20),
+}).strict();
+
+export const presentationComponentSlotBindingSchema = z.discriminatedUnion("type", [
+  presentationComponentTextSlotBindingSchema,
+  presentationComponentImageSlotBindingSchema,
+  presentationComponentVideoSlotBindingSchema,
+  presentationComponentIconSlotBindingSchema,
+  presentationComponentListSlotBindingSchema,
+]);
+
+export const presentationPreviewTargetSchema = z.enum([
+  "editor-thumb",
+  "library-card",
+  "share-image",
+  "export-thumb",
+]);
+
+export const presentationPreviewArtifactStatusSchema = z.enum([
+  "queued",
+  "rendering",
+  "ready",
+  "failed",
+  "stale",
+]);
+
+export const presentationPreviewArtifactSchema = z.object({
+  previewHash: z.string().min(1).max(128),
+  target: presentationPreviewTargetSchema,
+  status: presentationPreviewArtifactStatusSchema,
+  artifactUri: z.string().max(4_096).optional(),
+  rendererVersion: z.string().min(1).max(64),
+  fontCatalogVersion: z.number().int().positive(),
+  definitionRevision: z.number().int().positive(),
+  staleReason: z.string().max(256).optional(),
+  createdAt: z.string().min(1).max(64),
+  updatedAt: z.string().min(1).max(64),
+  attemptCount: z.number().int().min(0).max(100).default(0),
+}).strict();
+
+export const presentationComponentInstanceSchema = z.object({
+  id: z.string().min(1).max(128),
+  componentId: z.string().min(1).max(128),
+  componentType: z.string().min(1).max(128),
+  definitionRevision: z.number().int().positive(),
+  slotBindings: z.array(presentationComponentSlotBindingSchema).max(32).default([]),
+  fallbackElements: z.array(presentationSlideElementSchema).max(PRESENTATION_LIMITS.maxElementsPerSlide).default([]),
+  preview: presentationPreviewArtifactSchema.optional(),
+}).strict();
+
+export const presentationRenderableOrderEntrySchema = z.string()
+  .min(1)
+  .max(192)
+  .regex(/^(element|component):.+$/);
+
 export const presentationPendingMediaJobSchema = z.object({
   id: z.string().min(1).max(128),
   mediaType: z.enum(["image", "video"]),
   mediaTaskId: z.string().min(1).max(256),
   providerTaskId: z.string().max(256).optional(),
   targetElementId: z.string().max(128).optional(),
+  targetSlotId: z.string().max(64).optional(),
   targetX: presentationElementCoordinateSchema,
   targetY: presentationElementCoordinateSchema,
   targetWidth: presentationElementSizeSchema,
@@ -381,6 +488,48 @@ export const presentationPendingMediaJobSchema = z.object({
   lastCheckedAt: z.string().min(1).max(64).optional(),
 }).strict();
 
+export const presentationAIDesignCandidateSchema = z.object({
+  recipeId: z.string().min(1).max(128),
+  score: z.number().finite().min(0).max(1000),
+}).strict();
+
+export const presentationAINarrativeSectionSchema = z.object({
+  heading: z.string().min(1).max(180),
+  details: z.array(z.string().min(1).max(260)).min(1).max(4),
+}).strict();
+
+export const presentationAINarrativeSchema = z.object({
+  title: z.string().min(1).max(200),
+  body: z.array(z.string().min(1).max(260)).min(1).max(10),
+  notes: z.string().min(1).max(5000).optional(),
+  sections: z.array(presentationAINarrativeSectionSchema).min(1).max(6).optional(),
+  mediaPlan: z.array(z.object({
+    slotId: z.string().min(1).max(64),
+    prompt: z.string().min(1).max(500),
+  }).strict()).max(8).optional(),
+  graphicCategory: z.string().min(1).max(120).optional(),
+  templateId: z.string().min(1).max(128).optional(),
+}).strict();
+
+export const presentationAIDesignOverrideHistorySchema = z.object({
+  recipeId: z.string().min(1).max(128),
+  previousRecipeId: z.string().min(1).max(128).optional(),
+  appliedAt: z.string().min(1).max(64),
+  source: z.enum(["editor"]),
+}).strict();
+
+export const presentationSlideAIDesignSchema = z.object({
+  source: z.literal("draft-with-ai"),
+  taskId: z.string().min(1).max(128).optional(),
+  componentRecipeId: z.string().min(1).max(128).optional(),
+  selectionMode: z.enum(["llm", "heuristic", "manual-override", "none"]),
+  selectionReason: z.string().min(1).max(512).optional(),
+  candidateRecipes: z.array(presentationAIDesignCandidateSchema).max(8).optional(),
+  narrative: presentationAINarrativeSchema.optional(),
+  overrideHistory: z.array(presentationAIDesignOverrideHistorySchema).max(16).optional(),
+  generatedAt: z.string().min(1).max(64).optional(),
+}).strict();
+
 export const presentationSlideBackgroundSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("color"), value: z.string().min(1).max(64) }),
   z.object({ type: z.literal("image"), url: z.string().min(1).max(500), libraryItemId: z.number().int().positive().optional() }),
@@ -388,12 +537,15 @@ export const presentationSlideBackgroundSchema = z.discriminatedUnion("type", [
 
 export const presentationSlideContentSchema = z.object({
   elements: z.array(presentationSlideElementSchema).max(PRESENTATION_LIMITS.maxElementsPerSlide),
+  components: z.array(presentationComponentInstanceSchema).max(64).optional(),
+  renderOrder: z.array(presentationRenderableOrderEntrySchema).max(PRESENTATION_LIMITS.maxElementsPerSlide + 64).optional(),
   canvas: presentationCanvasSizeSchema.optional(),
   transition: presentationTransitionSchema.optional(),
   durationMs: z.number().finite().min(250).max(120_000).optional(),
   pendingMediaJobs: z.array(presentationPendingMediaJobSchema).max(32).optional(),
   background: presentationSlideBackgroundSchema.optional(),
   visualOnly: z.boolean().optional(),
+  aiDesign: presentationSlideAIDesignSchema.optional(),
 }).strict();
 
 /** Audio extracted from an unmuted video element on the slide, for mixing into MP4 export. */
@@ -499,8 +651,26 @@ export type PresentationMediaMotionEasing = z.infer<typeof presentationMediaMoti
 export type PresentationMediaMotionTimingMode = z.infer<typeof presentationMediaMotionTimingModeSchema>;
 export type PresentationMediaMotionSegment = z.infer<typeof presentationMediaMotionSegmentSchema>;
 export type PresentationMediaMotion = z.infer<typeof presentationMediaMotionSchema>;
+export type PresentationMediaShape = z.infer<typeof presentationMediaShapeSchema>;
 export type PresentationSlideElement = z.infer<typeof presentationSlideElementSchema>;
+export type PresentationComponentSlotType = z.infer<typeof presentationComponentSlotTypeSchema>;
+export type PresentationComponentTextSlotBinding = z.infer<typeof presentationComponentTextSlotBindingSchema>;
+export type PresentationComponentImageSlotBinding = z.infer<typeof presentationComponentImageSlotBindingSchema>;
+export type PresentationComponentVideoSlotBinding = z.infer<typeof presentationComponentVideoSlotBindingSchema>;
+export type PresentationComponentIconSlotBinding = z.infer<typeof presentationComponentIconSlotBindingSchema>;
+export type PresentationComponentListSlotBinding = z.infer<typeof presentationComponentListSlotBindingSchema>;
+export type PresentationComponentSlotBinding = z.infer<typeof presentationComponentSlotBindingSchema>;
+export type PresentationPreviewTarget = z.infer<typeof presentationPreviewTargetSchema>;
+export type PresentationPreviewArtifactStatus = z.infer<typeof presentationPreviewArtifactStatusSchema>;
+export type PresentationPreviewArtifact = z.infer<typeof presentationPreviewArtifactSchema>;
+export type PresentationComponentInstance = z.infer<typeof presentationComponentInstanceSchema>;
+export type PresentationRenderableOrderEntry = z.infer<typeof presentationRenderableOrderEntrySchema>;
 export type PresentationPendingMediaJob = z.infer<typeof presentationPendingMediaJobSchema>;
+export type PresentationAIDesignCandidate = z.infer<typeof presentationAIDesignCandidateSchema>;
+export type PresentationAIDesignOverrideHistory = z.infer<typeof presentationAIDesignOverrideHistorySchema>;
+export type PresentationAINarrativeSection = z.infer<typeof presentationAINarrativeSectionSchema>;
+export type PresentationAINarrative = z.infer<typeof presentationAINarrativeSchema>;
+export type PresentationSlideAIDesign = z.infer<typeof presentationSlideAIDesignSchema>;
 export type PresentationSlideBackground = z.infer<typeof presentationSlideBackgroundSchema>;
 export type PresentationSlideContent = z.infer<typeof presentationSlideContentSchema>;
 export type PresentationExportResult = z.infer<typeof presentationExportResultSchema>;
@@ -515,6 +685,144 @@ export type ResolvedAudioTrack = z.infer<typeof resolvedAudioTrackSchema>;
 export type ProjectAudioTrackInput = z.infer<typeof projectAudioTrackInputSchema>;
 export type ResolvedProjectAudioTrack = z.infer<typeof resolvedProjectAudioTrackSchema>;
 export type PresentationPlayDeckPayload = z.infer<typeof presentationPlayDeckPayloadSchema>;
+
+export interface PresentationCompatibilityExpansionResult {
+  slideContent: PresentationSlideContent;
+  warnings: string[];
+}
+
+export interface PresentationRenderableElementsResult {
+  elements: PresentationSlideElement[];
+  warnings: string[];
+}
+
+export interface PresentationResolvedRenderOrderResult {
+  order: PresentationRenderableOrderEntry[];
+  warnings: string[];
+}
+
+export function presentationRenderOrderIdForElement(elementId: string): PresentationRenderableOrderEntry {
+  return `element:${elementId}`;
+}
+
+export function presentationRenderOrderIdForComponent(componentId: string): PresentationRenderableOrderEntry {
+  return `component:${componentId}`;
+}
+
+function extractRenderableOrderId(
+  entry: PresentationRenderableOrderEntry,
+): { kind: "element" | "component"; id: string } | null {
+  if (entry.startsWith("element:")) {
+    return { kind: "element", id: entry.slice("element:".length) };
+  }
+  if (entry.startsWith("component:")) {
+    return { kind: "component", id: entry.slice("component:".length) };
+  }
+  return null;
+}
+
+export function resolvePresentationSlideRenderOrder(
+  slideContent: PresentationSlideContent,
+): PresentationResolvedRenderOrderResult {
+  const defaultOrder: PresentationRenderableOrderEntry[] = [
+    ...(slideContent.components ?? []).map((component) => presentationRenderOrderIdForComponent(component.id)),
+    ...slideContent.elements.map((element) => presentationRenderOrderIdForElement(element.id)),
+  ];
+  const sourceOrder = slideContent.renderOrder ?? defaultOrder;
+  const validElementIds = new Set(slideContent.elements.map((element) => element.id));
+  const validComponentIds = new Set((slideContent.components ?? []).map((component) => component.id));
+  const warnings: string[] = [];
+  const seen = new Set<PresentationRenderableOrderEntry>();
+  const normalized: PresentationRenderableOrderEntry[] = [];
+
+  for (const entry of sourceOrder) {
+    if (seen.has(entry)) {
+      warnings.push(`render_order_duplicate:${entry}`);
+      continue;
+    }
+    const parsed = extractRenderableOrderId(entry);
+    if (!parsed) {
+      warnings.push(`render_order_invalid:${entry}`);
+      continue;
+    }
+    const isValid = parsed.kind === "element"
+      ? validElementIds.has(parsed.id)
+      : validComponentIds.has(parsed.id);
+    if (!isValid) {
+      warnings.push(`render_order_missing_ref:${entry}`);
+      continue;
+    }
+    seen.add(entry);
+    normalized.push(entry);
+  }
+
+  for (const entry of defaultOrder) {
+    if (!seen.has(entry)) {
+      normalized.push(entry);
+      seen.add(entry);
+    }
+  }
+
+  return {
+    order: normalized,
+    warnings,
+  };
+}
+
+export function getPresentationSlideRenderableElements(
+  slideContent: PresentationSlideContent,
+): PresentationRenderableElementsResult {
+  const { order, warnings } = resolvePresentationSlideRenderOrder(slideContent);
+  const renderable: PresentationSlideElement[] = [];
+  const elementById = new Map(slideContent.elements.map((element) => [element.id, element] as const));
+  const componentById = new Map((slideContent.components ?? []).map((component) => [component.id, component] as const));
+
+  for (const entry of order) {
+    const parsed = extractRenderableOrderId(entry);
+    if (!parsed) {
+      continue;
+    }
+
+    if (parsed.kind === "element") {
+      const element = elementById.get(parsed.id);
+      if (element) {
+        renderable.push(element);
+      }
+      continue;
+    }
+
+    const component = componentById.get(parsed.id);
+    if (!component) {
+      continue;
+    }
+    if (!component.fallbackElements || component.fallbackElements.length === 0) {
+      warnings.push(`component_fallback_missing:${component.id}`);
+      continue;
+    }
+    renderable.push(...component.fallbackElements);
+  }
+
+  return {
+    elements: renderable,
+    warnings,
+  };
+}
+
+export function expandPresentationSlideContentForCompatibility(
+  slideContent: PresentationSlideContent,
+): PresentationCompatibilityExpansionResult {
+  const renderable = getPresentationSlideRenderableElements(slideContent);
+
+  return {
+    slideContent: {
+      ...slideContent,
+      elements: renderable.elements,
+      components: slideContent.components?.length ? undefined : slideContent.components,
+      renderOrder: renderable.elements.map((element) => presentationRenderOrderIdForElement(element.id)),
+    },
+    warnings: renderable.warnings,
+  };
+}
 
 export function isPresentationItemType(itemType: string): boolean {
   return itemType.trim().toLowerCase() === PRESENTATION_ITEM_TYPE;

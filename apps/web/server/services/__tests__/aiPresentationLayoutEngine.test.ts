@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { presentationSlideContentSchema } from "@shared/presentation/contracts";
+import {
+  getPresentationSlideRenderableElements,
+  presentationSlideContentSchema,
+} from "@shared/presentation/contracts";
 import {
   BUILT_IN_PRESETS,
   getBuiltInPreset,
@@ -150,6 +153,225 @@ describe("Template Rendering", () => {
       }
     });
   }
+});
+
+describe("Component recipe rendering", () => {
+  it("renders profile-summary slides as first-class components", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        componentRecipeId: "profile-summary",
+        title: "Adora Montminy",
+        body: ["Marketing / Digital Marketing", "hello@example.com", "+66 1234 5678"],
+        sections: [
+          { heading: "Marketing Lead", details: ["hello@example.com", "+66 1234 5678"] },
+          { heading: "About", details: ["Performance marketer with campaign and content strategy experience"] },
+          { heading: "Highlights", details: ["Brand growth", "Campaign planning", "Content systems"] },
+        ],
+      }),
+      imageUrl: "https://example.com/portrait.jpg",
+    }));
+
+    expect(result.slideContent.components).toHaveLength(1);
+    expect(result.slideContent.components?.[0]).toMatchObject({
+      componentId: "profile-summary",
+      componentType: "built-in",
+    });
+    const renderable = getPresentationSlideRenderableElements(result.slideContent);
+    expect(renderable.elements.some((element) => element.type === "image" && element.id.includes("portrait"))).toBe(true);
+    expect(result.slideContent.renderOrder?.some((entry) => entry.startsWith("component:"))).toBe(true);
+  });
+
+  it("renders video-spotlight slides with a video fallback element", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        componentRecipeId: "video-spotlight",
+        title: "Product Launch Teaser",
+        body: ["Fast onboarding", "Live analytics", "Studio-quality export"],
+      }),
+      imageUrl: "https://example.com/clip.mp4",
+    }));
+
+    expect(result.slideContent.components).toHaveLength(1);
+    expect(result.slideContent.components?.[0]?.componentId).toBe("video-spotlight");
+    const renderable = getPresentationSlideRenderableElements(result.slideContent);
+    expect(renderable.elements.some((element) => element.type === "video")).toBe(true);
+  });
+
+  it("renders poster-spotlight slides with an image fallback element", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        componentRecipeId: "poster-spotlight",
+        title: "Membership launch",
+        body: ["Premium support", "Priority booking", "Join today"],
+      }),
+      imageUrl: "https://example.com/poster.jpg",
+    }));
+
+    expect(result.slideContent.components?.[0]?.componentId).toBe("poster-spotlight");
+    const renderable = getPresentationSlideRenderableElements(result.slideContent);
+    expect(renderable.elements.some((element) => element.type === "image" && element.id.includes("hero"))).toBe(true);
+  });
+
+  it("renders framed-image-story slides with an image fallback element", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_left_image",
+        componentRecipeId: "framed-image-story",
+        title: "Zero waste in practice",
+        body: ["What it looks like on a real campus", "Short editorial summary"],
+      }),
+      imageUrl: "https://example.com/story.jpg",
+    }));
+
+    expect(result.slideContent.components?.[0]?.componentId).toBe("framed-image-story");
+    const renderable = getPresentationSlideRenderableElements(result.slideContent);
+    expect(renderable.elements.some((element) => element.type === "image" && element.id.includes("photo"))).toBe(true);
+  });
+
+  it("renders photo-collage slides with multiple image fallback elements", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_left_image",
+        componentRecipeId: "photo-collage",
+        title: "Campaign lookbook",
+        body: ["Two-frame editorial story", "Caption support"],
+      }),
+      imageUrl: "https://example.com/collage.jpg",
+      imageUrls: [
+        "https://example.com/collage-primary.jpg",
+        "https://example.com/collage-secondary.jpg",
+      ],
+    }));
+
+    expect(result.slideContent.components?.[0]?.componentId).toBe("photo-collage");
+    const renderable = getPresentationSlideRenderableElements(result.slideContent);
+    const imageUrls = renderable.elements
+      .filter((element) => element.type === "image")
+      .map((element) => element.src);
+    expect(imageUrls).toEqual(expect.arrayContaining([
+      "https://example.com/collage-primary.jpg",
+      "https://example.com/collage-secondary.jpg",
+    ]));
+  });
+
+  it("renders non-media component recipes as first-class components", () => {
+    const recipes = [
+      {
+        componentRecipeId: "process-steps" as const,
+        title: "Launch checklist",
+        body: ["1. Gather the brief", "2. Build the message", "3. Deliver the deck"],
+      },
+      {
+        componentRecipeId: "feature-highlights" as const,
+        title: "Platform highlights",
+        body: ["Fast setup", "Shared collaboration", "Reusable components", "Export-ready output"],
+      },
+      {
+        componentRecipeId: "timeline-flow" as const,
+        title: "Roadmap",
+        body: ["Q1 Launch the pilot", "Q2 Expand to new teams", "Q3 Scale the workflow"],
+      },
+      {
+        componentRecipeId: "infographic-grid" as const,
+        title: "Framework overview",
+        body: ["Discover", "Audience problem", "Design", "Narrative system", "Deliver", "Campaign rollout", "Measure", "Outcome tracking"],
+      },
+      {
+        componentRecipeId: "stat-cards" as const,
+        title: "Campaign metrics snapshot",
+        body: ["42%: Conversion lift", "12d: Time to first win", "3.1x: Return on spend"],
+      },
+      {
+        componentRecipeId: "quote-callout" as const,
+        title: "\"Lead with clarity\"",
+        body: ["Lead with one decision per slide", "Editorial insight"],
+      },
+    ];
+
+    for (const recipe of recipes) {
+      const result = generateSlide(makeLayoutInput({
+        slideData: makeSlideData({
+          templateId: "feature_boxes_right",
+          componentRecipeId: recipe.componentRecipeId,
+          title: recipe.title,
+          body: recipe.body,
+        }),
+      }));
+
+      expect(result.slideContent.components?.[0]?.componentId).toBe(recipe.componentRecipeId);
+      expect(result.slideContent.renderOrder?.some((entry) => entry.startsWith("component:"))).toBe(true);
+    }
+  });
+
+  it("adds a supplemental background image when a text-only component recipe has media", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "feature_boxes_right",
+        componentRecipeId: "process-steps",
+        title: "Launch checklist",
+        body: ["1. Gather the brief", "2. Build the message", "3. Deliver the deck"],
+      }),
+      imageUrl: "https://example.com/checklist.jpg",
+    }));
+
+    const backdropImage = result.slideContent.elements.find((element) => (
+      element.type === "image"
+      && element.src === "https://example.com/checklist.jpg"
+      && element.opacity === 0.16
+    ));
+
+    expect(result.slideContent.components?.[0]?.componentId).toBe("process-steps");
+    expect(backdropImage).toBeTruthy();
+  });
+
+  it("applies custom supplemental media opacity when requested", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "feature_boxes_right",
+        componentRecipeId: "process-steps",
+        title: "Launch checklist",
+        body: ["1. Gather the brief", "2. Build the message", "3. Deliver the deck"],
+      }),
+      imageUrl: "https://example.com/checklist.jpg",
+      supplementalMediaOpacity: 0.42,
+    }));
+
+    const backdropImage = result.slideContent.elements.find((element) => (
+      element.type === "image"
+      && element.src === "https://example.com/checklist.jpg"
+    ));
+
+    expect(backdropImage?.opacity).toBeCloseTo(0.42, 5);
+  });
+
+  it("fills non-media component detail text from notes when sections only contain headings", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "feature_boxes_right",
+        componentRecipeId: "feature-highlights",
+        title: "Platform highlights",
+        body: ["Fast setup", "Reusable automation"],
+        notes: "Shared collaboration across teams with review controls.",
+        sections: [
+          { heading: "Collaboration", details: [] },
+          { heading: "Automation", details: [] },
+          { heading: "Review", details: [] },
+        ],
+      }),
+    }));
+
+    const renderable = getPresentationSlideRenderableElements(result.slideContent);
+    const bodyLikeText = renderable.elements.find((element) => (
+      element.type === "text"
+      && element.id.includes("body")
+      && element.text.trim().length > 0
+    ));
+
+    expect(bodyLikeText).toBeTruthy();
+  });
 });
 
 // ── C.2: Color/Font Parameterization Tests ─────────────────
@@ -768,6 +990,103 @@ describe("Edge Cases", () => {
     expect(detailText).toBeDefined();
     if (subtitleText?.type === "text" && detailText?.type === "text") {
       expect(subtitleText.fontSize).toBeGreaterThan(detailText.fontSize ?? 0);
+    }
+  });
+
+  it("renders markdown hierarchy with smaller body text than ### emphasis lines", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        title: "หัวข้อหลักของบทความ",
+        body: ["ข้อความทั่วไปสำหรับอธิบายรายละเอียดเพิ่มเติม"],
+        markdownHierarchy: [
+          { level: "h2", text: "สรุปอย่างรวดเร็ว" },
+          { level: "h3", text: "ฝึกยืนได้เมื่ออายุประมาณหกถึงเก้าเดือน" },
+          { level: "body", text: "ข้อความทั่วไปสำหรับอธิบายรายละเอียดเพิ่มเติม" },
+        ],
+      }),
+    }));
+
+    const subtitleText = result.slideContent.elements.find(
+      (element) => element.type === "text" && element.text === "สรุปอย่างรวดเร็ว",
+    );
+    const emphasisText = result.slideContent.elements.find(
+      (element) => element.type === "text" && element.text === "ฝึกยืนได้เมื่ออายุประมาณหกถึงเก้าเดือน",
+    );
+    const bodyText = result.slideContent.elements.find(
+      (element) => element.type === "text" && element.text === "ข้อความทั่วไปสำหรับอธิบายรายละเอียดเพิ่มเติม",
+    );
+
+    expect(subtitleText).toBeDefined();
+    expect(emphasisText).toBeDefined();
+    expect(bodyText).toBeDefined();
+    if (subtitleText?.type === "text" && emphasisText?.type === "text" && bodyText?.type === "text") {
+      expect(subtitleText.fontSize).toBeGreaterThan(emphasisText.fontSize ?? 0);
+      expect(emphasisText.fontSize).toBeGreaterThan(bodyText.fontSize ?? 0);
+    }
+  });
+
+  it("avoids overlapping Thai body rows in split right image layouts with long content", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        title: "ใครคือกลุ่มเป้าหมาย",
+        body: [
+          "สิ่งที่ปกติเมื่อเปรียบเทียบกับสิ่งที่น่ากังวล",
+          "บทความนี้เหมาะสำหรับพ่อแม่หรือผู้ดูแลเด็กอายุระหว่าง 4 ถึง 6 เดือน ซึ่งกำลังมองหาวิธีการสร้างนิสัยการนอนที่เหมาะสมเพื่อให้เด็กมีโอกาสได้นอนยาวตลอดคืน",
+          "ในช่วงวัยนี้ เด็กมักจะเริ่มนอนยาวขึ้นในช่วงเวลากลางคืน ความกังวลมักเกิดขึ้นในกรณีที่เด็กยังตื่นบ่อยหรือมีปัญหาในการกลับเข้าสู่การนอนหลับหลังจากตื่น",
+        ],
+      }),
+    }));
+
+    const textElements = result.slideContent.elements
+      .filter((element): element is Extract<typeof result.slideContent.elements[number], { type: "text" }> => element.type === "text")
+      .sort((a, b) => a.y - b.y);
+    const bodyTexts = textElements.filter((element) => (
+      element.text.includes("บทความนี้เหมาะสำหรับ")
+      || element.text.includes("ในช่วงวัยนี้")
+      || element.text.includes("สิ่งที่ปกติเมื่อเปรียบเทียบ")
+    ));
+
+    expect(bodyTexts.length).toBeGreaterThan(0);
+    for (let index = 1; index < bodyTexts.length; index += 1) {
+      const previous = bodyTexts[index - 1]!;
+      const current = bodyTexts[index]!;
+      expect(previous.y + previous.height).toBeLessThanOrEqual(current.y + 2);
+    }
+  });
+
+  it("fits long process-step text into cards without using oversized subtitle notes", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "feature_boxes_right",
+        componentRecipeId: "process-steps",
+        title: "ขั้นตอนปฏิบัติ / เคล็ดลับ",
+        notes: "บรรทัดอธิบายยาวมากที่ไม่ควรถูกดึงมาใช้เต็ม ๆ ใน subtitle เพราะจะทำให้หัวข้อหลักกับบรรทัดรองซ้อนกันและอ่านไม่ออกเมื่อ render เป็น block",
+        body: [
+          "สร้างกิจวัตรก่อนนอน",
+          "ทำกิจกรรมแบบเดิมในเวลาคล้ายกันทุกวันเพื่อให้เด็กคาดเดาได้และผ่อนคลายก่อนหลับ",
+          "ความผิดพลาดที่พบบ่อย",
+          "ปล่อยให้เด็กเล่นจนตื่นตัวมากเกินไปก่อนเข้านอน",
+          "ใช้เสียงเพลงหรือเสียงธรรมชาติ",
+          "ช่วยกลบเสียงรบกวนและสร้างบรรยากาศสม่ำเสมอ",
+        ],
+      }),
+    }));
+
+    const renderable = getPresentationSlideRenderableElements(result.slideContent);
+    const subtitle = renderable.elements.find((element) => element.type === "text" && element.id.includes("subtitle"));
+    const cardTitle = renderable.elements.find((element) => element.type === "text" && element.id.includes("card-1-title"));
+    const cardBody = renderable.elements.find((element) => element.type === "text" && element.id.includes("card-1-body"));
+
+    expect(subtitle?.text.length ?? 0).toBeLessThan(181);
+    if (cardTitle?.type === "text") {
+      expect(cardTitle.text.length).toBeLessThanOrEqual("สร้างกิจวัตรก่อนนอน".length);
+      expect(cardTitle.height).toBeGreaterThanOrEqual(40);
+    }
+    if (cardBody?.type === "text") {
+      expect(cardBody.height).toBeGreaterThanOrEqual(48);
+      expect(cardBody.lineHeight).toBeGreaterThan(1.2);
     }
   });
 
