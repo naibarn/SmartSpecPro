@@ -1,8 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
   computeModelPriority,
+  selectBestLlmModel,
+  describeRequirementsMatch,
   type ModelPriorityInput,
+  type CapabilityRequirements,
 } from "./intelligentModelSelector";
+import type { EnabledLlmModelRow } from "./enabledLlmModels";
 
 const DAY = 86400; // seconds
 
@@ -150,5 +154,190 @@ describe("computeModelPriority", () => {
     const a = computeModelPriority(model);
     const b = computeModelPriority(model);
     expect(a).toBe(b);
+  });
+});
+
+// ─── Section 03: selectBestLlmModel + describeRequirementsMatch ───
+
+function makeRow(
+  modelId: string,
+  overrides: Partial<EnabledLlmModelRow> = {},
+): EnabledLlmModelRow {
+  return {
+    providerName: "test-provider",
+    modelId,
+    providerModelId: modelId,
+    defaultModel: null,
+    supportsVision: false,
+    supportsFunctionTools: false,
+    supportsStructuredOutputs: false,
+    supportsWebSearch: false,
+    supportsCodeExecution: false,
+    supportsComputerUse: false,
+    supportsBackground: false,
+    supportsResponses: false,
+    contextLength: null,
+    priority: 50,
+    priorityLocked: false,
+    isFree: false,
+    ...overrides,
+  };
+}
+
+describe("selectBestLlmModel", () => {
+  it("returns modelId of first qualifying model sorted by priority", () => {
+    const rows = [
+      makeRow("gpt-4o", { priority: 10, supportsFunctionTools: true }),
+      makeRow("claude-3", { priority: 5, supportsFunctionTools: true }),
+    ];
+    const result = selectBestLlmModel(
+      { supportsFunctionTools: true },
+      rows,
+    );
+    expect(result).toBe("claude-3");
+  });
+
+  it("returns null when no row satisfies requirements", () => {
+    const rows = [
+      makeRow("text-only", { supportsFunctionTools: false }),
+    ];
+    const result = selectBestLlmModel(
+      { supportsFunctionTools: true },
+      rows,
+    );
+    expect(result).toBeNull();
+  });
+
+  it("AND logic: excludes models missing any single required capability", () => {
+    const rows = [
+      makeRow("partial", {
+        supportsFunctionTools: true,
+        supportsStructuredOutputs: false,
+      }),
+    ];
+    const result = selectBestLlmModel(
+      { supportsFunctionTools: true, supportsStructuredOutputs: true },
+      rows,
+    );
+    expect(result).toBeNull();
+  });
+
+  it("false requirements do not filter out capable models", () => {
+    const rows = [
+      makeRow("capable", { supportsFunctionTools: true }),
+    ];
+    const result = selectBestLlmModel(
+      { supportsFunctionTools: false },
+      rows,
+    );
+    expect(result).toBe("capable");
+  });
+
+  it("contextLength filter excludes models with insufficient context", () => {
+    const rows = [
+      makeRow("small", { contextLength: 4096, priority: 1 }),
+      makeRow("large", { contextLength: 128000, priority: 2 }),
+    ];
+    const result = selectBestLlmModel(
+      { contextLength: 32000 },
+      rows,
+    );
+    expect(result).toBe("large");
+  });
+
+  it("contextLength filter excludes models with null contextLength", () => {
+    const rows = [
+      makeRow("unknown-ctx", { contextLength: null, priority: 1 }),
+      makeRow("known-large", { contextLength: 128000, priority: 2 }),
+    ];
+    const result = selectBestLlmModel(
+      { contextLength: 32000 },
+      rows,
+    );
+    expect(result).toBe("known-large");
+  });
+
+  it("returns null for empty rows array", () => {
+    const result = selectBestLlmModel(
+      { supportsFunctionTools: true },
+      [],
+    );
+    expect(result).toBeNull();
+  });
+
+  it("returns first model when requirements object is empty", () => {
+    const rows = [
+      makeRow("model-a", { priority: 20 }),
+      makeRow("model-b", { priority: 10 }),
+    ];
+    const result = selectBestLlmModel({}, rows);
+    expect(result).toBe("model-b");
+  });
+
+  it("does not require capabilities not in requirements object", () => {
+    const rows = [
+      makeRow("tools-only", {
+        supportsFunctionTools: true,
+        supportsVision: false,
+        priority: 5,
+      }),
+    ];
+    const result = selectBestLlmModel(
+      { supportsFunctionTools: true },
+      rows,
+    );
+    expect(result).toBe("tools-only");
+  });
+});
+
+describe("describeRequirementsMatch", () => {
+  it("lists matched capabilities correctly", () => {
+    const requirements: Partial<CapabilityRequirements> = {
+      supportsFunctionTools: true,
+      supportsVision: true,
+    };
+    const row = makeRow("model-a", {
+      supportsFunctionTools: true,
+      supportsVision: true,
+    });
+    const result = describeRequirementsMatch(requirements, row);
+    expect(result.matched).toContain("supportsFunctionTools");
+    expect(result.matched).toContain("supportsVision");
+    expect(result.missing).toHaveLength(0);
+  });
+
+  it("lists missing capabilities correctly", () => {
+    const requirements: Partial<CapabilityRequirements> = {
+      supportsFunctionTools: true,
+      supportsVision: true,
+    };
+    const row = makeRow("model-a", {
+      supportsFunctionTools: true,
+      supportsVision: false,
+    });
+    const result = describeRequirementsMatch(requirements, row);
+    expect(result.matched).toContain("supportsFunctionTools");
+    expect(result.missing).toContain("supportsVision");
+  });
+
+  it("returns empty arrays when requirements is empty", () => {
+    const row = makeRow("model-a", { supportsFunctionTools: true });
+    const result = describeRequirementsMatch({}, row);
+    expect(result.matched).toHaveLength(0);
+    expect(result.missing).toHaveLength(0);
+  });
+
+  it("reports contextLength as matched when row meets minimum", () => {
+    const row = makeRow("model-a", { contextLength: 128000 });
+    const result = describeRequirementsMatch({ contextLength: 32000 }, row);
+    expect(result.matched).toContain("contextLength");
+    expect(result.missing).toHaveLength(0);
+  });
+
+  it("reports contextLength as missing when row has null contextLength", () => {
+    const row = makeRow("model-a", { contextLength: null });
+    const result = describeRequirementsMatch({ contextLength: 32000 }, row);
+    expect(result.missing).toContain("contextLength");
+    expect(result.matched).toHaveLength(0);
   });
 });

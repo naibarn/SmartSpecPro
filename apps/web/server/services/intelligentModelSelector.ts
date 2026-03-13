@@ -2,8 +2,10 @@
  * Intelligent Model Selector — Feature 041
  *
  * Section 02: computeModelPriority (pure scoring function)
- * Section 03 will add: selectBestLlmModel, describeRequirementsMatch
+ * Section 03: selectBestLlmModel, describeRequirementsMatch
  */
+
+import type { EnabledLlmModelRow } from "./enabledLlmModels";
 
 /**
  * Minimum model data needed to compute a priority score.
@@ -100,4 +102,132 @@ export function computeModelPriority(model: ModelPriorityInput): number {
     costScore(model) +
     capabilityScore(model);
   return Math.max(1, Math.round(100 - total));
+}
+
+// ─── Section 03: Capability-Aware Selector ───
+
+/**
+ * Requirements that a skill can declare for model selection.
+ * All fields are optional. Only `true` boolean values act as filters.
+ * `false` values are ignored (they do not exclude models that have the capability).
+ */
+export interface CapabilityRequirements {
+  supportsVision?: boolean;
+  supportsFunctionTools?: boolean;
+  supportsStructuredOutputs?: boolean;
+  supportsWebSearch?: boolean;
+  supportsCodeExecution?: boolean;
+  supportsComputerUse?: boolean;
+  supportsBackground?: boolean;
+  supportsResponses?: boolean;
+  /** Minimum context window size in tokens. */
+  contextLength?: number;
+}
+
+const CAPABILITY_KEYS: ReadonlyArray<
+  keyof Omit<CapabilityRequirements, "contextLength">
+> = [
+  "supportsVision",
+  "supportsFunctionTools",
+  "supportsStructuredOutputs",
+  "supportsWebSearch",
+  "supportsCodeExecution",
+  "supportsComputerUse",
+  "supportsBackground",
+  "supportsResponses",
+] as const;
+
+/**
+ * Given a set of capability requirements and a list of enabled model rows,
+ * return the modelId of the best matching model, or null if none qualifies.
+ *
+ * Algorithm:
+ * 1. Filter rows by boolean capability requirements (AND logic).
+ *    Only `true` requirements filter; `false` requirements are ignored.
+ * 2. If contextLength requirement is set, exclude rows where
+ *    row.contextLength is null or row.contextLength < requirements.contextLength.
+ * 3. Sort qualifying rows by priority ASC (lower number = higher priority).
+ * 4. Return first row's modelId, or null.
+ *
+ * NOTE: disallowedModels filtering is deferred to v2.
+ */
+export function selectBestLlmModel(
+  requirements: Partial<CapabilityRequirements>,
+  rows: EnabledLlmModelRow[],
+): string | null {
+  if (rows.length === 0) {
+    return null;
+  }
+
+  // Step 1: Filter by boolean capabilities (AND logic)
+  let candidates = rows.filter((row) => {
+    for (const key of CAPABILITY_KEYS) {
+      if (requirements[key] === true) {
+        if (row[key] !== true) {
+          return false;
+        }
+      }
+    }
+    return true;
+  });
+
+  // Step 2: Filter by contextLength
+  if (
+    requirements.contextLength != null &&
+    requirements.contextLength > 0
+  ) {
+    candidates = candidates.filter((row) => {
+      if (row.contextLength == null) {
+        return false;
+      }
+      return row.contextLength >= requirements.contextLength!;
+    });
+  }
+
+  // Step 3: Sort by priority ASC (lower = higher priority)
+  candidates.sort((a, b) => a.priority - b.priority);
+
+  // Step 4: Return first match
+  // TODO v2: apply disallowedModels filter here
+  return candidates[0]?.modelId ?? null;
+}
+
+/**
+ * Human-readable description of which capabilities a row matches
+ * and which it is missing, relative to given requirements.
+ * Only boolean requirements set to `true` are evaluated.
+ */
+export function describeRequirementsMatch(
+  requirements: Partial<CapabilityRequirements>,
+  row: EnabledLlmModelRow,
+): { matched: string[]; missing: string[] } {
+  const matched: string[] = [];
+  const missing: string[] = [];
+
+  for (const key of CAPABILITY_KEYS) {
+    if (requirements[key] !== true) {
+      continue;
+    }
+    if (row[key] === true) {
+      matched.push(key);
+    } else {
+      missing.push(key);
+    }
+  }
+
+  if (
+    requirements.contextLength != null &&
+    requirements.contextLength > 0
+  ) {
+    if (
+      row.contextLength != null &&
+      row.contextLength >= requirements.contextLength
+    ) {
+      matched.push("contextLength");
+    } else {
+      missing.push("contextLength");
+    }
+  }
+
+  return { matched, missing };
 }
