@@ -195,6 +195,13 @@ async def run_seed():
             # Seed default tenant (both database and in-memory)
             tenant_created = await seed_default_tenant(db)
 
+            # Seed Auto Draft Agent template (Spec 035)
+            try:
+                from app.seeds.auto_draft_agent import seed_auto_draft_agent
+                await seed_auto_draft_agent(db)
+            except Exception as e:
+                print(f"[Seed] Warning: Auto Draft Agent seed skipped: {e}")
+
             if admin_created or tenant_created:
                 print("[Seed] Database seeding completed successfully")
             else:
