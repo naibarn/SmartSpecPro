@@ -793,8 +793,10 @@ export function AIDraftModal({
     {},
     { enabled: contentAutomationEnabled }
   );
-  const autoDraftAgent = agencyList?.find((a: any) => a.slug === "auto-draft-agent");
+  const autoDraftAgent = (agencyList as any)?.agencies?.find((a: any) => a.slug === "auto-draft-agent")
+    ?? agencyList?.find?.((a: any) => a.slug === "auto-draft-agent");
 
+  const createConversation = trpc.agency.createConversation.useMutation();
   const sendAgencyMessage = trpc.agency.sendMessage.useMutation({
     onSuccess: (result: any) => {
       setAgencyRunId(result.runId ?? null);
@@ -1186,16 +1188,24 @@ export function AIDraftModal({
     }
   }, []);
 
-  const handleAutoGenerate = useCallback(() => {
+  const handleAutoGenerate = useCallback(async () => {
     if (!autoDraftAgent) return;
     if (!topic.trim() || topic.trim().length < 3) {
       toast.error("กรุณาระบุหัวข้อ (อย่างน้อย 3 ตัวอักษร)");
       return;
     }
-    const conversationId = crypto.randomUUID();
-    const message = topic.trim();
-    sendAgencyMessage.mutate({ agencyId: (autoDraftAgent as any).id, conversationId, message });
-  }, [autoDraftAgent, topic, sendAgencyMessage]);
+    try {
+      const agencyId = (autoDraftAgent as any).id;
+      const { id: conversationId } = await createConversation.mutateAsync({
+        agencyId,
+        title: topic.trim().slice(0, 100),
+      });
+      const message = topic.trim();
+      sendAgencyMessage.mutate({ agencyId, conversationId, message });
+    } catch (err: any) {
+      toast.error(err.message ?? "Failed to start Auto Draft");
+    }
+  }, [autoDraftAgent, topic, createConversation, sendAgencyMessage]);
 
   const handleGenerate = useCallback(() => {
     if (advancedMediaOptionsEnabled) {
@@ -2616,7 +2626,7 @@ export function AIDraftModal({
           {!taskId && !agencyRunId && autoMode && (
             <Button
               onClick={handleAutoGenerate}
-              disabled={!autoDraftAgent || sendAgencyMessage.isPending || topic.trim().length < 3}
+              disabled={!autoDraftAgent || createConversation.isPending || sendAgencyMessage.isPending || topic.trim().length < 3}
               aria-label="Auto Generate"
             >
               {sendAgencyMessage.isPending ? (

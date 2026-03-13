@@ -25,7 +25,7 @@ import {
   users,
   systemSettings,
 } from "../../drizzle/schema";
-import { eq, and, desc, asc, inArray, sql, getTableColumns, count } from "drizzle-orm";
+import { eq, and, or, desc, asc, inArray, sql, getTableColumns, count } from "drizzle-orm";
 import { agencyBridge } from "../services/agencyBridge";
 import type { RunResult } from "../services/agencyBridge";
 import { runPlanner, recordStepAttempt } from "../services/taskPlannerMiddleware";
@@ -121,7 +121,15 @@ export const agencyRouter = router({
       const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
       await assertAgencyEnabled(tenantId);
 
-      const conditions: any[] = [eq(agencies.tenantId, tenantId)];
+      // Include user's tenant agencies + system template agencies
+      const tenantCondition = or(
+        eq(agencies.tenantId, tenantId),
+        and(
+          eq(agencies.tenantId, "__system__"),
+          eq(agencies.visibility, "template"),
+        ),
+      );
+      const conditions: any[] = [tenantCondition];
       if (input.status) {
         conditions.push(eq(agencies.status, input.status));
       }
@@ -759,7 +767,7 @@ export const agencyRouter = router({
               description: z.string().optional(),
               nodeType: z.enum([
                 "agent", "supervisor", "router", "aggregator",
-                "knowledge_base", "skill_call", "human_approval",
+                "knowledge_base", "skill_call", "human_approval", "browser_session",
               ]).default("agent"),
               instructions: z.string().max(50000).optional(),
               model: z.string().max(100).regex(/^[a-zA-Z0-9._\/-]+$/, "Invalid model identifier").optional(),
@@ -998,7 +1006,7 @@ export const agencyRouter = router({
             description: z.string().optional(),
             nodeType: z.enum([
               "agent", "supervisor", "router", "aggregator",
-              "knowledge_base", "skill_call", "human_approval",
+              "knowledge_base", "skill_call", "human_approval", "browser_session",
             ]).default("agent"),
             instructions: z.string().max(50000).optional(),
             model: z.string().max(100).regex(/^[a-zA-Z0-9._\/-]+$/, "Invalid model identifier").optional(),
@@ -1022,6 +1030,20 @@ export const agencyRouter = router({
             }
             if (data.nodeType === "router" && !(data.nodeConfig as any)?.routes?.length) {
               ctx.addIssue({ code: "custom", path: ["nodeConfig"], message: "router requires at least 1 route" });
+            }
+            if (data.nodeType === "browser_session") {
+              const goal = String((data.nodeConfig as any)?.goal ?? "").trim();
+              const handoffMode = String((data.nodeConfig as any)?.handoffMode ?? "continue_running");
+              const handoffSummary = String((data.nodeConfig as any)?.handoffSummary ?? "").trim();
+              if (!goal) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "goal"], message: "browser_session requires a goal" });
+              }
+              if (
+                ["review_required", "needs_user_input"].includes(handoffMode)
+                && !handoffSummary
+              ) {
+                ctx.addIssue({ code: "custom", path: ["nodeConfig", "handoffSummary"], message: "browser_session requires a handoff summary for review or user input states" });
+              }
             }
             if (data.isEntryPoint && !["agent", "supervisor"].includes(data.nodeType)) {
               ctx.addIssue({ code: "custom", path: ["isEntryPoint"], message: `Only agent/supervisor nodes can be entry points, not ${data.nodeType}` });
@@ -1332,19 +1354,26 @@ export const agencyRouter = router({
       await assertAgencyEnabled(tenantId);
       const userId = ctx.user!.id;
 
-      // Validate agency exists in tenant
+      // Validate agency exists in tenant or is a system template
       const [agency] = await db
         .select()
         .from(agencies)
-        .where(and(eq(agencies.id, input.agencyId), eq(agencies.tenantId, tenantId)))
+        .where(and(
+          eq(agencies.id, input.agencyId),
+          or(
+            eq(agencies.tenantId, tenantId),
+            and(eq(agencies.tenantId, "__system__"), eq(agencies.visibility, "template")),
+          ),
+        ))
         .limit(1);
 
       if (!agency) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Agency not found" });
       }
 
-      // M-2: Non-owners can only create conversations on published agencies
-      if ((agency as any).status !== "published" && (agency as any).createdBy !== userId) {
+      // M-2: Non-owners can only create conversations on published or template agencies
+      const isTemplate = (agency as any).visibility === "template";
+      if (!isTemplate && (agency as any).status !== "published" && (agency as any).createdBy !== userId) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Agency is not published" });
       }
 
@@ -1370,6 +1399,12 @@ export const agencyRouter = router({
         retrievalScopeOverride: z.object({
           mode: z.enum(["tenant_accessible", "library_only", "web_fallback"]),
         }).optional(),
+        /** v1.8: Target a specific agent by name */
+        recipientAgent: z.string().max(100).optional(),
+        /** v1.8: File IDs to include with the message */
+        fileIds: z.array(z.string()).max(20).optional(),
+        /** v1.8: Per-run instruction override */
+        additionalInstructions: z.string().max(5000).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -1432,6 +1467,9 @@ export const agencyRouter = router({
         tenantId,
         userId,
         taskMetadata,
+        recipientAgent: input.recipientAgent,
+        fileIds: input.fileIds,
+        additionalInstructions: input.additionalInstructions,
       });
 
       if (plannerResult) {
