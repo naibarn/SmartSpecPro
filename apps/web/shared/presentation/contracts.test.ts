@@ -425,6 +425,21 @@ describe("audio track and export contract schemas", () => {
       aiDesign: {
         source: "draft-with-ai",
         taskId: "task-1",
+        mode: "structured_block",
+        candidateModes: [
+          { mode: "structured_block", score: 0.91, fitStatus: "fits", reason: "Compact slide fits the current density." },
+          { mode: "long_form_block", score: 0.72, fitStatus: "cramped", reason: "Long-form is unnecessary for this copy.", blockedBy: "feature_flag" },
+        ],
+        modeLocked: false,
+        userOverrideMode: null,
+        fitScore: {
+          overall: 0.91,
+          density: 0.84,
+          readability: 0.9,
+          overflowRisk: 0.14,
+          status: "fits",
+        },
+        compactionLevel: "balanced",
         componentRecipeId: "poster-spotlight",
         selectionMode: "heuristic",
         selectionReason: "Poster recipe best matched promo copy.",
@@ -442,6 +457,22 @@ describe("audio track and export contract schemas", () => {
           graphicCategory: "Business",
           templateId: "split_right_image",
         },
+        sourceTrace: [
+          { sourceId: "body-0", sourceType: "paragraph", disposition: "used", targetSlotId: "summary" },
+          { sourceId: "section-0", sourceType: "section", disposition: "shortened", notes: "Condensed for compact block." },
+        ],
+        fallbackHistory: [
+          { step: "retry_compaction", reason: "Initial draft exceeded compact summary budget.", timestamp: "2026-03-12T09:59:30.000Z" },
+        ],
+        mediaModeMetadata: {
+          provider: "default-image-provider",
+          modelId: "model-1",
+          promptVersion: "presentation_full_slide_media_v1",
+          visualIntent: "poster",
+          thaiTextRisk: "low",
+          reviewRequired: false,
+          editableSourceRetained: true,
+        },
         generatedAt: "2026-03-12T10:00:00.000Z",
       },
     };
@@ -456,10 +487,14 @@ describe("audio track and export contract schemas", () => {
       imageExtraParams: { quality: "high" },
     });
     expect(normalized.aiDesign).toMatchObject({
+      mode: "structured_block",
       componentRecipeId: "poster-spotlight",
       selectionMode: "heuristic",
     });
+    expect(normalized.aiDesign?.candidateModes).toHaveLength(2);
     expect(normalized.aiDesign?.candidateRecipes).toHaveLength(2);
+    expect(normalized.aiDesign?.sourceTrace).toHaveLength(2);
+    expect(normalized.aiDesign?.fallbackHistory).toHaveLength(1);
     expect(normalized.aiDesign?.narrative).toMatchObject({
       title: "Campaign Spotlight",
       templateId: "split_right_image",

@@ -166,8 +166,10 @@ export function normalizePresentationSlideContent(input: unknown): PresentationS
     aiDesign: parsed.aiDesign
       ? {
         ...parsed.aiDesign,
+        candidateModes: parsed.aiDesign.candidateModes?.map((candidate) => ({ ...candidate })),
         candidateRecipes: parsed.aiDesign.candidateRecipes?.map((candidate) => ({ ...candidate })),
         overrideHistory: parsed.aiDesign.overrideHistory?.map((entry) => ({ ...entry })),
+        fitScore: parsed.aiDesign.fitScore ? { ...parsed.aiDesign.fitScore } : undefined,
         narrative: parsed.aiDesign.narrative
           ? {
             ...parsed.aiDesign.narrative,
@@ -181,6 +183,11 @@ export function normalizePresentationSlideContent(input: unknown): PresentationS
               prompt: entry.prompt,
             })),
           }
+          : undefined,
+        sourceTrace: parsed.aiDesign.sourceTrace?.map((entry) => ({ ...entry })),
+        fallbackHistory: parsed.aiDesign.fallbackHistory?.map((entry) => ({ ...entry })),
+        mediaModeMetadata: parsed.aiDesign.mediaModeMetadata
+          ? { ...parsed.aiDesign.mediaModeMetadata }
           : undefined,
       }
       : undefined,

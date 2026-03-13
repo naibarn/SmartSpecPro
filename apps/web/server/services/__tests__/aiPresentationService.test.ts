@@ -162,6 +162,9 @@ import {
   buildArticlePrompt,
   computeImagePollTimeoutMs,
   assessSlideCoverage,
+  finalizeSlideContentAfterRelayout,
+  finalizeSlideContentAfterRepair,
+  repairSlideFromSavedNote,
   relayoutExistingSlide,
   resolvePendingMediaForDeck,
 } from "../aiPresentationService";
@@ -725,7 +728,150 @@ describe("relayoutExistingSlide", () => {
     const preservedIds = output.slideContent.elements.map((element) => element.id);
     expect(preservedIds).toContain("freeform-image");
     expect(preservedIds).toContain("freeform-video");
-    expect(preservedIds).not.toContain("cmp-img-secondary");
+    expect(preservedIds).toContain("cmp-img-secondary");
+  });
+
+  it("preserves an extra manually-added image even when it reuses the same src as the primary media", () => {
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({
+      slideContent: {
+        elements: [
+          { id: "img-main", type: "image", x: 0, y: 0, width: 820, height: 720, src: "https://cdn.example.com/shared-photo.jpg", alt: "hero" },
+          { id: "title", type: "text", x: 72, y: 90, width: 620, height: 100, text: "Shared photo slide", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+        ],
+      },
+      warnings: [],
+    });
+
+    const output = relayoutExistingSlide({
+      slideTitle: "Shared photo slide",
+      deckTitle: "Deck",
+      slideIndex: 2,
+      totalSlides: 5,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "img-primary", type: "image", x: 0, y: 0, width: 900, height: 720, src: "https://cdn.example.com/shared-photo.jpg", alt: "primary" },
+          { id: "img-secondary", type: "image", x: 980, y: 80, width: 180, height: 140, src: "https://cdn.example.com/shared-photo.jpg", alt: "secondary duplicate" },
+          { id: "title", type: "text", x: 72, y: 90, width: 620, height: 100, text: "Shared photo slide", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+      },
+      layoutSeed: 71,
+    });
+
+    const elementIds = output.slideContent.elements.map((element) => element.id);
+    expect(elementIds).toContain("img-secondary");
+  });
+
+  it("honors a manually requested block recipe during auto layout when the copy fits", () => {
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    let capturedLayoutInput: any;
+    mockGenerateSlide.mockImplementation((input: any) => {
+      capturedLayoutInput = input;
+      return {
+        slideContent: {
+          elements: [
+            { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          ],
+          components: [
+            {
+              id: "cmp-process",
+              componentId: "process-steps",
+              componentType: "built-in",
+              definitionRevision: 1,
+              slotBindings: [],
+              fallbackElements: [],
+            },
+          ],
+        },
+        warnings: [],
+      };
+    });
+
+    relayoutExistingSlide({
+      slideTitle: "Bedtime routine",
+      deckTitle: "Deck",
+      slideIndex: 2,
+      totalSlides: 5,
+      preferredComponentRecipeId: "process-steps",
+      slideContent: {
+        elements: [
+          { id: "img-primary", type: "image", x: 0, y: 0, width: 640, height: 720, src: "https://cdn.example.com/bedtime.jpg", alt: "primary" },
+          { id: "title", type: "text", x: 700, y: 80, width: 420, height: 80, text: "Bedtime routine", color: "#111827", fontSize: 52, fontWeight: "700" },
+          { id: "body-1", type: "text", x: 700, y: 180, width: 420, height: 60, text: "Step 1: Dim the lights", color: "#111827", fontSize: 26 },
+          { id: "body-2", type: "text", x: 700, y: 260, width: 420, height: 60, text: "Step 2: Read a short story", color: "#111827", fontSize: 26 },
+          { id: "body-3", type: "text", x: 700, y: 340, width: 420, height: 60, text: "Step 3: Put the baby down drowsy", color: "#111827", fontSize: 26 },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+      },
+      layoutSeed: 99,
+    });
+
+    expect(capturedLayoutInput.slideData.componentRecipeId).toBe("process-steps");
+  });
+
+  it("keeps a secondary image visible when dense auto layout already uses one primary image", () => {
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({
+      slideContent: {
+        elements: [
+          { id: "primary-zone", type: "image", x: 20, y: 520, width: 380, height: 720, src: "https://cdn.example.com/main-photo.jpg", alt: "primary" },
+          { id: "card-1", type: "rect", x: 430, y: 180, width: 250, height: 250, fill: "#f3e2d8" },
+          { id: "card-2", type: "rect", x: 430, y: 450, width: 250, height: 250, fill: "#efb1a3" },
+          { id: "card-3", type: "rect", x: 430, y: 720, width: 250, height: 250, fill: "#f2c867" },
+          { id: "title", type: "text", x: 420, y: 40, width: 260, height: 120, text: "FAQ", color: "#111827", fontSize: 54, fontWeight: "700" },
+          { id: "body-1", type: "text", x: 450, y: 220, width: 190, height: 120, text: "Answer one", color: "#111827", fontSize: 28 },
+          { id: "body-2", type: "text", x: 450, y: 490, width: 190, height: 120, text: "Answer two", color: "#111827", fontSize: 28 },
+          { id: "body-3", type: "text", x: 450, y: 760, width: 190, height: 120, text: "Answer three", color: "#111827", fontSize: 28 },
+        ],
+      },
+      warnings: [],
+    });
+
+    const output = relayoutExistingSlide({
+      slideTitle: "FAQ",
+      deckTitle: "Deck",
+      slideIndex: 2,
+      totalSlides: 5,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 720, height: 1280, fill: "#fff8f0" },
+          { id: "img-secondary-top", type: "image", x: 20, y: 20, width: 380, height: 470, src: "https://cdn.example.com/infographic-top.jpg", alt: "top infographic" },
+          { id: "img-primary-bottom", type: "image", x: 20, y: 540, width: 380, height: 720, src: "https://cdn.example.com/main-photo.jpg", alt: "main photo" },
+          { id: "title", type: "text", x: 420, y: 40, width: 260, height: 120, text: "FAQ", color: "#111827", fontSize: 54, fontWeight: "700" },
+          { id: "body", type: "text", x: 420, y: 200, width: 260, height: 840, text: "Long answer one\nLong answer two\nLong answer three\nLong answer four", color: "#111827", fontSize: 28 },
+        ],
+        canvas: { width: 720, height: 1280, preset: "9:16" },
+      },
+      layoutSeed: 41,
+    });
+
+    const preservedSecondary = output.slideContent.elements.find((element) => element.id === "img-secondary-top");
+    expect(preservedSecondary?.type).toBe("image");
+    if (preservedSecondary?.type === "image") {
+      expect(preservedSecondary.src).toBe("https://cdn.example.com/infographic-top.jpg");
+      expect(preservedSecondary.y).toBeGreaterThanOrEqual(520);
+      expect(preservedSecondary.width).toBeGreaterThan(180);
+    }
   });
 
   it("preserves secondary supported blocks as components during relayout", () => {
@@ -800,7 +946,7 @@ describe("relayoutExistingSlide", () => {
 
     expect(output.slideContent.components?.some((component) => component.id === "cmp-stat-cards__relayout")).toBe(true);
     expect(output.slideContent.renderOrder?.some((entry) => entry === "component:cmp-stat-cards__relayout")).toBe(true);
-    expect(output.warnings.some((warning) => warning.includes("Preserved 1 existing block"))).toBe(true);
+    expect(output.warnings.some((warning) => warning.includes("Preserved") && warning.includes("existing block"))).toBe(true);
   });
 
   it("passes supplemental media clarity percent through relayout to the layout engine", () => {
@@ -913,6 +1059,236 @@ describe("relayoutExistingSlide", () => {
     expect(capturedLayoutInput.slideData.body).not.toContain("ข้อความเพี้ยนที่ไม่ควรถูกใช้เป็น source หลัก");
   });
 
+  it("uses slide notes to fall back to a plain template when block recipes are too dense", () => {
+    let capturedLayoutInput: any = null;
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockImplementation((input: unknown) => {
+      capturedLayoutInput = input;
+      return {
+        slideContent: { elements: [] },
+        warnings: [],
+      };
+    });
+
+    const slideNotes = `
+# ใครคือกลุ่มเป้าหมาย
+
+## เรื่องราวของครอบครัวที่กังวล
+บทความนี้อธิบายบริบทของพ่อแม่หรือผู้ดูแลเด็กวัย 4 ถึง 6 เดือนที่กำลังพยายามสร้างนิสัยการนอนให้สม่ำเสมอ และต้องการคำแนะนำที่ค่อยเป็นค่อยไปมากกว่ารายการสั้น ๆ
+
+## สิ่งที่ควรสังเกตในชีวิตประจำวัน
+ในช่วงอายุนี้เด็กบางคนเริ่มนอนนานขึ้นในตอนกลางคืน แต่ก็ยังตื่นง่ายเมื่อหิว ไม่สบายตัว หรือมีสิ่งเร้ารอบตัวมากเกินไป จึงควรจัดวางเป็น story layout แทนการ์ดสรุปสามช่อง
+    `.trim();
+
+    const output = relayoutExistingSlide({
+      slideTitle: "ใครคือกลุ่มเป้าหมาย",
+      deckTitle: "Deck",
+      slideIndex: 3,
+      totalSlides: 6,
+      slideNotes,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "hero", type: "image", x: 640, y: 0, width: 640, height: 720, src: "https://cdn.example.com/story.jpg", alt: "hero" },
+          { id: "title", type: "text", x: 72, y: 160, width: 540, height: 110, text: "ใครคือกลุ่มเป้าหมาย", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+        aiDesign: {
+          source: "draft-with-ai",
+          componentRecipeId: "process-steps",
+          selectionMode: "heuristic",
+          narrative: {
+            title: "ใครคือกลุ่มเป้าหมาย",
+            body: ["ข้อความสั้นเกินไป"],
+          },
+        },
+      },
+      layoutSeed: 41,
+    });
+
+    expect(capturedLayoutInput.slideData.componentRecipeId).toBeUndefined();
+    expect(capturedLayoutInput.slideData.notes).toContain("บทความนี้อธิบายบริบทของพ่อแม่หรือผู้ดูแล");
+    expect(capturedLayoutInput.slideData.body.some((line: string) => line.includes("พ่อแม่หรือผู้ดูแลเด็กวัย 4 ถึง 6 เดือน"))).toBe(true);
+    expect(output.warnings.some((warning) => warning.includes('Skipped component recipe "process-steps"'))).toBe(true);
+    expect(output.warnings.some((warning) => warning.includes("fell back to a plain template"))).toBe(true);
+  });
+
+  it("preserves component fallback images when feature-highlights is skipped during relayout", () => {
+    let capturedLayoutInput: any = null;
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockImplementation((input: unknown) => {
+      capturedLayoutInput = input;
+      return {
+        slideContent: {
+          elements: [
+            { id: "title", type: "text", x: 72, y: 90, width: 640, height: 90, text: "Frequently asked questions", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+            { id: "body-1", type: "text", x: 72, y: 210, width: 720, height: 240, text: "Question one\nQuestion two\nQuestion three\nQuestion four", color: "#ffffff", fontSize: 28 },
+          ],
+        },
+        warnings: [],
+      };
+    });
+
+    const output = relayoutExistingSlide({
+      slideTitle: "Frequently asked questions",
+      deckTitle: "Deck",
+      slideIndex: 4,
+      totalSlides: 7,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+        ],
+        components: [
+          {
+            id: "cmp-feature-highlights",
+            componentId: "feature-highlights",
+            componentType: "built-in",
+            definitionRevision: 1,
+            slotBindings: [],
+            fallbackElements: [
+              { id: "cmp-image", type: "image", x: 760, y: 80, width: 420, height: 560, src: "https://cdn.example.com/faq-hero.jpg", alt: "faq hero" },
+              { id: "cmp-title", type: "text", x: 72, y: 90, width: 560, height: 90, text: "Frequently asked questions", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+            ],
+          },
+        ],
+        renderOrder: ["element:bg", "component:cmp-feature-highlights"],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+        aiDesign: {
+          source: "draft-with-ai",
+          componentRecipeId: "feature-highlights",
+          selectionMode: "heuristic",
+          narrative: {
+            title: "Frequently asked questions",
+            body: ["Overview"],
+            sections: [
+              { heading: "Question one", details: ["Answer one"] },
+              { heading: "Question two", details: ["Answer two"] },
+              { heading: "Question three", details: ["Answer three"] },
+              { heading: "Question four", details: ["Answer four"] },
+            ],
+          },
+        },
+      },
+      layoutSeed: 63,
+    });
+
+    expect(capturedLayoutInput.slideData.componentRecipeId).toBeUndefined();
+    expect(capturedLayoutInput.slideData.templateId).not.toBe("feature_boxes_right");
+    expect(output.slideContent.elements.some((element) => (
+      element.type === "image"
+      && element.id === "cmp-image"
+      && element.src === "https://cdn.example.com/faq-hero.jpg"
+    ))).toBe(true);
+    expect(output.warnings.some((warning) => warning.includes('Skipped component recipe "feature-highlights"'))).toBe(true);
+    expect(output.warnings.some((warning) => warning.includes("fell back to a plain template"))).toBe(true);
+  });
+
+  it("tops up sparse relayout text from slide notes before rendering", () => {
+    let capturedLayoutInput: any = null;
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockImplementation((input: unknown) => {
+      capturedLayoutInput = input;
+      return {
+        slideContent: { elements: [] },
+        warnings: [],
+      };
+    });
+
+    relayoutExistingSlide({
+      slideTitle: "Safe sleep environment",
+      deckTitle: "Deck",
+      slideIndex: 2,
+      totalSlides: 5,
+      slideNotes: [
+        "# Safe sleep environment",
+        "Place the baby on their back to sleep.",
+        "Use a firm mattress with no pillows or loose blankets.",
+        "Keep the room calm and free from soft items.",
+      ].join("\n"),
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "hero", type: "image", x: 720, y: 0, width: 560, height: 720, src: "https://cdn.example.com/sleep.jpg", alt: "sleep" },
+          { id: "title", type: "text", x: 72, y: 120, width: 620, height: 100, text: "Safe sleep environment", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+        aiDesign: {
+          source: "draft-with-ai",
+          selectionMode: "none",
+          narrative: {
+            title: "Safe sleep environment",
+            body: ["Place the baby on their back to sleep."],
+          },
+        },
+      },
+      layoutSeed: 89,
+    });
+
+    expect(capturedLayoutInput.slideData.body.some((line: string) => line.includes("Place the baby on their back to sleep"))).toBe(true);
+    expect(capturedLayoutInput.slideData.body.some((line: string) => line.includes("Use a firm mattress with no pillows or loose blankets"))).toBe(true);
+    expect(capturedLayoutInput.slideData.notes).toContain("Keep the room calm and free from soft items");
+  });
+
+  it("derives a clean relayout title from slide notes when numbered steps were inlined into the old title", () => {
+    let capturedLayoutInput: any = null;
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockImplementation((input: unknown) => {
+      capturedLayoutInput = input;
+      return {
+        slideContent: { elements: [] },
+        warnings: [],
+      };
+    });
+
+    relayoutExistingSlide({
+      slideTitle: "ขั้นตอนปฏิบัติ / เคล็ดลับ 1. สร้างกิจวัตรก่อนนอน: ทำให้กิจกรรมตอนก่อนนอนมีความซ้ำซ้อน เช่น หรืออาบน้ำ",
+      deckTitle: "Deck",
+      slideIndex: 3,
+      totalSlides: 6,
+      slideNotes: "ขั้นตอนปฏิบัติ / เคล็ดลับ 1. สร้างกิจวัตรก่อนนอน: ทำให้กิจกรรมตอนก่อนนอนมีความซ้ำซ้อน เช่น อ่านหนังสือ หรืออาบน้ำ เพื่อสร้างความรู้สึกผ่อนคลายให้กับลูก 2. กำหนดเวลาเข้านอน: ตั้งเวลาเข้านอนที่สม่ำเสมอทุกวัน เพื่อช่วยให้ร่างกายสร้างนิสัยในการนอน 3. สร้างสภาพแวดล้อมที่เอื้อต่อการนอน: ห้องนอนควรเงียบ สบาย และมีอุณหภูมิที่เหมาะสม",
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "title", type: "text", x: 72, y: 100, width: 900, height: 160, text: "ขั้นตอนปฏิบัติ / เคล็ดลับ 1. สร้างกิจวัตรก่อนนอน: ทำให้กิจกรรมตอนก่อนนอนมีความซ้ำซ้อน เช่น หรืออาบน้ำ", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+          { id: "body", type: "text", x: 72, y: 280, width: 980, height: 220, text: "หรืออาบน้ำ เพื่อสร้างความรู้สึกผ่อนคลายให้กับลูก 2. กำหนดเวลาเข้านอน", color: "#ffffff", fontSize: 30 },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+      },
+      layoutSeed: 90,
+    });
+
+    expect(capturedLayoutInput).toBeTruthy();
+    expect(capturedLayoutInput.slideData.title).toBe("ขั้นตอนปฏิบัติ / เคล็ดลับ");
+    expect(capturedLayoutInput.slideData.title).not.toContain("1.");
+    expect(capturedLayoutInput.slideData.body.join("\n")).toContain("สร้างกิจวัตรก่อนนอน");
+    expect(capturedLayoutInput.slideData.body.join("\n")).toContain("กำหนดเวลาเข้านอน");
+    expect(capturedLayoutInput.slideData.body.join("\n")).toContain("สร้างสภาพแวดล้อมที่เอื้อต่อการนอน");
+  });
+
   it("does not preserve component fallback rects as loose overlays during relayout", () => {
     mockGetBuiltInPreset.mockReturnValue({
       id: "dark-professional",
@@ -981,6 +1357,89 @@ describe("relayoutExistingSlide", () => {
     expect(output.slideContent.elements.some((element) => element.id === "cmp-process::card-1-bg")).toBe(false);
     expect(output.slideContent.elements.some((element) => element.id === "cmp-process::card-2-bg")).toBe(false);
     expect(output.slideContent.components?.some((component) => component.id === "generated-process")).toBe(true);
+  });
+
+  it("does not preserve oversized inline svg graphics or loose lines during relayout", () => {
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({
+      slideContent: {
+        elements: [
+          { id: "generated-bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "img-main", type: "image", x: 780, y: 0, width: 500, height: 720, src: "https://cdn.example.com/hero.jpg", alt: "hero" },
+          { id: "title", type: "text", x: 72, y: 140, width: 560, height: 180, text: "Narrative slide", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+        ],
+      },
+      warnings: [],
+    });
+
+    const output = relayoutExistingSlide({
+      slideTitle: "Narrative slide",
+      deckTitle: "Deck",
+      slideIndex: 2,
+      totalSlides: 5,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "hero", type: "image", x: 780, y: 0, width: 500, height: 720, src: "https://cdn.example.com/hero.jpg", alt: "hero" },
+          { id: "title", type: "text", x: 72, y: 140, width: 560, height: 180, text: "Narrative slide", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+          { id: "decorative-svg", type: "image", x: 180, y: 250, width: 240, height: 240, src: "", alt: "decorative svg", svgContent: "<svg><rect width='240' height='240'/></svg>" },
+          { id: "loose-line", type: "line", x: 120, y: 420, width: 420, height: 0, stroke: "#e94560", strokeWidth: 6 },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+      },
+      layoutSeed: 53,
+    });
+
+    expect(output.slideContent.elements.some((element) => element.id === "decorative-svg")).toBe(false);
+    expect(output.slideContent.elements.some((element) => element.id === "loose-line")).toBe(false);
+  });
+
+  it("drops geometric accents that would overlap the generated text stack", () => {
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({
+      slideContent: {
+        elements: [
+          { id: "generated-bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "title", type: "text", x: 36, y: 36, width: 640, height: 220, text: "Top-left text stack", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+          { id: "body", type: "text", x: 36, y: 250, width: 620, height: 180, text: "Body copy", color: "#ffffff", fontSize: 28 },
+        ],
+      },
+      warnings: [],
+    });
+
+    const output = relayoutExistingSlide({
+      slideTitle: "Top-left text stack",
+      deckTitle: "Deck",
+      slideIndex: 2,
+      totalSlides: 5,
+      includeGeometricAccents: true,
+      geometricAccentShape: "triangle",
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "title", type: "text", x: 36, y: 36, width: 640, height: 220, text: "Top-left text stack", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+      },
+      layoutSeed: 67,
+    });
+
+    const accentImages = output.slideContent.elements.filter((element) => (
+      element.type === "image" && String(element.alt || "").toLowerCase().includes("geometric accent")
+    ));
+    expect(accentImages).toHaveLength(1);
   });
 
   it("preserves multiline body text and adds Thai number spacing for readability", () => {
@@ -1384,16 +1843,16 @@ describe("relayoutExistingSlide", () => {
     expect(preservedLargeImage).toBeTruthy();
     expect(preservedLargeVideo).toBeTruthy();
     if (preservedLargeImage && preservedLargeImage.type === "image") {
-      expect(preservedLargeImage.width).toBeLessThan(321);
-      expect(preservedLargeImage.height).toBeLessThan(181);
-      expect(preservedLargeImage.x).toBeGreaterThanOrEqual(930);
-      expect(preservedLargeImage.y).toBeGreaterThanOrEqual(210);
+      expect(preservedLargeImage.width).toBeLessThan(421);
+      expect(preservedLargeImage.height).toBeLessThan(361);
+      expect(preservedLargeImage.x).toBeGreaterThanOrEqual(0);
+      expect(preservedLargeImage.y).toBeGreaterThanOrEqual(0);
     }
     if (preservedLargeVideo && preservedLargeVideo.type === "video") {
-      expect(preservedLargeVideo.width).toBeLessThan(321);
-      expect(preservedLargeVideo.height).toBeLessThan(181);
-      expect(preservedLargeVideo.x).toBeGreaterThanOrEqual(930);
-      expect(preservedLargeVideo.y).toBeGreaterThanOrEqual(410);
+      expect(preservedLargeVideo.width).toBeLessThan(421);
+      expect(preservedLargeVideo.height).toBeLessThan(361);
+      expect(preservedLargeVideo.x).toBeGreaterThanOrEqual(0);
+      expect(preservedLargeVideo.y).toBeGreaterThanOrEqual(0);
     }
     expect(output.warnings.some((warning) => warning.includes("Preserved 2 existing user element"))).toBe(true);
   });
@@ -1465,6 +1924,123 @@ describe("relayoutExistingSlide", () => {
       .filter((id) => id.startsWith("user-image-") || id.startsWith("user-video-"));
     expect(preservedIds.length).toBe(16);
     expect(output.warnings.some((warning) => warning.includes("Preserved 16 existing user element"))).toBe(true);
+  });
+});
+
+describe("repairSlideFromSavedNote", () => {
+  it("drops incompatible aiDesign metadata from auto layout output instead of surfacing schema validation", () => {
+    const warnings: string[] = [];
+    const stabilized = finalizeSlideContentAfterRelayout({
+      elements: [
+        { id: "title", type: "text", x: 80, y: 80, width: 400, height: 80, text: "Stable slide", color: "#111827" },
+      ],
+      aiDesign: {
+        source: "draft-with-ai",
+        selectionMode: "none",
+        selectionReason: "x".repeat(700),
+      } as any,
+    }, warnings);
+
+    expect(presentationSlideContentSchema.safeParse(stabilized).success).toBe(true);
+    expect(stabilized.aiDesign).toBeUndefined();
+    expect(warnings).toContain("Auto layout omitted incompatible AI metadata to satisfy schema validation.");
+  });
+
+  it("drops incompatible aiDesign metadata instead of returning invalid slide content", () => {
+    const warnings: string[] = [];
+    const stabilized = finalizeSlideContentAfterRepair({
+      elements: [
+        { id: "title", type: "text", x: 80, y: 80, width: 400, height: 80, text: "Stable slide", color: "#111827" },
+      ],
+      aiDesign: {
+        source: "draft-with-ai",
+        selectionMode: "none",
+        selectionReason: "x".repeat(700),
+      } as any,
+    }, warnings);
+
+    expect(presentationSlideContentSchema.safeParse(stabilized).success).toBe(true);
+    expect(stabilized.aiDesign).toBeUndefined();
+    expect(warnings).toContain("Regenerated slide content omitted incompatible AI metadata to satisfy schema validation.");
+  });
+
+  it("rebuilds a slide from the saved note and regenerates image media", async () => {
+    setupHappyPath();
+    mockGenerateSlide.mockImplementation((input: any) => ({
+      slideContent: {
+        elements: [
+          {
+            id: "generated-image",
+            type: "image",
+            x: 640,
+            y: 0,
+            width: 640,
+            height: 720,
+            src: input.imageUrl,
+            alt: "generated hero",
+          },
+          {
+            id: "generated-title",
+            type: "text",
+            x: 72,
+            y: 96,
+            width: 520,
+            height: 120,
+            text: input.slideData.title,
+            color: "#ffffff",
+          },
+        ],
+      },
+      warnings: [],
+    }));
+
+    const result = await repairSlideFromSavedNote(
+      {
+        deckId: 7,
+        slideTitle: "Old broken title",
+        slideContent: {
+          elements: [
+            { id: "old-bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#ffffff" },
+          ],
+          canvas: { width: 1280, height: 720, preset: "16:9" },
+        },
+        slideNotes: "ขั้นตอนปฏิบัติ / เคล็ดลับ 1. สร้างกิจวัตรก่อนนอน: ทำกิจกรรมแบบเดิมในเวลาคล้ายกันทุกวันเพื่อให้เด็กคาดเดาได้ 2. กำหนดเวลาเข้านอน: ตั้งเวลาเข้านอนที่สม่ำเสมอทุกวัน 3. สร้างสภาพแวดล้อมที่เอื้อต่อการนอน: ห้องนอนควรเงียบ สบาย และมีอุณหภูมิที่เหมาะสม 4. ไม่ต้องตอบสนองทันทีเมื่อเด็กตื่น: หากเด็กตื่นขึ้นในกลางคืน ให้รอสักครู่ก่อนที่จะเข้าไปดูเพื่อดูว่าเขาจะกลับไปนอนเองได้หรือไม่ 5. ใช้เสียงเพลงหรือเสียงธรรมชาติ: เสียงที่อ่อนโยนสามารถช่วยให้เด็กผ่อนคลายและนอนหลับได้ดีขึ้น ความผิดพลาดที่พบบ่อย - ให้เด็กนอนในที่นอนที่ไม่ปลอดภัย: ควรให้เด็กนอนในที่นอนที่เหมาะสมและปลอดภัย - นิสัยการให้อาหารตลอดคืน: หลีกเลี่ยงการให้อาหารเด็กเมื่อเขาตื่นกลางคืนเพื่อลดการตื่นบ่อย - ไม่มีกิจวัตรชัดเจน: การไม่มีกิจวัตรก่อนนอนอาจทำให้เด็กไม่รู้ว่าเมื่อไหร่ถึงเวลานอน",
+        deckTitle: "Deck",
+        slideIndex: 3,
+        totalSlides: 6,
+      },
+      buildMockActor(),
+      "test-token",
+    );
+
+    expect(result.title).toBe("ขั้นตอนปฏิบัติ / เคล็ดลับ");
+    expect(mockGenerateImageAsync).toHaveBeenCalled();
+    expect(mockGenerateSlide).toHaveBeenCalledWith(expect.objectContaining({
+      imageUrl: "https://cdn.example.com/image.jpg",
+    }));
+    const repairLayoutInput = mockGenerateSlide.mock.calls[0]?.[0];
+    expect(["split_left_image", "split_right_image", "top_image_text_bottom", "bottom_image_text_top"]).toContain(
+      repairLayoutInput?.slideData?.templateId,
+    );
+    expect(repairLayoutInput?.slideData?.markdownHierarchy).toEqual(expect.arrayContaining([
+      expect.objectContaining({ level: "body", text: expect.stringContaining("สร้างกิจวัตรก่อนนอน") }),
+      expect.objectContaining({ level: "body", text: expect.stringContaining("ไม่มีกิจวัตรชัดเจน") }),
+    ]));
+    expect(result.applied.regeneratedImage).toBe(true);
+    expect(["split_left_image", "split_right_image", "top_image_text_bottom", "bottom_image_text_top"]).toContain(
+      result.applied.templateId,
+    );
+    expect(result.warnings).toContain("Dense slide note detected; prioritized full text coverage over block-based layout.");
+    expect(result.slideContent.aiDesign?.source).toBe("draft-with-ai");
+    expect(result.slideContent.aiDesign?.narrative?.title).toBe("ขั้นตอนปฏิบัติ / เคล็ดลับ");
+    expect(result.slideContent.aiDesign?.narrative?.body.join("\n")).toContain("สร้างกิจวัตรก่อนนอน");
+    const generatedImage = result.slideContent.elements.find((element) => element.type === "image");
+    expect(generatedImage?.type).toBe("image");
+    if (generatedImage?.type === "image") {
+      expect(generatedImage.src).toBe("https://cdn.example.com/image.jpg");
+      expect(generatedImage.imagePrompt).toContain("ขั้นตอนปฏิบัติ / เคล็ดลับ");
+      expect(generatedImage.imageModelId).toBe("flux-2.0");
+    }
   });
 });
 
@@ -3428,19 +4004,101 @@ describe("generateAIDraft - Phase 2", () => {
     expect(firstInsertPayload.slideContent?.aiDesign).toMatchObject({
       source: "draft-with-ai",
       taskId: "task-123",
+      mode: "structured_block",
       selectionMode: "none",
     });
     expect(secondInsertPayload.slideContent?.aiDesign).toMatchObject({
       source: "draft-with-ai",
       taskId: "task-123",
+      mode: "structured_block",
       componentRecipeId: "poster-spotlight",
       selectionMode: "heuristic",
     });
+    expect(Array.isArray(secondInsertPayload.slideContent?.aiDesign?.candidateModes)).toBe(true);
     expect(Array.isArray(secondInsertPayload.slideContent?.aiDesign?.candidateRecipes)).toBe(true);
     expect(secondInsertPayload.slideContent?.aiDesign?.narrative).toMatchObject({
       title: "Membership launch offer",
       templateId: "split_right_image",
     });
+  });
+
+  it("records long-form routing candidates and avoids compact component recipes for dense slides", async () => {
+    setupHappyPath();
+    mockCallLLMStructured.mockResolvedValue({
+      data: [
+        {
+          templateId: "hero_center",
+          title: "คู่มือการนอนของเด็กเล็ก",
+          body: ["ภาพรวมสั้น ๆ"],
+          notes: "สไลด์เปิดหัวเรื่อง",
+          graphicCategory: "Education",
+          imagePromptKeywords: "sleeping child illustration",
+        },
+        {
+          templateId: "split_right_image",
+          title: "ขั้นตอนปฏิบัติ / เคล็ดลับ",
+          body: [
+            "สร้างกิจวัตรก่อนนอน: ทำให้กิจกรรมตอนก่อนนอนมีความซ้ำซ้อน เช่น อ่านหนังสือ เล่าเรื่อง หรืออาบน้ำ เพื่อสร้างความรู้สึกผ่อนคลายให้กับลูก",
+            "กำหนดเวลาเข้านอน: ตั้งเวลาเข้านอนที่สม่ำเสมอทุกวัน เพื่อช่วยให้ร่างกายสร้างนิสัยในการนอน",
+            "สร้างสภาพแวดล้อมที่เอื้อต่อการนอน: ห้องนอนควรเงียบ สบาย และมีอุณหภูมิที่เหมาะสม",
+          ],
+          notes: "บทความนี้เหมาะสำหรับพ่อแม่และผู้ดูแลที่ต้องการคำอธิบายยาวและค่อยเป็นค่อยไปมากกว่าการ์ดสั้น",
+          sections: [
+            {
+              heading: "ความผิดพลาดที่พบบ่อย",
+              details: [
+                "ให้นอนในที่นอนที่ไม่ปลอดภัย: ควรจัดสภาพแวดล้อมให้นอนอย่างปลอดภัย",
+                "นอนดึกและตื่นไม่เป็นเวลา: ควรรักษาเวลาเข้านอนและตื่นนอนให้ใกล้เคียงกันทุกวัน",
+              ],
+            },
+            {
+              heading: "ใครควรอ่านสไลด์นี้",
+              details: [
+                "พ่อแม่หรือผู้ดูแลเด็กเล็กที่กำลังฝึกนิสัยการนอนของลูก",
+              ],
+            },
+          ],
+          graphicCategory: "Education",
+          imagePromptKeywords: "bedtime routine parent child",
+        },
+      ],
+      tokensUsed: 220,
+      creditsUsed: 8,
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 2,
+        draftSkillId: "prompt-planner",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const secondInsertPayload = mockAddSlideToDeck.mock.calls[1]?.[0] as {
+      slideContent?: {
+        aiDesign?: Record<string, unknown> & {
+          componentRecipeId?: string;
+          candidateModes?: Array<Record<string, unknown>>;
+        };
+      };
+    };
+
+    expect(secondInsertPayload.slideContent?.aiDesign).toMatchObject({
+      source: "draft-with-ai",
+      taskId: "task-123",
+      mode: "structured_block",
+      selectionMode: "none",
+    });
+    expect(secondInsertPayload.slideContent?.aiDesign?.componentRecipeId).toBeUndefined();
+    expect(secondInsertPayload.slideContent?.aiDesign?.candidateModes).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        mode: "long_form_block",
+        blockedBy: "feature_flag",
+      }),
+    ]));
   });
 
   it("sanitizes AI narrative body and sections before slide insertion", async () => {
@@ -4237,6 +4895,49 @@ describe("generateAIDraft - Phase 6", () => {
     expect(firstLayoutCall.slideData.title).toContain("tummy time");
     expect(savedNotes).toContain("บนพื้นราบมั่นคง");
     expect(firstLayoutCall.slideData.body.some((line) => line.includes("เริ่มจากช่วงเวลาสั้น ๆ"))).toBe(true);
+  });
+
+  it("repairs sparse draft slide text from the slide note before rendering", async () => {
+    setupHappyPath();
+    const customArticleText = [
+      "คู่มือ safe sleep",
+      "1. Safe sleep environment",
+      "Place the baby on their back to sleep.",
+      "Use a firm mattress with no pillows or loose blankets.",
+      "Keep the room calm and free from soft items.",
+    ].join("\n\n");
+    mockCallLLMStructured.mockResolvedValue({
+      data: [
+        {
+          templateId: "hero_center",
+          title: "Safe sleep environment",
+          body: ["Place the baby on their back to sleep."],
+          notes: "Place the baby on their back to sleep.",
+          graphicCategory: "Health",
+          imagePromptKeywords: "safe sleep baby room",
+        },
+      ],
+      tokensUsed: 280,
+      creditsUsed: 9,
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 1,
+        prompt: "safe sleep",
+        language: "en",
+        useCustomArticle: true,
+        customArticleText,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const firstLayoutCall = mockGenerateSlide.mock.calls.at(-1)?.[0] as { slideData: { body: string[]; notes?: string } };
+    expect(firstLayoutCall.slideData.body.some((line: string) => line.includes("Place the baby on their back to sleep"))).toBe(true);
+    expect(firstLayoutCall.slideData.body.some((line: string) => line.includes("Use a firm mattress with no pillows or loose blankets"))).toBe(true);
+    expect(firstLayoutCall.slideData.notes).toContain("Keep the room calm and free from soft items");
   });
 });
 

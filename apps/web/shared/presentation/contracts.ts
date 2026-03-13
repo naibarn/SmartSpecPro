@@ -16,6 +16,10 @@ import {
   presentationExportWarningsSchema,
   type PresentationExportWarning,
 } from "./exportWarnings";
+import {
+  presentationAILayoutModeSchema,
+  presentationAILayoutModeBlockedBySchema,
+} from "./contentProfile";
 
 export const presentationRouteGuardInputSchema = z.object({
   itemId: z.number().int().positive(),
@@ -493,6 +497,14 @@ export const presentationAIDesignCandidateSchema = z.object({
   score: z.number().finite().min(0).max(1000),
 }).strict();
 
+export const presentationAIDesignModeCandidateSchema = z.object({
+  mode: presentationAILayoutModeSchema,
+  score: z.number().finite().min(-100).max(100),
+  fitStatus: z.enum(["fits", "cramped", "unsafe"]).optional(),
+  reason: z.string().min(1).max(512).optional(),
+  blockedBy: presentationAILayoutModeBlockedBySchema.optional(),
+}).strict();
+
 export const presentationAINarrativeSectionSchema = z.object({
   heading: z.string().min(1).max(180),
   details: z.array(z.string().min(1).max(260)).min(1).max(4),
@@ -518,15 +530,70 @@ export const presentationAIDesignOverrideHistorySchema = z.object({
   source: z.enum(["editor"]),
 }).strict();
 
+export const presentationAIDesignFitScoreSchema = z.object({
+  overall: z.number().finite().min(0).max(1),
+  density: z.number().finite().min(0).max(1),
+  readability: z.number().finite().min(0).max(1),
+  overflowRisk: z.number().finite().min(0).max(1),
+  deckConsistency: z.number().finite().min(0).max(1).optional(),
+  status: z.enum(["fits", "cramped", "unsafe"]),
+}).strict();
+
+export const presentationAIDesignSourceTraceSchema = z.object({
+  sourceId: z.string().min(1).max(128),
+  sourceType: z.enum(["heading", "subheading", "paragraph", "bullet", "section"]),
+  sourceExcerpt: z.string().min(1).max(512).optional(),
+  disposition: z.enum(["used", "shortened", "omitted", "deferred", "split"]),
+  targetSlotId: z.string().min(1).max(128).optional(),
+  targetSlideId: z.string().min(1).max(128).optional(),
+  notes: z.string().min(1).max(512).optional(),
+}).strict();
+
+export const presentationAIDesignFallbackHistorySchema = z.object({
+  step: z.enum([
+    "retry_compaction",
+    "switch_recipe",
+    "switch_mode",
+    "split_slide",
+    "blocked_locked_mode",
+    "blocked_safety_policy",
+    "blocked_provider_policy",
+  ]),
+  from: z.string().min(1).max(128).optional(),
+  to: z.string().min(1).max(128).optional(),
+  reason: z.string().min(1).max(512),
+  timestamp: z.string().min(1).max(64),
+}).strict();
+
+export const presentationAIDesignMediaModeMetadataSchema = z.object({
+  provider: z.string().min(1).max(128).optional(),
+  modelId: z.string().min(1).max(128).optional(),
+  promptVersion: z.string().min(1).max(128).optional(),
+  visualIntent: z.enum(["cover", "poster", "infographic", "summary_visual"]).optional(),
+  thaiTextRisk: z.enum(["low", "medium", "high"]).optional(),
+  reviewRequired: z.boolean().optional(),
+  editableSourceRetained: z.boolean(),
+}).strict();
+
 export const presentationSlideAIDesignSchema = z.object({
   source: z.literal("draft-with-ai"),
   taskId: z.string().min(1).max(128).optional(),
+  schemaVersion: z.literal("presentation_ai_layout_v1").optional(),
+  mode: presentationAILayoutModeSchema.optional(),
+  candidateModes: z.array(presentationAIDesignModeCandidateSchema).max(8).optional(),
+  modeLocked: z.boolean().optional(),
+  userOverrideMode: presentationAILayoutModeSchema.nullable().optional(),
+  fitScore: presentationAIDesignFitScoreSchema.optional(),
+  compactionLevel: z.enum(["none", "balanced", "compact", "aggressive"]).optional(),
   componentRecipeId: z.string().min(1).max(128).optional(),
   selectionMode: z.enum(["llm", "heuristic", "manual-override", "none"]),
   selectionReason: z.string().min(1).max(512).optional(),
   candidateRecipes: z.array(presentationAIDesignCandidateSchema).max(8).optional(),
   narrative: presentationAINarrativeSchema.optional(),
   overrideHistory: z.array(presentationAIDesignOverrideHistorySchema).max(16).optional(),
+  sourceTrace: z.array(presentationAIDesignSourceTraceSchema).max(64).optional(),
+  fallbackHistory: z.array(presentationAIDesignFallbackHistorySchema).max(32).optional(),
+  mediaModeMetadata: presentationAIDesignMediaModeMetadataSchema.optional(),
   generatedAt: z.string().min(1).max(64).optional(),
 }).strict();
 
@@ -667,7 +734,12 @@ export type PresentationComponentInstance = z.infer<typeof presentationComponent
 export type PresentationRenderableOrderEntry = z.infer<typeof presentationRenderableOrderEntrySchema>;
 export type PresentationPendingMediaJob = z.infer<typeof presentationPendingMediaJobSchema>;
 export type PresentationAIDesignCandidate = z.infer<typeof presentationAIDesignCandidateSchema>;
+export type PresentationAIDesignModeCandidate = z.infer<typeof presentationAIDesignModeCandidateSchema>;
 export type PresentationAIDesignOverrideHistory = z.infer<typeof presentationAIDesignOverrideHistorySchema>;
+export type PresentationAIDesignFitScore = z.infer<typeof presentationAIDesignFitScoreSchema>;
+export type PresentationAIDesignSourceTrace = z.infer<typeof presentationAIDesignSourceTraceSchema>;
+export type PresentationAIDesignFallbackHistory = z.infer<typeof presentationAIDesignFallbackHistorySchema>;
+export type PresentationAIDesignMediaModeMetadata = z.infer<typeof presentationAIDesignMediaModeMetadataSchema>;
 export type PresentationAINarrativeSection = z.infer<typeof presentationAINarrativeSectionSchema>;
 export type PresentationAINarrative = z.infer<typeof presentationAINarrativeSchema>;
 export type PresentationSlideAIDesign = z.infer<typeof presentationSlideAIDesignSchema>;

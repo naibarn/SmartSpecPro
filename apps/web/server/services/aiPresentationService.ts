@@ -31,6 +31,7 @@ import {
 } from "@shared/presentation/componentRecipes";
 import {
   getPresentationSlideRenderableElements,
+  presentationSlideAIDesignSchema,
   presentationRenderOrderIdForComponent,
   presentationSlideContentSchema,
   resolvePresentationSlideRenderOrder,
@@ -39,6 +40,11 @@ import {
   type PresentationSlideContent,
   type PresentationPendingMediaJob,
 } from "@shared/presentation/contracts";
+import {
+  resolvePresentationLayoutMode,
+  type PresentationAILayoutMode,
+  type PresentationAILayoutModeCandidate,
+} from "@shared/presentation/contentProfile";
 import { randomBytes } from "node:crypto";
 
 import { callLLMStructured } from "./callLLMStructured";
@@ -294,11 +300,13 @@ class BillingChargeError extends Error {
 interface RelayoutSlideInput {
   slideTitle: string;
   slideContent: PresentationSlideContent;
+  slideNotes?: string | null;
   deckTitle?: string;
   slideIndex: number;
   totalSlides: number;
   stylePresetId?: StylePresetId;
   templateId?: LayoutTemplateId;
+  preferredComponentRecipeId?: AIPresentationComponentRecipeId;
   includeSvg?: boolean;
   includeGeometricCrop?: boolean;
   geometricCropShape?: GeometricCropShapeId;
@@ -320,6 +328,119 @@ interface RelayoutSlideOutput {
   };
 }
 
+interface RepairSlideFromSavedNoteInput {
+  deckId: number;
+  slideTitle: string;
+  slideContent: PresentationSlideContent;
+  slideNotes: string;
+  deckTitle?: string;
+  slideIndex: number;
+  totalSlides: number;
+  stylePresetId?: StylePresetId;
+}
+
+interface RepairSlideFromSavedNoteOutput {
+  title: string;
+  slideContent: PresentationSlideContent;
+  warnings: string[];
+  applied: {
+    templateId: LayoutTemplateId;
+    stylePresetId: StylePresetId;
+    graphicCategory: GraphicCategoryId;
+    regeneratedImage: boolean;
+  };
+}
+
+export function finalizeSlideContentAfterRepair(
+  slideContent: PresentationSlideContent,
+  warnings: string[],
+): PresentationSlideContent {
+  const parsed = presentationSlideContentSchema.safeParse(slideContent);
+  if (parsed.success) {
+    return parsed.data;
+  }
+
+  const aiDesignParsed = presentationSlideAIDesignSchema.safeParse(slideContent.aiDesign);
+  if (!aiDesignParsed.success) {
+    const withoutAIDesign = { ...slideContent };
+    delete (withoutAIDesign as Partial<PresentationSlideContent>).aiDesign;
+    const withoutAIDesignParsed = presentationSlideContentSchema.safeParse(withoutAIDesign);
+    if (withoutAIDesignParsed.success) {
+      warnings.push("Regenerated slide content omitted incompatible AI metadata to satisfy schema validation.");
+      return withoutAIDesignParsed.data;
+    }
+  }
+
+  const baseFallback: PresentationSlideContent = {
+    elements: slideContent.elements,
+    ...(slideContent.components?.length ? { components: slideContent.components } : {}),
+    ...(slideContent.renderOrder?.length ? { renderOrder: slideContent.renderOrder } : {}),
+    ...(slideContent.canvas ? { canvas: slideContent.canvas } : {}),
+    ...(slideContent.transition ? { transition: slideContent.transition } : {}),
+    ...(slideContent.durationMs ? { durationMs: slideContent.durationMs } : {}),
+    ...(slideContent.background ? { background: slideContent.background } : {}),
+    ...(slideContent.visualOnly ? { visualOnly: slideContent.visualOnly } : {}),
+  };
+  const fallbackParsed = presentationSlideContentSchema.safeParse(baseFallback);
+  if (fallbackParsed.success) {
+    warnings.push("Regenerated slide content dropped incompatible optional metadata to satisfy schema validation.");
+    return fallbackParsed.data;
+  }
+
+  warnings.push("Regenerated slide content used a minimal schema-safe fallback payload.");
+  return presentationSlideContentSchema.parse({
+    elements: slideContent.elements.filter((element) => element.type === "text" || element.type === "image" || element.type === "video"),
+    ...(slideContent.canvas ? { canvas: slideContent.canvas } : {}),
+    ...(slideContent.transition ? { transition: slideContent.transition } : {}),
+    ...(slideContent.durationMs ? { durationMs: slideContent.durationMs } : {}),
+  });
+}
+
+export function finalizeSlideContentAfterRelayout(
+  slideContent: PresentationSlideContent,
+  warnings: string[],
+): PresentationSlideContent {
+  const parsed = presentationSlideContentSchema.safeParse(slideContent);
+  if (parsed.success) {
+    return parsed.data;
+  }
+
+  const aiDesignParsed = presentationSlideAIDesignSchema.safeParse(slideContent.aiDesign);
+  if (!aiDesignParsed.success) {
+    const withoutAIDesign = { ...slideContent };
+    delete (withoutAIDesign as Partial<PresentationSlideContent>).aiDesign;
+    const withoutAIDesignParsed = presentationSlideContentSchema.safeParse(withoutAIDesign);
+    if (withoutAIDesignParsed.success) {
+      warnings.push("Auto layout omitted incompatible AI metadata to satisfy schema validation.");
+      return withoutAIDesignParsed.data;
+    }
+  }
+
+  const baseFallback: PresentationSlideContent = {
+    elements: slideContent.elements,
+    ...(slideContent.components?.length ? { components: slideContent.components } : {}),
+    ...(slideContent.renderOrder?.length ? { renderOrder: slideContent.renderOrder } : {}),
+    ...(slideContent.canvas ? { canvas: slideContent.canvas } : {}),
+    ...(slideContent.transition ? { transition: slideContent.transition } : {}),
+    ...(slideContent.durationMs ? { durationMs: slideContent.durationMs } : {}),
+    ...(slideContent.background ? { background: slideContent.background } : {}),
+    ...(slideContent.visualOnly ? { visualOnly: slideContent.visualOnly } : {}),
+  };
+  const fallbackParsed = presentationSlideContentSchema.safeParse(baseFallback);
+  if (fallbackParsed.success) {
+    warnings.push("Auto layout dropped incompatible optional metadata to satisfy schema validation.");
+    return fallbackParsed.data;
+  }
+
+  warnings.push("Auto layout used a minimal schema-safe fallback payload.");
+  return presentationSlideContentSchema.parse({
+    elements: slideContent.elements.filter((element) => element.type === "text" || element.type === "image" || element.type === "video"),
+    ...(slideContent.canvas ? { canvas: slideContent.canvas } : {}),
+    ...(slideContent.transition ? { transition: slideContent.transition } : {}),
+    ...(slideContent.durationMs ? { durationMs: slideContent.durationMs } : {}),
+  });
+}
+
 interface RGBColor {
   r: number;
   g: number;
@@ -329,6 +450,15 @@ interface RGBColor {
 interface RelayoutMediaSources {
   imageUrls: string[];
   videoUrls: string[];
+}
+
+interface RelayoutNarrative {
+  title: string;
+  body: string[];
+  sections: Array<{ heading: string; details: string[] }>;
+  notes?: string;
+  source: "aiDesign" | "slideNotes" | "rendered";
+  templateId: LayoutTemplateId;
 }
 
 function parseCssColorToRgb(value: string | undefined | null): RGBColor | null {
@@ -430,6 +560,81 @@ function stripMarkdownFormatting(value: string): string {
     .replace(/^\s*>\s?/gm, "")                       // > blockquote
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")         // [link](url)
     .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1");       // ![alt](img)
+}
+
+function splitInlineStructuredListSegments(value: string): string[] {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return [];
+  }
+
+  const markerPattern = /(^|\s)((?:\d+|[A-Za-z])\s*[\).:])\s+/g;
+  const markerStarts: number[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = markerPattern.exec(normalized)) !== null) {
+    const prefixLength = match[1]?.length ?? 0;
+    markerStarts.push(match.index + prefixLength);
+    if (markerPattern.lastIndex === match.index) {
+      markerPattern.lastIndex += 1;
+    }
+  }
+
+  if (markerStarts.length === 0) {
+    return [normalized];
+  }
+
+  const firstMarkerStart = markerStarts[0]!;
+  if (firstMarkerStart > 0) {
+    const prefix = normalized.slice(0, firstMarkerStart).trim();
+    if (prefix.length < 6) {
+      return [normalized];
+    }
+
+    const segments = [prefix];
+    for (let index = 0; index < markerStarts.length; index += 1) {
+      const start = markerStarts[index]!;
+      const end = markerStarts[index + 1] ?? normalized.length;
+      const segment = normalized.slice(start, end).trim();
+      if (segment.length > 0) {
+        segments.push(segment);
+      }
+    }
+    return segments;
+  }
+
+  return markerStarts.map((start, index) => {
+    const end = markerStarts[index + 1] ?? normalized.length;
+    return normalized.slice(start, end).trim();
+  }).filter((segment) => segment.length > 0);
+}
+
+function splitInlineBulletSegments(value: string): string[] {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return [];
+  }
+
+  return normalized
+    .split(/\s+(?=[•▪◦·-]\s+)/)
+    .map((segment) => segment.trim())
+    .filter((segment) => segment.length > 0);
+}
+
+function canonicalizeSlideNotesForNarrative(note: string): string {
+  return note
+    .replace(/\r/g, "\n")
+    .split("\n")
+    .flatMap((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        return [""];
+      }
+      return splitInlineStructuredListSegments(line)
+        .flatMap((segment) => splitInlineBulletSegments(segment));
+    })
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 /**
@@ -756,11 +961,7 @@ function extractSlideNarrative(slideTitle: string, slideContent: PresentationSli
 
 function extractDraftNarrativeFromAIDesign(
   slideContent: PresentationSlideContent,
-): {
-  title: string;
-  body: string[];
-  sections: Array<{ heading: string; details: string[] }>;
-} | null {
+): RelayoutNarrative | null {
   const narrative = slideContent.aiDesign?.narrative;
   if (!narrative) {
     return null;
@@ -780,23 +981,128 @@ function extractDraftNarrativeFromAIDesign(
     return null;
   }
 
-  return { title, body, sections };
+  return {
+    title,
+    body,
+    sections,
+    ...(normalizeSlideText(narrative.notes ?? "") ? { notes: normalizeSlideText(narrative.notes ?? "").slice(0, 5_000) } : {}),
+    source: "aiDesign",
+    templateId: isSupportedLayoutTemplateId(narrative.templateId)
+      ? narrative.templateId
+      : "split_right_image",
+  };
+}
+
+function isSupportedLayoutTemplateId(value: string | undefined): value is LayoutTemplateId {
+  return typeof value === "string"
+    && (AI_LAYOUT_TEMPLATE_IDS as readonly string[]).includes(value);
+}
+
+function extractNarrativeFromSlideNotes(
+  slideTitle: string,
+  slideNotes: string | null | undefined,
+  fallbackTemplateId: LayoutTemplateId,
+  slideIndex: number,
+): RelayoutNarrative | null {
+  const rawNotes = String(slideNotes ?? "").trim();
+  if (!rawNotes) {
+    return null;
+  }
+
+  const canonicalNotes = canonicalizeSlideNotesForNarrative(rawNotes);
+  const mdStructure = parseMarkdownNoteStructure(canonicalNotes);
+  const normalizedNotes = normalizeSlideText(canonicalNotes).slice(0, 5_000);
+  let title = deriveTitleFromCanonicalNote(canonicalNotes, slideTitle, slideIndex);
+  let body: string[] = [];
+  let sections: Array<{ heading: string; details: string[] }> = [];
+
+  if (mdStructure.sections.length > 0 || mdStructure.title) {
+    title = mdStructure.title || title;
+    const allBodyLines = [
+      ...mdStructure.plainLines,
+      ...mdStructure.sections.flatMap((section) => section.bodyLines),
+    ];
+    body = allBodyLines.length > 0
+      ? allBodyLines
+      : deriveBodyFromCanonicalNote(canonicalNotes, fallbackTemplateId);
+    sections = mdStructure.sections
+      .filter((section) => section.heading.length > 0)
+      .map((section) => normalizeNarrativeSection({
+        heading: section.heading,
+        details: section.bodyLines.slice(0, AI_NARRATIVE_MAX_SECTION_DETAILS),
+      }))
+      .filter((section): section is { heading: string; details: string[] } => Boolean(section));
+  } else {
+    body = deriveBodyFromCanonicalNote(canonicalNotes, fallbackTemplateId);
+    sections = buildSlideSectionsFromBody(body, fallbackTemplateId)
+      .map((section) => normalizeNarrativeSection(section))
+      .filter((section): section is { heading: string; details: string[] } => Boolean(section));
+  }
+
+  const normalizedBody = body
+    .map((line) => normalizeNarrativeBodyLine(line))
+    .filter((line, index, arr) => line.length > 0 && arr.indexOf(line) === index)
+    .slice(0, AI_NARRATIVE_MAX_BODY_LINES);
+  const normalizedSections = sections
+    .slice(0, 6)
+    .map((section) => normalizeNarrativeSection(section))
+    .filter((section): section is { heading: string; details: string[] } => Boolean(section));
+
+  if (!title || normalizedBody.length === 0) {
+    return null;
+  }
+
+  return {
+    title,
+    body: normalizedBody,
+    sections: normalizedSections,
+    ...(normalizedNotes ? { notes: normalizedNotes } : {}),
+    source: "slideNotes",
+    templateId: fallbackTemplateId,
+  };
+}
+
+function computeRelayoutNarrativeRichness(narrative: Pick<RelayoutNarrative, "body" | "sections" | "notes">): number {
+  const bodyChars = narrative.body.reduce((sum, line) => sum + line.length, 0);
+  const detailChars = narrative.sections.reduce(
+    (sum, section) => sum + section.heading.length + section.details.reduce((detailSum, detail) => detailSum + detail.length, 0),
+    0,
+  );
+  return bodyChars + detailChars + Math.round((narrative.notes?.length ?? 0) * 0.35);
 }
 
 function extractRelayoutNarrative(
   slideTitle: string,
   sourceSlideContent: PresentationSlideContent,
   renderableSlideContent: PresentationSlideContent,
-): {
-  title: string;
-  body: string[];
-  sections: Array<{ heading: string; details: string[] }>;
-} {
+  slideNotes?: string | null,
+): RelayoutNarrative {
   const aiNarrative = extractDraftNarrativeFromAIDesign(sourceSlideContent);
+  const notesNarrative = extractNarrativeFromSlideNotes(
+    slideTitle,
+    slideNotes,
+    aiNarrative?.templateId ?? "split_right_image",
+    0,
+  );
+  if (
+    notesNarrative
+    && (
+      !aiNarrative
+      || computeRelayoutNarrativeRichness(notesNarrative) > Math.round(computeRelayoutNarrativeRichness(aiNarrative) * 1.12)
+      || aiNarrative.body.length < notesNarrative.body.length
+    )
+  ) {
+    return notesNarrative;
+  }
   if (aiNarrative) {
     return aiNarrative;
   }
-  return extractSlideNarrative(slideTitle, renderableSlideContent);
+  const renderedNarrative = extractSlideNarrative(slideTitle, renderableSlideContent);
+  return {
+    ...renderedNarrative,
+    source: "rendered",
+    templateId: "split_right_image",
+  };
 }
 
 function isVisualOnlySlideContent(slideContent: PresentationSlideContent): boolean {
@@ -812,6 +1118,13 @@ function isWatermarkElement(element: SlideElement): boolean {
   }
   const alt = String(element.alt || "").trim().toLowerCase();
   return element.id.startsWith(WATERMARK_ID_PREFIX) || alt.startsWith(WATERMARK_ALT_PREFIX);
+}
+
+function isInlineSvgGraphicElement(element: SlideElement): element is SlideImageElement {
+  return element.type === "image"
+    && (!element.src || !String(element.src).trim())
+    && typeof element.svgContent === "string"
+    && element.svgContent.trim().length > 0;
 }
 
 function isCanvasBackgroundRect(
@@ -867,12 +1180,33 @@ function buildRelayoutPreservedElements(
   const MAX_PRESERVED_MEDIA = Math.max(24, Math.min(PRESENTATION_LIMITS.maxElementsPerSlide, 220));
   const MAX_PRESERVED_GRAPHICS = 3;
   const MAX_RECT_AREA_RATIO = 0.08;
-  const MAX_LINE_SPAN_RATIO = 0.45;
-  const excludedMediaSources = new Set(
-    Array.from(excludedMediaSourceUrls ?? [])
-      .map((value) => String(value || "").trim())
-      .filter((value) => value.length > 0),
-  );
+  const excludedMediaSourceCounts = new Map<string, number>();
+  for (const value of Array.from(excludedMediaSourceUrls ?? [])) {
+    const normalized = String(value || "").trim();
+    if (!normalized) {
+      continue;
+    }
+    excludedMediaSourceCounts.set(
+      normalized,
+      (excludedMediaSourceCounts.get(normalized) ?? 0) + 1,
+    );
+  }
+  const consumeExcludedMediaSource = (value: string): boolean => {
+    const normalized = String(value || "").trim();
+    if (!normalized) {
+      return false;
+    }
+    const remaining = excludedMediaSourceCounts.get(normalized) ?? 0;
+    if (remaining <= 0) {
+      return false;
+    }
+    if (remaining === 1) {
+      excludedMediaSourceCounts.delete(normalized);
+    } else {
+      excludedMediaSourceCounts.set(normalized, remaining - 1);
+    }
+    return true;
+  };
   const excludedIds = new Set(
     Array.from(excludedElementIds ?? [])
       .map((value) => String(value || "").trim())
@@ -888,9 +1222,20 @@ function buildRelayoutPreservedElements(
     if (isWatermarkElement(element) || element.type === "text") {
       continue;
     }
+    if (isInlineSvgGraphicElement(element)) {
+      if (getElementAreaRatio(element, canvas) > 0.02) {
+        continue;
+      }
+      if (preservedGraphicsCount >= MAX_PRESERVED_GRAPHICS) {
+        continue;
+      }
+      preserved.push(element);
+      preservedGraphicsCount += 1;
+      continue;
+    }
     if (element.type === "image") {
       const src = String(element.src || "").trim();
-      if (src && excludedMediaSources.has(src)) {
+      if (src && consumeExcludedMediaSource(src)) {
         continue;
       }
       if (!src && !element.svgContent) {
@@ -908,7 +1253,7 @@ function buildRelayoutPreservedElements(
       if (!src) {
         continue;
       }
-      if (excludedMediaSources.has(src)) {
+      if (consumeExcludedMediaSource(src)) {
         continue;
       }
       if (preservedMediaCount >= MAX_PRESERVED_MEDIA) {
@@ -936,19 +1281,25 @@ function buildRelayoutPreservedElements(
       continue;
     }
     if (element.type === "line") {
-      const span = Math.max(Math.abs(element.width), Math.abs(element.height));
-      const maxCanvasSpan = Math.max(canvas.width, canvas.height);
-      if (span > (maxCanvasSpan * MAX_LINE_SPAN_RATIO)) {
-        continue;
-      }
-      if (preservedGraphicsCount >= MAX_PRESERVED_GRAPHICS) {
-        continue;
-      }
-      preserved.push(element);
-      preservedGraphicsCount += 1;
+      continue;
     }
   }
   return preserved;
+}
+
+function collectComponentFallbackExcludedElementIds(
+  slideContent: PresentationSlideContent,
+): Set<string> {
+  const excludedIds = new Set<string>();
+  for (const component of slideContent.components ?? []) {
+    for (const element of component.fallbackElements) {
+      if (element.type === "image" || element.type === "video") {
+        continue;
+      }
+      excludedIds.add(element.id);
+    }
+  }
+  return excludedIds;
 }
 
 function clampElementToCanvas(
@@ -982,6 +1333,54 @@ function computeRectIntersectionArea(
   const width = Math.max(0, right - left);
   const height = Math.max(0, bottom - top);
   return width * height;
+}
+
+function collectDecorativeAvoidZones(
+  elements: SlideElement[],
+): Array<{ x: number; y: number; width: number; height: number }> {
+  return elements
+    .filter((element) => element.type === "text")
+    .map((element) => ({
+      x: element.x,
+      y: element.y,
+      width: Math.max(1, element.width),
+      height: Math.max(1, element.height),
+    }))
+    .filter((zone) => zone.width > 0 && zone.height > 0);
+}
+
+function filterDecorativeGraphicElements(
+  decorativeElements: SlideElement[],
+  generatedElements: SlideElement[],
+  canvas: { width: number; height: number },
+): SlideElement[] {
+  if (decorativeElements.length === 0) {
+    return [];
+  }
+  const avoidZones = collectDecorativeAvoidZones(generatedElements);
+  const accepted: SlideElement[] = [];
+  for (const element of decorativeElements) {
+    const normalized = clampElementToCanvas(element, canvas);
+    const area = Math.max(1, normalized.width * Math.max(1, normalized.height));
+    const canvasArea = Math.max(1, canvas.width * canvas.height);
+    const areaRatio = area / canvasArea;
+    if (areaRatio > 0.045) {
+      continue;
+    }
+    const overlapRatio = avoidZones.reduce((maxRatio, zone) => {
+      const overlap = computeRectIntersectionArea(normalized, zone);
+      return Math.max(maxRatio, overlap / area);
+    }, 0);
+    const acceptedOverlap = accepted.reduce((maxRatio, placed) => {
+      const overlap = computeRectIntersectionArea(normalized, placed);
+      return Math.max(maxRatio, overlap / area);
+    }, 0);
+    if (overlapRatio > 0.12 || acceptedOverlap > 0.2) {
+      continue;
+    }
+    accepted.push(normalized);
+  }
+  return accepted;
 }
 
 function findGeneratedMediaDropZones(
@@ -1060,13 +1459,30 @@ function buildFallbackMediaGridZones(
   count: number,
   generatedElements: SlideElement[],
   canvas: { width: number; height: number },
+  options?: {
+    allowOverlayOnMedia?: boolean;
+    preferMediaOverlay?: boolean;
+  },
 ): Array<{ x: number; y: number; width: number; height: number }> {
   if (count <= 0) {
     return [];
   }
 
   const gap = Math.max(10, Math.round(Math.min(canvas.width, canvas.height) * 0.018));
-  const targetWidth = clampInteger(Math.round(canvas.width * 0.17), 110, 280);
+  const zoneAspectRatio = count <= 1 ? 1.08 : (count === 2 ? 0.86 : 0.68);
+  const targetWidth = clampInteger(
+    Math.round(
+      canvas.width * (
+        count <= 1
+          ? 0.32
+          : count === 2
+            ? 0.24
+            : 0.17
+      ),
+    ),
+    count <= 1 ? 180 : 110,
+    count <= 1 ? 420 : 320,
+  );
   const maxColumnsByWidth = Math.max(1, Math.floor((canvas.width - gap) / (targetWidth + gap)));
   let columns = Math.max(1, Math.min(maxColumnsByWidth, Math.ceil(Math.sqrt(count))));
   let rows = Math.max(1, Math.ceil(count / columns));
@@ -1075,7 +1491,7 @@ function buildFallbackMediaGridZones(
     96,
     280,
   );
-  let height = clampInteger(Math.round(width * 0.68), 72, 190);
+  let height = clampInteger(Math.round(width * zoneAspectRatio), 72, count <= 1 ? 360 : 240);
 
   while (
     columns < maxColumnsByWidth
@@ -1088,7 +1504,7 @@ function buildFallbackMediaGridZones(
       84,
       280,
     );
-    height = clampInteger(Math.round(width * 0.68), 64, 190);
+    height = clampInteger(Math.round(width * zoneAspectRatio), 64, count <= 1 ? 360 : 240);
   }
 
   const totalWidth = (columns * width) + ((columns - 1) * gap);
@@ -1113,10 +1529,9 @@ function buildFallbackMediaGridZones(
     y: avgTextY >= (canvas.height * 0.5) ? minY : maxY,
   };
 
-  const avoidZones = generatedElements
+  const mediaZones = generatedElements
     .filter((element) => (
-      element.type === "text"
-      || element.type === "image"
+      (element.type === "image" && !isInlineSvgGraphicElement(element))
       || element.type === "video"
     ))
     .map((element) => clampElementToCanvas(element, canvas))
@@ -1126,9 +1541,49 @@ function buildFallbackMediaGridZones(
       width: element.width,
       height: Math.max(1, element.height),
     }))
+    .filter((zone) => zone.width > 0 && zone.height > 0)
+    .sort((a, b) => (b.width * b.height) - (a.width * a.height));
+  const avoidZones = generatedElements
+    .filter((element) => (
+      element.type === "text"
+      || (!options?.allowOverlayOnMedia && (
+        (element.type === "image" && !isInlineSvgGraphicElement(element))
+        || element.type === "video"
+      ))
+    ))
+    .map((element) => clampElementToCanvas(element, canvas))
+    .map((element) => ({
+      x: element.type === "text" ? element.x - Math.round(gap * 1.4) : element.x - Math.round(gap * 0.5),
+      y: element.type === "text" ? element.y - Math.round(gap * 1.2) : element.y - Math.round(gap * 0.5),
+      width: element.width + (element.type === "text" ? Math.round(gap * 2.8) : gap),
+      height: Math.max(1, element.height) + (element.type === "text" ? Math.round(gap * 2.4) : gap),
+    }))
     .filter((zone) => zone.width > 0 && zone.height > 0);
 
+  const primaryMediaZone = options?.preferMediaOverlay ? mediaZones[0] : null;
+  const overlayCandidateStarts = primaryMediaZone
+    ? [
+        {
+          x: clampInteger(primaryMediaZone.x + gap, minX, maxX),
+          y: clampInteger(primaryMediaZone.y + gap, minY, maxY),
+        },
+        {
+          x: clampInteger(primaryMediaZone.x + primaryMediaZone.width - totalWidth - gap, minX, maxX),
+          y: clampInteger(primaryMediaZone.y + gap, minY, maxY),
+        },
+        {
+          x: clampInteger(primaryMediaZone.x + gap, minX, maxX),
+          y: clampInteger(primaryMediaZone.y + primaryMediaZone.height - totalHeight - gap, minY, maxY),
+        },
+        {
+          x: clampInteger(primaryMediaZone.x + primaryMediaZone.width - totalWidth - gap, minX, maxX),
+          y: clampInteger(primaryMediaZone.y + primaryMediaZone.height - totalHeight - gap, minY, maxY),
+        },
+      ]
+    : [];
+
   const candidateStarts = [
+    ...overlayCandidateStarts,
     { x: minX, y: minY },
     { x: maxX, y: minY },
     { x: minX, y: maxY },
@@ -1218,9 +1673,13 @@ function layoutPreservedMediaElements(
   }
 
   const dropZones = findGeneratedMediaDropZones(generatedElements, canvas);
+  const generatedHasRenderableMedia = generatedElements.some((element) => (
+    (element.type === "image" && !isInlineSvgGraphicElement(element))
+    || element.type === "video"
+  ));
   const arranged: SlideElement[] = [];
   let nextMediaIndex = 0;
-  for (const zone of dropZones) {
+  for (const zone of (generatedHasRenderableMedia ? [] : dropZones)) {
     const media = mediaElements[nextMediaIndex];
     if (!media) {
       break;
@@ -1235,6 +1694,10 @@ function layoutPreservedMediaElements(
       remaining.length,
       [...generatedElements, ...arranged],
       canvas,
+      {
+        allowOverlayOnMedia: generatedHasRenderableMedia,
+        preferMediaOverlay: generatedHasRenderableMedia,
+      },
     );
     for (let i = 0; i < remaining.length; i += 1) {
       const media = remaining[i]!;
@@ -1278,14 +1741,14 @@ function mergeRelayoutElementsWithPreserved(
     return next;
   }
   const mediaPreserved = normalizedPreserved.filter((element) => (
-    element.type === "image" || element.type === "video"
+    (element.type === "image" && !isInlineSvgGraphicElement(element)) || element.type === "video"
   ));
   const graphicPreserved = normalizedPreserved.filter((element) => (
-    element.type !== "image" && element.type !== "video"
+    !mediaPreserved.some((mediaElement) => mediaElement.id === element.id)
   ));
   const arrangedPreserved = [
     ...layoutPreservedMediaElements(mediaPreserved, next, canvas),
-    ...graphicPreserved,
+    ...filterDecorativeGraphicElements(graphicPreserved, next, canvas),
   ];
   const availableSlots = Math.max(0, PRESENTATION_LIMITS.maxElementsPerSlide - next.length);
   const clippedPreserved = arrangedPreserved.slice(0, availableSlots);
@@ -1415,6 +1878,26 @@ function collectRelayoutMediaSources(
   };
 }
 
+function collectRenderedMediaSourceUrls(elements: SlideElement[]): string[] {
+  const urls: string[] = [];
+  for (const element of elements) {
+    if (
+      !(
+        (element.type === "image" && !isInlineSvgGraphicElement(element))
+        || element.type === "video"
+      )
+    ) {
+      continue;
+    }
+    const src = String((element as any).src || "").trim();
+    if (!src) {
+      continue;
+    }
+    urls.push(src);
+  }
+  return urls;
+}
+
 function getRelayoutPreferredMediaTypes(
   componentRecipeId: AIPresentationComponentRecipeId | undefined,
 ): Set<"image" | "video"> {
@@ -1443,6 +1926,341 @@ function resolveRelayoutComponentRecipeId(
   }
 
   return undefined;
+}
+
+function buildRelayoutRecipeSelectionSlide(options: {
+  narrative: RelayoutNarrative;
+  templateId: LayoutTemplateId;
+  graphicCategory: GraphicCategoryId;
+  hasImage: boolean;
+  hasVideo: boolean;
+}): AIPresentationSlide {
+  return {
+    templateId: options.templateId,
+    title: options.narrative.title,
+    body: options.narrative.body,
+    ...(options.narrative.notes ? { notes: options.narrative.notes } : {}),
+    ...(options.narrative.sections.length > 0 ? { sections: options.narrative.sections } : {}),
+    graphicCategory: options.graphicCategory,
+    imagePromptKeywords: options.narrative.title.slice(0, 500),
+    ...(options.hasVideo && !options.hasImage ? { componentRecipeId: "video-spotlight" } : {}),
+  };
+}
+
+function summarizeRelayoutRecipeText(value: string, maxChars: number): string {
+  const normalized = normalizeSlideText(value);
+  if (!normalized) {
+    return "";
+  }
+  if (normalized.length <= maxChars) {
+    return normalized;
+  }
+  const chunks = splitLongTextAtSpaces(normalized, maxChars, Math.max(18, Math.floor(maxChars * 0.45)));
+  const first = chunks[0] ?? normalized.slice(0, maxChars);
+  return normalizeSlideText(first).slice(0, maxChars);
+}
+
+function adaptRelayoutSlideForRecipe(
+  recipeId: AIPresentationComponentRecipeId,
+  slide: AIPresentationSlide,
+): { slide: AIPresentationSlide; adapted: boolean; warning?: string } {
+  const sourceSections = (slide.sections ?? [])
+    .map((section) => normalizeNarrativeSection(section))
+    .filter((section): section is { heading: string; details: string[] } => Boolean(section));
+  const sourceBody = slide.body
+    .map((line) => normalizeNarrativeBodyLine(line))
+    .filter((line) => line.length > 0);
+
+  let maxSections = 0;
+  let headingChars = 0;
+  let detailChars = 0;
+  let maxDetails = 0;
+  let maxBodyLines = 0;
+  let adaptationLabel = "";
+
+  switch (recipeId) {
+    case "process-steps":
+      maxSections = 3;
+      headingChars = 56;
+      detailChars = 96;
+      maxDetails = 3;
+      maxBodyLines = 2;
+      adaptationLabel = "process steps";
+      break;
+    case "timeline-flow":
+      maxSections = 3;
+      headingChars = 56;
+      detailChars = 104;
+      maxDetails = 3;
+      maxBodyLines = 2;
+      adaptationLabel = "timeline flow";
+      break;
+    case "feature-highlights":
+      maxSections = 3;
+      headingChars = 52;
+      detailChars = 88;
+      maxDetails = 2;
+      maxBodyLines = 2;
+      adaptationLabel = "feature highlights";
+      break;
+    case "infographic-grid":
+      maxSections = 4;
+      headingChars = 52;
+      detailChars = 90;
+      maxDetails = 2;
+      maxBodyLines = 2;
+      adaptationLabel = "infographic grid";
+      break;
+    default:
+      return { slide, adapted: false };
+  }
+
+  if (recipeId === "feature-highlights" && sourceSections.length > maxSections) {
+    return { slide, adapted: false };
+  }
+
+  const condensedSections = sourceSections
+    .slice(0, maxSections)
+    .map((section) => ({
+      heading: summarizeRelayoutRecipeText(section.heading, headingChars),
+      details: section.details
+        .map((detail) => summarizeRelayoutRecipeText(detail, detailChars))
+        .filter((detail) => detail.length > 0)
+        .slice(0, maxDetails),
+    }))
+    .map((section) => normalizeNarrativeSection(section))
+    .filter((section): section is { heading: string; details: string[] } => Boolean(section));
+
+  const overflowSections = sourceSections.slice(maxSections);
+  if (overflowSections.length > 0 && condensedSections.length > 0) {
+    const lastSection = condensedSections[condensedSections.length - 1]!;
+    const mergedDetails = [...lastSection.details];
+    for (const section of overflowSections) {
+      if (mergedDetails.length >= maxDetails) {
+        break;
+      }
+      const mergedLine = summarizeRelayoutRecipeText(
+        `${section.heading}: ${section.details[0] ?? ""}`.trim(),
+        detailChars,
+      );
+      if (mergedLine && !mergedDetails.includes(mergedLine)) {
+        mergedDetails.push(mergedLine);
+      }
+    }
+    lastSection.details = mergedDetails.slice(0, maxDetails);
+  }
+
+  const condensedBody = sourceBody
+    .map((line) => summarizeRelayoutRecipeText(line, 96))
+    .filter((line) => line.length > 0)
+    .slice(0, maxBodyLines);
+
+  const adaptedSlide = normalizeSlideHierarchyCore({
+    ...slide,
+    body: condensedBody,
+    ...(condensedSections.length > 0 ? { sections: condensedSections } : {}),
+  });
+  const adapted = (
+    condensedSections.length !== sourceSections.length
+    || condensedBody.length !== sourceBody.length
+    || condensedSections.some((section, index) => {
+      const source = sourceSections[index];
+      return !source
+        || section.heading !== source.heading
+        || section.details.join("||") !== source.details.slice(0, maxDetails).join("||");
+    })
+    || condensedBody.some((line, index) => line !== sourceBody[index])
+  );
+
+  return {
+    slide: adaptedSlide,
+    adapted,
+    ...(adapted
+      ? {
+        warning: `Condensed the visible copy to fit the "${adaptationLabel}" block while keeping the full slide note intact.`,
+      }
+      : {}),
+  };
+}
+
+function getRelayoutRecipeSuitability(
+  recipeId: AIPresentationComponentRecipeId,
+  slide: AIPresentationSlide,
+  media: { hasImage: boolean; hasVideo: boolean },
+): { suitable: boolean; reason?: string } {
+  const allLines = [
+    slide.title,
+    ...slide.body,
+    slide.notes ?? "",
+    ...(slide.sections ?? []).flatMap((section) => [section.heading, ...section.details]),
+  ]
+    .map((line) => normalizeSlideText(line))
+    .filter((line) => line.length > 0);
+  const sectionCount = slide.sections?.length ?? 0;
+  const bodyCount = slide.body.length;
+  const noteChars = normalizeSlideText(slide.notes ?? "").length;
+  const bodyCharTotal = slide.body.reduce((sum, line) => sum + line.length, 0);
+  const detailLines = (slide.sections ?? []).flatMap((section) => section.details);
+  const detailCharTotal = detailLines.reduce((sum, line) => sum + line.length, 0);
+  const maxDetailChars = detailLines.reduce((max, line) => Math.max(max, line.length), 0);
+  const longTextLines = [
+    ...slide.body.filter((line) => line.length >= 90),
+    ...detailLines.filter((line) => line.length >= 120),
+  ].length;
+  const metricSignals = detectMetricSignals(allLines);
+  const contactSignals = detectContactSignals(allLines);
+
+  const reject = (reason: string) => ({ suitable: false, reason });
+
+  switch (recipeId) {
+    case "process-steps":
+      if (sectionCount > 3) return reject("Process steps cannot faithfully fit more than three structured steps.");
+      if ((bodyCharTotal + detailCharTotal) > 280 || noteChars > 320 || maxDetailChars > 140 || longTextLines >= 2) {
+        return reject("Process steps cards are too dense for the available copy.");
+      }
+      return { suitable: true };
+    case "timeline-flow":
+      if (sectionCount > 3) return reject("Timeline flow supports up to three milestones.");
+      if ((bodyCharTotal + detailCharTotal) > 320 || noteChars > 360 || maxDetailChars > 150 || longTextLines >= 2) {
+        return reject("Timeline flow cards are too dense for the available copy.");
+      }
+      return { suitable: true };
+    case "feature-highlights":
+      if (sectionCount > 3) return reject("Feature highlights supports up to three cards.");
+      if ((bodyCharTotal + detailCharTotal) > 260 || noteChars > 300 || maxDetailChars > 120 || longTextLines >= 2) {
+        return reject("Feature highlight cards are too dense for the available copy.");
+      }
+      return { suitable: true };
+    case "infographic-grid":
+      if (sectionCount > 4) return reject("Infographic grid supports up to four balanced items.");
+      if ((bodyCharTotal + detailCharTotal) > 420 || noteChars > 520 || maxDetailChars > 150 || longTextLines >= 3) {
+        return reject("Infographic grid would overcrowd the available copy.");
+      }
+      return { suitable: true };
+    case "stat-cards":
+      if (metricSignals < 2) return reject("Stat cards need multiple metric signals.");
+      if (bodyCount > 4 || maxDetailChars > 80 || noteChars > 220) {
+        return reject("Stat cards work best with short metric labels only.");
+      }
+      return { suitable: true };
+    case "quote-callout":
+      if (bodyCount > 3 || noteChars > 260 || longTextLines >= 2) {
+        return reject("Quote callout only fits a short quote and attribution.");
+      }
+      return { suitable: true };
+    case "profile-summary":
+      if (!media.hasImage) return reject("Profile summary needs an image slot.");
+      if (contactSignals < 1 && sectionCount < 2) return reject("Profile summary needs bio/contact structure.");
+      if (noteChars > 900) return reject("Profile summary is too dense for the compact bio layout.");
+      return { suitable: true };
+    case "video-spotlight":
+      if (!media.hasVideo) return reject("Video spotlight needs reusable video.");
+      if (bodyCount > 5 || noteChars > 340 || longTextLines >= 2) {
+        return reject("Video spotlight only fits a short lead and benefit list.");
+      }
+      return { suitable: true };
+    case "poster-spotlight":
+      if (!media.hasImage) return reject("Poster spotlight needs reusable image.");
+      if (bodyCount > 5 || sectionCount > 2 || noteChars > 320 || longTextLines >= 2) {
+        return reject("Poster spotlight only fits concise campaign copy.");
+      }
+      return { suitable: true };
+    case "framed-image-story":
+      if (!media.hasImage) return reject("Framed image story needs reusable image.");
+      if (sectionCount > 2 || bodyCount > 4 || noteChars > 380 || maxDetailChars > 130 || longTextLines >= 2) {
+        return reject("Framed image story needs a shorter editorial narrative.");
+      }
+      return { suitable: true };
+    case "photo-collage":
+      if (!media.hasImage) return reject("Photo collage needs reusable images.");
+      if (bodyCount > 4 || sectionCount > 2 || noteChars > 240 || longTextLines >= 2) {
+        return reject("Photo collage only fits a short caption-driven story.");
+      }
+      return { suitable: true };
+    default:
+      return { suitable: true };
+  }
+}
+
+function resolveRelayoutComponentRecipeSelection(options: {
+  preferredComponentRecipeId: AIPresentationComponentRecipeId | undefined;
+  slide: AIPresentationSlide;
+  hasImage: boolean;
+  hasVideo: boolean;
+}): { componentRecipeId?: AIPresentationComponentRecipeId; warnings: string[]; slide: AIPresentationSlide } {
+  const warnings: string[] = [];
+  const media = { hasImage: options.hasImage, hasVideo: options.hasVideo };
+  const preserveVisibleMedia = Boolean(options.preferredComponentRecipeId) && (options.hasImage || options.hasVideo);
+  if (options.preferredComponentRecipeId) {
+    const adaptedPreferred = adaptRelayoutSlideForRecipe(
+      options.preferredComponentRecipeId,
+      options.slide,
+    );
+    const preferredSuitability = getRelayoutRecipeSuitability(
+      options.preferredComponentRecipeId,
+      adaptedPreferred.slide,
+      media,
+    );
+    if (preferredSuitability.suitable) {
+      if (adaptedPreferred.warning) {
+        warnings.push(adaptedPreferred.warning);
+      }
+      return {
+        componentRecipeId: options.preferredComponentRecipeId,
+        warnings,
+        slide: adaptedPreferred.slide,
+      };
+    }
+    warnings.push(
+      `Skipped component recipe "${options.preferredComponentRecipeId}" because ${preferredSuitability.reason ?? "it does not fit the current copy."}`,
+    );
+  }
+
+  const candidates = scoreAIComponentRecipes({
+    slide: options.slide,
+    preferVideoRecipes: options.hasVideo && !options.hasImage,
+  });
+  for (const candidate of candidates) {
+    if (candidate.score < getAIComponentRecipeActivationThreshold(candidate.recipeId)) {
+      continue;
+    }
+    if (candidate.recipeId === options.preferredComponentRecipeId) {
+      continue;
+    }
+    if (preserveVisibleMedia) {
+      const candidateMediaTypes = getRelayoutPreferredMediaTypes(candidate.recipeId);
+      const supportsVisibleMedia = (
+        (media.hasImage && candidateMediaTypes.has("image"))
+        || (media.hasVideo && candidateMediaTypes.has("video"))
+      );
+      if (!supportsVisibleMedia) {
+        continue;
+      }
+    }
+    const adaptedCandidate = adaptRelayoutSlideForRecipe(candidate.recipeId, options.slide);
+    const suitability = getRelayoutRecipeSuitability(candidate.recipeId, adaptedCandidate.slide, media);
+    if (!suitability.suitable) {
+      continue;
+    }
+    if (options.preferredComponentRecipeId) {
+      warnings.push(
+        `Switched component recipe to "${candidate.recipeId}" during auto layout because it better fits the available copy.`,
+      );
+    }
+    if (adaptedCandidate.warning) {
+      warnings.push(adaptedCandidate.warning);
+    }
+    return {
+      componentRecipeId: candidate.recipeId,
+      warnings,
+      slide: adaptedCandidate.slide,
+    };
+  }
+
+  if (options.preferredComponentRecipeId) {
+    warnings.push("Auto layout fell back to a plain template because no block recipe fit the current copy cleanly.");
+  }
+  return { warnings, slide: options.slide };
 }
 
 function deriveElementBounds(elements: SlideElement[]): { x: number; y: number; width: number; height: number } | null {
@@ -1865,9 +2683,6 @@ function resolveRelayoutTemplateId(options: {
   if (options.bodyCount <= 2) {
     return portrait ? "split_right_image" : "hero_center";
   }
-  if (options.bodyCount >= 5) {
-    return "feature_boxes_right";
-  }
 
   const splitTemplates: LayoutTemplateId[] = [
     "split_right_image",
@@ -2202,6 +3017,9 @@ function scoreAIComponentRecipes(options: {
   if (textIncludesAnyKeyword(haystack, TIMELINE_RECIPE_KEYWORDS)) {
     scores["timeline-flow"] += 6;
   }
+  if (textIncludesAnyKeyword(haystack, TIMELINE_RECIPE_KEYWORDS) && sectionCount >= 3) {
+    scores["timeline-flow"] += 2;
+  }
   if (sectionCount >= 3 && h2Count >= 2) {
     scores["timeline-flow"] += 3;
   }
@@ -2239,10 +3057,13 @@ function isSupportedAIComponentRecipeId(value: string | undefined): value is AIP
 }
 
 interface ResolvedAIComponentRecipeSelection {
+  mode: PresentationAILayoutMode;
+  recommendedMode: PresentationAILayoutMode;
   componentRecipeId?: AIPresentationComponentRecipeId;
   selectionMode: "llm" | "heuristic" | "none";
   selectionReason?: string;
   candidateRecipes: Array<{ recipeId: AIPresentationComponentRecipeId; score: number }>;
+  candidateModes: PresentationAILayoutModeCandidate[];
 }
 
 function describeAIComponentRecipe(recipeId: AIPresentationComponentRecipeId): string {
@@ -2268,37 +3089,79 @@ function resolveAIComponentRecipeForSlide(options: {
   slideIndex: number;
   preferVideoRecipes: boolean;
 }): ResolvedAIComponentRecipeSelection {
+  const layoutModeSelection = resolvePresentationLayoutMode({
+    slide: options.slide,
+    slideIndex: options.slideIndex,
+    enabledModes: {
+      structured_block: true,
+      long_form_block: false,
+      llm_layout_dsl: false,
+      full_slide_media: false,
+    },
+  });
   const candidates = scoreAIComponentRecipes({
     slide: options.slide,
     preferVideoRecipes: options.preferVideoRecipes,
   }).slice(0, 5);
+  const structuredModeCandidate = layoutModeSelection.candidateModes.find(
+    (candidate) => candidate.mode === "structured_block",
+  );
+  const hasLongFormTextPressure = layoutModeSelection.profile.longParagraphCount >= 2
+    || layoutModeSelection.profile.maxParagraphChars >= 140
+    || layoutModeSelection.profile.avgParagraphChars >= 95;
+  const suppressCompactRecipeSelection = (
+    layoutModeSelection.recommendedMode === "long_form_block"
+    || layoutModeSelection.recommendedMode === "llm_layout_dsl"
+  ) && structuredModeCandidate?.fitStatus === "unsafe"
+    && hasLongFormTextPressure;
   if (options.slideIndex === 0) {
     return {
+      mode: layoutModeSelection.mode,
+      recommendedMode: layoutModeSelection.recommendedMode,
       selectionMode: "none",
       selectionReason: "Slide 1 stays on the hero intro layout for consistency.",
       candidateRecipes: candidates,
+      candidateModes: layoutModeSelection.candidateModes,
+    };
+  }
+  if (suppressCompactRecipeSelection) {
+    return {
+      mode: layoutModeSelection.mode,
+      recommendedMode: layoutModeSelection.recommendedMode,
+      selectionMode: "none",
+      selectionReason: `Routed toward ${layoutModeSelection.recommendedMode} because the slide copy is too dense for compact component recipes.`,
+      candidateRecipes: candidates,
+      candidateModes: layoutModeSelection.candidateModes,
     };
   }
   if (isSupportedAIComponentRecipeId(options.slide.componentRecipeId)) {
     return {
+      mode: layoutModeSelection.mode,
+      recommendedMode: layoutModeSelection.recommendedMode,
       componentRecipeId: options.slide.componentRecipeId,
       selectionMode: "llm",
       selectionReason: `LLM selected ${describeAIComponentRecipe(options.slide.componentRecipeId)} explicitly.`,
       candidateRecipes: candidates,
+      candidateModes: layoutModeSelection.candidateModes,
     };
   }
 
   const topCandidate = candidates[0];
   if (topCandidate && topCandidate.score >= getAIComponentRecipeActivationThreshold(topCandidate.recipeId)) {
     return {
+      mode: layoutModeSelection.mode,
+      recommendedMode: layoutModeSelection.recommendedMode,
       componentRecipeId: topCandidate.recipeId,
       selectionMode: "heuristic",
       selectionReason: `Heuristic match favored ${describeAIComponentRecipe(topCandidate.recipeId)} with score ${topCandidate.score}.`,
       candidateRecipes: candidates,
+      candidateModes: layoutModeSelection.candidateModes,
     };
   }
 
   return {
+    mode: layoutModeSelection.mode,
+    recommendedMode: layoutModeSelection.recommendedMode,
     selectionMode: "none",
     selectionReason: topCandidate && !aiComponentRecipeHasMediaSlot(topCandidate.recipeId)
       ? `Ignored text-only heuristic "${describeAIComponentRecipe(topCandidate.recipeId)}" because Draft with AI still needs an image/video region.`
@@ -2306,6 +3169,7 @@ function resolveAIComponentRecipeForSlide(options: {
       ? `No component recipe cleared the activation threshold; top heuristic was ${describeAIComponentRecipe(topCandidate.recipeId)} (${topCandidate.score}).`
       : "No component recipe matched this slide strongly enough.",
     candidateRecipes: candidates,
+    candidateModes: layoutModeSelection.candidateModes,
   };
 }
 
@@ -2514,6 +3378,198 @@ function synchronizeSlideNoteWithVisibleContent(
 
 function synchronizeSlideNotesWithVisibleContent(slides: AIPresentationSlide[]): AIPresentationSlide[] {
   return slides.map((slide, index) => synchronizeSlideNoteWithVisibleContent(slide, index, slides.length));
+}
+
+interface SlideNoteCoverageStats {
+  score: number;
+  coveredPoints: number;
+  totalPoints: number;
+  missingPoints: string[];
+}
+
+function assessSingleSlideNoteCoverage(
+  note: string,
+  slide: Pick<AIPresentationSlide, "title" | "body" | "sections">,
+): SlideNoteCoverageStats {
+  const normalizedNote = normalizeSlideText(note);
+  const coveragePoints = extractCoveragePointsFromArticle(
+    normalizedNote,
+    Math.max((slide.body?.length ?? 0) + 4, 8),
+  );
+  if (coveragePoints.length === 0) {
+    return { score: 1, coveredPoints: 0, totalPoints: 0, missingPoints: [] };
+  }
+
+  const visibleText = [
+    normalizeSlideText(slide.title),
+    ...(slide.body ?? []).map((line) => normalizeSlideText(line)),
+    ...((slide.sections ?? []).flatMap((section) => [
+      normalizeSlideText(section.heading),
+      ...section.details.map((detail) => normalizeSlideText(detail)),
+    ])),
+  ]
+    .filter((value) => value.length > 0)
+    .join(" ");
+  const visibleTokens = new Set(tokenizeCoverage(visibleText));
+  const missingPoints: string[] = [];
+  let coveredPoints = 0;
+
+  for (const point of coveragePoints) {
+    const uniquePointTokens = Array.from(new Set(tokenizeCoverage(point)));
+    if (uniquePointTokens.length === 0) {
+      continue;
+    }
+    let overlap = 0;
+    for (const token of uniquePointTokens) {
+      if (visibleTokens.has(token)) {
+        overlap += 1;
+      }
+    }
+    const overlapRatio = overlap / uniquePointTokens.length;
+    if (overlap >= 2 || overlapRatio >= 0.34) {
+      coveredPoints += 1;
+      continue;
+    }
+    missingPoints.push(point);
+  }
+
+  return {
+    score: coveragePoints.length > 0 ? coveredPoints / coveragePoints.length : 1,
+    coveredPoints,
+    totalPoints: coveragePoints.length,
+    missingPoints,
+  };
+}
+
+function mergeUniqueNarrativeLines(
+  existing: string[],
+  candidates: string[],
+  maxLines: number,
+): string[] {
+  const merged: string[] = [];
+  const seen = new Set<string>();
+  const tryAppend = (value: string) => {
+    const normalized = normalizeNarrativeBodyLine(value);
+    const key = normalized.toLowerCase();
+    if (!normalized || seen.has(key)) {
+      return;
+    }
+    const overlaps = merged.some((line) => isSubstringOverlap(line, normalized));
+    if (overlaps) {
+      return;
+    }
+    seen.add(key);
+    merged.push(normalized);
+  };
+
+  for (const line of existing) {
+    tryAppend(line);
+    if (merged.length >= maxLines) {
+      return merged.slice(0, maxLines);
+    }
+  }
+  for (const line of candidates) {
+    tryAppend(line);
+    if (merged.length >= maxLines) {
+      break;
+    }
+  }
+  return merged.slice(0, maxLines);
+}
+
+function mergeUniqueNarrativeSections(
+  existing: Array<{ heading: string; details: string[] }>,
+  candidates: Array<{ heading: string; details: string[] }>,
+  maxSections: number,
+): Array<{ heading: string; details: string[] }> {
+  const merged: Array<{ heading: string; details: string[] }> = [];
+  const seen = new Set<string>();
+  for (const section of [...existing, ...candidates]) {
+    const normalized = normalizeNarrativeSection(section);
+    if (!normalized) {
+      continue;
+    }
+    const key = `${normalized.heading}||${normalized.details.join("||")}`.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    merged.push(normalized);
+    if (merged.length >= maxSections) {
+      break;
+    }
+  }
+  return merged;
+}
+
+function reconcileSlideVisibleContentWithNotes(slide: AIPresentationSlide): AIPresentationSlide {
+  const note = normalizeSlideText(slide.notes ?? "").slice(0, 5_000);
+  if (!note) {
+    return slide;
+  }
+
+  const visibleText = [
+    slide.title,
+    ...slide.body,
+    ...(slide.sections ?? []).flatMap((section) => [section.heading, ...section.details]),
+  ]
+    .map((value) => normalizeSlideText(value))
+    .filter((value) => value.length > 0)
+    .join(" ");
+
+  const coverage = assessSingleSlideNoteCoverage(note, slide);
+  if (coverage.totalPoints === 0 || (coverage.score >= 0.62 && coverage.missingPoints.length <= 1)) {
+    return slide;
+  }
+
+  const noteNarrative = extractNarrativeFromSlideNotes(slide.title, note, slide.templateId, 0);
+  if (!noteNarrative) {
+    return slide;
+  }
+  const noteIsSubstantiallyRicher = note.length >= (visibleText.length + 80)
+    || coverage.missingPoints.length >= 2
+    || noteNarrative.body.length >= (slide.body.length + 2)
+    || noteNarrative.sections.length > (slide.sections?.length ?? 0);
+  if (!noteIsSubstantiallyRicher) {
+    return slide;
+  }
+
+  const { min, max } = getTemplateBodyLimits(slide.templateId);
+  const preferredBodySeed = coverage.score < 0.45
+    ? noteNarrative.body
+    : slide.body;
+  const fallbackBodySeed = coverage.score < 0.45
+    ? slide.body
+    : noteNarrative.body;
+  const nextBody = mergeUniqueNarrativeLines(
+    preferredBodySeed,
+    [...fallbackBodySeed, ...coverage.missingPoints],
+    max,
+  );
+  const ensuredBody = nextBody.length >= min
+    ? nextBody
+    : mergeUniqueNarrativeLines(noteNarrative.body, coverage.missingPoints, max);
+  const maxSections = slide.templateId === "hero_center" ? 2 : 6;
+  const preferredSections = coverage.score < 0.45
+    ? noteNarrative.sections
+    : (slide.sections ?? []);
+  const fallbackSections = coverage.score < 0.45
+    ? (slide.sections ?? [])
+    : noteNarrative.sections;
+  const nextSections = mergeUniqueNarrativeSections(preferredSections, fallbackSections, maxSections);
+
+  const bodyChanged = JSON.stringify(ensuredBody) !== JSON.stringify(slide.body);
+  const sectionsChanged = JSON.stringify(nextSections) !== JSON.stringify(slide.sections ?? []);
+  if (!bodyChanged && !sectionsChanged) {
+    return slide;
+  }
+
+  return {
+    ...slide,
+    body: ensuredBody.length > 0 ? ensuredBody : slide.body,
+    ...(nextSections.length > 0 ? { sections: nextSections } : {}),
+    notes: note,
+  };
 }
 
 function parsePositiveNumber(value: unknown): number | null {
@@ -3800,21 +4856,53 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
   const renderableSource = getRelayoutRenderableSourceContent(parsedContent);
   const analysisContent = renderableSource.slideContent;
   warnings.push(...renderableSource.warnings);
-  let preferredComponentRecipeId = resolveRelayoutComponentRecipeId(parsedContent);
-  const preferredComponentMediaTypes = getRelayoutPreferredMediaTypes(preferredComponentRecipeId);
-  const narrative = extractRelayoutNarrative(input.slideTitle, parsedContent, analysisContent);
+  let preferredComponentRecipeId = input.preferredComponentRecipeId ?? resolveRelayoutComponentRecipeId(parsedContent);
+  const narrative = extractRelayoutNarrative(input.slideTitle, parsedContent, analysisContent, input.slideNotes);
   const sourceImageElement = pickLargestImageElement(analysisContent);
   const sourceVideoElement = pickLargestVideoElement(analysisContent);
   const relayoutMediaSources = collectRelayoutMediaSources(analysisContent);
-
-  if (preferredComponentMediaTypes.size === 1 && preferredComponentMediaTypes.has("image") && relayoutMediaSources.imageUrls.length === 0) {
-    warnings.push(`Skipped image-only component recipe "${preferredComponentRecipeId}" because the slide has no reusable image.`);
-    preferredComponentRecipeId = undefined;
+  const inheritedWatermark = extractWatermarkFromSlideContent(parsedContent);
+  const watermark = normalizeWatermarkInput(input.watermark ?? inheritedWatermark, warnings);
+  const inferredStylePresetId = inferStylePresetIdFromSlide(parsedContent);
+  const stylePresetId = input.stylePresetId ?? inferredStylePresetId;
+  const baseStylePreset = getBuiltInPreset(stylePresetId) ?? getBuiltInPreset("dark-professional")!;
+  const stylePreset = applyRelayoutChromePolicy(baseStylePreset);
+  const combinedText = `${narrative.title}\n${narrative.body.join("\n")}\n${narrative.notes ?? ""}`;
+  const graphicCategory = inferGraphicCategoryFromText(combinedText);
+  const templateId = resolveRelayoutTemplateId({
+    requestedTemplateId: input.templateId,
+    bodyCount: narrative.body.length,
+    hasImage: Boolean(sourceImageElement?.src ?? sourceVideoElement?.src),
+    canvasWidth: canvas.width,
+    canvasHeight: canvas.height,
+    seed: input.layoutSeed ?? Date.now(),
+  });
+  if (preferredComponentRecipeId) {
+    const preferredComponentMediaTypes = getRelayoutPreferredMediaTypes(preferredComponentRecipeId);
+    if (preferredComponentMediaTypes.size === 1 && preferredComponentMediaTypes.has("image") && relayoutMediaSources.imageUrls.length === 0) {
+      warnings.push(`Skipped image-only component recipe "${preferredComponentRecipeId}" because the slide has no reusable image.`);
+      preferredComponentRecipeId = undefined;
+    }
+    if (preferredComponentMediaTypes.size === 1 && preferredComponentMediaTypes.has("video") && relayoutMediaSources.videoUrls.length === 0) {
+      warnings.push(`Skipped video-only component recipe "${preferredComponentRecipeId}" because the slide has no reusable video.`);
+      preferredComponentRecipeId = undefined;
+    }
   }
-  if (preferredComponentMediaTypes.size === 1 && preferredComponentMediaTypes.has("video") && relayoutMediaSources.videoUrls.length === 0) {
-    warnings.push(`Skipped video-only component recipe "${preferredComponentRecipeId}" because the slide has no reusable video.`);
-    preferredComponentRecipeId = undefined;
-  }
+  const recipeSelectionSeed = buildRelayoutRecipeSelectionSlide({
+    narrative,
+    templateId,
+    graphicCategory,
+    hasImage: relayoutMediaSources.imageUrls.length > 0,
+    hasVideo: relayoutMediaSources.videoUrls.length > 0,
+  });
+  const recipeSelection = resolveRelayoutComponentRecipeSelection({
+    preferredComponentRecipeId,
+    slide: recipeSelectionSeed,
+    hasImage: relayoutMediaSources.imageUrls.length > 0,
+    hasVideo: relayoutMediaSources.videoUrls.length > 0,
+  });
+  preferredComponentRecipeId = recipeSelection.componentRecipeId;
+  warnings.push(...recipeSelection.warnings);
 
   const effectiveComponentMediaTypes = getRelayoutPreferredMediaTypes(preferredComponentRecipeId);
   const shouldUseImageAsPrimary = effectiveComponentMediaTypes.size === 0 || effectiveComponentMediaTypes.has("image");
@@ -3826,53 +4914,16 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
   const relayoutMediaUrls = effectiveComponentMediaTypes.size === 1 && effectiveComponentMediaTypes.has("video")
     ? relayoutMediaSources.videoUrls
     : relayoutMediaSources.imageUrls;
-  const preferredMediaSlotCount = preferredComponentRecipeId
-    ? (PRESENTATION_COMPONENT_MEDIA_SLOTS[preferredComponentRecipeId]?.length ?? 0)
-    : 0;
-  const consumedRelayoutMediaUrls = effectiveComponentMediaTypes.size === 1 && effectiveComponentMediaTypes.has("video")
-    ? relayoutMediaSources.videoUrls.slice(0, Math.max(preferredMediaSlotCount, videoElement?.src ? 1 : 0))
-    : imageElement?.src
-      ? relayoutMediaSources.imageUrls.slice(0, Math.max(preferredMediaSlotCount, 1))
-      : (videoElement?.src ? relayoutMediaSources.videoUrls.slice(0, 1) : []);
-  const excludedPreservedMediaUrls = new Set<string>([
-    ...consumedRelayoutMediaUrls,
-  ]);
-  const componentFallbackElementIds = new Set<string>(
-    (parsedContent.components ?? []).flatMap((component) => component.fallbackElements.map((element) => element.id)),
-  );
-  const preservedElements = buildRelayoutPreservedElements(
-    analysisContent,
-    canvas,
-    excludedPreservedMediaUrls,
-    componentFallbackElementIds,
-  );
-  const combinedText = `${narrative.title}\n${narrative.body.join("\n")}`;
-  const inheritedWatermark = extractWatermarkFromSlideContent(parsedContent);
-  const watermark = normalizeWatermarkInput(input.watermark ?? inheritedWatermark, warnings);
-  const inferredStylePresetId = inferStylePresetIdFromSlide(parsedContent);
-  const stylePresetId = input.stylePresetId ?? inferredStylePresetId;
-  const baseStylePreset = getBuiltInPreset(stylePresetId) ?? getBuiltInPreset("dark-professional")!;
-  const stylePreset = applyRelayoutChromePolicy(baseStylePreset);
-  const graphicCategory = inferGraphicCategoryFromText(combinedText);
-  const templateId = resolveRelayoutTemplateId({
-    requestedTemplateId: input.templateId,
-    bodyCount: narrative.body.length,
-    hasImage: Boolean(primaryMediaSrc),
-    canvasWidth: canvas.width,
-    canvasHeight: canvas.height,
-    seed: input.layoutSeed ?? Date.now(),
-  });
+  const componentFallbackElementIds = collectComponentFallbackExcludedElementIds(parsedContent);
 
-  const clampedBody = clampBodyLinesForTemplate(narrative.body, templateId);
-  const slideData: AIPresentationSlide = {
+  const recipeSlideSeed = recipeSelection.slide;
+  const slideData = normalizeSlideHierarchyCore({
+    ...recipeSlideSeed,
     templateId,
-    title: narrative.title.slice(0, 200),
-    body: clampedBody,
     ...(preferredComponentRecipeId ? { componentRecipeId: preferredComponentRecipeId } : {}),
-    ...(narrative.sections.length > 0 ? { sections: narrative.sections } : {}),
     graphicCategory,
     imagePromptKeywords: combinedText.slice(0, 500) || narrative.title.slice(0, 500),
-  };
+  });
   const svgGraphic = input.includeSvg === false
     ? null
     : pickRandomSvgFromCategory(graphicCategory);
@@ -3970,6 +5021,7 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
       requestedShape: input.geometricAccentShape,
       stylePreset,
     });
+    const filteredAccents = filterDecorativeGraphicElements(accentResult.elements, elements, canvas);
     const firstTextIndex = elements.findIndex((element) => element.type === "text");
     const nonBackgroundImageIndexes = elements
       .map((element, index) => ({ element, index }))
@@ -3989,14 +5041,23 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
     const insertionIndex = firstTextIndex >= 0
       ? firstTextIndex
       : (lastNonBackgroundImageIndex >= 0 ? lastNonBackgroundImageIndex + 1 : elements.length);
-    elements = [
-      ...elements.slice(0, insertionIndex),
-      ...accentResult.elements,
-      ...elements.slice(insertionIndex),
-    ];
-    appliedAccentShape = accentResult.appliedShape;
+    if (filteredAccents.length > 0) {
+      elements = [
+        ...elements.slice(0, insertionIndex),
+        ...filteredAccents,
+        ...elements.slice(insertionIndex),
+      ];
+      appliedAccentShape = accentResult.appliedShape;
+    }
   }
 
+  const consumedRelayoutMediaUrls = collectRenderedMediaSourceUrls(elements);
+  const preservedElements = buildRelayoutPreservedElements(
+    analysisContent,
+    canvas,
+    consumedRelayoutMediaUrls,
+    componentFallbackElementIds,
+  );
   const preservedComponents = buildRelayoutPreservedComponents(
     parsedContent,
     elements,
@@ -4065,6 +5126,7 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
     warnings.push("Skipped geometric accents to preserve full-canvas visual-only slide.");
   }
   warnings.push(`Applied template "${templateId}" with preset "${stylePresetId}".`);
+  relayoutContent = finalizeSlideContentAfterRelayout(relayoutContent, warnings);
 
   return {
     slideContent: relayoutContent,
@@ -4074,6 +5136,302 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
       stylePresetId,
       graphicCategory,
       reusedImage: Boolean(primaryMediaSrc),
+    },
+  };
+}
+
+export async function repairSlideFromSavedNote(
+  input: RepairSlideFromSavedNoteInput,
+  actor: PresentationActor,
+  userToken: string,
+): Promise<RepairSlideFromSavedNoteOutput> {
+  const trimmedNotes = String(input.slideNotes ?? "").trim();
+  if (!trimmedNotes) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
+      `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: saved slide note is required to repair a slide`,
+    );
+  }
+
+  const warnings: string[] = [];
+  const parsedContent = presentationSlideContentSchema.parse(input.slideContent);
+  const canvas = parsedContent.canvas ?? {
+    width: DEFAULT_CANVAS_WIDTH,
+    height: DEFAULT_CANVAS_HEIGHT,
+  };
+  const canvasAspectRatio = toAspectRatio(canvas.width, canvas.height);
+  const canvasPreset = CANVAS_PRESET_BY_RATIO[canvasAspectRatio];
+  const inferredStylePresetId = inferStylePresetIdFromSlide(parsedContent);
+  const stylePresetId = input.stylePresetId ?? inferredStylePresetId;
+  const baseStylePreset = getBuiltInPreset(stylePresetId) ?? getBuiltInPreset("dark-professional")!;
+  const stylePreset = applyRelayoutChromePolicy(baseStylePreset);
+  const watermark = normalizeWatermarkInput(extractWatermarkFromSlideContent(parsedContent), warnings);
+  const noteNarrative = extractNarrativeFromSlideNotes(
+    input.slideTitle,
+    trimmedNotes,
+    "split_right_image",
+    Math.max(0, input.slideIndex - 1),
+  );
+
+  if (!noteNarrative) {
+    throw new PresentationServiceError(
+      PRESENTATION_ERROR_CODE.AI_GENERATION_FAILED,
+      `${PRESENTATION_ERROR_CODE.AI_GENERATION_FAILED}: could not derive slide structure from the saved note`,
+    );
+  }
+
+  const combinedText = `${noteNarrative.title}\n${noteNarrative.body.join("\n")}\n${noteNarrative.notes ?? ""}`;
+  const graphicCategory = inferGraphicCategoryFromText(combinedText);
+  const fullNoteHierarchy = buildMarkdownHierarchyFromCanonicalNote(trimmedNotes, noteNarrative.title);
+  const hierarchyBodyLines = fullNoteHierarchy
+    .filter((entry) => entry.level === "body")
+    .map((entry) => entry.text);
+  const portraitCanvas = canvas.height > canvas.width;
+  const denseNarrative = (
+    trimmedNotes.length >= 550
+    || noteNarrative.body.length >= 5
+    || noteNarrative.sections.length >= 4
+    || fullNoteHierarchy.length >= 8
+  );
+  const shouldPreferPlainTextCoverage = denseNarrative || hierarchyBodyLines.length >= 7;
+  const templateId = denseNarrative && portraitCanvas
+    ? "bottom_image_text_top"
+    : resolveRelayoutTemplateId({
+      bodyCount: noteNarrative.body.length,
+      hasImage: true,
+      canvasWidth: canvas.width,
+      canvasHeight: canvas.height,
+      seed: Date.now(),
+    });
+
+  let repairedSlide = normalizeSlideHierarchy({
+    templateId,
+    title: noteNarrative.title.slice(0, 200),
+    body: (hierarchyBodyLines.length > 0 ? hierarchyBodyLines : noteNarrative.body).slice(0, AI_NARRATIVE_MAX_BODY_LINES),
+    ...(noteNarrative.notes ? { notes: noteNarrative.notes } : {}),
+    ...(fullNoteHierarchy.length > 0 ? { markdownHierarchy: fullNoteHierarchy } : {}),
+    ...(!shouldPreferPlainTextCoverage && noteNarrative.sections.length > 0 ? { sections: noteNarrative.sections } : {}),
+    graphicCategory,
+    imagePromptKeywords: combinedText.slice(0, 500) || noteNarrative.title.slice(0, 500),
+  });
+
+  let aiRecipeSelection: ResolvedAIComponentRecipeSelection | undefined;
+  if (!shouldPreferPlainTextCoverage) {
+    const aiRecipeAssignments = assignAIComponentRecipes([repairedSlide], { preferVideoRecipes: false });
+    repairedSlide = aiRecipeAssignments.slides[0]!;
+    aiRecipeSelection = aiRecipeAssignments.selections[0];
+  } else {
+    warnings.push("Dense slide note detected; prioritized full text coverage over block-based layout.");
+  }
+
+  const availableImageModels = await getModelsByTypeAsync("image");
+  const textToImageModels = availableImageModels.filter(isTextToImageModel);
+  const selectedImageModel = textToImageModels[0] ?? availableImageModels[0];
+  const imageModelToUse: ImageModel = (selectedImageModel?.id || FALLBACK_IMAGE_MODEL) as ImageModel;
+  const imageAspectRatio = selectAspectRatioForModel(
+    canvasAspectRatio,
+    selectedImageModel?.aspectRatios,
+  );
+  if (imageAspectRatio !== canvasAspectRatio) {
+    warnings.push(`Image model "${imageModelToUse}" does not list aspect ratio "${canvasAspectRatio}"; using "${imageAspectRatio}"`);
+  }
+  const mediaApiConfig = buildImageApiConfig(selectedImageModel);
+  const baseMediaExtraParams = applyFieldSyncTargets(
+    buildImageExtraParams(selectedImageModel),
+    selectedImageModel,
+    { aspectRatio: imageAspectRatio },
+  );
+  const mediaGenerationPlan = deriveMediaGenerationPlanForSlide(
+    repairedSlide,
+    repairedSlide.imagePromptKeywords,
+    false,
+  );
+  const mediaUrls: Array<string | null> = [];
+  const repairTaskId = `repair-slide-${randomBytes(8).toString("hex")}`;
+  const imagePollTimeoutMs = computeImagePollTimeoutMs(1);
+  let firstResolvedExtraParams: Record<string, unknown> | undefined;
+
+  for (const [variantIndex, mediaPlanEntry] of mediaGenerationPlan.entries()) {
+    const promptVariant = mediaPlanEntry.prompt;
+    const slideExtraParams = applyFieldSyncTargets(
+      baseMediaExtraParams,
+      selectedImageModel,
+      { prompt: promptVariant },
+    );
+    if (variantIndex === 0) {
+      firstResolvedExtraParams = slideExtraParams;
+    }
+    try {
+      const mediaTask = await withTimeout(
+        mediaGenerationService.generateImageAsync(
+          {
+            prompt: promptVariant,
+            model: imageModelToUse,
+            aspectRatio: imageAspectRatio,
+            ...(Object.keys(mediaApiConfig ?? {}).length > 0 ? { apiConfig: mediaApiConfig } : {}),
+            ...(slideExtraParams ? { extraParams: slideExtraParams } : {}),
+            auditContext: {
+              userId: actor.userId,
+              traceId: `${repairTaskId}:slide:${input.slideIndex}:variant:${variantIndex + 1}:image`,
+              source: "ai_draft.repairSlideFromSavedNote",
+              stage: "repair_slide_media_submit",
+              deckId: input.deckId,
+              slideIndex: Math.max(0, input.slideIndex - 1),
+            },
+          },
+          userToken,
+        ),
+        MEDIA_SUBMIT_TIMEOUT_MS,
+        "media_submit_timeout",
+      );
+      const pollResult = await pollMediaTask(
+        mediaTask.id,
+        userToken,
+        imagePollTimeoutMs,
+        {
+          auditContext: {
+            userId: actor.userId,
+            traceId: `${repairTaskId}:slide:${input.slideIndex}:variant:${variantIndex + 1}:image:poll`,
+            source: "ai_draft.repairSlideFromSavedNote",
+            stage: "repair_slide_media_poll",
+            deckId: input.deckId,
+            slideIndex: Math.max(0, input.slideIndex - 1),
+          },
+        },
+      );
+      if (pollResult.task) {
+        await chargeMediaCreditsForAIDraftTask({
+          userId: actor.userId,
+          tenantId: actor.tenantId,
+          deckId: input.deckId,
+          aiDraftTaskId: repairTaskId,
+          slideIndex: Math.max(0, input.slideIndex - 1),
+          totalSlides: 1,
+          mediaType: "image",
+          modelId: imageModelToUse,
+          provider: selectedImageModel?.provider,
+          promptPreview: promptVariant,
+          task: pollResult.task,
+          fallbackCredits: selectedImageModel?.creditCost
+            ?? await resolveMediaModelFallbackCreditCost(imageModelToUse, "image"),
+          stage: "repair_slide_media_poll",
+        });
+      }
+      if (!pollResult.url) {
+        const reason = (pollResult.reason || "no output URL").replace(/\s+/g, " ").slice(0, 160);
+        warnings.push(`Slide repair image variant ${variantIndex + 1} returned no media (${reason})`);
+      }
+      mediaUrls.push(pollResult.url ?? null);
+    } catch (err) {
+      warnings.push(`Slide repair image variant ${variantIndex + 1} failed (${sanitizeErrorMessage(err)})`);
+      mediaUrls.push(null);
+    }
+  }
+
+  const svgGraphic = pickRandomSvgFromCategory(repairedSlide.graphicCategory);
+  const { slideContent, warnings: layoutWarnings } = generateSlide({
+    slideData: repairedSlide,
+    imageUrl: mediaUrls[0] ?? null,
+    imageUrls: mediaUrls,
+    svgGraphic,
+    stylePreset,
+    deckTitle: input.slideIndex === 1 ? input.deckTitle?.slice(0, 36) : undefined,
+    slideIndex: Math.max(0, input.slideIndex - 1),
+    totalSlides: input.totalSlides,
+    canvasWidth: canvas.width,
+    canvasHeight: canvas.height,
+  });
+  warnings.push(...layoutWarnings);
+
+  const promptForSlide = mediaGenerationPlan[0]?.prompt?.trim();
+  const elementsWithMediaMetadata = slideContent.elements.map((element) => {
+    if (element.type !== "image") {
+      return element;
+    }
+    if (!element.src || !element.src.trim()) {
+      return element;
+    }
+    return {
+      ...element,
+      ...(promptForSlide ? { imagePrompt: promptForSlide.slice(0, 4000) } : {}),
+      ...(imageModelToUse ? { imageModelId: imageModelToUse } : {}),
+    };
+  });
+  const slideContentWithMediaMetadata = applyAIRecipeMediaMetadata(
+    {
+      ...slideContent,
+      elements: elementsWithMediaMetadata,
+    },
+    {
+      mediaType: "image",
+      prompt: promptForSlide,
+      modelId: imageModelToUse,
+      extraParams: firstResolvedExtraParams,
+    },
+  );
+
+  const narrativeBody = repairedSlide.body
+    .map((line) => normalizeNarrativeBodyLine(line))
+    .filter((line) => line.length > 0)
+    .slice(0, AI_NARRATIVE_MAX_BODY_LINES);
+  const narrativeSections = (repairedSlide.sections ?? [])
+    .map((section) => normalizeNarrativeSection(section))
+    .filter((section): section is { heading: string; details: string[] } => Boolean(section))
+    .slice(0, 6);
+  const generatedAt = new Date().toISOString();
+  let repairedContent: PresentationSlideContent = {
+    ...slideContentWithMediaMetadata,
+    canvas: {
+      ...(canvasPreset ? { preset: canvasPreset } : {}),
+      width: canvas.width,
+      height: canvas.height,
+    },
+    ...(parsedContent.transition ? { transition: parsedContent.transition } : {}),
+    ...(parsedContent.durationMs ? { durationMs: parsedContent.durationMs } : {}),
+        aiDesign: {
+          source: "draft-with-ai",
+          taskId: repairTaskId,
+          schemaVersion: "presentation_ai_layout_v1",
+          mode: aiRecipeSelection?.mode ?? "structured_block",
+          ...(aiRecipeSelection?.candidateModes?.length
+            ? { candidateModes: aiRecipeSelection.candidateModes }
+            : {}),
+          componentRecipeId: aiRecipeSelection?.componentRecipeId,
+          selectionMode: aiRecipeSelection?.selectionMode ?? "none",
+          ...(aiRecipeSelection?.selectionReason ? { selectionReason: aiRecipeSelection.selectionReason } : {}),
+      ...(aiRecipeSelection?.candidateRecipes?.length
+        ? { candidateRecipes: aiRecipeSelection.candidateRecipes }
+        : {}),
+      narrative: {
+        title: repairedSlide.title,
+        body: narrativeBody.length > 0 ? narrativeBody : ["Key point"],
+        ...(repairedSlide.notes ? { notes: repairedSlide.notes } : {}),
+        ...(narrativeSections.length > 0 ? { sections: narrativeSections } : {}),
+        ...(repairedSlide.mediaPlan?.length ? { mediaPlan: repairedSlide.mediaPlan } : {}),
+        ...(repairedSlide.graphicCategory ? { graphicCategory: repairedSlide.graphicCategory } : {}),
+        templateId: repairedSlide.templateId,
+      },
+      generatedAt,
+    },
+  };
+
+  if (watermark) {
+    const watermarkApplied = applyWatermarkToSlideContent(repairedContent, watermark);
+    repairedContent = watermarkApplied.slideContent;
+    warnings.push(...watermarkApplied.warnings);
+  }
+
+  repairedContent = finalizeSlideContentAfterRepair(repairedContent, warnings);
+
+  return {
+    title: repairedSlide.title,
+    slideContent: repairedContent,
+    warnings,
+    applied: {
+      templateId: repairedSlide.templateId,
+      stylePresetId,
+      graphicCategory: repairedSlide.graphicCategory,
+      regeneratedImage: mediaUrls.some((url) => Boolean(url)),
     },
   };
 }
@@ -4593,6 +5951,45 @@ function deriveBodyFromCanonicalNote(note: string, templateId: LayoutTemplateId)
   return unique.slice(0, max);
 }
 
+function buildMarkdownHierarchyFromCanonicalNote(
+  note: string,
+  title: string,
+): Array<{ level: "h2" | "h3" | "body"; text: string }> {
+  const titleKey = normalizeSlideText(title).toLowerCase();
+  const normalizedLines = canonicalizeSlideNotesForNarrative(note)
+    .replace(/\r/g, "\n")
+    .split(/\n+/)
+    .map((line) => normalizeSlideText(line))
+    .filter((line) => line.length > 0);
+
+  const contentLines = normalizedLines.filter((line, index) => {
+    if (index !== 0 || !titleKey) {
+      return true;
+    }
+    const lower = line.toLowerCase();
+    return !(
+      lower === titleKey
+      || lower.startsWith(`${titleKey} `)
+      || titleKey.startsWith(lower)
+    );
+  });
+
+  return contentLines
+    .flatMap((line, index, arr) => {
+      const next = arr[index + 1] ?? "";
+      const looksLikeHeading = !/^(?:\d+\s*[\).:]|[•▪◦·-]\s+)/.test(line)
+        && /^(?:\d+\s*[\).:]|[•▪◦·-]\s+)/.test(next);
+      const chunks = splitLongTextAtSpaces(line, 180, 18)
+        .map((chunk) => normalizeSlideText(chunk).slice(0, 260))
+        .filter((chunk) => chunk.length > 0);
+      return chunks.map((chunk, chunkIndex) => ({
+        level: looksLikeHeading && chunkIndex === 0 ? "h3" as const : "body" as const,
+        text: chunk,
+      }));
+    })
+    .slice(0, 24);
+}
+
 function stripArticleHeadingPrefix(value: string): string {
   return stripMarkdownFormatting(value)
     .replace(/^(?:title|หัวข้อ|เรื่อง)\s*:\s*/i, "")
@@ -4601,12 +5998,19 @@ function stripArticleHeadingPrefix(value: string): string {
     .trim();
 }
 
+function normalizeNarrativeTitleCandidate(value: string): string {
+  const stripped = stripArticleHeadingPrefix(value);
+  const segments = splitInlineStructuredListSegments(stripped);
+  const preferred = segments[0] ?? stripped;
+  return normalizeSlideText(stripArticleHeadingPrefix(preferred)).slice(0, 200);
+}
+
 function deriveTitleFromCanonicalNote(
   note: string,
   fallbackTitle: string,
   slideIndex: number,
 ): string {
-  const normalizedFallback = normalizeSlideText(fallbackTitle).slice(0, 200);
+  const normalizedFallback = normalizeNarrativeTitleCandidate(fallbackTitle);
   const noteTokens = new Set(tokenizeCoverage(note));
   const fallbackTokens = tokenizeCoverage(normalizedFallback);
   const overlap = fallbackTokens.filter((token) => noteTokens.has(token)).length;
@@ -4621,7 +6025,7 @@ function deriveTitleFromCanonicalNote(
   // Prefer markdown headings (#, ##) as title — they're concise by nature
   const mdHeadingMatch = note.match(/^#{1,3}\s+(.+)/m);
   if (mdHeadingMatch) {
-    const heading = stripArticleHeadingPrefix(mdHeadingMatch[1]).slice(0, 200);
+    const heading = normalizeNarrativeTitleCandidate(mdHeadingMatch[1]);
     if (heading.length >= 6) {
       return heading;
     }
@@ -4630,7 +6034,7 @@ function deriveTitleFromCanonicalNote(
   const lines = note
     .replace(/\r/g, "\n")
     .split(/\n+/)
-    .map((line) => stripArticleHeadingPrefix(line))
+    .map((line) => normalizeNarrativeTitleCandidate(line))
     .filter((line) => line.length >= 6);
   if (lines.length > 0) {
     // If the first line is very long, try to extract a shorter title from it
@@ -4647,7 +6051,7 @@ function deriveTitleFromCanonicalNote(
 
   const firstSentence = note
     .split(/[.!?。！？\n]+/)
-    .map((segment) => stripArticleHeadingPrefix(segment))
+    .map((segment) => normalizeNarrativeTitleCandidate(segment))
     .find((segment) => segment.length >= 6);
   if (firstSentence) {
     return firstSentence.slice(0, 200);
@@ -4867,7 +6271,7 @@ function applyCanonicalArticleTextToSlides(
   });
 }
 
-function normalizeSlideHierarchy(slide: AIPresentationSlide): AIPresentationSlide {
+function normalizeSlideHierarchyCore(slide: AIPresentationSlide): AIPresentationSlide {
   const title = normalizeSlideText(slide.title).slice(0, 200) || "Key Insight";
   const titleLower = title.toLowerCase();
   const body = clampBodyLinesForTemplate(slide.body, slide.templateId)
@@ -4944,6 +6348,15 @@ function normalizeSlideHierarchy(slide: AIPresentationSlide): AIPresentationSlid
     ...(notes ? { notes } : {}),
     ...(sections.length > 0 ? { sections } : {}),
   };
+}
+
+function normalizeSlideHierarchy(slide: AIPresentationSlide): AIPresentationSlide {
+  const normalized = normalizeSlideHierarchyCore(slide);
+  const reconciled = reconcileSlideVisibleContentWithNotes(normalized);
+  if (reconciled === normalized) {
+    return normalized;
+  }
+  return normalizeSlideHierarchyCore(reconciled);
 }
 
 function buildFallbackSlide(index: number, seed?: AIPresentationSlide): AIPresentationSlide {
@@ -6483,6 +7896,11 @@ export async function generateAIDraft(
         aiDesign: {
           source: "draft-with-ai",
           taskId,
+          schemaVersion: "presentation_ai_layout_v1",
+          mode: aiRecipeSelection?.mode ?? "structured_block",
+          ...(aiRecipeSelection?.candidateModes?.length
+            ? { candidateModes: aiRecipeSelection.candidateModes }
+            : {}),
           componentRecipeId: aiRecipeSelection?.componentRecipeId,
           selectionMode: aiRecipeSelection?.selectionMode ?? "none",
           ...(aiRecipeSelection?.selectionReason ? { selectionReason: aiRecipeSelection.selectionReason } : {}),
