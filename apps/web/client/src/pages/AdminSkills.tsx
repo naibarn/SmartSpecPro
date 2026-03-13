@@ -63,11 +63,13 @@ import {
   Clock,
   Users,
   X,
+  ShieldCheck,
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { SkillStudioDialog } from "@/components/skills/SkillStudioDialog";
+import { SkillModelPreviewPanel } from "@/components/chat/settings/SkillModelPreviewPanel";
 import {
   getAllowedExecutionModesForSkillCategory,
   getMediaModelTypeForSkillCategory,
@@ -681,6 +683,14 @@ export default function AdminSkills() {
       visibility: (editingSkill.visibility === "rejected" || editingSkill.visibility === "private")
         ? "private"
         : "public" as "private" | "public",
+      executionPolicy: {
+        thinking_level_hint: (editingSkill as any)._thinkingLevel === "auto" ? null : (editingSkill as any)._thinkingLevel,
+        requires_web_search: (editingSkill as any)._requiresWebSearch ?? false,
+        min_citation_coverage: (editingSkill as any)._minCitationCoverage ?? 0,
+        refresh_cadence_days: (editingSkill as any)._refreshCadenceDays ?? 30,
+        disclosure_required: (editingSkill as any)._disclosureRequired ?? false,
+        response_mode: (editingSkill as any)._responseMode ?? "markdown",
+      },
     });
   };
 
@@ -999,6 +1009,7 @@ export default function AdminSkills() {
                                       )
                                         ? ((skill as any).executionMode ?? "llm-only")
                                         : (getRecommendedExecutionModeForSkillCategory(skill.category) || "llm-only");
+                                      const ep = (skill as any).executionPolicyJson ?? {};
                                       return {
                                         ...(skill as any),
                                         triggerPatterns: ((skill as any).triggerPatterns || []).map((pattern: any) =>
@@ -1006,6 +1017,12 @@ export default function AdminSkills() {
                                         ),
                                         executionMode: normalizedExecutionMode,
                                         marketplaceContent: (skill as any).marketplaceContent ?? null,
+                                        _thinkingLevel: ep.thinking_level_hint ?? "auto",
+                                        _responseMode: ep.response_mode ?? "markdown",
+                                        _minCitationCoverage: ep.min_citation_coverage ?? 0,
+                                        _refreshCadenceDays: ep.refresh_cadence_days ?? 30,
+                                        _requiresWebSearch: ep.requires_web_search ?? false,
+                                        _disclosureRequired: ep.disclosure_required ?? false,
                                       } as Skill;
                                     })())
                                   }
@@ -2108,6 +2125,148 @@ export default function AdminSkills() {
                   </div>
                 </div>
               </div>
+
+              {/* Content Quality & Execution Policy — Spec 038 */}
+              <div className="space-y-3 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-950/20 p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <ShieldCheck className="h-4 w-4 text-blue-600" />
+                  <Label className="text-sm font-semibold text-blue-700 dark:text-blue-400">Content Quality & Execution Policy</Label>
+                </div>
+                <p className="text-xs text-muted-foreground -mt-1">
+                  Controls how AI generates and verifies content for this skill. These settings affect model reasoning depth, web search usage, and citation requirements.
+                </p>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  {/* Thinking Level */}
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Thinking Level</Label>
+                    <Select
+                      value={(editingSkill as any)._thinkingLevel ?? "auto"}
+                      onValueChange={(val) =>
+                        setEditingSkill({ ...editingSkill, _thinkingLevel: val } as any)
+                      }
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="auto">Auto (based on complexity)</SelectItem>
+                        <SelectItem value="low">Low - Fast, simple tasks</SelectItem>
+                        <SelectItem value="medium">Medium - Balanced</SelectItem>
+                        <SelectItem value="high">High - Deep reasoning</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[10px] text-muted-foreground">
+                      How deeply the AI should reason. High = better for analysis/comparison, Low = faster for simple content.
+                    </p>
+                  </div>
+
+                  {/* Response Mode */}
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Response Mode</Label>
+                    <Select
+                      value={(editingSkill as any)._responseMode ?? "markdown"}
+                      onValueChange={(val) =>
+                        setEditingSkill({ ...editingSkill, _responseMode: val } as any)
+                      }
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="markdown">Markdown (default)</SelectItem>
+                        <SelectItem value="cms_json">CMS JSON (structured)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[10px] text-muted-foreground">
+                      CMS JSON = structured output with claims, citations, SEO metadata. Markdown = plain text.
+                    </p>
+                  </div>
+
+                  {/* Min Citation Coverage */}
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">
+                      Min Citation Coverage: {Math.round(((editingSkill as any)._minCitationCoverage ?? 0) * 100)}%
+                    </Label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="5"
+                      value={Math.round(((editingSkill as any)._minCitationCoverage ?? 0) * 100)}
+                      onChange={(e) =>
+                        setEditingSkill({
+                          ...editingSkill,
+                          _minCitationCoverage: parseInt(e.target.value) / 100,
+                        } as any)
+                      }
+                      className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-blue-600"
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Minimum % of claims that must have citations. 0% = no requirement, 80%+ recommended for factual content.
+                    </p>
+                  </div>
+
+                  {/* Refresh Cadence */}
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Refresh Cadence (days)</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={365}
+                      value={(editingSkill as any)._refreshCadenceDays ?? 30}
+                      onChange={(e) =>
+                        setEditingSkill({
+                          ...editingSkill,
+                          _refreshCadenceDays: parseInt(e.target.value) || 30,
+                        } as any)
+                      }
+                      className="h-8 text-xs"
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Days before generated content is marked stale. 7 = news/trends, 30 = products, 90 = evergreen.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Toggle row */}
+                <div className="grid gap-3 md:grid-cols-2 pt-1">
+                  <div className="flex items-center gap-3">
+                    <Switch
+                      checked={(editingSkill as any)._requiresWebSearch ?? false}
+                      onCheckedChange={(checked) =>
+                        setEditingSkill({ ...editingSkill, _requiresWebSearch: checked } as any)
+                      }
+                    />
+                    <div>
+                      <Label className="text-xs font-medium">Web Search Grounding</Label>
+                      <p className="text-[10px] text-muted-foreground">
+                        Enable real-time web search for up-to-date facts and citations.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Switch
+                      checked={(editingSkill as any)._disclosureRequired ?? false}
+                      onCheckedChange={(checked) =>
+                        setEditingSkill({ ...editingSkill, _disclosureRequired: checked } as any)
+                      }
+                    />
+                    <div>
+                      <Label className="text-xs font-medium">Disclosure Required</Label>
+                      <p className="text-[10px] text-muted-foreground">
+                        Require disclosure notice (e.g. sponsored, affiliate, marketing content).
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Model Resolution Preview — Spec 041 */}
+              {editingSkill.id && (
+                <SkillModelPreviewPanel skillId={editingSkill.id} />
+              )}
 
               {/* Trigger Patterns */}
               <div className="space-y-2">

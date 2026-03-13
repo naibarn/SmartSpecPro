@@ -77,6 +77,8 @@ import {
   writeSkillManifestFiles,
 } from "../services/skillFiles";
 import { refreshModelCache } from "../services/modelRegistry";
+import { resolveSkillExecutionPolicy } from "../services/skillExecutionPolicy";
+import { loadEnabledLlmModelRows } from "../services/enabledLlmModels";
 import { resolveMediaTypeFromSkillCategory, sanitizeMediaModelSelection } from "../services/mediaModelSelection";
 
 // Skills directory path
@@ -1773,6 +1775,64 @@ export const skillsRouter = router({
     }));
   }),
 
+  // Preview model resolution for a skill (admin diagnostic)
+  previewModelResolution: adminProcedure
+    .input(z.object({
+      skillId: z.number().int(),
+      conversationModel: z.string().optional(),
+    }))
+    .query(async ({ input }) => {
+      // Load skill from DB
+      const [skill] = await db
+        .select({
+          id: skills.id,
+          slug: skills.slug,
+          name: skills.name,
+          llmModelId: skills.llmModelId,
+          defaultModel: skills.defaultModel,
+          preferredProviderId: skills.preferredProviderId,
+          strictProviderPin: skills.strictProviderPin,
+          executionPolicyJson: skills.executionPolicyJson,
+        })
+        .from(skills)
+        .where(eq(skills.id, input.skillId))
+        .limit(1);
+
+      if (!skill) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `Skill ${input.skillId} not found`,
+        });
+      }
+
+      // Build a SkillDefinition-compatible shape for the resolver
+      const skillDef = {
+        llmModelId: skill.llmModelId ?? undefined,
+        defaultModel: skill.defaultModel ?? undefined,
+        preferredProviderId: skill.preferredProviderId ?? undefined,
+        strictProviderPin: skill.strictProviderPin ?? false,
+        executionPolicy: skill.executionPolicyJson ?? undefined,
+      };
+
+      // resolveSkillExecutionPolicy loads rows internally; we call loadEnabledLlmModelRows
+      // separately just for availableModelCount. This is a preview endpoint, double-load is fine.
+      const [result, rows] = await Promise.all([
+        resolveSkillExecutionPolicy({
+          skill: skillDef as any,
+          conversationModel: input.conversationModel,
+        }),
+        loadEnabledLlmModelRows(),
+      ]);
+
+      return {
+        modelId: result.modelId,
+        modelSource: result.modelSource,
+        matchedCapabilities: result.matchedCapabilities ?? [],
+        requirementsFallback: result.requirementsFallback ?? false,
+        availableModelCount: rows.length,
+      };
+    }),
+
   // Get skill reference files (for skills with references directory)
   getSkillReferences: adminProcedure
     .input(z.object({ id: z.string() }))
@@ -2496,6 +2556,15 @@ export const skillsRouter = router({
         knowledgebase: z.string().nullable().optional(),
         configJson: z.record(z.any()).nullable().optional(),
         visibility: z.enum(["private", "pending_approval", "public", "rejected"]).optional(),
+        // Spec 038: Content Quality & Execution Policy
+        executionPolicy: z.object({
+          thinking_level_hint: z.enum(["low", "medium", "high"]).nullable().optional(),
+          requires_web_search: z.boolean().optional(),
+          min_citation_coverage: z.number().min(0).max(1).optional(),
+          refresh_cadence_days: z.number().min(1).max(365).optional(),
+          disclosure_required: z.boolean().optional(),
+          response_mode: z.enum(["markdown", "cms_json"]).optional(),
+        }).optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -2608,6 +2677,26 @@ export const skillsRouter = router({
         if (updateData.visibility === "pending_approval") {
           updateObj.requestedPublishAt = new Date();
         }
+      }
+
+      // Spec 038: Merge execution policy into executionPolicyJson
+      if (updateData.executionPolicy !== undefined) {
+        const existing = (await dbInstance
+          .select({ executionPolicyJson: skills.executionPolicyJson })
+          .from(skills)
+          .where(eq(skills.id, id))
+          .limit(1)
+        )[0]?.executionPolicyJson ?? {};
+
+        updateObj.executionPolicyJson = {
+          ...existing,
+          thinking_level_hint: updateData.executionPolicy.thinking_level_hint,
+          requires_web_search: updateData.executionPolicy.requires_web_search,
+          min_citation_coverage: updateData.executionPolicy.min_citation_coverage,
+          refresh_cadence_days: updateData.executionPolicy.refresh_cadence_days,
+          disclosure_required: updateData.executionPolicy.disclosure_required,
+          response_mode: updateData.executionPolicy.response_mode,
+        };
       }
 
       if (currentSkill.folderPath && hasRelativeSkillManifest(currentSkill.folderPath)) {
