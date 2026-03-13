@@ -12,6 +12,26 @@ export interface AdminModelMappingRow {
   contextLength: number | null;
   isEnabled: boolean;
   priority: number;
+  priorityLocked: boolean;
+  apiStyle: "chat-completions" | "responses" | "messages" | "gemini";
+}
+
+export interface AdminModelCatalogRow {
+  mappingId: number | null;
+  isMapped: boolean;
+  modelId: string;
+  providerId: number;
+  providerName: string;
+  providerDisplayName?: string | null;
+  modelName: string;
+  providerModelId: string;
+  pricingInput: string;
+  pricingOutput: string;
+  isFree: boolean;
+  contextLength: number | null;
+  isEnabled: boolean;
+  priority: number;
+  priorityLocked: boolean;
   apiStyle: "chat-completions" | "responses" | "messages" | "gemini";
 }
 
@@ -29,8 +49,13 @@ export interface FilteredModelMappingGroup {
   enabledCount: number;
 }
 
+type FilterableModelRow = Pick<
+  AdminModelCatalogRow,
+  "modelId" | "modelName" | "providerId" | "providerName" | "providerDisplayName" | "providerModelId"
+>;
+
 function matchesModelMappingFilters(
-  row: AdminModelMappingRow,
+  row: FilterableModelRow,
   searchQuery: string,
   providerFilter: string,
 ) {
@@ -52,6 +77,42 @@ function matchesModelMappingFilters(
     row.providerDisplayName ?? "",
     row.providerModelId,
   ].some((value) => value.toLowerCase().includes(search));
+}
+
+export function getAdminModelSelectionKey(row: Pick<AdminModelCatalogRow, "mappingId" | "providerId" | "providerModelId">) {
+  if (row.mappingId != null) {
+    return `mapped:${row.mappingId}`;
+  }
+  return `catalog:${row.providerId}:${row.providerModelId}`;
+}
+
+export function filterAdminModelCatalogRows(
+  rows: AdminModelCatalogRow[] | undefined,
+  searchQuery: string,
+  providerFilter: string,
+): AdminModelCatalogRow[] {
+  return (rows ?? [])
+    .filter((row) => matchesModelMappingFilters(row, searchQuery, providerFilter))
+    .sort((left, right) => {
+      const nameCompare = left.modelName.localeCompare(right.modelName);
+      if (nameCompare !== 0) {
+        return nameCompare;
+      }
+
+      const priorityCompare = left.priority - right.priority;
+      if (priorityCompare !== 0) {
+        return priorityCompare;
+      }
+
+      const providerCompare = (left.providerDisplayName ?? left.providerName).localeCompare(
+        right.providerDisplayName ?? right.providerName,
+      );
+      if (providerCompare !== 0) {
+        return providerCompare;
+      }
+
+      return left.providerModelId.localeCompare(right.providerModelId);
+    });
 }
 
 export function filterFlatModelMappings(input: FilterModelMappingGroupsInput): AdminModelMappingRow[] {

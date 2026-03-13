@@ -118,15 +118,16 @@ async def seed_auto_draft_agent(session: AsyncSession) -> None:
     # 1. Ensure __system__ tenant exists
     await session.execute(
         text("""
-            INSERT INTO tenants (id, name, domain, plan)
-            VALUES (:id, :name, :domain, :plan)
+            INSERT INTO tenants (id, slug, name, plan, status, created_at)
+            VALUES (:id, :slug, :name, :plan, :status, NOW())
             ON CONFLICT (id) DO NOTHING
         """),
         {
             "id": AGENCY_TENANT_ID,
+            "slug": "__system__",
             "name": "System",
-            "domain": "__system__",
-            "plan": "enterprise",
+            "plan": "ENTERPRISE",
+            "status": "ACTIVE",
         },
     )
 
