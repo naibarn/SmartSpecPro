@@ -424,6 +424,52 @@ describe("resolveSkillExecutionPolicy — requirements mode", () => {
     expect(result.modelSource).toBe("conversation");
   });
 
+  it("requirements mode: skips defaultModel in fallback cascade", async () => {
+    mockSelectBestLlmModel.mockReturnValue(null);
+    mockResolveFromRows.mockImplementation(({ preferredModelIds }) => {
+      // defaultModel should NOT be in the array when mode=requirements
+      if ((preferredModelIds ?? []).includes("default-model")) return "default-model";
+      return "system-default";
+    });
+
+    const result = await resolveSkillExecutionPolicy({
+      skill: makeSkill({
+        defaultModel: "default-model",
+        executionPolicy: {
+          mode: "requirements",
+          requirements: { supportsFunctionTools: true },
+        },
+      }),
+    });
+
+    // Should be system-default, NOT default-model
+    expect(result.modelId).toBe("system-default");
+    expect(result.modelSource).toBe("system_default");
+    expect(result.requirementsFallback).toBe(true);
+  });
+
+  it("requirements mode with empty requirements: uses restricted fallback", async () => {
+    mockResolveFromRows.mockImplementation(({ preferredModelIds }) => {
+      if ((preferredModelIds ?? []).includes("default-model")) return "default-model";
+      return "system-default";
+    });
+
+    const result = await resolveSkillExecutionPolicy({
+      skill: makeSkill({
+        defaultModel: "default-model",
+        executionPolicy: {
+          mode: "requirements",
+          requirements: {},
+        },
+      }),
+    });
+
+    // defaultModel should be skipped in requirements mode
+    expect(result.modelId).toBe("system-default");
+    expect(result.requirementsFallback).toBe(true);
+    expect(mockSelectBestLlmModel).not.toHaveBeenCalled();
+  });
+
   it("auto-detect: requirements take precedence over llmModelId when both present", async () => {
     mockSelectBestLlmModel.mockReturnValue("claude-3-sonnet");
 

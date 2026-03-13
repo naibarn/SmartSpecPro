@@ -7,7 +7,11 @@
  */
 
 import type { SkillDefinition } from "@smartspec/skills";
-import { resolveEnabledLlmModelIdFromRows, loadEnabledLlmModelRows } from "./enabledLlmModels";
+import {
+  resolveEnabledLlmModelIdFromRows,
+  loadEnabledLlmModelRows,
+  type EnabledLlmModelRow,
+} from "./enabledLlmModels";
 import { selectBestLlmModel, describeRequirementsMatch } from "./intelligentModelSelector";
 import type { CapabilityRequirements } from "./intelligentModelSelector";
 
@@ -104,6 +108,19 @@ export async function resolveSkillExecutionPolicy(
   const shouldTryRequirements =
     mode === "requirements" || mode === "hybrid" || (mode === undefined && hasReqs);
 
+  // mode === "requirements" with empty requirements: use restricted fallback (no defaultModel)
+  if (shouldTryRequirements && !hasReqs && mode === "requirements") {
+    return requirementsFallbackCascade({
+      rows,
+      base,
+      skillLlmModelId,
+      skillDefaultModel,
+      convModel,
+      allowConvOverride,
+      mode,
+    });
+  }
+
   if (shouldTryRequirements && hasReqs) {
     const matched = selectBestLlmModel(
       requirements as Partial<CapabilityRequirements>,
@@ -150,7 +167,7 @@ export async function resolveSkillExecutionPolicy(
  * Used when no requirements are active (fixed mode, or undefined mode without requirements).
  */
 function legacyCascade(opts: {
-  rows: any[];
+  rows: EnabledLlmModelRow[];
   base: { preferredProviderId?: number; strictProviderPin?: boolean };
   skillLlmModelId?: string;
   skillDefaultModel?: string;
@@ -194,7 +211,7 @@ function legacyCascade(opts: {
  * Respects allowConversationOverride setting.
  */
 function requirementsFallbackCascade(opts: {
-  rows: any[];
+  rows: EnabledLlmModelRow[];
   base: { preferredProviderId?: number; strictProviderPin?: boolean };
   skillLlmModelId?: string;
   skillDefaultModel?: string;
