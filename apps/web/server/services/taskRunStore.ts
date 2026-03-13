@@ -7,7 +7,7 @@
  * is deferred to later sections.
  */
 
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, lt } from "drizzle-orm";
 import { getDb } from "../db";
 import { taskRuns, taskStepAttempts } from "../../drizzle/schema";
 import type { TaskExecutionPlan, TaskBillingMetadata } from "./taskExecutionPlanner";
@@ -221,6 +221,25 @@ export async function linkArtifactToTaskRun(
   if (hasMsgId) updates.artifactMessageId = artifact.artifactMessageId;
 
   await db.update(taskRuns).set(updates).where(eq(taskRuns.id, taskRunId));
+}
+
+// ── Data retention cleanup ───────────────────────────────────────────
+
+/**
+ * Delete task_runs (and their step_attempts via CASCADE) older than `daysOld`.
+ * Safe to call from a scheduled maintenance job. Returns count of deleted rows.
+ *
+ * Recommended retention: 90 days. Call via scheduler.ts once daily.
+ */
+export async function cleanupOldTaskRuns(daysOld = 90): Promise<number> {
+  const db = await getDb();
+  if (!db) return 0;
+  const cutoff = new Date(Date.now() - daysOld * 24 * 60 * 60 * 1000);
+  const result = await db
+    .delete(taskRuns)
+    .where(lt(taskRuns.createdAt, cutoff))
+    .returning({ id: taskRuns.id });
+  return result.length;
 }
 
 // ── Build billing metadata from task context ─────────────────────────

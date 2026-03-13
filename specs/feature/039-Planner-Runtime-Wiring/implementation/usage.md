@@ -343,6 +343,22 @@ if (plannerResult) {
 
 ---
 
+## Data Retention
+
+Task runs and step attempts accumulate over time. A cleanup function is available:
+
+```typescript
+import { cleanupOldTaskRuns } from "../services/taskRunStore";
+
+// Delete task_runs (+ step_attempts via CASCADE) older than 90 days
+const deleted = await cleanupOldTaskRuns(90);
+console.log(`Cleaned up ${deleted} old task runs`);
+```
+
+Recommended: wire into a daily scheduler job or call manually via admin endpoint.
+
+---
+
 ## Commit History
 
 | Commit | Description |
