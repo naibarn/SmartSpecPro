@@ -62,7 +62,7 @@ const SCOPE_CATEGORIES = [
   { label: "Media", scopes: ["media:generate"] },
   { label: "LLM", scopes: ["llm:chat"] },
   { label: "MCP", scopes: ["mcp:read", "mcp:write"] },
-  { label: "Jobs", scopes: ["jobs:create", "jobs:read"] },
+  { label: "Jobs", scopes: ["jobs:create", "jobs:read", "jobs:write"] },
   { label: "Webhooks", scopes: ["webhooks:manage"] },
   { label: "Events", scopes: ["events:read"] },
   { label: "API Keys", scopes: ["api_keys:manage"] },
@@ -259,8 +259,9 @@ export default function AdminAPIKeys() {
                       <TableHead>Name</TableHead>
                       <TableHead>Key Prefix</TableHead>
                       <TableHead>Scopes</TableHead>
-                      <TableHead>Rate Limit</TableHead>
+                      <TableHead>Limits</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Expires</TableHead>
                       <TableHead>Last Used</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -288,7 +289,19 @@ export default function AdminAPIKeys() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="text-sm">{key.rateLimit ?? 60} RPM</TableCell>
+                        <TableCell className="text-sm">
+                          <div className="space-y-0.5">
+                            <div>{key.rateLimit ?? 60} RPM</div>
+                            {((key as any).quotaHourly || (key as any).quotaDaily || (key as any).quotaWeekly || (key as any).quotaMonthly) && (
+                              <div className="text-xs text-muted-foreground flex flex-wrap gap-1">
+                                {(key as any).quotaHourly && <span title="Hourly quota">{(key as any).quotaHourly}/h</span>}
+                                {(key as any).quotaDaily && <span title="Daily quota">{(key as any).quotaDaily}/d</span>}
+                                {(key as any).quotaWeekly && <span title="Weekly quota">{(key as any).quotaWeekly}/w</span>}
+                                {(key as any).quotaMonthly && <span title="Monthly quota">{(key as any).quotaMonthly}/mo</span>}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           {(key as any).isSuspended ? (
                             <Badge className="bg-orange-100 text-orange-800 text-xs" title={(key as any).suspendedReason ?? undefined}>
@@ -302,6 +315,15 @@ export default function AdminAPIKeys() {
                             <Badge variant="destructive" className="text-xs">
                               <XCircle className="h-3 w-3 mr-1" /> Revoked
                             </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {key.expiresAt ? (
+                            <span className={new Date(key.expiresAt as string) < new Date() ? "text-destructive" : ""}>
+                              {new Date(key.expiresAt as string).toLocaleDateString()}
+                            </span>
+                          ) : (
+                            <span className="text-xs">Never</span>
                           )}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
