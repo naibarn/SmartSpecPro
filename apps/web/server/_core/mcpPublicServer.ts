@@ -756,9 +756,12 @@ function mcpDiscoveryHandler(_req: Request, res: Response): void {
 // ---------------------------------------------------------------------------
 
 export function registerMcpPublicRoutes(app: Express): void {
+  // NOTE: /v1/mcp relies on the shared app.use("/v1", ...) middleware chain for
+  // CORS, headers, auth, feature guard, rate limiting, idempotency, and audit.
+  // The duplicate apiKeyAuthMiddleware that was previously here is removed —
+  // it caused double auth lookups and made the audit middleware run twice.
   app.post(
     "/v1/mcp",
-    apiKeyAuthMiddleware,
     requireScopes("mcp:read"),
     mcpHandler,
   );

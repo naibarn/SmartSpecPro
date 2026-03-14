@@ -9,6 +9,7 @@ import { deductCredits, refundCredits, getCreditBalance } from "../services/cred
 import { signBearerToken } from "../_core/tokens";
 import { db } from "../db";
 import { agencies, agencyConversations } from "../../drizzle/schema";
+import { emitPublicApiEvent } from "../services/webhookDeliveryService";
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -268,6 +269,15 @@ export function createPublicAgencyRouter(): Router {
 
         res.setHeader("X-Credits-Used", String(creditsUsed));
         res.setHeader("X-Credits-Remaining", String(remaining));
+
+        // Emit agency.message event for webhook subscribers and SSE consumers
+        emitPublicApiEvent(tenantId, "agency.message", {
+          agency_id: agencyId,
+          conversation_id: conversationId,
+          run_id: result.runId,
+          status: result.status,
+          credits_used: creditsUsed,
+        }).catch(() => {});
 
         if (stream) {
           // SSE: send result as a single event then close

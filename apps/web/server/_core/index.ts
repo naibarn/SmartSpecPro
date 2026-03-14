@@ -98,6 +98,8 @@ import { publicApiAuditMiddleware } from "../middleware/publicApiAudit";
 import { publicApiCorsMiddleware } from "../middleware/publicApiCors";
 import { publicApiFeatureGuard } from "../middleware/publicApiFeatureGuard";
 import { publicApiHeadersMiddleware } from "../middleware/publicApiHeaders";
+import { rateLimitMiddleware } from "../services/apiKeyRateLimiter";
+import { idempotencyMiddleware } from "../middleware/idempotencyMiddleware";
 
 /** Shared database adapter (implements @smartspec/db DbAdapter) */
 export const dbAdapter = new PostgresAdapter();
@@ -429,6 +431,8 @@ app.use(
   publicApiHeadersMiddleware,
   apiKeyAuthMiddleware,
   publicApiFeatureGuard,
+  rateLimitMiddleware(),
+  idempotencyMiddleware(),
   publicApiAuditMiddleware,
 );
 app.use("/v1/skills", createPublicSkillsRouter());

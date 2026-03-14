@@ -7,6 +7,8 @@ import { mediaGenerationService } from "../services/mediaGenerationService";
 import { deductCredits } from "../services/creditService";
 import { createInternalTokenFromAuth } from "../_core/tokens";
 import { validateReferenceUrls, ApiValidationError } from "../services/ssrfValidation";
+import { incrementDailyCredits } from "../services/apiKeyRateLimiter";
+import { emitPublicApiEvent } from "../services/webhookDeliveryService";
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -104,6 +106,7 @@ export function createPublicMediaRouter(): Router {
           sourceType: "api_media",
           description: `Image generation: ${prompt.slice(0, 50)}`,
         } as any);
+        incrementDailyCredits((auth as any).apiKeyId, 1).catch(() => {});
 
         res.setHeader("X-Credits-Used", "1");
         res.status(202).json({ task_id: task.id, status: task.status });
@@ -173,6 +176,7 @@ export function createPublicMediaRouter(): Router {
           sourceType: "api_media",
           description: `Video generation: ${prompt.slice(0, 50)}`,
         } as any);
+        incrementDailyCredits((auth as any).apiKeyId, 2).catch(() => {});
 
         res.setHeader("X-Credits-Used", "2");
         res.status(202).json({ task_id: task.id, status: task.status });
@@ -227,6 +231,7 @@ export function createPublicMediaRouter(): Router {
           sourceType: "api_media",
           description: `Audio generation: ${text.slice(0, 50)}`,
         } as any);
+        incrementDailyCredits((auth as any).apiKeyId, 1).catch(() => {});
 
         res.setHeader("X-Credits-Used", "1");
         res.status(202).json({ task_id: task.id, status: task.status });
@@ -246,6 +251,7 @@ export function createPublicMediaRouter(): Router {
     const { taskId } = req.params;
     const auth = req.auth!;
     const userId = (auth as any).userId as number;
+    const tenantId = (auth as any).tenantId as string;
 
     try {
       const userToken = createInternalTokenFromAuth({ userId }, ["media:generate"]);
@@ -256,6 +262,19 @@ export function createPublicMediaRouter(): Router {
 
       const progressPct =
         task.status === "completed" ? 100 : task.status === "processing" ? 50 : 0;
+
+      // Emit media.ready when the task is completed so webhook subscribers and
+      // SSE consumers are notified. This fires on every status poll for completed
+      // tasks — the background worker should ideally emit this directly, but until
+      // that integration exists this ensures at-least-once delivery.
+      if (task.status === "completed") {
+        emitPublicApiEvent(tenantId, "media.ready", {
+          task_id: task.id,
+          media_type: task.mediaType,
+          result_url: task.resultUrl ?? null,
+          credits_used: task.creditsUsed ?? null,
+        }).catch(() => {});
+      }
 
       res.json({
         task_id: task.id,

@@ -15,6 +15,7 @@ import {
   deductCredits,
   getCreditBalance,
 } from "../services/creditService";
+import { incrementDailyCredits } from "../services/apiKeyRateLimiter";
 
 // ---------------------------------------------------------------------------
 // Input schema cache
@@ -257,6 +258,7 @@ export function createPublicSkillsRouter(): Router {
           sourceType: "api_skill",
           description: `Skill execution: ${skill.id}`,
         } as any);
+        incrementDailyCredits((auth as any).apiKeyId, estimatedCost).catch(() => {});
 
         // Build execution params
         const prompt =

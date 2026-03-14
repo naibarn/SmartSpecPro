@@ -195,7 +195,7 @@ export function createPublicJobsRouter(): Router {
   // -------------------------------------------------------------------------
   // DELETE /v1/jobs/:jobId
   // -------------------------------------------------------------------------
-  router.delete("/:jobId", requireScopes("jobs:create"), async (req, res) => {
+  router.delete("/:jobId", requireScopes("jobs:write"), async (req, res) => {
     const { jobId } = req.params;
     const auth = req.auth!;
     const userId = (auth as any).userId as number;

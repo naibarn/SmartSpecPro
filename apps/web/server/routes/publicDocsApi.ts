@@ -357,7 +357,7 @@ export function buildOpenApiSpec() {
           operationId: "listAgencies",
           tags: ["Agencies"],
           summary: "List agencies",
-          description: "Returns active agencies for the tenant. Requires scope: `agency:read`.",
+          description: "Returns active agencies for the tenant. Requires scope: `agencies:list`.",
           responses: {
             "200": {
               description: "Agency list",
@@ -381,7 +381,7 @@ export function buildOpenApiSpec() {
           operationId: "invokeAgency",
           tags: ["Agencies"],
           summary: "Invoke an agency",
-          description: "Starts an asynchronous agency run. Returns a run ID. Requires scope: `agency:invoke`.",
+          description: "Starts an asynchronous agency run. Returns a run ID. Requires scope: `agencies:invoke`.",
           parameters: [
             { name: "agencyId", in: "path", required: true, schema: { type: "string" } },
           ],
@@ -424,7 +424,7 @@ export function buildOpenApiSpec() {
           operationId: "getAgencyRun",
           tags: ["Agencies"],
           summary: "Get agency run status",
-          description: "Returns current status and result for a run. Requires scope: `agency:read`.",
+          description: "Returns current status and result for a run. Requires scope: `agencies:list`.",
           parameters: [
             { name: "agencyId", in: "path", required: true, schema: { type: "string" } },
             { name: "runId", in: "path", required: true, schema: { type: "string" } },
@@ -448,7 +448,7 @@ export function buildOpenApiSpec() {
           operationId: "streamAgencyRun",
           tags: ["Agencies"],
           summary: "Stream agency run events",
-          description: "Server-Sent Events stream for a run. Connect with `Accept: text/event-stream`. Requires scope: `agency:read`.",
+          description: "Server-Sent Events stream for a run. Connect with `Accept: text/event-stream`. Requires scope: `agencies:list`.",
           parameters: [
             { name: "agencyId", in: "path", required: true, schema: { type: "string" } },
             { name: "runId", in: "path", required: true, schema: { type: "string" } },
@@ -975,7 +975,7 @@ export function buildOpenApiSpec() {
           operationId: "cancelJob",
           tags: ["Jobs"],
           summary: "Cancel or delete a job",
-          description: "Cancels a pending job or deletes a completed one. Requires scope: `jobs:write`.",
+          description: "Cancels a pending job or deletes a completed one. Requires scope: `jobs:write` (or `jobs:create`).",
           parameters: [
             { name: "jobId", in: "path", required: true, schema: { type: "string" } },
           ],
@@ -1061,6 +1061,38 @@ export function buildOpenApiSpec() {
         },
       },
       "/v1/webhooks/{id}": {
+        patch: {
+          operationId: "updateWebhook",
+          tags: ["Webhooks"],
+          summary: "Update or re-enable a webhook endpoint",
+          description: "Updates events, retry policy, or re-enables a disabled endpoint. Requires scope: `webhooks:manage`.",
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    events: { type: "array", items: { type: "string" } },
+                    retry_policy: { type: "string", enum: ["none", "exponential"] },
+                    is_active: { type: "boolean", description: "Set to true to re-enable a disabled endpoint" },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description: "Webhook updated",
+              content: { "application/json": { schema: { $ref: "#/components/schemas/WebhookEndpoint" } } },
+            },
+            "404": errorResponse("Webhook not found"),
+            ...commonErrorResponses,
+          },
+        },
         delete: {
           operationId: "deleteWebhook",
           tags: ["Webhooks"],

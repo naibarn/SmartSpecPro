@@ -1,10 +1,11 @@
 import { randomUUID } from "crypto";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, count } from "drizzle-orm";
 import { db } from "../db";
 import { automationJobs } from "../../drizzle/schema";
 import type { AutomationJob, InsertAutomationJob } from "../../drizzle/schema";
 import { deductCredits, addCredits } from "./creditService";
 import { getRedisClient } from "./redis";
+import { emitPublicApiEvent } from "./webhookDeliveryService";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -350,12 +351,28 @@ export async function executeJob(jobId: string): Promise<void> {
     .where(eq(automationJobs.id, jobId));
 
   try {
+    // Emit progress: job started (0%)
+    emitPublicApiEvent(job.tenantId, "job.progress", {
+      job_id: jobId,
+      type: job.type,
+      progress_pct: 0,
+      status: "running",
+    }).catch(() => {});
+
     // Stub execution — in production, dispatch to actual services
     const result: Record<string, unknown> = {
       jobId,
       type: job.type,
       message: `Job ${job.type} executed via automation service`,
     };
+
+    // Emit progress: job almost done (80%)
+    emitPublicApiEvent(job.tenantId, "job.progress", {
+      job_id: jobId,
+      type: job.type,
+      progress_pct: 80,
+      status: "running",
+    }).catch(() => {});
 
     // Finalize
     const creditsUsed = Math.min(job.creditsReserved, Math.ceil(job.creditsReserved * 0.8));
@@ -376,20 +393,16 @@ export async function executeJob(jobId: string): Promise<void> {
       } as any);
     }
 
-    // Publish completion event
-    try {
-      const redis = getRedisClient();
-      await redis.publish(
-        `events:${job.tenantId}`,
-        JSON.stringify({
-          type: "job.completed",
-          data: { job_id: jobId, type: job.type, status: "completed", credits_used: creditsUsed, result },
-          timestamp: new Date().toISOString(),
-        }),
-      );
-    } catch {
+    // Emit completion event — fans out to webhook endpoints AND SSE subscribers
+    emitPublicApiEvent(job.tenantId, "job.completed", {
+      job_id: jobId,
+      type: job.type,
+      status: "completed",
+      credits_used: creditsUsed,
+      result,
+    }).catch(() => {
       // non-fatal
-    }
+    });
   } catch (execErr: any) {
     await drizzle
       .update(automationJobs)
@@ -413,19 +426,15 @@ export async function executeJob(jobId: string): Promise<void> {
       );
     }
 
-    try {
-      const redis = getRedisClient();
-      await redis.publish(
-        `events:${job.tenantId}`,
-        JSON.stringify({
-          type: "job.failed",
-          data: { job_id: jobId, type: job.type, status: "failed", error: execErr.message },
-          timestamp: new Date().toISOString(),
-        }),
-      );
-    } catch {
+    // Emit failure event — fans out to webhook endpoints AND SSE subscribers
+    emitPublicApiEvent(job.tenantId, "job.failed", {
+      job_id: jobId,
+      type: job.type,
+      status: "failed",
+      error: execErr.message,
+    }).catch(() => {
       // non-fatal
-    }
+    });
   }
 }
 
@@ -485,6 +494,11 @@ export async function listJobs(
     conditions.push(eq(automationJobs.status, options.status));
   }
 
+  const [{ value: total }] = await drizzle
+    .select({ value: count() })
+    .from(automationJobs)
+    .where(and(...conditions));
+
   const rows = await drizzle
     .select()
     .from(automationJobs)
@@ -493,7 +507,7 @@ export async function listJobs(
     .limit(limit)
     .offset((page - 1) * limit);
 
-  return { jobs: rows, total: rows.length };
+  return { jobs: rows, total };
 }
 
 export async function getJob(jobId: string, tenantId: string): Promise<AutomationJob | null> {

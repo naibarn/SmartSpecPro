@@ -19,6 +19,8 @@ export const KNOWN_EVENT_TYPES = [
   "job.completed",
   "job.failed",
   "job.progress",
+  "media.ready",
+  "agency.message",
   "credits.low",
   "key.expiring",
 ] as const;
