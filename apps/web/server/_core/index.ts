@@ -16,6 +16,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { serveStatic, setupVite } from "./vite";
 import { registerLLMRoutes } from "./llmRoutes";
 import { registerMCPRoutes } from "./mcpRoutes";
+import { registerMcpPublicRoutes } from "./mcpPublicServer";
 import { registerMediaJobRoutes } from "../routers/mediaJobs";
 import { registerAgencyStreamRoutes } from "./agencyStreamProxy";
 import { registerLiveBrowserStreamRoutes } from "./liveBrowserStreamProxy";
@@ -430,6 +431,7 @@ app.use("/v1/media", createPublicMediaRouter());
 // REST/SSE endpoints
 registerLLMRoutes(app);
 registerMCPRoutes(app);
+registerMcpPublicRoutes(app);
 registerMediaJobRoutes(app);
 registerAgencyStreamRoutes(app);
 registerLiveBrowserStreamRoutes(app);
