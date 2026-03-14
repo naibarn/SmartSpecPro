@@ -83,6 +83,8 @@ import { COOKIE_NAME } from "@shared/const";
 import { createPublicSkillsRouter } from "../routes/publicSkillsApi";
 import { createPublicAgencyRouter } from "../routes/publicAgencyApi";
 import { createPresentationPublicRouter } from "../routes/publicPresentationsApi";
+import { createPublicVideoRouter } from "../routes/publicVideoApi";
+import { createPublicMediaRouter } from "../routes/publicMediaApi";
 import { apiKeyAuthMiddleware } from "../middleware/apiKeyAuth";
 import { publicApiCorsMiddleware } from "../middleware/publicApiCors";
 import { publicApiFeatureGuard } from "../middleware/publicApiFeatureGuard";
@@ -422,6 +424,8 @@ app.use(
 app.use("/v1/skills", createPublicSkillsRouter());
 app.use("/v1/agencies", createPublicAgencyRouter());
 app.use("/v1/presentations", createPresentationPublicRouter());
+app.use("/v1/video-projects", createPublicVideoRouter());
+app.use("/v1/media", createPublicMediaRouter());
 
 // REST/SSE endpoints
 registerLLMRoutes(app);
