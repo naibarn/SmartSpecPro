@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { protectedProcedure, router } from "../_core/trpc";
+import { adminProcedure, protectedProcedure, router } from "../_core/trpc";
 import { createRateLimitMiddleware } from "../_core/rateLimitedProcedure";
 import { signBearerToken } from "../_core/tokens";
 import {
@@ -67,17 +67,22 @@ import { applyTemplateAssetToDeck } from "../services/presentationTemplateServic
 import { getRedisClient } from "../services/redis";
 import {
   generateAIDraft,
-  relayoutExistingSlide,
+  repairSlideFromSavedNote,
+  relayoutExistingSlideAsync,
   resolvePendingMediaForDeck,
 } from "../services/aiPresentationService";
+import { resolveAutoDraftParams } from "../services/autoDraftResolver";
+import { createLibraryItem } from "../services/libraryService";
 import {
   deletePresentationCustomBlock,
+  listPresentationCustomBlockGovernanceAudit,
   listPresentationCustomBlocks,
   renderPresentationCustomBlockPreview,
   savePresentationCustomBlock,
   trackPresentationCustomBlockUse,
   updatePresentationCustomBlock,
 } from "../services/presentationCustomBlockService";
+import { presentationCustomBlockGovernanceAuditInputSchema } from "@shared/presentation/customBlocks";
 import {
   AI_GEOMETRIC_ACCENT_SHAPES,
   AI_GEOMETRIC_CROP_SHAPES,
@@ -85,7 +90,9 @@ import {
   AI_STYLE_PRESET_IDS,
   AIWatermarkSchema,
   GenerateAIDraftInputSchema,
+  type GenerateAIDraftInput,
 } from "@shared/presentation/aiTypes";
+import { BUILT_IN_PRESENTATION_COMPONENT_IDS } from "@shared/presentation/componentRecipes";
 import {
   presentationCustomBlockCreateInputSchema,
   presentationCustomBlockDeleteInputSchema,
@@ -324,6 +331,7 @@ export const presentationRouter = router({
             totalSlides: input.numSlides,
             slidePreview: [],
             completed: false,
+            updatedAt: new Date().toISOString(),
           };
           await redis.set(
             `ai_draft_progress:${taskId}`,
@@ -404,6 +412,7 @@ export const presentationRouter = router({
         expectedVersion: z.number().int().nonnegative(),
         stylePresetId: z.enum(AI_STYLE_PRESET_IDS).optional(),
         templateId: z.enum(AI_LAYOUT_TEMPLATE_IDS).optional(),
+        componentRecipeId: z.enum(BUILT_IN_PRESENTATION_COMPONENT_IDS).optional(),
         includeSvg: z.boolean().optional(),
         includeGeometricCrop: z.boolean().optional(),
         geometricCropShape: z.enum(AI_GEOMETRIC_CROP_SHAPES).optional(),
@@ -434,14 +443,17 @@ export const presentationRouter = router({
           }
           const orderedSlides = [...detail.slides].sort((a, b) => a.orderIndex - b.orderIndex);
           const slideIndex = Math.max(1, orderedSlides.findIndex((item) => item.id === slide.id) + 1);
-          const relayout = relayoutExistingSlide({
+          const relayout = await relayoutExistingSlideAsync({
             slideTitle: slide.title,
             slideContent: parsed.data,
+            slideNotes: slide.notes,
+            userToken: ctx.userToken ?? undefined,
             deckTitle: detail.deck.title ?? undefined,
             slideIndex,
             totalSlides: Math.max(1, orderedSlides.length),
             stylePresetId: input.stylePresetId,
             templateId: input.templateId,
+            preferredComponentRecipeId: input.componentRecipeId,
             includeSvg: input.includeSvg,
             includeGeometricCrop: input.includeGeometricCrop,
             geometricCropShape: input.geometricCropShape,
@@ -450,7 +462,7 @@ export const presentationRouter = router({
             watermark: input.watermark,
             supplementalMediaClarityPercent: input.supplementalMediaClarityPercent,
             layoutSeed: input.layoutSeed,
-          });
+          }, actor);
 
           const updatedSlide = await updateSlideInDeck(
             {
@@ -478,15 +490,95 @@ export const presentationRouter = router({
         }
       }),
 
+    repairSlideFromNote: protectedProcedure
+      .input(z.object({
+        deckId: z.number().int().positive(),
+        slideId: z.number().int().positive(),
+        expectedVersion: z.number().int().nonnegative(),
+        stylePresetId: z.enum(AI_STYLE_PRESET_IDS).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        try {
+          ensureFeatureEnabled();
+          ensureAIGenerationEnabled();
+          const actor = toPresentationActor(ctx);
+          const userToken = getPresentationToken(ctx, ["media:generate"]);
+          const detail = await getPresentationDeckDetail(input.deckId, actor);
+          const slide = detail.slides.find((item) => item.id === input.slideId);
+          if (!slide) {
+            throw new PresentationServiceError(
+              PRESENTATION_ERROR_CODE.NOT_FOUND,
+              `${PRESENTATION_ERROR_CODE.NOT_FOUND}: slide ${input.slideId} not found`,
+            );
+          }
+          const parsed = presentationSlideContentSchema.safeParse(slide.slideContent);
+          if (!parsed.success) {
+            throw new PresentationServiceError(
+              PRESENTATION_ERROR_CODE.AI_INVALID_RESPONSE,
+              `${PRESENTATION_ERROR_CODE.AI_INVALID_RESPONSE}: existing slide content is invalid`,
+            );
+          }
+          const savedNote = String(slide.notes ?? "").trim();
+          if (!savedNote) {
+            throw new PresentationServiceError(
+              PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
+              `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: save a slide note before repairing this slide`,
+            );
+          }
+          const orderedSlides = [...detail.slides].sort((a, b) => a.orderIndex - b.orderIndex);
+          const slideIndex = Math.max(1, orderedSlides.findIndex((item) => item.id === slide.id) + 1);
+          const repaired = await repairSlideFromSavedNote(
+            {
+              deckId: input.deckId,
+              slideTitle: slide.title,
+              slideContent: parsed.data,
+              slideNotes: savedNote,
+              deckTitle: detail.deck.title ?? undefined,
+              slideIndex,
+              totalSlides: Math.max(1, orderedSlides.length),
+              stylePresetId: input.stylePresetId,
+            },
+            actor,
+            userToken,
+          );
+          const updatedSlide = await updateSlideInDeck(
+            {
+              deckId: input.deckId,
+              slideId: input.slideId,
+              expectedVersion: input.expectedVersion,
+              saveMode: "manual",
+              title: repaired.title,
+              notes: slide.notes,
+              slideContent: repaired.slideContent,
+            },
+            actor,
+          );
+
+          return {
+            slide: updatedSlide,
+            warnings: repaired.warnings,
+            applied: repaired.applied,
+          };
+        } catch (err) {
+          if (err instanceof PresentationServiceError) {
+            throw mapPresentationServiceError(err);
+          }
+          throw err;
+        }
+      }),
+
     getDraftProgress: protectedProcedure
       .input(z.object({ taskId: z.string().min(1).max(128) }))
       .query(async ({ input, ctx }): Promise<{
         phase: number;
         phaseLabel: string;
+        phaseDetail?: string;
         slidesCompleted: number;
         totalSlides: number;
         slidePreview: Array<{ title: string; imageStatus: string }>;
         completed: boolean;
+        updatedAt?: string;
+        workerActive?: boolean;
         cancelled?: boolean;
         error?: { code: string; message: string };
         result?: { slidesAdded: number; newDeckVersion: number; articlePreview: string; warnings: string[] };
@@ -499,6 +591,7 @@ export const presentationRouter = router({
           totalSlides: 0,
           slidePreview: [] as Array<{ title: string; imageStatus: string }>,
           completed: false,
+          workerActive: false,
           error: { code: "not_found", message: "Draft progress not found" },
         };
 
@@ -523,13 +616,19 @@ export const presentationRouter = router({
           return notFoundResponse;
         }
 
+        const lockOwner = await redis.get(`ai_draft_lock:${ctx.user.id}`);
+        const workerActive = lockOwner === input.taskId;
+
         return {
           phase: typeof parsed.phase === "number" ? parsed.phase : 0,
           phaseLabel: typeof parsed.phaseLabel === "string" ? parsed.phaseLabel : "Unknown",
+          phaseDetail: typeof parsed.phaseDetail === "string" ? parsed.phaseDetail : undefined,
           slidesCompleted: typeof parsed.slidesCompleted === "number" ? parsed.slidesCompleted : 0,
           totalSlides: typeof parsed.totalSlides === "number" ? parsed.totalSlides : 0,
           slidePreview: Array.isArray(parsed.slidePreview) ? parsed.slidePreview : [],
           completed: typeof parsed.completed === "boolean" ? parsed.completed : false,
+          updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : undefined,
+          workerActive,
           cancelled: typeof parsed.cancelled === "boolean" ? parsed.cancelled : undefined,
           error: parsed.error && typeof parsed.error === "object" ? parsed.error as { code: string; message: string } : undefined,
           result: parsed.result && typeof parsed.result === "object" ? parsed.result as { slidesAdded: number; newDeckVersion: number; articlePreview: string; warnings: string[] } : undefined,
@@ -565,6 +664,162 @@ export const presentationRouter = router({
         await redis.set(`ai_draft_cancel:${input.taskId}`, "1", "EX", 300);
         return { success: true };
       }),
+
+    // ── Auto Draft: resolve parameters from topic ──────────
+    resolveAutoDraft: protectedProcedure
+      .input(z.object({
+        topic: z.string().min(3).max(1000),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        ensureFeatureEnabled();
+        ensureAIGenerationEnabled();
+        const resolution = await resolveAutoDraftParams(input.topic, {
+          userId: ctx.user.id,
+          tenantId: resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? undefined,
+        });
+        return resolution;
+      }),
+
+    // ── Auto Draft: headless generation (topic → deck link) ──
+    autoGenerateDraft: protectedProcedure
+      .use(createRateLimitMiddleware({ namespace: "auto-draft-gen", limit: 3, windowMs: 60_000 }))
+      .input(z.object({
+        topic: z.string().min(3).max(1000),
+        numSlides: z.number().int().min(1).max(30).default(5),
+        /** Optional overrides — if not provided, auto-resolved */
+        draftSkillId: z.string().optional(),
+        stylePresetId: z.enum(AI_STYLE_PRESET_IDS).optional(),
+        imageModel: z.string().optional(),
+        imageSkillId: z.string().optional(),
+        language: z.enum(["auto", "en", "th"]).optional(),
+        canvasWidth: z.number().int().min(64).max(10000).optional(),
+        canvasHeight: z.number().int().min(64).max(10000).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        ensureFeatureEnabled();
+        ensureAIGenerationEnabled();
+
+        const actor = toPresentationActor(ctx);
+        const userToken = getPresentationToken(ctx, ["media:generate"]);
+        const traceId = crypto.randomUUID();
+
+        // 1. Auto-resolve all parameters from topic
+        const resolution = await resolveAutoDraftParams(input.topic, {
+          userId: actor.userId,
+          tenantId: actor.tenantId,
+          traceId,
+        });
+
+        // 2. Create library item + deck
+        const libraryItemResult = await createLibraryItem(
+          {
+            itemType: "presentation",
+            source: "auto_draft",
+            title: input.topic.slice(0, 200),
+          },
+          actor,
+        );
+        const deckResult = await createPresentationDeckForLibraryItem(
+          { libraryItemId: libraryItemResult.item.id, title: input.topic.slice(0, 200) },
+          actor,
+        );
+        const deckId = deckResult.deck.id;
+        const taskId = traceId;
+
+        // 3. Merge user overrides with auto-resolved params
+        const draftSkillId = input.draftSkillId || resolution.draftSkillId;
+        const stylePresetId = input.stylePresetId || resolution.stylePresetId;
+        const imageModel = input.imageModel || resolution.imageModel;
+        const imageSkillId = input.imageSkillId || resolution.imageSkillId;
+        const language = input.language || resolution.language;
+
+        // 4. Acquire lock + initialize progress
+        const redis = getRedisClient();
+        const lockKey = `ai_draft_lock:${actor.userId}`;
+        const lockResult = await redis.set(lockKey, taskId, "EX", 300, "NX");
+        if (lockResult === null) {
+          const existingTaskId = await redis.get(lockKey);
+          if (existingTaskId) {
+            return {
+              taskId: existingTaskId,
+              deckId,
+              libraryItemId: libraryItemResult.item.id,
+              editorUrl: `${PRESENTATION_EDITOR_ROUTE_BASE}/${libraryItemResult.item.id}`,
+              alreadyInProgress: true,
+              resolution,
+            };
+          }
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: "AI draft already in progress for this user",
+          });
+        }
+
+        const initialProgress = {
+          userId: actor.userId,
+          phase: 0,
+          phaseLabel: "Starting...",
+          slidesCompleted: 0,
+          totalSlides: input.numSlides,
+          slidePreview: [],
+          completed: false,
+          updatedAt: new Date().toISOString(),
+        };
+        await redis.set(`ai_draft_progress:${taskId}`, JSON.stringify(initialProgress), "EX", 300);
+
+        // 5. Fire-and-forget pipeline
+        const draftInput: GenerateAIDraftInput = {
+          deckId,
+          expectedVersion: 0,
+          prompt: input.topic,
+          numSlides: input.numSlides,
+          language,
+          textModel: resolution.textModel,
+          draftSkillId,
+          articleSkillId: draftSkillId,
+          imageSkillId,
+          imageModel,
+          canvasWidth: input.canvasWidth ?? 1280,
+          canvasHeight: input.canvasHeight ?? 720,
+          stylePresetId,
+          useCustomArticle: false,
+          hideTextOnSlides: false,
+          generateAudio: false,
+        };
+
+        generateAIDraft(draftInput, actor, userToken, taskId).catch(
+          async (err: unknown) => {
+            try {
+              const errMsg = err instanceof Error ? err.message : "Unknown error";
+              const safeMsg = errMsg.replace(/https?:\/\/[^\s]+/g, "[redacted]").slice(0, 200);
+              console.error(`[autoGenerateDraft] taskId=${taskId} userId=${actor.userId} error: ${safeMsg}`);
+              await redis.set(
+                `ai_draft_progress:${taskId}`,
+                JSON.stringify({
+                  ...initialProgress,
+                  completed: true,
+                  error: { code: "AI_GENERATION_FAILED", message: safeMsg },
+                }),
+                "EX",
+                300,
+              );
+              const owner = await redis.get(lockKey);
+              if (owner === taskId) await redis.del(lockKey);
+            } catch {
+              // best-effort cleanup
+            }
+          },
+        );
+
+        return {
+          taskId,
+          deckId,
+          libraryItemId: libraryItemResult.item.id,
+          editorUrl: `${PRESENTATION_EDITOR_ROUTE_BASE}/${libraryItemResult.item.id}`,
+          alreadyInProgress: false,
+          resolution,
+        };
+      }),
   }),
 
   getDeck: protectedProcedure
@@ -595,6 +850,20 @@ export const presentationRouter = router({
       }
     }),
 
+  listCustomBlockGovernanceAudit: adminProcedure
+    .input(presentationCustomBlockGovernanceAuditInputSchema.optional())
+    .query(async ({ input, ctx }) => {
+      try {
+        ensureFeatureEnabled();
+        return await listPresentationCustomBlockGovernanceAudit(input ?? {}, toPresentationActor(ctx));
+      } catch (error) {
+        if (error instanceof PresentationServiceError) {
+          throw mapPresentationServiceError(error);
+        }
+        throw error;
+      }
+    }),
+
   saveCustomBlock: protectedProcedure
     .input(presentationCustomBlockCreateInputSchema)
     .mutation(async ({ input, ctx }) => {
@@ -614,8 +883,7 @@ export const presentationRouter = router({
     .query(async ({ input, ctx }) => {
       try {
         ensureFeatureEnabled();
-        void ctx;
-        return await renderPresentationCustomBlockPreview(input);
+        return await renderPresentationCustomBlockPreview(input, toPresentationActor(ctx));
       } catch (error) {
         if (error instanceof PresentationServiceError) {
           throw mapPresentationServiceError(error);

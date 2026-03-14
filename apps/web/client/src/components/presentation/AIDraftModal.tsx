@@ -347,7 +347,6 @@ export function AIDraftModal({
 
   // Auto mode state
   const [autoMode, setAutoMode] = useState(false);
-  const [agencyRunId, setAgencyRunId] = useState<string | null>(null);
 
   // Config state
   const [topic, setTopic] = useState("");
@@ -778,6 +777,7 @@ export function AIDraftModal({
 
   // Mutations
   const generateDraft = trpc.presentation.ai.generateDraft.useMutation();
+  const resolveAutoDraftMutation = trpc.presentation.ai.resolveAutoDraft.useMutation();
   const cancelDraft = trpc.presentation.ai.cancelDraft.useMutation();
   const uploadReferenceMutation = trpc.ai.upload.useMutation();
   const executeSkillMutation = trpc.chat.executeSkill.useMutation();
@@ -788,23 +788,6 @@ export function AIDraftModal({
     { staleTime: 5 * 60 * 1000 }
   );
   const contentAutomationEnabled = contentAutomationData?.contentAutomation ?? false;
-
-  const { data: agencyList } = trpc.agency.list.useQuery(
-    {},
-    { enabled: contentAutomationEnabled }
-  );
-  const autoDraftAgent = (agencyList as any)?.agencies?.find((a: any) => a.slug === "auto-draft-agent")
-    ?? agencyList?.find?.((a: any) => a.slug === "auto-draft-agent");
-
-  const createConversation = trpc.agency.createConversation.useMutation();
-  const sendAgencyMessage = trpc.agency.sendMessage.useMutation({
-    onSuccess: (result: any) => {
-      setAgencyRunId(result.runId ?? null);
-    },
-    onError: (err: any) => {
-      toast.error(err.message ?? "Auto Draft failed");
-    },
-  });
 
   // Handler: generate article content using the selected skill
   const handleGenerateArticle = useCallback(async () => {
@@ -848,6 +831,34 @@ export function AIDraftModal({
     () => formatAIDraftWarnings(progress?.result?.warnings),
     [progress?.result?.warnings],
   );
+  const progressUpdatedAtMs = useMemo(() => {
+    if (!progress?.updatedAt) {
+      return null;
+    }
+    const parsed = Date.parse(progress.updatedAt);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [progress?.updatedAt]);
+  const hasDetachedWorker = Boolean(
+    taskId
+    && progress
+    && !progress.completed
+    && progress.workerActive === false,
+  );
+  const stalledMessage = useMemo(() => {
+    if (!progress) {
+      return "";
+    }
+    if (hasDetachedWorker) {
+      return `No active worker is attached to this run. The last backend update was ${stalledSeconds}s ago, so this draft likely stalled. Clear it and retry.`;
+    }
+    if (progress.phase <= 2) {
+      return `No progress update for ${stalledSeconds}s while waiting for AI planning. The model may still be generating structured slide output. You can wait, or click Cancel and retry.`;
+    }
+    if (progress.phase <= 5) {
+      return `No progress update for ${stalledSeconds}s while waiting for media generation. The media provider may be delayed or stuck. You can wait, or click Cancel and retry.`;
+    }
+    return `No progress update for ${stalledSeconds}s. The draft may be delayed or stuck. You can wait, or click Cancel and retry.`;
+  }, [hasDetachedWorker, progress, stalledSeconds]);
 
   // Track completion
   useEffect(() => {
@@ -866,12 +877,12 @@ export function AIDraftModal({
     }
 
     const marker = progress
-      ? `${progress.phase}|${progress.phaseLabel}|${progress.slidesCompleted}|${progress.totalSlides}|${progress.completed ? 1 : 0}|${progress.error?.code ?? ""}`
+      ? `${progress.phase}|${progress.phaseLabel}|${progress.phaseDetail ?? ""}|${progress.slidesCompleted}|${progress.totalSlides}|${progress.completed ? 1 : 0}|${progress.error?.code ?? ""}|${progress.updatedAt ?? ""}|${progress.workerActive ? 1 : 0}`
       : "pending";
 
     if (marker !== lastProgressMarkerRef.current) {
       lastProgressMarkerRef.current = marker;
-      lastProgressAtRef.current = Date.now();
+      lastProgressAtRef.current = progressUpdatedAtMs ?? Date.now();
       setStalledSeconds(0);
     }
   }, [
@@ -879,10 +890,14 @@ export function AIDraftModal({
     taskId,
     progress?.phase,
     progress?.phaseLabel,
+    progress?.phaseDetail,
     progress?.slidesCompleted,
     progress?.totalSlides,
     progress?.completed,
     progress?.error?.code,
+    progress?.updatedAt,
+    progress?.workerActive,
+    progressUpdatedAtMs,
   ]);
 
   useEffect(() => {
@@ -1183,29 +1198,53 @@ export function AIDraftModal({
 
   const handleAutoModeChange = useCallback((enabled: boolean) => {
     setAutoMode(enabled);
-    if (!enabled) {
-      setAgencyRunId(null);
-    }
   }, []);
 
   const handleAutoGenerate = useCallback(async () => {
-    if (!autoDraftAgent) return;
     if (!topic.trim() || topic.trim().length < 3) {
       toast.error("กรุณาระบุหัวข้อ (อย่างน้อย 3 ตัวอักษร)");
       return;
     }
+
+    // Step 1: Resolve ALL parameters automatically from the topic
+    let resolution: Awaited<ReturnType<typeof resolveAutoDraftMutation.mutateAsync>> | undefined;
     try {
-      const agencyId = (autoDraftAgent as any).id;
-      const { id: conversationId } = await createConversation.mutateAsync({
-        agencyId,
-        title: topic.trim().slice(0, 100),
+      resolution = await resolveAutoDraftMutation.mutateAsync({
+        topic: topic.trim(),
       });
-      const message = topic.trim();
-      sendAgencyMessage.mutate({ agencyId, conversationId, message });
-    } catch (err: any) {
-      toast.error(err.message ?? "Failed to start Auto Draft");
+    } catch (err) {
+      console.warn("[AIDraftModal] Auto-resolve failed, using defaults:", err);
     }
-  }, [autoDraftAgent, topic, createConversation, sendAgencyMessage]);
+
+    generateDraft.mutate(
+      {
+        deckId,
+        expectedVersion,
+        prompt: topic.trim(),
+        numSlides,
+        language: (resolution?.language ?? language) as "auto" | "en" | "th",
+        textModel: resolution?.textModel,
+        canvasWidth: selectedCanvasWidth,
+        canvasHeight: selectedCanvasHeight,
+        draftSkillId: resolution?.draftSkillId ?? "general-article-writer",
+        stylePresetId: resolution?.stylePresetId ?? "dark-professional",
+        imageSkillId: resolution?.imageSkillId ?? undefined,
+        imageModel: resolution?.imageModel ?? undefined,
+        useCustomArticle: false,
+        hideTextOnSlides: false,
+        generateAudio: false,
+      },
+      {
+        onSuccess: (data) => {
+          setTaskId(data.taskId);
+          setCompleted(false);
+        },
+        onError: (err) => {
+          toast.error(err.message || "Failed to start auto generation");
+        },
+      },
+    );
+  }, [topic, resolveAutoDraftMutation, generateDraft, deckId, expectedVersion, numSlides, language, selectedCanvasWidth, selectedCanvasHeight]);
 
   const handleGenerate = useCallback(() => {
     if (advancedMediaOptionsEnabled) {
@@ -1371,9 +1410,24 @@ export function AIDraftModal({
 
   const handleCancel = useCallback(() => {
     if (taskId) {
-      cancelDraft.mutate({ taskId });
+      cancelDraft.mutate(
+        { taskId },
+        {
+          onSuccess: (result) => {
+            if (result?.success) {
+              toast.info("Cancellation requested");
+              void progressQuery.refetch();
+            } else {
+              toast.error("Unable to cancel this generation");
+            }
+          },
+          onError: (err) => {
+            toast.error(err.message || "Failed to cancel generation");
+          },
+        },
+      );
     }
-  }, [cancelDraft, taskId]);
+  }, [cancelDraft, progressQuery, taskId]);
 
   const handleClose = useCallback(() => {
     if (isFinalizingCompletion) {
@@ -1450,7 +1504,10 @@ export function AIDraftModal({
     && progress
     && !progress.completed
     && !progress.error
-    && stalledSeconds >= 120,
+    && (
+      stalledSeconds >= 120
+      || (hasDetachedWorker && stalledSeconds >= 15)
+    ),
   );
 
   // Effective values for advanced toggles
@@ -2495,12 +2552,15 @@ export function AIDraftModal({
           <div className="text-sm font-medium">
             Phase {progress.phase}/{TOTAL_AI_DRAFT_PHASES}: {progress.phaseLabel}
           </div>
+          {progress.phaseDetail ? (
+            <p className="text-xs text-muted-foreground">{progress.phaseDetail}</p>
+          ) : null}
           <Progress value={progressPercent} />
           {showStalledWarning && (
             <Alert className="border-amber-500">
               <AlertTriangle className="h-4 w-4 text-amber-500" />
               <AlertDescription>
-                No progress update for {stalledSeconds}s. The media provider may be delayed or stuck. You can wait, or click Cancel and retry.
+                {stalledMessage}
               </AlertDescription>
             </Alert>
           )}
@@ -2593,22 +2653,11 @@ export function AIDraftModal({
         </DialogHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-6 py-4">
-          {agencyRunId ? (
-            <div className="flex flex-col items-center gap-4 py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-              <p className="text-sm text-muted-foreground">AI กำลังสร้างงาน...</p>
-              <Button variant="outline" size="sm" onClick={() => {
-                setAgencyRunId(null);
-                setAutoMode(false);
-              }}>
-                ยกเลิก
-              </Button>
-            </div>
-          ) : taskId ? progressView : configView}
+          {taskId ? progressView : configView}
         </div>
 
         <DialogFooter className="shrink-0 border-t px-6 pt-4 pb-6">
-          {!taskId && !agencyRunId && !autoMode && (
+          {!taskId && !autoMode && (
             <Button
               onClick={handleGenerate}
               disabled={!canGenerate || isFinalizingCompletion}
@@ -2623,19 +2672,34 @@ export function AIDraftModal({
             </Button>
           )}
 
-          {!taskId && !agencyRunId && autoMode && (
+          {!taskId && autoMode && (
             <Button
               onClick={handleAutoGenerate}
-              disabled={!autoDraftAgent || createConversation.isPending || sendAgencyMessage.isPending || topic.trim().length < 3}
+              disabled={resolveAutoDraftMutation.isPending || generateDraft.isPending || topic.trim().length < 3}
               aria-label="Auto Generate"
             >
-              {sendAgencyMessage.isPending ? (
+              {(resolveAutoDraftMutation.isPending || generateDraft.isPending) ? (
                 <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
               ) : (
                 <Zap className="mr-1 h-3.5 w-3.5" />
               )}
               Auto Generate
             </Button>
+          )}
+
+          {taskId && !completed && (
+            hasDetachedWorker && showStalledWarning ? (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setTaskId(null);
+                  setCompleted(false);
+                  setStalledSeconds(0);
+                }}
+              >
+                Clear Stalled Run
+              </Button>
+            ) : null
           )}
 
           {taskId && !completed && (

@@ -10,9 +10,10 @@ import {
   AI_COMPONENT_RECIPE_IDS,
   AI_GEOMETRIC_ACCENT_SHAPES,
   AIWatermarkSchema,
-  AIPresentationSchema,
+  AIPresentationSlideSchema,
   AI_GEOMETRIC_CROP_SHAPES,
   AI_LAYOUT_TEMPLATE_IDS,
+  MAX_AI_DRAFT_SLIDES,
   AI_STYLE_PRESET_IDS,
   AI_SVG_CATEGORIES,
 } from "@shared/presentation/aiTypes";
@@ -29,7 +30,9 @@ import {
   PRESENTATION_COMPONENT_LAYOUT_FAMILIES,
   PRESENTATION_COMPONENT_MEDIA_SLOTS,
   PRESENTATION_COMPONENT_MEDIA_SLOT_TYPES,
+  PRESENTATION_COMPONENT_SLOT_BUDGETS,
 } from "@shared/presentation/componentRecipes";
+import { buildPresentationComponentRecipeSlotBindings } from "@shared/presentation/componentRecipeSlotBindings";
 import {
   getPresentationSlideRenderableElements,
   presentationSlideAIDesignSchema,
@@ -38,15 +41,48 @@ import {
   resolvePresentationSlideRenderOrder,
   type AudioTrackInput,
   type PresentationComponentInstance,
+  type PresentationComponentSlotBinding,
+  type PresentationAIDesignFallbackHistory,
+  type PresentationAIDesignFitScore,
+  type PresentationAIDesignMediaModeMetadata,
+  type PresentationAIDesignSourceTrace,
   type PresentationSlideContent,
   type PresentationPendingMediaJob,
 } from "@shared/presentation/contracts";
 import {
+  buildPresentationContentProfile,
   resolvePresentationLayoutMode,
   type PresentationAILayoutMode,
   type PresentationAILayoutModeCandidate,
 } from "@shared/presentation/contentProfile";
+import {
+  PRESENTATION_RECIPE_COMPACTION_LEVELS,
+  PRESENTATION_RECIPE_FIT_THRESHOLDS,
+  buildDefaultRecipeSourceTrace,
+  evaluatePresentationRecipeSlotFit,
+  presentationRecipeCompactionResponseSchema,
+  type PresentationRecipeCompactionLevel,
+} from "@shared/presentation/recipeCompaction";
+import {
+  evaluateSlideQualityGate,
+  evaluateSourceTraceOmission,
+} from "@shared/presentation/qualityGate";
+import {
+  buildDeckConsistencyEvent,
+  buildModeSelectedEvent,
+  buildQualityGateEvent,
+} from "@shared/presentation/layoutTelemetry";
+import { evaluateDeckConsistency } from "@shared/presentation/deckConsistency";
+import {
+  PRESENTATION_LAYOUT_DSL_ALLOWED_PRIMITIVES,
+  PRESENTATION_LAYOUT_DSL_MAX_ELEMENTS,
+  PRESENTATION_LAYOUT_DSL_MAX_GROUPS,
+  normalizePresentationLayoutDslToSlideContent,
+  presentationLayoutDslRequestSchema,
+  presentationLayoutDslResponseSchema,
+} from "@shared/presentation/layoutDsl";
 import { randomBytes } from "node:crypto";
+import { z } from "zod";
 
 import { callLLMStructured } from "./callLLMStructured";
 import { getSkillByIdAsync } from "./skillRegistry";
@@ -73,6 +109,9 @@ import {
 } from "./aiPresentationComponentRecipes";
 import { resolveTtsTextFromSlideNote } from "./ttsText";
 import { executeWithFallback, resolveProviders } from "./llmRouter";
+import { loadEnabledModelsWithPricing } from "./capabilityRegistry";
+import { loadEnabledLlmModelRows } from "./enabledLlmModels";
+import { selectBestLlmModel } from "./intelligentModelSelector";
 import { llmProviders, modelProviderMap, presentationDecks } from "../../drizzle/schema";
 import { and, asc, eq } from "drizzle-orm";
 import {
@@ -211,6 +250,7 @@ const IMAGE_PROMPT_ENHANCE_TIMEOUT_MS = (() => {
   }
   return 30000;
 })();
+const AI_DRAFT_CANCEL_POLL_INTERVAL_MS = 1000;
 
 const CREDIT_ARTICLE = 30;
 const CREDIT_SPLIT = 10;
@@ -218,7 +258,53 @@ const CREDIT_IMAGE_SKILL = 75;
 const CREDIT_IMAGE_GEN = 40;
 const CREDIT_AUDIO_GEN = 40;
 const CREDIT_BUFFER_MULTIPLIER = 1.2;
-const DEFAULT_TEXT_MODEL = "claude-sonnet-4-6";
+const PRESENTATION_LAYOUT_DSL_ENV_FLAG = "PRESENTATION_AI_LAYOUT_DSL_ENABLED";
+const PRESENTATION_FULL_SLIDE_MEDIA_ENV_FLAG = "PRESENTATION_AI_FULL_SLIDE_MEDIA_ENABLED";
+/**
+ * Resolve the best available text model dynamically from the DB.
+ * Prefers models with structured output support and large context,
+ * sorted by provider priority. Falls back to a known model ID only
+ * if the DB is unreachable.
+ */
+let _cachedDefaultTextModel: { modelId: string; ts: number } | null = null;
+const DEFAULT_TEXT_MODEL_CACHE_TTL_MS = 60_000;
+const LAST_RESORT_MODEL = "gpt-4o-mini"; // only used if DB query fails entirely
+
+async function resolveDefaultTextModel(): Promise<string> {
+  const now = Date.now();
+  if (_cachedDefaultTextModel && now - _cachedDefaultTextModel.ts < DEFAULT_TEXT_MODEL_CACHE_TTL_MS) {
+    return _cachedDefaultTextModel.modelId;
+  }
+
+  try {
+    // Use shared intelligent selector (Feature 041) — sorted by priority ASC
+    const rows = await loadEnabledLlmModelRows();
+    if (rows.length === 0) {
+      return LAST_RESORT_MODEL;
+    }
+
+    // Prefer models with structured outputs (most useful for presentation generation)
+    const best = selectBestLlmModel(
+      { supportsStructuredOutputs: true, supportsFunctionTools: true },
+      rows,
+    );
+
+    // Fall back to highest-priority enabled model if requirements too strict
+    const topModelId = best
+      ?? rows.sort((a, b) => a.priority - b.priority)[0]?.modelId
+      ?? LAST_RESORT_MODEL;
+
+    _cachedDefaultTextModel = { modelId: topModelId, ts: now };
+    return topModelId;
+  } catch {
+    return _cachedDefaultTextModel?.modelId ?? LAST_RESORT_MODEL;
+  }
+}
+
+// Synchronous accessor for non-critical paths (uses cached value or last-resort)
+function getDefaultTextModelSync(): string {
+  return _cachedDefaultTextModel?.modelId ?? LAST_RESORT_MODEL;
+}
 
 const FALLBACK_IMAGE_MODEL: ImageModel = "flux-2.0";
 const FALLBACK_VIDEO_MODEL: ImageModel = "veo-3-1";
@@ -249,6 +335,44 @@ type SlideImageElement = Extract<SlideElement, { type: "image" }>;
 type SlideRectElement = Extract<SlideElement, { type: "rect" }>;
 type SlideVideoElement = Extract<SlideElement, { type: "video" }>;
 type SlidePendingMediaJob = PresentationPendingMediaJob;
+
+const LenientAIPresentationSlideSchema = z.object({
+  templateId: z.string().optional(),
+  componentRecipeId: z.string().optional(),
+  mediaPlan: z.array(z.object({
+    slotId: z.string().optional(),
+    prompt: z.string().optional(),
+  }).passthrough()).max(8).optional(),
+  title: z.string().optional(),
+  body: z.array(z.unknown()).max(12).optional(),
+  notes: z.string().optional(),
+  markdownHierarchy: z
+    .array(
+      z.object({
+        level: z.enum(["h2", "h3", "body"]).optional(),
+        text: z.string().optional(),
+      }).passthrough(),
+    )
+    .max(24)
+    .optional(),
+  sections: z
+    .array(
+      z.object({
+        heading: z.string().optional(),
+        details: z.array(z.unknown()).max(6).optional(),
+      }).passthrough(),
+    )
+    .max(6)
+    .optional(),
+  graphicCategory: z.string().optional(),
+  imagePromptKeywords: z.string().optional(),
+}).passthrough();
+
+const LenientAIPresentationSchema = z
+  .array(LenientAIPresentationSlideSchema)
+  .min(1)
+  .max(MAX_AI_DRAFT_SLIDES);
+type LenientAIPresentationSlide = z.infer<typeof LenientAIPresentationSlideSchema>;
 
 interface DeferredMediaTaskInfo {
   mediaType: "image" | "video";
@@ -298,10 +422,18 @@ class BillingChargeError extends Error {
   }
 }
 
+class AIDraftCancelledError extends Error {
+  constructor(message = "ai_draft_cancelled") {
+    super(message);
+    this.name = "AIDraftCancelledError";
+  }
+}
+
 interface RelayoutSlideInput {
   slideTitle: string;
   slideContent: PresentationSlideContent;
   slideNotes?: string | null;
+  userToken?: string;
   deckTitle?: string;
   slideIndex: number;
   totalSlides: number;
@@ -752,6 +884,9 @@ function normalizeNarrativeSection(
     .map((detail) => normalizeSlideText(detail).slice(0, AI_NARRATIVE_MAX_SECTION_DETAIL_CHARS))
     .filter((detail) => detail.length > 0 && detail.toLowerCase() !== heading.toLowerCase())
     .slice(0, AI_NARRATIVE_MAX_SECTION_DETAILS);
+  if (details.length === 0) {
+    return null;
+  }
   return { heading, details };
 }
 
@@ -997,6 +1132,11 @@ function extractDraftNarrativeFromAIDesign(
 function isSupportedLayoutTemplateId(value: string | undefined): value is LayoutTemplateId {
   return typeof value === "string"
     && (AI_LAYOUT_TEMPLATE_IDS as readonly string[]).includes(value);
+}
+
+function isSupportedGraphicCategoryId(value: string | undefined): value is GraphicCategoryId {
+  return typeof value === "string"
+    && (AI_SVG_CATEGORIES as readonly string[]).includes(value);
 }
 
 function extractNarrativeFromSlideNotes(
@@ -1996,6 +2136,14 @@ function adaptRelayoutSlideForRecipe(
       maxBodyLines = 2;
       adaptationLabel = "timeline flow";
       break;
+    case "timeline-report":
+      maxSections = 3;
+      headingChars = 72;
+      detailChars = 180;
+      maxDetails = 2;
+      maxBodyLines = 3;
+      adaptationLabel = "timeline report";
+      break;
     case "feature-highlights":
       maxSections = 3;
       headingChars = 52;
@@ -2134,6 +2282,12 @@ function getRelayoutRecipeSuitability(
         return reject("Timeline flow cards are too dense for the available copy.");
       }
       return { suitable: true };
+    case "timeline-report":
+      if (sectionCount > 4) return reject("Timeline report still needs a bounded roadmap with up to four phases.");
+      if ((bodyCharTotal + detailCharTotal) > 1_100 || noteChars > 900 || maxDetailChars > 280 || longTextLines >= 4) {
+        return reject("Timeline report is still too dense and should be split instead of squeezed into one slide.");
+      }
+      return { suitable: true };
     case "feature-highlights":
       if (sectionCount > 3) return reject("Feature highlights supports up to three cards.");
       if ((bodyCharTotal + detailCharTotal) > 260 || noteChars > 300 || maxDetailChars > 120 || longTextLines >= 2) {
@@ -2155,6 +2309,12 @@ function getRelayoutRecipeSuitability(
     case "sectioned-explainer":
       if ((bodyCharTotal + detailCharTotal) > 1_200 || noteChars > 900 || sectionCount > 4) {
         return reject("Sectioned explainer still needs a bounded long-form narrative.");
+      }
+      return { suitable: true };
+    case "two-column-article":
+      if (sectionCount < 2 || sectionCount > 3) return reject("Two-column article needs two or three strong sections.");
+      if ((bodyCharTotal + detailCharTotal) > 1_100 || noteChars > 780 || maxDetailChars > 260 || longTextLines >= 4) {
+        return reject("Two-column article is too dense and should split into multiple slides.");
       }
       return { suitable: true };
     case "quote-callout":
@@ -2861,6 +3021,23 @@ const PHOTO_COLLAGE_RECIPE_KEYWORDS = [
   "อัลบั้ม",
 ] as const;
 
+const FAQ_RECIPE_KEYWORDS = [
+  "faq",
+  "frequently asked questions",
+  "questions",
+  "question",
+  "answers",
+  "myth",
+  "myths",
+  "objection",
+  "objections",
+  "คำถาม",
+  "ถามบ่อย",
+  "ข้อสงสัย",
+  "ข้อกังวล",
+  "ความเชื่อผิด",
+] as const;
+
 const AUTO_MEDIA_RECIPE_THRESHOLD = 4;
 const AUTO_TEXT_RECIPE_THRESHOLD = 9;
 
@@ -2891,6 +3068,24 @@ function detectMetricSignals(lines: string[]): number {
   return lines.reduce((count, line) => (
     count + (metricLineRegexes.some((pattern) => pattern.test(line)) ? 1 : 0)
   ), 0);
+}
+
+function detectQuestionSignals(lines: string[]): number {
+  return lines.reduce((count, line) => {
+    const normalized = normalizeSlideText(line).toLowerCase();
+    const isQuestion = normalized.endsWith("?")
+      || normalized.includes("คำถาม")
+      || normalized.includes("ถาม")
+      || normalized.startsWith("how ")
+      || normalized.startsWith("what ")
+      || normalized.startsWith("why ")
+      || normalized.startsWith("when ")
+      || normalized.startsWith("who ")
+      || normalized.startsWith("where ")
+      || normalized.startsWith("can ")
+      || normalized.startsWith("should ");
+    return count + (isQuestion ? 1 : 0);
+  }, 0);
 }
 
 const COMPONENT_RECIPE_PROMPT_GUIDE = AI_COMPONENT_RECIPE_IDS
@@ -2935,6 +3130,10 @@ function scoreAIComponentRecipes(options: {
   const h3Count = options.slide.markdownHierarchy?.filter((entry) => entry.level === "h3").length ?? 0;
   const contactSignals = detectContactSignals(allLines);
   const metricSignals = detectMetricSignals(allLines);
+  const questionSignals = detectQuestionSignals(allLines);
+  const timelineMarkerCount = Array.from(
+    haystack.matchAll(/\b(?:q[1-4]|20\d{2}|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\b/gi),
+  ).length;
   const quoteLikeTitle = /["“”']/.test(options.slide.title);
   const quoteLikeBody = options.slide.body.some((line) => /["“”']/.test(line));
   const noteChars = normalizeSlideText(options.slide.notes ?? "").length;
@@ -2946,6 +3145,7 @@ function scoreAIComponentRecipes(options: {
   const maxDetailChars = (options.slide.sections ?? [])
     .flatMap((section) => section.details)
     .reduce((max, detail) => Math.max(max, normalizeSlideText(detail).length), 0);
+  const narrativeChars = bodyCharTotal + detailCharTotal;
   const longTextLines = [
     ...options.slide.body.filter((line) => normalizeSlideText(line).length >= 70),
     ...(options.slide.sections ?? []).flatMap((section) => section.details)
@@ -2955,10 +3155,15 @@ function scoreAIComponentRecipes(options: {
   const scores: Record<AIPresentationComponentRecipeId, number> = {
     "process-steps": 0,
     "timeline-flow": 0,
+    "timeline-report": 0,
     "feature-highlights": 0,
     "infographic-grid": 0,
     "stat-cards": 0,
     "sectioned-explainer": 0,
+    "article-focus": 0,
+    "two-column-article": 0,
+    "faq-stack": 0,
+    "profile-board": 0,
     "profile-summary": 0,
     "quote-callout": 0,
     "video-spotlight": 0,
@@ -3075,6 +3280,18 @@ function scoreAIComponentRecipes(options: {
   if (sectionCount <= 2 && textIncludesAnyKeyword(haystack, ["gallery", "lookbook", "collage", "moodboard", "recap", "album", "แกลเลอรี", "คอลลาจ", "อัลบั้ม"])) {
     scores["photo-collage"] += 3;
   }
+  if (textIncludesAnyKeyword(haystack, FAQ_RECIPE_KEYWORDS)) {
+    scores["faq-stack"] += 6;
+  }
+  if (questionSignals >= 2) {
+    scores["faq-stack"] += 6;
+  }
+  if (sectionCount >= 2 && sectionCount <= 4 && questionSignals >= 2) {
+    scores["faq-stack"] += 3;
+  }
+  if (metricSignals >= 2 || textIncludesAnyKeyword(haystack, TIMELINE_RECIPE_KEYWORDS) || numberedBodyLines >= 2) {
+    scores["faq-stack"] -= 6;
+  }
 
   if (numberedBodyLines >= 2) {
     scores["process-steps"] += 6;
@@ -3099,6 +3316,44 @@ function scoreAIComponentRecipes(options: {
   }
   if (/\b(?:q[1-4]|20\d{2}|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\b/i.test(haystack)) {
     scores["timeline-flow"] += 4;
+  }
+  if (textIncludesAnyKeyword(haystack, TIMELINE_RECIPE_KEYWORDS)) {
+    scores["timeline-report"] += 5;
+  }
+  if (timelineMarkerCount >= 2) {
+    scores["timeline-report"] += 4;
+  }
+  if (sectionCount >= 2 && sectionCount <= 4) {
+    scores["timeline-report"] += 2;
+  }
+  if (narrativeChars >= 360 || noteChars >= 180 || maxDetailChars > 96 || longTextLines >= 2) {
+    scores["timeline-report"] += 5;
+  }
+  if (metricSignals >= 2 || questionSignals >= 2) {
+    scores["timeline-report"] -= 6;
+  }
+  if (
+    sectionCount === 2
+    && metricSignals < 2
+    && questionSignals < 2
+    && contactSignals < 2
+    && timelineMarkerCount < 2
+    && !textIncludesAnyKeyword(haystack, FRAMED_STORY_RECIPE_KEYWORDS)
+    && !textIncludesAnyKeyword(haystack, POSTER_RECIPE_KEYWORDS)
+  ) {
+    scores["two-column-article"] += 5;
+  }
+  if (
+    sectionCount === 2
+    && (narrativeChars >= 320 || noteChars >= 180 || maxDetailChars > 110 || longTextLines >= 2)
+  ) {
+    scores["two-column-article"] += 5;
+  }
+  if (sectionCount === 2 && h2Count >= 1) {
+    scores["two-column-article"] += 3;
+  }
+  if (timelineMarkerCount >= 2 || metricSignals >= 2 || questionSignals >= 2 || contactSignals >= 2) {
+    scores["two-column-article"] -= 6;
   }
 
   if (options.slide.templateId === "feature_boxes_right") {
@@ -3144,6 +3399,33 @@ interface ResolvedAIComponentRecipeSelection {
   candidateModes: PresentationAILayoutModeCandidate[];
 }
 
+interface RecipeCompactionOutcome {
+  slide: AIPresentationSlide;
+  fitScore?: PresentationAIDesignFitScore;
+  compactionLevel?: PresentationRecipeCompactionLevel;
+  sourceTrace?: PresentationAIDesignSourceTrace[];
+  fallbackHistory?: PresentationAIDesignFallbackHistory[];
+}
+
+interface SlideOverflowFallbackMetadata {
+  sourceTrace?: PresentationAIDesignSourceTrace[];
+  fallbackHistory?: PresentationAIDesignFallbackHistory[];
+}
+
+interface SlideAdvancedModeMetadata {
+  mode?: PresentationAILayoutMode;
+  slideContentOverride?: PresentationSlideContent;
+  fallbackHistory?: PresentationAIDesignFallbackHistory[];
+  mediaModeMetadata?: PresentationAIDesignMediaModeMetadata;
+}
+
+interface OverflowFallbackResolution {
+  slides: AIPresentationSlide[];
+  selections: ResolvedAIComponentRecipeSelection[];
+  compactionResults: RecipeCompactionOutcome[];
+  fallbackMetadata: SlideOverflowFallbackMetadata[];
+}
+
 function describeAIComponentRecipe(recipeId: AIPresentationComponentRecipeId): string {
   return PRESENTATION_COMPONENT_AI_GUIDANCE[recipeId]?.label ?? recipeId;
 }
@@ -3184,8 +3466,8 @@ function resolveAIComponentRecipeForSlide(options: {
     enabledModes: {
       structured_block: true,
       long_form_block: true,
-      llm_layout_dsl: false,
-      full_slide_media: false,
+      llm_layout_dsl: isPresentationLayoutDslEnabled(),
+      full_slide_media: isPresentationFullSlideMediaEnabled(),
     },
   });
   const candidates = scoreAIComponentRecipes({
@@ -3214,6 +3496,7 @@ function resolveAIComponentRecipeForSlide(options: {
   const haystack = allLines.join(" ").toLowerCase();
   const numberedBodyLines = options.slide.body.filter((line) => /^\s*(\d+[).\-]|step\s+\d+)/i.test(line)).length;
   const metricSignals = detectMetricSignals(allLines);
+  const questionSignals = detectQuestionSignals(allLines);
   const timelineKeywordSignal = Number(textIncludesAnyKeyword(haystack, TIMELINE_RECIPE_KEYWORDS));
   const timelineMarkerCount = Array.from(
     haystack.matchAll(/\b(?:q[1-4]|20\d{2}|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\b/gi),
@@ -3240,6 +3523,17 @@ function resolveAIComponentRecipeForSlide(options: {
       recommendedMode: layoutModeSelection.recommendedMode,
       selectionMode: "none",
       selectionReason: "Slide 1 stays on the hero intro layout for consistency.",
+      candidateRecipes: candidates,
+      candidateModes: layoutModeSelection.candidateModes,
+    };
+  }
+  if (isSupportedAIComponentRecipeId(options.slide.componentRecipeId)) {
+    return {
+      mode: resolveLayoutModeForRecipe(options.slide.componentRecipeId),
+      recommendedMode: layoutModeSelection.recommendedMode,
+      componentRecipeId: options.slide.componentRecipeId,
+      selectionMode: "llm",
+      selectionReason: `LLM selected ${describeAIComponentRecipe(options.slide.componentRecipeId)} explicitly.`,
       candidateRecipes: candidates,
       candidateModes: layoutModeSelection.candidateModes,
     };
@@ -3281,6 +3575,24 @@ function resolveAIComponentRecipeForSlide(options: {
   if (
     (timelineKeywordSignal >= 1 || timelineMarkerCount >= 2)
     && metricSignals < 2
+    && questionSignals < 2
+    && sectionCount >= 2
+    && sectionCount <= 4
+    && (narrativeChars >= 360 || noteChars >= 180 || maxDetailChars > 96 || hasLongFormTextPressure)
+  ) {
+    return {
+      mode: "long_form_block",
+      recommendedMode: layoutModeSelection.recommendedMode,
+      componentRecipeId: "timeline-report",
+      selectionMode: "heuristic",
+      selectionReason: "Roadmap copy needed longer milestone explanations and was routed into the timeline-report long-form layout.",
+      candidateRecipes: candidates,
+      candidateModes: layoutModeSelection.candidateModes,
+    };
+  }
+  if (
+    (timelineKeywordSignal >= 1 || timelineMarkerCount >= 2)
+    && metricSignals < 2
     && sectionCount >= 2
     && sectionCount <= 6
     && noteChars < 220
@@ -3293,6 +3605,98 @@ function resolveAIComponentRecipeForSlide(options: {
       componentRecipeId: "timeline-flow",
       selectionMode: "heuristic",
       selectionReason: "Roadmap and milestone signals matched the timeline-flow block.",
+      candidateRecipes: candidates,
+      candidateModes: layoutModeSelection.candidateModes,
+    };
+  }
+  if (
+    questionSignals >= 2
+    && sectionCount >= 2
+    && sectionCount <= 4
+    && metricSignals < 2
+    && timelineSignals < 2
+    && processSignals === 0
+    && (narrativeChars >= 220 || noteChars >= 140)
+  ) {
+    return {
+      mode: "long_form_block",
+      recommendedMode: layoutModeSelection.recommendedMode,
+      componentRecipeId: "faq-stack",
+      selectionMode: "heuristic",
+      selectionReason: "Question-heavy long-form copy matched the faq-stack layout.",
+      candidateRecipes: candidates,
+      candidateModes: layoutModeSelection.candidateModes,
+    };
+  }
+  if (
+    layoutModeSelection.profile.signals.profile >= 4
+    && (
+      layoutModeSelection.profile.signals.contact >= 2
+      || textIncludesAnyKeyword(haystack, ["experience", "skills", "contact", "ประวัติการทำงาน", "ทักษะ", "ติดต่อ"])
+    )
+    && (narrativeChars >= 240 || noteChars >= 180 || sectionCount >= 2)
+  ) {
+    return {
+      mode: "long_form_block",
+      recommendedMode: layoutModeSelection.recommendedMode,
+      componentRecipeId: "profile-board",
+      selectionMode: "heuristic",
+      selectionReason: "Profile/contact-heavy long-form copy matched the profile-board layout.",
+      candidateRecipes: candidates,
+      candidateModes: layoutModeSelection.candidateModes,
+    };
+  }
+  if (
+    sectionCount <= 1
+    && bodyCount >= 2
+    && metricSignals < 2
+    && layoutModeSelection.profile.signals.profile < 4
+    && (narrativeChars >= 260 || noteChars >= 220 || layoutModeSelection.profile.maxParagraphChars >= 120)
+  ) {
+    return {
+      mode: "long_form_block",
+      recommendedMode: layoutModeSelection.recommendedMode,
+      componentRecipeId: "article-focus",
+      selectionMode: "heuristic",
+      selectionReason: "Single-thread narrative density matched the article-focus long-form layout.",
+      candidateRecipes: candidates,
+      candidateModes: layoutModeSelection.candidateModes,
+    };
+  }
+  if (
+    sectionCount === 2
+    && metricSignals < 2
+    && questionSignals < 2
+    && timelineSignals < 2
+    && layoutModeSelection.profile.signals.profile < 4
+    && !textIncludesAnyKeyword(haystack, FRAMED_STORY_RECIPE_KEYWORDS)
+    && !textIncludesAnyKeyword(haystack, POSTER_RECIPE_KEYWORDS)
+    && (narrativeChars >= 320 || noteChars >= 180 || maxDetailChars > 110 || hasLongFormTextPressure)
+  ) {
+    return {
+      mode: "long_form_block",
+      recommendedMode: layoutModeSelection.recommendedMode,
+      componentRecipeId: "two-column-article",
+      selectionMode: "heuristic",
+      selectionReason: "Dense two-section narrative copy matched the two-column-article long-form layout.",
+      candidateRecipes: candidates,
+      candidateModes: layoutModeSelection.candidateModes,
+    };
+  }
+  const dslCandidate = layoutModeSelection.candidateModes.find((candidate) => candidate.mode === "llm_layout_dsl");
+  if (
+    layoutModeSelection.recommendedMode === "llm_layout_dsl"
+    && dslCandidate?.fitStatus === "fits"
+    && sectionCount >= 4
+    && metricSignals < 2
+    && timelineSignals < 2
+    && processSignals === 0
+  ) {
+    return {
+      mode: "llm_layout_dsl",
+      recommendedMode: layoutModeSelection.recommendedMode,
+      selectionMode: "none",
+      selectionReason: "Balanced multi-section content was routed to the bounded layout DSL because existing recipes would over-constrain the board.",
       candidateRecipes: candidates,
       candidateModes: layoutModeSelection.candidateModes,
     };
@@ -3324,17 +3728,6 @@ function resolveAIComponentRecipeForSlide(options: {
       candidateModes: layoutModeSelection.candidateModes,
     };
   }
-  if (isSupportedAIComponentRecipeId(options.slide.componentRecipeId)) {
-    return {
-      mode: resolveLayoutModeForRecipe(options.slide.componentRecipeId),
-      recommendedMode: layoutModeSelection.recommendedMode,
-      componentRecipeId: options.slide.componentRecipeId,
-      selectionMode: "llm",
-      selectionReason: `LLM selected ${describeAIComponentRecipe(options.slide.componentRecipeId)} explicitly.`,
-      candidateRecipes: candidates,
-      candidateModes: layoutModeSelection.candidateModes,
-    };
-  }
 
   const topCandidate = heuristicCandidates[0] ?? candidates[0];
   if (topCandidate && topCandidate.score >= getAIComponentRecipeActivationThreshold(topCandidate.recipeId)) {
@@ -3360,6 +3753,1201 @@ function resolveAIComponentRecipeForSlide(options: {
       : "No component recipe matched this slide strongly enough.",
     candidateRecipes: candidates,
     candidateModes: layoutModeSelection.candidateModes,
+  };
+}
+
+const PRESENTATION_RECIPE_COMPACTION_RECIPE_IDS = new Set<AIPresentationComponentRecipeId>([
+  "sectioned-explainer",
+  "article-focus",
+  "two-column-article",
+  "faq-stack",
+  "timeline-report",
+  "profile-board",
+  "profile-summary",
+  "poster-spotlight",
+  "framed-image-story",
+  "feature-highlights",
+  "infographic-grid",
+  "stat-cards",
+  "timeline-flow",
+  "process-steps",
+]);
+
+function buildRecipeNarrativeInputFromSlide(
+  slide: AIPresentationSlide,
+): Parameters<typeof buildPresentationComponentRecipeSlotBindings>[1] {
+  return {
+    title: slide.title,
+    body: slide.body
+      .map((line) => normalizeNarrativeBodyLine(line))
+      .filter((line) => line.length > 0),
+    ...(slide.notes ? { notes: slide.notes } : {}),
+    ...(slide.sections?.length
+      ? {
+        sections: slide.sections.map((section) => ({
+          heading: normalizeSlideText(section.heading),
+          details: section.details
+            .map((detail) => normalizeSlideText(detail))
+            .filter((detail) => detail.length > 0),
+        })),
+      }
+      : {}),
+    ...(slide.graphicCategory ? { graphicCategory: slide.graphicCategory } : {}),
+  };
+}
+
+export function evaluateDraftSlideRouting(options: {
+  slide: AIPresentationSlide;
+  slideIndex: number;
+  preferVideoRecipes?: boolean;
+}): {
+  selection: {
+    mode: PresentationAILayoutMode;
+    recommendedMode: PresentationAILayoutMode;
+    componentRecipeId?: AIPresentationComponentRecipeId;
+    selectionMode: "llm" | "heuristic" | "manual-override" | "none";
+    selectionReason: string;
+    candidateModes: PresentationAILayoutModeCandidate[];
+    candidateRecipes: ResolvedAIComponentRecipeSelection["candidateRecipes"];
+  };
+  profile: ReturnType<typeof buildPresentationContentProfile>;
+} {
+  const selection = resolveAIComponentRecipeForSlide({
+    slide: options.slide,
+    slideIndex: options.slideIndex,
+    preferVideoRecipes: Boolean(options.preferVideoRecipes),
+  });
+  return {
+    selection,
+    profile: buildPresentationContentProfile(options.slide),
+  };
+}
+
+function buildRawRecipeSlotBindings(
+  slide: AIPresentationSlide,
+  recipeId: AIPresentationComponentRecipeId,
+): PresentationComponentSlotBinding[] {
+  return buildPresentationComponentRecipeSlotBindings(
+    recipeId,
+    buildRecipeNarrativeInputFromSlide(slide),
+  );
+}
+
+function buildRecipeSourceTraceForSlide(
+  slide: AIPresentationSlide,
+): PresentationAIDesignSourceTrace[] {
+  const profile = buildPresentationContentProfile(slide);
+  const entries: Array<{
+    sourceId: string;
+    sourceType: PresentationAIDesignSourceTrace["sourceType"];
+    sourceExcerpt?: string;
+  }> = [];
+
+  for (const paragraph of profile.paragraphs) {
+    entries.push({
+      sourceId: paragraph.id,
+      sourceType: paragraph.isBullet ? "bullet" : "paragraph",
+      sourceExcerpt: paragraph.text.slice(0, 512),
+    });
+  }
+  for (const section of profile.sections) {
+    entries.push({
+      sourceId: section.id,
+      sourceType: "section",
+      sourceExcerpt: section.heading.slice(0, 512),
+    });
+  }
+  return buildDefaultRecipeSourceTrace(entries);
+}
+
+function normalizeRecipeCompactionLevel(
+  value: string | undefined,
+): PresentationRecipeCompactionLevel | undefined {
+  if (
+    value
+    && (PRESENTATION_RECIPE_COMPACTION_LEVELS as readonly string[]).includes(value)
+  ) {
+    return value as PresentationRecipeCompactionLevel;
+  }
+  return undefined;
+}
+
+function buildCompactionPromptRequest(
+  slide: AIPresentationSlide,
+  recipeId: AIPresentationComponentRecipeId,
+  compactionLevel: Exclude<PresentationRecipeCompactionLevel, "none">,
+): string {
+  const profile = buildPresentationContentProfile(slide);
+  const slotBudgets = Object.entries(PRESENTATION_COMPONENT_SLOT_BUDGETS[recipeId] ?? {}).map(([slotId, budget]) => ({
+    slotId,
+    role: slotId,
+    ...(budget.maxChars ? { maxChars: budget.maxChars } : {}),
+    ...(budget.maxItems ? { maxItems: budget.maxItems } : {}),
+    ...(budget.preferredLines ? { targetLines: budget.preferredLines } : {}),
+  }));
+  return JSON.stringify({
+    mode: PRESENTATION_COMPONENT_LAYOUT_FAMILIES[recipeId] === "long_form"
+      ? "long_form_block"
+      : "structured_block",
+    recipeId,
+    language: "th",
+    compactionLevel,
+    contentProfile: {
+      headingCount: profile.headingCount,
+      paragraphCount: profile.paragraphCount,
+      bulletCount: profile.bulletCount,
+      avgParagraphChars: profile.avgParagraphChars,
+      maxParagraphChars: profile.maxParagraphChars,
+    },
+    slotBudgets,
+    qualityThresholds: {
+      minFitScore: PRESENTATION_RECIPE_FIT_THRESHOLDS.accept,
+      warnOverflowRisk: PRESENTATION_RECIPE_FIT_THRESHOLDS.warnOverflowRisk,
+      unsafeOverflowRisk: PRESENTATION_RECIPE_FIT_THRESHOLDS.unsafeOverflowRisk,
+    },
+    textPolicy: {
+      language: "th",
+      preserveFacts: true,
+      avoidInventingNewClaims: true,
+      allowAggressiveRewrite: compactionLevel === "aggressive",
+    },
+    sourceNarrative: {
+      title: slide.title,
+      body: slide.body,
+      ...(slide.sections?.length
+        ? {
+          sections: slide.sections.map((section, index) => ({
+            id: `section-${index + 1}`,
+            heading: section.heading,
+            details: section.details,
+          })),
+        }
+        : {}),
+    },
+  }, null, 2);
+}
+
+function buildValidatedRecipeBindings(
+  rawBindings: PresentationComponentSlotBinding[],
+  compacted: z.infer<typeof presentationRecipeCompactionResponseSchema>["slotContent"],
+): PresentationComponentSlotBinding[] {
+  const rawBySlotId = new Map(rawBindings.map((binding) => [binding.slotId, binding]));
+  const nextBindings: PresentationComponentSlotBinding[] = [];
+
+  for (const binding of compacted) {
+    const rawBinding = rawBySlotId.get(binding.slotId);
+    if (!rawBinding) {
+      continue;
+    }
+    if (binding.type === "text" && rawBinding.type === "text") {
+      nextBindings.push({
+        slotId: binding.slotId,
+        type: "text",
+        text: normalizeSlideText(binding.text).slice(0, 2_000),
+      });
+      continue;
+    }
+    if (binding.type === "list" && rawBinding.type === "list") {
+      nextBindings.push({
+        slotId: binding.slotId,
+        type: "list",
+        items: binding.items
+          .map((item) => normalizeSlideText(item))
+          .filter((item) => item.length > 0)
+          .slice(0, 12),
+      });
+      continue;
+    }
+    nextBindings.push({ ...rawBinding });
+  }
+
+  for (const rawBinding of rawBindings) {
+    if (nextBindings.some((binding) => binding.slotId === rawBinding.slotId)) {
+      continue;
+    }
+    nextBindings.push({ ...rawBinding });
+  }
+
+  return nextBindings;
+}
+
+async function compactSlideForRecipe(options: {
+  slide: AIPresentationSlide;
+  selection: ResolvedAIComponentRecipeSelection | undefined;
+  actor: PresentationActor;
+  taskId: string;
+  deckId: number;
+  model: string;
+  preferredProviderId?: number;
+  strictProviderPin?: boolean;
+}): Promise<RecipeCompactionOutcome> {
+  const recipeId = options.selection?.componentRecipeId;
+  if (!recipeId || !PRESENTATION_RECIPE_COMPACTION_RECIPE_IDS.has(recipeId)) {
+    return { slide: options.slide };
+  }
+
+  const rawBindings = buildRawRecipeSlotBindings(options.slide, recipeId);
+  const rawFit = evaluatePresentationRecipeSlotFit(recipeId, rawBindings);
+  const defaultTrace = buildRecipeSourceTraceForSlide(options.slide);
+  const profile = buildPresentationContentProfile(options.slide);
+  const noteChars = normalizeSlideText(options.slide.notes ?? "").length;
+  const shouldForceCompaction = PRESENTATION_COMPONENT_LAYOUT_FAMILIES[recipeId] === "long_form"
+    ? (
+      profile.totalChars >= 220
+      || noteChars >= 140
+      || profile.sectionCount >= 2
+      || profile.longParagraphCount >= 1
+    )
+    : (
+      profile.totalChars >= 120
+      || noteChars >= 60
+      || profile.longParagraphCount >= 1
+      || profile.sectionCount >= 1
+    );
+  if (
+    !shouldForceCompaction
+    && (
+    rawFit.fitScore.overall >= PRESENTATION_RECIPE_FIT_THRESHOLDS.accept
+    && rawFit.fitScore.status === "fits"
+    )
+  ) {
+    return {
+      slide: {
+        ...options.slide,
+        componentSlotBindings: rawBindings,
+      },
+      fitScore: rawFit.fitScore,
+      compactionLevel: "none",
+      sourceTrace: defaultTrace,
+    };
+  }
+
+  const fallbackHistory: PresentationAIDesignFallbackHistory[] = [];
+  for (const level of ["balanced", "compact", "aggressive"] as const) {
+    try {
+      const compaction = await callLLMStructured({
+        systemPrompt: [
+          "You compact slide copy into validated slot-shaped JSON for presentation layouts.",
+          "Return JSON only.",
+          "Preserve facts, dates, metrics, and named entities.",
+          "Do not invent new claims.",
+          "If content still cannot fit, return status=needs_fallback and explain why in fallbackSuggestion.",
+        ].join("\n"),
+        userMessage: buildCompactionPromptRequest(options.slide, recipeId, level),
+        model: options.model,
+        preferredProviderId: options.preferredProviderId,
+        strictProviderPin: options.strictProviderPin,
+        zodSchema: presentationRecipeCompactionResponseSchema,
+        userId: options.actor.userId,
+        tenantId: options.actor.tenantId,
+        billingDescription: `AI Draft recipe compaction (${recipeId}) (Deck #${options.deckId})`,
+        billingMetadata: {
+          operation: "ai_draft_recipe_compaction",
+          taskId: options.taskId,
+          deckId: options.deckId,
+          stage: "recipe_compaction",
+          recipeId,
+          compactionLevel: level,
+          promptPreview: options.slide.title.slice(0, 200),
+        },
+      });
+      if (compaction.data.status !== "ok") {
+        fallbackHistory.push({
+          step: "retry_compaction",
+          from: level,
+          to: compaction.data.fallbackSuggestion?.action,
+          reason: compaction.data.fallbackSuggestion?.reason ?? "Compaction requested a fallback.",
+          timestamp: new Date().toISOString(),
+        });
+        continue;
+      }
+
+      const compactedBindings = buildValidatedRecipeBindings(rawBindings, compaction.data.slotContent);
+      const fit = evaluatePresentationRecipeSlotFit(recipeId, compactedBindings);
+      if (
+        fit.fitScore.overall >= PRESENTATION_RECIPE_FIT_THRESHOLDS.accept
+        && fit.fitScore.status !== "unsafe"
+      ) {
+        return {
+          slide: {
+            ...options.slide,
+            componentSlotBindings: compactedBindings,
+          },
+          fitScore: fit.fitScore,
+          compactionLevel: level,
+          sourceTrace: compaction.data.sourceTrace.map((entry) => ({
+            sourceId: entry.sourceId,
+            sourceType: defaultTrace.find((candidate) => candidate.sourceId === entry.sourceId)?.sourceType ?? "paragraph",
+            ...(defaultTrace.find((candidate) => candidate.sourceId === entry.sourceId)?.sourceExcerpt
+              ? { sourceExcerpt: defaultTrace.find((candidate) => candidate.sourceId === entry.sourceId)?.sourceExcerpt }
+              : {}),
+            disposition: entry.disposition,
+            ...(entry.targetSlotId ? { targetSlotId: entry.targetSlotId } : {}),
+            ...(entry.targetSlideId ? { targetSlideId: entry.targetSlideId } : {}),
+            ...(entry.notes ? { notes: entry.notes } : {}),
+          })),
+          fallbackHistory,
+        };
+      }
+
+      fallbackHistory.push({
+        step: "retry_compaction",
+        from: level,
+        reason: `Compaction output remained ${fit.fitScore.status} with overall fit ${fit.fitScore.overall.toFixed(2)}.`,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      fallbackHistory.push({
+        step: "retry_compaction",
+        from: level,
+        reason: `Compaction attempt failed: ${sanitizeErrorMessage(error)}`,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+
+  return {
+    slide: options.slide,
+    fitScore: shouldForceCompaction && fallbackHistory.length > 0
+      ? {
+        ...rawFit.fitScore,
+        overall: Math.min(rawFit.fitScore.overall, 0.4),
+        overflowRisk: Math.max(rawFit.fitScore.overflowRisk, 0.82),
+        status: "unsafe",
+      }
+      : rawFit.fitScore,
+    compactionLevel: "none",
+    sourceTrace: defaultTrace,
+    fallbackHistory,
+  };
+}
+
+function makeFallbackHistoryEntry(entry: Omit<PresentationAIDesignFallbackHistory, "timestamp">): PresentationAIDesignFallbackHistory {
+  return {
+    ...entry,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+function dedupeSourceTrace(
+  entries: PresentationAIDesignSourceTrace[] | undefined,
+): PresentationAIDesignSourceTrace[] | undefined {
+  if (!entries?.length) {
+    return undefined;
+  }
+  const seen = new Set<string>();
+  const result: PresentationAIDesignSourceTrace[] = [];
+  for (const entry of entries) {
+    const key = [
+      entry.sourceId,
+      entry.disposition,
+      entry.targetSlotId ?? "",
+      entry.targetSlideId ?? "",
+      entry.notes ?? "",
+    ].join("::");
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    result.push(entry);
+  }
+  return result;
+}
+
+function dedupeFallbackHistory(
+  entries: PresentationAIDesignFallbackHistory[] | undefined,
+): PresentationAIDesignFallbackHistory[] | undefined {
+  if (!entries?.length) {
+    return undefined;
+  }
+  const seen = new Set<string>();
+  const result: PresentationAIDesignFallbackHistory[] = [];
+  for (const entry of entries) {
+    const key = [entry.step, entry.from ?? "", entry.to ?? "", entry.reason].join("::");
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    result.push(entry);
+  }
+  return result;
+}
+
+function mergeSourceTraceEntries(
+  ...groups: Array<PresentationAIDesignSourceTrace[] | undefined>
+): PresentationAIDesignSourceTrace[] | undefined {
+  return dedupeSourceTrace(groups.flatMap((entries) => entries ?? []));
+}
+
+function mergeFallbackHistoryEntries(
+  ...groups: Array<PresentationAIDesignFallbackHistory[] | undefined>
+): PresentationAIDesignFallbackHistory[] | undefined {
+  return dedupeFallbackHistory(groups.flatMap((entries) => entries ?? []));
+}
+
+function buildSlideQualityGateMetadata(options: {
+  recipeId: AIPresentationComponentRecipeId | undefined;
+  slotBindings: PresentationComponentSlotBinding[] | undefined;
+  fitScore: PresentationAIDesignFitScore | undefined;
+  sourceTrace: PresentationAIDesignSourceTrace[] | undefined;
+}): {
+  warnings: string[];
+  verdict?: ReturnType<typeof evaluateSlideQualityGate>["verdict"];
+  issues: ReturnType<typeof evaluateSlideQualityGate>["issues"];
+} {
+  if (!options.recipeId) {
+    return { warnings: [], issues: [] };
+  }
+  const slotFit = options.slotBindings?.length
+    ? evaluatePresentationRecipeSlotFit(options.recipeId, options.slotBindings)
+    : undefined;
+  const qualityGate = evaluateSlideQualityGate(
+    options.fitScore,
+    slotFit?.slotDetails,
+    PRESENTATION_COMPONENT_SLOT_BUDGETS[options.recipeId],
+  );
+  const omissionIssue = evaluateSourceTraceOmission(options.sourceTrace);
+  const issues = omissionIssue
+    ? [...qualityGate.issues, omissionIssue]
+    : qualityGate.issues;
+  return {
+    warnings: issues.map((issue) => issue.message),
+    verdict: qualityGate.verdict,
+    issues,
+  };
+}
+
+function logLayoutTelemetryEvent(
+  actor: PresentationActor,
+  taskId: string,
+  event: ReturnType<typeof buildModeSelectedEvent> | ReturnType<typeof buildQualityGateEvent> | ReturnType<typeof buildDeckConsistencyEvent>,
+): void {
+  auditLogger.log({
+    traceId: taskId,
+    timestamp: new Date().toISOString(),
+    eventType: "rollout_gate",
+    userId: actor.userId,
+    responsePayload: event,
+  });
+}
+
+function shouldEscalateStructuredSlideToLongForm(
+  slide: AIPresentationSlide,
+  selection: ResolvedAIComponentRecipeSelection | undefined,
+): boolean {
+  if (!selection || selection.componentRecipeId === "sectioned-explainer") {
+    return false;
+  }
+  if (selection.recommendedMode !== "long_form_block") {
+    return false;
+  }
+  const profile = buildPresentationContentProfile(slide);
+  if (
+    selection.componentRecipeId === "stat-cards"
+    || selection.componentRecipeId === "timeline-flow"
+    || selection.componentRecipeId === "timeline-report"
+    || selection.componentRecipeId === "infographic-grid"
+    || selection.componentRecipeId === "process-steps"
+    || selection.componentRecipeId === "article-focus"
+    || selection.componentRecipeId === "two-column-article"
+    || selection.componentRecipeId === "faq-stack"
+    || selection.componentRecipeId === "profile-board"
+  ) {
+    return false;
+  }
+  return (
+    profile.totalChars >= 320
+    || profile.sectionCount >= 3
+    || profile.longParagraphCount >= 2
+  );
+}
+
+function shouldSplitLongFormSlide(
+  slide: AIPresentationSlide,
+  selection: ResolvedAIComponentRecipeSelection | undefined,
+  compaction: RecipeCompactionOutcome | undefined,
+): boolean {
+  if (selection?.componentRecipeId !== "sectioned-explainer") {
+    return false;
+  }
+  const fitScore = compaction?.fitScore;
+  if (!fitScore || (fitScore.status !== "unsafe" && fitScore.overall >= PRESENTATION_RECIPE_FIT_THRESHOLDS.warn)) {
+    return false;
+  }
+  const profile = buildPresentationContentProfile(slide);
+  return (
+    profile.sectionCount >= 3
+    || profile.paragraphCount >= 6
+    || profile.totalChars >= 780
+  );
+}
+
+function buildOverflowSummaryForSlide(
+  slide: AIPresentationSlide,
+  sections: Array<{ heading: string; details: string[] }>,
+  body: string[],
+): string | undefined {
+  const candidates = [
+    ...sections.flatMap((section) => [section.heading, ...section.details]),
+    ...body,
+  ]
+    .map((line) => normalizeNarrativeBodyLine(line))
+    .filter((line) => line.length > 0);
+  const summary = candidates.slice(0, 3).join(" ");
+  return summary ? summary.slice(0, 1_200) : normalizeSlideText(slide.notes ?? "").slice(0, 1_200) || undefined;
+}
+
+function splitDenseSlideForOverflow(options: {
+  slide: AIPresentationSlide;
+  slideIndex: number;
+  selection: ResolvedAIComponentRecipeSelection | undefined;
+}): {
+  slides: AIPresentationSlide[];
+  fallbackMetadata: SlideOverflowFallbackMetadata[];
+} {
+  const originalSlide = normalizeSlideHierarchy(options.slide);
+  const sections = (originalSlide.sections ?? [])
+    .map((section) => normalizeNarrativeSection(section))
+    .filter((section): section is { heading: string; details: string[] } => Boolean(section));
+  const body = originalSlide.body
+    .map((line) => normalizeNarrativeBodyLine(line))
+    .filter((line) => line.length > 0);
+  const midpoint = Math.max(1, Math.ceil((sections.length || body.length) / 2));
+  const firstSections = sections.length > 0 ? sections.slice(0, midpoint) : [];
+  const secondSections = sections.length > 0 ? sections.slice(midpoint) : [];
+  const firstBody = body.length > 0 ? body.slice(0, Math.max(1, Math.ceil(body.length / 2))) : [];
+  const secondBody = body.length > 0 ? body.slice(Math.max(1, Math.ceil(body.length / 2))) : [];
+
+  const partA = normalizeSlideHierarchy({
+    ...originalSlide,
+    componentRecipeId: "sectioned-explainer",
+    title: originalSlide.title,
+    body: (firstBody.length > 0 ? firstBody : body).slice(0, AI_NARRATIVE_MAX_BODY_LINES),
+    ...(firstSections.length > 0 ? { sections: firstSections } : {}),
+    ...(buildOverflowSummaryForSlide(originalSlide, firstSections, firstBody)
+      ? { notes: buildOverflowSummaryForSlide(originalSlide, firstSections, firstBody) }
+      : {}),
+  });
+  const secondTitleSeed = secondSections[0]?.heading
+    ? `${originalSlide.title} / ${secondSections[0].heading}`
+    : `${originalSlide.title} (ต่อ)`;
+  const partB = normalizeSlideHierarchy({
+    ...originalSlide,
+    componentRecipeId: "sectioned-explainer",
+    title: secondTitleSeed.slice(0, 200),
+    body: (secondBody.length > 0 ? secondBody : body.slice(Math.max(1, Math.ceil(body.length / 2)))).slice(0, AI_NARRATIVE_MAX_BODY_LINES),
+    ...(secondSections.length > 0 ? { sections: secondSections } : {}),
+    ...(buildOverflowSummaryForSlide(originalSlide, secondSections, secondBody)
+      ? { notes: buildOverflowSummaryForSlide(originalSlide, secondSections, secondBody) }
+      : {}),
+  });
+  const splitSlides = secondSections.length > 0 || secondBody.length > 0
+    ? [partA, partB]
+    : [partA];
+  const sourceProfile = buildPresentationContentProfile(originalSlide);
+  const targetIds = splitSlides.map((_, partIndex) => `draft-slide-${options.slideIndex + 1}-part-${partIndex + 1}`);
+  const traceByPart = splitSlides.map<PresentationAIDesignSourceTrace[]>(() => []);
+
+  for (const paragraph of sourceProfile.paragraphs) {
+    const targetIndex = splitSlides.findIndex((candidate) => (
+      candidate.body.some((line) => normalizeNarrativeBodyLine(line) === paragraph.text)
+      || (candidate.sections ?? []).some((section) => section.details.some((detail) => normalizeNarrativeBodyLine(detail) === paragraph.text))
+      || normalizeSlideText(candidate.notes ?? "").includes(paragraph.text.slice(0, Math.min(24, paragraph.text.length)))
+    ));
+    if (targetIndex >= 0) {
+      traceByPart[targetIndex]!.push({
+        sourceId: paragraph.id,
+        sourceType: paragraph.isBullet ? "bullet" : "paragraph",
+        sourceExcerpt: paragraph.text.slice(0, 512),
+        disposition: "split",
+        targetSlideId: targetIds[targetIndex],
+      });
+    }
+  }
+  for (const section of sourceProfile.sections) {
+    const targetIndex = splitSlides.findIndex((candidate) => (
+      candidate.sections ?? []
+    ).some((candidateSection) => candidateSection.heading === section.heading));
+    if (targetIndex >= 0) {
+      traceByPart[targetIndex]!.push({
+        sourceId: section.id,
+        sourceType: "section",
+        sourceExcerpt: section.heading.slice(0, 512),
+        disposition: "split",
+        targetSlideId: targetIds[targetIndex],
+      });
+    }
+  }
+
+  return {
+    slides: splitSlides,
+    fallbackMetadata: splitSlides.map((slide, partIndex) => ({
+      sourceTrace: traceByPart[partIndex],
+      fallbackHistory: [
+        makeFallbackHistoryEntry({
+          step: "split_slide",
+          from: options.selection?.componentRecipeId ?? options.selection?.mode ?? "structured_block",
+          to: targetIds[partIndex],
+          reason: `Overflow fallback split "${originalSlide.title}" into ${splitSlides.length} editable slides for long-form readability.`,
+        }),
+      ],
+    })),
+  };
+}
+
+async function applyOverflowFallbacks(options: {
+  slides: AIPresentationSlide[];
+  selections: ResolvedAIComponentRecipeSelection[];
+  compactionResults: RecipeCompactionOutcome[];
+  actor: PresentationActor;
+  taskId: string;
+  deckId: number;
+  model: string;
+  preferredProviderId?: number;
+  strictProviderPin?: boolean;
+}): Promise<OverflowFallbackResolution> {
+  const resolvedSlides: AIPresentationSlide[] = [];
+  const resolvedSelections: ResolvedAIComponentRecipeSelection[] = [];
+  const resolvedCompactions: RecipeCompactionOutcome[] = [];
+  const fallbackMetadata: SlideOverflowFallbackMetadata[] = [];
+
+  for (let slideIndex = 0; slideIndex < options.slides.length; slideIndex += 1) {
+    let slide = options.slides[slideIndex]!;
+    let selection = options.selections[slideIndex];
+    let compaction = options.compactionResults[slideIndex] ?? { slide };
+    const slideFallbackHistory: PresentationAIDesignFallbackHistory[] = [];
+
+    if (shouldEscalateStructuredSlideToLongForm(slide, selection)) {
+      const previousRecipe = selection?.componentRecipeId;
+      slide = normalizeSlideHierarchy({
+        ...slide,
+        componentRecipeId: "sectioned-explainer",
+      });
+      selection = {
+        mode: "long_form_block",
+        recommendedMode: "long_form_block",
+        componentRecipeId: "sectioned-explainer",
+        selectionMode: "heuristic",
+        selectionReason: "Overflow fallback escalated dense structured copy into sectioned-explainer.",
+        candidateRecipes: selection?.candidateRecipes ?? [],
+        candidateModes: selection?.candidateModes ?? [],
+      };
+      slideFallbackHistory.push(makeFallbackHistoryEntry({
+        step: "switch_recipe",
+        from: previousRecipe ?? "structured_block",
+        to: "sectioned-explainer",
+        reason: "Dense text exceeded structured block limits, so the slide was escalated into the long-form explainer recipe.",
+      }));
+      compaction = await compactSlideForRecipe({
+        slide,
+        selection,
+        actor: options.actor,
+        taskId: options.taskId,
+        deckId: options.deckId,
+        model: options.model,
+        preferredProviderId: options.preferredProviderId,
+        strictProviderPin: options.strictProviderPin,
+      });
+      slide = compaction.slide;
+    }
+
+    if (shouldSplitLongFormSlide(slide, selection, compaction)) {
+      const split = splitDenseSlideForOverflow({
+        slide,
+        slideIndex,
+        selection,
+      });
+      for (let partIndex = 0; partIndex < split.slides.length; partIndex += 1) {
+        const splitSlide = split.slides[partIndex]!;
+        const splitSelection: ResolvedAIComponentRecipeSelection = {
+          mode: "long_form_block",
+          recommendedMode: "long_form_block",
+          componentRecipeId: "sectioned-explainer",
+          selectionMode: "heuristic",
+          selectionReason: `Overflow fallback split a dense long-form slide into part ${partIndex + 1}.`,
+          candidateRecipes: selection?.candidateRecipes ?? [],
+          candidateModes: selection?.candidateModes ?? [],
+        };
+        const splitCompaction = await compactSlideForRecipe({
+          slide: splitSlide,
+          selection: splitSelection,
+          actor: options.actor,
+          taskId: options.taskId,
+          deckId: options.deckId,
+          model: options.model,
+          preferredProviderId: options.preferredProviderId,
+          strictProviderPin: options.strictProviderPin,
+        });
+        resolvedSlides.push(splitCompaction.slide);
+        resolvedSelections.push(splitSelection);
+        resolvedCompactions.push(splitCompaction);
+        fallbackMetadata.push({
+          sourceTrace: split.fallbackMetadata[partIndex]?.sourceTrace,
+          fallbackHistory: mergeFallbackHistoryEntries(
+            slideFallbackHistory,
+            compaction.fallbackHistory,
+            split.fallbackMetadata[partIndex]?.fallbackHistory,
+          ),
+        });
+      }
+      continue;
+    }
+
+    resolvedSlides.push(slide);
+    resolvedSelections.push(selection);
+    resolvedCompactions.push(compaction);
+    fallbackMetadata.push({
+      fallbackHistory: mergeFallbackHistoryEntries(slideFallbackHistory),
+    });
+  }
+
+  return {
+    slides: resolvedSlides,
+    selections: resolvedSelections,
+    compactionResults: resolvedCompactions,
+    fallbackMetadata,
+  };
+}
+
+function isPresentationLayoutDslEnabled(): boolean {
+  return String(process.env[PRESENTATION_LAYOUT_DSL_ENV_FLAG] ?? "").toLowerCase() === "true";
+}
+
+function isPresentationFullSlideMediaEnabled(): boolean {
+  return String(process.env[PRESENTATION_FULL_SLIDE_MEDIA_ENV_FLAG] ?? "").toLowerCase() === "true";
+}
+
+function estimateThaiTextRisk(slide: AIPresentationSlide): "low" | "medium" | "high" {
+  const text = [
+    slide.title,
+    ...slide.body,
+    slide.notes ?? "",
+    ...(slide.sections ?? []).flatMap((section) => [section.heading, ...section.details]),
+  ]
+    .map((line) => normalizeSlideText(line))
+    .filter((line) => line.length > 0)
+    .join(" ");
+  const thaiChars = (text.match(/[\u0E00-\u0E7F]/g) ?? []).length;
+  if (thaiChars === 0) {
+    return "low";
+  }
+  if (text.length >= 200 || (slide.sections?.length ?? 0) >= 2 || slide.body.length >= 4) {
+    return "high";
+  }
+  if (text.length >= 80) {
+    return "medium";
+  }
+  return "low";
+}
+
+function detectFullSlideVisualIntent(
+  slide: AIPresentationSlide,
+  slideIndex: number,
+): NonNullable<PresentationAIDesignMediaModeMetadata["visualIntent"]> {
+  const haystack = [
+    slide.title,
+    ...slide.body,
+    slide.notes ?? "",
+    slide.graphicCategory ?? "",
+  ].join(" ").toLowerCase();
+  if (slideIndex === 0) {
+    return "cover";
+  }
+  if (haystack.includes("infographic") || haystack.includes("อินโฟกราฟิก")) {
+    return "infographic";
+  }
+  if (haystack.includes("summary") || haystack.includes("สรุป")) {
+    return "summary_visual";
+  }
+  return "poster";
+}
+
+function buildLayoutDslPromptRequest(options: {
+  slide: AIPresentationSlide;
+  canvasWidth: number;
+  canvasHeight: number;
+}): string {
+  const profile = buildPresentationContentProfile(options.slide);
+  return JSON.stringify(presentationLayoutDslRequestSchema.parse({
+    mode: "llm_layout_dsl",
+    language: "th",
+    contentProfile: {
+      sectionCount: profile.sectionCount,
+      paragraphCount: profile.paragraphCount,
+      visualFirstCandidate: profile.visualFirstCandidate,
+    },
+    canvas: {
+      width: options.canvasWidth,
+      height: options.canvasHeight,
+    },
+    allowedPrimitives: PRESENTATION_LAYOUT_DSL_ALLOWED_PRIMITIVES,
+    styleTokens: {
+      themeId: "presentation-ai-default",
+      typographyPack: "presentation-ai-default",
+    },
+    hardLimits: {
+      maxElements: PRESENTATION_LAYOUT_DSL_MAX_ELEMENTS,
+      maxGroups: PRESENTATION_LAYOUT_DSL_MAX_GROUPS,
+      disallowArbitraryHtml: true,
+    },
+    sourceNarrative: {
+      title: options.slide.title,
+      body: options.slide.body,
+      ...(options.slide.notes ? { notes: options.slide.notes } : {}),
+    },
+  }), null, 2);
+}
+
+function buildFullSlideMediaPrompt(slide: AIPresentationSlide, slideIndex: number): string {
+  const intent = detectFullSlideVisualIntent(slide, slideIndex);
+  const supportingLines = [
+    ...slide.body,
+    ...(slide.sections ?? []).flatMap((section) => [section.heading, ...section.details]),
+  ]
+    .map((line) => normalizeNarrativeBodyLine(line))
+    .filter((line) => line.length > 0)
+    .slice(0, 6)
+    .join(". ");
+  const promptParts = [
+    `Create a polished ${intent.replace(/_/g, " ")} slide visual for a vertical presentation.`,
+    `Primary title: ${slide.title}`,
+    supportingLines ? `Supporting content: ${supportingLines}` : "",
+    "Prefer clean editorial composition, clear focal hierarchy, and presentation-grade spacing.",
+    "Avoid embedding long paragraphs as text inside the image.",
+  ].filter(Boolean);
+  return promptParts.join("\n");
+}
+
+function buildFullSlideMediaContent(options: {
+  slide: AIPresentationSlide;
+  mediaUrl: string;
+  canvasWidth: number;
+  canvasHeight: number;
+  isVideo: boolean;
+}): PresentationSlideContent {
+  return {
+    elements: [
+      options.isVideo
+        ? {
+          id: `full-slide-media-${randomBytes(6).toString("hex")}`,
+          type: "video" as const,
+          x: 0,
+          y: 0,
+          width: options.canvasWidth,
+          height: options.canvasHeight,
+          src: options.mediaUrl,
+          title: options.slide.title,
+          muted: true,
+          loop: true,
+          videoFit: "cover" as const,
+          videoPositionX: 50,
+          videoPositionY: 50,
+          videoZoom: 1,
+        }
+        : {
+          id: `full-slide-media-${randomBytes(6).toString("hex")}`,
+          type: "image" as const,
+          x: 0,
+          y: 0,
+          width: options.canvasWidth,
+          height: options.canvasHeight,
+          src: options.mediaUrl,
+          alt: options.slide.title,
+          mediaShape: "rect" as const,
+        },
+    ],
+    canvas: {
+      width: options.canvasWidth,
+      height: options.canvasHeight,
+    },
+    visualOnly: true,
+  };
+}
+
+async function generateFullSlideMediaAssetForRelayout(options: {
+  slide: AIPresentationSlide;
+  slideIndex: number;
+  actor: PresentationActor;
+  userToken: string;
+  preferredMediaType?: "image" | "video";
+}): Promise<{
+  mediaUrl: string;
+  modelId?: string;
+  prompt: string;
+  extraParams?: Record<string, unknown>;
+  isVideo: boolean;
+} | null> {
+  const prompt = buildFullSlideMediaPrompt(options.slide, Math.max(0, options.slideIndex - 1));
+  if (options.preferredMediaType === "video") {
+    const availableVideoModels = await getModelsByTypeAsync("video").catch(() => []);
+    const selectedVideoModel = availableVideoModels[0];
+    if (selectedVideoModel) {
+      const aspectRatio = selectAspectRatioForModel("16:9", selectedVideoModel.aspectRatios);
+      const apiConfig = buildImageApiConfig(selectedVideoModel);
+      const extraParams = applyFieldSyncTargets(
+        buildImageExtraParams(selectedVideoModel),
+        selectedVideoModel,
+        { aspectRatio, prompt },
+      );
+      const duration = selectVideoDuration(selectedVideoModel, extraParams);
+      try {
+        const mediaTask = await withTimeout(
+          mediaGenerationService.generateVideoAsync(
+            {
+              prompt,
+              model: selectedVideoModel.id,
+              aspectRatio,
+              ...(duration ? { duration } : {}),
+              ...(Object.keys(apiConfig ?? {}).length > 0 ? { apiConfig } : {}),
+              ...(extraParams ? { extraParams } : {}),
+              auditContext: {
+                userId: options.actor.userId,
+                traceId: `relayout-full-slide:${options.slideIndex}:${randomBytes(6).toString("hex")}`,
+                source: "ai_draft.relayoutExistingSlideAsync.full_slide_media",
+              },
+            },
+            options.userToken,
+          ),
+          MEDIA_SUBMIT_TIMEOUT_MS,
+          "full_slide_media_submit_timeout",
+        );
+        const pollResult = await pollMediaTask(
+          mediaTask.id,
+          options.userToken,
+          computeVideoPollTimeoutMs(1),
+          {
+            auditContext: {
+              userId: options.actor.userId,
+              traceId: `relayout-full-slide:${options.slideIndex}:${mediaTask.id}`,
+              source: "ai_draft.relayoutExistingSlideAsync.full_slide_media",
+            },
+          },
+        );
+        if (pollResult.url) {
+          return {
+            mediaUrl: pollResult.url,
+            modelId: selectedVideoModel.id,
+            prompt,
+            ...(extraParams ? { extraParams } : {}),
+            isVideo: true,
+          };
+        }
+      } catch {
+        // Fall through to image generation if video generation is unavailable.
+      }
+    }
+  }
+
+  const availableImageModels = await getModelsByTypeAsync("image").catch(() => []);
+  if (availableImageModels.length === 0) {
+    return null;
+  }
+  const textToImageModels = availableImageModels.filter(isTextToImageModel);
+  const selectedImageModel = textToImageModels[0] ?? availableImageModels[0];
+  const modelId = (selectedImageModel?.id || FALLBACK_IMAGE_MODEL) as ImageModel;
+  const aspectRatio = selectAspectRatioForModel("16:9", selectedImageModel?.aspectRatios);
+  const apiConfig = buildImageApiConfig(selectedImageModel);
+  const extraParams = applyFieldSyncTargets(
+    buildImageExtraParams(selectedImageModel),
+    selectedImageModel,
+    { aspectRatio, prompt },
+  );
+
+  const mediaTask = await withTimeout(
+    mediaGenerationService.generateImageAsync(
+      {
+        prompt,
+        model: modelId,
+        aspectRatio,
+        ...(Object.keys(apiConfig ?? {}).length > 0 ? { apiConfig } : {}),
+        ...(extraParams ? { extraParams } : {}),
+        auditContext: {
+          userId: options.actor.userId,
+          traceId: `relayout-full-slide:${options.slideIndex}:${randomBytes(6).toString("hex")}`,
+          source: "ai_draft.relayoutExistingSlideAsync.full_slide_media",
+        },
+      },
+      options.userToken,
+    ),
+    MEDIA_SUBMIT_TIMEOUT_MS,
+    "full_slide_media_submit_timeout",
+  );
+  const pollResult = await pollMediaTask(
+    mediaTask.id,
+    options.userToken,
+    computeImagePollTimeoutMs(1),
+    {
+      auditContext: {
+        userId: options.actor.userId,
+        traceId: `relayout-full-slide:${options.slideIndex}:${mediaTask.id}`,
+        source: "ai_draft.relayoutExistingSlideAsync.full_slide_media",
+      },
+    },
+  );
+  if (!pollResult.url) {
+    return null;
+  }
+  return {
+    mediaUrl: pollResult.url,
+    modelId: selectedImageModel?.id,
+    prompt,
+    ...(extraParams ? { extraParams } : {}),
+    isVideo: false,
+  };
+}
+
+async function resolveAdvancedLayoutModes(options: {
+  slides: AIPresentationSlide[];
+  selections: ResolvedAIComponentRecipeSelection[];
+  actor: PresentationActor;
+  taskId: string;
+  deckId: number;
+  model: string;
+  canvasWidth: number;
+  canvasHeight: number;
+  preferredProviderId?: number;
+  strictProviderPin?: boolean;
+}): Promise<{
+  slides: AIPresentationSlide[];
+  metadata: SlideAdvancedModeMetadata[];
+}> {
+  const resolvedSlides = [...options.slides];
+  const metadata: SlideAdvancedModeMetadata[] = [];
+
+  for (let index = 0; index < options.slides.length; index += 1) {
+    const slide = resolvedSlides[index]!;
+    const selection = options.selections[index];
+    const mode = selection?.recommendedMode ?? selection?.mode;
+    const dslCandidate = selection?.candidateModes.find((candidate) => candidate.mode === "llm_layout_dsl");
+    const structuredCandidate = selection?.candidateModes.find((candidate) => candidate.mode === "structured_block");
+    const fallbackHistory: PresentationAIDesignFallbackHistory[] = [];
+    let modeMetadata: SlideAdvancedModeMetadata = {};
+
+    if (
+      isPresentationLayoutDslEnabled()
+      && !(
+        selection?.componentRecipeId === "stat-cards"
+        || selection?.componentRecipeId === "timeline-flow"
+        || selection?.componentRecipeId === "process-steps"
+        || selection?.componentRecipeId === "sectioned-explainer"
+      )
+      && (
+        mode === "llm_layout_dsl"
+        || (
+          dslCandidate?.fitStatus === "fits"
+          && structuredCandidate
+          && dslCandidate.score >= (structuredCandidate.score - 1)
+        )
+      )
+    ) {
+      let repaired = false;
+      let lastReason = "Layout DSL returned no usable slide content.";
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const dsl = await callLLMStructured({
+          systemPrompt: [
+            "Design a bounded presentation slide as JSON only.",
+            "Use only the allowed primitives.",
+            "Keep within the provided element budgets.",
+            "Do not emit HTML, markdown, or unsupported properties.",
+          ].join("\n"),
+          userMessage: buildLayoutDslPromptRequest({
+            slide,
+            canvasWidth: options.canvasWidth,
+            canvasHeight: options.canvasHeight,
+          }),
+          model: options.model,
+          preferredProviderId: options.preferredProviderId,
+          strictProviderPin: options.strictProviderPin,
+          zodSchema: presentationLayoutDslResponseSchema,
+          userId: options.actor.userId,
+          tenantId: options.actor.tenantId,
+          billingDescription: `AI Draft layout DSL (${slide.title.slice(0, 80)}) (Deck #${options.deckId})`,
+          billingMetadata: {
+            operation: "ai_draft_layout_dsl",
+            taskId: options.taskId,
+            deckId: options.deckId,
+            phase: 2,
+            stage: repaired ? "layout_dsl_repair" : "layout_dsl",
+            slideIndex: index,
+          },
+        });
+        const normalized = normalizePresentationLayoutDslToSlideContent({
+          draft: dsl.data,
+          canvasWidth: options.canvasWidth,
+          canvasHeight: options.canvasHeight,
+        });
+        if (dsl.data.status === "ok" && normalized) {
+          modeMetadata = {
+            mode: "llm_layout_dsl",
+            slideContentOverride: normalized,
+          };
+          break;
+        }
+        repaired = true;
+        lastReason = dsl.data.fallbackSuggestion?.reason ?? lastReason;
+      }
+      if (!modeMetadata.slideContentOverride) {
+        fallbackHistory.push(makeFallbackHistoryEntry({
+          step: "switch_mode",
+          from: "llm_layout_dsl",
+          to: "structured_block",
+          reason: lastReason,
+        }));
+      }
+    }
+
+    if (
+      !modeMetadata.slideContentOverride
+      && isPresentationFullSlideMediaEnabled()
+      && mode === "full_slide_media"
+    ) {
+      const thaiTextRisk = estimateThaiTextRisk(slide);
+      if (thaiTextRisk === "high") {
+        fallbackHistory.push(makeFallbackHistoryEntry({
+          step: "blocked_safety_policy",
+          from: "full_slide_media",
+          to: "structured_block",
+          reason: "Thai text density is too high for automatic text-in-image generation.",
+        }));
+      } else {
+        if (selection?.componentRecipeId) {
+          fallbackHistory.push(makeFallbackHistoryEntry({
+            step: "switch_mode",
+            from: selection.componentRecipeId,
+            to: "full_slide_media",
+            reason: "Visual-first slide quality is higher as a full-slide generated asset than as a compact component recipe.",
+          }));
+        }
+        resolvedSlides[index] = {
+          ...slide,
+          imagePromptKeywords: buildFullSlideMediaPrompt(slide, index),
+          mediaPlan: [
+            {
+              slotId: "full-slide-media",
+              prompt: buildFullSlideMediaPrompt(slide, index),
+            },
+          ],
+        };
+        modeMetadata = {
+          mode: "full_slide_media",
+          mediaModeMetadata: {
+            editableSourceRetained: true,
+            thaiTextRisk,
+            visualIntent: detectFullSlideVisualIntent(slide, index),
+          },
+        };
+      }
+    }
+
+    metadata.push({
+      ...modeMetadata,
+      ...(fallbackHistory.length > 0 ? { fallbackHistory } : {}),
+    });
+  }
+
+  return {
+    slides: resolvedSlides,
+    metadata,
   };
 }
 
@@ -3431,6 +5019,32 @@ function sanitizeErrorMessage(err: unknown): string {
     .replace(/https?:\/\/[^\s]+/g, "[redacted-url]")
     .replace(/\/[\w/.-]+\.(ts|js|json)/g, "[redacted-path]")
     .slice(0, 200);
+}
+
+function extractStructuredOutputZodError(err: unknown): z.ZodError | null {
+  if (!err || typeof err !== "object" || !("zodErrors" in err)) {
+    return null;
+  }
+  const candidate = (err as { zodErrors?: unknown }).zodErrors;
+  return candidate instanceof z.ZodError ? candidate : null;
+}
+
+function formatSlidePlanningError(phaseLabel: "Topic planning" | "Article split", err: unknown): string {
+  const zodError = extractStructuredOutputZodError(err);
+  if (!zodError) {
+    return `${phaseLabel} failed: ${sanitizeErrorMessage(err)}`;
+  }
+
+  const hasEmptyArrayViolation = zodError.issues.some((issue) => (
+    issue.code === "too_small"
+    && "type" in issue
+    && issue.type === "array"
+  ));
+  if (hasEmptyArrayViolation) {
+    return `${phaseLabel} returned incomplete slide data. Please retry.`;
+  }
+
+  return `${phaseLabel} returned an invalid structured response. Please retry.`;
 }
 
 export function computeImagePollTimeoutMs(numSlides: number): number {
@@ -4272,7 +5886,7 @@ function resolveSkillModel(skill?: { llmModelId?: string; defaultModel?: string;
   if (firstModel) {
     return firstModel.trim();
   }
-  return DEFAULT_TEXT_MODEL;
+  return getDefaultTextModelSync();
 }
 
 function normalizeGenerateType(value: unknown): string | null {
@@ -4849,6 +6463,16 @@ function extractTextContent(content: unknown): string {
   return "";
 }
 
+/** Max number of distinct models to try before giving up */
+const MAX_CROSS_MODEL_ATTEMPTS = 5;
+
+interface ModelAttemptLog {
+  attempt: number;
+  modelId: string;
+  error: string;
+  timestamp: string;
+}
+
 async function invokeSkillTextLLM(params: {
   model: string;
   systemPrompt: string;
@@ -4870,33 +6494,108 @@ async function invokeSkillTextLLM(params: {
     }
   }
 
-  const result = await executeWithFallback({
-    model: params.model,
-    messages: [
-      { role: "system", content: params.systemPrompt },
-      { role: "user", content: params.userPrompt },
-    ],
-    stream: false,
-    userId: params.userId,
-    preferredProvider: params.strictProviderPin
-      ? params.preferredProviderId
-      : undefined,
-  });
+  // Build ordered list of up to MAX_CROSS_MODEL_ATTEMPTS enabled models to try
+  const modelsToTry = await buildCrossModelFallbackCandidates(
+    params.model,
+    params.strictProviderPin,
+    MAX_CROSS_MODEL_ATTEMPTS,
+  );
 
-  if (result.type === "error") {
-    if (result.error === "No providers available for model") {
-      throw new Error(`No providers available for model: ${params.model}`);
+  const attemptHistory: ModelAttemptLog[] = [];
+  const messages = [
+    { role: "system" as const, content: params.systemPrompt },
+    { role: "user" as const, content: params.userPrompt },
+  ];
+
+  for (let i = 0; i < modelsToTry.length; i++) {
+    const candidateModel = modelsToTry[i];
+    const result = await executeWithFallback({
+      model: candidateModel,
+      messages,
+      stream: false,
+      userId: params.userId,
+      preferredProvider: params.strictProviderPin
+        ? params.preferredProviderId
+        : undefined,
+    });
+
+    if (result.type === "error" || result.type === "fallback_required") {
+      const errorMsg = result.type === "error"
+        ? result.error
+        : "LLM provider requires fallback consent";
+
+      // Log this failed attempt for audit trail
+      const attemptLog: ModelAttemptLog = {
+        attempt: i + 1,
+        modelId: candidateModel,
+        error: errorMsg,
+        timestamp: new Date().toISOString(),
+      };
+      attemptHistory.push(attemptLog);
+
+      auditLogger.log({
+        traceId: params.billingContext?.taskId ?? "unknown",
+        timestamp: attemptLog.timestamp,
+        eventType: "llm_response",
+        userId: params.userId,
+        responsePayload: {
+          crossModelFallback: true,
+          attempt: i + 1,
+          totalCandidates: modelsToTry.length,
+          modelId: candidateModel,
+          error: errorMsg,
+          previousAttempts: attemptHistory.slice(0, -1),
+        },
+      });
+
+      // If strict pin, don't try other models
+      if (params.strictProviderPin) break;
+      continue;
     }
-    throw new Error(result.error);
-  }
-  if (result.type === "fallback_required") {
-    throw new Error("LLM provider requires fallback consent");
+
+    // Success — log if this was a fallback (not the first model)
+    if (i > 0) {
+      auditLogger.log({
+        traceId: params.billingContext?.taskId ?? "unknown",
+        timestamp: new Date().toISOString(),
+        eventType: "llm_response",
+        userId: params.userId,
+        responsePayload: {
+          crossModelFallback: true,
+          resolvedOnAttempt: i + 1,
+          resolvedModel: candidateModel,
+          originalModel: params.model,
+          failedAttempts: attemptHistory,
+        },
+      });
+    }
+
+    return processLLMSuccess(result, candidateModel, params);
   }
 
-  const usage = result.response?.usage ?? {
-    prompt_tokens: 0,
-    completion_tokens: 0,
-  };
+  // All models exhausted — throw with full attempt history
+  const historyStr = attemptHistory
+    .map((a) => `attempt ${a.attempt} ${a.modelId}: ${a.error}`)
+    .join("; ");
+  throw new Error(
+    `All providers failed after ${attemptHistory.length} attempt(s): ${historyStr}`,
+  );
+}
+
+/** Process a successful LLM result: deduct credits, record planner step, extract text */
+async function processLLMSuccess(
+  result: Extract<Awaited<ReturnType<typeof executeWithFallback>>, { type: "success" }>,
+  actualModel: string,
+  params: {
+    userId: number;
+    tenantId?: string;
+    billingContext?: SkillLLMBillingContext;
+    taskRunId?: number;
+    plannerPlan?: import("./taskExecutionPlanner").TaskExecutionPlan;
+    plannerSnapshot?: import("./modelResolver").ModelResolutionSnapshot | null;
+  },
+): Promise<string> {
+  const usage = result.response?.usage ?? { prompt_tokens: 0, completion_tokens: 0 };
   const inputTokens = Number(usage.prompt_tokens ?? 0);
   const outputTokens = Number(usage.completion_tokens ?? 0);
   const costUsdValue = Number(usage.cost ?? 0);
@@ -4907,7 +6606,7 @@ async function invokeSkillTextLLM(params: {
     await deductCreditsForModel({
       userId: params.userId,
       tenantId: params.tenantId,
-      model: params.model,
+      model: actualModel,
       provider: result.providerName,
       inputTokens: Number.isFinite(inputTokens) ? inputTokens : 0,
       outputTokens: Number.isFinite(outputTokens) ? outputTokens : 0,
@@ -4930,12 +6629,11 @@ async function invokeSkillTextLLM(params: {
     throw new BillingChargeError(`LLM credit deduction failed: ${sanitizeErrorMessage(err)}`);
   }
 
-  // Record step attempt for planner tracking
   if (params.taskRunId && params.plannerPlan) {
     recordStepAttempt({
       taskRunId: params.taskRunId,
       plan: params.plannerPlan,
-      model: params.model,
+      model: actualModel,
       provider: result.providerName,
       inputTokens,
       outputTokens,
@@ -4946,6 +6644,47 @@ async function invokeSkillTextLLM(params: {
 
   const content = result.response?.choices?.[0]?.message?.content;
   return extractTextContent(content) || JSON.stringify(content);
+}
+
+/**
+ * Build an ordered list of up to `maxCandidates` enabled models for cross-model fallback.
+ * Uses shared Feature 041 priority system: primary model → remaining by priority ASC.
+ * All models are fetched from DB — no hardcoded model IDs.
+ */
+async function buildCrossModelFallbackCandidates(
+  primaryModel: string,
+  strictPin?: boolean,
+  maxCandidates: number = MAX_CROSS_MODEL_ATTEMPTS,
+): Promise<string[]> {
+  if (strictPin) {
+    return [primaryModel];
+  }
+
+  const seen = new Set<string>();
+  const result: string[] = [];
+  const add = (m: string) => {
+    const trimmed = m.trim();
+    if (trimmed && !seen.has(trimmed) && result.length < maxCandidates) {
+      seen.add(trimmed);
+      result.push(trimmed);
+    }
+  };
+
+  // 1. Primary model is always first
+  add(primaryModel);
+
+  // 2. Fill remaining with all enabled models sorted by priority (cheapest first)
+  try {
+    const rows = await loadEnabledLlmModelRows();
+    const sorted = [...rows].sort((a, b) => a.priority - b.priority);
+    for (const row of sorted) {
+      add(row.modelId);
+    }
+  } catch {
+    // DB unavailable — we still have the primary model
+  }
+
+  return result;
 }
 
 function buildTextModelResolutionCandidates(preferredModel: string): string[] {
@@ -5010,10 +6749,11 @@ async function resolveRoutableTextModel(
     throw new Error(`No providers available for model: ${preferred} with preferred provider ${preferredProviderId}`);
   }
 
-  if (preferred !== DEFAULT_TEXT_MODEL) {
-    const defaultProviders = await resolveProviders(DEFAULT_TEXT_MODEL).catch(() => []);
+  const dynamicDefault = await resolveDefaultTextModel();
+  if (preferred !== dynamicDefault) {
+    const defaultProviders = await resolveProviders(dynamicDefault).catch(() => []);
     if (defaultProviders.length > 0) {
-      return DEFAULT_TEXT_MODEL;
+      return dynamicDefault;
     }
   }
 
@@ -5046,8 +6786,23 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
   const renderableSource = getRelayoutRenderableSourceContent(parsedContent);
   const analysisContent = renderableSource.slideContent;
   warnings.push(...renderableSource.warnings);
+  const existingAIDesign = parsedContent.aiDesign?.source === "draft-with-ai"
+    ? parsedContent.aiDesign
+    : null;
   let preferredComponentRecipeId = input.preferredComponentRecipeId ?? resolveRelayoutComponentRecipeId(parsedContent);
   const narrative = extractRelayoutNarrative(input.slideTitle, parsedContent, analysisContent, input.slideNotes);
+  const preferredMode = existingAIDesign?.userOverrideMode ?? null;
+  if (preferredMode === "long_form_block") {
+    preferredComponentRecipeId = "sectioned-explainer";
+  } else if (preferredMode === "structured_block" && preferredComponentRecipeId === "sectioned-explainer") {
+    preferredComponentRecipeId = undefined;
+  } else if (preferredMode === "llm_layout_dsl" || preferredMode === "full_slide_media") {
+    warnings.push(
+      existingAIDesign?.modeLocked
+        ? `Locked AI mode "${preferredMode}" is preserved in metadata, but auto relayout currently rebuilds this slide through the structured layout path.`
+        : `Preferred AI mode "${preferredMode}" is preserved in metadata, but auto relayout currently rebuilds this slide through the structured layout path.`,
+    );
+  }
   const sourceImageElement = pickLargestImageElement(analysisContent);
   const sourceVideoElement = pickLargestVideoElement(analysisContent);
   const relayoutMediaSources = collectRelayoutMediaSources(analysisContent);
@@ -5084,6 +6839,11 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
     graphicCategory,
     hasImage: relayoutMediaSources.imageUrls.length > 0,
     hasVideo: relayoutMediaSources.videoUrls.length > 0,
+  });
+  const relayoutTelemetrySelection = resolveAIComponentRecipeForSlide({
+    slide: recipeSelectionSeed,
+    slideIndex: Math.max(0, input.slideIndex - 1),
+    preferVideoRecipes: relayoutMediaSources.videoUrls.length > 0 && relayoutMediaSources.imageUrls.length === 0,
   });
   const recipeSelection = resolveRelayoutComponentRecipeSelection({
     preferredComponentRecipeId,
@@ -5279,6 +7039,63 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
     },
     ...(preserveVisualOnly ? { visualOnly: true } : {}),
   };
+  if (existingAIDesign) {
+    const relayoutMode = preferredComponentRecipeId
+      ? resolveLayoutModeForRecipe(preferredComponentRecipeId)
+      : (preferredMode ?? relayoutTelemetrySelection.mode);
+    relayoutContent = {
+      ...relayoutContent,
+      aiDesign: {
+        source: "draft-with-ai",
+        ...(existingAIDesign.taskId ? { taskId: existingAIDesign.taskId } : {}),
+        schemaVersion: "presentation_ai_layout_v1",
+        mode: relayoutMode,
+        ...(relayoutTelemetrySelection.candidateModes.length
+          ? { candidateModes: relayoutTelemetrySelection.candidateModes }
+          : {}),
+        ...(existingAIDesign.modeLocked !== undefined ? { modeLocked: existingAIDesign.modeLocked } : {}),
+        ...(existingAIDesign.userOverrideMode !== undefined
+          ? { userOverrideMode: existingAIDesign.userOverrideMode }
+          : {}),
+        ...(existingAIDesign.fitScore ? { fitScore: existingAIDesign.fitScore } : {}),
+        ...(existingAIDesign.compactionLevel ? { compactionLevel: existingAIDesign.compactionLevel } : {}),
+        ...(preferredComponentRecipeId ? { componentRecipeId: preferredComponentRecipeId } : {}),
+        selectionMode: input.preferredComponentRecipeId ? "manual-override" : relayoutTelemetrySelection.selectionMode,
+        selectionReason: input.preferredComponentRecipeId
+          ? `Auto relayout preserved the manually selected block recipe ${preferredComponentRecipeId}.`
+          : relayoutTelemetrySelection.selectionReason,
+        ...(relayoutTelemetrySelection.candidateRecipes.length
+          ? { candidateRecipes: relayoutTelemetrySelection.candidateRecipes }
+          : {}),
+        narrative: {
+          title: slideData.title,
+          body: [...slideData.body],
+          ...(slideData.notes ? { notes: slideData.notes } : {}),
+          ...(slideData.sections?.length
+            ? {
+              sections: slideData.sections.map((section) => ({
+                heading: section.heading,
+                details: [...section.details],
+              })),
+            }
+            : {}),
+          ...(slideData.graphicCategory ? { graphicCategory: slideData.graphicCategory } : {}),
+          templateId: slideData.templateId,
+        },
+        ...(existingAIDesign.overrideHistory?.length
+          ? { overrideHistory: existingAIDesign.overrideHistory.map((entry) => ({ ...entry })) }
+          : {}),
+        ...(existingAIDesign.sourceTrace?.length
+          ? { sourceTrace: existingAIDesign.sourceTrace.map((entry) => ({ ...entry })) }
+          : {}),
+        ...(existingAIDesign.fallbackHistory?.length
+          ? { fallbackHistory: existingAIDesign.fallbackHistory.map((entry) => ({ ...entry })) }
+          : {}),
+        ...(existingAIDesign.mediaModeMetadata ? { mediaModeMetadata: existingAIDesign.mediaModeMetadata } : {}),
+        generatedAt: new Date().toISOString(),
+      },
+    };
+  }
   if (watermark) {
     const watermarkApplied = applyWatermarkToSlideContent(relayoutContent, watermark);
     relayoutContent = watermarkApplied.slideContent;
@@ -5328,6 +7145,262 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
       reusedImage: Boolean(primaryMediaSrc),
     },
   };
+}
+
+function appendRelayoutFallbackHistory(
+  slideContent: PresentationSlideContent,
+  entry: Omit<PresentationAIDesignFallbackHistory, "timestamp">,
+): PresentationSlideContent {
+  if (!slideContent.aiDesign || slideContent.aiDesign.source !== "draft-with-ai") {
+    return slideContent;
+  }
+  return {
+    ...slideContent,
+    aiDesign: {
+      ...slideContent.aiDesign,
+      fallbackHistory: mergeFallbackHistoryEntries(
+        slideContent.aiDesign.fallbackHistory,
+        [makeFallbackHistoryEntry(entry)],
+      ),
+    },
+  };
+}
+
+function buildAdvancedRelayoutNarrative(
+  input: RelayoutSlideInput,
+  parsedContent: PresentationSlideContent,
+): AIPresentationSlide {
+  const existingAIDesign = parsedContent.aiDesign?.source === "draft-with-ai"
+    ? parsedContent.aiDesign
+    : null;
+  const existingNarrative = existingAIDesign?.narrative;
+  if (existingNarrative) {
+    return normalizeSlideHierarchy({
+      templateId: existingNarrative.templateId ?? input.templateId ?? "split_right_image",
+      title: existingNarrative.title,
+      body: existingNarrative.body,
+      ...(existingNarrative.notes ? { notes: existingNarrative.notes } : {}),
+      ...(existingNarrative.sections?.length ? { sections: existingNarrative.sections } : {}),
+      ...(existingNarrative.graphicCategory ? { graphicCategory: existingNarrative.graphicCategory } : {}),
+      imagePromptKeywords: `${existingNarrative.title}\n${existingNarrative.body.join("\n")}`.slice(0, 500),
+    });
+  }
+
+  const renderable = getRelayoutRenderableSourceContent(parsedContent).slideContent;
+  const narrative = extractRelayoutNarrative(input.slideTitle, parsedContent, renderable, input.slideNotes);
+  const combinedText = `${narrative.title}\n${narrative.body.join("\n")}\n${narrative.notes ?? ""}`;
+  return normalizeSlideHierarchy({
+    templateId: input.templateId ?? "split_right_image",
+    title: narrative.title,
+    body: narrative.body,
+    ...(narrative.notes ? { notes: narrative.notes } : {}),
+    ...(narrative.sections.length > 0 ? { sections: narrative.sections } : {}),
+    graphicCategory: inferGraphicCategoryFromText(combinedText),
+    imagePromptKeywords: combinedText.slice(0, 500),
+  });
+}
+
+export async function relayoutExistingSlideAsync(
+  input: RelayoutSlideInput,
+  actor: PresentationActor,
+): Promise<RelayoutSlideOutput> {
+  const syncResult = relayoutExistingSlide(input);
+  const parsedContent = presentationSlideContentSchema.parse(input.slideContent);
+  const existingAIDesign = parsedContent.aiDesign?.source === "draft-with-ai"
+    ? parsedContent.aiDesign
+    : null;
+  const preferredMode = existingAIDesign?.userOverrideMode ?? null;
+  const shouldHonorAdvancedMode = existingAIDesign
+    && (existingAIDesign.modeLocked || preferredMode === "llm_layout_dsl" || preferredMode === "full_slide_media");
+  if (!shouldHonorAdvancedMode || (!preferredMode && existingAIDesign?.mode !== "llm_layout_dsl" && existingAIDesign?.mode !== "full_slide_media")) {
+    return syncResult;
+  }
+
+  const targetMode = preferredMode ?? existingAIDesign?.mode;
+  if (targetMode === "llm_layout_dsl") {
+    if (!isPresentationLayoutDslEnabled()) {
+      return {
+        ...syncResult,
+        slideContent: appendRelayoutFallbackHistory(syncResult.slideContent, {
+          step: "blocked_provider_policy",
+          from: "llm_layout_dsl",
+          to: syncResult.slideContent.aiDesign?.mode ?? "structured_block",
+          reason: "Layout DSL relayout is disabled for this environment.",
+        }),
+        warnings: [...syncResult.warnings, "Layout DSL mode is locked in metadata, but the DSL relayout feature flag is disabled."],
+      };
+    }
+    const canvas = resolveSlideCanvasDimensions(parsedContent);
+    const narrativeSlide = buildAdvancedRelayoutNarrative(input, parsedContent);
+    const dsl = await callLLMStructured({
+      systemPrompt: [
+        "Design a bounded presentation slide as JSON only.",
+        "Use only the allowed primitives.",
+        "Keep within the provided element budgets.",
+        "Do not emit HTML, markdown, or unsupported properties.",
+      ].join("\n"),
+      userMessage: buildLayoutDslPromptRequest({
+        slide: narrativeSlide,
+        canvasWidth: canvas.width,
+        canvasHeight: canvas.height,
+      }),
+      model: getDefaultTextModelSync(),
+      zodSchema: presentationLayoutDslResponseSchema,
+      userId: actor.userId,
+      tenantId: actor.tenantId,
+      billingDescription: `AI relayout layout DSL (${input.slideTitle.slice(0, 80)})`,
+      billingMetadata: {
+        operation: "ai_relayout_layout_dsl",
+        deckTitle: input.deckTitle,
+        slideIndex: input.slideIndex,
+      },
+    });
+    const normalized = normalizePresentationLayoutDslToSlideContent({
+      draft: dsl.data,
+      canvasWidth: canvas.width,
+      canvasHeight: canvas.height,
+    });
+    if (dsl.data.status !== "ok" || !normalized) {
+      return {
+        ...syncResult,
+        slideContent: appendRelayoutFallbackHistory(syncResult.slideContent, {
+          step: "switch_mode",
+          from: "llm_layout_dsl",
+          to: syncResult.slideContent.aiDesign?.mode ?? "structured_block",
+          reason: dsl.data.fallbackSuggestion?.reason ?? "Layout DSL relayout returned no usable content.",
+        }),
+        warnings: [
+          ...syncResult.warnings,
+          dsl.data.fallbackSuggestion?.reason ?? "Layout DSL relayout returned no usable content and fell back to structured layout.",
+        ],
+      };
+    }
+    return {
+      ...syncResult,
+      slideContent: finalizeSlideContentAfterRelayout({
+        ...normalized,
+        transition: parsedContent.transition,
+        durationMs: parsedContent.durationMs,
+        background: parsedContent.background,
+        aiDesign: syncResult.slideContent.aiDesign
+          ? {
+            ...syncResult.slideContent.aiDesign,
+            mode: "llm_layout_dsl",
+            generatedAt: new Date().toISOString(),
+          }
+          : undefined,
+      }, []),
+      warnings: syncResult.warnings.filter((warning) => !warning.includes("auto relayout currently rebuilds this slide through the structured layout path.")),
+      applied: syncResult.applied,
+    };
+  }
+
+  if (targetMode === "full_slide_media") {
+    if (!isPresentationFullSlideMediaEnabled()) {
+      return {
+        ...syncResult,
+        slideContent: appendRelayoutFallbackHistory(syncResult.slideContent, {
+          step: "blocked_provider_policy",
+          from: "full_slide_media",
+          to: syncResult.slideContent.aiDesign?.mode ?? "structured_block",
+          reason: "Full-slide media relayout is disabled for this environment.",
+        }),
+        warnings: [...syncResult.warnings, "Full-slide media mode is locked in metadata, but the full-slide relayout feature flag is disabled."],
+      };
+    }
+    const canvas = resolveSlideCanvasDimensions(parsedContent);
+    const imageElement = pickLargestImageElement(parsedContent);
+    const videoElement = pickLargestVideoElement(parsedContent);
+    const narrativeSlide = buildAdvancedRelayoutNarrative(input, parsedContent);
+    const preferGeneratedVideo = Boolean(videoElement?.src && !imageElement?.src);
+    const generatedMedia = input.userToken
+      ? await generateFullSlideMediaAssetForRelayout({
+        slide: narrativeSlide,
+        slideIndex: input.slideIndex,
+        actor,
+        userToken: input.userToken,
+        preferredMediaType: preferGeneratedVideo ? "video" : "image",
+      }).catch(() => null)
+      : null;
+    const mediaSrc = generatedMedia?.mediaUrl ?? imageElement?.src ?? videoElement?.src ?? null;
+    if (!mediaSrc) {
+      return {
+        ...syncResult,
+        slideContent: appendRelayoutFallbackHistory(syncResult.slideContent, {
+          step: "switch_mode",
+          from: "full_slide_media",
+          to: syncResult.slideContent.aiDesign?.mode ?? "structured_block",
+          reason: "Full-slide media relayout could not generate a new visual and found no reusable image or video.",
+        }),
+        warnings: [...syncResult.warnings, "Full-slide media relayout could not generate a new visual and found no reusable image or video on the slide."],
+      };
+    }
+    const relayoutContent = buildFullSlideMediaContent({
+      slide: narrativeSlide,
+      mediaUrl: mediaSrc,
+      canvasWidth: canvas.width,
+      canvasHeight: canvas.height,
+      isVideo: generatedMedia?.isVideo ?? Boolean(videoElement?.src && !imageElement?.src),
+    });
+    const relayoutElements = generatedMedia
+      ? relayoutContent.elements.map((element) => {
+        if (element.type === "image") {
+          return {
+            ...element,
+            imagePrompt: generatedMedia.prompt.slice(0, 4000),
+            ...(generatedMedia.modelId ? { imageModelId: generatedMedia.modelId.slice(0, 256) } : {}),
+            ...(generatedMedia.extraParams && Object.keys(generatedMedia.extraParams).length > 0
+              ? { imageExtraParams: generatedMedia.extraParams }
+              : {}),
+          };
+        }
+        if (element.type === "video") {
+          return {
+            ...element,
+            videoPrompt: generatedMedia.prompt.slice(0, 4000),
+            ...(generatedMedia.modelId ? { videoModelId: generatedMedia.modelId.slice(0, 256) } : {}),
+            ...(generatedMedia.extraParams && Object.keys(generatedMedia.extraParams).length > 0
+              ? { videoExtraParams: generatedMedia.extraParams }
+              : {}),
+          };
+        }
+        return element;
+      })
+      : relayoutContent.elements;
+    return {
+      ...syncResult,
+      slideContent: finalizeSlideContentAfterRelayout({
+        ...relayoutContent,
+        elements: relayoutElements,
+        transition: parsedContent.transition,
+        durationMs: parsedContent.durationMs,
+        background: parsedContent.background,
+        aiDesign: syncResult.slideContent.aiDesign
+          ? {
+            ...syncResult.slideContent.aiDesign,
+            mode: "full_slide_media",
+            mediaModeMetadata: {
+              editableSourceRetained: true,
+              thaiTextRisk: estimateThaiTextRisk(narrativeSlide),
+              visualIntent: detectFullSlideVisualIntent(narrativeSlide, Math.max(0, input.slideIndex - 1)),
+              ...(generatedMedia?.modelId ? { modelId: generatedMedia.modelId } : {}),
+              ...(generatedMedia ? { promptVersion: "full_slide_media_v1" } : {}),
+            },
+            generatedAt: new Date().toISOString(),
+          }
+          : undefined,
+      }, []),
+      warnings: [
+        ...syncResult.warnings.filter((warning) => !warning.includes("auto relayout currently rebuilds this slide through the structured layout path.")),
+        generatedMedia
+          ? "Rebuilt this slide as a full-slide media layout with a newly generated visual."
+          : "Rebuilt this slide as a full-slide media layout using the existing reusable visual.",
+      ],
+      applied: syncResult.applied,
+    };
+  }
+
+  return syncResult;
 }
 
 export async function repairSlideFromSavedNote(
@@ -6549,6 +8622,174 @@ function normalizeSlideHierarchy(slide: AIPresentationSlide): AIPresentationSlid
   return normalizeSlideHierarchyCore(reconciled);
 }
 
+function coerceNarrativeLines(
+  values: unknown[] | undefined,
+  maxItems: number,
+  maxChars: number,
+): string[] {
+  if (!values?.length) {
+    return [];
+  }
+
+  const normalized: string[] = [];
+  const seen = new Set<string>();
+  for (const value of values) {
+    if (
+      typeof value !== "string"
+      && typeof value !== "number"
+      && typeof value !== "boolean"
+    ) {
+      continue;
+    }
+    for (const line of normalizeTextLines(String(value))) {
+      const cleaned = normalizeSlideText(line).slice(0, maxChars);
+      const key = cleaned.toLowerCase();
+      if (!cleaned || seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      normalized.push(cleaned);
+      if (normalized.length >= maxItems) {
+        return normalized;
+      }
+    }
+  }
+  return normalized;
+}
+
+function repairPlannedSlide(
+  slide: LenientAIPresentationSlide,
+  index: number,
+): AIPresentationSlide {
+  const fallback = buildFallbackSlide(index);
+  const templateId = isSupportedLayoutTemplateId(slide.templateId)
+    ? slide.templateId
+    : fallback.templateId;
+  const rawNote = typeof slide.notes === "string"
+    ? canonicalizeSlideNotesForNarrative(slide.notes).slice(0, 5_000)
+    : "";
+  const normalizedNote = normalizeSlideText(rawNote).slice(0, 5_000);
+  const fallbackTitle = typeof slide.title === "string" && slide.title.trim().length > 0
+    ? slide.title
+    : fallback.title;
+  const noteNarrative = rawNote
+    ? extractNarrativeFromSlideNotes(fallbackTitle, rawNote, templateId, index)
+    : null;
+  const title = (
+    normalizeSlideText(slide.title ?? "").slice(0, 200)
+    || noteNarrative?.title
+    || fallback.title
+  );
+  const { min, max } = getTemplateBodyLimits(templateId);
+
+  const bodyFromResponse = coerceNarrativeLines(
+    slide.body,
+    max,
+    AI_NARRATIVE_MAX_BODY_CHARS,
+  );
+  const bodyFromHierarchy = (slide.markdownHierarchy ?? [])
+    .filter((line) => line.level === "body" || line.level === "h3")
+    .flatMap((line) => normalizeTextLines(line.text ?? ""))
+    .map((line) => normalizeNarrativeBodyLine(line))
+    .filter((line) => line.length > 0);
+
+  const explicitSections = (slide.sections ?? [])
+    .map((section) => normalizeNarrativeSection({
+      heading: section.heading ?? "",
+      details: coerceNarrativeLines(
+        section.details,
+        AI_NARRATIVE_MAX_SECTION_DETAILS,
+        AI_NARRATIVE_MAX_SECTION_DETAIL_CHARS,
+      ),
+    }))
+    .filter((section): section is { heading: string; details: string[] } => Boolean(section));
+
+  const seededBody = bodyFromResponse.length >= min
+    ? bodyFromResponse
+    : mergeUniqueNarrativeLines(
+      bodyFromResponse,
+      [
+        ...bodyFromHierarchy,
+        ...explicitSections.flatMap((section) => section.details),
+        ...(noteNarrative?.body ?? []),
+      ],
+      max,
+    );
+  const body = seededBody.length >= min
+    ? seededBody
+    : mergeUniqueNarrativeLines(
+      seededBody,
+      deriveBodyFromCanonicalNote(rawNote || title, templateId),
+      max,
+    );
+
+  const sections = mergeUniqueNarrativeSections(
+    explicitSections,
+    noteNarrative?.sections ?? buildSlideSectionsFromBody(body, templateId),
+    templateId === "hero_center" ? 2 : 6,
+  );
+
+  const markdownHierarchy = (slide.markdownHierarchy ?? [])
+    .map((line) => ({
+      level: line.level === "h2" || line.level === "h3" || line.level === "body"
+        ? line.level
+        : "body",
+      text: normalizeSlideText(line.text ?? "").slice(0, 260),
+    }))
+    .filter((line) => line.text.length > 0)
+    .slice(0, 24);
+
+  const mediaPlan = (slide.mediaPlan ?? [])
+    .map((entry) => ({
+      slotId: normalizeSlideText(entry.slotId ?? "").slice(0, 64),
+      prompt: normalizeSlideText(entry.prompt ?? "").slice(0, 500),
+    }))
+    .filter((entry) => entry.slotId.length > 0 && entry.prompt.length > 0)
+    .slice(0, 8);
+
+  return normalizeSlideHierarchy({
+    templateId,
+    ...(isSupportedAIComponentRecipeId(slide.componentRecipeId)
+      ? { componentRecipeId: slide.componentRecipeId }
+      : {}),
+    ...(mediaPlan.length > 0 ? { mediaPlan } : {}),
+    title,
+    body: body.length > 0 ? body : fallback.body,
+    ...(normalizedNote ? { notes: normalizedNote } : {}),
+    ...(markdownHierarchy.length > 0 ? { markdownHierarchy } : {}),
+    ...(sections.length > 0 ? { sections } : {}),
+    graphicCategory: isSupportedGraphicCategoryId(slide.graphicCategory)
+      ? slide.graphicCategory
+      : fallback.graphicCategory,
+    imagePromptKeywords:
+      normalizeSlideText(slide.imagePromptKeywords ?? "").slice(0, 500)
+      || fallback.imagePromptKeywords,
+  });
+}
+
+function repairPlannedSlides(
+  slides: LenientAIPresentationSlide[],
+  warnings: string[],
+): AIPresentationSlide[] {
+  let repairedCount = 0;
+  const normalizedSlides = slides.map((slide, index) => {
+    const parsed = AIPresentationSlideSchema.safeParse(slide);
+    if (parsed.success) {
+      return normalizeSlideHierarchy(parsed.data);
+    }
+    repairedCount += 1;
+    return repairPlannedSlide(slide, index);
+  });
+
+  if (repairedCount > 0) {
+    warnings.push(
+      `Slide structuring repaired incomplete AI output for ${repairedCount} slide(s) before rendering.`,
+    );
+  }
+
+  return normalizedSlides;
+}
+
 function buildFallbackSlide(index: number, seed?: AIPresentationSlide): AIPresentationSlide {
   const nonIntroTemplates: Array<(typeof AI_LAYOUT_TEMPLATE_IDS)[number]> = [
     "split_right_image",
@@ -6928,6 +9169,7 @@ export async function generateAIDraft(
   const lockKey = `ai_draft_lock:${actor.userId}`;
   const cancelKey = `ai_draft_cancel:${taskId}`;
   const warnings: string[] = [];
+  const requestedTextModel = input.textModel?.trim() || undefined;
 
   async function updateProgress(partial: Partial<AIDraftProgress>): Promise<void> {
     const progress: AIDraftProgress & { userId: number } = {
@@ -6938,6 +9180,7 @@ export async function generateAIDraft(
       totalSlides: input.numSlides,
       slidePreview: [],
       completed: false,
+      updatedAt: new Date().toISOString(),
       ...partial,
     };
     await redis.set(progressKey, JSON.stringify(progress), "EX", PROGRESS_TTL_SECONDS);
@@ -6954,6 +9197,32 @@ export async function generateAIDraft(
       cancelled: true,
       phaseLabel: "Cancelled",
     });
+  }
+
+  function isCancellationError(error: unknown): error is AIDraftCancelledError {
+    return error instanceof AIDraftCancelledError;
+  }
+
+  async function awaitUntilCancellable<T>(
+    promise: Promise<T>,
+    label: string,
+  ): Promise<T> {
+    let stopped = false;
+    const cancellationWatcher = (async () => {
+      while (!stopped) {
+        if (await isCancelled()) {
+          throw new AIDraftCancelledError(label);
+        }
+        await sleep(AI_DRAFT_CANCEL_POLL_INTERVAL_MS);
+      }
+      throw new Error("cancellation_watcher_stopped");
+    })();
+
+    try {
+      return await Promise.race([promise, cancellationWatcher]);
+    } finally {
+      stopped = true;
+    }
   }
 
   async function refreshLockIfOwned(): Promise<void> {
@@ -7123,7 +9392,7 @@ export async function generateAIDraft(
       sourceType: "presentation",
       userId: actor.userId,
       tenantId: actor.tenantId,
-      conversationModel: DEFAULT_TEXT_MODEL,
+      conversationModel: await resolveDefaultTextModel(),
       skillSlug: "ai-presentation",
     }).catch(() => null);
     const taskRunId = plannerResult?.taskRunId;
@@ -7135,12 +9404,18 @@ export async function generateAIDraft(
       !input.useCustomArticle && primaryDraftSkillCapability !== "article";
 
     let articleText = "";
-    let articleModel = DEFAULT_TEXT_MODEL;
+    let articleModel = await resolveRoutableTextModel(
+      requestedTextModel ?? await resolveDefaultTextModel(),
+    );
     let articlePreferredProviderId: number | undefined;
     let articleStrictProviderPin = false;
 
     if (input.useCustomArticle && sanitizedCustomArticleText) {
-      await updateProgress({ phase: 1, phaseLabel: "Using provided article..." });
+      await updateProgress({
+        phase: 1,
+        phaseLabel: "Using provided article...",
+        phaseDetail: "Preparing slide structure from the article you provided.",
+      });
       auditLogger.log({
         traceId: taskId,
         timestamp: new Date().toISOString(),
@@ -7154,7 +9429,9 @@ export async function generateAIDraft(
         },
       });
       articleText = sanitizedCustomArticleText;
-      articleModel = await resolveRoutableTextModel(DEFAULT_TEXT_MODEL);
+      articleModel = await resolveRoutableTextModel(
+        requestedTextModel ?? await resolveDefaultTextModel(),
+      );
     } else if (shouldPlanSlidesDirectlyFromTopic) {
       if (!primaryDraftSkillId || !primaryDraftSkill) {
         await updateProgress({
@@ -7177,7 +9454,11 @@ export async function generateAIDraft(
         return;
       }
 
-      await updateProgress({ phase: 1, phaseLabel: "Planning slides from topic..." });
+      await updateProgress({
+        phase: 1,
+        phaseLabel: "Planning slides from topic...",
+        phaseDetail: "Choosing a slide structure directly from your topic.",
+      });
       auditLogger.log({
         traceId: taskId,
         timestamp: new Date().toISOString(),
@@ -7194,15 +9475,21 @@ export async function generateAIDraft(
       articlePreferredProviderId = primaryDraftSkill.preferredProviderId;
       articleStrictProviderPin = Boolean(primaryDraftSkill.strictProviderPin);
       articleModel = await resolveRoutableTextModel(
-        primaryDraftSkill.systemPrompt
+        requestedTextModel ?? (
+          primaryDraftSkill.systemPrompt
           ? resolveSkillModel(primaryDraftSkill)
-          : DEFAULT_TEXT_MODEL,
+          : getDefaultTextModelSync()
+        ),
         articlePreferredProviderId,
         articleStrictProviderPin,
       );
       articleText = sanitizedPrompt;
     } else {
-      await updateProgress({ phase: 1, phaseLabel: "Writing article..." });
+      await updateProgress({
+        phase: 1,
+        phaseLabel: "Writing article...",
+        phaseDetail: "Generating a source article before splitting it into slides.",
+      });
 
       auditLogger.log({
         traceId: taskId,
@@ -7228,7 +9515,7 @@ export async function generateAIDraft(
       articlePreferredProviderId = articleSkill.preferredProviderId;
       articleStrictProviderPin = Boolean(articleSkill.strictProviderPin);
       articleModel = await resolveRoutableTextModel(
-        resolveSkillModel(articleSkill),
+        requestedTextModel ?? resolveSkillModel(articleSkill),
         articlePreferredProviderId,
         articleStrictProviderPin,
       );
@@ -7241,7 +9528,7 @@ export async function generateAIDraft(
       );
 
       try {
-        articleText = await invokeSkillTextLLM({
+        articleText = await awaitUntilCancellable(invokeSkillTextLLM({
           model: articleModel,
           systemPrompt: articleSkill.systemPrompt,
           userPrompt: articlePrompt,
@@ -7260,8 +9547,12 @@ export async function generateAIDraft(
           taskRunId,
           plannerPlan: plannerResult?.plan,
           plannerSnapshot: plannerResult?.snapshot,
-        });
+        }), "article_generation_cancelled");
       } catch (err) {
+        if (isCancellationError(err)) {
+          await setCancelled();
+          return;
+        }
         const sanitizedError = sanitizeErrorMessage(err);
         auditLogger.log({
           traceId: taskId,
@@ -7309,12 +9600,15 @@ export async function generateAIDraft(
       phaseLabel: shouldPlanSlidesDirectlyFromTopic
         ? "Structuring slides from topic..."
         : "Splitting into slides...",
+      phaseDetail: shouldPlanSlidesDirectlyFromTopic
+        ? `Waiting for ${articleModel} to return structured slide JSON from your topic.`
+        : `Waiting for ${articleModel} to split the generated article into structured slides.`,
     });
 
     let slides: AIPresentationSlide[];
     try {
       if (shouldPlanSlidesDirectlyFromTopic) {
-        const planResult = await callLLMStructured({
+        const planResult = await awaitUntilCancellable(callLLMStructured({
           systemPrompt: TOPIC_TO_SLIDES_SYSTEM_PROMPT,
           userMessage: buildTopicToSlidesUserPrompt(
             sanitizedPrompt,
@@ -7326,7 +9620,7 @@ export async function generateAIDraft(
           model: articleModel,
           preferredProviderId: articlePreferredProviderId,
           strictProviderPin: articleStrictProviderPin,
-          zodSchema: AIPresentationSchema,
+          zodSchema: LenientAIPresentationSchema,
           userId: actor.userId,
           tenantId: actor.tenantId,
           billingDescription: `AI Draft topic-to-slide planning (Deck #${input.deckId})`,
@@ -7338,18 +9632,18 @@ export async function generateAIDraft(
             stage: "topic_to_slide_plan",
             promptPreview: sanitizedPrompt.slice(0, 500),
           },
-        });
-        slides = normalizeSlidesToRequestedCount(planResult.data, input.numSlides, warnings)
+        }), "topic_to_slide_plan_cancelled");
+        slides = normalizeSlidesToRequestedCount(repairPlannedSlides(planResult.data, warnings), input.numSlides, warnings)
           .map((slide) => normalizeSlideHierarchy(slide));
       } else {
         const splitArticleExcerpt = buildSlideSplitArticleExcerpt(articleText, input.numSlides, warnings);
-        const splitResult = await callLLMStructured({
+        const splitResult = await awaitUntilCancellable(callLLMStructured({
           systemPrompt: SLIDE_SPLIT_SYSTEM_PROMPT,
           userMessage: buildSlideSplitUserPrompt(splitArticleExcerpt, input.numSlides),
           model: articleModel,
           preferredProviderId: articlePreferredProviderId,
           strictProviderPin: articleStrictProviderPin,
-          zodSchema: AIPresentationSchema,
+          zodSchema: LenientAIPresentationSchema,
           userId: actor.userId,
           tenantId: actor.tenantId,
           billingDescription: `AI Draft slide structuring (Deck #${input.deckId})`,
@@ -7361,16 +9655,23 @@ export async function generateAIDraft(
             stage: "slide_split",
             promptPreview: splitArticleExcerpt.slice(0, 500),
           },
-        });
-        slides = normalizeSlidesToRequestedCount(splitResult.data, input.numSlides, warnings)
+        }), "article_split_cancelled");
+        slides = normalizeSlidesToRequestedCount(repairPlannedSlides(splitResult.data, warnings), input.numSlides, warnings)
           .map((slide) => normalizeSlideHierarchy(slide));
       }
     } catch (err) {
+      if (isCancellationError(err)) {
+        await setCancelled();
+        return;
+      }
       await updateProgress({
         completed: true,
         error: {
           code: PRESENTATION_ERROR_CODE.AI_INVALID_RESPONSE,
-          message: `${shouldPlanSlidesDirectlyFromTopic ? "Topic planning" : "Article split"} failed: ${sanitizeErrorMessage(err)}`,
+          message: formatSlidePlanningError(
+            shouldPlanSlidesDirectlyFromTopic ? "Topic planning" : "Article split",
+            err,
+          ),
         },
       });
       return;
@@ -7395,8 +9696,82 @@ export async function generateAIDraft(
       preferVideoRecipes: isVideoSkill,
     });
     slides = aiRecipeAssignments.slides;
-    const aiRecipeSelections = aiRecipeAssignments.selections;
-
+    let aiRecipeSelections = aiRecipeAssignments.selections;
+    let aiRecipeCompactionResults: RecipeCompactionOutcome[] = [];
+    for (let slideIndex = 0; slideIndex < slides.length; slideIndex += 1) {
+      const compactionOutcome = await compactSlideForRecipe({
+        slide: slides[slideIndex]!,
+        selection: aiRecipeSelections[slideIndex],
+        actor,
+        taskId,
+        deckId: input.deckId,
+        model: articleModel,
+        preferredProviderId: articlePreferredProviderId,
+        strictProviderPin: articleStrictProviderPin,
+      });
+      slides[slideIndex] = compactionOutcome.slide;
+      aiRecipeCompactionResults.push(compactionOutcome);
+    }
+    const overflowFallbackResolution = await applyOverflowFallbacks({
+      slides,
+      selections: aiRecipeSelections,
+      compactionResults: aiRecipeCompactionResults,
+      actor,
+      taskId,
+      deckId: input.deckId,
+      model: articleModel,
+      preferredProviderId: articlePreferredProviderId,
+      strictProviderPin: articleStrictProviderPin,
+    });
+    slides = overflowFallbackResolution.slides;
+    aiRecipeSelections = overflowFallbackResolution.selections;
+    aiRecipeCompactionResults = overflowFallbackResolution.compactionResults;
+    const aiRecipeFallbackMetadata = overflowFallbackResolution.fallbackMetadata;
+    const advancedModeResolution = await resolveAdvancedLayoutModes({
+      slides,
+      selections: aiRecipeSelections,
+      actor,
+      taskId,
+      deckId: input.deckId,
+      model: articleModel,
+      canvasWidth,
+      canvasHeight,
+      preferredProviderId: articlePreferredProviderId,
+      strictProviderPin: articleStrictProviderPin,
+    });
+    slides = advancedModeResolution.slides;
+    const aiAdvancedModeMetadata = advancedModeResolution.metadata;
+    for (let slideIndex = 0; slideIndex < slides.length; slideIndex += 1) {
+      const selection = aiRecipeSelections[slideIndex];
+      if (!selection) {
+        continue;
+      }
+      const profile = buildPresentationContentProfile(slides[slideIndex]!);
+      logLayoutTelemetryEvent(
+        actor,
+        taskId,
+        buildModeSelectedEvent({
+          deckId: input.deckId,
+          slideIndex,
+          selectedMode: aiAdvancedModeMetadata[slideIndex]?.mode ?? selection.mode,
+          recommendedMode: selection.recommendedMode,
+          candidateModes: selection.candidateModes,
+          enabledModes: {
+            structured_block: true,
+            long_form_block: true,
+            llm_layout_dsl: isPresentationLayoutDslEnabled(),
+            full_slide_media: isPresentationFullSlideMediaEnabled(),
+          },
+          contentMetrics: {
+            totalChars: profile.totalChars,
+            paragraphCount: profile.paragraphCount,
+            sectionCount: profile.sectionCount,
+            denseTextCandidate: profile.denseTextCandidate,
+            visualFirstCandidate: profile.visualFirstCandidate,
+          },
+        }),
+      );
+    }
     // Build slide preview
     const slidePreview: Array<{ title: string; imageStatus: "pending" | "done" | "placeholder" }> = slides.map((s) => ({
       title: s.title,
@@ -7426,7 +9801,7 @@ export async function generateAIDraft(
 
     // Use explicit or implicit media skill (already fetched above for media type detection)
     let imageSkillSystemPrompt: string | null = null;
-    let imageSkillModel = DEFAULT_TEXT_MODEL;
+    let imageSkillModel = getDefaultTextModelSync();
     let imageSkillPreferredProviderId: number | undefined;
     let imageSkillStrictProviderPin: boolean | undefined;
     if (effectiveMediaSkill) {
@@ -7485,6 +9860,30 @@ export async function generateAIDraft(
             mediaUrlsPerSlide[index] = [];
             return;
           }
+          const advancedMode = aiAdvancedModeMetadata[index];
+          if (
+            advancedMode?.mode === "llm_layout_dsl"
+            && advancedMode.slideContentOverride
+            && !getPresentationSlideRenderableElements(advancedMode.slideContentOverride).elements.some(
+              (element) => element.type === "image" || element.type === "video",
+            )
+          ) {
+            mediaUrlsPerSlide[index] = [];
+            deferredMediaTasksPerSlide[index] = [];
+            slidePreview[index] = {
+              ...slidePreview[index],
+              imageStatus: "placeholder",
+            };
+            mediaSlidesFinalized += 1;
+            await updateProgress({
+              phase: 4,
+              phaseLabel: `${isVideoSkill ? "Videos" : "Images"}: ${mediaSlidesFinalized}/${slides.length}`,
+              slidesCompleted: mediaSlidesFinalized,
+              totalSlides: slides.length,
+              slidePreview,
+            });
+            return;
+          }
 
           // Phase 3: Image prompt enhancement
           const baseImagePrompt = appendPromptContext(slide.imagePromptKeywords, sanitizedImagePromptContext);
@@ -7511,7 +9910,7 @@ export async function generateAIDraft(
                   enrichedImagePrompt += `\n\nUser-selected skill parameters:\n${paramLines.join("\n")}`;
                 }
               }
-              imagePrompt = await withTimeout(
+              imagePrompt = await awaitUntilCancellable(withTimeout(
                 invokeSkillTextLLM({
                   model: imageSkillModel,
                   systemPrompt: imageSkillSystemPrompt,
@@ -7535,9 +9934,12 @@ export async function generateAIDraft(
                 }),
                 IMAGE_PROMPT_ENHANCE_TIMEOUT_MS,
                 "image_prompt_enhancement_timeout",
-              );
+              ), "image_prompt_enhancement_cancelled");
               imagePrompt = appendPromptContext(imagePrompt, sanitizedImagePromptContext);
             } catch (err) {
+              if (isCancellationError(err)) {
+                throw err;
+              }
               if (err instanceof BillingChargeError) {
                 setPhase4AbortError(err);
                 throw err;
@@ -7569,7 +9971,7 @@ export async function generateAIDraft(
             let resolvedMediaUrl: string | null = null;
             try {
               throwIfPhase4Aborted();
-              const mediaTask = await withTimeout(
+              const mediaTask = await awaitUntilCancellable(withTimeout(
                 isVideoSkill
                   ? mediaGenerationService.generateVideoAsync(
                       {
@@ -7616,8 +10018,8 @@ export async function generateAIDraft(
                     ),
                 MEDIA_SUBMIT_TIMEOUT_MS,
                 "media_submit_timeout",
-              );
-              const pollResult = await pollMediaTask(
+              ), "media_submit_cancelled");
+              const pollResult = await awaitUntilCancellable(pollMediaTask(
                 mediaTask.id,
                 userToken,
                 mediaPollTimeoutMs,
@@ -7633,7 +10035,7 @@ export async function generateAIDraft(
                     slideIndex: index,
                   },
                 },
-              );
+              ), "media_poll_cancelled");
               throwIfPhase4Aborted();
               if (pollResult.task) {
                 await chargeMediaCreditsForAIDraftTask({
@@ -7687,6 +10089,9 @@ export async function generateAIDraft(
                 }
               }
             } catch (err) {
+              if (isCancellationError(err)) {
+                throw err;
+              }
               if (err instanceof BillingChargeError) {
                 setPhase4AbortError(err);
                 throw err;
@@ -7720,6 +10125,10 @@ export async function generateAIDraft(
         { stopOnError: true },
       );
     } catch (err) {
+      if (isCancellationError(err)) {
+        await setCancelled();
+        return;
+      }
       await updateProgress({
         completed: true,
         error: {
@@ -7763,7 +10172,7 @@ export async function generateAIDraft(
             selectedAudioModel,
             { prompt: narrationText },
           );
-          const audioTask = await withTimeout(
+          const audioTask = await awaitUntilCancellable(withTimeout(
             mediaGenerationService.generateAudioAsync(
               {
                 text: narrationText,
@@ -7783,8 +10192,8 @@ export async function generateAIDraft(
             ),
             MEDIA_SUBMIT_TIMEOUT_MS,
             "media_submit_timeout",
-          );
-          const pollResult = await pollMediaTask(
+          ), "audio_submit_cancelled");
+          const pollResult = await awaitUntilCancellable(pollMediaTask(
             audioTask.id,
             userToken,
             audioPollTimeoutMs,
@@ -7798,7 +10207,7 @@ export async function generateAIDraft(
                 slideIndex: index,
               },
             },
-          );
+          ), "audio_poll_cancelled");
           if (pollResult.task) {
             await chargeMediaCreditsForAIDraftTask({
               userId: actor.userId,
@@ -7845,6 +10254,10 @@ export async function generateAIDraft(
             };
           }
         } catch (err) {
+          if (isCancellationError(err)) {
+            await setCancelled();
+            return;
+          }
           warnings.push(`Slide ${index + 1}: audio generation failed (${sanitizeErrorMessage(err)})`);
         }
 
@@ -8012,6 +10425,9 @@ export async function generateAIDraft(
         },
       );
       const aiRecipeSelection = aiRecipeSelections[i];
+      const aiRecipeCompaction = aiRecipeCompactionResults[i];
+      const aiRecipeFallback = aiRecipeFallbackMetadata[i];
+      const aiAdvancedMode = aiAdvancedModeMetadata[i];
       const deferredTasks = deferredMediaTasksPerSlide[i] ?? [];
       const pendingMediaJobs: SlidePendingMediaJob[] = [];
       if (deferredTasks.length > 0) {
@@ -8074,8 +10490,24 @@ export async function generateAIDraft(
         .map((section) => normalizeNarrativeSection(section))
         .filter((section): section is { heading: string; details: string[] } => Boolean(section))
         .slice(0, 6);
+      const mergedSourceTrace = mergeSourceTraceEntries(aiRecipeFallback?.sourceTrace, aiRecipeCompaction?.sourceTrace);
+      const mergedFallbackHistory = mergeFallbackHistoryEntries(
+        aiRecipeFallback?.fallbackHistory,
+        aiRecipeCompaction?.fallbackHistory,
+        aiAdvancedMode?.fallbackHistory,
+      );
       let slideWithCanvas: PresentationSlideContent = {
-        ...slideContentWithMediaMetadata,
+        ...(aiAdvancedMode?.slideContentOverride
+          ? aiAdvancedMode.slideContentOverride
+          : aiAdvancedMode?.mode === "full_slide_media" && mediaUrlsForSlide[0]
+            ? buildFullSlideMediaContent({
+              slide: slides[i],
+              mediaUrl: mediaUrlsForSlide[0]!,
+              canvasWidth,
+              canvasHeight,
+              isVideo: isVideoSkill,
+            })
+            : slideContentWithMediaMetadata),
         canvas: {
           ...(canvasPreset ? { preset: canvasPreset } : {}),
           width: canvasWidth,
@@ -8087,16 +10519,29 @@ export async function generateAIDraft(
           source: "draft-with-ai",
           taskId,
           schemaVersion: "presentation_ai_layout_v1",
-          mode: aiRecipeSelection?.mode ?? "structured_block",
+          mode: aiAdvancedMode?.mode ?? aiRecipeSelection?.mode ?? "structured_block",
           ...(aiRecipeSelection?.candidateModes?.length
             ? { candidateModes: aiRecipeSelection.candidateModes }
             : {}),
           componentRecipeId: aiRecipeSelection?.componentRecipeId,
+          ...(aiRecipeCompaction?.fitScore ? { fitScore: aiRecipeCompaction.fitScore } : {}),
+          ...(aiRecipeCompaction?.compactionLevel
+            ? { compactionLevel: normalizeRecipeCompactionLevel(aiRecipeCompaction.compactionLevel) }
+            : {}),
           selectionMode: aiRecipeSelection?.selectionMode ?? "none",
           ...(aiRecipeSelection?.selectionReason ? { selectionReason: aiRecipeSelection.selectionReason } : {}),
           ...(aiRecipeSelection?.candidateRecipes?.length
             ? { candidateRecipes: aiRecipeSelection.candidateRecipes }
             : {}),
+          ...(mergedSourceTrace?.length
+            ? { sourceTrace: mergedSourceTrace }
+            : {}),
+          ...(mergedFallbackHistory?.length
+            ? {
+              fallbackHistory: mergedFallbackHistory,
+            }
+            : {}),
+          ...(aiAdvancedMode?.mediaModeMetadata ? { mediaModeMetadata: aiAdvancedMode.mediaModeMetadata } : {}),
           narrative: {
             title: slides[i].title,
             body: narrativeBody.length > 0 ? narrativeBody : ["Key point"],
@@ -8109,6 +10554,28 @@ export async function generateAIDraft(
           generatedAt: aiDesignGeneratedAt,
         },
       };
+      const qualityGate = buildSlideQualityGateMetadata({
+        recipeId: aiRecipeSelection?.componentRecipeId,
+        slotBindings: slides[i].componentSlotBindings,
+        fitScore: aiRecipeCompaction?.fitScore,
+        sourceTrace: mergedSourceTrace,
+      });
+      if (qualityGate.warnings.length > 0) {
+        warnings.push(...qualityGate.warnings.map((warning) => `Slide ${i + 1}: ${warning}`));
+      }
+      if (qualityGate.verdict) {
+        logLayoutTelemetryEvent(
+          actor,
+          taskId,
+          buildQualityGateEvent({
+            deckId: input.deckId,
+            slideIndex: i,
+            verdict: qualityGate.verdict,
+            fitScore: aiRecipeCompaction?.fitScore,
+            issues: qualityGate.issues,
+          }),
+        );
+      }
       if (normalizedWatermark) {
         const watermarkApplied = applyWatermarkToSlideContent(slideWithCanvas, normalizedWatermark);
         slideWithCanvas = watermarkApplied.slideContent;
@@ -8131,6 +10598,37 @@ export async function generateAIDraft(
         );
       } else {
         warnings.push(...layoutWarnings);
+      }
+    }
+
+    // ── Phase 6b: Deck Consistency ──────────────────────────
+    {
+      const deckSlideInputs = compiledSlides.map((s, i) => ({
+        slideIndex: i,
+        mode: (s.aiDesign?.mode ?? "structured_block") as PresentationAILayoutMode,
+        modeLocked: s.aiDesign?.modeLocked,
+        recipeId: s.aiDesign?.componentRecipeId,
+      }));
+      const consistency = evaluateDeckConsistency(deckSlideInputs);
+      if (consistency.warnings.length > 0) {
+        warnings.push(
+          ...consistency.warnings.map((w) => `Deck consistency: ${w.message}`),
+        );
+      }
+      logLayoutTelemetryEvent(actor, taskId, buildDeckConsistencyEvent({
+        deckId: input.deckId,
+        consistencyScore: consistency.score,
+        warnings: consistency.warnings,
+        slideCount: compiledSlides.length,
+      }));
+      for (const slideContent of compiledSlides) {
+        if (!slideContent.aiDesign?.fitScore) {
+          continue;
+        }
+        slideContent.aiDesign.fitScore = {
+          ...slideContent.aiDesign.fitScore,
+          deckConsistency: consistency.score,
+        };
       }
     }
 
@@ -8254,6 +10752,10 @@ export async function generateAIDraft(
       },
     });
   } catch (err) {
+    if (err instanceof AIDraftCancelledError) {
+      await setCancelled().catch(() => {});
+      return;
+    }
     // Unexpected error — catch-all
     await updateProgress({
       completed: true,

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { z } from "zod";
 
 // ── Mock hoisting ────────────────────────────────────────────
 
@@ -29,6 +30,9 @@ const {
   mockRedisExpire,
   mockDbTransaction,
   mockGetModelsByTypeAsync,
+  mockLoadEnabledModelsWithPricing,
+  mockLoadEnabledLlmModelRows,
+  mockSelectBestLlmModel,
 } = vi.hoisted(() => ({
   mockExecuteWithFallback: vi.fn(),
   mockResolveProviders: vi.fn(),
@@ -56,6 +60,9 @@ const {
   mockRedisExpire: vi.fn(),
   mockDbTransaction: vi.fn(),
   mockGetModelsByTypeAsync: vi.fn(),
+  mockLoadEnabledModelsWithPricing: vi.fn(),
+  mockLoadEnabledLlmModelRows: vi.fn(),
+  mockSelectBestLlmModel: vi.fn(),
 }));
 
 vi.mock("../llmRouter", () => ({
@@ -139,6 +146,18 @@ vi.mock("../modelRegistry", () => ({
   getModelsByTypeAsync: mockGetModelsByTypeAsync,
 }));
 
+vi.mock("../capabilityRegistry", () => ({
+  loadEnabledModelsWithPricing: mockLoadEnabledModelsWithPricing,
+}));
+
+vi.mock("../enabledLlmModels", () => ({
+  loadEnabledLlmModelRows: mockLoadEnabledLlmModelRows,
+}));
+
+vi.mock("../intelligentModelSelector", () => ({
+  selectBestLlmModel: mockSelectBestLlmModel,
+}));
+
 vi.mock("../redis", () => ({
   getRedisClient: () => ({
     set: mockRedisSet,
@@ -165,7 +184,9 @@ import {
   finalizeSlideContentAfterRelayout,
   finalizeSlideContentAfterRepair,
   repairSlideFromSavedNote,
+  relayoutExistingSlideAsync,
   relayoutExistingSlide,
+  evaluateDraftSlideRouting,
   resolvePendingMediaForDeck,
 } from "../aiPresentationService";
 import type { GenerateAIDraftInput } from "@shared/presentation/aiTypes";
@@ -206,6 +227,64 @@ const MOCK_SLIDE_CONTENT = {
 };
 
 function setupHappyPath() {
+  mockLoadEnabledModelsWithPricing.mockReset();
+  mockLoadEnabledLlmModelRows.mockReset();
+  mockSelectBestLlmModel.mockReset();
+  mockResolveProviders.mockReset();
+  mockHasEnoughCredits.mockReset();
+  mockRedisSet.mockReset();
+  mockRedisGet.mockReset();
+  mockRedisDel.mockReset();
+  mockRedisExpire.mockReset();
+  mockGetSkillByIdAsync.mockReset();
+  mockExecuteWithFallback.mockReset();
+  mockCallLLMStructured.mockReset();
+  mockGenerateImageAsync.mockReset();
+  mockGenerateVideoAsync.mockReset();
+  mockGenerateAudioAsync.mockReset();
+  mockAddMediaTaskToLibrary.mockReset();
+  mockGetTask.mockReset();
+  mockDeductCreditsForModel.mockReset();
+  mockDeductCredits.mockReset();
+  mockGetBuiltInPreset.mockReset();
+  mockPickRandomSvg.mockReset();
+  mockGenerateSlide.mockReset();
+  mockGetModelsByTypeAsync.mockReset();
+  mockDbTransaction.mockReset();
+  mockAddSlideToDeck.mockReset();
+  mockUpdatePresentationDeckMetadata.mockReset();
+  mockLoadEnabledModelsWithPricing.mockResolvedValue([
+    {
+      modelId: "claude-sonnet-4-6",
+      providerModelId: "claude-sonnet-4-6",
+      providerName: "test-provider",
+      capabilities: {
+        supportsStructuredOutputs: true,
+        supportsFunctionTools: true,
+        contextLength: 200000,
+      },
+      pricingInput: 3,
+      pricingOutput: 15,
+      isFree: false,
+    },
+  ]);
+  mockLoadEnabledLlmModelRows.mockResolvedValue([
+    {
+      providerName: "test-provider",
+      modelId: "claude-sonnet-4-6",
+      providerModelId: "claude-sonnet-4-6",
+      priority: 10,
+      contextLength: 200000,
+      supportsResponses: true,
+      supportsStructuredOutputs: true,
+      supportsWebSearch: false,
+      supportsFunctionTools: true,
+      supportsCodeExecution: false,
+      supportsComputerUse: false,
+      supportsBackground: false,
+    },
+  ]);
+  mockSelectBestLlmModel.mockReturnValue("claude-sonnet-4-6");
   mockResolveProviders.mockResolvedValue([
     {
       providerId: 1,
@@ -275,7 +354,10 @@ function setupHappyPath() {
   });
 
   mockPickRandomSvg.mockReturnValue(MOCK_SVG);
-  mockGenerateSlide.mockReturnValue({ slideContent: MOCK_SLIDE_CONTENT, warnings: [] });
+  mockGenerateSlide.mockImplementation(() => ({
+    slideContent: JSON.parse(JSON.stringify(MOCK_SLIDE_CONTENT)),
+    warnings: [],
+  }));
   mockGetModelsByTypeAsync.mockImplementation(async (type: string) => {
     if (type === "audio") {
       return [
@@ -1057,6 +1139,80 @@ describe("relayoutExistingSlide", () => {
       expect.objectContaining({ heading: "จัดห้องนอนให้เหมาะสม" }),
     ]));
     expect(capturedLayoutInput.slideData.body).not.toContain("ข้อความเพี้ยนที่ไม่ควรถูกใช้เป็น source หลัก");
+  });
+
+  it("preserves aiDesign mode metadata during relayout and honors long-form mode overrides", () => {
+    let capturedLayoutInput: any = null;
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockImplementation((input: unknown) => {
+      capturedLayoutInput = input;
+      return {
+        slideContent: {
+          elements: [
+            { id: "title", type: "text", x: 80, y: 80, width: 620, height: 100, text: "Dense explainer", color: "#ffffff", fontSize: 56, fontWeight: "700" },
+          ],
+        },
+        warnings: [],
+      };
+    });
+
+    const result = relayoutExistingSlide({
+      slideTitle: "Dense explainer",
+      deckTitle: "Deck",
+      slideIndex: 3,
+      totalSlides: 6,
+      slideContent: {
+        elements: [
+          { id: "img-1", type: "image", x: 0, y: 0, width: 1280, height: 720, src: "https://cdn.example.com/hero.jpg", alt: "hero" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+        aiDesign: {
+          source: "draft-with-ai",
+          taskId: "task-relayout-1",
+          schemaVersion: "presentation_ai_layout_v1",
+          mode: "structured_block",
+          modeLocked: true,
+          userOverrideMode: "long_form_block",
+          componentRecipeId: "poster-spotlight",
+          selectionMode: "heuristic",
+          narrative: {
+            title: "Dense explainer",
+            body: [
+              "ข้อความยาวมากสำหรับย่อหน้าแรกที่ควรไปลงเลย์เอาต์แบบ long form",
+              "ข้อความยาวมากสำหรับย่อหน้าแรกที่สองที่ควรไปลงเลย์เอาต์แบบ long form",
+            ],
+            sections: [
+              { heading: "หัวข้อที่หนึ่ง", details: ["รายละเอียดที่หนึ่ง", "รายละเอียดที่สอง"] },
+              { heading: "หัวข้อที่สอง", details: ["รายละเอียดที่สาม", "รายละเอียดที่สี่"] },
+            ],
+            templateId: "split_right_image",
+          },
+          generatedAt: "2026-03-14T10:00:00.000Z",
+        },
+      },
+      layoutSeed: 99,
+    });
+
+    expect(capturedLayoutInput.slideData.componentRecipeId).toBe("sectioned-explainer");
+    expect(result.slideContent.aiDesign).toMatchObject({
+      source: "draft-with-ai",
+      mode: "long_form_block",
+      modeLocked: true,
+      userOverrideMode: "long_form_block",
+      componentRecipeId: "sectioned-explainer",
+      narrative: expect.objectContaining({
+        title: "Dense explainer",
+        sections: expect.arrayContaining([
+          expect.objectContaining({ heading: "หัวข้อที่หนึ่ง" }),
+        ]),
+      }),
+    });
   });
 
   it("uses slide notes to fall back to a plain template when block recipes are too dense", () => {
@@ -1927,6 +2083,272 @@ describe("relayoutExistingSlide", () => {
   });
 });
 
+describe("relayoutExistingSlideAsync", () => {
+  it("honors locked llm_layout_dsl mode through the async relayout path", async () => {
+    process.env.PRESENTATION_AI_LAYOUT_DSL_ENABLED = "true";
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({ slideContent: { elements: [] }, warnings: [] });
+    mockCallLLMStructured.mockResolvedValue({
+      data: {
+        status: "ok",
+        elements: [
+          {
+            id: "dsl-title",
+            type: "text",
+            x: 96,
+            y: 80,
+            width: 540,
+            height: 120,
+            text: "DSL Layout",
+            color: "#111827",
+            fontSize: 58,
+            fontWeight: "700",
+          },
+        ],
+        groups: [],
+      },
+      tokensUsed: 30,
+      creditsUsed: 1,
+    });
+
+    const output = await relayoutExistingSlideAsync({
+      slideTitle: "DSL Layout",
+      deckTitle: "Deck",
+      slideIndex: 2,
+      totalSlides: 5,
+      slideContent: {
+        elements: [
+          { id: "title", type: "text", x: 40, y: 40, width: 300, height: 80, text: "Old", color: "#111827" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+        aiDesign: {
+          source: "draft-with-ai",
+          taskId: "task-1",
+          schemaVersion: "presentation_ai_layout_v1",
+          mode: "llm_layout_dsl",
+          modeLocked: true,
+          userOverrideMode: "llm_layout_dsl",
+          selectionMode: "heuristic",
+          narrative: {
+            title: "DSL Layout",
+            body: ["ข้อความยาวที่ควรให้ DSL จัดเอง"],
+            templateId: "split_right_image",
+          },
+          generatedAt: "2026-03-14T10:00:00.000Z",
+        },
+      },
+    }, buildMockActor());
+
+    expect(output.slideContent.aiDesign?.mode).toBe("llm_layout_dsl");
+    expect(output.slideContent.elements.some((element) => (
+      element.type === "text" && "text" in element && element.text === "DSL Layout"
+    ))).toBe(true);
+    expect(output.warnings.some((warning) => warning.includes("currently rebuilds this slide through the structured layout path"))).toBe(false);
+  });
+
+  it("honors locked full_slide_media mode by reusing the existing hero visual", async () => {
+    process.env.PRESENTATION_AI_FULL_SLIDE_MEDIA_ENABLED = "true";
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({ slideContent: { elements: [] }, warnings: [] });
+
+    const output = await relayoutExistingSlideAsync({
+      slideTitle: "Poster",
+      deckTitle: "Deck",
+      slideIndex: 2,
+      totalSlides: 5,
+      slideContent: {
+        elements: [
+          { id: "hero", type: "image", x: 120, y: 60, width: 900, height: 600, src: "https://cdn.example.com/hero.jpg", alt: "hero" },
+          { id: "title", type: "text", x: 80, y: 80, width: 360, height: 80, text: "Poster", color: "#111827" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+        aiDesign: {
+          source: "draft-with-ai",
+          taskId: "task-1",
+          schemaVersion: "presentation_ai_layout_v1",
+          mode: "full_slide_media",
+          modeLocked: true,
+          userOverrideMode: "full_slide_media",
+          selectionMode: "heuristic",
+          narrative: {
+            title: "Poster",
+            body: ["ข้อความสั้นเพื่อบอกเจตนาของภาพเต็มหน้า"],
+            templateId: "hero_center",
+          },
+          generatedAt: "2026-03-14T10:00:00.000Z",
+        },
+      },
+    }, buildMockActor());
+
+    expect(output.slideContent.aiDesign?.mode).toBe("full_slide_media");
+    expect(output.slideContent.visualOnly).toBe(true);
+    expect(output.slideContent.elements).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: "image",
+        src: "https://cdn.example.com/hero.jpg",
+        x: 0,
+        y: 0,
+        width: 1280,
+        height: 720,
+      }),
+    ]));
+  });
+
+  it("honors locked full_slide_media mode by generating a new visual when a token is available", async () => {
+    process.env.PRESENTATION_AI_FULL_SLIDE_MEDIA_ENABLED = "true";
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({ slideContent: { elements: [] }, warnings: [] });
+    mockGetModelsByTypeAsync.mockResolvedValue([
+      {
+        id: "nano-banana-2",
+        name: "Nano Banana 2",
+        provider: "test-provider",
+        aspectRatios: ["16:9"],
+        configJson: { generateType: "text-to-image" },
+      },
+    ]);
+    mockGenerateImageAsync.mockResolvedValue({ id: "relayout-image-task", status: "processing" });
+    mockGetTask.mockResolvedValue({
+      id: "relayout-image-task",
+      status: "completed",
+      resultUrl: "https://cdn.example.com/generated-full-slide.jpg",
+    });
+
+    const output = await relayoutExistingSlideAsync({
+      slideTitle: "Poster",
+      deckTitle: "Deck",
+      slideIndex: 2,
+      totalSlides: 5,
+      userToken: "user-token",
+      slideContent: {
+        elements: [
+          { id: "title", type: "text", x: 80, y: 80, width: 360, height: 80, text: "Poster", color: "#111827" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+        aiDesign: {
+          source: "draft-with-ai",
+          taskId: "task-1",
+          schemaVersion: "presentation_ai_layout_v1",
+          mode: "full_slide_media",
+          modeLocked: true,
+          userOverrideMode: "full_slide_media",
+          selectionMode: "heuristic",
+          narrative: {
+            title: "Poster",
+            body: ["ข้อความสั้นเพื่อบอกเจตนาของภาพเต็มหน้า"],
+            templateId: "hero_center",
+          },
+          generatedAt: "2026-03-14T10:00:00.000Z",
+        },
+      },
+    }, buildMockActor());
+
+    expect(mockGenerateImageAsync).toHaveBeenCalled();
+    expect(output.slideContent.aiDesign?.mode).toBe("full_slide_media");
+    expect(output.slideContent.aiDesign?.mediaModeMetadata?.modelId).toBe("nano-banana-2");
+    expect(output.slideContent.elements).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: "image",
+        src: "https://cdn.example.com/generated-full-slide.jpg",
+        imageModelId: "nano-banana-2",
+      }),
+    ]));
+    expect(output.warnings).toContain("Rebuilt this slide as a full-slide media layout with a newly generated visual.");
+  });
+
+  it("honors locked full_slide_media mode by generating a new video for video-led slides when a token is available", async () => {
+    process.env.PRESENTATION_AI_FULL_SLIDE_MEDIA_ENABLED = "true";
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({ slideContent: { elements: [] }, warnings: [] });
+    mockGetModelsByTypeAsync.mockImplementation(async (type: string) => {
+      if (type === "video") {
+        return [
+          {
+            id: "veo3-fast",
+            name: "Veo 3 Fast",
+            provider: "test-provider",
+            aspectRatios: ["16:9"],
+            durations: [5],
+            configJson: { generateType: "text-to-video" },
+          },
+        ];
+      }
+      return [];
+    });
+    mockGenerateVideoAsync.mockResolvedValue({ id: "relayout-video-task", status: "processing" });
+    mockGetTask.mockResolvedValue({
+      id: "relayout-video-task",
+      status: "completed",
+      resultUrl: "https://cdn.example.com/generated-full-slide.mp4",
+    });
+
+    const output = await relayoutExistingSlideAsync({
+      slideTitle: "Launch reel",
+      deckTitle: "Deck",
+      slideIndex: 2,
+      totalSlides: 5,
+      userToken: "user-token",
+      slideContent: {
+        elements: [
+          { id: "clip", type: "video", x: 120, y: 60, width: 900, height: 600, src: "https://cdn.example.com/original.mp4", title: "Original clip" },
+          { id: "title", type: "text", x: 80, y: 80, width: 360, height: 80, text: "Launch reel", color: "#111827" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+        aiDesign: {
+          source: "draft-with-ai",
+          taskId: "task-1",
+          schemaVersion: "presentation_ai_layout_v1",
+          mode: "full_slide_media",
+          modeLocked: true,
+          userOverrideMode: "full_slide_media",
+          selectionMode: "heuristic",
+          narrative: {
+            title: "Launch reel",
+            body: ["ข้อความสั้นเพื่อสั่ง mood ของคลิปเต็มหน้า"],
+            templateId: "hero_center",
+          },
+          generatedAt: "2026-03-14T10:00:00.000Z",
+        },
+      },
+    }, buildMockActor());
+
+    expect(mockGenerateVideoAsync).toHaveBeenCalled();
+    expect(output.slideContent.elements).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: "video",
+        src: "https://cdn.example.com/generated-full-slide.mp4",
+        videoModelId: "veo3-fast",
+      }),
+    ]));
+    expect(output.slideContent.aiDesign?.mediaModeMetadata?.modelId).toBe("veo3-fast");
+    expect(output.warnings).toContain("Rebuilt this slide as a full-slide media layout with a newly generated visual.");
+  });
+});
+
 describe("repairSlideFromSavedNote", () => {
   it("drops incompatible aiDesign metadata from auto layout output instead of surfacing schema validation", () => {
     const warnings: string[] = [];
@@ -2118,6 +2540,74 @@ describe("generateAIDraft - happy path", () => {
     expect(mockGenerateImageAsync).toHaveBeenCalledTimes(3);
   });
 
+  it("repairs incomplete topic planning slides before rendering", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
+      if (skillId === "image-prompt-engineer") {
+        return {
+          id: "image-prompt-engineer",
+          name: "Image Prompt Engineer",
+          category: "image_prompt_generation",
+          type: "prompt-enhancement",
+          systemPrompt: "Enhance visual prompts.",
+          executionMode: "enhance-prompt",
+        };
+      }
+      return undefined;
+    });
+    mockCallLLMStructured.mockResolvedValueOnce({
+      data: [
+        {
+          templateId: "hero_center",
+          title: "AI adoption in hospitals",
+          body: [],
+          notes: "# AI adoption in hospitals\n## Why teams are moving now\nHospitals need faster triage.\nAutomation reduces admin load.",
+          sections: [
+            {
+              heading: "Why teams are moving now",
+              details: [],
+            },
+          ],
+          graphicCategory: "Health",
+          imagePromptKeywords: "AI hospital operations dashboard",
+        },
+      ],
+      tokensUsed: 180,
+      creditsUsed: 6,
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 1,
+        draftSkillId: "image-prompt-engineer",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const firstLayoutCall = mockGenerateSlide.mock.calls[0]?.[0] as {
+      slideData: { body: string[]; sections?: Array<{ heading: string; details: string[] }> };
+    };
+    expect(firstLayoutCall.slideData.body).toEqual(expect.arrayContaining([
+      "Hospitals need faster triage.",
+      "Automation reduces admin load.",
+    ]));
+    expect(firstLayoutCall.slideData.sections).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        heading: "Why teams are moving now",
+        details: expect.arrayContaining(["Hospitals need faster triage."]),
+      }),
+    ]));
+
+    const progressCalls = mockRedisSet.mock.calls.filter(
+      (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("ai_draft_progress"),
+    );
+    const finalProgress = JSON.parse(progressCalls[progressCalls.length - 1][1] as string);
+    expect(finalProgress.error).toBeUndefined();
+  });
+
   it("treats video prompt generation skills as prompt-first and defaults media generation to video", async () => {
     setupHappyPath();
     mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
@@ -2211,6 +2701,58 @@ describe("generateAIDraft - happy path", () => {
     expect(planningCall?.billingMetadata?.stage).toBe("topic_to_slide_plan");
     expect(mockGenerateImageAsync).toHaveBeenCalledTimes(3);
     expect(mockGenerateVideoAsync).not.toHaveBeenCalled();
+  });
+
+  it("surfaces a friendly topic planning error when structured output is incomplete", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
+      if (skillId === "image-prompt-engineer") {
+        return {
+          id: "image-prompt-engineer",
+          name: "Image Prompt Engineer",
+          category: "image_prompt_generation",
+          type: "prompt-enhancement",
+          systemPrompt: "Enhance visual prompts.",
+          executionMode: "enhance-prompt",
+        };
+      }
+      return undefined;
+    });
+    mockCallLLMStructured.mockRejectedValueOnce(Object.assign(
+      new Error("LLM response failed schema validation after 2 attempt(s): Array must contain at least 1 element(s)"),
+      {
+        name: "LLMStructuredOutputError",
+        zodErrors: new z.ZodError([
+          {
+            code: "too_small",
+            minimum: 1,
+            type: "array",
+            inclusive: true,
+            exact: false,
+            message: "Array must contain at least 1 element(s)",
+            path: [0, "body"],
+          },
+        ]),
+      },
+    ));
+
+    await generateAIDraft(
+      buildMockInput({
+        draftSkillId: "image-prompt-engineer",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const progressCalls = mockRedisSet.mock.calls.filter(
+      (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("ai_draft_progress"),
+    );
+    const finalProgress = JSON.parse(progressCalls[progressCalls.length - 1][1] as string);
+    expect(finalProgress.error.message).toBe(
+      "Topic planning returned incomplete slide data. Please retry.",
+    );
   });
 
   it("generates and attaches per-slide audio tracks when audio is enabled", async () => {
@@ -2731,6 +3273,57 @@ describe("generateAIDraft - Phase 1", () => {
     expect(splitCall.strictProviderPin).toBe(false);
   });
 
+  it("uses an explicit textModel override to split a provided custom article", async () => {
+    setupHappyPath();
+    mockResolveProviders.mockImplementation(async (model: string) => {
+      if (model === "gpt-5.2") {
+        return [
+          {
+            providerId: 2,
+            providerName: "opencode-zen",
+            baseUrl: "https://example.com",
+            apiKey: "test-key",
+            providerModelId: "gpt-5.2",
+            pricingInput: 0,
+            pricingOutput: 0,
+            isFree: false,
+            priority: 10,
+          },
+        ];
+      }
+      return [
+        {
+          providerId: 1,
+          providerName: "test-provider",
+          baseUrl: "https://example.com",
+          apiKey: "test-key",
+          providerModelId: model,
+          pricingInput: 0,
+          pricingOutput: 0,
+          isFree: true,
+          priority: 0,
+        },
+      ];
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        textModel: "gpt-5.2",
+        articleSkillId: undefined,
+        useCustomArticle: true,
+        customArticleText: "Provided article body for direct structuring.",
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const splitCall = mockCallLLMStructured.mock.calls[0]?.[0];
+    expect(splitCall.model).toBe("gpt-5.2");
+    expect(splitCall.preferredProviderId).toBeUndefined();
+    expect(splitCall.strictProviderPin).toBe(false);
+  });
+
   it("preserves the first markdown heading as the first slide title in custom article mode", async () => {
     setupHappyPath();
     mockCallLLMStructured.mockResolvedValueOnce({
@@ -2842,11 +3435,68 @@ describe("generateAIDraft - Phase 1", () => {
     );
   });
 
-  it("normalizes provider-qualified skill models before routing text generation", async () => {
+  it("prefers an explicit textModel override over the skill default model", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockResolvedValueOnce({
+      id: "general-article-writer",
+      name: "General Article Writer",
+      systemPrompt: "You are a versatile article writer.",
+      defaultModel: "gpt-4o-mini",
+      executionMode: "llm-only",
+    });
+    mockResolveProviders.mockImplementation(async (model: string) => {
+      if (model === "gpt-5.2") {
+        return [
+          {
+            providerId: 2,
+            providerName: "opencode-zen",
+            baseUrl: "https://example.com",
+            apiKey: "test-key",
+            providerModelId: "gpt-5.2",
+            pricingInput: 0,
+            pricingOutput: 0,
+            isFree: false,
+            priority: 10,
+          },
+        ];
+      }
+      return [
+        {
+          providerId: 1,
+          providerName: "test-provider",
+          baseUrl: "https://example.com",
+          apiKey: "test-key",
+          providerModelId: model,
+          pricingInput: 0,
+          pricingOutput: 0,
+          isFree: true,
+          priority: 0,
+        },
+      ];
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        textModel: "gpt-5.2",
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    expect(mockExecuteWithFallback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "gpt-5.2",
+      }),
+    );
+  });
+
+  it("accepts provider-qualified skill models without aborting generation", async () => {
     setupHappyPath();
     mockGetSkillByIdAsync.mockResolvedValueOnce({
       id: "parenting-article-writer",
       name: "Parenting Article Writer",
+      category: "article_generation",
       systemPrompt: "You are a parenting article writer.",
       defaultModel: "openai/gpt-5.2",
       executionMode: "llm-only",
@@ -2867,7 +3517,19 @@ describe("generateAIDraft - Phase 1", () => {
           },
         ];
       }
-      return [];
+      return [
+        {
+          providerId: 1,
+          providerName: "test-provider",
+          baseUrl: "https://example.com",
+          apiKey: "test-key",
+          providerModelId: model,
+          pricingInput: 0,
+          pricingOutput: 0,
+          isFree: true,
+          priority: 0,
+        },
+      ];
     });
 
     await generateAIDraft(
@@ -2877,11 +3539,12 @@ describe("generateAIDraft - Phase 1", () => {
       "task-123",
     );
 
-    expect(mockExecuteWithFallback).toHaveBeenCalledWith(
-      expect.objectContaining({
-        model: "gpt-5.2",
-      }),
+    const progressCalls = mockRedisSet.mock.calls.filter(
+      (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("ai_draft_progress"),
     );
+    const lastProgress = JSON.parse(progressCalls[progressCalls.length - 1][1] as string);
+    expect(lastProgress.error).toBeUndefined();
+    expect(lastProgress.completed).toBe(true);
   });
 
   it("fails immediately when primary LLM call fails", async () => {
@@ -4130,6 +4793,809 @@ describe("generateAIDraft - Phase 2", () => {
     ]));
   });
 
+  it("applies recipe-aware compaction for long-form component slides and persists fit metadata", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
+      if (skillId === "prompt-planner") {
+        return {
+          id: "prompt-planner",
+          name: "Prompt Planner",
+          category: "prompt_enhancement",
+          executionMode: "enhance-prompt",
+          systemPrompt: "Plan slides from the prompt.",
+        };
+      }
+      return {
+        id: "general-article-writer",
+        name: "General Article Writer",
+        systemPrompt: "You are a versatile article writer.",
+        executionMode: "llm-only",
+      };
+    });
+    mockCallLLMStructured
+      .mockResolvedValueOnce({
+        data: [
+          {
+            templateId: "hero_center",
+            title: "คู่มือการนอนของเด็กเล็ก",
+            body: ["ภาพรวมสั้น ๆ"],
+            notes: "สไลด์เปิดหัวเรื่อง",
+            graphicCategory: "Education",
+            imagePromptKeywords: "sleeping child illustration",
+          },
+          {
+            templateId: "split_right_image",
+            title: "ขั้นตอนปฏิบัติ / เคล็ดลับ",
+            body: [
+              "สร้างกิจวัตรก่อนนอน: ทำให้กิจกรรมตอนก่อนนอนมีความซ้ำซ้อน เช่น อ่านหนังสือ เล่าเรื่อง หรืออาบน้ำ เพื่อสร้างความรู้สึกผ่อนคลายให้กับลูก",
+              "กำหนดเวลาเข้านอน: ตั้งเวลาเข้านอนที่สม่ำเสมอทุกวัน เพื่อช่วยให้ร่างกายสร้างนิสัยในการนอน",
+              "สร้างสภาพแวดล้อมที่เอื้อต่อการนอน: ห้องนอนควรเงียบ สบาย และมีอุณหภูมิที่เหมาะสม",
+              "ใช้เสียงเพลงหรือเสียงธรรมชาติ: เสียงที่อ่อนโยนสามารถช่วยให้เด็กผ่อนคลายและนอนหลับได้ดีขึ้นเมื่อใช้ร่วมกับกิจวัตรที่คงที่",
+            ],
+            notes: "บทความนี้เหมาะสำหรับพ่อแม่และผู้ดูแลที่ต้องการคำอธิบายยาวและค่อยเป็นค่อยไปมากกว่าการ์ดสั้น รวมถึงต้องการเห็นบริบท ข้อผิดพลาดที่พบบ่อย และคำแนะนำเชิงปฏิบัติอยู่ในหน้าเดียวแบบยังแก้ไขข้อความต่อได้",
+            sections: [
+              {
+                heading: "ความผิดพลาดที่พบบ่อย",
+                details: [
+                  "ให้นอนในที่นอนที่ไม่ปลอดภัย: ควรจัดสภาพแวดล้อมให้นอนอย่างปลอดภัย",
+                  "นอนดึกและตื่นไม่เป็นเวลา: ควรรักษาเวลาเข้านอนและตื่นนอนให้ใกล้เคียงกันทุกวัน",
+                ],
+              },
+              {
+                heading: "ใครควรอ่านสไลด์นี้",
+                details: [
+                  "พ่อแม่หรือผู้ดูแลเด็กเล็กที่กำลังฝึกนิสัยการนอนของลูก",
+                ],
+              },
+              {
+                heading: "สิ่งที่ควรทำต่อ",
+                details: [
+                  "เลือกเพียงหนึ่งถึงสองแนวทางแล้วทำซ้ำอย่างสม่ำเสมอเพื่อให้เด็กไม่สับสนกับสัญญาณก่อนนอน",
+                ],
+              },
+            ],
+            graphicCategory: "Education",
+            imagePromptKeywords: "bedtime routine parent child",
+          },
+        ],
+        tokensUsed: 220,
+        creditsUsed: 8,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: "ok",
+          slotContent: [
+            { slotId: "eyebrow", type: "text", text: "Sleep guide" },
+            { slotId: "title", type: "text", text: "ขั้นตอนปฏิบัติ / เคล็ดลับ" },
+            { slotId: "intro", type: "text", text: "เริ่มจากกิจวัตรเดิมทุกคืน รักษาเวลาเข้านอนให้คงที่ และจัดห้องนอนให้สงบเพื่อช่วยให้เด็กผ่อนคลายก่อนนอน" },
+            { slotId: "section1-heading", type: "text", text: "ความผิดพลาดที่พบบ่อย" },
+            { slotId: "section1-body", type: "text", text: "หลีกเลี่ยงการเปลี่ยนเวลานอนทุกวันและอย่าตอบสนองทันทีทุกครั้งโดยไม่มีแผน" },
+            { slotId: "section2-heading", type: "text", text: "ใครควรอ่าน" },
+            { slotId: "section2-body", type: "text", text: "เหมาะกับพ่อแม่หรือผู้ดูแลเด็กเล็กที่กำลังฝึกนิสัยการนอนของลูก" },
+            { slotId: "section3-heading", type: "text", text: "สิ่งที่ควรทำต่อ" },
+            { slotId: "section3-body", type: "text", text: "เลือกเพียงหนึ่งถึงสองแนวทางแล้วทำซ้ำอย่างต่อเนื่องเพื่อให้เด็กไม่สับสน" },
+            { slotId: "takeaways-title", type: "text", text: "Key Takeaways" },
+            { slotId: "takeaways", type: "list", items: ["ทำกิจวัตรเดิมทุกคืน", "รักษาเวลาเข้านอนให้คงที่", "ให้ผู้ดูแลใช้แนวทางเดียวกัน"] },
+          ],
+          sourceTrace: [
+            { sourceId: "body-0", disposition: "shortened", targetSlotId: "intro" },
+            { sourceId: "section-0", disposition: "used", targetSlotId: "section1-heading" },
+            { sourceId: "section-1", disposition: "used", targetSlotId: "section2-heading" },
+            { sourceId: "section-2", disposition: "used", targetSlotId: "section3-heading" },
+          ],
+          overflowRisk: 0.21,
+          fitConfidence: 0.86,
+          fallbackSuggestion: null,
+        },
+        tokensUsed: 80,
+        creditsUsed: 3,
+      });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 2,
+        draftSkillId: "prompt-planner",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const secondSlideCall = mockGenerateSlide.mock.calls[1]?.[0] as {
+      slideData: { componentRecipeId?: string; componentSlotBindings?: Array<Record<string, unknown>> };
+    };
+    expect(secondSlideCall.slideData.componentRecipeId).toBe("sectioned-explainer");
+    expect(secondSlideCall.slideData.componentSlotBindings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        slotId: "intro",
+        type: "text",
+        text: "เริ่มจากกิจวัตรเดิมทุกคืน รักษาเวลาเข้านอนให้คงที่ และจัดห้องนอนให้สงบเพื่อช่วยให้เด็กผ่อนคลายก่อนนอน",
+      }),
+      expect.objectContaining({
+        slotId: "takeaways",
+        type: "list",
+        items: ["ทำกิจวัตรเดิมทุกคืน", "รักษาเวลาเข้านอนให้คงที่", "ให้ผู้ดูแลใช้แนวทางเดียวกัน"],
+      }),
+    ]));
+
+    const secondInsertPayload = mockAddSlideToDeck.mock.calls[1]?.[0] as {
+      slideContent?: {
+        aiDesign?: Record<string, unknown> & {
+          fitScore?: { status?: string; overall?: number };
+          compactionLevel?: string;
+          sourceTrace?: Array<Record<string, unknown>>;
+        };
+      };
+    };
+    expect(secondInsertPayload.slideContent?.aiDesign).toMatchObject({
+      componentRecipeId: "sectioned-explainer",
+      compactionLevel: "balanced",
+      fitScore: {
+        status: "fits",
+      },
+    });
+    expect(secondInsertPayload.slideContent?.aiDesign?.fitScore?.overall).toBeGreaterThanOrEqual(0.78);
+    expect(secondInsertPayload.slideContent?.aiDesign?.sourceTrace).toEqual(expect.arrayContaining([
+      expect.objectContaining({ sourceId: "body-0", disposition: "shortened", targetSlotId: "intro" }),
+      expect.objectContaining({ sourceId: "section-0", disposition: "used", targetSlotId: "section1-heading" }),
+    ]));
+    expect(secondInsertPayload.slideContent?.aiDesign?.fitScore?.deckConsistency).toBeDefined();
+    expect(mockAuditLog).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: "rollout_gate",
+      responsePayload: expect.objectContaining({ eventType: "quality_gate_result" }),
+    }));
+  });
+
+  it("applies recipe-aware compaction for article-focus slides and sends long_form_block compaction prompts", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockResolvedValue({
+      id: "prompt-planner",
+      name: "Prompt Planner",
+      category: "prompt_enhancement",
+      executionMode: "enhance-prompt",
+      systemPrompt: "Plan slides from the prompt.",
+    });
+    mockCallLLMStructured
+      .mockResolvedValueOnce({
+        data: [
+          {
+            templateId: "hero_center",
+            title: "คู่มือการนอนของเด็กเล็ก",
+            body: ["ภาพรวมสั้น ๆ"],
+            notes: "สไลด์เปิดหัวเรื่อง",
+            graphicCategory: "Education",
+            imagePromptKeywords: "sleeping child illustration",
+          },
+          {
+            templateId: "split_right_image",
+            componentRecipeId: "article-focus",
+            title: "ทำไมกิจวัตรก่อนนอนจึงช่วยให้เด็กนอนง่ายขึ้น",
+            body: [
+              "กิจวัตรก่อนนอนที่ทำซ้ำในลำดับเดิมทุกคืนช่วยให้เด็กเล็กค่อย ๆ รับรู้ว่าสัญญาณของการพักผ่อนกำลังเริ่มขึ้น และลดการต่อต้านก่อนนอนได้ดีกว่าการเปลี่ยนกิจกรรมแบบไม่สม่ำเสมอ",
+              "ผู้ดูแลควรเลือกกิจกรรมเพียงไม่กี่อย่าง เช่น อาบน้ำ อ่านนิทาน และหรี่ไฟ แล้วทำในช่วงเวลาใกล้เคียงกันทุกวันเพื่อให้ร่างกายและอารมณ์ของเด็กคาดเดาได้",
+            ],
+            notes: "สไลด์นี้ต้องเก็บเรื่องราวต่อเนื่องและ key points ให้อยู่ในหน้าเดียวแบบยังแก้ไขข้อความได้",
+            graphicCategory: "Education",
+            imagePromptKeywords: "sleep routine article",
+          },
+        ],
+        tokensUsed: 120,
+        creditsUsed: 5,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: "ok",
+          slotContent: [
+            { slotId: "eyebrow", type: "text", text: "Sleep Guide" },
+            { slotId: "title", type: "text", text: "ทำไมกิจวัตรก่อนนอนจึงช่วยให้เด็กนอนง่ายขึ้น" },
+            { slotId: "lead", type: "text", text: "กิจวัตรเดิมทุกคืนช่วยให้เด็กคาดเดาช่วงพักผ่อนและลดการต่อต้านก่อนนอน" },
+            { slotId: "body", type: "text", text: "เลือกกิจกรรมไม่กี่อย่างแล้วทำในเวลาใกล้เคียงกันทุกวันเพื่อสร้างจังหวะการนอนที่สม่ำเสมอ" },
+            { slotId: "key-points-title", type: "text", text: "Key Points" },
+            { slotId: "key-points", type: "list", items: ["ทำกิจกรรมเดิมทุกคืน", "รักษาเวลาให้ใกล้เคียงกัน", "ลดสิ่งกระตุ้นก่อนนอน"] },
+            { slotId: "footnote", type: "text", text: "เหมาะกับพ่อแม่ที่ต้องการคำอธิบายต่อเนื่องแบบแก้ไขได้" },
+          ],
+          sourceTrace: [
+            { sourceId: "body-0", disposition: "shortened", targetSlotId: "lead" },
+            { sourceId: "body-1", disposition: "shortened", targetSlotId: "body" },
+          ],
+          overflowRisk: 0.2,
+          fitConfidence: 0.91,
+          fallbackSuggestion: null,
+        },
+        tokensUsed: 60,
+        creditsUsed: 2,
+      });
+
+    await generateAIDraft(
+      buildMockInput({ numSlides: 2, draftSkillId: "prompt-planner", articleSkillId: undefined }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const compactionPrompt = JSON.parse(String(mockCallLLMStructured.mock.calls[1]?.[0]?.userMessage ?? "{}"));
+    expect(compactionPrompt.recipeId).toBe("article-focus");
+    expect(compactionPrompt.mode).toBe("long_form_block");
+
+    const secondSlideCall = mockGenerateSlide.mock.calls[1]?.[0] as {
+      slideData: { componentRecipeId?: string; componentSlotBindings?: Array<Record<string, unknown>> };
+    };
+    expect(secondSlideCall.slideData.componentRecipeId).toBe("article-focus");
+    expect(secondSlideCall.slideData.componentSlotBindings).toEqual(expect.arrayContaining([
+      expect.objectContaining({ slotId: "lead", type: "text" }),
+      expect.objectContaining({ slotId: "key-points", type: "list" }),
+    ]));
+  });
+
+  it("applies recipe-aware compaction for poster-spotlight slides through structured_block prompts", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockResolvedValue({
+      id: "prompt-planner",
+      name: "Prompt Planner",
+      category: "prompt_enhancement",
+      executionMode: "enhance-prompt",
+      systemPrompt: "Plan slides from the prompt.",
+    });
+    mockCallLLMStructured
+      .mockResolvedValueOnce({
+        data: [
+          {
+            templateId: "hero_center",
+            title: "เปิดตัวแคมเปญใหม่",
+            body: ["สรุปสั้น"],
+            notes: "หน้าปก",
+            graphicCategory: "Marketing",
+            imagePromptKeywords: "campaign cover",
+          },
+          {
+            templateId: "split_right_image",
+            componentRecipeId: "poster-spotlight",
+            title: "ประกันสุขภาพ ดูแลคุณทุกช่วงเวลา",
+            body: [
+              "ความคุ้มครองครอบคลุมพร้อมรายการสิทธิประโยชน์ที่ควรเห็นทันทีและต้องย่อให้เป็น subhead ที่กระชับก่อนลงโปสเตอร์",
+              "เหมาจ่าย 20 ล้านบาทต่อปี",
+              "ค่ารักษาไม่ต้องสำรองจ่าย",
+              "ฟรี ตรวจสุขภาพประจำปี",
+            ],
+            notes: "ใช้เป็นหน้าโปรโมชันพร้อม CTA และหัวข้อสั้นหลายบรรทัด แต่ต้นฉบับยาวเกินกว่าจะวางลงโปสเตอร์แบบตรง ๆ จึงต้องให้ระบบ compact ก่อน",
+            graphicCategory: "Marketing",
+            imagePromptKeywords: "health insurance poster",
+          },
+        ],
+        tokensUsed: 120,
+        creditsUsed: 5,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: "ok",
+          slotContent: [
+            { slotId: "eyebrow", type: "text", text: "ประกันสุขภาพ" },
+            { slotId: "headline", type: "text", text: "ดูแลคุณทุกช่วงเวลา" },
+            { slotId: "subhead", type: "text", text: "ความคุ้มครองครอบคลุมพร้อมสิทธิประโยชน์สำคัญที่เห็นได้ทันที" },
+            { slotId: "benefits", type: "list", items: ["เหมาจ่าย 20 ล้านบาทต่อปี", "ค่ารักษาไม่ต้องสำรองจ่าย", "ฟรี ตรวจสุขภาพประจำปี"] },
+            { slotId: "cta", type: "text", text: "ดูรายละเอียดเพิ่มเติม" },
+          ],
+          sourceTrace: [
+            { sourceId: "body-0", disposition: "shortened", targetSlotId: "subhead" },
+            { sourceId: "body-1", disposition: "used", targetSlotId: "benefits" },
+          ],
+          overflowRisk: 0.18,
+          fitConfidence: 0.89,
+          fallbackSuggestion: null,
+        },
+        tokensUsed: 50,
+        creditsUsed: 2,
+      });
+
+    await generateAIDraft(
+      buildMockInput({ numSlides: 2, draftSkillId: "prompt-planner", articleSkillId: undefined }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const compactionPrompt = JSON.parse(String(mockCallLLMStructured.mock.calls[1]?.[0]?.userMessage ?? "{}"));
+    expect(compactionPrompt.recipeId).toBe("poster-spotlight");
+    expect(compactionPrompt.mode).toBe("structured_block");
+
+    const secondInsertPayload = mockAddSlideToDeck.mock.calls[1]?.[0] as {
+      slideContent?: { aiDesign?: { componentRecipeId?: string; compactionLevel?: string } };
+    };
+    expect(secondInsertPayload.slideContent?.aiDesign?.componentRecipeId).toBe("poster-spotlight");
+    expect(secondInsertPayload.slideContent?.aiDesign?.compactionLevel).toBe("balanced");
+  });
+
+  it("applies recipe-aware compaction for feature-highlights slides through structured_block prompts", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockResolvedValue({
+      id: "prompt-planner",
+      name: "Prompt Planner",
+      category: "prompt_enhancement",
+      executionMode: "enhance-prompt",
+      systemPrompt: "Plan slides from the prompt.",
+    });
+    mockCallLLMStructured
+      .mockResolvedValueOnce({
+        data: [
+          {
+            templateId: "hero_center",
+            title: "เปิดตัวฟีเจอร์ใหม่",
+            body: ["สรุปสั้น"],
+            notes: "หน้าปก",
+            graphicCategory: "Technology",
+            imagePromptKeywords: "feature launch cover",
+          },
+          {
+            templateId: "feature_boxes_right",
+            componentRecipeId: "feature-highlights",
+            title: "เหตุผลที่ทีมควรใช้ workflow ใหม่",
+            body: [
+              "การมองเห็นสถานะงานแบบเดียวกันช่วยให้แต่ละฝ่ายลดเวลาตามงานซ้ำและตัดสินใจได้เร็วขึ้น",
+              "การกำหนด handoff ที่ชัดเจนช่วยลดงานตกหล่นระหว่างทีมและทำให้ onboarding ทีมใหม่ง่ายขึ้น",
+              "dashboard กลางช่วยให้หัวหน้าทีมเห็นความเสี่ยงได้เร็วและลดการประชุมอัปเดตที่ไม่จำเป็น",
+            ],
+            notes: "สไลด์นี้ต้องการสาม feature cards แบบสั้น กระชับ และอ่านเร็ว แม้ต้นฉบับยังยาวเกิน budget ของการ์ด",
+            graphicCategory: "Technology",
+            imagePromptKeywords: "workflow feature highlights",
+          },
+        ],
+        tokensUsed: 120,
+        creditsUsed: 5,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: "ok",
+          slotContent: [
+            { slotId: "badge", type: "text", text: "Workflow Upgrade" },
+            { slotId: "title", type: "text", text: "เหตุผลที่ทีมควรใช้ workflow ใหม่" },
+            { slotId: "feature1-title", type: "text", text: "เห็นภาพเดียวกัน" },
+            { slotId: "feature1-body", type: "text", text: "ลดเวลาตามงานซ้ำและเร่งการตัดสินใจ" },
+            { slotId: "feature2-title", type: "text", text: "handoff ชัดเจน" },
+            { slotId: "feature2-body", type: "text", text: "ลดงานตกหล่นและ onboarding ได้เร็วขึ้น" },
+            { slotId: "feature3-title", type: "text", text: "เห็นความเสี่ยงเร็ว" },
+            { slotId: "feature3-body", type: "text", text: "dashboard กลางช่วยลดการประชุมอัปเดตที่ไม่จำเป็น" },
+          ],
+          sourceTrace: [
+            { sourceId: "body-0", disposition: "shortened", targetSlotId: "feature1-body" },
+            { sourceId: "body-1", disposition: "shortened", targetSlotId: "feature2-body" },
+            { sourceId: "body-2", disposition: "shortened", targetSlotId: "feature3-body" },
+          ],
+          overflowRisk: 0.2,
+          fitConfidence: 0.9,
+          fallbackSuggestion: null,
+        },
+        tokensUsed: 55,
+        creditsUsed: 2,
+      });
+
+    await generateAIDraft(
+      buildMockInput({ numSlides: 2, draftSkillId: "prompt-planner", articleSkillId: undefined }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const compactionPrompt = JSON.parse(String(mockCallLLMStructured.mock.calls[1]?.[0]?.userMessage ?? "{}"));
+    expect(compactionPrompt.recipeId).toBe("feature-highlights");
+    expect(compactionPrompt.mode).toBe("structured_block");
+
+    const secondInsertPayload = mockAddSlideToDeck.mock.calls[1]?.[0] as {
+      slideContent?: { aiDesign?: { componentRecipeId?: string; compactionLevel?: string } };
+    };
+    expect(secondInsertPayload.slideContent?.aiDesign?.componentRecipeId).toBe("feature-highlights");
+    expect(secondInsertPayload.slideContent?.aiDesign?.compactionLevel).toBe("balanced");
+  });
+
+  it("escalates dense compact recipe selections into sectioned-explainer before rendering", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockResolvedValue({
+      id: "prompt-planner",
+      name: "Prompt Planner",
+      category: "prompt_enhancement",
+      executionMode: "enhance-prompt",
+      systemPrompt: "Plan slides from the prompt.",
+    });
+    mockCallLLMStructured
+      .mockResolvedValueOnce({
+        data: [
+          {
+            templateId: "hero_center",
+            title: "คู่มือการนอนของเด็กเล็ก",
+            body: ["ภาพรวมสั้น ๆ"],
+            notes: "สไลด์เปิดหัวเรื่อง",
+            graphicCategory: "Education",
+            imagePromptKeywords: "sleeping child illustration",
+          },
+          {
+            templateId: "split_right_image",
+            componentRecipeId: "quote-callout",
+            title: "ขั้นตอนปฏิบัติ / เคล็ดลับ",
+            body: [
+              "สร้างกิจวัตรก่อนนอนและรักษาลำดับเดิมทุกคืน เช่น อ่านหนังสือ เล่าเรื่อง หรืออาบน้ำ เพื่อให้เด็กค่อย ๆ ลดสิ่งกระตุ้นและเข้าใจว่ากำลังเข้าสู่ช่วงพักผ่อนอย่างสม่ำเสมอ",
+              "กำหนดเวลาเข้านอนให้คงที่ทุกวัน พร้อมสังเกตสัญญาณง่วงของเด็กและปรับสิ่งแวดล้อมในห้องให้เงียบ สบาย และเหมาะกับการนอนมากที่สุด",
+            ],
+            notes: "บทความนี้เหมาะสำหรับพ่อแม่และผู้ดูแลที่ต้องการคำอธิบายยาวและค่อยเป็นค่อยไปมากกว่าการ์ดสั้น รวมถึงต้องการเห็นบริบทและคำแนะนำเชิงปฏิบัติในหน้าเดียวแบบยังแก้ไขข้อความต่อได้",
+            sections: [
+              {
+                heading: "ความผิดพลาดที่พบบ่อย",
+                details: [
+                  "ให้นอนในที่นอนที่ไม่ปลอดภัย: ควรจัดสภาพแวดล้อมให้นอนอย่างปลอดภัย",
+                  "นอนดึกและตื่นไม่เป็นเวลา: ควรรักษาเวลาเข้านอนและตื่นนอนให้ใกล้เคียงกันทุกวัน",
+                ],
+              },
+              {
+                heading: "ใครควรอ่านสไลด์นี้",
+                details: [
+                  "พ่อแม่หรือผู้ดูแลเด็กเล็กที่กำลังฝึกนิสัยการนอนของลูก",
+                ],
+              },
+            ],
+            graphicCategory: "Education",
+            imagePromptKeywords: "bedtime routine parent child",
+          },
+        ],
+        tokensUsed: 220,
+        creditsUsed: 8,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: "ok",
+          slotContent: [
+            { slotId: "eyebrow", type: "text", text: "Sleep guide" },
+            { slotId: "title", type: "text", text: "ขั้นตอนปฏิบัติ / เคล็ดลับ" },
+            { slotId: "intro", type: "text", text: "เริ่มจากกิจวัตรเดิมทุกคืน รักษาเวลาเข้านอนให้คงที่ และจัดห้องนอนให้สงบเพื่อช่วยให้เด็กผ่อนคลายก่อนนอน" },
+            { slotId: "section1-heading", type: "text", text: "ความผิดพลาดที่พบบ่อย" },
+            { slotId: "section1-body", type: "text", text: "หลีกเลี่ยงการเปลี่ยนเวลานอนทุกวันและอย่าตอบสนองทันทีทุกครั้งโดยไม่มีแผน" },
+            { slotId: "section2-heading", type: "text", text: "ใครควรอ่าน" },
+            { slotId: "section2-body", type: "text", text: "เหมาะกับพ่อแม่หรือผู้ดูแลเด็กเล็กที่กำลังฝึกนิสัยการนอนของลูก" },
+            { slotId: "section3-heading", type: "text", text: "สิ่งที่ควรทำต่อ" },
+            { slotId: "section3-body", type: "text", text: "เลือกเพียงหนึ่งถึงสองแนวทางแล้วทำซ้ำอย่างต่อเนื่องเพื่อให้เด็กไม่สับสน" },
+            { slotId: "takeaways-title", type: "text", text: "Key Takeaways" },
+            { slotId: "takeaways", type: "list", items: ["ทำกิจวัตรเดิมทุกคืน", "รักษาเวลาเข้านอนให้คงที่", "ให้ผู้ดูแลใช้แนวทางเดียวกัน"] },
+          ],
+          sourceTrace: [
+            { sourceId: "body-0", disposition: "shortened", targetSlotId: "intro" },
+            { sourceId: "section-0", disposition: "used", targetSlotId: "section1-heading" },
+            { sourceId: "section-1", disposition: "used", targetSlotId: "section2-heading" },
+            { sourceId: "section-2", disposition: "used", targetSlotId: "section3-heading" },
+          ],
+          overflowRisk: 0.19,
+          fitConfidence: 0.88,
+          fallbackSuggestion: null,
+        },
+        tokensUsed: 80,
+        creditsUsed: 3,
+      });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 2,
+        draftSkillId: "prompt-planner",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const secondSlideCall = mockGenerateSlide.mock.calls[1]?.[0] as {
+      slideData: { componentRecipeId?: string };
+    };
+    expect(secondSlideCall.slideData.componentRecipeId).toBe("sectioned-explainer");
+
+    const secondInsertPayload = mockAddSlideToDeck.mock.calls[1]?.[0] as {
+      slideContent?: {
+        aiDesign?: {
+          componentRecipeId?: string;
+          fallbackHistory?: Array<Record<string, unknown>>;
+        };
+      };
+    };
+    expect(secondInsertPayload.slideContent?.aiDesign?.componentRecipeId).toBe("sectioned-explainer");
+    expect(secondInsertPayload.slideContent?.aiDesign?.fallbackHistory).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        step: "switch_recipe",
+        from: "quote-callout",
+        to: "sectioned-explainer",
+      }),
+    ]));
+  });
+
+  it("splits long-form slides when compaction remains unsafe after retries", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockResolvedValue({
+      id: "prompt-planner",
+      name: "Prompt Planner",
+      category: "prompt_enhancement",
+      executionMode: "enhance-prompt",
+      systemPrompt: "Plan slides from the prompt.",
+    });
+    mockCallLLMStructured
+      .mockResolvedValueOnce({
+        data: [
+          {
+            templateId: "hero_center",
+            title: "คู่มือการนอนของเด็กเล็ก",
+            body: ["ภาพรวมสั้น ๆ"],
+            notes: "สไลด์เปิดหัวเรื่อง",
+            graphicCategory: "Education",
+            imagePromptKeywords: "sleeping child illustration",
+          },
+          {
+            templateId: "split_right_image",
+            title: "ขั้นตอนปฏิบัติ / เคล็ดลับ",
+            body: [
+              "สร้างกิจวัตรก่อนนอน: ทำให้กิจกรรมตอนก่อนนอนมีความซ้ำซ้อน เช่น อ่านหนังสือ เล่าเรื่อง หรืออาบน้ำ เพื่อสร้างความรู้สึกผ่อนคลายให้กับลูก",
+              "กำหนดเวลาเข้านอน: ตั้งเวลาเข้านอนที่สม่ำเสมอทุกวัน เพื่อช่วยให้ร่างกายสร้างนิสัยในการนอน",
+              "สร้างสภาพแวดล้อมที่เอื้อต่อการนอน: ห้องนอนควรเงียบ สบาย และมีอุณหภูมิที่เหมาะสม",
+              "ใช้เสียงเพลงหรือเสียงธรรมชาติ: เสียงที่อ่อนโยนสามารถช่วยให้เด็กผ่อนคลายและนอนหลับได้ดีขึ้นเมื่อใช้ร่วมกับกิจวัตรที่คงที่",
+              "อย่าตอบสนองทันทีทุกครั้งเมื่อเด็กตื่นกลางคืน ควรรอประเมินก่อนว่าเด็กจะกลับไปนอนได้เองหรือไม่",
+              "ทำกิจวัตรเดิมซ้ำหลายวันเพื่อให้เด็กได้รับสัญญาณก่อนนอนที่ชัดเจนและสม่ำเสมอ",
+            ],
+            notes: "บทความนี้เหมาะสำหรับพ่อแม่และผู้ดูแลที่ต้องการคำอธิบายยาวและค่อยเป็นค่อยไปมากกว่าการ์ดสั้น รวมถึงต้องการเห็นบริบท ข้อผิดพลาดที่พบบ่อย และคำแนะนำเชิงปฏิบัติอยู่ในหน้าเดียวแบบยังแก้ไขข้อความต่อได้",
+            sections: [
+              { heading: "ความผิดพลาดที่พบบ่อย", details: ["ให้นอนในที่นอนที่ไม่ปลอดภัย", "นอนดึกและตื่นไม่เป็นเวลา"] },
+              { heading: "ใครควรอ่านสไลด์นี้", details: ["พ่อแม่หรือผู้ดูแลเด็กเล็กที่กำลังฝึกนิสัยการนอนของลูก"] },
+              { heading: "สิ่งที่ควรทำต่อ", details: ["เลือกเพียงหนึ่งถึงสองแนวทางแล้วทำซ้ำอย่างสม่ำเสมอ"] },
+              { heading: "เคล็ดลับเสริม", details: ["ใช้เสียงเพลงเบา ๆ และลดสิ่งกระตุ้นก่อนนอน"] },
+            ],
+            graphicCategory: "Education",
+            imagePromptKeywords: "bedtime routine parent child",
+          },
+        ],
+        tokensUsed: 220,
+        creditsUsed: 8,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: "needs_fallback",
+          slotContent: [],
+          sourceTrace: [],
+          overflowRisk: 0.82,
+          fitConfidence: 0.33,
+          fallbackSuggestion: { action: "split_slide", reason: "Long-form copy is still too dense for one slide." },
+        },
+        tokensUsed: 40,
+        creditsUsed: 2,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: "needs_fallback",
+          slotContent: [],
+          sourceTrace: [],
+          overflowRisk: 0.84,
+          fitConfidence: 0.29,
+          fallbackSuggestion: { action: "split_slide", reason: "Compact rewrite still overflows." },
+        },
+        tokensUsed: 40,
+        creditsUsed: 2,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: "needs_fallback",
+          slotContent: [],
+          sourceTrace: [],
+          overflowRisk: 0.86,
+          fitConfidence: 0.24,
+          fallbackSuggestion: { action: "split_slide", reason: "Aggressive rewrite still overflows." },
+        },
+        tokensUsed: 40,
+        creditsUsed: 2,
+      });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 2,
+        draftSkillId: "prompt-planner",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    expect(mockAddSlideToDeck).toHaveBeenCalledTimes(3);
+    const thirdInsertPayload = mockAddSlideToDeck.mock.calls[2]?.[0] as {
+      slideContent?: {
+        aiDesign?: {
+          componentRecipeId?: string;
+          narrative?: { title?: string };
+          fallbackHistory?: Array<Record<string, unknown>>;
+          sourceTrace?: Array<Record<string, unknown>>;
+        };
+      };
+    };
+    expect(thirdInsertPayload.slideContent?.aiDesign?.narrative?.title).toContain("ขั้นตอนปฏิบัติ / เคล็ดลับ");
+    expect(thirdInsertPayload.slideContent?.aiDesign?.componentRecipeId).toBe("sectioned-explainer");
+    expect(thirdInsertPayload.slideContent?.aiDesign?.fallbackHistory).toEqual(expect.arrayContaining([
+      expect.objectContaining({ step: "split_slide" }),
+    ]));
+    expect(thirdInsertPayload.slideContent?.aiDesign?.sourceTrace).toEqual(expect.arrayContaining([
+      expect.objectContaining({ disposition: "split" }),
+    ]));
+  });
+
+  it("uses llm_layout_dsl when the advanced mode flag is enabled and mixed sections do not fit existing recipes", async () => {
+    setupHappyPath();
+    process.env.PRESENTATION_AI_LAYOUT_DSL_ENABLED = "true";
+    mockGetSkillByIdAsync.mockResolvedValue({
+      id: "prompt-planner",
+      name: "Prompt Planner",
+      category: "prompt_enhancement",
+      executionMode: "enhance-prompt",
+      systemPrompt: "Plan slides from the prompt.",
+    });
+    mockCallLLMStructured
+      .mockResolvedValueOnce({
+        data: [
+          {
+            templateId: "hero_center",
+            title: "Intro",
+            body: ["Intro point"],
+            notes: "Intro note",
+            graphicCategory: "Business",
+            imagePromptKeywords: "intro visual",
+          },
+          {
+            templateId: "split_right_image",
+            title: "ภาพรวมงานดูแลลูกค้า",
+            body: ["ใช้บอร์ดเดียวเพื่อสรุปประเด็นหลักของงานดูแลลูกค้า"],
+            sections: [
+              { heading: "บริบท", details: ["อธิบายภาพรวมลูกค้า"] },
+              { heading: "ปัญหา", details: ["ชี้ pain point สำคัญ"] },
+              { heading: "แนวทาง", details: ["สรุปหลักคิดที่ใช้"] },
+              { heading: "ผลลัพธ์", details: ["บอกสิ่งที่คาดหวัง"] },
+            ],
+            notes: "ต้องการบอร์ดข้อมูล",
+            graphicCategory: "Business",
+            imagePromptKeywords: "customer service board",
+          },
+        ],
+        tokensUsed: 180,
+        creditsUsed: 6,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: "ok",
+          elements: [
+            {
+              id: "board",
+              type: "group",
+              x: 32,
+              y: 180,
+              width: 656,
+              height: 740,
+              children: [
+                {
+                  id: "bg",
+                  type: "rect",
+                  x: 0,
+                  y: 0,
+                  width: 656,
+                  height: 740,
+                  fill: "#F7F3E8",
+                },
+                {
+                  id: "title",
+                  type: "text",
+                  x: 36,
+                  y: 40,
+                  width: 584,
+                  height: 80,
+                  text: "แนวทางการดูแลลูกค้า 4 ช่วง",
+                  color: "#223344",
+                  fontSize: 40,
+                },
+              ],
+            },
+          ],
+          explanation: "Used a bounded board layout because the content mixes four balanced sections.",
+          fallbackSuggestion: null,
+        },
+        tokensUsed: 70,
+        creditsUsed: 3,
+      });
+
+    try {
+      await generateAIDraft(
+        buildMockInput({
+          numSlides: 2,
+          draftSkillId: "prompt-planner",
+          articleSkillId: undefined,
+        }),
+        buildMockActor(),
+        "test-token",
+        "task-123",
+      );
+    } finally {
+      delete process.env.PRESENTATION_AI_LAYOUT_DSL_ENABLED;
+    }
+
+    const secondInsertPayload = mockAddSlideToDeck.mock.calls[1]?.[0] as {
+      slideContent?: {
+        elements?: Array<Record<string, unknown>>;
+        aiDesign?: { mode?: string };
+      };
+    };
+    expect(secondInsertPayload.slideContent?.aiDesign?.mode).toBe("llm_layout_dsl");
+    expect(secondInsertPayload.slideContent?.elements).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: "rect", fill: "#F7F3E8" }),
+      expect.objectContaining({ type: "text", text: "แนวทางการดูแลลูกค้า 4 ช่วง" }),
+    ]));
+  });
+
+  it("uses full-slide-media mode when the visual-first flag is enabled and Thai text risk is acceptable", async () => {
+    setupHappyPath();
+    process.env.PRESENTATION_AI_FULL_SLIDE_MEDIA_ENABLED = "true";
+    mockGetSkillByIdAsync.mockResolvedValue({
+      id: "prompt-planner",
+      name: "Prompt Planner",
+      category: "prompt_enhancement",
+      executionMode: "enhance-prompt",
+      systemPrompt: "Plan slides from the prompt.",
+    });
+    mockCallLLMStructured.mockResolvedValueOnce({
+      data: [
+        {
+          templateId: "hero_center",
+          title: "Intro",
+          body: ["Intro point"],
+          notes: "Intro note",
+          graphicCategory: "Business",
+          imagePromptKeywords: "intro visual",
+        },
+        {
+          templateId: "split_right_image",
+          title: "Spring campaign launch",
+          body: ["Soft pastel poster for the new member offer"],
+          notes: "Poster slide only",
+          graphicCategory: "Marketing",
+          imagePromptKeywords: "spring campaign poster",
+        },
+      ],
+      tokensUsed: 180,
+      creditsUsed: 6,
+    });
+
+    try {
+      await generateAIDraft(
+        buildMockInput({
+          numSlides: 2,
+          draftSkillId: "prompt-planner",
+          articleSkillId: undefined,
+        }),
+        buildMockActor(),
+        "test-token",
+        "task-123",
+      );
+    } finally {
+      delete process.env.PRESENTATION_AI_FULL_SLIDE_MEDIA_ENABLED;
+    }
+
+    const secondInsertPayload = mockAddSlideToDeck.mock.calls[1]?.[0] as {
+      slideContent?: {
+        visualOnly?: boolean;
+        elements?: Array<Record<string, unknown>>;
+        aiDesign?: {
+          mode?: string;
+          mediaModeMetadata?: { visualIntent?: string; thaiTextRisk?: string; editableSourceRetained?: boolean };
+        };
+      };
+    };
+    expect(secondInsertPayload.slideContent?.visualOnly).toBe(true);
+    expect(secondInsertPayload.slideContent?.aiDesign?.mode).toBe("full_slide_media");
+    expect(secondInsertPayload.slideContent?.aiDesign?.mediaModeMetadata).toMatchObject({
+      editableSourceRetained: true,
+      visualIntent: "poster",
+      thaiTextRisk: "low",
+    });
+    expect(secondInsertPayload.slideContent?.elements?.[0]).toMatchObject({
+      type: "image",
+      src: "https://cdn.example.com/image.jpg",
+    });
+  });
+
   it("sanitizes AI narrative body and sections before slide insertion", async () => {
     setupHappyPath();
     const oversizedLine = "Detailed launch coverage ".repeat(20).trim();
@@ -5011,6 +6477,41 @@ describe("generateAIDraft - cancellation", () => {
     await generateAIDraft(buildMockInput(), buildMockActor(), "test-token", "task-123");
 
     expect(mockCallLLMStructured).not.toHaveBeenCalled();
+
+    const progressCalls = mockRedisSet.mock.calls.filter(
+      (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("ai_draft_progress"),
+    );
+    const lastProgress = JSON.parse(progressCalls[progressCalls.length - 1][1] as string);
+    expect(lastProgress.cancelled).toBe(true);
+    expect(lastProgress.completed).toBe(true);
+  });
+
+  it("stops while waiting for slide planning after cancel is requested", async () => {
+    setupHappyPath();
+    let cancelChecks = 0;
+    mockRedisGet.mockImplementation(async (key: string) => {
+      if (key.includes("ai_draft_cancel:")) {
+        cancelChecks += 1;
+        return cancelChecks >= 3 ? "1" : null;
+      }
+      if (key.includes("ai_draft_lock:")) {
+        return "task-123";
+      }
+      return null;
+    });
+    mockCallLLMStructured.mockImplementation(
+      () => new Promise(() => {}) as Promise<never>,
+    );
+
+    const runPromise = generateAIDraft(
+      buildMockInput(),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    await vi.advanceTimersByTimeAsync(4000);
+    await runPromise;
 
     const progressCalls = mockRedisSet.mock.calls.filter(
       (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("ai_draft_progress"),

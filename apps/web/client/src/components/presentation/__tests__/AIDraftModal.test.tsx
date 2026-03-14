@@ -4,6 +4,7 @@ import { render, screen, fireEvent, act, within, waitFor } from "@testing-librar
 
 const {
   mockGenerateDraftMutate,
+  mockResolveAutoDraftMutateAsync,
   mockCancelDraftMutate,
   mockGetDraftProgressData,
   mockAvailabilityData,
@@ -13,6 +14,7 @@ const {
   mockInvalidateVersions,
   mockInvalidateSlideshow,
   mockGenerateDraftIsPending,
+  mockResolveAutoDraftIsPending,
   mockCancelDraftIsPending,
   mockUploadMutateAsync,
   mockLibraryImagesData,
@@ -22,10 +24,9 @@ const {
   mockListModelFieldOptionsIsLoading,
   mockListModelFieldOptionsRefetch,
   mockContentAutomationEnabled,
-  mockAgencyList,
-  mockSendAgencyMessageMutate,
 } = vi.hoisted(() => ({
   mockGenerateDraftMutate: vi.fn(),
+  mockResolveAutoDraftMutateAsync: vi.fn(),
   mockCancelDraftMutate: vi.fn(),
   mockGetDraftProgressData: { current: undefined as unknown },
   mockAvailabilityData: { current: { enabled: true, aiGenerationEnabled: true } as unknown },
@@ -47,6 +48,7 @@ const {
   mockInvalidateVersions: vi.fn(),
   mockInvalidateSlideshow: vi.fn(),
   mockGenerateDraftIsPending: { current: false },
+  mockResolveAutoDraftIsPending: { current: false },
   mockCancelDraftIsPending: { current: false },
   mockUploadMutateAsync: vi.fn(),
   mockLibraryImagesData: {
@@ -184,12 +186,6 @@ const {
   mockListModelFieldOptionsIsLoading: { current: false },
   mockListModelFieldOptionsRefetch: vi.fn(),
   mockContentAutomationEnabled: { current: false },
-  mockAgencyList: {
-    current: [
-      { id: 1, slug: "auto-draft-agent", name: "Auto Draft Agent" },
-    ] as unknown[],
-  },
-  mockSendAgencyMessageMutate: vi.fn(),
 }));
 
 vi.mock("@/lib/trpc", () => ({
@@ -200,6 +196,12 @@ vi.mock("@/lib/trpc", () => ({
           useMutation: vi.fn(() => ({
             mutate: mockGenerateDraftMutate,
             isPending: mockGenerateDraftIsPending.current,
+          })),
+        },
+        resolveAutoDraft: {
+          useMutation: vi.fn(() => ({
+            mutateAsync: mockResolveAutoDraftMutateAsync,
+            isPending: mockResolveAutoDraftIsPending.current,
           })),
         },
         getDraftProgress: {
@@ -287,13 +289,7 @@ vi.mock("@/lib/trpc", () => ({
     agency: {
       list: {
         useQuery: vi.fn(() => ({
-          data: mockContentAutomationEnabled.current ? mockAgencyList.current : [],
-        })),
-      },
-      sendMessage: {
-        useMutation: vi.fn(() => ({
-          mutate: mockSendAgencyMessageMutate,
-          isPending: false,
+          data: [],
         })),
       },
     },
@@ -377,10 +373,13 @@ function fillFormAndGenerate() {
 beforeEach(() => {
   vi.clearAllMocks();
   mockGenerateDraftMutate.mockReset();
+  mockResolveAutoDraftMutateAsync.mockReset();
   mockGenerateDraftMutate.mockImplementation(() => {});
+  mockResolveAutoDraftMutateAsync.mockResolvedValue(undefined);
   mockGetDraftProgressData.current = undefined;
   mockAvailabilityData.current = { enabled: true, aiGenerationEnabled: true };
   mockGenerateDraftIsPending.current = false;
+  mockResolveAutoDraftIsPending.current = false;
   mockCancelDraftIsPending.current = false;
   mockSkillSchemaData.current = { hasSchema: false };
   mockGetModelsData.current = {
@@ -486,10 +485,6 @@ beforeEach(() => {
     ],
   };
   mockContentAutomationEnabled.current = false;
-  mockAgencyList.current = [
-    { id: 1, slug: "auto-draft-agent", name: "Auto Draft Agent" },
-  ];
-  mockSendAgencyMessageMutate.mockReset();
 });
 
 describe("G.1 Modal Rendering", () => {
@@ -529,7 +524,7 @@ describe("G.1 Modal Rendering", () => {
     expect(topicTextarea).toBeEnabled();
     expect(screen.queryByLabelText(/article content/i)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("switch", { name: /use your own article/i }));
-    expect(topicTextarea).toBeDisabled();
+    expect(topicTextarea).toBeEnabled();
     expect(screen.getByLabelText(/article content/i)).toBeInTheDocument();
     expect(screen.queryByText(/^Draft Skill$/i)).not.toBeInTheDocument();
   });
@@ -1228,8 +1223,16 @@ describe("Auto mode", () => {
     expect(screen.queryByRole("button", { name: /^generate$/i })).not.toBeInTheDocument();
   });
 
-  it("calls sendMessage (not generateDraft) when Auto Generate is clicked", async () => {
+  it("calls generateDraft after resolving auto-draft parameters", async () => {
     mockContentAutomationEnabled.current = true;
+    mockResolveAutoDraftMutateAsync.mockResolvedValue({
+      language: "en",
+      textModel: "gpt-5.2",
+      draftSkillId: "general-article-writer",
+      stylePresetId: "dark-professional",
+      imageSkillId: "image-creator",
+      imageModel: "flux-2.0",
+    });
     render(<AIDraftModal {...defaultProps} />);
     fireEvent.click(screen.getByRole("switch", { name: /auto mode/i }));
 
@@ -1239,19 +1242,22 @@ describe("Auto mode", () => {
     const autoBtn = screen.getByRole("button", { name: /auto generate/i });
     fireEvent.click(autoBtn);
 
-    expect(mockSendAgencyMessageMutate).toHaveBeenCalledTimes(1);
-    expect(mockGenerateDraftMutate).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(mockResolveAutoDraftMutateAsync).toHaveBeenCalledWith({
+        topic: "Automation test topic",
+      });
+      expect(mockGenerateDraftMutate).toHaveBeenCalledTimes(1);
+    });
   });
 
-  it("Auto Generate button is disabled when auto-draft-agent is not found", () => {
+  it("Auto Generate button is enabled when topic is present", () => {
     mockContentAutomationEnabled.current = true;
-    mockAgencyList.current = [];
     render(<AIDraftModal {...defaultProps} />);
     fireEvent.click(screen.getByRole("switch", { name: /auto mode/i }));
 
     const textarea = screen.getByPlaceholderText(/describe/i);
     fireEvent.change(textarea, { target: { value: "test topic" } });
 
-    expect(screen.getByRole("button", { name: /auto generate/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /auto generate/i })).toBeEnabled();
   });
 });

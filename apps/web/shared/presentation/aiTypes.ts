@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { BUILT_IN_PRESENTATION_COMPONENT_IDS } from "./componentRecipes";
+import { presentationComponentSlotBindingSchema } from "./contracts";
 
 // ── Layout template IDs used by AI generation ──────────────
 export const AI_LAYOUT_TEMPLATE_IDS = [
@@ -150,6 +151,7 @@ export type SlideStylePresetFooter = z.infer<
 export const AIPresentationSlideSchema = z.object({
   templateId: z.enum(AI_LAYOUT_TEMPLATE_IDS),
   componentRecipeId: AIPresentationComponentRecipeIdSchema.optional(),
+  componentSlotBindings: z.array(presentationComponentSlotBindingSchema).max(64).optional(),
   mediaPlan: z.array(z.object({
     slotId: z.string().min(1).max(64),
     prompt: z.string().min(1).max(500),
@@ -199,6 +201,7 @@ export const GenerateAIDraftInputSchema = z.object({
   prompt: z.string().min(3).max(1000),
   numSlides: z.number().int().min(1).max(MAX_AI_DRAFT_SLIDES).default(5),
   language: z.enum(["auto", "en", "th"]).default("auto"),
+  textModel: z.string().min(1).optional(),
   draftSkillId: z.string().min(1).optional(),
   articleSkillId: z.string().min(1).optional(),
   useCustomArticle: z.boolean().default(false),
@@ -267,6 +270,7 @@ export type GenerateAIDraftOutput = z.infer<typeof GenerateAIDraftOutputSchema>;
 export const AIDraftProgressSchema = z.object({
   phase: z.number().int().min(0).max(7),
   phaseLabel: z.string(),
+  phaseDetail: z.string().optional(),
   slidesCompleted: z.number().int().nonnegative(),
   totalSlides: z.number().int().nonnegative(),
   slidePreview: z.array(
@@ -276,6 +280,8 @@ export const AIDraftProgressSchema = z.object({
     }),
   ),
   completed: z.boolean(),
+  updatedAt: z.string().datetime().optional(),
+  workerActive: z.boolean().optional(),
   cancelled: z.boolean().optional(),
   result: z
     .object({
