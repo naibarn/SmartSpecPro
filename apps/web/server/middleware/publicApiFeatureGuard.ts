@@ -47,7 +47,7 @@ export async function publicApiFeatureGuard(
         error: {
           code: "internal_error",
           message: "Failed to verify feature access",
-          type: "server_error",
+          type: "internal_error",
         },
       });
       return;

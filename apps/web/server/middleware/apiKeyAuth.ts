@@ -17,10 +17,13 @@ export async function apiKeyAuthMiddleware(
   });
 
   if (!auth.ok) {
-    return res.status(401).json({
+    const isSuspended = auth.error === "key_suspended";
+    return res.status(isSuspended ? 403 : 401).json({
       error: {
-        code: "invalid_api_key",
-        message: auth.error || "Authentication required",
+        code: isSuspended ? "key_suspended" : "invalid_api_key",
+        message: isSuspended
+          ? "This API key has been suspended. Contact your administrator."
+          : auth.error || "Authentication required",
         type: "auth_error",
       },
     });

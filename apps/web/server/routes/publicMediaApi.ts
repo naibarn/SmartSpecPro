@@ -9,6 +9,7 @@ import { createInternalTokenFromAuth } from "../_core/tokens";
 import { validateReferenceUrls, ApiValidationError } from "../services/ssrfValidation";
 import { incrementDailyCredits } from "../services/apiKeyRateLimiter";
 import { emitPublicApiEvent } from "../services/webhookDeliveryService";
+import { getRedisClient } from "../services/redis";
 
 // ---------------------------------------------------------------------------
 // Schemas
@@ -263,17 +264,20 @@ export function createPublicMediaRouter(): Router {
       const progressPct =
         task.status === "completed" ? 100 : task.status === "processing" ? 50 : 0;
 
-      // Emit media.ready when the task is completed so webhook subscribers and
-      // SSE consumers are notified. This fires on every status poll for completed
-      // tasks — the background worker should ideally emit this directly, but until
-      // that integration exists this ensures at-least-once delivery.
+      // Emit media.ready exactly once per completed task using Redis NX.
+      // Without this guard the event would fire on every status poll.
       if (task.status === "completed") {
-        emitPublicApiEvent(tenantId, "media.ready", {
-          task_id: task.id,
-          media_type: task.mediaType,
-          result_url: task.resultUrl ?? null,
-          credits_used: task.creditsUsed ?? null,
-        }).catch(() => {});
+        const notifyKey = `media.ready.notified:${task.id}`;
+        const redis = getRedisClient();
+        const set = await redis.set(notifyKey, "1", "EX", 86_400, "NX").catch(() => null);
+        if (set) {
+          emitPublicApiEvent(tenantId, "media.ready", {
+            task_id: task.id,
+            media_type: task.mediaType,
+            result_url: task.resultUrl ?? null,
+            credits_used: task.creditsUsed ?? null,
+          }).catch(() => {});
+        }
       }
 
       res.json({

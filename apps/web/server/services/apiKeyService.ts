@@ -122,7 +122,9 @@ export async function validateKey(
   }
 
   if (row.isSuspended) {
-    return null; // Suspended keys are treated as invalid (403 handled by authz middleware)
+    // Return a sentinel that apiKeyAuthMiddleware can distinguish from "invalid key"
+    // so it can return 403 key_suspended instead of 401 invalid_api_key.
+    return { _suspended: true } as unknown as AuthContext;
   }
 
   // Fire-and-forget: update lastUsedAt
@@ -138,6 +140,7 @@ export async function validateKey(
     apiKeyId: row.id,
     scopes: row.scopes as string[],
     rateLimit: row.rateLimit,
+    creditLimit: row.creditLimit ?? null,
     quotaHourly: row.quotaHourly ?? null,
     quotaDaily: row.quotaDaily ?? null,
     quotaWeekly: row.quotaWeekly ?? null,

@@ -151,6 +151,22 @@ export function rateLimitMiddleware() {
       });
     }
 
+    // Enforce per-key daily credit cap (if configured)
+    const creditCheck = await checkDailyCreditLimit(
+      req.auth.apiKeyId,
+      req.auth.creditLimit ?? null,
+    );
+    if (!creditCheck.allowed) {
+      res.setHeader("Retry-After", String(creditCheck.retryAfterSeconds ?? 3600));
+      return res.status(429).json({
+        error: {
+          code: "daily_credit_limit_exceeded",
+          message: "Daily credit limit for this API key has been reached.",
+          type: "rate_limit_error",
+        },
+      });
+    }
+
     next();
   };
 }

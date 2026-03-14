@@ -37,6 +37,8 @@ export interface AuthContext {
   scopes?: string[];
   /** Per-key rate limit in requests-per-minute. Populated for api_key mode only. */
   rateLimit?: number;
+  /** Per-key daily credit cap. null = unlimited. Populated for api_key mode only. */
+  creditLimit?: number | null;
   /** Per-key request quotas. null = unlimited. Populated for api_key mode only. */
   quotaHourly?: number | null;
   quotaDaily?: number | null;

@@ -8,7 +8,21 @@ import { validateKey } from "../services/apiKeyService";
 export type AuthResult =
   | { ok: true; mode: "bearer"; sub: string; scopes: string[] }
   | { ok: true; mode: "session"; user: any; sub: string; scopes: string[] }
-  | { ok: true; mode: "api_key"; sub: string; scopes: string[]; tenantId: string; apiKeyId: string; userId: number; rateLimit: number }
+  | {
+      ok: true;
+      mode: "api_key";
+      sub: string;
+      scopes: string[];
+      tenantId: string;
+      apiKeyId: string;
+      userId: number;
+      rateLimit: number;
+      creditLimit: number | null;
+      quotaHourly: number | null;
+      quotaDaily: number | null;
+      quotaWeekly: number | null;
+      quotaMonthly: number | null;
+    }
   | { ok: false; error: string };
 
 function parseBearer(req: Request): string | null {
@@ -42,6 +56,10 @@ export async function authorizeRequest(
       if (token.startsWith("sk-ssp_")) {
         const authCtx = await validateKey(token);
         if (authCtx) {
+          // Suspended keys return a sentinel object with _suspended flag
+          if ((authCtx as any)._suspended) {
+            return { ok: false, error: "key_suspended" };
+          }
           return {
             ok: true,
             mode: "api_key",
@@ -51,6 +69,11 @@ export async function authorizeRequest(
             apiKeyId: authCtx.apiKeyId ?? "",
             userId: authCtx.userId,
             rateLimit: authCtx.rateLimit ?? 60,
+            creditLimit: authCtx.creditLimit ?? null,
+            quotaHourly: authCtx.quotaHourly ?? null,
+            quotaDaily: authCtx.quotaDaily ?? null,
+            quotaWeekly: authCtx.quotaWeekly ?? null,
+            quotaMonthly: authCtx.quotaMonthly ?? null,
           };
         }
         return { ok: false, error: "Invalid API key" };
