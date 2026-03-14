@@ -77,6 +77,7 @@ import { channelRouterRouter } from "./routers/channelRouter";
 import { tenantFeatureFlagsRouter } from "./routers/tenantFeatureFlags";
 import { contentArtifactsRouter } from "./routers/contentArtifacts";
 import { contentQualityRouter } from "./routers/contentQuality";
+import { apiKeysRouter } from "./routers/apiKeys";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -1788,6 +1789,7 @@ export const appRouter = router({
   liveBrowser: liveBrowserRouter,
   contentArtifacts: contentArtifactsRouter,
   contentQuality: contentQualityRouter,
+  apiKeys: apiKeysRouter,
 });
 
 export type AppRouter = typeof appRouter;
