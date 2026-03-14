@@ -2,11 +2,14 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { eq, and, gte, desc, sql, count } from "drizzle-orm";
 import { protectedProcedure, adminProcedure, router } from "../_core/trpc";
+import { resolveTenantIdVarchar } from "../services/tenantContext";
 import {
   createKey,
   listKeys,
   revokeKey,
   updateKeySettings,
+  suspendKey,
+  unsuspendKey,
 } from "../services/apiKeyService";
 import { ALLOWED_API_SCOPES } from "../../shared/publicApiTypes";
 import { getDb } from "../db";
@@ -21,7 +24,8 @@ export const apiKeysRouter = router({
   // list — returns keys for current user (admin sees all tenant keys)
   // -------------------------------------------------------------------------
   list: protectedProcedure.query(async ({ ctx }) => {
-    const { tenantId, id: userId, role } = ctx.user;
+    const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+    const { id: userId, role } = ctx.user;
     const isAdmin = role === "admin" || role === "domain_admin";
 
     return listKeys(tenantId, isAdmin ? undefined : userId);
@@ -45,7 +49,8 @@ export const apiKeysRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const { tenantId, id: userId } = ctx.user;
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+      const { id: userId } = ctx.user;
 
       // Validate scopes
       const allowedSet = new Set(ALLOWED_API_SCOPES);
@@ -97,9 +102,37 @@ export const apiKeysRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const { tenantId } = ctx.user;
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
       const { keyId, ...settings } = input;
       await updateKeySettings(keyId, tenantId, settings);
+      return { success: true };
+    }),
+
+  // -------------------------------------------------------------------------
+  // suspend — temporarily block a key (admin only)
+  // -------------------------------------------------------------------------
+  suspend: adminProcedure
+    .input(
+      z.object({
+        keyId: z.string(),
+        reason: z.string().max(500).optional(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+      const adminUserId = ctx.user.id;
+      await suspendKey(input.keyId, tenantId, adminUserId, input.reason);
+      return { success: true };
+    }),
+
+  // -------------------------------------------------------------------------
+  // unsuspend — lift suspension (admin only)
+  // -------------------------------------------------------------------------
+  unsuspend: adminProcedure
+    .input(z.object({ keyId: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+      await unsuspendKey(input.keyId, tenantId);
       return { success: true };
     }),
 
@@ -109,7 +142,7 @@ export const apiKeysRouter = router({
   revoke: protectedProcedure
     .input(z.object({ keyId: z.string() }))
     .mutation(async ({ input, ctx }) => {
-      const { tenantId } = ctx.user;
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
       await revokeKey(input.keyId, tenantId);
       return { success: true };
     }),
@@ -186,6 +219,7 @@ export const apiKeysRouter = router({
     const db = await getDb();
     if (!db) return [];
 
+    const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
     const rows = await db
       .select({
         id: apiWebhookEndpoints.id,
@@ -197,7 +231,7 @@ export const apiKeysRouter = router({
         createdAt: apiWebhookEndpoints.createdAt,
       })
       .from(apiWebhookEndpoints)
-      .where(eq(apiWebhookEndpoints.tenantId, ctx.user.tenantId))
+      .where(eq(apiWebhookEndpoints.tenantId, tenantId))
       .orderBy(desc(apiWebhookEndpoints.createdAt));
 
     return rows.map((r) => ({
@@ -216,12 +250,13 @@ export const apiKeysRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
       const rows = await db
         .select({ tenantId: apiWebhookEndpoints.tenantId })
         .from(apiWebhookEndpoints)
         .where(eq(apiWebhookEndpoints.id, input.webhookId));
 
-      if (!rows[0] || rows[0].tenantId !== ctx.user.tenantId) {
+      if (!rows[0] || rows[0].tenantId !== tenantId) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Webhook not found" });
       }
 
@@ -242,12 +277,13 @@ export const apiKeysRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
       const rows = await db
         .select({ tenantId: apiWebhookEndpoints.tenantId })
         .from(apiWebhookEndpoints)
         .where(eq(apiWebhookEndpoints.id, input.webhookId));
 
-      if (!rows[0] || rows[0].tenantId !== ctx.user.tenantId) {
+      if (!rows[0] || rows[0].tenantId !== tenantId) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Webhook not found" });
       }
 
