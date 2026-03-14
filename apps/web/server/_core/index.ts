@@ -18,6 +18,7 @@ import { registerLLMRoutes } from "./llmRoutes";
 import { registerMCPRoutes } from "./mcpRoutes";
 import { registerMediaJobRoutes } from "../routers/mediaJobs";
 import { registerAgencyStreamRoutes } from "./agencyStreamProxy";
+import { registerLiveBrowserStreamRoutes } from "./liveBrowserStreamProxy";
 import { registerContentAutomationRoutes } from "../routers/contentAutomationRoutes";
 import { registerAutoDraftToolRoute } from "../routers/autoDraftTool";
 import { registerModelSuggestToolRoute } from "../routers/modelSuggestTool";
@@ -79,6 +80,11 @@ import { channelGateway } from "../services/channelGateway";
 import { channelConnections } from "../../drizzle/schema";
 import type { ChatIngressEvent } from "@shared/channelTypes";
 import { COOKIE_NAME } from "@shared/const";
+import { createPublicSkillsRouter } from "../routes/publicSkillsApi";
+import { apiKeyAuthMiddleware } from "../middleware/apiKeyAuth";
+import { publicApiCorsMiddleware } from "../middleware/publicApiCors";
+import { publicApiFeatureGuard } from "../middleware/publicApiFeatureGuard";
+import { publicApiHeadersMiddleware } from "../middleware/publicApiHeaders";
 
 /** Shared database adapter (implements @smartspec/db DbAdapter) */
 export const dbAdapter = new PostgresAdapter();
@@ -402,11 +408,23 @@ app.use(browserToolRouter);
 // Mounted at /_internal/tasks to avoid conflict with the frontend /tasks SPA route
 app.use("/_internal/tasks", createTasksRouter());
 
+// Public API v1 — API key authenticated routes
+// All /v1/* routes share: CORS, request ID headers, API key auth, feature guard
+app.use(
+  "/v1",
+  publicApiCorsMiddleware,
+  publicApiHeadersMiddleware,
+  apiKeyAuthMiddleware,
+  publicApiFeatureGuard,
+);
+app.use("/v1/skills", createPublicSkillsRouter());
+
 // REST/SSE endpoints
 registerLLMRoutes(app);
 registerMCPRoutes(app);
 registerMediaJobRoutes(app);
 registerAgencyStreamRoutes(app);
+registerLiveBrowserStreamRoutes(app);
 registerContentAutomationRoutes(app);
 registerAutoDraftToolRoute(app);
 registerModelSuggestToolRoute(app);
