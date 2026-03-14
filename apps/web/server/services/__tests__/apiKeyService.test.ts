@@ -193,7 +193,10 @@ describe("apiKeyService", () => {
       expect(result).toBeNull();
     });
 
-    it("rejects key when tenant publicApi flag is false", async () => {
+    it("returns key even when tenant publicApi flag is false (feature gate handled by middleware)", async () => {
+      // validateKey() no longer checks the publicApi feature flag — that check
+      // was moved to publicApiFeatureGuard middleware so it can return a proper
+      // 403 with "feature_disabled" instead of a misleading 401 "invalid_api_key".
       const rawKey = "sk-ssp_abc12345_someRandomKeyDataHere12345678";
       const keyHash = _computeKeyHash(rawKey);
 
@@ -212,10 +215,9 @@ describe("apiKeyService", () => {
       const fromFn = vi.fn().mockReturnValue({ where: whereFn });
       (db.select as any).mockReturnValue({ from: fromFn });
 
-      (getTenantFeatureFlags as any).mockResolvedValueOnce({ publicApi: false });
-
       const result = await validateKey(rawKey);
-      expect(result).toBeNull();
+      expect(result).not.toBeNull();
+      expect(result?.tenantId).toBe("tenant-uuid");
     });
 
     it("uses hash-based lookup (timing-safe by design)", async () => {

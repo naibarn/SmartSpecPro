@@ -1090,7 +1090,7 @@ export function buildOpenApiSpec() {
               name: "types",
               in: "query",
               schema: { type: "string" },
-              description: "Comma-separated event types to filter (e.g. `job.completed,media.ready`)",
+              description: "Comma-separated event types to filter (e.g. `job.completed,credits.low`)",
             },
           ],
           responses: {

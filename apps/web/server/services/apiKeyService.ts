@@ -7,7 +7,6 @@ import {
   ALLOWED_API_SCOPES_SET,
   type AuthContext,
 } from "../../shared/publicApiTypes";
-import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 
 const KEY_PREFIX = "sk-ssp_";
 
@@ -114,12 +113,6 @@ export async function validateKey(
     return null;
   }
 
-  // Check tenant feature flag
-  const flags = await getTenantFeatureFlags(row.tenantId);
-  if (!flags.publicApi) {
-    return null;
-  }
-
   // Fire-and-forget: update lastUsedAt
   db.update(apiKeys)
     .set({ lastUsedAt: new Date() })
@@ -132,6 +125,7 @@ export async function validateKey(
     mode: "api_key",
     apiKeyId: row.id,
     scopes: row.scopes as string[],
+    rateLimit: row.rateLimit,
   };
 }
 
