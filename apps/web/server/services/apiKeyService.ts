@@ -121,6 +121,10 @@ export async function validateKey(
     return null;
   }
 
+  if (row.isSuspended) {
+    return null; // Suspended keys are treated as invalid (403 handled by authz middleware)
+  }
+
   // Fire-and-forget: update lastUsedAt
   db.update(apiKeys)
     .set({ lastUsedAt: new Date() })
@@ -166,6 +170,10 @@ export async function listKeys(tenantId: string, userId?: number) {
       expiresAt: apiKeys.expiresAt,
       lastUsedAt: apiKeys.lastUsedAt,
       isActive: apiKeys.isActive,
+      isSuspended: apiKeys.isSuspended,
+      suspendedReason: apiKeys.suspendedReason,
+      suspendedAt: apiKeys.suspendedAt,
+      suspendedBy: apiKeys.suspendedBy,
       createdAt: apiKeys.createdAt,
     })
     .from(apiKeys)
@@ -173,6 +181,59 @@ export async function listKeys(tenantId: string, userId?: number) {
     .orderBy(desc(apiKeys.createdAt));
 
   return rows;
+}
+
+/**
+ * Temporarily suspend an API key (admin only).
+ * Suspended keys are rejected on every request until unsuspended.
+ */
+export async function suspendKey(
+  keyId: string,
+  tenantId: string,
+  adminUserId: number,
+  reason?: string,
+): Promise<{ suspended: boolean }> {
+  const result = await db
+    .update(apiKeys)
+    .set({
+      isSuspended: true,
+      suspendedReason: reason?.slice(0, 500) ?? null,
+      suspendedAt: new Date(),
+      suspendedBy: adminUserId,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(apiKeys.id, keyId), eq(apiKeys.tenantId, tenantId)));
+
+  if (result.rowCount === 0) {
+    throw new Error("API key not found");
+  }
+
+  return { suspended: true };
+}
+
+/**
+ * Lift a suspension — key becomes active again immediately.
+ */
+export async function unsuspendKey(
+  keyId: string,
+  tenantId: string,
+): Promise<{ unsuspended: boolean }> {
+  const result = await db
+    .update(apiKeys)
+    .set({
+      isSuspended: false,
+      suspendedReason: null,
+      suspendedAt: null,
+      suspendedBy: null,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(apiKeys.id, keyId), eq(apiKeys.tenantId, tenantId)));
+
+  if (result.rowCount === 0) {
+    throw new Error("API key not found");
+  }
+
+  return { unsuspended: true };
 }
 
 /**

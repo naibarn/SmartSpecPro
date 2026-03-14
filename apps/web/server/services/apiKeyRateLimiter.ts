@@ -133,7 +133,7 @@ export function rateLimitMiddleware() {
     const result = await checkRateLimit(
       req.auth.apiKeyId,
       req.auth.tenantId,
-      60, // default RPM, could read from api_keys.rateLimit
+      (req as any).auth?.rateLimit ?? 60,
     );
 
     for (const [key, value] of Object.entries(result.headers)) {

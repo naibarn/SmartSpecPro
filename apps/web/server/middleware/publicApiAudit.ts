@@ -18,6 +18,10 @@ export function publicApiAuditMiddleware(
     // Only log requests authenticated via API key (mode === 'api_key')
     if (!auth?.ok || auth.mode !== "api_key") return;
 
+    // Read credits consumed by the route handler (set via X-Credits-Used response header)
+    const creditsHeader = res.getHeader("X-Credits-Used");
+    const creditsUsed = creditsHeader != null ? Number(creditsHeader) : 0;
+
     void logPublicApiRequest({
       tenantId: auth.tenantId,
       apiKeyId: auth.apiKeyId,
@@ -25,6 +29,7 @@ export function publicApiAuditMiddleware(
       method: req.method,
       path: req.path,
       statusCode: res.statusCode,
+      creditsUsed,
       durationMs: Date.now() - startMs,
       errorCode: res.statusCode >= 400 ? String(res.statusCode) : null,
     });

@@ -4,6 +4,7 @@ import { authorizeRequest } from "../_core/authz";
 /**
  * Express middleware that authenticates requests for /v1/* routes.
  * Calls authorizeRequest() and sets req.auth for downstream middleware.
+ * Audit logging is handled separately by publicApiAuditMiddleware.
  */
 export async function apiKeyAuthMiddleware(
   req: Request,

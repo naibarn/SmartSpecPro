@@ -45,6 +45,8 @@ import {
   AlertTriangle,
   RefreshCw,
   SlidersHorizontal,
+  PauseCircle,
+  PlayCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -106,6 +108,8 @@ export default function AdminAPIKeys() {
     quotaHourly: number | null; quotaDaily: number | null;
     quotaWeekly: number | null; quotaMonthly: number | null;
   } | null>(null);
+  const [suspendTarget, setSuspendTarget] = useState<{ id: string; name: string } | null>(null);
+  const [suspendReason, setSuspendReason] = useState("");
 
   const keysQuery = trpc.apiKeys.list.useQuery();
   const webhooksQuery = trpc.apiKeys.listWebhooks.useQuery();
@@ -154,6 +158,24 @@ export default function AdminAPIKeys() {
       setEditingLimits(null);
       utils.apiKeys.list.invalidate();
       toast.success("Limits updated");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const suspendMutation = trpc.apiKeys.suspend.useMutation({
+    onSuccess: () => {
+      setSuspendTarget(null);
+      setSuspendReason("");
+      utils.apiKeys.list.invalidate();
+      toast.success("API key suspended");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const unsuspendMutation = trpc.apiKeys.unsuspend.useMutation({
+    onSuccess: () => {
+      utils.apiKeys.list.invalidate();
+      toast.success("API key unsuspended");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -268,13 +290,17 @@ export default function AdminAPIKeys() {
                         </TableCell>
                         <TableCell className="text-sm">{key.rateLimit ?? 60} RPM</TableCell>
                         <TableCell>
-                          {key.isActive ? (
+                          {(key as any).isSuspended ? (
+                            <Badge className="bg-orange-100 text-orange-800 text-xs" title={(key as any).suspendedReason ?? undefined}>
+                              <PauseCircle className="h-3 w-3 mr-1" /> Suspended
+                            </Badge>
+                          ) : key.isActive ? (
                             <Badge className="bg-green-100 text-green-800 text-xs">
                               <CheckCircle2 className="h-3 w-3 mr-1" /> Active
                             </Badge>
                           ) : (
                             <Badge variant="destructive" className="text-xs">
-                              <XCircle className="h-3 w-3 mr-1" /> Inactive
+                              <XCircle className="h-3 w-3 mr-1" /> Revoked
                             </Badge>
                           )}
                         </TableCell>
@@ -312,12 +338,34 @@ export default function AdminAPIKeys() {
                             >
                               <SlidersHorizontal className="h-4 w-4" />
                             </Button>
+                            {(key as any).isSuspended ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-green-600"
+                                onClick={() => unsuspendMutation.mutate({ keyId: key.id })}
+                                title="Lift suspension"
+                                disabled={unsuspendMutation.isPending}
+                              >
+                                <PlayCircle className="h-4 w-4" />
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-orange-600"
+                                onClick={() => setSuspendTarget({ id: key.id, name: key.name })}
+                                title="Suspend key temporarily"
+                              >
+                                <PauseCircle className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="sm"
                               className="text-destructive"
                               onClick={() => setRevokeTarget({ id: key.id, name: key.name })}
-                              title="Revoke key"
+                              title="Revoke key permanently"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -686,6 +734,48 @@ export default function AdminAPIKeys() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewingStats(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Suspend confirmation dialog */}
+      <Dialog open={!!suspendTarget} onOpenChange={() => { setSuspendTarget(null); setSuspendReason(""); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-orange-700">
+              <PauseCircle className="h-5 w-5" /> Suspend API Key
+            </DialogTitle>
+            <DialogDescription>
+              <strong>{suspendTarget?.name}</strong> will be blocked immediately.
+              The key can be unsuspended at any time.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="suspend-reason" className="text-xs">Reason (optional)</Label>
+              <Input
+                id="suspend-reason"
+                placeholder="e.g. Unusual traffic detected"
+                value={suspendReason}
+                onChange={(e) => setSuspendReason(e.target.value)}
+                maxLength={500}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setSuspendTarget(null); setSuspendReason(""); }}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-orange-600 hover:bg-orange-700 text-white"
+              disabled={suspendMutation.isPending}
+              onClick={() =>
+                suspendTarget &&
+                suspendMutation.mutate({ keyId: suspendTarget.id, reason: suspendReason || undefined })
+              }
+            >
+              {suspendMutation.isPending ? "Suspending..." : "Suspend Key"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
