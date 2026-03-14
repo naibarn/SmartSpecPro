@@ -8,12 +8,18 @@ import { validateKey } from "../services/apiKeyService";
 export type AuthResult =
   | { ok: true; mode: "bearer"; sub: string; scopes: string[] }
   | { ok: true; mode: "session"; user: any; sub: string; scopes: string[] }
-  | { ok: true; mode: "api_key"; sub: string; scopes: string[]; tenantId: string; apiKeyId: string; userId: number }
+  | { ok: true; mode: "api_key"; sub: string; scopes: string[]; tenantId: string; apiKeyId: string; userId: number; rateLimit: number }
   | { ok: false; error: string };
 
 function parseBearer(req: Request): string | null {
+  // Standard: Authorization: Bearer <token>
   const h = String(req.headers["authorization"] || "").trim();
   if (h.toLowerCase().startsWith("bearer ")) return h.slice(7).trim();
+
+  // Alternative: X-Api-Key: <token>  (used by n8n, Zapier, Make, OpenAPI gateways)
+  const xApiKey = String(req.headers["x-api-key"] || "").trim();
+  if (xApiKey) return xApiKey;
+
   return null;
 }
 
@@ -44,6 +50,7 @@ export async function authorizeRequest(
             tenantId: authCtx.tenantId,
             apiKeyId: authCtx.apiKeyId ?? "",
             userId: authCtx.userId,
+            rateLimit: authCtx.rateLimit ?? 60,
           };
         }
         return { ok: false, error: "Invalid API key" };

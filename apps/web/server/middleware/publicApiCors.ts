@@ -1,8 +1,8 @@
 import type { Request, Response, NextFunction } from "express";
 
-const ALLOWED_METHODS = "GET, POST, PUT, DELETE, OPTIONS";
+const ALLOWED_METHODS = "GET, POST, PUT, PATCH, DELETE, OPTIONS";
 const ALLOWED_HEADERS =
-  "Authorization, Content-Type, Idempotency-Key, Mcp-Session-Id";
+  "Authorization, X-Api-Key, Content-Type, Idempotency-Key, Mcp-Session-Id";
 const EXPOSED_HEADERS =
   "X-Request-Id, X-Credits-Used, X-Credits-Remaining, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset";
 
