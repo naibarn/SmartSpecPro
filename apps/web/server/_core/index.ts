@@ -88,6 +88,9 @@ import { createPublicVideoRouter } from "../routes/publicVideoApi";
 import { createPublicMediaRouter } from "../routes/publicMediaApi";
 import { createPublicJobsRouter } from "../routes/publicJobsApi";
 import { initAutomationJobsQueue, closeAutomationJobsQueue } from "../services/jobAutomationService";
+import { createPublicWebhooksRouter } from "../routes/publicWebhooksApi";
+import { createPublicEventsRouter } from "../routes/publicEventsApi";
+import { initWebhookApiDeliveryQueue, closeWebhookApiDeliveryQueue } from "../services/webhookDeliveryService";
 import { apiKeyAuthMiddleware } from "../middleware/apiKeyAuth";
 import { publicApiCorsMiddleware } from "../middleware/publicApiCors";
 import { publicApiFeatureGuard } from "../middleware/publicApiFeatureGuard";
@@ -430,6 +433,8 @@ app.use("/v1/presentations", createPresentationPublicRouter());
 app.use("/v1/video-projects", createPublicVideoRouter());
 app.use("/v1/media", createPublicMediaRouter());
 app.use("/v1/jobs", createPublicJobsRouter());
+app.use("/v1/webhooks", createPublicWebhooksRouter());
+app.use("/v1/events", createPublicEventsRouter());
 
 // REST/SSE endpoints
 registerLLMRoutes(app);
@@ -1092,6 +1097,13 @@ async function main() {
     console.error("[Startup] Failed to initialize automation jobs queue:", error);
   }
 
+  // Initialize Webhook API Delivery queue (BullMQ — outbound delivery to external webhook endpoints)
+  try {
+    await initWebhookApiDeliveryQueue();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize webhook API delivery queue:", error);
+  }
+
   // Initialize channel adapters (call optional initialize() hook on each)
   try {
     await Promise.all(
@@ -1254,6 +1266,7 @@ process.on("SIGTERM", async () => {
   await closeDeliveryQueue().catch(() => {});
   await closeWebhookDispatchQueue().catch(() => {});
   await closeAutomationJobsQueue().catch(() => {});
+  await closeWebhookApiDeliveryQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
 
   // 3b. Shut down channel adapters
@@ -1307,6 +1320,7 @@ process.on("SIGINT", async () => {
   await closeDeliveryQueue().catch(() => {});
   await closeWebhookDispatchQueue().catch(() => {});
   await closeAutomationJobsQueue().catch(() => {});
+  await closeWebhookApiDeliveryQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
   await Promise.all(
     adapterRegistry.getAll()
