@@ -86,6 +86,8 @@ import { createPublicAgencyRouter } from "../routes/publicAgencyApi";
 import { createPresentationPublicRouter } from "../routes/publicPresentationsApi";
 import { createPublicVideoRouter } from "../routes/publicVideoApi";
 import { createPublicMediaRouter } from "../routes/publicMediaApi";
+import { createPublicJobsRouter } from "../routes/publicJobsApi";
+import { initAutomationJobsQueue, closeAutomationJobsQueue } from "../services/jobAutomationService";
 import { apiKeyAuthMiddleware } from "../middleware/apiKeyAuth";
 import { publicApiCorsMiddleware } from "../middleware/publicApiCors";
 import { publicApiFeatureGuard } from "../middleware/publicApiFeatureGuard";
@@ -427,6 +429,7 @@ app.use("/v1/agencies", createPublicAgencyRouter());
 app.use("/v1/presentations", createPresentationPublicRouter());
 app.use("/v1/video-projects", createPublicVideoRouter());
 app.use("/v1/media", createPublicMediaRouter());
+app.use("/v1/jobs", createPublicJobsRouter());
 
 // REST/SSE endpoints
 registerLLMRoutes(app);
@@ -1082,6 +1085,13 @@ async function main() {
     console.error("[Startup] Failed to initialize webhook dispatch queue:", error);
   }
 
+  // Initialize Automation Jobs queue (BullMQ — public API job execution)
+  try {
+    await initAutomationJobsQueue();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize automation jobs queue:", error);
+  }
+
   // Initialize channel adapters (call optional initialize() hook on each)
   try {
     await Promise.all(
@@ -1243,6 +1253,7 @@ process.on("SIGTERM", async () => {
   await shutdownTelegramWorker().catch(() => {});
   await closeDeliveryQueue().catch(() => {});
   await closeWebhookDispatchQueue().catch(() => {});
+  await closeAutomationJobsQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
 
   // 3b. Shut down channel adapters
@@ -1295,6 +1306,7 @@ process.on("SIGINT", async () => {
   await shutdownTelegramWorker().catch(() => {});
   await closeDeliveryQueue().catch(() => {});
   await closeWebhookDispatchQueue().catch(() => {});
+  await closeAutomationJobsQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
   await Promise.all(
     adapterRegistry.getAll()
