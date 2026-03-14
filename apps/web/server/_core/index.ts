@@ -91,6 +91,7 @@ import { initAutomationJobsQueue, closeAutomationJobsQueue } from "../services/j
 import { createPublicWebhooksRouter } from "../routes/publicWebhooksApi";
 import { createPublicEventsRouter } from "../routes/publicEventsApi";
 import { initWebhookApiDeliveryQueue, closeWebhookApiDeliveryQueue } from "../services/webhookDeliveryService";
+import { registerPublicDocsRoutes } from "../routes/publicDocsApi";
 import { apiKeyAuthMiddleware } from "../middleware/apiKeyAuth";
 import { publicApiCorsMiddleware } from "../middleware/publicApiCors";
 import { publicApiFeatureGuard } from "../middleware/publicApiFeatureGuard";
@@ -435,6 +436,9 @@ app.use("/v1/media", createPublicMediaRouter());
 app.use("/v1/jobs", createPublicJobsRouter());
 app.use("/v1/webhooks", createPublicWebhooksRouter());
 app.use("/v1/events", createPublicEventsRouter());
+
+// Public API documentation (unauthenticated)
+registerPublicDocsRoutes(app);
 
 // REST/SSE endpoints
 registerLLMRoutes(app);
