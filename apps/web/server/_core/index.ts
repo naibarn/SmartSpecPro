@@ -82,6 +82,7 @@ import type { ChatIngressEvent } from "@shared/channelTypes";
 import { COOKIE_NAME } from "@shared/const";
 import { createPublicSkillsRouter } from "../routes/publicSkillsApi";
 import { createPublicAgencyRouter } from "../routes/publicAgencyApi";
+import { createPresentationPublicRouter } from "../routes/publicPresentationsApi";
 import { apiKeyAuthMiddleware } from "../middleware/apiKeyAuth";
 import { publicApiCorsMiddleware } from "../middleware/publicApiCors";
 import { publicApiFeatureGuard } from "../middleware/publicApiFeatureGuard";
@@ -420,6 +421,7 @@ app.use(
 );
 app.use("/v1/skills", createPublicSkillsRouter());
 app.use("/v1/agencies", createPublicAgencyRouter());
+app.use("/v1/presentations", createPresentationPublicRouter());
 
 // REST/SSE endpoints
 registerLLMRoutes(app);
