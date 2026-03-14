@@ -45,4 +45,7 @@ export const ENV = {
   sandboxDefaultProfile: process.env.SANDBOX_DEFAULT_PROFILE ?? "code-default",
   sandboxRequireForSkills: process.env.SANDBOX_REQUIRE_FOR_SKILLS === "true",
   sandboxRequireForMedia: process.env.SANDBOX_REQUIRE_FOR_MEDIA === "true",
+
+  // Public API key HMAC secret (server pepper for key hashing)
+  apiKeyHmacSecret: process.env.API_KEY_HMAC_SECRET ?? "",
 };

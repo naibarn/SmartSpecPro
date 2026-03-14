@@ -24,6 +24,9 @@ export const ALLOWED_API_SCOPES = [
 
 export type ApiScope = (typeof ALLOWED_API_SCOPES)[number];
 
+/** Set version for fast O(1) lookups. */
+export const ALLOWED_API_SCOPES_SET: ReadonlySet<string> = new Set(ALLOWED_API_SCOPES);
+
 /** Authentication context populated by API key middleware. */
 export interface AuthContext {
   userId: number;
@@ -48,3 +51,24 @@ export type JobType = (typeof VALID_JOB_TYPES)[number];
 
 /** Maximum credits a single job can reserve (overflow guard). */
 export const MAX_SINGLE_JOB_CREDITS = 10_000;
+
+/** Standard API error codes. */
+export type ApiErrorCode =
+  | "invalid_api_key"
+  | "insufficient_scopes"
+  | "rate_limit_exceeded"
+  | "insufficient_credits"
+  | "daily_credit_limit"
+  | "invalid_request"
+  | "not_found"
+  | "internal_error"
+  | "feature_disabled";
+
+/** OpenAI-compatible error envelope. */
+export interface ApiErrorResponse {
+  error: {
+    code: ApiErrorCode;
+    message: string;
+    type: string; // e.g. "auth_error", "billing_error", "invalid_request_error"
+  };
+}
