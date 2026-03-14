@@ -44,6 +44,7 @@ import {
   Shield,
   AlertTriangle,
   RefreshCw,
+  SlidersHorizontal,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -91,10 +92,20 @@ export default function AdminAPIKeys() {
   const [newKeyExpiry, setNewKeyExpiry] = useState("365");
   const [newKeyCreditLimit, setNewKeyCreditLimit] = useState("");
   const [newKeyRateLimit, setNewKeyRateLimit] = useState("60");
+  const [newKeyQuotaHourly, setNewKeyQuotaHourly] = useState("");
+  const [newKeyQuotaDaily, setNewKeyQuotaDaily] = useState("");
+  const [newKeyQuotaWeekly, setNewKeyQuotaWeekly] = useState("");
+  const [newKeyQuotaMonthly, setNewKeyQuotaMonthly] = useState("");
 
   const [createdKey, setCreatedKey] = useState<{ rawKey: string; name: string } | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<{ id: string; name: string } | null>(null);
   const [viewingStats, setViewingStats] = useState<string | null>(null);
+  const [editingLimits, setEditingLimits] = useState<{
+    id: string; name: string;
+    rateLimit: number; creditLimit: number | null;
+    quotaHourly: number | null; quotaDaily: number | null;
+    quotaWeekly: number | null; quotaMonthly: number | null;
+  } | null>(null);
 
   const keysQuery = trpc.apiKeys.list.useQuery();
   const webhooksQuery = trpc.apiKeys.listWebhooks.useQuery();
@@ -138,12 +149,25 @@ export default function AdminAPIKeys() {
     onError: (err) => toast.error(err.message),
   });
 
+  const updateSettingsMutation = trpc.apiKeys.updateSettings.useMutation({
+    onSuccess: () => {
+      setEditingLimits(null);
+      utils.apiKeys.list.invalidate();
+      toast.success("Limits updated");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
   function resetCreateForm() {
     setNewKeyName("");
     setNewKeyScopes([]);
     setNewKeyExpiry("365");
     setNewKeyCreditLimit("");
     setNewKeyRateLimit("60");
+    setNewKeyQuotaHourly("");
+    setNewKeyQuotaDaily("");
+    setNewKeyQuotaWeekly("");
+    setNewKeyQuotaMonthly("");
   }
 
   function toggleScope(scope: string) {
@@ -159,6 +183,10 @@ export default function AdminAPIKeys() {
       expiresInDays: newKeyExpiry ? parseInt(newKeyExpiry, 10) : undefined,
       creditLimit: newKeyCreditLimit ? parseInt(newKeyCreditLimit, 10) : null,
       rateLimit: newKeyRateLimit ? parseInt(newKeyRateLimit, 10) : undefined,
+      quotaHourly: newKeyQuotaHourly ? parseInt(newKeyQuotaHourly, 10) : null,
+      quotaDaily: newKeyQuotaDaily ? parseInt(newKeyQuotaDaily, 10) : null,
+      quotaWeekly: newKeyQuotaWeekly ? parseInt(newKeyQuotaWeekly, 10) : null,
+      quotaMonthly: newKeyQuotaMonthly ? parseInt(newKeyQuotaMonthly, 10) : null,
     });
   }
 
@@ -264,6 +292,25 @@ export default function AdminAPIKeys() {
                               title="View usage stats"
                             >
                               <Activity className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                setEditingLimits({
+                                  id: key.id,
+                                  name: key.name,
+                                  rateLimit: key.rateLimit ?? 60,
+                                  creditLimit: (key as any).creditLimit ?? null,
+                                  quotaHourly: (key as any).quotaHourly ?? null,
+                                  quotaDaily: (key as any).quotaDaily ?? null,
+                                  quotaWeekly: (key as any).quotaWeekly ?? null,
+                                  quotaMonthly: (key as any).quotaMonthly ?? null,
+                                })
+                              }
+                              title="Edit limits & quotas"
+                            >
+                              <SlidersHorizontal className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -468,6 +515,57 @@ export default function AdminAPIKeys() {
                 />
               </div>
             </div>
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">
+                Request quotas — alert at 80%, block at 100% (leave blank = unlimited)
+              </Label>
+              <div className="grid grid-cols-4 gap-2">
+                <div>
+                  <Label htmlFor="key-quota-h" className="text-xs">Hourly</Label>
+                  <Input
+                    id="key-quota-h"
+                    type="number"
+                    min={1}
+                    value={newKeyQuotaHourly}
+                    onChange={(e) => setNewKeyQuotaHourly(e.target.value)}
+                    placeholder="∞"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="key-quota-d" className="text-xs">Daily</Label>
+                  <Input
+                    id="key-quota-d"
+                    type="number"
+                    min={1}
+                    value={newKeyQuotaDaily}
+                    onChange={(e) => setNewKeyQuotaDaily(e.target.value)}
+                    placeholder="∞"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="key-quota-w" className="text-xs">Weekly</Label>
+                  <Input
+                    id="key-quota-w"
+                    type="number"
+                    min={1}
+                    value={newKeyQuotaWeekly}
+                    onChange={(e) => setNewKeyQuotaWeekly(e.target.value)}
+                    placeholder="∞"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="key-quota-m" className="text-xs">Monthly</Label>
+                  <Input
+                    id="key-quota-m"
+                    type="number"
+                    min={1}
+                    value={newKeyQuotaMonthly}
+                    onChange={(e) => setNewKeyQuotaMonthly(e.target.value)}
+                    placeholder="∞"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
@@ -591,6 +689,97 @@ export default function AdminAPIKeys() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Limits dialog */}
+      {editingLimits && (
+        <Dialog open={!!editingLimits} onOpenChange={() => setEditingLimits(null)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <SlidersHorizontal className="h-5 w-5" /> Edit Limits
+              </DialogTitle>
+              <DialogDescription>{editingLimits.name}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Rate limit (RPM)</Label>
+                  <Input
+                    type="number" min={1} max={10000}
+                    value={editingLimits.rateLimit}
+                    onChange={(e) =>
+                      setEditingLimits((p) => p && { ...p, rateLimit: parseInt(e.target.value, 10) || 60 })
+                    }
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Credit limit/day</Label>
+                  <Input
+                    type="number" min={0}
+                    value={editingLimits.creditLimit ?? ""}
+                    onChange={(e) =>
+                      setEditingLimits((p) =>
+                        p && { ...p, creditLimit: e.target.value ? parseInt(e.target.value, 10) : null },
+                      )
+                    }
+                    placeholder="Unlimited"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground mb-1 block">
+                  Request quotas — alert 80%, block 100% (blank = unlimited)
+                </Label>
+                <div className="grid grid-cols-4 gap-2">
+                  {(
+                    [
+                      { field: "quotaHourly", label: "Hourly" },
+                      { field: "quotaDaily", label: "Daily" },
+                      { field: "quotaWeekly", label: "Weekly" },
+                      { field: "quotaMonthly", label: "Monthly" },
+                    ] as const
+                  ).map(({ field, label }) => (
+                    <div key={field}>
+                      <Label className="text-xs">{label}</Label>
+                      <Input
+                        type="number" min={1}
+                        value={editingLimits[field] ?? ""}
+                        onChange={(e) =>
+                          setEditingLimits((p) =>
+                            p && { ...p, [field]: e.target.value ? parseInt(e.target.value, 10) : null },
+                          )
+                        }
+                        placeholder="∞"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditingLimits(null)}>
+                Cancel
+              </Button>
+              <Button
+                disabled={updateSettingsMutation.isPending}
+                onClick={() =>
+                  updateSettingsMutation.mutate({
+                    keyId: editingLimits.id,
+                    rateLimit: editingLimits.rateLimit,
+                    creditLimit: editingLimits.creditLimit,
+                    quotaHourly: editingLimits.quotaHourly,
+                    quotaDaily: editingLimits.quotaDaily,
+                    quotaWeekly: editingLimits.quotaWeekly,
+                    quotaMonthly: editingLimits.quotaMonthly,
+                  })
+                }
+              >
+                {updateSettingsMutation.isPending ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

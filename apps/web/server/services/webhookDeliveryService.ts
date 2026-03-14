@@ -23,6 +23,7 @@ export const KNOWN_EVENT_TYPES = [
   "agency.message",
   "credits.low",
   "key.expiring",
+  "quota.warning",
 ] as const;
 
 export type PublicApiEventType = (typeof KNOWN_EVENT_TYPES)[number];

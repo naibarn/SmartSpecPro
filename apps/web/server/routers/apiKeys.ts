@@ -6,6 +6,7 @@ import {
   createKey,
   listKeys,
   revokeKey,
+  updateKeySettings,
 } from "../services/apiKeyService";
 import { ALLOWED_API_SCOPES } from "../../shared/publicApiTypes";
 import { getDb } from "../db";
@@ -37,6 +38,10 @@ export const apiKeysRouter = router({
         expiresInDays: z.number().int().min(1).max(3650).optional(),
         creditLimit: z.number().int().min(0).nullable().optional(),
         rateLimit: z.number().int().min(1).max(10000).optional(),
+        quotaHourly: z.number().int().min(1).nullable().optional(),
+        quotaDaily: z.number().int().min(1).nullable().optional(),
+        quotaWeekly: z.number().int().min(1).nullable().optional(),
+        quotaMonthly: z.number().int().min(1).nullable().optional(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
@@ -61,6 +66,10 @@ export const apiKeysRouter = router({
         expiresAt,
         creditLimit: input.creditLimit ?? undefined,
         rateLimit: input.rateLimit,
+        quotaHourly: input.quotaHourly ?? null,
+        quotaDaily: input.quotaDaily ?? null,
+        quotaWeekly: input.quotaWeekly ?? null,
+        quotaMonthly: input.quotaMonthly ?? null,
       });
 
       return {
@@ -70,6 +79,28 @@ export const apiKeysRouter = router({
         name: input.name,
         scopes: input.scopes,
       };
+    }),
+
+  // -------------------------------------------------------------------------
+  // updateSettings — update limits/quotas on an existing key
+  // -------------------------------------------------------------------------
+  updateSettings: protectedProcedure
+    .input(
+      z.object({
+        keyId: z.string(),
+        rateLimit: z.number().int().min(1).max(10000).optional(),
+        creditLimit: z.number().int().min(0).nullable().optional(),
+        quotaHourly: z.number().int().min(1).nullable().optional(),
+        quotaDaily: z.number().int().min(1).nullable().optional(),
+        quotaWeekly: z.number().int().min(1).nullable().optional(),
+        quotaMonthly: z.number().int().min(1).nullable().optional(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const { tenantId } = ctx.user;
+      const { keyId, ...settings } = input;
+      await updateKeySettings(keyId, tenantId, settings);
+      return { success: true };
     }),
 
   // -------------------------------------------------------------------------

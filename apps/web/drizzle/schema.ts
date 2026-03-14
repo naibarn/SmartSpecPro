@@ -5439,6 +5439,11 @@ export const apiKeys = pgTable("api_keys", {
   scopes: json("scopes").$type<string[]>().notNull(),
   rateLimit: integer("rateLimit").default(60).notNull(),
   creditLimit: integer("creditLimit"),
+  // Request-count quotas per time window (null = unlimited)
+  quotaHourly: integer("quotaHourly"),
+  quotaDaily: integer("quotaDaily"),
+  quotaWeekly: integer("quotaWeekly"),
+  quotaMonthly: integer("quotaMonthly"),
   expiresAt: timestamp("expiresAt", { withTimezone: true }),
   lastUsedAt: timestamp("lastUsedAt", { withTimezone: true }),
   isActive: boolean("isActive").default(true).notNull(),
@@ -5556,7 +5561,7 @@ export const automationJobs = pgTable("automation_jobs", {
 }, (t) => [
   index("automation_jobs_tenant_status_idx").on(t.tenantId, t.status),
   index("automation_jobs_api_key_idx").on(t.apiKeyId),
-  uniqueIndex("automation_jobs_idempotency_idx").on(t.idempotencyKey),
+  uniqueIndex("automation_jobs_idempotency_idx").on(t.tenantId, t.idempotencyKey),
   index("automation_jobs_parent_idx").on(t.parentJobId),
 ]);
 

@@ -17,6 +17,7 @@ export const ALLOWED_API_SCOPES = [
   "mcp:write",
   "jobs:create",
   "jobs:read",
+  "jobs:write",
   "webhooks:manage",
   "events:read",
   "api_keys:manage",
@@ -34,6 +35,13 @@ export interface AuthContext {
   mode: "session" | "api_key";
   apiKeyId?: string;
   scopes?: string[];
+  /** Per-key rate limit in requests-per-minute. Populated for api_key mode only. */
+  rateLimit?: number;
+  /** Per-key request quotas. null = unlimited. Populated for api_key mode only. */
+  quotaHourly?: number | null;
+  quotaDaily?: number | null;
+  quotaWeekly?: number | null;
+  quotaMonthly?: number | null;
 }
 
 /** Valid job types for the automation API. */
@@ -59,6 +67,7 @@ export type ApiErrorCode =
   | "rate_limit_exceeded"
   | "insufficient_credits"
   | "daily_credit_limit"
+  | "quota_exceeded"
   | "invalid_request"
   | "not_found"
   | "internal_error"

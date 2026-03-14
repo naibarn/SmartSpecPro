@@ -53,6 +53,10 @@ export async function createKey(
     expiresAt?: Date;
     rateLimit?: number;
     creditLimit?: number;
+    quotaHourly?: number | null;
+    quotaDaily?: number | null;
+    quotaWeekly?: number | null;
+    quotaMonthly?: number | null;
     metadata?: Record<string, unknown>;
   },
 ): Promise<{ id: string; rawKey: string; keyPrefix: string }> {
@@ -78,6 +82,10 @@ export async function createKey(
     scopes,
     rateLimit: options?.rateLimit ?? 60,
     creditLimit: options?.creditLimit ?? null,
+    quotaHourly: options?.quotaHourly ?? null,
+    quotaDaily: options?.quotaDaily ?? null,
+    quotaWeekly: options?.quotaWeekly ?? null,
+    quotaMonthly: options?.quotaMonthly ?? null,
     expiresAt: options?.expiresAt ?? null,
     metadata: options?.metadata ?? null,
     isActive: true,
@@ -126,6 +134,10 @@ export async function validateKey(
     apiKeyId: row.id,
     scopes: row.scopes as string[],
     rateLimit: row.rateLimit,
+    quotaHourly: row.quotaHourly ?? null,
+    quotaDaily: row.quotaDaily ?? null,
+    quotaWeekly: row.quotaWeekly ?? null,
+    quotaMonthly: row.quotaMonthly ?? null,
   };
 }
 
@@ -147,6 +159,10 @@ export async function listKeys(tenantId: string, userId?: number) {
       scopes: apiKeys.scopes,
       rateLimit: apiKeys.rateLimit,
       creditLimit: apiKeys.creditLimit,
+      quotaHourly: apiKeys.quotaHourly,
+      quotaDaily: apiKeys.quotaDaily,
+      quotaWeekly: apiKeys.quotaWeekly,
+      quotaMonthly: apiKeys.quotaMonthly,
       expiresAt: apiKeys.expiresAt,
       lastUsedAt: apiKeys.lastUsedAt,
       isActive: apiKeys.isActive,
@@ -157,6 +173,33 @@ export async function listKeys(tenantId: string, userId?: number) {
     .orderBy(desc(apiKeys.createdAt));
 
   return rows;
+}
+
+/**
+ * Update quota and rate-limit settings on an existing key.
+ */
+export async function updateKeySettings(
+  keyId: string,
+  tenantId: string,
+  settings: {
+    rateLimit?: number;
+    creditLimit?: number | null;
+    quotaHourly?: number | null;
+    quotaDaily?: number | null;
+    quotaWeekly?: number | null;
+    quotaMonthly?: number | null;
+  },
+): Promise<{ updated: boolean }> {
+  const result = await db
+    .update(apiKeys)
+    .set({ ...settings, updatedAt: new Date() })
+    .where(and(eq(apiKeys.id, keyId), eq(apiKeys.tenantId, tenantId)));
+
+  if (result.rowCount === 0) {
+    throw new Error("API key not found");
+  }
+
+  return { updated: true };
 }
 
 /**

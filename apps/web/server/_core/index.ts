@@ -100,6 +100,7 @@ import { publicApiFeatureGuard } from "../middleware/publicApiFeatureGuard";
 import { publicApiHeadersMiddleware } from "../middleware/publicApiHeaders";
 import { rateLimitMiddleware } from "../services/apiKeyRateLimiter";
 import { idempotencyMiddleware } from "../middleware/idempotencyMiddleware";
+import { quotaMiddleware } from "../middleware/quotaMiddleware";
 
 /** Shared database adapter (implements @smartspec/db DbAdapter) */
 export const dbAdapter = new PostgresAdapter();
@@ -432,6 +433,7 @@ app.use(
   apiKeyAuthMiddleware,
   publicApiFeatureGuard,
   rateLimitMiddleware(),
+  quotaMiddleware(),
   idempotencyMiddleware(),
   publicApiAuditMiddleware,
 );
