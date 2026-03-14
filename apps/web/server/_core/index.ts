@@ -81,6 +81,7 @@ import { channelConnections } from "../../drizzle/schema";
 import type { ChatIngressEvent } from "@shared/channelTypes";
 import { COOKIE_NAME } from "@shared/const";
 import { createPublicSkillsRouter } from "../routes/publicSkillsApi";
+import { createPublicAgencyRouter } from "../routes/publicAgencyApi";
 import { apiKeyAuthMiddleware } from "../middleware/apiKeyAuth";
 import { publicApiCorsMiddleware } from "../middleware/publicApiCors";
 import { publicApiFeatureGuard } from "../middleware/publicApiFeatureGuard";
@@ -418,6 +419,7 @@ app.use(
   publicApiFeatureGuard,
 );
 app.use("/v1/skills", createPublicSkillsRouter());
+app.use("/v1/agencies", createPublicAgencyRouter());
 
 // REST/SSE endpoints
 registerLLMRoutes(app);
