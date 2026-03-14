@@ -3,10 +3,12 @@ import { ENV } from "./env";
 import { sdk } from "./sdk";
 import { verifyBearerToken } from "./tokens";
 import { isJtiRevoked } from "./revocation";
+import { validateKey } from "../services/apiKeyService";
 
 export type AuthResult =
   | { ok: true; mode: "bearer"; sub: string; scopes: string[] }
   | { ok: true; mode: "session"; user: any; sub: string; scopes: string[] }
+  | { ok: true; mode: "api_key"; sub: string; scopes: string[]; tenantId: string; apiKeyId: string; userId: number }
   | { ok: false; error: string };
 
 function parseBearer(req: Request): string | null {
@@ -30,6 +32,23 @@ export async function authorizeRequest(
   if (opts.allowBearer) {
     const token = parseBearer(req);
     if (token) {
+      // API key detection (sk-ssp_ prefix)
+      if (token.startsWith("sk-ssp_")) {
+        const authCtx = await validateKey(token);
+        if (authCtx) {
+          return {
+            ok: true,
+            mode: "api_key",
+            sub: String(authCtx.userId),
+            scopes: authCtx.scopes ?? [],
+            tenantId: authCtx.tenantId,
+            apiKeyId: authCtx.apiKeyId ?? "",
+            userId: authCtx.userId,
+          };
+        }
+        return { ok: false, error: "Invalid API key" };
+      }
+
       // Static token shortcut (if configured)
       const staticScopes = scopesForStaticToken(token);
       if (staticScopes.length) {
