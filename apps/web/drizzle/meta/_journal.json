@@ -512,6 +512,13 @@
       "when": 1773396105534,
       "tag": "0072_red_zuras",
       "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1773475110413,
+      "tag": "0073_slippery_juggernaut",
+      "breakpoints": true
     }
   ]
 }

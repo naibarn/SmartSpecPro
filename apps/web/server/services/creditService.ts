@@ -17,7 +17,9 @@ export type CreditSourceType =
   | "chat" | "skill" | "media_image" | "media_video" | "media_audio"
   | "indexing" | "rag" | "stt" | "translation" | "brainstorm"
   | "scheduler" | "admin" | "agency" | "creator_revenue" | "other"
-  | "tts" | "browser_automation" | "widget_chat" | "webhook_chat" | "webhook_trigger";
+  | "tts" | "browser_automation" | "widget_chat" | "webhook_chat" | "webhook_trigger"
+  | "api_chat" | "api_skill" | "api_agency" | "api_job"
+  | "api_mcp" | "api_media" | "api_presentation" | "api_video_project";
 
 export class BudgetExceededError extends Error {
   public readonly monthlyLimit: number;
@@ -464,6 +466,26 @@ export async function refundReservation(
 
   await redis.del(`credit:reservation:${reservationId}`);
   return { refundedAmount: unused };
+}
+
+export async function commitCreditReservation(
+  reservationId: string,
+): Promise<{ committedAmount: number }> {
+  if (!isRedisAvailable()) {
+    return { committedAmount: 0 };
+  }
+
+  const redis = getRedisClient();
+  const key = `credit:reservation:${reservationId}`;
+  const raw = await redis.get(key);
+  if (!raw) {
+    return { committedAmount: 0 };
+  }
+
+  const reservation: CreditReservation = JSON.parse(raw);
+  const remaining = Math.max(0, reservation.reservedAmount - reservation.drawnAmount);
+  await redis.del(key);
+  return { committedAmount: remaining };
 }
 
 /**
