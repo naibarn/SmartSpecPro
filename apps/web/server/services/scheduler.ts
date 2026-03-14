@@ -243,6 +243,156 @@ export async function deliverScheduledMessage(scheduleId: number): Promise<void>
     }
   }
 
+  // ── Auto Draft Presentation: headless generation + notification ──
+  if (schedule.skillId === "auto-draft-presentation") {
+    try {
+      const params = (schedule as any).dynamicParams as {
+        topic?: string;
+        numSlides?: number;
+      } | null;
+      const topic = params?.topic || schedule.prompt || "Untitled Presentation";
+      const numSlides = params?.numSlides ?? 5;
+
+      // Generate a temporary token for this user
+      const userToken = signBearerToken({
+        sub: String(userId),
+        type: "access",
+        scopes: ["media:generate"],
+        jti: `auto_draft_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
+      }, "15m");
+
+      // Lazy-import to avoid circular dependencies
+      const { resolveAutoDraftParams } = await import("./autoDraftResolver");
+      const { generateAIDraft } = await import("./aiPresentationService");
+      const { createLibraryItem } = await import("./libraryService");
+      const { createPresentationDeckForLibraryItem } = await import("./presentationService");
+
+      const traceId = crypto.randomUUID();
+
+      // 1. Resolve all params from topic
+      const resolution = await resolveAutoDraftParams(topic, {
+        userId,
+        traceId,
+      });
+
+      // 2. Create library item + deck
+      const actor = {
+        userId,
+        tenantId: typeof (schedule as any).tenantId === "string" ? (schedule as any).tenantId : "default",
+        role: "user" as const,
+      };
+      const libraryItemResult = await createLibraryItem(
+        { itemType: "presentation", source: "scheduled_auto_draft", title: topic.slice(0, 200) },
+        actor,
+      );
+      const deckResult = await createPresentationDeckForLibraryItem(
+        { libraryItemId: libraryItemResult.item.id, title: topic.slice(0, 200) },
+        actor,
+      );
+      const deckId = deckResult.deck.id;
+
+      // 3. Run the pipeline (awaited, not fire-and-forget — we want to know the result)
+      const draftInput = {
+        deckId,
+        expectedVersion: 0,
+        prompt: topic,
+        numSlides,
+        language: resolution.language,
+        textModel: resolution.textModel,
+        draftSkillId: resolution.draftSkillId,
+        articleSkillId: resolution.draftSkillId,
+        imageSkillId: resolution.imageSkillId,
+        imageModel: resolution.imageModel,
+        canvasWidth: 1280,
+        canvasHeight: 720,
+        stylePresetId: resolution.stylePresetId,
+        useCustomArticle: false,
+        hideTextOnSlides: false,
+        generateAudio: false,
+      };
+
+      let generationError: string | null = null;
+      try {
+        await generateAIDraft(draftInput as any, actor, userToken, traceId);
+      } catch (genErr: any) {
+        generationError = genErr instanceof Error ? genErr.message : "Unknown error";
+        generationError = generationError!.replace(/https?:\/\/[^\s]+/g, "[redacted]").slice(0, 200);
+      }
+
+      // 4. Build notification content
+      const editorUrl = `/presentation/${libraryItemResult.item.id}`;
+      const content = generationError
+        ? `Scheduled presentation failed\n\nTopic: ${topic}\nError: ${generationError}\n\nEditor: ${editorUrl}`
+        : `Scheduled presentation is ready!\n\nTopic: ${topic}\nSlides: ${numSlides}\n\nEditor: ${editorUrl}`;
+
+      // 5. Create notification
+      const { createNotification } = await import("./notificationService");
+      await createNotification({
+        db,
+        userId,
+        type: "scheduled_message",
+        title: generationError
+          ? `Presentation failed: ${topic.slice(0, 50)}`
+          : `Presentation ready: ${topic.slice(0, 50)}`,
+        content: content.slice(0, 500),
+        scheduledMessageId: scheduleId,
+        priority: generationError ? "high" : "normal",
+      });
+
+      // 6. Write to conversation (find or create)
+      let convId = schedule.conversationId;
+      if (!convId) {
+        const [newConv] = await db
+          .insert(conversations)
+          .values({
+            userId,
+            title: `Auto Draft: ${topic.slice(0, 80)}`,
+            model: null,
+          })
+          .returning({ id: conversations.id });
+        convId = newConv.id;
+
+        await db
+          .update(scheduledMessages)
+          .set({ conversationId: convId })
+          .where(eq(scheduledMessages.id, scheduleId));
+      }
+
+      await db.insert(messages).values({
+        conversationId: convId,
+        role: "assistant",
+        content,
+        skillUsed: "auto-draft-presentation",
+      });
+
+      // 7. Update schedule timestamps
+      await db
+        .update(scheduledMessages)
+        .set({
+          lastRunAt: new Date(),
+          updatedAt: new Date(),
+          ...(schedule.isRecurring ? {} : { status: (generationError ? "failed" : "completed") as any }),
+        })
+        .where(eq(scheduledMessages.id, scheduleId));
+
+      await logExecution(db, scheduleId, content, generationError ? "failed" : "success", generationError, 0);
+
+      if (schedule.emailNotify) {
+        try {
+          await sendAlertEmail(db, userId, schedule, content);
+        } catch (emailErr) {
+          console.error("[Scheduler] Auto-draft email notification failed:", emailErr);
+        }
+      }
+
+      console.log(`[Scheduler] Auto-draft presentation ${scheduleId} ${generationError ? "failed" : "completed"} (topic: ${topic.slice(0, 40)})`);
+      return;
+    } catch (err: any) {
+      await logExecution(db, scheduleId, null, "failed", err.message);
+      throw err;
+    }
+  }
+
   // ── LLM-powered alert: standard flow ──
   const scheduleTenantId = typeof (schedule as any).tenantId === "string"
     ? (schedule as any).tenantId

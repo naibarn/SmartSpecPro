@@ -4,6 +4,7 @@ import { render, screen, fireEvent, act, within, waitFor } from "@testing-librar
 
 const {
   mockGenerateDraftMutate,
+  mockResolveAutoDraftMutateAsync,
   mockCancelDraftMutate,
   mockGetDraftProgressData,
   mockAvailabilityData,
@@ -13,6 +14,7 @@ const {
   mockInvalidateVersions,
   mockInvalidateSlideshow,
   mockGenerateDraftIsPending,
+  mockResolveAutoDraftIsPending,
   mockCancelDraftIsPending,
   mockUploadMutateAsync,
   mockLibraryImagesData,
@@ -21,8 +23,10 @@ const {
   mockListModelFieldOptionsData,
   mockListModelFieldOptionsIsLoading,
   mockListModelFieldOptionsRefetch,
+  mockContentAutomationEnabled,
 } = vi.hoisted(() => ({
   mockGenerateDraftMutate: vi.fn(),
+  mockResolveAutoDraftMutateAsync: vi.fn(),
   mockCancelDraftMutate: vi.fn(),
   mockGetDraftProgressData: { current: undefined as unknown },
   mockAvailabilityData: { current: { enabled: true, aiGenerationEnabled: true } as unknown },
@@ -44,6 +48,7 @@ const {
   mockInvalidateVersions: vi.fn(),
   mockInvalidateSlideshow: vi.fn(),
   mockGenerateDraftIsPending: { current: false },
+  mockResolveAutoDraftIsPending: { current: false },
   mockCancelDraftIsPending: { current: false },
   mockUploadMutateAsync: vi.fn(),
   mockLibraryImagesData: {
@@ -180,6 +185,7 @@ const {
   },
   mockListModelFieldOptionsIsLoading: { current: false },
   mockListModelFieldOptionsRefetch: vi.fn(),
+  mockContentAutomationEnabled: { current: false },
 }));
 
 vi.mock("@/lib/trpc", () => ({
@@ -190,6 +196,12 @@ vi.mock("@/lib/trpc", () => ({
           useMutation: vi.fn(() => ({
             mutate: mockGenerateDraftMutate,
             isPending: mockGenerateDraftIsPending.current,
+          })),
+        },
+        resolveAutoDraft: {
+          useMutation: vi.fn(() => ({
+            mutateAsync: mockResolveAutoDraftMutateAsync,
+            isPending: mockResolveAutoDraftIsPending.current,
           })),
         },
         getDraftProgress: {
@@ -207,6 +219,14 @@ vi.mock("@/lib/trpc", () => ({
       availability: {
         useQuery: vi.fn(() => ({
           data: mockAvailabilityData.current,
+        })),
+      },
+    },
+    chat: {
+      executeSkill: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: vi.fn(),
+          isPending: false,
         })),
       },
     },
@@ -254,6 +274,22 @@ vi.mock("@/lib/trpc", () => ({
         useQuery: vi.fn(() => ({
           data: mockLibraryImagesData.current,
           isLoading: false,
+        })),
+      },
+    },
+    infrastructure: {
+      getContentAutomationEnabled: {
+        useQuery: vi.fn(() => ({
+          data: mockContentAutomationEnabled.current
+            ? { contentAutomation: true }
+            : { contentAutomation: false },
+        })),
+      },
+    },
+    agency: {
+      list: {
+        useQuery: vi.fn(() => ({
+          data: [],
         })),
       },
     },
@@ -337,10 +373,13 @@ function fillFormAndGenerate() {
 beforeEach(() => {
   vi.clearAllMocks();
   mockGenerateDraftMutate.mockReset();
+  mockResolveAutoDraftMutateAsync.mockReset();
   mockGenerateDraftMutate.mockImplementation(() => {});
+  mockResolveAutoDraftMutateAsync.mockResolvedValue(undefined);
   mockGetDraftProgressData.current = undefined;
   mockAvailabilityData.current = { enabled: true, aiGenerationEnabled: true };
   mockGenerateDraftIsPending.current = false;
+  mockResolveAutoDraftIsPending.current = false;
   mockCancelDraftIsPending.current = false;
   mockSkillSchemaData.current = { hasSchema: false };
   mockGetModelsData.current = {
@@ -445,6 +484,7 @@ beforeEach(() => {
       ...buildVisibleDraftSkills(),
     ],
   };
+  mockContentAutomationEnabled.current = false;
 });
 
 describe("G.1 Modal Rendering", () => {
@@ -484,7 +524,7 @@ describe("G.1 Modal Rendering", () => {
     expect(topicTextarea).toBeEnabled();
     expect(screen.queryByLabelText(/article content/i)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("switch", { name: /use your own article/i }));
-    expect(topicTextarea).toBeDisabled();
+    expect(topicTextarea).toBeEnabled();
     expect(screen.getByLabelText(/article content/i)).toBeInTheDocument();
     expect(screen.queryByText(/^Draft Skill$/i)).not.toBeInTheDocument();
   });
@@ -1151,4 +1191,73 @@ describe("G.9 Advanced media options", () => {
     );
   });
 
+});
+
+describe("Auto mode", () => {
+  it("auto mode toggle is hidden when content automation flag is disabled", () => {
+    mockContentAutomationEnabled.current = false;
+    render(<AIDraftModal {...defaultProps} />);
+    expect(screen.queryByRole("switch", { name: /auto mode/i })).not.toBeInTheDocument();
+  });
+
+  it("auto mode toggle renders when content automation flag is enabled", () => {
+    mockContentAutomationEnabled.current = true;
+    render(<AIDraftModal {...defaultProps} />);
+    expect(screen.getByRole("switch", { name: /auto mode/i })).toBeInTheDocument();
+  });
+
+  it("hides skill and model fieldsets when auto mode is on", () => {
+    mockContentAutomationEnabled.current = true;
+    render(<AIDraftModal {...defaultProps} />);
+    fireEvent.click(screen.getByRole("switch", { name: /auto mode/i }));
+    expect(screen.queryByText(/Draft Skill/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Media Skill Override/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Media Model/i)).not.toBeInTheDocument();
+  });
+
+  it("shows Auto Generate button (not Generate) when auto mode is on", () => {
+    mockContentAutomationEnabled.current = true;
+    render(<AIDraftModal {...defaultProps} />);
+    fireEvent.click(screen.getByRole("switch", { name: /auto mode/i }));
+    expect(screen.getByRole("button", { name: /auto generate/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^generate$/i })).not.toBeInTheDocument();
+  });
+
+  it("calls generateDraft after resolving auto-draft parameters", async () => {
+    mockContentAutomationEnabled.current = true;
+    mockResolveAutoDraftMutateAsync.mockResolvedValue({
+      language: "en",
+      textModel: "gpt-5.2",
+      draftSkillId: "general-article-writer",
+      stylePresetId: "dark-professional",
+      imageSkillId: "image-creator",
+      imageModel: "flux-2.0",
+    });
+    render(<AIDraftModal {...defaultProps} />);
+    fireEvent.click(screen.getByRole("switch", { name: /auto mode/i }));
+
+    const textarea = screen.getByPlaceholderText(/describe/i);
+    fireEvent.change(textarea, { target: { value: "Automation test topic" } });
+
+    const autoBtn = screen.getByRole("button", { name: /auto generate/i });
+    fireEvent.click(autoBtn);
+
+    await waitFor(() => {
+      expect(mockResolveAutoDraftMutateAsync).toHaveBeenCalledWith({
+        topic: "Automation test topic",
+      });
+      expect(mockGenerateDraftMutate).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("Auto Generate button is enabled when topic is present", () => {
+    mockContentAutomationEnabled.current = true;
+    render(<AIDraftModal {...defaultProps} />);
+    fireEvent.click(screen.getByRole("switch", { name: /auto mode/i }));
+
+    const textarea = screen.getByPlaceholderText(/describe/i);
+    fireEvent.change(textarea, { target: { value: "test topic" } });
+
+    expect(screen.getByRole("button", { name: /auto generate/i })).toBeEnabled();
+  });
 });

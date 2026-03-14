@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { z } from "zod";
 
 // ── Mock hoisting ────────────────────────────────────────────
 
@@ -29,6 +30,9 @@ const {
   mockRedisExpire,
   mockDbTransaction,
   mockGetModelsByTypeAsync,
+  mockLoadEnabledModelsWithPricing,
+  mockLoadEnabledLlmModelRows,
+  mockSelectBestLlmModel,
 } = vi.hoisted(() => ({
   mockExecuteWithFallback: vi.fn(),
   mockResolveProviders: vi.fn(),
@@ -56,6 +60,9 @@ const {
   mockRedisExpire: vi.fn(),
   mockDbTransaction: vi.fn(),
   mockGetModelsByTypeAsync: vi.fn(),
+  mockLoadEnabledModelsWithPricing: vi.fn(),
+  mockLoadEnabledLlmModelRows: vi.fn(),
+  mockSelectBestLlmModel: vi.fn(),
 }));
 
 vi.mock("../llmRouter", () => ({
@@ -139,6 +146,18 @@ vi.mock("../modelRegistry", () => ({
   getModelsByTypeAsync: mockGetModelsByTypeAsync,
 }));
 
+vi.mock("../capabilityRegistry", () => ({
+  loadEnabledModelsWithPricing: mockLoadEnabledModelsWithPricing,
+}));
+
+vi.mock("../enabledLlmModels", () => ({
+  loadEnabledLlmModelRows: mockLoadEnabledLlmModelRows,
+}));
+
+vi.mock("../intelligentModelSelector", () => ({
+  selectBestLlmModel: mockSelectBestLlmModel,
+}));
+
 vi.mock("../redis", () => ({
   getRedisClient: () => ({
     set: mockRedisSet,
@@ -162,10 +181,16 @@ import {
   buildArticlePrompt,
   computeImagePollTimeoutMs,
   assessSlideCoverage,
+  finalizeSlideContentAfterRelayout,
+  finalizeSlideContentAfterRepair,
+  repairSlideFromSavedNote,
+  relayoutExistingSlideAsync,
   relayoutExistingSlide,
+  evaluateDraftSlideRouting,
   resolvePendingMediaForDeck,
 } from "../aiPresentationService";
 import type { GenerateAIDraftInput } from "@shared/presentation/aiTypes";
+import { presentationSlideContentSchema } from "@shared/presentation/contracts";
 import type { PresentationActor } from "../presentationService";
 
 // ── Helpers ─────────────────────────────────────────────────
@@ -202,6 +227,64 @@ const MOCK_SLIDE_CONTENT = {
 };
 
 function setupHappyPath() {
+  mockLoadEnabledModelsWithPricing.mockReset();
+  mockLoadEnabledLlmModelRows.mockReset();
+  mockSelectBestLlmModel.mockReset();
+  mockResolveProviders.mockReset();
+  mockHasEnoughCredits.mockReset();
+  mockRedisSet.mockReset();
+  mockRedisGet.mockReset();
+  mockRedisDel.mockReset();
+  mockRedisExpire.mockReset();
+  mockGetSkillByIdAsync.mockReset();
+  mockExecuteWithFallback.mockReset();
+  mockCallLLMStructured.mockReset();
+  mockGenerateImageAsync.mockReset();
+  mockGenerateVideoAsync.mockReset();
+  mockGenerateAudioAsync.mockReset();
+  mockAddMediaTaskToLibrary.mockReset();
+  mockGetTask.mockReset();
+  mockDeductCreditsForModel.mockReset();
+  mockDeductCredits.mockReset();
+  mockGetBuiltInPreset.mockReset();
+  mockPickRandomSvg.mockReset();
+  mockGenerateSlide.mockReset();
+  mockGetModelsByTypeAsync.mockReset();
+  mockDbTransaction.mockReset();
+  mockAddSlideToDeck.mockReset();
+  mockUpdatePresentationDeckMetadata.mockReset();
+  mockLoadEnabledModelsWithPricing.mockResolvedValue([
+    {
+      modelId: "claude-sonnet-4-6",
+      providerModelId: "claude-sonnet-4-6",
+      providerName: "test-provider",
+      capabilities: {
+        supportsStructuredOutputs: true,
+        supportsFunctionTools: true,
+        contextLength: 200000,
+      },
+      pricingInput: 3,
+      pricingOutput: 15,
+      isFree: false,
+    },
+  ]);
+  mockLoadEnabledLlmModelRows.mockResolvedValue([
+    {
+      providerName: "test-provider",
+      modelId: "claude-sonnet-4-6",
+      providerModelId: "claude-sonnet-4-6",
+      priority: 10,
+      contextLength: 200000,
+      supportsResponses: true,
+      supportsStructuredOutputs: true,
+      supportsWebSearch: false,
+      supportsFunctionTools: true,
+      supportsCodeExecution: false,
+      supportsComputerUse: false,
+      supportsBackground: false,
+    },
+  ]);
+  mockSelectBestLlmModel.mockReturnValue("claude-sonnet-4-6");
   mockResolveProviders.mockResolvedValue([
     {
       providerId: 1,
@@ -271,7 +354,10 @@ function setupHappyPath() {
   });
 
   mockPickRandomSvg.mockReturnValue(MOCK_SVG);
-  mockGenerateSlide.mockReturnValue({ slideContent: MOCK_SLIDE_CONTENT, warnings: [] });
+  mockGenerateSlide.mockImplementation(() => ({
+    slideContent: JSON.parse(JSON.stringify(MOCK_SLIDE_CONTENT)),
+    warnings: [],
+  }));
   mockGetModelsByTypeAsync.mockImplementation(async (type: string) => {
     if (type === "audio") {
       return [
@@ -488,6 +574,74 @@ describe("relayoutExistingSlide", () => {
     expect(output.applied.reusedImage).toBe(true);
   });
 
+  it("expands component fallback content so auto layout can reuse block text and media", () => {
+    let capturedLayoutInput: any = null;
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockImplementation((input: unknown) => {
+      capturedLayoutInput = input;
+      return {
+        slideContent: {
+          elements: [],
+        },
+        warnings: [],
+      };
+    });
+
+    relayoutExistingSlide({
+      slideTitle: "Fallback title",
+      deckTitle: "Deck",
+      slideIndex: 1,
+      totalSlides: 4,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+        ],
+        components: [
+          {
+            id: "cmp-photo-collage",
+            componentId: "photo-collage",
+            componentType: "built-in",
+            definitionRevision: 1,
+            slotBindings: [],
+            fallbackElements: [
+              { id: "cmp-title", type: "text", x: 80, y: 80, width: 500, height: 90, text: "Campaign lookbook", color: "#ffffff", fontSize: 56, fontWeight: "700" },
+              { id: "cmp-body", type: "text", x: 80, y: 200, width: 500, height: 120, text: "Primary story\nSecondary supporting caption", color: "#ffffff", fontSize: 30 },
+              { id: "cmp-img-primary", type: "image", x: 700, y: 80, width: 420, height: 280, src: "https://cdn.example.com/collage-primary.jpg", alt: "primary" },
+              { id: "cmp-img-secondary", type: "image", x: 700, y: 390, width: 420, height: 220, src: "https://cdn.example.com/collage-secondary.jpg", alt: "secondary" },
+            ],
+          },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+        aiDesign: {
+          source: "draft-with-ai",
+          componentRecipeId: "photo-collage",
+          selectionMode: "heuristic",
+        },
+      },
+      includeSvg: true,
+      layoutSeed: 7,
+    });
+
+    expect(capturedLayoutInput).toBeTruthy();
+    expect(capturedLayoutInput.slideData.title).toBe("Campaign lookbook");
+    expect(capturedLayoutInput.slideData.body).toEqual(expect.arrayContaining([
+      "Primary story",
+      "Secondary supporting caption",
+    ]));
+    expect(capturedLayoutInput.slideData.componentRecipeId).toBe("photo-collage");
+    expect(capturedLayoutInput.imageUrl).toBe("https://cdn.example.com/collage-primary.jpg");
+    expect(capturedLayoutInput.imageUrls).toEqual([
+      "https://cdn.example.com/collage-primary.jpg",
+      "https://cdn.example.com/collage-secondary.jpg",
+    ]);
+  });
+
   it("preserves visual-only slides during relayout and skips text-oriented auto-layout extras", () => {
     let capturedLayoutInput: any = null;
     mockGetBuiltInPreset.mockReturnValue({
@@ -539,6 +693,909 @@ describe("relayoutExistingSlide", () => {
     expect(output.warnings).toContain("Preserved visual-only slide mode during auto layout.");
     expect(output.warnings).toContain("Skipped geometric crop to preserve full-canvas visual-only slide.");
     expect(output.warnings).toContain("Skipped geometric accents to preserve full-canvas visual-only slide.");
+  });
+
+  it("reuses existing video as primary media during relayout when no image exists", () => {
+    let capturedLayoutInput: any = null;
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockImplementation((input: unknown) => {
+      capturedLayoutInput = input;
+      return {
+        slideContent: {
+          elements: [
+            { id: "video-zone", type: "image", x: 0, y: 0, width: 1280, height: 720, src: "https://cdn.example.com/demo.mp4", alt: "video zone" },
+          ],
+        },
+        warnings: [],
+      };
+    });
+
+    const output = relayoutExistingSlide({
+      slideTitle: "Demo reel",
+      deckTitle: "Deck",
+      slideIndex: 1,
+      totalSlides: 4,
+      includeSvg: true,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "video-main", type: "video", x: 0, y: 0, width: 1280, height: 720, src: "https://cdn.example.com/demo.mp4", title: "demo", muted: true, loop: true },
+          { id: "title", type: "text", x: 72, y: 120, width: 700, height: 100, text: "Demo reel", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+      },
+      layoutSeed: 11,
+    });
+
+    expect(capturedLayoutInput.imageUrl).toBe("https://cdn.example.com/demo.mp4");
+    expect(output.warnings).toContain("Reused existing video as the primary media during auto layout.");
+    const mainVideo = output.slideContent.elements.find((element) => element.id === "video-zone");
+    expect(mainVideo?.type).toBe("video");
+    expect(output.applied.reusedImage).toBe(true);
+  });
+
+  it("routes only image sources into image-only relayout recipes and preserves remaining video media separately", () => {
+    let capturedLayoutInput: any = null;
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockImplementation((input: unknown) => {
+      capturedLayoutInput = input;
+      return {
+        slideContent: {
+          elements: [
+            { id: "primary-zone", type: "image", x: 0, y: 0, width: 820, height: 720, src: "https://cdn.example.com/block-primary.jpg", alt: "primary" },
+            { id: "slot-1", type: "rect", x: 860, y: 180, width: 320, height: 180, fill: "#31455a", opacity: 0.4 },
+            { id: "slot-2", type: "rect", x: 860, y: 390, width: 320, height: 180, fill: "#31455a", opacity: 0.4 },
+            { id: "title", type: "text", x: 72, y: 90, width: 620, height: 100, text: "Campaign lookbook", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+          ],
+        },
+        warnings: [],
+      };
+    });
+
+    const output = relayoutExistingSlide({
+      slideTitle: "Campaign lookbook",
+      deckTitle: "Deck",
+      slideIndex: 1,
+      totalSlides: 4,
+      includeSvg: true,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "freeform-image", type: "image", x: 960, y: 40, width: 220, height: 140, src: "https://cdn.example.com/freeform-image.png", alt: "freeform image" },
+          { id: "freeform-video", type: "video", x: 700, y: 40, width: 500, height: 300, src: "https://cdn.example.com/freeform-video.mp4", title: "freeform video", muted: true },
+        ],
+        components: [
+          {
+            id: "cmp-photo-collage",
+            componentId: "photo-collage",
+            componentType: "built-in",
+            definitionRevision: 1,
+            slotBindings: [],
+            fallbackElements: [
+              { id: "cmp-title", type: "text", x: 80, y: 80, width: 500, height: 90, text: "Campaign lookbook", color: "#ffffff", fontSize: 56, fontWeight: "700" },
+              { id: "cmp-body", type: "text", x: 80, y: 200, width: 500, height: 120, text: "Primary story\nSupporting detail", color: "#ffffff", fontSize: 30 },
+              { id: "cmp-img-primary", type: "image", x: 700, y: 80, width: 420, height: 280, src: "https://cdn.example.com/block-primary.jpg", alt: "block primary" },
+              { id: "cmp-img-secondary", type: "image", x: 700, y: 390, width: 420, height: 220, src: "https://cdn.example.com/block-secondary.jpg", alt: "block secondary" },
+            ],
+          },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+        aiDesign: {
+          source: "draft-with-ai",
+          componentRecipeId: "photo-collage",
+          selectionMode: "heuristic",
+        },
+      },
+      layoutSeed: 19,
+    });
+
+    expect(capturedLayoutInput.imageUrls).toEqual([
+      "https://cdn.example.com/block-primary.jpg",
+      "https://cdn.example.com/block-secondary.jpg",
+      "https://cdn.example.com/freeform-image.png",
+    ]);
+    expect(capturedLayoutInput.imageUrls).not.toContain("https://cdn.example.com/freeform-video.mp4");
+    const preservedIds = output.slideContent.elements.map((element) => element.id);
+    expect(preservedIds).toContain("freeform-image");
+    expect(preservedIds).toContain("freeform-video");
+    expect(preservedIds).toContain("cmp-img-secondary");
+  });
+
+  it("preserves an extra manually-added image even when it reuses the same src as the primary media", () => {
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({
+      slideContent: {
+        elements: [
+          { id: "img-main", type: "image", x: 0, y: 0, width: 820, height: 720, src: "https://cdn.example.com/shared-photo.jpg", alt: "hero" },
+          { id: "title", type: "text", x: 72, y: 90, width: 620, height: 100, text: "Shared photo slide", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+        ],
+      },
+      warnings: [],
+    });
+
+    const output = relayoutExistingSlide({
+      slideTitle: "Shared photo slide",
+      deckTitle: "Deck",
+      slideIndex: 2,
+      totalSlides: 5,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "img-primary", type: "image", x: 0, y: 0, width: 900, height: 720, src: "https://cdn.example.com/shared-photo.jpg", alt: "primary" },
+          { id: "img-secondary", type: "image", x: 980, y: 80, width: 180, height: 140, src: "https://cdn.example.com/shared-photo.jpg", alt: "secondary duplicate" },
+          { id: "title", type: "text", x: 72, y: 90, width: 620, height: 100, text: "Shared photo slide", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+      },
+      layoutSeed: 71,
+    });
+
+    const elementIds = output.slideContent.elements.map((element) => element.id);
+    expect(elementIds).toContain("img-secondary");
+  });
+
+  it("honors a manually requested block recipe during auto layout when the copy fits", () => {
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    let capturedLayoutInput: any;
+    mockGenerateSlide.mockImplementation((input: any) => {
+      capturedLayoutInput = input;
+      return {
+        slideContent: {
+          elements: [
+            { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          ],
+          components: [
+            {
+              id: "cmp-process",
+              componentId: "process-steps",
+              componentType: "built-in",
+              definitionRevision: 1,
+              slotBindings: [],
+              fallbackElements: [],
+            },
+          ],
+        },
+        warnings: [],
+      };
+    });
+
+    relayoutExistingSlide({
+      slideTitle: "Bedtime routine",
+      deckTitle: "Deck",
+      slideIndex: 2,
+      totalSlides: 5,
+      preferredComponentRecipeId: "process-steps",
+      slideContent: {
+        elements: [
+          { id: "img-primary", type: "image", x: 0, y: 0, width: 640, height: 720, src: "https://cdn.example.com/bedtime.jpg", alt: "primary" },
+          { id: "title", type: "text", x: 700, y: 80, width: 420, height: 80, text: "Bedtime routine", color: "#111827", fontSize: 52, fontWeight: "700" },
+          { id: "body-1", type: "text", x: 700, y: 180, width: 420, height: 60, text: "Step 1: Dim the lights", color: "#111827", fontSize: 26 },
+          { id: "body-2", type: "text", x: 700, y: 260, width: 420, height: 60, text: "Step 2: Read a short story", color: "#111827", fontSize: 26 },
+          { id: "body-3", type: "text", x: 700, y: 340, width: 420, height: 60, text: "Step 3: Put the baby down drowsy", color: "#111827", fontSize: 26 },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+      },
+      layoutSeed: 99,
+    });
+
+    expect(capturedLayoutInput.slideData.componentRecipeId).toBe("process-steps");
+  });
+
+  it("keeps a secondary image visible when dense auto layout already uses one primary image", () => {
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({
+      slideContent: {
+        elements: [
+          { id: "primary-zone", type: "image", x: 20, y: 520, width: 380, height: 720, src: "https://cdn.example.com/main-photo.jpg", alt: "primary" },
+          { id: "card-1", type: "rect", x: 430, y: 180, width: 250, height: 250, fill: "#f3e2d8" },
+          { id: "card-2", type: "rect", x: 430, y: 450, width: 250, height: 250, fill: "#efb1a3" },
+          { id: "card-3", type: "rect", x: 430, y: 720, width: 250, height: 250, fill: "#f2c867" },
+          { id: "title", type: "text", x: 420, y: 40, width: 260, height: 120, text: "FAQ", color: "#111827", fontSize: 54, fontWeight: "700" },
+          { id: "body-1", type: "text", x: 450, y: 220, width: 190, height: 120, text: "Answer one", color: "#111827", fontSize: 28 },
+          { id: "body-2", type: "text", x: 450, y: 490, width: 190, height: 120, text: "Answer two", color: "#111827", fontSize: 28 },
+          { id: "body-3", type: "text", x: 450, y: 760, width: 190, height: 120, text: "Answer three", color: "#111827", fontSize: 28 },
+        ],
+      },
+      warnings: [],
+    });
+
+    const output = relayoutExistingSlide({
+      slideTitle: "FAQ",
+      deckTitle: "Deck",
+      slideIndex: 2,
+      totalSlides: 5,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 720, height: 1280, fill: "#fff8f0" },
+          { id: "img-secondary-top", type: "image", x: 20, y: 20, width: 380, height: 470, src: "https://cdn.example.com/infographic-top.jpg", alt: "top infographic" },
+          { id: "img-primary-bottom", type: "image", x: 20, y: 540, width: 380, height: 720, src: "https://cdn.example.com/main-photo.jpg", alt: "main photo" },
+          { id: "title", type: "text", x: 420, y: 40, width: 260, height: 120, text: "FAQ", color: "#111827", fontSize: 54, fontWeight: "700" },
+          { id: "body", type: "text", x: 420, y: 200, width: 260, height: 840, text: "Long answer one\nLong answer two\nLong answer three\nLong answer four", color: "#111827", fontSize: 28 },
+        ],
+        canvas: { width: 720, height: 1280, preset: "9:16" },
+      },
+      layoutSeed: 41,
+    });
+
+    const preservedSecondary = output.slideContent.elements.find((element) => element.id === "img-secondary-top");
+    expect(preservedSecondary?.type).toBe("image");
+    if (preservedSecondary?.type === "image") {
+      expect(preservedSecondary.src).toBe("https://cdn.example.com/infographic-top.jpg");
+      expect(preservedSecondary.y).toBeGreaterThanOrEqual(520);
+      expect(preservedSecondary.width).toBeGreaterThan(180);
+    }
+  });
+
+  it("preserves secondary supported blocks as components during relayout", () => {
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({
+      slideContent: {
+        elements: [
+          { id: "primary-zone", type: "image", x: 0, y: 0, width: 820, height: 720, src: "https://cdn.example.com/block-primary.jpg", alt: "primary" },
+          { id: "slot-1", type: "rect", x: 860, y: 180, width: 320, height: 180, fill: "#31455a", opacity: 0.4 },
+          { id: "slot-2", type: "rect", x: 860, y: 390, width: 320, height: 180, fill: "#31455a", opacity: 0.4 },
+          { id: "title", type: "text", x: 72, y: 90, width: 620, height: 100, text: "Campaign lookbook", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+        ],
+      },
+      warnings: [],
+    });
+
+    const output = relayoutExistingSlide({
+      slideTitle: "Campaign lookbook",
+      deckTitle: "Deck",
+      slideIndex: 1,
+      totalSlides: 4,
+      includeSvg: true,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "freeform-image", type: "image", x: 960, y: 40, width: 220, height: 140, src: "https://cdn.example.com/freeform-image.png", alt: "freeform image" },
+          { id: "freeform-video", type: "video", x: 930, y: 560, width: 260, height: 140, src: "https://cdn.example.com/freeform-video.mp4", title: "freeform video", muted: true },
+        ],
+        components: [
+          {
+            id: "cmp-photo-collage",
+            componentId: "photo-collage",
+            componentType: "built-in",
+            definitionRevision: 1,
+            slotBindings: [],
+            fallbackElements: [
+              { id: "cmp-title", type: "text", x: 80, y: 80, width: 500, height: 90, text: "Campaign lookbook", color: "#ffffff", fontSize: 56, fontWeight: "700" },
+              { id: "cmp-body", type: "text", x: 80, y: 200, width: 500, height: 120, text: "Primary story\nSupporting detail", color: "#ffffff", fontSize: 30 },
+              { id: "cmp-img-primary", type: "image", x: 700, y: 80, width: 420, height: 280, src: "https://cdn.example.com/block-primary.jpg", alt: "block primary" },
+              { id: "cmp-img-secondary", type: "image", x: 700, y: 390, width: 420, height: 220, src: "https://cdn.example.com/block-secondary.jpg", alt: "block secondary" },
+            ],
+          },
+          {
+            id: "cmp-stat-cards",
+            componentId: "stat-cards",
+            componentType: "built-in",
+            definitionRevision: 1,
+            slotBindings: [],
+            fallbackElements: [
+              { id: "stat-title", type: "text", x: 120, y: 560, width: 320, height: 50, text: "Metrics", color: "#ffffff", fontSize: 34, fontWeight: "700" },
+              { id: "stat-card-bg", type: "rect", x: 120, y: 620, width: 260, height: 80, fill: "#16213e", opacity: 0.92 },
+              { id: "stat-card-value", type: "text", x: 150, y: 638, width: 120, height: 36, text: "42%", color: "#ffffff", fontSize: 30, fontWeight: "700" },
+              { id: "stat-card-label", type: "text", x: 150, y: 672, width: 180, height: 24, text: "Conversion lift", color: "#a0a0b0", fontSize: 18 },
+            ],
+          },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+        aiDesign: {
+          source: "draft-with-ai",
+          componentRecipeId: "photo-collage",
+          selectionMode: "heuristic",
+        },
+      },
+      layoutSeed: 19,
+    });
+
+    expect(output.slideContent.components?.some((component) => component.id === "cmp-stat-cards__relayout")).toBe(true);
+    expect(output.slideContent.renderOrder?.some((entry) => entry === "component:cmp-stat-cards__relayout")).toBe(true);
+    expect(output.warnings.some((warning) => warning.includes("Preserved") && warning.includes("existing block"))).toBe(true);
+  });
+
+  it("passes supplemental media clarity percent through relayout to the layout engine", () => {
+    let capturedLayoutInput: any = null;
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockImplementation((input: unknown) => {
+      capturedLayoutInput = input;
+      return {
+        slideContent: { elements: [] },
+        warnings: [],
+      };
+    });
+
+    relayoutExistingSlide({
+      slideTitle: "Launch checklist",
+      deckTitle: "Deck",
+      slideIndex: 1,
+      totalSlides: 4,
+      supplementalMediaClarityPercent: 42,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "img-1", type: "image", x: 0, y: 0, width: 1280, height: 720, src: "https://cdn.example.com/hero.jpg", alt: "hero" },
+          { id: "title", type: "text", x: 80, y: 80, width: 620, height: 100, text: "Launch checklist", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+      },
+    });
+
+    expect(capturedLayoutInput.supplementalMediaOpacity).toBeCloseTo(0.42, 5);
+  });
+
+  it("prefers aiDesign narrative over rendered block text when relayouting draft-with-ai slides", () => {
+    let capturedLayoutInput: any = null;
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockImplementation((input: unknown) => {
+      capturedLayoutInput = input;
+      return {
+        slideContent: { elements: [] },
+        warnings: [],
+      };
+    });
+
+    relayoutExistingSlide({
+      slideTitle: "ขั้นตอนปฏิบัติ / เคล็ดลับ",
+      deckTitle: "Deck",
+      slideIndex: 2,
+      totalSlides: 6,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "hero", type: "image", x: 0, y: 0, width: 1280, height: 720, src: "https://cdn.example.com/process.jpg", alt: "hero" },
+        ],
+        components: [
+          {
+            id: "cmp-process",
+            componentId: "process-steps",
+            componentType: "built-in",
+            definitionRevision: 1,
+            slotBindings: [],
+            fallbackElements: [
+              { id: "cmp-title", type: "text", x: 120, y: 90, width: 560, height: 60, text: "ขั้นตอนปฏิบัติ / เคล็ดลับ", color: "#ffffff", fontSize: 52, fontWeight: "700" },
+              { id: "cmp-subtitle", type: "text", x: 120, y: 150, width: 760, height: 32, text: "ข้อความเพี้ยนที่ไม่ควรถูกใช้เป็น source หลัก", color: "#a0a0b0", fontSize: 22 },
+            ],
+          },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+        aiDesign: {
+          source: "draft-with-ai",
+          componentRecipeId: "process-steps",
+          selectionMode: "heuristic",
+          narrative: {
+            title: "ขั้นตอนปฏิบัติ / เคล็ดลับ",
+            body: [
+              "สร้างกิจวัตรก่อนนอนอย่างสม่ำเสมอ",
+              "จัดสภาพแวดล้อมให้เงียบและสบาย",
+              "สังเกตสัญญาณง่วงก่อนร้องไห้หนัก",
+            ],
+            sections: [
+              { heading: "สร้างกิจวัตรก่อนนอน", details: ["ทำกิจกรรมเดิมซ้ำในเวลาคล้ายกันทุกวัน"] },
+              { heading: "จัดห้องนอนให้เหมาะสม", details: ["ลดแสงและเสียงรบกวนก่อนเข้านอน"] },
+              { heading: "ตอบสนองอย่างนุ่มนวล", details: ["ปลอบสั้น ๆ เพื่อช่วยให้กลับไปนอนได้"] },
+            ],
+          },
+        },
+      },
+      layoutSeed: 23,
+    });
+
+    expect(capturedLayoutInput.slideData.body).toEqual(expect.arrayContaining([
+      "สร้างกิจวัตรก่อนนอนอย่างสม่ำเสมอ",
+      "จัดสภาพแวดล้อมให้เงียบและสบาย",
+    ]));
+    expect(capturedLayoutInput.slideData.sections).toEqual(expect.arrayContaining([
+      expect.objectContaining({ heading: "สร้างกิจวัตรก่อนนอน" }),
+      expect.objectContaining({ heading: "จัดห้องนอนให้เหมาะสม" }),
+    ]));
+    expect(capturedLayoutInput.slideData.body).not.toContain("ข้อความเพี้ยนที่ไม่ควรถูกใช้เป็น source หลัก");
+  });
+
+  it("preserves aiDesign mode metadata during relayout and honors long-form mode overrides", () => {
+    let capturedLayoutInput: any = null;
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockImplementation((input: unknown) => {
+      capturedLayoutInput = input;
+      return {
+        slideContent: {
+          elements: [
+            { id: "title", type: "text", x: 80, y: 80, width: 620, height: 100, text: "Dense explainer", color: "#ffffff", fontSize: 56, fontWeight: "700" },
+          ],
+        },
+        warnings: [],
+      };
+    });
+
+    const result = relayoutExistingSlide({
+      slideTitle: "Dense explainer",
+      deckTitle: "Deck",
+      slideIndex: 3,
+      totalSlides: 6,
+      slideContent: {
+        elements: [
+          { id: "img-1", type: "image", x: 0, y: 0, width: 1280, height: 720, src: "https://cdn.example.com/hero.jpg", alt: "hero" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+        aiDesign: {
+          source: "draft-with-ai",
+          taskId: "task-relayout-1",
+          schemaVersion: "presentation_ai_layout_v1",
+          mode: "structured_block",
+          modeLocked: true,
+          userOverrideMode: "long_form_block",
+          componentRecipeId: "poster-spotlight",
+          selectionMode: "heuristic",
+          narrative: {
+            title: "Dense explainer",
+            body: [
+              "ข้อความยาวมากสำหรับย่อหน้าแรกที่ควรไปลงเลย์เอาต์แบบ long form",
+              "ข้อความยาวมากสำหรับย่อหน้าแรกที่สองที่ควรไปลงเลย์เอาต์แบบ long form",
+            ],
+            sections: [
+              { heading: "หัวข้อที่หนึ่ง", details: ["รายละเอียดที่หนึ่ง", "รายละเอียดที่สอง"] },
+              { heading: "หัวข้อที่สอง", details: ["รายละเอียดที่สาม", "รายละเอียดที่สี่"] },
+            ],
+            templateId: "split_right_image",
+          },
+          generatedAt: "2026-03-14T10:00:00.000Z",
+        },
+      },
+      layoutSeed: 99,
+    });
+
+    expect(capturedLayoutInput.slideData.componentRecipeId).toBe("sectioned-explainer");
+    expect(result.slideContent.aiDesign).toMatchObject({
+      source: "draft-with-ai",
+      mode: "long_form_block",
+      modeLocked: true,
+      userOverrideMode: "long_form_block",
+      componentRecipeId: "sectioned-explainer",
+      narrative: expect.objectContaining({
+        title: "Dense explainer",
+        sections: expect.arrayContaining([
+          expect.objectContaining({ heading: "หัวข้อที่หนึ่ง" }),
+        ]),
+      }),
+    });
+  });
+
+  it("uses slide notes to fall back to a plain template when block recipes are too dense", () => {
+    let capturedLayoutInput: any = null;
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockImplementation((input: unknown) => {
+      capturedLayoutInput = input;
+      return {
+        slideContent: { elements: [] },
+        warnings: [],
+      };
+    });
+
+    const slideNotes = `
+# ใครคือกลุ่มเป้าหมาย
+
+## เรื่องราวของครอบครัวที่กังวล
+บทความนี้อธิบายบริบทของพ่อแม่หรือผู้ดูแลเด็กวัย 4 ถึง 6 เดือนที่กำลังพยายามสร้างนิสัยการนอนให้สม่ำเสมอ และต้องการคำแนะนำที่ค่อยเป็นค่อยไปมากกว่ารายการสั้น ๆ
+
+## สิ่งที่ควรสังเกตในชีวิตประจำวัน
+ในช่วงอายุนี้เด็กบางคนเริ่มนอนนานขึ้นในตอนกลางคืน แต่ก็ยังตื่นง่ายเมื่อหิว ไม่สบายตัว หรือมีสิ่งเร้ารอบตัวมากเกินไป จึงควรจัดวางเป็น story layout แทนการ์ดสรุปสามช่อง
+    `.trim();
+
+    const output = relayoutExistingSlide({
+      slideTitle: "ใครคือกลุ่มเป้าหมาย",
+      deckTitle: "Deck",
+      slideIndex: 3,
+      totalSlides: 6,
+      slideNotes,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "hero", type: "image", x: 640, y: 0, width: 640, height: 720, src: "https://cdn.example.com/story.jpg", alt: "hero" },
+          { id: "title", type: "text", x: 72, y: 160, width: 540, height: 110, text: "ใครคือกลุ่มเป้าหมาย", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+        aiDesign: {
+          source: "draft-with-ai",
+          componentRecipeId: "process-steps",
+          selectionMode: "heuristic",
+          narrative: {
+            title: "ใครคือกลุ่มเป้าหมาย",
+            body: ["ข้อความสั้นเกินไป"],
+          },
+        },
+      },
+      layoutSeed: 41,
+    });
+
+    expect(capturedLayoutInput.slideData.componentRecipeId).toBeUndefined();
+    expect(capturedLayoutInput.slideData.notes).toContain("บทความนี้อธิบายบริบทของพ่อแม่หรือผู้ดูแล");
+    expect(capturedLayoutInput.slideData.body.some((line: string) => line.includes("พ่อแม่หรือผู้ดูแลเด็กวัย 4 ถึง 6 เดือน"))).toBe(true);
+    expect(output.warnings.some((warning) => warning.includes('Skipped component recipe "process-steps"'))).toBe(true);
+    expect(output.warnings.some((warning) => warning.includes("fell back to a plain template"))).toBe(true);
+  });
+
+  it("preserves component fallback images when feature-highlights is skipped during relayout", () => {
+    let capturedLayoutInput: any = null;
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockImplementation((input: unknown) => {
+      capturedLayoutInput = input;
+      return {
+        slideContent: {
+          elements: [
+            { id: "title", type: "text", x: 72, y: 90, width: 640, height: 90, text: "Frequently asked questions", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+            { id: "body-1", type: "text", x: 72, y: 210, width: 720, height: 240, text: "Question one\nQuestion two\nQuestion three\nQuestion four", color: "#ffffff", fontSize: 28 },
+          ],
+        },
+        warnings: [],
+      };
+    });
+
+    const output = relayoutExistingSlide({
+      slideTitle: "Frequently asked questions",
+      deckTitle: "Deck",
+      slideIndex: 4,
+      totalSlides: 7,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+        ],
+        components: [
+          {
+            id: "cmp-feature-highlights",
+            componentId: "feature-highlights",
+            componentType: "built-in",
+            definitionRevision: 1,
+            slotBindings: [],
+            fallbackElements: [
+              { id: "cmp-image", type: "image", x: 760, y: 80, width: 420, height: 560, src: "https://cdn.example.com/faq-hero.jpg", alt: "faq hero" },
+              { id: "cmp-title", type: "text", x: 72, y: 90, width: 560, height: 90, text: "Frequently asked questions", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+            ],
+          },
+        ],
+        renderOrder: ["element:bg", "component:cmp-feature-highlights"],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+        aiDesign: {
+          source: "draft-with-ai",
+          componentRecipeId: "feature-highlights",
+          selectionMode: "heuristic",
+          narrative: {
+            title: "Frequently asked questions",
+            body: ["Overview"],
+            sections: [
+              { heading: "Question one", details: ["Answer one"] },
+              { heading: "Question two", details: ["Answer two"] },
+              { heading: "Question three", details: ["Answer three"] },
+              { heading: "Question four", details: ["Answer four"] },
+            ],
+          },
+        },
+      },
+      layoutSeed: 63,
+    });
+
+    expect(capturedLayoutInput.slideData.componentRecipeId).toBeUndefined();
+    expect(capturedLayoutInput.slideData.templateId).not.toBe("feature_boxes_right");
+    expect(output.slideContent.elements.some((element) => (
+      element.type === "image"
+      && element.id === "cmp-image"
+      && element.src === "https://cdn.example.com/faq-hero.jpg"
+    ))).toBe(true);
+    expect(output.warnings.some((warning) => warning.includes('Skipped component recipe "feature-highlights"'))).toBe(true);
+    expect(output.warnings.some((warning) => warning.includes("fell back to a plain template"))).toBe(true);
+  });
+
+  it("tops up sparse relayout text from slide notes before rendering", () => {
+    let capturedLayoutInput: any = null;
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockImplementation((input: unknown) => {
+      capturedLayoutInput = input;
+      return {
+        slideContent: { elements: [] },
+        warnings: [],
+      };
+    });
+
+    relayoutExistingSlide({
+      slideTitle: "Safe sleep environment",
+      deckTitle: "Deck",
+      slideIndex: 2,
+      totalSlides: 5,
+      slideNotes: [
+        "# Safe sleep environment",
+        "Place the baby on their back to sleep.",
+        "Use a firm mattress with no pillows or loose blankets.",
+        "Keep the room calm and free from soft items.",
+      ].join("\n"),
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "hero", type: "image", x: 720, y: 0, width: 560, height: 720, src: "https://cdn.example.com/sleep.jpg", alt: "sleep" },
+          { id: "title", type: "text", x: 72, y: 120, width: 620, height: 100, text: "Safe sleep environment", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+        aiDesign: {
+          source: "draft-with-ai",
+          selectionMode: "none",
+          narrative: {
+            title: "Safe sleep environment",
+            body: ["Place the baby on their back to sleep."],
+          },
+        },
+      },
+      layoutSeed: 89,
+    });
+
+    expect(capturedLayoutInput.slideData.body.some((line: string) => line.includes("Place the baby on their back to sleep"))).toBe(true);
+    expect(capturedLayoutInput.slideData.body.some((line: string) => line.includes("Use a firm mattress with no pillows or loose blankets"))).toBe(true);
+    expect(capturedLayoutInput.slideData.notes).toContain("Keep the room calm and free from soft items");
+  });
+
+  it("derives a clean relayout title from slide notes when numbered steps were inlined into the old title", () => {
+    let capturedLayoutInput: any = null;
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockImplementation((input: unknown) => {
+      capturedLayoutInput = input;
+      return {
+        slideContent: { elements: [] },
+        warnings: [],
+      };
+    });
+
+    relayoutExistingSlide({
+      slideTitle: "ขั้นตอนปฏิบัติ / เคล็ดลับ 1. สร้างกิจวัตรก่อนนอน: ทำให้กิจกรรมตอนก่อนนอนมีความซ้ำซ้อน เช่น หรืออาบน้ำ",
+      deckTitle: "Deck",
+      slideIndex: 3,
+      totalSlides: 6,
+      slideNotes: "ขั้นตอนปฏิบัติ / เคล็ดลับ 1. สร้างกิจวัตรก่อนนอน: ทำให้กิจกรรมตอนก่อนนอนมีความซ้ำซ้อน เช่น อ่านหนังสือ หรืออาบน้ำ เพื่อสร้างความรู้สึกผ่อนคลายให้กับลูก 2. กำหนดเวลาเข้านอน: ตั้งเวลาเข้านอนที่สม่ำเสมอทุกวัน เพื่อช่วยให้ร่างกายสร้างนิสัยในการนอน 3. สร้างสภาพแวดล้อมที่เอื้อต่อการนอน: ห้องนอนควรเงียบ สบาย และมีอุณหภูมิที่เหมาะสม",
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "title", type: "text", x: 72, y: 100, width: 900, height: 160, text: "ขั้นตอนปฏิบัติ / เคล็ดลับ 1. สร้างกิจวัตรก่อนนอน: ทำให้กิจกรรมตอนก่อนนอนมีความซ้ำซ้อน เช่น หรืออาบน้ำ", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+          { id: "body", type: "text", x: 72, y: 280, width: 980, height: 220, text: "หรืออาบน้ำ เพื่อสร้างความรู้สึกผ่อนคลายให้กับลูก 2. กำหนดเวลาเข้านอน", color: "#ffffff", fontSize: 30 },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+      },
+      layoutSeed: 90,
+    });
+
+    expect(capturedLayoutInput).toBeTruthy();
+    expect(capturedLayoutInput.slideData.title).toBe("ขั้นตอนปฏิบัติ / เคล็ดลับ");
+    expect(capturedLayoutInput.slideData.title).not.toContain("1.");
+    expect(capturedLayoutInput.slideData.body.join("\n")).toContain("สร้างกิจวัตรก่อนนอน");
+    expect(capturedLayoutInput.slideData.body.join("\n")).toContain("กำหนดเวลาเข้านอน");
+    expect(capturedLayoutInput.slideData.body.join("\n")).toContain("สร้างสภาพแวดล้อมที่เอื้อต่อการนอน");
+  });
+
+  it("does not preserve component fallback rects as loose overlays during relayout", () => {
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({
+      slideContent: {
+        elements: [
+          { id: "generated-bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+        ],
+        components: [
+          {
+            id: "generated-process",
+            componentId: "process-steps",
+            componentType: "built-in",
+            definitionRevision: 1,
+            slotBindings: [],
+            fallbackElements: [],
+          },
+        ],
+        renderOrder: ["element:generated-bg", "component:generated-process"],
+      },
+      warnings: [],
+    });
+
+    const output = relayoutExistingSlide({
+      slideTitle: "ขั้นตอนปฏิบัติ / เคล็ดลับ",
+      deckTitle: "Deck",
+      slideIndex: 1,
+      totalSlides: 4,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "hero", type: "image", x: 0, y: 0, width: 1280, height: 720, src: "https://cdn.example.com/process.jpg", alt: "hero" },
+        ],
+        components: [
+          {
+            id: "cmp-process",
+            componentId: "process-steps",
+            componentType: "built-in",
+            definitionRevision: 1,
+            slotBindings: [],
+            fallbackElements: [
+              { id: "cmp-process::card-1-bg", type: "rect", x: 168, y: 188, width: 944, height: 96, fill: "#16213e", stroke: "#e94560", strokeWidth: 3 },
+              { id: "cmp-process::card-2-bg", type: "rect", x: 168, y: 314, width: 944, height: 96, fill: "#16213e", stroke: "#0f3460", strokeWidth: 3 },
+            ],
+          },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+        aiDesign: {
+          source: "draft-with-ai",
+          componentRecipeId: "process-steps",
+          selectionMode: "heuristic",
+          narrative: {
+            title: "ขั้นตอนปฏิบัติ / เคล็ดลับ",
+            body: ["สร้างกิจวัตรก่อนนอน", "จัดสภาพแวดล้อมให้สงบ", "สังเกตสัญญาณง่วง"],
+          },
+        },
+      },
+      layoutSeed: 31,
+    });
+
+    expect(output.slideContent.elements.some((element) => element.id === "cmp-process::card-1-bg")).toBe(false);
+    expect(output.slideContent.elements.some((element) => element.id === "cmp-process::card-2-bg")).toBe(false);
+    expect(output.slideContent.components?.some((component) => component.id === "generated-process")).toBe(true);
+  });
+
+  it("does not preserve oversized inline svg graphics or loose lines during relayout", () => {
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({
+      slideContent: {
+        elements: [
+          { id: "generated-bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "img-main", type: "image", x: 780, y: 0, width: 500, height: 720, src: "https://cdn.example.com/hero.jpg", alt: "hero" },
+          { id: "title", type: "text", x: 72, y: 140, width: 560, height: 180, text: "Narrative slide", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+        ],
+      },
+      warnings: [],
+    });
+
+    const output = relayoutExistingSlide({
+      slideTitle: "Narrative slide",
+      deckTitle: "Deck",
+      slideIndex: 2,
+      totalSlides: 5,
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "hero", type: "image", x: 780, y: 0, width: 500, height: 720, src: "https://cdn.example.com/hero.jpg", alt: "hero" },
+          { id: "title", type: "text", x: 72, y: 140, width: 560, height: 180, text: "Narrative slide", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+          { id: "decorative-svg", type: "image", x: 180, y: 250, width: 240, height: 240, src: "", alt: "decorative svg", svgContent: "<svg><rect width='240' height='240'/></svg>" },
+          { id: "loose-line", type: "line", x: 120, y: 420, width: 420, height: 0, stroke: "#e94560", strokeWidth: 6 },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+      },
+      layoutSeed: 53,
+    });
+
+    expect(output.slideContent.elements.some((element) => element.id === "decorative-svg")).toBe(false);
+    expect(output.slideContent.elements.some((element) => element.id === "loose-line")).toBe(false);
+  });
+
+  it("drops geometric accents that would overlap the generated text stack", () => {
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({
+      slideContent: {
+        elements: [
+          { id: "generated-bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "title", type: "text", x: 36, y: 36, width: 640, height: 220, text: "Top-left text stack", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+          { id: "body", type: "text", x: 36, y: 250, width: 620, height: 180, text: "Body copy", color: "#ffffff", fontSize: 28 },
+        ],
+      },
+      warnings: [],
+    });
+
+    const output = relayoutExistingSlide({
+      slideTitle: "Top-left text stack",
+      deckTitle: "Deck",
+      slideIndex: 2,
+      totalSlides: 5,
+      includeGeometricAccents: true,
+      geometricAccentShape: "triangle",
+      slideContent: {
+        elements: [
+          { id: "bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#1a1a2e" },
+          { id: "title", type: "text", x: 36, y: 36, width: 640, height: 220, text: "Top-left text stack", color: "#ffffff", fontSize: 58, fontWeight: "700" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+      },
+      layoutSeed: 67,
+    });
+
+    const accentImages = output.slideContent.elements.filter((element) => (
+      element.type === "image" && String(element.alt || "").toLowerCase().includes("geometric accent")
+    ));
+    expect(accentImages).toHaveLength(1);
   });
 
   it("preserves multiline body text and adds Thai number spacing for readability", () => {
@@ -942,16 +1999,16 @@ describe("relayoutExistingSlide", () => {
     expect(preservedLargeImage).toBeTruthy();
     expect(preservedLargeVideo).toBeTruthy();
     if (preservedLargeImage && preservedLargeImage.type === "image") {
-      expect(preservedLargeImage.width).toBeLessThan(321);
-      expect(preservedLargeImage.height).toBeLessThan(181);
-      expect(preservedLargeImage.x).toBeGreaterThanOrEqual(930);
-      expect(preservedLargeImage.y).toBeGreaterThanOrEqual(210);
+      expect(preservedLargeImage.width).toBeLessThan(421);
+      expect(preservedLargeImage.height).toBeLessThan(361);
+      expect(preservedLargeImage.x).toBeGreaterThanOrEqual(0);
+      expect(preservedLargeImage.y).toBeGreaterThanOrEqual(0);
     }
     if (preservedLargeVideo && preservedLargeVideo.type === "video") {
-      expect(preservedLargeVideo.width).toBeLessThan(321);
-      expect(preservedLargeVideo.height).toBeLessThan(181);
-      expect(preservedLargeVideo.x).toBeGreaterThanOrEqual(930);
-      expect(preservedLargeVideo.y).toBeGreaterThanOrEqual(410);
+      expect(preservedLargeVideo.width).toBeLessThan(421);
+      expect(preservedLargeVideo.height).toBeLessThan(361);
+      expect(preservedLargeVideo.x).toBeGreaterThanOrEqual(0);
+      expect(preservedLargeVideo.y).toBeGreaterThanOrEqual(0);
     }
     expect(output.warnings.some((warning) => warning.includes("Preserved 2 existing user element"))).toBe(true);
   });
@@ -1023,6 +2080,389 @@ describe("relayoutExistingSlide", () => {
       .filter((id) => id.startsWith("user-image-") || id.startsWith("user-video-"));
     expect(preservedIds.length).toBe(16);
     expect(output.warnings.some((warning) => warning.includes("Preserved 16 existing user element"))).toBe(true);
+  });
+});
+
+describe("relayoutExistingSlideAsync", () => {
+  it("honors locked llm_layout_dsl mode through the async relayout path", async () => {
+    process.env.PRESENTATION_AI_LAYOUT_DSL_ENABLED = "true";
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({ slideContent: { elements: [] }, warnings: [] });
+    mockCallLLMStructured.mockResolvedValue({
+      data: {
+        status: "ok",
+        elements: [
+          {
+            id: "dsl-title",
+            type: "text",
+            x: 96,
+            y: 80,
+            width: 540,
+            height: 120,
+            text: "DSL Layout",
+            color: "#111827",
+            fontSize: 58,
+            fontWeight: "700",
+          },
+        ],
+        groups: [],
+      },
+      tokensUsed: 30,
+      creditsUsed: 1,
+    });
+
+    const output = await relayoutExistingSlideAsync({
+      slideTitle: "DSL Layout",
+      deckTitle: "Deck",
+      slideIndex: 2,
+      totalSlides: 5,
+      slideContent: {
+        elements: [
+          { id: "title", type: "text", x: 40, y: 40, width: 300, height: 80, text: "Old", color: "#111827" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+        aiDesign: {
+          source: "draft-with-ai",
+          taskId: "task-1",
+          schemaVersion: "presentation_ai_layout_v1",
+          mode: "llm_layout_dsl",
+          modeLocked: true,
+          userOverrideMode: "llm_layout_dsl",
+          selectionMode: "heuristic",
+          narrative: {
+            title: "DSL Layout",
+            body: ["ข้อความยาวที่ควรให้ DSL จัดเอง"],
+            templateId: "split_right_image",
+          },
+          generatedAt: "2026-03-14T10:00:00.000Z",
+        },
+      },
+    }, buildMockActor());
+
+    expect(output.slideContent.aiDesign?.mode).toBe("llm_layout_dsl");
+    expect(output.slideContent.elements.some((element) => (
+      element.type === "text" && "text" in element && element.text === "DSL Layout"
+    ))).toBe(true);
+    expect(output.warnings.some((warning) => warning.includes("currently rebuilds this slide through the structured layout path"))).toBe(false);
+  });
+
+  it("honors locked full_slide_media mode by reusing the existing hero visual", async () => {
+    process.env.PRESENTATION_AI_FULL_SLIDE_MEDIA_ENABLED = "true";
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({ slideContent: { elements: [] }, warnings: [] });
+
+    const output = await relayoutExistingSlideAsync({
+      slideTitle: "Poster",
+      deckTitle: "Deck",
+      slideIndex: 2,
+      totalSlides: 5,
+      slideContent: {
+        elements: [
+          { id: "hero", type: "image", x: 120, y: 60, width: 900, height: 600, src: "https://cdn.example.com/hero.jpg", alt: "hero" },
+          { id: "title", type: "text", x: 80, y: 80, width: 360, height: 80, text: "Poster", color: "#111827" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+        aiDesign: {
+          source: "draft-with-ai",
+          taskId: "task-1",
+          schemaVersion: "presentation_ai_layout_v1",
+          mode: "full_slide_media",
+          modeLocked: true,
+          userOverrideMode: "full_slide_media",
+          selectionMode: "heuristic",
+          narrative: {
+            title: "Poster",
+            body: ["ข้อความสั้นเพื่อบอกเจตนาของภาพเต็มหน้า"],
+            templateId: "hero_center",
+          },
+          generatedAt: "2026-03-14T10:00:00.000Z",
+        },
+      },
+    }, buildMockActor());
+
+    expect(output.slideContent.aiDesign?.mode).toBe("full_slide_media");
+    expect(output.slideContent.visualOnly).toBe(true);
+    expect(output.slideContent.elements).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: "image",
+        src: "https://cdn.example.com/hero.jpg",
+        x: 0,
+        y: 0,
+        width: 1280,
+        height: 720,
+      }),
+    ]));
+  });
+
+  it("honors locked full_slide_media mode by generating a new visual when a token is available", async () => {
+    process.env.PRESENTATION_AI_FULL_SLIDE_MEDIA_ENABLED = "true";
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({ slideContent: { elements: [] }, warnings: [] });
+    mockGetModelsByTypeAsync.mockResolvedValue([
+      {
+        id: "nano-banana-2",
+        name: "Nano Banana 2",
+        provider: "test-provider",
+        aspectRatios: ["16:9"],
+        configJson: { generateType: "text-to-image" },
+      },
+    ]);
+    mockGenerateImageAsync.mockResolvedValue({ id: "relayout-image-task", status: "processing" });
+    mockGetTask.mockResolvedValue({
+      id: "relayout-image-task",
+      status: "completed",
+      resultUrl: "https://cdn.example.com/generated-full-slide.jpg",
+    });
+
+    const output = await relayoutExistingSlideAsync({
+      slideTitle: "Poster",
+      deckTitle: "Deck",
+      slideIndex: 2,
+      totalSlides: 5,
+      userToken: "user-token",
+      slideContent: {
+        elements: [
+          { id: "title", type: "text", x: 80, y: 80, width: 360, height: 80, text: "Poster", color: "#111827" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+        aiDesign: {
+          source: "draft-with-ai",
+          taskId: "task-1",
+          schemaVersion: "presentation_ai_layout_v1",
+          mode: "full_slide_media",
+          modeLocked: true,
+          userOverrideMode: "full_slide_media",
+          selectionMode: "heuristic",
+          narrative: {
+            title: "Poster",
+            body: ["ข้อความสั้นเพื่อบอกเจตนาของภาพเต็มหน้า"],
+            templateId: "hero_center",
+          },
+          generatedAt: "2026-03-14T10:00:00.000Z",
+        },
+      },
+    }, buildMockActor());
+
+    expect(mockGenerateImageAsync).toHaveBeenCalled();
+    expect(output.slideContent.aiDesign?.mode).toBe("full_slide_media");
+    expect(output.slideContent.aiDesign?.mediaModeMetadata?.modelId).toBe("nano-banana-2");
+    expect(output.slideContent.elements).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: "image",
+        src: "https://cdn.example.com/generated-full-slide.jpg",
+        imageModelId: "nano-banana-2",
+      }),
+    ]));
+    expect(output.warnings).toContain("Rebuilt this slide as a full-slide media layout with a newly generated visual.");
+  });
+
+  it("honors locked full_slide_media mode by generating a new video for video-led slides when a token is available", async () => {
+    process.env.PRESENTATION_AI_FULL_SLIDE_MEDIA_ENABLED = "true";
+    mockGetBuiltInPreset.mockReturnValue({
+      id: "dark-professional",
+      name: "Dark Professional",
+      colors: { background: "#1a1a2e", backgroundAlt: "#16213e", primary: "#e94560", secondary: "#0f3460", text: "#ffffff", textMuted: "#a0a0b0", cardBg: ["#16213e", "#0f3460", "#1a1a3e"], overlay: "rgba(0,0,0,0.55)" },
+      typography: { titleFontFamily: "Inter", bodyFontFamily: "Inter", titleFontWeight: 700, bodyFontWeight: 400 },
+    });
+    mockPickRandomSvg.mockReturnValue(MOCK_SVG);
+    mockGenerateSlide.mockReturnValue({ slideContent: { elements: [] }, warnings: [] });
+    mockGetModelsByTypeAsync.mockImplementation(async (type: string) => {
+      if (type === "video") {
+        return [
+          {
+            id: "veo3-fast",
+            name: "Veo 3 Fast",
+            provider: "test-provider",
+            aspectRatios: ["16:9"],
+            durations: [5],
+            configJson: { generateType: "text-to-video" },
+          },
+        ];
+      }
+      return [];
+    });
+    mockGenerateVideoAsync.mockResolvedValue({ id: "relayout-video-task", status: "processing" });
+    mockGetTask.mockResolvedValue({
+      id: "relayout-video-task",
+      status: "completed",
+      resultUrl: "https://cdn.example.com/generated-full-slide.mp4",
+    });
+
+    const output = await relayoutExistingSlideAsync({
+      slideTitle: "Launch reel",
+      deckTitle: "Deck",
+      slideIndex: 2,
+      totalSlides: 5,
+      userToken: "user-token",
+      slideContent: {
+        elements: [
+          { id: "clip", type: "video", x: 120, y: 60, width: 900, height: 600, src: "https://cdn.example.com/original.mp4", title: "Original clip" },
+          { id: "title", type: "text", x: 80, y: 80, width: 360, height: 80, text: "Launch reel", color: "#111827" },
+        ],
+        canvas: { width: 1280, height: 720, preset: "16:9" },
+        aiDesign: {
+          source: "draft-with-ai",
+          taskId: "task-1",
+          schemaVersion: "presentation_ai_layout_v1",
+          mode: "full_slide_media",
+          modeLocked: true,
+          userOverrideMode: "full_slide_media",
+          selectionMode: "heuristic",
+          narrative: {
+            title: "Launch reel",
+            body: ["ข้อความสั้นเพื่อสั่ง mood ของคลิปเต็มหน้า"],
+            templateId: "hero_center",
+          },
+          generatedAt: "2026-03-14T10:00:00.000Z",
+        },
+      },
+    }, buildMockActor());
+
+    expect(mockGenerateVideoAsync).toHaveBeenCalled();
+    expect(output.slideContent.elements).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: "video",
+        src: "https://cdn.example.com/generated-full-slide.mp4",
+        videoModelId: "veo3-fast",
+      }),
+    ]));
+    expect(output.slideContent.aiDesign?.mediaModeMetadata?.modelId).toBe("veo3-fast");
+    expect(output.warnings).toContain("Rebuilt this slide as a full-slide media layout with a newly generated visual.");
+  });
+});
+
+describe("repairSlideFromSavedNote", () => {
+  it("drops incompatible aiDesign metadata from auto layout output instead of surfacing schema validation", () => {
+    const warnings: string[] = [];
+    const stabilized = finalizeSlideContentAfterRelayout({
+      elements: [
+        { id: "title", type: "text", x: 80, y: 80, width: 400, height: 80, text: "Stable slide", color: "#111827" },
+      ],
+      aiDesign: {
+        source: "draft-with-ai",
+        selectionMode: "none",
+        selectionReason: "x".repeat(700),
+      } as any,
+    }, warnings);
+
+    expect(presentationSlideContentSchema.safeParse(stabilized).success).toBe(true);
+    expect(stabilized.aiDesign).toBeUndefined();
+    expect(warnings).toContain("Auto layout omitted incompatible AI metadata to satisfy schema validation.");
+  });
+
+  it("drops incompatible aiDesign metadata instead of returning invalid slide content", () => {
+    const warnings: string[] = [];
+    const stabilized = finalizeSlideContentAfterRepair({
+      elements: [
+        { id: "title", type: "text", x: 80, y: 80, width: 400, height: 80, text: "Stable slide", color: "#111827" },
+      ],
+      aiDesign: {
+        source: "draft-with-ai",
+        selectionMode: "none",
+        selectionReason: "x".repeat(700),
+      } as any,
+    }, warnings);
+
+    expect(presentationSlideContentSchema.safeParse(stabilized).success).toBe(true);
+    expect(stabilized.aiDesign).toBeUndefined();
+    expect(warnings).toContain("Regenerated slide content omitted incompatible AI metadata to satisfy schema validation.");
+  });
+
+  it("rebuilds a slide from the saved note and regenerates image media", async () => {
+    setupHappyPath();
+    mockGenerateSlide.mockImplementation((input: any) => ({
+      slideContent: {
+        elements: [
+          {
+            id: "generated-image",
+            type: "image",
+            x: 640,
+            y: 0,
+            width: 640,
+            height: 720,
+            src: input.imageUrl,
+            alt: "generated hero",
+          },
+          {
+            id: "generated-title",
+            type: "text",
+            x: 72,
+            y: 96,
+            width: 520,
+            height: 120,
+            text: input.slideData.title,
+            color: "#ffffff",
+          },
+        ],
+      },
+      warnings: [],
+    }));
+
+    const result = await repairSlideFromSavedNote(
+      {
+        deckId: 7,
+        slideTitle: "Old broken title",
+        slideContent: {
+          elements: [
+            { id: "old-bg", type: "rect", x: 0, y: 0, width: 1280, height: 720, fill: "#ffffff" },
+          ],
+          canvas: { width: 1280, height: 720, preset: "16:9" },
+        },
+        slideNotes: "ขั้นตอนปฏิบัติ / เคล็ดลับ 1. สร้างกิจวัตรก่อนนอน: ทำกิจกรรมแบบเดิมในเวลาคล้ายกันทุกวันเพื่อให้เด็กคาดเดาได้ 2. กำหนดเวลาเข้านอน: ตั้งเวลาเข้านอนที่สม่ำเสมอทุกวัน 3. สร้างสภาพแวดล้อมที่เอื้อต่อการนอน: ห้องนอนควรเงียบ สบาย และมีอุณหภูมิที่เหมาะสม 4. ไม่ต้องตอบสนองทันทีเมื่อเด็กตื่น: หากเด็กตื่นขึ้นในกลางคืน ให้รอสักครู่ก่อนที่จะเข้าไปดูเพื่อดูว่าเขาจะกลับไปนอนเองได้หรือไม่ 5. ใช้เสียงเพลงหรือเสียงธรรมชาติ: เสียงที่อ่อนโยนสามารถช่วยให้เด็กผ่อนคลายและนอนหลับได้ดีขึ้น ความผิดพลาดที่พบบ่อย - ให้เด็กนอนในที่นอนที่ไม่ปลอดภัย: ควรให้เด็กนอนในที่นอนที่เหมาะสมและปลอดภัย - นิสัยการให้อาหารตลอดคืน: หลีกเลี่ยงการให้อาหารเด็กเมื่อเขาตื่นกลางคืนเพื่อลดการตื่นบ่อย - ไม่มีกิจวัตรชัดเจน: การไม่มีกิจวัตรก่อนนอนอาจทำให้เด็กไม่รู้ว่าเมื่อไหร่ถึงเวลานอน",
+        deckTitle: "Deck",
+        slideIndex: 3,
+        totalSlides: 6,
+      },
+      buildMockActor(),
+      "test-token",
+    );
+
+    expect(result.title).toBe("ขั้นตอนปฏิบัติ / เคล็ดลับ");
+    expect(mockGenerateImageAsync).toHaveBeenCalled();
+    expect(mockGenerateSlide).toHaveBeenCalledWith(expect.objectContaining({
+      imageUrl: "https://cdn.example.com/image.jpg",
+    }));
+    const repairLayoutInput = mockGenerateSlide.mock.calls[0]?.[0];
+    expect(["split_left_image", "split_right_image", "top_image_text_bottom", "bottom_image_text_top"]).toContain(
+      repairLayoutInput?.slideData?.templateId,
+    );
+    expect(repairLayoutInput?.slideData?.markdownHierarchy).toEqual(expect.arrayContaining([
+      expect.objectContaining({ level: "body", text: expect.stringContaining("สร้างกิจวัตรก่อนนอน") }),
+      expect.objectContaining({ level: "body", text: expect.stringContaining("ไม่มีกิจวัตรชัดเจน") }),
+    ]));
+    expect(result.applied.regeneratedImage).toBe(true);
+    expect(["split_left_image", "split_right_image", "top_image_text_bottom", "bottom_image_text_top"]).toContain(
+      result.applied.templateId,
+    );
+    expect(result.warnings).toContain("Dense slide note detected; prioritized full text coverage over block-based layout.");
+    expect(result.slideContent.aiDesign?.source).toBe("draft-with-ai");
+    expect(result.slideContent.aiDesign?.narrative?.title).toBe("ขั้นตอนปฏิบัติ / เคล็ดลับ");
+    expect(result.slideContent.aiDesign?.narrative?.body.join("\n")).toContain("สร้างกิจวัตรก่อนนอน");
+    const generatedImage = result.slideContent.elements.find((element) => element.type === "image");
+    expect(generatedImage?.type).toBe("image");
+    if (generatedImage?.type === "image") {
+      expect(generatedImage.src).toBe("https://cdn.example.com/image.jpg");
+      expect(generatedImage.imagePrompt).toContain("ขั้นตอนปฏิบัติ / เคล็ดลับ");
+      expect(generatedImage.imageModelId).toBe("flux-2.0");
+    }
   });
 });
 
@@ -1098,6 +2538,74 @@ describe("generateAIDraft - happy path", () => {
     expect(planningCall?.billingMetadata?.stage).toBe("topic_to_slide_plan");
     expect(mockExecuteWithFallback).toHaveBeenCalledTimes(3);
     expect(mockGenerateImageAsync).toHaveBeenCalledTimes(3);
+  });
+
+  it("repairs incomplete topic planning slides before rendering", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
+      if (skillId === "image-prompt-engineer") {
+        return {
+          id: "image-prompt-engineer",
+          name: "Image Prompt Engineer",
+          category: "image_prompt_generation",
+          type: "prompt-enhancement",
+          systemPrompt: "Enhance visual prompts.",
+          executionMode: "enhance-prompt",
+        };
+      }
+      return undefined;
+    });
+    mockCallLLMStructured.mockResolvedValueOnce({
+      data: [
+        {
+          templateId: "hero_center",
+          title: "AI adoption in hospitals",
+          body: [],
+          notes: "# AI adoption in hospitals\n## Why teams are moving now\nHospitals need faster triage.\nAutomation reduces admin load.",
+          sections: [
+            {
+              heading: "Why teams are moving now",
+              details: [],
+            },
+          ],
+          graphicCategory: "Health",
+          imagePromptKeywords: "AI hospital operations dashboard",
+        },
+      ],
+      tokensUsed: 180,
+      creditsUsed: 6,
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 1,
+        draftSkillId: "image-prompt-engineer",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const firstLayoutCall = mockGenerateSlide.mock.calls[0]?.[0] as {
+      slideData: { body: string[]; sections?: Array<{ heading: string; details: string[] }> };
+    };
+    expect(firstLayoutCall.slideData.body).toEqual(expect.arrayContaining([
+      "Hospitals need faster triage.",
+      "Automation reduces admin load.",
+    ]));
+    expect(firstLayoutCall.slideData.sections).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        heading: "Why teams are moving now",
+        details: expect.arrayContaining(["Hospitals need faster triage."]),
+      }),
+    ]));
+
+    const progressCalls = mockRedisSet.mock.calls.filter(
+      (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("ai_draft_progress"),
+    );
+    const finalProgress = JSON.parse(progressCalls[progressCalls.length - 1][1] as string);
+    expect(finalProgress.error).toBeUndefined();
   });
 
   it("treats video prompt generation skills as prompt-first and defaults media generation to video", async () => {
@@ -1193,6 +2701,58 @@ describe("generateAIDraft - happy path", () => {
     expect(planningCall?.billingMetadata?.stage).toBe("topic_to_slide_plan");
     expect(mockGenerateImageAsync).toHaveBeenCalledTimes(3);
     expect(mockGenerateVideoAsync).not.toHaveBeenCalled();
+  });
+
+  it("surfaces a friendly topic planning error when structured output is incomplete", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
+      if (skillId === "image-prompt-engineer") {
+        return {
+          id: "image-prompt-engineer",
+          name: "Image Prompt Engineer",
+          category: "image_prompt_generation",
+          type: "prompt-enhancement",
+          systemPrompt: "Enhance visual prompts.",
+          executionMode: "enhance-prompt",
+        };
+      }
+      return undefined;
+    });
+    mockCallLLMStructured.mockRejectedValueOnce(Object.assign(
+      new Error("LLM response failed schema validation after 2 attempt(s): Array must contain at least 1 element(s)"),
+      {
+        name: "LLMStructuredOutputError",
+        zodErrors: new z.ZodError([
+          {
+            code: "too_small",
+            minimum: 1,
+            type: "array",
+            inclusive: true,
+            exact: false,
+            message: "Array must contain at least 1 element(s)",
+            path: [0, "body"],
+          },
+        ]),
+      },
+    ));
+
+    await generateAIDraft(
+      buildMockInput({
+        draftSkillId: "image-prompt-engineer",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const progressCalls = mockRedisSet.mock.calls.filter(
+      (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("ai_draft_progress"),
+    );
+    const finalProgress = JSON.parse(progressCalls[progressCalls.length - 1][1] as string);
+    expect(finalProgress.error.message).toBe(
+      "Topic planning returned incomplete slide data. Please retry.",
+    );
   });
 
   it("generates and attaches per-slide audio tracks when audio is enabled", async () => {
@@ -1593,14 +3153,12 @@ describe("generateAIDraft - happy path", () => {
       "task-123",
     );
 
-    const firstInsertCall = mockAddSlideToDeck.mock.calls[0]?.[0] as { slideContent?: { elements?: unknown[] } } | undefined;
-    expect(firstInsertCall).toBeTruthy();
-    const elements = Array.isArray(firstInsertCall?.slideContent?.elements)
-      ? firstInsertCall?.slideContent?.elements
-      : [];
-    const watermark = elements.find((element: any) => (
-      element?.type === "image" && typeof element?.id === "string" && element.id.startsWith("watermark__")
-    )) as any;
+    const watermark = mockAddSlideToDeck.mock.calls
+      .map((call) => call[0] as { slideContent?: { elements?: unknown[] } })
+      .flatMap((payload) => (Array.isArray(payload.slideContent?.elements) ? payload.slideContent.elements : []))
+      .find((element: any) => (
+        element?.type === "image" && typeof element?.id === "string" && element.id.startsWith("watermark__")
+      )) as any;
     expect(watermark).toBeTruthy();
     expect(watermark.src).toBe("https://cdn.example.com/wm.jpg");
     expect(watermark.opacity).toBeCloseTo(0.25, 5);
@@ -1715,6 +3273,121 @@ describe("generateAIDraft - Phase 1", () => {
     expect(splitCall.strictProviderPin).toBe(false);
   });
 
+  it("uses an explicit textModel override to split a provided custom article", async () => {
+    setupHappyPath();
+    mockResolveProviders.mockImplementation(async (model: string) => {
+      if (model === "gpt-5.2") {
+        return [
+          {
+            providerId: 2,
+            providerName: "opencode-zen",
+            baseUrl: "https://example.com",
+            apiKey: "test-key",
+            providerModelId: "gpt-5.2",
+            pricingInput: 0,
+            pricingOutput: 0,
+            isFree: false,
+            priority: 10,
+          },
+        ];
+      }
+      return [
+        {
+          providerId: 1,
+          providerName: "test-provider",
+          baseUrl: "https://example.com",
+          apiKey: "test-key",
+          providerModelId: model,
+          pricingInput: 0,
+          pricingOutput: 0,
+          isFree: true,
+          priority: 0,
+        },
+      ];
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        textModel: "gpt-5.2",
+        articleSkillId: undefined,
+        useCustomArticle: true,
+        customArticleText: "Provided article body for direct structuring.",
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const splitCall = mockCallLLMStructured.mock.calls[0]?.[0];
+    expect(splitCall.model).toBe("gpt-5.2");
+    expect(splitCall.preferredProviderId).toBeUndefined();
+    expect(splitCall.strictProviderPin).toBe(false);
+  });
+
+  it("preserves the first markdown heading as the first slide title in custom article mode", async () => {
+    setupHappyPath();
+    mockCallLLMStructured.mockResolvedValueOnce({
+      data: [
+        {
+          templateId: "hero_center",
+          title: "สรุปอย่างรวดเร็ว",
+          body: ["สำรอง"],
+          sections: [{ heading: "สรุปอย่างรวดเร็ว", details: ["เด็กในวัยเริ่มหัดเดินมักจะแสดงความต้องการที่จะยืนมากกว่าการนั่ง"] }],
+          graphicCategory: "Health",
+          imagePromptKeywords: "toddler standing support",
+        },
+        {
+          templateId: "split_right_image",
+          title: "ใครคือกลุ่มเป้าหมาย",
+          body: ["สำรอง"],
+          sections: [{ heading: "ใครคือกลุ่มเป้าหมาย", details: ["บทความนี้เหมาะสำหรับพ่อแม่และผู้ดูแลเด็กอายุตั้งแต่หกถึงสิบสองเดือน"] }],
+          graphicCategory: "Education",
+          imagePromptKeywords: "parents child care",
+        },
+      ],
+      tokensUsed: 300,
+      creditsUsed: 10,
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 2,
+        articleSkillId: undefined,
+        useCustomArticle: true,
+        customArticleText: [
+          "# เด็กอยากจะยืนไม่อยากนั่งจริงไหม แล้วฝึกยืนได้เมื่อไหร่",
+          "",
+          "## สรุปอย่างรวดเร็ว",
+          "- เด็กในวัยเริ่มหัดเดินมักจะแสดงความต้องการที่จะยืนมากกว่าการนั่ง",
+          "- เด็กสามารถเริ่มฝึกยืนได้ตั้งแต่อายุประมาณหกถึงเก้าเดือน",
+          "",
+          "## ใครคือกลุ่มเป้าหมาย",
+          "บทความนี้เหมาะสำหรับพ่อแม่และผู้ดูแลเด็กอายุตั้งแต่หกถึงสิบสองเดือน",
+        ].join("\n"),
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const firstSlideCall = mockGenerateSlide.mock.calls[0]?.[0] as
+      | {
+        slideData?: {
+          title?: string;
+          sections?: Array<{ heading: string }>;
+          markdownHierarchy?: Array<{ level: "h2" | "h3" | "body"; text: string }>;
+        };
+      }
+      | undefined;
+    expect(firstSlideCall?.slideData?.title).toBe("เด็กอยากจะยืนไม่อยากนั่งจริงไหม แล้วฝึกยืนได้เมื่อไหร่");
+    expect(firstSlideCall?.slideData?.sections?.[0]?.heading).toBe("สรุปอย่างรวดเร็ว");
+    expect(firstSlideCall?.slideData?.markdownHierarchy).toEqual([
+      { level: "h2", text: "สรุปอย่างรวดเร็ว" },
+      { level: "body", text: "- เด็กในวัยเริ่มหัดเดินมักจะแสดงความต้องการที่จะยืนมากกว่าการนั่ง" },
+      { level: "body", text: "- เด็กสามารถเริ่มฝึกยืนได้ตั้งแต่อายุประมาณหกถึงเก้าเดือน" },
+    ]);
+  });
+
   it("uses article skill language override when top-level language is auto", async () => {
     setupHappyPath();
 
@@ -1762,11 +3435,68 @@ describe("generateAIDraft - Phase 1", () => {
     );
   });
 
-  it("normalizes provider-qualified skill models before routing text generation", async () => {
+  it("prefers an explicit textModel override over the skill default model", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockResolvedValueOnce({
+      id: "general-article-writer",
+      name: "General Article Writer",
+      systemPrompt: "You are a versatile article writer.",
+      defaultModel: "gpt-4o-mini",
+      executionMode: "llm-only",
+    });
+    mockResolveProviders.mockImplementation(async (model: string) => {
+      if (model === "gpt-5.2") {
+        return [
+          {
+            providerId: 2,
+            providerName: "opencode-zen",
+            baseUrl: "https://example.com",
+            apiKey: "test-key",
+            providerModelId: "gpt-5.2",
+            pricingInput: 0,
+            pricingOutput: 0,
+            isFree: false,
+            priority: 10,
+          },
+        ];
+      }
+      return [
+        {
+          providerId: 1,
+          providerName: "test-provider",
+          baseUrl: "https://example.com",
+          apiKey: "test-key",
+          providerModelId: model,
+          pricingInput: 0,
+          pricingOutput: 0,
+          isFree: true,
+          priority: 0,
+        },
+      ];
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        textModel: "gpt-5.2",
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    expect(mockExecuteWithFallback).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "gpt-5.2",
+      }),
+    );
+  });
+
+  it("accepts provider-qualified skill models without aborting generation", async () => {
     setupHappyPath();
     mockGetSkillByIdAsync.mockResolvedValueOnce({
       id: "parenting-article-writer",
       name: "Parenting Article Writer",
+      category: "article_generation",
       systemPrompt: "You are a parenting article writer.",
       defaultModel: "openai/gpt-5.2",
       executionMode: "llm-only",
@@ -1787,7 +3517,19 @@ describe("generateAIDraft - Phase 1", () => {
           },
         ];
       }
-      return [];
+      return [
+        {
+          providerId: 1,
+          providerName: "test-provider",
+          baseUrl: "https://example.com",
+          apiKey: "test-key",
+          providerModelId: model,
+          pricingInput: 0,
+          pricingOutput: 0,
+          isFree: true,
+          priority: 0,
+        },
+      ];
     });
 
     await generateAIDraft(
@@ -1797,11 +3539,12 @@ describe("generateAIDraft - Phase 1", () => {
       "task-123",
     );
 
-    expect(mockExecuteWithFallback).toHaveBeenCalledWith(
-      expect.objectContaining({
-        model: "gpt-5.2",
-      }),
+    const progressCalls = mockRedisSet.mock.calls.filter(
+      (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("ai_draft_progress"),
     );
+    const lastProgress = JSON.parse(progressCalls[progressCalls.length - 1][1] as string);
+    expect(lastProgress.error).toBeUndefined();
+    expect(lastProgress.completed).toBe(true);
   });
 
   it("fails immediately when primary LLM call fails", async () => {
@@ -1982,6 +3725,1946 @@ describe("generateAIDraft - Phase 2", () => {
     // generateSlide should receive hero_center for first slide
     const firstSlideCall = mockGenerateSlide.mock.calls[0][0];
     expect(firstSlideCall.slideData.templateId).toBe("hero_center");
+  });
+
+  it("assigns video-spotlight component recipes to qualifying non-intro slides for video drafts", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
+      if (skillId === "video-skill") {
+        return {
+          id: "video-skill",
+          name: "Video Skill",
+          type: "video-generation",
+          systemPrompt: "Create a video prompt.",
+          executionMode: "llm-only",
+        };
+      }
+      return {
+        id: "general-article-writer",
+        name: "General Article Writer",
+        systemPrompt: "You are a versatile article writer.",
+        executionMode: "llm-only",
+      };
+    });
+    mockGetModelsByTypeAsync.mockImplementation(async (type: string) => {
+      if (type === "video") {
+        return [
+          {
+            id: "veo-3-1",
+            type: "video",
+            name: "Veo 3.1",
+            provider: "kie.ai",
+            description: "Video generation",
+            aliases: [],
+            creditCost: 20,
+            isEnabled: true,
+            priority: 0,
+            durations: [5],
+            aspectRatios: ["16:9", "9:16"],
+            configJson: { generateType: "text-to-video" },
+          },
+        ];
+      }
+      return [];
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        imageSkillId: "video-skill",
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const firstSlideCall = mockGenerateSlide.mock.calls[0]?.[0] as {
+      slideData: { componentRecipeId?: string };
+    };
+    const secondSlideCall = mockGenerateSlide.mock.calls[1]?.[0] as {
+      slideData: { componentRecipeId?: string };
+    };
+    expect(firstSlideCall.slideData.componentRecipeId).toBeUndefined();
+    expect(secondSlideCall.slideData.componentRecipeId).toBe("video-spotlight");
+  });
+
+  it("assigns quote, process, and feature component recipes from structured content hints", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
+      if (skillId === "prompt-planner") {
+        return {
+          id: "prompt-planner",
+          name: "Prompt Planner",
+          category: "prompt_enhancement",
+          executionMode: "enhance-prompt",
+          systemPrompt: "Plan slides from the prompt.",
+        };
+      }
+      return {
+        id: "general-article-writer",
+        name: "General Article Writer",
+        systemPrompt: "You are a versatile article writer.",
+        executionMode: "llm-only",
+      };
+    });
+    mockCallLLMStructured.mockResolvedValueOnce({
+      data: [
+        {
+          templateId: "hero_center",
+          title: "Deck Intro",
+          body: ["Intro point"],
+          notes: "Intro note",
+          graphicCategory: "Business",
+          imagePromptKeywords: "intro visual",
+        },
+        {
+          templateId: "split_right_image",
+          title: "\"Lead with clarity\"",
+          body: ["A short editorial quote", "Supporting attribution"],
+          notes: "Quoted insight",
+          graphicCategory: "Communication",
+          imagePromptKeywords: "quote visual",
+        },
+        {
+          templateId: "split_left_image",
+          title: "How to launch the workflow",
+          body: ["1. Gather the brief", "2. Structure the story", "3. Ship the deck"],
+          notes: "Step-by-step guidance",
+          graphicCategory: "Business",
+          imagePromptKeywords: "workflow visual",
+        },
+        {
+          templateId: "feature_boxes_right",
+          title: "Platform highlights",
+          body: ["Fast setup", "Shared collaboration", "Reusable components", "Export-ready output"],
+          notes: "Key features",
+          graphicCategory: "Technology",
+          imagePromptKeywords: "feature visual",
+        },
+      ],
+      tokensUsed: 300,
+      creditsUsed: 10,
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 4,
+        draftSkillId: "prompt-planner",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const secondSlideCall = mockGenerateSlide.mock.calls[1]?.[0] as {
+      slideData: { componentRecipeId?: string };
+    };
+    const thirdSlideCall = mockGenerateSlide.mock.calls[2]?.[0] as {
+      slideData: { componentRecipeId?: string };
+    };
+    const fourthSlideCall = mockGenerateSlide.mock.calls[3]?.[0] as {
+      slideData: { componentRecipeId?: string };
+    };
+    expect(secondSlideCall.slideData.componentRecipeId).toBe("quote-callout");
+    expect(thirdSlideCall.slideData.componentRecipeId).toBe("process-steps");
+    expect(fourthSlideCall.slideData.componentRecipeId).toBe("feature-highlights");
+  });
+
+  it("uses markdown hierarchy and contact signals when selecting component recipes", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
+      if (skillId === "prompt-planner") {
+        return {
+          id: "prompt-planner",
+          name: "Prompt Planner",
+          category: "prompt_enhancement",
+          executionMode: "enhance-prompt",
+          systemPrompt: "Plan slides from the prompt.",
+        };
+      }
+      return {
+        id: "general-article-writer",
+        name: "General Article Writer",
+        systemPrompt: "You are a versatile article writer.",
+        executionMode: "llm-only",
+      };
+    });
+    mockCallLLMStructured.mockResolvedValueOnce({
+      data: [
+        {
+          templateId: "hero_center",
+          title: "Intro",
+          body: ["Intro point"],
+          notes: "Intro note",
+          graphicCategory: "Business",
+          imagePromptKeywords: "intro visual",
+        },
+        {
+          templateId: "split_left_image",
+          title: "ทีมที่ดูแลโปรเจกต์",
+          body: ["Reach the team directly"],
+          notes: "Contact the team",
+          sections: [
+            { heading: "Contact", details: ["hello@example.com", "+66 123 456 789", "www.example.com"] },
+          ],
+          graphicCategory: "Communication",
+          imagePromptKeywords: "team profile visual",
+        },
+        {
+          templateId: "split_right_image",
+          title: "Implementation path",
+          body: ["Condensed view"],
+          notes: "Structured path",
+          markdownHierarchy: [
+            { level: "h2", text: "Step 1" },
+            { level: "body", text: "Gather the brief" },
+            { level: "h2", text: "Step 2" },
+            { level: "body", text: "Draft the message" },
+            { level: "h2", text: "Step 3" },
+            { level: "body", text: "Ship the deck" },
+          ],
+          graphicCategory: "Technology",
+          imagePromptKeywords: "implementation process",
+        },
+      ],
+      tokensUsed: 220,
+      creditsUsed: 8,
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 3,
+        draftSkillId: "prompt-planner",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const secondSlideCall = mockGenerateSlide.mock.calls[1]?.[0] as {
+      slideData: { componentRecipeId?: string };
+    };
+    const thirdSlideCall = mockGenerateSlide.mock.calls[2]?.[0] as {
+      slideData: { componentRecipeId?: string };
+    };
+    expect(secondSlideCall.slideData.componentRecipeId).toBe("profile-summary");
+    expect(thirdSlideCall.slideData.componentRecipeId).toBe("process-steps");
+  });
+
+  it("assigns poster and framed-image component recipes from promotional and story signals", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
+      if (skillId === "prompt-planner") {
+        return {
+          id: "prompt-planner",
+          name: "Prompt Planner",
+          category: "prompt_enhancement",
+          executionMode: "enhance-prompt",
+          systemPrompt: "Plan slides from the prompt.",
+        };
+      }
+      return {
+        id: "general-article-writer",
+        name: "General Article Writer",
+        systemPrompt: "You are a versatile article writer.",
+        executionMode: "llm-only",
+      };
+    });
+    mockCallLLMStructured.mockResolvedValueOnce({
+      data: [
+        {
+          templateId: "hero_center",
+          title: "Intro",
+          body: ["Intro point"],
+          notes: "Intro note",
+          graphicCategory: "Business",
+          imagePromptKeywords: "intro visual",
+        },
+        {
+          templateId: "split_right_image",
+          title: "Membership launch offer",
+          body: ["Priority support", "Premium access", "Join today"],
+          notes: "Campaign launch with a clear CTA and short promotional benefits.",
+          sections: [
+            { heading: "Launch Week", details: ["Priority support", "Premium access", "Join today"] },
+          ],
+          graphicCategory: "Business",
+          imagePromptKeywords: "campaign poster",
+        },
+        {
+          templateId: "split_left_image",
+          title: "Campus zero-waste story",
+          body: ["A short editorial overview", "Key moments from the rollout"],
+          notes: "This story follows how one campus turned policy changes into visible recycling habits across classrooms and shared spaces.",
+          sections: [
+            { heading: "Editorial Story", details: ["Student-led initiative", "Visible before-and-after changes"] },
+          ],
+          graphicCategory: "Nature",
+          imagePromptKeywords: "editorial sustainability story",
+        },
+      ],
+      tokensUsed: 250,
+      creditsUsed: 8,
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 3,
+        draftSkillId: "prompt-planner",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const secondSlideCall = mockGenerateSlide.mock.calls[1]?.[0] as {
+      slideData: { componentRecipeId?: string };
+    };
+    const thirdSlideCall = mockGenerateSlide.mock.calls[2]?.[0] as {
+      slideData: { componentRecipeId?: string };
+    };
+    expect(secondSlideCall.slideData.componentRecipeId).toBe("poster-spotlight");
+    expect(thirdSlideCall.slideData.componentRecipeId).toBe("framed-image-story");
+  });
+
+  it("assigns stat-cards from metric-heavy slides", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
+      if (skillId === "prompt-planner") {
+        return {
+          id: "prompt-planner",
+          name: "Prompt Planner",
+          category: "prompt_enhancement",
+          executionMode: "enhance-prompt",
+          systemPrompt: "Plan slides from the prompt.",
+        };
+      }
+      return {
+        id: "general-article-writer",
+        name: "General Article Writer",
+        systemPrompt: "You are a versatile article writer.",
+        executionMode: "llm-only",
+      };
+    });
+    mockCallLLMStructured.mockResolvedValueOnce({
+      data: [
+        {
+          templateId: "hero_center",
+          title: "Intro",
+          body: ["Intro point"],
+          notes: "Intro note",
+          graphicCategory: "Business",
+          imagePromptKeywords: "intro visual",
+        },
+        {
+          templateId: "split_right_image",
+          title: "Q1 KPI Snapshot",
+          body: ["42%: Conversion lift", "12d: Time to first win", "3.1x: Return on spend"],
+          notes: "Performance summary for the quarter.",
+          graphicCategory: "Business",
+          imagePromptKeywords: "dashboard metrics",
+        },
+      ],
+      tokensUsed: 180,
+      creditsUsed: 6,
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 2,
+        draftSkillId: "prompt-planner",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const secondSlideCall = mockGenerateSlide.mock.calls[1]?.[0] as {
+      slideData: { componentRecipeId?: string };
+    };
+    expect(secondSlideCall.slideData.componentRecipeId).toBe("stat-cards");
+  });
+
+  it("assigns timeline-flow from roadmap-style slides", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
+      if (skillId === "prompt-planner") {
+        return {
+          id: "prompt-planner",
+          name: "Prompt Planner",
+          category: "prompt_enhancement",
+          executionMode: "enhance-prompt",
+          systemPrompt: "Plan slides from the prompt.",
+        };
+      }
+      return {
+        id: "general-article-writer",
+        name: "General Article Writer",
+        systemPrompt: "You are a versatile article writer.",
+        executionMode: "llm-only",
+      };
+    });
+    mockCallLLMStructured.mockResolvedValueOnce({
+      data: [
+        {
+          templateId: "hero_center",
+          title: "Intro",
+          body: ["Intro point"],
+          notes: "Intro note",
+          graphicCategory: "Business",
+          imagePromptKeywords: "intro visual",
+        },
+        {
+          templateId: "feature_boxes_right",
+          title: "Product roadmap timeline",
+          body: ["Q1 Pilot launch", "Q2 Department rollout", "Q3 Full adoption"],
+          sections: [
+            { heading: "Q1", details: ["Pilot launch", "Jan 2026"] },
+            { heading: "Q2", details: ["Department rollout", "Apr 2026"] },
+            { heading: "Q3", details: ["Full adoption", "Aug 2026"] },
+          ],
+          notes: "Track milestones across three launch phases.",
+          graphicCategory: "Business",
+          imagePromptKeywords: "roadmap timeline visual",
+        },
+      ],
+      tokensUsed: 180,
+      creditsUsed: 6,
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 2,
+        draftSkillId: "prompt-planner",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const secondSlideCall = mockGenerateSlide.mock.calls[1]?.[0] as {
+      slideData: { componentRecipeId?: string };
+    };
+    expect(secondSlideCall.slideData.componentRecipeId).toBe("timeline-flow");
+  });
+
+  it("assigns infographic-grid from framework slides with four balanced sections", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
+      if (skillId === "prompt-planner") {
+        return {
+          id: "prompt-planner",
+          name: "Prompt Planner",
+          category: "prompt_enhancement",
+          executionMode: "enhance-prompt",
+          systemPrompt: "Plan slides from the prompt.",
+        };
+      }
+      return {
+        id: "general-article-writer",
+        name: "General Article Writer",
+        systemPrompt: "You are a versatile article writer.",
+        executionMode: "llm-only",
+      };
+    });
+    mockCallLLMStructured.mockResolvedValueOnce({
+      data: [
+        {
+          templateId: "hero_center",
+          title: "Intro",
+          body: ["Intro point"],
+          notes: "Intro note",
+          graphicCategory: "Business",
+          imagePromptKeywords: "intro visual",
+        },
+        {
+          templateId: "feature_boxes_right",
+          title: "The zero waste framework",
+          body: ["Four pillars for sustainable operations"],
+          sections: [
+            { heading: "Avoid", details: ["Reduce unnecessary inputs"] },
+            { heading: "Reuse", details: ["Extend the life of materials"] },
+            { heading: "Recycle", details: ["Recover value from waste"] },
+            { heading: "Measure", details: ["Track impact and iterate"] },
+          ],
+          notes: "Framework overview with four balanced categories.",
+          graphicCategory: "Education",
+          imagePromptKeywords: "framework infographic",
+        },
+      ],
+      tokensUsed: 180,
+      creditsUsed: 6,
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 2,
+        draftSkillId: "prompt-planner",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const secondSlideCall = mockGenerateSlide.mock.calls[1]?.[0] as {
+      slideData: { componentRecipeId?: string };
+    };
+    expect(secondSlideCall.slideData.componentRecipeId).toBe("infographic-grid");
+  });
+
+  it("assigns photo-collage from editorial gallery slides", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
+      if (skillId === "prompt-planner") {
+        return {
+          id: "prompt-planner",
+          name: "Prompt Planner",
+          category: "prompt_enhancement",
+          executionMode: "enhance-prompt",
+          systemPrompt: "Plan slides from the prompt.",
+        };
+      }
+      return {
+        id: "general-article-writer",
+        name: "General Article Writer",
+        systemPrompt: "You are a versatile article writer.",
+        executionMode: "llm-only",
+      };
+    });
+    mockCallLLMStructured.mockResolvedValueOnce({
+      data: [
+        {
+          templateId: "hero_center",
+          title: "Intro",
+          body: ["Intro point"],
+          notes: "Intro note",
+          graphicCategory: "Lifestyle",
+          imagePromptKeywords: "intro visual",
+        },
+        {
+          templateId: "split_left_image",
+          title: "Launch lookbook collage",
+          body: ["Gallery scenes from the launch", "Moodboard for the campaign atmosphere"],
+          notes: "Photo collage gallery lookbook for the campaign launch.",
+          graphicCategory: "Lifestyle",
+          imagePromptKeywords: "editorial photo collage",
+        },
+      ],
+      tokensUsed: 180,
+      creditsUsed: 6,
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 2,
+        draftSkillId: "prompt-planner",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const secondSlideCall = mockGenerateSlide.mock.calls[1]?.[0] as {
+      slideData: { componentRecipeId?: string };
+    };
+    expect(secondSlideCall.slideData.componentRecipeId).toBe("photo-collage");
+  });
+
+  it("generates distinct media variants for photo-collage slides and binds both image slots", async () => {
+    setupHappyPath();
+    mockCallLLMStructured.mockResolvedValueOnce({
+      data: [
+        {
+          templateId: "hero_center",
+          title: "Intro",
+          body: ["Intro point"],
+          notes: "Intro note",
+          graphicCategory: "Lifestyle",
+          imagePromptKeywords: "intro visual",
+        },
+        {
+          templateId: "split_left_image",
+          componentRecipeId: "photo-collage",
+          title: "Launch lookbook collage",
+          body: ["Gallery scenes from the launch", "Moodboard for the campaign atmosphere"],
+          notes: "Photo collage gallery lookbook for the campaign launch.",
+          graphicCategory: "Lifestyle",
+          imagePromptKeywords: "editorial photo collage",
+        },
+      ],
+      tokensUsed: 180,
+      creditsUsed: 6,
+    });
+    mockGenerateImageAsync.mockImplementation(async ({ prompt }: { prompt: string }) => ({
+      id: prompt.includes("Secondary frame focus") ? "task-collage-secondary" : "task-collage-primary",
+      status: "processing",
+    }));
+    mockGetTask.mockImplementation(async (taskId: string) => ({
+      status: "completed",
+      resultUrl: taskId === "task-collage-secondary"
+        ? "https://cdn.example.com/collage-secondary.jpg"
+        : "https://cdn.example.com/collage-primary.jpg",
+      taskId,
+      resultData: {},
+      output: [],
+    }));
+    mockGenerateSlide.mockImplementation(({ slideData, imageUrl, imageUrls }: {
+      slideData: { componentRecipeId?: string };
+      imageUrl?: string | null;
+      imageUrls?: Array<string | null>;
+    }) => {
+      if (slideData.componentRecipeId === "photo-collage") {
+        return {
+          slideContent: {
+            elements: [],
+            components: [
+              {
+                id: "cmp-collage",
+                componentId: "photo-collage",
+                componentType: "built-in",
+                definitionRevision: 1,
+                slotBindings: [
+                  { slotId: "primary-photo", type: "image", src: imageUrls?.[0] || imageUrl || "", alt: "Primary photo" },
+                  { slotId: "secondary-photo", type: "image", src: imageUrls?.[1] || imageUrl || "", alt: "Secondary photo" },
+                ],
+                fallbackElements: [
+                  {
+                    id: "cmp-collage::primary-photo-image",
+                    type: "image",
+                    x: 80,
+                    y: 120,
+                    width: 460,
+                    height: 340,
+                    src: imageUrls?.[0] || imageUrl || "",
+                    alt: "Primary photo",
+                  },
+                  {
+                    id: "cmp-collage::secondary-photo-image",
+                    type: "image",
+                    x: 760,
+                    y: 148,
+                    width: 240,
+                    height: 180,
+                    src: imageUrls?.[1] || imageUrl || "",
+                    alt: "Secondary photo",
+                  },
+                ],
+              },
+            ],
+          },
+          warnings: [],
+        };
+      }
+      return {
+        slideContent: MOCK_SLIDE_CONTENT,
+        warnings: [],
+      };
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 2,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    expect(mockGenerateImageAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: expect.stringContaining("Primary frame focus"),
+      }),
+      "test-token",
+    );
+    expect(mockGenerateImageAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: expect.stringContaining("Secondary frame focus"),
+      }),
+      "test-token",
+    );
+
+    const secondInsertPayload = mockAddSlideToDeck.mock.calls[1]?.[0] as {
+      slideContent?: {
+        components?: Array<{
+          slotBindings?: Array<Record<string, unknown>>;
+          fallbackElements?: Array<Record<string, unknown>>;
+        }>;
+      };
+    } | undefined;
+    const slotBindings = secondInsertPayload?.slideContent?.components?.[0]?.slotBindings ?? [];
+    expect(slotBindings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        slotId: "primary-photo",
+        src: "https://cdn.example.com/collage-primary.jpg",
+      }),
+      expect.objectContaining({
+        slotId: "secondary-photo",
+        src: "https://cdn.example.com/collage-secondary.jpg",
+      }),
+    ]));
+  });
+
+  it("prefers explicit mediaPlan prompts from the slide planner for multi-slot recipes", async () => {
+    setupHappyPath();
+    mockCallLLMStructured.mockResolvedValueOnce({
+      data: [
+        {
+          templateId: "hero_center",
+          title: "Intro",
+          body: ["Intro point"],
+          notes: "Intro note",
+          graphicCategory: "Lifestyle",
+          imagePromptKeywords: "intro visual",
+        },
+        {
+          templateId: "split_left_image",
+          componentRecipeId: "photo-collage",
+          mediaPlan: [
+            { slotId: "primary-photo", prompt: "Primary hero shot with the launch audience" },
+            { slotId: "secondary-photo", prompt: "Secondary detail crop of branded accessories" },
+          ],
+          title: "Launch lookbook collage",
+          body: ["Gallery scenes from the launch", "Moodboard for the campaign atmosphere"],
+          notes: "Photo collage gallery lookbook for the campaign launch.",
+          graphicCategory: "Lifestyle",
+          imagePromptKeywords: "editorial photo collage",
+        },
+      ],
+      tokensUsed: 180,
+      creditsUsed: 6,
+    });
+    mockGenerateImageAsync.mockResolvedValue({ id: "task-slot-plan", status: "processing" });
+    mockGetTask.mockResolvedValue({
+      status: "completed",
+      resultUrl: "https://cdn.example.com/collage-slot-plan.jpg",
+      taskId: "task-slot-plan",
+      resultData: {},
+      output: [],
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 2,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    expect(mockGenerateImageAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: "Primary hero shot with the launch audience",
+      }),
+      "test-token",
+    );
+    expect(mockGenerateImageAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: "Secondary detail crop of branded accessories",
+      }),
+      "test-token",
+    );
+
+    const secondInsertPayload = mockAddSlideToDeck.mock.calls[1]?.[0] as {
+      slideContent?: {
+        aiDesign?: {
+          narrative?: {
+            mediaPlan?: Array<{ slotId: string; prompt: string }>;
+          };
+        };
+      };
+    } | undefined;
+    expect(secondInsertPayload?.slideContent?.aiDesign?.narrative?.mediaPlan).toEqual([
+      { slotId: "primary-photo", prompt: "Primary hero shot with the launch audience" },
+      { slotId: "secondary-photo", prompt: "Secondary detail crop of branded accessories" },
+    ]);
+  });
+
+  it("preserves slot-aware mediaPlan prompts for single-slot media recipes", async () => {
+    setupHappyPath();
+    mockCallLLMStructured.mockResolvedValueOnce({
+      data: [
+        {
+          templateId: "hero_center",
+          title: "Intro",
+          body: ["Intro point"],
+          notes: "Intro note",
+          graphicCategory: "Business",
+          imagePromptKeywords: "intro visual",
+        },
+        {
+          templateId: "split_right_image",
+          componentRecipeId: "poster-spotlight",
+          mediaPlan: [
+            { slotId: "hero", prompt: "Primary campaign hero visual with a confident spokesperson" },
+          ],
+          title: "Membership launch offer",
+          body: ["Priority support", "Premium access", "Join today"],
+          notes: "Campaign launch with a clear CTA and short promotional benefits.",
+          graphicCategory: "Business",
+          imagePromptKeywords: "campaign poster",
+        },
+      ],
+      tokensUsed: 180,
+      creditsUsed: 6,
+    });
+    mockGenerateImageAsync.mockResolvedValue({ id: "task-poster-slot-plan", taskId: "provider-poster-slot-plan", status: "processing" });
+    mockGetTask.mockResolvedValue({
+      status: "completed",
+      resultUrl: "https://cdn.example.com/poster-slot-plan.jpg",
+      taskId: "provider-poster-slot-plan",
+      resultData: {},
+      output: [],
+    });
+    mockGenerateSlide.mockImplementation(({ slideData, imageUrl }: {
+      slideData: { componentRecipeId?: string };
+      imageUrl?: string | null;
+    }) => {
+      if (slideData.componentRecipeId === "poster-spotlight") {
+        return {
+          slideContent: {
+            elements: [],
+            components: [
+              {
+                id: "cmp-poster",
+                componentId: "poster-spotlight",
+                componentType: "built-in",
+                definitionRevision: 1,
+                slotBindings: [
+                  { slotId: "headline", type: "text", text: "Membership launch offer" },
+                  { slotId: "hero", type: "image", src: imageUrl || "", alt: "Hero visual" },
+                ],
+                fallbackElements: [
+                  {
+                    id: "cmp-poster::hero-frame",
+                    type: "rect",
+                    x: 760,
+                    y: 96,
+                    width: 396,
+                    height: 520,
+                    fill: "#dbeafe",
+                  },
+                ],
+              },
+            ],
+          },
+          warnings: [],
+        };
+      }
+      return {
+        slideContent: MOCK_SLIDE_CONTENT,
+        warnings: [],
+      };
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 2,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    expect(mockGenerateImageAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: "Primary campaign hero visual with a confident spokesperson",
+      }),
+      "test-token",
+    );
+
+    const secondInsertPayload = mockAddSlideToDeck.mock.calls[1]?.[0] as {
+      slideContent?: {
+        components?: Array<{
+          slotBindings?: Array<{ slotId: string; src?: string }>;
+        }>;
+        aiDesign?: {
+          narrative?: {
+            mediaPlan?: Array<{ slotId: string; prompt: string }>;
+          };
+        };
+      };
+    } | undefined;
+
+    expect(secondInsertPayload?.slideContent?.components?.[0]?.slotBindings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          slotId: "hero",
+          src: "https://cdn.example.com/poster-slot-plan.jpg",
+        }),
+      ]),
+    );
+    expect(secondInsertPayload?.slideContent?.aiDesign?.narrative?.mediaPlan).toEqual([
+      { slotId: "hero", prompt: "Primary campaign hero visual with a confident spokesperson" },
+    ]);
+  });
+
+  it("stores AI recipe telemetry on compiled slide content for both hero and component slides", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
+      if (skillId === "prompt-planner") {
+        return {
+          id: "prompt-planner",
+          name: "Prompt Planner",
+          category: "prompt_enhancement",
+          executionMode: "enhance-prompt",
+          systemPrompt: "Plan slides from the prompt.",
+        };
+      }
+      return {
+        id: "general-article-writer",
+        name: "General Article Writer",
+        systemPrompt: "You are a versatile article writer.",
+        executionMode: "llm-only",
+      };
+    });
+    mockCallLLMStructured.mockResolvedValueOnce({
+      data: [
+        {
+          templateId: "hero_center",
+          title: "Intro",
+          body: ["Intro point"],
+          notes: "Intro note",
+          graphicCategory: "Business",
+          imagePromptKeywords: "intro visual",
+        },
+        {
+          templateId: "split_right_image",
+          title: "Membership launch offer",
+          body: ["Priority support", "Premium access", "Join today"],
+          notes: "Campaign launch with a clear CTA and short promotional benefits.",
+          graphicCategory: "Business",
+          imagePromptKeywords: "campaign poster",
+        },
+      ],
+      tokensUsed: 180,
+      creditsUsed: 6,
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 2,
+        draftSkillId: "prompt-planner",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const firstInsertPayload = mockAddSlideToDeck.mock.calls[0]?.[0] as {
+      slideContent?: { aiDesign?: Record<string, unknown> };
+    };
+    const secondInsertPayload = mockAddSlideToDeck.mock.calls[1]?.[0] as {
+      slideContent?: { aiDesign?: Record<string, unknown> };
+    };
+
+    expect(firstInsertPayload.slideContent?.aiDesign).toMatchObject({
+      source: "draft-with-ai",
+      taskId: "task-123",
+      mode: "structured_block",
+      selectionMode: "none",
+    });
+    expect(secondInsertPayload.slideContent?.aiDesign).toMatchObject({
+      source: "draft-with-ai",
+      taskId: "task-123",
+      mode: "structured_block",
+      componentRecipeId: "poster-spotlight",
+      selectionMode: "heuristic",
+    });
+    expect(Array.isArray(secondInsertPayload.slideContent?.aiDesign?.candidateModes)).toBe(true);
+    expect(Array.isArray(secondInsertPayload.slideContent?.aiDesign?.candidateRecipes)).toBe(true);
+    expect(secondInsertPayload.slideContent?.aiDesign?.narrative).toMatchObject({
+      title: "Membership launch offer",
+      templateId: "split_right_image",
+    });
+  });
+
+  it("routes dense section-heavy slides into the sectioned-explainer long-form recipe", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
+      if (skillId === "prompt-planner") {
+        return {
+          id: "prompt-planner",
+          name: "Prompt Planner",
+          category: "prompt_enhancement",
+          executionMode: "enhance-prompt",
+          systemPrompt: "Plan slides from the prompt.",
+        };
+      }
+      return {
+        id: "general-article-writer",
+        name: "General Article Writer",
+        systemPrompt: "You are a versatile article writer.",
+        executionMode: "llm-only",
+      };
+    });
+    mockCallLLMStructured.mockResolvedValue({
+      data: [
+        {
+          templateId: "hero_center",
+          title: "คู่มือการนอนของเด็กเล็ก",
+          body: ["ภาพรวมสั้น ๆ"],
+          notes: "สไลด์เปิดหัวเรื่อง",
+          graphicCategory: "Education",
+          imagePromptKeywords: "sleeping child illustration",
+        },
+        {
+          templateId: "split_right_image",
+          title: "ขั้นตอนปฏิบัติ / เคล็ดลับ",
+          body: [
+            "สร้างกิจวัตรก่อนนอน: ทำให้กิจกรรมตอนก่อนนอนมีความซ้ำซ้อน เช่น อ่านหนังสือ เล่าเรื่อง หรืออาบน้ำ เพื่อสร้างความรู้สึกผ่อนคลายให้กับลูก",
+            "กำหนดเวลาเข้านอน: ตั้งเวลาเข้านอนที่สม่ำเสมอทุกวัน เพื่อช่วยให้ร่างกายสร้างนิสัยในการนอน",
+            "สร้างสภาพแวดล้อมที่เอื้อต่อการนอน: ห้องนอนควรเงียบ สบาย และมีอุณหภูมิที่เหมาะสม",
+            "ใช้เสียงเพลงหรือเสียงธรรมชาติ: เสียงที่อ่อนโยนสามารถช่วยให้เด็กผ่อนคลายและนอนหลับได้ดีขึ้นเมื่อใช้ร่วมกับกิจวัตรที่คงที่",
+          ],
+          notes: "บทความนี้เหมาะสำหรับพ่อแม่และผู้ดูแลที่ต้องการคำอธิบายยาวและค่อยเป็นค่อยไปมากกว่าการ์ดสั้น รวมถึงต้องการเห็นบริบท ข้อผิดพลาดที่พบบ่อย และคำแนะนำเชิงปฏิบัติอยู่ในหน้าเดียวแบบยังแก้ไขข้อความต่อได้",
+          markdownHierarchy: [
+            { level: "h2", text: "กิจวัตรก่อนนอน" },
+            { level: "body", text: "ทำกิจกรรมเดิมในเวลาใกล้เคียงกันเพื่อสร้างสัญญาณก่อนนอน" },
+            { level: "h2", text: "ความผิดพลาดที่พบบ่อย" },
+            { level: "body", text: "อย่าตอบสนองทันทีทุกครั้งโดยไม่มีแผน เพราะเด็กจะยังไม่ได้ฝึกกลับไปนอนเอง" },
+          ],
+          sections: [
+            {
+              heading: "ความผิดพลาดที่พบบ่อย",
+              details: [
+                "ให้นอนในที่นอนที่ไม่ปลอดภัย: ควรจัดสภาพแวดล้อมให้นอนอย่างปลอดภัย",
+                "นอนดึกและตื่นไม่เป็นเวลา: ควรรักษาเวลาเข้านอนและตื่นนอนให้ใกล้เคียงกันทุกวัน",
+              ],
+            },
+            {
+              heading: "ใครควรอ่านสไลด์นี้",
+              details: [
+                "พ่อแม่หรือผู้ดูแลเด็กเล็กที่กำลังฝึกนิสัยการนอนของลูก",
+              ],
+            },
+            {
+              heading: "สิ่งที่ควรทำต่อ",
+              details: [
+                "เลือกเพียงหนึ่งถึงสองแนวทางแล้วทำซ้ำอย่างสม่ำเสมอเพื่อให้เด็กไม่สับสนกับสัญญาณก่อนนอน",
+              ],
+            },
+          ],
+          graphicCategory: "Education",
+          imagePromptKeywords: "bedtime routine parent child",
+        },
+      ],
+      tokensUsed: 220,
+      creditsUsed: 8,
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 2,
+        draftSkillId: "prompt-planner",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const secondInsertPayload = mockAddSlideToDeck.mock.calls[1]?.[0] as {
+      slideContent?: {
+        aiDesign?: Record<string, unknown> & {
+          componentRecipeId?: string;
+          candidateModes?: Array<Record<string, unknown>>;
+        };
+      };
+    };
+
+    expect(secondInsertPayload.slideContent?.aiDesign).toMatchObject({
+      source: "draft-with-ai",
+      taskId: "task-123",
+      mode: "long_form_block",
+      componentRecipeId: "sectioned-explainer",
+      selectionMode: "heuristic",
+    });
+    expect(secondInsertPayload.slideContent?.aiDesign?.candidateModes).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        mode: "long_form_block",
+      }),
+    ]));
+  });
+
+  it("applies recipe-aware compaction for long-form component slides and persists fit metadata", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
+      if (skillId === "prompt-planner") {
+        return {
+          id: "prompt-planner",
+          name: "Prompt Planner",
+          category: "prompt_enhancement",
+          executionMode: "enhance-prompt",
+          systemPrompt: "Plan slides from the prompt.",
+        };
+      }
+      return {
+        id: "general-article-writer",
+        name: "General Article Writer",
+        systemPrompt: "You are a versatile article writer.",
+        executionMode: "llm-only",
+      };
+    });
+    mockCallLLMStructured
+      .mockResolvedValueOnce({
+        data: [
+          {
+            templateId: "hero_center",
+            title: "คู่มือการนอนของเด็กเล็ก",
+            body: ["ภาพรวมสั้น ๆ"],
+            notes: "สไลด์เปิดหัวเรื่อง",
+            graphicCategory: "Education",
+            imagePromptKeywords: "sleeping child illustration",
+          },
+          {
+            templateId: "split_right_image",
+            title: "ขั้นตอนปฏิบัติ / เคล็ดลับ",
+            body: [
+              "สร้างกิจวัตรก่อนนอน: ทำให้กิจกรรมตอนก่อนนอนมีความซ้ำซ้อน เช่น อ่านหนังสือ เล่าเรื่อง หรืออาบน้ำ เพื่อสร้างความรู้สึกผ่อนคลายให้กับลูก",
+              "กำหนดเวลาเข้านอน: ตั้งเวลาเข้านอนที่สม่ำเสมอทุกวัน เพื่อช่วยให้ร่างกายสร้างนิสัยในการนอน",
+              "สร้างสภาพแวดล้อมที่เอื้อต่อการนอน: ห้องนอนควรเงียบ สบาย และมีอุณหภูมิที่เหมาะสม",
+              "ใช้เสียงเพลงหรือเสียงธรรมชาติ: เสียงที่อ่อนโยนสามารถช่วยให้เด็กผ่อนคลายและนอนหลับได้ดีขึ้นเมื่อใช้ร่วมกับกิจวัตรที่คงที่",
+            ],
+            notes: "บทความนี้เหมาะสำหรับพ่อแม่และผู้ดูแลที่ต้องการคำอธิบายยาวและค่อยเป็นค่อยไปมากกว่าการ์ดสั้น รวมถึงต้องการเห็นบริบท ข้อผิดพลาดที่พบบ่อย และคำแนะนำเชิงปฏิบัติอยู่ในหน้าเดียวแบบยังแก้ไขข้อความต่อได้",
+            sections: [
+              {
+                heading: "ความผิดพลาดที่พบบ่อย",
+                details: [
+                  "ให้นอนในที่นอนที่ไม่ปลอดภัย: ควรจัดสภาพแวดล้อมให้นอนอย่างปลอดภัย",
+                  "นอนดึกและตื่นไม่เป็นเวลา: ควรรักษาเวลาเข้านอนและตื่นนอนให้ใกล้เคียงกันทุกวัน",
+                ],
+              },
+              {
+                heading: "ใครควรอ่านสไลด์นี้",
+                details: [
+                  "พ่อแม่หรือผู้ดูแลเด็กเล็กที่กำลังฝึกนิสัยการนอนของลูก",
+                ],
+              },
+              {
+                heading: "สิ่งที่ควรทำต่อ",
+                details: [
+                  "เลือกเพียงหนึ่งถึงสองแนวทางแล้วทำซ้ำอย่างสม่ำเสมอเพื่อให้เด็กไม่สับสนกับสัญญาณก่อนนอน",
+                ],
+              },
+            ],
+            graphicCategory: "Education",
+            imagePromptKeywords: "bedtime routine parent child",
+          },
+        ],
+        tokensUsed: 220,
+        creditsUsed: 8,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: "ok",
+          slotContent: [
+            { slotId: "eyebrow", type: "text", text: "Sleep guide" },
+            { slotId: "title", type: "text", text: "ขั้นตอนปฏิบัติ / เคล็ดลับ" },
+            { slotId: "intro", type: "text", text: "เริ่มจากกิจวัตรเดิมทุกคืน รักษาเวลาเข้านอนให้คงที่ และจัดห้องนอนให้สงบเพื่อช่วยให้เด็กผ่อนคลายก่อนนอน" },
+            { slotId: "section1-heading", type: "text", text: "ความผิดพลาดที่พบบ่อย" },
+            { slotId: "section1-body", type: "text", text: "หลีกเลี่ยงการเปลี่ยนเวลานอนทุกวันและอย่าตอบสนองทันทีทุกครั้งโดยไม่มีแผน" },
+            { slotId: "section2-heading", type: "text", text: "ใครควรอ่าน" },
+            { slotId: "section2-body", type: "text", text: "เหมาะกับพ่อแม่หรือผู้ดูแลเด็กเล็กที่กำลังฝึกนิสัยการนอนของลูก" },
+            { slotId: "section3-heading", type: "text", text: "สิ่งที่ควรทำต่อ" },
+            { slotId: "section3-body", type: "text", text: "เลือกเพียงหนึ่งถึงสองแนวทางแล้วทำซ้ำอย่างต่อเนื่องเพื่อให้เด็กไม่สับสน" },
+            { slotId: "takeaways-title", type: "text", text: "Key Takeaways" },
+            { slotId: "takeaways", type: "list", items: ["ทำกิจวัตรเดิมทุกคืน", "รักษาเวลาเข้านอนให้คงที่", "ให้ผู้ดูแลใช้แนวทางเดียวกัน"] },
+          ],
+          sourceTrace: [
+            { sourceId: "body-0", disposition: "shortened", targetSlotId: "intro" },
+            { sourceId: "section-0", disposition: "used", targetSlotId: "section1-heading" },
+            { sourceId: "section-1", disposition: "used", targetSlotId: "section2-heading" },
+            { sourceId: "section-2", disposition: "used", targetSlotId: "section3-heading" },
+          ],
+          overflowRisk: 0.21,
+          fitConfidence: 0.86,
+          fallbackSuggestion: null,
+        },
+        tokensUsed: 80,
+        creditsUsed: 3,
+      });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 2,
+        draftSkillId: "prompt-planner",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const secondSlideCall = mockGenerateSlide.mock.calls[1]?.[0] as {
+      slideData: { componentRecipeId?: string; componentSlotBindings?: Array<Record<string, unknown>> };
+    };
+    expect(secondSlideCall.slideData.componentRecipeId).toBe("sectioned-explainer");
+    expect(secondSlideCall.slideData.componentSlotBindings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        slotId: "intro",
+        type: "text",
+        text: "เริ่มจากกิจวัตรเดิมทุกคืน รักษาเวลาเข้านอนให้คงที่ และจัดห้องนอนให้สงบเพื่อช่วยให้เด็กผ่อนคลายก่อนนอน",
+      }),
+      expect.objectContaining({
+        slotId: "takeaways",
+        type: "list",
+        items: ["ทำกิจวัตรเดิมทุกคืน", "รักษาเวลาเข้านอนให้คงที่", "ให้ผู้ดูแลใช้แนวทางเดียวกัน"],
+      }),
+    ]));
+
+    const secondInsertPayload = mockAddSlideToDeck.mock.calls[1]?.[0] as {
+      slideContent?: {
+        aiDesign?: Record<string, unknown> & {
+          fitScore?: { status?: string; overall?: number };
+          compactionLevel?: string;
+          sourceTrace?: Array<Record<string, unknown>>;
+        };
+      };
+    };
+    expect(secondInsertPayload.slideContent?.aiDesign).toMatchObject({
+      componentRecipeId: "sectioned-explainer",
+      compactionLevel: "balanced",
+      fitScore: {
+        status: "fits",
+      },
+    });
+    expect(secondInsertPayload.slideContent?.aiDesign?.fitScore?.overall).toBeGreaterThanOrEqual(0.78);
+    expect(secondInsertPayload.slideContent?.aiDesign?.sourceTrace).toEqual(expect.arrayContaining([
+      expect.objectContaining({ sourceId: "body-0", disposition: "shortened", targetSlotId: "intro" }),
+      expect.objectContaining({ sourceId: "section-0", disposition: "used", targetSlotId: "section1-heading" }),
+    ]));
+    expect(secondInsertPayload.slideContent?.aiDesign?.fitScore?.deckConsistency).toBeDefined();
+    expect(mockAuditLog).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: "rollout_gate",
+      responsePayload: expect.objectContaining({ eventType: "quality_gate_result" }),
+    }));
+  });
+
+  it("applies recipe-aware compaction for article-focus slides and sends long_form_block compaction prompts", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockResolvedValue({
+      id: "prompt-planner",
+      name: "Prompt Planner",
+      category: "prompt_enhancement",
+      executionMode: "enhance-prompt",
+      systemPrompt: "Plan slides from the prompt.",
+    });
+    mockCallLLMStructured
+      .mockResolvedValueOnce({
+        data: [
+          {
+            templateId: "hero_center",
+            title: "คู่มือการนอนของเด็กเล็ก",
+            body: ["ภาพรวมสั้น ๆ"],
+            notes: "สไลด์เปิดหัวเรื่อง",
+            graphicCategory: "Education",
+            imagePromptKeywords: "sleeping child illustration",
+          },
+          {
+            templateId: "split_right_image",
+            componentRecipeId: "article-focus",
+            title: "ทำไมกิจวัตรก่อนนอนจึงช่วยให้เด็กนอนง่ายขึ้น",
+            body: [
+              "กิจวัตรก่อนนอนที่ทำซ้ำในลำดับเดิมทุกคืนช่วยให้เด็กเล็กค่อย ๆ รับรู้ว่าสัญญาณของการพักผ่อนกำลังเริ่มขึ้น และลดการต่อต้านก่อนนอนได้ดีกว่าการเปลี่ยนกิจกรรมแบบไม่สม่ำเสมอ",
+              "ผู้ดูแลควรเลือกกิจกรรมเพียงไม่กี่อย่าง เช่น อาบน้ำ อ่านนิทาน และหรี่ไฟ แล้วทำในช่วงเวลาใกล้เคียงกันทุกวันเพื่อให้ร่างกายและอารมณ์ของเด็กคาดเดาได้",
+            ],
+            notes: "สไลด์นี้ต้องเก็บเรื่องราวต่อเนื่องและ key points ให้อยู่ในหน้าเดียวแบบยังแก้ไขข้อความได้",
+            graphicCategory: "Education",
+            imagePromptKeywords: "sleep routine article",
+          },
+        ],
+        tokensUsed: 120,
+        creditsUsed: 5,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: "ok",
+          slotContent: [
+            { slotId: "eyebrow", type: "text", text: "Sleep Guide" },
+            { slotId: "title", type: "text", text: "ทำไมกิจวัตรก่อนนอนจึงช่วยให้เด็กนอนง่ายขึ้น" },
+            { slotId: "lead", type: "text", text: "กิจวัตรเดิมทุกคืนช่วยให้เด็กคาดเดาช่วงพักผ่อนและลดการต่อต้านก่อนนอน" },
+            { slotId: "body", type: "text", text: "เลือกกิจกรรมไม่กี่อย่างแล้วทำในเวลาใกล้เคียงกันทุกวันเพื่อสร้างจังหวะการนอนที่สม่ำเสมอ" },
+            { slotId: "key-points-title", type: "text", text: "Key Points" },
+            { slotId: "key-points", type: "list", items: ["ทำกิจกรรมเดิมทุกคืน", "รักษาเวลาให้ใกล้เคียงกัน", "ลดสิ่งกระตุ้นก่อนนอน"] },
+            { slotId: "footnote", type: "text", text: "เหมาะกับพ่อแม่ที่ต้องการคำอธิบายต่อเนื่องแบบแก้ไขได้" },
+          ],
+          sourceTrace: [
+            { sourceId: "body-0", disposition: "shortened", targetSlotId: "lead" },
+            { sourceId: "body-1", disposition: "shortened", targetSlotId: "body" },
+          ],
+          overflowRisk: 0.2,
+          fitConfidence: 0.91,
+          fallbackSuggestion: null,
+        },
+        tokensUsed: 60,
+        creditsUsed: 2,
+      });
+
+    await generateAIDraft(
+      buildMockInput({ numSlides: 2, draftSkillId: "prompt-planner", articleSkillId: undefined }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const compactionPrompt = JSON.parse(String(mockCallLLMStructured.mock.calls[1]?.[0]?.userMessage ?? "{}"));
+    expect(compactionPrompt.recipeId).toBe("article-focus");
+    expect(compactionPrompt.mode).toBe("long_form_block");
+
+    const secondSlideCall = mockGenerateSlide.mock.calls[1]?.[0] as {
+      slideData: { componentRecipeId?: string; componentSlotBindings?: Array<Record<string, unknown>> };
+    };
+    expect(secondSlideCall.slideData.componentRecipeId).toBe("article-focus");
+    expect(secondSlideCall.slideData.componentSlotBindings).toEqual(expect.arrayContaining([
+      expect.objectContaining({ slotId: "lead", type: "text" }),
+      expect.objectContaining({ slotId: "key-points", type: "list" }),
+    ]));
+  });
+
+  it("applies recipe-aware compaction for poster-spotlight slides through structured_block prompts", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockResolvedValue({
+      id: "prompt-planner",
+      name: "Prompt Planner",
+      category: "prompt_enhancement",
+      executionMode: "enhance-prompt",
+      systemPrompt: "Plan slides from the prompt.",
+    });
+    mockCallLLMStructured
+      .mockResolvedValueOnce({
+        data: [
+          {
+            templateId: "hero_center",
+            title: "เปิดตัวแคมเปญใหม่",
+            body: ["สรุปสั้น"],
+            notes: "หน้าปก",
+            graphicCategory: "Marketing",
+            imagePromptKeywords: "campaign cover",
+          },
+          {
+            templateId: "split_right_image",
+            componentRecipeId: "poster-spotlight",
+            title: "ประกันสุขภาพ ดูแลคุณทุกช่วงเวลา",
+            body: [
+              "ความคุ้มครองครอบคลุมพร้อมรายการสิทธิประโยชน์ที่ควรเห็นทันทีและต้องย่อให้เป็น subhead ที่กระชับก่อนลงโปสเตอร์",
+              "เหมาจ่าย 20 ล้านบาทต่อปี",
+              "ค่ารักษาไม่ต้องสำรองจ่าย",
+              "ฟรี ตรวจสุขภาพประจำปี",
+            ],
+            notes: "ใช้เป็นหน้าโปรโมชันพร้อม CTA และหัวข้อสั้นหลายบรรทัด แต่ต้นฉบับยาวเกินกว่าจะวางลงโปสเตอร์แบบตรง ๆ จึงต้องให้ระบบ compact ก่อน",
+            graphicCategory: "Marketing",
+            imagePromptKeywords: "health insurance poster",
+          },
+        ],
+        tokensUsed: 120,
+        creditsUsed: 5,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: "ok",
+          slotContent: [
+            { slotId: "eyebrow", type: "text", text: "ประกันสุขภาพ" },
+            { slotId: "headline", type: "text", text: "ดูแลคุณทุกช่วงเวลา" },
+            { slotId: "subhead", type: "text", text: "ความคุ้มครองครอบคลุมพร้อมสิทธิประโยชน์สำคัญที่เห็นได้ทันที" },
+            { slotId: "benefits", type: "list", items: ["เหมาจ่าย 20 ล้านบาทต่อปี", "ค่ารักษาไม่ต้องสำรองจ่าย", "ฟรี ตรวจสุขภาพประจำปี"] },
+            { slotId: "cta", type: "text", text: "ดูรายละเอียดเพิ่มเติม" },
+          ],
+          sourceTrace: [
+            { sourceId: "body-0", disposition: "shortened", targetSlotId: "subhead" },
+            { sourceId: "body-1", disposition: "used", targetSlotId: "benefits" },
+          ],
+          overflowRisk: 0.18,
+          fitConfidence: 0.89,
+          fallbackSuggestion: null,
+        },
+        tokensUsed: 50,
+        creditsUsed: 2,
+      });
+
+    await generateAIDraft(
+      buildMockInput({ numSlides: 2, draftSkillId: "prompt-planner", articleSkillId: undefined }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const compactionPrompt = JSON.parse(String(mockCallLLMStructured.mock.calls[1]?.[0]?.userMessage ?? "{}"));
+    expect(compactionPrompt.recipeId).toBe("poster-spotlight");
+    expect(compactionPrompt.mode).toBe("structured_block");
+
+    const secondInsertPayload = mockAddSlideToDeck.mock.calls[1]?.[0] as {
+      slideContent?: { aiDesign?: { componentRecipeId?: string; compactionLevel?: string } };
+    };
+    expect(secondInsertPayload.slideContent?.aiDesign?.componentRecipeId).toBe("poster-spotlight");
+    expect(secondInsertPayload.slideContent?.aiDesign?.compactionLevel).toBe("balanced");
+  });
+
+  it("applies recipe-aware compaction for feature-highlights slides through structured_block prompts", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockResolvedValue({
+      id: "prompt-planner",
+      name: "Prompt Planner",
+      category: "prompt_enhancement",
+      executionMode: "enhance-prompt",
+      systemPrompt: "Plan slides from the prompt.",
+    });
+    mockCallLLMStructured
+      .mockResolvedValueOnce({
+        data: [
+          {
+            templateId: "hero_center",
+            title: "เปิดตัวฟีเจอร์ใหม่",
+            body: ["สรุปสั้น"],
+            notes: "หน้าปก",
+            graphicCategory: "Technology",
+            imagePromptKeywords: "feature launch cover",
+          },
+          {
+            templateId: "feature_boxes_right",
+            componentRecipeId: "feature-highlights",
+            title: "เหตุผลที่ทีมควรใช้ workflow ใหม่",
+            body: [
+              "การมองเห็นสถานะงานแบบเดียวกันช่วยให้แต่ละฝ่ายลดเวลาตามงานซ้ำและตัดสินใจได้เร็วขึ้น",
+              "การกำหนด handoff ที่ชัดเจนช่วยลดงานตกหล่นระหว่างทีมและทำให้ onboarding ทีมใหม่ง่ายขึ้น",
+              "dashboard กลางช่วยให้หัวหน้าทีมเห็นความเสี่ยงได้เร็วและลดการประชุมอัปเดตที่ไม่จำเป็น",
+            ],
+            notes: "สไลด์นี้ต้องการสาม feature cards แบบสั้น กระชับ และอ่านเร็ว แม้ต้นฉบับยังยาวเกิน budget ของการ์ด",
+            graphicCategory: "Technology",
+            imagePromptKeywords: "workflow feature highlights",
+          },
+        ],
+        tokensUsed: 120,
+        creditsUsed: 5,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: "ok",
+          slotContent: [
+            { slotId: "badge", type: "text", text: "Workflow Upgrade" },
+            { slotId: "title", type: "text", text: "เหตุผลที่ทีมควรใช้ workflow ใหม่" },
+            { slotId: "feature1-title", type: "text", text: "เห็นภาพเดียวกัน" },
+            { slotId: "feature1-body", type: "text", text: "ลดเวลาตามงานซ้ำและเร่งการตัดสินใจ" },
+            { slotId: "feature2-title", type: "text", text: "handoff ชัดเจน" },
+            { slotId: "feature2-body", type: "text", text: "ลดงานตกหล่นและ onboarding ได้เร็วขึ้น" },
+            { slotId: "feature3-title", type: "text", text: "เห็นความเสี่ยงเร็ว" },
+            { slotId: "feature3-body", type: "text", text: "dashboard กลางช่วยลดการประชุมอัปเดตที่ไม่จำเป็น" },
+          ],
+          sourceTrace: [
+            { sourceId: "body-0", disposition: "shortened", targetSlotId: "feature1-body" },
+            { sourceId: "body-1", disposition: "shortened", targetSlotId: "feature2-body" },
+            { sourceId: "body-2", disposition: "shortened", targetSlotId: "feature3-body" },
+          ],
+          overflowRisk: 0.2,
+          fitConfidence: 0.9,
+          fallbackSuggestion: null,
+        },
+        tokensUsed: 55,
+        creditsUsed: 2,
+      });
+
+    await generateAIDraft(
+      buildMockInput({ numSlides: 2, draftSkillId: "prompt-planner", articleSkillId: undefined }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const compactionPrompt = JSON.parse(String(mockCallLLMStructured.mock.calls[1]?.[0]?.userMessage ?? "{}"));
+    expect(compactionPrompt.recipeId).toBe("feature-highlights");
+    expect(compactionPrompt.mode).toBe("structured_block");
+
+    const secondInsertPayload = mockAddSlideToDeck.mock.calls[1]?.[0] as {
+      slideContent?: { aiDesign?: { componentRecipeId?: string; compactionLevel?: string } };
+    };
+    expect(secondInsertPayload.slideContent?.aiDesign?.componentRecipeId).toBe("feature-highlights");
+    expect(secondInsertPayload.slideContent?.aiDesign?.compactionLevel).toBe("balanced");
+  });
+
+  it("escalates dense compact recipe selections into sectioned-explainer before rendering", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockResolvedValue({
+      id: "prompt-planner",
+      name: "Prompt Planner",
+      category: "prompt_enhancement",
+      executionMode: "enhance-prompt",
+      systemPrompt: "Plan slides from the prompt.",
+    });
+    mockCallLLMStructured
+      .mockResolvedValueOnce({
+        data: [
+          {
+            templateId: "hero_center",
+            title: "คู่มือการนอนของเด็กเล็ก",
+            body: ["ภาพรวมสั้น ๆ"],
+            notes: "สไลด์เปิดหัวเรื่อง",
+            graphicCategory: "Education",
+            imagePromptKeywords: "sleeping child illustration",
+          },
+          {
+            templateId: "split_right_image",
+            componentRecipeId: "quote-callout",
+            title: "ขั้นตอนปฏิบัติ / เคล็ดลับ",
+            body: [
+              "สร้างกิจวัตรก่อนนอนและรักษาลำดับเดิมทุกคืน เช่น อ่านหนังสือ เล่าเรื่อง หรืออาบน้ำ เพื่อให้เด็กค่อย ๆ ลดสิ่งกระตุ้นและเข้าใจว่ากำลังเข้าสู่ช่วงพักผ่อนอย่างสม่ำเสมอ",
+              "กำหนดเวลาเข้านอนให้คงที่ทุกวัน พร้อมสังเกตสัญญาณง่วงของเด็กและปรับสิ่งแวดล้อมในห้องให้เงียบ สบาย และเหมาะกับการนอนมากที่สุด",
+            ],
+            notes: "บทความนี้เหมาะสำหรับพ่อแม่และผู้ดูแลที่ต้องการคำอธิบายยาวและค่อยเป็นค่อยไปมากกว่าการ์ดสั้น รวมถึงต้องการเห็นบริบทและคำแนะนำเชิงปฏิบัติในหน้าเดียวแบบยังแก้ไขข้อความต่อได้",
+            sections: [
+              {
+                heading: "ความผิดพลาดที่พบบ่อย",
+                details: [
+                  "ให้นอนในที่นอนที่ไม่ปลอดภัย: ควรจัดสภาพแวดล้อมให้นอนอย่างปลอดภัย",
+                  "นอนดึกและตื่นไม่เป็นเวลา: ควรรักษาเวลาเข้านอนและตื่นนอนให้ใกล้เคียงกันทุกวัน",
+                ],
+              },
+              {
+                heading: "ใครควรอ่านสไลด์นี้",
+                details: [
+                  "พ่อแม่หรือผู้ดูแลเด็กเล็กที่กำลังฝึกนิสัยการนอนของลูก",
+                ],
+              },
+            ],
+            graphicCategory: "Education",
+            imagePromptKeywords: "bedtime routine parent child",
+          },
+        ],
+        tokensUsed: 220,
+        creditsUsed: 8,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: "ok",
+          slotContent: [
+            { slotId: "eyebrow", type: "text", text: "Sleep guide" },
+            { slotId: "title", type: "text", text: "ขั้นตอนปฏิบัติ / เคล็ดลับ" },
+            { slotId: "intro", type: "text", text: "เริ่มจากกิจวัตรเดิมทุกคืน รักษาเวลาเข้านอนให้คงที่ และจัดห้องนอนให้สงบเพื่อช่วยให้เด็กผ่อนคลายก่อนนอน" },
+            { slotId: "section1-heading", type: "text", text: "ความผิดพลาดที่พบบ่อย" },
+            { slotId: "section1-body", type: "text", text: "หลีกเลี่ยงการเปลี่ยนเวลานอนทุกวันและอย่าตอบสนองทันทีทุกครั้งโดยไม่มีแผน" },
+            { slotId: "section2-heading", type: "text", text: "ใครควรอ่าน" },
+            { slotId: "section2-body", type: "text", text: "เหมาะกับพ่อแม่หรือผู้ดูแลเด็กเล็กที่กำลังฝึกนิสัยการนอนของลูก" },
+            { slotId: "section3-heading", type: "text", text: "สิ่งที่ควรทำต่อ" },
+            { slotId: "section3-body", type: "text", text: "เลือกเพียงหนึ่งถึงสองแนวทางแล้วทำซ้ำอย่างต่อเนื่องเพื่อให้เด็กไม่สับสน" },
+            { slotId: "takeaways-title", type: "text", text: "Key Takeaways" },
+            { slotId: "takeaways", type: "list", items: ["ทำกิจวัตรเดิมทุกคืน", "รักษาเวลาเข้านอนให้คงที่", "ให้ผู้ดูแลใช้แนวทางเดียวกัน"] },
+          ],
+          sourceTrace: [
+            { sourceId: "body-0", disposition: "shortened", targetSlotId: "intro" },
+            { sourceId: "section-0", disposition: "used", targetSlotId: "section1-heading" },
+            { sourceId: "section-1", disposition: "used", targetSlotId: "section2-heading" },
+            { sourceId: "section-2", disposition: "used", targetSlotId: "section3-heading" },
+          ],
+          overflowRisk: 0.19,
+          fitConfidence: 0.88,
+          fallbackSuggestion: null,
+        },
+        tokensUsed: 80,
+        creditsUsed: 3,
+      });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 2,
+        draftSkillId: "prompt-planner",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const secondSlideCall = mockGenerateSlide.mock.calls[1]?.[0] as {
+      slideData: { componentRecipeId?: string };
+    };
+    expect(secondSlideCall.slideData.componentRecipeId).toBe("sectioned-explainer");
+
+    const secondInsertPayload = mockAddSlideToDeck.mock.calls[1]?.[0] as {
+      slideContent?: {
+        aiDesign?: {
+          componentRecipeId?: string;
+          fallbackHistory?: Array<Record<string, unknown>>;
+        };
+      };
+    };
+    expect(secondInsertPayload.slideContent?.aiDesign?.componentRecipeId).toBe("sectioned-explainer");
+    expect(secondInsertPayload.slideContent?.aiDesign?.fallbackHistory).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        step: "switch_recipe",
+        from: "quote-callout",
+        to: "sectioned-explainer",
+      }),
+    ]));
+  });
+
+  it("splits long-form slides when compaction remains unsafe after retries", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockResolvedValue({
+      id: "prompt-planner",
+      name: "Prompt Planner",
+      category: "prompt_enhancement",
+      executionMode: "enhance-prompt",
+      systemPrompt: "Plan slides from the prompt.",
+    });
+    mockCallLLMStructured
+      .mockResolvedValueOnce({
+        data: [
+          {
+            templateId: "hero_center",
+            title: "คู่มือการนอนของเด็กเล็ก",
+            body: ["ภาพรวมสั้น ๆ"],
+            notes: "สไลด์เปิดหัวเรื่อง",
+            graphicCategory: "Education",
+            imagePromptKeywords: "sleeping child illustration",
+          },
+          {
+            templateId: "split_right_image",
+            title: "ขั้นตอนปฏิบัติ / เคล็ดลับ",
+            body: [
+              "สร้างกิจวัตรก่อนนอน: ทำให้กิจกรรมตอนก่อนนอนมีความซ้ำซ้อน เช่น อ่านหนังสือ เล่าเรื่อง หรืออาบน้ำ เพื่อสร้างความรู้สึกผ่อนคลายให้กับลูก",
+              "กำหนดเวลาเข้านอน: ตั้งเวลาเข้านอนที่สม่ำเสมอทุกวัน เพื่อช่วยให้ร่างกายสร้างนิสัยในการนอน",
+              "สร้างสภาพแวดล้อมที่เอื้อต่อการนอน: ห้องนอนควรเงียบ สบาย และมีอุณหภูมิที่เหมาะสม",
+              "ใช้เสียงเพลงหรือเสียงธรรมชาติ: เสียงที่อ่อนโยนสามารถช่วยให้เด็กผ่อนคลายและนอนหลับได้ดีขึ้นเมื่อใช้ร่วมกับกิจวัตรที่คงที่",
+              "อย่าตอบสนองทันทีทุกครั้งเมื่อเด็กตื่นกลางคืน ควรรอประเมินก่อนว่าเด็กจะกลับไปนอนได้เองหรือไม่",
+              "ทำกิจวัตรเดิมซ้ำหลายวันเพื่อให้เด็กได้รับสัญญาณก่อนนอนที่ชัดเจนและสม่ำเสมอ",
+            ],
+            notes: "บทความนี้เหมาะสำหรับพ่อแม่และผู้ดูแลที่ต้องการคำอธิบายยาวและค่อยเป็นค่อยไปมากกว่าการ์ดสั้น รวมถึงต้องการเห็นบริบท ข้อผิดพลาดที่พบบ่อย และคำแนะนำเชิงปฏิบัติอยู่ในหน้าเดียวแบบยังแก้ไขข้อความต่อได้",
+            sections: [
+              { heading: "ความผิดพลาดที่พบบ่อย", details: ["ให้นอนในที่นอนที่ไม่ปลอดภัย", "นอนดึกและตื่นไม่เป็นเวลา"] },
+              { heading: "ใครควรอ่านสไลด์นี้", details: ["พ่อแม่หรือผู้ดูแลเด็กเล็กที่กำลังฝึกนิสัยการนอนของลูก"] },
+              { heading: "สิ่งที่ควรทำต่อ", details: ["เลือกเพียงหนึ่งถึงสองแนวทางแล้วทำซ้ำอย่างสม่ำเสมอ"] },
+              { heading: "เคล็ดลับเสริม", details: ["ใช้เสียงเพลงเบา ๆ และลดสิ่งกระตุ้นก่อนนอน"] },
+            ],
+            graphicCategory: "Education",
+            imagePromptKeywords: "bedtime routine parent child",
+          },
+        ],
+        tokensUsed: 220,
+        creditsUsed: 8,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: "needs_fallback",
+          slotContent: [],
+          sourceTrace: [],
+          overflowRisk: 0.82,
+          fitConfidence: 0.33,
+          fallbackSuggestion: { action: "split_slide", reason: "Long-form copy is still too dense for one slide." },
+        },
+        tokensUsed: 40,
+        creditsUsed: 2,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: "needs_fallback",
+          slotContent: [],
+          sourceTrace: [],
+          overflowRisk: 0.84,
+          fitConfidence: 0.29,
+          fallbackSuggestion: { action: "split_slide", reason: "Compact rewrite still overflows." },
+        },
+        tokensUsed: 40,
+        creditsUsed: 2,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: "needs_fallback",
+          slotContent: [],
+          sourceTrace: [],
+          overflowRisk: 0.86,
+          fitConfidence: 0.24,
+          fallbackSuggestion: { action: "split_slide", reason: "Aggressive rewrite still overflows." },
+        },
+        tokensUsed: 40,
+        creditsUsed: 2,
+      });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 2,
+        draftSkillId: "prompt-planner",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    expect(mockAddSlideToDeck).toHaveBeenCalledTimes(3);
+    const thirdInsertPayload = mockAddSlideToDeck.mock.calls[2]?.[0] as {
+      slideContent?: {
+        aiDesign?: {
+          componentRecipeId?: string;
+          narrative?: { title?: string };
+          fallbackHistory?: Array<Record<string, unknown>>;
+          sourceTrace?: Array<Record<string, unknown>>;
+        };
+      };
+    };
+    expect(thirdInsertPayload.slideContent?.aiDesign?.narrative?.title).toContain("ขั้นตอนปฏิบัติ / เคล็ดลับ");
+    expect(thirdInsertPayload.slideContent?.aiDesign?.componentRecipeId).toBe("sectioned-explainer");
+    expect(thirdInsertPayload.slideContent?.aiDesign?.fallbackHistory).toEqual(expect.arrayContaining([
+      expect.objectContaining({ step: "split_slide" }),
+    ]));
+    expect(thirdInsertPayload.slideContent?.aiDesign?.sourceTrace).toEqual(expect.arrayContaining([
+      expect.objectContaining({ disposition: "split" }),
+    ]));
+  });
+
+  it("uses llm_layout_dsl when the advanced mode flag is enabled and mixed sections do not fit existing recipes", async () => {
+    setupHappyPath();
+    process.env.PRESENTATION_AI_LAYOUT_DSL_ENABLED = "true";
+    mockGetSkillByIdAsync.mockResolvedValue({
+      id: "prompt-planner",
+      name: "Prompt Planner",
+      category: "prompt_enhancement",
+      executionMode: "enhance-prompt",
+      systemPrompt: "Plan slides from the prompt.",
+    });
+    mockCallLLMStructured
+      .mockResolvedValueOnce({
+        data: [
+          {
+            templateId: "hero_center",
+            title: "Intro",
+            body: ["Intro point"],
+            notes: "Intro note",
+            graphicCategory: "Business",
+            imagePromptKeywords: "intro visual",
+          },
+          {
+            templateId: "split_right_image",
+            title: "ภาพรวมงานดูแลลูกค้า",
+            body: ["ใช้บอร์ดเดียวเพื่อสรุปประเด็นหลักของงานดูแลลูกค้า"],
+            sections: [
+              { heading: "บริบท", details: ["อธิบายภาพรวมลูกค้า"] },
+              { heading: "ปัญหา", details: ["ชี้ pain point สำคัญ"] },
+              { heading: "แนวทาง", details: ["สรุปหลักคิดที่ใช้"] },
+              { heading: "ผลลัพธ์", details: ["บอกสิ่งที่คาดหวัง"] },
+            ],
+            notes: "ต้องการบอร์ดข้อมูล",
+            graphicCategory: "Business",
+            imagePromptKeywords: "customer service board",
+          },
+        ],
+        tokensUsed: 180,
+        creditsUsed: 6,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: "ok",
+          elements: [
+            {
+              id: "board",
+              type: "group",
+              x: 32,
+              y: 180,
+              width: 656,
+              height: 740,
+              children: [
+                {
+                  id: "bg",
+                  type: "rect",
+                  x: 0,
+                  y: 0,
+                  width: 656,
+                  height: 740,
+                  fill: "#F7F3E8",
+                },
+                {
+                  id: "title",
+                  type: "text",
+                  x: 36,
+                  y: 40,
+                  width: 584,
+                  height: 80,
+                  text: "แนวทางการดูแลลูกค้า 4 ช่วง",
+                  color: "#223344",
+                  fontSize: 40,
+                },
+              ],
+            },
+          ],
+          explanation: "Used a bounded board layout because the content mixes four balanced sections.",
+          fallbackSuggestion: null,
+        },
+        tokensUsed: 70,
+        creditsUsed: 3,
+      });
+
+    try {
+      await generateAIDraft(
+        buildMockInput({
+          numSlides: 2,
+          draftSkillId: "prompt-planner",
+          articleSkillId: undefined,
+        }),
+        buildMockActor(),
+        "test-token",
+        "task-123",
+      );
+    } finally {
+      delete process.env.PRESENTATION_AI_LAYOUT_DSL_ENABLED;
+    }
+
+    const secondInsertPayload = mockAddSlideToDeck.mock.calls[1]?.[0] as {
+      slideContent?: {
+        elements?: Array<Record<string, unknown>>;
+        aiDesign?: { mode?: string };
+      };
+    };
+    expect(secondInsertPayload.slideContent?.aiDesign?.mode).toBe("llm_layout_dsl");
+    expect(secondInsertPayload.slideContent?.elements).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: "rect", fill: "#F7F3E8" }),
+      expect.objectContaining({ type: "text", text: "แนวทางการดูแลลูกค้า 4 ช่วง" }),
+    ]));
+  });
+
+  it("uses full-slide-media mode when the visual-first flag is enabled and Thai text risk is acceptable", async () => {
+    setupHappyPath();
+    process.env.PRESENTATION_AI_FULL_SLIDE_MEDIA_ENABLED = "true";
+    mockGetSkillByIdAsync.mockResolvedValue({
+      id: "prompt-planner",
+      name: "Prompt Planner",
+      category: "prompt_enhancement",
+      executionMode: "enhance-prompt",
+      systemPrompt: "Plan slides from the prompt.",
+    });
+    mockCallLLMStructured.mockResolvedValueOnce({
+      data: [
+        {
+          templateId: "hero_center",
+          title: "Intro",
+          body: ["Intro point"],
+          notes: "Intro note",
+          graphicCategory: "Business",
+          imagePromptKeywords: "intro visual",
+        },
+        {
+          templateId: "split_right_image",
+          title: "Spring campaign launch",
+          body: ["Soft pastel poster for the new member offer"],
+          notes: "Poster slide only",
+          graphicCategory: "Marketing",
+          imagePromptKeywords: "spring campaign poster",
+        },
+      ],
+      tokensUsed: 180,
+      creditsUsed: 6,
+    });
+
+    try {
+      await generateAIDraft(
+        buildMockInput({
+          numSlides: 2,
+          draftSkillId: "prompt-planner",
+          articleSkillId: undefined,
+        }),
+        buildMockActor(),
+        "test-token",
+        "task-123",
+      );
+    } finally {
+      delete process.env.PRESENTATION_AI_FULL_SLIDE_MEDIA_ENABLED;
+    }
+
+    const secondInsertPayload = mockAddSlideToDeck.mock.calls[1]?.[0] as {
+      slideContent?: {
+        visualOnly?: boolean;
+        elements?: Array<Record<string, unknown>>;
+        aiDesign?: {
+          mode?: string;
+          mediaModeMetadata?: { visualIntent?: string; thaiTextRisk?: string; editableSourceRetained?: boolean };
+        };
+      };
+    };
+    expect(secondInsertPayload.slideContent?.visualOnly).toBe(true);
+    expect(secondInsertPayload.slideContent?.aiDesign?.mode).toBe("full_slide_media");
+    expect(secondInsertPayload.slideContent?.aiDesign?.mediaModeMetadata).toMatchObject({
+      editableSourceRetained: true,
+      visualIntent: "poster",
+      thaiTextRisk: "low",
+    });
+    expect(secondInsertPayload.slideContent?.elements?.[0]).toMatchObject({
+      type: "image",
+      src: "https://cdn.example.com/image.jpg",
+    });
+  });
+
+  it("sanitizes AI narrative body and sections before slide insertion", async () => {
+    setupHappyPath();
+    const oversizedLine = "Detailed launch coverage ".repeat(20).trim();
+    const markdownArticle = [
+      "# Membership launch campaign",
+      "",
+      "## Benefits",
+      "Priority onboarding for early adopters",
+      "Premium templates for faster publishing",
+      "Shared brand controls for every team",
+      "Central review workflow for approvals",
+      oversizedLine,
+      "Dedicated support channel after rollout",
+      "",
+      "Plain body insight one",
+      "Plain body insight two",
+      "Plain body insight three",
+      "Plain body insight four",
+      "Plain body insight five",
+      "Plain body insight six",
+      "Plain body insight seven",
+      "Plain body insight eight",
+      "Plain body insight nine",
+      "Plain body insight ten",
+      "Plain body insight eleven",
+      "Plain body insight twelve",
+    ].join("\n");
+
+    mockCallLLMStructured.mockResolvedValueOnce({
+      data: [
+        {
+          templateId: "split_right_image",
+          title: "Membership launch offer",
+          body: ["Seed point"],
+          notes: "Seed note",
+          graphicCategory: "Business",
+          imagePromptKeywords: "campaign poster",
+        },
+      ],
+      tokensUsed: 180,
+      creditsUsed: 6,
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 1,
+        useCustomArticle: true,
+        customArticleText: markdownArticle,
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const insertPayload = mockAddSlideToDeck.mock.calls[0]?.[0] as {
+      slideContent?: Record<string, unknown>;
+    };
+    const parsed = presentationSlideContentSchema.safeParse(insertPayload.slideContent);
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) {
+      return;
+    }
+
+    const narrative = parsed.data.aiDesign?.narrative;
+    expect(narrative?.body.length).toBeLessThanOrEqual(10);
+    expect(narrative?.body.every((line) => line.length <= 260)).toBe(true);
+    expect(narrative?.sections?.[0]?.details.length).toBeLessThanOrEqual(4);
+    expect(narrative?.sections?.[0]?.details.every((detail) => detail.length <= 260)).toBe(true);
   });
 
   it("trims slides when structured output exceeds requested numSlides", async () => {
@@ -2385,6 +6068,120 @@ describe("generateAIDraft - Phase 3+4", () => {
     expect(firstCall.extraParams).not.toHaveProperty("unknown");
   });
 
+  it("propagates media extra params into component recipe fallback media elements", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockImplementation(async (id: string) => {
+      if (id === "video-creator") {
+        return {
+          id: "video-creator",
+          name: "Video Creator",
+          type: "video-generation",
+          executionMode: "llm-only",
+        };
+      }
+      return {
+        id: "general-article-writer",
+        name: "General Article Writer",
+        systemPrompt: "You are a versatile article writer.",
+        executionMode: "llm-only",
+      };
+    });
+    mockGetModelsByTypeAsync.mockResolvedValueOnce([
+      {
+        id: "veo-3-1",
+        type: "video",
+        name: "Veo 3.1",
+        provider: "kie.ai",
+        description: "Video model",
+        creditCost: 50,
+        isEnabled: true,
+        priority: 0,
+        aspectRatios: ["16:9"],
+        configJson: {
+          generateType: "text-to-video",
+          inputFields: [
+            { key: "duration", type: "number" },
+          ],
+        },
+      },
+    ]);
+    mockGenerateSlide.mockImplementation(({ slideData, imageUrl }: {
+      slideData: { componentRecipeId?: string };
+      imageUrl?: string | null;
+    }) => {
+      if (slideData.componentRecipeId === "video-spotlight") {
+        return {
+          slideContent: {
+            elements: [],
+            components: [
+              {
+                id: "cmp-video",
+                componentId: "video-spotlight",
+                componentType: "built-in",
+                definitionRevision: 1,
+                slotBindings: [
+                  { slotId: "clip", type: "video", src: imageUrl || "", poster: "", title: "Clip" },
+                ],
+                fallbackElements: [
+                  {
+                    id: "cmp-video::clip-video",
+                    type: "video",
+                    x: 100,
+                    y: 100,
+                    width: 400,
+                    height: 300,
+                    src: imageUrl || "",
+                    poster: "",
+                    title: "Clip",
+                    muted: true,
+                    loop: true,
+                    videoFit: "cover",
+                    videoPositionX: 50,
+                    videoPositionY: 50,
+                    videoZoom: 1,
+                  },
+                ],
+              },
+            ],
+          },
+          warnings: [],
+        };
+      }
+      return {
+        slideContent: MOCK_SLIDE_CONTENT,
+        warnings: [],
+      };
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 2,
+        imageSkillId: "video-creator",
+        imageModel: "veo-3-1",
+        mediaModelExtraParams: {
+          duration: 8,
+        },
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const secondInsertPayload = mockAddSlideToDeck.mock.calls[1]?.[0] as {
+      slideContent?: {
+        components?: Array<{ fallbackElements?: Array<Record<string, unknown>> }>;
+      };
+    } | undefined;
+    const videoElement = secondInsertPayload?.slideContent?.components?.[0]?.fallbackElements?.find(
+      (element) => element.type === "video",
+    );
+    expect(videoElement).toMatchObject({
+      videoExtraParams: {
+        duration: 8,
+      },
+    });
+  });
+
   it("passes configured kie_model_id for video generation when media model is Veo 3.1", async () => {
     setupHappyPath();
     mockGetSkillByIdAsync.mockImplementation(async (id: string) => {
@@ -2594,6 +6391,49 @@ describe("generateAIDraft - Phase 6", () => {
     expect(savedNotes).toContain("บนพื้นราบมั่นคง");
     expect(firstLayoutCall.slideData.body.some((line) => line.includes("เริ่มจากช่วงเวลาสั้น ๆ"))).toBe(true);
   });
+
+  it("repairs sparse draft slide text from the slide note before rendering", async () => {
+    setupHappyPath();
+    const customArticleText = [
+      "คู่มือ safe sleep",
+      "1. Safe sleep environment",
+      "Place the baby on their back to sleep.",
+      "Use a firm mattress with no pillows or loose blankets.",
+      "Keep the room calm and free from soft items.",
+    ].join("\n\n");
+    mockCallLLMStructured.mockResolvedValue({
+      data: [
+        {
+          templateId: "hero_center",
+          title: "Safe sleep environment",
+          body: ["Place the baby on their back to sleep."],
+          notes: "Place the baby on their back to sleep.",
+          graphicCategory: "Health",
+          imagePromptKeywords: "safe sleep baby room",
+        },
+      ],
+      tokensUsed: 280,
+      creditsUsed: 9,
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 1,
+        prompt: "safe sleep",
+        language: "en",
+        useCustomArticle: true,
+        customArticleText,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const firstLayoutCall = mockGenerateSlide.mock.calls.at(-1)?.[0] as { slideData: { body: string[]; notes?: string } };
+    expect(firstLayoutCall.slideData.body.some((line: string) => line.includes("Place the baby on their back to sleep"))).toBe(true);
+    expect(firstLayoutCall.slideData.body.some((line: string) => line.includes("Use a firm mattress with no pillows or loose blankets"))).toBe(true);
+    expect(firstLayoutCall.slideData.notes).toContain("Keep the room calm and free from soft items");
+  });
 });
 
 describe("generateAIDraft - error handling", () => {
@@ -2622,14 +6462,56 @@ describe("generateAIDraft - error handling", () => {
 describe("generateAIDraft - cancellation", () => {
   it("stops when cancel key is set before Phase 2", async () => {
     setupHappyPath();
-    // First get returns null (no cancel before Phase 1), second returns "1" (cancel before Phase 2)
-    mockRedisGet
-      .mockResolvedValueOnce(null) // check before Phase 1
-      .mockResolvedValueOnce("1"); // check before Phase 2
+    let cancelChecks = 0;
+    mockRedisGet.mockImplementation(async (key: string) => {
+      if (key.includes("ai_draft_cancel:")) {
+        cancelChecks += 1;
+        return cancelChecks >= 2 ? "1" : null;
+      }
+      if (key.includes("ai_draft_lock:")) {
+        return "task-123";
+      }
+      return null;
+    });
 
     await generateAIDraft(buildMockInput(), buildMockActor(), "test-token", "task-123");
 
     expect(mockCallLLMStructured).not.toHaveBeenCalled();
+
+    const progressCalls = mockRedisSet.mock.calls.filter(
+      (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("ai_draft_progress"),
+    );
+    const lastProgress = JSON.parse(progressCalls[progressCalls.length - 1][1] as string);
+    expect(lastProgress.cancelled).toBe(true);
+    expect(lastProgress.completed).toBe(true);
+  });
+
+  it("stops while waiting for slide planning after cancel is requested", async () => {
+    setupHappyPath();
+    let cancelChecks = 0;
+    mockRedisGet.mockImplementation(async (key: string) => {
+      if (key.includes("ai_draft_cancel:")) {
+        cancelChecks += 1;
+        return cancelChecks >= 3 ? "1" : null;
+      }
+      if (key.includes("ai_draft_lock:")) {
+        return "task-123";
+      }
+      return null;
+    });
+    mockCallLLMStructured.mockImplementation(
+      () => new Promise(() => {}) as Promise<never>,
+    );
+
+    const runPromise = generateAIDraft(
+      buildMockInput(),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    await vi.advanceTimersByTimeAsync(4000);
+    await runPromise;
 
     const progressCalls = mockRedisSet.mock.calls.filter(
       (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("ai_draft_progress"),
@@ -2841,5 +6723,354 @@ describe("resolvePendingMediaForDeck", () => {
       type: "video",
       src: "https://cdn.example.com/resolved.mp4",
     });
+  });
+
+  it("updates component video slots when deferred media resolves inside a component recipe", async () => {
+    const actor = buildMockActor();
+    mockGetPresentationDeckDetail.mockResolvedValue({
+      deck: { id: 1, version: 10 },
+      slides: [
+        {
+          id: 13,
+          deckId: 1,
+          orderIndex: 0,
+          version: 3,
+          title: "Slide C",
+          notes: null,
+          slideContent: {
+            elements: [],
+            components: [
+              {
+                id: "cmp-1",
+                componentId: "video-spotlight",
+                componentType: "built-in",
+                definitionRevision: 1,
+                slotBindings: [
+                  { slotId: "headline", type: "text", text: "Slide C" },
+                  { slotId: "clip", type: "video", src: "", poster: "", title: "Slide C" },
+                ],
+                fallbackElements: [
+                  { id: "cmp-1::clip-frame", type: "rect", x: 200, y: 120, width: 420, height: 320, fill: "#112233" },
+                  { id: "cmp-1::clip-icon", type: "text", x: 330, y: 230, width: 150, height: 40, text: "VIDEO", color: "#ffffff" },
+                  { id: "cmp-1::clip-placeholder", type: "text", x: 260, y: 300, width: 300, height: 40, text: "Drop or pick a video clip", color: "#ffffff" },
+                ],
+              },
+            ],
+            pendingMediaJobs: [
+              {
+                id: "pmj-c1",
+                mediaType: "video",
+                mediaTaskId: "video-task-2",
+                targetElementId: "cmp-1::clip-frame",
+                targetX: 200,
+                targetY: 120,
+                targetWidth: 420,
+                targetHeight: 320,
+                status: "processing",
+                createdAt: "2026-03-02T12:00:00.000Z",
+              },
+            ],
+          },
+        },
+      ],
+      assets: [],
+    });
+    mockGetTask.mockResolvedValue({
+      id: "video-task-2",
+      status: "completed",
+      resultUrl: "https://cdn.example.com/component.mp4",
+      resultData: {
+        response: {
+          data: [{ url: "https://cdn.example.com/component.mp4", durationSeconds: 6.2 }],
+        },
+      },
+    });
+    mockUpdateSlideInDeck.mockResolvedValue({ id: 13, version: 4 });
+
+    const result = await resolvePendingMediaForDeck(
+      { deckId: 1, maxJobs: 10 },
+      actor,
+      "test-token",
+    );
+
+    expect(result.jobsChecked).toBe(1);
+    expect(result.jobsResolved).toBe(1);
+    const payload = mockUpdateSlideInDeck.mock.calls.at(-1)?.[0];
+    expect(payload.slideContent.pendingMediaJobs).toBeUndefined();
+    expect(payload.slideContent.components[0].slotBindings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          slotId: "clip",
+          type: "video",
+          src: "https://cdn.example.com/component.mp4",
+        }),
+      ]),
+    );
+    expect(payload.slideContent.components[0].fallbackElements.some((element: any) => (
+      element.type === "video" && element.id === "cmp-1::clip-frame" && element.src === "https://cdn.example.com/component.mp4"
+    ))).toBe(true);
+    expect(payload.slideContent.components[0].fallbackElements.some((element: any) => (
+      typeof element.id === "string" && element.id.endsWith("::clip-placeholder")
+    ))).toBe(false);
+  });
+
+  it("updates profile-summary image slots when deferred media resolves inside a component recipe", async () => {
+    const actor = buildMockActor();
+    mockGetPresentationDeckDetail.mockResolvedValue({
+      deck: { id: 1, version: 10 },
+      slides: [
+        {
+          id: 14,
+          deckId: 1,
+          orderIndex: 0,
+          version: 3,
+          title: "Speaker Bio",
+          notes: null,
+          slideContent: {
+            elements: [],
+            components: [
+              {
+                id: "cmp-profile",
+                componentId: "profile-summary",
+                componentType: "built-in",
+                definitionRevision: 1,
+                slotBindings: [
+                  { slotId: "name", type: "text", text: "Speaker Bio" },
+                  { slotId: "portrait", type: "image", src: "", alt: "Speaker Bio" },
+                ],
+                fallbackElements: [
+                  { id: "cmp-profile::portrait-frame", type: "rect", x: 180, y: 140, width: 200, height: 180, fill: "#223344" },
+                  { id: "cmp-profile::portrait-placeholder", type: "text", x: 220, y: 210, width: 120, height: 40, text: "Photo", color: "#ffffff" },
+                ],
+              },
+            ],
+            pendingMediaJobs: [
+              {
+                id: "pmj-p1",
+                mediaType: "image",
+                mediaTaskId: "image-task-2",
+                targetElementId: "cmp-profile::portrait-frame",
+                targetX: 180,
+                targetY: 140,
+                targetWidth: 200,
+                targetHeight: 180,
+                status: "processing",
+                createdAt: "2026-03-02T12:00:00.000Z",
+              },
+            ],
+          },
+        },
+      ],
+      assets: [],
+    });
+    mockGetTask.mockResolvedValue({
+      id: "image-task-2",
+      status: "completed",
+      resultUrl: "https://cdn.example.com/profile.jpg",
+    });
+    mockUpdateSlideInDeck.mockResolvedValue({ id: 14, version: 4 });
+
+    const result = await resolvePendingMediaForDeck(
+      { deckId: 1, maxJobs: 10 },
+      actor,
+      "test-token",
+    );
+
+    expect(result.jobsChecked).toBe(1);
+    expect(result.jobsResolved).toBe(1);
+    const payload = mockUpdateSlideInDeck.mock.calls.at(-1)?.[0];
+    expect(payload.slideContent.pendingMediaJobs).toBeUndefined();
+    expect(payload.slideContent.components[0].slotBindings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          slotId: "portrait",
+          type: "image",
+          src: "https://cdn.example.com/profile.jpg",
+        }),
+      ]),
+    );
+    expect(payload.slideContent.components[0].fallbackElements.some((element: any) => (
+      element.type === "image" && element.id === "cmp-profile::portrait-frame" && element.src === "https://cdn.example.com/profile.jpg"
+    ))).toBe(true);
+    expect(payload.slideContent.components[0].fallbackElements.some((element: any) => (
+      typeof element.id === "string" && element.id.endsWith("::portrait-placeholder")
+    ))).toBe(false);
+  });
+
+  it("updates framed-image-story image slots when deferred media resolves inside a component recipe", async () => {
+    const actor = buildMockActor();
+    mockGetPresentationDeckDetail.mockResolvedValue({
+      deck: { id: 1, version: 10 },
+      slides: [
+        {
+          id: 15,
+          deckId: 1,
+          orderIndex: 0,
+          version: 3,
+          title: "Zero Waste Story",
+          notes: null,
+          slideContent: {
+            elements: [],
+            components: [
+              {
+                id: "cmp-story",
+                componentId: "framed-image-story",
+                componentType: "built-in",
+                definitionRevision: 1,
+                slotBindings: [
+                  { slotId: "headline", type: "text", text: "Zero Waste Story" },
+                  { slotId: "photo", type: "image", src: "", alt: "Zero Waste Story" },
+                ],
+                fallbackElements: [
+                  { id: "cmp-story::photo-frame", type: "rect", x: 120, y: 112, width: 424, height: 420, fill: "#dde7f0" },
+                  { id: "cmp-story::photo-placeholder", type: "text", x: 180, y: 300, width: 300, height: 40, text: "Drop or pick a story image", color: "#334155" },
+                ],
+              },
+            ],
+            pendingMediaJobs: [
+              {
+                id: "pmj-s1",
+                mediaType: "image",
+                mediaTaskId: "image-task-3",
+                targetElementId: "cmp-story::photo-frame",
+                targetX: 120,
+                targetY: 112,
+                targetWidth: 424,
+                targetHeight: 420,
+                status: "processing",
+                createdAt: "2026-03-02T12:00:00.000Z",
+              },
+            ],
+          },
+        },
+      ],
+      assets: [],
+    });
+    mockGetTask.mockResolvedValue({
+      id: "image-task-3",
+      status: "completed",
+      resultUrl: "https://cdn.example.com/story.jpg",
+    });
+    mockUpdateSlideInDeck.mockResolvedValue({ id: 15, version: 4 });
+
+    const result = await resolvePendingMediaForDeck(
+      { deckId: 1, maxJobs: 10 },
+      actor,
+      "test-token",
+    );
+
+    expect(result.jobsChecked).toBe(1);
+    expect(result.jobsResolved).toBe(1);
+    const payload = mockUpdateSlideInDeck.mock.calls.at(-1)?.[0];
+    expect(payload.slideContent.pendingMediaJobs).toBeUndefined();
+    expect(payload.slideContent.components[0].slotBindings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          slotId: "photo",
+          type: "image",
+          src: "https://cdn.example.com/story.jpg",
+        }),
+      ]),
+    );
+    expect(payload.slideContent.components[0].fallbackElements.some((element: any) => (
+      element.type === "image" && element.id === "cmp-story::photo-frame" && element.src === "https://cdn.example.com/story.jpg"
+    ))).toBe(true);
+    expect(payload.slideContent.components[0].fallbackElements.some((element: any) => (
+      typeof element.id === "string" && element.id.endsWith("::photo-placeholder")
+    ))).toBe(false);
+  });
+
+  it("updates both photo-collage image slots when deferred media resolves across multiple targets", async () => {
+    const actor = buildMockActor();
+    mockGetPresentationDeckDetail.mockResolvedValue({
+      deck: { id: 1, version: 10 },
+      slides: [
+        {
+          id: 16,
+          deckId: 1,
+          orderIndex: 0,
+          version: 3,
+          title: "Lookbook",
+          notes: null,
+          slideContent: {
+            elements: [],
+            components: [
+              {
+                id: "cmp-collage",
+                componentId: "photo-collage",
+                componentType: "built-in",
+                definitionRevision: 1,
+                slotBindings: [
+                  { slotId: "headline", type: "text", text: "Lookbook" },
+                  { slotId: "primary-photo", type: "image", src: "", alt: "Primary photo" },
+                  { slotId: "secondary-photo", type: "image", src: "", alt: "Secondary photo" },
+                ],
+                fallbackElements: [
+                  { id: "cmp-collage::primary-frame", type: "rect", x: 112, y: 152, width: 494, height: 360, fill: "#dde7f0" },
+                  { id: "cmp-collage::primary-placeholder", type: "text", x: 216, y: 318, width: 286, height: 40, text: "Drop a primary image", color: "#334155" },
+                  { id: "cmp-collage::secondary-frame", type: "rect", x: 864, y: 108, width: 248, height: 198, fill: "#e9d5ff" },
+                  { id: "cmp-collage::secondary-placeholder", type: "text", x: 900, y: 190, width: 176, height: 34, text: "Detail image", color: "#6d28d9" },
+                ],
+              },
+            ],
+            pendingMediaJobs: [
+              {
+                id: "pmj-collage-1",
+                mediaType: "image",
+                mediaTaskId: "image-task-4",
+                targetElementId: "cmp-collage::primary-frame",
+                targetX: 112,
+                targetY: 152,
+                targetWidth: 494,
+                targetHeight: 360,
+                status: "processing",
+                createdAt: "2026-03-02T12:00:00.000Z",
+              },
+              {
+                id: "pmj-collage-2",
+                mediaType: "image",
+                mediaTaskId: "image-task-4",
+                targetElementId: "cmp-collage::secondary-frame",
+                targetX: 864,
+                targetY: 108,
+                targetWidth: 248,
+                targetHeight: 198,
+                status: "processing",
+                createdAt: "2026-03-02T12:00:00.000Z",
+              },
+            ],
+          },
+        },
+      ],
+      assets: [],
+    });
+    mockGetTask.mockResolvedValue({
+      id: "image-task-4",
+      status: "completed",
+      resultUrl: "https://cdn.example.com/collage.jpg",
+    });
+    mockUpdateSlideInDeck.mockResolvedValue({ id: 16, version: 4 });
+
+    const result = await resolvePendingMediaForDeck(
+      { deckId: 1, maxJobs: 10 },
+      actor,
+      "test-token",
+    );
+
+    expect(result.jobsChecked).toBe(2);
+    expect(result.jobsResolved).toBe(2);
+    const payload = mockUpdateSlideInDeck.mock.calls.at(-1)?.[0];
+    expect(payload.slideContent.pendingMediaJobs).toBeUndefined();
+    expect(payload.slideContent.components[0].slotBindings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ slotId: "primary-photo", type: "image", src: "https://cdn.example.com/collage.jpg" }),
+        expect.objectContaining({ slotId: "secondary-photo", type: "image", src: "https://cdn.example.com/collage.jpg" }),
+      ]),
+    );
+    expect(payload.slideContent.components[0].fallbackElements.filter((element: any) => (
+      element.type === "image"
+      && (element.id === "cmp-collage::primary-frame" || element.id === "cmp-collage::secondary-frame")
+      && element.src === "https://cdn.example.com/collage.jpg"
+    ))).toHaveLength(2);
   });
 });

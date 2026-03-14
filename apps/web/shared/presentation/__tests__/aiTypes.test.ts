@@ -133,6 +133,17 @@ describe("GenerateAIDraftInputSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts an explicit textModel override", () => {
+    const result = GenerateAIDraftInputSchema.safeParse({
+      ...validInput,
+      textModel: "gpt-5.2",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.textModel).toBe("gpt-5.2");
+    }
+  });
+
   it("rejects unknown stylePresetId", () => {
     const result = GenerateAIDraftInputSchema.safeParse({
       ...validInput,

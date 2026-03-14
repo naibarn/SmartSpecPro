@@ -90,6 +90,7 @@ import {
   FileText,
   ImageIcon,
   Video,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -343,6 +344,9 @@ export function AIDraftModal({
     }
     return localStorage.getItem(key) || "";
   };
+
+  // Auto mode state
+  const [autoMode, setAutoMode] = useState(false);
 
   // Config state
   const [topic, setTopic] = useState("");
@@ -773,9 +777,17 @@ export function AIDraftModal({
 
   // Mutations
   const generateDraft = trpc.presentation.ai.generateDraft.useMutation();
+  const resolveAutoDraftMutation = trpc.presentation.ai.resolveAutoDraft.useMutation();
   const cancelDraft = trpc.presentation.ai.cancelDraft.useMutation();
   const uploadReferenceMutation = trpc.ai.upload.useMutation();
   const executeSkillMutation = trpc.chat.executeSkill.useMutation();
+
+  // Content automation feature flag + agency integration
+  const { data: contentAutomationData } = trpc.infrastructure.getContentAutomationEnabled.useQuery(
+    undefined,
+    { staleTime: 5 * 60 * 1000 }
+  );
+  const contentAutomationEnabled = contentAutomationData?.contentAutomation ?? false;
 
   // Handler: generate article content using the selected skill
   const handleGenerateArticle = useCallback(async () => {
@@ -819,6 +831,34 @@ export function AIDraftModal({
     () => formatAIDraftWarnings(progress?.result?.warnings),
     [progress?.result?.warnings],
   );
+  const progressUpdatedAtMs = useMemo(() => {
+    if (!progress?.updatedAt) {
+      return null;
+    }
+    const parsed = Date.parse(progress.updatedAt);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [progress?.updatedAt]);
+  const hasDetachedWorker = Boolean(
+    taskId
+    && progress
+    && !progress.completed
+    && progress.workerActive === false,
+  );
+  const stalledMessage = useMemo(() => {
+    if (!progress) {
+      return "";
+    }
+    if (hasDetachedWorker) {
+      return `No active worker is attached to this run. The last backend update was ${stalledSeconds}s ago, so this draft likely stalled. Clear it and retry.`;
+    }
+    if (progress.phase <= 2) {
+      return `No progress update for ${stalledSeconds}s while waiting for AI planning. The model may still be generating structured slide output. You can wait, or click Cancel and retry.`;
+    }
+    if (progress.phase <= 5) {
+      return `No progress update for ${stalledSeconds}s while waiting for media generation. The media provider may be delayed or stuck. You can wait, or click Cancel and retry.`;
+    }
+    return `No progress update for ${stalledSeconds}s. The draft may be delayed or stuck. You can wait, or click Cancel and retry.`;
+  }, [hasDetachedWorker, progress, stalledSeconds]);
 
   // Track completion
   useEffect(() => {
@@ -837,12 +877,12 @@ export function AIDraftModal({
     }
 
     const marker = progress
-      ? `${progress.phase}|${progress.phaseLabel}|${progress.slidesCompleted}|${progress.totalSlides}|${progress.completed ? 1 : 0}|${progress.error?.code ?? ""}`
+      ? `${progress.phase}|${progress.phaseLabel}|${progress.phaseDetail ?? ""}|${progress.slidesCompleted}|${progress.totalSlides}|${progress.completed ? 1 : 0}|${progress.error?.code ?? ""}|${progress.updatedAt ?? ""}|${progress.workerActive ? 1 : 0}`
       : "pending";
 
     if (marker !== lastProgressMarkerRef.current) {
       lastProgressMarkerRef.current = marker;
-      lastProgressAtRef.current = Date.now();
+      lastProgressAtRef.current = progressUpdatedAtMs ?? Date.now();
       setStalledSeconds(0);
     }
   }, [
@@ -850,10 +890,14 @@ export function AIDraftModal({
     taskId,
     progress?.phase,
     progress?.phaseLabel,
+    progress?.phaseDetail,
     progress?.slidesCompleted,
     progress?.totalSlides,
     progress?.completed,
     progress?.error?.code,
+    progress?.updatedAt,
+    progress?.workerActive,
+    progressUpdatedAtMs,
   ]);
 
   useEffect(() => {
@@ -1152,6 +1196,56 @@ export function AIDraftModal({
     [referenceImages.length, uploadReferenceMutation, persistReferenceImages],
   );
 
+  const handleAutoModeChange = useCallback((enabled: boolean) => {
+    setAutoMode(enabled);
+  }, []);
+
+  const handleAutoGenerate = useCallback(async () => {
+    if (!topic.trim() || topic.trim().length < 3) {
+      toast.error("กรุณาระบุหัวข้อ (อย่างน้อย 3 ตัวอักษร)");
+      return;
+    }
+
+    // Step 1: Resolve ALL parameters automatically from the topic
+    let resolution: Awaited<ReturnType<typeof resolveAutoDraftMutation.mutateAsync>> | undefined;
+    try {
+      resolution = await resolveAutoDraftMutation.mutateAsync({
+        topic: topic.trim(),
+      });
+    } catch (err) {
+      console.warn("[AIDraftModal] Auto-resolve failed, using defaults:", err);
+    }
+
+    generateDraft.mutate(
+      {
+        deckId,
+        expectedVersion,
+        prompt: topic.trim(),
+        numSlides,
+        language: (resolution?.language ?? language) as "auto" | "en" | "th",
+        textModel: resolution?.textModel,
+        canvasWidth: selectedCanvasWidth,
+        canvasHeight: selectedCanvasHeight,
+        draftSkillId: resolution?.draftSkillId ?? "general-article-writer",
+        stylePresetId: resolution?.stylePresetId ?? "dark-professional",
+        imageSkillId: resolution?.imageSkillId ?? undefined,
+        imageModel: resolution?.imageModel ?? undefined,
+        useCustomArticle: false,
+        hideTextOnSlides: false,
+        generateAudio: false,
+      },
+      {
+        onSuccess: (data) => {
+          setTaskId(data.taskId);
+          setCompleted(false);
+        },
+        onError: (err) => {
+          toast.error(err.message || "Failed to start auto generation");
+        },
+      },
+    );
+  }, [topic, resolveAutoDraftMutation, generateDraft, deckId, expectedVersion, numSlides, language, selectedCanvasWidth, selectedCanvasHeight]);
+
   const handleGenerate = useCallback(() => {
     if (advancedMediaOptionsEnabled) {
       const missingRequiredFields = getMissingRequiredModelFields(selectedMediaModelFields, {
@@ -1316,9 +1410,24 @@ export function AIDraftModal({
 
   const handleCancel = useCallback(() => {
     if (taskId) {
-      cancelDraft.mutate({ taskId });
+      cancelDraft.mutate(
+        { taskId },
+        {
+          onSuccess: (result) => {
+            if (result?.success) {
+              toast.info("Cancellation requested");
+              void progressQuery.refetch();
+            } else {
+              toast.error("Unable to cancel this generation");
+            }
+          },
+          onError: (err) => {
+            toast.error(err.message || "Failed to cancel generation");
+          },
+        },
+      );
     }
-  }, [cancelDraft, taskId]);
+  }, [cancelDraft, progressQuery, taskId]);
 
   const handleClose = useCallback(() => {
     if (isFinalizingCompletion) {
@@ -1395,7 +1504,10 @@ export function AIDraftModal({
     && progress
     && !progress.completed
     && !progress.error
-    && stalledSeconds >= 120,
+    && (
+      stalledSeconds >= 120
+      || (hasDetachedWorker && stalledSeconds >= 15)
+    ),
   );
 
   // Effective values for advanced toggles
@@ -1478,6 +1590,23 @@ export function AIDraftModal({
           <Type className="h-3.5 w-3.5 text-teal-500" />
           Content
         </legend>
+
+      {/* Auto mode toggle */}
+      {contentAutomationEnabled && (
+        <div className="flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+          <div>
+            <p className="text-sm font-medium text-blue-900">Auto mode</p>
+            <p className="text-xs text-blue-600">
+              AI จะเลือก skill, model, style ให้อัตโนมัติ
+            </p>
+          </div>
+          <Switch
+            checked={autoMode}
+            onCheckedChange={handleAutoModeChange}
+            aria-label="Auto mode"
+          />
+        </div>
+      )}
 
       {/* Topic */}
       <div className="space-y-1.5">
@@ -1658,6 +1787,7 @@ export function AIDraftModal({
         )}
       </div>
 
+      {!autoMode && (<>
       <div className="space-y-2 rounded-md border border-muted bg-muted/20 p-3">
         <div className="flex items-center justify-between gap-4">
           <div>
@@ -1816,9 +1946,11 @@ export function AIDraftModal({
           </SelectContent>
         </Select>
       </div>
+      </>)}
       </fieldset>
 
       {/* ── Section: Skills & AI ─────────────────────── */}
+      {!autoMode && (
       <fieldset className="space-y-3 pt-1">
         <legend className="flex w-full items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
           <Sparkles className="h-3.5 w-3.5 text-teal-500" />
@@ -1994,8 +2126,10 @@ export function AIDraftModal({
         </Collapsible>
       )}
       </fieldset>
+      )}
 
       {/* ── Section: Media & Output ──────────────────── */}
+      {!autoMode && (
       <fieldset className="space-y-3 pt-1">
         <legend className="flex w-full items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-muted-foreground before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">
           <Film className="h-3.5 w-3.5 text-teal-500" />
@@ -2076,6 +2210,7 @@ export function AIDraftModal({
         {renderDynamicMediaModelInputs()}
       </div>
       </fieldset>
+      )}
 
       {/* ── Section: Visual & References ─────────────── */}
       <fieldset className="space-y-3 pt-1">
@@ -2417,12 +2552,15 @@ export function AIDraftModal({
           <div className="text-sm font-medium">
             Phase {progress.phase}/{TOTAL_AI_DRAFT_PHASES}: {progress.phaseLabel}
           </div>
+          {progress.phaseDetail ? (
+            <p className="text-xs text-muted-foreground">{progress.phaseDetail}</p>
+          ) : null}
           <Progress value={progressPercent} />
           {showStalledWarning && (
             <Alert className="border-amber-500">
               <AlertTriangle className="h-4 w-4 text-amber-500" />
               <AlertDescription>
-                No progress update for {stalledSeconds}s. The media provider may be delayed or stuck. You can wait, or click Cancel and retry.
+                {stalledMessage}
               </AlertDescription>
             </Alert>
           )}
@@ -2519,7 +2657,7 @@ export function AIDraftModal({
         </div>
 
         <DialogFooter className="shrink-0 border-t px-6 pt-4 pb-6">
-          {!taskId && (
+          {!taskId && !autoMode && (
             <Button
               onClick={handleGenerate}
               disabled={!canGenerate || isFinalizingCompletion}
@@ -2532,6 +2670,36 @@ export function AIDraftModal({
               )}
               Generate
             </Button>
+          )}
+
+          {!taskId && autoMode && (
+            <Button
+              onClick={handleAutoGenerate}
+              disabled={resolveAutoDraftMutation.isPending || generateDraft.isPending || topic.trim().length < 3}
+              aria-label="Auto Generate"
+            >
+              {(resolveAutoDraftMutation.isPending || generateDraft.isPending) ? (
+                <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Zap className="mr-1 h-3.5 w-3.5" />
+              )}
+              Auto Generate
+            </Button>
+          )}
+
+          {taskId && !completed && (
+            hasDetachedWorker && showStalledWarning ? (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setTaskId(null);
+                  setCompleted(false);
+                  setStalledSeconds(0);
+                }}
+              >
+                Clear Stalled Run
+              </Button>
+            ) : null
           )}
 
           {taskId && !completed && (
