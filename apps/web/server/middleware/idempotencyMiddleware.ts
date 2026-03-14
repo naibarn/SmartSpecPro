@@ -1,0 +1,85 @@
+import type { Request, Response, NextFunction } from "express";
+import { getRedisClient } from "../services/redis";
+
+const MAX_KEY_LENGTH = 64;
+const MAX_CACHE_SIZE = 1_048_576; // 1MB
+const LARGE_RESPONSE_SIZE = 102_400; // 100KB
+
+/**
+ * Idempotency middleware for POST requests.
+ * Uses Redis NX lock to prevent concurrent duplicate execution.
+ */
+export function idempotencyMiddleware() {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    if (req.method !== "POST") return next();
+
+    const idempotencyKey = req.headers["idempotency-key"] as string | undefined;
+    if (!idempotencyKey) return next();
+
+    if (idempotencyKey.length > MAX_KEY_LENGTH) {
+      return res.status(400).json({
+        error: {
+          code: "invalid_request",
+          message: `Idempotency-Key must be at most ${MAX_KEY_LENGTH} characters`,
+          type: "invalid_request_error",
+        },
+      });
+    }
+
+    const tenantId = (req.auth as any)?.tenantId ?? "unknown";
+    const cacheKey = `idempotency:${tenantId}:${idempotencyKey}`;
+    const lockKey = `idempotency:lock:${tenantId}:${idempotencyKey}`;
+
+    const redis = getRedisClient();
+
+    // Acquire lock (NX = set-if-not-exists)
+    const acquired = await redis.set(lockKey, "1", "EX", 60, "NX");
+    if (!acquired) {
+      return res.status(409).json({
+        error: {
+          code: "idempotency_conflict",
+          message:
+            "A request with this Idempotency-Key is already being processed",
+          type: "invalid_request_error",
+        },
+      });
+    }
+
+    try {
+      // Check for cached response
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        const { statusCode, body, contentType } = JSON.parse(cached);
+        if (contentType) res.setHeader("Content-Type", contentType);
+        await redis.del(lockKey).catch(() => {});
+        return res.status(statusCode).send(body);
+      }
+
+      // Intercept res.json to capture response for caching
+      const originalJson = res.json.bind(res);
+      res.json = ((body: any) => {
+        const serialized = JSON.stringify(body);
+        const byteSize = Buffer.byteLength(serialized, "utf-8");
+
+        if (byteSize <= MAX_CACHE_SIZE) {
+          const ttl =
+            byteSize > LARGE_RESPONSE_SIZE ? 3600 : 86400;
+          const cacheValue = JSON.stringify({
+            statusCode: res.statusCode,
+            body: serialized,
+            contentType: res.getHeader("content-type"),
+          });
+          redis.set(cacheKey, cacheValue, "EX", ttl).catch(() => {});
+        }
+
+        redis.del(lockKey).catch(() => {});
+        return originalJson(body);
+      }) as any;
+
+      next();
+    } catch {
+      await redis.del(lockKey).catch(() => {});
+      next();
+    }
+  };
+}
