@@ -235,7 +235,7 @@ export function createPublicSkillsRouter(): Router {
         const userId = (auth as any).userId as number;
         const tenantId = (auth as any).tenantId as string;
 
-        // Credit pre-check
+        // Credit pre-check and upfront deduction
         const estimatedCost = Math.ceil((skill.creditMultiplier ?? 1) * 2);
         const sufficient = await hasEnoughCredits(userId, estimatedCost);
         if (!sufficient) {
@@ -247,6 +247,16 @@ export function createPublicSkillsRouter(): Router {
           );
           return;
         }
+
+        // Deduct credits BEFORE execution so the user cannot get output for free
+        // if deductCredits fails. If execution subsequently fails, credits are NOT
+        // refunded — this is intentional (the service cost was incurred).
+        await deductCredits({
+          userId,
+          amount: estimatedCost,
+          sourceType: "api_skill",
+          description: `Skill execution: ${skill.id}`,
+        } as any);
 
         // Build execution params
         const prompt =
@@ -267,14 +277,7 @@ export function createPublicSkillsRouter(): Router {
           tenantId,
         );
 
-        // Deduct credits
-        const creditsUsed = result.creditsUsed ?? estimatedCost;
-        await deductCredits({
-          userId,
-          amount: creditsUsed,
-          sourceType: "api_skill",
-          description: `Skill execution: ${skill.id}`,
-        } as any);
+        const creditsUsed = estimatedCost;
 
         // Get remaining balance
         let remaining = 0;

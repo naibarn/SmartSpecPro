@@ -9,7 +9,7 @@ import {
 } from "../services/apiKeyService";
 import { ALLOWED_API_SCOPES } from "../../shared/publicApiTypes";
 import { getDb } from "../db";
-import { apiAuditEvents, apiWebhookEndpoints } from "../../drizzle/schema";
+import { publicApiAuditLog, apiWebhookEndpoints } from "../../drizzle/schema";
 
 // ---------------------------------------------------------------------------
 // Router
@@ -99,38 +99,38 @@ export const apiKeysRouter = router({
 
       const cutoff = new Date(Date.now() - input.days * 86_400_000);
 
-      // Requests per day
+      // Requests per day (uses publicApiAuditLog — the correct table for public API audit events)
       const perDayRows = await db
         .select({
-          date: sql<string>`date_trunc('day', ${apiAuditEvents.createdAt})::date::text`,
+          date: sql<string>`date_trunc('day', ${publicApiAuditLog.createdAt})::date::text`,
           count: sql<number>`count(*)::int`,
-          errors: sql<number>`count(*) filter (where ${apiAuditEvents.statusCode} >= 400)::int`,
-          creditsUsed: sql<number>`coalesce(sum(${apiAuditEvents.creditsUsed}), 0)::int`,
+          errors: sql<number>`count(*) filter (where ${publicApiAuditLog.statusCode} >= 400)::int`,
+          creditsUsed: sql<number>`coalesce(sum(${publicApiAuditLog.creditsUsed}), 0)::int`,
         })
-        .from(apiAuditEvents)
+        .from(publicApiAuditLog)
         .where(
           and(
-            eq(apiAuditEvents.apiKeyId, input.keyId),
-            gte(apiAuditEvents.createdAt, cutoff),
+            eq(publicApiAuditLog.apiKeyId, input.keyId),
+            gte(publicApiAuditLog.createdAt, cutoff),
           ),
         )
-        .groupBy(sql`date_trunc('day', ${apiAuditEvents.createdAt})`)
-        .orderBy(sql`date_trunc('day', ${apiAuditEvents.createdAt})`);
+        .groupBy(sql`date_trunc('day', ${publicApiAuditLog.createdAt})`)
+        .orderBy(sql`date_trunc('day', ${publicApiAuditLog.createdAt})`);
 
       // Top endpoints
       const topRows = await db
         .select({
-          path: apiAuditEvents.path,
+          path: publicApiAuditLog.path,
           count: sql<number>`count(*)::int`,
         })
-        .from(apiAuditEvents)
+        .from(publicApiAuditLog)
         .where(
           and(
-            eq(apiAuditEvents.apiKeyId, input.keyId),
-            gte(apiAuditEvents.createdAt, cutoff),
+            eq(publicApiAuditLog.apiKeyId, input.keyId),
+            gte(publicApiAuditLog.createdAt, cutoff),
           ),
         )
-        .groupBy(apiAuditEvents.path)
+        .groupBy(publicApiAuditLog.path)
         .orderBy(sql`count(*) desc`)
         .limit(10);
 

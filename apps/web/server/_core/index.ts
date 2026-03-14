@@ -93,6 +93,8 @@ import { createPublicEventsRouter } from "../routes/publicEventsApi";
 import { initWebhookApiDeliveryQueue, closeWebhookApiDeliveryQueue } from "../services/webhookDeliveryService";
 import { registerPublicDocsRoutes } from "../routes/publicDocsApi";
 import { apiKeyAuthMiddleware } from "../middleware/apiKeyAuth";
+import { assertHmacSecretConfigured } from "../services/apiKeyService";
+import { publicApiAuditMiddleware } from "../middleware/publicApiAudit";
 import { publicApiCorsMiddleware } from "../middleware/publicApiCors";
 import { publicApiFeatureGuard } from "../middleware/publicApiFeatureGuard";
 import { publicApiHeadersMiddleware } from "../middleware/publicApiHeaders";
@@ -427,6 +429,7 @@ app.use(
   publicApiHeadersMiddleware,
   apiKeyAuthMiddleware,
   publicApiFeatureGuard,
+  publicApiAuditMiddleware,
 );
 app.use("/v1/skills", createPublicSkillsRouter());
 app.use("/v1/agencies", createPublicAgencyRouter());
@@ -1093,6 +1096,9 @@ async function main() {
   } catch (error) {
     console.error("[Startup] Failed to initialize webhook dispatch queue:", error);
   }
+
+  // Assert HMAC secret is configured for public API key authentication
+  assertHmacSecretConfigured();
 
   // Initialize Automation Jobs queue (BullMQ — public API job execution)
   try {

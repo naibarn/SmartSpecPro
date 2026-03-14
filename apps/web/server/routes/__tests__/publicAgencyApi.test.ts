@@ -139,8 +139,8 @@ const runResult = {
 
 describe("GET /v1/agencies", () => {
   beforeEach(() => {
-    // Single select query returns agency list
-    mockDbInstance = buildMockDb([[agency]]);
+    // Two queries: first COUNT (returns [{value:1}]), then SELECT rows
+    mockDbInstance = buildMockDb([[{ value: 1 }], [agency]]);
   });
 
   it("returns agencies for the authenticated tenant", async () => {

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { requireScopes } from "../middleware/requireScopes";
 import { sendApiError } from "../middleware/publicApiHeaders";
+import { sanitizeUri, assertPublicIp, ApiValidationError } from "../services/ssrfValidation";
 import {
   createJob,
   cancelJob,
@@ -80,13 +81,29 @@ export function createPublicJobsRouter(): Router {
     const tenantId = (auth as any).tenantId as string;
     const apiKeyId = (auth as any).apiKeyId as string;
 
+    // SSRF protection: validate callbackUrl before storing
+    let safeCallbackUrl: string | undefined;
+    if (parsed.data.callback_url) {
+      try {
+        const sanitized = sanitizeUri(parsed.data.callback_url);
+        await assertPublicIp(new URL(sanitized).hostname);
+        safeCallbackUrl = sanitized;
+      } catch (err) {
+        if (err instanceof ApiValidationError) {
+          sendApiError(res, 400, "invalid_request", err.message);
+          return;
+        }
+        throw err;
+      }
+    }
+
     try {
       const job = await createJob(
         {
           type: parsed.data.type,
           params: parsed.data.params,
           idempotencyKey: parsed.data.idempotency_key,
-          callbackUrl: parsed.data.callback_url,
+          callbackUrl: safeCallbackUrl,
           maxCredits: parsed.data.max_credits,
         },
         { userId, tenantId, apiKeyId },

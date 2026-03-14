@@ -259,14 +259,11 @@ describe("executeWebhookDelivery — failure", () => {
 describe("dispatchWebhookEvent", () => {
   it("skips endpoints that don't subscribe to the event type", async () => {
     const ep = { ...testEndpoint, events: ["media.ready"] };
+    // Single SELECT returns full endpoint objects (N+1 fix: no second query)
     const db = {
-      select: vi.fn()
-        .mockReturnValueOnce({
-          from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([{ id: ep.id, retryPolicy: ep.retryPolicy }]) }),
-        })
-        .mockReturnValueOnce({
-          from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([{ events: ["media.ready"] }]) }),
-        }),
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([ep]) }),
+      }),
     };
     mockGetDb.mockResolvedValue(db);
 

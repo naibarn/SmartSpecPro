@@ -179,7 +179,7 @@ export async function dispatchWebhookEvent(
   if (!db) return;
 
   const endpoints = await db
-    .select({ id: apiWebhookEndpoints.id, retryPolicy: apiWebhookEndpoints.retryPolicy })
+    .select()
     .from(apiWebhookEndpoints)
     .where(
       and(
@@ -189,14 +189,8 @@ export async function dispatchWebhookEvent(
     );
 
   for (const ep of endpoints) {
-    // Filter endpoints that subscribed to this event type (done in memory to avoid JSON operator issues)
-    const full = await db
-      .select({ events: apiWebhookEndpoints.events })
-      .from(apiWebhookEndpoints)
-      .where(eq(apiWebhookEndpoints.id, ep.id));
-
-    const events = full[0]?.events ?? [];
-    if (!events.includes(eventType)) continue;
+    // Filter endpoints that subscribed to this event type (in-memory to avoid JSON operator issues)
+    if (!ep.events.includes(eventType)) continue;
 
     if (deliveryQueue) {
       await deliveryQueue.add(

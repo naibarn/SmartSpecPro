@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { randomUUID } from "crypto";
-import { eq, and } from "drizzle-orm";
+import { eq, and, count } from "drizzle-orm";
 import { requireScopes } from "../middleware/requireScopes";
 import { sendApiError } from "../middleware/publicApiHeaders";
 import { agencyBridge } from "../services/agencyBridge";
@@ -112,6 +112,12 @@ export function createPublicAgencyRouter(): Router {
       );
 
       const drizzle = db.instance;
+
+      const [{ value: total }] = await drizzle
+        .select({ value: count() })
+        .from(agencies)
+        .where(eq(agencies.tenantId, tenantId));
+
       const rows = await drizzle
         .select({
           id: agencies.id,
@@ -128,6 +134,7 @@ export function createPublicAgencyRouter(): Router {
         .limit(limit)
         .offset((page - 1) * limit);
 
+      const offset = (page - 1) * limit;
       res.json({
         agencies: rows.map((r) => ({
           id: r.id,
@@ -137,7 +144,7 @@ export function createPublicAgencyRouter(): Router {
           default_model: r.defaultModel ?? null,
           created_at: r.createdAt?.toISOString() ?? null,
         })),
-        pagination: { page, limit, total: rows.length },
+        pagination: { page, limit, total, has_more: offset + rows.length < total },
       });
     } catch (err) {
       console.error("[PublicAgencyApi] GET /v1/agencies error", err);
