@@ -16,6 +16,9 @@ vi.mock("../redis", () => ({
   getRedisClient: vi.fn(),
   isRedisAvailable: vi.fn(() => false),
 }));
+vi.mock("../tenantFeatureFlagService", () => ({
+  getTenantFeatureFlags: vi.fn(() => Promise.resolve({ multimodalMemory: true })),
+}));
 
 import { callLLMStructured } from "../callLLMStructured";
 import { getMultimodalEmbeddingProvider } from "../multimodalEmbeddingProvider";
