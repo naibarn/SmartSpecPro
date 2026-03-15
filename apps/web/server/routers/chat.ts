@@ -712,6 +712,72 @@ export const chatRouter = router({
         attachments: input.attachments || [],
       });
 
+      // --- Multimodal memory ingestion hook (section 08) ---
+      // Fire-and-forget: errors here MUST NOT block message creation.
+      const imageAttachments = (input.attachments || []).filter((a) => a.type === "image");
+      if (imageAttachments.length > 0) {
+        (async () => {
+          try {
+            const { createAssetFromAttachment } = await import("../services/mediaAssetService");
+            const { addRecentAsset } = await import("../services/visualStateService");
+
+            for (const attachment of imageAttachments) {
+              try {
+                const asset = await createAssetFromAttachment(attachment as any, {
+                  userId: ctx.user.id,
+                  tenantId: (ctx.user as any).tenantId || "",
+                  conversationId: input.conversationId,
+                  messageId: userMessage.id,
+                  projectId: (conversation as any).projectId,
+                });
+
+                // Register in visual state (enables context packing in section 07)
+                await addRecentAsset(input.conversationId, asset.assetId).catch((err: unknown) => {
+                  debugLog("Chat", "addRecentAsset failed (non-fatal)", err);
+                });
+
+                // Credit pre-check (0.5 credits per image for full vision pipeline)
+                const VISION_PIPELINE_COST = 0.5;
+                const canAfford = await hasEnoughCredits(ctx.user.id, VISION_PIPELINE_COST);
+
+                if (canAfford) {
+                  // Dispatch async vision analysis to Python backend (fire-and-forget)
+                  const pythonUrl = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+                  const proxyToken = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || "";
+                  fetch(`${pythonUrl}/api/v1/vision/analyze`, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      "x-proxy-token": proxyToken,
+                    },
+                    body: JSON.stringify({
+                      asset_id: asset.assetId,
+                      image_url: attachment.url,
+                      tenant_id: (ctx.user as any).tenantId || "",
+                      user_id: ctx.user.id,
+                    }),
+                  }).catch((err: unknown) => {
+                    debugLog("Chat", "Vision analysis dispatch failed (non-fatal)", { assetId: asset.assetId, err });
+                  });
+                } else {
+                  debugLog("Chat", "Insufficient credits for vision analysis", {
+                    userId: ctx.user.id,
+                    assetId: asset.assetId,
+                  });
+                }
+              } catch (err) {
+                debugLog("Chat", "Asset ingestion failed for attachment (non-fatal)", {
+                  url: attachment.url,
+                  err,
+                });
+              }
+            }
+          } catch (err) {
+            debugLog("Chat", "Multimodal ingestion hook failed (non-fatal)", err);
+          }
+        })();
+      }
+
       // Return the user message immediately
       // The actual LLM response should be handled via streaming endpoint
       return {

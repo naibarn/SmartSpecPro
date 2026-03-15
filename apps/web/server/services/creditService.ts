@@ -19,7 +19,9 @@ export type CreditSourceType =
   | "scheduler" | "admin" | "agency" | "creator_revenue" | "other"
   | "tts" | "browser_automation" | "widget_chat" | "webhook_chat" | "webhook_trigger"
   | "api_chat" | "api_skill" | "api_agency" | "api_job"
-  | "api_mcp" | "api_media" | "api_presentation" | "api_video_project";
+  | "api_mcp" | "api_media" | "api_presentation" | "api_video_project"
+  // Section 07/08 — multimodal memory pipeline
+  | "vision_analysis" | "embedding_generation" | "reference_resolution";
 
 export class BudgetExceededError extends Error {
   public readonly monthlyLimit: number;
