@@ -130,7 +130,7 @@ export function createPublicSkillsRouter(): Router {
 
       res.json({
         skills: skillsWithSchema,
-        pagination: { page, limit, total },
+        pagination: { page, limit, total, has_more: (page - 1) * limit + skillsWithSchema.length < total },
       });
     } catch (err) {
       console.error("[PublicSkillsApi] GET /v1/skills error", err);

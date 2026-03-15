@@ -913,7 +913,7 @@ export function buildOpenApiSpec() {
           operationId: "createJob",
           tags: ["Jobs"],
           summary: "Create an automation job",
-          description: "Queues a background automation job. Requires scope: `jobs:write`.",
+          description: "Queues a background automation job. Requires scope: `jobs:create`.",
           requestBody: {
             required: true,
             content: {
@@ -997,7 +997,7 @@ export function buildOpenApiSpec() {
           operationId: "cancelJob",
           tags: ["Jobs"],
           summary: "Cancel or delete a job",
-          description: "Cancels a pending job or deletes a completed one. Requires scope: `jobs:write` (or `jobs:create`).",
+          description: "Cancels a pending job or deletes a completed one. Requires scope: `jobs:create`.",
           parameters: [
             { name: "jobId", in: "path", required: true, schema: { type: "string" } },
           ],

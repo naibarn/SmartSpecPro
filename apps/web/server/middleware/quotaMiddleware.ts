@@ -8,6 +8,7 @@
 
 import type { Request, Response, NextFunction } from "express";
 import { checkAndIncrementQuota } from "../services/apiKeyQuotaService";
+import { sendApiError } from "./publicApiHeaders";
 
 export function quotaMiddleware() {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -34,15 +35,12 @@ export function quotaMiddleware() {
       if (result.retryAfterSeconds) {
         res.setHeader("Retry-After", String(result.retryAfterSeconds));
       }
-      res.setHeader("X-Api-Error-Code", "quota_exceeded");
-      res.status(429).json({
-        error: {
-          code: "quota_exceeded",
-          message: `${windowLabel.charAt(0).toUpperCase() + windowLabel.slice(1)} quota exceeded. Try again later.`,
-          type: "rate_limit_error",
-          window: result.blockedWindow,
-        },
-      });
+      sendApiError(
+        res,
+        429,
+        "quota_exceeded",
+        `${windowLabel.charAt(0).toUpperCase() + windowLabel.slice(1)} quota exceeded. Try again later.`,
+      );
       return;
     }
 

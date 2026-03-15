@@ -62,7 +62,7 @@ const SCOPE_CATEGORIES = [
   { label: "Media", scopes: ["media:generate"] },
   { label: "LLM", scopes: ["llm:chat"] },
   { label: "MCP", scopes: ["mcp:read", "mcp:write"] },
-  { label: "Jobs", scopes: ["jobs:create", "jobs:read", "jobs:write"] },
+  { label: "Jobs", scopes: ["jobs:create", "jobs:read"] },
   { label: "Webhooks", scopes: ["webhooks:manage"] },
   { label: "Events", scopes: ["events:read"] },
   { label: "API Keys", scopes: ["api_keys:manage"] },

@@ -154,7 +154,7 @@ export function createPublicJobsRouter(): Router {
           created_at: j.createdAt,
           completed_at: j.completedAt ?? null,
         })),
-        pagination: { page, limit, total },
+        pagination: { page, limit, total, has_more: (page - 1) * limit + jobs.length < total },
       });
     } catch (err: any) {
       console.error("[PublicJobsApi] list error", err);

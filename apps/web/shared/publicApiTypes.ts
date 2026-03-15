@@ -17,7 +17,6 @@ export const ALLOWED_API_SCOPES = [
   "mcp:write",
   "jobs:create",
   "jobs:read",
-  "jobs:write",
   "webhooks:manage",
   "events:read",
   "api_keys:manage",

@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { getRedisClient } from "../services/redis";
+import { sendApiError } from "./publicApiHeaders";
 
 const MAX_KEY_LENGTH = 64;
 const MAX_CACHE_SIZE = 1_048_576; // 1MB
@@ -17,14 +18,12 @@ export function idempotencyMiddleware() {
     if (!idempotencyKey) return next();
 
     if (idempotencyKey.length > MAX_KEY_LENGTH) {
-      res.setHeader("X-Api-Error-Code", "invalid_request");
-      return res.status(400).json({
-        error: {
-          code: "invalid_request",
-          message: `Idempotency-Key must be at most ${MAX_KEY_LENGTH} characters`,
-          type: "invalid_request_error",
-        },
-      });
+      return sendApiError(
+        res,
+        400,
+        "invalid_request",
+        `Idempotency-Key must be at most ${MAX_KEY_LENGTH} characters`,
+      );
     }
 
     const tenantId = (req.auth as any)?.tenantId ?? "unknown";
@@ -36,15 +35,12 @@ export function idempotencyMiddleware() {
     // Acquire lock (NX = set-if-not-exists)
     const acquired = await redis.set(lockKey, "1", "EX", 60, "NX");
     if (!acquired) {
-      res.setHeader("X-Api-Error-Code", "idempotency_conflict");
-      return res.status(409).json({
-        error: {
-          code: "idempotency_conflict",
-          message:
-            "A request with this Idempotency-Key is already being processed",
-          type: "invalid_request_error",
-        },
-      });
+      return sendApiError(
+        res,
+        409,
+        "idempotency_conflict",
+        "A request with this Idempotency-Key is already being processed",
+      );
     }
 
     try {

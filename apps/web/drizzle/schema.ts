@@ -217,6 +217,8 @@ export const creditSourceTypeEnum = pgEnum("credit_source_type", [
   "api_media",
   "api_presentation",
   "api_video_project",
+  "api_chat",
+  "api_mcp",
 ]);
 
 // Settlement status for creator revenue sharing
