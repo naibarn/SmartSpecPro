@@ -340,3 +340,244 @@ describe('agency_conversations table schema', () => {
     expect(columns.updatedAt).toBeDefined();
   });
 });
+
+// ==========================================
+// Section 044: Multimodal Chat Memory Schema Tests
+// ==========================================
+
+import {
+  mediaAssets,
+  mediaAssetAnalysis,
+  multimodalMemoryItems,
+  multimodalMemoryVectors,
+  conversationVisualState,
+  multimodalMemoryLinks,
+  messages,
+} from './schema';
+
+describe('media_assets table schema', () => {
+  test('has all required columns', () => {
+    const cols = getTableColumns(mediaAssets);
+    expect(cols.id).toBeDefined();
+    expect(cols.tenantId).toBeDefined();
+    expect(cols.userId).toBeDefined();
+    expect(cols.projectId).toBeDefined();
+    expect(cols.conversationId).toBeDefined();
+    expect(cols.messageId).toBeDefined();
+    expect(cols.sourceType).toBeDefined();
+    expect(cols.status).toBeDefined();
+    expect(cols.storageKey).toBeDefined();
+    expect(cols.originalUrl).toBeDefined();
+    expect(cols.thumbnailUrl).toBeDefined();
+    expect(cols.mimeType).toBeDefined();
+    expect(cols.width).toBeDefined();
+    expect(cols.height).toBeDefined();
+    expect(cols.fileSize).toBeDefined();
+    expect(cols.checksumSha256).toBeDefined();
+    expect(cols.perceptualHash).toBeDefined();
+    expect(cols.createdAt).toBeDefined();
+    expect(cols.updatedAt).toBeDefined();
+  });
+
+  test('storageKey is not null', () => {
+    const cols = getTableColumns(mediaAssets);
+    expect(cols.storageKey.notNull).toBe(true);
+  });
+
+  test('mimeType is not null', () => {
+    const cols = getTableColumns(mediaAssets);
+    expect(cols.mimeType.notNull).toBe(true);
+  });
+
+  test('status defaults to "pending"', () => {
+    const cols = getTableColumns(mediaAssets);
+    expect(cols.status.default).toBe('pending');
+  });
+
+  test('sourceType defaults to "chat_attachment"', () => {
+    const cols = getTableColumns(mediaAssets);
+    expect(cols.sourceType.default).toBe('chat_attachment');
+  });
+
+  test('userId is not null', () => {
+    const cols = getTableColumns(mediaAssets);
+    expect(cols.userId.notNull).toBe(true);
+  });
+
+  test('tenantId is not null', () => {
+    const cols = getTableColumns(mediaAssets);
+    expect(cols.tenantId.notNull).toBe(true);
+  });
+});
+
+describe('media_asset_analysis table schema', () => {
+  test('has all required columns', () => {
+    const cols = getTableColumns(mediaAssetAnalysis);
+    expect(cols.id).toBeDefined();
+    expect(cols.mediaAssetId).toBeDefined();
+    expect(cols.provider).toBeDefined();
+    expect(cols.model).toBeDefined();
+    expect(cols.shortCaption).toBeDefined();
+    expect(cols.detailedCaption).toBeDefined();
+    expect(cols.ocrText).toBeDefined();
+    expect(cols.objects).toBeDefined();
+    expect(cols.styles).toBeDefined();
+    expect(cols.materials).toBeDefined();
+    expect(cols.colors).toBeDefined();
+    expect(cols.rooms).toBeDefined();
+    expect(cols.architectureTags).toBeDefined();
+    expect(cols.aestheticScore).toBeDefined();
+    expect(cols.safetyLabels).toBeDefined();
+    expect(cols.extractedJson).toBeDefined();
+    expect(cols.createdAt).toBeDefined();
+  });
+
+  test('mediaAssetId is not null', () => {
+    const cols = getTableColumns(mediaAssetAnalysis);
+    expect(cols.mediaAssetId.notNull).toBe(true);
+  });
+});
+
+describe('multimodal_memory_items table schema', () => {
+  test('has all required columns', () => {
+    const cols = getTableColumns(multimodalMemoryItems);
+    expect(cols.id).toBeDefined();
+    expect(cols.tenantId).toBeDefined();
+    expect(cols.userId).toBeDefined();
+    expect(cols.projectId).toBeDefined();
+    expect(cols.conversationId).toBeDefined();
+    expect(cols.messageId).toBeDefined();
+    expect(cols.mediaAssetId).toBeDefined();
+    expect(cols.memoryKind).toBeDefined();
+    expect(cols.title).toBeDefined();
+    expect(cols.summary).toBeDefined();
+    expect(cols.searchableText).toBeDefined();
+    expect(cols.sourceRole).toBeDefined();
+    expect(cols.salience).toBeDefined();
+    expect(cols.confidence).toBeDefined();
+    expect(cols.lastAccessedAt).toBeDefined();
+    expect(cols.accessCount).toBeDefined();
+    expect(cols.createdAt).toBeDefined();
+    expect(cols.updatedAt).toBeDefined();
+  });
+
+  test('searchableText is not null', () => {
+    const cols = getTableColumns(multimodalMemoryItems);
+    expect(cols.searchableText.notNull).toBe(true);
+  });
+
+  test('tenantId is not null (tenant isolation)', () => {
+    const cols = getTableColumns(multimodalMemoryItems);
+    expect(cols.tenantId.notNull).toBe(true);
+  });
+
+  test('userId is not null', () => {
+    const cols = getTableColumns(multimodalMemoryItems);
+    expect(cols.userId.notNull).toBe(true);
+  });
+
+  test('salience defaults to "0.500"', () => {
+    const cols = getTableColumns(multimodalMemoryItems);
+    expect(cols.salience.default).toBe('0.500');
+  });
+
+  test('confidence defaults to "0.800"', () => {
+    const cols = getTableColumns(multimodalMemoryItems);
+    expect(cols.confidence.default).toBe('0.800');
+  });
+
+  test('accessCount defaults to 0', () => {
+    const cols = getTableColumns(multimodalMemoryItems);
+    expect(cols.accessCount.default).toBe(0);
+  });
+});
+
+describe('multimodal_memory_vectors table schema', () => {
+  test('has all required columns', () => {
+    const cols = getTableColumns(multimodalMemoryVectors);
+    expect(cols.id).toBeDefined();
+    expect(cols.memoryItemId).toBeDefined();
+    expect(cols.provider).toBeDefined();
+    expect(cols.model).toBeDefined();
+    expect(cols.modality).toBeDefined();
+    expect(cols.embedding).toBeDefined();
+    expect(cols.embeddingVersion).toBeDefined();
+    expect(cols.createdAt).toBeDefined();
+  });
+
+  test('memoryItemId is not null', () => {
+    const cols = getTableColumns(multimodalMemoryVectors);
+    expect(cols.memoryItemId.notNull).toBe(true);
+  });
+
+  test('provider is not null', () => {
+    const cols = getTableColumns(multimodalMemoryVectors);
+    expect(cols.provider.notNull).toBe(true);
+  });
+
+  test('embedding is not null', () => {
+    const cols = getTableColumns(multimodalMemoryVectors);
+    expect(cols.embedding.notNull).toBe(true);
+  });
+});
+
+describe('conversation_visual_state table schema', () => {
+  test('has all required columns', () => {
+    const cols = getTableColumns(conversationVisualState);
+    expect(cols.conversationId).toBeDefined();
+    expect(cols.recentAssetIds).toBeDefined();
+    expect(cols.activeAssetIds).toBeDefined();
+    expect(cols.comparedAssetIds).toBeDefined();
+    expect(cols.namedSets).toBeDefined();
+    expect(cols.updatedAt).toBeDefined();
+  });
+
+  test('conversationId is the primary key', () => {
+    const cols = getTableColumns(conversationVisualState);
+    expect(cols.conversationId.notNull).toBe(true);
+  });
+
+  test('tenantId is not null', () => {
+    const cols = getTableColumns(conversationVisualState);
+    expect(cols.tenantId.notNull).toBe(true);
+  });
+});
+
+describe('multimodal_memory_links table schema', () => {
+  test('has all required columns', () => {
+    const cols = getTableColumns(multimodalMemoryLinks);
+    expect(cols.id).toBeDefined();
+    expect(cols.fromMemoryItemId).toBeDefined();
+    expect(cols.toMemoryItemId).toBeDefined();
+    expect(cols.relationType).toBeDefined();
+    expect(cols.weight).toBeDefined();
+    expect(cols.createdAt).toBeDefined();
+  });
+
+  test('fromMemoryItemId is not null', () => {
+    const cols = getTableColumns(multimodalMemoryLinks);
+    expect(cols.fromMemoryItemId.notNull).toBe(true);
+  });
+
+  test('toMemoryItemId is not null', () => {
+    const cols = getTableColumns(multimodalMemoryLinks);
+    expect(cols.toMemoryItemId.notNull).toBe(true);
+  });
+
+  test('weight defaults to "1.000"', () => {
+    const cols = getTableColumns(multimodalMemoryLinks);
+    expect(cols.weight.default).toBe('1.000');
+  });
+});
+
+describe('messages.attachments assetId extension', () => {
+  test('attachments column is defined', () => {
+    const cols = getTableColumns(messages);
+    expect(cols.attachments).toBeDefined();
+  });
+
+  test('attachments column is nullable (backward compatible)', () => {
+    const cols = getTableColumns(messages);
+    expect(cols.attachments.notNull).toBeFalsy();
+  });
+});

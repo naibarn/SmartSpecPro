@@ -547,6 +547,20 @@
       "when": 1773533663244,
       "tag": "0077_far_frank_castle",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1773548448271,
+      "tag": "0078_grey_mindworm",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1773552474749,
+      "tag": "0079_worthless_randall_flagg",
+      "breakpoints": true
     }
   ]
 }
