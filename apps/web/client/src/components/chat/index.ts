@@ -18,6 +18,12 @@ export { ScheduleConfirmCard } from "./ScheduleConfirmCard";
 // Workflow components
 export { JobCard } from "./JobCard";
 
+// Multimodal memory components (Section 11)
+export { ImageGalleryPanel } from "./ImageGalleryPanel";
+export type { GalleryImage, ImageGalleryPanelProps } from "./ImageGalleryPanel";
+export { VisualContextBadge } from "./VisualContextBadge";
+export type { VisualContextBadgeProps } from "./VisualContextBadge";
+
 // Artifact components
 export { CodeArtifact, InlineCode } from "./artifacts/CodeArtifact";
 export { ArtifactPanel } from "./artifacts/ArtifactPanel";
