@@ -873,13 +873,27 @@ export async function buildChatContext(
     used += cost;
   }
 
-  // 4.5. Visual Memory Assembly (section 07)
-  // Only runs when: images exist in conversation, user provided a message.
-  // Failures are non-fatal — chat pipeline always completes.
+  // 4.5. Visual Memory Assembly (section 07 / 09)
+  // Only runs when: images exist in conversation, user provided a message,
+  // AND multimodalMemory feature flag is enabled for the tenant.
   let visualMemoryContext: string | null = null;
   let imageAssets: ChatContext["imageAssets"] = [];
 
-  if (hasVisualContext && options?.currentUserMessage) {
+  // Gate 2 (section 09): check multimodalMemory flag before visual assembly.
+  // When no tenantId is available, allow visual assembly (backwards compatible).
+  let multimodalEnabled = !options?.tenantId; // default true when no tenantId
+  if (hasVisualContext && options?.tenantId) {
+    try {
+      const { getTenantFeatureFlags } = await import("./tenantFeatureFlagService");
+      const tenantFlags = await getTenantFeatureFlags(options.tenantId);
+      multimodalEnabled = tenantFlags.multimodalMemory;
+    } catch {
+      // Non-fatal — treat as flag off
+      multimodalEnabled = false;
+    }
+  }
+
+  if (multimodalEnabled && hasVisualContext && options?.currentUserMessage) {
     try {
       const {
         hasImageReferenceKeywords,

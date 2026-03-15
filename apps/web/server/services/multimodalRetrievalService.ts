@@ -113,6 +113,15 @@ export async function resolveVisualReferences(
   tenantId: string,
   projectId?: string
 ): Promise<ResolvedReference[]> {
+  // Gate 3 (section 09): honour multimodalMemory feature flag
+  try {
+    const { getTenantFeatureFlags } = await import("./tenantFeatureFlagService");
+    const flags = await getTenantFeatureFlags(tenantId);
+    if (!flags.multimodalMemory) return [];
+  } catch {
+    return [];
+  }
+
   // Step 1: Fast keyword pre-filter
   if (!hasImageReferenceKeywords(userMessage)) return [];
 
@@ -204,6 +213,15 @@ export async function retrieveRelevantAssets(
   scope: RetrievalScope
 ): Promise<RetrievalResult[]> {
   const { userId, tenantId, conversationId, projectId, explicitRefs, limit = DEFAULT_LIMIT } = scope;
+
+  // Gate 3 (section 09): honour multimodalMemory feature flag
+  try {
+    const { getTenantFeatureFlags } = await import("./tenantFeatureFlagService");
+    const flags = await getTenantFeatureFlags(tenantId);
+    if (!flags.multimodalMemory) return [];
+  } catch {
+    return [];
+  }
 
   // Fast path: high-confidence explicit references
   if (explicitRefs && explicitRefs.length > 0) {

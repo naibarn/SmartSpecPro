@@ -712,12 +712,18 @@ export const chatRouter = router({
         attachments: input.attachments || [],
       });
 
-      // --- Multimodal memory ingestion hook (section 08) ---
+      // --- Multimodal memory ingestion hook (section 08 / 09) ---
       // Fire-and-forget: errors here MUST NOT block message creation.
+      // Gate 1 (section 09): only run when multimodalMemory feature flag is enabled.
       const imageAttachments = (input.attachments || []).filter((a) => a.type === "image");
       if (imageAttachments.length > 0) {
         (async () => {
           try {
+            const { getTenantFeatureFlags } = await import("../services/tenantFeatureFlagService");
+            const tenantId = (ctx.user as any).tenantId || "";
+            const tenantFlags = await getTenantFeatureFlags(tenantId);
+            if (!tenantFlags.multimodalMemory) return;
+
             const { createAssetFromAttachment } = await import("../services/mediaAssetService");
             const { addRecentAsset } = await import("../services/visualStateService");
 

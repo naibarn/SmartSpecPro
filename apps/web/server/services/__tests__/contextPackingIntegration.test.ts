@@ -34,6 +34,11 @@ vi.mock("../enabledLlmModels", () => ({
 vi.mock("../modelLookup", () => ({
   buildModelProviderMapLookupCondition: vi.fn(() => ({})),
 }));
+vi.mock("../tenantFeatureFlagService", () => ({
+  getTenantFeatureFlags: vi.fn(() =>
+    Promise.resolve({ multimodalMemory: true })
+  ),
+}));
 
 import { getOrCreateState } from "../visualStateService";
 import {

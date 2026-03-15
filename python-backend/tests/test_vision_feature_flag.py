@@ -21,20 +21,20 @@ VALID_PAYLOAD = {
 
 
 def _make_app():
-    """Create test app with SMARTSPEC_PROXY_TOKEN configured."""
-    from unittest.mock import patch as _patch
-    with _patch.dict(os.environ, {"SMARTSPEC_PROXY_TOKEN": VALID_TOKEN}):
-        from fastapi import FastAPI
-        from app.api.vision import router
-        app = FastAPI()
-        app.include_router(router)
-        return app
+    """Create test app."""
+    from fastapi import FastAPI
+    from app.api.vision import router
+    app = FastAPI()
+    app.include_router(router)
+    return app
 
 
 @pytest.fixture
 def client():
     app = _make_app()
-    return TestClient(app, raise_server_exceptions=False)
+    with patch("app.api.vision.settings") as mock_settings:
+        mock_settings.SMARTSPEC_PROXY_TOKEN = VALID_TOKEN
+        yield TestClient(app, raise_server_exceptions=False)
 
 
 @pytest.fixture
@@ -84,7 +84,7 @@ class TestVisionFeatureFlag:
         import asyncio
         from app.api.vision import _check_multimodal_memory_flag
 
-        with patch("app.api.vision.get_redis_client", side_effect=Exception("connection refused"), create=True):
+        with patch("app.core.redis_client.get_redis", side_effect=Exception("connection refused")):
             result = asyncio.run(_check_multimodal_memory_flag("tenant-x"))
         assert result is False
 
@@ -95,7 +95,7 @@ class TestVisionFeatureFlag:
 
         mock_redis = AsyncMock()
         mock_redis.get = AsyncMock(return_value="true")
-        with patch("app.api.vision.get_redis_client", return_value=mock_redis, create=True):
+        with patch("app.core.redis_client.get_redis", new=AsyncMock(return_value=mock_redis)):
             result = asyncio.run(_check_multimodal_memory_flag("my-tenant"))
         mock_redis.get.assert_called_once_with("feature_flag:multimodalMemory:my-tenant")
         assert result is True

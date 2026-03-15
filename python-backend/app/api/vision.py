@@ -48,8 +48,8 @@ class VisionAnalyzeResponse(BaseModel):
 async def _check_multimodal_memory_flag(tenant_id: str) -> bool:
     """Check if the multimodalMemory feature flag is enabled for the tenant via Redis."""
     try:
-        from app.services.redis_service import get_redis_client
-        redis = await get_redis_client()
+        from app.core.redis_client import get_redis
+        redis = await get_redis()
         if redis is None:
             # Redis unavailable → treat as flag off (safe default)
             return False
