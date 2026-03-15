@@ -243,15 +243,27 @@ export function createPublicAgencyRouter(): Router {
         // Generate a short-lived (15 min) bearer token for the agency bridge
         const userToken = createInternalTokenFromAuth({ userId });
 
-        // Execute run
-        const result = await agencyBridge.executeRun({
-          agencyId,
-          conversationId,
-          message,
-          userToken,
-          tenantId,
-          userId,
-        });
+        // Execute run — if this throws and we had a reservation, refund it
+        let result: Awaited<ReturnType<typeof agencyBridge.executeRun>>;
+        try {
+          result = await agencyBridge.executeRun({
+            agencyId,
+            conversationId,
+            message,
+            userToken,
+            tenantId,
+            userId,
+          });
+        } catch (runErr) {
+          if (reservedCredits > 0) {
+            await refundCredits({
+              userId,
+              amount: reservedCredits,
+              reason: `Agency invocation failed — full reservation refund: ${agencyId}`,
+            } as any).catch(() => {});
+          }
+          throw runErr;
+        }
 
         const creditsUsed = result.creditsUsed ?? 0;
 
