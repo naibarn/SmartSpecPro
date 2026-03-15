@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { randomUUID } from "crypto";
-import { eq, and, count, gt } from "drizzle-orm";
+import { eq, and, count, gt, isNull, or } from "drizzle-orm";
 import { requireScopes } from "../middleware/requireScopes";
 import { sendApiError } from "../middleware/publicApiHeaders";
 import { agencyBridge } from "../services/agencyBridge";
@@ -52,7 +52,7 @@ async function getOrCreateAgencyApiConversation(
         eq(agencyConversations.userId, auth.userId),
         eq(agencyConversations.source, "api"),
         eq(agencies.tenantId, auth.tenantId),
-        gt(agencyConversations.expiresAt, new Date()),
+        or(isNull(agencyConversations.expiresAt), gt(agencyConversations.expiresAt, new Date())),
       ),
     )
     .limit(1);

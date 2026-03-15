@@ -143,6 +143,7 @@ export function rateLimitMiddleware() {
 
     if (!result.allowed) {
       res.setHeader("Retry-After", String(result.retryAfterSeconds));
+      res.setHeader("X-Api-Error-Code", "rate_limit_exceeded");
       return res.status(429).json({
         error: {
           code: "rate_limit_exceeded",
@@ -159,6 +160,7 @@ export function rateLimitMiddleware() {
     );
     if (!creditCheck.allowed) {
       res.setHeader("Retry-After", String(creditCheck.retryAfterSeconds ?? 3600));
+      res.setHeader("X-Api-Error-Code", "daily_credit_limit_exceeded");
       return res.status(429).json({
         error: {
           code: "daily_credit_limit_exceeded",

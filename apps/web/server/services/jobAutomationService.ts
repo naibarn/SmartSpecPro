@@ -411,27 +411,31 @@ export async function executeJob(jobId: string): Promise<void> {
       // non-fatal
     });
   } catch (execErr: any) {
-    await drizzle
-      .update(automationJobs)
-      .set({
-        status: "failed",
-        error: { message: execErr.message ?? "Unknown error" },
-        completedAt: new Date(),
-      })
-      .where(eq(automationJobs.id, jobId));
+    // Atomically mark failed and refund reserved credits
+    await db.instance.transaction(async (tx) => {
+      await tx
+        .update(automationJobs)
+        .set({
+          status: "failed",
+          error: { message: execErr.message ?? "Unknown error" },
+          completedAt: new Date(),
+        })
+        .where(eq(automationJobs.id, jobId));
 
-    // Refund all reserved credits on failure
-    if (job.creditsReserved > 0) {
-      await addCredits({
-        userId: job.userId,
-        amount: job.creditsReserved,
-        type: "refund",
-        description: `Job failure refund: ${jobId}`,
-        sourceType: "api_job",
-      } as any).catch((e: Error) =>
-        console.error(`[JobAutomation] Refund failed for job ${jobId}:`, e.message),
-      );
-    }
+      if (job.creditsReserved > 0) {
+        await addCredits({
+          userId: job.userId,
+          amount: job.creditsReserved,
+          type: "refund",
+          description: `Job failure refund: ${jobId}`,
+          sourceType: "api_job",
+        }).catch((e: Error) =>
+          console.error(`[JobAutomation] Refund failed for job ${jobId}:`, e.message),
+        );
+      }
+    }).catch((txErr: Error) =>
+      console.error(`[JobAutomation] Failure transaction error for job ${jobId}:`, txErr.message),
+    );
 
     // Emit failure event — fans out to webhook endpoints AND SSE subscribers
     emitPublicApiEvent(job.tenantId, "job.failed", {

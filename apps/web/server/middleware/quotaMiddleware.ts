@@ -34,6 +34,7 @@ export function quotaMiddleware() {
       if (result.retryAfterSeconds) {
         res.setHeader("Retry-After", String(result.retryAfterSeconds));
       }
+      res.setHeader("X-Api-Error-Code", "quota_exceeded");
       res.status(429).json({
         error: {
           code: "quota_exceeded",

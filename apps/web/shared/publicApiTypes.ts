@@ -75,7 +75,12 @@ export type ApiErrorCode =
   | "idempotency_conflict"
   | "not_found"
   | "internal_error"
-  | "feature_disabled";
+  | "feature_disabled"
+  | "credit_overflow"
+  | "invalid_job_type"
+  | "job_not_cancellable"
+  | "circular_pipeline_reference"
+  | "max_template_depth_exceeded";
 
 /** OpenAI-compatible error envelope. */
 export interface ApiErrorResponse {

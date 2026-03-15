@@ -17,6 +17,7 @@ export function idempotencyMiddleware() {
     if (!idempotencyKey) return next();
 
     if (idempotencyKey.length > MAX_KEY_LENGTH) {
+      res.setHeader("X-Api-Error-Code", "invalid_request");
       return res.status(400).json({
         error: {
           code: "invalid_request",
@@ -35,6 +36,7 @@ export function idempotencyMiddleware() {
     // Acquire lock (NX = set-if-not-exists)
     const acquired = await redis.set(lockKey, "1", "EX", 60, "NX");
     if (!acquired) {
+      res.setHeader("X-Api-Error-Code", "idempotency_conflict");
       return res.status(409).json({
         error: {
           code: "idempotency_conflict",
@@ -55,7 +57,7 @@ export function idempotencyMiddleware() {
         return res.status(statusCode).send(body);
       }
 
-      // Intercept res.json to capture response for caching
+      // Intercept res.json to capture response for caching and release lock
       const originalJson = res.json.bind(res);
       res.json = ((body: any) => {
         const serialized = JSON.stringify(body);
@@ -74,6 +76,14 @@ export function idempotencyMiddleware() {
 
         redis.del(lockKey).catch(() => {});
         return originalJson(body);
+      }) as any;
+
+      // Also intercept res.send (SSE and non-JSON responses) to release the lock
+      const originalSend = res.send.bind(res);
+      res.send = ((body: any) => {
+        redis.del(lockKey).catch(() => {});
+        res.send = originalSend; // restore to prevent double-del on subsequent writes
+        return originalSend(body);
       }) as any;
 
       next();
