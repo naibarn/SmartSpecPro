@@ -31,6 +31,7 @@ export default defineConfig({
       "client/src/**/*.test.tsx",
       "client/src/**/*.spec.ts",
       "shared/**/*.test.ts",
+      "scripts/**/*.test.ts",
     ],
     setupFiles: ["client/src/test-setup.ts"],
     env: {
