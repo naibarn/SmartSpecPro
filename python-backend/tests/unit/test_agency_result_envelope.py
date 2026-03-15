@@ -80,3 +80,39 @@ def test_parse_text_only_response_keeps_original_text():
     assert outcome.envelope is None
     assert outcome.error is None
     assert outcome.text_response == raw
+
+
+def test_parse_comparison_envelope_accepts_booking_comparison_intents():
+    raw = """
+```agency-result
+{
+  "version": "1.0",
+  "intent": "hotel_comparison",
+  "summary": "Comparison preview ready.",
+  "payload": {
+    "title": "Hotels near BTS Asok",
+    "options": [
+      {
+        "vendor": "Booking.com",
+        "option_title": "Centre Point Asok"
+      }
+    ]
+  },
+  "artifacts": [
+    {
+      "artifact_type": "comparison",
+      "title": "Hotels near BTS Asok"
+    }
+  ],
+  "references": [],
+  "metrics": {}
+}
+```
+""".strip()
+
+    outcome = parse_agency_result_envelope(raw)
+
+    assert outcome.found is True
+    assert outcome.valid is True
+    assert outcome.envelope is not None
+    assert outcome.envelope.intent == "hotel_comparison"

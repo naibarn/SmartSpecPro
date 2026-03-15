@@ -113,3 +113,23 @@ class TestReconcileCredits:
             threshold=1.0,
         )
         assert result is True
+
+    @pytest.mark.asyncio
+    async def test_reconcile_missing_totals_logs_pending_status(self):
+        with patch("app.services.agency_audit.log_agency_event") as mock_log:
+            result = await reconcile_credits(
+                run_id="run-13",
+                gateway_total=None,
+                run_total_credits=None,
+            )
+
+        assert result is None
+        mock_log.assert_called_once_with(
+            "agency_credit_reconciliation_pending",
+            run_id="run-13",
+            metadata={
+                "gateway_total": None,
+                "run_total_credits": None,
+                "reason": "missing_credit_totals",
+            },
+        )

@@ -126,22 +126,44 @@ class TestGate5OrphanReconciler:
     def test_live_browser_readiness_publish_in_beat_schedule(self):
         """Celery beat schedule includes live-browser readiness publishing."""
         from app.core.celery_app import celery_app
+        from app.core.config import settings
 
         schedule = celery_app.conf.beat_schedule
         assert "publish-live-browser-readiness" in schedule
         assert "publish_live_browser_readiness_snapshot" in schedule[
             "publish-live-browser-readiness"
         ]["task"]
+        assert schedule["publish-live-browser-readiness"]["schedule"] == float(
+            settings.LIVE_BROWSER_READINESS_PUBLISH_INTERVAL_SECONDS
+        )
 
     def test_live_browser_maintenance_in_beat_schedule(self):
         """Celery beat schedule includes live-browser maintenance."""
         from app.core.celery_app import celery_app
+        from app.core.config import settings
 
         schedule = celery_app.conf.beat_schedule
         assert "run-live-browser-maintenance" in schedule
         assert "run_live_browser_maintenance" in schedule[
             "run-live-browser-maintenance"
         ]["task"]
+        assert schedule["run-live-browser-maintenance"]["schedule"] == float(
+            settings.LIVE_BROWSER_MAINTENANCE_INTERVAL_SECONDS
+        )
+
+    def test_live_browser_readiness_watchdog_in_beat_schedule(self):
+        """Celery beat schedule includes live-browser readiness watchdog."""
+        from app.core.celery_app import celery_app
+        from app.core.config import settings
+
+        schedule = celery_app.conf.beat_schedule
+        assert "watch-live-browser-readiness" in schedule
+        assert "watch_live_browser_readiness_snapshot" in schedule[
+            "watch-live-browser-readiness"
+        ]["task"]
+        assert schedule["watch-live-browser-readiness"]["schedule"] == float(
+            settings.LIVE_BROWSER_READINESS_WATCHDOG_INTERVAL_SECONDS
+        )
 
     def test_sandbox_queue_in_required_queues(self):
         """The sandbox queue is listed in REQUIRED_QUEUES."""

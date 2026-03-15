@@ -110,6 +110,51 @@ class TestAgencyServiceLoadAgency:
 class TestAgencyServiceExecuteRun:
     """Tests for AgencyService.execute_run()."""
 
+    async def test_execute_run_orchestrator_passes_whitelist_and_retrieval_scope(self):
+        """Orchestrator path receives the same whitelist and retrieval scope as agent-only runs."""
+        from app.services.agency_service import AgencyService, RunContext
+
+        mock_db = _make_mock_db()
+        service = AgencyService(db=mock_db)
+
+        service.load_agency = AsyncMock(return_value=MagicMock(
+            agency_id="a1", tenant_id="t1", name="Test",
+            system_prompt="Base prompt", communication_flows=[],
+            max_run_time_seconds=600, user_id=1, conversation_id="c1",
+            credit_multiplier=1.0, creator_fee_credits=0, creator_id=None, platform_share_pct=20,
+        ))
+        service._load_agents = AsyncMock(return_value=[{
+            "id": "node-1",
+            "name": "Router",
+            "instructions": "",
+            "model": "gpt-4o-mini",
+            "model_settings": None,
+            "is_entry_point": True,
+            "node_type": "router",
+            "node_config": {},
+        }])
+        service._load_flows_full = AsyncMock(return_value=[])
+        service._load_tool_whitelist = AsyncMock(return_value={"builtin-document-search"})
+
+        mock_orchestrator = MagicMock()
+        mock_orchestrator.run = AsyncMock(return_value="orchestrated")
+
+        with patch("app.services.agency_service.should_use_orchestrator", return_value=True):
+            with patch("app.services.agency_service.AgencyOrchestrator", return_value=mock_orchestrator) as mock_ctor:
+                ctx = RunContext(
+                    user_id=1,
+                    tenant_id="t1",
+                    conversation_id="c1",
+                    user_token="tok",
+                    run_metadata={"retrieval_scope": {"effectiveMode": "library_only"}},
+                )
+                result = await service.execute_run("a1", "Hello", ctx)
+
+        assert result.response == "orchestrated"
+        ctor_kwargs = mock_ctor.call_args.kwargs
+        assert ctor_kwargs["agency_whitelist"] == {"builtin-document-search"}
+        assert ctor_kwargs["retrieval_scope_mode"] == "library_only"
+
     async def test_execute_run_passes_retrieval_scope_mode_to_tool_resolution(self):
         """execute_run enforces retrieval scope at tool-resolution time."""
         from app.services.agency_service import AgencyService, RunContext
@@ -182,6 +227,10 @@ class TestAgencyServiceExecuteRun:
         mock_agency_config.max_run_time_seconds = 600
         mock_agency_config.user_id = 1
         mock_agency_config.conversation_id = "conv-1"
+        mock_agency_config.credit_multiplier = 1.0
+        mock_agency_config.creator_fee_credits = 0
+        mock_agency_config.creator_id = None
+        mock_agency_config.platform_share_pct = 20
 
         service.load_agency = AsyncMock(return_value=mock_agency_config)
         service._load_agents = AsyncMock(return_value=[])
@@ -233,6 +282,7 @@ class TestAgencyServiceExecuteRun:
             agency_id="a1", tenant_id="t1", name="Test",
             system_prompt="", communication_flows=[],
             max_run_time_seconds=600, user_id=1, conversation_id="c1",
+            credit_multiplier=1.0, creator_fee_credits=0, creator_id=None, platform_share_pct=20,
         ))
         service._load_agents = AsyncMock(return_value=[])
         service._load_flows = AsyncMock(return_value=[])
@@ -271,6 +321,7 @@ class TestAgencyServiceExecuteRun:
             agency_id="a1", tenant_id="t1", name="Test",
             system_prompt="", communication_flows=[],
             max_run_time_seconds=600, user_id=1, conversation_id="c1",
+            credit_multiplier=1.0, creator_fee_credits=0, creator_id=None, platform_share_pct=20,
         ))
         service._load_agents = AsyncMock(return_value=[])
         service._load_flows = AsyncMock(return_value=[])
@@ -504,6 +555,69 @@ class TestAgencyPreviewPersistencePolicy:
         event_types = [event["event"] for event in events]
         assert "preview_ready" in event_types
         assert event_types.index("preview_ready") < event_types.index("run_finished")
+
+    async def test_execute_run_stream_orchestrator_passes_whitelist_and_retrieval_scope(self):
+        """Streaming orchestrator path receives whitelist and retrieval scope wiring."""
+        from app.services.agency_service import AgencyService, RunContext
+        from app.services.agency_orchestrator import ExecutionContext
+
+        mock_db = _make_mock_db()
+        service = AgencyService(db=mock_db)
+
+        service.load_agency = AsyncMock(return_value=MagicMock(
+            agency_id="a1", tenant_id="t1", name="Test",
+            system_prompt="Base prompt", communication_flows=[],
+            max_run_time_seconds=600, user_id=1, conversation_id="c1",
+            credit_multiplier=1.0, creator_fee_credits=0, creator_id=None, platform_share_pct=20,
+        ))
+        service._load_agents = AsyncMock(return_value=[{
+            "id": "node-1",
+            "name": "Router",
+            "instructions": "",
+            "model": "gpt-4o-mini",
+            "model_settings": None,
+            "is_entry_point": True,
+            "node_type": "router",
+            "node_config": {},
+        }])
+        service._load_flows_full = AsyncMock(return_value=[])
+        service._load_tool_whitelist = AsyncMock(return_value={"builtin-document-search"})
+
+        mock_orchestrator = MagicMock()
+        mock_ctx = ExecutionContext("Hello", "tok", "t1", user_id=1)
+        mock_ctx.browser_sessions = [{
+            "sessionId": "lbs_agency_1",
+            "summary": {
+                "sessionId": "lbs_agency_1",
+                "state": "review_required",
+                "badgeLabel": "Review Required",
+                "statusLine": "Review Required before AI can continue.",
+                "primaryActionLabel": "Continue in Browser",
+                "pageTitle": "Checkout",
+                "url": "https://example.com/checkout",
+                "compactNotice": None,
+                "sourceLabel": "Agency",
+            },
+            "updatedAt": "2026-03-12T10:05:00.000Z",
+        }]
+        mock_orchestrator.run_with_context = AsyncMock(return_value=("orchestrated", mock_ctx))
+
+        with patch("app.services.agency_service.should_use_orchestrator", return_value=True):
+            with patch("app.services.agency_service.AgencyOrchestrator", return_value=mock_orchestrator) as mock_ctor:
+                ctx = RunContext(
+                    user_id=1,
+                    tenant_id="t1",
+                    conversation_id="c1",
+                    user_token="tok",
+                    run_metadata={"retrieval_scope": {"effectiveMode": "library_only"}},
+                )
+                events = [event async for event in service.execute_run_stream("a1", "Hello", ctx)]
+
+        assert [event["event"] for event in events] == ["run_started", "browser_session", "token", "run_finished"]
+        assert events[1]["data"]["sessionId"] == "lbs_agency_1"
+        ctor_kwargs = mock_ctor.call_args.kwargs
+        assert ctor_kwargs["agency_whitelist"] == {"builtin-document-search"}
+        assert ctor_kwargs["retrieval_scope_mode"] == "library_only"
 
     async def test_execute_run_stream_passes_retrieval_scope_mode_to_tool_resolution(self):
         """streaming runs apply retrieval scope before tool construction."""

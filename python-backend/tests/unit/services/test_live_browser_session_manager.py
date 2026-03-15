@@ -1,9 +1,11 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from jose import jwt
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from app.core.config import settings
 from app.core.database import Base
 from app.models.live_browser import (
     LiveBrowserEvent,
@@ -19,6 +21,7 @@ from app.services.live_browser_session_manager import (
     InMemorySingleWriterCoordinator,
     LiveBrowserSessionManager,
     LiveBrowserSessionMutationError,
+    get_live_browser_barrier_type,
 )
 
 
@@ -100,6 +103,34 @@ def _create_db_manager(*, writer_id: str = "writer-a") -> LiveBrowserSessionMana
         writer_id=writer_id,
         lease_ttl=timedelta(minutes=1),
     )
+
+
+def _build_takeover_proof(
+    *,
+    session_id: str = "lbs_runtime_123",
+    session_version: int = 1,
+    actor_id: str = "42",
+    user_id: int = 42,
+    tenant_id: str = "tenant-123",
+    reauthenticated_at: datetime | None = None,
+    assurance: str = "recent_sign_in",
+) -> str:
+    issued_at = datetime.now(UTC)
+    reauth_at = reauthenticated_at or issued_at
+    payload = {
+        "sub": actor_id,
+        "type": "live_browser_takeover_step_up",
+        "liveBrowserSessionId": session_id,
+        "liveBrowserSessionVersion": session_version,
+        "liveBrowserActorId": actor_id,
+        "liveBrowserUserId": str(user_id),
+        "liveBrowserTenantId": tenant_id,
+        "liveBrowserAssurance": assurance,
+        "liveBrowserReauthenticatedAt": reauth_at.isoformat(),
+        "iat": int(issued_at.timestamp()),
+        "exp": int((issued_at + timedelta(minutes=5)).timestamp()),
+    }
+    return jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.ALGORITHM)
 
 
 def test_valid_state_transitions_increment_session_version():
@@ -208,6 +239,7 @@ def test_controller_lease_expiry_moves_session_to_waiting_state():
         idempotency_key="takeover-1",
         actor_id="42",
         reason="manual_selection_required",
+        takeover_proof=_build_takeover_proof(reauthenticated_at=seeded_at),
         now=seeded_at,
     )
     assert takeover["sessionVersion"] == 2
@@ -440,6 +472,69 @@ def test_pending_assist_blocks_new_agent_work():
         )
 
 
+def test_captcha_barrier_blocks_autonomous_resume_after_assist_response():
+    manager = _create_manager()
+    _seed_session(manager, status="agent_running")
+
+    manager.request_assist(
+        session_id="lbs_runtime_123",
+        expected_session_version=1,
+        idempotency_key="assist-captcha-1",
+        actor_id="agent-1",
+        assist_request_id="ast_captcha_1",
+        request_type="field_input",
+        prompt="Complete the captcha before AI continues.",
+    )
+
+    session = manager.get_session("lbs_runtime_123")
+    assert get_live_browser_barrier_type(session) == "captcha_required"
+
+    result = manager.submit_assist_response(
+        session_id="lbs_runtime_123",
+        expected_session_version=2,
+        idempotency_key="assist-captcha-resolve",
+        actor_id="42",
+        assist_request_id="ast_captcha_1",
+        response_payload={"type": "review_page", "notes": "Human reviewed the captcha page."},
+    )
+
+    updated = manager.get_session("lbs_runtime_123")
+    assert result["accepted"] is True
+    assert updated.status == "waiting_for_human"
+    assert updated.pause_reason == "captcha_required"
+    assert get_live_browser_barrier_type(updated) == "captcha_required"
+
+
+def test_payment_review_barrier_is_durable_until_approval_resolution():
+    manager = _create_manager()
+    _seed_session(manager, status="agent_running")
+
+    manager.request_approval(
+        session_id="lbs_runtime_123",
+        expected_session_version=1,
+        idempotency_key="approval-payment-1",
+        actor_id="policy-1",
+        approval_request_id="apr_payment_1",
+        prompt="Approve payment before submitting checkout.",
+    )
+
+    session = manager.get_session("lbs_runtime_123")
+    assert get_live_browser_barrier_type(session) == "payment_review_required"
+
+    result = manager.resolve_approval(
+        session_id="lbs_runtime_123",
+        expected_session_version=2,
+        idempotency_key="approval-payment-resolve",
+        actor_id="42",
+        approval_request_id="apr_payment_1",
+        decision="approved",
+    )
+
+    updated = manager.get_session("lbs_runtime_123")
+    assert result["accepted"] is True
+    assert get_live_browser_barrier_type(updated) is None
+
+
 def test_cancelation_preempts_queued_work_and_moves_session_terminal():
     manager = _create_manager()
     _seed_session(manager, status="ready")
@@ -478,6 +573,36 @@ def test_cancelation_preempts_queued_work_and_moves_session_terminal():
     assert any(event.event_type == "command_failed" for event in events)
 
 
+def test_update_policy_context_merges_patch_and_emits_session_state_change():
+    manager = _create_manager()
+    _seed_session(manager, status="ready")
+
+    result = manager.update_policy_context(
+        session_id="lbs_runtime_123",
+        expected_session_version=1,
+        idempotency_key="policy-context-1",
+        actor_type="agent",
+        actor_id="browser_goal_skill_draft",
+        policy_context_patch={
+            "skillDraft": {
+                "status": "ready",
+                "skillId": "compare_options",
+                "note": "Reusable browser skill draft is ready.",
+            },
+        },
+    )
+
+    session = manager.get_session("lbs_runtime_123")
+    events, _, _ = manager.list_events(session_id="lbs_runtime_123", limit=20)
+
+    assert result["accepted"] is True
+    assert result["sessionVersion"] == 2
+    assert session.session_version == 2
+    assert session.policy_context["skillDraft"]["status"] == "ready"
+    assert events[-1].event_type == "session_state_changed"
+    assert events[-1].payload["mutation"] == "update_policy_context"
+
+
 def test_takeover_pauses_agent_before_controller_authority_is_granted():
     manager = _create_manager()
     _seed_session(manager, status="agent_running")
@@ -488,6 +613,7 @@ def test_takeover_pauses_agent_before_controller_authority_is_granted():
         idempotency_key="takeover-agent-running",
         actor_id="42",
         reason="manual_selection_required",
+        takeover_proof=_build_takeover_proof(),
     )
 
     session = manager.get_session("lbs_runtime_123")
@@ -506,6 +632,7 @@ def test_returning_control_without_revalidation_keeps_session_blocked():
         idempotency_key="takeover-revalidation",
         actor_id="42",
         reason="inspect_checkout",
+        takeover_proof=_build_takeover_proof(),
     )
 
     returned = manager.return_control(
@@ -519,6 +646,116 @@ def test_returning_control_without_revalidation_keeps_session_blocked():
 
     assert returned["status"] == "waiting_for_human"
     assert manager.get_session("lbs_runtime_123").pause_reason == "revalidation_failed"
+
+
+def test_takeover_requires_step_up_auth_proof():
+    manager = _create_manager()
+    _seed_session(manager, status="ready")
+
+    with pytest.raises(LiveBrowserSessionMutationError) as exc_info:
+        manager.take_control(
+            session_id="lbs_runtime_123",
+            expected_session_version=1,
+            idempotency_key="takeover-no-proof",
+            actor_id="42",
+            reason="manual_selection_required",
+        )
+
+    assert exc_info.value.code == "step_up_auth_required"
+    assert "recent step-up authentication proof" in exc_info.value.message
+
+
+def test_takeover_rejects_stale_step_up_auth_proof():
+    manager = _create_manager()
+    now = datetime(2026, 3, 12, 12, 0, tzinfo=UTC)
+    _seed_session(manager, status="ready", now=now)
+
+    with pytest.raises(LiveBrowserSessionMutationError) as exc_info:
+        manager.take_control(
+            session_id="lbs_runtime_123",
+            expected_session_version=1,
+            idempotency_key="takeover-stale-proof",
+            actor_id="42",
+            reason="manual_selection_required",
+            takeover_proof=_build_takeover_proof(
+                reauthenticated_at=now - timedelta(minutes=20),
+            ),
+            now=now,
+        )
+
+    assert exc_info.value.code == "step_up_auth_required"
+    assert exc_info.value.reason_codes == ["stale_step_up_auth"]
+
+
+def test_takeover_requires_mfa_proof_for_sensitive_pages():
+    manager = _create_manager()
+    now = datetime(2026, 3, 12, 12, 0, tzinfo=UTC)
+    _seed_session(manager, status="ready", now=now)
+    manager.update_tab_context(
+        session_id="lbs_runtime_123",
+        expected_session_version=1,
+        idempotency_key="tab-auth-page",
+        actor_type="system",
+        actor_id="runtime",
+        tab_id="tab_1",
+        url="https://accounts.example.com/login",
+        dom_fingerprint="dom-auth",
+        page_title="Sign in",
+        now=now,
+    )
+
+    with pytest.raises(LiveBrowserSessionMutationError) as exc_info:
+        manager.take_control(
+            session_id="lbs_runtime_123",
+            expected_session_version=2,
+            idempotency_key="takeover-auth-recent-signin",
+            actor_id="42",
+            reason="manual_selection_required",
+            takeover_proof=_build_takeover_proof(
+                session_version=2,
+                reauthenticated_at=now,
+            ),
+            now=now,
+        )
+
+    assert exc_info.value.code == "step_up_auth_required"
+    assert exc_info.value.reason_codes == ["sensitive_page_mfa_required"]
+
+
+def test_takeover_accepts_mfa_proof_for_sensitive_pages():
+    manager = _create_manager()
+    now = datetime(2026, 3, 12, 12, 0, tzinfo=UTC)
+    _seed_session(manager, status="ready", now=now)
+    manager.update_tab_context(
+        session_id="lbs_runtime_123",
+        expected_session_version=1,
+        idempotency_key="tab-billing-page",
+        actor_type="system",
+        actor_id="runtime",
+        tab_id="tab_1",
+        url="https://app.example.com/billing/checkout",
+        dom_fingerprint="dom-billing",
+        page_title="Checkout",
+        now=now,
+    )
+
+    result = manager.take_control(
+        session_id="lbs_runtime_123",
+        expected_session_version=2,
+        idempotency_key="takeover-auth-mfa",
+        actor_id="42",
+        reason="manual_selection_required",
+        takeover_proof=_build_takeover_proof(
+            session_version=2,
+            reauthenticated_at=now,
+            assurance="mfa",
+        ),
+        now=now,
+    )
+
+    assert result["accepted"] is True
+    assert result["controlMode"] == "takeover"
+    assert result["sessionVersion"] == 3
 
 
 def test_approval_resolution_fails_when_tab_context_drifted():
