@@ -110,6 +110,20 @@ describe("MultimodalEmbeddingProvider", () => {
       await expect(provider.embedText({ text: "test" })).rejects.toThrow(/404/);
     });
 
+    it("throws when fetch rejects (network error / ECONNREFUSED)", async () => {
+      const provider = await makeGeminiProvider();
+      mockFetch.mockRejectedValueOnce(new Error("ECONNREFUSED"));
+
+      await expect(provider.embedText({ text: "test" })).rejects.toThrow(/ECONNREFUSED/);
+    });
+
+    it("throws when fetch times out", async () => {
+      const provider = await makeGeminiProvider();
+      mockFetch.mockRejectedValueOnce(new Error("Request timed out"));
+
+      await expect(provider.embedText({ text: "timeout test" })).rejects.toThrow(/timed out/i);
+    });
+
     it("getDimension returns 768", async () => {
       const provider = await makeGeminiProvider();
       expect(provider.getDimension()).toBe(768);
@@ -239,6 +253,20 @@ describe("MultimodalEmbeddingProvider", () => {
 
       // Each reset forces a fresh DB lookup
       expect(mockGetDb).toHaveBeenCalledTimes(2);
+    });
+
+    it("falls back to Cloudflare when decrypted key is whitespace-only", async () => {
+      // Key passes non-null check but fails .trim() → empty → Cloudflare
+      const mockDb = makeDbWithGeminiKey("   ");
+      mockGetDb.mockResolvedValue(mockDb as any);
+
+      const module = await import("../multimodalEmbeddingProvider");
+      if (typeof (module as any)._resetCacheForTest === "function") {
+        (module as any)._resetCacheForTest();
+      }
+
+      const provider = await module.getMultimodalEmbeddingProvider();
+      expect(provider.getProviderName()).toBe("cloudflare");
     });
   });
 });

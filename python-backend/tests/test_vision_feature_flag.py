@@ -99,3 +99,38 @@ class TestVisionFeatureFlag:
             result = asyncio.run(_check_multimodal_memory_flag("my-tenant"))
         mock_redis.get.assert_called_once_with("feature_flag:multimodalMemory:my-tenant")
         assert result is True
+
+    def test_check_flag_rejects_non_canonical_redis_values(self):
+        """_check_multimodal_memory_flag requires exact string 'true' — case-sensitive, strict comparison."""
+        import asyncio
+        from app.api.vision import _check_multimodal_memory_flag
+
+        # All of these look like "true" but are NOT the exact string "true"
+        for non_canonical in ["1", "yes", "True", "TRUE", "enabled", "on"]:
+            mock_redis = AsyncMock()
+            mock_redis.get = AsyncMock(return_value=non_canonical)
+            with patch("app.core.redis_client.get_redis", new=AsyncMock(return_value=mock_redis)):
+                result = asyncio.run(_check_multimodal_memory_flag("tenant-x"))
+            assert result is False, (
+                f"Expected False for non-canonical Redis value {non_canonical!r}, got True"
+            )
+
+    def test_check_flag_returns_false_for_explicit_false_value(self):
+        """_check_multimodal_memory_flag returns False when Redis key is set to 'false'."""
+        import asyncio
+        from app.api.vision import _check_multimodal_memory_flag
+
+        mock_redis = AsyncMock()
+        mock_redis.get = AsyncMock(return_value="false")
+        with patch("app.core.redis_client.get_redis", new=AsyncMock(return_value=mock_redis)):
+            result = asyncio.run(_check_multimodal_memory_flag("tenant-x"))
+        assert result is False
+
+    def test_vision_task_not_dispatched_when_flag_off(self, client, auth_headers):
+        """analyze_image_task.delay() is NOT called when feature flag is off."""
+        with (
+            patch("app.api.vision._check_multimodal_memory_flag", new=AsyncMock(return_value=False)),
+            patch("app.tasks.vision_tasks.analyze_image_task") as mock_task,
+        ):
+            client.post("/api/v1/vision/analyze", json=VALID_PAYLOAD, headers=auth_headers)
+        mock_task.delay.assert_not_called()

@@ -276,6 +276,36 @@ class TestAnalyzeImageTaskNSFW:
 
     @patch("app.tasks.vision_tasks.AsyncSessionLocal")
     @patch("app.tasks.vision_tasks.httpx")
+    def test_nsfw_does_not_create_memory_item(self, mock_httpx, mock_session_cls):
+        """NSFW image: analysis row is stored for audit but NO MultimodalMemoryItem is created."""
+        from app.tasks.vision_tasks import analyze_image_task
+
+        mock_session = make_mock_session()
+        mock_session_cls.return_value = mock_session
+
+        mock_nsfw_resp = MagicMock()
+        mock_nsfw_resp.status_code = 200
+        mock_nsfw_resp.json.return_value = NSFW_VISION_RESPONSE
+        mock_httpx.post.return_value = mock_nsfw_resp
+
+        with patch("app.tasks.vision_tasks.settings") as mock_settings:
+            mock_settings.GOOGLE_API_KEY = "fake-key"
+            analyze_image_task(
+                asset_id=1,
+                image_url="https://example.com/img.jpg",
+                tenant_id="tenant-1",
+                user_id=42,
+            )
+
+        # session.add called once (MediaAssetAnalysis audit row only)
+        # Non-NSFW path would call add 2+ times (analysis + memory item + vector)
+        assert mock_session.add.call_count == 1, (
+            f"Expected only 1 session.add (analysis row) for NSFW image, "
+            f"got {mock_session.add.call_count}"
+        )
+
+    @patch("app.tasks.vision_tasks.AsyncSessionLocal")
+    @patch("app.tasks.vision_tasks.httpx")
     def test_nsfw_sets_status_blocked(self, mock_httpx, mock_session_cls):
         """Task sets status='nsfw_blocked' when NSFW labels detected."""
         from app.tasks.vision_tasks import analyze_image_task

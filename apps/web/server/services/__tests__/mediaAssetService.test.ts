@@ -256,6 +256,56 @@ describe("mediaAssetService", () => {
       const insertedValues = mockDb.values.mock.calls[0][0];
       expect(insertedValues.storageKey).toBe("https://example.com/img.jpg");
     });
+
+    it("creates asset even when sharp fails to extract dimensions (non-fatal)", async () => {
+      // Configure sharp to fail (simulates corrupt or non-image buffer)
+      const badPipeline = {
+        resize: vi.fn().mockReturnThis(),
+        grayscale: vi.fn().mockReturnThis(),
+        raw: vi.fn().mockReturnThis(),
+        metadata: vi.fn().mockRejectedValue(new Error("Not an image")),
+        toBuffer: vi.fn().mockRejectedValue(new Error("Not an image")),
+      };
+      mockSharp.mockReturnValue(badPipeline as any);
+
+      const mockDb = {
+        select: vi.fn().mockReturnThis(),
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue([]),
+        insert: vi.fn().mockReturnThis(),
+        values: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([{ id: 77 }]),
+      };
+      mockGetDb.mockResolvedValue(mockDb as any);
+
+      // Asset should still be created despite dimension extraction failure
+      const result = await createAssetFromAttachment(attachment, context);
+      expect(result.assetId).toBe(77);
+      expect(mockDb.insert).toHaveBeenCalled();
+    });
+
+    it("creates new asset for different tenant even with same checksum (tenant isolation in dedup)", async () => {
+      // Dedup returns [] because tenantId="tenant-2" ≠ "tenant-1" in WHERE clause
+      const mockDb = {
+        select: vi.fn().mockReturnThis(),
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue([]),
+        insert: vi.fn().mockReturnThis(),
+        values: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([{ id: 88 }]),
+      };
+      mockGetDb.mockResolvedValue(mockDb as any);
+
+      const tenant2Context = { ...context, tenantId: "tenant-2" };
+      const result = await createAssetFromAttachment(attachment, tenant2Context);
+
+      // New asset created (not reusing tenant-1's asset)
+      expect(result.assetId).toBe(88);
+      expect(mockDb.insert).toHaveBeenCalled();
+      // Asset must be stored under tenant-2
+      const insertedValues = mockDb.values.mock.calls[0][0];
+      expect(insertedValues.tenantId).toBe("tenant-2");
+    });
   });
 
   describe("fetchAsset", () => {

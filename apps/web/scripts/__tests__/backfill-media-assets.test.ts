@@ -14,6 +14,7 @@ import {
   extractImageAttachments,
   buildAssetStorageKey,
   isAlreadyBackfilled,
+  buildVisionPayload,
 } from "../backfill-media-assets";
 
 describe("backfill-media-assets", () => {
@@ -108,6 +109,36 @@ describe("backfill-media-assets", () => {
     it("should not process attachments that are already backfilled", () => {
       const attachment = { type: "image", url: "x", assetId: 99 };
       expect(isAlreadyBackfilled(attachment)).toBe(true);
+    });
+  });
+
+  describe("buildVisionPayload", () => {
+    it("uses snake_case field names matching Python Pydantic VisionAnalyzeRequest model", () => {
+      const payload = buildVisionPayload(42, "https://example.com/img.jpg", "tenant-1", 7);
+      // Must use snake_case to match Python Pydantic model
+      expect(payload).toHaveProperty("asset_id", 42);
+      expect(payload).toHaveProperty("image_url", "https://example.com/img.jpg");
+      expect(payload).toHaveProperty("tenant_id", "tenant-1");
+      expect(payload).toHaveProperty("user_id", 7);
+      expect(payload).toHaveProperty("system_cost", true);
+    });
+
+    it("does NOT include camelCase variants (would cause Pydantic validation error)", () => {
+      const payload = buildVisionPayload(42, "https://example.com/img.jpg", "tenant-1", 7);
+      expect(payload).not.toHaveProperty("assetId");
+      expect(payload).not.toHaveProperty("imageUrl");
+      expect(payload).not.toHaveProperty("tenantId");
+      expect(payload).not.toHaveProperty("userId");
+    });
+
+    it("defaults system_cost to true for backfill context (billed to system, not user)", () => {
+      const payload = buildVisionPayload(1, "https://example.com/img.jpg", "t1", 1);
+      expect(payload.system_cost).toBe(true);
+    });
+
+    it("allows overriding system_cost to false", () => {
+      const payload = buildVisionPayload(1, "https://example.com/img.jpg", "t1", 1, false);
+      expect(payload.system_cost).toBe(false);
     });
   });
 });

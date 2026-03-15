@@ -293,6 +293,77 @@ describe("multimodalRetrievalService", () => {
       expect(db.execute.mock.calls.length).toBeGreaterThanOrEqual(0);
       // Tenant enforcement is structural in the sql`` template — verified by code review
     });
+
+    it("scores explicit refs as confidence * WEIGHTS.explicit (0.35) in fast path", async () => {
+      const { retrieveRelevantAssets } = await import("../multimodalRetrievalService");
+      // confidence >= 0.8 → fast path: score = confidence * 0.35
+      const result = await retrieveRelevantAssets("test", {
+        userId: 1,
+        tenantId: "t1",
+        conversationId: 1,
+        explicitRefs: [{ assetId: 42, confidence: 1.0 }],
+      });
+
+      expect(result).toHaveLength(1);
+      expect(result[0].assetId).toBe(42);
+      expect(result[0].score).toBeCloseTo(0.35, 5); // 1.0 * 0.35 = 0.35
+      expect(result[0].source).toBe("explicit");
+    });
+
+    it("returns explicit refs even when vector search (embedText) fails", async () => {
+      const mockProvider = {
+        embedText: vi.fn().mockRejectedValue(new Error("Network timeout")),
+        getDimension: () => 768,
+        getProviderName: () => "gemini",
+        getModelName: () => "gemini-embedding-2-preview",
+        embedImage: vi.fn(),
+      };
+      mockGetProvider.mockResolvedValue(mockProvider as any);
+      mockGetState.mockResolvedValue({
+        conversationId: 1,
+        recentAssetIds: [],
+        activeAssetIds: [],
+        comparedAssetIds: [],
+        namedSets: {},
+        updatedAt: null,
+      });
+
+      const db = makeDb();
+      mockGetDb.mockResolvedValue(db as any);
+
+      const { retrieveRelevantAssets } = await import("../multimodalRetrievalService");
+      // confidence=0.6 → no fast path, goes through hybrid scoring with embedText failure
+      const result = await retrieveRelevantAssets("modern house", {
+        userId: 1,
+        tenantId: "t1",
+        conversationId: 1,
+        explicitRefs: [{ assetId: 42, confidence: 0.6 }],
+      });
+
+      // Explicit ref still returned despite embedText failure (graceful degradation)
+      expect(result.some((r) => r.assetId === 42)).toBe(true);
+    });
+  });
+
+  describe("resolveVisualReferences — confidence boundary", () => {
+    it("includes result with confidence exactly at 0.5 boundary (>= threshold)", async () => {
+      mockGetState.mockResolvedValue(DEFAULT_STATE);
+      const db = makeDb([{ id: 10, shortCaption: "House", tenantId: "t1" }]);
+      mockGetDb.mockResolvedValue(db as any);
+
+      mockCallLLM.mockResolvedValue({
+        data: [{ assetId: 10, confidence: 0.5, reason: "exactly at boundary" }],
+        tokensUsed: 100,
+        creditsUsed: 1,
+      });
+
+      const { resolveVisualReferences } = await import("../multimodalRetrievalService");
+      const result = await resolveVisualReferences("show รูปนั้น", 1, 1, "t1");
+
+      // 0.5 >= CONFIDENCE_THRESHOLD (0.5) → included
+      expect(result).toHaveLength(1);
+      expect(result[0].assetId).toBe(10);
+    });
   });
 
   describe("buildImageContext", () => {

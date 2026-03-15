@@ -227,6 +227,28 @@ describe("visualStateService", () => {
 
       expect(db.update).toHaveBeenCalled();
     });
+
+    it("throws when name becomes empty after sanitization (non-alphanumeric input)", async () => {
+      const db = makeDb();
+      db.limit.mockResolvedValueOnce([DEFAULT_STATE]);
+      mockGetDb.mockResolvedValue(db as any);
+
+      const { createNamedSet } = await import("../visualStateService");
+      // "!!!" → "" after stripping non-alphanumeric characters
+      await expect(createNamedSet(1, "!!!", [10])).rejects.toThrow(/alphanumeric/i);
+    });
+
+    it("truncates name to 64 characters (accepts 65-char name without throwing)", async () => {
+      const db = makeDb();
+      db.limit.mockResolvedValueOnce([DEFAULT_STATE]);
+      db.execute.mockResolvedValue({ rowCount: 1 });
+      mockGetDb.mockResolvedValue(db as any);
+
+      const { createNamedSet } = await import("../visualStateService");
+      const longName = "a".repeat(65); // 65 chars → sliced to 64
+      // Should not throw — 64-char name is valid
+      await expect(createNamedSet(1, longName, [10])).resolves.toBeUndefined();
+    });
   });
 
   describe("resolveNamedSet", () => {
@@ -274,6 +296,36 @@ describe("visualStateService", () => {
 
       // update was called to remove from lists
       expect(db.update).toHaveBeenCalled();
+    });
+
+    it("removes assetId from named sets (read-modify-write cleanup)", async () => {
+      const stateWithNamedSets = {
+        conversationId: 1,
+        recentAssetIds: [],
+        activeAssetIds: [],
+        comparedAssetIds: [],
+        namedSets: { favorites: [1, 2, 3], recent: [2, 4] },
+        updatedAt: null,
+      };
+      const db = makeDb();
+      db.limit.mockResolvedValue([stateWithNamedSets]);
+      db.execute.mockResolvedValue({ rowCount: 1 });
+      mockGetDb.mockResolvedValue(db as any);
+
+      const { removeAssetFromState } = await import("../visualStateService");
+      await removeAssetFromState(1, 2);
+
+      // Second db.set call should have namedSets with assetId=2 removed
+      const setCalls = db.set.mock.calls;
+      expect(setCalls.length).toBeGreaterThanOrEqual(2);
+      const namedSetsUpdate = setCalls.find((args: any[]) => args[0]?.namedSets !== undefined);
+      expect(namedSetsUpdate).toBeDefined();
+      const updatedSets = namedSetsUpdate[0].namedSets;
+      expect(updatedSets.favorites).not.toContain(2);
+      expect(updatedSets.favorites).toContain(1);
+      expect(updatedSets.favorites).toContain(3);
+      expect(updatedSets.recent).not.toContain(2);
+      expect(updatedSets.recent).toContain(4);
     });
   });
 });

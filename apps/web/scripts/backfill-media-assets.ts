@@ -55,6 +55,27 @@ export function isAlreadyBackfilled(attachment: Attachment): boolean {
   return typeof attachment.assetId === "number" && attachment.assetId > 0;
 }
 
+/**
+ * Build the vision dispatch request payload for the Python backend.
+ * Field names are snake_case to match the Pydantic VisionAnalyzeRequest model
+ * in python-backend/app/api/vision.py.
+ */
+export function buildVisionPayload(
+  assetId: number,
+  imageUrl: string,
+  tenantId: string,
+  userId: number,
+  systemCost = true,
+): Record<string, unknown> {
+  return {
+    asset_id: assetId,
+    image_url: imageUrl,
+    tenant_id: tenantId,
+    user_id: userId,
+    system_cost: systemCost,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Main script (only runs when executed directly, not during tests)
 // ---------------------------------------------------------------------------
