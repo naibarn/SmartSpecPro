@@ -138,8 +138,7 @@ export default function AdminAPIKeys() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
-                      <TableHead>Key Prefix</TableHead>
-                      <TableHead>Owner (userId)</TableHead>
+                      <TableHead>User</TableHead>
                       <TableHead>Scopes</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Last Used</TableHead>
@@ -150,11 +149,8 @@ export default function AdminAPIKeys() {
                     {keysQuery.data.map((key) => (
                       <TableRow key={key.id}>
                         <TableCell className="font-medium">{key.name}</TableCell>
-                        <TableCell>
-                          <code className="text-xs bg-muted px-1 py-0.5 rounded">{key.keyPrefix}...</code>
-                        </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          uid:{(key as any).userId ?? "—"}
+                          {(key as any).userEmail ?? (key as any).userName ?? `uid:${(key as any).userId ?? "—"}`}
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">

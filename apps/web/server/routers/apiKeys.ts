@@ -13,7 +13,7 @@ import {
 } from "../services/apiKeyService";
 import { ALLOWED_API_SCOPES } from "../../shared/publicApiTypes";
 import { getDb } from "../db";
-import { publicApiAuditLog, apiWebhookEndpoints, apiKeys } from "../../drizzle/schema";
+import { publicApiAuditLog, apiWebhookEndpoints, apiKeys, users } from "../../drizzle/schema";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -296,9 +296,32 @@ export const apiKeysRouter = router({
     }),
 
   // adminListAllKeys — admin views ALL tenant keys for oversight/anomaly detection
+  // keyPrefix intentionally excluded — admin must not see any portion of the actual key value
   adminListAllKeys: adminProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return [];
     const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
-    return listKeys(tenantId, undefined); // no userId filter = all tenant keys
+    const rows = await db
+      .select({
+        id: apiKeys.id,
+        name: apiKeys.name,
+        userId: apiKeys.userId,
+        userEmail: users.email,
+        userName: users.name,
+        scopes: apiKeys.scopes,
+        rateLimit: apiKeys.rateLimit,
+        isActive: apiKeys.isActive,
+        isSuspended: apiKeys.isSuspended,
+        suspendedReason: apiKeys.suspendedReason,
+        lastUsedAt: apiKeys.lastUsedAt,
+        expiresAt: apiKeys.expiresAt,
+        createdAt: apiKeys.createdAt,
+      })
+      .from(apiKeys)
+      .leftJoin(users, eq(apiKeys.userId, users.id))
+      .where(eq(apiKeys.tenantId, tenantId))
+      .orderBy(desc(apiKeys.createdAt));
+    return rows;
   }),
 
   // adminListAllWebhooks — admin views ALL tenant webhooks
