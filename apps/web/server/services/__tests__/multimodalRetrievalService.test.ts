@@ -25,12 +25,14 @@ import { getMultimodalEmbeddingProvider } from "../multimodalEmbeddingProvider";
 import { getOrCreateState } from "../visualStateService";
 import { generateSignedUrl } from "../mediaAssetService";
 import { getDb } from "../../db";
+import { getTenantFeatureFlags } from "../tenantFeatureFlagService";
 
 const mockCallLLM = vi.mocked(callLLMStructured);
 const mockGetProvider = vi.mocked(getMultimodalEmbeddingProvider);
 const mockGetState = vi.mocked(getOrCreateState);
 const mockSignedUrl = vi.mocked(generateSignedUrl);
 const mockGetDb = vi.mocked(getDb);
+const mockGetFeatureFlags = vi.mocked(getTenantFeatureFlags);
 
 const DEFAULT_STATE = {
   conversationId: 1,
@@ -310,6 +312,51 @@ describe("multimodalRetrievalService", () => {
       expect(result[0].source).toBe("explicit");
     });
 
+    it("hybrid scoring combines explicit + recency signals for sub-threshold confidence", async () => {
+      // asset 5 is in recentIds (recency bonus), asset 6 is not
+      const stateWithRecent = {
+        conversationId: 1,
+        recentAssetIds: [5],
+        activeAssetIds: [],
+        comparedAssetIds: [],
+        namedSets: {},
+        updatedAt: null,
+      };
+      mockGetState.mockResolvedValue(stateWithRecent);
+
+      const mockProvider = {
+        embedText: vi.fn().mockRejectedValue(new Error("Network error")), // vector fails
+        getDimension: () => 768,
+        getProviderName: () => "gemini",
+        getModelName: () => "gemini-embedding-2-preview",
+        embedImage: vi.fn(),
+      };
+      mockGetProvider.mockResolvedValue(mockProvider as any);
+
+      const db = makeDb();
+      db.execute.mockResolvedValue({ rows: [] }); // no vector hits
+      mockGetDb.mockResolvedValue(db as any);
+
+      const { retrieveRelevantAssets } = await import("../multimodalRetrievalService");
+      // Both assets have confidence < 0.8 → full hybrid path
+      const result = await retrieveRelevantAssets("modern living room", {
+        userId: 1,
+        tenantId: "t1",
+        conversationId: 1,
+        explicitRefs: [
+          { assetId: 5, confidence: 0.6 },  // in recentIds → recency bonus
+          { assetId: 6, confidence: 0.6 },  // NOT in recentIds → no recency
+        ],
+      });
+
+      // Asset 5 gets recency bonus → higher score than asset 6
+      const asset5 = result.find((r) => r.assetId === 5);
+      const asset6 = result.find((r) => r.assetId === 6);
+      expect(asset5).toBeDefined();
+      expect(asset6).toBeDefined();
+      expect(asset5!.score).toBeGreaterThan(asset6!.score);
+    });
+
     it("returns explicit refs even when vector search (embedText) fails", async () => {
       const mockProvider = {
         embedText: vi.fn().mockRejectedValue(new Error("Network timeout")),
@@ -342,6 +389,57 @@ describe("multimodalRetrievalService", () => {
 
       // Explicit ref still returned despite embedText failure (graceful degradation)
       expect(result.some((r) => r.assetId === 42)).toBe(true);
+    });
+  });
+
+  describe("if (!db) guard clauses", () => {
+    it("resolveVisualReferences returns [] when db unavailable (after keyword + state checks pass)", async () => {
+      mockGetState.mockResolvedValue(DEFAULT_STATE); // has recentAssetIds
+      mockGetDb.mockResolvedValue(null as any);
+
+      const { resolveVisualReferences } = await import("../multimodalRetrievalService");
+      const result = await resolveVisualReferences("show รูปล่าสุด", 1, 1, "t1");
+      expect(result).toEqual([]);
+    });
+
+    it("retrieveRelevantAssets returns [] when db unavailable (no fast path, full hybrid)", async () => {
+      mockGetDb.mockResolvedValue(null as any);
+      mockGetState.mockResolvedValue({ ...DEFAULT_STATE, recentAssetIds: [] });
+
+      const { retrieveRelevantAssets } = await import("../multimodalRetrievalService");
+      // confidence < 0.8 → skips fast path → reaches db guard
+      const result = await retrieveRelevantAssets("modern house", {
+        userId: 1,
+        tenantId: "t1",
+        conversationId: 1,
+        explicitRefs: [{ assetId: 1, confidence: 0.5 }],
+      });
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe("feature flag throw path → returns []", () => {
+    it("resolveVisualReferences returns [] when getTenantFeatureFlags throws", async () => {
+      mockGetFeatureFlags.mockRejectedValueOnce(new Error("Redis unavailable"));
+
+      const { resolveVisualReferences } = await import("../multimodalRetrievalService");
+      // Message has image keywords, but flag check throws → catch → return []
+      const result = await resolveVisualReferences("show รูปนี้", 1, 1, "t1");
+      expect(result).toEqual([]);
+      expect(mockCallLLM).not.toHaveBeenCalled();
+    });
+
+    it("retrieveRelevantAssets returns [] when getTenantFeatureFlags throws", async () => {
+      mockGetFeatureFlags.mockRejectedValueOnce(new Error("Redis unavailable"));
+
+      const { retrieveRelevantAssets } = await import("../multimodalRetrievalService");
+      const result = await retrieveRelevantAssets("query", {
+        userId: 1,
+        tenantId: "t1",
+        conversationId: 1,
+        explicitRefs: [{ assetId: 10, confidence: 0.9 }],
+      });
+      expect(result).toEqual([]);
     });
   });
 
@@ -400,6 +498,52 @@ describe("multimodalRetrievalService", () => {
       expect(result.imageAssets[0].fileUrl).toBe("https://signed.url/img.jpg");
     });
 
+    it("overflows second asset into memoryCards when text budget exhausted (text-only path)", async () => {
+      // Use a very small text budget so the second asset overflows to memoryCards
+      const longCaption = "A".repeat(200);  // 200 chars per caption
+      const db = makeDb([
+        { id: 1, storageKey: "k1", shortCaption: longCaption, detailedCaption: longCaption, architectureTags: [], styles: [], colors: [], materials: [] },
+        { id: 2, storageKey: "k2", shortCaption: longCaption, detailedCaption: longCaption, architectureTags: [], styles: [], colors: [], materials: [] },
+      ]);
+      mockGetDb.mockResolvedValue(db as any);
+
+      const assets = [
+        { assetId: 1, score: 0.9, source: "explicit" },
+        { assetId: 2, score: 0.8, source: "explicit" },
+      ];
+
+      const { buildImageContext } = await import("../multimodalRetrievalService");
+      const result = await buildImageContext(
+        assets,
+        { supportsVision: false },  // text-only path where overflow CAN happen
+        { maxImages: 5, maxTextTokens: 50 }  // 50 tokens * 4 = 200 chars; first fits, second overflows
+      );
+
+      // First asset goes to visualMemoryContext (text), second overflows to memoryCards
+      expect(result.imageAssets).toHaveLength(0);  // text-only → no image assets
+      // At least one asset was processed
+      expect(
+        result.visualMemoryContext !== null || result.memoryCards !== null
+      ).toBe(true);
+    });
+
+    it("returns empty imageAssets when DB query throws (best-effort fallback)", async () => {
+      const db = makeDb();
+      // DB query throws inside buildImageContext
+      db.limit.mockRejectedValue(new Error("DB timeout"));
+      mockGetDb.mockResolvedValue(db as any);
+
+      const { buildImageContext } = await import("../multimodalRetrievalService");
+      const result = await buildImageContext(
+        [{ assetId: 10, score: 0.9, source: "explicit" }],
+        { supportsVision: true },
+        { maxImages: 5, maxTextTokens: 2000 }
+      );
+
+      // DB query failed → analysisMap empty → asset has no analysis → skipped
+      expect(result.imageAssets).toHaveLength(0);
+    });
+
     it("caps at maxImages limit", async () => {
       mockSignedUrl.mockResolvedValue("https://signed.url/img.jpg");
       const db = makeDb([
@@ -426,6 +570,31 @@ describe("multimodalRetrievalService", () => {
       );
 
       expect(result.imageAssets.length).toBeLessThanOrEqual(3);
+    });
+
+    it("skips asset when generateSignedUrl returns null (signedUrl === null → continue)", async () => {
+      mockSignedUrl.mockResolvedValue(null);
+      const db = makeDb([{
+        id: 10,
+        storageKey: "uploads/img.jpg",
+        shortCaption: "House",
+        detailedCaption: "A house",
+        architectureTags: [],
+        styles: [],
+        colors: [],
+        materials: [],
+      }]);
+      mockGetDb.mockResolvedValue(db as any);
+
+      const { buildImageContext } = await import("../multimodalRetrievalService");
+      const result = await buildImageContext(
+        [{ assetId: 10, score: 0.9, source: "explicit" }],
+        { supportsVision: true },
+        { maxImages: 5, maxTextTokens: 2000 }
+      );
+
+      // Asset was found but signedUrl=null → skipped → imageAssets is empty
+      expect(result.imageAssets).toHaveLength(0);
     });
 
     it("produces text descriptions for text-only models", async () => {

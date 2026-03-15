@@ -110,6 +110,40 @@ describe("visualStateService", () => {
       expect(state.namedSets).toEqual({ favorites: [10] });
     });
 
+    it("falls back to DB when Redis returns malformed JSON (JSON.parse error caught)", async () => {
+      mockIsRedisAvailable.mockReturnValue(true);
+      const mockRedis = {
+        get: vi.fn().mockResolvedValue("this-is-not-valid-json{{{"),
+        setex: vi.fn().mockResolvedValue("OK"),
+      };
+      mockGetRedisClient.mockReturnValue(mockRedis as any);
+
+      const db = makeDb();
+      db.limit.mockResolvedValueOnce([{ ...DEFAULT_STATE, recentAssetIds: [5, 6] }]);
+      mockGetDb.mockResolvedValue(db as any);
+
+      const { getOrCreateState } = await import("../visualStateService");
+      const state = await getOrCreateState(1);
+
+      // Cache parse error → fell back to DB → returns DB state
+      expect(db.select).toHaveBeenCalled();
+      expect(state.recentAssetIds).toEqual([5, 6]);
+    });
+
+    it("falls back to default state when onConflictDoNothing returns [] (concurrent insert race)", async () => {
+      const db = makeDb();
+      db.limit.mockResolvedValueOnce([]); // no existing row
+      db.returning.mockResolvedValueOnce([]); // concurrent insert won, returning nothing
+      mockGetDb.mockResolvedValue(db as any);
+
+      const { getOrCreateState } = await import("../visualStateService");
+      const state = await getOrCreateState(1);
+
+      // Race condition → returns default fallback state
+      expect(state.recentAssetIds).toEqual([]);
+      expect(state.namedSets).toEqual({});
+    });
+
     it("falls back to DB when Redis unavailable", async () => {
       mockIsRedisAvailable.mockReturnValue(false);
       const db = makeDb();
@@ -272,6 +306,48 @@ describe("visualStateService", () => {
       const { resolveNamedSet } = await import("../visualStateService");
       const result = await resolveNamedSet(1, "nonexistent");
       expect(result).toEqual([]);
+    });
+  });
+
+  describe("if (!db) guard clauses", () => {
+    it("getOrCreateState returns default empty state when db unavailable", async () => {
+      mockGetDb.mockResolvedValue(null as any);
+      const { getOrCreateState } = await import("../visualStateService");
+      const state = await getOrCreateState(99);
+      expect(state.recentAssetIds).toEqual([]);
+      expect(state.activeAssetIds).toEqual([]);
+      expect(state.comparedAssetIds).toEqual([]);
+      expect(state.namedSets).toEqual({});
+    });
+
+    it("addRecentAsset returns without error when db unavailable", async () => {
+      mockGetDb.mockResolvedValue(null as any);
+      const { addRecentAsset } = await import("../visualStateService");
+      await expect(addRecentAsset(1, 42)).resolves.toBeUndefined();
+    });
+
+    it("setActiveAssets returns without error when db unavailable", async () => {
+      mockGetDb.mockResolvedValue(null as any);
+      const { setActiveAssets } = await import("../visualStateService");
+      await expect(setActiveAssets(1, [1, 2])).resolves.toBeUndefined();
+    });
+
+    it("setComparedAssets returns without error when db unavailable", async () => {
+      mockGetDb.mockResolvedValue(null as any);
+      const { setComparedAssets } = await import("../visualStateService");
+      await expect(setComparedAssets(1, [5, 6])).resolves.toBeUndefined();
+    });
+
+    it("createNamedSet returns without error when db unavailable (name sanitizes to valid)", async () => {
+      mockGetDb.mockResolvedValue(null as any);
+      const { createNamedSet } = await import("../visualStateService");
+      await expect(createNamedSet(1, "favorites", [10])).resolves.toBeUndefined();
+    });
+
+    it("removeAssetFromState returns without error when db unavailable", async () => {
+      mockGetDb.mockResolvedValue(null as any);
+      const { removeAssetFromState } = await import("../visualStateService");
+      await expect(removeAssetFromState(1, 42)).resolves.toBeUndefined();
     });
   });
 

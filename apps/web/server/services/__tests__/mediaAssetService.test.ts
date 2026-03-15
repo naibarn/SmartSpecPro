@@ -308,6 +308,33 @@ describe("mediaAssetService", () => {
     });
   });
 
+  describe("if (!db) guard clauses", () => {
+    it("createAssetFromAttachment throws when db unavailable", async () => {
+      mockGetDb.mockResolvedValue(null as any);
+      await expect(
+        createAssetFromAttachment(
+          { type: "image", url: "https://example.com/img.jpg", key: "uploads/img.jpg", mimeType: "image/jpeg", size: 1024 },
+          { userId: 1, tenantId: "t1", conversationId: 10, messageId: 100, projectId: null }
+        )
+      ).rejects.toThrow(/database not available/i);
+    });
+
+    it("fetchAsset throws when db unavailable", async () => {
+      mockGetDb.mockResolvedValue(null as any);
+      await expect(fetchAsset(1, "tenant-1")).rejects.toThrow(/database not available/i);
+    });
+
+    it("findSimilarAssets throws when db unavailable", async () => {
+      mockGetDb.mockResolvedValue(null as any);
+      await expect(findSimilarAssets("aaaa", "tenant-1")).rejects.toThrow(/database not available/i);
+    });
+
+    it("deleteAsset throws when db unavailable", async () => {
+      mockGetDb.mockResolvedValue(null as any);
+      await expect(deleteAsset(1, 1, "tenant-1")).rejects.toThrow(/database not available/i);
+    });
+  });
+
   describe("fetchAsset", () => {
     it("returns asset with signed URL for valid assetId and tenantId", async () => {
       const asset = { id: 1, tenantId: "tenant-1", storageKey: "uploads/img.jpg", status: "analyzed" };

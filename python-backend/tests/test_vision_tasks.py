@@ -417,3 +417,111 @@ class TestAnalyzeImageTaskIdempotent:
 
         # Gemini API should NOT be called
         mock_httpx.post.assert_not_called()
+
+
+@pytest.mark.unit
+class TestAnalyzeImageTaskNonNSFW:
+    """Test successful non-NSFW path — vector row created, commit called."""
+
+    @patch("app.tasks.vision_tasks.AsyncSessionLocal")
+    @patch("app.tasks.vision_tasks.httpx")
+    def test_non_nsfw_creates_multiple_rows(self, mock_httpx, mock_session_cls):
+        """Non-NSFW image: session.add called 2+ times (analysis + memory item)."""
+        from app.tasks.vision_tasks import analyze_image_task
+
+        mock_session = make_mock_session()
+        mock_session_cls.return_value = mock_session
+
+        mock_vision_resp = MagicMock()
+        mock_vision_resp.status_code = 200
+        mock_vision_resp.json.return_value = GEMINI_VISION_RESPONSE
+
+        mock_embed_resp = MagicMock()
+        mock_embed_resp.status_code = 200
+        mock_embed_resp.json.return_value = GEMINI_EMBEDDING_RESPONSE
+
+        mock_httpx.post.side_effect = [mock_vision_resp, mock_embed_resp]
+
+        with patch("app.tasks.vision_tasks.settings") as mock_settings:
+            mock_settings.GOOGLE_API_KEY = "fake-key"
+            analyze_image_task(
+                asset_id=1,
+                image_url="https://example.com/img.jpg",
+                tenant_id="tenant-1",
+                user_id=42,
+            )
+
+        # Non-NSFW path: analysis row + memory item (2+ adds)
+        assert mock_session.add.call_count >= 2, (
+            f"Expected >=2 session.add calls for non-NSFW path, got {mock_session.add.call_count}"
+        )
+
+    @patch("app.tasks.vision_tasks.AsyncSessionLocal")
+    @patch("app.tasks.vision_tasks.httpx")
+    def test_non_nsfw_calls_session_commit(self, mock_httpx, mock_session_cls):
+        """Task calls session.commit() after successful (non-NSFW) analysis."""
+        from app.tasks.vision_tasks import analyze_image_task
+
+        mock_session = make_mock_session()
+        mock_session_cls.return_value = mock_session
+
+        mock_vision_resp = MagicMock()
+        mock_vision_resp.status_code = 200
+        mock_vision_resp.json.return_value = GEMINI_VISION_RESPONSE
+
+        mock_embed_resp = MagicMock()
+        mock_embed_resp.status_code = 200
+        mock_embed_resp.json.return_value = GEMINI_EMBEDDING_RESPONSE
+
+        mock_httpx.post.side_effect = [mock_vision_resp, mock_embed_resp]
+
+        with patch("app.tasks.vision_tasks.settings") as mock_settings:
+            mock_settings.GOOGLE_API_KEY = "fake-key"
+            analyze_image_task(
+                asset_id=1,
+                image_url="https://example.com/img.jpg",
+                tenant_id="tenant-1",
+                user_id=42,
+            )
+
+        mock_session.commit.assert_called()
+
+
+@pytest.mark.unit
+class TestAnalyzeImageTaskGeminiMalformed:
+    """Test handling of malformed/non-parseable Gemini JSON response."""
+
+    @patch("app.tasks.vision_tasks.AsyncSessionLocal")
+    @patch("app.tasks.vision_tasks.httpx")
+    def test_malformed_gemini_json_handled_gracefully(self, mock_httpx, mock_session_cls):
+        """Task handles malformed Gemini JSON (not valid JSON) without crashing."""
+        from app.tasks.vision_tasks import analyze_image_task
+
+        mock_session = make_mock_session()
+        mock_session_cls.return_value = mock_session
+
+        # Gemini returns 200 but the text content is NOT valid JSON
+        malformed_response = {
+            "candidates": [{
+                "content": {
+                    "parts": [{"text": "This is NOT valid JSON at all!!!"}]
+                }
+            }]
+        }
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = malformed_response
+        mock_httpx.post.return_value = mock_resp
+
+        with patch("app.tasks.vision_tasks.settings") as mock_settings:
+            mock_settings.GOOGLE_API_KEY = "fake-key"
+            # Should not raise — malformed JSON is handled internally (sets status='failed')
+            analyze_image_task(
+                asset_id=1,
+                image_url="https://example.com/img.jpg",
+                tenant_id="tenant-1",
+                user_id=42,
+            )
+
+        # execute called at least once for status update
+        assert mock_session.execute.called

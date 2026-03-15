@@ -187,6 +187,24 @@ describe("pinToMemory", () => {
   });
 });
 
+describe("if (!db) guard clauses", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("deleteFromMemory throws when db unavailable", async () => {
+    mockGetDb.mockResolvedValue(null as any);
+    const { deleteFromMemory } = await import("../visionMemoryService");
+    await expect(deleteFromMemory(42, 1, "tenant-abc")).rejects.toThrow(/database not available/i);
+  });
+
+  it("pinToMemory throws when db unavailable", async () => {
+    mockGetDb.mockResolvedValue(null as any);
+    const { pinToMemory } = await import("../visionMemoryService");
+    await expect(pinToMemory(42, 1, "tenant-abc")).rejects.toThrow(/database not available/i);
+  });
+});
+
 describe("chat command deletion", () => {
   beforeEach(() => {
     vi.clearAllMocks();

@@ -134,3 +134,14 @@ class TestVisionFeatureFlag:
         ):
             client.post("/api/v1/vision/analyze", json=VALID_PAYLOAD, headers=auth_headers)
         mock_task.delay.assert_not_called()
+
+    def test_vision_endpoint_propagates_task_dispatch_error(self, client, auth_headers):
+        """Returns 500 when analyze_image_task.delay() raises (Celery broker unavailable)."""
+        with (
+            patch("app.api.vision._check_multimodal_memory_flag", new=AsyncMock(return_value=True)),
+            patch("app.tasks.vision_tasks.analyze_image_task") as mock_task,
+        ):
+            mock_task.delay.side_effect = Exception("Celery broker connection refused")
+            response = client.post("/api/v1/vision/analyze", json=VALID_PAYLOAD, headers=auth_headers)
+        # When task.delay() raises, the endpoint should return a 500 error
+        assert response.status_code == 500

@@ -19,6 +19,9 @@ vi.mock("../crypto", () => ({
   decrypt: vi.fn((v: string) => v),
 }));
 
+import { decrypt } from "../crypto";
+const mockDecrypt = vi.mocked(decrypt);
+
 import { generateEmbedding, generateImageDescription } from "../vectorize";
 import { getDb } from "../../db";
 
@@ -237,6 +240,61 @@ describe("MultimodalEmbeddingProvider", () => {
 
       // DB should only be queried once (subsequent calls served from cache)
       expect(mockGetDb).toHaveBeenCalledTimes(1);
+    });
+
+    it("falls back to Cloudflare when db is unavailable (getDb returns null)", async () => {
+      mockGetDb.mockResolvedValue(null as any);
+
+      const module = await import("../multimodalEmbeddingProvider");
+      if (typeof (module as any)._resetCacheForTest === "function") {
+        (module as any)._resetCacheForTest();
+      }
+
+      const provider = await module.getMultimodalEmbeddingProvider();
+      expect(provider.getProviderName()).toBe("cloudflare");
+    });
+
+    it("falls back to Cloudflare when decrypt() throws (key stored as sensitive but decryption fails)", async () => {
+      // DB returns an isSensitive key, but decrypt throws
+      const db = {
+        select: vi.fn().mockReturnThis(),
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        and: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockResolvedValue([{ value: "encrypted-blob", isSensitive: true }]),
+      };
+      mockGetDb.mockResolvedValue(db as any);
+      mockDecrypt.mockImplementationOnce(() => { throw new Error("Decryption failed"); });
+
+      const module = await import("../multimodalEmbeddingProvider");
+      if (typeof (module as any)._resetCacheForTest === "function") {
+        (module as any)._resetCacheForTest();
+      }
+
+      const provider = await module.getMultimodalEmbeddingProvider();
+      expect(provider.getProviderName()).toBe("cloudflare");
+    });
+
+    it("re-fetches provider from DB after cache TTL expires (after 5s)", async () => {
+      vi.useFakeTimers();
+      const mockDb = makeDbWithGeminiKey("encrypted-gemini-key");
+      mockGetDb.mockResolvedValue(mockDb as any);
+
+      const module = await import("../multimodalEmbeddingProvider");
+      if (typeof (module as any)._resetCacheForTest === "function") {
+        (module as any)._resetCacheForTest();
+      }
+
+      await module.getMultimodalEmbeddingProvider(); // sets cache
+      expect(mockGetDb).toHaveBeenCalledTimes(1);
+
+      // Advance time past cache TTL (5000ms)
+      vi.advanceTimersByTime(6000);
+
+      await module.getMultimodalEmbeddingProvider(); // cache expired → re-fetches
+      expect(mockGetDb).toHaveBeenCalledTimes(2);
+
+      vi.useRealTimers();
     });
 
     it("re-fetches provider from DB after cache is reset", async () => {
