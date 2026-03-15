@@ -464,4 +464,45 @@ export const memoryRouter = router({
 
       return { deletedCount: deleted.length };
     }),
+
+  /**
+   * Delete an image from multimodal memory (Section 10).
+   * Cascade-removes the memory item, vectors, links, and visual state entry.
+   * The media_assets row (attachment) is preserved.
+   */
+  deleteImageFromMemory: protectedProcedure
+    .input(z.object({ assetId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId: string = (ctx.user as any).tenantId || "";
+
+      // Feature flag gate
+      const { getTenantFeatureFlags } = await import("../services/tenantFeatureFlagService");
+      const flags = await getTenantFeatureFlags(tenantId);
+      if (!flags.multimodalMemory) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Multimodal memory is not enabled" });
+      }
+
+      const { deleteFromMemory } = await import("../services/visionMemoryService");
+      return deleteFromMemory(input.assetId, ctx.user.id, tenantId);
+    }),
+
+  /**
+   * Pin an image to multimodal memory (Section 10).
+   * Sets salience to 1.0 so the image is always prioritized in retrieval.
+   */
+  pinImageToMemory: protectedProcedure
+    .input(z.object({ assetId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId: string = (ctx.user as any).tenantId || "";
+
+      // Feature flag gate
+      const { getTenantFeatureFlags } = await import("../services/tenantFeatureFlagService");
+      const flags = await getTenantFeatureFlags(tenantId);
+      if (!flags.multimodalMemory) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Multimodal memory is not enabled" });
+      }
+
+      const { pinToMemory } = await import("../services/visionMemoryService");
+      return pinToMemory(input.assetId, ctx.user.id, tenantId);
+    }),
 });
