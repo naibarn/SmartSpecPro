@@ -323,6 +323,7 @@ class AutoDraftResponse(BaseModel):
 ```typescript
 // POST /api/internal/tools/auto-draft
 // Guarded by X-Service-Token — see §12.7 (and Spec 034 §9.4 for the original pattern)
+// Feature flag gate: if (!process.env.ENABLE_CONTENT_AUTOMATION) return 503;
 
 // Implementation:
 // 1. Validate AutoDraftRequest via Zod
@@ -598,6 +599,29 @@ interface InputItem {
 }
 ```
 
+**Python tool registration** (for agent dispatch via `agency_tools.py`):
+
+```python
+# In agency_tools.py — alongside builtin-auto-draft and builtin-model-suggest
+_BUILTIN_ENDPOINTS["builtin-file-parse"] = "/api/internal/tools/file-parse"
+_BUILTIN_RISK_LEVELS["builtin-file-parse"] = "medium"  # reads external files
+
+# Pydantic model for Python callers (e.g., InputResolver._resolve_file)
+class FileParseRequest(BaseModel):
+    file_url: str
+    file_type: Literal["csv", "xlsx", "txt", "auto"] = "auto"
+    parse_mode: Literal["single", "per_row", "per_line"] = "per_row"
+    topic_column: str | None = None
+    params_columns: dict[str, str] | None = None
+    max_rows: int = 50
+
+class FileParseResponse(BaseModel):
+    items: list[dict]
+    total_rows: int
+    parsed_rows: int
+    warnings: list[str]
+```
+
 **File type support:**
 
 | Type | Library | Parse mode |
@@ -691,7 +715,8 @@ class ScheduleDraftRequest(BaseModel):
     notify_webhook_url: str | None = None  # MUST pass SSRF validation (see §12.5)
 
     # Placeholder allowlist — ONLY these are permitted in topic_template
-    ALLOWED_PLACEHOLDERS = {"date", "day_of_week"}
+    # ClassVar prevents Pydantic v2 from treating this as a model field
+    ALLOWED_PLACEHOLDERS: ClassVar[set[str]] = {"date", "day_of_week"}
 
     @validator("topic_template")
     def validate_topic_template(cls, v):
@@ -784,9 +809,9 @@ channel:
   language: "th"
 
 schedule:
-  timezone: "Asia/Bangkok"
+  timezone: "Asia/Bangkok"     # Used for UI display + cron matching (see note below)
   items:
-    - cron: "0 8 * * *"          # ทุกวัน 8 โมง
+    - cron: "0 8 * * *"          # ทุกวัน 8 โมง (local time per timezone above)
       output_type: "slide"       # PNG slide image + caption text
       count: 1
       topic_source:
@@ -919,7 +944,9 @@ class ContentAutomationRun(Base):
     schedule_item_index = Column(Integer, nullable=False)  # which schedule item triggered
 
     status = Column(String(20), nullable=False, default="pending")
-    # pending → running → exporting → notifying → completed | failed | export_failed
+    # pending → running → completed | failed | export_failed
+    # NOTE: 'exporting' and 'notifying' intermediate states were considered but are NOT
+    # set in the batch task — status transitions directly from 'running' to final state.
     # export_failed: Phase 2 (drafts) succeeded but Phase 3-5 (export/upload) failed.
     #   Does NOT increment consecutive_failures (transient infra issue, not content failure).
     #   Presentations remain accessible via editor_url. Dashboard shows "Re-export" button.
@@ -1015,6 +1042,11 @@ class ContentAutomationScheduler:
             # time using croniter.match(datetime.now()). If multiple items are due
             # simultaneously, dispatch one task per due item.
             schedule_items = spec.spec_data.get("schedule", {}).get("items", [])
+            # NOTE: get_due_schedule_indices converts spec's timezone to compute
+            # local wall-clock time for croniter.match(). The cron expression
+            # "0 8 * * *" with timezone "Asia/Bangkok" matches at UTC 01:00.
+            # Implementation: use pytz/zoneinfo to localize datetime.now(timezone.utc)
+            # to the spec's configured timezone before calling croniter.match().
             for idx in self.get_due_schedule_indices(spec):
                 # Credit guard: reserve PER TASK (not per spec) using that item's count.
                 # User-account balance is enforced inside auto_draft_pipeline()
@@ -1031,6 +1063,14 @@ class ContentAutomationScheduler:
                     tenant_id=spec.tenant_id,
                 )
 
+            # IMPORTANT: advance_next_run MUST happen in the same DB transaction
+            # as the dispatch decision to prevent duplicate runs. If the process
+            # crashes between delay() and advance_next_run(), the next scheduler
+            # tick will re-find this spec (stale next_run) and dispatch again.
+            # Defense: advance_next_run uses an atomic UPDATE with a CAS guard
+            # on the current next_run value, similar to persist_rotation_offset.
+            # If the CAS fails (another tick already advanced it), skip silently.
+            #
             # Update per-item next-fire timestamps in spec_data["_item_next_runs"]
             # (dict keyed by item index → ISO timestamp).
             # advance_next_run iterates ALL schedule items, computes next fire
@@ -1047,12 +1087,19 @@ class ContentAutomationScheduler:
             UPDATE content_specs SET credits_used_today = 0
             WHERE credits_used_today > 0
         """))
-        # Monthly reset: runs on 1st of each month at UTC midnight
-        if datetime.now(timezone.utc).day == 1:
-            await db.execute(text("""
-                UPDATE content_specs SET credits_used_month = 0
-                WHERE credits_used_month > 0
-            """))
+```
+
+Monthly reset is a separate static method and beat entry to ensure it fires even if
+the daily task is down at midnight on the 1st:
+
+```python
+    @staticmethod
+    async def reset_monthly_credit_counters():
+        """Celery beat task — runs at UTC midnight on 1st of each month."""
+        await db.execute(text("""
+            UPDATE content_specs SET credits_used_month = 0
+            WHERE credits_used_month > 0
+        """))
 ```
 
 Register in `celery_app.py` beat schedule:
@@ -1060,14 +1107,33 @@ Register in `celery_app.py` beat schedule:
 "reset-daily-credit-counters": {
     "task": "app.tasks.content_automation_tasks.reset_daily_credit_counters",
     "schedule": crontab(hour=0, minute=0),  # UTC midnight
-    # NOTE: Monthly reset fires at UTC midnight on day 1. Users in UTC+7 (Bangkok)
-    # see the monthly counter reset at 07:00 local time. This is acceptable for
-    # Phase 1 — tenant-timezone-aware reset is a future enhancement.
-}
+},
+"reset-monthly-credit-counters": {
+    "task": "app.tasks.content_automation_tasks.reset_monthly_credit_counters",
+    "schedule": crontab(hour=0, minute=0, day_of_month=1),  # UTC midnight, 1st of month
+    # NOTE: Users in UTC+7 (Bangkok) see the monthly counter reset at 07:00 local time.
+    # Tenant-timezone-aware reset is a future enhancement.
+},
 "cleanup-old-runs": {
     "task": "app.tasks.content_automation_tasks.cleanup_old_runs",
     "schedule": crontab(hour=3, minute=0, day_of_week="sunday"),  # Weekly at 03:00 UTC Sunday
-}
+},
+"content-automation-scheduler-tick": {
+    "task": "app.tasks.content_automation_tasks.run_scheduler_tick",
+    "schedule": crontab(minute="*"),  # Every minute — the core scheduler loop
+},
+```
+
+The scheduler tick wrapper task:
+
+```python
+@celery_app.task
+def run_scheduler_tick():
+    """Sync Celery task wrapping async ContentAutomationScheduler.tick().
+    Feature flag gate: returns early if ENABLE_CONTENT_AUTOMATION != 'true'."""
+    if os.environ.get("ENABLE_CONTENT_AUTOMATION", "false").lower() != "true":
+        return
+    _run_async(ContentAutomationScheduler().tick())
 ```
 
 #### Run record cleanup
@@ -1087,18 +1153,27 @@ async def cleanup_old_runs(retention_days: int = 90):
     zombie_result = await db.execute(text("""
         UPDATE content_automation_runs
         SET status = 'failed', error_message = 'Task killed by hard_time_limit (zombie detected)'
-        WHERE status = 'running' AND created_at < :zombie_cutoff
+        WHERE status = 'running' AND started_at IS NOT NULL AND started_at < :zombie_cutoff
     """), {"zombie_cutoff": zombie_cutoff})
     if zombie_result.rowcount > 0:
         logger.warning("content_auto.zombie_runs_detected", extra={
             "count": zombie_result.rowcount,
         })
 
-    # Phase 2: Delete old completed/failed records
+    # Phase 2: Delete old completed/failed records (skip running).
+    # export_failed records are kept longer (180 days) to allow re-export,
+    # but are eventually cleaned up to prevent unbounded growth.
     result = await db.execute(text("""
         DELETE FROM content_automation_runs
-        WHERE created_at < :cutoff AND status NOT IN ('running', 'export_failed')
-    """), {"cutoff": cutoff})
+        WHERE status != 'running'
+          AND (
+            (status != 'export_failed' AND created_at < :cutoff)
+            OR (status = 'export_failed' AND created_at < :export_failed_cutoff)
+          )
+    """), {
+        "cutoff": cutoff,
+        "export_failed_cutoff": datetime.now(timezone.utc) - timedelta(days=180),
+    })
     logger.info("content_auto.cleanup_old_runs", extra={
         "deleted_count": result.rowcount, "zombies_fixed": zombie_result.rowcount,
         "cutoff": cutoff.isoformat(),
@@ -1142,8 +1217,10 @@ async def resume_spec(spec_id: int, tenant_id: str, force_run_now: bool = False)
         # DESIGN: force_run_now always dispatches schedule_item_index=0 (first item)
         # as a single-item test run. This is intentional — the purpose is to verify
         # the spec works after fixing the cause of auto-pause, not to run all items.
-        # If callers need to test a specific item, add schedule_item_index parameter
-        # in a future iteration.
+        # CAVEAT: If the original failure was caused by a broken item at index 1+,
+        # this test run will succeed (false positive). The next scheduled run of the
+        # broken item will re-pause the spec. Expose schedule_item_index as an
+        # optional parameter in a future iteration for targeted testing.
         schedule_items = spec.spec_data.get("schedule", {}).get("items", [])
         if not schedule_items:
             raise ValueError("Spec has no schedule items — cannot dispatch test run")
@@ -1210,7 +1287,7 @@ def content_automation_batch_task(self, spec_id: int, schedule_item_index: int, 
     # Persist rotation offset (if rotating_list source with sequential rotation)
     # Atomic JSON update: UPDATE content_specs SET spec_data = jsonb_set(
     #   spec_data, '{_rotation_offsets,<idx>}', to_jsonb(old_offset + count))
-    if schedule_item.get("topic_source", {}).get("type") == "rotating_list":
+    if schedule_item.get("topic_source", {}).get("type") == "rotating_list" and len(topics) > 0:
         _run_async(persist_rotation_offset(spec.id, schedule_item_index, len(topics)))
 
     # Phase 1b: Create run record (MUST exist before processing loop
@@ -1223,7 +1300,31 @@ def content_automation_batch_task(self, spec_id: int, schedule_item_index: int, 
         items_requested=len(topics),
     ))
     # run_record.status = "running" at this point
-    # Updated to "completed"/"failed" in finally block (see Phase 6)
+    # Updated to "completed"/"failed" in Phase 6 (or except block)
+    #
+    # IMPORTANT: update_run_record() is a PATCH (partial update), NOT a PUT (full replace).
+    # It only updates the kwargs provided — omitted fields retain their current DB values.
+    # This allows the Phase 2 call (output_artifacts only) to coexist with the Phase 6
+    # call (status, items_completed, etc.) without either overwriting the other's fields.
+
+    # §9.4.1 Structured log: task_started
+    logger.info("content_auto.task_started", extra={
+        "spec_id": spec.id, "run_id": run_record.id,
+        "schedule_item_index": schedule_item_index,
+        "items_requested": len(topics), "tenant_id": spec.tenant_id,
+    })
+
+    # Edge case: empty topics (e.g., rotating_list with empty list — validator guards
+    # against this but defense-in-depth). Mark completed immediately and return.
+    if not topics:
+        _run_async(update_run_record(run_record, status="completed",
+                                     items_completed=0, items_failed=0, credits_used=0))
+        logger.info("content_auto.task_completed", extra={
+            "run_id": run_record.id, "run_status": "completed",
+            "items_completed": 0, "items_failed": 0, "credits_used": 0,
+            "total_duration_ms": 0,
+        })
+        return
 
     # MANDATORY: Phase 2-6 wrapped in try/except to prevent orphaned run records.
     # Any exception between create_run_record and update_run_record would leave the
@@ -1231,7 +1332,9 @@ def content_automation_batch_task(self, spec_id: int, schedule_item_index: int, 
     results = []
     exports = []
     download_urls = []
+    phase2_completed = False  # Set to True after Phase 2 loop completes — used by except block
     current_phase = "phase2_draft"  # Sentinel for structured logging (§9.4.1 task_failed event)
+    phase2_start = time.monotonic()
     try:
         # Phase 2: Create presentations (sequential to control cost)
         for topic_item in topics:
@@ -1248,22 +1351,36 @@ def content_automation_batch_task(self, spec_id: int, schedule_item_index: int, 
                 _run_async(atomic_credit_adjust(spec.id, estimated_per_item, result.credits_used, spec.tenant_id))
                 results.append(result)
             except CreditInsufficientError:
-                # Roll back the reserved budget for remaining items and stop
-                remaining_items = len(topics) - len(results) - 1
+                # Roll back the reserved budget for remaining items and stop.
+                # The current item raised BEFORE any deduction, so its
+                # reservation must also be rolled back (no -1).
+                remaining_items = len(topics) - len(results)
                 if remaining_items > 0:
                     _run_async(atomic_budget_rollback(spec.id, remaining_items * AVERAGE_COST_PER_DRAFT, spec.tenant_id))
                 break
 
+        # IMPORTANT: Set phase2_completed BEFORE any I/O (logger, update_run_record).
+        # If update_run_record raises between the flag set and Phase 3, the except block
+        # correctly sees phase2_completed=True and skips credit rollback (all drafts done).
+        phase2_completed = True
+
+        # §9.4.1 Structured log: phase_complete (Phase 2)
+        logger.info("content_auto.phase_complete", extra={
+            "run_id": run_record.id, "phase": "phase2_draft",
+            "duration_ms": int((time.monotonic() - phase2_start) * 1000),
+            "items_processed": len(results),
+        })
+
         # Persist output_artifacts after Phase 2 (before export) so reExport can
         # reconstruct deck_ids even if Phase 3-5 fails (export_failed status).
-        phase2_completed = True
         _run_async(update_run_record(run_record, output_artifacts=[
             {"deck_id": r.deck_id, "topic": t.topic, "editor_url": r.editor_url, "credits_used": r.credits_used}
-            for r, t in zip(results, topics[:len(results)])
+            for r, t in zip(results, topics)  # zip stops at shorter; safe if CreditInsufficientError cut Phase 2 short
         ]))
 
         # Phase 3: Export
         current_phase = "phase3_export"
+        phase3_start = time.monotonic()
         # NOTE: zip(results, topics) to propagate topic text into each export dict
         # (needed by Phase 4 caption generation: export["topic"])
         # NOTE: exports tracks items that completed through export (not just drafting).
@@ -1296,6 +1413,13 @@ def content_automation_batch_task(self, spec_id: int, schedule_item_index: int, 
                     "editor_url": result.editor_url,
                     "topic": topic_item.topic,
                 })
+
+        # §9.4.1 Structured log: phase_complete (Phase 3)
+        logger.info("content_auto.phase_complete", extra={
+            "run_id": run_record.id, "phase": "phase3_export",
+            "duration_ms": int((time.monotonic() - phase3_start) * 1000),
+            "items_processed": len(exports),
+        })
 
         # Phase 4: Generate captions (if configured)
         current_phase = "phase4_caption"
@@ -1336,7 +1460,16 @@ def content_automation_batch_task(self, spec_id: int, schedule_item_index: int, 
         # NOT committed — run_status reflects "failed" with items_completed equal
         # to the number of exports that succeeded before abort. Do NOT add per-item
         # try/except in the export loop — this changes transactional semantics.
-        run_status = "completed" if len(exports) == len(results) and results else "failed"
+        # NOTE: Compare against len(topics), NOT len(results). If CreditInsufficientError
+        # caused an early Phase 2 exit, len(results) < len(topics). Marking the run as
+        # "completed" when only a subset was created is misleading to the user.
+        # Empty topics are handled by the early return above (line ~1275).
+        run_status = "completed" if len(exports) == len(topics) else "failed"
+        # Build item_errors for any topic that didn't produce a successful export
+        item_errors_list = [
+            {"topic": t.topic, "status": "skipped", "error_message": "credit_insufficient or export_failed", "deck_id": None}
+            for t in topics[len(results):]
+        ]
         _run_async(update_run_record(
             run_record,
             status=run_status,
@@ -1344,6 +1477,7 @@ def content_automation_batch_task(self, spec_id: int, schedule_item_index: int, 
             items_failed=len(topics) - len(exports),
             credits_used=sum(r.credits_used for r in results),
             export_urls=download_urls,
+            item_errors=item_errors_list if item_errors_list else None,
         ))
 
         # Update consecutive_failures — RETURNING to detect auto-pause trigger
@@ -1352,11 +1486,17 @@ def content_automation_batch_task(self, spec_id: int, schedule_item_index: int, 
                 UPDATE content_specs
                 SET consecutive_failures = consecutive_failures + 1,
                     status = CASE WHEN consecutive_failures + 1 >= 3 THEN 'paused' ELSE status END
-                WHERE id = :spec_id
+                WHERE id = :spec_id AND tenant_id = :tenant_id
                 RETURNING consecutive_failures
-            """), {"spec_id": spec.id}))
+            """), {"spec_id": spec.id, "tenant_id": spec.tenant_id}))
             new_cf = cf_result.scalar()
             if new_cf is not None and new_cf >= 3:
+                # §9.4.1 Structured log: spec_auto_paused
+                logger.warning("content_auto.spec_auto_paused", extra={
+                    "spec_id": spec.id, "tenant_id": spec.tenant_id,
+                    "consecutive_failures": new_cf,
+                    "last_error": f"Export incomplete: {len(exports)}/{len(results)} items exported",
+                })
                 try:
                     _run_async(notify_spec_paused(
                         spec,
@@ -1368,8 +1508,17 @@ def content_automation_batch_task(self, spec_id: int, schedule_item_index: int, 
                     })
         else:
             _run_async(db.execute(text("""
-                UPDATE content_specs SET consecutive_failures = 0 WHERE id = :spec_id
-            """), {"spec_id": spec.id}))
+                UPDATE content_specs SET consecutive_failures = 0
+                WHERE id = :spec_id AND tenant_id = :tenant_id
+            """), {"spec_id": spec.id, "tenant_id": spec.tenant_id}))
+
+        # §9.4.1 Structured log: task_completed
+        logger.info("content_auto.task_completed", extra={
+            "run_id": run_record.id, "run_status": run_status,
+            "items_completed": len(exports), "items_failed": len(topics) - len(exports),
+            "credits_used": sum(r.credits_used for r in results),
+            "total_duration_ms": int((time.monotonic() - phase2_start) * 1000),
+        })
 
         # Notification is best-effort — failure MUST NOT downgrade a completed
         # run to "failed" or double-update the run record.
@@ -1381,7 +1530,7 @@ def content_automation_batch_task(self, spec_id: int, schedule_item_index: int, 
                 download_urls=download_urls,
             ))
         except Exception as notify_exc:
-            logger.error("notify_completion failed", extra={
+            logger.error("content_auto.notify_failed", extra={
                 "run_id": run_record.id, "spec_id": spec.id,
                 "error": sanitize(str(notify_exc)),
             })
@@ -1391,9 +1540,10 @@ def content_automation_batch_task(self, spec_id: int, schedule_item_index: int, 
         # NOTE: SoftTimeLimitExceeded inherits from BaseException (not Exception)
         # in Celery 5.x (via billiard). Must be caught explicitly.
         # Budget rollback for unprocessed items.
+        # phase2_completed is initialized to False before the try block and set to True
+        # after Phase 2 completes. If the exception occurred during Phase 2, it remains False.
         # Phase 2 failures: some items were never drafted — roll back their reservations.
-        # Phase 3-5 failures: all items were drafted (budget consumed) — rollback is 0.
-        phase2_completed = len(results) >= len(topics) or not topics
+        # Phase 3-6 failures: all items were drafted (budget consumed) — rollback is 0.
         if not phase2_completed:
             # Roll back ALL unprocessed items (including the one that failed mid-draft)
             unprocessed = len(topics) - len(results)
@@ -1408,10 +1558,14 @@ def content_automation_batch_task(self, spec_id: int, schedule_item_index: int, 
             "items_completed_before_failure": len(exports),
         })
 
-        # Determine if this is an export/upload failure (R2 down) vs content failure
-        # export_failed: drafts succeeded but export/upload failed — transient infra issue
-        if phase2_completed and not download_urls:
-            # R2 upload failure — do NOT penalize consecutive_failures
+        # Determine if this is an export/upload failure (R2 down) vs content failure.
+        # export_failed: drafts succeeded but Phase 3 or Phase 5 failed — transient infra issue.
+        # IMPORTANT: Only classify as export_failed when the failure is in Phase 3 (export)
+        # or Phase 5 (upload). Phase 4 (caption) is a content/LLM failure and MUST increment
+        # consecutive_failures — using the broad condition `phase2_completed and not download_urls`
+        # would misclassify Phase 4 failures as infra failures.
+        if current_phase in ("phase3_export", "phase5_upload") and phase2_completed:
+            # Export/upload infrastructure failure — do NOT penalize consecutive_failures
             _run_async(update_run_record(
                 run_record,
                 status="export_failed",
@@ -1439,11 +1593,16 @@ def content_automation_batch_task(self, spec_id: int, schedule_item_index: int, 
             UPDATE content_specs
             SET consecutive_failures = consecutive_failures + 1,
                 status = CASE WHEN consecutive_failures + 1 >= 3 THEN 'paused' ELSE status END
-            WHERE id = :spec_id
+            WHERE id = :spec_id AND tenant_id = :tenant_id
             RETURNING consecutive_failures
-        """), {"spec_id": spec.id}))
+        """), {"spec_id": spec.id, "tenant_id": spec.tenant_id}))
         new_cf = cf_result.scalar()
         if new_cf is not None and new_cf >= 3:
+            # §9.4.1 Structured log: spec_auto_paused (except block)
+            logger.warning("content_auto.spec_auto_paused", extra={
+                "spec_id": spec.id, "tenant_id": spec.tenant_id,
+                "consecutive_failures": new_cf, "last_error": sanitize(str(exc)),
+            })
             try:
                 _run_async(notify_spec_paused(spec, last_error=sanitize(str(exc))))
             except Exception as pause_exc:
@@ -1508,6 +1667,101 @@ WHERE id = :spec_id AND tenant_id = :tenant_id
 
 If `rowcount == 0` (another task already updated the offset), log a warning `content_auto.rotation_offset_conflict` and proceed with the already-resolved topics. Do NOT retry topic selection.
 
+#### 9.4.4 Re-export task (`content_automation_reexport_task`)
+
+Dispatched by the `reExport` tRPC procedure for runs with `status='export_failed'`.
+Re-runs Phase 3-5 only — no re-drafting, no credit cost.
+
+```python
+@celery_app.task(bind=True, max_retries=0, soft_time_limit=600, hard_time_limit=720)
+def content_automation_reexport_task(self, run_id: int, tenant_id: str):
+    """Re-export a previously drafted run that failed during Phase 3-5.
+
+    Reads output_artifacts from the run record to get deck_ids.
+    Does NOT call auto_draft_pipeline or consume credits."""
+    run = _run_async(load_run_record(run_id))
+    if run is None or run.tenant_id != tenant_id:
+        raise ValueError("Run not found or tenant mismatch")
+    if run.status != "export_failed":
+        raise ValueError(f"Run status must be 'export_failed', got: {run.status!r}")
+
+    artifacts = run.output_artifacts or []
+    if not artifacts:
+        raise ValueError("No output_artifacts — cannot re-export")
+
+    spec = _run_async(load_content_spec(run.spec_id))
+    if spec is None or spec.tenant_id != tenant_id:
+        raise ValueError("Spec not found or tenant mismatch")
+
+    schedule_items = spec.spec_data.get("schedule", {}).get("items", [])
+    if run.schedule_item_index >= len(schedule_items):
+        raise ValueError(f"schedule_item_index {run.schedule_item_index} out of range "
+                         f"(spec has {len(schedule_items)} items — spec may have been updated since original run)")
+    schedule_item = schedule_items[run.schedule_item_index]
+
+    _run_async(update_run_record(run, status="running"))
+
+    exports = []
+    download_urls = []
+    try:
+        # Phase 3: Re-export using deck_ids from output_artifacts
+        for artifact in artifacts:
+            deck_id = artifact["deck_id"]
+            topic = artifact["topic"]
+            # SECURITY: Verify deck_id belongs to the same tenant (defense-in-depth
+            # against output_artifacts tampering or cross-tenant data leak)
+            deck = _run_async(load_deck(deck_id))
+            if deck is None or deck.tenant_id != tenant_id:
+                raise ValueError(f"deck_id {deck_id} not found or belongs to different tenant")
+            output_type = schedule_item.get("output_type", "presentation")
+
+            if output_type == "slide":
+                export = _run_async(export_presentation_slides(deck_id=deck_id, format="png", quality="standard"))
+            elif output_type == "video":
+                export = _run_async(export_presentation_video(deck_id=deck_id, format="mp4", quality="standard", include_audio=True))
+            else:
+                export = {"type": "presentation", "deck_id": deck_id, "editor_url": artifact.get("editor_url")}
+            export["topic"] = topic
+            exports.append(export)
+
+        # Phase 4: Generate captions (if configured) — same logic as main task
+        # Phase 5: Upload to R2/S3 — same logic as main task
+        # (omitted for brevity — identical to content_automation_batch_task Phase 4-5)
+
+        folder = render_folder_pattern(
+            spec.spec_data.get("output", {}).get("folder_pattern", "content-auto/{{channel.name}}/{{date}}"),
+            spec,
+        )
+        # SECURITY: Same path traversal guard as main batch task Phase 5
+        validate_r2_folder_path(folder)  # Raises ValueError on traversal attempt
+
+        download_urls = _run_async(upload_batch_to_r2(exports=exports, folder=folder))
+
+        _run_async(update_run_record(
+            run, status="completed",
+            items_completed=len(exports), items_failed=len(artifacts) - len(exports),
+            export_urls=download_urls,
+        ))
+        # Reset consecutive_failures on successful re-export — the spec is healthy
+        _run_async(db.execute(text("""
+            UPDATE content_specs SET consecutive_failures = 0
+            WHERE id = :spec_id AND tenant_id = :tenant_id
+        """), {"spec_id": spec.id, "tenant_id": spec.tenant_id}))
+        logger.info("content_auto.reexport_completed", extra={
+            "run_id": run.id, "spec_id": spec.id, "items_exported": len(exports),
+        })
+
+    except (Exception, SoftTimeLimitExceeded) as exc:
+        _run_async(update_run_record(
+            run, status="export_failed",
+            error_message=sanitize(str(exc)),
+        ))
+        logger.error("content_auto.reexport_failed", extra={
+            "run_id": run.id, "spec_id": spec.id, "error": sanitize(str(exc)),
+        })
+        raise
+```
+
 #### `render_folder_pattern()` specification
 
 ```python
@@ -1542,6 +1796,8 @@ class InputResolver:
         item_count = schedule_item.get("count", 1)
 
         if source.get("type") == "rotating_list":
+            # NOTE: _resolve_rotating is sync (no DB calls) — no await needed.
+            # It reads rotation offsets from spec.spec_data (already loaded in memory).
             return InputResolver._resolve_rotating(source, spec, schedule_item_index, item_count)
         elif source.get("type") == "ai_generated":
             return await InputResolver._resolve_ai_generated(source, item_count)
@@ -1569,6 +1825,8 @@ class InputResolver:
             # AI picks based on what hasn't been used recently
             # → query content_automation_runs for recent topics → pick least used
             # SECURITY: query MUST filter on tenant_id = spec.tenant_id (§12.8)
+            # NOTE: _smart_pick is a sync function that uses _run_async() internally
+            # to execute its DB query (consistent with the Celery sync context).
             selected = _smart_pick(topics, spec.id, spec.tenant_id, count)
         else:  # sequential
             selected = [topics[(offset + i) % len(topics)] for i in range(count)]
@@ -1693,7 +1951,7 @@ Content Automation "{{spec_name | html_escape}}" ทำงานสำเร็�
 สรุป:
 - สร้างสำเร็จ: {{success_count}} / {{total_count}} ชิ้น
 - เครดิตที่ใช้: {{credits_used}}
-- เวลาที่ใช้: {{duration}}
+- เวลาที่ใช้: {{duration}}  {# completed_at - started_at, formatted: "X min Y sec" #}
 {{#if has_failures}}
 - ล้มเหลว: {{failed_count}} ชิ้น
   {{#each failed_items}}
@@ -1727,7 +1985,7 @@ Content Automation "{{spec_name | html_escape}}" ทำงานสำเร็�
 
 ### 10.2.1 Auto-pause notification
 
-When `consecutive_failures >= 3` triggers an automatic pause, the system MUST send a separate notification BEFORE setting status to "paused". This prevents a user's content automation from silently stopping.
+When `consecutive_failures >= 3` triggers an automatic pause, the system MUST send a notification to inform the user. The `status = 'paused'` is set atomically in the same SQL as the `consecutive_failures` increment (CASE WHEN clause), and `notify_spec_paused()` is called AFTER the DB update. This ordering is intentional — if the notification fails, the spec is still paused (safety-first), and the failure is logged as `content_auto.notify_failed`.
 
 **Email template: `content-automation-paused`**:
 ```
@@ -1748,7 +2006,27 @@ Content Automation "{{spec_name | html_escape}}" ถูกหยุดอัต�
 
 **SECURITY**: Webhook URL MUST pass SSRF validation (§12.5) before every outbound request. Payload MUST be built using `json.dumps()` — NEVER string interpolation/concatenation (prevents JSON injection via topic strings containing `"` or `\n`).
 
-**HMAC Webhook Signature**: Every outbound webhook request MUST include an `X-SmartSpec-Signature: sha256=<hmac_hex>` header. The HMAC is computed over the raw JSON body using a per-spec `webhook_secret` (generated at Content Spec creation, stored encrypted via `crypto.ts` in `content_specs.webhook_secret_encrypted`). This allows receiving systems to verify payload authenticity and prevent spoofing/replay attacks. Verification algorithm: `hmac_sha256(webhook_secret, raw_body) == signature_hex`. Pattern follows GitHub/Stripe webhook signing conventions.
+**HMAC Webhook Signature**: Every outbound webhook request MUST include an `X-SmartSpec-Signature: sha256=<hmac_hex>` header. The HMAC is computed over the raw JSON body using a per-spec `webhook_secret` (generated at Content Spec creation, stored encrypted via `crypto.ts` in `content_specs.webhook_secret_encrypted`). This allows receiving systems to verify payload authenticity and prevent spoofing/replay attacks.
+
+Sending (Python):
+```python
+import hmac, hashlib
+signature = hmac.new(webhook_secret.encode(), raw_body, hashlib.sha256).hexdigest()
+headers["X-SmartSpec-Signature"] = f"sha256={signature}"
+```
+
+Receiving (verification — MUST use constant-time comparison):
+```python
+expected = hmac.new(secret.encode(), raw_body, hashlib.sha256).hexdigest()
+if not hmac.compare_digest(expected, received_signature):  # NOT ==
+    raise ValueError("Invalid signature")
+```
+
+Webhook delivery is best-effort: 3 attempts with 5-second exponential backoff. Failure is logged as `content_auto.notify_failed` and does not affect run status.
+
+`on_error` webhooks use `event: "content_automation.failed"` for run failures and `event: "content_automation.paused"` for auto-pause.
+
+Pattern follows GitHub/Stripe webhook signing conventions.
 
 > **Note**: The webhook always sends the fixed schema below. User-defined `payload_template` is NOT supported in Phase 1-2 (rejected by `ContentSpecValidator` — template injection risk). If templating is added in the future, it MUST use a sandboxed engine with an explicit allowlist of variables.
 
@@ -1772,9 +2050,9 @@ Content Automation "{{spec_name | html_escape}}" ถูกหยุดอัต�
       "deck_id": 142,
       "status": "success",
       "download_urls": {
-        "png": ["https://r2.example.com/content-auto/.../slide-1.png", "..."],
-        "caption": "เคล็ดลับดูแลผิวหน้าช่วงหน้าฝน... #skincare #beauty"
-      }
+        "png": ["https://r2.example.com/content-auto/.../slide-1.png", "..."]
+      },
+      "caption": "เคล็ดลับดูแลผิวหน้าช่วงหน้าฝน... #skincare #beauty"
     }
   ]
 }
@@ -1872,7 +2150,7 @@ class SocialContent(BaseModel):
 | Auto Draft per user | 10 per hour (interactive) / 50 per hour (batch) | Both `builtin-auto-draft` tool AND `auto_draft_pipeline()` directly | Redis INCR+EXPIRE (`rate:auto_draft:{userId}`, TTL 3600s). **IMPORTANT**: Rate limit MUST be enforced inside `auto_draft_pipeline()` itself (not only the tool handler) so the Content Automation batch path cannot bypass it. Batch path uses a separate, higher ceiling (50/hr) to accommodate legitimate batch workflows while preventing abuse |
 | Batch items per request | Max 50 | File upload batch | Zod validation in handler |
 | Batch items per day | Max 100 | Per user | Redis counter (`daily:batch:{userId}`, midnight reset) |
-| Concurrent auto-drafts | Max 3 | Per user | Redis semaphore (pattern from `redisSemaphore.ts`). Note: `release()` has a non-atomic EXISTS+DECR — acceptable under normal TTL (300s). Implementors SHOULD monitor `rate:concurrent_draft:{userId}` Redis key values and alert if any go below 0 (indicates TTL expired between EXISTS and DECR). A periodic cleanup job should `DEL` any keys with value < 0 |
+| Concurrent auto-drafts | Max 3 | Per user | Redis semaphore (pattern from `redisSemaphore.ts`). Note: `release()` has a non-atomic EXISTS+DECR race window — acceptable under normal TTL (300s). **Recommended**: replace with a single Lua script (`if redis.call('EXISTS',k)==1 then return redis.call('DECR',k) end`) for atomicity. Implementors SHOULD monitor `rate:concurrent_draft:{userId}` Redis key values and alert if any go below 0. A periodic cleanup job should `DEL` any keys with value < 0 |
 | Items per trigger | Max 10 | Per schedule item | `ContentSpecValidator.MAX_ITEMS_PER_TRIGGER` (distinct from 100/day per-user Redis limit) |
 | Content Spec schedules | Max 10 active | Per user | DB count check on CREATE |
 | Daily credit limit | Configurable per spec | Content Automation Engine | Atomic SQL check (§9.3) |
@@ -1900,6 +2178,8 @@ async def atomic_budget_reserve(spec_id: int, estimated_cost: int, tenant_id: st
 
     Defense-in-depth: tenant_id in WHERE clause prevents cross-tenant
     credit manipulation even if spec_id is tampered with (§12.8)."""
+    if estimated_cost <= 0:
+        raise ValueError(f"estimated_cost must be positive, got: {estimated_cost}")
     result = await db.execute(text("""
         UPDATE content_specs
         SET credits_used_today = credits_used_today + :cost,
@@ -1909,7 +2189,10 @@ async def atomic_budget_reserve(spec_id: int, estimated_cost: int, tenant_id: st
           AND (monthly_credit_limit IS NULL OR credits_used_month + :cost <= monthly_credit_limit)
         RETURNING id
     """), {"spec_id": spec_id, "cost": estimated_cost, "tenant_id": tenant_id})
-    return result.rowcount > 0
+    # NOTE: Do NOT use result.rowcount — it is unreliable for RETURNING queries
+    # in SQLAlchemy async (may return 0 even when a row was matched and returned).
+    # Use fetchone() to check if the UPDATE actually returned a row.
+    return result.fetchone() is not None
 
 async def atomic_budget_rollback(spec_id: int, amount: int, tenant_id: str):
     """Roll back reserved budget when a batch item fails (e.g., CreditInsufficientError).
@@ -1963,7 +2246,9 @@ class ContentSpecValidator:
     ALLOWED_ROTATIONS = {"sequential", "random", "smart"}
     # Reject secret-like fields stored in spec_data JSON (plaintext!)
     FORBIDDEN_FIELD_PATTERNS = {"*token", "*key", "*secret", "*password", "*credential"}
-    CHANNEL_NAME_PATTERN = r"^[\w][\w\s\-\.]{0,99}$"  # must start with \w (letter/digit/_), no path separators
+    # Use literal space instead of \s to prevent tabs, \r, \n, \v, \f from passing
+    # (control characters produce malformed R2 object keys)
+    CHANNEL_NAME_PATTERN = r"^[\w][\w \-\.]{0,99}$"  # must start with \w (letter/digit/_), no path separators
     # NOTE: \w includes Unicode (Thai, Chinese, etc.) which is valid for display
     # but may cause issues with presigned URLs and some S3 SDKs.
     # render_folder_pattern() MUST percent-encode or transliterate the channel.name
@@ -1972,11 +2257,56 @@ class ContentSpecValidator:
     def validate(self, spec_data: dict) -> list[str]:
         """Return list of validation errors (empty = valid)."""
         errors = []
+        # Reject system-reserved keys (starting with _) in user-supplied spec_data
+        for key in spec_data:
+            if key.startswith("_"):
+                errors.append(f"Key '{key}' is system-reserved — user spec_data keys must not start with '_'")
+        # Validate spec name (no control characters — header injection prevention)
+        spec_name = spec_data.get("name", "")
+        if spec_name and ("\r" in spec_name or "\n" in spec_name or "\t" in spec_name):
+            errors.append("spec name must not contain control characters (\\r, \\n, \\t)")
         # Require at least one schedule item
         schedule_items = spec_data.get("schedule", {}).get("items", [])
         if not schedule_items:
             errors.append("schedule.items must contain at least one item")
             return errors  # no point validating further
+        # Enforce MAX_SCHEDULE_ITEMS
+        if len(schedule_items) > self.MAX_SCHEDULE_ITEMS:
+            errors.append(f"schedule.items exceeds maximum of {self.MAX_SCHEDULE_ITEMS}")
+        # Validate per-item constraints
+        for i, item in enumerate(schedule_items):
+            # output_type validation
+            ot = item.get("output_type", "presentation")
+            if ot not in self.ALLOWED_OUTPUT_TYPES:
+                errors.append(f"items[{i}].output_type must be one of {self.ALLOWED_OUTPUT_TYPES}, got: {ot!r}")
+            # count validation
+            count = item.get("count", 1)
+            if not isinstance(count, int) or count < 1 or count > self.MAX_ITEMS_PER_TRIGGER:
+                errors.append(f"items[{i}].count must be 1-{self.MAX_ITEMS_PER_TRIGGER}")
+            # topic_source.type validation
+            src = item.get("topic_source", {})
+            src_type = src.get("type")
+            if src_type not in {"rotating_list", "ai_generated", "file", "fixed", None}:
+                errors.append(f"items[{i}].topic_source.type unknown: {src_type!r}")
+            # rotating_list.rotation validation
+            if src_type == "rotating_list":
+                rot = src.get("rotation", "sequential")
+                if rot not in self.ALLOWED_ROTATIONS:
+                    errors.append(f"items[{i}].topic_source.rotation must be one of {self.ALLOWED_ROTATIONS}")
+                topics_list = src.get("topics", [])
+                if len(topics_list) > self.MAX_TOPICS_PER_LIST:
+                    errors.append(f"items[{i}].topic_source.topics exceeds maximum of {self.MAX_TOPICS_PER_LIST}")
+            # constraints.max_slides validation
+            constraints = item.get("constraints", {})
+            max_slides = constraints.get("max_slides")
+            if max_slides is not None and (not isinstance(max_slides, int) or max_slides > self.MAX_SLIDES_PER_ITEM):
+                errors.append(f"items[{i}].constraints.max_slides must be <= {self.MAX_SLIDES_PER_ITEM}")
+        # Validate boolean fields are strictly bool (not truthy strings)
+        output_meta = spec_data.get("output", {}).get("metadata", {})
+        for bool_field in ("include_caption", "include_hashtags", "generate_audio"):
+            val = output_meta.get(bool_field)
+            if val is not None and not isinstance(val, bool):
+                errors.append(f"output.metadata.{bool_field} must be boolean, got {type(val).__name__}")
         # Validate cron expressions: minimum 1-hour interval
         for item in spec_data.get("schedule", {}).get("items", []):
             if item.get("cron"):
@@ -2056,21 +2386,58 @@ SSRF_BLOCKED_RANGES = [
 ]
 ALLOWED_SCHEMES = {"https"}  # http blocked — webhooks must use TLS
 
-def validate_outbound_url(url: str) -> None:
-    """Validate URL is safe for outbound HTTP requests. Raises ValueError if not."""
+def validate_outbound_url(url: str) -> list[tuple[int, str]]:
+    """Validate URL is safe for outbound HTTP requests.
+    Returns list of (address_family, ip_str) tuples for the caller to pin connections to.
+    Raises ValueError if URL is unsafe.
+
+    CRITICAL: Callers MUST use the returned resolved IPs for their HTTP connection
+    (e.g., httpx custom transport with forced IP). Do NOT let the HTTP client
+    re-resolve DNS — this closes the DNS rebinding TOCTOU window."""
     parsed = urlparse(url)
     if parsed.scheme not in ALLOWED_SCHEMES:
         raise ValueError(f"Scheme '{parsed.scheme}' not allowed — use https only")
-    # Resolve DNS and check IP against blocklist BEFORE making request
-    resolved_ip = socket.gethostbyname(parsed.hostname)
-    if ip_in_blocked_range(resolved_ip, SSRF_BLOCKED_RANGES):
-        raise ValueError(f"URL resolves to blocked IP range")
-    # Defense against DNS rebinding: HTTP request MUST use the pre-resolved IP
-    # directly (e.g., httpx BaseTransport with forced IP) and set the Host header
-    # to the original hostname. Do NOT let the HTTP client re-resolve DNS.
+    # Resolve DNS (both IPv4 and IPv6) and check ALL IPs against blocklist.
+    # NOTE: gethostbyname() only resolves IPv4 — a hostname pointing to ::1 or
+    # fc00::/7 ULA would bypass the blocklist. Use getaddrinfo() instead.
+    resolved_addrs = socket.getaddrinfo(parsed.hostname, None)
+    safe_ips: list[tuple[int, str]] = []
+    for family, _, _, _, sockaddr in resolved_addrs:
+        ip = sockaddr[0]
+        if ip_in_blocked_range(ip, SSRF_BLOCKED_RANGES):
+            raise ValueError(f"URL resolves to blocked IP range")
+        safe_ips.append((family, ip))
+    if not safe_ips:
+        raise ValueError(f"URL hostname could not be resolved")
     # Redirect following MUST be disabled (followRedirects=false) to prevent
     # rebinding via 302 → internal IP.
     # Timeout: connect=5s, read=10s
+    return safe_ips
+
+def ip_in_blocked_range(ip: str, blocked_ranges: list[str]) -> bool:
+    """Check if an IP address falls within any blocked CIDR range.
+    Uses ipaddress module for both IPv4 and IPv6."""
+    import ipaddress
+    addr = ipaddress.ip_address(ip)
+    for cidr in blocked_ranges:
+        if "/" in cidr:
+            if addr in ipaddress.ip_network(cidr, strict=False):
+                return True
+        else:
+            if addr == ipaddress.ip_address(cidr):
+                return True
+    return False
+```
+
+**Callers** of `validate_outbound_url` must thread the returned IPs:
+
+```python
+# In _resolve_file, notify_completion (webhook), etc.:
+safe_ips = validate_outbound_url(url)
+# Use httpx with forced IP resolution:
+response = httpx.get(url, transport=PinnedTransport(safe_ips),
+                     headers={"Host": parsed.hostname},
+                     follow_redirects=False, timeout=httpx.Timeout(connect=5, read=10))
 ```
 
 **file_url** has additional restrictions:
@@ -2186,10 +2553,10 @@ All procedures use `protectedProcedure` and enforce `WHERE tenant_id = ctx.tenan
 | `updateSpec` | `{ id: number, spec_data?: object, name?: string }` | `{ id, name, status, updated_at }` | Re-validates spec_data if changed. If `spec_data.schedule` changed, recalculates `next_run`. **Safety**: if a batch task is currently running (any `content_automation_runs` with `status='running'` for this spec), reject with 409 Conflict — "Cannot update spec while a batch task is running." |
 | `deleteSpec` | `{ id: number }` | `{ success: true }` | **Pre-check**: reject with 409 if any `content_automation_runs` with `status='running'`. Otherwise, DELETE cascades to `content_automation_runs`. |
 | `getSpec` | `{ id: number }` | Full `ContentSpec` row (excluding `webhook_secret_encrypted`) | Read-only. |
-| `listSpecs` | `{ limit?: number, cursor?: number }` | `{ specs: ContentSpec[], nextCursor }` | Paginated, ordered by `created_at DESC`. Includes summary fields: `total_runs`, `credits_used_today`, `credits_used_month`, `last_run_status`. |
-| `getSpecStats` | `{ id: number }` | `{ success_rate, total_items_created, avg_credits_per_run, runs_last_30_days }` | Computed from last 30 `content_automation_runs`. `success_rate = completed / (completed + failed)`. |
+| `listSpecs` | `{ limit?: number, cursor?: number }` | `{ specs: ContentSpec[], nextCursor }` | Paginated, ordered by `status ASC, created_at DESC` (active specs first, then paused, then archived). Includes summary fields: `total_runs`, `credits_used_today`, `credits_used_month`, `last_run_status`. |
+| `getSpecStats` | `{ id: number }` | `{ success_rate, total_items_created, avg_credits_per_run, runs_last_30_days }` | Computed from last 30 `content_automation_runs`. `success_rate = completed / (completed + failed) if (completed + failed) > 0 else null` (guard against division by zero when no runs exist or all are in-progress). |
 | `listRuns` | `{ spec_id: number, limit?: number, cursor?: number }` | `{ runs: ContentAutomationRun[], nextCursor }` | Paginated by `created_at DESC`. |
-| `getRunDetail` | `{ run_id: number }` | Full `ContentAutomationRun` row with `export_urls`, `item_errors` | Read-only. |
+| `getRunDetail` | `{ run_id: number }` | Full `ContentAutomationRun` row with `export_urls`, `item_errors` | Read-only. Query MUST join through `content_specs` and enforce `WHERE content_specs.tenant_id = ctx.tenantId` (runs table has no direct tenant_id column). |
 | `pauseSpec` | `{ id: number }` | `{ success: true }` | Calls `pause_spec()` (§9.3.1). |
 | `resumeSpec` | `{ id: number, force_run_now?: boolean }` | `{ success: true, test_run_dispatched?: boolean }` | Calls `resume_spec()` (§9.3.1). Returns `test_run_dispatched: true` if `force_run_now` succeeded. |
 | `reExport` | `{ run_id: number }` | `{ success: true }` | Re-triggers Phase 3-5 for runs with `status='export_failed'`. Reads `topics_resolved` and `output_artifacts` JSON from the run record to reconstruct deck_ids (stored as `[{deck_id, topic, ...}]` in `output_artifacts` by Phase 2). No re-draft, no credit cost. Reject with 409 if `status != 'export_failed'`. Dispatches `content_automation_reexport_task.delay(run_id, tenant_id)`. |
@@ -2288,7 +2655,7 @@ These tests use a real DB with test isolation, mocking only `auto_draft_pipeline
 | # | Scenario | Setup | Assert |
 |---|----------|-------|--------|
 | T1 | Credit exhaustion mid-loop | Mock `auto_draft_pipeline()` to raise `CreditInsufficientError` on item 3 of 5 | `results` has 2 items, `atomic_budget_rollback` called with `2 * AVERAGE_COST_PER_DRAFT`, `run_status="failed"` |
-| T2 | Export failure after all drafts | Mock `export_presentation_slides()` to raise on item 2 of 3 | `items_completed=1`, `run_status="failed"`, `consecutive_failures` incremented by 1 |
+| T2 | Export failure after all drafts | Mock `export_presentation_slides()` to raise on item 2 of 3 | `items_completed=1`, `run_status="export_failed"` (Phase 3 is infrastructure failure), `consecutive_failures` NOT incremented, `output_artifacts` written with 3 deck_ids, "Re-export" button available |
 | T3 | `notify_completion` raises | Mock `notify_completion()` to raise | `run_record.status` is NOT overwritten to "failed" if it was "completed", `consecutive_failures` handled correctly |
 | T4 | Tenant mismatch guard | Call task with wrong `tenant_id` | Raises `ValueError`, no `run_record` created |
 | T5 | Non-credit exception mid-draft | Mock `auto_draft_pipeline()` to raise `RuntimeError` on item 2 of 4 (1 succeeds, exception on 2nd) | Budget rolled back for 3 unprocessed items: `len(topics) - len(results)` = `4 - 1 = 3` |
@@ -2393,7 +2760,7 @@ R2/Cloudflare outage ทำให้ Phase 5 upload ล้มเหลว แต
 - Presentations with `output_type="presentation"` are always accessible via `editor_url` regardless of R2 status (no upload needed)
 - For slide/video exports: store `pending_export` status in `ContentAutomationRun.output_artifacts` with the local deck_id reference
 - Provide a "Re-export" action in the Dashboard that re-triggers Phase 3-5 only (no re-draft, no additional credit cost)
-- R2 upload failures do NOT increment `consecutive_failures` — they are transient infrastructure failures, not content generation failures. Detect by checking if Phase 2 completed but Phase 5 raised. In the except block: if `phase2_completed and not download_urls`, set `run_record.status = "export_failed"` instead of `"failed"`, and do NOT increment `consecutive_failures`
+- R2 upload / export failures do NOT increment `consecutive_failures` — they are transient infrastructure failures, not content generation failures. In the except block: if `current_phase in ("phase3_export", "phase5_upload") and phase2_completed`, set `run_record.status = "export_failed"` instead of `"failed"`, and do NOT increment `consecutive_failures`. Phase 4 (caption) failures are NOT classified as `export_failed` — they are content/LLM failures that MUST increment `consecutive_failures`
 
 ### Risk 8: Deployment without feature flag causes uncontrolled activation
 
@@ -2500,3 +2867,182 @@ Both `builtin-auto-draft` handler and `content_automation_batch_task` call this 
 | 9 | "รีวิวเครื่องฟอกอากาศ Xiaomi รุ่น Pro 2" | Product Review/Household | household-product-reviewer |
 
 Unit tests should verify the agent decision table routes each brief to the expected skill slug (not `general-article-writer`).
+
+### G. Helper function signatures and imports
+
+Required imports for `content_automation_tasks.py`:
+
+```python
+import os, time, hashlib, hmac
+from datetime import datetime, timedelta, timezone
+from billiard.exceptions import SoftTimeLimitExceeded  # BaseException in Celery 5.x
+from celery import current_app as celery_app
+from sqlalchemy import text
+
+class CreditInsufficientError(Exception):
+    """Raised by auto_draft_pipeline() when Node.js handler returns
+    HTTP 402 with error_code='CREDIT_INSUFFICIENT'."""
+```
+
+#### `auto_draft_pipeline()` — transport and return type
+
+```python
+@dataclass
+class AutoDraftPipelineResult:
+    deck_id: int
+    editor_url: str
+    credits_used: int
+    slide_count: int
+
+async def auto_draft_pipeline(
+    topic: str,
+    params: dict,
+    tenant_id: str,
+    user_id: int,
+    trace_source: str,
+) -> AutoDraftPipelineResult:
+    """Internal HTTP call to Node.js builtin-auto-draft handler.
+    Transport: POST /api/internal/tools/auto-draft with X-Service-Token header.
+    The Node.js handler calls generateAIDraft() and returns the result.
+    Raises CreditInsufficientError (HTTP 402), RuntimeError (HTTP 5xx)."""
+    response = await internal_http_client.post(
+        "http://localhost:3000/api/internal/tools/auto-draft",
+        json={"topic": topic, **params, "tenant_id": tenant_id, "user_id": user_id},
+        headers={"X-Service-Token": SERVICE_TOKEN},
+    )
+    if response.status_code == 402:
+        raise CreditInsufficientError(response.json().get("message", "Credit insufficient"))
+    response.raise_for_status()
+    data = response.json()
+    return AutoDraftPipelineResult(
+        deck_id=data["deck_id"], editor_url=data["editor_url"],
+        credits_used=data["credits_used"], slide_count=data["slide_count"],
+    )
+```
+
+#### Other helper signatures
+
+```python
+async def load_content_spec(spec_id: int, *, fresh_session: bool = False) -> ContentSpec | None:
+    """Load ContentSpec by PK. Returns None if not found.
+    Use fresh_session=True after an UPDATE (bypasses SQLAlchemy identity map cache)."""
+
+async def load_run_record(run_id: int) -> ContentAutomationRun | None:
+    """Load ContentAutomationRun by PK. Returns None if not found."""
+
+async def load_deck(deck_id: int) -> Deck | None:
+    """Load presentation deck by PK. Returns None if not found."""
+
+async def advance_next_run(spec: ContentSpec) -> None:
+    """Compute next fire time for all schedule items using croniter.
+    Uses spec.spec_data['schedule']['timezone'] for timezone-aware matching.
+    Stores per-item timestamps in spec_data['_item_next_runs'].
+    Sets spec.next_run = MIN(_item_next_runs.values()).
+    Uses CAS guard on current next_run value to prevent concurrent overwrites.
+    NOTE: Called from both Python (scheduler tick) and Node.js (createSpec tRPC via
+    internal HTTP endpoint POST /api/internal/content-automation/advance-next-run)."""
+
+async def notify_completion(spec: ContentSpec, run: ContentAutomationRun,
+                            exports: list[dict], download_urls: list[str]) -> None:
+    """Dispatch on_complete notifications per spec.notification.on_complete config.
+    Sends email (type='email') and webhook (type='webhook') in sequence.
+    Webhook uses validate_outbound_url() with pinned IPs. Raises on first failure."""
+
+async def notify_spec_paused(spec: ContentSpec, last_error: str) -> None:
+    """Send pause notification email + on_error webhook.
+    Template: 'content-automation-paused' (§10.2.1)."""
+
+async def upload_batch_to_r2(exports: list[dict], folder: str) -> list[str]:
+    """Upload export artifacts to R2/S3. Returns list of public download URLs.
+    Iterates exports, calling upload_to_r2() for each item."""
+
+async def upload_to_r2(export: dict, folder: str) -> str:
+    """Upload a single export artifact to R2/S3. Returns public download URL."""
+
+async def persist_rotation_offset(spec_id: int, schedule_item_index: int, topic_count: int) -> None:
+    """Atomically update _rotation_offsets[schedule_item_index] += topic_count.
+    Uses CAS guard: UPDATE content_specs SET spec_data = jsonb_set(...)
+    WHERE id = :spec_id AND spec_data->'_rotation_offsets'->>:idx = :old_value.
+    If CAS fails (concurrent update), retry once then log warning and continue."""
+
+def _smart_pick(topics: list[str], spec_id: int, tenant_id: str, count: int) -> list[str]:
+    """AI-based topic selection: pick least-recently-used topics.
+    Query: content_automation_runs WHERE spec_id = :spec_id AND tenant_id = :tenant_id
+    ORDER BY created_at DESC LIMIT 30, extract topics_resolved → count usage.
+    SECURITY: tenant_id MUST be passed to the query (not inferred from spec_id alone)
+    to prevent cross-tenant data leakage if spec_id is guessed."""
+
+def merge_defaults(spec_defaults: dict, item_params: dict) -> dict:
+    """Shallow merge: {**spec_defaults, **item_params} — item-level params take precedence."""
+    return {**spec_defaults, **item_params}
+
+async def generate_topics_via_llm(prompt: str, count: int, constraints: dict) -> list[str]:
+    """Generate topic ideas using LLM. Returns list[str] of exactly `count` topics.
+    If LLM returns fewer, pads with generic fallbacks. Raises RuntimeError on LLM failure."""
+
+async def parse_file_to_items(file_url: str, column: str) -> list[InputItem]:
+    """Download and parse CSV/Excel/text file. Same logic as builtin-file-parse handler.
+    Uses validate_outbound_url() with pinned IPs for the download."""
+
+def resolve_library_reference(file_url: str, tenant_id: str) -> str:
+    """Resolve {{library:filename}} tokens via DB lookup.
+    Query: library_items WHERE tenant_id = :tid AND filename = :name.
+    Returns the resolved R2 URL or raises ValueError if not found."""
+
+def sanitize(message: str) -> str:
+    """Strip sensitive patterns from error messages before logging or storing.
+    Removes: connection strings (postgresql://...), URL query params (?key=...),
+    long hex/base64 tokens (>20 chars), file paths containing /home/ or /app/.
+    Max output length: 500 chars."""
+
+def validate_r2_folder_path(folder: str) -> None:
+    """Validate R2 folder path against traversal attacks.
+    Raises ValueError if path contains '..', does not start with 'content-auto/',
+    or contains disallowed characters after URL decoding."""
+    from urllib.parse import unquote
+    from pathlib import PurePosixPath
+    normalized = str(PurePosixPath(unquote(folder)))
+    if ".." in normalized or not normalized.startswith("content-auto/"):
+        raise ValueError(f"R2 folder path traversal detected: {folder[:50]}")
+```
+
+### H. Alembic migration guidance
+
+#### Migration order
+
+Phase 1 (Week 4): `auto_draft_schedules` table only.
+Phase 2 (Week 5): `content_specs` + `content_automation_runs` tables.
+
+```bash
+# Phase 1 migration
+cd python-backend
+alembic revision --autogenerate -m "add_auto_draft_schedules_table"
+alembic upgrade head
+
+# Phase 2 migration
+alembic revision --autogenerate -m "add_content_automation_tables"
+alembic upgrade head
+```
+
+#### Table creation order (FK dependencies)
+
+`upgrade()`: `content_specs` THEN `content_automation_runs` (FK on `spec_id`)
+`downgrade()`: `content_automation_runs` THEN `content_specs` (reverse FK order)
+
+#### Notes
+
+- `content_specs.webhook_secret_encrypted` cannot be pre-populated in migration — it is generated per-spec at `createSpec` time via `crypto.randomBytes(32)`. Migration creates the column as `nullable=True`.
+- `auto_draft_schedules.draft_params` is a JSON column — no migration needed for schema evolution of its contents.
+- The code MUST handle the case where tables don't exist yet (Phase 1 code deployed before Phase 2 migration). The feature flag `ENABLE_CONTENT_AUTOMATION` gates all access.
+
+### I. Rollback plan
+
+If the feature must be disabled after deployment:
+
+1. **Disable flag**: Set `ENABLE_CONTENT_AUTOMATION=false` in all worker `.env` files → stops new dispatches immediately (scheduler tick returns early, tRPC returns 501, batch task self-checks).
+2. **Flush queued tasks** (optional): `celery -A app.core.celery_app purge -Q content_automation` — removes tasks already in the queue but not yet started.
+3. **In-flight tasks**: Tasks currently executing will complete normally (they are past the flag gate). Alternatively, revoke specific tasks: `celery -A app.core.celery_app call celery.control.revoke --args='["task_id"]'`.
+4. **Clean up zombie runs**: Run cleanup immediately: `celery -A app.core.celery_app call app.tasks.content_automation_tasks.cleanup_old_runs`
+5. **Tables are safe to retain**: The feature flag prevents all access. Alembic `downgrade()` is optional and only needed if the feature is permanently removed.
+
+**Recovery**: Set `ENABLE_CONTENT_AUTOMATION=true` → scheduler tick resumes within 1 minute. No data loss.

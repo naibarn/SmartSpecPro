@@ -52,6 +52,16 @@ Add text-heavy layouts that are intentionally designed for dense content.
   - only the first long-form family (`sectioned-explainer`) shipped in this section; `article-focus` and `profile-board` remain planned follow-ups rather than part of the initial implementation slice
   - the slot-budget metadata is introduced now, but Section 03 still needs to consume it more deeply for recipe-aware compaction and fit scoring
 - Follow-ups for later sections:
-  - add more long-form families with genuinely different geometry, not just different labels
   - replace narrative truncation-only behavior with LLM compaction that targets these long-form slot budgets directly
   - unify relayout recipe selection with the same compact-vs-long-form routing rules used in Draft with AI
+
+#### Follow-up: article-focus & profile-board recipes (2026-03-14)
+
+- **article-focus**: Single-heading narrative layout with left-side flowing article (eyebrow, title, lead, body, footnote) and right-side key-points card. Slot budgets: body 1200 chars / 12 lines, key-points 5 items. Layout family: `long_form`.
+- **profile-board**: Structured bio/resume with portrait, name/role header, bio section, and 3-column bottom (experience, skills, contact). Slot budgets: bio-body 600 chars / 6 lines, experience-items 4, skills-items 6, contact-items 4. Layout family: `long_form`.
+- Files touched:
+  - `shared/presentation/componentRecipes.ts` — AI guidance, slot budgets, slot targets, media slots, frame styles
+  - `shared/presentation/componentRecipeSlotBindings.ts` — `createArticleFocusSlotBindings`, `createProfileBoardSlotBindings`
+  - `server/services/aiPresentationComponentRecipes.ts` — local binding wrappers + `buildArticleFocusFallback`, `buildProfileBoardFallback` + switch cases
+  - `client/src/lib/presentationComponentCatalog.ts` — builder functions, slot definitions, preview SVGs, catalog entries
+  - `client/src/lib/presentationBlockPresets.ts` — presets for editor block library

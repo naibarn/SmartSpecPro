@@ -18,7 +18,48 @@
     "section-09-refresh-cadence-system",
     "section-10-quality-dashboard"
   ],
-  "sections_state": {},
+  "sections_state": {
+    "section-01-skill-schema-enhancement": {
+      "status": "complete",
+      "commit_hash": "d1dc87ff40790a3e30d17f23fc98e46df8fa3a2f"
+    },
+    "section-02-cms-output-schemas": {
+      "status": "complete",
+      "commit_hash": "f58835fbfe00e49999934feecd418df79cffd194"
+    },
+    "section-03-citation-extraction": {
+      "status": "complete",
+      "commit_hash": "768b227b"
+    },
+    "section-04-thinking-reasoning-controls": {
+      "status": "complete",
+      "commit_hash": "7bfbd818"
+    },
+    "section-05-output-processing-pipeline": {
+      "status": "complete",
+      "commit_hash": "a33726c9"
+    },
+    "section-06-seo-jsonld-generator": {
+      "status": "complete",
+      "commit_hash": "62c610d1"
+    },
+    "section-07-reviewer-skills-upgrade": {
+      "status": "complete",
+      "commit_hash": "d2353f16"
+    },
+    "section-08-article-writer-skills-upgrade": {
+      "status": "complete",
+      "commit_hash": "7deb9ec4"
+    },
+    "section-09-refresh-cadence-system": {
+      "status": "complete",
+      "commit_hash": "6f96878e"
+    },
+    "section-10-quality-dashboard": {
+      "status": "complete",
+      "commit_hash": "113c376c"
+    }
+  },
   "pre_commit": {
     "present": false,
     "type": "none",

@@ -1,0 +1,47 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/040-ModelSuggest-PlannerWiring/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/040-ModelSuggest-PlannerWiring/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "simple",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-suggest-model-function",
+    "section-02-verify-token-security",
+    "section-03-handler-audit-and-errors",
+    "section-04-route-registration",
+    "section-05-auto-draft-wiring"
+  ],
+  "sections_state": {
+    "section-01-suggest-model-function": {
+      "status": "complete",
+      "commit_hash": "214a8ad3"
+    },
+    "section-02-verify-token-security": {
+      "status": "complete",
+      "commit_hash": "b25e69fc"
+    },
+    "section-03-handler-audit-and-errors": {
+      "status": "complete",
+      "commit_hash": "be359a99"
+    },
+    "section-04-route-registration": {
+      "status": "complete",
+      "commit_hash": "bb9070c2"
+    },
+    "section-05-auto-draft-wiring": {
+      "status": "complete",
+      "commit_hash": "4541f9cf"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-03-12T00:31:51.672964+00:00"
+}

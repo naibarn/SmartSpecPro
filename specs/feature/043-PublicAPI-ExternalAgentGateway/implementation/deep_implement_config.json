@@ -1,0 +1,87 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/043-PublicAPI-ExternalAgentGateway/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/043-PublicAPI-ExternalAgentGateway/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-database-schema",
+    "section-02-api-key-service",
+    "section-03-auth-extension",
+    "section-04-rate-limiter-audit",
+    "section-05-skill-api",
+    "section-06-agency-api",
+    "section-07-presentation-api",
+    "section-08-video-media-api",
+    "section-09-mcp-server",
+    "section-10-job-automation",
+    "section-11-webhooks-events",
+    "section-12-admin-ui",
+    "section-13-sdk-documentation"
+  ],
+  "sections_state": {
+    "section-01-database-schema": {
+      "status": "complete",
+      "commit_hash": "b776ea02"
+    },
+    "section-02-api-key-service": {
+      "status": "complete",
+      "commit_hash": "72e57a9b"
+    },
+    "section-03-auth-extension": {
+      "status": "complete",
+      "commit_hash": "4a339de7"
+    },
+    "section-04-rate-limiter-audit": {
+      "status": "complete",
+      "commit_hash": "c5e228da"
+    },
+    "section-05-skill-api": {
+      "status": "complete",
+      "commit_hash": "daa5abe0"
+    },
+    "section-06-agency-api": {
+      "status": "complete",
+      "commit_hash": "78d7c73d"
+    },
+    "section-07-presentation-api": {
+      "status": "complete",
+      "commit_hash": "466f6cc4"
+    },
+    "section-08-video-media-api": {
+      "status": "complete",
+      "commit_hash": "1f384ef4"
+    },
+    "section-09-mcp-server": {
+      "status": "complete",
+      "commit_hash": "56c62332"
+    },
+    "section-10-job-automation": {
+      "status": "complete",
+      "commit_hash": "85d47cf6"
+    },
+    "section-11-webhooks-events": {
+      "status": "complete",
+      "commit_hash": "a75c4f6e"
+    },
+    "section-12-admin-ui": {
+      "status": "complete",
+      "commit_hash": "f2099dd7"
+    },
+    "section-13-sdk-documentation": {
+      "status": "complete",
+      "commit_hash": "0a9391be"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-03-14T07:44:29.755819+00:00"
+}

@@ -25,6 +25,14 @@
     "section-03-artifact-routing-and-presentation-wiring": {
       "status": "complete",
       "commit_hash": "f5c76949"
+    },
+    "section-04-agency-escalation-and-telemetry": {
+      "status": "complete",
+      "commit_hash": "8e665cc0"
+    },
+    "section-05-active-mode-cutover-and-cleanup": {
+      "status": "complete",
+      "commit_hash": "d6df8066"
     }
   },
   "pre_commit": {

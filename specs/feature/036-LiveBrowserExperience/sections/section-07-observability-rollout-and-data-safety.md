@@ -73,7 +73,7 @@ Finish the feature with production-facing protections: metrics, alerts, provider
   - `python-backend/tests/unit/services/test_live_browser_maintenance.py`
 - Deviations from plan:
   - The rollout readiness gate consumes an operational Redis snapshot at `live-browser:readiness` rather than running active provider/runtime probes inside the web tier itself.
-  - Cleanup is scheduled through Celery beat and telemetry is durable in Redis, but production dashboard and alert routing integration still sits outside this section's scope.
+  - Cleanup and readiness publication are scheduled through Celery beat, and the readiness ownership contract is now configuration-backed rather than hardcoded in the task layer.
 - Tests added/updated:
   - `apps/web/server/services/__tests__/liveBrowserReadiness.test.ts`
   - `apps/web/server/routers/__tests__/liveBrowser.test.ts`
@@ -82,5 +82,4 @@ Finish the feature with production-facing protections: metrics, alerts, provider
   - `python-backend/tests/integration/test_launch_readiness.py`
   - `python-backend/tests/unit/services/test_live_browser_maintenance.py`
 - Known follow-ups:
-  - Publish real provider/runtime readiness probe snapshots into `live-browser:readiness` before tenant rollout depends on the new create-session gate.
-  - Bridge Redis-backed live-browser incidents and counters into the production metrics and alert pipeline.
+  - None within the implemented section-07 slice.

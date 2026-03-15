@@ -13,7 +13,28 @@
     "section-04-direct-artifact-execution",
     "section-05-agency-integration-and-rollout"
   ],
-  "sections_state": {},
+  "sections_state": {
+    "section-01-runtime-correction": {
+      "status": "complete",
+      "commit_hash": "d769b71"
+    },
+    "section-02-capability-registry-and-skill-policy": {
+      "status": "complete",
+      "commit_hash": "6b224b0"
+    },
+    "section-03-task-planner-and-billing": {
+      "status": "complete",
+      "commit_hash": "89fad880"
+    },
+    "section-04-direct-artifact-execution": {
+      "status": "complete",
+      "commit_hash": "3f8b0bb9"
+    },
+    "section-05-agency-integration-and-rollout": {
+      "status": "complete",
+      "commit_hash": "a3b1ad19"
+    }
+  },
   "pre_commit": {
     "present": false,
     "type": "none",
