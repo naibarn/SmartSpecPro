@@ -165,7 +165,7 @@ export function rateLimitMiddleware() {
         error: {
           code: "daily_credit_limit_exceeded",
           message: "Daily credit limit for this API key has been reached.",
-          type: "rate_limit_error",
+          type: "billing_error",
         },
       });
     }
