@@ -11,8 +11,8 @@ import { checkAndIncrementQuota } from "../services/apiKeyQuotaService";
 
 export function quotaMiddleware() {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const auth = (req as any).auth;
-    if (auth?.mode !== "api_key") {
+    const auth = req.auth;
+    if (!auth || auth.mode !== "api_key") {
       next();
       return;
     }

@@ -65,10 +65,11 @@ export const MAX_SINGLE_JOB_CREDITS = 10_000;
 /** Standard API error codes. */
 export type ApiErrorCode =
   | "invalid_api_key"
+  | "key_suspended"
   | "insufficient_scopes"
   | "rate_limit_exceeded"
   | "insufficient_credits"
-  | "daily_credit_limit"
+  | "daily_credit_limit_exceeded"
   | "quota_exceeded"
   | "invalid_request"
   | "not_found"
