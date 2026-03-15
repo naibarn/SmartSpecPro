@@ -14,7 +14,7 @@ import os
 _celery_logger = logging.getLogger(__name__)
 
 # Required queues — worker MUST consume from all of these
-REQUIRED_QUEUES = ["celery", "video", "media", "presentation_export", "presentation_import", "sandbox"]
+REQUIRED_QUEUES = ["celery", "video", "media", "presentation_export", "presentation_import", "sandbox", "vision"]
 ONEDRIVE_SCHEDULE_REQUIRED_VARS = (
     "MICROSOFT_CLIENT_ID",
     "MICROSOFT_CLIENT_SECRET",
@@ -51,6 +51,7 @@ celery_app.conf.update(
         Queue("presentation_export"),
         Queue("presentation_import"),
         Queue("sandbox"),  # OpenSandbox job execution
+        Queue("vision"),  # Vision analysis tasks
     ],
     task_create_missing_queues=True,
     # Queue routing: isolate FFmpeg video tasks from API-based media tasks
@@ -96,6 +97,7 @@ celery_app.conf.update(
         # Browser policy audit partition maintenance -> celery queue
         "app.tasks.browser_policy_maintenance_tasks.ensure_browser_policy_decision_partitions": {"queue": "celery"},
         "app.tasks.live_browser_tasks.publish_live_browser_readiness_snapshot": {"queue": "celery"},
+        "app.tasks.live_browser_tasks.watch_live_browser_readiness_snapshot": {"queue": "celery"},
         "app.tasks.live_browser_tasks.run_live_browser_maintenance": {"queue": "celery"},
         # Presentation headless rendering (CPU + Playwright + FFmpeg)
         "app.tasks.presentation_render.render_presentation": {"queue": "presentation_export"},
@@ -115,6 +117,8 @@ celery_app.conf.update(
         "app.tasks.sandbox_maintenance_tasks.cleanup_expired_sandbox_jobs": {"queue": "celery"},
         "app.tasks.sandbox_maintenance_tasks.cleanup_orphan_sandboxes": {"queue": "sandbox"},
         "app.tasks.sandbox_maintenance_tasks.detect_stuck_sandbox_jobs": {"queue": "sandbox"},
+        # Vision analysis (Gemini 2.5 Flash image analysis) -> vision queue
+        "app.tasks.vision_tasks.analyze_image_task": {"queue": "vision"},
     },
     # Ensure non-default task modules are always loaded at worker startup.
     imports=("app.workers.sandbox_job_worker",),
@@ -168,11 +172,15 @@ beat_schedule = {
     },
     "publish-live-browser-readiness": {
         "task": "app.tasks.live_browser_tasks.publish_live_browser_readiness_snapshot",
-        "schedule": crontab(minute="*/1"),
+        "schedule": float(settings.LIVE_BROWSER_READINESS_PUBLISH_INTERVAL_SECONDS),
+    },
+    "watch-live-browser-readiness": {
+        "task": "app.tasks.live_browser_tasks.watch_live_browser_readiness_snapshot",
+        "schedule": float(settings.LIVE_BROWSER_READINESS_WATCHDOG_INTERVAL_SECONDS),
     },
     "run-live-browser-maintenance": {
         "task": "app.tasks.live_browser_tasks.run_live_browser_maintenance",
-        "schedule": crontab(minute="*/5"),
+        "schedule": float(settings.LIVE_BROWSER_MAINTENANCE_INTERVAL_SECONDS),
     },
     # Sandbox maintenance tasks
     "cleanup-expired-sandbox-jobs": {

@@ -70,6 +70,7 @@ from app.api import (
     browser,  # Browser automation API
     automation_copilot,  # Automation Copilot API
     live_browser,  # Live browser runtime API
+    vision,  # Vision analysis pipeline (multimodal memory)
  )
 from app.api.v1 import (
     skills,
@@ -315,6 +316,7 @@ app.include_router(agency_creator.router, prefix="/api/v1/agency-creator", tags=
 app.include_router(browser.router, tags=["Browser Automation"])
 app.include_router(automation_copilot.router, prefix="/api/v1/automation-copilot", tags=["Automation Copilot"])
 app.include_router(live_browser.router)
+app.include_router(vision.router)
 
 @app.get("/")
 async def root():
