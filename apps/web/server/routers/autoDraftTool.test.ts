@@ -6,6 +6,15 @@ vi.mock("../_core/env", () => ({
   ENV: { webGatewayToken: "test-gateway-token" },
 }));
 
+vi.mock("./modelSuggestTool", () => ({
+  suggestModel: vi.fn(),
+}));
+
+vi.mock("../services/modelRegistry", () => ({
+  getModelsByTypeAsync: vi.fn(),
+  getDefaultModel: vi.fn(),
+}));
+
 vi.mock("../services/contentAutomationRateLimit", () => ({
   checkHourlyRate: vi.fn(),
   acquireConcurrentSlot: vi.fn(),
@@ -56,6 +65,8 @@ import { getRedisClient } from "../services/redis";
 import { getDb } from "../db";
 import { signBearerToken } from "../_core/tokens";
 import { auditLogger } from "../services/auditLogger";
+import { suggestModel } from "./modelSuggestTool";
+import { getDefaultModel } from "../services/modelRegistry";
 import { createLibraryItem } from "../services/libraryService";
 import { createPresentationDeckForLibraryItem } from "../services/presentationService";
 
@@ -434,6 +445,168 @@ describe("autoDraftTool handler", () => {
       expect(call.success).toBe(false);
       // Error message should be sanitized (no URLs)
       expect(call.error).not.toContain("https://");
+    });
+  });
+});
+
+describe("autoDraftTool model selection", () => {
+  beforeEach(() => {
+    vi.mocked(suggestModel).mockResolvedValue({
+      recommended: { model_id: "flux-2.0", name: "Flux", provider: "fal", cost_tier: "low", description: "" },
+      alternatives: [],
+    });
+    vi.mocked(getDefaultModel).mockReturnValue({ id: "default-img-model" } as never);
+  });
+
+  it("calls suggestModel when image_model_id is absent", async () => {
+    const req = buildMockRequest({ image_model_id: undefined });
+    const { res } = buildMockResponse();
+
+    await autoDraftToolHandler(req, res);
+
+    expect(vi.mocked(suggestModel)).toHaveBeenCalledWith("image", "balanced");
+  });
+
+  it("uses recommended model_id from suggestModel when image_model_id is absent", async () => {
+    const req = buildMockRequest({ image_model_id: undefined });
+    const { res } = buildMockResponse();
+
+    await autoDraftToolHandler(req, res);
+
+    expect(vi.mocked(generateAIDraft)).toHaveBeenCalledWith(
+      expect.objectContaining({ imageModel: "flux-2.0" }),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  it("does NOT call suggestModel when image_model_id is present", async () => {
+    const req = buildMockRequest({ image_model_id: "grok-imagine" });
+    const { res } = buildMockResponse();
+
+    await autoDraftToolHandler(req, res);
+
+    expect(vi.mocked(suggestModel)).not.toHaveBeenCalled();
+  });
+
+  it("uses agent's model unchanged when image_model_id is present", async () => {
+    const req = buildMockRequest({ image_model_id: "grok-imagine" });
+    const { res } = buildMockResponse();
+
+    await autoDraftToolHandler(req, res);
+
+    expect(vi.mocked(generateAIDraft)).toHaveBeenCalledWith(
+      expect.objectContaining({ imageModel: "grok-imagine" }),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  it("auto-draft completes when suggestModel throws — no error returned to caller", async () => {
+    vi.mocked(suggestModel).mockRejectedValue(new Error("Registry down"));
+    const req = buildMockRequest({ image_model_id: undefined });
+    const { res, jsonMock } = buildMockResponse();
+
+    await autoDraftToolHandler(req, res);
+
+    const call = jsonMock.mock.calls[0][0];
+    expect(call.success).toBe(true);
+  });
+
+  it("uses getDefaultModel fallback when suggestModel throws", async () => {
+    vi.mocked(suggestModel).mockRejectedValue(new Error("Registry down"));
+    const req = buildMockRequest({ image_model_id: undefined });
+    const { res } = buildMockResponse();
+
+    await autoDraftToolHandler(req, res);
+
+    expect(vi.mocked(generateAIDraft)).toHaveBeenCalledWith(
+      expect.objectContaining({ imageModel: "default-img-model" }),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  it("uses getDefaultModel fallback when suggestModel returns null recommended", async () => {
+    vi.mocked(suggestModel).mockResolvedValue({ recommended: null, alternatives: [] });
+    const req = buildMockRequest({ image_model_id: undefined });
+    const { res } = buildMockResponse();
+
+    await autoDraftToolHandler(req, res);
+
+    expect(vi.mocked(generateAIDraft)).toHaveBeenCalledWith(
+      expect.objectContaining({ imageModel: "default-img-model" }),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  it("emits auto_draft.model_selected event when agent omits image_model_id", async () => {
+    const req = buildMockRequest({ image_model_id: undefined });
+    const { res } = buildMockResponse();
+
+    await autoDraftToolHandler(req, res);
+
+    const auditCalls = vi.mocked(auditLogger.log).mock.calls.map((c) => c[0]);
+    const modelSelectedCall = auditCalls.find((c) => c.eventType === "auto_draft.model_selected");
+    expect(modelSelectedCall).toBeDefined();
+  });
+
+  it("diverged=false when agent omits image_model_id (system chose)", async () => {
+    const req = buildMockRequest({ image_model_id: undefined });
+    const { res } = buildMockResponse();
+
+    await autoDraftToolHandler(req, res);
+
+    const auditCalls = vi.mocked(auditLogger.log).mock.calls.map((c) => c[0]);
+    const modelSelectedCall = auditCalls.find((c) => c.eventType === "auto_draft.model_selected");
+    expect(modelSelectedCall?.metadata).toMatchObject({ diverged: false });
+  });
+
+  it("emits auto_draft.model_selected event when agent provides image_model_id", async () => {
+    const req = buildMockRequest({ image_model_id: "grok-imagine" });
+    const { res } = buildMockResponse();
+
+    await autoDraftToolHandler(req, res);
+
+    const auditCalls = vi.mocked(auditLogger.log).mock.calls.map((c) => c[0]);
+    const modelSelectedCall = auditCalls.find((c) => c.eventType === "auto_draft.model_selected");
+    expect(modelSelectedCall).toBeDefined();
+  });
+
+  it("diverged=false when agent provides image_model_id (recommendedModel never computed)", async () => {
+    const req = buildMockRequest({ image_model_id: "grok-imagine" });
+    const { res } = buildMockResponse();
+
+    await autoDraftToolHandler(req, res);
+
+    const auditCalls = vi.mocked(auditLogger.log).mock.calls.map((c) => c[0]);
+    const modelSelectedCall = auditCalls.find((c) => c.eventType === "auto_draft.model_selected");
+    expect(modelSelectedCall?.metadata).toMatchObject({
+      agentModel: "grok-imagine",
+      recommendedModel: null,
+      imageModelUsed: "grok-imagine",
+      diverged: false,
+    });
+  });
+
+  it("audit event contains agentModel, recommendedModel, imageModelUsed, diverged on suggestion path", async () => {
+    const req = buildMockRequest({ image_model_id: undefined });
+    const { res } = buildMockResponse();
+
+    await autoDraftToolHandler(req, res);
+
+    const auditCalls = vi.mocked(auditLogger.log).mock.calls.map((c) => c[0]);
+    const modelSelectedCall = auditCalls.find((c) => c.eventType === "auto_draft.model_selected");
+    expect(modelSelectedCall?.metadata).toMatchObject({
+      agentModel: null,
+      recommendedModel: "flux-2.0",
+      imageModelUsed: "flux-2.0",
+      diverged: false,
     });
   });
 });

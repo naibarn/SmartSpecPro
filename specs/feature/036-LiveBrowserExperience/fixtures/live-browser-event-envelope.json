@@ -1,0 +1,15 @@
+{
+  "eventId": "lbe_demo_123",
+  "sessionId": "lbs_demo_123",
+  "sessionVersion": 12,
+  "type": "approval_requested",
+  "timestamp": "2026-03-10T12:00:00Z",
+  "payload": {
+    "approvalRequestId": "approval-123",
+    "reasonCodes": [
+      "restricted_action"
+    ],
+    "redacted": true
+  },
+  "cursor": "cursor:12:approval"
+}

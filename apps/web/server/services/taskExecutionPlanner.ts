@@ -69,12 +69,20 @@ export const CURRENT_PLAN_VERSION = 1;
 
 const SOURCE_TYPE_MAP: Record<string, TaskType> = {
   chat: "chat",
+  stream: "chat",
   skill: "skill",
+  media: "media",         // generic fallback; prefer specific subtypes below
   media_image: "media",
   media_video: "media",
   media_audio: "media",
+  presentation: "media",
+  translation: "skill",
+  scheduled: "chat",
+  responses: "responses",
   browser_automation: "responses",
   agency: "agency",
+  webhook: "agency",
+  channel: "chat",
   widget_chat: "chat",
   webhook_chat: "chat",
 };

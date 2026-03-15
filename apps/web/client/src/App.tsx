@@ -57,6 +57,7 @@ const AdminQueueDashboard = lazy(() => import("./pages/AdminQueueDashboard"));
 const AdminQueueLLM = lazy(() => import("./pages/AdminQueueLLM"));
 const AdminQueueMedia = lazy(() => import("./pages/AdminQueueMedia"));
 const AdminAuditLogs = lazy(() => import("./pages/AdminAuditLogs"));
+const AdminAPIKeys = lazy(() => import("./pages/AdminAPIKeys"));
 const AdminOpsDashboard = lazy(() => import("./pages/Admin/AdminOpsDashboard"));
 const AdminOverviewDashboard = lazy(() => import("./pages/Admin/AdminOverviewDashboard"));
 const AdminFunnelDashboard = lazy(() => import("./pages/AdminFunnelDashboard"));
@@ -164,6 +165,7 @@ function Router() {
         <Route path="/admin/queues/llm" component={AdminQueueLLM} />
         <Route path="/admin/queues/media" component={AdminQueueMedia} />
         <Route path="/admin/audit-logs" component={AdminAuditLogs} />
+        <Route path="/admin/api-keys" component={AdminAPIKeys} />
         <Route path="/admin/ops" component={AdminOpsDashboard} />
         <Route path="/admin/dashboard" component={AdminOverviewDashboard} />
         <Route path="/admin/funnel" component={AdminFunnelDashboard} />
@@ -182,6 +184,7 @@ function Router() {
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/chat" component={Chat} />
         <Route path="/automation" component={AutomationPage} />
+        <Route path="/automation/live/:sessionId" component={AutomationPage} />
         <Route path="/agencies" component={AgencyBrowser} />
         <Route path="/agencies/templates" component={AgencyTemplates} />
         <Route path="/agencies/marketplace" component={AgencyMarketplace} />

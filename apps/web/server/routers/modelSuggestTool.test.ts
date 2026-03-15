@@ -13,9 +13,19 @@ vi.mock("../middleware/contentAutomationGate", () => ({
   contentAutomationGate: vi.fn((_req, _res, next) => next()),
 }));
 
-import { modelSuggestHandler, creditCostToTier } from "./modelSuggestTool";
+vi.mock("../services/auditLogger", () => ({
+  auditLogger: { log: vi.fn() },
+}));
+
+vi.mock("../services/traceContext", () => ({
+  getTraceId: vi.fn().mockReturnValue("test-trace-id"),
+}));
+
+import { modelSuggestHandler, creditCostToTier, suggestModel } from "./modelSuggestTool";
 import { getModelsByTypeAsync } from "../services/modelRegistry";
 import { contentAutomationGate } from "../middleware/contentAutomationGate";
+import { ENV } from "../_core/env";
+import { auditLogger } from "../services/auditLogger";
 
 const MOCK_MODELS = [
   { id: "img-model-1", name: "Fast Image", type: "image", provider: "openai", creditCost: 3, priority: 1, isEnabled: true, description: "Fast image model" },
@@ -177,6 +187,166 @@ describe("modelSuggestTool handler", () => {
   });
 });
 
+describe("suggestModel() standalone function", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getModelsByTypeAsync).mockResolvedValue(MOCK_MODELS as never);
+  });
+
+  it("quality_preference='speed' returns cheapest model as recommended", async () => {
+    const result = await suggestModel("image", "speed");
+    // img-model-4 has creditCost=1, the cheapest
+    expect(result.recommended).not.toBeNull();
+    expect(result.recommended!.model_id).toBe("img-model-4");
+  });
+
+  it("quality_preference='quality' returns lowest-priority-number model as recommended", async () => {
+    const result = await suggestModel("image", "quality");
+    // img-model-1 has priority=1 (lowest number = highest priority)
+    expect(result.recommended!.model_id).toBe("img-model-1");
+  });
+
+  it("quality_preference='balanced' produces same order as 'quality'", async () => {
+    const quality = await suggestModel("image", "quality");
+    const balanced = await suggestModel("image", "balanced");
+    expect(balanced.recommended!.model_id).toBe(quality.recommended!.model_id);
+  });
+
+  it("omitting quality_preference defaults to 'balanced' behaviour", async () => {
+    const balanced = await suggestModel("image", "balanced");
+    const omitted = await suggestModel("image");
+    expect(omitted.recommended!.model_id).toBe(balanced.recommended!.model_id);
+  });
+
+  it("returns at most 3 alternatives even with 5+ models available", async () => {
+    const sixModels = [
+      ...MOCK_MODELS,
+      { id: "img-model-5", name: "Extra 5", type: "image", provider: "openai", creditCost: 2, priority: 5, isEnabled: true, description: "Extra 5" },
+      { id: "img-model-6", name: "Extra 6", type: "image", provider: "openai", creditCost: 3, priority: 6, isEnabled: true, description: "Extra 6" },
+    ];
+    vi.mocked(getModelsByTypeAsync).mockResolvedValue(sixModels as never);
+    const result = await suggestModel("image");
+    expect(result.alternatives.length).toBeLessThanOrEqual(3);
+  });
+
+  it("returns recommended: null when model list is empty", async () => {
+    vi.mocked(getModelsByTypeAsync).mockResolvedValue([]);
+    const result = await suggestModel("image");
+    expect(result.recommended).toBeNull();
+  });
+
+  it("returns alternatives: [] when model list is empty", async () => {
+    vi.mocked(getModelsByTypeAsync).mockResolvedValue([]);
+    const result = await suggestModel("image");
+    expect(result.alternatives).toEqual([]);
+  });
+
+  it("purpose='text' returns recommended: null with message, never calls getModelsByTypeAsync", async () => {
+    const result = await suggestModel("text");
+    expect(result.recommended).toBeNull();
+    expect(getModelsByTypeAsync).not.toHaveBeenCalled();
+  });
+
+  it("purpose='text' returns a non-empty message string", async () => {
+    const result = await suggestModel("text");
+    expect(result.message).toBeTruthy();
+    expect(typeof result.message).toBe("string");
+  });
+
+  it("model without priority field sorts after models with explicit priority (priority ?? 99)", async () => {
+    // Use only 2 models so no-priority-model is guaranteed to appear in alternatives
+    const twoModelsWithNoPriority = [
+      { id: "explicit-priority", name: "Has Priority", type: "image", provider: "openai", creditCost: 5, priority: 1, isEnabled: true, description: "Has priority" },
+      { id: "no-priority-model", name: "No Priority", type: "image", provider: "openai", creditCost: 5, priority: undefined, isEnabled: true, description: "No priority" },
+    ];
+    vi.mocked(getModelsByTypeAsync).mockResolvedValue(twoModelsWithNoPriority as never);
+    const result = await suggestModel("image", "quality");
+    // explicit-priority (priority=1) should be recommended over no-priority (priority=99)
+    expect(result.recommended!.model_id).toBe("explicit-priority");
+    // no-priority-model should be in alternatives (it sorted after)
+    const altIds = result.alternatives.map((m) => m.model_id);
+    expect(altIds).toContain("no-priority-model");
+  });
+
+  it("getModelsByTypeAsync throwing returns { recommended: null, alternatives: [] } without re-throwing", async () => {
+    vi.mocked(getModelsByTypeAsync).mockRejectedValue(new Error("Registry down"));
+    await expect(suggestModel("image")).resolves.toEqual({ recommended: null, alternatives: [] });
+  });
+
+  it("response entries never contain raw creditCost field", async () => {
+    const result = await suggestModel("image");
+    const all = [result.recommended, ...result.alternatives].filter(Boolean);
+    for (const entry of all) {
+      expect(entry).not.toHaveProperty("creditCost");
+    }
+  });
+});
+
+describe("verifyInternalToken security", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getModelsByTypeAsync).mockResolvedValue(MOCK_MODELS as never);
+  });
+
+  it("returns true (200) when token matches expected value", async () => {
+    const req = buildRequest(); // sends "test-gateway-token" which matches ENV mock
+    const { res, statusMock, jsonMock } = buildResponse();
+    await modelSuggestHandler(req, res);
+    expect(statusMock).not.toHaveBeenCalledWith(401);
+    expect(jsonMock).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+  });
+
+  it("returns false (401) when token is wrong", async () => {
+    const req = buildRequest();
+    (req.headers as Record<string, string>)["x-internal-token"] = "wrong-token";
+    const { res, statusMock } = buildResponse();
+    await modelSuggestHandler(req, res);
+    expect(statusMock).toHaveBeenCalledWith(401);
+  });
+
+  it("returns false (401) when token header is empty string", async () => {
+    const req = buildRequest();
+    (req.headers as Record<string, string>)["x-internal-token"] = "";
+    const { res, statusMock } = buildResponse();
+    await modelSuggestHandler(req, res);
+    expect(statusMock).toHaveBeenCalledWith(401);
+  });
+
+  it("returns false (401) when token header is absent (undefined)", async () => {
+    const req = buildRequest();
+    delete (req.headers as Record<string, unknown>)["x-internal-token"];
+    const { res, statusMock } = buildResponse();
+    await modelSuggestHandler(req, res);
+    expect(statusMock).toHaveBeenCalledWith(401);
+  });
+
+  it("tokens of different lengths are rejected without throwing RangeError", async () => {
+    for (const badToken of ["x", "a".repeat(200)]) {
+      const req = buildRequest();
+      (req.headers as Record<string, string>)["x-internal-token"] = badToken;
+      const { res, statusMock } = buildResponse();
+      await expect(modelSuggestHandler(req, res)).resolves.toBeUndefined();
+      expect(statusMock).toHaveBeenCalledWith(401);
+      vi.clearAllMocks();
+      vi.mocked(getModelsByTypeAsync).mockResolvedValue(MOCK_MODELS as never);
+    }
+  });
+
+  it("returns false (401) when ENV.webGatewayToken is empty string", async () => {
+    const envMock = ENV as unknown as Record<string, string>;
+    const saved = envMock.webGatewayToken;
+    envMock.webGatewayToken = "";
+    try {
+      const req = buildRequest();
+      const { res, statusMock } = buildResponse();
+      await modelSuggestHandler(req, res);
+      expect(statusMock).toHaveBeenCalledWith(401);
+    } finally {
+      envMock.webGatewayToken = saved;
+    }
+  });
+});
+
 describe("creditCostToTier", () => {
   it("maps creditCost <= 5 to 'low'", () => {
     expect(creditCostToTier(1)).toBe("low");
@@ -192,4 +362,71 @@ describe("creditCostToTier", () => {
     expect(creditCostToTier(21)).toBe("high");
     expect(creditCostToTier(100)).toBe("high");
   });
+});
+
+describe("modelSuggestHandler audit logging", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getModelsByTypeAsync).mockResolvedValue(MOCK_MODELS as never);
+  });
+
+  it("emits 'model_suggest_response' audit event on successful response", async () => {
+    const req = buildRequest({ purpose: "image", userId: 42, tenantId: "tenant-1" });
+    const { res } = buildResponse();
+
+    await modelSuggestHandler(req, res);
+
+    expect(vi.mocked(auditLogger.log)).toHaveBeenCalledOnce();
+    expect(vi.mocked(auditLogger.log)).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: "model_suggest_response", traceId: "test-trace-id" }),
+    );
+  });
+
+  it("audit event metadata includes purpose and recommendedModelId", async () => {
+    const req = buildRequest({ purpose: "image", userId: 42, tenantId: "tenant-1" });
+    const { res } = buildResponse();
+
+    await modelSuggestHandler(req, res);
+
+    const call = vi.mocked(auditLogger.log).mock.calls[0][0];
+    expect(call.metadata).toMatchObject({
+      purpose: "image",
+      recommendedModelId: "img-model-1", // priority=1 is first
+    });
+  });
+
+  it("audit event metadata recommendedModelId is null when no models available", async () => {
+    vi.mocked(getModelsByTypeAsync).mockResolvedValue([]);
+    const req = buildRequest({ purpose: "image", userId: 42, tenantId: "tenant-1" });
+    const { res } = buildResponse();
+
+    await modelSuggestHandler(req, res);
+
+    const call = vi.mocked(auditLogger.log).mock.calls[0][0];
+    expect(call.metadata).toMatchObject({ recommendedModelId: null });
+  });
+
+  it("does NOT emit audit event when authentication fails", async () => {
+    const req = buildRequest();
+    (req.headers as Record<string, string>)["x-internal-token"] = "wrong-token";
+    const { res } = buildResponse();
+
+    await modelSuggestHandler(req, res);
+
+    expect(vi.mocked(auditLogger.log)).not.toHaveBeenCalled();
+  });
+});
+
+describe("modelSuggestHandler error handling", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getModelsByTypeAsync).mockResolvedValue(MOCK_MODELS as never);
+  });
+
+  // Safety net: suggestModel() resolves all errors internally so the handler's catch
+  // block is logically unreachable in normal operation. These tests are pending to
+  // avoid circular mocking fragility. Error sanitization is covered in suggestModel().
+  it.todo("returns 500 with sanitized message when suggestModel throws (unreachable safety net)");
+  it.todo("500 error message does not contain URLs (unreachable safety net)");
+  it.todo("500 error string is at most 200 characters (unreachable safety net)");
 });

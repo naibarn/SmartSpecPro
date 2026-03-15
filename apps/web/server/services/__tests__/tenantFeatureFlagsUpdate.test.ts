@@ -80,6 +80,18 @@ describe("updateTenantFeatureFlags", () => {
     });
   });
 
+  it("checks browser policy promotion gates before enabling live browser", async () => {
+    const { updateTenantFeatureFlags } = await import("../tenantFeatureFlagService");
+
+    await updateTenantFeatureFlags("tenant-1", { liveBrowser: true });
+
+    expect(mockAssertBrowserPolicyFeaturePromotionReady).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      flagName: "liveBrowser",
+      nextValue: true,
+    });
+  });
+
   it("does not call browser policy promotion gates for unrelated flags", async () => {
     const { updateTenantFeatureFlags } = await import("../tenantFeatureFlagService");
 

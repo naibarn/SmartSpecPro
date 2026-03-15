@@ -97,6 +97,8 @@ async def init_db():
         sandbox,
         # Agency-Swarm
         agency,
+        # Live browser runtime
+        live_browser,
     )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

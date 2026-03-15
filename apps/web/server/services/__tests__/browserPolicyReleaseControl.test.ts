@@ -84,6 +84,22 @@ describe("browser policy release control", () => {
     ).rejects.toThrow(/browser policy release gate blocked browserTool access/);
   });
 
+  it("treats liveBrowser as a controlled promotion surface too", async () => {
+    const { assertBrowserPolicyFeaturePromotionReady } = await import(
+      "../browserPolicyReleaseControl"
+    );
+
+    mockRedisGet.mockResolvedValue(null);
+
+    await expect(
+      assertBrowserPolicyFeaturePromotionReady({
+        tenantId: "tenant-1",
+        flagName: "liveBrowser",
+        nextValue: true,
+      }),
+    ).rejects.toThrow(/browser policy release gate blocked liveBrowser access/);
+  });
+
   it("reports gate status for UI consumers", async () => {
     const { getBrowserPolicySurfaceGateStatus } = await import(
       "../browserPolicyReleaseControl"

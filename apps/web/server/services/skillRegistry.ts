@@ -165,10 +165,45 @@ function dbSkillToDefinition(dbSkill: {
   };
 }
 
-function getFrontmatterRoutingConfig(metadata: SkillMetadata): {
+/** Known capability keys for model_requirements frontmatter (Feature 041) */
+const KNOWN_REQUIREMENT_KEYS = new Set([
+  "supportsVision",
+  "supportsFunctionTools",
+  "supportsStructuredOutputs",
+  "supportsWebSearch",
+  "supportsCodeExecution",
+  "supportsComputerUse",
+  "supportsBackground",
+  "supportsResponses",
+  "contextLength",
+]);
+
+/**
+ * Validates that a raw frontmatter object only contains known capability keys.
+ * Filters out unknown keys with a warning.
+ */
+function parseSkillRequirements(
+  raw: Record<string, unknown>,
+  skillSlug: string,
+): Record<string, unknown> | undefined {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (KNOWN_REQUIREMENT_KEYS.has(key)) {
+      result[key] = value;
+    } else {
+      console.warn(
+        `[SkillRegistry] Unknown key in model_requirements for skill "${skillSlug}": "${key}" — ignored`,
+      );
+    }
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+function getFrontmatterRoutingConfig(metadata: SkillMetadata, slug?: string): {
   llmModelId?: string;
   preferredProviderId?: number;
   strictProviderPin?: boolean;
+  modelRequirements?: Record<string, unknown>;
 } {
   const meta = metadata as SkillMetadata & {
     llmModelId?: string;
@@ -184,10 +219,21 @@ function getFrontmatterRoutingConfig(metadata: SkillMetadata): {
     ? Number.parseInt(rawProviderId, 10)
     : rawProviderId;
 
+  // Extract model_requirements (snake_case or camelCase)
+  const rawRequirements =
+    (metadata as any).model_requirements ??
+    (metadata as any).modelRequirements;
+
+  const modelRequirements =
+    rawRequirements != null && typeof rawRequirements === "object"
+      ? parseSkillRequirements(rawRequirements as Record<string, unknown>, slug ?? "unknown")
+      : undefined;
+
   return {
     llmModelId: meta.llmModelId ?? meta.llm_model_id,
     preferredProviderId: Number.isFinite(parsedProviderId as number) ? parsedProviderId as number : undefined,
     strictProviderPin: meta.strictProviderPin ?? meta.strict_provider_pin,
+    modelRequirements,
   };
 }
 
@@ -292,7 +338,14 @@ export async function autoSyncSkillsFromFolder(): Promise<{
       const content = fs.readFileSync(folder.skillMdPath, "utf-8");
       const parsed = parseSkillFile(content);
       const metadata: SkillMetadata = { ...parsed.metadata, name: parsed.metadata.name ?? folder.slug };
-      const routingConfig = getFrontmatterRoutingConfig(metadata);
+      const routingConfig = getFrontmatterRoutingConfig(metadata, folder.slug);
+
+      // Merge model_requirements into executionPolicyJson (Feature 041)
+      const baseExecutionPolicy = metadata.execution_policy ?? metadata.executionPolicy ?? null;
+      const executionPolicyJson =
+        routingConfig.modelRequirements != null
+          ? { ...(baseExecutionPolicy ?? {}), requirements: routingConfig.modelRequirements }
+          : baseExecutionPolicy;
 
       const skillData = {
         name: metadata.name || folder.slug,
@@ -317,7 +370,7 @@ export async function autoSyncSkillsFromFolder(): Promise<{
         preferredProviderId: routingConfig.preferredProviderId ?? null,
         strictProviderPin: routingConfig.strictProviderPin ?? false,
         chainTo: getMetadataChainTarget(metadata) ?? null,
-        executionPolicyJson: metadata.execution_policy ?? metadata.executionPolicy ?? null,
+        executionPolicyJson,
         importSource: "folder" as const,
       };
 
@@ -360,7 +413,7 @@ export async function autoSyncSkillsFromFolder(): Promise<{
             ...(filePreferredProviderId !== undefined ? { preferredProviderId: filePreferredProviderId } : {}),
             ...(fileStrictProviderPin !== undefined ? { strictProviderPin: fileStrictProviderPin } : {}),
             ...(getMetadataChainTarget(metadata) !== undefined ? { chainTo: getMetadataChainTarget(metadata) } : {}),
-            ...((metadata.execution_policy ?? metadata.executionPolicy) !== undefined ? { executionPolicyJson: metadata.execution_policy ?? metadata.executionPolicy } : {}),
+            ...(executionPolicyJson !== null ? { executionPolicyJson } : {}),
           }).where(eq(skillsTable.slug, folder.slug));
           result.synced.push(folder.slug);
           console.log(`[SkillRegistry] Updated skill content (hash changed): ${folder.slug}`);
@@ -439,7 +492,14 @@ export async function syncSingleSkillIfChanged(slug: string): Promise<{ synced: 
     // Parse skill.md
     const parsed = parseSkillFile(rawContent);
     const metadata: SkillMetadata = { ...parsed.metadata, name: parsed.metadata.name ?? slug };
-    const routingConfig = getFrontmatterRoutingConfig(metadata);
+    const routingConfig = getFrontmatterRoutingConfig(metadata, slug);
+
+    // Merge model_requirements into executionPolicyJson (Feature 041)
+    const baseExecutionPolicy = metadata.execution_policy ?? metadata.executionPolicy ?? null;
+    const executionPolicyJson =
+      routingConfig.modelRequirements != null
+        ? { ...(baseExecutionPolicy ?? {}), requirements: routingConfig.modelRequirements }
+        : baseExecutionPolicy;
 
     const updateData = {
       skillContent: parsed.content,
@@ -458,6 +518,7 @@ export async function syncSingleSkillIfChanged(slug: string): Promise<{ synced: 
       ...(metadata.priority !== undefined ? { priority: metadata.priority } : {}),
       ...(metadata.isAutoTrigger ?? metadata.auto_trigger !== undefined ? { isAutoTrigger: metadata.isAutoTrigger ?? metadata.auto_trigger } : {}),
       ...(metadata.creditMultiplier ?? metadata.credit_multiplier !== undefined ? { creditMultiplier: String(metadata.creditMultiplier ?? metadata.credit_multiplier) } : {}),
+      ...(executionPolicyJson !== null ? { executionPolicyJson } : {}),
     };
 
     if (dbSkill) {

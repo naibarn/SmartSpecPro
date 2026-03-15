@@ -16,12 +16,16 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { serveStatic, setupVite } from "./vite";
 import { registerLLMRoutes } from "./llmRoutes";
 import { registerMCPRoutes } from "./mcpRoutes";
+import { registerMcpPublicRoutes } from "./mcpPublicServer";
 import { registerMediaJobRoutes } from "../routers/mediaJobs";
 import { registerAgencyStreamRoutes } from "./agencyStreamProxy";
+import { registerLiveBrowserStreamRoutes } from "./liveBrowserStreamProxy";
 import { registerContentAutomationRoutes } from "../routers/contentAutomationRoutes";
 import { registerAutoDraftToolRoute } from "../routers/autoDraftTool";
 import { registerModelSuggestToolRoute } from "../routers/modelSuggestTool";
 import { registerFileParseToolRoute } from "../routers/fileParseTool";
+import { registerScheduleDraftToolRoute } from "../routers/scheduleDraftTool";
+import { registerSkillDiscoveryToolRoute } from "../routers/skillDiscoveryTool";
 
 import { createWebhookRouter } from "../routes/webhooks";
 import { createWebhookTriggerRouter } from "../routes/webhookTrigger";
@@ -77,6 +81,26 @@ import { channelGateway } from "../services/channelGateway";
 import { channelConnections } from "../../drizzle/schema";
 import type { ChatIngressEvent } from "@shared/channelTypes";
 import { COOKIE_NAME } from "@shared/const";
+import { createPublicSkillsRouter } from "../routes/publicSkillsApi";
+import { createPublicAgencyRouter } from "../routes/publicAgencyApi";
+import { createPresentationPublicRouter } from "../routes/publicPresentationsApi";
+import { createPublicVideoRouter } from "../routes/publicVideoApi";
+import { createPublicMediaRouter } from "../routes/publicMediaApi";
+import { createPublicJobsRouter } from "../routes/publicJobsApi";
+import { initAutomationJobsQueue, closeAutomationJobsQueue } from "../services/jobAutomationService";
+import { createPublicWebhooksRouter } from "../routes/publicWebhooksApi";
+import { createPublicEventsRouter } from "../routes/publicEventsApi";
+import { initWebhookApiDeliveryQueue, closeWebhookApiDeliveryQueue } from "../services/webhookDeliveryService";
+import { registerPublicDocsRoutes } from "../routes/publicDocsApi";
+import { apiKeyAuthMiddleware } from "../middleware/apiKeyAuth";
+import { assertHmacSecretConfigured } from "../services/apiKeyService";
+import { publicApiAuditMiddleware } from "../middleware/publicApiAudit";
+import { publicApiCorsMiddleware } from "../middleware/publicApiCors";
+import { publicApiFeatureGuard } from "../middleware/publicApiFeatureGuard";
+import { publicApiHeadersMiddleware } from "../middleware/publicApiHeaders";
+import { rateLimitMiddleware } from "../services/apiKeyRateLimiter";
+import { idempotencyMiddleware } from "../middleware/idempotencyMiddleware";
+import { quotaMiddleware } from "../middleware/quotaMiddleware";
 
 /** Shared database adapter (implements @smartspec/db DbAdapter) */
 export const dbAdapter = new PostgresAdapter();
@@ -400,15 +424,44 @@ app.use(browserToolRouter);
 // Mounted at /_internal/tasks to avoid conflict with the frontend /tasks SPA route
 app.use("/_internal/tasks", createTasksRouter());
 
+// Public API v1 — API key authenticated routes
+// All /v1/* routes share: CORS, request ID headers, API key auth, feature guard
+app.use(
+  "/v1",
+  publicApiCorsMiddleware,
+  publicApiHeadersMiddleware,
+  apiKeyAuthMiddleware,
+  publicApiFeatureGuard,
+  rateLimitMiddleware(),
+  quotaMiddleware(),
+  idempotencyMiddleware(),
+  publicApiAuditMiddleware,
+);
+app.use("/v1/skills", createPublicSkillsRouter());
+app.use("/v1/agencies", createPublicAgencyRouter());
+app.use("/v1/presentations", createPresentationPublicRouter());
+app.use("/v1/video-projects", createPublicVideoRouter());
+app.use("/v1/media", createPublicMediaRouter());
+app.use("/v1/jobs", createPublicJobsRouter());
+app.use("/v1/webhooks", createPublicWebhooksRouter());
+app.use("/v1/events", createPublicEventsRouter());
+
+// Public API documentation (unauthenticated)
+registerPublicDocsRoutes(app);
+
 // REST/SSE endpoints
 registerLLMRoutes(app);
 registerMCPRoutes(app);
+registerMcpPublicRoutes(app);
 registerMediaJobRoutes(app);
 registerAgencyStreamRoutes(app);
+registerLiveBrowserStreamRoutes(app);
 registerContentAutomationRoutes(app);
 registerAutoDraftToolRoute(app);
 registerModelSuggestToolRoute(app);
 registerFileParseToolRoute(app);
+registerScheduleDraftToolRoute(app);
+registerSkillDiscoveryToolRoute(app);
 
 // Proxy remote images through same-origin endpoint so browser canvas operations
 // (split/crop preview) work even when source host doesn't expose CORS headers.
@@ -1050,6 +1103,23 @@ async function main() {
     console.error("[Startup] Failed to initialize webhook dispatch queue:", error);
   }
 
+  // Assert HMAC secret is configured for public API key authentication
+  assertHmacSecretConfigured();
+
+  // Initialize Automation Jobs queue (BullMQ — public API job execution)
+  try {
+    await initAutomationJobsQueue();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize automation jobs queue:", error);
+  }
+
+  // Initialize Webhook API Delivery queue (BullMQ — outbound delivery to external webhook endpoints)
+  try {
+    await initWebhookApiDeliveryQueue();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize webhook API delivery queue:", error);
+  }
+
   // Initialize channel adapters (call optional initialize() hook on each)
   try {
     await Promise.all(
@@ -1211,6 +1281,8 @@ process.on("SIGTERM", async () => {
   await shutdownTelegramWorker().catch(() => {});
   await closeDeliveryQueue().catch(() => {});
   await closeWebhookDispatchQueue().catch(() => {});
+  await closeAutomationJobsQueue().catch(() => {});
+  await closeWebhookApiDeliveryQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
 
   // 3b. Shut down channel adapters
@@ -1263,6 +1335,8 @@ process.on("SIGINT", async () => {
   await shutdownTelegramWorker().catch(() => {});
   await closeDeliveryQueue().catch(() => {});
   await closeWebhookDispatchQueue().catch(() => {});
+  await closeAutomationJobsQueue().catch(() => {});
+  await closeWebhookApiDeliveryQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
   await Promise.all(
     adapterRegistry.getAll()

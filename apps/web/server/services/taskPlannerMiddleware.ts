@@ -22,6 +22,7 @@ import type { CreateStepAttemptInput, CompleteStepAttemptInput } from "./taskRun
 import { loadEnabledModelsWithPricing } from "./capabilityRegistry";
 import { getTenantFeatureFlag } from "./featureFlags";
 import { getTraceId } from "./traceContext";
+import type { SkillExecutionPolicyConfig } from "@smartspec/skills";
 
 // ── Public types ──────────────────────────────────────────────────────
 
@@ -46,7 +47,7 @@ export interface PlannerInput {
   conversationModel?: string | null;
   skillSlug?: string;
   hasTools?: boolean;
-  executionPolicy?: { modelId?: string; mode?: string };
+  executionPolicy?: SkillExecutionPolicyConfig;
   /**
    * When true, runPlanner() additionally checks the `taskPlannerAgencyEscalation`
    * feature flag before proceeding. Pass this for agency-bound call sites so that
@@ -65,6 +66,10 @@ export async function runPlanner(
   input: PlannerInput,
 ): Promise<PlannerResult | null> {
   try {
+    // Guard: invalid inputs would corrupt task_run records and break tenant isolation
+    if (!Number.isFinite(input.userId) || input.userId <= 0) return null;
+    if (!input.tenantId || !input.tenantId.trim()) return null;
+
     // 1. Check feature flag — zero overhead when disabled
     const enabled = await getTenantFeatureFlag(
       "taskPlannerEnabled",
@@ -134,6 +139,11 @@ export async function runPlanner(
 /**
  * Record step attempt after LLM execution completes.
  * NEVER throws — billing recording is best-effort.
+ *
+ * Security contract: taskRunId MUST come from PlannerResult.taskRunId returned
+ * by runPlanner() in the same request context. runPlanner() validates userId > 0
+ * and tenantId before creating the task_run, so ownership is already guaranteed.
+ * Do NOT pass arbitrary taskRunIds from user-controlled input.
  */
 export async function recordStepAttempt(params: {
   taskRunId: number;

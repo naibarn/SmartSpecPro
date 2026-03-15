@@ -16,9 +16,14 @@ export interface TenantFeatureFlags {
   crossAgency: boolean; // F09 — Cross-agency communication
   channelRouter: boolean; // F10 — Channel routing rules
   automationCopilot: boolean; // F11 — Automation Copilot (LLM-driven browser tasks)
-  responsesApi: boolean; // F12 — Responses API gateway (OpenAI-compatible)
-  taskPlannerEnabled: boolean; // F13 — Task Planner (active model selection via task execution planner)
-  taskPlannerAgencyEscalation: boolean; // F14 — Agency escalation via planner
+  liveBrowser: boolean; // F12 — Live Browser workspace and gateway
+  responsesApi: boolean; // F13 — Responses API gateway (OpenAI-compatible)
+  taskPlannerEnabled: boolean; // F14 — Task Planner (active model selection via task execution planner)
+  taskPlannerAgencyEscalation: boolean; // F15 — Agency escalation via planner
+  chatBrowserSessionEntry: boolean; // F16 — Chat Browser Session entrypoints and reopen flows
+  agencyBrowserSessionUi: boolean; // F17 — Agency Builder and Agency Chat Browser Session UI
+  workflowBrowserSessionNodes: boolean; // F18 — Workflow collaborative Browser Session nodes
+  publicApi: boolean; // F19 — Public API & External Agent Gateway
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -39,9 +44,14 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "crossAgency",
   "channelRouter",
   "automationCopilot",
+  "liveBrowser",
   "responsesApi",
   "taskPlannerEnabled",
   "taskPlannerAgencyEscalation",
+  "chatBrowserSessionEntry",
+  "agencyBrowserSessionUi",
+  "workflowBrowserSessionNodes",
+  "publicApi",
 ]);
 
 /**
@@ -61,7 +71,12 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   crossAgency: false,
   channelRouter: false,
   automationCopilot: false,
+  liveBrowser: false,
   responsesApi: false,
   taskPlannerEnabled: false,
   taskPlannerAgencyEscalation: false,
+  chatBrowserSessionEntry: false,
+  agencyBrowserSessionUi: false,
+  workflowBrowserSessionNodes: false,
+  publicApi: false,
 };

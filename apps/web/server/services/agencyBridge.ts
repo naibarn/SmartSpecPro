@@ -24,6 +24,12 @@ interface RunParams {
   /** Task metadata from the planner — propagated to Python agency service */
   taskMetadata?: AgencyTaskMetadata;
   retrievalScope?: ResolvedAgencyRetrievalScope | null;
+  /** v1.8: Target a specific agent by name (default: entry point) */
+  recipientAgent?: string;
+  /** v1.8: File IDs to include with the message */
+  fileIds?: string[];
+  /** v1.8: Per-run instruction override appended to agent instructions */
+  additionalInstructions?: string;
 }
 
 export interface StepAttemptSnapshot {
@@ -68,6 +74,8 @@ export interface RunResult {
   response: string;
   creditsUsed: number;
   durationMs: number;
+  startedAt?: string;
+  completedAt?: string | null;
   /** Step-attempt snapshots from agency execution (for billing reconciliation) */
   stepAttemptSnapshots: StepAttemptSnapshot[];
   structuredResult: StructuredRunResult | null;
@@ -160,6 +168,15 @@ export class AgencyBridge {
     if (params.retrievalScope) {
       body.retrieval_scope = params.retrievalScope;
     }
+    if (params.recipientAgent) {
+      body.recipient_agent = params.recipientAgent;
+    }
+    if (params.fileIds?.length) {
+      body.file_ids = params.fileIds;
+    }
+    if (params.additionalInstructions) {
+      body.additional_instructions = params.additionalInstructions;
+    }
 
     let response: Response;
     try {
@@ -244,6 +261,8 @@ export class AgencyBridge {
       response: data.response ?? data.output ?? "",
       creditsUsed: data.credits_used ?? data.totalCreditsUsed ?? 0,
       durationMs: data.duration_ms ?? data.durationMs ?? 0,
+      startedAt: data.started_at ?? data.startedAt,
+      completedAt: data.completed_at ?? data.completedAt ?? null,
       stepAttemptSnapshots: data.step_attempt_snapshots ?? [],
       structuredResult: data.structured_result ?? null,
       previewArtifacts: data.preview_artifacts ?? [],

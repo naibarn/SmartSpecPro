@@ -69,6 +69,7 @@ from app.api import (
     stt,  # Internal STT/TTS voice endpoints
     browser,  # Browser automation API
     automation_copilot,  # Automation Copilot API
+    live_browser,  # Live browser runtime API
  )
 from app.api.v1 import (
     skills,
@@ -313,6 +314,7 @@ app.include_router(agencies.router, tags=["Agencies"])
 app.include_router(agency_creator.router, prefix="/api/v1/agency-creator", tags=["Agency Creator"])
 app.include_router(browser.router, tags=["Browser Automation"])
 app.include_router(automation_copilot.router, prefix="/api/v1/automation-copilot", tags=["Automation Copilot"])
+app.include_router(live_browser.router)
 
 @app.get("/")
 async def root():

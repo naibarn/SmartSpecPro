@@ -1,0 +1,1 @@
+ALTER TABLE "public_api_audit_log" ALTER COLUMN "apiKeyId" DROP NOT NULL;

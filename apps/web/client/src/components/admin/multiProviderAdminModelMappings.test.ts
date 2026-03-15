@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  filterAdminModelCatalogRows,
   collectVisibleMappingIds,
   filterFlatModelMappings,
   filterModelMappingGroups,
+  getAdminModelSelectionKey,
   type AdminModelMappingsGrouped,
 } from "./multiProviderAdminModelMappings";
 
@@ -23,6 +25,7 @@ const groupedMappings: AdminModelMappingsGrouped = {
       contextLength: 128000,
       isEnabled: true,
       priority: 0,
+      priorityLocked: false,
       apiStyle: "responses",
     },
     {
@@ -39,6 +42,7 @@ const groupedMappings: AdminModelMappingsGrouped = {
       contextLength: 128000,
       isEnabled: false,
       priority: 1,
+      priorityLocked: false,
       apiStyle: "chat-completions",
     },
   ],
@@ -57,6 +61,7 @@ const groupedMappings: AdminModelMappingsGrouped = {
       contextLength: 200000,
       isEnabled: true,
       priority: 0,
+      priorityLocked: false,
       apiStyle: "messages",
     },
   ],
@@ -119,5 +124,121 @@ describe("collectVisibleMappingIds", () => {
     });
 
     expect(collectVisibleMappingIds(groups)).toEqual([1, 2]);
+  });
+});
+
+describe("filterAdminModelCatalogRows", () => {
+  it("keeps unmapped catalog rows visible and searchable", () => {
+    const rows = filterAdminModelCatalogRows([
+      {
+        mappingId: null,
+        isMapped: false,
+        modelId: "openai/gpt-5.4",
+        providerId: 20,
+        providerName: "openrouter",
+        providerDisplayName: "OpenRouter",
+        modelName: "GPT 5.4",
+        providerModelId: "openai/gpt-5.4",
+        pricingInput: "2.5",
+        pricingOutput: "10",
+        isFree: false,
+        contextLength: 400000,
+        isEnabled: false,
+        priority: 0,
+        priorityLocked: false,
+        apiStyle: "chat-completions",
+      },
+    ], "gpt 5.4", "20");
+
+    expect(rows).toHaveLength(1);
+    expect(getAdminModelSelectionKey(rows[0]!)).toBe("catalog:20:openai/gpt-5.4");
+  });
+});
+
+describe("filterAdminModelCatalogRows — priority secondary sort", () => {
+  it("sorts by modelName first, then by priority ASC as tiebreaker", () => {
+    const rows = filterAdminModelCatalogRows([
+      {
+        mappingId: 1,
+        isMapped: true,
+        modelId: "gpt-4o",
+        providerId: 10,
+        providerName: "openai",
+        providerDisplayName: "OpenAI",
+        modelName: "GPT-4o",
+        providerModelId: "gpt-4o",
+        pricingInput: "2.5",
+        pricingOutput: "10",
+        isFree: false,
+        contextLength: 128000,
+        isEnabled: true,
+        priority: 50,
+        priorityLocked: false,
+        apiStyle: "chat-completions",
+      },
+      {
+        mappingId: 2,
+        isMapped: true,
+        modelId: "gpt-4o",
+        providerId: 20,
+        providerName: "openrouter",
+        providerDisplayName: "OpenRouter",
+        modelName: "GPT-4o",
+        providerModelId: "openai/gpt-4o",
+        pricingInput: "2.5",
+        pricingOutput: "10",
+        isFree: false,
+        contextLength: 128000,
+        isEnabled: true,
+        priority: 10,
+        priorityLocked: true,
+        apiStyle: "chat-completions",
+      },
+    ], "", "all");
+    expect(rows[0]!.mappingId).toBe(2); // priority 10
+    expect(rows[1]!.mappingId).toBe(1); // priority 50
+  });
+
+  it("does not change order when modelNames differ (primary sort wins)", () => {
+    const result = filterAdminModelCatalogRows([
+      {
+        mappingId: 1,
+        isMapped: true,
+        modelId: "zeta-model",
+        providerId: 10,
+        providerName: "provider-a",
+        providerDisplayName: "Provider A",
+        modelName: "Zeta",
+        providerModelId: "zeta",
+        pricingInput: "0",
+        pricingOutput: "0",
+        isFree: true,
+        contextLength: 4096,
+        isEnabled: true,
+        priority: 1,
+        priorityLocked: false,
+        apiStyle: "chat-completions",
+      },
+      {
+        mappingId: 2,
+        isMapped: true,
+        modelId: "alpha-model",
+        providerId: 10,
+        providerName: "provider-a",
+        providerDisplayName: "Provider A",
+        modelName: "Alpha",
+        providerModelId: "alpha",
+        pricingInput: "0",
+        pricingOutput: "0",
+        isFree: true,
+        contextLength: 4096,
+        isEnabled: true,
+        priority: 99,
+        priorityLocked: true,
+        apiStyle: "chat-completions",
+      },
+    ], "", "all");
+    expect(result[0]!.modelName).toBe("Alpha");
+    expect(result[1]!.modelName).toBe("Zeta");
   });
 });

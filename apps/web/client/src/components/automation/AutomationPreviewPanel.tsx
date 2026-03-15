@@ -28,6 +28,7 @@ interface AutomationPreviewPanelProps {
   planSummary: AutomationPlanSummary;
   onConfirm: () => void;
   onCancel: () => void;
+  onConfirmLiveMode?: () => void;
 }
 
 const ACTION_ICONS: Record<string, React.ReactNode> = {
@@ -49,6 +50,7 @@ export function AutomationPreviewPanel({
   planSummary,
   onConfirm,
   onCancel,
+  onConfirmLiveMode,
 }: AutomationPreviewPanelProps) {
   return (
     <div className="space-y-4">
@@ -98,6 +100,15 @@ export function AutomationPreviewPanel({
           >
             Cancel
           </button>
+          {onConfirmLiveMode ? (
+            <button
+              type="button"
+              onClick={onConfirmLiveMode}
+              className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-100"
+            >
+              Run in Live Mode
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={onConfirm}

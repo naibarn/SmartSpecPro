@@ -7,6 +7,7 @@ import type {
   PresentationMediaMotionEasing,
   PresentationMediaMotionPreset,
   PresentationMediaMotionTimingMode,
+  PresentationMediaShape,
 } from "@shared/presentation/contracts";
 import {
   DEFAULT_MEDIA_MOTION_DURATION_MS,
@@ -17,6 +18,7 @@ import {
   normalizeMediaMotion,
   serializeMediaMotion,
 } from "@shared/presentation/mediaMotion";
+import { presentationMediaShapeRequiresSquare } from "@shared/presentation/mediaShape";
 import type { PresentationElement, PresentationElementPatch, PresentationSlideBackground } from "@/lib/presentationEditorState";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
@@ -51,6 +53,10 @@ interface PropertyPanelProps {
   onPatchElementById?: (elementId: string, patch: PresentationElementPatch) => void;
   slideBackground?: PresentationSlideBackground;
   onSetSlideBackground?: (background: PresentationSlideBackground | undefined) => void;
+  cropModeElementId?: string | null;
+  cropModeTarget?: "content" | "frame";
+  onToggleCropMode?: (elementId: string | null) => void;
+  onSetCropModeTarget?: (target: "content" | "frame") => void;
 }
 
 interface TextPresetDefinition {
@@ -188,6 +194,15 @@ const TASK_POLL_MAX_ATTEMPTS = 90;
 const MEDIA_MOTION_EASING_OPTIONS: Array<{ value: PresentationMediaMotionEasing; label: string }> = [
   { value: "ease-in-out", label: "Ease In-Out" },
   { value: "linear", label: "Linear" },
+];
+
+const MEDIA_SHAPE_OPTIONS: Array<{ label: string; value: PresentationMediaShape }> = [
+  { label: "Rectangle", value: "rect" },
+  { label: "Rounded", value: "rounded" },
+  { label: "Circle", value: "circle" },
+  { label: "Ellipse", value: "ellipse" },
+  { label: "Diamond", value: "diamond" },
+  { label: "Star", value: "star" },
 ];
 const MEDIA_MOTION_TIMING_OPTIONS: Array<{ value: PresentationMediaMotionTimingMode; label: string }> = [
   { value: "duration", label: "Custom Duration" },
@@ -1143,6 +1158,10 @@ export function PropertyPanel({
   onPatchElementById,
   slideBackground,
   onSetSlideBackground,
+  cropModeElementId = null,
+  cropModeTarget = "content",
+  onToggleCropMode,
+  onSetCropModeTarget,
 }: PropertyPanelProps) {
   const [fontDropdownOpen, setFontDropdownOpen] = useState(false);
   const [weightDropdownOpen, setWeightDropdownOpen] = useState(false);
@@ -1194,6 +1213,11 @@ export function PropertyPanel({
   const selectedVideoModel = videoModels.find((model) => model.id === selectedVideoModelId);
   const selectedImageModelSupportsReferenceSync = hasReferenceImageSyncField(selectedImageModel);
   const selectedVideoModelSupportsReferenceSync = hasReferenceImageSyncField(selectedVideoModel);
+  const cropModeActive = Boolean(
+    selectedElement
+    && (selectedElement.type === "image" || selectedElement.type === "video")
+    && cropModeElementId === selectedElement.id,
+  );
 
   useEffect(() => {
     setModelInputOptionSearchTerms({});
@@ -1258,6 +1282,14 @@ export function PropertyPanel({
       aspectRatio,
     );
     if (!nextDimensions) {
+      return;
+    }
+    if (presentationMediaShapeRequiresSquare(selectedElement.mediaShape)) {
+      const size = Math.max(nextDimensions.width, nextDimensions.height);
+      onPatchSelected({
+        width: size,
+        height: size,
+      } as PresentationElementPatch);
       return;
     }
     onPatchSelected(nextDimensions as PresentationElementPatch);
@@ -2132,6 +2164,28 @@ export function PropertyPanel({
         </div>
       </Section>
 
+      <Section label="Appearance">
+        <label className="flex flex-col gap-1">
+          <div className="flex items-center justify-between text-[10px] text-zinc-400">
+            <span>Opacity</span>
+            <span className="tabular-nums">{Math.round((selectedElement.opacity ?? 1) * 100)}%</span>
+          </div>
+          <input
+            aria-label={`${selectedElement.type} Opacity`}
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            className="w-full accent-blue-500"
+            value={selectedElement.opacity ?? 1}
+            disabled={isMixedTypeSelection}
+            onChange={(event) => onPatchSelected({
+              opacity: clampNumber(parseNumberInput(event.target.value, selectedElement.opacity ?? 1), 0, 1),
+            } as PresentationElementPatch)}
+          />
+        </label>
+      </Section>
+
       {isMixedTypeSelection ? (
         <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
           Mixed object types selected. Property editing is disabled for safety.
@@ -2847,6 +2901,67 @@ export function PropertyPanel({
                 </select>
               </label>
 
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] text-zinc-400">Media Shape</span>
+                <select
+                  aria-label="Image Media Shape"
+                  className="w-full rounded-md bg-zinc-800 border border-zinc-700 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  value={selectedElement.mediaShape || "rect"}
+                  onChange={(event) => {
+                    const nextShape = event.target.value as PresentationMediaShape;
+                    const patch: PresentationElementPatch = {
+                      mediaShape: nextShape,
+                    };
+                    if (presentationMediaShapeRequiresSquare(nextShape)) {
+                      const size = Math.max(selectedElement.width, selectedElement.height);
+                      patch.width = size;
+                      patch.height = size;
+                    }
+                    onPatchSelected(patch);
+                  }}
+                >
+                  {MEDIA_SHAPE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {(selectedElement.mediaShape ?? "rect") === "rounded" ? (
+                <label className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between text-[10px] text-zinc-400">
+                    <span>Corner Radius</span>
+                    <span className="tabular-nums">{Math.round(selectedElement.mediaCornerRadius ?? 24)}px</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={160}
+                    step={1}
+                    className="w-full accent-blue-500"
+                    value={selectedElement.mediaCornerRadius ?? 24}
+                    onChange={(event) => onPatchSelected({
+                      mediaCornerRadius: clampNumber(parseNumberInput(event.target.value, selectedElement.mediaCornerRadius ?? 24), 0, 160),
+                    } as PresentationElementPatch)}
+                  />
+                </label>
+              ) : null}
+              {presentationMediaShapeRequiresSquare(selectedElement.mediaShape) ? (
+                <button
+                  type="button"
+                  className="rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
+                  onClick={() => {
+                    const size = Math.max(selectedElement.width, selectedElement.height);
+                    onPatchSelected({
+                      width: size,
+                      height: size,
+                    } as PresentationElementPatch);
+                  }}
+                >
+                  Normalize Shape Frame
+                </button>
+              ) : null}
+
               <MediaMotionControls
                 mediaLabel="Image"
                 motion={selectedElement.mediaMotion}
@@ -2856,12 +2971,50 @@ export function PropertyPanel({
               />
 
               <div className="grid grid-cols-1 gap-2">
+                <button
+                  type="button"
+                  className={`rounded-md px-2 py-1.5 text-xs font-medium ${
+                    cropModeActive
+                      ? "border border-amber-500 bg-amber-600 text-white hover:bg-amber-500"
+                      : "border border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                  }`}
+                  onClick={() => onToggleCropMode?.(cropModeActive ? null : selectedElement.id)}
+                >
+                  {cropModeActive ? "Exit Crop Mode" : "Enter Crop Mode"}
+                </button>
+                {cropModeActive ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      className={`rounded-md px-2 py-1.5 text-xs font-medium ${
+                        cropModeTarget === "content"
+                          ? "border border-sky-500 bg-sky-600 text-white hover:bg-sky-500"
+                          : "border border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                      }`}
+                      onClick={() => onSetCropModeTarget?.("content")}
+                    >
+                      Edit Content
+                    </button>
+                    <button
+                      type="button"
+                      className={`rounded-md px-2 py-1.5 text-xs font-medium ${
+                        cropModeTarget === "frame"
+                          ? "border border-amber-500 bg-amber-600 text-white hover:bg-amber-500"
+                          : "border border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                      }`}
+                      onClick={() => onSetCropModeTarget?.("frame")}
+                    >
+                      Edit Frame
+                    </button>
+                  </div>
+                ) : null}
                 <label className="flex flex-col gap-1">
                   <div className="flex items-center justify-between text-[10px] text-zinc-400">
                     <span>Zoom</span>
                     <span className="tabular-nums">{(selectedElement.imageZoom ?? 1).toFixed(2)}x</span>
                   </div>
                   <input
+                    aria-label="Image Crop Zoom"
                     type="range"
                     min={0.5}
                     max={3}
@@ -2880,6 +3033,7 @@ export function PropertyPanel({
                     <span className="tabular-nums">{Math.round(selectedElement.imagePositionX ?? 50)}%</span>
                   </div>
                   <input
+                    aria-label="Image Crop Focus X"
                     type="range"
                     min={0}
                     max={100}
@@ -2898,6 +3052,7 @@ export function PropertyPanel({
                     <span className="tabular-nums">{Math.round(selectedElement.imagePositionY ?? 50)}%</span>
                   </div>
                   <input
+                    aria-label="Image Crop Focus Y"
                     type="range"
                     min={0}
                     max={100}
@@ -2915,6 +3070,8 @@ export function PropertyPanel({
                   className="rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
                   onClick={() => onPatchSelected({
                     imageFit: "cover",
+                    mediaShape: "rect",
+                    mediaCornerRadius: 24,
                     imageZoom: 1,
                     imagePositionX: 50,
                     imagePositionY: 50,
@@ -3159,6 +3316,67 @@ export function PropertyPanel({
             </select>
           </label>
 
+          <label className="flex flex-col gap-1">
+            <span className="text-[10px] text-zinc-400">Media Shape</span>
+            <select
+              aria-label="Video Media Shape"
+              className="w-full rounded-md bg-zinc-800 border border-zinc-700 px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              value={selectedElement.mediaShape || "rect"}
+              onChange={(event) => {
+                const nextShape = event.target.value as PresentationMediaShape;
+                const patch: PresentationElementPatch = {
+                  mediaShape: nextShape,
+                };
+                if (presentationMediaShapeRequiresSquare(nextShape)) {
+                  const size = Math.max(selectedElement.width, selectedElement.height);
+                  patch.width = size;
+                  patch.height = size;
+                }
+                onPatchSelected(patch);
+              }}
+            >
+              {MEDIA_SHAPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          {(selectedElement.mediaShape ?? "rect") === "rounded" ? (
+            <label className="flex flex-col gap-1">
+              <div className="flex items-center justify-between text-[10px] text-zinc-400">
+                <span>Corner Radius</span>
+                <span className="tabular-nums">{Math.round(selectedElement.mediaCornerRadius ?? 24)}px</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={160}
+                step={1}
+                className="w-full accent-blue-500"
+                value={selectedElement.mediaCornerRadius ?? 24}
+                onChange={(event) => onPatchSelected({
+                  mediaCornerRadius: clampNumber(parseNumberInput(event.target.value, selectedElement.mediaCornerRadius ?? 24), 0, 160),
+                } as PresentationElementPatch)}
+              />
+            </label>
+          ) : null}
+          {presentationMediaShapeRequiresSquare(selectedElement.mediaShape) ? (
+            <button
+              type="button"
+              className="rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
+              onClick={() => {
+                const size = Math.max(selectedElement.width, selectedElement.height);
+                onPatchSelected({
+                  width: size,
+                  height: size,
+                } as PresentationElementPatch);
+              }}
+            >
+              Normalize Shape Frame
+            </button>
+          ) : null}
+
           <div className="flex flex-col gap-1.5">
             <label className="flex items-center justify-between rounded-md border border-zinc-700 bg-zinc-900/60 px-2 py-1.5 text-xs text-zinc-200 cursor-pointer">
               <span className="flex items-center gap-1.5">
@@ -3200,12 +3418,50 @@ export function PropertyPanel({
           />
 
           <div className="grid grid-cols-1 gap-2">
+            <button
+              type="button"
+              className={`rounded-md px-2 py-1.5 text-xs font-medium ${
+                cropModeActive
+                  ? "border border-amber-500 bg-amber-600 text-white hover:bg-amber-500"
+                  : "border border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+              }`}
+              onClick={() => onToggleCropMode?.(cropModeActive ? null : selectedElement.id)}
+            >
+              {cropModeActive ? "Exit Crop Mode" : "Enter Crop Mode"}
+            </button>
+            {cropModeActive ? (
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  className={`rounded-md px-2 py-1.5 text-xs font-medium ${
+                    cropModeTarget === "content"
+                      ? "border border-sky-500 bg-sky-600 text-white hover:bg-sky-500"
+                      : "border border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                  }`}
+                  onClick={() => onSetCropModeTarget?.("content")}
+                >
+                  Edit Content
+                </button>
+                <button
+                  type="button"
+                  className={`rounded-md px-2 py-1.5 text-xs font-medium ${
+                    cropModeTarget === "frame"
+                      ? "border border-amber-500 bg-amber-600 text-white hover:bg-amber-500"
+                      : "border border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
+                  }`}
+                  onClick={() => onSetCropModeTarget?.("frame")}
+                >
+                  Edit Frame
+                </button>
+              </div>
+            ) : null}
             <label className="flex flex-col gap-1">
               <div className="flex items-center justify-between text-[10px] text-zinc-400">
                 <span>Zoom</span>
                 <span className="tabular-nums">{(selectedElement.videoZoom ?? 1).toFixed(2)}x</span>
               </div>
               <input
+                aria-label="Video Crop Zoom"
                 type="range"
                 min={0.5}
                 max={3}
@@ -3224,6 +3480,7 @@ export function PropertyPanel({
                 <span className="tabular-nums">{Math.round(selectedElement.videoPositionX ?? 50)}%</span>
               </div>
               <input
+                aria-label="Video Crop Focus X"
                 type="range"
                 min={0}
                 max={100}
@@ -3242,6 +3499,7 @@ export function PropertyPanel({
                 <span className="tabular-nums">{Math.round(selectedElement.videoPositionY ?? 50)}%</span>
               </div>
               <input
+                aria-label="Video Crop Focus Y"
                 type="range"
                 min={0}
                 max={100}
@@ -3259,6 +3517,8 @@ export function PropertyPanel({
               className="rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1.5 text-xs text-zinc-200 hover:bg-zinc-700"
               onClick={() => onPatchSelected({
                 videoFit: "cover",
+                mediaShape: "rect",
+                mediaCornerRadius: 24,
                 videoZoom: 1,
                 videoPositionX: 50,
                 videoPositionY: 50,

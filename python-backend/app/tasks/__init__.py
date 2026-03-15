@@ -35,6 +35,10 @@ from app.tasks.automation_copilot_task import (
     browser_pool_health_check,
     automation_credit_reconciliation,
 )
+from app.tasks.live_browser_tasks import (
+    publish_live_browser_readiness_snapshot,
+    run_live_browser_maintenance_task,
+)
 try:
     from app.tasks.presentation_render import render_presentation
 except ModuleNotFoundError:
@@ -64,6 +68,8 @@ __all__ = [
     "automation_execute_task",
     "browser_pool_health_check",
     "automation_credit_reconciliation",
+    "publish_live_browser_readiness_snapshot",
+    "run_live_browser_maintenance_task",
 ]
 
 if render_presentation is not None:

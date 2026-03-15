@@ -1,4 +1,4 @@
-import { integer, pgEnum, pgTable, text, timestamp, varchar, json, jsonb, boolean, numeric, serial, uniqueIndex, index, foreignKey, bigint, check, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { integer, pgEnum, pgTable, text, timestamp, varchar, json, jsonb, boolean, numeric, serial, uniqueIndex, index, foreignKey, bigint, bigserial, check, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 /**
@@ -120,6 +120,73 @@ export const browserPageSensitivityEnum = pgEnum("browser_page_sensitivity", [
   "code",
 ]);
 
+export const liveBrowserSourceTypeEnum = pgEnum("live_browser_source_type", [
+  "automation",
+  "workflow",
+  "agency",
+]);
+
+export const liveBrowserSessionStatusEnum = pgEnum("live_browser_session_status", [
+  "created",
+  "provisioning",
+  "ready",
+  "agent_running",
+  "waiting_for_human",
+  "human_controlling",
+  "waiting_for_runtime_recovery",
+  "failed_recovery_required",
+  "completed",
+  "cancelled",
+  "failed",
+  "expired",
+]);
+
+export const liveBrowserControlModeEnum = pgEnum("live_browser_control_mode", [
+  "observe",
+  "approve_only",
+  "takeover",
+  "agent_control",
+]);
+
+export const liveBrowserAssistRequestTypeEnum = pgEnum("live_browser_assist_request_type", [
+  "decision",
+  "field_input",
+  "review_page",
+  "takeover_required",
+]);
+
+export const liveBrowserActorTypeEnum = pgEnum("live_browser_actor_type", [
+  "agent",
+  "user",
+  "system",
+  "policy",
+]);
+
+export const liveBrowserEventTypeEnum = pgEnum("live_browser_event_type", [
+  "session_created",
+  "session_state_changed",
+  "stream_ready",
+  "frame_updated",
+  "url_changed",
+  "command_queued",
+  "command_started",
+  "command_completed",
+  "command_failed",
+  "assist_requested",
+  "assist_resolved",
+  "approval_requested",
+  "approval_resolved",
+  "takeover_started",
+  "takeover_lease_expiring",
+  "takeover_ended",
+  "incident",
+  "agent_started",
+  "agent_resumed",
+  "navigation_completed",
+  "session_completed",
+  "session_failed",
+]);
+
 // Credit source type enum — categorizes what generated a credit transaction
 export const creditSourceTypeEnum = pgEnum("credit_source_type", [
   "chat",
@@ -143,6 +210,15 @@ export const creditSourceTypeEnum = pgEnum("credit_source_type", [
   "widget_chat",
   "webhook_chat",
   "webhook_trigger",
+  // Public API (feature 043)
+  "api_skill",
+  "api_agency",
+  "api_job",
+  "api_media",
+  "api_presentation",
+  "api_video_project",
+  "api_chat",
+  "api_mcp",
 ]);
 
 // Settlement status for creator revenue sharing
@@ -620,6 +696,12 @@ export const modelProviderMap = pgTable("model_provider_map", {
   /** Supports background/async processing */
   supportsBackground: boolean("supportsBackground").default(false),
 
+  /** Supports vision / image input */
+  supportsVision: boolean("supportsVision").default(false),
+
+  /** Whether priority was manually set by admin (locks against auto-reassignment) */
+  priorityLocked: boolean("priorityLocked").default(false),
+
   /** Whether this mapping is active */
   isEnabled: boolean("isEnabled").default(true).notNull(),
 
@@ -665,6 +747,9 @@ export const providerUsageLog = pgTable("provider_usage_log", {
 
   wasFallback: boolean("wasFallback").default(false).notNull(),
   fallbackFromProviderId: integer("fallbackFromProviderId").references(() => llmProviders.id),
+
+  /** API key that triggered this LLM usage (nullable) */
+  apiKeyId: varchar("apiKeyId", { length: 36 }),
 
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
@@ -1257,6 +1342,13 @@ export const conversations = pgTable("conversations", {
 
   /** AI persona used for this conversation */
   personaId: varchar("personaId", { length: 36 }).references((): AnyPgColumn => personaTemplates.id, { onDelete: "set null" }),
+
+  /** Origin: 'web', 'api', 'widget' */
+  source: varchar("source", { length: 20 }).default("web"),
+  /** API key that created this conversation (nullable, no FK) */
+  apiKeyId: varchar("apiKeyId", { length: 36 }),
+  /** Auto-expire API-created conversations */
+  expiresAt: timestamp("expiresAt", { withTimezone: true }),
 
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
@@ -3866,6 +3958,118 @@ export const browserPolicyDecisions = pgTable("browser_policy_decisions", {
 export type BrowserPolicyDecisionRecord = typeof browserPolicyDecisions.$inferSelect;
 export type InsertBrowserPolicyDecisionRecord = typeof browserPolicyDecisions.$inferInsert;
 
+export const liveBrowserSessions = pgTable("live_browser_sessions", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  sourceType: liveBrowserSourceTypeEnum("sourceType").notNull(),
+  sourceId: varchar("sourceId", { length: 128 }),
+  status: liveBrowserSessionStatusEnum("status").default("created").notNull(),
+  controlMode: liveBrowserControlModeEnum("controlMode").default("observe").notNull(),
+  sessionVersion: integer("sessionVersion").default(1).notNull(),
+  controllerActorType: liveBrowserActorTypeEnum("controllerActorType"),
+  controllerActorId: varchar("controllerActorId", { length: 64 }),
+  controllerConnectionId: varchar("controllerConnectionId", { length: 128 }),
+  controllerLeaseExpiresAt: timestamp("controllerLeaseExpiresAt", { withTimezone: true }),
+  runtimeOwnerId: varchar("runtimeOwnerId", { length: 128 }),
+  runtimeOwnerClaimedAt: timestamp("runtimeOwnerClaimedAt", { withTimezone: true }),
+  pauseReason: varchar("pauseReason", { length: 128 }),
+  pendingAssistRequestId: varchar("pendingAssistRequestId", { length: 64 }),
+  pendingApprovalRequestId: varchar("pendingApprovalRequestId", { length: 64 }),
+  policyContextJson: jsonb("policyContextJson").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+  browserContextRef: jsonb("browserContextRef").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+  streamRef: jsonb("streamRef").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+  activeTabCount: integer("activeTabCount").default(1).notNull(),
+  startedAt: timestamp("startedAt", { withTimezone: true }).defaultNow().notNull(),
+  lastActivityAt: timestamp("lastActivityAt", { withTimezone: true }).defaultNow().notNull(),
+  endedAt: timestamp("endedAt", { withTimezone: true }),
+  endReason: varchar("endReason", { length: 128 }),
+}, (t) => [
+  index("live_browser_sessions_tenant_status_idx").on(t.tenantId, t.status),
+  index("live_browser_sessions_user_activity_idx").on(t.userId, t.lastActivityAt),
+  index("live_browser_sessions_runtime_owner_idx").on(t.runtimeOwnerId, t.runtimeOwnerClaimedAt),
+]);
+
+export type LiveBrowserSessionRecord = typeof liveBrowserSessions.$inferSelect;
+export type InsertLiveBrowserSessionRecord = typeof liveBrowserSessions.$inferInsert;
+
+export const liveBrowserIdempotencyKeys = pgTable("live_browser_idempotency_keys", {
+  id: serial("id").primaryKey(),
+  sessionId: varchar("sessionId", { length: 64 }).notNull().references(() => liveBrowserSessions.id, { onDelete: "cascade" }),
+  idempotencyKey: varchar("idempotencyKey", { length: 128 }).notNull(),
+  commandType: varchar("commandType", { length: 64 }).notNull(),
+  responseJson: jsonb("responseJson").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+}, (t) => [
+  uniqueIndex("uq_live_browser_idempotency_keys_session_key").on(t.sessionId, t.idempotencyKey),
+  index("live_browser_idempotency_keys_expires_idx").on(t.expiresAt),
+]);
+
+export type LiveBrowserIdempotencyKeyRecord = typeof liveBrowserIdempotencyKeys.$inferSelect;
+export type InsertLiveBrowserIdempotencyKeyRecord = typeof liveBrowserIdempotencyKeys.$inferInsert;
+
+export const liveBrowserEvents = pgTable("live_browser_events", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  sessionId: varchar("sessionId", { length: 64 }).notNull().references(() => liveBrowserSessions.id, { onDelete: "cascade" }),
+  sessionVersionAt: integer("sessionVersionAt").notNull(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  eventType: liveBrowserEventTypeEnum("eventType").notNull(),
+  actorType: liveBrowserActorTypeEnum("actorType").notNull(),
+  actorId: varchar("actorId", { length: 64 }),
+  payloadJson: jsonb("payloadJson").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+  screenshotRef: varchar("screenshotRef", { length: 255 }),
+  cursor: varchar("cursor", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("uq_live_browser_events_session_cursor").on(t.sessionId, t.cursor),
+  index("live_browser_events_session_created_idx").on(t.sessionId, t.createdAt),
+  index("live_browser_events_session_version_idx").on(t.sessionId, t.sessionVersionAt),
+]);
+
+export type LiveBrowserEventRecord = typeof liveBrowserEvents.$inferSelect;
+export type InsertLiveBrowserEventRecord = typeof liveBrowserEvents.$inferInsert;
+
+export const liveBrowserAssistRequests = pgTable("live_browser_assist_requests", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  sessionId: varchar("sessionId", { length: 64 }).notNull().references(() => liveBrowserSessions.id, { onDelete: "cascade" }),
+  sessionVersionAt: integer("sessionVersionAt").notNull(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  requestType: liveBrowserAssistRequestTypeEnum("requestType").notNull(),
+  status: varchar("status", { length: 32 }).default("pending").notNull(),
+  prompt: text("prompt").notNull(),
+  contextJson: jsonb("contextJson").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+  responseJson: jsonb("responseJson").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+  resolvedSessionVersionAt: integer("resolvedSessionVersionAt"),
+  requestedAt: timestamp("requestedAt", { withTimezone: true }).defaultNow().notNull(),
+  resolvedAt: timestamp("resolvedAt", { withTimezone: true }),
+}, (t) => [
+  index("live_browser_assist_requests_session_status_idx").on(t.sessionId, t.status),
+  index("live_browser_assist_requests_session_requested_idx").on(t.sessionId, t.requestedAt),
+]);
+
+export type LiveBrowserAssistRequestRecord = typeof liveBrowserAssistRequests.$inferSelect;
+export type InsertLiveBrowserAssistRequestRecord = typeof liveBrowserAssistRequests.$inferInsert;
+
+export const liveBrowserControlTransfers = pgTable("live_browser_control_transfers", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  sessionId: varchar("sessionId", { length: 64 }).notNull().references(() => liveBrowserSessions.id, { onDelete: "cascade" }),
+  sessionVersionAt: integer("sessionVersionAt").notNull(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  fromActorType: liveBrowserActorTypeEnum("fromActorType").notNull(),
+  fromActorId: varchar("fromActorId", { length: 64 }),
+  toActorType: liveBrowserActorTypeEnum("toActorType").notNull(),
+  toActorId: varchar("toActorId", { length: 64 }),
+  reason: varchar("reason", { length: 128 }).notNull(),
+  policyCheckHash: varchar("policyCheckHash", { length: 128 }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("live_browser_control_transfers_session_created_idx").on(t.sessionId, t.createdAt),
+]);
+
+export type LiveBrowserControlTransferRecord = typeof liveBrowserControlTransfers.$inferSelect;
+export type InsertLiveBrowserControlTransferRecord = typeof liveBrowserControlTransfers.$inferInsert;
+
 // Cloud Task Events — Tracks Cloud Tasks execution for observability and DLQ
 export const cloudTaskEvents = pgTable("cloud_task_events", {
   id: serial("id").primaryKey(),
@@ -4168,6 +4372,7 @@ export type InsertTenantSandboxPolicy = typeof tenantSandboxPolicies.$inferInser
 export const agencies = pgTable("agencies", {
   id: varchar("id", { length: 36 }).primaryKey(),
   tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  sourceTemplateId: varchar("sourceTemplateId", { length: 36 }).references(() => agencyTemplates.id, { onDelete: "set null" }),
   slug: varchar("slug", { length: 100 }).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
@@ -4432,6 +4637,12 @@ export const agencyConversations = pgTable("agency_conversations", {
   totalCreditsUsed: numeric("totalCreditsUsed", { precision: 12, scale: 4 }).default("0"),
   messageCount: integer("messageCount").default(0).notNull(),
   isArchived: boolean("isArchived").default(false).notNull(),
+  /** Origin: 'web', 'api', 'widget' */
+  source: varchar("source", { length: 20 }).default("web"),
+  /** API key that created this conversation */
+  apiKeyId: varchar("apiKeyId", { length: 36 }),
+  /** Auto-expire API-created conversations */
+  expiresAt: timestamp("expiresAt", { withTimezone: true }),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
@@ -5099,3 +5310,274 @@ export const contentArtifacts = pgTable("content_artifacts", {
   index("content_artifacts_status_idx").on(t.status),
   index("content_artifacts_next_refresh_idx").on(t.nextRefreshAt),
 ]);
+
+// ============================================================
+// Spec 035: Content Automation Engine — Level 3 Schema (Phase 2 forward-design)
+// Tables created in Phase 1 for schema readiness; not yet referenced
+// by application code. Will be activated in Phase 2.
+// ============================================================
+
+export const contentSpecStatusEnum = pgEnum("content_spec_status", [
+  "active",
+  "paused",
+  "archived",
+]);
+
+export const contentAutomationRunStatusEnum = pgEnum("content_automation_run_status", [
+  "pending",
+  "running",
+  "completed",
+  "failed",
+  "export_failed",
+]);
+
+/**
+ * Content Specs — Level 3 Content Automation Engine definitions.
+ * One row per user-defined automation spec (recurring or one-time).
+ */
+export const contentSpecs = pgTable("content_specs", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  specData: jsonb("spec_data").$type<Record<string, unknown>>().notNull().default({}),
+  status: contentSpecStatusEnum("status").notNull().default("active"),
+  version: integer("version").notNull().default(1),
+  nextRun: timestamp("next_run", { withTimezone: true }),
+  lastRun: timestamp("last_run", { withTimezone: true }),
+  totalRuns: integer("total_runs").notNull().default(0),
+  totalItemsCreated: integer("total_items_created").notNull().default(0),
+  consecutiveFailures: integer("consecutive_failures").notNull().default(0),
+  webhookSecretEncrypted: text("webhook_secret_encrypted"),
+  dailyCreditLimit: integer("daily_credit_limit"),
+  monthlyCreditLimit: integer("monthly_credit_limit"),
+  creditsUsedToday: integer("credits_used_today").notNull().default(0),
+  creditsUsedMonth: integer("credits_used_month").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("content_specs_status_next_run_idx").on(t.status, t.nextRun),
+  index("content_specs_tenant_idx").on(t.tenantId),
+  index("content_specs_user_idx").on(t.userId),
+]);
+
+export type ContentSpec = typeof contentSpecs.$inferSelect;
+export type InsertContentSpec = typeof contentSpecs.$inferInsert;
+
+/**
+ * Content Automation Runs — execution history for each fired content spec.
+ */
+export const contentAutomationRuns = pgTable("content_automation_runs", {
+  id: serial("id").primaryKey(),
+  specId: integer("spec_id").notNull().references(() => contentSpecs.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  scheduleItemIndex: integer("schedule_item_index").notNull().default(0),
+  status: contentAutomationRunStatusEnum("status").notNull().default("pending"),
+  topicsResolved: jsonb("topics_resolved").$type<string[]>().default([]),
+  itemsRequested: integer("items_requested").notNull().default(0),
+  itemsCompleted: integer("items_completed").notNull().default(0),
+  itemsFailed: integer("items_failed").notNull().default(0),
+  outputArtifacts: jsonb("output_artifacts").$type<Array<{ deck_id: number; topic: string; slide_count: number }>>().default([]),
+  exportUrls: jsonb("export_urls").$type<Array<{ deck_id: number; url: string; format: string }>>().default([]),
+  itemErrors: jsonb("item_errors").$type<Array<{ topic: string; error: string; index: number }>>().default([]),
+  creditsUsed: numeric("credits_used", { precision: 10, scale: 4 }).default("0"),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("content_automation_runs_spec_created_idx").on(t.specId, t.createdAt),
+  index("content_automation_runs_tenant_idx").on(t.tenantId),
+  index("content_automation_runs_created_at_idx").on(t.createdAt),
+  index("content_automation_runs_status_idx").on(t.status),
+]);
+
+export type ContentAutomationRun = typeof contentAutomationRuns.$inferSelect;
+export type InsertContentAutomationRun = typeof contentAutomationRuns.$inferInsert;
+
+/**
+ * Auto Draft Schedules — recurring or one-time auto-draft schedules managed by the Content Automation Engine.
+ */
+export const autoDraftSchedules = pgTable(
+  "auto_draft_schedules",
+  {
+    id: serial("id").primaryKey(),
+    tenantId: varchar("tenantId", { length: 128 }).notNull(),
+    userId: integer("userId")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    topicTemplate: text("topicTemplate").notNull(),
+    scheduleType: varchar("scheduleType", { length: 20 }).notNull(),
+    cronExpression: varchar("cronExpression", { length: 100 }),
+    runAt: timestamp("runAt", { withTimezone: true }),
+    timezone: varchar("timezone", { length: 64 }).default("UTC").notNull(),
+    draftParams: jsonb("draftParams").$type<Record<string, unknown>>().notNull(),
+    notifyEmail: boolean("notifyEmail").default(true).notNull(),
+    notifyWebhookUrl: text("notifyWebhookUrl"),
+    webhookSecretEncrypted: text("webhookSecretEncrypted"),
+    status: varchar("status", { length: 20 }).default("active").notNull(),
+    nextRun: timestamp("nextRun", { withTimezone: true }),
+    lastRun: timestamp("lastRun", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("auto_draft_schedules_status_next_run_idx").on(table.status, table.nextRun),
+    index("auto_draft_schedules_tenant_idx").on(table.tenantId),
+    index("auto_draft_schedules_user_idx").on(table.userId),
+  ],
+);
+
+export type AutoDraftSchedule = typeof autoDraftSchedules.$inferSelect;
+export type InsertAutoDraftSchedule = typeof autoDraftSchedules.$inferInsert;
+
+// ─── Public API Tables (Feature 043) ────────────────────────────────────────
+
+/**
+ * API Keys — central registry for public API authentication.
+ * Keys use sk-ssp_ prefix and HMAC-SHA256 hashing with server pepper.
+ */
+export const apiKeys = pgTable("api_keys", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id),
+  userId: integer("userId").notNull().references(() => users.id),
+  name: varchar("name", { length: 100 }).notNull(),
+  keyPrefix: varchar("keyPrefix", { length: 16 }).notNull(),
+  keyHash: varchar("keyHash", { length: 128 }).notNull(),
+  scopes: json("scopes").$type<string[]>().notNull(),
+  rateLimit: integer("rateLimit").default(60).notNull(),
+  creditLimit: integer("creditLimit"),
+  // Request-count quotas per time window (null = unlimited)
+  quotaHourly: integer("quotaHourly"),
+  quotaDaily: integer("quotaDaily"),
+  quotaWeekly: integer("quotaWeekly"),
+  quotaMonthly: integer("quotaMonthly"),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }),
+  lastUsedAt: timestamp("lastUsedAt", { withTimezone: true }),
+  isActive: boolean("isActive").default(true).notNull(),
+  // Admin-managed temporary suspension (separate from permanent revocation)
+  isSuspended: boolean("isSuspended").default(false).notNull(),
+  suspendedReason: varchar("suspendedReason", { length: 500 }),
+  suspendedAt: timestamp("suspendedAt", { withTimezone: true }),
+  suspendedBy: integer("suspendedBy").references(() => users.id, { onDelete: "set null" }),
+  metadata: json("metadata").$type<Record<string, unknown>>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("api_keys_key_hash_idx").on(t.keyHash),
+  index("api_keys_tenant_idx").on(t.tenantId),
+  index("api_keys_user_idx").on(t.userId),
+]);
+
+export type ApiKey = typeof apiKeys.$inferSelect;
+export type InsertApiKey = typeof apiKeys.$inferInsert;
+
+/**
+ * Public API Audit Log — log table for all API key requests.
+ * Separate from apiAuditEvents (media/skill/LLM structured logging).
+ * No foreign keys — should not cascade when keys are revoked.
+ * 90-day retention enforced by cleanup job.
+ */
+export const publicApiAuditLog = pgTable("public_api_audit_log", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull(),
+  apiKeyId: varchar("apiKeyId", { length: 36 }),
+  traceId: varchar("traceId", { length: 36 }),
+  method: varchar("method", { length: 10 }).notNull(),
+  path: varchar("path", { length: 255 }).notNull(),
+  statusCode: integer("statusCode"),
+  creditsUsed: integer("creditsUsed").default(0),
+  latencyMs: integer("latencyMs"),
+  ip: varchar("ip", { length: 45 }),
+  userAgent: text("userAgent"),
+  requestMeta: json("requestMeta").$type<Record<string, unknown>>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("public_api_audit_log_tenant_created_idx").on(t.tenantId, t.createdAt),
+  index("public_api_audit_log_api_key_idx").on(t.apiKeyId),
+  index("public_api_audit_log_trace_idx").on(t.traceId),
+]);
+
+export type PublicApiAuditLogEntry = typeof publicApiAuditLog.$inferSelect;
+export type InsertPublicApiAuditLogEntry = typeof publicApiAuditLog.$inferInsert;
+
+/**
+ * API Webhook Endpoints — outbound webhook registrations.
+ */
+export const apiWebhookEndpoints = pgTable("api_webhook_endpoints", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id),
+  apiKeyId: varchar("apiKeyId", { length: 36 }).references(() => apiKeys.id, { onDelete: "set null" }),
+  url: varchar("url", { length: 2048 }).notNull(),
+  secretEncrypted: text("secretEncrypted").notNull(),
+  events: json("events").$type<string[]>().notNull(),
+  retryPolicy: varchar("retryPolicy", { length: 20 }).default("exponential").notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  lastDeliveredAt: timestamp("lastDeliveredAt", { withTimezone: true }),
+  failureCount: integer("failureCount").default(0).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("api_webhook_endpoints_tenant_idx").on(t.tenantId),
+  index("api_webhook_endpoints_api_key_idx").on(t.apiKeyId),
+]);
+
+export type ApiWebhookEndpoint = typeof apiWebhookEndpoints.$inferSelect;
+export type InsertApiWebhookEndpoint = typeof apiWebhookEndpoints.$inferInsert;
+
+/**
+ * API Webhook Deliveries — delivery log with retry tracking.
+ */
+export const apiWebhookDeliveries = pgTable("api_webhook_deliveries", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  webhookEndpointId: varchar("webhookEndpointId", { length: 36 }).notNull()
+    .references(() => apiWebhookEndpoints.id, { onDelete: "cascade" }),
+  eventType: varchar("eventType", { length: 50 }).notNull(),
+  payload: json("payload").$type<Record<string, unknown>>().notNull(),
+  statusCode: integer("statusCode"),
+  attempt: integer("attempt").default(1).notNull(),
+  deliveredAt: timestamp("deliveredAt", { withTimezone: true }),
+  error: text("error"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type ApiWebhookDelivery = typeof apiWebhookDeliveries.$inferSelect;
+export type InsertApiWebhookDelivery = typeof apiWebhookDeliveries.$inferInsert;
+
+/**
+ * Automation Jobs — async job queue records for the Job Automation API.
+ */
+export const automationJobs = pgTable("automation_jobs", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id),
+  userId: integer("userId").notNull().references(() => users.id),
+  apiKeyId: varchar("apiKeyId", { length: 36 }).notNull(),
+  type: varchar("type", { length: 50 }).notNull(),
+  status: varchar("status", { length: 20 }).default("pending").notNull(),
+  params: json("params").$type<Record<string, unknown>>(),
+  result: json("result").$type<Record<string, unknown>>(),
+  error: json("error").$type<Record<string, unknown>>(),
+  progress: integer("progress").default(0).notNull(),
+  creditsReserved: integer("creditsReserved").default(0).notNull(),
+  creditsUsed: integer("creditsUsed").default(0).notNull(),
+  callbackUrl: varchar("callbackUrl", { length: 2048 }),
+  callbackSecretEncrypted: text("callbackSecretEncrypted"),
+  parentJobId: varchar("parentJobId", { length: 36 }),
+  stepIndex: integer("stepIndex"),
+  traceId: varchar("traceId", { length: 36 }),
+  idempotencyKey: varchar("idempotencyKey", { length: 64 }),
+  startedAt: timestamp("startedAt", { withTimezone: true }),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }),
+}, (t) => [
+  index("automation_jobs_tenant_status_idx").on(t.tenantId, t.status),
+  index("automation_jobs_api_key_idx").on(t.apiKeyId),
+  uniqueIndex("automation_jobs_idempotency_idx").on(t.tenantId, t.idempotencyKey),
+  index("automation_jobs_parent_idx").on(t.parentJobId),
+]);
+
+export type AutomationJob = typeof automationJobs.$inferSelect;
+export type InsertAutomationJob = typeof automationJobs.$inferInsert;

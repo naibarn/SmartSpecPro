@@ -16,8 +16,8 @@ const ZIP_MAGIC = [0x50, 0x4b, 0x03, 0x04];
 
 export function sanitizeCell(value: unknown): string {
   if (value == null) return "";
-  let str = String(value);
-  // Strip formula injection prefixes
+  let str = String(value).trimStart();
+  // Strip formula injection prefixes (after trimming leading whitespace)
   str = str.replace(/^[=+\-@]+/, "");
   // Strip control characters (ASCII 0-31 except \n \r \t)
   str = str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, "");

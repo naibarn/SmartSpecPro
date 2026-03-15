@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { presentationSlideContentSchema } from "@shared/presentation/contracts";
+import {
+  getPresentationSlideRenderableElements,
+  presentationSlideContentSchema,
+} from "@shared/presentation/contracts";
 import {
   BUILT_IN_PRESETS,
   getBuiltInPreset,
@@ -150,6 +153,404 @@ describe("Template Rendering", () => {
       }
     });
   }
+});
+
+describe("Component recipe rendering", () => {
+  it("renders profile-summary slides as first-class components", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        componentRecipeId: "profile-summary",
+        title: "Adora Montminy",
+        body: ["Marketing / Digital Marketing", "hello@example.com", "+66 1234 5678"],
+        sections: [
+          { heading: "Marketing Lead", details: ["hello@example.com", "+66 1234 5678"] },
+          { heading: "About", details: ["Performance marketer with campaign and content strategy experience"] },
+          { heading: "Highlights", details: ["Brand growth", "Campaign planning", "Content systems"] },
+        ],
+      }),
+      imageUrl: "https://example.com/portrait.jpg",
+    }));
+
+    expect(result.slideContent.components).toHaveLength(1);
+    expect(result.slideContent.components?.[0]).toMatchObject({
+      componentId: "profile-summary",
+      componentType: "built-in",
+    });
+    const renderable = getPresentationSlideRenderableElements(result.slideContent);
+    expect(renderable.elements.some((element) => element.type === "image" && element.id.includes("portrait"))).toBe(true);
+    expect(result.slideContent.renderOrder?.some((entry) => entry.startsWith("component:"))).toBe(true);
+  });
+
+  it("renders video-spotlight slides with a video fallback element", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        componentRecipeId: "video-spotlight",
+        title: "Product Launch Teaser",
+        body: ["Fast onboarding", "Live analytics", "Studio-quality export"],
+      }),
+      imageUrl: "https://example.com/clip.mp4",
+    }));
+
+    expect(result.slideContent.components).toHaveLength(1);
+    expect(result.slideContent.components?.[0]?.componentId).toBe("video-spotlight");
+    const renderable = getPresentationSlideRenderableElements(result.slideContent);
+    expect(renderable.elements.some((element) => element.type === "video")).toBe(true);
+  });
+
+  it("renders poster-spotlight slides with an image fallback element", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        componentRecipeId: "poster-spotlight",
+        title: "Membership launch",
+        body: ["Premium support", "Priority booking", "Join today"],
+      }),
+      imageUrl: "https://example.com/poster.jpg",
+    }));
+
+    expect(result.slideContent.components?.[0]?.componentId).toBe("poster-spotlight");
+    const renderable = getPresentationSlideRenderableElements(result.slideContent);
+    expect(renderable.elements.some((element) => element.type === "image" && element.id.includes("hero"))).toBe(true);
+  });
+
+  it("renders framed-image-story slides with an image fallback element", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_left_image",
+        componentRecipeId: "framed-image-story",
+        title: "Zero waste in practice",
+        body: ["What it looks like on a real campus", "Short editorial summary"],
+      }),
+      imageUrl: "https://example.com/story.jpg",
+    }));
+
+    expect(result.slideContent.components?.[0]?.componentId).toBe("framed-image-story");
+    const renderable = getPresentationSlideRenderableElements(result.slideContent);
+    expect(renderable.elements.some((element) => element.type === "image" && element.id.includes("photo"))).toBe(true);
+  });
+
+  it("renders photo-collage slides with multiple image fallback elements", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_left_image",
+        componentRecipeId: "photo-collage",
+        title: "Campaign lookbook",
+        body: ["Two-frame editorial story", "Caption support"],
+      }),
+      imageUrl: "https://example.com/collage.jpg",
+      imageUrls: [
+        "https://example.com/collage-primary.jpg",
+        "https://example.com/collage-secondary.jpg",
+      ],
+    }));
+
+    expect(result.slideContent.components?.[0]?.componentId).toBe("photo-collage");
+    const renderable = getPresentationSlideRenderableElements(result.slideContent);
+    const imageUrls = renderable.elements
+      .filter((element) => element.type === "image")
+      .map((element) => element.src);
+    expect(imageUrls).toEqual(expect.arrayContaining([
+      "https://example.com/collage-primary.jpg",
+      "https://example.com/collage-secondary.jpg",
+    ]));
+  });
+
+  it("renders sectioned-explainer slides as first-class long-form components", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        componentRecipeId: "sectioned-explainer",
+        title: "คู่มือการนอนของเด็กเล็ก",
+        body: [
+          "สร้างกิจวัตรก่อนนอนให้สม่ำเสมอด้วยกิจกรรมเดิมในเวลาใกล้เคียงกันทุกวัน",
+          "สังเกตสัญญาณง่วงและปรับสภาพแวดล้อมห้องให้เงียบ สบาย และมืดเพียงพอ",
+          "คุยกับผู้ดูแลทุกคนให้ใช้แนวทางเดียวกันเพื่อลดความสับสนของเด็ก",
+        ],
+        notes: "บทความนี้เหมาะสำหรับพ่อแม่และผู้ดูแลที่ต้องการคำอธิบายยาวและค่อยเป็นค่อยไปมากกว่าการ์ดสั้น",
+        sections: [
+          {
+            heading: "ความผิดพลาดที่พบบ่อย",
+            details: [
+              "ตอบสนองเร็วเกินไปทุกครั้งจนเด็กไม่ได้ฝึกกลับไปนอนเอง",
+              "เวลาเข้านอนไม่คงที่ทำให้วงจรการนอนเปลี่ยนบ่อย",
+            ],
+          },
+          {
+            heading: "ใครควรอ่านสไลด์นี้",
+            details: [
+              "พ่อแม่หรือผู้ดูแลเด็กเล็กที่กำลังฝึกนิสัยการนอนของลูก",
+            ],
+          },
+        ],
+      }),
+      imageUrl: null,
+    }));
+
+    expect(result.slideContent.components?.[0]?.componentId).toBe("sectioned-explainer");
+    const renderable = getPresentationSlideRenderableElements(result.slideContent);
+    expect(renderable.elements.some((element) => element.type === "text" && element.id.includes("section-1-heading"))).toBe(true);
+    expect(renderable.elements.some((element) => element.type === "text" && element.id.includes("takeaways"))).toBe(true);
+  });
+
+  it("expands poster-spotlight text regions when the recipe copy is dense", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        componentRecipeId: "poster-spotlight",
+        title: "Membership launch for families who need a more flexible onboarding explanation",
+        body: [
+          "Premium support tailored for first-time parents",
+          "Priority booking for pediatric consultations",
+          "Clear follow-up guidance after each milestone",
+          "Join today with a simple enrollment flow",
+        ],
+        notes: "This plan is designed for families who need more context, longer onboarding guidance, and a clearer explanation of what happens after sign-up so the layout must reserve more room for text without dropping the hero image.",
+      }),
+      imageUrl: "https://example.com/poster.jpg",
+    }));
+
+    const fallback = result.slideContent.components?.[0]?.fallbackElements ?? [];
+    const hero = fallback.find((element) => element.id.endsWith("::hero-image"));
+    const headline = fallback.find((element) => element.id.endsWith("::headline"));
+    const benefits = fallback.find((element) => element.id.endsWith("::benefits"));
+    expect(hero?.type).toBe("image");
+    expect(headline?.type).toBe("text");
+    expect(benefits?.type).toBe("text");
+    if (hero?.type === "image" && headline?.type === "text" && benefits?.type === "text") {
+      expect(hero.width).toBeLessThan(520);
+      expect(headline.width).toBeGreaterThan(560);
+      expect(benefits.width).toBeGreaterThan(520);
+    }
+  });
+
+  it("expands framed-image-story to use more of the canvas for dense narratives", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_left_image",
+        componentRecipeId: "framed-image-story",
+        title: "Who is this guidance for",
+        body: [
+          "Parents and caregivers with infants aged four to six months",
+          "Everyday signals that make night waking feel more stressful",
+        ],
+        notes: "This editorial slide needs room for a fuller explanation of the family context, the sleep concern they are comparing against, and the practical nuance behind why some babies still wake frequently at night despite longer sleep stretches.",
+        sections: [
+          { heading: "Family context", details: ["Parents and caregivers with infants aged four to six months"] },
+          { heading: "Common concern", details: ["Night waking can still happen even when sleep stretches are improving"] },
+        ],
+      }),
+      imageUrl: "https://example.com/story.jpg",
+    }));
+
+    const fallback = result.slideContent.components?.[0]?.fallbackElements ?? [];
+    const photo = fallback.find((element) => element.id.endsWith("::photo-image"));
+    const story = fallback.find((element) => element.id.endsWith("::story"));
+    const highlights = fallback.find((element) => element.id.endsWith("::highlights"));
+    expect(photo?.type).toBe("image");
+    expect(story?.type).toBe("text");
+    expect(highlights?.type).toBe("text");
+    if (photo?.type === "image" && story?.type === "text" && highlights?.type === "text") {
+      expect(photo.width).toBeLessThan(530);
+      expect(story.width).toBeGreaterThan(620);
+      expect(highlights.width).toBeGreaterThan(900);
+    }
+  });
+
+  it("expands photo-collage text area when the body copy is dense", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_left_image",
+        componentRecipeId: "photo-collage",
+        title: "Campaign lookbook with narrative context",
+        body: [
+          "A two-frame editorial story that still needs a longer explanation",
+          "The text must cover why the images matter and what readers should notice",
+        ],
+        notes: "This collage layout should keep both images, but it also needs a much wider text column and a caption area that can carry more explanation than the compact default version.",
+      }),
+      imageUrl: "https://example.com/collage.jpg",
+      imageUrls: [
+        "https://example.com/collage-primary.jpg",
+        "https://example.com/collage-secondary.jpg",
+      ],
+    }));
+
+    const fallback = result.slideContent.components?.[0]?.fallbackElements ?? [];
+    const primary = fallback.find((element) => element.id.endsWith("::primary-image"));
+    const body = fallback.find((element) => element.id.endsWith("::body"));
+    const caption = fallback.find((element) => element.id.endsWith("::caption"));
+    expect(primary?.type).toBe("image");
+    expect(body?.type).toBe("text");
+    expect(caption?.type).toBe("text");
+    if (primary?.type === "image" && body?.type === "text" && caption?.type === "text") {
+      expect(primary.width).toBeLessThan(560);
+      expect(body.width).toBeGreaterThan(620);
+      expect(caption.width).toBeGreaterThan(620);
+    }
+  });
+
+  it("keeps the first and final note segments visible for dense repaired portrait slides", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "bottom_image_text_top",
+        title: "ขั้นตอนปฏิบัติ / เคล็ดลับ",
+        body: [
+          "1. สร้างกิจวัตรก่อนนอน: ทำให้กิจกรรมตอนก่อนนอนมีความซ้ำซ้อน เช่น อ่านหนังสือ เล่าเรื่อง หรืออาบน้ำ เพื่อสร้างความรู้สึกผ่อนคลายให้กับลูก",
+          "2. กำหนดเวลาเข้านอน: ตั้งเวลาเข้านอนที่สม่ำเสมอทุกวัน เพื่อช่วยให้ร่างกายสร้างนิสัยในการนอน",
+          "3. สร้างสภาพแวดล้อมที่เอื้อต่อการนอน: ห้องนอนควรเงียบ สบาย และมีอุณหภูมิที่เหมาะสม",
+          "4. ไม่ต้องตอบสนองทันทีเมื่อเด็กตื่น: หากเด็กตื่นขึ้นในกลางคืน ให้รอสักครู่ก่อนที่จะเข้าไปดูเพื่อดูว่าเขาจะกลับไปนอนเองได้หรือไม่",
+          "5. ใช้เสียงเพลงหรือเสียงธรรมชาติ: เสียงที่อ่อนโยนสามารถช่วยให้เด็กผ่อนคลายและนอนหลับได้ดีขึ้น",
+          "ความผิดพลาดที่พบบ่อย",
+          "- ให้เด็กนอนในที่นอนที่ไม่ปลอดภัย: ควรให้เด็กนอนในที่นอนที่เหมาะสมและปลอดภัย",
+          "- นิสัยการให้อาหารตลอดคืน: หลีกเลี่ยงการให้อาหารเด็กเมื่อเขาตื่นกลางคืนเพื่อลดการตื่นบ่อย",
+          "- ไม่มีกิจวัตรชัดเจน: การไม่มีกิจวัตรก่อนนอนอาจทำให้เด็กไม่รู้ว่าเมื่อไหร่ถึงเวลานอน",
+        ],
+        notes: "ขั้นตอนปฏิบัติ / เคล็ดลับ 1. สร้างกิจวัตรก่อนนอน: ทำให้กิจกรรมตอนก่อนนอนมีความซ้ำซ้อน เช่น อ่านหนังสือ เล่าเรื่อง หรืออาบน้ำ เพื่อสร้างความรู้สึกผ่อนคลายให้กับลูก 2. กำหนดเวลาเข้านอน: ตั้งเวลาเข้านอนที่สม่ำเสมอทุกวัน เพื่อช่วยให้ร่างกายสร้างนิสัยในการนอน 3. สร้างสภาพแวดล้อมที่เอื้อต่อการนอน: ห้องนอนควรเงียบ สบาย และมีอุณหภูมิที่เหมาะสม 4. ไม่ต้องตอบสนองทันทีเมื่อเด็กตื่น: หากเด็กตื่นขึ้นในกลางคืน ให้รอสักครู่ก่อนที่จะเข้าไปดูเพื่อดูว่าเขาจะกลับไปนอนเองได้หรือไม่ 5. ใช้เสียงเพลงหรือเสียงธรรมชาติ: เสียงที่อ่อนโยนสามารถช่วยให้เด็กผ่อนคลายและนอนหลับได้ดีขึ้น ความผิดพลาดที่พบบ่อย - ให้เด็กนอนในที่นอนที่ไม่ปลอดภัย: ควรให้เด็กนอนในที่นอนที่เหมาะสมและปลอดภัย - นิสัยการให้อาหารตลอดคืน: หลีกเลี่ยงการให้อาหารเด็กเมื่อเขาตื่นกลางคืนเพื่อลดการตื่นบ่อย - ไม่มีกิจวัตรชัดเจน: การไม่มีกิจวัตรก่อนนอนอาจทำให้เด็กไม่รู้ว่าเมื่อไหร่ถึงเวลานอน",
+        markdownHierarchy: [
+          { level: "body", text: "1. สร้างกิจวัตรก่อนนอน: ทำให้กิจกรรมตอนก่อนนอนมีความซ้ำซ้อน เช่น อ่านหนังสือ เล่าเรื่อง หรืออาบน้ำ เพื่อสร้างความรู้สึกผ่อนคลายให้กับลูก" },
+          { level: "body", text: "2. กำหนดเวลาเข้านอน: ตั้งเวลาเข้านอนที่สม่ำเสมอทุกวัน เพื่อช่วยให้ร่างกายสร้างนิสัยในการนอน" },
+          { level: "body", text: "3. สร้างสภาพแวดล้อมที่เอื้อต่อการนอน: ห้องนอนควรเงียบ สบาย และมีอุณหภูมิที่เหมาะสม" },
+          { level: "body", text: "4. ไม่ต้องตอบสนองทันทีเมื่อเด็กตื่น: หากเด็กตื่นขึ้นในกลางคืน ให้รอสักครู่ก่อนที่จะเข้าไปดูเพื่อดูว่าเขาจะกลับไปนอนเองได้หรือไม่" },
+          { level: "body", text: "5. ใช้เสียงเพลงหรือเสียงธรรมชาติ: เสียงที่อ่อนโยนสามารถช่วยให้เด็กผ่อนคลายและนอนหลับได้ดีขึ้น" },
+          { level: "body", text: "ความผิดพลาดที่พบบ่อย" },
+          { level: "body", text: "- ให้เด็กนอนในที่นอนที่ไม่ปลอดภัย: ควรให้เด็กนอนในที่นอนที่เหมาะสมและปลอดภัย" },
+          { level: "body", text: "- นิสัยการให้อาหารตลอดคืน: หลีกเลี่ยงการให้อาหารเด็กเมื่อเขาตื่นกลางคืนเพื่อลดการตื่นบ่อย" },
+          { level: "body", text: "- ไม่มีกิจวัตรชัดเจน: การไม่มีกิจวัตรก่อนนอนอาจทำให้เด็กไม่รู้ว่าเมื่อไหร่ถึงเวลานอน" },
+        ],
+        graphicCategory: "Education",
+        imagePromptKeywords: "calm bedtime tips for babies and parents",
+      }),
+      imageUrl: "https://example.com/bedtime.jpg",
+      canvasWidth: 720,
+      canvasHeight: 1280,
+    }));
+
+    const renderedText = result.slideContent.elements
+      .filter((element) => element.type === "text")
+      .map((element) => element.text)
+      .join("\n");
+
+    expect(renderedText).toContain("สร้างกิจวัตรก่อนนอน");
+    expect(renderedText).toContain("ไม่มีกิจวัตรชัดเจน");
+  });
+
+  it("renders non-media component recipes as first-class components", () => {
+    const recipes = [
+      {
+        componentRecipeId: "process-steps" as const,
+        title: "Launch checklist",
+        body: ["1. Gather the brief", "2. Build the message", "3. Deliver the deck"],
+      },
+      {
+        componentRecipeId: "feature-highlights" as const,
+        title: "Platform highlights",
+        body: ["Fast setup", "Shared collaboration", "Reusable components", "Export-ready output"],
+      },
+      {
+        componentRecipeId: "timeline-flow" as const,
+        title: "Roadmap",
+        body: ["Q1 Launch the pilot", "Q2 Expand to new teams", "Q3 Scale the workflow"],
+      },
+      {
+        componentRecipeId: "infographic-grid" as const,
+        title: "Framework overview",
+        body: ["Discover", "Audience problem", "Design", "Narrative system", "Deliver", "Campaign rollout", "Measure", "Outcome tracking"],
+      },
+      {
+        componentRecipeId: "stat-cards" as const,
+        title: "Campaign metrics snapshot",
+        body: ["42%: Conversion lift", "12d: Time to first win", "3.1x: Return on spend"],
+      },
+      {
+        componentRecipeId: "quote-callout" as const,
+        title: "\"Lead with clarity\"",
+        body: ["Lead with one decision per slide", "Editorial insight"],
+      },
+    ];
+
+    for (const recipe of recipes) {
+      const result = generateSlide(makeLayoutInput({
+        slideData: makeSlideData({
+          templateId: "feature_boxes_right",
+          componentRecipeId: recipe.componentRecipeId,
+          title: recipe.title,
+          body: recipe.body,
+        }),
+      }));
+
+      expect(result.slideContent.components?.[0]?.componentId).toBe(recipe.componentRecipeId);
+      expect(result.slideContent.renderOrder?.some((entry) => entry.startsWith("component:"))).toBe(true);
+    }
+  });
+
+  it("adds a supplemental background image when a text-only component recipe has media", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "feature_boxes_right",
+        componentRecipeId: "process-steps",
+        title: "Launch checklist",
+        body: ["1. Gather the brief", "2. Build the message", "3. Deliver the deck"],
+      }),
+      imageUrl: "https://example.com/checklist.jpg",
+    }));
+
+    const backdropImage = result.slideContent.elements.find((element) => (
+      element.type === "image"
+      && element.src === "https://example.com/checklist.jpg"
+      && element.opacity === 0.16
+    ));
+
+    expect(result.slideContent.components?.[0]?.componentId).toBe("process-steps");
+    expect(backdropImage).toBeTruthy();
+  });
+
+  it("applies custom supplemental media opacity when requested", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "feature_boxes_right",
+        componentRecipeId: "process-steps",
+        title: "Launch checklist",
+        body: ["1. Gather the brief", "2. Build the message", "3. Deliver the deck"],
+      }),
+      imageUrl: "https://example.com/checklist.jpg",
+      supplementalMediaOpacity: 0.42,
+    }));
+
+    const backdropImage = result.slideContent.elements.find((element) => (
+      element.type === "image"
+      && element.src === "https://example.com/checklist.jpg"
+    ));
+
+    expect(backdropImage?.opacity).toBeCloseTo(0.42, 5);
+  });
+
+  it("fills non-media component detail text from notes when sections only contain headings", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "feature_boxes_right",
+        componentRecipeId: "feature-highlights",
+        title: "Platform highlights",
+        body: ["Fast setup", "Reusable automation"],
+        notes: "Shared collaboration across teams with review controls.",
+        sections: [
+          { heading: "Collaboration", details: [] },
+          { heading: "Automation", details: [] },
+          { heading: "Review", details: [] },
+        ],
+      }),
+    }));
+
+    const renderable = getPresentationSlideRenderableElements(result.slideContent);
+    const bodyLikeText = renderable.elements.find((element) => (
+      element.type === "text"
+      && element.id.includes("body")
+      && element.text.trim().length > 0
+    ));
+
+    expect(bodyLikeText).toBeTruthy();
+  });
 });
 
 // ── C.2: Color/Font Parameterization Tests ─────────────────
@@ -768,6 +1169,170 @@ describe("Edge Cases", () => {
     expect(detailText).toBeDefined();
     if (subtitleText?.type === "text" && detailText?.type === "text") {
       expect(subtitleText.fontSize).toBeGreaterThan(detailText.fontSize ?? 0);
+    }
+  });
+
+  it("renders markdown hierarchy with smaller body text than ### emphasis lines", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        title: "หัวข้อหลักของบทความ",
+        body: ["ข้อความทั่วไปสำหรับอธิบายรายละเอียดเพิ่มเติม"],
+        markdownHierarchy: [
+          { level: "h2", text: "สรุปอย่างรวดเร็ว" },
+          { level: "h3", text: "ฝึกยืนได้เมื่ออายุประมาณหกถึงเก้าเดือน" },
+          { level: "body", text: "ข้อความทั่วไปสำหรับอธิบายรายละเอียดเพิ่มเติม" },
+        ],
+      }),
+    }));
+
+    const subtitleText = result.slideContent.elements.find(
+      (element) => element.type === "text" && element.text === "สรุปอย่างรวดเร็ว",
+    );
+    const emphasisText = result.slideContent.elements.find(
+      (element) => element.type === "text" && element.text === "ฝึกยืนได้เมื่ออายุประมาณหกถึงเก้าเดือน",
+    );
+    const bodyText = result.slideContent.elements.find(
+      (element) => element.type === "text" && element.text === "ข้อความทั่วไปสำหรับอธิบายรายละเอียดเพิ่มเติม",
+    );
+
+    expect(subtitleText).toBeDefined();
+    expect(emphasisText).toBeDefined();
+    expect(bodyText).toBeDefined();
+    if (subtitleText?.type === "text" && emphasisText?.type === "text" && bodyText?.type === "text") {
+      expect(subtitleText.fontSize).toBeGreaterThan(emphasisText.fontSize ?? 0);
+      expect(emphasisText.fontSize).toBeGreaterThan(bodyText.fontSize ?? 0);
+    }
+  });
+
+  it("avoids overlapping Thai body rows in split right image layouts with long content", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        title: "ใครคือกลุ่มเป้าหมาย",
+        body: [
+          "สิ่งที่ปกติเมื่อเปรียบเทียบกับสิ่งที่น่ากังวล",
+          "บทความนี้เหมาะสำหรับพ่อแม่หรือผู้ดูแลเด็กอายุระหว่าง 4 ถึง 6 เดือน ซึ่งกำลังมองหาวิธีการสร้างนิสัยการนอนที่เหมาะสมเพื่อให้เด็กมีโอกาสได้นอนยาวตลอดคืน",
+          "ในช่วงวัยนี้ เด็กมักจะเริ่มนอนยาวขึ้นในช่วงเวลากลางคืน ความกังวลมักเกิดขึ้นในกรณีที่เด็กยังตื่นบ่อยหรือมีปัญหาในการกลับเข้าสู่การนอนหลับหลังจากตื่น",
+        ],
+      }),
+    }));
+
+    const textElements = result.slideContent.elements
+      .filter((element): element is Extract<typeof result.slideContent.elements[number], { type: "text" }> => element.type === "text")
+      .sort((a, b) => a.y - b.y);
+    const bodyTexts = textElements.filter((element) => (
+      element.text.includes("บทความนี้เหมาะสำหรับ")
+      || element.text.includes("ในช่วงวัยนี้")
+      || element.text.includes("สิ่งที่ปกติเมื่อเปรียบเทียบ")
+    ));
+
+    expect(bodyTexts.length).toBeGreaterThan(0);
+    for (let index = 1; index < bodyTexts.length; index += 1) {
+      const previous = bodyTexts[index - 1]!;
+      const current = bodyTexts[index]!;
+      expect(previous.y + previous.height).toBeLessThanOrEqual(current.y + 2);
+    }
+  });
+
+  it("allocates full title height for very long Thai headings instead of clamping to three lines", () => {
+    const longTitle = "ขั้นตอนปฏิบัติ / เคล็ดลับ สำหรับการช่วยให้เด็กนอนหลับดีขึ้นในเวลากลางคืนอย่างสม่ำเสมอโดยไม่ทำให้กิจวัตรก่อนนอนซับซ้อนเกินไปสำหรับครอบครัวที่ต้องดูแลการตื่นกลางคืนบ่อย พร้อมแนวทางสร้างความต่อเนื่องของเวลานอน กิจวัตร และสภาพแวดล้อมให้เหมาะสมกับเด็กแต่ละคน";
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        title: longTitle,
+        body: [
+          "สรุปใจความสำคัญสำหรับผู้ดูแล",
+          "ใช้กิจวัตรเดิมในเวลาที่ใกล้เคียงกันทุกวันเพื่อให้ร่างกายเด็กคาดเดาได้",
+        ],
+      }),
+      canvasWidth: 720,
+      canvasHeight: 1280,
+    }));
+
+    const titleText = result.slideContent.elements.find(
+      (element) => element.type === "text" && element.text === longTitle,
+    );
+    const firstBodyText = result.slideContent.elements.find(
+      (element) => element.type === "text" && element.text.includes("สรุปใจความสำคัญสำหรับผู้ดูแล"),
+    );
+
+    expect(titleText).toBeDefined();
+    expect(firstBodyText).toBeDefined();
+    if (titleText?.type === "text" && firstBodyText?.type === "text") {
+      expect(titleText.height).toBeGreaterThan(150);
+      expect(firstBodyText.y).toBeGreaterThanOrEqual(titleText.y + titleText.height);
+    }
+  });
+
+  it("keeps the first structured step and trailing note content visible in dense portrait note-repair layouts", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "bottom_image_text_top",
+        title: "ขั้นตอนปฏิบัติ / เคล็ดลับ",
+        notes: "ขั้นตอนปฏิบัติ / เคล็ดลับ 1. สร้างกิจวัตรก่อนนอน: ทำให้กิจกรรมตอนก่อนนอนมีความซ้ำซ้อน เช่น อ่านหนังสือ เล่าเรื่อง หรืออาบน้ำ เพื่อสร้างความรู้สึกผ่อนคลายให้กับลูก 2. กำหนดเวลาเข้านอน: ตั้งเวลาเข้านอนที่สม่ำเสมอทุกวัน เพื่อช่วยให้ร่างกายสร้างนิสัยในการนอน 3. สร้างสภาพแวดล้อมที่เอื้อต่อการนอน: ห้องนอนควรเงียบ สบาย และมีอุณหภูมิที่เหมาะสม 4. ไม่ต้องตอบสนองทันทีเมื่อเด็กตื่น: หากเด็กตื่นขึ้นในกลางคืน ให้รอสักครู่ก่อนที่จะเข้าไปดูเพื่อดูว่าเขาจะกลับไปนอนเองได้หรือไม่ 5. ใช้เสียงเพลงหรือเสียงธรรมชาติ: เสียงที่อ่อนโยนสามารถช่วยให้เด็กผ่อนคลายและนอนหลับได้ดีขึ้น ความผิดพลาดที่พบบ่อย - ให้เด็กนอนในที่นอนที่ไม่ปลอดภัย: ควรให้เด็กนอนในที่นอนที่เหมาะสมและปลอดภัย - นิสัยการให้อาหารตลอดคืน: หลีกเลี่ยงการให้อาหารเด็กเมื่อเขาตื่นกลางคืนเพื่อลดการตื่นบ่อย - ไม่มีกิจวัตรชัดเจน: การไม่มีกิจวัตรก่อนนอนอาจทำให้เด็กไม่รู้ว่าเมื่อไหร่ถึงเวลานอน",
+        body: [
+          "สร้างกิจวัตรก่อนนอน: ทำให้กิจกรรมตอนก่อนนอนมีความซ้ำซ้อน เช่น อ่านหนังสือ เล่าเรื่อง หรืออาบน้ำ เพื่อสร้างความรู้สึกผ่อนคลายให้กับลูก",
+          "กำหนดเวลาเข้านอน: ตั้งเวลาเข้านอนที่สม่ำเสมอทุกวัน เพื่อช่วยให้ร่างกายสร้างนิสัยในการนอน",
+          "สร้างสภาพแวดล้อมที่เอื้อต่อการนอน: ห้องนอนควรเงียบ สบาย และมีอุณหภูมิที่เหมาะสม",
+          "ไม่ต้องตอบสนองทันทีเมื่อเด็กตื่น: หากเด็กตื่นขึ้นในกลางคืน ให้รอสักครู่ก่อนที่จะเข้าไปดูเพื่อดูว่าเขาจะกลับไปนอนเองได้หรือไม่",
+          "ใช้เสียงเพลงหรือเสียงธรรมชาติ: เสียงที่อ่อนโยนสามารถช่วยให้เด็กผ่อนคลายและนอนหลับได้ดีขึ้น ความผิดพลาดที่พบบ่อย - ให้เด็กนอนในที่นอนที่ไม่ปลอดภัย: ควรให้เด็กนอนในที่นอนที่เหมาะสมและปลอดภัย - นิสัยการให้อาหารตลอดคืน: หลีกเลี่ยงการให้อาหารเด็กเมื่อเขาตื่นกลางคืนเพื่อลดการตื่นบ่อย - ไม่มีกิจวัตรชัดเจน: การไม่มีกิจวัตรก่อนนอนอาจทำให้เด็กไม่รู้ว่าเมื่อไหร่ถึงเวลานอน",
+        ],
+        sections: [
+          { heading: "สร้างกิจวัตรก่อนนอน", details: ["ทำให้กิจกรรมตอนก่อนนอนมีความซ้ำซ้อน เช่น อ่านหนังสือ เล่าเรื่อง หรืออาบน้ำ เพื่อสร้างความรู้สึกผ่อนคลายให้กับลูก"] },
+          { heading: "กำหนดเวลาเข้านอน", details: ["ตั้งเวลาเข้านอนที่สม่ำเสมอทุกวัน เพื่อช่วยให้ร่างกายสร้างนิสัยในการนอน"] },
+          { heading: "สร้างสภาพแวดล้อมที่เอื้อต่อการนอน", details: ["ห้องนอนควรเงียบ สบาย และมีอุณหภูมิที่เหมาะสม"] },
+          { heading: "ไม่ต้องตอบสนองทันทีเมื่อเด็กตื่น", details: ["หากเด็กตื่นขึ้นในกลางคืน ให้รอสักครู่ก่อนที่จะเข้าไปดูเพื่อดูว่าเขาจะกลับไปนอนเองได้หรือไม่"] },
+          { heading: "ใช้เสียงเพลงหรือเสียงธรรมชาติ", details: ["เสียงที่อ่อนโยนสามารถช่วยให้เด็กผ่อนคลายและนอนหลับได้ดีขึ้น ความผิดพลาดที่พบบ่อย - ให้เด็กนอนในที่นอนที่ไม่ปลอดภัย: ควรให้เด็กนอนในที่นอนที่เหมาะสมและปลอดภัย - นิสัยการให้อาหารตลอดคืน: หลีกเลี่ยงการให้อาหารเด็กเมื่อเขาตื่นกลางคืนเพื่อลดการตื่นบ่อย - ไม่มีกิจวัตรชัดเจน: การไม่มีกิจวัตรก่อนนอนอาจทำให้เด็กไม่รู้ว่าเมื่อไหร่ถึงเวลานอน"] },
+        ],
+      }),
+      canvasWidth: 720,
+      canvasHeight: 1280,
+    }));
+
+    const textElements = result.slideContent.elements
+      .filter((element): element is Extract<typeof result.slideContent.elements[number], { type: "text" }> => element.type === "text");
+    const subtitleLike = textElements.find((element) => element.text === "สร้างกิจวัตรก่อนนอน");
+    const firstStepBody = textElements.find((element) => element.text.includes("สร้างกิจวัตรก่อนนอน:"));
+    const trailingBody = textElements.find((element) => element.text.includes("ไม่มีกิจวัตรก่อนนอนอาจทำให้เด็กไม่รู้ว่าเมื่อไหร่ถึงเวลานอน"));
+
+    expect(subtitleLike).toBeUndefined();
+    expect(firstStepBody).toBeDefined();
+    expect(trailingBody).toBeDefined();
+    expect(trailingBody?.text.endsWith("…")).toBe(false);
+  });
+
+  it("fits long process-step text into cards without using oversized subtitle notes", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "feature_boxes_right",
+        componentRecipeId: "process-steps",
+        title: "ขั้นตอนปฏิบัติ / เคล็ดลับ",
+        notes: "บรรทัดอธิบายยาวมากที่ไม่ควรถูกดึงมาใช้เต็ม ๆ ใน subtitle เพราะจะทำให้หัวข้อหลักกับบรรทัดรองซ้อนกันและอ่านไม่ออกเมื่อ render เป็น block",
+        body: [
+          "สร้างกิจวัตรก่อนนอน",
+          "ทำกิจกรรมแบบเดิมในเวลาคล้ายกันทุกวันเพื่อให้เด็กคาดเดาได้และผ่อนคลายก่อนหลับ",
+          "ความผิดพลาดที่พบบ่อย",
+          "ปล่อยให้เด็กเล่นจนตื่นตัวมากเกินไปก่อนเข้านอน",
+          "ใช้เสียงเพลงหรือเสียงธรรมชาติ",
+          "ช่วยกลบเสียงรบกวนและสร้างบรรยากาศสม่ำเสมอ",
+        ],
+      }),
+    }));
+
+    const renderable = getPresentationSlideRenderableElements(result.slideContent);
+    const subtitle = renderable.elements.find((element) => element.type === "text" && element.id.includes("subtitle"));
+    const cardTitle = renderable.elements.find((element) => element.type === "text" && element.id.includes("card-1-title"));
+    const cardBody = renderable.elements.find((element) => element.type === "text" && element.id.includes("card-1-body"));
+
+    expect(subtitle?.text.length ?? 0).toBeLessThan(181);
+    if (cardTitle?.type === "text") {
+      expect(cardTitle.text.length).toBeLessThanOrEqual("สร้างกิจวัตรก่อนนอน".length);
+      expect(cardTitle.height).toBeGreaterThanOrEqual(40);
+    }
+    if (cardBody?.type === "text") {
+      expect(cardBody.height).toBeGreaterThanOrEqual(48);
+      expect(cardBody.lineHeight).toBeGreaterThan(1.2);
     }
   });
 

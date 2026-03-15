@@ -26,6 +26,7 @@ import { setTenantFeatureFlag } from "./featureFlags";
 const REDIS_SYNCED_FLAGS: ReadonlySet<TenantFeatureFlagKey> = new Set([
   "browserTool",
   "automationCopilot",
+  "liveBrowser",
   "responsesApi",
   "chatWidget",
   "webhookTriggers",
@@ -33,6 +34,10 @@ const REDIS_SYNCED_FLAGS: ReadonlySet<TenantFeatureFlagKey> = new Set([
   "channelRouter",
   "taskPlannerEnabled",
   "taskPlannerAgencyEscalation",
+  "chatBrowserSessionEntry",
+  "agencyBrowserSessionUi",
+  "workflowBrowserSessionNodes",
+  "publicApi",
 ]);
 
 /**

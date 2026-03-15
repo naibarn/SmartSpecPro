@@ -94,6 +94,38 @@ describe("taskPlannerMiddleware", () => {
     mockLoadModelsWithPricing.mockResolvedValue([]);
   });
 
+  describe("runPlanner — input validation", () => {
+    it("returns null for userId = 0 without querying feature flag", async () => {
+      const result = await runPlanner({ ...basePlannerInput, userId: 0 });
+      expect(result).toBeNull();
+      expect(mockGetTenantFeatureFlag).not.toHaveBeenCalled();
+    });
+
+    it("returns null for userId = -1 (negative)", async () => {
+      const result = await runPlanner({ ...basePlannerInput, userId: -1 });
+      expect(result).toBeNull();
+      expect(mockGetTenantFeatureFlag).not.toHaveBeenCalled();
+    });
+
+    it("returns null for non-finite userId (NaN)", async () => {
+      const result = await runPlanner({ ...basePlannerInput, userId: NaN });
+      expect(result).toBeNull();
+      expect(mockGetTenantFeatureFlag).not.toHaveBeenCalled();
+    });
+
+    it("returns null for empty tenantId", async () => {
+      const result = await runPlanner({ ...basePlannerInput, tenantId: "" });
+      expect(result).toBeNull();
+      expect(mockGetTenantFeatureFlag).not.toHaveBeenCalled();
+    });
+
+    it("returns null for whitespace-only tenantId", async () => {
+      const result = await runPlanner({ ...basePlannerInput, tenantId: "   " });
+      expect(result).toBeNull();
+      expect(mockGetTenantFeatureFlag).not.toHaveBeenCalled();
+    });
+  });
+
   describe("runPlanner", () => {
     it("returns null when taskPlannerEnabled=false", async () => {
       mockGetTenantFeatureFlag.mockResolvedValue(false);

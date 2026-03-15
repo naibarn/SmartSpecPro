@@ -24,9 +24,16 @@ import {
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
+import type {
+  LiveBrowserCreateSessionResponse,
+  LiveBrowserEventEnvelope,
+  LiveBrowserSession,
+} from "@shared/liveBrowser";
 import { AutomationPreviewPanel, type AutomationPlanSummary } from "./AutomationPreviewPanel";
 import { AutomationStepTracker, type AutomationExecutionStatus } from "./AutomationStepTracker";
+import { LiveBrowserWorkspace } from "./LiveBrowserWorkspace";
 import { TemplateListPanel } from "./TemplateListPanel";
 
 type AutomationModalState =
@@ -34,9 +41,13 @@ type AutomationModalState =
   | "analyzing"
   | "needs_clarification"
   | "preview_ready"
+  | "launching_live"
+  | "live_workspace"
   | "executing"
   | "success"
   | "failed";
+
+type LiveReconnectState = "connected" | "reconnecting" | "stream_unavailable";
 
 interface ClarificationQuestion {
   id: string;
@@ -48,12 +59,20 @@ interface ClarificationQuestion {
 interface AutomationChatModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialLiveSessionId?: string | null;
+  onLiveSessionOpen?: (sessionId: string) => void;
 }
 
 const POLL_INTERVAL_MS = 2000;
 const MAX_POLL_WAIT_MS = 300_000; // 5 minutes
 
-export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalProps) {
+export function AutomationChatModal({
+  open,
+  onOpenChange,
+  initialLiveSessionId = null,
+  onLiveSessionOpen,
+}: AutomationChatModalProps) {
+  const { user } = useAuth();
   const [state, setState] = useState<AutomationModalState>("idle");
   const [prompt, setPrompt] = useState("");
   const [taskId, setTaskId] = useState<string | null>(null);
@@ -79,8 +98,15 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
   const [citations, setCitations] = useState<Array<{ url: string; title?: string; retrievedAt?: string }>>([]);
   const [additionalDomains, setAdditionalDomains] = useState<string[]>([]);
   const [domainInput, setDomainInput] = useState("");
+  const [liveSession, setLiveSession] = useState<LiveBrowserSession | null>(null);
+  const [liveEvents, setLiveEvents] = useState<LiveBrowserEventEnvelope[]>([]);
+  const [liveReconnectState, setLiveReconnectState] = useState<LiveReconnectState>("connected");
+  const [liveCommandDraft, setLiveCommandDraft] = useState("");
+  const [liveBusyAction, setLiveBusyAction] = useState<string | null>(null);
+  const [compactLiveViewport, setCompactLiveViewport] = useState(false);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const livePollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollStartRef = useRef<number>(0);
 
   const trpcUtils = trpc.useUtils();
@@ -88,6 +114,14 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
   const executeMutation = trpc.automationCopilot.execute.useMutation();
   const cancelMutation = trpc.automationCopilot.cancel.useMutation();
   const saveTemplateMutation = trpc.automationCopilot.saveTemplate.useMutation();
+  const createLiveSessionMutation = trpc.liveBrowser.createSession.useMutation();
+  const sendLiveCommandMutation = trpc.liveBrowser.sendCommand.useMutation();
+  const takeLiveControlMutation = trpc.liveBrowser.takeControl.useMutation();
+  const returnLiveControlMutation = trpc.liveBrowser.returnControl.useMutation();
+  const resolveLiveApprovalMutation = trpc.liveBrowser.resolveApproval.useMutation();
+  const resolveLiveAssistMutation = trpc.liveBrowser.submitAssistResponse.useMutation();
+  const cancelLiveSessionMutation = trpc.liveBrowser.cancelSession.useMutation();
+  const issueLiveStreamTokenMutation = trpc.liveBrowser.issueStreamToken.useMutation();
 
   const clearPolling = useCallback(() => {
     if (pollRef.current) {
@@ -96,8 +130,16 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
     }
   }, []);
 
+  const clearLivePolling = useCallback(() => {
+    if (livePollRef.current) {
+      clearInterval(livePollRef.current);
+      livePollRef.current = null;
+    }
+  }, []);
+
   const resetState = useCallback(() => {
     clearPolling();
+    clearLivePolling();
     setState("idle");
     setPrompt("");
     setTaskId(null);
@@ -117,15 +159,110 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
     setAdditionalDomains([]);
     setDomainInput("");
     setBudgetCredits(null);
-  }, [clearPolling]);
+    setLiveSession(null);
+    setLiveEvents([]);
+    setLiveReconnectState("connected");
+    setLiveCommandDraft("");
+    setLiveBusyAction(null);
+  }, [clearLivePolling, clearPolling]);
 
   // Cleanup on unmount or close
   useEffect(() => {
     if (!open) {
       clearPolling();
+      clearLivePolling();
     }
-    return clearPolling;
-  }, [open, clearPolling]);
+    return () => {
+      clearPolling();
+      clearLivePolling();
+    };
+  }, [open, clearLivePolling, clearPolling]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return;
+    }
+    const media = window.matchMedia("(max-width: 1023px)");
+    const sync = () => setCompactLiveViewport(media.matches);
+    sync();
+    media.addEventListener?.("change", sync);
+    return () => media.removeEventListener?.("change", sync);
+  }, []);
+
+  const currentUserId = Number(user?.id);
+
+  const buildLiveActor = useCallback(() => {
+    if (!Number.isFinite(currentUserId)) {
+      throw new Error("Live mode requires an authenticated user.");
+    }
+    return {
+      actorType: "user" as const,
+      actorId: String(currentUserId),
+    };
+  }, [currentUserId]);
+
+  const syncLiveSession = useCallback(async (sessionId: string, stream?: LiveBrowserCreateSessionResponse["stream"]) => {
+    const actor = buildLiveActor();
+    const [sessionResult, eventsResult] = await Promise.all([
+      trpcUtils.liveBrowser.getSession.fetch({
+        sessionId,
+        actor,
+      }),
+      trpcUtils.liveBrowser.listEvents.fetch({
+        sessionId,
+        actor,
+        limit: 50,
+      }),
+    ]);
+
+    setLiveSession((current) => ({
+      ...sessionResult,
+      ...(stream ? { stream } : current?.stream ? { stream: current.stream } : {}),
+    }));
+    setLiveEvents(eventsResult.events);
+    setLiveReconnectState("connected");
+  }, [buildLiveActor, trpcUtils]);
+
+  const startLivePolling = useCallback((sessionId: string) => {
+    clearLivePolling();
+    livePollRef.current = setInterval(async () => {
+      try {
+        await syncLiveSession(sessionId);
+      } catch {
+        setLiveReconnectState((current) => (current === "stream_unavailable" ? current : "reconnecting"));
+      }
+    }, POLL_INTERVAL_MS);
+  }, [clearLivePolling, syncLiveSession]);
+
+  const hydrateExistingLiveSession = useCallback(async (sessionId: string) => {
+    const actor = buildLiveActor();
+    const resumedStream = await issueLiveStreamTokenMutation.mutateAsync({
+      sessionId,
+      actor,
+      scope: "viewer",
+    });
+    await syncLiveSession(sessionId, {
+      viewerToken: resumedStream.token,
+      expiresAt: resumedStream.expiresAt,
+      ...(resumedStream.leaseExpiresAt ? { leaseExpiresAt: resumedStream.leaseExpiresAt } : {}),
+    });
+    startLivePolling(sessionId);
+    setState("live_workspace");
+  }, [buildLiveActor, issueLiveStreamTokenMutation, startLivePolling, syncLiveSession]);
+
+  useEffect(() => {
+    if (!open || !initialLiveSessionId || liveSession?.sessionId === initialLiveSessionId) {
+      return;
+    }
+    setState("launching_live");
+    setErrorMessage(null);
+    hydrateExistingLiveSession(initialLiveSessionId).catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : "Failed to resume live mode";
+      setErrorMessage(`Live mode failed to resume: ${message}`);
+      setLiveReconnectState("stream_unavailable");
+      setState("failed");
+    });
+  }, [hydrateExistingLiveSession, initialLiveSessionId, liveSession?.sessionId, open]);
 
   const startPolling = useCallback(
     (tid: string) => {
@@ -258,8 +395,181 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
     }
   }, [taskId, rawIntent, executeMutation, startPolling]);
 
+  const handleLaunchLiveMode = useCallback(async () => {
+    if (!prompt.trim()) {
+      return;
+    }
+
+    setState("launching_live");
+    setErrorMessage(null);
+
+    try {
+      const actor = buildLiveActor();
+      const created = await createLiveSessionMutation.mutateAsync({
+        actor,
+        sourceType: "automation",
+        sourceId: taskId,
+        mode: "observe",
+        executionIntent: { prompt: prompt.trim() },
+      });
+
+      await syncLiveSession(created.sessionId, created.stream);
+      startLivePolling(created.sessionId);
+      setState("live_workspace");
+      onLiveSessionOpen?.(created.sessionId);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to start live mode";
+      setErrorMessage(`Live mode failed to start: ${message}`);
+      setLiveReconnectState("stream_unavailable");
+      setState("failed");
+    }
+  }, [
+    buildLiveActor,
+    createLiveSessionMutation,
+    prompt,
+    startLivePolling,
+    syncLiveSession,
+    taskId,
+    onLiveSessionOpen,
+  ]);
+
+  const runLiveMutation = useCallback(
+    async (action: string, callback: () => Promise<void>) => {
+      try {
+        setLiveBusyAction(action);
+        await callback();
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Live action failed";
+        toast.error(message);
+      } finally {
+        setLiveBusyAction(null);
+      }
+    },
+    [],
+  );
+
+  const handleRefreshLiveWorkspace = useCallback(async () => {
+    if (!liveSession) {
+      return;
+    }
+    await runLiveMutation("refresh", () => syncLiveSession(liveSession.sessionId));
+  }, [liveSession, runLiveMutation, syncLiveSession]);
+
+  const handleSendLiveCommand = useCallback(async () => {
+    if (!liveSession || !liveCommandDraft.trim()) {
+      return;
+    }
+    await runLiveMutation("sendCommand", async () => {
+      await sendLiveCommandMutation.mutateAsync({
+        sessionId: liveSession.sessionId,
+        sessionVersion: liveSession.sessionVersion,
+        idempotencyKey: `live-cmd-${crypto.randomUUID()}`,
+        actor: buildLiveActor(),
+        command: {
+          type: "natural_language",
+          text: liveCommandDraft.trim(),
+        },
+      });
+      setLiveCommandDraft("");
+      await syncLiveSession(liveSession.sessionId);
+    });
+  }, [
+    buildLiveActor,
+    liveCommandDraft,
+    liveSession,
+    runLiveMutation,
+    sendLiveCommandMutation,
+    syncLiveSession,
+  ]);
+
+  const handleTakeLiveControl = useCallback(async () => {
+    if (!liveSession) {
+      return;
+    }
+    await runLiveMutation("takeControl", async () => {
+      const result = await takeLiveControlMutation.mutateAsync({
+        sessionId: liveSession.sessionId,
+        sessionVersion: liveSession.sessionVersion,
+        idempotencyKey: `live-take-${crypto.randomUUID()}`,
+        actor: buildLiveActor(),
+        reason: "manual_takeover_requested",
+      });
+      await syncLiveSession(liveSession.sessionId, result.stream);
+    });
+  }, [buildLiveActor, liveSession, runLiveMutation, syncLiveSession, takeLiveControlMutation]);
+
+  const handleReturnLiveControl = useCallback(async () => {
+    if (!liveSession) {
+      return;
+    }
+    await runLiveMutation("returnControl", async () => {
+      await returnLiveControlMutation.mutateAsync({
+        sessionId: liveSession.sessionId,
+        sessionVersion: liveSession.sessionVersion,
+        idempotencyKey: `live-return-${crypto.randomUUID()}`,
+        actor: buildLiveActor(),
+        checkpoint: "manual_review_complete",
+      });
+      await syncLiveSession(liveSession.sessionId);
+    });
+  }, [buildLiveActor, liveSession, returnLiveControlMutation, runLiveMutation, syncLiveSession]);
+
+  const handleResolveApproval = useCallback(async (decision: "approved" | "rejected") => {
+    if (!liveSession?.pendingApprovalRequestId) {
+      return;
+    }
+    await runLiveMutation(`approval-${decision}`, async () => {
+      await resolveLiveApprovalMutation.mutateAsync({
+        sessionId: liveSession.sessionId,
+        sessionVersion: liveSession.sessionVersion,
+        idempotencyKey: `live-approval-${crypto.randomUUID()}`,
+        actor: buildLiveActor(),
+        approvalRequestId: liveSession.pendingApprovalRequestId,
+        decision,
+      });
+      await syncLiveSession(liveSession.sessionId);
+    });
+  }, [buildLiveActor, liveSession, resolveLiveApprovalMutation, runLiveMutation, syncLiveSession]);
+
+  const handleResolveAssist = useCallback(async () => {
+    if (!liveSession?.pendingAssistRequestId) {
+      return;
+    }
+    await runLiveMutation("assist", async () => {
+      await resolveLiveAssistMutation.mutateAsync({
+        sessionId: liveSession.sessionId,
+        sessionVersion: liveSession.sessionVersion,
+        idempotencyKey: `live-assist-${crypto.randomUUID()}`,
+        actor: buildLiveActor(),
+        assistRequestId: liveSession.pendingAssistRequestId,
+        response: {
+          type: "review_page",
+          notes: "Reviewed in live workspace.",
+        },
+      });
+      await syncLiveSession(liveSession.sessionId);
+    });
+  }, [buildLiveActor, liveSession, resolveLiveAssistMutation, runLiveMutation, syncLiveSession]);
+
+  const handleCancelLiveSession = useCallback(async () => {
+    if (!liveSession) {
+      return;
+    }
+    await runLiveMutation("cancelSession", async () => {
+      await cancelLiveSessionMutation.mutateAsync({
+        sessionId: liveSession.sessionId,
+        sessionVersion: liveSession.sessionVersion,
+        idempotencyKey: `live-cancel-${crypto.randomUUID()}`,
+        actor: buildLiveActor(),
+        reason: "user_cancelled",
+      });
+      await syncLiveSession(liveSession.sessionId);
+    });
+  }, [buildLiveActor, cancelLiveSessionMutation, liveSession, runLiveMutation, syncLiveSession]);
+
   const handleCancel = useCallback(async () => {
     clearPolling();
+    clearLivePolling();
     if (taskId) {
       try {
         await cancelMutation.mutateAsync({ taskId });
@@ -268,7 +578,7 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
       }
     }
     resetState();
-  }, [taskId, cancelMutation, clearPolling, resetState]);
+  }, [taskId, cancelMutation, clearLivePolling, clearPolling, resetState]);
 
   if (!open) return null;
 
@@ -655,6 +965,7 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
                 planSummary={planSummary}
                 onConfirm={handleConfirmExecution}
                 onCancel={handleCancel}
+                onConfirmLiveMode={handleLaunchLiveMode}
               />
 
               {/* Cost estimate card */}
@@ -703,6 +1014,33 @@ export function AutomationChatModal({ open, onOpenChange }: AutomationChatModalP
                 />
               </div>
             </div>
+          )}
+
+          {state === "launching_live" && (
+            <div className="flex flex-col items-center gap-3 py-8 text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+              <p className="text-sm text-gray-600">Creating live browser session...</p>
+            </div>
+          )}
+
+          {state === "live_workspace" && liveSession && (
+            <LiveBrowserWorkspace
+              session={liveSession}
+              events={liveEvents}
+              reconnectState={liveReconnectState}
+              compactViewport={compactLiveViewport}
+              commandDraft={liveCommandDraft}
+              busyAction={liveBusyAction}
+              onCommandDraftChange={setLiveCommandDraft}
+              onSendCommand={handleSendLiveCommand}
+              onRefresh={handleRefreshLiveWorkspace}
+              onTakeControl={handleTakeLiveControl}
+              onReturnControl={handleReturnLiveControl}
+              onApprove={() => void handleResolveApproval("approved")}
+              onReject={() => void handleResolveApproval("rejected")}
+              onResolveAssist={handleResolveAssist}
+              onCancelSession={handleCancelLiveSession}
+            />
           )}
 
           {/* Executing */}

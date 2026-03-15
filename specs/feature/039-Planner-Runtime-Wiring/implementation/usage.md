@@ -1,6 +1,6 @@
 # Task Planner Runtime Wiring — Operator & Developer Usage Guide
 
-> Spec 039 | Status: **Production-ready** (all 5 sections implemented)
+> Spec 039 | Status: **Production-ready** (all 5 sections implemented, 19 call sites wired)
 > Last updated: 2026-03-12
 
 ---
@@ -142,7 +142,7 @@ When the planner is enabled and a request is processed:
 | `id` | Auto-increment PK |
 | `userId` | ID of the user who made the request |
 | `tenantId` | Tenant the request belongs to |
-| `sourceType` | Where the request came from (`chat`, `skill`, `translation`, `channel`, `responses`, `agency`, `webhook`, `scheduled`, `structured`, `presentation`) |
+| `sourceType` | Where the request came from (`chat`, `stream`, `skill`, `translation`, `channel`, `responses`, `agency`, `webhook`, `scheduled`, `media_image`, `media_video`, `media_audio`, `presentation`) |
 | `skillSlug` | Skill ID if a skill was used (nullable) |
 | `traceId` | Correlation ID linking to audit log entries |
 | `createdAt` | Timestamp |
@@ -194,36 +194,57 @@ WHERE tr."tenantId" = 'your-tenant-id'
   AND tr."createdAt" > NOW() - INTERVAL '7 days'
 GROUP BY sa."modelId"
 ORDER BY uses DESC;
+
+-- Skill vs media cost split
+-- Note: skill text calls use sourceType='skill', media generation uses specific subtypes
+SELECT
+  CASE
+    WHEN tr."sourceType" = 'skill' THEN 'skill (text/structured)'
+    WHEN tr."sourceType" IN ('media_image', 'media_video', 'media_audio') THEN 'media (' || tr."sourceType" || ')'
+    ELSE tr."sourceType"
+  END AS source_label,
+  COUNT(*) AS requests,
+  SUM(sa."creditsUsed") AS total_credits,
+  SUM(sa."costUsd"::numeric) AS total_cost_usd
+FROM task_runs tr
+JOIN task_step_attempts sa ON sa."taskRunId" = tr.id
+WHERE tr."tenantId" = 'your-tenant-id'
+  AND tr."sourceType" IN ('skill', 'media_image', 'media_video', 'media_audio')
+  AND tr."createdAt" > NOW() - INTERVAL '7 days'
+GROUP BY source_label
+ORDER BY total_cost_usd DESC;
 ```
 
 ---
 
 ## Entry Points Covered
 
-The planner is wired into **21 call sites** across all LLM execution paths:
+The planner is wired into **19 call sites** across all LLM execution paths:
 
-| Category | Entry Point | `isAgencyEscalation` |
-|---|---|:---:|
-| **Frontend Chat** | `/api/llm/stream` (legacy gateway) | — |
-| | `/api/llm/v2/stream` (v2 gateway, non-streaming) | — |
-| | `/api/llm/v2/stream` (v2 gateway, streaming) | — |
-| **tRPC** | `chat.sendMessage` (direct chat) | — |
-| | `chat.sendMessage` (skill execution) | — |
-| | `translation.*` | — |
-| | `scheduledMessages.*` | — |
-| **Services** | `callLLMStructured()` (JSON-mode LLM) | — |
-| | `scheduler` (background jobs) | — |
-| | `skillExecutor` — direct execution | — |
-| | `skillExecutor` — media skill | — |
-| | `skillExecutor` — structured skill | — |
-| | `aiPresentationService` | — |
-| **Responses API** | `/api/responses` (OpenAI-compatible) | — |
-| **Channel Gateway** | Telegram/LINE/Slack chat pipeline | — |
-| | Channel router → agency override | ✅ |
-| | Channel agency pipeline | ✅ |
-| **Agency** | `agency.sendMessage` (direct request) | ✅ |
-| **Webhooks** | `webhookDispatchQueue` → agency target | ✅ |
-| | `webhookTriggers` test trigger → agency | ✅ |
+| Category | Entry Point | `sourceType` | `isAgencyEscalation` |
+|---|---|---|:---:|
+| **Frontend Chat** | `/api/llm/stream` (legacy gateway) | `"chat"` | — |
+| | `/api/llm/v2/stream` (v2 gateway, non-streaming) | `"chat"` | — |
+| | `/api/llm/v2/stream` (v2 gateway, streaming) | `"stream"` | — |
+| **tRPC** | `chat.sendMessage` (direct chat) | `"chat"` | — |
+| | `chat.sendMessage` (skill execution) | `"skill"` | — |
+| | `translation.*` | `"translation"` | — |
+| | `scheduledMessages.*` | `"scheduled"` | — |
+| **Services** | `callLLMStructured()` (JSON-mode LLM) | `"skill"` | — |
+| | `scheduler` (background jobs) | `"scheduled"` | — |
+| | `skillExecutor` — image skill | `"media_image"` | — |
+| | `skillExecutor` — video skill | `"media_video"` | — |
+| | `skillExecutor` — audio skill | `"media_audio"` | — |
+| | `aiPresentationService` | `"presentation"` | — |
+| **Responses API** | `/api/responses` (OpenAI-compatible) | `"responses"` | — |
+| **Channel Gateway** | Telegram/LINE/Slack chat pipeline | `"channel"` | — |
+| | Channel router → agency override | `"channel"` | ✅ |
+| | Channel agency pipeline | `"channel"` | ✅ |
+| **Agency** | `agency.sendMessage` (direct request) | `"agency"` | ✅ |
+| **Webhooks** | `webhookDispatchQueue` → agency target | `"webhook"` | ✅ |
+| | `webhookTriggers` test trigger → agency | `"webhook"` | ✅ |
+
+> **Note on media skills:** `skillExecutor` uses specific subtypes (`"media_image"`, `"media_video"`, `"media_audio"`) — not the generic `"media"`. `aiPresentationService` also uses these subtypes. When querying cost breakdowns, use `sourceType IN ('media_image', 'media_video', 'media_audio')` to capture all media generation runs. `callLLMStructured()` (JSON-mode structured output) uses `"skill"`, not `"structured"`.
 
 Rows marked ✅ require `taskPlannerAgencyEscalation = true` to activate planner tracking.
 
@@ -319,6 +340,22 @@ if (plannerResult) {
   }).catch(() => {}); // fire-and-forget — never block on this
 }
 ```
+
+---
+
+## Data Retention
+
+Task runs and step attempts accumulate over time. A cleanup function is available:
+
+```typescript
+import { cleanupOldTaskRuns } from "../services/taskRunStore";
+
+// Delete task_runs (+ step_attempts via CASCADE) older than 90 days
+const deleted = await cleanupOldTaskRuns(90);
+console.log(`Cleaned up ${deleted} old task runs`);
+```
+
+Recommended: wire into a daily scheduler job or call manually via admin endpoint.
 
 ---
 

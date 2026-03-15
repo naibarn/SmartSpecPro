@@ -123,6 +123,26 @@ class TestGate5OrphanReconciler:
             "ensure-browser-policy-decision-partitions"
         ]["task"]
 
+    def test_live_browser_readiness_publish_in_beat_schedule(self):
+        """Celery beat schedule includes live-browser readiness publishing."""
+        from app.core.celery_app import celery_app
+
+        schedule = celery_app.conf.beat_schedule
+        assert "publish-live-browser-readiness" in schedule
+        assert "publish_live_browser_readiness_snapshot" in schedule[
+            "publish-live-browser-readiness"
+        ]["task"]
+
+    def test_live_browser_maintenance_in_beat_schedule(self):
+        """Celery beat schedule includes live-browser maintenance."""
+        from app.core.celery_app import celery_app
+
+        schedule = celery_app.conf.beat_schedule
+        assert "run-live-browser-maintenance" in schedule
+        assert "run_live_browser_maintenance" in schedule[
+            "run-live-browser-maintenance"
+        ]["task"]
+
     def test_sandbox_queue_in_required_queues(self):
         """The sandbox queue is listed in REQUIRED_QUEUES."""
         from app.core.celery_app import REQUIRED_QUEUES
