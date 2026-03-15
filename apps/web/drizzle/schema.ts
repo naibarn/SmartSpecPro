@@ -5483,7 +5483,7 @@ export const publicApiAuditLog = pgTable("public_api_audit_log", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
   tenantId: varchar("tenantId", { length: 36 }).notNull(),
   userId: integer("userId").notNull(),
-  apiKeyId: varchar("apiKeyId", { length: 36 }).notNull(),
+  apiKeyId: varchar("apiKeyId", { length: 36 }),
   traceId: varchar("traceId", { length: 36 }),
   method: varchar("method", { length: 10 }).notNull(),
   path: varchar("path", { length: 255 }).notNull(),

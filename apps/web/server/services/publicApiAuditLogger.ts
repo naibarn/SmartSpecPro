@@ -8,7 +8,7 @@ import { publicApiAuditLog } from "../../drizzle/schema";
  */
 export async function logPublicApiRequest(entry: {
   tenantId: string;
-  apiKeyId: string;
+  apiKeyId?: string;
   userId?: number;
   method: string;
   path: string;

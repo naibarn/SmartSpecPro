@@ -4,7 +4,7 @@ import { randomUUID } from "crypto";
 import { requireScopes } from "../middleware/requireScopes";
 import { sendApiError } from "../middleware/publicApiHeaders";
 import { mediaGenerationService } from "../services/mediaGenerationService";
-import { deductCredits } from "../services/creditService";
+import { deductCredits, getCreditBalance } from "../services/creditService";
 import { createInternalTokenFromAuth } from "../_core/tokens";
 import { validateReferenceUrls, ApiValidationError } from "../services/ssrfValidation";
 import { incrementDailyCredits } from "../services/apiKeyRateLimiter";
@@ -109,7 +109,11 @@ export function createPublicMediaRouter(): Router {
         } as any);
         incrementDailyCredits((auth as any).apiKeyId, 1).catch(() => {});
 
+        let imageRemaining = 0;
+        try { imageRemaining = (await getCreditBalance(userId))?.credits ?? 0; } catch { /* non-fatal */ }
+
         res.setHeader("X-Credits-Used", "1");
+        res.setHeader("X-Credits-Remaining", String(imageRemaining));
         res.status(202).json({ task_id: task.id, status: task.status });
       } catch (err: any) {
         console.error("[PublicMediaApi] image generate error", err);
@@ -179,7 +183,11 @@ export function createPublicMediaRouter(): Router {
         } as any);
         incrementDailyCredits((auth as any).apiKeyId, 2).catch(() => {});
 
+        let videoRemaining = 0;
+        try { videoRemaining = (await getCreditBalance(userId))?.credits ?? 0; } catch { /* non-fatal */ }
+
         res.setHeader("X-Credits-Used", "2");
+        res.setHeader("X-Credits-Remaining", String(videoRemaining));
         res.status(202).json({ task_id: task.id, status: task.status });
       } catch (err: any) {
         console.error("[PublicMediaApi] video generate error", err);
@@ -234,7 +242,11 @@ export function createPublicMediaRouter(): Router {
         } as any);
         incrementDailyCredits((auth as any).apiKeyId, 1).catch(() => {});
 
+        let audioRemaining = 0;
+        try { audioRemaining = (await getCreditBalance(userId))?.credits ?? 0; } catch { /* non-fatal */ }
+
         res.setHeader("X-Credits-Used", "1");
+        res.setHeader("X-Credits-Remaining", String(audioRemaining));
         res.status(202).json({ task_id: task.id, status: task.status });
       } catch (err: any) {
         console.error("[PublicMediaApi] audio generate error", err);
