@@ -472,23 +472,24 @@ export async function cancelJob(jobId: string, tenantId: string, userId: number)
     throw err;
   }
 
-  await drizzle
-    .update(automationJobs)
-    .set({ status: "cancelled", completedAt: new Date() })
-    .where(eq(automationJobs.id, jobId));
+  await drizzle.transaction(async (tx) => {
+    await tx
+      .update(automationJobs)
+      .set({ status: "cancelled", completedAt: new Date() })
+      .where(eq(automationJobs.id, jobId));
 
-  // Refund reserved credits
-  if (job.creditsReserved > 0) {
-    await addCredits({
-      userId: job.userId,
-      amount: job.creditsReserved,
-      type: "refund",
-      description: `Job cancellation refund: ${jobId}`,
-      sourceType: "api_job",
-    } as any).catch((e: Error) =>
-      console.error(`[JobAutomation] Cancel refund failed:`, e.message),
-    );
-  }
+    if (job.creditsReserved > 0) {
+      await addCredits({
+        userId: job.userId,
+        amount: job.creditsReserved,
+        type: "refund",
+        description: `Job cancellation refund: ${jobId}`,
+        sourceType: "api_job",
+      } as any);
+    }
+  }).catch((e: Error) =>
+    console.error(`[JobAutomation] Cancel transaction failed:`, e.message),
+  );
 
   return { ...job, status: "cancelled" };
 }

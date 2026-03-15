@@ -416,6 +416,8 @@ export function createPublicAgencyRouter(): Router {
           messages: [],
           credits_used: result.creditsUsed,
           duration_ms: result.durationMs,
+          started_at: result.startedAt ?? null,
+          completed_at: result.completedAt ?? null,
         });
       } catch (err) {
         console.error("[PublicAgencyApi] GET run error", err);
