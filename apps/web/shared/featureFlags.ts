@@ -24,6 +24,7 @@ export interface TenantFeatureFlags {
   agencyBrowserSessionUi: boolean; // F17 — Agency Builder and Agency Chat Browser Session UI
   workflowBrowserSessionNodes: boolean; // F18 — Workflow collaborative Browser Session nodes
   publicApi: boolean; // F19 — Public API & External Agent Gateway
+  multimodalMemory: boolean; // F20 — Multimodal chat memory (image analysis, embedding, retrieval)
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -52,6 +53,7 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "agencyBrowserSessionUi",
   "workflowBrowserSessionNodes",
   "publicApi",
+  "multimodalMemory",
 ]);
 
 /**
@@ -79,4 +81,5 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   agencyBrowserSessionUi: false,
   workflowBrowserSessionNodes: false,
   publicApi: false,
+  multimodalMemory: false,
 };

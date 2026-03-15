@@ -45,6 +45,21 @@ class VisionAnalyzeResponse(BaseModel):
     status: str = "queued"
 
 
+async def _check_multimodal_memory_flag(tenant_id: str) -> bool:
+    """Check if the multimodalMemory feature flag is enabled for the tenant via Redis."""
+    try:
+        from app.services.redis_service import get_redis_client
+        redis = await get_redis_client()
+        if redis is None:
+            # Redis unavailable → treat as flag off (safe default)
+            return False
+        flag_key = f"feature_flag:multimodalMemory:{tenant_id}"
+        flag_value = await redis.get(flag_key)
+        return flag_value == "true"
+    except Exception:
+        return False
+
+
 @router.post(
     "/analyze",
     response_model=VisionAnalyzeResponse,
@@ -52,6 +67,14 @@ class VisionAnalyzeResponse(BaseModel):
 )
 async def analyze_image(request: VisionAnalyzeRequest) -> VisionAnalyzeResponse:
     """Dispatch a vision analysis Celery task for the given asset."""
+    # Feature flag gate — check Redis before accepting the request
+    flag_enabled = await _check_multimodal_memory_flag(request.tenant_id)
+    if not flag_enabled:
+        raise HTTPException(
+            status_code=403,
+            detail="Multimodal memory is not enabled for this tenant",
+        )
+
     from app.tasks.vision_tasks import analyze_image_task
 
     logger.info(
