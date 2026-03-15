@@ -1,0 +1,709 @@
+{
+  "version": "1.0",
+  "skillId": "grok-imagine-prompt-planner",
+  "title": "Grok Imagine Prompt Planner",
+  "titleTh": "Grok Imagine: วางพรอมต์ภาพ/วิดีโอแบบภาพยนตร์",
+  "description": "Plan Grok Imagine-style prompts with stronger cinematic controls and a cleaner handoff to the downstream media-generation skill.",
+  "descriptionTh": "วางพรอมต์สไตล์ Grok Imagine พร้อมตัวเลือกแนวภาพยนตร์ที่ละเอียดขึ้น และส่งต่อข้อมูลให้ skill สร้างสื่อถัดไปได้ชัดเจนขึ้น",
+  "sections": [
+    {
+      "id": "core",
+      "title": "Core Brief",
+      "titleTh": "ข้อมูลหลัก",
+      "icon": "settings",
+      "fields": [
+        {
+          "id": "mode",
+          "type": "select",
+          "label": "Prompt Planning Mode",
+          "labelTh": "โหมดวางพรอมต์",
+          "helpText": "Choose the target media workflow. `video-edit` plans prompts for editing an existing MP4 via URL.",
+          "helpTextTh": "เลือก workflow เป้าหมายสำหรับวางพรอมต์ โดย `video-edit` ใช้เตรียมพรอมต์สำหรับแก้วิดีโอ MP4 ที่มี URL อยู่แล้ว",
+          "required": true,
+          "default": "text-to-image",
+          "options": [
+            { "value": "text-to-image", "label": "Text to Image", "labelTh": "สร้างภาพจากข้อความ" },
+            { "value": "image-to-image", "label": "Image to Image", "labelTh": "แก้/ดัดแปลงภาพจากภาพอ้างอิง" },
+            { "value": "text-to-video", "label": "Text to Video", "labelTh": "สร้างวิดีโอจากข้อความ" },
+            { "value": "image-to-video", "label": "Image to Video", "labelTh": "สร้างวิดีโอจากภาพ" },
+            { "value": "video-edit", "label": "Edit Existing Video", "labelTh": "แก้วิดีโอเดิม" }
+          ]
+        },
+        {
+          "id": "description",
+          "type": "textarea",
+          "label": "Creative Brief",
+          "labelTh": "คำอธิบายงาน",
+          "placeholder": "Describe the subject, environment, action, mood, and the movie-like feeling you want...",
+          "placeholderTh": "อธิบายตัวแบบ ฉาก การกระทำ อารมณ์ และความรู้สึกแบบภาพยนตร์ที่ต้องการ...",
+          "helpText": "Be concrete. Mention subject, scene, story beat, and the exact cinematic outcome you want the downstream generator to produce.",
+          "helpTextTh": "ควรเขียนให้ชัด ระบุตัวแบบ ฉาก จังหวะของเหตุการณ์ และผลลัพธ์เชิงภาพยนตร์ที่ต้องการให้ตัวสร้างสื่อปลายทางทำออกมา",
+          "required": true,
+          "rows": 5,
+          "maxLength": 5000
+        },
+        {
+          "id": "outputLanguage",
+          "type": "select",
+          "label": "Prompt Language",
+          "labelTh": "ภาษาของพรอมต์",
+          "helpText": "Language used in the final prompt text.",
+          "helpTextTh": "ภาษาที่ใช้ในพรอมต์สุดท้าย",
+          "default": "en",
+          "options": [
+            { "value": "en", "label": "English", "labelTh": "อังกฤษ" },
+            { "value": "th", "label": "Thai", "labelTh": "ไทย" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "api_controls",
+      "title": "API-Supported Controls",
+      "titleTh": "ค่าที่ API รองรับ",
+      "icon": "sliders-horizontal",
+      "fields": [
+        {
+          "id": "style",
+          "type": "select",
+          "label": "Visual Style",
+          "labelTh": "สไตล์ภาพ",
+          "helpText": "High-level look direction used by the prompt builder.",
+          "helpTextTh": "ทิศทางสไตล์ภาพระดับกว้างที่ prompt builder จะนำไปใช้",
+          "default": "cinematic",
+          "options": [
+            { "value": "cinematic", "label": "Cinematic", "labelTh": "ซีเนมาติก" },
+            { "value": "anime", "label": "Anime", "labelTh": "อนิเมะ" },
+            { "value": "cartoon", "label": "Cartoon", "labelTh": "การ์ตูน" },
+            { "value": "realistic", "label": "Realistic", "labelTh": "สมจริง" },
+            { "value": "documentary", "label": "Documentary", "labelTh": "สารคดี" },
+            { "value": "artistic", "label": "Artistic", "labelTh": "ศิลปะ" },
+            { "value": "commercial", "label": "Commercial", "labelTh": "โฆษณา" },
+            { "value": "fantasy", "label": "Fantasy", "labelTh": "แฟนตาซี" },
+            { "value": "noir", "label": "Noir", "labelTh": "นัวร์" },
+            { "value": "vintage", "label": "Vintage", "labelTh": "วินเทจ" }
+          ]
+        },
+        {
+          "id": "aspectRatio",
+          "type": "select",
+          "label": "Aspect Ratio",
+          "labelTh": "อัตราส่วนภาพ",
+          "helpText": "Expanded ratio list based on current xAI docs. Single-image edits may preserve the source ratio.",
+          "helpTextTh": "ขยายรายการอัตราส่วนตาม docs ปัจจุบันของ xAI แต่การแก้ภาพเดี่ยวอาจคง ratio เดิมของภาพต้นฉบับ",
+          "dependsOn": {
+            "field": "mode",
+            "values": ["text-to-image", "image-to-image", "text-to-video", "image-to-video"]
+          },
+          "default": "16:9",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "1:1", "label": "1:1 (Square)", "labelTh": "1:1 (จัตุรัส)" },
+            { "value": "16:9", "label": "16:9 (Widescreen)", "labelTh": "16:9 (จอกว้าง)" },
+            { "value": "9:16", "label": "9:16 (Vertical)", "labelTh": "9:16 (แนวตั้ง)" },
+            { "value": "4:3", "label": "4:3", "labelTh": "4:3" },
+            { "value": "3:4", "label": "3:4", "labelTh": "3:4" },
+            { "value": "3:2", "label": "3:2", "labelTh": "3:2" },
+            { "value": "2:3", "label": "2:3", "labelTh": "2:3" },
+            { "value": "2:1", "label": "2:1", "labelTh": "2:1" },
+            { "value": "1:2", "label": "1:2", "labelTh": "1:2" },
+            { "value": "19.5:9", "label": "19.5:9", "labelTh": "19.5:9" },
+            { "value": "9:19.5", "label": "9:19.5", "labelTh": "9:19.5" },
+            { "value": "20:9", "label": "20:9", "labelTh": "20:9" },
+            { "value": "9:20", "label": "9:20", "labelTh": "9:20" }
+          ]
+        },
+        {
+          "id": "imageResolution",
+          "type": "select",
+          "label": "Image Resolution",
+          "labelTh": "ความละเอียดภาพ",
+          "helpText": "For downstream image generation or multi-image editing.",
+          "helpTextTh": "ใช้ส่งต่อให้ขั้นตอนสร้างภาพหรือแก้ภาพหลายภาพปลายทาง",
+          "dependsOn": {
+            "field": "mode",
+            "values": ["text-to-image", "image-to-image"]
+          },
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "1k", "label": "1K", "labelTh": "1K" },
+            { "value": "2k", "label": "2K", "labelTh": "2K" }
+          ]
+        },
+        {
+          "id": "duration",
+          "type": "select",
+          "label": "Video Duration",
+          "labelTh": "ความยาววิดีโอ",
+          "helpText": "For downstream text-to-video and image-to-video generation. Existing video edits keep the source duration.",
+          "helpTextTh": "ใช้ส่งต่อให้ขั้นตอนสร้างวิดีโอแบบ text-to-video และ image-to-video ส่วนการแก้วิดีโอเดิมจะคงความยาวจากไฟล์ต้นทาง",
+          "dependsOn": {
+            "field": "mode",
+            "values": ["text-to-video", "image-to-video"]
+          },
+          "default": 6,
+          "options": [
+            { "value": 1, "label": "1 second", "labelTh": "1 วินาที" },
+            { "value": 2, "label": "2 seconds", "labelTh": "2 วินาที" },
+            { "value": 3, "label": "3 seconds", "labelTh": "3 วินาที" },
+            { "value": 4, "label": "4 seconds", "labelTh": "4 วินาที" },
+            { "value": 5, "label": "5 seconds", "labelTh": "5 วินาที" },
+            { "value": 6, "label": "6 seconds", "labelTh": "6 วินาที" },
+            { "value": 7, "label": "7 seconds", "labelTh": "7 วินาที" },
+            { "value": 8, "label": "8 seconds", "labelTh": "8 วินาที" },
+            { "value": 9, "label": "9 seconds", "labelTh": "9 วินาที" },
+            { "value": 10, "label": "10 seconds", "labelTh": "10 วินาที" },
+            { "value": 11, "label": "11 seconds", "labelTh": "11 วินาที" },
+            { "value": 12, "label": "12 seconds", "labelTh": "12 วินาที" },
+            { "value": 13, "label": "13 seconds", "labelTh": "13 วินาที" },
+            { "value": 14, "label": "14 seconds", "labelTh": "14 วินาที" },
+            { "value": 15, "label": "15 seconds", "labelTh": "15 วินาที" }
+          ]
+        },
+        {
+          "id": "resolution",
+          "type": "select",
+          "label": "Video Resolution",
+          "labelTh": "ความละเอียดวิดีโอ",
+          "helpText": "For downstream text-to-video and image-to-video generation. Existing video edits keep the source resolution up to 720p.",
+          "helpTextTh": "ใช้ส่งต่อให้ขั้นตอนสร้างวิดีโอแบบ text-to-video และ image-to-video ส่วนการแก้วิดีโอเดิมจะคงความละเอียดของวิดีโอต้นทางได้สูงสุด 720p",
+          "dependsOn": {
+            "field": "mode",
+            "values": ["text-to-video", "image-to-video"]
+          },
+          "default": "480p",
+          "options": [
+            { "value": "480p", "label": "480p", "labelTh": "480p" },
+            { "value": "720p", "label": "720p", "labelTh": "720p" }
+          ]
+        },
+        {
+          "id": "shotType",
+          "type": "select",
+          "label": "Shot Type",
+          "labelTh": "ประเภทช็อต",
+          "helpText": "Framing and subject distance.",
+          "helpTextTh": "กรอบภาพและระยะห่างจากตัวแบบ",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "establishing", "label": "Establishing", "labelTh": "เปิดฉาก" },
+            { "value": "extreme_wide", "label": "Extreme Wide", "labelTh": "กว้างมาก" },
+            { "value": "wide", "label": "Wide", "labelTh": "กว้าง" },
+            { "value": "medium_wide", "label": "Medium Wide", "labelTh": "กว้างปานกลาง" },
+            { "value": "medium", "label": "Medium", "labelTh": "กลาง" },
+            { "value": "medium_close_up", "label": "Medium Close-Up", "labelTh": "ใกล้ปานกลาง" },
+            { "value": "close_up", "label": "Close-Up", "labelTh": "ใกล้" },
+            { "value": "extreme_close_up", "label": "Extreme Close-Up", "labelTh": "ใกล้มาก" },
+            { "value": "two_shot", "label": "Two Shot", "labelTh": "ช็อตคู่" },
+            { "value": "over_the_shoulder", "label": "Over the Shoulder", "labelTh": "ข้ามไหล่" },
+            { "value": "pov", "label": "POV", "labelTh": "มุมมองบุคคลที่หนึ่ง" },
+            { "value": "aerial", "label": "Aerial", "labelTh": "มุมสูง" }
+          ]
+        },
+        {
+          "id": "cameraMovement",
+          "type": "select",
+          "label": "Camera Movement",
+          "labelTh": "การเคลื่อนกล้อง",
+          "helpText": "Virtual camera motion for video prompts.",
+          "helpTextTh": "การเคลื่อนที่ของกล้องเสมือนสำหรับ prompt วิดีโอ",
+          "dependsOn": {
+            "field": "mode",
+            "values": ["text-to-video", "image-to-video", "video-edit"]
+          },
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "static", "label": "Static", "labelTh": "คงที่" },
+            { "value": "pan", "label": "Pan", "labelTh": "แพน" },
+            { "value": "tilt", "label": "Tilt", "labelTh": "ทิลท์" },
+            { "value": "dolly", "label": "Dolly", "labelTh": "ดอลลี่" },
+            { "value": "tracking", "label": "Tracking", "labelTh": "แทร็กกิ้ง" },
+            { "value": "truck", "label": "Truck", "labelTh": "ทรัค" },
+            { "value": "crane", "label": "Crane", "labelTh": "เครน" },
+            { "value": "drone", "label": "Drone", "labelTh": "โดรน" },
+            { "value": "handheld", "label": "Handheld", "labelTh": "ถือมือ" },
+            { "value": "gimbal", "label": "Gimbal", "labelTh": "กิมบอล" },
+            { "value": "zoom", "label": "Zoom", "labelTh": "ซูม" },
+            { "value": "whip_pan", "label": "Whip Pan", "labelTh": "วิปแพน" },
+            { "value": "arc", "label": "Arc", "labelTh": "อาร์ค" },
+            { "value": "rack_focus", "label": "Rack Focus", "labelTh": "แร็กโฟกัส" }
+          ]
+        },
+        {
+          "id": "videoEditStrength",
+          "type": "select",
+          "label": "Video Edit Strength",
+          "labelTh": "ระดับการแก้วิดีโอ",
+          "helpText": "Only meaningful for `video-edit` mode.",
+          "helpTextTh": "มีผลหลักกับโหมด `video-edit` เท่านั้น",
+          "dependsOn": {
+            "field": "mode",
+            "value": "video-edit"
+          },
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "subtle", "label": "Subtle", "labelTh": "เบา" },
+            { "value": "balanced", "label": "Balanced", "labelTh": "สมดุล" },
+            { "value": "aggressive", "label": "Aggressive", "labelTh": "แรง" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "film_controls",
+      "title": "Cinematic Prompt Controls",
+      "titleTh": "ตัวควบคุมแนวภาพยนตร์",
+      "icon": "film",
+      "collapsible": true,
+      "collapsed": false,
+      "fields": [
+        {
+          "id": "filmLookPreset",
+          "type": "select",
+          "label": "Film Look Preset",
+          "labelTh": "พรีเซ็ตลุคภาพยนตร์",
+          "helpText": "Substyle preset that gives the prompt a stronger movie language.",
+          "helpTextTh": "พรีเซ็ตย่อยที่ช่วยให้ prompt มีภาษาภาพยนตร์ชัดขึ้น",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "blockbuster", "label": "Blockbuster", "labelTh": "บล็อกบัสเตอร์" },
+            { "value": "indie_naturalistic", "label": "Indie Naturalistic", "labelTh": "อินดี้สมจริง" },
+            { "value": "neo_noir", "label": "Neo-Noir", "labelTh": "นีโอนัวร์" },
+            { "value": "period_drama", "label": "Period Drama", "labelTh": "ดราม่าย้อนยุค" },
+            { "value": "sci_fi_epic", "label": "Sci-Fi Epic", "labelTh": "ไซไฟมหากาพย์" },
+            { "value": "elevated_horror", "label": "Elevated Horror", "labelTh": "สยองขวัญเชิงบรรยากาศ" },
+            { "value": "romantic_drama", "label": "Romantic Drama", "labelTh": "ดราม่าโรแมนติก" },
+            { "value": "coming_of_age", "label": "Coming of Age", "labelTh": "วัยเติบโต" },
+            { "value": "crime_thriller", "label": "Crime Thriller", "labelTh": "อาชญากรรมระทึกขวัญ" },
+            { "value": "fantasy_epic", "label": "Fantasy Epic", "labelTh": "แฟนตาซีมหากาพย์" },
+            { "value": "arthouse_minimal", "label": "Arthouse Minimal", "labelTh": "อาร์ตเฮาส์มินิมอล" }
+          ]
+        },
+        {
+          "id": "genreTone",
+          "type": "select",
+          "label": "Genre Tone",
+          "labelTh": "โทนแนวเรื่อง",
+          "helpText": "Narrative tone for framing, mood, and pacing.",
+          "helpTextTh": "โทนของเรื่องเพื่อกำหนดกรอบภาพ อารมณ์ และจังหวะ",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "action", "label": "Action", "labelTh": "แอ็กชัน" },
+            { "value": "mystery", "label": "Mystery", "labelTh": "ลึกลับ" },
+            { "value": "romance", "label": "Romance", "labelTh": "โรแมนติก" },
+            { "value": "thriller", "label": "Thriller", "labelTh": "ระทึกขวัญ" },
+            { "value": "horror", "label": "Horror", "labelTh": "สยองขวัญ" },
+            { "value": "drama", "label": "Drama", "labelTh": "ดราม่า" },
+            { "value": "comedy", "label": "Comedy", "labelTh": "คอมเมดี้" },
+            { "value": "sci_fi", "label": "Sci-Fi", "labelTh": "ไซไฟ" },
+            { "value": "fantasy", "label": "Fantasy", "labelTh": "แฟนตาซี" },
+            { "value": "historical", "label": "Historical", "labelTh": "ย้อนยุค" },
+            { "value": "documentary", "label": "Documentary", "labelTh": "สารคดี" }
+          ]
+        },
+        {
+          "id": "era",
+          "type": "select",
+          "label": "Era",
+          "labelTh": "ยุคสมัย",
+          "helpText": "Time signature that affects styling, design, and grade.",
+          "helpTextTh": "ยุคสมัยที่มีผลกับการแต่งกาย โปรดักชันดีไซน์ และเกรดสี",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "contemporary", "label": "Contemporary", "labelTh": "ร่วมสมัย" },
+            { "value": "1920s", "label": "1920s", "labelTh": "1920s" },
+            { "value": "1950s", "label": "1950s", "labelTh": "1950s" },
+            { "value": "1970s", "label": "1970s", "labelTh": "1970s" },
+            { "value": "1980s", "label": "1980s", "labelTh": "1980s" },
+            { "value": "1990s", "label": "1990s", "labelTh": "1990s" },
+            { "value": "2000s", "label": "2000s", "labelTh": "2000s" },
+            { "value": "near_future", "label": "Near Future", "labelTh": "อนาคตอันใกล้" },
+            { "value": "far_future", "label": "Far Future", "labelTh": "อนาคตไกล" }
+          ]
+        },
+        {
+          "id": "cameraFormat",
+          "type": "select",
+          "label": "Camera Format",
+          "labelTh": "รูปแบบกล้อง",
+          "helpText": "Emulated capture medium.",
+          "helpTextTh": "สื่อบันทึกภาพหรือรูปแบบกล้องที่อยากจำลอง",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "digital_clean", "label": "Digital Clean", "labelTh": "ดิจิทัลคมสะอาด" },
+            { "value": "35mm_film", "label": "35mm Film", "labelTh": "ฟิล์ม 35mm" },
+            { "value": "16mm_film", "label": "16mm Film", "labelTh": "ฟิล์ม 16mm" },
+            { "value": "65mm_epic", "label": "65mm Epic", "labelTh": "65mm มหากาพย์" },
+            { "value": "imax", "label": "IMAX", "labelTh": "IMAX" },
+            { "value": "medium_format", "label": "Medium Format", "labelTh": "มีเดียมฟอร์แมต" },
+            { "value": "smartphone", "label": "Smartphone", "labelTh": "สมาร์ตโฟน" }
+          ]
+        },
+        {
+          "id": "lensProfile",
+          "type": "select",
+          "label": "Lens Profile",
+          "labelTh": "ลักษณะเลนส์",
+          "helpText": "Lens behavior or focal family to emulate.",
+          "helpTextTh": "ลักษณะของเลนส์หรือช่วงโฟกัสที่ต้องการจำลอง",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "anamorphic_24mm", "label": "Anamorphic 24mm", "labelTh": "Anamorphic 24mm" },
+            { "value": "anamorphic_35mm", "label": "Anamorphic 35mm", "labelTh": "Anamorphic 35mm" },
+            { "value": "spherical_24mm", "label": "Spherical 24mm", "labelTh": "Spherical 24mm" },
+            { "value": "spherical_35mm", "label": "Spherical 35mm", "labelTh": "Spherical 35mm" },
+            { "value": "spherical_50mm", "label": "Spherical 50mm", "labelTh": "Spherical 50mm" },
+            { "value": "portrait_85mm", "label": "Portrait 85mm", "labelTh": "Portrait 85mm" },
+            { "value": "telephoto_135mm", "label": "Telephoto 135mm", "labelTh": "Telephoto 135mm" },
+            { "value": "macro", "label": "Macro", "labelTh": "มาโคร" },
+            { "value": "vintage_soft", "label": "Vintage Soft", "labelTh": "วินเทจนุ่ม" },
+            { "value": "tilt_shift", "label": "Tilt-Shift", "labelTh": "Tilt-Shift" }
+          ]
+        },
+        {
+          "id": "depthOfField",
+          "type": "select",
+          "label": "Depth of Field",
+          "labelTh": "ระยะชัดลึก",
+          "helpText": "How much focus falloff you want.",
+          "helpTextTh": "ต้องการให้ภาพหลุดโฟกัสหลังตัวแบบมากน้อยแค่ไหน",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "deep_focus", "label": "Deep Focus", "labelTh": "ชัดลึก" },
+            { "value": "moderate", "label": "Moderate", "labelTh": "ปานกลาง" },
+            { "value": "shallow", "label": "Shallow", "labelTh": "ชัดตื้น" },
+            { "value": "very_shallow", "label": "Very Shallow", "labelTh": "ชัดตื้นมาก" }
+          ]
+        },
+        {
+          "id": "cameraRig",
+          "type": "select",
+          "label": "Camera Rig",
+          "labelTh": "ชุดอุปกรณ์กล้อง",
+          "helpText": "Physical movement feel to emulate.",
+          "helpTextTh": "บุคลิกการเคลื่อนกล้องแบบอุปกรณ์จริงที่อยากจำลอง",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "tripod", "label": "Tripod", "labelTh": "ขาตั้ง" },
+            { "value": "dolly_slider", "label": "Dolly / Slider", "labelTh": "ดอลลี่ / สไลเดอร์" },
+            { "value": "steadicam", "label": "Steadicam", "labelTh": "Steadicam" },
+            { "value": "shoulder_mount", "label": "Shoulder Mount", "labelTh": "บ่ากล้อง" },
+            { "value": "handheld", "label": "Handheld", "labelTh": "ถือมือ" },
+            { "value": "gimbal", "label": "Gimbal", "labelTh": "กิมบอล" },
+            { "value": "crane_jib", "label": "Crane / Jib", "labelTh": "เครน / จิบ" },
+            { "value": "drone", "label": "Drone", "labelTh": "โดรน" }
+          ]
+        },
+        {
+          "id": "compositionRule",
+          "type": "select",
+          "label": "Composition Rule",
+          "labelTh": "กฎการจัดองค์ประกอบ",
+          "helpText": "Composition strategy for a stronger film frame.",
+          "helpTextTh": "กลยุทธ์การจัดองค์ประกอบให้ภาพมีภาษาภาพยนตร์ชัดขึ้น",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "rule_of_thirds", "label": "Rule of Thirds", "labelTh": "กฎสามส่วน" },
+            { "value": "centered_symmetry", "label": "Centered Symmetry", "labelTh": "สมมาตรตรงกลาง" },
+            { "value": "leading_lines", "label": "Leading Lines", "labelTh": "เส้นนำสายตา" },
+            { "value": "negative_space", "label": "Negative Space", "labelTh": "พื้นที่ว่าง" },
+            { "value": "layered_depth", "label": "Layered Depth", "labelTh": "ระยะหน้า-กลาง-หลัง" },
+            { "value": "frame_within_frame", "label": "Frame Within Frame", "labelTh": "กรอบซ้อนกรอบ" },
+            { "value": "wide_establishing_balance", "label": "Wide Establishing Balance", "labelTh": "กว้างแบบบาลานซ์" }
+          ]
+        },
+        {
+          "id": "lighting",
+          "type": "select",
+          "label": "Lighting",
+          "labelTh": "แสง",
+          "helpText": "Lighting treatment for the scene.",
+          "helpTextTh": "ลักษณะแสงของฉาก",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "natural", "label": "Natural", "labelTh": "ธรรมชาติ" },
+            { "value": "golden_hour", "label": "Golden Hour", "labelTh": "แสงทอง" },
+            { "value": "blue_hour", "label": "Blue Hour", "labelTh": "แสงน้ำเงิน" },
+            { "value": "studio", "label": "Studio", "labelTh": "สตูดิโอ" },
+            { "value": "practical", "label": "Practical", "labelTh": "แสงจากวัตถุในฉาก" },
+            { "value": "neon", "label": "Neon", "labelTh": "นีออน" },
+            { "value": "dramatic", "label": "Dramatic", "labelTh": "ดราม่า" },
+            { "value": "soft", "label": "Soft", "labelTh": "นุ่ม" },
+            { "value": "rim_light", "label": "Rim Light", "labelTh": "แสงขอบ" },
+            { "value": "silhouette", "label": "Silhouette", "labelTh": "ซิลูเอตต์" },
+            { "value": "high_key", "label": "High Key", "labelTh": "ไฮคีย์" },
+            { "value": "low_key", "label": "Low Key", "labelTh": "โลว์คีย์" },
+            { "value": "volumetric", "label": "Volumetric", "labelTh": "แสงมีมิติในอากาศ" }
+          ]
+        },
+        {
+          "id": "colorPalette",
+          "type": "select",
+          "label": "Color Palette",
+          "labelTh": "โทนสี",
+          "helpText": "Base color family for the scene.",
+          "helpTextTh": "โทนสีหลักของฉาก",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "warm", "label": "Warm", "labelTh": "อุ่น" },
+            { "value": "cool", "label": "Cool", "labelTh": "เย็น" },
+            { "value": "vibrant", "label": "Vibrant", "labelTh": "สดจัด" },
+            { "value": "pastel", "label": "Pastel", "labelTh": "พาสเทล" },
+            { "value": "monochrome", "label": "Monochrome", "labelTh": "โมโนโครม" },
+            { "value": "teal_orange", "label": "Teal & Orange", "labelTh": "Teal & Orange" },
+            { "value": "earthy", "label": "Earthy", "labelTh": "โทนดิน" },
+            { "value": "neon_cyberpunk", "label": "Neon Cyberpunk", "labelTh": "นีออนไซเบอร์พังก์" },
+            { "value": "vintage_film", "label": "Vintage Film", "labelTh": "ฟิล์มวินเทจ" },
+            { "value": "muted_natural", "label": "Muted Natural", "labelTh": "ธรรมชาติหม่น" }
+          ]
+        },
+        {
+          "id": "colorGrade",
+          "type": "select",
+          "label": "Color Grade",
+          "labelTh": "เกรดสี",
+          "helpText": "Post-finish color treatment.",
+          "helpTextTh": "ลักษณะการเกรดสีหลังถ่าย",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "clean_digital", "label": "Clean Digital", "labelTh": "ดิจิทัลสะอาด" },
+            { "value": "warm_film", "label": "Warm Film", "labelTh": "ฟิล์มโทนอุ่น" },
+            { "value": "cool_indie", "label": "Cool Indie", "labelTh": "อินดี้โทนเย็น" },
+            { "value": "teal_orange_blockbuster", "label": "Teal/Orange Blockbuster", "labelTh": "บล็อกบัสเตอร์ Teal/Orange" },
+            { "value": "bleach_bypass", "label": "Bleach Bypass", "labelTh": "Bleach Bypass" },
+            { "value": "silver_retention", "label": "Silver Retention", "labelTh": "Silver Retention" },
+            { "value": "faded_vintage", "label": "Faded Vintage", "labelTh": "วินเทจซีด" },
+            { "value": "noir_monochrome", "label": "Noir Monochrome", "labelTh": "นัวร์ขาวดำ" },
+            { "value": "emerald_gold", "label": "Emerald & Gold", "labelTh": "เขียวมรกต-ทอง" },
+            { "value": "moonlit_blue", "label": "Moonlit Blue", "labelTh": "น้ำเงินแสงจันทร์" }
+          ]
+        },
+        {
+          "id": "contrastProfile",
+          "type": "select",
+          "label": "Contrast Profile",
+          "labelTh": "คอนทราสต์",
+          "helpText": "Overall contrast curve feel.",
+          "helpTextTh": "ลักษณะคอนทราสต์โดยรวม",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "soft_low_contrast", "label": "Soft / Low Contrast", "labelTh": "นุ่ม / คอนทราสต์ต่ำ" },
+            { "value": "balanced", "label": "Balanced", "labelTh": "สมดุล" },
+            { "value": "high_contrast", "label": "High Contrast", "labelTh": "คอนทราสต์สูง" },
+            { "value": "crushed_blacks", "label": "Crushed Blacks", "labelTh": "ดำแน่น" }
+          ]
+        },
+        {
+          "id": "grainLevel",
+          "type": "select",
+          "label": "Film Grain",
+          "labelTh": "เกรนฟิล์ม",
+          "helpText": "Amount of film texture.",
+          "helpTextTh": "ระดับพื้นผิวแบบเกรนฟิล์ม",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "none", "label": "None", "labelTh": "ไม่มี" },
+            { "value": "subtle", "label": "Subtle", "labelTh": "เล็กน้อย" },
+            { "value": "medium", "label": "Medium", "labelTh": "ปานกลาง" },
+            { "value": "heavy", "label": "Heavy", "labelTh": "หนัก" }
+          ]
+        },
+        {
+          "id": "mood",
+          "type": "select",
+          "label": "Mood",
+          "labelTh": "อารมณ์",
+          "helpText": "Emotional tone of the scene.",
+          "helpTextTh": "อารมณ์หลักของฉาก",
+          "default": "auto",
+          "options": [
+            { "value": "auto", "label": "Auto", "labelTh": "อัตโนมัติ" },
+            { "value": "warm_inviting", "label": "Warm & Inviting", "labelTh": "อบอุ่น" },
+            { "value": "dramatic", "label": "Dramatic", "labelTh": "ดราม่า" },
+            { "value": "peaceful", "label": "Peaceful", "labelTh": "สงบ" },
+            { "value": "energetic", "label": "Energetic", "labelTh": "มีพลัง" },
+            { "value": "mysterious", "label": "Mysterious", "labelTh": "ลึกลับ" },
+            { "value": "romantic", "label": "Romantic", "labelTh": "โรแมนติก" },
+            { "value": "nostalgic", "label": "Nostalgic", "labelTh": "ชวนคิดถึง" },
+            { "value": "futuristic", "label": "Futuristic", "labelTh": "ล้ำยุค" },
+            { "value": "dark_gritty", "label": "Dark & Gritty", "labelTh": "ดาร์กหม่น" },
+            { "value": "melancholic", "label": "Melancholic", "labelTh": "หม่นเศร้า" },
+            { "value": "hopeful", "label": "Hopeful", "labelTh": "มีความหวัง" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "reference",
+      "title": "Reference & Edit Inputs",
+      "titleTh": "ข้อมูลอ้างอิงและการแก้ไข",
+      "icon": "image",
+      "collapsible": true,
+      "collapsed": false,
+      "fields": [
+        {
+          "id": "reference_images",
+          "type": "images",
+          "label": "Reference Images",
+          "labelTh": "ภาพอ้างอิง",
+          "helpText": "Use for image-to-image or image-to-video prompt planning. App UI supports image uploads; payload also accepts image URLs or data URIs when filled programmatically.",
+          "helpTextTh": "ใช้กับการวางพรอมต์แบบ image-to-image หรือ image-to-video หน้า UI รองรับการอัปโหลดภาพ และ payload ยังรับ URL ภาพหรือ data URI ได้เมื่อส่งค่ามาแบบโปรแกรม",
+          "dependsOn": {
+            "field": "mode",
+            "values": ["image-to-image", "image-to-video"]
+          },
+          "multiple": true,
+          "accept": "image/*",
+          "maxImages": 3
+        },
+        {
+          "id": "sourceVideoUrl",
+          "type": "text",
+          "label": "Source Video URL",
+          "labelTh": "URL วิดีโอต้นฉบับ",
+          "placeholder": "https://example.com/source.mp4",
+          "placeholderTh": "https://example.com/source.mp4",
+          "helpText": "Required for `video-edit` prompt planning. Use a public MP4 URL for the downstream generator.",
+          "helpTextTh": "จำเป็นสำหรับการวางพรอมต์แบบ `video-edit` ใช้ URL ของไฟล์ MP4 ที่เข้าถึงได้เพื่อส่งต่อให้ตัวสร้างสื่อปลายทาง"
+          ,
+          "dependsOn": {
+            "field": "mode",
+            "value": "video-edit"
+          }
+        },
+        {
+          "id": "referenceNotes",
+          "type": "textarea",
+          "label": "Reference Notes",
+          "labelTh": "หมายเหตุอ้างอิง",
+          "placeholder": "Keep the face and composition, change only lighting and color grade...",
+          "placeholderTh": "คงใบหน้าและองค์ประกอบเดิม เปลี่ยนเฉพาะแสงและเกรดสี...",
+          "helpText": "Explain what must stay, what can change, and which reference matters most.",
+          "helpTextTh": "อธิบายว่าต้องคงอะไรไว้ เปลี่ยนอะไรได้ และภาพไหนสำคัญที่สุด",
+          "dependsOn": {
+            "field": "mode",
+            "values": ["image-to-image", "image-to-video", "video-edit"]
+          },
+          "rows": 3
+        }
+      ]
+    },
+    {
+      "id": "characters",
+      "title": "Characters",
+      "titleTh": "ตัวละคร",
+      "icon": "users",
+      "collapsible": true,
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "characters",
+          "type": "textarea",
+          "label": "Character Descriptions",
+          "labelTh": "รายละเอียดตัวละคร",
+          "placeholder": "Mia: Thai woman, late 20s, long black hair, white linen shirt, gentle smile",
+          "placeholderTh": "Mia: หญิงไทยวัยปลาย 20s ผมดำยาว เสื้อเชิ้ตลินินสีขาว ยิ้มอ่อน",
+          "helpText": "One character per line. Format: Name: visual description.",
+          "helpTextTh": "หนึ่งตัวละครต่อหนึ่งบรรทัด รูปแบบ: ชื่อ: คำอธิบายลักษณะ",
+          "rows": 3
+        },
+        {
+          "id": "characterConsistency",
+          "type": "boolean",
+          "label": "Enable Character Consistency",
+          "labelTh": "เปิดใช้ความคงที่ของตัวละคร",
+          "helpText": "Adds a compact character reference block to the prompt.",
+          "helpTextTh": "เพิ่มบล็อกอ้างอิงตัวละครแบบย่อเข้าไปใน prompt",
+          "default": false
+        }
+      ]
+    },
+    {
+      "id": "advanced",
+      "title": "Advanced",
+      "titleTh": "ขั้นสูง",
+      "icon": "sparkles",
+      "collapsible": true,
+      "collapsed": true,
+      "fields": [
+        {
+          "id": "numberOfVariations",
+          "type": "select",
+          "label": "Prompt Variations",
+          "labelTh": "จำนวนเวอร์ชันของพรอมต์",
+          "helpText": "Return multiple prompt options with different film grammar decisions.",
+          "helpTextTh": "ให้คืน prompt หลายเวอร์ชันโดยเปลี่ยน film grammar บางส่วน",
+          "default": 1,
+          "options": [
+            { "value": 1, "label": "1 Variation", "labelTh": "1 เวอร์ชัน" },
+            { "value": 2, "label": "2 Variations", "labelTh": "2 เวอร์ชัน" },
+            { "value": 3, "label": "3 Variations", "labelTh": "3 เวอร์ชัน" },
+            { "value": 4, "label": "4 Variations", "labelTh": "4 เวอร์ชัน" }
+          ]
+        },
+        {
+          "id": "negativeElements",
+          "type": "textarea",
+          "label": "Avoid / Guardrail Notes",
+          "labelTh": "ข้อควรหลีกเลี่ยง",
+          "placeholder": "avoid plastic skin, avoid generic stock-photo smile, avoid clipped highlights",
+          "placeholderTh": "หลีกเลี่ยงผิวพลาสติก หลีกเลี่ยงยิ้มแบบ stock photo หลีกเลี่ยงไฮไลต์ล้น",
+          "helpText": "Creative guardrails only. This is not treated as a native Grok negative prompt parameter.",
+          "helpTextTh": "ใช้เป็นข้อกำกับเชิงสร้างสรรค์เท่านั้น ไม่ถือเป็น negative prompt แบบ native ของ Grok",
+          "rows": 3
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "mode": "mode",
+    "description": "description",
+    "outputLanguage": "outputLanguage",
+    "style": "style",
+    "aspectRatio": "aspectRatio",
+    "imageResolution": "imageResolution",
+    "duration": "duration",
+    "resolution": "resolution",
+    "shotType": "shotType",
+    "cameraMovement": "cameraMovement",
+    "videoEditStrength": "videoEditStrength",
+    "filmLookPreset": "filmLookPreset",
+    "genreTone": "genreTone",
+    "era": "era",
+    "cameraFormat": "cameraFormat",
+    "lensProfile": "lensProfile",
+    "depthOfField": "depthOfField",
+    "cameraRig": "cameraRig",
+    "compositionRule": "compositionRule",
+    "lighting": "lighting",
+    "colorPalette": "colorPalette",
+    "colorGrade": "colorGrade",
+    "contrastProfile": "contrastProfile",
+    "grainLevel": "grainLevel",
+    "mood": "mood",
+    "reference_images": "reference_images",
+    "sourceVideoUrl": "sourceVideoUrl",
+    "referenceNotes": "referenceNotes",
+    "characters": "characters",
+    "characterConsistency": "characterConsistency",
+    "numberOfVariations": "numberOfVariations",
+    "negativeElements": "negativeElements"
+  }
+}

@@ -1,0 +1,758 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Grok Imagine Prompt Planner Input Schema",
+  "description": "Input specification for generating optimized prompt packages for Grok Imagine-style media workflows. Covers text-to-image, image editing, text-to-video, image-to-video, and existing video editing. Separates API-supported controls from cinematic prompt hints so a downstream media-generation skill can execute through the app gateway.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["description", "mode"],
+  "properties": {
+    "mode": {
+      "type": "string",
+      "title": "1. Prompt Planning Mode",
+      "description": "Target media workflow for prompt planning. `video-edit` plans edits for an existing MP4 via video_url. `image-to-image` and `image-to-video` accept URLs or data URIs in reference_images.",
+      "enum": [
+        "text-to-image",
+        "image-to-image",
+        "text-to-video",
+        "image-to-video",
+        "video-edit"
+      ],
+      "enumDescriptions": {
+        "text-to-image": "Plan prompt(s) for image generation from text",
+        "image-to-image": "Plan prompt(s) for editing or restyling image(s) using 1-3 source images",
+        "text-to-video": "Plan prompt(s) for video generation from text",
+        "image-to-video": "Plan prompt(s) for animating a source image into a video",
+        "video-edit": "Plan prompt(s) for editing an existing MP4 video with natural language"
+      },
+      "default": "text-to-image"
+    },
+    "description": {
+      "type": "string",
+      "title": "2. Creative Brief",
+      "description": "Core creative brief. Describe the subject, action, environment, emotional tone, and the specific cinematic outcome you want.",
+      "minLength": 5,
+      "maxLength": 5000,
+      "examples": [
+        "A weary detective under red neon rain, cinematic neo-noir frame with reflective wet pavement",
+        "Transform this family portrait into a warm 1990s romantic drama still with subtle film grain",
+        "A sweeping sci-fi city reveal at dusk with massive scale and controlled camera motion",
+        "Edit this MP4 so the woman now wears a silver necklace and the lighting becomes warm golden hour"
+      ]
+    },
+    "outputLanguage": {
+      "type": "string",
+      "title": "3. Prompt Language",
+      "description": "Language used in the generated prompt text.",
+      "enum": ["en", "th"],
+      "enumDescriptions": {
+        "en": "English prompt",
+        "th": "Thai prompt with technical film terms kept in English when natural"
+      },
+      "default": "en"
+    },
+    "style": {
+      "type": "string",
+      "title": "4. Visual Style",
+      "description": "High-level visual style. This is a creative hint layer, not a direct xAI API parameter.",
+      "enum": [
+        "cinematic",
+        "anime",
+        "cartoon",
+        "realistic",
+        "documentary",
+        "artistic",
+        "commercial",
+        "fantasy",
+        "noir",
+        "vintage"
+      ],
+      "enumDescriptions": {
+        "cinematic": "Film-like quality, deliberate framing, dramatic lighting",
+        "anime": "Japanese animation look, cel-shaded, expressive color",
+        "cartoon": "Western animation look, bold outlines, exaggerated features",
+        "realistic": "Photorealistic, grounded materials, natural texture",
+        "documentary": "Observational, naturalistic, unposed feel",
+        "artistic": "Painterly, mixed-media, or abstract treatment",
+        "commercial": "Polished product or advertising aesthetic",
+        "fantasy": "Mythic, magical, heightened worldbuilding",
+        "noir": "High contrast, shadow-heavy, moody black-and-white or desaturated style",
+        "vintage": "Retro filmic treatment, aged palette, historical feel"
+      },
+      "default": "cinematic"
+    },
+    "filmLookPreset": {
+      "type": "string",
+      "title": "5. Film Look Preset",
+      "description": "Cinematic sub-preset used to build a stronger film grammar block in the prompt. Creative hint only.",
+      "enum": [
+        "auto",
+        "blockbuster",
+        "indie_naturalistic",
+        "neo_noir",
+        "period_drama",
+        "sci_fi_epic",
+        "elevated_horror",
+        "romantic_drama",
+        "coming_of_age",
+        "crime_thriller",
+        "fantasy_epic",
+        "arthouse_minimal"
+      ],
+      "enumDescriptions": {
+        "auto": "Auto-select from the brief",
+        "blockbuster": "Big scale, bold contrast, polished spectacle",
+        "indie_naturalistic": "Soft realism, available light, restrained polish",
+        "neo_noir": "Night mood, contrast, reflective surfaces, tension",
+        "period_drama": "Elegant production design, historical texture, controlled light",
+        "sci_fi_epic": "Large scale future worlds, graphic light, clean silhouettes",
+        "elevated_horror": "Atmospheric dread, low-key light, unsettling composition",
+        "romantic_drama": "Warm emotional softness, flattering light, intimate framing",
+        "coming_of_age": "Youthful warmth, nostalgic realism, gentle kinetic energy",
+        "crime_thriller": "Tension, grit, procedural realism, darker palette",
+        "fantasy_epic": "Mythic scale, magical atmosphere, painterly grandeur",
+        "arthouse_minimal": "Sparse composition, negative space, understated restraint"
+      },
+      "default": "auto"
+    },
+    "genreTone": {
+      "type": "string",
+      "title": "6. Genre Tone",
+      "description": "Narrative tone to steer mood, pacing, framing, and visual emphasis. Creative hint only.",
+      "enum": [
+        "auto",
+        "action",
+        "mystery",
+        "romance",
+        "thriller",
+        "horror",
+        "drama",
+        "comedy",
+        "sci_fi",
+        "fantasy",
+        "historical",
+        "documentary"
+      ],
+      "enumDescriptions": {
+        "auto": "Infer from the brief",
+        "action": "Momentum, kinetic energy, dynamic composition",
+        "mystery": "Ambiguity, clues, tension through framing",
+        "romance": "Softness, intimacy, emotional warmth",
+        "thriller": "Suspense, urgency, controlled visual pressure",
+        "horror": "Unease, dread, darkness, unsettling detail",
+        "drama": "Emotion-driven realism and performance focus",
+        "comedy": "Lightness, clarity, readable visual beats",
+        "sci_fi": "Future tech, world scale, engineered visual logic",
+        "fantasy": "Wonder, myth, supernatural spectacle",
+        "historical": "Period cues, authenticity, texture",
+        "documentary": "Observed reality, truthful visual tone"
+      },
+      "default": "auto"
+    },
+    "aspectRatio": {
+      "type": "string",
+      "title": "7. Aspect Ratio",
+      "description": "API-supported aspect ratio. xAI supports this for image generation and video generation. For single-image edits, the API may keep the original input ratio.",
+      "enum": [
+        "auto",
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4",
+        "3:2",
+        "2:3",
+        "2:1",
+        "1:2",
+        "19.5:9",
+        "9:19.5",
+        "20:9",
+        "9:20"
+      ],
+      "enumDescriptions": {
+        "auto": "Let the model choose the best ratio",
+        "1:1": "Square — social posts, thumbnails",
+        "16:9": "Landscape widescreen — cinematic, YouTube, presentations",
+        "9:16": "Vertical mobile — stories, reels, shorts",
+        "4:3": "Classic presentation or photography frame",
+        "3:4": "Vertical presentation or portrait frame",
+        "3:2": "Classic photography landscape",
+        "2:3": "Classic photography portrait",
+        "2:1": "Banner or extra-wide editorial crop",
+        "1:2": "Tall banner or poster crop",
+        "19.5:9": "Modern smartphone display",
+        "9:19.5": "Modern smartphone vertical display",
+        "20:9": "Ultra-wide landscape display",
+        "9:20": "Ultra-wide vertical display"
+      },
+      "default": "16:9"
+    },
+    "imageResolution": {
+      "type": "string",
+      "title": "8. Image Resolution",
+      "description": "API-supported image output resolution note for downstream image generation or multi-image editing.",
+      "enum": ["auto", "1k", "2k"],
+      "enumDescriptions": {
+        "auto": "Use the model default",
+        "1k": "Standard image resolution",
+        "2k": "Higher image resolution"
+      },
+      "default": "auto"
+    },
+    "duration": {
+      "type": "integer",
+      "title": "9. Video Duration (seconds)",
+      "description": "API-supported video duration note for downstream text-to-video and image-to-video execution. xAI allows 1-15 seconds. Existing video editing keeps the source duration.",
+      "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+      "default": 6
+    },
+    "resolution": {
+      "type": "string",
+      "title": "10. Video Resolution",
+      "description": "API-supported output resolution note for downstream text-to-video and image-to-video execution. Existing video editing keeps the source resolution up to 720p.",
+      "enum": ["480p", "720p"],
+      "enumDescriptions": {
+        "480p": "Faster generation",
+        "720p": "Higher detail"
+      },
+      "default": "480p"
+    },
+    "shotType": {
+      "type": "string",
+      "title": "11. Shot Type",
+      "description": "Shot framing / subject distance. Creative prompt hint.",
+      "enum": [
+        "auto",
+        "establishing",
+        "extreme_wide",
+        "wide",
+        "medium_wide",
+        "medium",
+        "medium_close_up",
+        "close_up",
+        "extreme_close_up",
+        "two_shot",
+        "over_the_shoulder",
+        "pov",
+        "aerial"
+      ],
+      "enumDescriptions": {
+        "auto": "Infer from the brief",
+        "establishing": "Set the environment and scene geography",
+        "extreme_wide": "Very large environment scale",
+        "wide": "Full body and context",
+        "medium_wide": "Knee-up, movement-friendly framing",
+        "medium": "Waist-up, balanced context and emotion",
+        "medium_close_up": "Chest-up, intimate but readable",
+        "close_up": "Face or key detail emphasis",
+        "extreme_close_up": "Micro detail, eyes, texture, object detail",
+        "two_shot": "Two subjects in one frame",
+        "over_the_shoulder": "Conversational perspective",
+        "pov": "First-person perspective",
+        "aerial": "High-angle or drone-style view"
+      },
+      "default": "auto"
+    },
+    "cameraMovement": {
+      "type": "string",
+      "title": "12. Camera Movement",
+      "description": "Virtual camera motion. Creative prompt hint for video modes.",
+      "enum": [
+        "auto",
+        "static",
+        "pan",
+        "tilt",
+        "dolly",
+        "tracking",
+        "truck",
+        "crane",
+        "drone",
+        "handheld",
+        "gimbal",
+        "zoom",
+        "whip_pan",
+        "arc",
+        "rack_focus"
+      ],
+      "enumDescriptions": {
+        "auto": "Infer from the brief",
+        "static": "Locked, stable frame",
+        "pan": "Horizontal reveal or follow",
+        "tilt": "Vertical reveal",
+        "dolly": "Move in or out through space",
+        "tracking": "Follow the subject",
+        "truck": "Lateral camera move",
+        "crane": "Sweeping vertical move",
+        "drone": "Smooth aerial motion",
+        "handheld": "Human, raw, imperfect motion",
+        "gimbal": "Smooth stabilized movement",
+        "zoom": "Lens zoom in or out",
+        "whip_pan": "Fast energetic transition",
+        "arc": "Move around the subject",
+        "rack_focus": "Shift focus between planes or subjects"
+      },
+      "default": "auto"
+    },
+    "cameraRig": {
+      "type": "string",
+      "title": "13. Camera Rig",
+      "description": "Physical shooting feel to emulate. Creative prompt hint.",
+      "enum": [
+        "auto",
+        "tripod",
+        "dolly_slider",
+        "steadicam",
+        "shoulder_mount",
+        "handheld",
+        "gimbal",
+        "crane_jib",
+        "drone"
+      ],
+      "enumDescriptions": {
+        "auto": "Infer from the brief",
+        "tripod": "Stable, composed, locked-off",
+        "dolly_slider": "Controlled cinematic movement",
+        "steadicam": "Smooth human-follow movement",
+        "shoulder_mount": "Grounded live-action realism",
+        "handheld": "Intentional shake and immediacy",
+        "gimbal": "Modern stabilized floating motion",
+        "crane_jib": "Elegant rising or sweeping moves",
+        "drone": "Aerial perspective"
+      },
+      "default": "auto"
+    },
+    "cameraFormat": {
+      "type": "string",
+      "title": "14. Camera Format",
+      "description": "Capture medium to emulate. Creative prompt hint.",
+      "enum": [
+        "auto",
+        "digital_clean",
+        "35mm_film",
+        "16mm_film",
+        "65mm_epic",
+        "imax",
+        "medium_format",
+        "smartphone"
+      ],
+      "enumDescriptions": {
+        "auto": "Infer from the brief",
+        "digital_clean": "Modern clean digital cinema look",
+        "35mm_film": "Classic filmic texture and balance",
+        "16mm_film": "Grittier, more textured, documentary-adjacent",
+        "65mm_epic": "Large-format grandeur and detail",
+        "imax": "Ultra-scale premium spectacle feel",
+        "medium_format": "Premium still-photography depth and detail",
+        "smartphone": "Contemporary phone-camera realism"
+      },
+      "default": "auto"
+    },
+    "lensProfile": {
+      "type": "string",
+      "title": "15. Lens Profile",
+      "description": "Lens behavior to emulate. Creative prompt hint.",
+      "enum": [
+        "auto",
+        "anamorphic_24mm",
+        "anamorphic_35mm",
+        "spherical_24mm",
+        "spherical_35mm",
+        "spherical_50mm",
+        "portrait_85mm",
+        "telephoto_135mm",
+        "macro",
+        "vintage_soft",
+        "tilt_shift"
+      ],
+      "enumDescriptions": {
+        "auto": "Infer from the brief",
+        "anamorphic_24mm": "Wide anamorphic with lens character and flare",
+        "anamorphic_35mm": "Balanced anamorphic cinematic view",
+        "spherical_24mm": "Clean wide-angle realism",
+        "spherical_35mm": "Classic balanced narrative lens",
+        "spherical_50mm": "Natural perspective",
+        "portrait_85mm": "Compressed flattering portrait look",
+        "telephoto_135mm": "Compressed distant subject isolation",
+        "macro": "Extreme close texture and object detail",
+        "vintage_soft": "Older glass, softer character, bloom",
+        "tilt_shift": "Selective plane of focus, stylized perspective"
+      },
+      "default": "auto"
+    },
+    "depthOfField": {
+      "type": "string",
+      "title": "16. Depth of Field",
+      "description": "Focus falloff treatment. Creative prompt hint.",
+      "enum": ["auto", "deep_focus", "moderate", "shallow", "very_shallow"],
+      "enumDescriptions": {
+        "auto": "Infer from the brief",
+        "deep_focus": "Foreground and background both clear",
+        "moderate": "Balanced separation",
+        "shallow": "Subject isolated from background",
+        "very_shallow": "Strong bokeh and subject separation"
+      },
+      "default": "auto"
+    },
+    "lighting": {
+      "type": "string",
+      "title": "17. Lighting Style",
+      "description": "Lighting treatment. Creative prompt hint.",
+      "enum": [
+        "auto",
+        "natural",
+        "golden_hour",
+        "blue_hour",
+        "studio",
+        "practical",
+        "neon",
+        "dramatic",
+        "soft",
+        "rim_light",
+        "silhouette",
+        "high_key",
+        "low_key",
+        "volumetric"
+      ],
+      "enumDescriptions": {
+        "auto": "Infer from style and mood",
+        "natural": "Available light realism",
+        "golden_hour": "Warm sunset softness",
+        "blue_hour": "Cool twilight atmosphere",
+        "studio": "Controlled studio setup",
+        "practical": "Motivated by visible lamps/screens/neon signs",
+        "neon": "Colored emissive lighting",
+        "dramatic": "Directional contrast and mood",
+        "soft": "Diffused, flattering, gentle falloff",
+        "rim_light": "Back or edge separation",
+        "silhouette": "Backlit outline emphasis",
+        "high_key": "Bright, clean, low contrast",
+        "low_key": "Dark, shadow-heavy, contrasty",
+        "volumetric": "Atmospheric beams, haze, air texture"
+      },
+      "default": "auto"
+    },
+    "colorPalette": {
+      "type": "string",
+      "title": "18. Color Palette",
+      "description": "Overall palette direction. Creative prompt hint.",
+      "enum": [
+        "auto",
+        "warm",
+        "cool",
+        "vibrant",
+        "pastel",
+        "monochrome",
+        "teal_orange",
+        "earthy",
+        "neon_cyberpunk",
+        "vintage_film",
+        "muted_natural"
+      ],
+      "enumDescriptions": {
+        "auto": "Infer from the brief",
+        "warm": "Amber, gold, comfort",
+        "cool": "Blue-gray restraint",
+        "vibrant": "Punchy saturated color",
+        "pastel": "Soft romantic color",
+        "monochrome": "Single-family or black-and-white discipline",
+        "teal_orange": "Blockbuster complementary split",
+        "earthy": "Organic neutrals and greens",
+        "neon_cyberpunk": "Pink, cyan, nightlife contrast",
+        "vintage_film": "Aged highlights, faded blacks, film bias",
+        "muted_natural": "Soft realistic desaturation"
+      },
+      "default": "auto"
+    },
+    "colorGrade": {
+      "type": "string",
+      "title": "19. Color Grade",
+      "description": "Post-style grade to emulate. Creative prompt hint.",
+      "enum": [
+        "auto",
+        "clean_digital",
+        "warm_film",
+        "cool_indie",
+        "teal_orange_blockbuster",
+        "bleach_bypass",
+        "silver_retention",
+        "faded_vintage",
+        "noir_monochrome",
+        "emerald_gold",
+        "moonlit_blue"
+      ],
+      "enumDescriptions": {
+        "auto": "Infer from film preset and tone",
+        "clean_digital": "Neutral modern finishing",
+        "warm_film": "Golden, emotional film warmth",
+        "cool_indie": "Cool restrained indie grade",
+        "teal_orange_blockbuster": "High-contrast commercial blockbuster grade",
+        "bleach_bypass": "Desaturated metallic contrast",
+        "silver_retention": "Cool dense blacks with subtle color",
+        "faded_vintage": "Lifted blacks and aged highlights",
+        "noir_monochrome": "Black-and-white with contrast discipline",
+        "emerald_gold": "Luxury green-gold palette",
+        "moonlit_blue": "Night blue dramatic grade"
+      },
+      "default": "auto"
+    },
+    "contrastProfile": {
+      "type": "string",
+      "title": "20. Contrast Profile",
+      "description": "Contrast treatment. Creative prompt hint.",
+      "enum": ["auto", "soft_low_contrast", "balanced", "high_contrast", "crushed_blacks"],
+      "enumDescriptions": {
+        "auto": "Infer from the brief",
+        "soft_low_contrast": "Gentle roll-off and flatter curve",
+        "balanced": "Moderate cinematic contrast",
+        "high_contrast": "Strong separation and punch",
+        "crushed_blacks": "Dense shadows with aggressive black floor"
+      },
+      "default": "auto"
+    },
+    "grainLevel": {
+      "type": "string",
+      "title": "21. Film Grain",
+      "description": "Film texture strength. Creative prompt hint.",
+      "enum": ["auto", "none", "subtle", "medium", "heavy"],
+      "enumDescriptions": {
+        "auto": "Infer from camera format and preset",
+        "none": "Clean image",
+        "subtle": "Very light film texture",
+        "medium": "Noticeable but refined grain",
+        "heavy": "Strong grain texture"
+      },
+      "default": "auto"
+    },
+    "era": {
+      "type": "string",
+      "title": "22. Era / Time Signature",
+      "description": "Time-period flavor to infuse into wardrobe, production design, color, and lens behavior. Creative prompt hint.",
+      "enum": [
+        "auto",
+        "contemporary",
+        "1920s",
+        "1950s",
+        "1970s",
+        "1980s",
+        "1990s",
+        "2000s",
+        "near_future",
+        "far_future"
+      ],
+      "enumDescriptions": {
+        "auto": "Infer from the brief",
+        "contemporary": "Modern present-day cues",
+        "1920s": "Art deco, early cinema, period elegance",
+        "1950s": "Mid-century styling and color",
+        "1970s": "Warm, textured, analog-heavy feel",
+        "1980s": "Bold practicals, contrast, period pop",
+        "1990s": "Soft realism and grounded nostalgia",
+        "2000s": "Cleaner digital-era visual cues",
+        "near_future": "Believable near-term futurism",
+        "far_future": "Advanced speculative worldbuilding"
+      },
+      "default": "auto"
+    },
+    "compositionRule": {
+      "type": "string",
+      "title": "23. Composition Rule",
+      "description": "Composition strategy to emphasize in the prompt. Creative prompt hint.",
+      "enum": [
+        "auto",
+        "rule_of_thirds",
+        "centered_symmetry",
+        "leading_lines",
+        "negative_space",
+        "layered_depth",
+        "frame_within_frame",
+        "wide_establishing_balance"
+      ],
+      "enumDescriptions": {
+        "auto": "Infer from the brief",
+        "rule_of_thirds": "Classic cinematic placement",
+        "centered_symmetry": "Controlled centered formal composition",
+        "leading_lines": "Use lines to guide the eye",
+        "negative_space": "Intentional open space around the subject",
+        "layered_depth": "Foreground, midground, background separation",
+        "frame_within_frame": "Doorways, windows, practical framing",
+        "wide_establishing_balance": "Environmental storytelling with scale"
+      },
+      "default": "auto"
+    },
+    "mood": {
+      "type": "string",
+      "title": "24. Mood / Atmosphere",
+      "description": "Emotional tone to emphasize.",
+      "enum": [
+        "auto",
+        "warm_inviting",
+        "dramatic",
+        "peaceful",
+        "energetic",
+        "mysterious",
+        "romantic",
+        "nostalgic",
+        "futuristic",
+        "dark_gritty",
+        "melancholic",
+        "hopeful"
+      ],
+      "enumDescriptions": {
+        "auto": "Infer from the brief",
+        "warm_inviting": "Comfortable, welcoming, human warmth",
+        "dramatic": "Tension and intensity",
+        "peaceful": "Quiet serenity",
+        "energetic": "Movement and momentum",
+        "mysterious": "Ambiguity and intrigue",
+        "romantic": "Tender intimacy",
+        "nostalgic": "Memory-rich emotional softness",
+        "futuristic": "Forward-looking technological atmosphere",
+        "dark_gritty": "Harsh, urban, worn-in realism",
+        "melancholic": "Sad, reflective, poetic",
+        "hopeful": "Lift, optimism, emotional openness"
+      },
+      "default": "auto"
+    },
+    "characters": {
+      "type": "string",
+      "title": "25. Character Descriptions",
+      "description": "Character descriptions, one per line. Format: Name: visual description. Used as prompt guidance, not a native API field.",
+      "examples": [
+        "Mia: Thai woman, late 20s, long black hair, white linen shirt, tired eyes, gentle smile",
+        "Detective: Male, 40s, stubble, dark trench coat, rain-soaked, weary expression"
+      ],
+      "default": ""
+    },
+    "characterConsistency": {
+      "type": "boolean",
+      "title": "26. Character Consistency",
+      "description": "When true, the prompt should include a compact character reference block for appearance consistency across outputs.",
+      "default": false
+    },
+    "reference_images": {
+      "type": "array",
+      "title": "27. Reference Images",
+      "description": "Reference sources for image-edit or image-to-video prompt planning. Accept up to 3 sources. Each item may be a public image URL or a base64 data URI such as data:image/png;base64,... These are intended for downstream gateway execution.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "maxItems": 3,
+      "default": []
+    },
+    "referenceNotes": {
+      "type": "string",
+      "title": "28. Reference Notes",
+      "description": "What to preserve, what to change, and which reference matters most when the downstream generation skill uses the references.",
+      "examples": [
+        "Keep the face and pose from image 1, borrow wardrobe colors from image 2, change lighting to golden hour.",
+        "Preserve the city skyline layout but make the mood closer to a dystopian neo-noir thriller."
+      ],
+      "default": ""
+    },
+    "sourceVideoUrl": {
+      "type": "string",
+      "title": "29. Source Video URL",
+      "description": "Required for video-edit mode. Use a public MP4 URL. The downstream generation skill should preserve the input duration/aspect ratio/resolution; xAI video editing caps output at 720p.",
+      "default": ""
+    },
+    "videoEditStrength": {
+      "type": "string",
+      "title": "30. Video Edit Strength",
+      "description": "How aggressively the edit should transform the existing video. Creative hint for edit prompts.",
+      "enum": ["auto", "subtle", "balanced", "aggressive"],
+      "enumDescriptions": {
+        "auto": "Infer from the brief",
+        "subtle": "Minimal scene-preserving modifications",
+        "balanced": "Visible change while retaining core footage",
+        "aggressive": "Strong transformation while still respecting the source"
+      },
+      "default": "auto"
+    },
+    "numberOfVariations": {
+      "type": "integer",
+      "title": "31. Number of Variations",
+      "description": "How many prompt variations to return. Matches xAI image batch behavior conceptually, but here it is only for prompt planning.",
+      "enum": [1, 2, 3, 4],
+      "default": 1
+    },
+    "negativeElements": {
+      "type": "string",
+      "title": "32. Avoid / Guardrail Notes",
+      "description": "App-level creative guardrails only. xAI docs do not currently document a native negative prompt parameter for Grok Imagine. Use this to tell the prompt writer what to minimize or avoid.",
+      "examples": [
+        "avoid plastic-looking skin, avoid over-saturated highlights, avoid extra fingers",
+        "avoid generic stock-photo smile, avoid flat front lighting"
+      ],
+      "default": ""
+    },
+    "pipeline": {
+      "type": "string",
+      "title": "33. Legacy Pipeline",
+      "description": "Deprecated compatibility field. This skill is prompt-only and always behaves as `prompt_only`. Actual generation is delegated to a separate media-generation skill that executes through the app gateway for billing and credit accounting.",
+      "enum": ["prompt_only"],
+      "enumDescriptions": {
+        "prompt_only": "Generate the optimized prompt package only"
+      },
+      "default": "prompt_only",
+      "deprecated": true
+    }
+  },
+  "examples": [
+    {
+      "mode": "text-to-image",
+      "description": "A lone detective in the rain under red neon, reflective pavement, cinematic neo-noir still",
+      "style": "cinematic",
+      "filmLookPreset": "neo_noir",
+      "genreTone": "thriller",
+      "aspectRatio": "16:9",
+      "imageResolution": "2k",
+      "lighting": "low_key",
+      "colorGrade": "noir_monochrome",
+      "grainLevel": "medium",
+      "outputLanguage": "en"
+    },
+    {
+      "mode": "image-to-image",
+      "description": "Transform this portrait into a warm 1990s romantic drama frame",
+      "style": "cinematic",
+      "filmLookPreset": "romantic_drama",
+      "era": "1990s",
+      "lensProfile": "portrait_85mm",
+      "reference_images": ["https://example.com/portrait.jpg"],
+      "referenceNotes": "Preserve face, pose, and wardrobe silhouette; shift lighting and grade only.",
+      "outputLanguage": "en"
+    },
+    {
+      "mode": "text-to-video",
+      "description": "A giant spacecraft reveal over a futuristic city at dusk with strong scale and controlled motion",
+      "style": "cinematic",
+      "filmLookPreset": "sci_fi_epic",
+      "duration": 12,
+      "resolution": "720p",
+      "aspectRatio": "16:9",
+      "cameraMovement": "crane",
+      "cameraRig": "gimbal",
+      "outputLanguage": "en"
+    },
+    {
+      "mode": "image-to-video",
+      "description": "Animate this still so the model slowly turns toward camera and the curtain moves gently",
+      "style": "realistic",
+      "duration": 6,
+      "resolution": "480p",
+      "reference_images": ["data:image/jpeg;base64,/9j/..."],
+      "referenceNotes": "Keep framing and facial identity stable. Motion should remain subtle.",
+      "outputLanguage": "en"
+    },
+    {
+      "mode": "video-edit",
+      "description": "Give the woman a silver necklace and make the scene feel like warm golden hour drama",
+      "style": "cinematic",
+      "filmLookPreset": "romantic_drama",
+      "sourceVideoUrl": "https://example.com/source.mp4",
+      "videoEditStrength": "subtle",
+      "outputLanguage": "en",
+      "pipeline": "prompt_only"
+    }
+  ]
+}
