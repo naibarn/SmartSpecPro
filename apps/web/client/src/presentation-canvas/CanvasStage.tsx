@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  type ReactNode,
   useRef,
   useState,
   type DragEvent,
@@ -9,7 +10,11 @@ import {
   type WheelEvent as ReactWheelEvent,
 } from "react";
 
-import type { PresentationElement, PresentationSlideBackground } from "@/lib/presentationEditorState";
+import type {
+  PresentationElement,
+  PresentationElementPatch,
+  PresentationSlideBackground,
+} from "@/lib/presentationEditorState";
 import type { SnapGuide } from "./snap/SnapEngine";
 import { CanvasObjects } from "./CanvasObjects";
 import type { CanvasMediaMotionTiming } from "./CanvasObjects";
@@ -17,10 +22,15 @@ import { TransformHandles } from "./components/TransformHandles";
 import type { ArrangeDirection, PresentationCanvasSize } from "@/lib/presentationEditorState";
 import { Button } from "@/components/ui/button";
 
+export interface CanvasStageOverlayRenderContext {
+  interactionScale: number;
+}
+
 interface CanvasStageProps {
   elements: PresentationElement[];
   canvasSize: PresentationCanvasSize;
   selectedElementIds: string[];
+  activeElementIds?: string[];
   snapGuides: SnapGuide[];
   showElementFrames?: boolean;
   autoPlayVideos?: boolean;
@@ -36,7 +46,7 @@ interface CanvasStageProps {
     offsetY: number;
   };
   onViewportChange?: (viewport: { scale: number; offsetX: number; offsetY: number }) => void;
-  onSelectElement: (elementId: string, options?: { additive?: boolean }) => void;
+  onSelectElement: (elementId: string, options?: { additive?: boolean; preferElement?: boolean }) => void;
   onFocusElement?: (elementId: string) => void;
   onMoveSelection: (deltaX: number, deltaY: number) => void;
   onResizeSelection: (width: number, height: number) => void;
@@ -48,6 +58,12 @@ interface CanvasStageProps {
     bounds: { x: number; y: number; width: number; height: number },
     options?: { additive?: boolean },
   ) => void;
+  cropModeElementId?: string | null;
+  cropModeTarget?: "content" | "frame";
+  onAdjustMediaCrop?: (elementId: string, patch: PresentationElementPatch) => void;
+  onToggleCropMode?: (elementId: string | null) => void;
+  onSetCropModeTarget?: (target: "content" | "frame") => void;
+  contentOverlay?: ReactNode | ((context: CanvasStageOverlayRenderContext) => ReactNode);
 }
 
 export const CANVAS_LIBRARY_ASSET_DRAG_MIME = "application/x-smartspec-canvas-library-asset-v1";
@@ -110,6 +126,7 @@ export function CanvasStage({
   elements,
   canvasSize,
   selectedElementIds,
+  activeElementIds,
   snapGuides,
   showElementFrames = true,
   autoPlayVideos = false,
@@ -130,6 +147,12 @@ export function CanvasStage({
   onDragEnd,
   onDropAsset,
   onMarqueeSelect,
+  cropModeElementId,
+  cropModeTarget,
+  onAdjustMediaCrop,
+  onToggleCropMode,
+  onSetCropModeTarget,
+  contentOverlay,
 }: CanvasStageProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [viewportSize, setViewportSize] = useState({ width: 1200, height: 680 });
@@ -145,6 +168,18 @@ export function CanvasStage({
   const panCaptureTargetRef = useRef<HTMLDivElement | null>(null);
   const marqueeStateRef = useRef<MarqueeDragState | null>(null);
   const touchGestureRef = useRef<TouchGestureState | null>(null);
+  const effectiveScale = viewport?.scale ?? 1;
+  const offsetX = viewport?.offsetX ?? 0;
+  const offsetY = viewport?.offsetY ?? 0;
+  const viewportStateRef = useRef({
+    viewport,
+    effectiveScale,
+    interactionScale: effectiveScale,
+    offsetX,
+    offsetY,
+  });
+  const viewportChangeRef = useRef(onViewportChange);
+  const marqueeSelectRef = useRef(onMarqueeSelect);
   const [marqueeBounds, setMarqueeBounds] = useState<{
     x: number;
     y: number;
@@ -152,9 +187,6 @@ export function CanvasStage({
     height: number;
   } | null>(null);
 
-  const effectiveScale = viewport?.scale ?? 1;
-  const offsetX = viewport?.offsetX ?? 0;
-  const offsetY = viewport?.offsetY ?? 0;
   const canvasWidth = canvasSize.width;
   const canvasHeight = canvasSize.height;
   const showTransformDock = showTransformDockProp;
@@ -180,6 +212,27 @@ export function CanvasStage({
   const baseScaleY = fittedStageSize.height / canvasHeight;
   const baseRenderScale = Math.max(0.0001, Math.min(baseScaleX, baseScaleY));
   const interactionScale = Math.max(0.0001, baseRenderScale * effectiveScale);
+  const resolvedContentOverlay = typeof contentOverlay === "function"
+    ? contentOverlay({ interactionScale })
+    : contentOverlay;
+
+  useEffect(() => {
+    viewportStateRef.current = {
+      viewport,
+      effectiveScale,
+      interactionScale,
+      offsetX,
+      offsetY,
+    };
+  }, [viewport, effectiveScale, interactionScale, offsetX, offsetY]);
+
+  useEffect(() => {
+    viewportChangeRef.current = onViewportChange;
+  }, [onViewportChange]);
+
+  useEffect(() => {
+    marqueeSelectRef.current = onMarqueeSelect;
+  }, [onMarqueeSelect]);
 
   useEffect(() => {
     const el = workspaceViewportRef.current;
@@ -262,7 +315,9 @@ export function CanvasStage({
 
     function handlePointerMove(event: PointerEvent) {
       const panState = panStateRef.current;
-      if (!panState || panState.pointerId !== event.pointerId || !viewport || !onViewportChange) {
+      const activeViewport = viewportStateRef.current.viewport;
+      const activeViewportChange = viewportChangeRef.current;
+      if (!panState || panState.pointerId !== event.pointerId || !activeViewport || !activeViewportChange) {
         const marqueeState = marqueeStateRef.current;
         if (!marqueeState || marqueeState.pointerId !== event.pointerId) {
           return;
@@ -288,12 +343,12 @@ export function CanvasStage({
       const totalDx = event.clientX - panState.startClientX;
       const totalDy = event.clientY - panState.startClientY;
       const clamped = clampViewportOffsets(
-        viewport.scale,
+        activeViewport.scale,
         panState.startOffsetX + totalDx,
         panState.startOffsetY + totalDy,
       );
-      onViewportChange({
-        scale: viewport.scale,
+      activeViewportChange({
+        scale: activeViewport.scale,
         offsetX: clamped.offsetX,
         offsetY: clamped.offsetY,
       });
@@ -309,7 +364,7 @@ export function CanvasStage({
           marqueeState.currentCanvasY,
         );
         clearMarqueeState(event.pointerId);
-        onMarqueeSelect?.(bounds, { additive: marqueeState.additive });
+        marqueeSelectRef.current?.(bounds, { additive: marqueeState.additive });
       }
       clearPanState(event.pointerId);
     }
@@ -325,7 +380,7 @@ export function CanvasStage({
       window.removeEventListener("pointerup", handlePointerUp);
       window.removeEventListener("pointercancel", handlePointerUp);
     };
-  }, [canvasHeight, canvasWidth, interactionScale, offsetX, offsetY, onMarqueeSelect, onViewportChange, viewport]);
+  }, [canvasHeight, canvasWidth]);
 
   function parseDroppedAsset(raw: string): CanvasStageDroppedAsset | null {
     if (!raw) {
@@ -358,9 +413,10 @@ export function CanvasStage({
     clientX: number,
     clientY: number,
   ): { x: number; y: number } {
+    const { interactionScale: nextInteractionScale, offsetX: nextOffsetX, offsetY: nextOffsetY } = viewportStateRef.current;
     const rect = container.getBoundingClientRect();
-    const x = (clientX - rect.left - offsetX) / interactionScale;
-    const y = (clientY - rect.top - offsetY) / interactionScale;
+    const x = (clientX - rect.left - nextOffsetX) / nextInteractionScale;
+    const y = (clientY - rect.top - nextOffsetY) / nextInteractionScale;
     return {
       x: Math.max(0, Math.min(canvasWidth, x)),
       y: Math.max(0, Math.min(canvasHeight, y)),
@@ -432,6 +488,8 @@ export function CanvasStage({
   }
 
   function handlePanPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    const activeViewport = viewportStateRef.current.viewport;
+    const activeViewportChange = viewportChangeRef.current;
     const isLeftButton = event.button === 0;
     const isMiddleButton = event.button === 1;
     const isRightButton = event.button === 2;
@@ -446,13 +504,14 @@ export function CanvasStage({
       return;
     }
 
-    if (
+    const shouldStartMarquee = (
       isLeftButton
       && !clickedCanvasObject
       && !isModifierPan
-      && onMarqueeSelect
-      && (!viewport || viewport.scale <= 1 || event.shiftKey)
-    ) {
+      && marqueeSelectRef.current
+      && (!activeViewport || activeViewport.scale <= 1)
+    );
+    if (shouldStartMarquee) {
       const point = toCanvasCoordinates(event.currentTarget, event.clientX, event.clientY);
       marqueeStateRef.current = {
         pointerId: event.pointerId,
@@ -474,7 +533,7 @@ export function CanvasStage({
       return;
     }
 
-    if (!viewport || !onViewportChange || viewport.scale <= 1) {
+    if (!activeViewport || !activeViewportChange || activeViewport.scale <= 1) {
       return;
     }
 
@@ -482,8 +541,8 @@ export function CanvasStage({
       pointerId: event.pointerId,
       startClientX: event.clientX,
       startClientY: event.clientY,
-      startOffsetX: viewport.offsetX,
-      startOffsetY: viewport.offsetY,
+      startOffsetX: activeViewport.offsetX,
+      startOffsetY: activeViewport.offsetY,
     };
     panCaptureTargetRef.current = event.currentTarget;
     event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -742,6 +801,7 @@ export function CanvasStage({
                     <CanvasObjects
                       elements={elements}
                       selectedElementIds={selectedElementIds}
+                      activeElementIds={activeElementIds}
                       onSelectElement={onSelectElement}
                       onFocusElement={onFocusElement}
                       onMoveSelection={onMoveSelection}
@@ -754,9 +814,15 @@ export function CanvasStage({
                       showElementFrames={showElementFrames}
                       autoPlayVideos={autoPlayVideos}
                       showVideoPlaybackToggle={showVideoPlaybackToggle}
+                      cropModeElementId={cropModeElementId}
+                      cropModeTarget={cropModeTarget}
+                      onAdjustMediaCrop={onAdjustMediaCrop}
+                      onToggleCropMode={onToggleCropMode}
+                      onSetCropModeTarget={onSetCropModeTarget}
                       clipTextToElementBounds={false}
                       mediaMotionTiming={mediaMotionTiming}
                     />
+                    {resolvedContentOverlay}
                     {marqueeBounds ? (
                       <div
                         data-testid="canvas-stage-marquee"
@@ -832,7 +898,7 @@ export function CanvasStage({
 
         {effectiveScale > 1 ? (
           <p className="pointer-events-none absolute bottom-2 right-2 rounded bg-black/70 px-2 py-1 text-[11px] text-white">
-            Scroll to zoom. Pan: drag empty area, Alt+drag, or right/middle-mouse drag. Select: Shift+drag marquee.
+            Scroll to zoom. Pan: Alt+drag or right/middle-mouse drag. Select: drag empty area. Shift adds to selection.
           </p>
         ) : null}
       </div>

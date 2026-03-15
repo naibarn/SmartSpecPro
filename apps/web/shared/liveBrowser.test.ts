@@ -8,6 +8,7 @@ import {
   liveBrowserEventEnvelopeSchema,
   liveBrowserSendCommandRequestSchema,
   liveBrowserSessionSchema,
+  getLiveBrowserEventSessionSnapshot,
 } from "./liveBrowser";
 
 const fixtureDir = path.resolve(
@@ -38,6 +39,39 @@ describe("live browser shared contracts", () => {
       eventId: "lbe_demo_123",
       sessionId: "lbs_demo_123",
       type: "approval_requested",
+    });
+  });
+
+  it("extracts a typed session snapshot from event payloads", () => {
+    const parsed = liveBrowserEventEnvelopeSchema.parse({
+      eventId: "lbe_demo_snapshot",
+      sessionId: "lbs_demo_123",
+      sessionVersion: 13,
+      type: "command_started",
+      timestamp: "2026-03-13T01:00:00Z",
+      payload: {
+        session: {
+          sessionId: "lbs_demo_123",
+          tenantId: "tenant-123",
+          userId: 42,
+          sourceType: "automation",
+          status: "agent_running",
+          controlMode: "agent_control",
+          sessionVersion: 13,
+          policyContext: {},
+          browserContextRef: {},
+          activeTabCount: 1,
+          startedAt: "2026-03-13T00:55:00Z",
+          lastActivityAt: "2026-03-13T01:00:00Z",
+        },
+      },
+      cursor: "lbs_demo_123:13:lbe_demo_snapshot",
+    });
+
+    expect(getLiveBrowserEventSessionSnapshot(parsed)).toMatchObject({
+      sessionId: "lbs_demo_123",
+      sessionVersion: 13,
+      status: "agent_running",
     });
   });
 

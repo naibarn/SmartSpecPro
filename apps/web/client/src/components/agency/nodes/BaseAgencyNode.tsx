@@ -8,6 +8,7 @@ import { AggregatorNodeCard } from "./AggregatorNodeCard";
 import { KnowledgeBaseNodeCard } from "./KnowledgeBaseNodeCard";
 import { SkillCallNodeCard } from "./SkillCallNodeCard";
 import { HumanApprovalNodeCard } from "./HumanApprovalNodeCard";
+import { BrowserSessionNodeCard } from "./BrowserSessionNodeCard";
 
 /**
  * Single ReactFlow node type dispatcher.
@@ -30,6 +31,8 @@ export const BaseAgencyNode = memo(function BaseAgencyNode(props: NodeProps<Agen
       return <SkillCallNodeCard {...props} />;
     case "human_approval":
       return <HumanApprovalNodeCard {...props} />;
+    case "browser_session":
+      return <BrowserSessionNodeCard {...props} />;
     default:
       return <AgentNodeCard {...props} />;
   }

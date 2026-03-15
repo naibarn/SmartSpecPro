@@ -19,6 +19,7 @@ import {
   Select,
   SelectContent,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -1212,6 +1213,8 @@ export default function MediaStudio() {
     }
 
     if (llmModelManuallySet) {
+      // User explicitly chose "Auto" (empty string) — respect that choice
+      if (!selectedLlmModel) return;
       const nextModelId = pickEnabledModelId({
         preferredId: selectedLlmModel,
         allowedIds: enabledVisionModelIds,
@@ -3993,22 +3996,29 @@ export default function MediaStudio() {
                       )}
                     </label>
                     <Select
-                      value={selectedLlmModel || undefined}
+                      value={selectedLlmModel || "__auto__"}
                       onValueChange={(value) => {
-                        setSelectedLlmModel(value);
-                        setLlmModelManuallySet(true); // Mark as user's manual choice
+                        setSelectedLlmModel(value === "__auto__" ? "" : value);
+                        // Any explicit selection (including Auto) counts as manual
+                        setLlmModelManuallySet(true);
                       }}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select LLM model...">
-                          {selectedLlmModel && visionModels?.models?.find((m: any) => m.id === selectedLlmModel)?.name
-                            ? `${visionModels.models.find((m: any) => m.id === selectedLlmModel)?.name} (${visionModels.models.find((m: any) => m.id === selectedLlmModel)?.providerDisplayName})`
-                            : selectedLlmModel || "Select LLM model..."}
+                        <SelectValue placeholder="Auto (skill requirements)">
+                          {selectedLlmModel
+                            ? (visionModels?.models?.find((m: any) => m.id === selectedLlmModel)?.name
+                              ? `${visionModels.models.find((m: any) => m.id === selectedLlmModel)?.name} (${visionModels.models.find((m: any) => m.id === selectedLlmModel)?.providerDisplayName})`
+                              : selectedLlmModel)
+                            : "✨ Auto (skill requirements)"}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent className="max-h-[300px]">
+                        <SelectItem value="__auto__" className="font-medium">
+                          ✨ Auto (skill requirements)
+                        </SelectItem>
+                        <SelectSeparator />
                         {/* Search input */}
-                        <div className="sticky top-0 bg-white p-2 border-b z-10">
+                        <div className="sticky top-0 bg-popover p-2 border-b z-10">
                           <div className="relative">
                             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
@@ -4021,24 +4031,8 @@ export default function MediaStudio() {
                             />
                           </div>
                         </div>
-                        <ScrollArea className="max-h-[240px]">
-                          {visionModels?.models
-                            ?.filter((model) => {
-                              if (!llmModelSearch) return true;
-                              const search = llmModelSearch.toLowerCase();
-                              return (
-                                model.name.toLowerCase().includes(search) ||
-                                model.id.toLowerCase().includes(search) ||
-                                model.providerDisplayName?.toLowerCase().includes(search)
-                              );
-                            })
-                            .map((model) => (
-                              <SelectItem key={model.id} value={model.id}>
-                                {model.name} ({model.providerDisplayName})
-                                {model.isDefault && " • default"}
-                              </SelectItem>
-                            ))}
-                          {visionModels?.models?.filter((model) => {
+                        {visionModels?.models
+                          ?.filter((model) => {
                             if (!llmModelSearch) return true;
                             const search = llmModelSearch.toLowerCase();
                             return (
@@ -4046,16 +4040,30 @@ export default function MediaStudio() {
                               model.id.toLowerCase().includes(search) ||
                               model.providerDisplayName?.toLowerCase().includes(search)
                             );
-                          }).length === 0 && (
-                            <div className="py-4 text-center text-sm text-muted-foreground">
-                              No models found
-                            </div>
-                          )}
-                        </ScrollArea>
+                          })
+                          .map((model) => (
+                            <SelectItem key={model.id} value={model.id}>
+                              {model.name} ({model.providerDisplayName})
+                              {model.isDefault && " • default"}
+                            </SelectItem>
+                          ))}
+                        {visionModels?.models?.filter((model) => {
+                          if (!llmModelSearch) return true;
+                          const search = llmModelSearch.toLowerCase();
+                          return (
+                            model.name.toLowerCase().includes(search) ||
+                            model.id.toLowerCase().includes(search) ||
+                            model.providerDisplayName?.toLowerCase().includes(search)
+                          );
+                        }).length === 0 && (
+                          <div className="py-4 text-center text-sm text-muted-foreground">
+                            No models found
+                          </div>
+                        )}
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-muted-foreground">
-                      Select the LLM model for prompt enhancement. Vision-capable models can analyze reference images.
+                      Auto mode selects the best model based on skill requirements. Or pick a specific model manually.
                     </p>
                   </div>
 

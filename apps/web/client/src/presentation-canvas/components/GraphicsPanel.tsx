@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     type SvgGraphic,
     SVG_GRAPHICS,
@@ -30,7 +29,7 @@ export function GraphicsPanel({ onInsertGraphic }: GraphicsPanelProps) {
     const categories = ["All", ...SVG_CATEGORIES];
 
     return (
-        <div className="flex h-full min-h-0 flex-col gap-3 text-slate-100">
+        <div className="flex h-full min-h-0 min-w-0 flex-col gap-3 text-slate-100">
             {/* Search */}
             <div className="relative">
                 <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -60,7 +59,10 @@ export function GraphicsPanel({ onInsertGraphic }: GraphicsPanelProps) {
             </div>
 
             {/* Grid */}
-            <ScrollArea className="min-h-0 flex-1 pr-1">
+            <div
+                className="h-0 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1"
+                data-testid="graphics-panel-scroll-area"
+            >
                 {filtered.length === 0 ? (
                     <p className="text-sm text-slate-400">No graphics found.</p>
                 ) : (
@@ -86,7 +88,7 @@ export function GraphicsPanel({ onInsertGraphic }: GraphicsPanelProps) {
                         ))}
                     </div>
                 )}
-            </ScrollArea>
+            </div>
         </div>
     );
 }

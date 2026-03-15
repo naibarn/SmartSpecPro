@@ -138,7 +138,7 @@ function validateFieldValue(
     case 'imageUpload': {
       // Validate URLs
       const urls = Array.isArray(value) ? value : [value];
-      const urlRegex = /^(https?:\/\/|\/uploads\/)/i;
+      const urlRegex = /^(https?:\/\/|\/uploads\/|\/(?!\/)|data:image\/[a-zA-Z0-9.+-]+;base64,)/i;
       
       for (const url of urls) {
         if (typeof url !== 'string' || !urlRegex.test(url)) {
@@ -155,6 +155,48 @@ function validateFieldValue(
   }
 
   return null;
+}
+
+function isFieldVisible(field: SkillInputField, values: Record<string, any>): boolean {
+  if (!field.dependsOn) return true;
+
+  const dependentValue = values[field.dependsOn.field];
+
+  if (field.dependsOn.notEmpty) {
+    return !!dependentValue && dependentValue !== '';
+  }
+
+  if (field.dependsOn.value !== undefined) {
+    return dependentValue === field.dependsOn.value;
+  }
+
+  if (Array.isArray(field.dependsOn.values) && field.dependsOn.values.length > 0) {
+    return field.dependsOn.values.includes(dependentValue);
+  }
+
+  return true;
+}
+
+function collectVisibleFieldErrors(
+  schema: SkillInputSchema,
+  values: Record<string, any>,
+): Record<string, string> {
+  const nextErrors: Record<string, string> = {};
+
+  schema.sections.forEach((section) => {
+    section.fields.forEach((field) => {
+      if (!isFieldVisible(field, values)) {
+        return;
+      }
+
+      const error = validateFieldValue(field, values[field.id]);
+      if (error) {
+        nextErrors[field.id] = error;
+      }
+    });
+  });
+
+  return nextErrors;
 }
 
 export function useSkillForm(options: UseSkillFormOptions): UseSkillFormReturn {
@@ -200,48 +242,31 @@ export function useSkillForm(options: UseSkillFormOptions): UseSkillFormReturn {
         .find((f) => f.id === fieldId);
 
       if (!field) return null;
+      if (!isFieldVisible(field, { ...values, [fieldId]: value })) return null;
 
       return validateFieldValue(field, value);
     },
-    [schema]
+    [schema, values]
   );
 
   const setValue = useCallback(
     (fieldId: string, value: any) => {
-      setValues((prev) => ({ ...prev, [fieldId]: value }));
-      
-      // Validate and clear/set error
-      const error = validateField(fieldId, value);
-      setErrors((prev) => {
-        const next = { ...prev };
-        if (error) {
-          next[fieldId] = error;
-        } else {
-          delete next[fieldId];
-        }
-        return next;
+      setValues((prev) => {
+        const nextValues = { ...prev, [fieldId]: value };
+        setErrors(collectVisibleFieldErrors(schema, nextValues));
+        return nextValues;
       });
     },
-    [validateField]
+    [schema]
   );
 
   const setValuesHandler = useCallback((newValues: Record<string, any>) => {
-    setValues((prev) => ({ ...prev, ...newValues }));
-    
-    // Validate all updated fields
-    setErrors((prev) => {
-      const next = { ...prev };
-      Object.entries(newValues).forEach(([fieldId, value]) => {
-        const error = validateField(fieldId, value);
-        if (error) {
-          next[fieldId] = error;
-        } else {
-          delete next[fieldId];
-        }
-      });
-      return next;
+    setValues((prev) => {
+      const nextValues = { ...prev, ...newValues };
+      setErrors(collectVisibleFieldErrors(schema, nextValues));
+      return nextValues;
     });
-  }, [validateField]);
+  }, [schema]);
 
   const reset = useCallback(() => {
     setValues(defaultValues);
@@ -249,23 +274,28 @@ export function useSkillForm(options: UseSkillFormOptions): UseSkillFormReturn {
   }, [defaultValues]);
 
   const validate = useCallback((): boolean => {
-    const newErrors: Record<string, string> = {};
-    let valid = true;
-
-    schema.sections.forEach((section) => {
-      section.fields.forEach((field) => {
-        const value = values[field.id];
-        const error = validateFieldValue(field, value);
-        
-        if (error) {
-          newErrors[field.id] = error;
-          valid = false;
-        }
-      });
-    });
+    const newErrors = collectVisibleFieldErrors(schema, values);
+    const valid = Object.keys(newErrors).length === 0;
 
     setErrors(newErrors);
     return valid;
+  }, [schema, values]);
+
+  useEffect(() => {
+    setErrors((prev) => {
+      const next = collectVisibleFieldErrors(schema, values);
+      const prevKeys = Object.keys(prev);
+      const nextKeys = Object.keys(next);
+
+      if (
+        prevKeys.length === nextKeys.length
+        && prevKeys.every((key) => prev[key] === next[key])
+      ) {
+        return prev;
+      }
+
+      return next;
+    });
   }, [schema, values]);
 
   const isValid = useMemo(() => {

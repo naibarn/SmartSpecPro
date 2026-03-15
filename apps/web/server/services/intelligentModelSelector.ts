@@ -193,6 +193,36 @@ export function selectBestLlmModel(
 }
 
 /**
+ * Like selectBestLlmModel, but returns up to `maxCandidates` model IDs
+ * sorted by priority ASC (cheapest first). Used for fallback chains.
+ */
+export function selectLlmModelCandidates(
+  requirements: Partial<CapabilityRequirements>,
+  rows: EnabledLlmModelRow[],
+  maxCandidates: number = 5,
+): string[] {
+  if (rows.length === 0) return [];
+
+  let candidates = rows.filter((row) => {
+    for (const key of CAPABILITY_KEYS) {
+      if (requirements[key] === true) {
+        if (row[key] !== true) return false;
+      }
+    }
+    return true;
+  });
+
+  if (requirements.contextLength != null && requirements.contextLength > 0) {
+    candidates = candidates.filter(
+      (row) => row.contextLength != null && row.contextLength >= requirements.contextLength!,
+    );
+  }
+
+  candidates.sort((a, b) => a.priority - b.priority);
+  return candidates.slice(0, maxCandidates).map((r) => r.modelId);
+}
+
+/**
  * Human-readable description of which capabilities a row matches
  * and which it is missing, relative to given requirements.
  * Only boolean requirements set to `true` are evaluated.

@@ -13,6 +13,11 @@ import { workflows, workflowTemplates, templateCategories, workflowVersions, use
 import { eq, and, desc, sql, count, asc, max, inArray, type SQL } from "drizzle-orm";
 import { createRateLimitMiddleware } from "../_core/rateLimitedProcedure";
 import { createHash } from "crypto";
+import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
+import {
+  assertWorkflowBrowserSessionNodesAllowed,
+  filterWorkflowNodeRegistryForFlags,
+} from "../services/workflowBrowserSessionFlags";
 
 // Python backend URL from environment (default to localhost:8000)
 const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
@@ -81,6 +86,17 @@ async function fetchPythonBackend(
     ...options,
     headers,
   });
+}
+
+async function getWorkflowBrowserSessionFlagState(tenantId: string | null) {
+  if (!tenantId) {
+    return { workflowBrowserSessionNodes: false };
+  }
+
+  const flags = await getTenantFeatureFlags(tenantId);
+  return {
+    workflowBrowserSessionNodes: flags.workflowBrowserSessionNodes,
+  };
 }
 
 /**
@@ -170,6 +186,8 @@ export const workflowRouter = router({
       try {
         const userId = ctx.user.id;
         const tenantId = ctx.user.currentTenantId ? String(ctx.user.currentTenantId) : null;
+        const workflowFlags = await getWorkflowBrowserSessionFlagState(tenantId);
+        assertWorkflowBrowserSessionNodesAllowed(workflowFlags, input.workflowJson.nodes);
 
         if (input.id) {
           // Update existing workflow
@@ -475,6 +493,10 @@ export const workflowRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       try {
+        const tenantId = ctx.user.currentTenantId ? String(ctx.user.currentTenantId) : null;
+        const workflowFlags = await getWorkflowBrowserSessionFlagState(tenantId);
+        assertWorkflowBrowserSessionNodesAllowed(workflowFlags, input.nodes);
+
         // Normalize generic "output"/"input" handle names to null before sending to Python.
         // Template-seeded edges use these generic placeholder names. The Python validator
         // skips port compatibility checks when handles are null/falsy, which is correct
@@ -808,6 +830,8 @@ export const workflowRouter = router({
     .mutation(async ({ input, ctx }) => {
       try {
         const tenantId = ctx.user.currentTenantId ? String(ctx.user.currentTenantId) : null;
+        const workflowFlags = await getWorkflowBrowserSessionFlagState(tenantId);
+        assertWorkflowBrowserSessionNodesAllowed(workflowFlags, input.workflowJson.nodes);
         const response = await fetchPythonBackend(
           "/api/v1/workflows/execute",
           {
@@ -946,6 +970,8 @@ export const workflowRouter = router({
    */
   getNodeTypes: protectedProcedure.query(async ({ ctx }) => {
     try {
+      const tenantId = ctx.user.currentTenantId ? String(ctx.user.currentTenantId) : null;
+      const workflowFlags = await getWorkflowBrowserSessionFlagState(tenantId);
       const response = await fetchPythonBackend(
         "/api/v1/workflows/node-types",
         { method: "GET" },
@@ -963,7 +989,13 @@ export const workflowRouter = router({
       }
 
       const data = await response.json();
-      return data;
+      return {
+        ...data,
+        node_types: filterWorkflowNodeRegistryForFlags(
+          Array.isArray(data.node_types) ? data.node_types : [],
+          workflowFlags,
+        ),
+      };
     } catch (error: any) {
       console.error("[Workflow] Get node types error:", error.message);
       if (error instanceof TRPCError) throw error;

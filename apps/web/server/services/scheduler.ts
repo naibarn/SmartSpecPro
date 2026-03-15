@@ -53,6 +53,35 @@ export async function deliverScheduledMessage(scheduleId: number): Promise<void>
     return;
   }
 
+  // Check skip flag (set by skipNextRun endpoint)
+  const skipUntil = (schedule.dynamicParams as Record<string, unknown> | null)?._skipUntil;
+  if (typeof skipUntil === "string") {
+    const skipDate = new Date(skipUntil);
+    if (!isNaN(skipDate.getTime()) && new Date() < skipDate) {
+      console.log(`[Scheduler] Schedule ${scheduleId} skipped (skipUntil: ${skipUntil})`);
+      // Clear the skip flag after honoring it
+      const cleaned = { ...(schedule.dynamicParams || {}) };
+      delete (cleaned as Record<string, unknown>)._skipUntil;
+      await db.update(scheduledMessages)
+        .set({ dynamicParams: Object.keys(cleaned).length > 0 ? cleaned : undefined, updatedAt: new Date() })
+        .where(eq(scheduledMessages.id, scheduleId));
+      // Log the skip
+      await db.insert(scheduledMessageLogs).values({
+        scheduledMessageId: scheduleId,
+        status: "skipped",
+        responseContent: "Run skipped by user request",
+        creditsUsed: "0",
+      });
+      return;
+    }
+    // Skip time has passed — clear the flag
+    const cleaned = { ...(schedule.dynamicParams || {}) };
+    delete (cleaned as Record<string, unknown>)._skipUntil;
+    await db.update(scheduledMessages)
+      .set({ dynamicParams: Object.keys(cleaned).length > 0 ? cleaned : undefined })
+      .where(eq(scheduledMessages.id, scheduleId));
+  }
+
   const userId = schedule.targetUserId || schedule.userId;
 
   // ── Simple Reminder: skip LLM, 0 credits, just fire notification ──

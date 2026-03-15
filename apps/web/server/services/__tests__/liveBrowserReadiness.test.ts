@@ -10,6 +10,11 @@ describe("live browser readiness", () => {
       runtimeFailures: ["live_readiness_snapshot_missing"],
       providerFailures: [],
       checkedAt: null,
+      publisher: null,
+      owner: null,
+      runbookUrl: null,
+      publishIntervalSeconds: null,
+      maxAgeSeconds: null,
     });
 
     expect(result.ready).toBe(false);
@@ -23,6 +28,11 @@ describe("live browser readiness", () => {
       runtimeFailures: [],
       providerFailures: [],
       checkedAt: "2026-03-12T12:00:00.000Z",
+      publisher: "python_celery_beat",
+      owner: "python-live-browser-oncall",
+      runbookUrl: "https://runbooks.smartaihub.app/live-browser/readiness",
+      publishIntervalSeconds: 60,
+      maxAgeSeconds: 120,
     });
 
     expect(result.ready).toBe(false);
@@ -37,6 +47,11 @@ describe("live browser readiness", () => {
       runtimeFailures: [],
       providerFailures: ["provider_attach_failed"],
       checkedAt: "2026-03-12T12:00:00.000Z",
+      publisher: "python_celery_beat",
+      owner: "python-live-browser-oncall",
+      runbookUrl: "https://runbooks.smartaihub.app/live-browser/readiness",
+      publishIntervalSeconds: 60,
+      maxAgeSeconds: 120,
     });
 
     expect(result.ready).toBe(false);
@@ -50,9 +65,32 @@ describe("live browser readiness", () => {
       runtimeFailures: [],
       providerFailures: [],
       checkedAt: "2020-01-01T00:00:00.000Z",
+      publisher: "python_celery_beat",
+      owner: "python-live-browser-oncall",
+      runbookUrl: "https://runbooks.smartaihub.app/live-browser/readiness",
+      publishIntervalSeconds: 60,
+      maxAgeSeconds: 120,
     });
 
     expect(result.ready).toBe(false);
     expect(result.failedChecks).toContain("live_readiness_snapshot_stale");
+  });
+
+  it("treats missing owner metadata as a blocking readiness failure", () => {
+    const result = evaluateLiveBrowserEntryReadiness({
+      runtimeReady: true,
+      providerReady: true,
+      runtimeFailures: [],
+      providerFailures: [],
+      checkedAt: "2026-03-12T12:00:00.000Z",
+      publisher: "python_celery_beat",
+      owner: null,
+      runbookUrl: "https://runbooks.smartaihub.app/live-browser/readiness",
+      publishIntervalSeconds: 60,
+      maxAgeSeconds: 120,
+    });
+
+    expect(result.ready).toBe(false);
+    expect(result.failedChecks).toContain("live_readiness_owner_missing");
   });
 });

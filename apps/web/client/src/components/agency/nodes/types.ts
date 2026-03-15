@@ -5,7 +5,8 @@ export type AgencyNodeType =
   | "aggregator"
   | "knowledge_base"
   | "skill_call"
-  | "human_approval";
+  | "human_approval"
+  | "browser_session";
 
 export interface AgencyNodeData {
   nodeType: AgencyNodeType;

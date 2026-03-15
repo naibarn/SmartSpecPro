@@ -118,6 +118,7 @@ export interface SkillInputField {
   dependsOn?: {
     field: string;
     value?: any;
+    values?: any[];
     notEmpty?: boolean;
   };
   /** Options grouped by parent field value for cascading selects */
@@ -542,6 +543,10 @@ export default function DynamicSkillForm({
     // Handle value condition
     if (field.dependsOn.value !== undefined) {
       return dependentValue === field.dependsOn.value;
+    }
+
+    if (Array.isArray(field.dependsOn.values) && field.dependsOn.values.length > 0) {
+      return field.dependsOn.values.includes(dependentValue);
     }
 
     return true;

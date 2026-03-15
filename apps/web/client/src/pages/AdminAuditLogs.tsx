@@ -74,6 +74,18 @@ interface AuditRow {
   raw: unknown;
 }
 
+interface RolloutTelemetrySummary {
+  totalEvents: number;
+  modeSelectedEvents: number;
+  fallbackEvents: number;
+  qualityEvents: number;
+  warnOrRejectEvents: number;
+  modeCounts: Array<{ label: string; count: number }>;
+  fallbackCounts: Array<{ label: string; count: number }>;
+  qualityVerdicts: Array<{ label: string; count: number }>;
+  recipeCounts: Array<{ label: string; count: number }>;
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
@@ -109,6 +121,14 @@ function toDisplayTime(value: string | null): string {
 function csvEscape(value: unknown): string {
   const raw = value == null ? "" : String(value);
   return `"${raw.replace(/"/g, "\"\"")}"`;
+}
+
+function incrementSummaryCount(map: Map<string, number>, key: string | null | undefined) {
+  const normalized = String(key ?? "").trim();
+  if (!normalized) {
+    return;
+  }
+  map.set(normalized, (map.get(normalized) ?? 0) + 1);
 }
 
 function JsonSection({
@@ -156,6 +176,8 @@ export default function AdminAuditLogs() {
   const [dateTo, setDateTo] = useState("");
   const [errorOnly, setErrorOnly] = useState(false);
   const [fetchLimit, setFetchLimit] = useState("200");
+  const [governanceSearch, setGovernanceSearch] = useState("");
+  const [governanceEventType, setGovernanceEventType] = useState("all");
 
   const [page, setPage] = useState(0);
   const pageSize = 50;
@@ -183,6 +205,14 @@ export default function AdminAuditLogs() {
   }, [dateFrom, dateTo, traceId, userIdText, provider, model, eventType, requestType, errorOnly, fetchLimit]);
 
   const searchQuery = trpc.audit.search.useQuery(queryInput, {
+    staleTime: 10_000,
+    refetchOnWindowFocus: false,
+  });
+  const governanceAuditQuery = trpc.presentation.listCustomBlockGovernanceAudit.useQuery({
+    search: governanceSearch.trim() || undefined,
+    eventType: governanceEventType as "all" | "visibility_changed" | "pinned_changed" | "featured_changed" | "ownership_transferred",
+    limit: 100,
+  }, {
     staleTime: 10_000,
     refetchOnWindowFocus: false,
   });
@@ -264,6 +294,66 @@ export default function AdminAuditLogs() {
   const errorCount = normalizedRows.filter((row) => row.errorMessage || (row.statusCode != null && row.statusCode >= 400)).length;
   const uniqueUsers = new Set(normalizedRows.map((row) => row.userId).filter((id): id is number => id != null)).size;
   const uniqueTraces = new Set(normalizedRows.map((row) => row.traceId).filter((id): id is string => Boolean(id))).size;
+  const rolloutSummary = useMemo<RolloutTelemetrySummary>(() => {
+    const modeCounts = new Map<string, number>();
+    const fallbackCounts = new Map<string, number>();
+    const qualityVerdicts = new Map<string, number>();
+    const recipeCounts = new Map<string, number>();
+    let totalEvents = 0;
+    let modeSelectedEvents = 0;
+    let fallbackEvents = 0;
+    let qualityEvents = 0;
+    let warnOrRejectEvents = 0;
+
+    for (const row of searchQuery.data?.auditEvents ?? []) {
+      if (row?.eventType !== "rollout_gate") {
+        continue;
+      }
+      const payload = asRecord(row.responsePayload);
+      const telemetryType = textOrNull(payload?.eventType);
+      if (!telemetryType) {
+        continue;
+      }
+      totalEvents += 1;
+      if (telemetryType === "mode_selected") {
+        modeSelectedEvents += 1;
+        incrementSummaryCount(modeCounts, textOrNull(payload?.selectedMode));
+        incrementSummaryCount(recipeCounts, textOrNull(payload?.componentRecipeId));
+      }
+      if (telemetryType === "quality_gate_result") {
+        qualityEvents += 1;
+        const verdict = textOrNull(payload?.verdict);
+        if (verdict === "warn" || verdict === "reject") {
+          warnOrRejectEvents += 1;
+        }
+        incrementSummaryCount(qualityVerdicts, textOrNull(payload?.verdict));
+      }
+      if (telemetryType === "fallback_triggered") {
+        fallbackEvents += 1;
+        const fallbackHistory = Array.isArray(payload?.fallbackHistory) ? payload.fallbackHistory : [];
+        for (const entry of fallbackHistory) {
+          const fallback = asRecord(entry);
+          incrementSummaryCount(fallbackCounts, textOrNull(fallback?.step));
+        }
+      }
+    }
+
+    const toSortedEntries = (map: Map<string, number>) => Array.from(map.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([label, count]) => ({ label, count }));
+
+    return {
+      totalEvents,
+      modeSelectedEvents,
+      fallbackEvents,
+      qualityEvents,
+      warnOrRejectEvents,
+      modeCounts: toSortedEntries(modeCounts),
+      fallbackCounts: toSortedEntries(fallbackCounts),
+      qualityVerdicts: toSortedEntries(qualityVerdicts),
+      recipeCounts: toSortedEntries(recipeCounts),
+    };
+  }, [searchQuery.data?.auditEvents]);
 
   const exportCsv = () => {
     const headers = [
@@ -319,6 +409,16 @@ export default function AdminAuditLogs() {
     setSelectedRow(row);
     setDetailOpen(true);
   };
+
+  const fallbackRate = rolloutSummary.modeSelectedEvents > 0
+    ? `${Math.round((rolloutSummary.fallbackEvents / rolloutSummary.modeSelectedEvents) * 100)}%`
+    : "0%";
+  const qualityRiskRate = rolloutSummary.qualityEvents > 0
+    ? `${Math.round((rolloutSummary.warnOrRejectEvents / rolloutSummary.qualityEvents) * 100)}%`
+    : "0%";
+  const topRecipeLabel = rolloutSummary.recipeCounts[0]
+    ? `${rolloutSummary.recipeCounts[0].label} × ${rolloutSummary.recipeCounts[0].count}`
+    : "None";
 
   if (authLoading) {
     return (
@@ -399,6 +499,122 @@ export default function AdminAuditLogs() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Routing Telemetry Summary</CardTitle>
+          <CardDescription>
+            สรุป rollout telemetry ของ presentation AI จาก `rollout_gate` events ในผลลัพธ์ชุดปัจจุบัน
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Telemetry Events</CardTitle>
+              </CardHeader>
+              <CardContent className="text-2xl font-bold">{rolloutSummary.totalEvents}</CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Modes Seen</CardTitle>
+              </CardHeader>
+              <CardContent className="text-2xl font-bold">{rolloutSummary.modeCounts.length}</CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Fallback Types</CardTitle>
+              </CardHeader>
+              <CardContent className="text-2xl font-bold">{rolloutSummary.fallbackCounts.length}</CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Quality Verdicts</CardTitle>
+              </CardHeader>
+              <CardContent className="text-2xl font-bold">{rolloutSummary.qualityVerdicts.length}</CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Fallback Rate</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{fallbackRate}</div>
+                <p className="text-xs text-muted-foreground">fallback-triggered events / mode-selected events</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Quality Risk Rate</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{qualityRiskRate}</div>
+                <p className="text-xs text-muted-foreground">warn + reject quality verdicts / quality events</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Top Recipe</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-lg font-semibold">{topRecipeLabel}</div>
+                <p className="text-xs text-muted-foreground">Most common selected recipe in current result set</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {rolloutSummary.totalEvents === 0 ? (
+            <div className="rounded-md border border-dashed px-4 py-6 text-sm text-muted-foreground">
+              No rollout telemetry found in the current audit result set.
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold">Selected Modes</h3>
+                <div className="flex flex-wrap gap-2">
+                  {rolloutSummary.modeCounts.length === 0
+                    ? <span className="text-sm text-muted-foreground">No mode-selected events</span>
+                    : rolloutSummary.modeCounts.map((entry) => (
+                      <Badge key={`mode-${entry.label}`} variant="secondary">{entry.label} × {entry.count}</Badge>
+                    ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold">Fallback Steps</h3>
+                <div className="flex flex-wrap gap-2">
+                  {rolloutSummary.fallbackCounts.length === 0
+                    ? <span className="text-sm text-muted-foreground">No fallback-triggered events</span>
+                    : rolloutSummary.fallbackCounts.map((entry) => (
+                      <Badge key={`fallback-${entry.label}`} variant="outline">{entry.label} × {entry.count}</Badge>
+                    ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold">Quality Verdicts</h3>
+                <div className="flex flex-wrap gap-2">
+                  {rolloutSummary.qualityVerdicts.length === 0
+                    ? <span className="text-sm text-muted-foreground">No quality-gate events</span>
+                    : rolloutSummary.qualityVerdicts.map((entry) => (
+                      <Badge key={`quality-${entry.label}`} variant="outline">{entry.label} × {entry.count}</Badge>
+                    ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold">Selected Recipes</h3>
+                <div className="flex flex-wrap gap-2">
+                  {rolloutSummary.recipeCounts.length === 0
+                    ? <span className="text-sm text-muted-foreground">No recipe metadata in current events</span>
+                    : rolloutSummary.recipeCounts.map((entry) => (
+                      <Badge key={`recipe-${entry.label}`} variant="outline">{entry.label} × {entry.count}</Badge>
+                    ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Filter className="h-4 w-4" />
             Filters
@@ -456,6 +672,7 @@ export default function AdminAuditLogs() {
                   <SelectItem value="llm_response">llm_response</SelectItem>
                   <SelectItem value="media_request">media_request</SelectItem>
                   <SelectItem value="media_response">media_response</SelectItem>
+                  <SelectItem value="rollout_gate">rollout_gate</SelectItem>
                   <SelectItem value="skill_execute">skill_execute</SelectItem>
                 </SelectContent>
               </Select>
@@ -627,6 +844,93 @@ export default function AdminAuditLogs() {
               </div>
             </>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Presentation Governance Audit</CardTitle>
+          <CardDescription>
+            แยกดู feature / ownership / visibility / pin activity ของ reusable presentation blocks โดยตรง
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
+            <div className="space-y-2">
+              <Label htmlFor="governanceSearch">Search blocks or details</Label>
+              <Input
+                id="governanceSearch"
+                placeholder="ค้นหาชื่อ block, detail, role"
+                value={governanceSearch}
+                onChange={(event) => setGovernanceSearch(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Governance Event</Label>
+              <Select value={governanceEventType} onValueChange={setGovernanceEventType}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="featured_changed">featured_changed</SelectItem>
+                  <SelectItem value="ownership_transferred">ownership_transferred</SelectItem>
+                  <SelectItem value="pinned_changed">pinned_changed</SelectItem>
+                  <SelectItem value="visibility_changed">visibility_changed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="rounded-md border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Time</TableHead>
+                  <TableHead>Block</TableHead>
+                  <TableHead>Event</TableHead>
+                  <TableHead>Owner</TableHead>
+                  <TableHead>Actor</TableHead>
+                  <TableHead>Visibility</TableHead>
+                  <TableHead>Detail</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {governanceAuditQuery.isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                      Loading governance audit...
+                    </TableCell>
+                  </TableRow>
+                ) : (governanceAuditQuery.data?.length ?? 0) === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                      No governance records found.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  governanceAuditQuery.data?.map((entry) => (
+                    <TableRow key={`${entry.blockId}:${entry.recordedAt}:${entry.eventType}`}>
+                      <TableCell className="text-xs whitespace-nowrap">{toDisplayTime(entry.recordedAt)}</TableCell>
+                      <TableCell className="text-xs font-medium">{entry.blockLabel}</TableCell>
+                      <TableCell className="text-xs">
+                        <Badge variant="outline">{entry.eventType}</Badge>
+                      </TableCell>
+                      <TableCell className="text-xs">{entry.ownerUserId}</TableCell>
+                      <TableCell className="text-xs">
+                        <div className="space-y-0.5">
+                          <div>{entry.actorUserId}</div>
+                          <div className="text-muted-foreground uppercase tracking-wide">{entry.actorRole}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs">{entry.visibility}</TableCell>
+                      <TableCell className="text-xs max-w-[360px] truncate" title={entry.detail ?? ""}>
+                        {entry.detail ?? "-"}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 

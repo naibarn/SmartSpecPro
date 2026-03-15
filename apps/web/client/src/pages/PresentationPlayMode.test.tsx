@@ -274,6 +274,48 @@ describe("PresentationPlayMode", () => {
     expect(stage).toHaveAttribute("data-show-video-playback-toggle", "false");
   });
 
+  it("renders component fallback elements in play mode without requiring flattened slide payloads", () => {
+    queryState.deckDetail = {
+      ...buildDeckDetail(),
+      slides: [
+        {
+          id: 71,
+          orderIndex: 0,
+          title: "Intro",
+          slideContent: {
+            elements: [],
+            components: [
+              {
+                id: "component-1",
+                componentId: "hero",
+                componentType: "hero",
+                definitionRevision: 2,
+                slotBindings: [{ slotId: "title", type: "text", text: "Hello component" }],
+                fallbackElements: [
+                  {
+                    id: "component-title",
+                    type: "text",
+                    x: 20,
+                    y: 30,
+                    width: 300,
+                    height: 60,
+                    text: "Hello component",
+                    color: "#111827",
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        buildDeckDetail().slides[1],
+      ],
+    } as any;
+
+    render(<PresentationPlayMode />);
+
+    expect(screen.getByTestId("canvas-stage")).toHaveAttribute("data-element-count", "1");
+  });
+
   it("applies modern transition styles when slide state is transitioning", () => {
     const baseDeck = buildPlayDeck();
     queryState.playDeck = {

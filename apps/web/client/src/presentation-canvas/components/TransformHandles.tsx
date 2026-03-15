@@ -18,6 +18,8 @@ interface TransformHandlesProps {
   disabled?: boolean;
   onMove: (deltaX: number, deltaY: number) => void;
   onResize: (width: number, height: number) => void;
+  onAutoFit?: () => void;
+  autoFitLabel?: string;
   onRotate: (deltaDegrees: number) => void;
   onArrange: (direction: "forward" | "backward" | "front" | "back") => void;
   currentWidth: number;
@@ -29,6 +31,8 @@ export function TransformHandles({
   disabled,
   onMove,
   onResize,
+  onAutoFit,
+  autoFitLabel,
   onRotate,
   onArrange,
   currentWidth,
@@ -41,6 +45,19 @@ export function TransformHandles({
     <div className="space-y-2" data-testid="canvas-transform-handles">
       <p className="px-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Transform</p>
       <div className="flex flex-wrap gap-1">
+        {onAutoFit ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className={actionButtonClass}
+            disabled={disabled}
+            onClick={onAutoFit}
+          >
+            <Scale className="h-3.5 w-3.5" />
+            {autoFitLabel ?? "Auto Fit"}
+          </Button>
+        ) : null}
         <Button
           type="button"
           size="sm"
@@ -48,6 +65,7 @@ export function TransformHandles({
           className={moveButtonClass}
           disabled={disabled}
           onClick={() => onMove(-10, 0)}
+          aria-label="Move selection left"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Left
@@ -59,6 +77,7 @@ export function TransformHandles({
           className={moveButtonClass}
           disabled={disabled}
           onClick={() => onMove(10, 0)}
+          aria-label="Move selection right"
         >
           <ArrowRight className="h-3.5 w-3.5" />
           Right
@@ -70,6 +89,7 @@ export function TransformHandles({
           className={moveButtonClass}
           disabled={disabled}
           onClick={() => onMove(0, -10)}
+          aria-label="Move selection up"
         >
           <ArrowUp className="h-3.5 w-3.5" />
           Up
@@ -81,6 +101,7 @@ export function TransformHandles({
           className={moveButtonClass}
           disabled={disabled}
           onClick={() => onMove(0, 10)}
+          aria-label="Move selection down"
         >
           <ArrowDown className="h-3.5 w-3.5" />
           Down

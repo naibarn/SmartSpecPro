@@ -180,7 +180,8 @@ function PriorityInlineEditor({
         onChange={(e) => setLocalValue(e.target.value)}
         onBlur={submitValue}
         onKeyDown={handleKeyDown}
-        className="w-14 rounded border border-input bg-transparent px-1 py-0.5 text-xs text-center"
+        disabled={mutation.isPending}
+        className="w-14 rounded border border-input bg-transparent px-1 py-0.5 text-xs text-center disabled:opacity-50"
         aria-label="Priority"
       />
       <Tooltip>

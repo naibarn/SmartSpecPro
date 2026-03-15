@@ -10,6 +10,7 @@ import {
   buildPresentationRenderSpec,
   buildSlideshowPayload,
   getPresentationExportStatus,
+  readPresentationBridgeJson,
   resetPresentationExportStateForTests,
   triggerPresentationExport,
 } from "./presentationPlaybackExport";
@@ -105,6 +106,38 @@ describe("presentationPlaybackExport", () => {
     expect(payload.slides.map((slide) => slide.transition)).toEqual(["cut", "fade"]);
     expect(payload).not.toHaveProperty("notes");
     expect(payload.slides[0]).not.toHaveProperty("notes");
+  });
+
+  it("reports actionable bridge errors when export backend returns HTML instead of JSON", async () => {
+    const response = new Response("<!DOCTYPE html><html><body>Sign in</body></html>", {
+      status: 502,
+      headers: { "content-type": "text/html" },
+    });
+
+    await expect(
+      readPresentationBridgeJson(response, "Python export bridge"),
+    ).rejects.toSatisfy((error: unknown) => (
+      error instanceof PresentationServiceError
+      && error.code === PRESENTATION_ERROR_CODE.VALIDATION_FAILED
+      && error.message.includes("returned HTTP 502")
+      && error.message.includes("returned HTML instead of JSON")
+    ));
+  });
+
+  it("reports actionable bridge errors when export backend returns invalid JSON on success", async () => {
+    const response = new Response("<!DOCTYPE html><html><body>Proxy error</body></html>", {
+      status: 200,
+      headers: { "content-type": "text/html" },
+    });
+
+    await expect(
+      readPresentationBridgeJson(response, "Python export bridge"),
+    ).rejects.toSatisfy((error: unknown) => (
+      error instanceof PresentationServiceError
+      && error.code === PRESENTATION_ERROR_CODE.VALIDATION_FAILED
+      && error.message.includes("returned invalid JSON")
+      && error.message.includes("returned HTML instead of JSON")
+    ));
   });
 
   it("resolves /api/storage/files sourceUrl into a presigned audio URL for play deck payload", async () => {

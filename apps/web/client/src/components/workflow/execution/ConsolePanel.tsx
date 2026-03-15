@@ -4,6 +4,8 @@
  * Displays log entries emitted by:
  *   - "write_to_console" nodes  → explicit debug messages
  *   - "set_variable" nodes      → automatic variable change tracking
+ *   - Browser Session outputs   → collaborative browser state summaries
+ *   - comparison outputs        → shortlist / compare-ready summaries
  *
  * Reads from the executionStore.logs[] array (time-ordered) and
  * cross-references node IDs with the provided nodes[] to determine type.
@@ -19,8 +21,14 @@ import {
   ChevronDown,
   ChevronUp,
   Variable,
+  MonitorPlay,
+  ListChecks,
 } from "lucide-react";
 import { useExecutionStore } from "@/stores/executionStore";
+import {
+  getWorkflowBrowserSessionArtifact,
+  normalizeWorkflowComparisonPreview,
+} from "@/lib/workflow/outputPresentation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -34,7 +42,7 @@ interface ConsoleEntry {
   message: string;
   level: LogLevel;
   /** "console" = explicit write_to_console node, "variable" = auto-logged set_variable */
-  source: "console" | "variable";
+  source: "console" | "variable" | "browser" | "comparison";
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -135,6 +143,40 @@ export function ConsolePanel({
       if (log.eventType !== "node_complete") continue;
 
       const node = nodeMap[log.nodeId];
+      const nodeName = log.nodeName || node?.data?.label || "Workflow";
+
+      const browserSessionArtifact = getWorkflowBrowserSessionArtifact(log.output);
+      if (browserSessionArtifact) {
+        entries.push({
+          id: `${log.id}:browser`,
+          timestamp: log.timestamp,
+          nodeId: log.nodeId,
+          nodeName,
+          message: browserSessionArtifact.summary.statusLine,
+          level: (
+            browserSessionArtifact.summary.state === "review_required"
+            || browserSessionArtifact.summary.state === "needs_user_input"
+            || browserSessionArtifact.summary.state === "session_ended"
+          )
+            ? "warning"
+            : "info",
+          source: "browser",
+        });
+      }
+
+      const comparisonPreview = normalizeWorkflowComparisonPreview(log.output);
+      if (comparisonPreview) {
+        entries.push({
+          id: `${log.id}:comparison`,
+          timestamp: log.timestamp,
+          nodeId: log.nodeId,
+          nodeName,
+          message: `${comparisonPreview.data.title} — ${comparisonPreview.summaryText}`,
+          level: "info",
+          source: "comparison",
+        });
+      }
+
       if (!node) continue;
 
       if (node.data?.nodeType === "write_to_console") {
@@ -144,7 +186,7 @@ export function ConsolePanel({
           id: log.id,
           timestamp: log.timestamp,
           nodeId: log.nodeId,
-          nodeName: log.nodeName || node.data?.label || "Console",
+          nodeName,
           message,
           level,
           source: "console",
@@ -158,7 +200,7 @@ export function ConsolePanel({
           id: log.id,
           timestamp: log.timestamp,
           nodeId: log.nodeId,
-          nodeName: log.nodeName || node.data?.label || "Set Variable",
+          nodeName,
           message: `${varName} = ${JSON.stringify(value)}`,
           level: "debug",
           source: "variable",
@@ -363,6 +405,10 @@ export function ConsolePanel({
                     <td className="pr-2 py-0.5 whitespace-nowrap w-40 truncate text-gray-500 dark:text-gray-400">
                       {entry.source === "variable" ? (
                         <Variable className="h-3 w-3 inline mr-1 text-purple-400" />
+                      ) : entry.source === "browser" ? (
+                        <MonitorPlay className="h-3 w-3 inline mr-1 text-cyan-500" />
+                      ) : entry.source === "comparison" ? (
+                        <ListChecks className="h-3 w-3 inline mr-1 text-sky-500" />
                       ) : (
                         <Terminal className="h-3 w-3 inline mr-1 text-slate-400" />
                       )}

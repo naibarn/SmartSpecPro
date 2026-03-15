@@ -176,4 +176,42 @@ describe("CanvasObjects SVG rendering", () => {
     });
     expect(paragraph.parentElement).toHaveClass("overflow-visible");
   });
+
+  it("adds a drag hit area for multi-item active selections so movement can start from empty space", () => {
+    const onMoveSelection = vi.fn();
+
+    render(
+      <CanvasObjects
+        elements={[
+          { id: "a", type: "rect", x: 100, y: 100, width: 120, height: 80, fill: "#93c5fd" },
+          { id: "b", type: "rect", x: 320, y: 180, width: 140, height: 100, fill: "#60a5fa" },
+        ]}
+        selectedElementIds={[]}
+        activeElementIds={["a", "b"]}
+        onSelectElement={vi.fn()}
+        onMoveSelection={onMoveSelection}
+        onResizeSelection={vi.fn()}
+        onRotateSelection={vi.fn()}
+        interactionScale={1}
+        canvasWidth={1920}
+        canvasHeight={1080}
+      />,
+    );
+
+    const hitArea = screen.getByTestId("canvas-selection-hit-area");
+    fireEvent.pointerDown(hitArea, {
+      button: 0,
+      pointerId: 21,
+      clientX: 200,
+      clientY: 180,
+    });
+    fireEvent.pointerMove(window, {
+      pointerId: 21,
+      clientX: 230,
+      clientY: 210,
+    });
+    fireEvent.pointerUp(window, { pointerId: 21 });
+
+    expect(onMoveSelection).toHaveBeenCalled();
+  });
 });

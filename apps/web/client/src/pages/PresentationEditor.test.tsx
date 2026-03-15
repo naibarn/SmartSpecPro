@@ -28,6 +28,7 @@ const mutationMocks = {
   setDeckAudio: vi.fn(),
   generateSlideAudioFromNote: vi.fn(),
   relayoutSlide: vi.fn(),
+  repairSlideFromNote: vi.fn(),
   resolvePendingMedia: vi.fn(),
   saveCustomBlock: vi.fn(),
   deleteCustomBlock: vi.fn(),
@@ -468,6 +469,12 @@ vi.mock("@/lib/trpc", () => ({
             isPending: false,
           })),
         },
+        repairSlideFromNote: {
+          useMutation: vi.fn(() => ({
+            mutateAsync: mutationMocks.repairSlideFromNote,
+            isPending: false,
+          })),
+        },
         resolvePendingMedia: {
           useMutation: vi.fn(() => ({
             mutateAsync: mutationMocks.resolvePendingMedia,
@@ -645,6 +652,19 @@ vi.mock("@/lib/trpc", () => ({
         }),
       },
     },
+    skills: {
+      list: {
+        useQuery: vi.fn(() => ({ data: [], isLoading: false, error: null })),
+      },
+    },
+    chat: {
+      executeSkill: {
+        useMutation: vi.fn(() => ({
+          mutateAsync: vi.fn().mockResolvedValue({ success: true, message: "Generated content" }),
+          isPending: false,
+        })),
+      },
+    },
   },
 }));
 
@@ -721,6 +741,26 @@ describe("PresentationEditor", () => {
         stylePresetId: "dark-professional",
         graphicCategory: "Business",
         reusedImage: true,
+      },
+    });
+    mutationMocks.repairSlideFromNote.mockResolvedValue({
+      slide: {
+        id: 71,
+        version: 4,
+        title: "Intro",
+        notes: "Saved note",
+        slideContent: {
+          elements: [
+            { id: "repair-title", type: "text", x: 120, y: 80, width: 320, height: 70, text: "Repaired headline", color: "#111827" },
+          ],
+        },
+      },
+      warnings: [],
+      applied: {
+        templateId: "split_right_image",
+        stylePresetId: "dark-professional",
+        graphicCategory: "Business",
+        regeneratedImage: true,
       },
     });
     mutationMocks.resolvePendingMedia.mockResolvedValue({
@@ -1183,11 +1223,30 @@ describe("PresentationEditor", () => {
         source: "draft-with-ai",
         taskId: "task-123",
         componentRecipeId: "poster-spotlight",
+        mode: "structured_block",
+        candidateModes: [
+          { mode: "structured_block", score: 8, fitStatus: "fits", reason: "Compact promo copy fits the poster block." },
+          { mode: "long_form_block", score: 2, fitStatus: "cramped", reason: "Too little copy for a long-form slide." },
+        ],
+        fitScore: {
+          overall: 0.82,
+          density: 0.77,
+          readability: 0.84,
+          overflowRisk: 0.18,
+          status: "fits",
+        },
         selectionMode: "heuristic",
         selectionReason: "Poster recipe best matched promo copy.",
         candidateRecipes: [
           { recipeId: "poster-spotlight", score: 9 },
           { recipeId: "quote-callout", score: 4 },
+        ],
+        sourceTrace: [
+          { sourceId: "body-1", sourceType: "paragraph", disposition: "used", targetSlotId: "headline" },
+          { sourceId: "body-2", sourceType: "paragraph", disposition: "shortened", targetSlotId: "summary" },
+        ],
+        fallbackHistory: [
+          { step: "retry_compaction", reason: "Balanced compaction tightened the supporting copy.", timestamp: "2026-03-12T09:59:00.000Z" },
         ],
         narrative: {
           title: "Campaign Spotlight",
@@ -1206,10 +1265,14 @@ describe("PresentationEditor", () => {
     render(<PresentationEditor />);
 
     expect(await screen.findByTestId("ai-layout-panel")).toBeInTheDocument();
-    expect(screen.getByText(/current recipe: poster spotlight/i)).toBeInTheDocument();
-    expect(screen.getByTestId("ai-layout-preview")).toBeInTheDocument();
+    expect(screen.getByTestId("ai-layout-mode-summary")).toHaveTextContent("Structured Block");
+    expect(screen.getByTestId("ai-layout-fit-summary")).toHaveTextContent("Fit 82%");
+    expect(screen.getByTestId("ai-layout-candidate-modes")).toHaveTextContent("Long-Form Block");
+    expect(screen.getByTestId("ai-layout-fallback-history")).toHaveTextContent("retry_compaction");
+    expect(screen.getByTestId("ai-layout-source-trace-summary")).toHaveTextContent("used 1");
+    expect(screen.getByText(/current block layout: poster spotlight/i)).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("AI Layout Recipe Override"), {
+    fireEvent.change(screen.getByLabelText("AI Layout Block Override"), {
       target: { value: "quote-callout" },
     });
     fireEvent.click(screen.getByRole("button", { name: /rebuild ai layout/i }));
@@ -1219,6 +1282,48 @@ describe("PresentationEditor", () => {
     });
     expect(screen.getByLabelText("Quote Callout Quote")).toHaveValue("Narrative Quote Line");
     expect(toastMocks.success).toHaveBeenCalledWith(expect.stringMatching(/applied ai layout/i));
+  });
+
+  it("persists AI layout mode overrides and lock state in the editor panel", async () => {
+    queryState.deckByItem.slides[0].slideContent = {
+      elements: [
+        { id: "title-1", type: "text", x: 120, y: 140, width: 440, height: 120, text: "Campaign Spotlight", color: "#111827", fontSize: 52 },
+      ],
+      aiDesign: {
+        source: "draft-with-ai",
+        taskId: "task-lock-1",
+        componentRecipeId: "poster-spotlight",
+        mode: "structured_block",
+        selectionMode: "heuristic",
+        narrative: {
+          title: "Campaign Spotlight",
+          body: ["Narrative Quote Line", "Premium access"],
+          templateId: "split_right_image",
+        },
+      },
+      background: {
+        type: "color",
+        value: "#dbeafe",
+      },
+    };
+
+    render(<PresentationEditor />);
+
+    await screen.findByTestId("ai-layout-panel");
+    fireEvent.change(screen.getByLabelText("AI Layout Mode Override"), {
+      target: { value: "long_form_block" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("ai-layout-mode-summary")).toHaveTextContent("Long-Form Block");
+    });
+
+    fireEvent.click(screen.getByLabelText("Lock AI Layout Mode"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("ai-layout-mode-summary")).toHaveTextContent("Locked");
+      expect(screen.getByLabelText("Lock AI Layout Mode")).toBeChecked();
+    });
   });
 
   it("renders live AI preview content and saves rebuilt AI layouts as reusable custom blocks", async () => {
@@ -1255,15 +1360,9 @@ describe("PresentationEditor", () => {
     render(<PresentationEditor />);
 
     await screen.findByTestId("ai-layout-panel");
-    fireEvent.change(screen.getByLabelText("AI Layout Recipe Override"), {
+    fireEvent.change(screen.getByLabelText("AI Layout Block Override"), {
       target: { value: "quote-callout" },
     });
-
-    await waitFor(() => {
-      expect(within(screen.getByTestId("ai-layout-preview")).getByText("Narrative Quote Line")).toBeInTheDocument();
-    });
-    expect(screen.getByTestId("ai-layout-preview-metadata")).toHaveTextContent("Canonical server-svg-v1");
-    expect(screen.getByTestId("ai-layout-preview-metadata")).toHaveTextContent("preview-");
 
     fireEvent.click(screen.getByRole("button", { name: /rebuild ai layout/i }));
     await screen.findByLabelText("Quote Callout Quote");
@@ -1288,6 +1387,101 @@ describe("PresentationEditor", () => {
     await waitFor(() => {
       expect(screen.getByLabelText("Quote Callout Quote")).toHaveValue("Narrative Quote Line");
     });
+  });
+
+  it("opens the AI layout preview in a large modal dialog", async () => {
+    queryState.deckByItem.slides[0].slideContent = {
+      elements: [
+        { id: "title-1", type: "text", x: 120, y: 140, width: 440, height: 120, text: "Campaign Spotlight", color: "#111827", fontSize: 52 },
+      ],
+      aiDesign: {
+        source: "draft-with-ai",
+        taskId: "task-999",
+        componentRecipeId: "poster-spotlight",
+        selectionMode: "heuristic",
+        narrative: {
+          title: "Campaign Spotlight",
+          body: ["Narrative Quote Line", "Premium access"],
+          templateId: "split_right_image",
+        },
+      },
+      background: {
+        type: "color",
+        value: "#dbeafe",
+      },
+    };
+
+    render(<PresentationEditor />);
+
+    await screen.findByTestId("ai-layout-panel");
+    fireEvent.click(screen.getByRole("button", { name: /preview block/i }));
+
+    expect(await screen.findByRole("dialog", { name: /ai layout preview/i })).toBeInTheDocument();
+    expect(screen.getByTestId("ai-layout-preview-dialog")).toBeInTheDocument();
+    expect(screen.getByLabelText("AI Layout Block Override Dialog")).toBeInTheDocument();
+  });
+
+  it("shows AI layout controls on later slides by inferring a usable recipe from the current slide", async () => {
+    queryState.deckByItem = {
+      ...buildDeckByItem(),
+      slides: [
+        buildDeckByItem().slides[0],
+        {
+          ...buildDeckByItem().slides[1],
+          title: "FAQ",
+          notes: "## Sleep routine\n- Keep a predictable bedtime\n## Night waking\n- Pause briefly before intervening",
+          slideContent: {
+            elements: [
+              { id: "img-2", type: "image", x: 60, y: 80, width: 520, height: 360, src: "https://cdn.example.com/faq.png", alt: "FAQ", imageFit: "cover" },
+              { id: "title-2", type: "text", x: 620, y: 110, width: 520, height: 120, text: "คำถามที่พบบ่อย", color: "#111827", fontSize: 44 },
+              { id: "body-2", type: "text", x: 620, y: 250, width: 500, height: 220, text: "เด็กอายุ 4 ถึง 6 เดือนควรนอนกี่ชั่วโมงต่อวัน?\nควรใช้วิธีการเช่นใดเพื่อให้เด็กกลับไปนอนหลับ?", color: "#334155", fontSize: 28 },
+            ],
+            background: {
+              type: "color",
+              value: "#f8fafc",
+            },
+          },
+        },
+      ],
+    } as any;
+
+    render(<PresentationEditor />);
+    fireEvent.click(screen.getByRole("button", { name: /select slide 2/i }));
+
+    expect(await screen.findByTestId("ai-layout-panel")).toBeInTheDocument();
+    expect(screen.getByText(/current block layout: process steps/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("AI Layout Block Override")).toHaveValue("process-steps");
+  });
+
+  it("falls back from stale video recipes when the current slide only has images", async () => {
+    queryState.deckByItem.slides[0].slideContent = {
+      elements: [
+        { id: "img-1", type: "image", x: 740, y: 90, width: 360, height: 520, src: "https://cdn.example.com/hero.png", alt: "Hero", imageFit: "cover" },
+        { id: "title-1", type: "text", x: 120, y: 140, width: 440, height: 120, text: "Campaign Spotlight", color: "#111827", fontSize: 52 },
+        { id: "body-1", type: "text", x: 120, y: 280, width: 420, height: 140, text: "Priority support\nPremium access\nJoin today", color: "#334155", fontSize: 28 },
+      ],
+      aiDesign: {
+        source: "draft-with-ai",
+        taskId: "task-stale-video",
+        componentRecipeId: "video-spotlight",
+        selectionMode: "heuristic",
+        narrative: {
+          title: "Campaign Spotlight",
+          body: ["Priority support", "Premium access", "Join today"],
+          templateId: "split_right_image",
+        },
+      },
+      background: {
+        type: "color",
+        value: "#dbeafe",
+      },
+    };
+
+    render(<PresentationEditor />);
+
+    expect(await screen.findByTestId("ai-layout-panel")).toBeInTheDocument();
+    expect(screen.getByText(/current block layout: poster spotlight/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("AI Layout Block Override")).toHaveValue("poster-spotlight");
   });
 
   it("tracks usage when inserting a saved custom block and exposes its updated usage badge", async () => {
@@ -1438,7 +1632,7 @@ describe("PresentationEditor", () => {
         blockId: "901",
         isTeamFeatured: true,
       });
-      expect(screen.getByText("Featured")).toBeInTheDocument();
+      expect(screen.getAllByText("Featured", { selector: "span" }).length).toBeGreaterThan(0);
     });
 
     fireEvent.click(screen.getByTestId("transfer-custom-block-901"));
@@ -1575,6 +1769,42 @@ describe("PresentationEditor", () => {
     });
   });
 
+  it("supports resizing an active component slot from the canvas overlay", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open blocks library/i }));
+    fireEvent.click(screen.getByRole("button", { name: /insert editable quote callout block/i }));
+
+    await screen.findByText(/components on slide/i);
+    fireEvent.click(screen.getByTestId("component-slot-overlay-quote"));
+
+    const getQuoteCanvasObject = () => screen.getByRole("button", {
+      name: /lead with one idea per slide and let the visual support the sentence/i,
+    }) as HTMLElement;
+    const beforeWidth = getQuoteCanvasObject().style.width;
+
+    fireEvent.pointerDown(screen.getByLabelText("Resize Quote slot wider"), {
+      pointerId: 24,
+      button: 0,
+      clientX: 430,
+      clientY: 240,
+    });
+    fireEvent.pointerMove(window, {
+      pointerId: 24,
+      clientX: 486,
+      clientY: 240,
+    });
+    fireEvent.pointerUp(window, {
+      pointerId: 24,
+      clientX: 486,
+      clientY: 240,
+    });
+
+    await waitFor(() => {
+      expect(getQuoteCanvasObject().style.width).not.toBe(beforeWidth);
+    });
+  });
+
   it("supports picking image slot assets from the canvas overlay library picker", async () => {
     render(<PresentationEditor />);
 
@@ -1655,6 +1885,28 @@ describe("PresentationEditor", () => {
     fireEvent.dragStart(draggableAsset, { dataTransfer });
     fireEvent.dragOver(clipSlotOverlay, { dataTransfer });
     fireEvent.drop(clipSlotOverlay, { dataTransfer });
+
+    await waitFor(() => {
+      expect(screen.getAllByDisplayValue("https://cdn.example.com/teaser.mp4").length).toBeGreaterThan(0);
+      expect(screen.getAllByDisplayValue("Teaser Clip").length).toBeGreaterThan(0);
+    });
+  });
+
+  it("supports picking a video asset into a mixed media slot on Document blocks", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open blocks library/i }));
+    fireEvent.click(screen.getByRole("button", { name: /insert editable multi-photo board block/i }));
+
+    await screen.findByText(/components on slide/i);
+    fireEvent.click(screen.getByTestId("component-slot-overlay-hero-photo"));
+    const canvasEditor = await screen.findByTestId("component-slot-canvas-editor");
+    fireEvent.click(within(canvasEditor).getByRole("button", { name: /use video/i }));
+
+    const pickerButton = await within(canvasEditor).findByRole("button", {
+      name: /use video asset teaser clip for hero media/i,
+    });
+    fireEvent.click(pickerButton);
 
     await waitFor(() => {
       expect(screen.getAllByDisplayValue("https://cdn.example.com/teaser.mp4").length).toBeGreaterThan(0);
@@ -1763,6 +2015,81 @@ describe("PresentationEditor", () => {
     });
   });
 
+  it("supports pointer resize for selected components from the overlay edge handles", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open blocks library/i }));
+    fireEvent.click(screen.getByRole("button", { name: /insert editable quote callout block/i }));
+
+    await screen.findByText(/components on slide/i);
+    fireEvent.click(screen.getByRole("button", { name: /select component quote callout/i }));
+
+    const getQuoteCanvasObject = () => screen.getByRole("button", {
+      name: /editorial callout/i,
+    }) as HTMLElement;
+    const beforeWidth = getQuoteCanvasObject().style.width;
+
+    fireEvent.pointerDown(screen.getByLabelText("Resize Quote Callout wider"), {
+      pointerId: 23,
+      button: 0,
+      clientX: 620,
+      clientY: 260,
+    });
+    fireEvent.pointerMove(window, {
+      pointerId: 23,
+      clientX: 676,
+      clientY: 260,
+    });
+    fireEvent.pointerUp(window, {
+      pointerId: 23,
+      clientX: 676,
+      clientY: 260,
+    });
+
+    await waitFor(() => {
+      expect(getQuoteCanvasObject().style.width).not.toBe(beforeWidth);
+    });
+  });
+
+  it("offers automatic fit controls for selected editable components", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open blocks library/i }));
+    fireEvent.click(screen.getByRole("button", { name: /insert editable quote callout block/i }));
+
+    await screen.findByText(/components on slide/i);
+    fireEvent.click(screen.getByRole("button", { name: /select component quote callout/i }));
+
+    const getQuoteCanvasObject = () => screen.getByRole("button", {
+      name: /editorial callout/i,
+    }) as HTMLElement;
+    const beforeWidth = getQuoteCanvasObject().style.width;
+    const transformHandles = within(screen.getByTestId("canvas-transform-handles"));
+
+    expect(transformHandles.getByRole("button", { name: /fit width/i })).toBeInTheDocument();
+    fireEvent.click(transformHandles.getByRole("button", { name: /fit width/i }));
+
+    await waitFor(() => {
+      expect(getQuoteCanvasObject().style.width).not.toBe(beforeWidth);
+    });
+  });
+
+  it("lets media slots jump to a raw media element so regenerate controls appear", async () => {
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open blocks library/i }));
+    fireEvent.click(screen.getByRole("button", { name: /insert editable multi-photo board block/i }));
+
+    await screen.findByText(/components on slide/i);
+    fireEvent.click(screen.getByRole("button", { name: /select component multi-photo board/i }));
+    fireEvent.click(screen.getByLabelText(/select component slot hero media/i));
+    fireEvent.click(screen.getByRole("button", { name: /select raw media element for hero media/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /regenerate image/i })).toBeInTheDocument();
+    });
+  });
+
   it("supports copy and paste shortcuts for editable components", async () => {
     render(<PresentationEditor />);
 
@@ -1845,6 +2172,167 @@ describe("PresentationEditor", () => {
       clarityPercent: 20,
     });
     expect(payload?.supplementalMediaClarityPercent).toBe(16);
+  });
+
+  it("sends a selected block layout through Auto Layout payload", async () => {
+    render(<PresentationEditor />);
+    fireEvent.click(screen.getByRole("button", { name: /auto layout slide/i }));
+
+    const autoLayoutDialog = screen.getByRole("dialog", { name: /auto layout/i });
+    expect(within(autoLayoutDialog).getByText("Block layout")).toBeInTheDocument();
+    const blockLayoutSelect = within(autoLayoutDialog).getAllByRole("combobox")[1];
+    fireEvent.click(blockLayoutSelect);
+    expect(screen.queryByRole("option", { name: /^hero center$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /^split left image$/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("option", { name: /^process steps$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /apply auto layout/i }));
+
+    await waitFor(() => {
+      expect(mutationMocks.relayoutSlide).toHaveBeenCalled();
+    });
+    const payload = mutationMocks.relayoutSlide.mock.calls.at(-1)?.[0];
+    expect(payload?.componentRecipeId).toBe("process-steps");
+    expect(payload?.templateId).toBeUndefined();
+  });
+
+  it("keeps the Auto Layout dialog block list independent from the AI sidebar category filter", async () => {
+    render(<PresentationEditor />);
+
+    const aiLayoutPanel = await screen.findByTestId("ai-layout-panel");
+    fireEvent.click(within(aiLayoutPanel).getByRole("button", { name: "Document" }));
+
+    fireEvent.click(screen.getByRole("button", { name: /auto layout slide/i }));
+    const autoLayoutDialog = screen.getByRole("dialog", { name: /auto layout/i });
+    const blockLayoutSelect = within(autoLayoutDialog).getAllByRole("combobox")[1];
+    fireEvent.click(blockLayoutSelect);
+
+    expect(screen.getByRole("option", { name: /^process steps$/i })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /^sectioned explainer$/i })).toBeInTheDocument();
+  });
+
+  it("restores the pre-auto-layout canvas state with undo", async () => {
+    mutationMocks.relayoutSlide.mockImplementation(async () => {
+      queryState.deckByItem = {
+        ...queryState.deckByItem,
+        slides: queryState.deckByItem.slides.map((slide: any) => (
+          slide.id === 71
+            ? {
+              ...slide,
+              version: 4,
+              slideContent: {
+                elements: [
+                  { id: "relayout-title", type: "text", x: 120, y: 80, width: 320, height: 70, text: "Relayout headline", color: "#111827" },
+                ],
+              },
+            }
+            : slide
+        )),
+      };
+      return {
+        slide: {
+          id: 71,
+          version: 4,
+          slideContent: {
+            elements: [
+              { id: "relayout-title", type: "text", x: 120, y: 80, width: 320, height: 70, text: "Relayout headline", color: "#111827" },
+            ],
+          },
+        },
+        warnings: [],
+        applied: {
+          templateId: "split_right_image",
+          stylePresetId: "dark-professional",
+          graphicCategory: "Business",
+          reusedImage: false,
+        },
+      };
+    });
+
+    render(<PresentationEditor />);
+    expect(screen.getByLabelText("Element x")).toHaveValue(10);
+
+    fireEvent.click(screen.getByRole("button", { name: /auto layout slide/i }));
+    fireEvent.click(screen.getByRole("button", { name: /apply auto layout/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Element x")).toHaveValue(120);
+    });
+
+    fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Element x")).toHaveValue(10);
+    });
+  });
+
+  it("restores the pre-repair canvas state with undo after generating from the saved note", async () => {
+    queryState.deckByItem = {
+      ...buildDeckByItem(),
+      slides: [
+        {
+          ...buildDeckByItem().slides[0],
+          notes: "Saved note for repair",
+        },
+        buildDeckByItem().slides[1],
+      ],
+    } as any;
+
+    mutationMocks.repairSlideFromNote.mockImplementation(async () => {
+      queryState.deckByItem = {
+        ...queryState.deckByItem,
+        slides: queryState.deckByItem.slides.map((slide: any) => (
+          slide.id === 71
+            ? {
+              ...slide,
+              version: 4,
+              title: "Repaired intro",
+              notes: "Saved note for repair",
+              slideContent: {
+                elements: [
+                  { id: "repair-title", type: "text", x: 140, y: 90, width: 340, height: 70, text: "Repaired headline", color: "#111827" },
+                ],
+              },
+            }
+            : slide
+        )),
+      };
+      return {
+        slide: {
+          id: 71,
+          version: 4,
+          title: "Repaired intro",
+          notes: "Saved note for repair",
+          slideContent: {
+            elements: [
+              { id: "repair-title", type: "text", x: 140, y: 90, width: 340, height: 70, text: "Repaired headline", color: "#111827" },
+            ],
+          },
+        },
+        warnings: [],
+        applied: {
+          templateId: "split_right_image",
+          stylePresetId: "dark-professional",
+          graphicCategory: "Business",
+          regeneratedImage: true,
+        },
+      };
+    });
+
+    render(<PresentationEditor />);
+    expect(screen.getByLabelText("Element x")).toHaveValue(10);
+
+    fireEvent.click(screen.getByRole("button", { name: /open slide note/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generate slide/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Element x")).toHaveValue(140);
+    });
+
+    fireEvent.keyDown(window, { key: "z", ctrlKey: true });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Element x")).toHaveValue(10);
+    });
   });
 
   it("explains visual-only Auto Layout behavior in the dialog", async () => {
@@ -3409,6 +3897,115 @@ describe("PresentationEditor", () => {
       );
     });
   });
+
+  it("saves a dirty slide note before regenerating the current slide from the note", async () => {
+    mutationMocks.updateSlide.mockImplementation(async (input: any) => {
+      queryState.deckByItem = {
+        ...queryState.deckByItem,
+        slides: queryState.deckByItem.slides.map((slide: any) => (
+          slide.id === input.slideId
+            ? {
+              ...slide,
+              version: 4,
+              notes: input.notes,
+            }
+            : slide
+        )),
+      };
+      return {};
+    });
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open slide note/i }));
+    fireEvent.change(
+      screen.getByPlaceholderText(/write slide-level notes here/i),
+      { target: { value: "Saved note for repair" } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: /save \+ generate/i }));
+
+    await waitFor(() => {
+      expect(mutationMocks.updateSlide).toHaveBeenCalledWith(
+        expect.objectContaining({
+          slideId: 71,
+          notes: "Saved note for repair",
+        }),
+      );
+      expect(mutationMocks.repairSlideFromNote).toHaveBeenCalledWith({
+        deckId: 7,
+        slideId: 71,
+        expectedVersion: 4,
+      });
+    });
+
+    const saveOrder = mutationMocks.updateSlide.mock.invocationCallOrder[0];
+    const repairOrder = mutationMocks.repairSlideFromNote.mock.invocationCallOrder[0];
+    expect(saveOrder).toBeLessThan(repairOrder);
+  });
+
+  it("shows progressing repair status updates while generating a slide from the saved note", async () => {
+    vi.useFakeTimers();
+    queryState.deckByItem = {
+      ...queryState.deckByItem,
+      slides: queryState.deckByItem.slides.map((slide: any) => (
+        slide.id === 71
+          ? {
+            ...slide,
+            notes: "Saved note for repair",
+          }
+          : slide
+      )),
+    };
+
+    let resolveRepair: ((value: any) => void) | null = null;
+    mutationMocks.repairSlideFromNote.mockImplementation(() => new Promise((resolve) => {
+      resolveRepair = resolve;
+    }));
+
+    render(<PresentationEditor />);
+
+    fireEvent.click(screen.getByRole("button", { name: /open slide note/i }));
+    fireEvent.click(screen.getByRole("button", { name: /generate slide/i }));
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(mutationMocks.repairSlideFromNote).toHaveBeenCalledWith(expect.objectContaining({
+      deckId: 7,
+      slideId: 71,
+      expectedVersion: expect.any(Number),
+    }));
+
+    await act(async () => {
+      vi.advanceTimersByTime(3400);
+    });
+
+    await act(async () => {
+      resolveRepair?.({
+        slide: {
+          id: 71,
+          version: 4,
+          title: "Repaired",
+          slideContent: {
+            elements: [
+              { id: "repaired-title", type: "text", x: 80, y: 80, width: 280, height: 70, text: "Repaired", color: "#111827" },
+            ],
+          },
+        },
+        warnings: [],
+        applied: {
+          templateId: "bottom_image_text_top",
+          stylePresetId: "dark-professional",
+          graphicCategory: "Education",
+          regeneratedImage: true,
+        },
+      });
+      await Promise.resolve();
+    });
+
+    vi.useRealTimers();
+  }, 10000);
 
   it("allows dragging the slide note dialog by its header", async () => {
     render(<PresentationEditor />);

@@ -30,6 +30,13 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { trpc } from '@/lib/trpc';
 import { pickEnabledModelId } from '@/lib/enabledModelSelection';
 import {
@@ -66,6 +73,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { AutoCreateWorkflowModal } from '@/components/workflow/AutoCreateWorkflowModal';
 import { AutoEditWorkflowModal } from '@/components/workflow/AutoEditWorkflowModal';
 import { ConvertWithISCDialog } from '@/components/workflow/ConvertWithISCDialog';
@@ -75,6 +83,7 @@ import { WorkflowVersionHistory } from '@/components/workflow/WorkflowVersionHis
 import { BaseNode } from '@/components/workflow/nodes/BaseNode';
 import GroupNode from '@/components/workflow/nodes/GroupNode';
 import { useNodeRegistry } from '@/lib/workflow/useNodeRegistry';
+import { filterWorkflowNodeTypes } from '@/lib/workflow/browserSessionNodeTypes';
 import {
   isValidConnection as createIsValidConnection,
   getConnectionError,
@@ -82,6 +91,7 @@ import {
 
 // Step 4: Import DynamicNodeConfig
 import { DynamicNodeConfig } from '@/components/workflow/config/DynamicNodeConfig';
+import { useTenantFeatureFlags } from '@/hooks/useTenantFeatureFlag';
 
 // Step 6: Import Execution components
 import { useExecutionStore } from '@/stores/executionStore';
@@ -89,6 +99,23 @@ import { ExecutionLogPanel } from '@/components/workflow/execution/ExecutionLogP
 import { ConsolePanel } from '@/components/workflow/execution/ConsolePanel';
 import { CostEstimation } from '@/components/workflow/execution/CostEstimation';
 import { WorkflowRunDialog } from '@/components/workflow/execution/WorkflowRunDialog';
+import { BrowserSessionSummaryCard } from '@/components/browser-session/BrowserSessionSummaryCard';
+import { buildBrowserSessionPath } from '@/lib/browserSessionRouting';
+import {
+  buildWorkflowBrowserSessionArtifact,
+  buildWorkflowBrowserSessionLaunchContext,
+  getWorkflowBrowserSessionArtifact,
+  getWorkflowBrowserSessionId,
+  normalizeWorkflowComparisonPreview,
+} from '@/lib/workflow/outputPresentation';
+import type { BrowserSessionArtifact } from '@shared/browserSession';
+import { parseBrowserSessionArtifact } from '@shared/browserSession';
+import {
+  BROWSER_SKILL_PRESETS,
+  buildBrowserInstruction,
+  deriveBrowserSkillSelection,
+  inferBrowserSkillId,
+} from '@shared/browserSkills';
 
 // Step 10: Import TemplateBrowser
 import { TemplateBrowser } from '@/components/workflow/TemplateBrowser';
@@ -112,6 +139,7 @@ const nodeTypes: NodeTypes = {
 function FlowEditor() {
   const [, setLocation] = useLocation();
   const [, routeParams] = useRoute('/workflows/editor/:id');
+  const utils = trpc.useUtils();
   const [workflowId, setWorkflowId] = useState<string | null>(null);
   const [workflowName, setWorkflowName] = useState('');
   const [workflowDescription, setWorkflowDescription] = useState('');
@@ -168,10 +196,23 @@ function FlowEditor() {
   // Console panel
   const [showConsolePanel, setShowConsolePanel] = useState(false);
   const [consolePanelHeight, setConsolePanelHeight] = useState(200);
+  const [workflowBrowserSessionArtifact, setWorkflowBrowserSessionArtifact] = useState<BrowserSessionArtifact | null>(null);
+  const [workflowBrowserCommandDraft, setWorkflowBrowserCommandDraft] = useState('');
+  const [workflowBrowserCommandSkillId, setWorkflowBrowserCommandSkillId] = useState(() => inferBrowserSkillId(''));
+  const [workflowBrowserCommandSkillSelectionMode, setWorkflowBrowserCommandSkillSelectionMode] = useState<'auto' | 'manual'>('auto');
+  const [workflowBrowserCommandBusy, setWorkflowBrowserCommandBusy] = useState(false);
+  const [workflowBrowserCommandNotice, setWorkflowBrowserCommandNotice] = useState<string | null>(null);
   const handleToggleConsolePanel = useCallback(() => setShowConsolePanel((v) => !v), []);
 
   // Step 2: Use node registry instead of hardcoded options
   const { nodeTypes: registryNodeTypes, isLoading: registryLoading, getNodeTypesByCategory } = useNodeRegistry();
+  const tenantFlags = useTenantFeatureFlags();
+  const availableRegistryNodeTypes = useMemo(
+    () => filterWorkflowNodeTypes(registryNodeTypes, {
+      workflowBrowserSessionNodes: tenantFlags.workflowBrowserSessionNodes,
+    }),
+    [registryNodeTypes, tenantFlags.workflowBrowserSessionNodes],
+  );
 
   // Step 6: Execution store
   const {
@@ -187,6 +228,10 @@ function FlowEditor() {
 
   // Get current user for credit balance
   const { data: user } = (trpc as any).auth.me.useQuery();
+  const workflowBrowserSessionStorageKey = useMemo(
+    () => (workflowId ? `workflow-browser-session:${workflowId}` : null),
+    [workflowId],
+  );
 
   // Fetch available LLM models
   const { data: availableModelsData, isLoading: modelsLoading } = (trpc as any).multiProvider.getAvailableModelsWithProviders.useQuery();
@@ -209,6 +254,7 @@ function FlowEditor() {
   const compileMutation = (trpc as any).workflow.compile.useMutation();
   const executeMutation = (trpc as any).workflow.execute.useMutation();
   const saveWorkflowMutation = (trpc as any).workflow.save.useMutation();
+  const sendLiveBrowserCommandMutation = (trpc as any).liveBrowser.sendCommand.useMutation();
   const numericWorkflowId = workflowId ? Number(workflowId) : null;
   const loadWorkflowQuery = (trpc as any).workflow.load.useQuery(
     { id: numericWorkflowId! },
@@ -293,6 +339,180 @@ function FlowEditor() {
     }
   }, [defaultModel, enabledWorkflowModelIds, modelsLoading]);
 
+  useEffect(() => {
+    if (!workflowBrowserSessionStorageKey || typeof window === 'undefined') {
+      setWorkflowBrowserSessionArtifact(null);
+      return;
+    }
+
+    try {
+      const stored = window.sessionStorage.getItem(workflowBrowserSessionStorageKey);
+      setWorkflowBrowserSessionArtifact(
+        stored ? parseBrowserSessionArtifact(JSON.parse(stored)) : null,
+      );
+    } catch {
+      setWorkflowBrowserSessionArtifact(null);
+    }
+  }, [workflowBrowserSessionStorageKey]);
+
+  useEffect(() => {
+    setWorkflowBrowserCommandDraft('');
+    setWorkflowBrowserCommandSkillId(inferBrowserSkillId(''));
+    setWorkflowBrowserCommandSkillSelectionMode('auto');
+    setWorkflowBrowserCommandBusy(false);
+    setWorkflowBrowserCommandNotice(null);
+  }, [workflowId, workflowBrowserSessionArtifact?.sessionId]);
+
+  const handleWorkflowBrowserCommandDraftChange = useCallback((nextValue: string) => {
+    setWorkflowBrowserCommandDraft(nextValue);
+    const nextSelection = deriveBrowserSkillSelection({
+      draft: nextValue,
+      currentSkillId: workflowBrowserCommandSkillId,
+      selectionMode: workflowBrowserCommandSkillSelectionMode,
+    });
+    setWorkflowBrowserCommandSkillId(nextSelection.skillId);
+    setWorkflowBrowserCommandSkillSelectionMode(nextSelection.selectionMode);
+  }, [workflowBrowserCommandSkillId, workflowBrowserCommandSkillSelectionMode]);
+
+  const handleWorkflowBrowserCommandSkillChange = useCallback((value: typeof workflowBrowserCommandSkillId) => {
+    setWorkflowBrowserCommandSkillId(value);
+    setWorkflowBrowserCommandSkillSelectionMode('manual');
+  }, []);
+
+  const storeWorkflowBrowserSessionArtifact = useCallback((artifact: BrowserSessionArtifact) => {
+    setWorkflowBrowserSessionArtifact(artifact);
+
+    if (workflowBrowserSessionStorageKey && typeof window !== 'undefined') {
+      window.sessionStorage.setItem(workflowBrowserSessionStorageKey, JSON.stringify(artifact));
+    }
+
+    return artifact;
+  }, [workflowBrowserSessionStorageKey]);
+
+  const hydrateWorkflowBrowserSessionArtifact = useCallback(async (sessionId: string) => {
+    if (!user?.id) {
+      return null;
+    }
+
+    const session = await utils.liveBrowser.getSession.fetch({
+      sessionId,
+      actor: { actorType: 'user', actorId: String(user.id) },
+    });
+
+    return storeWorkflowBrowserSessionArtifact(
+      buildWorkflowBrowserSessionArtifact(session, workflowId),
+    );
+  }, [storeWorkflowBrowserSessionArtifact, user?.id, utils.liveBrowser.getSession, workflowId]);
+
+  const enrichWorkflowOutput = useCallback(async (output: unknown) => {
+    if (!output || typeof output !== 'object' || Array.isArray(output)) {
+      return output;
+    }
+
+    const nextOutput = { ...(output as Record<string, unknown>) };
+    const directArtifact = getWorkflowBrowserSessionArtifact(nextOutput);
+    if (directArtifact) {
+      storeWorkflowBrowserSessionArtifact(directArtifact);
+    }
+
+    const browserSessionId = getWorkflowBrowserSessionId(nextOutput);
+
+    if (!directArtifact && browserSessionId) {
+      try {
+        const artifact = await hydrateWorkflowBrowserSessionArtifact(browserSessionId);
+        if (artifact) {
+          nextOutput.browserSessionArtifact = artifact;
+        }
+      } catch (error) {
+        console.error('[WorkflowEditor] failed to hydrate Browser Session output', error);
+      }
+    }
+
+    const comparisonPreview = normalizeWorkflowComparisonPreview(nextOutput);
+    if (comparisonPreview) {
+      nextOutput.comparisonPreview = comparisonPreview;
+    }
+
+    return nextOutput;
+  }, [hydrateWorkflowBrowserSessionArtifact, storeWorkflowBrowserSessionArtifact]);
+
+  useEffect(() => {
+    if (!user?.id || typeof window === 'undefined') {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const returnedBrowserSessionId = params.get('browserSessionId');
+    if (!returnedBrowserSessionId) {
+      return;
+    }
+
+    hydrateWorkflowBrowserSessionArtifact(returnedBrowserSessionId)
+      .catch((error) => {
+        console.error('[WorkflowEditor] failed to restore returned Browser Session', error);
+      })
+      .finally(() => {
+        params.delete('browserSessionId');
+        const nextSearch = params.toString();
+        window.history.replaceState(
+          {},
+          '',
+          `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}`,
+        );
+      });
+  }, [hydrateWorkflowBrowserSessionArtifact, user?.id]);
+
+  const handleSendWorkflowBrowserSessionCommand = useCallback(async () => {
+    if (!workflowBrowserSessionArtifact?.sessionId || !workflowId || !user?.id || !workflowBrowserCommandDraft.trim()) {
+      return;
+    }
+
+    try {
+      setWorkflowBrowserCommandBusy(true);
+      setWorkflowBrowserCommandNotice(null);
+      const actor = { actorType: 'user' as const, actorId: String(user.id) };
+      const session = await utils.liveBrowser.getSession.fetch({
+        sessionId: workflowBrowserSessionArtifact.sessionId,
+        actor,
+      });
+
+      await sendLiveBrowserCommandMutation.mutateAsync({
+        sessionId: session.sessionId,
+        sessionVersion: session.sessionVersion,
+        idempotencyKey: `workflow-browser-cmd-${Date.now()}`,
+        actor,
+        command: {
+          type: 'natural_language',
+          text: buildBrowserInstruction({
+            goal: workflowBrowserCommandDraft.trim(),
+            skillId: workflowBrowserCommandSkillId,
+          }),
+        },
+      });
+
+      await hydrateWorkflowBrowserSessionArtifact(workflowBrowserSessionArtifact.sessionId);
+      setWorkflowBrowserCommandDraft('');
+      setWorkflowBrowserCommandSkillId(inferBrowserSkillId(''));
+      setWorkflowBrowserCommandSkillSelectionMode('auto');
+      setWorkflowBrowserCommandNotice('Instruction queued for this Browser Session.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to send Browser Session instruction';
+      setWorkflowBrowserCommandNotice(message);
+      toast.error(message);
+    } finally {
+      setWorkflowBrowserCommandBusy(false);
+    }
+  }, [
+    hydrateWorkflowBrowserSessionArtifact,
+    sendLiveBrowserCommandMutation,
+    user?.id,
+    utils.liveBrowser.getSession,
+    workflowBrowserCommandDraft,
+    workflowBrowserCommandSkillId,
+    workflowBrowserSessionArtifact?.sessionId,
+    workflowId,
+  ]);
+
   // Selected node
   const selectedNode = nodes.find(n => n.id === selectedNodeId);
 
@@ -332,7 +552,8 @@ function FlowEditor() {
   // Step 3: Node creation handler
   const onAddNode = useCallback(
     (nodeType: string) => {
-      const spec = registryNodeTypes?.find(t => t.type === nodeType);
+      const spec = availableRegistryNodeTypes.find(t => t.type === nodeType)
+        ?? registryNodeTypes?.find(t => t.type === nodeType);
       if (!spec) return;
 
       // Calculate position - find empty space or center of current view
@@ -432,7 +653,7 @@ function FlowEditor() {
         }, 50);
       }
     },
-    [registryNodeTypes, reactFlowInstance, setNodes]
+    [availableRegistryNodeTypes, registryNodeTypes, reactFlowInstance, setNodes]
   );
 
   const onConnect = useCallback(
@@ -981,21 +1202,26 @@ function FlowEditor() {
       eventSource.addEventListener('node_complete', (event: MessageEvent) => {
         const data = safeJsonParse(event.data);
         if (!data) return;
-        updateNodeStatus(data.nodeId, {
-          status: 'success',
-          endTime: Date.now(),
-          output: data.output,
-        });
-        addLog({
-          id: data.event_id,
-          timestamp: Date.now(),
-          nodeId: data.nodeId,
-          nodeName: data.nodeName || data.nodeId,
-          eventType: 'node_complete',
-          status: 'success',
-          duration: data.durationMs,
-          output: data.output,
-        });
+
+        void (async () => {
+          const enrichedOutput = await enrichWorkflowOutput(data.output);
+
+          updateNodeStatus(data.nodeId, {
+            status: 'success',
+            endTime: Date.now(),
+            output: (enrichedOutput ?? undefined) as Record<string, unknown> | undefined,
+          });
+          addLog({
+            id: data.event_id,
+            timestamp: Date.now(),
+            nodeId: data.nodeId,
+            nodeName: data.nodeName || data.nodeId,
+            eventType: 'node_complete',
+            status: 'success',
+            duration: data.durationMs,
+            output: (enrichedOutput ?? undefined) as Record<string, unknown> | undefined,
+          });
+        })();
       });
 
       eventSource.addEventListener('node_error', (event: MessageEvent) => {
@@ -1094,23 +1320,26 @@ function FlowEditor() {
     );
   };
 
+  const filteredByCategory = (category: Parameters<typeof getNodeTypesByCategory>[0]) =>
+    filterNodes(availableRegistryNodeTypes.filter((nodeType) => nodeType.category === category));
+
   // Categorize nodes for sidebar (with search filter)
-  const aiNodes = filterNodes(getNodeTypesByCategory('ai'));
-  const flowNodes = filterNodes(getNodeTypesByCategory('flow_control'));
-  const humanNodes = filterNodes(getNodeTypesByCategory('human'));
-  const mediaNodes = filterNodes(getNodeTypesByCategory('media'));
-  const skillNodes = filterNodes(getNodeTypesByCategory('skills'));
-  const triggerNodes = filterNodes(getNodeTypesByCategory('triggers'));
-  const inputNodes = filterNodes(getNodeTypesByCategory('inputs'));
-  const outputNodes = filterNodes(getNodeTypesByCategory('outputs'));
-  const dataNodes = filterNodes(getNodeTypesByCategory('data'));
+  const aiNodes = filteredByCategory('ai');
+  const flowNodes = filteredByCategory('flow_control');
+  const humanNodes = filteredByCategory('human');
+  const mediaNodes = filteredByCategory('media');
+  const skillNodes = filteredByCategory('skills');
+  const triggerNodes = filteredByCategory('triggers');
+  const inputNodes = filteredByCategory('inputs');
+  const outputNodes = filteredByCategory('outputs');
+  const dataNodes = filteredByCategory('data');
   // Combine both 'integrations' and 'integration' categories
   const integrationNodes = [
-    ...filterNodes(getNodeTypesByCategory('integrations')),
-    ...filterNodes(getNodeTypesByCategory('integration')),
+    ...filteredByCategory('integrations'),
+    ...filteredByCategory('integration'),
   ];
-  const observabilityNodes = filterNodes(getNodeTypesByCategory('observability'));
-  const securityNodes = filterNodes(getNodeTypesByCategory('security'));
+  const observabilityNodes = filteredByCategory('observability');
+  const securityNodes = filteredByCategory('security');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 dark:from-gray-900 dark:via-gray-900 dark:to-gray-900">
@@ -1231,6 +1460,74 @@ function FlowEditor() {
           </div>
         </div>
       </header>
+
+      {workflowBrowserSessionArtifact ? (
+        <div className="border-b border-cyan-100 bg-cyan-50/40 px-4 py-3 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-6xl">
+            <BrowserSessionSummaryCard
+              artifact={workflowBrowserSessionArtifact}
+              onOpen={(artifact) => {
+                setLocation(
+                  buildBrowserSessionPath(
+                    artifact.sessionId,
+                    artifact.launchContext
+                      ?? buildWorkflowBrowserSessionLaunchContext(workflowId, artifact.sessionId),
+                  ),
+                );
+              }}
+            >
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-900/70">
+                    Quick Browser Instruction
+                  </p>
+                  <p className="mt-1 text-xs text-slate-600">
+                    Continue the returned Browser Session from Workflow without leaving the editor.
+                  </p>
+                </div>
+                <Select
+                  value={workflowBrowserCommandSkillId}
+                  onValueChange={(value) => handleWorkflowBrowserCommandSkillChange(value as typeof workflowBrowserCommandSkillId)}
+                >
+                  <SelectTrigger className="bg-white">
+                    <SelectValue placeholder="Choose a browser skill" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BROWSER_SKILL_PRESETS.map((preset) => (
+                      <SelectItem key={preset.id} value={preset.id}>
+                        {preset.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Textarea
+                  value={workflowBrowserCommandDraft}
+                  onChange={(event) => handleWorkflowBrowserCommandDraftChange(event.target.value)}
+                  placeholder="Example: Find the best site for this task, compare options, and continue."
+                  className="min-h-[88px] bg-white"
+                />
+                {workflowBrowserCommandNotice ? (
+                  <p className="text-xs text-slate-600">{workflowBrowserCommandNotice}</p>
+                ) : null}
+                <Button
+                  type="button"
+                  size="sm"
+                  className="gap-2 bg-cyan-700 text-white hover:bg-cyan-800"
+                  onClick={() => void handleSendWorkflowBrowserSessionCommand()}
+                  disabled={!workflowBrowserCommandDraft.trim() || workflowBrowserCommandBusy}
+                >
+                  {workflowBrowserCommandBusy ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Terminal className="h-4 w-4" />
+                  )}
+                  {workflowBrowserCommandBusy ? 'Queuing Instruction...' : 'Send Browser Instruction'}
+                </Button>
+              </div>
+            </BrowserSessionSummaryCard>
+          </div>
+        </div>
+      ) : null}
 
       {/* Validation Errors */}
       {validationErrors.length > 0 && (
@@ -2252,7 +2549,7 @@ function FlowEditor() {
       <AutoCreateWorkflowModal
         open={showAutoCreate}
         onOpenChange={setShowAutoCreate}
-        nodeTypes={registryNodeTypes?.map(nt => ({
+        nodeTypes={availableRegistryNodeTypes.map(nt => ({
           type: nt.type,
           display_name: nt.display_name,
           description: nt.description,
@@ -2271,7 +2568,7 @@ function FlowEditor() {
         currentEdges={edges}
         errors={validationErrors}
         warnings={compilationWarnings}
-        nodeTypes={registryNodeTypes?.map(nt => ({
+        nodeTypes={availableRegistryNodeTypes.map(nt => ({
           type: nt.type,
           display_name: nt.display_name,
           description: nt.description,

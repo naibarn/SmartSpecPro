@@ -4,7 +4,7 @@
  * CRUD operations for content_artifacts table.
  */
 
-import { db } from "../_core/db";
+import { db } from "../db";
 import { contentArtifacts } from "../../drizzle/schema";
 import { eq, and, lt, sql } from "drizzle-orm";
 import { calculateNextRefreshAt } from "./contentStalenessChecker";
@@ -44,11 +44,15 @@ export async function saveArtifact(input: SaveArtifactInput) {
   return artifact;
 }
 
-export async function getArtifactById(id: number) {
+export async function getArtifactById(id: number, tenantId?: string) {
+  const conditions = [eq(contentArtifacts.id, id)];
+  if (tenantId) {
+    conditions.push(eq(contentArtifacts.tenantId, tenantId));
+  }
   const [artifact] = await db
     .select()
     .from(contentArtifacts)
-    .where(eq(contentArtifacts.id, id))
+    .where(and(...conditions))
     .limit(1);
   return artifact ?? null;
 }
@@ -109,8 +113,8 @@ export async function checkAndMarkStaleContent(): Promise<number> {
   return result.length;
 }
 
-export async function refreshArtifact(id: number) {
-  const artifact = await getArtifactById(id);
+export async function refreshArtifact(id: number, tenantId?: string) {
+  const artifact = await getArtifactById(id, tenantId);
   if (!artifact) return null;
 
   const now = new Date();
@@ -133,11 +137,15 @@ export async function refreshArtifact(id: number) {
   return updated;
 }
 
-export async function archiveArtifact(id: number) {
+export async function archiveArtifact(id: number, tenantId?: string) {
+  const conditions = [eq(contentArtifacts.id, id)];
+  if (tenantId) {
+    conditions.push(eq(contentArtifacts.tenantId, tenantId));
+  }
   const [updated] = await db
     .update(contentArtifacts)
     .set({ status: "archived", updatedAt: new Date() })
-    .where(eq(contentArtifacts.id, id))
+    .where(and(...conditions))
     .returning();
   return updated ?? null;
 }

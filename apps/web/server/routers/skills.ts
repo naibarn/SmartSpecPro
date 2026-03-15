@@ -414,7 +414,7 @@ async function callLLMWithVision(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: useModel,
+      model: provider.providerModelId || useModel,
       messages,
       max_tokens: maxTokens,
       temperature: 0.7,
@@ -1329,8 +1329,29 @@ export const skillsRouter = router({
         const userPrompt = buildUserPrompt(input);
 
         // Call LLM with vision support
-        // Use user-selected model or default to openai/gpt-4o for vision capability
-        const visionModel = resolveVisionModelId(await getVisionModelOptions(), input.model);
+        // Feature 041: When no model explicitly selected, use skill execution policy
+        let visionModel: string | null = null;
+        if (input.model) {
+          // User explicitly selected a model — use it
+          visionModel = resolveVisionModelId(await getVisionModelOptions(), input.model);
+        } else {
+          // Auto mode: try skill execution policy first (capability-aware selection)
+          const skill = getSkillByIdOrType(resolvedSkillId);
+          if (skill) {
+            try {
+              const policy = await resolveSkillExecutionPolicy({ skill });
+              if (policy.modelId) {
+                visionModel = policy.modelId;
+              }
+            } catch {
+              // Policy resolution failed — fall through to vision model fallback
+            }
+          }
+          // Fallback: use default vision model
+          if (!visionModel) {
+            visionModel = resolveVisionModelId(await getVisionModelOptions(), null);
+          }
+        }
         if (!visionModel) {
           throw new TRPCError({
             code: "PRECONDITION_FAILED",
@@ -2705,22 +2726,39 @@ export const skillsRouter = router({
           .limit(1)
         )[0]?.executionPolicyJson ?? {};
 
+        // Build Feature 041 requirements from Spec 038 flags when not explicitly provided
+        const incomingReqs = updateData.executionPolicy.requirements;
+        const existingReqs = (existing as any)?.requirements;
+        let mergedRequirements = incomingReqs ?? existingReqs;
+
+        // Auto-derive requirements from Spec 038 toggle flags
+        if (!incomingReqs) {
+          const derived: Record<string, boolean> = {};
+          if (updateData.executionPolicy.requires_web_search === true) {
+            derived.supportsWebSearch = true;
+          }
+          if (updateData.executionPolicy.requires_structured_output === true) {
+            derived.supportsStructuredOutputs = true;
+          }
+          if (Object.keys(derived).length > 0) {
+            mergedRequirements = { ...(existingReqs ?? {}), ...derived };
+          }
+        }
+
+        const hasReqs = mergedRequirements && Object.values(mergedRequirements).some(Boolean);
+
         updateObj.executionPolicyJson = {
           ...existing,
-          // Spec 038 fields
+          // Spec 038 fields (backward compat)
           thinking_level_hint: updateData.executionPolicy.thinking_level_hint,
           requires_web_search: updateData.executionPolicy.requires_web_search,
           min_citation_coverage: updateData.executionPolicy.min_citation_coverage,
           refresh_cadence_days: updateData.executionPolicy.refresh_cadence_days,
           disclosure_required: updateData.executionPolicy.disclosure_required,
           response_mode: updateData.executionPolicy.response_mode,
-          // Feature 041 fields
-          ...(updateData.executionPolicy.requirements !== undefined
-            ? { requirements: updateData.executionPolicy.requirements }
-            : {}),
-          ...(updateData.executionPolicy.mode !== undefined
-            ? { mode: updateData.executionPolicy.mode }
-            : {}),
+          // Feature 041 fields — auto-derived from Spec 038 flags when not explicit
+          requirements: mergedRequirements ?? undefined,
+          mode: updateData.executionPolicy.mode ?? (hasReqs ? "requirements" : (existing as any)?.mode),
           ...(updateData.executionPolicy.allowConversationOverride !== undefined
             ? { allowConversationOverride: updateData.executionPolicy.allowConversationOverride }
             : {}),

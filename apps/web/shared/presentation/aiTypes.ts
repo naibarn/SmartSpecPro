@@ -267,6 +267,18 @@ export type GenerateAIDraftOutput = z.infer<typeof GenerateAIDraftOutputSchema>;
 
 // ── AIDraftProgress schema (polling response) ──────────────
 
+export const AIDraftProgressDiagnosticsSchema = z.object({
+  taskId: z.string().min(1).max(128),
+  operation: z.string().min(1).max(128).optional(),
+  model: z.string().min(1).max(200).optional(),
+  recipeId: AIPresentationComponentRecipeIdSchema.optional(),
+  compactionLevel: z.enum(["balanced", "compact", "aggressive"]).optional(),
+  attempt: z.number().int().positive().optional(),
+  maxAttempts: z.number().int().positive().optional(),
+  startedAt: z.string().datetime().optional(),
+  deadlineAt: z.string().datetime().optional(),
+}).strict();
+
 export const AIDraftProgressSchema = z.object({
   phase: z.number().int().min(0).max(7),
   phaseLabel: z.string(),
@@ -282,6 +294,7 @@ export const AIDraftProgressSchema = z.object({
   completed: z.boolean(),
   updatedAt: z.string().datetime().optional(),
   workerActive: z.boolean().optional(),
+  diagnostics: AIDraftProgressDiagnosticsSchema.optional(),
   cancelled: z.boolean().optional(),
   result: z
     .object({
@@ -300,3 +313,4 @@ export const AIDraftProgressSchema = z.object({
 });
 
 export type AIDraftProgress = z.infer<typeof AIDraftProgressSchema>;
+export type AIDraftProgressDiagnostics = z.infer<typeof AIDraftProgressDiagnosticsSchema>;

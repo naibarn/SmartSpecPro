@@ -31,6 +31,7 @@ import {
   PRESENTATION_COMPONENT_MEDIA_SLOTS,
   PRESENTATION_COMPONENT_MEDIA_SLOT_TYPES,
   PRESENTATION_COMPONENT_SLOT_BUDGETS,
+  presentationMediaSlotSupportsType,
 } from "@shared/presentation/componentRecipes";
 import { buildPresentationComponentRecipeSlotBindings } from "@shared/presentation/componentRecipeSlotBindings";
 import {
@@ -251,6 +252,12 @@ const IMAGE_PROMPT_ENHANCE_TIMEOUT_MS = (() => {
   return 30000;
 })();
 const AI_DRAFT_CANCEL_POLL_INTERVAL_MS = 1000;
+const AI_DRAFT_TEXT_TIMEOUT_DEFAULT_MS = 180000;
+const AI_DRAFT_STRUCTURED_TIMEOUT_DEFAULT_MS = 120000;
+const AI_DRAFT_RECIPE_COMPACTION_TIMEOUT_DEFAULT_MS = 90000;
+const AI_DRAFT_RECIPE_COMPACTION_TOTAL_TIMEOUT_DEFAULT_MS = 120000;
+const AI_DRAFT_LAYOUT_DSL_TIMEOUT_DEFAULT_MS = 90000;
+const AI_DRAFT_LAYOUT_DSL_TOTAL_TIMEOUT_DEFAULT_MS = 120000;
 
 const CREDIT_ARTICLE = 30;
 const CREDIT_SPLIT = 10;
@@ -388,6 +395,17 @@ interface MediaGenerationPlanEntry {
   prompt: string;
   slotId?: string;
 }
+
+interface DraftAwaitConfig {
+  cancelLabel: string;
+  timeoutLabel: string;
+  timeoutMs: number;
+}
+
+type DraftAwaitStep = <T>(
+  promise: Promise<T>,
+  config: DraftAwaitConfig,
+) => Promise<T>;
 
 interface SkillLLMBillingContext {
   description: string;
@@ -2049,7 +2067,16 @@ function getRelayoutPreferredMediaTypes(
   if (!slotTypes) {
     return new Set();
   }
-  return new Set(Object.values(slotTypes));
+  const mediaTypes = new Set<"image" | "video">();
+  for (const slotType of Object.values(slotTypes)) {
+    if (presentationMediaSlotSupportsType(slotType, "image")) {
+      mediaTypes.add("image");
+    }
+    if (presentationMediaSlotSupportsType(slotType, "video")) {
+      mediaTypes.add("video");
+    }
+  }
+  return mediaTypes;
 }
 
 function resolveRelayoutComponentRecipeId(
@@ -2167,6 +2194,22 @@ function adaptRelayoutSlideForRecipe(
       maxDetails = 2;
       maxBodyLines = 4;
       adaptationLabel = "sectioned explainer";
+      break;
+    case "a4-photo-grid":
+      maxSections = 2;
+      headingChars = 72;
+      detailChars = 120;
+      maxDetails = 2;
+      maxBodyLines = 3;
+      adaptationLabel = "multi-photo board";
+      break;
+    case "landscape-photo-story":
+      maxSections = 3;
+      headingChars = 64;
+      detailChars = 96;
+      maxDetails = 2;
+      maxBodyLines = 3;
+      adaptationLabel = "landscape showcase";
       break;
     default:
       return { slide, adapted: false };
@@ -2307,6 +2350,7 @@ function getRelayoutRecipeSuitability(
       }
       return { suitable: true };
     case "sectioned-explainer":
+      if (!media.hasImage && !media.hasVideo) return reject("Sectioned explainer needs reusable image or video for the hero slot.");
       if ((bodyCharTotal + detailCharTotal) > 1_200 || noteChars > 900 || sectionCount > 4) {
         return reject("Sectioned explainer still needs a bounded long-form narrative.");
       }
@@ -2334,21 +2378,33 @@ function getRelayoutRecipeSuitability(
       }
       return { suitable: true };
     case "poster-spotlight":
-      if (!media.hasImage) return reject("Poster spotlight needs reusable image.");
+      if (!media.hasImage && !media.hasVideo) return reject("Poster spotlight needs reusable image or video.");
       if (bodyCount > 5 || sectionCount > 2 || noteChars > 320 || longTextLines >= 2) {
         return reject("Poster spotlight only fits concise campaign copy.");
       }
       return { suitable: true };
     case "framed-image-story":
-      if (!media.hasImage) return reject("Framed image story needs reusable image.");
+      if (!media.hasImage && !media.hasVideo) return reject("Framed image story needs reusable image or video.");
       if (sectionCount > 2 || bodyCount > 4 || noteChars > 380 || maxDetailChars > 130 || longTextLines >= 2) {
         return reject("Framed image story needs a shorter editorial narrative.");
       }
       return { suitable: true };
     case "photo-collage":
-      if (!media.hasImage) return reject("Photo collage needs reusable images.");
+      if (!media.hasImage && !media.hasVideo) return reject("Photo collage needs reusable media.");
       if (bodyCount > 4 || sectionCount > 2 || noteChars > 240 || longTextLines >= 2) {
         return reject("Photo collage only fits a short caption-driven story.");
+      }
+      return { suitable: true };
+    case "a4-photo-grid":
+      if (!media.hasImage && !media.hasVideo) return reject("multi-photo board needs reusable media.");
+      if (sectionCount > 2 || bodyCount > 5 || noteChars > 420 || longTextLines >= 3) {
+        return reject("multi-photo board only fits a bounded editorial story.");
+      }
+      return { suitable: true };
+    case "landscape-photo-story":
+      if (!media.hasImage && !media.hasVideo) return reject("landscape showcase needs reusable media.");
+      if (sectionCount > 3 || bodyCount > 5 || noteChars > 420 || longTextLines >= 3) {
+        return reject("landscape showcase only fits a concise visual narrative.");
       }
       return { suitable: true };
     default:
@@ -2356,15 +2412,86 @@ function getRelayoutRecipeSuitability(
   }
 }
 
+function resolveLegacyRelayoutBlockFallbackCandidates(options: {
+  templateId: LayoutTemplateId;
+  canvasWidth?: number;
+  canvasHeight?: number;
+}): AIPresentationComponentRecipeId[] {
+  const portraitCanvas = isPortraitCanvasForRecipeSelection(options);
+  switch (options.templateId) {
+    case "hero_center":
+      return ["poster-spotlight", "framed-image-story"];
+    case "split_left_image":
+    case "split_right_image":
+      return portraitCanvas
+        ? ["sectioned-explainer", "framed-image-story", "two-column-article"]
+        : ["framed-image-story", "poster-spotlight", "two-column-article"];
+    case "top_image_text_bottom":
+    case "bottom_image_text_top":
+      return portraitCanvas
+        ? ["sectioned-explainer", "article-focus", "poster-spotlight"]
+        : ["poster-spotlight", "framed-image-story", "sectioned-explainer"];
+    case "feature_boxes_right":
+      return ["feature-highlights", "infographic-grid", "sectioned-explainer"];
+    default:
+      return [];
+  }
+}
+
 function resolveRelayoutComponentRecipeSelection(options: {
   preferredComponentRecipeId: AIPresentationComponentRecipeId | undefined;
   slide: AIPresentationSlide;
+  templateId: LayoutTemplateId;
   hasImage: boolean;
   hasVideo: boolean;
+  canvasWidth?: number;
+  canvasHeight?: number;
+  availableImageCount?: number;
+  availableVideoCount?: number;
 }): { componentRecipeId?: AIPresentationComponentRecipeId; warnings: string[]; slide: AIPresentationSlide } {
+  const genericLongFormFallbackRecipes = new Set<AIPresentationComponentRecipeId>([
+    "sectioned-explainer",
+    "article-focus",
+    "two-column-article",
+  ]);
   const warnings: string[] = [];
   const media = { hasImage: options.hasImage, hasVideo: options.hasVideo };
   const preserveVisibleMedia = Boolean(options.preferredComponentRecipeId) && (options.hasImage || options.hasVideo);
+  const recipeSupportsVisibleMedia = (recipeId: AIPresentationComponentRecipeId): boolean => {
+    if (!preserveVisibleMedia) {
+      return true;
+    }
+    const candidateMediaTypes = getRelayoutPreferredMediaTypes(recipeId);
+    return (
+      (media.hasImage && candidateMediaTypes.has("image"))
+      || (media.hasVideo && candidateMediaTypes.has("video"))
+    );
+  };
+  const resolveCandidate = (
+    recipeId: AIPresentationComponentRecipeId,
+    candidateWarnings: string[] = [],
+    allowAdapted = Boolean(options.preferredComponentRecipeId),
+  ): { componentRecipeId?: AIPresentationComponentRecipeId; warnings: string[]; slide: AIPresentationSlide } | null => {
+    if (recipeId === options.preferredComponentRecipeId) {
+      return null;
+    }
+    if (!recipeSupportsVisibleMedia(recipeId)) {
+      return null;
+    }
+    const adaptedCandidate = adaptRelayoutSlideForRecipe(recipeId, options.slide);
+    if (adaptedCandidate.adapted && !allowAdapted) {
+      return null;
+    }
+    const suitability = getRelayoutRecipeSuitability(recipeId, adaptedCandidate.slide, media);
+    if (!suitability.suitable) {
+      return null;
+    }
+    return {
+      componentRecipeId: recipeId,
+      warnings: [...candidateWarnings, ...(adaptedCandidate.warning ? [adaptedCandidate.warning] : [])],
+      slide: adaptedCandidate.slide,
+    };
+  };
   if (options.preferredComponentRecipeId) {
     const adaptedPreferred = adaptRelayoutSlideForRecipe(
       options.preferredComponentRecipeId,
@@ -2390,9 +2517,32 @@ function resolveRelayoutComponentRecipeSelection(options: {
     );
   }
 
+  for (const fallbackRecipeId of resolveLegacyRelayoutBlockFallbackCandidates({
+    templateId: options.templateId,
+    canvasWidth: options.canvasWidth,
+    canvasHeight: options.canvasHeight,
+  })) {
+    const resolved = resolveCandidate(fallbackRecipeId, [
+      `Mapped legacy layout "${options.templateId}" to built-in block "${describeAIComponentRecipe(fallbackRecipeId)}" for block-first Auto Layout.`,
+    ]);
+    if (resolved) {
+      warnings.push(...resolved.warnings);
+      return {
+        componentRecipeId: resolved.componentRecipeId,
+        warnings,
+        slide: resolved.slide,
+      };
+    }
+  }
+
   const candidates = scoreAIComponentRecipes({
     slide: options.slide,
     preferVideoRecipes: options.hasVideo && !options.hasImage,
+    canvasWidth: options.canvasWidth,
+    canvasHeight: options.canvasHeight,
+    availableImageCount: options.availableImageCount ?? (options.hasImage ? 1 : 0),
+    availableVideoCount: options.availableVideoCount ?? (options.hasVideo ? 1 : 0),
+    ignoreLegacyTemplateHints: true,
   });
   for (const candidate of candidates) {
     if (candidate.score < getAIComponentRecipeActivationThreshold(candidate.recipeId)) {
@@ -2401,39 +2551,61 @@ function resolveRelayoutComponentRecipeSelection(options: {
     if (candidate.recipeId === options.preferredComponentRecipeId) {
       continue;
     }
-    if (preserveVisibleMedia) {
-      const candidateMediaTypes = getRelayoutPreferredMediaTypes(candidate.recipeId);
-      const supportsVisibleMedia = (
-        (media.hasImage && candidateMediaTypes.has("image"))
-        || (media.hasVideo && candidateMediaTypes.has("video"))
-      );
-      if (!supportsVisibleMedia) {
-        continue;
-      }
-    }
-    const adaptedCandidate = adaptRelayoutSlideForRecipe(candidate.recipeId, options.slide);
-    const suitability = getRelayoutRecipeSuitability(candidate.recipeId, adaptedCandidate.slide, media);
-    if (!suitability.suitable) {
+    if (
+      options.preferredComponentRecipeId
+      && genericLongFormFallbackRecipes.has(candidate.recipeId)
+    ) {
       continue;
     }
-    if (options.preferredComponentRecipeId) {
-      warnings.push(
-        `Switched component recipe to "${candidate.recipeId}" during auto layout because it better fits the available copy.`,
-      );
+    const resolved = resolveCandidate(
+      candidate.recipeId,
+      options.preferredComponentRecipeId
+        ? [`Switched component recipe to "${candidate.recipeId}" during auto layout because it better fits the available copy.`]
+        : [],
+    );
+    if (resolved) {
+      warnings.push(...resolved.warnings);
+      return {
+        componentRecipeId: resolved.componentRecipeId,
+        warnings,
+        slide: resolved.slide,
+      };
     }
-    if (adaptedCandidate.warning) {
-      warnings.push(adaptedCandidate.warning);
-    }
-    return {
-      componentRecipeId: candidate.recipeId,
-      warnings,
-      slide: adaptedCandidate.slide,
-    };
   }
 
-  if (options.preferredComponentRecipeId) {
-    warnings.push("Auto layout fell back to a plain template because no block recipe fit the current copy cleanly.");
+  for (const candidate of candidates) {
+    if (candidate.recipeId === options.preferredComponentRecipeId || candidate.score < 0) {
+      continue;
+    }
+    const resolved = resolveCandidate(candidate.recipeId, [
+      `Preferred built-in block "${describeAIComponentRecipe(candidate.recipeId)}" as the closest Auto Layout match after scoring reusable block options.`,
+    ]);
+    if (resolved) {
+      warnings.push(...resolved.warnings);
+      return {
+        componentRecipeId: resolved.componentRecipeId,
+        warnings,
+        slide: resolved.slide,
+      };
+    }
   }
+
+  if (preserveVisibleMedia) {
+    for (const fallbackRecipeId of genericLongFormFallbackRecipes) {
+      const resolved = resolveCandidate(fallbackRecipeId, [
+        `Recovered to long-form block "${describeAIComponentRecipe(fallbackRecipeId)}" to preserve reusable media during Auto Layout.`,
+      ]);
+      if (resolved) {
+        warnings.push(...resolved.warnings);
+        return {
+          componentRecipeId: resolved.componentRecipeId,
+          warnings,
+          slide: resolved.slide,
+        };
+      }
+    }
+  }
+  warnings.push("Auto Layout used the internal fallback layout because no built-in block fit the current copy cleanly.");
   return { warnings, slide: options.slide };
 }
 
@@ -3109,6 +3281,11 @@ const COMPONENT_RECIPE_MEDIA_PLAN_GUIDE = AI_COMPONENT_RECIPE_IDS
 function scoreAIComponentRecipes(options: {
   slide: AIPresentationSlide;
   preferVideoRecipes: boolean;
+  canvasWidth?: number;
+  canvasHeight?: number;
+  availableImageCount?: number;
+  availableVideoCount?: number;
+  ignoreLegacyTemplateHints?: boolean;
 }): Array<{ recipeId: AIPresentationComponentRecipeId; score: number }> {
   const allLines = [
     options.slide.title,
@@ -3126,6 +3303,8 @@ function scoreAIComponentRecipes(options: {
   const numberedBodyLines = options.slide.body.filter((line) => /^\s*(\d+[).\-]|step\s+\d+)/i.test(line)).length;
   const sectionCount = options.slide.sections?.length ?? 0;
   const bodyCount = options.slide.body.filter((line) => line.trim().length > 0).length;
+  const portraitCanvas = Boolean(options.canvasWidth && options.canvasHeight && options.canvasHeight > options.canvasWidth);
+  const landscapeCanvas = Boolean(options.canvasWidth && options.canvasHeight && options.canvasWidth >= options.canvasHeight);
   const h2Count = options.slide.markdownHierarchy?.filter((entry) => entry.level === "h2").length ?? 0;
   const h3Count = options.slide.markdownHierarchy?.filter((entry) => entry.level === "h3").length ?? 0;
   const contactSignals = detectContactSignals(allLines);
@@ -3151,6 +3330,22 @@ function scoreAIComponentRecipes(options: {
     ...(options.slide.sections ?? []).flatMap((section) => section.details)
       .filter((line) => normalizeSlideText(line).length >= 100),
   ].length;
+  const gallerySignal = textIncludesAnyKeyword(haystack, ["gallery", "lookbook", "collage", "moodboard", "recap", "album", "แกลเลอรี", "คอลลาจ", "อัลบั้ม"]);
+  const showcaseSignal = textIncludesAnyKeyword(haystack, ["showcase", "interior", "property", "listing", "portfolio", "travel", "destination", "สินทรัพย์", "บ้าน", "คอนโด", "อสังหา", "รีวิวสถานที่"]);
+  const availableVisualCount = (options.availableImageCount ?? 0) + (options.availableVideoCount ?? 0);
+  const preferredVisualSlotCount = availableVisualCount >= 4
+    ? 5
+    : availableVisualCount >= 3
+      ? 4
+      : gallerySignal
+        ? 5
+        : showcaseSignal && landscapeCanvas
+          ? 4
+          : showcaseSignal && portraitCanvas
+            ? 5
+            : availableVisualCount > 0 && sectionCount <= 2 && bodyCount <= 3
+              ? 2
+              : 1;
 
   const scores: Record<AIPresentationComponentRecipeId, number> = {
     "process-steps": 0,
@@ -3170,9 +3365,11 @@ function scoreAIComponentRecipes(options: {
     "poster-spotlight": 0,
     "framed-image-story": 0,
     "photo-collage": 0,
+    "a4-photo-grid": 0,
+    "landscape-photo-story": 0,
   };
 
-  if (options.preferVideoRecipes && options.slide.templateId !== "feature_boxes_right") {
+  if (options.preferVideoRecipes && (options.ignoreLegacyTemplateHints || options.slide.templateId !== "feature_boxes_right")) {
     if (bodyCount <= 4) scores["video-spotlight"] += 5;
     if (sectionCount <= 3) scores["video-spotlight"] += 2;
   }
@@ -3241,6 +3438,28 @@ function scoreAIComponentRecipes(options: {
   ) {
     scores["sectioned-explainer"] -= 10;
   }
+  if (
+    sectionCount === 2
+    && narrativeChars >= 240
+    && metricSignals < 2
+    && questionSignals < 2
+    && timelineMarkerCount < 2
+    && contactSignals < 2
+  ) {
+    scores["two-column-article"] += 4;
+    scores["sectioned-explainer"] -= 6;
+  }
+  if (
+    sectionCount === 3
+    && bodyCount <= 3
+    && maxDetailChars <= 120
+    && noteChars < 220
+    && longTextLines <= 1
+  ) {
+    scores["feature-highlights"] += 6;
+    scores["infographic-grid"] += 3;
+    scores["sectioned-explainer"] -= 10;
+  }
 
   if (textIncludesAnyKeyword(haystack, QUOTE_RECIPE_KEYWORDS)) {
     scores["quote-callout"] += 5;
@@ -3276,9 +3495,25 @@ function scoreAIComponentRecipes(options: {
   }
   if (textIncludesAnyKeyword(haystack, PHOTO_COLLAGE_RECIPE_KEYWORDS)) {
     scores["photo-collage"] += 6;
+    scores["a4-photo-grid"] += 7;
   }
-  if (sectionCount <= 2 && textIncludesAnyKeyword(haystack, ["gallery", "lookbook", "collage", "moodboard", "recap", "album", "แกลเลอรี", "คอลลาจ", "อัลบั้ม"])) {
+  if (sectionCount <= 2 && gallerySignal) {
     scores["photo-collage"] += 3;
+    scores["a4-photo-grid"] += 5;
+    scores["landscape-photo-story"] += 4;
+  }
+  if (showcaseSignal) {
+    scores["a4-photo-grid"] += 3;
+  }
+  if (preferredVisualSlotCount >= 5) {
+    scores["a4-photo-grid"] += 8;
+    scores["photo-collage"] -= 1;
+  } else if (preferredVisualSlotCount >= 4) {
+    scores["landscape-photo-story"] += 7;
+    scores["a4-photo-grid"] += 4;
+  } else if (preferredVisualSlotCount >= 2) {
+    scores["photo-collage"] += 5;
+    scores["framed-image-story"] += 2;
   }
   if (textIncludesAnyKeyword(haystack, FAQ_RECIPE_KEYWORDS)) {
     scores["faq-stack"] += 6;
@@ -3295,6 +3530,11 @@ function scoreAIComponentRecipes(options: {
 
   if (numberedBodyLines >= 2) {
     scores["process-steps"] += 6;
+    scores["framed-image-story"] -= 6;
+    scores["poster-spotlight"] -= 4;
+    scores["photo-collage"] -= 4;
+    scores["a4-photo-grid"] -= 4;
+    scores["landscape-photo-story"] -= 5;
   }
   if (textIncludesAnyKeyword(haystack, PROCESS_RECIPE_KEYWORDS)) {
     scores["process-steps"] += 4;
@@ -3356,7 +3596,7 @@ function scoreAIComponentRecipes(options: {
     scores["two-column-article"] -= 6;
   }
 
-  if (options.slide.templateId === "feature_boxes_right") {
+  if (!options.ignoreLegacyTemplateHints && options.slide.templateId === "feature_boxes_right") {
     scores["feature-highlights"] += 5;
   }
   if (sectionCount >= 3) {
@@ -3374,7 +3614,7 @@ function scoreAIComponentRecipes(options: {
   if (h2Count >= 3 && bodyCount >= 3) {
     scores["infographic-grid"] += 2;
   }
-  if (options.slide.templateId === "feature_boxes_right" && sectionCount >= 4 && bodyCount <= 2 && noteChars < 140) {
+  if (!options.ignoreLegacyTemplateHints && options.slide.templateId === "feature_boxes_right" && sectionCount >= 4 && bodyCount <= 2 && noteChars < 140) {
     scores["infographic-grid"] += 4;
     scores["sectioned-explainer"] -= 20;
   }
@@ -3455,10 +3695,53 @@ function resolveLayoutModeForRecipe(
     : "structured_block";
 }
 
+function isPortraitCanvasForRecipeSelection(options: {
+  canvasWidth?: number;
+  canvasHeight?: number;
+}): boolean {
+  const width = sanitizeCanvasDimension(options.canvasWidth);
+  const height = sanitizeCanvasDimension(options.canvasHeight);
+  return Boolean(width && height && height > width);
+}
+
+function isNarrowPortraitCanvasForRecipeSelection(options: {
+  canvasWidth?: number;
+  canvasHeight?: number;
+}): boolean {
+  const width = sanitizeCanvasDimension(options.canvasWidth);
+  const height = sanitizeCanvasDimension(options.canvasHeight);
+  if (!width || !height || height <= width) {
+    return false;
+  }
+  return (height / width) >= 1.5;
+}
+
+const STRONG_PROFILE_BOARD_KEYWORDS = [
+  "experience",
+  "skills",
+  "contact",
+  "portfolio",
+  "resume",
+  "biography",
+  "speaker",
+  "founder",
+  "ประวัติการทำงาน",
+  "ข้อมูลส่วนตัว",
+  "แนะนำตัว",
+  "ผู้บรรยาย",
+  "วิทยากร",
+  "ทักษะ",
+  "ติดต่อ",
+] as const;
+
 function resolveAIComponentRecipeForSlide(options: {
   slide: AIPresentationSlide;
   slideIndex: number;
   preferVideoRecipes: boolean;
+  canvasWidth?: number;
+  canvasHeight?: number;
+  availableImageCount?: number;
+  availableVideoCount?: number;
 }): ResolvedAIComponentRecipeSelection {
   const layoutModeSelection = resolvePresentationLayoutMode({
     slide: options.slide,
@@ -3473,6 +3756,10 @@ function resolveAIComponentRecipeForSlide(options: {
   const candidates = scoreAIComponentRecipes({
     slide: options.slide,
     preferVideoRecipes: options.preferVideoRecipes,
+    canvasWidth: options.canvasWidth,
+    canvasHeight: options.canvasHeight,
+    availableImageCount: options.availableImageCount,
+    availableVideoCount: options.availableVideoCount,
   }).slice(0, 5);
   const structuredModeCandidate = layoutModeSelection.candidateModes.find(
     (candidate) => candidate.mode === "structured_block",
@@ -3503,12 +3790,41 @@ function resolveAIComponentRecipeForSlide(options: {
   ).length;
   const timelineSignals = timelineKeywordSignal + Math.min(4, timelineMarkerCount);
   const processSignals = numberedBodyLines + Number(textIncludesAnyKeyword(haystack, PROCESS_RECIPE_KEYWORDS));
+  const visualShowcaseSignal = textIncludesAnyKeyword(
+    haystack,
+    [
+      ...PHOTO_COLLAGE_RECIPE_KEYWORDS,
+      "showcase",
+      "interior",
+      "property",
+      "listing",
+      "portfolio",
+      "travel",
+      "destination",
+      "สินทรัพย์",
+      "บ้าน",
+      "คอนโด",
+      "อสังหา",
+      "รีวิวสถานที่",
+    ],
+  );
   const narrativeChars = options.slide.body.reduce((sum, line) => sum + normalizeSlideText(line).length, 0)
     + detailLines.reduce((sum, line) => sum + line.length, 0);
   const noteChars = normalizeSlideText(options.slide.notes ?? "").length;
+  const quoteLikeTitle = /["“”']/.test(options.slide.title);
+  const quoteLikeBody = options.slide.body.some((line) => /["“”']/.test(line));
+  const portraitCanvas = isPortraitCanvasForRecipeSelection(options);
+  const narrowPortraitCanvas = isNarrowPortraitCanvasForRecipeSelection(options);
+  const landscapeCanvas = Boolean(!portraitCanvas && options.canvasWidth && options.canvasHeight);
   const hasLongFormTextPressure = layoutModeSelection.profile.longParagraphCount >= 2
     || layoutModeSelection.profile.maxParagraphChars >= 140
     || layoutModeSelection.profile.avgParagraphChars >= 95;
+  const portraitA4Pressure = portraitCanvas && (
+    sectionCount >= 2
+    || narrativeChars >= 220
+    || noteChars >= 140
+    || hasLongFormTextPressure
+  );
   const suppressCompactRecipeSelection = (
     layoutModeSelection.recommendedMode === "long_form_block"
     || layoutModeSelection.recommendedMode === "llm_layout_dsl"
@@ -3539,11 +3855,13 @@ function resolveAIComponentRecipeForSlide(options: {
     };
   }
   if (
-    options.slide.templateId === "feature_boxes_right"
-    && sectionCount >= 4
+    sectionCount >= 4
     && bodyCount <= 2
     && maxDetailChars <= 96
     && narrativeChars <= 260
+    && metricSignals < 2
+    && questionSignals < 2
+    && layoutModeSelection.recommendedMode !== "llm_layout_dsl"
   ) {
     return {
       mode: "structured_block",
@@ -3551,6 +3869,83 @@ function resolveAIComponentRecipeForSlide(options: {
       componentRecipeId: "infographic-grid",
       selectionMode: "heuristic",
       selectionReason: "Balanced four-section framework matched the infographic-grid block.",
+      candidateRecipes: candidates,
+      candidateModes: layoutModeSelection.candidateModes,
+    };
+  }
+  if (
+    numberedBodyLines >= 2
+    && questionSignals < 2
+    && timelineSignals < 2
+  ) {
+    return {
+      mode: "structured_block",
+      recommendedMode: layoutModeSelection.recommendedMode,
+      componentRecipeId: "process-steps",
+      selectionMode: "heuristic",
+      selectionReason: "Numbered workflow copy matched the process-steps block.",
+      candidateRecipes: candidates,
+      candidateModes: layoutModeSelection.candidateModes,
+    };
+  }
+  if (
+    quoteLikeTitle
+    && sectionCount <= 1
+    && bodyCount <= 2
+    && metricSignals < 2
+    && timelineSignals < 2
+    && processSignals === 0
+  ) {
+    return {
+      mode: "structured_block",
+      recommendedMode: layoutModeSelection.recommendedMode,
+      componentRecipeId: "quote-callout",
+      selectionMode: "heuristic",
+      selectionReason: quoteLikeBody
+        ? "Quote-like title/body matched the quote-callout block."
+        : "Quoted title matched the quote-callout block.",
+      candidateRecipes: candidates,
+      candidateModes: layoutModeSelection.candidateModes,
+    };
+  }
+  if (
+    portraitA4Pressure
+    && metricSignals < 2
+    && questionSignals < 2
+    && timelineSignals < 2
+    && processSignals === 0
+    && sectionCount <= 2
+    && narrativeChars <= 620
+    && visualShowcaseSignal
+  ) {
+    return {
+      mode: "long_form_block",
+      recommendedMode: layoutModeSelection.recommendedMode,
+      componentRecipeId: "a4-photo-grid",
+      selectionMode: "heuristic",
+      selectionReason: "Portrait 9:16 canvas and photo-led narrative were routed into the multi-photo board.",
+      candidateRecipes: candidates,
+      candidateModes: layoutModeSelection.candidateModes,
+    };
+  }
+  if (
+    landscapeCanvas
+    && metricSignals < 2
+    && questionSignals < 2
+    && timelineSignals < 2
+    && processSignals === 0
+    && sectionCount <= 3
+    && bodyCount <= 4
+    && (
+      visualShowcaseSignal
+    )
+  ) {
+    return {
+      mode: "long_form_block",
+      recommendedMode: layoutModeSelection.recommendedMode,
+      componentRecipeId: "landscape-photo-story",
+      selectionMode: "heuristic",
+      selectionReason: "Landscape 16:9 canvas and visual storytelling signals matched the landscape showcase layout.",
       candidateRecipes: candidates,
       candidateModes: layoutModeSelection.candidateModes,
     };
@@ -3573,11 +3968,33 @@ function resolveAIComponentRecipeForSlide(options: {
     };
   }
   if (
+    sectionCount === 3
+    && metricSignals < 2
+    && questionSignals < 2
+    && timelineSignals < 2
+    && processSignals === 0
+    && maxDetailChars <= 120
+    && noteChars < 220
+    && narrativeChars <= 420
+    && !portraitA4Pressure
+  ) {
+    return {
+      mode: "structured_block",
+      recommendedMode: layoutModeSelection.recommendedMode,
+      componentRecipeId: "feature-highlights",
+      selectionMode: "heuristic",
+      selectionReason: "Balanced three-part narrative copy matched the feature-highlights block more cleanly than a long-form overlay layout.",
+      candidateRecipes: candidates,
+      candidateModes: layoutModeSelection.candidateModes,
+    };
+  }
+  if (
     (timelineKeywordSignal >= 1 || timelineMarkerCount >= 2)
     && metricSignals < 2
     && questionSignals < 2
     && sectionCount >= 2
     && sectionCount <= 4
+    && (!portraitA4Pressure || timelineMarkerCount >= 2)
     && (narrativeChars >= 360 || noteChars >= 180 || maxDetailChars > 96 || hasLongFormTextPressure)
   ) {
     return {
@@ -3595,6 +4012,7 @@ function resolveAIComponentRecipeForSlide(options: {
     && metricSignals < 2
     && sectionCount >= 2
     && sectionCount <= 6
+    && (!portraitA4Pressure || timelineMarkerCount >= 2)
     && noteChars < 220
     && maxDetailChars <= 96
     && narrativeChars <= 420
@@ -3629,11 +4047,15 @@ function resolveAIComponentRecipeForSlide(options: {
     };
   }
   if (
-    layoutModeSelection.profile.signals.profile >= 4
+    textIncludesAnyKeyword(haystack, STRONG_PROFILE_BOARD_KEYWORDS)
     && (
       layoutModeSelection.profile.signals.contact >= 2
-      || textIncludesAnyKeyword(haystack, ["experience", "skills", "contact", "ประวัติการทำงาน", "ทักษะ", "ติดต่อ"])
+      || layoutModeSelection.profile.signals.profile >= 4
     )
+    && metricSignals < 2
+    && questionSignals < 2
+    && timelineSignals < 2
+    && processSignals === 0
     && (narrativeChars >= 240 || noteChars >= 180 || sectionCount >= 2)
   ) {
     return {
@@ -3718,6 +4140,47 @@ function resolveAIComponentRecipeForSlide(options: {
       candidateModes: layoutModeSelection.candidateModes,
     };
   }
+  if (
+    portraitA4Pressure
+    && metricSignals < 2
+    && questionSignals < 2
+    && timelineSignals < 2
+    && processSignals === 0
+  ) {
+    if (sectionCount === 2) {
+      return {
+        mode: "long_form_block",
+        recommendedMode: layoutModeSelection.recommendedMode,
+        componentRecipeId: "two-column-article",
+        selectionMode: "heuristic",
+        selectionReason: "Portrait 9:16 canvas biased dense two-section copy toward the more editorial two-column-article layout.",
+        candidateRecipes: candidates,
+        candidateModes: layoutModeSelection.candidateModes,
+      };
+    }
+    if (sectionCount >= 3) {
+      return {
+        mode: "long_form_block",
+        recommendedMode: layoutModeSelection.recommendedMode,
+        componentRecipeId: "sectioned-explainer",
+        selectionMode: "heuristic",
+        selectionReason: "Portrait 9:16 canvas biased multi-section copy toward the more A4-like sectioned-explainer layout.",
+        candidateRecipes: candidates,
+        candidateModes: layoutModeSelection.candidateModes,
+      };
+    }
+    if (bodyCount >= 2 || narrativeChars >= 220 || noteChars >= 140) {
+      return {
+        mode: "long_form_block",
+        recommendedMode: layoutModeSelection.recommendedMode,
+        componentRecipeId: "article-focus",
+        selectionMode: "heuristic",
+        selectionReason: "Portrait 9:16 canvas biased dense single-thread copy toward the more editorial article-focus layout.",
+        candidateRecipes: candidates,
+        candidateModes: layoutModeSelection.candidateModes,
+      };
+    }
+  }
   if (suppressCompactRecipeSelection && heuristicCandidates.length === 0) {
     return {
       mode: layoutModeSelection.mode,
@@ -3729,7 +4192,45 @@ function resolveAIComponentRecipeForSlide(options: {
     };
   }
 
-  const topCandidate = heuristicCandidates[0] ?? candidates[0];
+  const portraitAwareCandidates = portraitA4Pressure
+    ? heuristicCandidates
+      .map((candidate) => {
+        let score = candidate.score;
+        if (candidate.recipeId === "article-focus") score += 8;
+        if (candidate.recipeId === "two-column-article") score += 9;
+        if (candidate.recipeId === "sectioned-explainer") score += 7;
+        if (candidate.recipeId === "timeline-report") score += 7;
+        if (candidate.recipeId === "profile-board") score += 8;
+        if (candidate.recipeId === "a4-photo-grid") score += visualShowcaseSignal ? 10 : -6;
+        if (candidate.recipeId === "framed-image-story") score += 3;
+        if (candidate.recipeId === "photo-collage") score += 3;
+        if (candidate.recipeId === "poster-spotlight") score += 2;
+        if (candidate.recipeId === "landscape-photo-story") score -= 6;
+        if (candidate.recipeId === "feature-highlights") score -= narrowPortraitCanvas ? 6 : 4;
+        if (candidate.recipeId === "infographic-grid") score -= narrowPortraitCanvas ? 6 : 4;
+        if (candidate.recipeId === "stat-cards") score -= 3;
+        if (candidate.recipeId === "process-steps") score -= 4;
+        if (candidate.recipeId === "timeline-flow") score -= 4;
+        if (candidate.recipeId === "profile-summary") score -= 3;
+        return { ...candidate, score };
+      })
+      .sort((a, b) => b.score - a.score)
+    : landscapeCanvas
+    ? heuristicCandidates
+      .map((candidate) => {
+        let score = candidate.score;
+        if (candidate.recipeId === "landscape-photo-story") score += visualShowcaseSignal ? 10 : -6;
+        if (candidate.recipeId === "framed-image-story") score += 4;
+        if (candidate.recipeId === "poster-spotlight") score += 3;
+        if (candidate.recipeId === "a4-photo-grid") score -= 4;
+        if (candidate.recipeId === "timeline-report") score -= 4;
+        if (candidate.recipeId === "sectioned-explainer") score -= 4;
+        return { ...candidate, score };
+      })
+      .sort((a, b) => b.score - a.score)
+    : heuristicCandidates;
+
+  const topCandidate = portraitAwareCandidates[0] ?? candidates[0];
   if (topCandidate && topCandidate.score >= getAIComponentRecipeActivationThreshold(topCandidate.recipeId)) {
     return {
       mode: resolveLayoutModeForRecipe(topCandidate.recipeId),
@@ -3756,6 +4257,118 @@ function resolveAIComponentRecipeForSlide(options: {
   };
 }
 
+function estimateDesiredVisualCountForSlide(
+  slide: AIPresentationSlide,
+  options: { preferVideoRecipes: boolean },
+): { desiredImageCount: number; desiredVideoCount: number } {
+  const explicitCount = Array.isArray(slide.mediaPlan) ? slide.mediaPlan.length : 0;
+  const recipeSlotCount = slide.componentRecipeId
+    ? PRESENTATION_COMPONENT_MEDIA_SLOTS[slide.componentRecipeId]?.length ?? 0
+    : 0;
+  const desiredVisualCount = Math.max(explicitCount, recipeSlotCount);
+  if (desiredVisualCount <= 0) {
+    return { desiredImageCount: 0, desiredVideoCount: 0 };
+  }
+  if (options.preferVideoRecipes) {
+    return { desiredImageCount: 0, desiredVideoCount: desiredVisualCount };
+  }
+  return { desiredImageCount: desiredVisualCount, desiredVideoCount: 0 };
+}
+
+function applyAIRecipeSelectionDiversity(options: {
+  selection: ResolvedAIComponentRecipeSelection;
+  priorSelections: ResolvedAIComponentRecipeSelection[];
+  slideIndex: number;
+  allowMediaRecipeSwitch: boolean;
+}): ResolvedAIComponentRecipeSelection {
+  const selectedRecipeId = options.selection.componentRecipeId;
+  if (!selectedRecipeId || options.selection.selectionMode !== "heuristic" || options.slideIndex <= 0) {
+    return options.selection;
+  }
+
+  const previousRecipeId = options.priorSelections[options.priorSelections.length - 1]?.componentRecipeId;
+  const recipeUsage = new Map<AIPresentationComponentRecipeId, number>();
+  let consecutiveRecipeRun = 0;
+
+  for (const selection of options.priorSelections) {
+    if (!selection.componentRecipeId) {
+      continue;
+    }
+    recipeUsage.set(selection.componentRecipeId, (recipeUsage.get(selection.componentRecipeId) ?? 0) + 1);
+  }
+
+  for (let index = options.priorSelections.length - 1; index >= 0; index -= 1) {
+    const recipeId = options.priorSelections[index]?.componentRecipeId;
+    if (recipeId !== selectedRecipeId) {
+      break;
+    }
+    consecutiveRecipeRun += 1;
+  }
+
+  if (consecutiveRecipeRun === 0) {
+    return options.selection;
+  }
+
+  const rescoredCandidates = options.selection.candidateRecipes
+    .map((candidate) => {
+      let score = candidate.score;
+      const usageCount = recipeUsage.get(candidate.recipeId) ?? 0;
+      const candidateHasMedia = aiComponentRecipeHasMediaSlot(candidate.recipeId);
+      const selectedHasMedia = aiComponentRecipeHasMediaSlot(selectedRecipeId);
+
+      if (candidate.recipeId === selectedRecipeId) {
+        score -= 4 + (consecutiveRecipeRun * 5);
+      } else if (candidate.recipeId !== previousRecipeId) {
+        score += 2;
+      }
+
+      if (usageCount > 0) {
+        score -= usageCount * 2;
+      }
+      if (previousRecipeId && candidate.recipeId !== previousRecipeId) {
+        score += 1;
+      }
+      if (!options.allowMediaRecipeSwitch && candidateHasMedia && !selectedHasMedia) {
+        score -= 100;
+      }
+
+      return { ...candidate, score: Math.max(0, Math.min(1000, score)) };
+    })
+    .sort((left, right) => right.score - left.score);
+
+  const currentCandidate = rescoredCandidates.find((candidate) => candidate.recipeId === selectedRecipeId);
+  const alternativeCandidate = rescoredCandidates.find((candidate) => (
+    candidate.recipeId !== selectedRecipeId
+    && candidate.score >= getAIComponentRecipeActivationThreshold(candidate.recipeId)
+  ));
+
+  if (!alternativeCandidate || !currentCandidate) {
+    return {
+      ...options.selection,
+      candidateRecipes: rescoredCandidates,
+    };
+  }
+
+  const shouldSwitch = consecutiveRecipeRun >= 1
+    ? alternativeCandidate.score >= currentCandidate.score - 4
+    : alternativeCandidate.score > currentCandidate.score;
+
+  if (!shouldSwitch) {
+    return {
+      ...options.selection,
+      candidateRecipes: rescoredCandidates,
+    };
+  }
+
+  return {
+    ...options.selection,
+    mode: resolveLayoutModeForRecipe(alternativeCandidate.recipeId),
+    componentRecipeId: alternativeCandidate.recipeId,
+    selectionReason: `${options.selection.selectionReason ?? "Heuristic selection."} Diversity pass switched slide ${options.slideIndex + 1} to ${describeAIComponentRecipe(alternativeCandidate.recipeId)} to avoid repeating ${describeAIComponentRecipe(selectedRecipeId)} across consecutive slides.`,
+    candidateRecipes: rescoredCandidates,
+  };
+}
+
 const PRESENTATION_RECIPE_COMPACTION_RECIPE_IDS = new Set<AIPresentationComponentRecipeId>([
   "sectioned-explainer",
   "article-focus",
@@ -3771,6 +4384,8 @@ const PRESENTATION_RECIPE_COMPACTION_RECIPE_IDS = new Set<AIPresentationComponen
   "stat-cards",
   "timeline-flow",
   "process-steps",
+  "a4-photo-grid",
+  "landscape-photo-story",
 ]);
 
 function buildRecipeNarrativeInputFromSlide(
@@ -3800,6 +4415,8 @@ export function evaluateDraftSlideRouting(options: {
   slide: AIPresentationSlide;
   slideIndex: number;
   preferVideoRecipes?: boolean;
+  canvasWidth?: number;
+  canvasHeight?: number;
 }): {
   selection: {
     mode: PresentationAILayoutMode;
@@ -3812,10 +4429,17 @@ export function evaluateDraftSlideRouting(options: {
   };
   profile: ReturnType<typeof buildPresentationContentProfile>;
 } {
+  const desiredVisualCounts = estimateDesiredVisualCountForSlide(options.slide, {
+    preferVideoRecipes: Boolean(options.preferVideoRecipes),
+  });
   const selection = resolveAIComponentRecipeForSlide({
     slide: options.slide,
     slideIndex: options.slideIndex,
     preferVideoRecipes: Boolean(options.preferVideoRecipes),
+    canvasWidth: options.canvasWidth,
+    canvasHeight: options.canvasHeight,
+    availableImageCount: desiredVisualCounts.desiredImageCount,
+    availableVideoCount: desiredVisualCounts.desiredVideoCount,
   });
   return {
     selection,
@@ -3980,6 +4604,14 @@ async function compactSlideForRecipe(options: {
   model: string;
   preferredProviderId?: number;
   strictProviderPin?: boolean;
+  awaitStep?: DraftAwaitStep;
+  onAttempt?: (context: {
+    recipeId: AIPresentationComponentRecipeId;
+    compactionLevel: "balanced" | "compact" | "aggressive";
+    attempt: number;
+    maxAttempts: number;
+    deadlineAt: string;
+  }) => Promise<void>;
 }): Promise<RecipeCompactionOutcome> {
   const recipeId = options.selection?.componentRecipeId;
   if (!recipeId || !PRESENTATION_RECIPE_COMPACTION_RECIPE_IDS.has(recipeId)) {
@@ -4023,9 +4655,27 @@ async function compactSlideForRecipe(options: {
   }
 
   const fallbackHistory: PresentationAIDesignFallbackHistory[] = [];
-  for (const level of ["balanced", "compact", "aggressive"] as const) {
+  const compactionDeadline = Date.now() + resolveAIDraftRecipeCompactionTotalTimeoutMs();
+  const compactionLevels = ["balanced", "compact", "aggressive"] as const;
+  for (const [attemptIndex, level] of compactionLevels.entries()) {
+    const remainingBudgetMs = compactionDeadline - Date.now();
+    if (remainingBudgetMs <= 0) {
+      fallbackHistory.push(makeFallbackHistoryEntry({
+        step: "retry_compaction",
+        from: level,
+        reason: "Recipe compaction exceeded the per-slide time budget; keeping the latest safe slide content.",
+      }));
+      break;
+    }
     try {
-      const compaction = await callLLMStructured({
+      await options.onAttempt?.({
+        recipeId,
+        compactionLevel: level,
+        attempt: attemptIndex + 1,
+        maxAttempts: compactionLevels.length,
+        deadlineAt: new Date(compactionDeadline).toISOString(),
+      });
+      const compactionPromise = callLLMStructured({
         systemPrompt: [
           "You compact slide copy into validated slot-shaped JSON for presentation layouts.",
           "Return JSON only.",
@@ -4051,6 +4701,13 @@ async function compactSlideForRecipe(options: {
           promptPreview: options.slide.title.slice(0, 200),
         },
       });
+      const compaction = options.awaitStep
+        ? await options.awaitStep(compactionPromise, {
+          cancelLabel: "recipe_compaction_cancelled",
+          timeoutLabel: "recipe_compaction_timeout",
+          timeoutMs: Math.min(resolveAIDraftRecipeCompactionTimeoutMs(), remainingBudgetMs),
+        })
+        : await compactionPromise;
       if (compaction.data.status !== "ok") {
         fallbackHistory.push({
           step: "retry_compaction",
@@ -4097,12 +4754,23 @@ async function compactSlideForRecipe(options: {
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
+      if (error instanceof AIDraftCancelledError) {
+        throw error;
+      }
       fallbackHistory.push({
         step: "retry_compaction",
         from: level,
         reason: `Compaction attempt failed: ${sanitizeErrorMessage(error)}`,
         timestamp: new Date().toISOString(),
       });
+      if (Date.now() >= compactionDeadline) {
+        fallbackHistory.push(makeFallbackHistoryEntry({
+          step: "retry_compaction",
+          from: level,
+          reason: "Recipe compaction exhausted the per-slide retry budget; falling back to the current slide structure.",
+        }));
+        break;
+      }
     }
   }
 
@@ -4244,6 +4912,7 @@ function shouldEscalateStructuredSlideToLongForm(
   const profile = buildPresentationContentProfile(slide);
   if (
     selection.componentRecipeId === "stat-cards"
+    || selection.componentRecipeId === "feature-highlights"
     || selection.componentRecipeId === "timeline-flow"
     || selection.componentRecipeId === "timeline-report"
     || selection.componentRecipeId === "infographic-grid"
@@ -4279,6 +4948,31 @@ function shouldSplitLongFormSlide(
     profile.sectionCount >= 3
     || profile.paragraphCount >= 6
     || profile.totalChars >= 780
+  );
+}
+
+function shouldFallbackUnsafeRecipeToSectionedExplainer(
+  slide: AIPresentationSlide,
+  selection: ResolvedAIComponentRecipeSelection | undefined,
+  compaction: RecipeCompactionOutcome | undefined,
+): boolean {
+  const recipeId = selection?.componentRecipeId;
+  if (
+    !recipeId
+    || recipeId === "sectioned-explainer"
+    || (recipeId !== "profile-board" && recipeId !== "timeline-report")
+  ) {
+    return false;
+  }
+  const fitScore = compaction?.fitScore;
+  if (!fitScore || fitScore.status !== "unsafe") {
+    return false;
+  }
+  const profile = buildPresentationContentProfile(slide);
+  return (
+    profile.totalChars >= 180
+    || profile.sectionCount >= 2
+    || profile.longParagraphCount >= 1
   );
 }
 
@@ -4405,6 +5099,16 @@ async function applyOverflowFallbacks(options: {
   model: string;
   preferredProviderId?: number;
   strictProviderPin?: boolean;
+  awaitStep?: DraftAwaitStep;
+  onCompactionAttempt?: (context: {
+    slideIndex: number;
+    slideTitle: string;
+    recipeId: AIPresentationComponentRecipeId;
+    compactionLevel: "balanced" | "compact" | "aggressive";
+    attempt: number;
+    maxAttempts: number;
+    deadlineAt: string;
+  }) => Promise<void>;
 }): Promise<OverflowFallbackResolution> {
   const resolvedSlides: AIPresentationSlide[] = [];
   const resolvedSelections: ResolvedAIComponentRecipeSelection[] = [];
@@ -4447,6 +5151,18 @@ async function applyOverflowFallbacks(options: {
         model: options.model,
         preferredProviderId: options.preferredProviderId,
         strictProviderPin: options.strictProviderPin,
+        awaitStep: options.awaitStep,
+        onAttempt: async ({ recipeId, compactionLevel, attempt, maxAttempts, deadlineAt }) => {
+          await options.onCompactionAttempt?.({
+            slideIndex,
+            slideTitle: slide.title,
+            recipeId,
+            compactionLevel,
+            attempt,
+            maxAttempts,
+            deadlineAt,
+          });
+        },
       });
       slide = compaction.slide;
     }
@@ -4477,6 +5193,18 @@ async function applyOverflowFallbacks(options: {
           model: options.model,
           preferredProviderId: options.preferredProviderId,
           strictProviderPin: options.strictProviderPin,
+          awaitStep: options.awaitStep,
+          onAttempt: async ({ recipeId, compactionLevel, attempt, maxAttempts, deadlineAt }) => {
+            await options.onCompactionAttempt?.({
+              slideIndex,
+              slideTitle: splitSlide.title,
+              recipeId,
+              compactionLevel,
+              attempt,
+              maxAttempts,
+              deadlineAt,
+            });
+          },
         });
         resolvedSlides.push(splitCompaction.slide);
         resolvedSelections.push(splitSelection);
@@ -4491,6 +5219,52 @@ async function applyOverflowFallbacks(options: {
         });
       }
       continue;
+    }
+
+    if (shouldFallbackUnsafeRecipeToSectionedExplainer(slide, selection, compaction)) {
+      const previousRecipe = selection?.componentRecipeId;
+      slide = normalizeSlideHierarchy({
+        ...slide,
+        componentRecipeId: "sectioned-explainer",
+      });
+      selection = {
+        mode: "long_form_block",
+        recommendedMode: "long_form_block",
+        componentRecipeId: "sectioned-explainer",
+        selectionMode: "heuristic",
+        selectionReason: `Unsafe ${previousRecipe ?? "component"} output was rerouted into sectioned-explainer for a safer editable long-form layout.`,
+        candidateRecipes: selection?.candidateRecipes ?? [],
+        candidateModes: selection?.candidateModes ?? [],
+      };
+      slideFallbackHistory.push(makeFallbackHistoryEntry({
+        step: "switch_recipe",
+        from: previousRecipe ?? "structured_block",
+        to: "sectioned-explainer",
+        reason: `The "${previousRecipe ?? "component"}" layout remained unsafe after compaction, so the slide was rerouted into sectioned-explainer.`,
+      }));
+      compaction = await compactSlideForRecipe({
+        slide,
+        selection,
+        actor: options.actor,
+        taskId: options.taskId,
+        deckId: options.deckId,
+        model: options.model,
+        preferredProviderId: options.preferredProviderId,
+        strictProviderPin: options.strictProviderPin,
+        awaitStep: options.awaitStep,
+        onAttempt: async ({ recipeId, compactionLevel, attempt, maxAttempts, deadlineAt }) => {
+          await options.onCompactionAttempt?.({
+            slideIndex,
+            slideTitle: slide.title,
+            recipeId,
+            compactionLevel,
+            attempt,
+            maxAttempts,
+            deadlineAt,
+          });
+        },
+      });
+      slide = compaction.slide;
     }
 
     resolvedSlides.push(slide);
@@ -4807,6 +5581,14 @@ async function resolveAdvancedLayoutModes(options: {
   canvasHeight: number;
   preferredProviderId?: number;
   strictProviderPin?: boolean;
+  awaitStep?: DraftAwaitStep;
+  onLayoutDslAttempt?: (context: {
+    slideIndex: number;
+    slideTitle: string;
+    attempt: number;
+    maxAttempts: number;
+    deadlineAt: string;
+  }) => Promise<void>;
 }): Promise<{
   slides: AIPresentationSlide[];
   metadata: SlideAdvancedModeMetadata[];
@@ -4842,35 +5624,56 @@ async function resolveAdvancedLayoutModes(options: {
     ) {
       let repaired = false;
       let lastReason = "Layout DSL returned no usable slide content.";
+      const layoutDslDeadline = Date.now() + resolveAIDraftLayoutDslTotalTimeoutMs();
       for (let attempt = 0; attempt < 2; attempt += 1) {
-        const dsl = await callLLMStructured({
-          systemPrompt: [
-            "Design a bounded presentation slide as JSON only.",
-            "Use only the allowed primitives.",
-            "Keep within the provided element budgets.",
-            "Do not emit HTML, markdown, or unsupported properties.",
-          ].join("\n"),
-          userMessage: buildLayoutDslPromptRequest({
-            slide,
-            canvasWidth: options.canvasWidth,
-            canvasHeight: options.canvasHeight,
-          }),
-          model: options.model,
-          preferredProviderId: options.preferredProviderId,
-          strictProviderPin: options.strictProviderPin,
-          zodSchema: presentationLayoutDslResponseSchema,
-          userId: options.actor.userId,
-          tenantId: options.actor.tenantId,
-          billingDescription: `AI Draft layout DSL (${slide.title.slice(0, 80)}) (Deck #${options.deckId})`,
-          billingMetadata: {
-            operation: "ai_draft_layout_dsl",
-            taskId: options.taskId,
-            deckId: options.deckId,
-            phase: 2,
-            stage: repaired ? "layout_dsl_repair" : "layout_dsl",
+        const remainingBudgetMs = layoutDslDeadline - Date.now();
+        if (remainingBudgetMs <= 0) {
+          lastReason = "Layout DSL exceeded the per-slide time budget and fell back to the structured layout.";
+          break;
+        }
+        try {
+          await options.onLayoutDslAttempt?.({
             slideIndex: index,
-          },
-        });
+            slideTitle: slide.title,
+            attempt: attempt + 1,
+            maxAttempts: 2,
+            deadlineAt: new Date(layoutDslDeadline).toISOString(),
+          });
+          const dslPromise = callLLMStructured({
+            systemPrompt: [
+              "Design a bounded presentation slide as JSON only.",
+              "Use only the allowed primitives.",
+              "Keep within the provided element budgets.",
+              "Do not emit HTML, markdown, or unsupported properties.",
+            ].join("\n"),
+            userMessage: buildLayoutDslPromptRequest({
+              slide,
+              canvasWidth: options.canvasWidth,
+              canvasHeight: options.canvasHeight,
+            }),
+            model: options.model,
+            preferredProviderId: options.preferredProviderId,
+            strictProviderPin: options.strictProviderPin,
+            zodSchema: presentationLayoutDslResponseSchema,
+            userId: options.actor.userId,
+            tenantId: options.actor.tenantId,
+            billingDescription: `AI Draft layout DSL (${slide.title.slice(0, 80)}) (Deck #${options.deckId})`,
+            billingMetadata: {
+              operation: "ai_draft_layout_dsl",
+              taskId: options.taskId,
+              deckId: options.deckId,
+              phase: 2,
+              stage: repaired ? "layout_dsl_repair" : "layout_dsl",
+              slideIndex: index,
+            },
+          });
+          const dsl = options.awaitStep
+            ? await options.awaitStep(dslPromise, {
+              cancelLabel: "layout_dsl_cancelled",
+              timeoutLabel: "layout_dsl_timeout",
+              timeoutMs: Math.min(resolveAIDraftLayoutDslTimeoutMs(), remainingBudgetMs),
+            })
+            : await dslPromise;
         const normalized = normalizePresentationLayoutDslToSlideContent({
           draft: dsl.data,
           canvasWidth: options.canvasWidth,
@@ -4885,8 +5688,23 @@ async function resolveAdvancedLayoutModes(options: {
         }
         repaired = true;
         lastReason = dsl.data.fallbackSuggestion?.reason ?? lastReason;
+        } catch (error) {
+          if (error instanceof AIDraftCancelledError) {
+            throw error;
+          }
+          lastReason = `Layout DSL attempt failed: ${sanitizeErrorMessage(error)}`;
+          repaired = true;
+          if (Date.now() >= layoutDslDeadline) {
+            lastReason = "Layout DSL exhausted the per-slide retry budget and fell back to the structured layout.";
+            break;
+          }
+        }
       }
       if (!modeMetadata.slideContentOverride) {
+        modeMetadata = {
+          ...modeMetadata,
+          mode: "structured_block",
+        };
         fallbackHistory.push(makeFallbackHistoryEntry({
           step: "switch_mode",
           from: "llm_layout_dsl",
@@ -4951,20 +5769,35 @@ async function resolveAdvancedLayoutModes(options: {
   };
 }
 
-function assignAIComponentRecipes(
+export function assignAIComponentRecipes(
   slides: AIPresentationSlide[],
-  options: { preferVideoRecipes: boolean },
+  options: { preferVideoRecipes: boolean; canvasWidth?: number; canvasHeight?: number },
 ): {
   slides: AIPresentationSlide[];
   selections: ResolvedAIComponentRecipeSelection[];
 } {
-  const selections = slides.map((slide, slideIndex) => (
-    resolveAIComponentRecipeForSlide({
+  const selections: ResolvedAIComponentRecipeSelection[] = [];
+
+  for (const [slideIndex, slide] of slides.entries()) {
+    const desiredVisualCounts = estimateDesiredVisualCountForSlide(slide, {
+      preferVideoRecipes: options.preferVideoRecipes,
+    });
+    const baseSelection = resolveAIComponentRecipeForSlide({
       slide,
       slideIndex,
       preferVideoRecipes: options.preferVideoRecipes,
-    })
-  ));
+      canvasWidth: options.canvasWidth,
+      canvasHeight: options.canvasHeight,
+      availableImageCount: desiredVisualCounts.desiredImageCount,
+      availableVideoCount: desiredVisualCounts.desiredVideoCount,
+    });
+    selections.push(applyAIRecipeSelectionDiversity({
+      selection: baseSelection,
+      priorSelections: selections,
+      slideIndex,
+      allowMediaRecipeSwitch: (desiredVisualCounts.desiredImageCount + desiredVisualCounts.desiredVideoCount) > 0,
+    }));
+  }
 
   return {
     selections,
@@ -5030,6 +5863,10 @@ function extractStructuredOutputZodError(err: unknown): z.ZodError | null {
 }
 
 function formatSlidePlanningError(phaseLabel: "Topic planning" | "Article split", err: unknown): string {
+  const msg = err instanceof Error ? err.message : "";
+  if (msg === "topic_to_slide_plan_timeout" || msg === "article_split_timeout") {
+    return `${phaseLabel} timed out while waiting for structured slide output. Please retry.`;
+  }
   const zodError = extractStructuredOutputZodError(err);
   if (!zodError) {
     return `${phaseLabel} failed: ${sanitizeErrorMessage(err)}`;
@@ -5045,6 +5882,14 @@ function formatSlidePlanningError(phaseLabel: "Topic planning" | "Article split"
   }
 
   return `${phaseLabel} returned an invalid structured response. Please retry.`;
+}
+
+function formatArticleGenerationError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : "";
+  if (msg === "article_generation_timeout") {
+    return "Article generation timed out while waiting for the model. Please retry.";
+  }
+  return `Article generation failed: ${sanitizeErrorMessage(err)}`;
 }
 
 export function computeImagePollTimeoutMs(numSlides: number): number {
@@ -5141,24 +5986,75 @@ function finalizeNarrationSegment(segment: string): string {
   return `${normalized}.`;
 }
 
+function buildSlideNarrationTextFromSlideContent(
+  slideContent: PresentationSlideContent,
+  index: number,
+  totalSlides: number,
+): string {
+  const renderable = getPresentationSlideRenderableElements(slideContent);
+  const seenSegments = new Set<string>();
+  const segments: string[] = [];
+  const appendSegment = (value: string) => {
+    const normalized = normalizeSlideText(value || "");
+    if (!normalized || /^\d+\s*\/\s*\d+$/.test(normalized)) {
+      return;
+    }
+    const key = normalized.toLocaleLowerCase();
+    if (seenSegments.has(key)) {
+      return;
+    }
+    seenSegments.add(key);
+    segments.push(finalizeNarrationSegment(normalized));
+  };
+
+  const renderableText = renderable.elements
+    .filter((element): element is Extract<PresentationSlideElement, { type: "text" }> => element.type === "text")
+    .sort((left, right) => (left.y - right.y) || (left.x - right.x));
+
+  for (const element of renderableText) {
+    for (const chunk of String(element.text ?? "").split(/\n+/)) {
+      appendSegment(chunk);
+    }
+  }
+
+  const narration = segments
+    .filter((segment) => segment.length > 0)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const fallback = `Slide ${index + 1} of ${totalSlides}.`;
+  return (narration || fallback).slice(0, 5_000);
+}
+
+type SlideNoteSyncMode = "append_missing" | "visible_only";
+
 function synchronizeSlideNoteWithVisibleContent(
   slide: AIPresentationSlide,
   index: number,
   totalSlides: number,
+  mode: SlideNoteSyncMode = "append_missing",
 ): AIPresentationSlide {
   const existingNote = normalizeSlideText(slide.notes ?? "").slice(0, 5_000);
   const visibleSegments = collectVisibleSlideTextSegments(slide)
     .map((segment) => finalizeNarrationSegment(segment))
     .filter((segment) => segment.length > 0);
+  const visibleNarration = buildSlideNarrationText(slide, index, totalSlides).slice(0, 5_000);
 
   if (visibleSegments.length === 0) {
     return existingNote ? { ...slide, notes: existingNote } : slide;
   }
 
+  if (mode === "visible_only") {
+    return {
+      ...slide,
+      notes: visibleNarration,
+    };
+  }
+
   if (!existingNote) {
     return {
       ...slide,
-      notes: buildSlideNarrationText(slide, index, totalSlides).slice(0, 5_000),
+      notes: visibleNarration,
     };
   }
 
@@ -5180,8 +6076,11 @@ function synchronizeSlideNoteWithVisibleContent(
   };
 }
 
-function synchronizeSlideNotesWithVisibleContent(slides: AIPresentationSlide[]): AIPresentationSlide[] {
-  return slides.map((slide, index) => synchronizeSlideNoteWithVisibleContent(slide, index, slides.length));
+function synchronizeSlideNotesWithVisibleContent(
+  slides: AIPresentationSlide[],
+  mode: SlideNoteSyncMode = "append_missing",
+): AIPresentationSlide[] {
+  return slides.map((slide, index) => synchronizeSlideNoteWithVisibleContent(slide, index, slides.length, mode));
 }
 
 interface SlideNoteCoverageStats {
@@ -5866,6 +6765,66 @@ async function withTimeout<T>(
   });
 }
 
+function resolveAIDraftStepTimeoutMs(
+  envKey: string,
+  fallbackMs: number,
+): number {
+  const raw = Number.parseInt(process.env[envKey] ?? process.env.AI_DRAFT_LLM_TIMEOUT_MS ?? "", 10);
+  if (Number.isFinite(raw) && raw >= 1000) {
+    return raw;
+  }
+  return fallbackMs;
+}
+
+function resolveAIDraftTextTimeoutMs(): number {
+  return resolveAIDraftStepTimeoutMs(
+    "AI_DRAFT_TEXT_TIMEOUT_MS",
+    AI_DRAFT_TEXT_TIMEOUT_DEFAULT_MS,
+  );
+}
+
+function resolveAIDraftProgressHeartbeatIntervalMs(): number {
+  return resolveAIDraftStepTimeoutMs(
+    "AI_DRAFT_PROGRESS_HEARTBEAT_INTERVAL_MS",
+    15000,
+  );
+}
+
+function resolveAIDraftStructuredTimeoutMs(): number {
+  return resolveAIDraftStepTimeoutMs(
+    "AI_DRAFT_STRUCTURED_TIMEOUT_MS",
+    AI_DRAFT_STRUCTURED_TIMEOUT_DEFAULT_MS,
+  );
+}
+
+function resolveAIDraftRecipeCompactionTimeoutMs(): number {
+  return resolveAIDraftStepTimeoutMs(
+    "AI_DRAFT_RECIPE_COMPACTION_TIMEOUT_MS",
+    AI_DRAFT_RECIPE_COMPACTION_TIMEOUT_DEFAULT_MS,
+  );
+}
+
+function resolveAIDraftRecipeCompactionTotalTimeoutMs(): number {
+  return resolveAIDraftStepTimeoutMs(
+    "AI_DRAFT_RECIPE_COMPACTION_TOTAL_TIMEOUT_MS",
+    AI_DRAFT_RECIPE_COMPACTION_TOTAL_TIMEOUT_DEFAULT_MS,
+  );
+}
+
+function resolveAIDraftLayoutDslTimeoutMs(): number {
+  return resolveAIDraftStepTimeoutMs(
+    "AI_DRAFT_LAYOUT_DSL_TIMEOUT_MS",
+    AI_DRAFT_LAYOUT_DSL_TIMEOUT_DEFAULT_MS,
+  );
+}
+
+function resolveAIDraftLayoutDslTotalTimeoutMs(): number {
+  return resolveAIDraftStepTimeoutMs(
+    "AI_DRAFT_LAYOUT_DSL_TOTAL_TIMEOUT_MS",
+    AI_DRAFT_LAYOUT_DSL_TOTAL_TIMEOUT_DEFAULT_MS,
+  );
+}
+
 function escapeHtml(str: string): string {
   return str
     .replace(/&/g, "&amp;")
@@ -6275,12 +7234,13 @@ function deriveMediaGenerationPlanForSlide(
       }))
       .filter((entry) => entry.prompt.trim().length > 0);
   }
-  if (isVideoSkill || slide.componentRecipeId !== "photo-collage") {
+  const recipeMediaSlots = slide.componentRecipeId
+    ? PRESENTATION_COMPONENT_MEDIA_SLOTS[slide.componentRecipeId] ?? []
+    : [];
+  if (isVideoSkill || recipeMediaSlots.length <= 1) {
     return [{
       prompt: normalizedBasePrompt,
-      slotId: slide.componentRecipeId
-        ? PRESENTATION_COMPONENT_MEDIA_SLOTS[slide.componentRecipeId]?.[0]
-        : undefined,
+      slotId: recipeMediaSlots[0],
     }];
   }
 
@@ -6295,27 +7255,52 @@ function deriveMediaGenerationPlanForSlide(
     sectionDetails[2],
     slide.notes,
   ], 2);
-  if (supportingDetails.length === 0) {
-    return [{
-      prompt: normalizedBasePrompt,
-      slotId: PRESENTATION_COMPONENT_MEDIA_SLOTS["photo-collage"]?.[0],
-    }];
+  const focusPools = compactUniquePromptLines([
+    slide.title,
+    slide.body[0],
+    slide.body[1],
+    slide.body[2],
+    ...sectionDetails.slice(0, 6),
+    slide.notes,
+  ], Math.max(4, recipeMediaSlots.length + 1));
+  const primaryFocus = compactUniquePromptLines([
+    slide.body[0],
+    sectionDetails[0],
+    slide.title,
+  ], 2).join(". ");
+  const supportingFocuses = compactUniquePromptLines([
+    ...supportingDetails,
+    ...focusPools.slice(1),
+  ], Math.max(1, recipeMediaSlots.length - 1));
+
+  if (slide.componentRecipeId === "photo-collage" && recipeMediaSlots.length === 2) {
+    return [
+      {
+        slotId: recipeMediaSlots[0],
+        prompt: `${normalizedBasePrompt}\n\nPrimary frame focus: ${primaryFocus || slide.title}`.trim(),
+      },
+      {
+        slotId: recipeMediaSlots[1],
+        prompt: `${normalizedBasePrompt}\n\nSecondary frame focus: ${(supportingFocuses[0] || focusPools[1] || slide.title)}. Use a distinct supporting angle, detail crop, or complementary scene rather than repeating the hero shot.`.trim(),
+      },
+    ];
   }
 
-  return [
-    {
-      slotId: PRESENTATION_COMPONENT_MEDIA_SLOTS["photo-collage"]?.[0],
-      prompt: `${normalizedBasePrompt}\n\nPrimary frame focus: ${compactUniquePromptLines([
-        slide.body[0],
-        sectionDetails[0],
-        slide.title,
-      ], 2).join(". ")}`.trim(),
-    },
-    {
-      slotId: PRESENTATION_COMPONENT_MEDIA_SLOTS["photo-collage"]?.[1],
-      prompt: `${normalizedBasePrompt}\n\nSecondary frame focus: ${supportingDetails.join(". ")}. Use a distinct supporting angle, detail crop, or complementary scene rather than repeating the hero shot.`.trim(),
-    },
-  ];
+  return recipeMediaSlots.map((slotId, index) => {
+    if (index === 0) {
+      return {
+        slotId,
+        prompt: `${normalizedBasePrompt}\n\nHero frame focus: ${primaryFocus || slide.title}. Make this the dominant establishing image.`.trim(),
+      };
+    }
+    const focus = supportingFocuses[index - 1]
+      || focusPools[index]
+      || slide.title;
+    return {
+      slotId,
+      prompt: `${normalizedBasePrompt}\n\nSupporting frame ${index}: ${focus}. Use a distinct angle, crop, room, object, or contextual moment instead of repeating the hero image.`.trim(),
+    };
+  });
 }
 
 function normalizeReferenceImageUrls(referenceImageUrls?: string[]): string[] {
@@ -6775,7 +7760,25 @@ async function resolveRoutableTextModel(
     }
   }
 
-  return preferred;
+  const fallbackRows = await loadEnabledLlmModelRows().catch(() => []);
+  const seenFallbacks = new Set<string>([
+    ...preferredCandidates,
+    dynamicDefault,
+  ].map((value) => value.trim()).filter(Boolean));
+  const sortedFallbackRows = [...fallbackRows].sort((a, b) => a.priority - b.priority);
+  for (const row of sortedFallbackRows) {
+    const candidate = row.modelId.trim();
+    if (!candidate || seenFallbacks.has(candidate)) {
+      continue;
+    }
+    const candidateProviders = await resolveProviders(candidate).catch(() => []);
+    if (candidateProviders.length > 0) {
+      return candidate;
+    }
+    seenFallbacks.add(candidate);
+  }
+
+  throw new Error(`No providers available for model: ${preferred}`);
 }
 
 export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideOutput {
@@ -6844,12 +7847,21 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
     slide: recipeSelectionSeed,
     slideIndex: Math.max(0, input.slideIndex - 1),
     preferVideoRecipes: relayoutMediaSources.videoUrls.length > 0 && relayoutMediaSources.imageUrls.length === 0,
+    canvasWidth: canvas.width,
+    canvasHeight: canvas.height,
+    availableImageCount: relayoutMediaSources.imageUrls.length,
+    availableVideoCount: relayoutMediaSources.videoUrls.length,
   });
   const recipeSelection = resolveRelayoutComponentRecipeSelection({
     preferredComponentRecipeId,
     slide: recipeSelectionSeed,
+    templateId,
     hasImage: relayoutMediaSources.imageUrls.length > 0,
     hasVideo: relayoutMediaSources.videoUrls.length > 0,
+    canvasWidth: canvas.width,
+    canvasHeight: canvas.height,
+    availableImageCount: relayoutMediaSources.imageUrls.length,
+    availableVideoCount: relayoutMediaSources.videoUrls.length,
   });
   preferredComponentRecipeId = recipeSelection.componentRecipeId;
   warnings.push(...recipeSelection.warnings);
@@ -6863,7 +7875,9 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
   const primaryMediaSrc = imageElement?.src ?? videoElement?.src ?? null;
   const relayoutMediaUrls = effectiveComponentMediaTypes.size === 1 && effectiveComponentMediaTypes.has("video")
     ? relayoutMediaSources.videoUrls
-    : relayoutMediaSources.imageUrls;
+    : relayoutMediaSources.imageUrls.length > 0
+      ? relayoutMediaSources.imageUrls
+      : relayoutMediaSources.videoUrls;
   const componentFallbackElementIds = collectComponentFallbackExcludedElementIds(parsedContent);
 
   const recipeSlideSeed = recipeSelection.slide;
@@ -7132,7 +8146,11 @@ export function relayoutExistingSlide(input: RelayoutSlideInput): RelayoutSlideO
   } else if (input.includeGeometricAccents && preserveVisualOnly) {
     warnings.push("Skipped geometric accents to preserve full-canvas visual-only slide.");
   }
-  warnings.push(`Applied template "${templateId}" with preset "${stylePresetId}".`);
+  if (preferredComponentRecipeId) {
+    warnings.push(`Applied block layout "${describeAIComponentRecipe(preferredComponentRecipeId)}" with preset "${stylePresetId}".`);
+  } else {
+    warnings.push(`Applied internal fallback layout with preset "${stylePresetId}".`);
+  }
   relayoutContent = finalizeSlideContentAfterRelayout(relayoutContent, warnings);
 
   return {
@@ -7480,7 +8498,11 @@ export async function repairSlideFromSavedNote(
 
   let aiRecipeSelection: ResolvedAIComponentRecipeSelection | undefined;
   if (!shouldPreferPlainTextCoverage) {
-    const aiRecipeAssignments = assignAIComponentRecipes([repairedSlide], { preferVideoRecipes: false });
+    const aiRecipeAssignments = assignAIComponentRecipes([repairedSlide], {
+      preferVideoRecipes: false,
+      canvasWidth: canvas.width,
+      canvasHeight: canvas.height,
+    });
     repairedSlide = aiRecipeAssignments.slides[0]!;
     aiRecipeSelection = aiRecipeAssignments.selections[0];
   } else {
@@ -7705,7 +8727,7 @@ const SLIDE_SPLIT_SYSTEM_PROMPT = `You are a presentation content structurer. Yo
 
 For each slide, produce a JSON object with these fields:
 - templateId: one of ${JSON.stringify(AI_LAYOUT_TEMPLATE_IDS)}
-- componentRecipeId (optional): one of ${JSON.stringify(AI_COMPONENT_RECIPE_IDS)} when a slide should use a richer component layout instead of a plain template
+- componentRecipeId (optional): one of ${JSON.stringify(AI_COMPONENT_RECIPE_IDS)} when a slide should use a richer component layout instead of the internal fallback layout
 - mediaPlan (optional): an array of slot-specific media prompts when the chosen componentRecipeId has one or more media slots
   - slotId: the exact component media slot identifier
   - prompt: a vivid generation prompt for that slot (max 500 chars)
@@ -7722,8 +8744,9 @@ Output ONLY a valid JSON array. No markdown code fences, no explanatory text.
 
 You MUST return exactly the number of slides requested by the user message.
 
-The first slide MUST use templateId "hero_center" as the title/intro slide.
-Distribute remaining slides among "split_left_image", "split_right_image", "top_image_text_bottom", "bottom_image_text_top", and "feature_boxes_right" for visual variety.
+The first slide MUST keep templateId "hero_center" as the intro fallback frame.
+For every slide after planning the content, prefer setting componentRecipeId whenever one built-in block clearly fits.
+Use templateId only as an internal fallback frame for rendering compatibility. Do not force template variety when a block layout is a better fit.
 
 Component recipe guide:
 ${COMPONENT_RECIPE_PROMPT_GUIDE}
@@ -7743,13 +8766,14 @@ Coverage and quality requirements:
   - Level 1: title (largest)
   - Level 2: sections[].heading (medium)
   - Level 3: sections[].details[] (small detail text)
-- When one component recipe clearly fits the slide, set componentRecipeId explicitly instead of leaving it blank.`;
+- When one component recipe clearly fits the slide, set componentRecipeId explicitly instead of leaving it blank.
+- Favor block layouts over legacy image-left/image-right template patterns whenever the content can fit a built-in block cleanly.`;
 
 const TOPIC_TO_SLIDES_SYSTEM_PROMPT = `You are a presentation strategist. Convert a topic brief directly into a slide plan.
 
 For each slide, produce a JSON object with these fields:
 - templateId: one of ${JSON.stringify(AI_LAYOUT_TEMPLATE_IDS)}
-- componentRecipeId (optional): one of ${JSON.stringify(AI_COMPONENT_RECIPE_IDS)} when a slide should use a richer component layout instead of a plain template
+- componentRecipeId (optional): one of ${JSON.stringify(AI_COMPONENT_RECIPE_IDS)} when a slide should use a richer component layout instead of the internal fallback layout
 - mediaPlan (optional): an array of slot-specific media prompts when the chosen componentRecipeId has one or more media slots
   - slotId: the exact component media slot identifier
   - prompt: a vivid generation prompt for that slot (max 500 chars)
@@ -7766,8 +8790,9 @@ Output ONLY a valid JSON array. No markdown code fences, no explanatory text.
 
 You MUST return exactly the number of slides requested by the user message.
 
-The first slide MUST use templateId "hero_center" as the title/intro slide.
-Distribute remaining slides among "split_left_image", "split_right_image", "top_image_text_bottom", "bottom_image_text_top", and "feature_boxes_right" for visual variety.
+The first slide MUST keep templateId "hero_center" as the intro fallback frame.
+For every slide after planning the content, prefer setting componentRecipeId whenever one built-in block clearly fits.
+Use templateId only as an internal fallback frame for rendering compatibility. Do not force template variety when a block layout is a better fit.
 
 Component recipe guide:
 ${COMPONENT_RECIPE_PROMPT_GUIDE}
@@ -7781,6 +8806,7 @@ Planning rules:
 - notes must include the full narration/reference text for that slide and must not be shorter or less informative than the visible slide text.
 - Use concise but substantive points, suitable for presentation slides rather than prose paragraphs.
 - When one component recipe clearly fits the slide, set componentRecipeId explicitly instead of leaving it blank.
+- Favor block layouts over legacy image-left/image-right template patterns whenever the content can fit a built-in block cleanly.
 - When the brief suggests a visual campaign, product reveal, or creative concept, make imagePromptKeywords vivid and production-ready.`;
 
 function buildSlideSplitUserPrompt(articleText: string, requestedSlides: number): string {
@@ -8791,17 +9817,10 @@ function repairPlannedSlides(
 }
 
 function buildFallbackSlide(index: number, seed?: AIPresentationSlide): AIPresentationSlide {
-  const nonIntroTemplates: Array<(typeof AI_LAYOUT_TEMPLATE_IDS)[number]> = [
-    "split_right_image",
-    "split_left_image",
-    "top_image_text_bottom",
-    "bottom_image_text_top",
-    "feature_boxes_right",
-  ];
   const templateId =
     index === 0
       ? "hero_center"
-      : nonIntroTemplates[(index - 1) % nonIntroTemplates.length];
+      : "split_right_image";
   const baseTitle = seed?.title?.trim() || "Key Insight";
   const title =
     index === 0
@@ -9170,9 +10189,19 @@ export async function generateAIDraft(
   const cancelKey = `ai_draft_cancel:${taskId}`;
   const warnings: string[] = [];
   const requestedTextModel = input.textModel?.trim() || undefined;
+  let latestProgress: (AIDraftProgress & { userId: number }) | null = null;
+
+  function buildProgressDiagnostics(partial?: Partial<NonNullable<AIDraftProgress["diagnostics"]>>): NonNullable<AIDraftProgress["diagnostics"]> {
+    return {
+      taskId,
+      ...(latestProgress?.diagnostics ?? {}),
+      ...(partial ?? {}),
+    };
+  }
 
   async function updateProgress(partial: Partial<AIDraftProgress>): Promise<void> {
     const progress: AIDraftProgress & { userId: number } = {
+      ...(latestProgress ?? {}),
       userId: actor.userId,
       phase: 0,
       phaseLabel: "Initializing...",
@@ -9181,9 +10210,22 @@ export async function generateAIDraft(
       slidePreview: [],
       completed: false,
       updatedAt: new Date().toISOString(),
+      diagnostics: latestProgress?.diagnostics ?? buildProgressDiagnostics(),
       ...partial,
     };
+    latestProgress = progress;
     await redis.set(progressKey, JSON.stringify(progress), "EX", PROGRESS_TTL_SECONDS);
+  }
+
+  async function refreshProgressHeartbeat(): Promise<void> {
+    if (!latestProgress || latestProgress.completed) {
+      return;
+    }
+    latestProgress = {
+      ...latestProgress,
+      updatedAt: new Date().toISOString(),
+    };
+    await redis.set(progressKey, JSON.stringify(latestProgress), "EX", PROGRESS_TTL_SECONDS);
   }
 
   async function isCancelled(): Promise<boolean> {
@@ -9222,6 +10264,28 @@ export async function generateAIDraft(
       return await Promise.race([promise, cancellationWatcher]);
     } finally {
       stopped = true;
+    }
+  }
+
+  async function awaitDraftStep<T>(
+    promise: Promise<T>,
+    config: DraftAwaitConfig,
+  ): Promise<T> {
+    const progressHeartbeatIntervalMs = resolveAIDraftProgressHeartbeatIntervalMs();
+    const heartbeat = progressHeartbeatIntervalMs > 0
+      ? setInterval(() => {
+          refreshProgressHeartbeat().catch(() => {});
+        }, progressHeartbeatIntervalMs)
+      : null;
+    try {
+      return await awaitUntilCancellable(
+        withTimeout(promise, config.timeoutMs, config.timeoutLabel),
+        config.cancelLabel,
+      );
+    } finally {
+      if (heartbeat) {
+        clearInterval(heartbeat);
+      }
     }
   }
 
@@ -9402,6 +10466,13 @@ export async function generateAIDraft(
 
     const shouldPlanSlidesDirectlyFromTopic =
       !input.useCustomArticle && primaryDraftSkillCapability !== "article";
+    const shouldPreferVisibleNotesForAutoTopic =
+      shouldPlanSlidesDirectlyFromTopic
+      || (
+        !input.useCustomArticle
+        && Boolean(input.draftSkillId?.trim())
+        && !input.articleSkillId?.trim()
+      );
 
     let articleText = "";
     let articleModel = await resolveRoutableTextModel(
@@ -9415,6 +10486,12 @@ export async function generateAIDraft(
         phase: 1,
         phaseLabel: "Using provided article...",
         phaseDetail: "Preparing slide structure from the article you provided.",
+        diagnostics: buildProgressDiagnostics({
+          operation: "article_provided",
+          model: articleModel,
+          startedAt: new Date().toISOString(),
+          deadlineAt: new Date(Date.now() + resolveAIDraftStructuredTimeoutMs()).toISOString(),
+        }),
       });
       auditLogger.log({
         traceId: taskId,
@@ -9458,6 +10535,12 @@ export async function generateAIDraft(
         phase: 1,
         phaseLabel: "Planning slides from topic...",
         phaseDetail: "Choosing a slide structure directly from your topic.",
+        diagnostics: buildProgressDiagnostics({
+          operation: "topic_to_slide_plan_prepare",
+          model: articleModel,
+          startedAt: new Date().toISOString(),
+          deadlineAt: new Date(Date.now() + resolveAIDraftStructuredTimeoutMs()).toISOString(),
+        }),
       });
       auditLogger.log({
         traceId: taskId,
@@ -9489,6 +10572,12 @@ export async function generateAIDraft(
         phase: 1,
         phaseLabel: "Writing article...",
         phaseDetail: "Generating a source article before splitting it into slides.",
+        diagnostics: buildProgressDiagnostics({
+          operation: "article_generation",
+          model: articleModel,
+          startedAt: new Date().toISOString(),
+          deadlineAt: new Date(Date.now() + resolveAIDraftTextTimeoutMs()).toISOString(),
+        }),
       });
 
       auditLogger.log({
@@ -9528,7 +10617,7 @@ export async function generateAIDraft(
       );
 
       try {
-        articleText = await awaitUntilCancellable(invokeSkillTextLLM({
+        articleText = await awaitDraftStep(invokeSkillTextLLM({
           model: articleModel,
           systemPrompt: articleSkill.systemPrompt,
           userPrompt: articlePrompt,
@@ -9547,7 +10636,11 @@ export async function generateAIDraft(
           taskRunId,
           plannerPlan: plannerResult?.plan,
           plannerSnapshot: plannerResult?.snapshot,
-        }), "article_generation_cancelled");
+        }), {
+          cancelLabel: "article_generation_cancelled",
+          timeoutLabel: "article_generation_timeout",
+          timeoutMs: resolveAIDraftTextTimeoutMs(),
+        });
       } catch (err) {
         if (isCancellationError(err)) {
           await setCancelled();
@@ -9572,7 +10665,7 @@ export async function generateAIDraft(
           completed: true,
           error: {
             code: PRESENTATION_ERROR_CODE.AI_GENERATION_FAILED,
-            message: `Article generation failed: ${sanitizedError}`,
+            message: formatArticleGenerationError(err),
           },
         });
         return;
@@ -9603,12 +10696,20 @@ export async function generateAIDraft(
       phaseDetail: shouldPlanSlidesDirectlyFromTopic
         ? `Waiting for ${articleModel} to return structured slide JSON from your topic.`
         : `Waiting for ${articleModel} to split the generated article into structured slides.`,
+      diagnostics: buildProgressDiagnostics({
+        operation: shouldPlanSlidesDirectlyFromTopic ? "topic_to_slide_plan" : "article_split",
+        model: articleModel,
+        attempt: 1,
+        maxAttempts: 2,
+        startedAt: new Date().toISOString(),
+        deadlineAt: new Date(Date.now() + resolveAIDraftStructuredTimeoutMs()).toISOString(),
+      }),
     });
 
     let slides: AIPresentationSlide[];
     try {
       if (shouldPlanSlidesDirectlyFromTopic) {
-        const planResult = await awaitUntilCancellable(callLLMStructured({
+        const planResult = await awaitDraftStep(callLLMStructured({
           systemPrompt: TOPIC_TO_SLIDES_SYSTEM_PROMPT,
           userMessage: buildTopicToSlidesUserPrompt(
             sanitizedPrompt,
@@ -9632,12 +10733,16 @@ export async function generateAIDraft(
             stage: "topic_to_slide_plan",
             promptPreview: sanitizedPrompt.slice(0, 500),
           },
-        }), "topic_to_slide_plan_cancelled");
+        }), {
+          cancelLabel: "topic_to_slide_plan_cancelled",
+          timeoutLabel: "topic_to_slide_plan_timeout",
+          timeoutMs: resolveAIDraftStructuredTimeoutMs(),
+        });
         slides = normalizeSlidesToRequestedCount(repairPlannedSlides(planResult.data, warnings), input.numSlides, warnings)
           .map((slide) => normalizeSlideHierarchy(slide));
       } else {
         const splitArticleExcerpt = buildSlideSplitArticleExcerpt(articleText, input.numSlides, warnings);
-        const splitResult = await awaitUntilCancellable(callLLMStructured({
+        const splitResult = await awaitDraftStep(callLLMStructured({
           systemPrompt: SLIDE_SPLIT_SYSTEM_PROMPT,
           userMessage: buildSlideSplitUserPrompt(splitArticleExcerpt, input.numSlides),
           model: articleModel,
@@ -9655,7 +10760,11 @@ export async function generateAIDraft(
             stage: "slide_split",
             promptPreview: splitArticleExcerpt.slice(0, 500),
           },
-        }), "article_split_cancelled");
+        }), {
+          cancelLabel: "article_split_cancelled",
+          timeoutLabel: "article_split_timeout",
+          timeoutMs: resolveAIDraftStructuredTimeoutMs(),
+        });
         slides = normalizeSlidesToRequestedCount(repairPlannedSlides(splitResult.data, warnings), input.numSlides, warnings)
           .map((slide) => normalizeSlideHierarchy(slide));
       }
@@ -9688,12 +10797,33 @@ export async function generateAIDraft(
       warnings.push(
         `Slide coverage check: ${Math.round(coverage.score * 100)}%, avg bullets ${coverage.avgBulletsPerSlide.toFixed(1)}.`,
       );
-    } else {
-      slides = synchronizeSlideNotesWithVisibleContent(slides);
+    } else if (shouldPreferVisibleNotesForAutoTopic) {
+      slides = synchronizeSlideNotesWithVisibleContent(slides, "visible_only");
     }
+
+    let slidePreview: Array<{ title: string; imageStatus: "pending" | "done" | "placeholder" }> = slides.map((slide) => ({
+      title: slide.title,
+      imageStatus: "pending",
+    }));
+
+    await updateProgress({
+      phase: 2,
+      phaseLabel: "Refining slide layouts...",
+      phaseDetail: "Matching each planned slide to an editable layout recipe.",
+      slidesCompleted: 0,
+      totalSlides: slides.length,
+      slidePreview,
+      diagnostics: buildProgressDiagnostics({
+        operation: "recipe_assignment",
+        model: articleModel,
+        startedAt: new Date().toISOString(),
+      }),
+    });
 
     const aiRecipeAssignments = assignAIComponentRecipes(slides, {
       preferVideoRecipes: isVideoSkill,
+      canvasWidth,
+      canvasHeight,
     });
     slides = aiRecipeAssignments.slides;
     let aiRecipeSelections = aiRecipeAssignments.selections;
@@ -9708,10 +10838,61 @@ export async function generateAIDraft(
         model: articleModel,
         preferredProviderId: articlePreferredProviderId,
         strictProviderPin: articleStrictProviderPin,
+        awaitStep: awaitDraftStep,
+        onAttempt: async ({ recipeId, compactionLevel, attempt, maxAttempts, deadlineAt }) => {
+          await updateProgress({
+            phase: 2,
+            phaseLabel: `Refining slide layouts: ${slideIndex + 1}/${slides.length}`,
+            phaseDetail: `Compacting "${slides[slideIndex]?.title ?? `Slide ${slideIndex + 1}`}" with ${recipeId} (${compactionLevel}).`,
+            slidesCompleted: slideIndex,
+            totalSlides: slides.length,
+            slidePreview,
+            diagnostics: buildProgressDiagnostics({
+              operation: "recipe_compaction",
+              model: articleModel,
+              recipeId,
+              compactionLevel,
+              attempt,
+              maxAttempts,
+              startedAt: new Date().toISOString(),
+              deadlineAt,
+            }),
+          });
+        },
       });
       slides[slideIndex] = compactionOutcome.slide;
       aiRecipeCompactionResults.push(compactionOutcome);
+      slidePreview[slideIndex] = {
+        ...slidePreview[slideIndex]!,
+        title: slides[slideIndex]!.title,
+      };
+      await updateProgress({
+        phase: 2,
+        phaseLabel: `Refining slide layouts: ${slideIndex + 1}/${slides.length}`,
+        phaseDetail: `Finished refining "${slides[slideIndex]?.title ?? `Slide ${slideIndex + 1}`}".`,
+        slidesCompleted: slideIndex + 1,
+        totalSlides: slides.length,
+        slidePreview,
+        diagnostics: buildProgressDiagnostics({
+          operation: "recipe_compaction_complete",
+          model: articleModel,
+          startedAt: new Date().toISOString(),
+        }),
+      });
     }
+    await updateProgress({
+      phase: 2,
+      phaseLabel: "Resolving dense slides...",
+      phaseDetail: "Applying overflow fallback rules for slides that remain too dense.",
+      slidesCompleted: 0,
+      totalSlides: slides.length,
+      slidePreview,
+      diagnostics: buildProgressDiagnostics({
+        operation: "overflow_fallback_scan",
+        model: articleModel,
+        startedAt: new Date().toISOString(),
+      }),
+    });
     const overflowFallbackResolution = await applyOverflowFallbacks({
       slides,
       selections: aiRecipeSelections,
@@ -9722,11 +10903,52 @@ export async function generateAIDraft(
       model: articleModel,
       preferredProviderId: articlePreferredProviderId,
       strictProviderPin: articleStrictProviderPin,
+      awaitStep: awaitDraftStep,
+      onCompactionAttempt: async ({ slideIndex, slideTitle, recipeId, compactionLevel, attempt, maxAttempts, deadlineAt }) => {
+        await updateProgress({
+          phase: 2,
+          phaseLabel: `Resolving dense slides: ${Math.min(slideIndex + 1, slides.length)}/${slides.length}`,
+          phaseDetail: `Retrying dense slide "${slideTitle}" with ${recipeId} (${compactionLevel}).`,
+          slidesCompleted: slideIndex,
+          totalSlides: slides.length,
+          slidePreview,
+          diagnostics: buildProgressDiagnostics({
+            operation: "overflow_recipe_compaction",
+            model: articleModel,
+            recipeId,
+            compactionLevel,
+            attempt,
+            maxAttempts,
+            startedAt: new Date().toISOString(),
+            deadlineAt,
+          }),
+        });
+      },
     });
     slides = overflowFallbackResolution.slides;
     aiRecipeSelections = overflowFallbackResolution.selections;
     aiRecipeCompactionResults = overflowFallbackResolution.compactionResults;
+    if (shouldPreferVisibleNotesForAutoTopic) {
+      slides = synchronizeSlideNotesWithVisibleContent(slides, "visible_only");
+    }
     const aiRecipeFallbackMetadata = overflowFallbackResolution.fallbackMetadata;
+    slidePreview = slides.map((slide) => ({
+      title: slide.title,
+      imageStatus: "pending",
+    }));
+    await updateProgress({
+      phase: 2,
+      phaseLabel: "Applying advanced layouts...",
+      phaseDetail: "Checking for bounded board layouts and visual-first slide modes.",
+      slidesCompleted: 0,
+      totalSlides: slides.length,
+      slidePreview,
+      diagnostics: buildProgressDiagnostics({
+        operation: "advanced_layout_modes",
+        model: articleModel,
+        startedAt: new Date().toISOString(),
+      }),
+    });
     const advancedModeResolution = await resolveAdvancedLayoutModes({
       slides,
       selections: aiRecipeSelections,
@@ -9738,6 +10960,25 @@ export async function generateAIDraft(
       canvasHeight,
       preferredProviderId: articlePreferredProviderId,
       strictProviderPin: articleStrictProviderPin,
+      awaitStep: awaitDraftStep,
+      onLayoutDslAttempt: async ({ slideIndex, slideTitle, attempt, maxAttempts, deadlineAt }) => {
+        await updateProgress({
+          phase: 2,
+          phaseLabel: `Applying advanced layouts: ${slideIndex + 1}/${slides.length}`,
+          phaseDetail: `Generating bounded layout JSON for "${slideTitle}" (attempt ${attempt}/2).`,
+          slidesCompleted: slideIndex,
+          totalSlides: slides.length,
+          slidePreview,
+          diagnostics: buildProgressDiagnostics({
+            operation: "layout_dsl",
+            model: articleModel,
+            attempt,
+            maxAttempts,
+            startedAt: new Date().toISOString(),
+            deadlineAt,
+          }),
+        });
+      },
     });
     slides = advancedModeResolution.slides;
     const aiAdvancedModeMetadata = advancedModeResolution.metadata;
@@ -9773,7 +11014,7 @@ export async function generateAIDraft(
       );
     }
     // Build slide preview
-    const slidePreview: Array<{ title: string; imageStatus: "pending" | "done" | "placeholder" }> = slides.map((s) => ({
+    slidePreview = slides.map((s) => ({
       title: s.title,
       imageStatus: "pending" as const,
     }));
@@ -9783,6 +11024,11 @@ export async function generateAIDraft(
       phaseLabel: "Slides structured",
       totalSlides: slides.length,
       slidePreview,
+      diagnostics: buildProgressDiagnostics({
+        operation: "slides_structured",
+        model: articleModel,
+        startedAt: new Date().toISOString(),
+      }),
     });
 
     // ── Phase 3+4: Media Enhancement + Generation ─────────
@@ -10523,7 +11769,11 @@ export async function generateAIDraft(
           ...(aiRecipeSelection?.candidateModes?.length
             ? { candidateModes: aiRecipeSelection.candidateModes }
             : {}),
-          componentRecipeId: aiRecipeSelection?.componentRecipeId,
+          componentRecipeId: input.hideTextOnSlides
+            ? (canvasWidth >= canvasHeight
+              ? (isVideoSkill ? "fullpage-video-landscape" : "fullpage-image-landscape")
+              : (isVideoSkill ? "fullpage-video" : "fullpage-image"))
+            : aiRecipeSelection?.componentRecipeId,
           ...(aiRecipeCompaction?.fitScore ? { fitScore: aiRecipeCompaction.fitScore } : {}),
           ...(aiRecipeCompaction?.compactionLevel
             ? { compactionLevel: normalizeRecipeCompactionLevel(aiRecipeCompaction.compactionLevel) }
@@ -10675,15 +11925,29 @@ export async function generateAIDraft(
         for (let index = 0; index < compiledSlides.length; index += 1) {
           const slideContent = compiledSlides[index];
           const slidePlan = slides[index];
+          const visibleNarrationNote = buildSlideNarrationTextFromSlideContent(
+            slideContent,
+            index,
+            slides.length,
+          );
+          const shouldPreferVisibleSlideNote = shouldPreferVisibleNotesForAutoTopic
+            || slideContent.aiDesign?.componentRecipeId === "sectioned-explainer"
+            || Boolean(slideContent.aiDesign?.fallbackHistory?.some((entry) => (
+              entry.step === "switch_recipe"
+              || entry.step === "split_slide"
+            )));
+          const slideNote = shouldPreferVisibleSlideNote
+            ? visibleNarrationNote
+            : slidePlan?.notes?.trim()
+              ? slidePlan.notes.trim().slice(0, 5_000)
+              : visibleNarrationNote;
           await addSlideToDeck(
             {
               deckId: input.deckId,
               expectedVersion,
               slideContent: slideContent as Record<string, unknown>,
               audioTrack: slideAudioTracks[index] ?? undefined,
-              notes: slidePlan?.notes?.trim()
-                ? slidePlan.notes.trim().slice(0, 5_000)
-                : buildSlideNarrationText(slidePlan, index, slides.length).slice(0, 5_000),
+              notes: slideNote,
             },
             actor,
             tx as unknown as DrizzleDB,

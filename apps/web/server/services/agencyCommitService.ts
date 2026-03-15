@@ -56,6 +56,7 @@ function getCommitTitle(preview: AgencyPreview): string {
 
 function getLibrarySourceType(preview: AgencyPreview): string {
   if (preview.previewType === "research") return "agency_research_report";
+  if (preview.previewType === "comparison") return "agency_comparison_report";
   return "agency_storyboard";
 }
 
@@ -127,6 +128,83 @@ function renderStoryboardMarkdown(preview: Extract<AgencyPreview, { previewType:
   return lines.join("\n");
 }
 
+function renderComparisonMarkdown(preview: Extract<AgencyPreview, { previewType: "comparison" }>): string {
+  const formatPrice = (option: typeof preview.data.options[number]): string | null => {
+    if (option.priceLabel) return option.priceLabel;
+    if (option.price == null) return null;
+    const formattedAmount = new Intl.NumberFormat("en-US").format(option.price);
+    return [option.currency, formattedAmount].filter((value): value is string => typeof value === "string" && value.length > 0).join(" ");
+  };
+
+  const lines: string[] = [
+    `# ${preview.data.title}`,
+  ];
+
+  if (preview.data.summary) {
+    lines.push("", preview.data.summary);
+  }
+
+  if (preview.data.locationSummary) {
+    lines.push("", `Location focus: ${preview.data.locationSummary}`);
+  }
+
+  if (preview.data.sortHint) {
+    lines.push("", `Sort hint: ${preview.data.sortHint}`);
+  }
+
+  if (preview.data.recommendations.length > 0) {
+    lines.push("", "## Recommendations");
+    for (const recommendation of preview.data.recommendations) {
+      lines.push(`- ${recommendation}`);
+    }
+  }
+
+  lines.push("", "## Options");
+  preview.data.options.forEach((option, index) => {
+    lines.push("", `### ${index + 1}. ${option.vendor} - ${option.optionTitle}`);
+
+    const formattedPrice = formatPrice(option);
+    if (formattedPrice) {
+      lines.push(`- Price: ${formattedPrice}`);
+    }
+
+    if (option.availabilityState !== "unknown") {
+      lines.push(`- Availability: ${option.availabilityState}`);
+    }
+
+    if (option.refundable != null) {
+      lines.push(`- Refundable: ${option.refundable ? "yes" : "no"}`);
+    }
+
+    if (option.distanceLabel || option.distance != null) {
+      lines.push(`- Distance: ${option.distanceLabel ?? `${option.distance} ${option.distanceUnit ?? ""}`.trim()}`);
+    }
+
+    if (option.locationSummary) {
+      lines.push(`- Location: ${option.locationSummary}`);
+    }
+
+    if (option.bookingLink) {
+      lines.push(`- Booking: ${option.bookingLink}`);
+    }
+
+    if (option.notes) {
+      lines.push(`- Notes: ${option.notes}`);
+    }
+
+    if (option.evidence.length > 0) {
+      lines.push("- Evidence:");
+      for (const evidence of option.evidence) {
+        const parts = [evidence.label, evidence.url, evidence.snippet]
+          .filter((value): value is string => typeof value === "string" && value.length > 0);
+        lines.push(`  - ${parts.join(" | ")}`);
+      }
+    }
+  });
+
+  return lines.join("\n");
+}
+
 function renderProvenanceMarkdown(preview: AgencyPreview): string {
   if (preview.provenance.length === 0) {
     return "";
@@ -148,6 +226,9 @@ function renderProvenanceMarkdown(preview: AgencyPreview): string {
 function renderLibraryMarkdown(preview: AgencyPreview): string {
   if (preview.previewType === "research") {
     return `${renderResearchMarkdown(preview)}${renderProvenanceMarkdown(preview)}\n`;
+  }
+  if (preview.previewType === "comparison") {
+    return `${renderComparisonMarkdown(preview)}${renderProvenanceMarkdown(preview)}\n`;
   }
   return `${renderStoryboardMarkdown(preview)}${renderProvenanceMarkdown(preview)}\n`;
 }

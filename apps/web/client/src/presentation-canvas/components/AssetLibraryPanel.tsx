@@ -1,12 +1,11 @@
-import { type ComponentType, type DragEvent, type ReactNode, useEffect, useMemo, useState } from "react";
-import { Clapperboard, ImageIcon, Layers3, Search, Shapes } from "lucide-react";
+import { type ComponentType, type DragEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { Clapperboard, ImageIcon, Layers3, LayoutTemplate, Search, Shapes } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { normalizeMediaSourceUrl } from "@/lib/mediaUrl";
 
-export type AssetLibraryTab = "slides" | "photos" | "videos" | "graphics";
+export type AssetLibraryTab = "slides" | "photos" | "videos" | "graphics" | "blocks";
 type AssetSourceFilter = "all" | "history" | "library" | "shared";
 
 export interface CanvasLibraryAsset {
@@ -27,6 +26,7 @@ interface AssetLibraryPanelProps {
   isLoading: boolean;
   slidesPanel: ReactNode;
   graphicsPanel?: ReactNode;
+  blocksPanel?: ReactNode;
   onInsertAsset: (asset: CanvasLibraryAsset) => void;
   onDragAssetStart: (event: DragEvent<HTMLElement>, asset: CanvasLibraryAsset) => void;
 }
@@ -40,6 +40,7 @@ const TABS: Array<{
     { id: "photos", label: "Photos", icon: ImageIcon },
     { id: "videos", label: "Videos", icon: Clapperboard },
     { id: "graphics", label: "Graphics", icon: Shapes },
+    { id: "blocks", label: "Blocks", icon: LayoutTemplate },
   ];
 
 const SOURCE_FILTERS: Array<{ id: AssetSourceFilter; label: string }> = [
@@ -48,6 +49,11 @@ const SOURCE_FILTERS: Array<{ id: AssetSourceFilter; label: string }> = [
   { id: "library", label: "Library" },
   { id: "shared", label: "Shared" },
 ];
+
+const MEDIA_GRID_COLUMNS = 2;
+const MEDIA_GRID_GAP_PX = 8;
+const MEDIA_CARD_HEIGHT_PX = 190;
+const MEDIA_ROW_HEIGHT_PX = MEDIA_CARD_HEIGHT_PX + MEDIA_GRID_GAP_PX;
 
 function AssetThumbnail({ asset }: { asset: CanvasLibraryAsset }) {
   const [failed, setFailed] = useState(false);
@@ -123,10 +129,14 @@ export function AssetLibraryPanel({
   isLoading,
   slidesPanel,
   graphicsPanel,
+  blocksPanel,
   onInsertAsset,
   onDragAssetStart,
 }: AssetLibraryPanelProps) {
   const [sourceFilter, setSourceFilter] = useState<AssetSourceFilter>("all");
+  const mediaScrollRef = useRef<HTMLDivElement | null>(null);
+  const [mediaScrollTop, setMediaScrollTop] = useState(0);
+  const [mediaViewportHeight, setMediaViewportHeight] = useState(480);
   const sourceFilterCounts = useMemo(() => {
     const counts = { history: 0, library: 0, shared: 0 };
     for (const asset of assets) {
@@ -146,13 +156,47 @@ export function AssetLibraryPanel({
   ), [assets, sourceFilter]);
 
   useEffect(() => {
-    if (activeTab === "slides" || activeTab === "graphics") {
+    if (activeTab === "slides" || activeTab === "graphics" || activeTab === "blocks") {
       setSourceFilter("all");
     }
   }, [activeTab]);
 
+  useEffect(() => {
+    const node = mediaScrollRef.current;
+    if (!node) {
+      return;
+    }
+
+    const updateViewportHeight = () => {
+      setMediaViewportHeight(node.clientHeight || 480);
+    };
+
+    updateViewportHeight();
+
+    if (typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const observer = new ResizeObserver(updateViewportHeight);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [activeTab]);
+
+  const virtualizedMedia = useMemo(() => {
+    const totalRows = Math.ceil(filteredAssets.length / MEDIA_GRID_COLUMNS);
+    const overscanRows = 2;
+    const startRow = Math.max(0, Math.floor(mediaScrollTop / MEDIA_ROW_HEIGHT_PX) - overscanRows);
+    const visibleRows = Math.ceil(mediaViewportHeight / MEDIA_ROW_HEIGHT_PX) + (overscanRows * 2);
+    const endRow = Math.min(totalRows, startRow + visibleRows);
+    return {
+      topSpacerHeight: startRow * MEDIA_ROW_HEIGHT_PX,
+      bottomSpacerHeight: Math.max(0, (totalRows - endRow) * MEDIA_ROW_HEIGHT_PX),
+      items: filteredAssets.slice(startRow * MEDIA_GRID_COLUMNS, endRow * MEDIA_GRID_COLUMNS),
+    };
+  }, [filteredAssets, mediaScrollTop, mediaViewportHeight]);
+
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 text-slate-100">
+    <div className="flex h-full min-h-0 min-w-0 flex-col gap-3 overflow-hidden text-slate-100">
       <div className="grid grid-cols-2 gap-1.5">
         {TABS.map((tab) => {
           const Icon = tab.icon;
@@ -177,52 +221,66 @@ export function AssetLibraryPanel({
       </div>
 
       {activeTab === "slides" ? (
-        <div className="min-h-0 flex-1 overflow-hidden">
+        <div className="h-0 min-h-0 flex-1 overflow-hidden">
           {slidesPanel}
         </div>
       ) : activeTab === "graphics" ? (
-        <div className="min-h-0 flex-1 overflow-hidden">
+        <div className="h-0 min-h-0 flex-1 overflow-hidden">
           {graphicsPanel}
         </div>
+      ) : activeTab === "blocks" ? (
+        <div className="h-0 min-h-0 flex-1 overflow-hidden">
+          {blocksPanel}
+        </div>
       ) : (
-        <>
-          <div className="flex flex-wrap gap-1">
-            {SOURCE_FILTERS.map((filter) => {
-              const count = filter.id === "all" ? assets.length : sourceFilterCounts[filter.id];
-              const active = sourceFilter === filter.id;
-              return (
-                <Button
-                  key={filter.id}
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  aria-label={`Filter source ${filter.label}`}
-                  className={`h-7 rounded-full border px-2 text-[11px] ${active
-                    ? "border-sky-400/70 bg-sky-500/20 text-sky-100"
-                    : "border-slate-700 text-slate-300 hover:border-slate-500 hover:bg-slate-800"
-                    }`}
-                  onClick={() => setSourceFilter(filter.id)}
-                >
-                  {filter.label} ({count})
-                </Button>
-              );
-            })}
+        <div
+          ref={mediaScrollRef}
+          className="h-0 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1"
+          data-testid="asset-library-scroll-area"
+          onScroll={(event) => setMediaScrollTop(event.currentTarget.scrollTop)}
+        >
+          <div className="sticky top-0 z-10 space-y-2 bg-slate-900 pb-2">
+            <div className="flex flex-wrap gap-1">
+              {SOURCE_FILTERS.map((filter) => {
+                const count = filter.id === "all" ? assets.length : sourceFilterCounts[filter.id];
+                const active = sourceFilter === filter.id;
+                return (
+                  <Button
+                    key={filter.id}
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    aria-label={`Filter source ${filter.label}`}
+                    className={`h-7 rounded-full border px-2 text-[11px] ${active
+                      ? "border-sky-400/70 bg-sky-500/20 text-sky-100"
+                      : "border-slate-700 text-slate-300 hover:border-slate-500 hover:bg-slate-800"
+                      }`}
+                    onClick={() => setSourceFilter(filter.id)}
+                  >
+                    {filter.label} ({count})
+                  </Button>
+                );
+              })}
+            </div>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                value={searchQuery}
+                onChange={(event) => onSearchQueryChange(event.target.value)}
+                placeholder={activeTab === "photos" ? "Search images..." : "Search videos..."}
+                className="border-slate-700 bg-slate-950/70 pl-8 text-slate-100 placeholder:text-slate-500"
+              />
+            </div>
           </div>
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              value={searchQuery}
-              onChange={(event) => onSearchQueryChange(event.target.value)}
-              placeholder={activeTab === "photos" ? "Search images..." : "Search videos..."}
-              className="border-slate-700 bg-slate-950/70 pl-8 text-slate-100 placeholder:text-slate-500"
-            />
-          </div>
-          <ScrollArea className="h-[calc(70vh-160px)] pr-1">
             {isLoading ? (
               <p className="text-sm text-slate-400">Loading media sources...</p>
             ) : filteredAssets.length ? (
-              <div className="grid grid-cols-2 gap-2">
-                {filteredAssets.map((asset) => (
+              <div>
+                {virtualizedMedia.topSpacerHeight > 0 ? (
+                  <div style={{ height: `${virtualizedMedia.topSpacerHeight}px` }} aria-hidden="true" />
+                ) : null}
+                <div className="grid grid-cols-2 gap-2">
+                  {virtualizedMedia.items.map((asset) => (
                   <div
                     key={`${asset.kind}-${asset.id}`}
                     className="group overflow-hidden rounded-md border border-slate-700 bg-slate-950 text-left shadow-sm transition hover:border-sky-500/80"
@@ -256,7 +314,11 @@ export function AssetLibraryPanel({
                       </Button>
                     </div>
                   </div>
-                ))}
+                  ))}
+                </div>
+                {virtualizedMedia.bottomSpacerHeight > 0 ? (
+                  <div style={{ height: `${virtualizedMedia.bottomSpacerHeight}px` }} aria-hidden="true" />
+                ) : null}
               </div>
             ) : (
               <p className="text-sm text-slate-400">
@@ -265,8 +327,7 @@ export function AssetLibraryPanel({
                   : `No ${sourceFilter} media found for this search.`}
               </p>
             )}
-          </ScrollArea>
-        </>
+        </div>
       )}
     </div>
   );

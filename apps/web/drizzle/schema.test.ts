@@ -476,6 +476,7 @@ describe('multimodal_memory_items table schema', () => {
     expect(cols.userId.notNull).toBe(true);
   });
 
+
   test('salience defaults to "0.500"', () => {
     const cols = getTableColumns(multimodalMemoryItems);
     expect(cols.salience.default).toBe('0.500');

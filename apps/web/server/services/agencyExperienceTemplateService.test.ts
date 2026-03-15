@@ -84,6 +84,7 @@ describe("agencyExperienceTemplateService", () => {
           where: vi.fn().mockReturnValue({
             limit: vi.fn().mockResolvedValue([
               {
+                sourceTemplateId: null,
                 slug: "deep-research-4ab3",
               },
             ]),
@@ -119,6 +120,7 @@ describe("agencyExperienceTemplateService", () => {
           where: vi.fn().mockReturnValue({
             limit: vi.fn().mockResolvedValue([
               {
+                sourceTemplateId: null,
                 slug: "deep-research-4ab3",
               },
             ]),
@@ -140,5 +142,35 @@ describe("agencyExperienceTemplateService", () => {
       tenantId: "tenant-1",
       userId: 7,
     });
+  });
+
+  it("prefers persisted source template provenance over slug matching", async () => {
+    const db = {
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([
+              {
+                sourceTemplateId: "platform-storyboard-planner",
+                slug: "renamed-agency-slug",
+              },
+            ]),
+          }),
+        }),
+      }),
+    } as any;
+
+    const resolved = await resolveAgencyRetrievalScope({
+      agencyId: "agency-1",
+      tenantId: "tenant-1",
+      userId: 7,
+      dbClient: db,
+    });
+
+    expect(resolved).toEqual(expect.objectContaining({
+      experienceKey: "storyboard_planner",
+      templateDefault: "library_only",
+      effectiveMode: "library_only",
+    }));
   });
 });

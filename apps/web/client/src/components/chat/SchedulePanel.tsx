@@ -50,6 +50,13 @@ import {
   Settings,
   AlertTriangle,
   CalendarPlus,
+  SkipForward,
+  PlayCircle,
+  CheckSquare,
+  Square,
+  Filter,
+  BarChart3,
+  TrendingUp,
 } from "lucide-react";
 import { Calendar as CalendarWidget } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
@@ -82,15 +89,29 @@ export function SchedulePanel({ onNavigateToChat, initialDmUserId, initialDmUser
   const [reminderPriority, setReminderPriority] = useState<"low" | "normal" | "high" | "critical">("normal");
 
   // Calendar view state
-  const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
+  const [viewMode, setViewMode] = useState<"list" | "calendar" | "analytics">("list");
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
 
+  // Search & filter
+  const [searchText, setSearchText] = useState("");
+  const [filterStatus, setFilterStatus] = useState<"active" | "paused" | "completed" | "failed" | "">("");
+  const [filterPriority, setFilterPriority] = useState<"low" | "normal" | "high" | "critical" | "">("");
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Bulk operations
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkMode, setBulkMode] = useState(false);
+
   const utils = trpc.useUtils();
 
+  const debouncedSearch = useMemo(() => searchText.trim() || undefined, [searchText]);
   const { data, isLoading } = trpc.scheduledMessages.list.useQuery({
     limit: 50,
     offset: 0,
+    ...(debouncedSearch ? { search: debouncedSearch } : {}),
+    ...(filterStatus ? { status: filterStatus } : {}),
+    ...(filterPriority ? { priority: filterPriority } : {}),
   });
 
   const togglePause = trpc.scheduledMessages.togglePause.useMutation({
@@ -124,6 +145,34 @@ export function SchedulePanel({ onNavigateToChat, initialDmUserId, initialDmUser
     onError: (err) => {
       toast.error(`Update failed: ${err.message}`);
     }
+  });
+
+  const skipNextRunMutation = trpc.scheduledMessages.skipNextRun.useMutation({
+    onSuccess: (result) => {
+      utils.scheduledMessages.list.invalidate();
+      utils.scheduledMessages.getLogs.invalidate();
+      toast.success(`Next run will be skipped`);
+    },
+    onError: (err) => toast.error(`Skip failed: ${err.message}`),
+  });
+
+  const triggerNowMutation = trpc.scheduledMessages.triggerNow.useMutation({
+    onSuccess: () => {
+      utils.scheduledMessages.list.invalidate();
+      utils.scheduledMessages.getLogs.invalidate();
+      toast.success("Schedule triggered — running now");
+    },
+    onError: (err) => toast.error(`Trigger failed: ${err.message}`),
+  });
+
+  const bulkActionMutation = trpc.scheduledMessages.bulkAction.useMutation({
+    onSuccess: (result, vars) => {
+      utils.scheduledMessages.list.invalidate();
+      toast.success(`${vars.action === "delete" ? "Deleted" : vars.action === "pause" ? "Paused" : "Resumed"} ${result.affected} schedule(s)`);
+      setSelectedIds(new Set());
+      setBulkMode(false);
+    },
+    onError: (err) => toast.error(`Bulk action failed: ${err.message}`),
   });
 
   const createReminderMutation = trpc.scheduledMessages.create.useMutation({
@@ -212,18 +261,6 @@ export function SchedulePanel({ onNavigateToChat, initialDmUserId, initialDmUser
     return item.cronExpression;
   };
 
-  const formatCronOnly = (cron: string | null) => {
-    if (!cron) return "One-time";
-    const parts = cron.split(" ");
-    if (parts.length !== 5) return cron;
-    const [min, hour, dom, mon, dow] = parts;
-    if (dom === "*" && mon === "*" && dow === "*") return `Daily at ${hour.padStart(2, "0")}:${min.padStart(2, "0")}`;
-    if (dom === "*" && mon === "*" && dow === "1-5") return `Weekdays at ${hour.padStart(2, "0")}:${min.padStart(2, "0")}`;
-    if (hour.startsWith("*/")) return `Every ${hour.slice(2)} hours`;
-    if (min.startsWith("*/")) return `Every ${min.slice(2)} minutes`;
-    return cron;
-  };
-
   // Track whether deep-link highlight is active (auto-clears after 3s)
   const [highlightId, setHighlightId] = useState<number | null>(initialAlertId ?? null);
 
@@ -305,6 +342,16 @@ export function SchedulePanel({ onNavigateToChat, initialDmUserId, initialDmUser
             >
               <CalendarDays className="h-3 w-3" />
             </button>
+            <button
+              onClick={() => setViewMode("analytics")}
+              className={cn(
+                "h-6 w-6 flex items-center justify-center transition-colors",
+                viewMode === "analytics" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
+              )}
+              title="Analytics"
+            >
+              <BarChart3 className="h-3 w-3" />
+            </button>
           </div>
           <Button
             variant={showQuickReminder ? "secondary" : "ghost"}
@@ -327,6 +374,24 @@ export function SchedulePanel({ onNavigateToChat, initialDmUserId, initialDmUser
             <span className="hidden sm:inline">Skill</span>
           </Button>
           <Button
+            variant={showFilters ? "secondary" : "ghost"}
+            size="sm"
+            className="h-7 w-7 p-0"
+            onClick={() => setShowFilters(!showFilters)}
+            title="Search & filter"
+          >
+            <Filter className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant={bulkMode ? "secondary" : "ghost"}
+            size="sm"
+            className="h-7 w-7 p-0"
+            onClick={() => { setBulkMode(!bulkMode); setSelectedIds(new Set()); }}
+            title="Bulk operations"
+          >
+            <CheckSquare className="h-3.5 w-3.5" />
+          </Button>
+          <Button
             variant="ghost"
             size="sm"
             className="h-7 w-7 p-0"
@@ -336,6 +401,89 @@ export function SchedulePanel({ onNavigateToChat, initialDmUserId, initialDmUser
           </Button>
         </div>
       </div>
+
+      {/* Search & Filter Bar */}
+      {showFilters && (
+        <div className="border-b p-2 space-y-1.5 bg-muted/30">
+          <div className="relative">
+            <Search className="absolute left-2 top-1.5 h-3 w-3 text-muted-foreground" />
+            <Input
+              placeholder="Search schedules..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              className="h-7 text-xs pl-7"
+            />
+          </div>
+          <div className="flex gap-1.5 flex-wrap">
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
+              className="h-6 text-[10px] rounded border bg-background px-1.5"
+            >
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="paused">Paused</option>
+              <option value="completed">Completed</option>
+              <option value="failed">Failed</option>
+            </select>
+            <select
+              value={filterPriority}
+              onChange={(e) => setFilterPriority(e.target.value as typeof filterPriority)}
+              className="h-6 text-[10px] rounded border bg-background px-1.5"
+            >
+              <option value="">All Priority</option>
+              <option value="low">Low</option>
+              <option value="normal">Normal</option>
+              <option value="high">High</option>
+              <option value="critical">Critical</option>
+            </select>
+            {(searchText || filterStatus || filterPriority) && (
+              <button
+                onClick={() => { setSearchText(""); setFilterStatus(""); setFilterPriority(""); }}
+                className="h-6 px-1.5 text-[10px] text-muted-foreground hover:text-foreground"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Action Bar */}
+      {bulkMode && selectedIds.size > 0 && (
+        <div className="border-b p-2 bg-primary/5 flex items-center gap-1.5">
+          <span className="text-[11px] font-medium">{selectedIds.size} selected</span>
+          <div className="flex gap-1 ml-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 text-[10px] gap-1"
+              onClick={() => bulkActionMutation.mutate({ ids: [...selectedIds], action: "pause" })}
+              disabled={bulkActionMutation.isPending}
+            >
+              <Pause className="h-2.5 w-2.5" /> Pause
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 text-[10px] gap-1"
+              onClick={() => bulkActionMutation.mutate({ ids: [...selectedIds], action: "resume" })}
+              disabled={bulkActionMutation.isPending}
+            >
+              <Play className="h-2.5 w-2.5" /> Resume
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 text-[10px] gap-1 text-destructive"
+              onClick={() => bulkActionMutation.mutate({ ids: [...selectedIds], action: "delete" })}
+              disabled={bulkActionMutation.isPending}
+            >
+              <Trash2 className="h-2.5 w-2.5" /> Delete
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Quick Reminder Form */}
       {showQuickReminder && (
@@ -400,12 +548,7 @@ export function SchedulePanel({ onNavigateToChat, initialDmUserId, initialDmUser
             </p>
           )}
           {reminderRecurring ? (
-            <Input
-              placeholder="Cron expression, e.g. 0 8 * * * (daily 8:00)"
-              value={reminderCron}
-              onChange={(e) => setReminderCron(e.target.value)}
-              className="h-7 text-xs"
-            />
+            <CronBuilder value={reminderCron} onChange={setReminderCron} />
           ) : (
             <div className="flex gap-2">
               <Input
@@ -495,6 +638,26 @@ export function SchedulePanel({ onNavigateToChat, initialDmUserId, initialDmUser
                       className="flex items-start gap-2 p-3 cursor-pointer"
                       onClick={() => { setExpandedId(isExpanded ? null : item.id); if (editingId && editingId !== item.id) setEditingId(null); }}
                     >
+                      {bulkMode && (
+                        <button
+                          className="mt-0.5 shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedIds(prev => {
+                              const next = new Set(prev);
+                              if (next.has(item.id)) next.delete(item.id);
+                              else next.add(item.id);
+                              return next;
+                            });
+                          }}
+                        >
+                          {selectedIds.has(item.id) ? (
+                            <CheckSquare className="h-4 w-4 text-primary" />
+                          ) : (
+                            <Square className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </button>
+                      )}
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm leading-snug">
                           {item.description || item.prompt.slice(0, 80)}
@@ -572,6 +735,28 @@ export function SchedulePanel({ onNavigateToChat, initialDmUserId, initialDmUser
                           >
                             <Trash2 className="h-3 w-3" /> Delete
                           </Button>
+                          {item.isRecurring && item.status === "active" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs gap-1 text-amber-600 hover:text-amber-500"
+                              onClick={(e) => { e.stopPropagation(); skipNextRunMutation.mutate({ id: item.id }); }}
+                              disabled={skipNextRunMutation.isPending}
+                              title="Skip the next scheduled execution"
+                            >
+                              {skipNextRunMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <SkipForward className="h-3 w-3" />} Skip Next
+                            </Button>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs gap-1 text-green-600 hover:text-green-500"
+                            onClick={(e) => { e.stopPropagation(); triggerNowMutation.mutate({ id: item.id }); }}
+                            disabled={triggerNowMutation.isPending || item.status === "completed"}
+                            title="Execute this schedule immediately"
+                          >
+                            {triggerNowMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <PlayCircle className="h-3 w-3" />} Run Now
+                          </Button>
                           {item.conversationId && onNavigateToChat && (
                             <Button
                               variant="outline"
@@ -633,12 +818,7 @@ export function SchedulePanel({ onNavigateToChat, initialDmUserId, initialDmUser
                               <label className="text-[10px] font-medium text-muted-foreground block mb-1">
                                 Cron Expression {editCron && <span className="text-muted-foreground font-normal">({formatCronOnly(editCron)})</span>}
                               </label>
-                              <Input
-                                value={editCron}
-                                onChange={(e) => setEditCron(e.target.value)}
-                                placeholder="e.g. 0 8 * * *"
-                                className="h-7 text-xs font-mono"
-                              />
+                              <CronBuilder value={editCron} onChange={setEditCron} />
                             </div>
                             <div className="flex items-center gap-1.5">
                               <Button
@@ -715,7 +895,7 @@ export function SchedulePanel({ onNavigateToChat, initialDmUserId, initialDmUser
             )}
           </div>
         </ScrollArea>
-      ) : (
+      ) : viewMode === "calendar" ? (
         <ScheduleCalendarView
           items={items}
           isLoading={isLoading}
@@ -740,6 +920,8 @@ export function SchedulePanel({ onNavigateToChat, initialDmUserId, initialDmUser
             }, 100);
           }}
         />
+      ) : (
+        <ScheduleAnalyticsView />
       )}
 
       {/* Following Section */}
@@ -1221,6 +1403,179 @@ function DayScheduleView({ date, items, statusColor, onAddReminder, onViewItem, 
               </div>
             ))}
           </div>
+        )}
+      </div>
+    </ScrollArea>
+  );
+}
+
+// ─── Cron Builder ───
+
+const CRON_PRESETS = [
+  { label: "Daily 8AM", cron: "0 8 * * *" },
+  { label: "Daily 9AM", cron: "0 9 * * *" },
+  { label: "Daily 1AM", cron: "0 1 * * *" },
+  { label: "Weekdays 8AM", cron: "0 8 * * 1-5" },
+  { label: "Mon 8AM", cron: "0 8 * * 1" },
+  { label: "Every 2h", cron: "0 */2 * * *" },
+  { label: "Every 4h", cron: "0 */4 * * *" },
+  { label: "Hourly", cron: "0 * * * *" },
+  { label: "Sun 10AM", cron: "0 10 * * 0" },
+  { label: "1st of month", cron: "0 9 1 * *" },
+] as const;
+
+function CronBuilder({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex flex-wrap gap-1">
+        {CRON_PRESETS.map((p) => (
+          <button
+            key={p.cron}
+            type="button"
+            onClick={() => onChange(p.cron)}
+            className={cn(
+              "px-1.5 py-0.5 rounded text-[10px] border transition-colors",
+              value === p.cron
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-muted/50 hover:bg-muted border-transparent"
+            )}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+      <Input
+        placeholder="Custom cron, e.g. 0 8 * * * (min hour dom mon dow)"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-7 text-xs font-mono"
+      />
+      {value && (
+        <p className="text-[10px] text-muted-foreground">
+          Preview: {formatCronOnly(value)}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// helper accessible to CronBuilder
+function formatCronOnly(cron: string | null) {
+  if (!cron) return "One-time";
+  const parts = cron.split(" ");
+  if (parts.length !== 5) return cron;
+  const [min, hour, dom, mon, dow] = parts;
+  if (dom === "*" && mon === "*" && dow === "*") return `Daily at ${hour.padStart(2, "0")}:${min.padStart(2, "0")}`;
+  if (dom === "*" && mon === "*" && dow === "1-5") return `Weekdays at ${hour.padStart(2, "0")}:${min.padStart(2, "0")}`;
+  if (dom === "*" && mon === "*" && dow === "1") return `Mondays at ${hour.padStart(2, "0")}:${min.padStart(2, "0")}`;
+  if (dom === "*" && mon === "*" && dow === "0") return `Sundays at ${hour.padStart(2, "0")}:${min.padStart(2, "0")}`;
+  if (dom !== "*" && mon === "*" && dow === "*") return `Day ${dom} at ${hour.padStart(2, "0")}:${min.padStart(2, "0")}`;
+  if (hour.startsWith("*/")) return `Every ${hour.slice(2)} hours`;
+  if (min.startsWith("*/")) return `Every ${min.slice(2)} minutes`;
+  return cron;
+}
+
+// ─── Schedule Analytics View ───
+
+function ScheduleAnalyticsView() {
+  const [days, setDays] = useState(30);
+  const { data, isLoading } = trpc.scheduledMessages.getAnalytics.useQuery({ days });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8 flex-1">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  const maxDailyRuns = Math.max(...(data.dailyStats?.map((d: any) => d.runs) || [1]), 1);
+
+  return (
+    <ScrollArea className="flex-1 min-h-0">
+      <div className="p-3 space-y-4">
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs font-semibold flex items-center gap-1.5">
+            <TrendingUp className="h-3.5 w-3.5" />
+            Execution Analytics
+          </h4>
+          <select
+            value={days}
+            onChange={(e) => setDays(Number(e.target.value))}
+            className="h-6 text-[10px] rounded border bg-background px-1.5"
+          >
+            <option value={7}>7 days</option>
+            <option value={14}>14 days</option>
+            <option value={30}>30 days</option>
+            <option value={90}>90 days</option>
+          </select>
+        </div>
+
+        {/* Summary Cards */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-muted/50 rounded-lg p-2.5">
+            <p className="text-[10px] text-muted-foreground">Total Runs</p>
+            <p className="text-lg font-bold">{data.totalRuns}</p>
+          </div>
+          <div className="bg-muted/50 rounded-lg p-2.5">
+            <p className="text-[10px] text-muted-foreground">Success Rate</p>
+            <p className={cn("text-lg font-bold", data.successRate >= 90 ? "text-green-500" : data.successRate >= 70 ? "text-amber-500" : "text-red-500")}>
+              {data.successRate}%
+            </p>
+          </div>
+          <div className="bg-muted/50 rounded-lg p-2.5">
+            <p className="text-[10px] text-muted-foreground">Credits Used</p>
+            <p className="text-lg font-bold">{Number(data.totalCredits).toFixed(1)}</p>
+          </div>
+          <div className="bg-muted/50 rounded-lg p-2.5">
+            <p className="text-[10px] text-muted-foreground">Failures</p>
+            <p className={cn("text-lg font-bold", data.failureCount > 0 ? "text-red-500" : "text-green-500")}>
+              {data.failureCount}
+            </p>
+          </div>
+        </div>
+
+        {/* Daily Activity Chart (bar chart) */}
+        {data.dailyStats && data.dailyStats.length > 0 && (
+          <div>
+            <p className="text-[10px] font-medium text-muted-foreground mb-2">Daily Activity</p>
+            <div className="space-y-1">
+              {data.dailyStats.slice(-14).map((day: any) => (
+                <div key={day.date} className="flex items-center gap-2 text-[10px]">
+                  <span className="w-16 text-muted-foreground font-mono shrink-0">{day.date.slice(5)}</span>
+                  <div className="flex-1 flex items-center gap-0.5 h-4">
+                    {day.successes > 0 && (
+                      <div
+                        className="h-full bg-green-500/70 rounded-sm"
+                        style={{ width: `${(day.successes / maxDailyRuns) * 100}%`, minWidth: "2px" }}
+                        title={`${day.successes} success`}
+                      />
+                    )}
+                    {day.failures > 0 && (
+                      <div
+                        className="h-full bg-red-500/70 rounded-sm"
+                        style={{ width: `${(day.failures / maxDailyRuns) * 100}%`, minWidth: "2px" }}
+                        title={`${day.failures} failed`}
+                      />
+                    )}
+                  </div>
+                  <span className="w-6 text-right text-muted-foreground">{day.runs}</span>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center gap-3 mt-2 text-[9px] text-muted-foreground">
+              <span className="flex items-center gap-1"><span className="h-2 w-2 bg-green-500/70 rounded-sm" /> Success</span>
+              <span className="flex items-center gap-1"><span className="h-2 w-2 bg-red-500/70 rounded-sm" /> Failed</span>
+            </div>
+          </div>
+        )}
+
+        {data.totalRuns === 0 && (
+          <p className="text-center text-xs text-muted-foreground py-4">
+            No executions in the last {days} days
+          </p>
         )}
       </div>
     </ScrollArea>

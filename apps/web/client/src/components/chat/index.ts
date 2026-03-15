@@ -1,5 +1,6 @@
 export { ChatSidebar } from "./ChatSidebar";
 export { ChatView } from "./ChatView";
+export { ChatHelpDialog } from "./ChatHelpDialog";
 export { MemoryPanel } from "./MemoryPanel";
 export { MessageCostBadge } from "./MessageCostBadge";
 export { SkillSettings } from "./settings/SkillSettings";

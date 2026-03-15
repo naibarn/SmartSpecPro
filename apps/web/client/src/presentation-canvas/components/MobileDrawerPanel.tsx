@@ -3,6 +3,7 @@ import {
   Clapperboard,
   Crop,
   ImageIcon,
+  LayoutTemplate,
   Minus,
   RectangleHorizontal,
   Type,
@@ -10,7 +11,13 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import type { PresentationCustomBlockDefinition } from "@/lib/presentationCustomBlocks";
+import type { BuiltInPresentationComponentId } from "@/lib/presentationComponentCatalog";
 import type { PresentationElementType } from "@/lib/presentationEditorState";
+import {
+  PRESENTATION_BLOCK_PRESETS,
+  type PresentationBlockPresetId,
+} from "@/lib/presentationBlockPresets";
 
 type DrawerTab = "Slides" | "Add";
 
@@ -19,6 +26,10 @@ interface MobileDrawerPanelProps {
   onClose: () => void;
   slidesPanel: ReactNode;
   onAddElement: (type: PresentationElementType) => void;
+  onInsertBlockPreset: (presetId: PresentationBlockPresetId) => void;
+  onInsertComponent?: (componentId: BuiltInPresentationComponentId) => void;
+  customBlocks?: PresentationCustomBlockDefinition[];
+  onInsertCustomBlock?: (blockId: string) => void;
   snapLockEnabled: boolean;
   onToggleSnapLock: () => void;
 }
@@ -28,6 +39,10 @@ export function MobileDrawerPanel({
   onClose,
   slidesPanel,
   onAddElement,
+  onInsertBlockPreset,
+  onInsertComponent,
+  customBlocks = [],
+  onInsertCustomBlock,
   snapLockEnabled,
   onToggleSnapLock,
 }: MobileDrawerPanelProps) {
@@ -37,6 +52,30 @@ export function MobileDrawerPanel({
     onAddElement(type);
     onClose();
   }
+
+  function handleInsertBlockPreset(presetId: PresentationBlockPresetId) {
+    onInsertBlockPreset(presetId);
+    onClose();
+  }
+
+  function handleInsertComponent(componentId: BuiltInPresentationComponentId) {
+    onInsertComponent?.(componentId);
+    onClose();
+  }
+
+  function handleInsertCustomBlock(blockId: string) {
+    onInsertCustomBlock?.(blockId);
+    onClose();
+  }
+
+  function getInsertAriaLabel(label: string): string {
+    return label.trim().toLowerCase().endsWith("block")
+      ? label
+      : `${label} Block`;
+  }
+
+  const mobileBlocks = PRESENTATION_BLOCK_PRESETS;
+  const mobileCustomBlocks = customBlocks.slice(0, 4);
 
   return (
     <>
@@ -168,6 +207,63 @@ export function MobileDrawerPanel({
                   <Crop className="h-3.5 w-3.5" />
                   {snapLockEnabled ? "Snap On" : "Snap Off"}
                 </Button>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <LayoutTemplate className="h-3.5 w-3.5" />
+                  Blocks
+                </div>
+                {mobileCustomBlocks.length > 0 ? (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Saved Blocks</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {mobileCustomBlocks.map((block) => (
+                        <Button
+                          key={`custom-${block.id}`}
+                          type="button"
+                          size="sm"
+                          className="h-auto min-h-8 gap-1 whitespace-normal px-2 py-1 text-center text-[11px] leading-tight"
+                          onClick={() => handleInsertCustomBlock(block.id)}
+                          aria-label={`Insert Editable ${getInsertAriaLabel(block.label)}`}
+                        >
+                          {block.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {onInsertComponent ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {mobileBlocks.map((preset) => (
+                      <Button
+                        key={`editable-${preset.id}`}
+                        type="button"
+                        size="sm"
+                        className="h-auto min-h-8 gap-1 whitespace-normal px-2 py-1 text-center text-[11px] leading-tight"
+                        onClick={() => handleInsertComponent(preset.id)}
+                        aria-label={`Insert Editable ${getInsertAriaLabel(preset.label)}`}
+                      >
+                        {preset.label}
+                      </Button>
+                    ))}
+                  </div>
+                ) : null}
+                <div className="grid grid-cols-2 gap-2">
+                  {mobileBlocks.map((preset) => (
+                    <Button
+                      key={`elements-${preset.id}`}
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-auto min-h-8 gap-1 whitespace-normal px-2 py-1 text-center text-[11px] leading-tight"
+                      onClick={() => handleInsertBlockPreset(preset.id)}
+                      aria-label={`Insert ${getInsertAriaLabel(preset.label)}`}
+                    >
+                      {preset.label}
+                    </Button>
+                  ))}
+                </div>
               </div>
             </div>
           )}

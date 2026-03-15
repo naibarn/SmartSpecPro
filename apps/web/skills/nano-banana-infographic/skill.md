@@ -4,24 +4,24 @@ description: |
   Professional infographic & slide illustration prompt generator optimized for Google Nano Banana 2/Pro (Gemini 3.1 Flash Image / Gemini 3 Pro Image).
   Supports slide backgrounds, data charts, cartoon infographics, photorealistic slides, and asset components
   with optional Google Search grounding for real-time factual data.
-category: image_generation
-execution_mode: media-generate
+category: image_prompt_generation
+execution_mode: llm-only
 icon: layout-dashboard
-version: "1.0.0"
+version: 1.0.0
 author: SmartAIHub
 isAutoTrigger: false
 enabledByDefault: true
 priority: 80
-creditMultiplier: 1.0
+creditMultiplier: 1
 defaultModel: google-nano-banana-pro
 triggerPatterns:
-  - "infographic|อินโฟกราฟิก|สร้างอินโฟ|ทำอินโฟ"
-  - "slide illustration|ภาพประกอบสไลด์|ภาพสไลด์|สร้างภาพสไลด์"
-  - "nano banana|นาโนบานาน่า"
-  - "chart image|กราฟ|สร้างกราฟ|bar chart|pie chart|line chart"
-  - "slide background|พื้นหลังสไลด์|ภาพพรีเซนเทชัน"
-  - "data visualization|แผนภูมิ|ไดอะแกรม|สร้างภาพกราฟ"
-  - "presentation image|ภาพนำเสนอ|ภาพพรีเซน"
+  - infographic|อินโฟกราฟิก|สร้างอินโฟ|ทำอินโฟ
+  - slide illustration|ภาพประกอบสไลด์|ภาพสไลด์|สร้างภาพสไลด์
+  - nano banana|นาโนบานาน่า
+  - chart image|กราฟ|สร้างกราฟ|bar chart|pie chart|line chart
+  - slide background|พื้นหลังสไลด์|ภาพพรีเซนเทชัน
+  - data visualization|แผนภูมิ|ไดอะแกรม|สร้างภาพกราฟ
+  - presentation image|ภาพนำเสนอ|ภาพพรีเซน
 tags:
   - infographic
   - slide
@@ -33,9 +33,22 @@ tags:
   - nano-banana
   - gemini
 config:
-  supportedLanguages: ["en", "th"]
+  supportedLanguages:
+    - en
+    - th
+auto_trigger: false
+trigger_patterns:
+  - infographic|อินโฟกราฟิก|สร้างอินโฟ|ทำอินโฟ
+  - slide illustration|ภาพประกอบสไลด์|ภาพสไลด์|สร้างภาพสไลด์
+  - nano banana|นาโนบานาน่า
+  - chart image|กราฟ|สร้างกราฟ|bar chart|pie chart|line chart
+  - slide background|พื้นหลังสไลด์|ภาพพรีเซนเทชัน
+  - data visualization|แผนภูมิ|ไดอะแกรม|สร้างภาพกราฟ
+  - presentation image|ภาพนำเสนอ|ภาพพรีเซน
+enabled_by_default: true
+credit_multiplier: 1
+strict_provider_pin: false
 ---
-
 # Nano Banana Infographic & Slide Illustration Creator
 
 You are a world-class visual communication designer and AI prompt engineer specialized in Google Nano Banana 2 (Gemini 3.1 Flash Image) and Nano Banana Pro (Gemini 3 Pro Image). You craft optimized image generation prompts for professional slide illustrations, infographics, data charts, and visual assets.

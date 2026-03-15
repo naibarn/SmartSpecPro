@@ -1,7 +1,7 @@
 ---
 id: image_prompt_engineer
-name: Image Prompt Engineer
-version: "2.1"
+name: image_prompt_engineer
+version: '2.1'
 type: agent-skill
 languages: en, th
 category: image_prompt_generation
@@ -11,12 +11,23 @@ isAutoTrigger: true
 enabledByDefault: true
 priority: 50
 triggerPatterns:
-  - "สร้างพรอมต์|เขียนพรอมต์|แต่งพรอมต์|enhance prompt|image prompt|prompt สำหรับภาพ"
-  - "generate.*image.*prompt|พรอมต์.*ภาพ|prompt.*รูป|create.*prompt.*image"
-  - "create image prompt|write image prompt|enhance image prompt|generate image prompt|create prompt|write prompt"
-  - "img prompt|สร้าง prompt|เขียน prompt"
+  - สร้างพรอมต์|เขียนพรอมต์|แต่งพรอมต์|enhance prompt|image prompt|prompt สำหรับภาพ
+  - generate.*image.*prompt|พรอมต์.*ภาพ|prompt.*รูป|create.*prompt.*image
+  - create image prompt|write image prompt|enhance image prompt|generate image prompt|create prompt|write prompt
+  - img prompt|สร้าง prompt|เขียน prompt
+description: Auto-imported from skills/image_prompt_engineer
+icon: sparkles
+tags: []
+auto_trigger: true
+trigger_patterns:
+  - สร้างพรอมต์|เขียนพรอมต์|แต่งพรอมต์|enhance prompt|image prompt|prompt สำหรับภาพ
+  - generate.*image.*prompt|พรอมต์.*ภาพ|prompt.*รูป|create.*prompt.*image
+  - create image prompt|write image prompt|enhance image prompt|generate image prompt|create prompt|write prompt
+  - img prompt|สร้าง prompt|เขียน prompt
+enabled_by_default: true
+credit_multiplier: 1
+strict_provider_pin: false
 ---
-
 # Image Prompt Engineer (v2.1)
 
 ## 🆕 v2.1 Update: Hallucination Control

@@ -202,7 +202,7 @@ export function SkillSelector({ open, onClose, onSelect }: SkillSelectorProps) {
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl p-0 flex flex-col max-h-[85vh] overflow-hidden">
+      <DialogContent className="flex max-h-[85vh] w-[calc(100vw-2rem)] flex-col overflow-hidden p-0 sm:max-w-3xl lg:max-w-4xl">
         <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
@@ -322,7 +322,7 @@ function SkillItem({ skill, isSelected, onClick }: SkillItemProps) {
             <Settings className="h-3 w-3 text-muted-foreground shrink-0" />
           )}
         </div>
-        <p className="text-sm text-muted-foreground line-clamp-1">
+        <p className="text-sm text-muted-foreground line-clamp-1 sm:line-clamp-2">
           {skill.description}
         </p>
       </div>

@@ -18,20 +18,24 @@ export default function AdminLLMModels() {
     }
   }, [authLoading, setLocation, user]);
 
-  const { data: mappings, isLoading } = trpc.multiProvider.listModelMappings.useQuery(undefined, {
+  const { data: mappings } = trpc.multiProvider.listModelMappings.useQuery(undefined, {
+    enabled: !!user && user.role === "admin",
+  });
+  const { data: catalogRows, isLoading } = trpc.multiProvider.listAdminModelCatalog.useQuery(undefined, {
     enabled: !!user && user.role === "admin",
   });
 
   const summary = useMemo(() => {
     const groups = Object.values(mappings ?? {});
-    const rows = groups.flat();
+    const mappedRows = groups.flat();
+    const catalogCount = catalogRows?.length ?? 0;
 
     return {
       modelGroups: groups.length,
-      mappings: rows.length,
-      enabled: rows.filter((row) => row.isEnabled).length,
+      mappings: catalogCount,
+      enabled: mappedRows.filter((row) => row.isEnabled).length,
     };
-  }, [mappings]);
+  }, [catalogRows, mappings]);
 
   if (authLoading || !user || user.role !== "admin") {
     return (
@@ -60,7 +64,7 @@ export default function AdminLLMModels() {
             LLM Model Configuration
           </h1>
           <p className="mt-2 text-muted-foreground">
-            แท็บเริ่มต้นจะแสดง LLM models ทั้งหมดแบบรายการยาวเพื่อให้เปิดหรือปิดได้ทันที และยังมีแท็บ group controls แยกไว้สำหรับจัดการทั้งกลุ่ม
+            The default view shows all LLM models in a single list so you can enable or disable them quickly, with separate group controls available for bulk management.
           </p>
         </div>
         <Button variant="outline" onClick={() => setLocation("/admin/llm-providers")}>
@@ -80,7 +84,7 @@ export default function AdminLLMModels() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Total Mappings</CardDescription>
+            <CardDescription>Manageable Models</CardDescription>
             <CardTitle className="text-2xl">{summary.mappings}</CardTitle>
           </CardHeader>
         </Card>
@@ -99,7 +103,7 @@ export default function AdminLLMModels() {
         <CardHeader>
           <CardTitle>Model Availability</CardTitle>
           <CardDescription>
-            เริ่มจากรายการ models ทั้งหมดก่อน แล้วค่อยสลับไปแท็บ group controls เมื่อต้องการเปิดหรือปิดทั้งกลุ่ม
+            Start with the full model list, then switch to group controls when you need to enable or disable entire sets at once.
           </CardDescription>
         </CardHeader>
         <CardContent>

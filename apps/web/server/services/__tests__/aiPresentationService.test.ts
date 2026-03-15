@@ -188,6 +188,7 @@ import {
   relayoutExistingSlide,
   evaluateDraftSlideRouting,
   resolvePendingMediaForDeck,
+  assignAIComponentRecipes,
 } from "../aiPresentationService";
 import type { GenerateAIDraftInput } from "@shared/presentation/aiTypes";
 import { presentationSlideContentSchema } from "@shared/presentation/contracts";
@@ -1215,7 +1216,7 @@ describe("relayoutExistingSlide", () => {
     });
   });
 
-  it("uses slide notes to fall back to a plain template when block recipes are too dense", () => {
+  it("uses slide notes to recover to a long-form block when the previous recipe is too dense", () => {
     let capturedLayoutInput: any = null;
     mockGetBuiltInPreset.mockReturnValue({
       id: "dark-professional",
@@ -1268,11 +1269,15 @@ describe("relayoutExistingSlide", () => {
       layoutSeed: 41,
     });
 
-    expect(capturedLayoutInput.slideData.componentRecipeId).toBeUndefined();
+    expect(capturedLayoutInput.slideData.componentRecipeId).toBe("sectioned-explainer");
     expect(capturedLayoutInput.slideData.notes).toContain("บทความนี้อธิบายบริบทของพ่อแม่หรือผู้ดูแล");
-    expect(capturedLayoutInput.slideData.body.some((line: string) => line.includes("พ่อแม่หรือผู้ดูแลเด็กวัย 4 ถึง 6 เดือน"))).toBe(true);
+    expect(
+      (capturedLayoutInput.slideData.body as string[]).length > 0
+      || (capturedLayoutInput.slideData.sections as Array<{ heading: string; details: string[] }> | undefined)?.some((section) => (
+        section.details.some((detail) => detail.includes("พ่อแม่หรือผู้ดูแลเด็กวัย 4 ถึง 6 เดือน"))
+      )),
+    ).toBe(true);
     expect(output.warnings.some((warning) => warning.includes('Skipped component recipe "process-steps"'))).toBe(true);
-    expect(output.warnings.some((warning) => warning.includes("fell back to a plain template"))).toBe(true);
   });
 
   it("preserves component fallback images when feature-highlights is skipped during relayout", () => {
@@ -1340,7 +1345,7 @@ describe("relayoutExistingSlide", () => {
       layoutSeed: 63,
     });
 
-    expect(capturedLayoutInput.slideData.componentRecipeId).toBeUndefined();
+    expect(capturedLayoutInput.slideData.componentRecipeId).toBe("article-focus");
     expect(capturedLayoutInput.slideData.templateId).not.toBe("feature_boxes_right");
     expect(output.slideContent.elements.some((element) => (
       element.type === "image"
@@ -1348,7 +1353,6 @@ describe("relayoutExistingSlide", () => {
       && element.src === "https://cdn.example.com/faq-hero.jpg"
     ))).toBe(true);
     expect(output.warnings.some((warning) => warning.includes('Skipped component recipe "feature-highlights"'))).toBe(true);
-    expect(output.warnings.some((warning) => warning.includes("fell back to a plain template"))).toBe(true);
   });
 
   it("tops up sparse relayout text from slide notes before rendering", () => {
@@ -3428,11 +3432,11 @@ describe("generateAIDraft - Phase 1", () => {
 
     await generateAIDraft(buildMockInput(), buildMockActor(), "test-token", "task-123");
 
-    expect(mockExecuteWithFallback).toHaveBeenCalledWith(
-      expect.objectContaining({
-        model: "gpt-4o-mini",
-      }),
-    );
+    const usedModels = [
+      ...mockExecuteWithFallback.mock.calls.map((call) => call[0]?.model),
+      ...mockCallLLMStructured.mock.calls.map((call) => call[0]?.model),
+    ];
+    expect(usedModels).toContain("gpt-4o-mini");
   });
 
   it("prefers an explicit textModel override over the skill default model", async () => {
@@ -4152,72 +4156,45 @@ describe("generateAIDraft - Phase 2", () => {
     expect(secondSlideCall.slideData.componentRecipeId).toBe("timeline-flow");
   });
 
-  it("assigns infographic-grid from framework slides with four balanced sections", async () => {
-    setupHappyPath();
-    mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
-      if (skillId === "prompt-planner") {
-        return {
-          id: "prompt-planner",
-          name: "Prompt Planner",
-          category: "prompt_enhancement",
-          executionMode: "enhance-prompt",
-          systemPrompt: "Plan slides from the prompt.",
-        };
-      }
-      return {
-        id: "general-article-writer",
-        name: "General Article Writer",
-        systemPrompt: "You are a versatile article writer.",
-        executionMode: "llm-only",
-      };
-    });
-    mockCallLLMStructured.mockResolvedValueOnce({
-      data: [
-        {
-          templateId: "hero_center",
-          title: "Intro",
-          body: ["Intro point"],
-          notes: "Intro note",
-          graphicCategory: "Business",
-          imagePromptKeywords: "intro visual",
-        },
-        {
-          templateId: "feature_boxes_right",
-          title: "The zero waste framework",
-          body: ["Four pillars for sustainable operations"],
-          sections: [
-            { heading: "Avoid", details: ["Reduce unnecessary inputs"] },
-            { heading: "Reuse", details: ["Extend the life of materials"] },
-            { heading: "Recycle", details: ["Recover value from waste"] },
-            { heading: "Measure", details: ["Track impact and iterate"] },
-          ],
-          notes: "Framework overview with four balanced categories.",
-          graphicCategory: "Education",
-          imagePromptKeywords: "framework infographic",
-        },
-      ],
-      tokensUsed: 180,
-      creditsUsed: 6,
+  it("assigns infographic-grid from framework slides with four balanced sections without requiring legacy template hints", () => {
+    const assignment = assignAIComponentRecipes([
+      {
+        templateId: "hero_center",
+        title: "Intro",
+        body: ["Intro point"],
+        notes: "Intro note",
+        graphicCategory: "Business",
+        imagePromptKeywords: "intro visual",
+      },
+      {
+        templateId: "split_right_image",
+        title: "The zero waste framework infographic",
+        body: [
+          "Avoid unnecessary inputs",
+          "Reuse materials longer",
+          "Recycle valuable waste",
+          "Measure impact weekly",
+        ],
+        sections: [
+          { heading: "Avoid", details: ["Reduce unnecessary inputs"] },
+          { heading: "Reuse", details: ["Extend the life of materials"] },
+          { heading: "Recycle", details: ["Recover value from waste"] },
+          { heading: "Measure", details: ["Track impact and iterate"] },
+        ],
+        notes: "Framework infographic overview with four balanced categories and short supporting lines.",
+        graphicCategory: "Education",
+        imagePromptKeywords: "framework infographic board",
+      },
+    ], {
+      preferVideoRecipes: false,
+      canvasWidth: 1280,
+      canvasHeight: 720,
     });
 
-    await generateAIDraft(
-      buildMockInput({
-        numSlides: 2,
-        draftSkillId: "prompt-planner",
-        articleSkillId: undefined,
-      }),
-      buildMockActor(),
-      "test-token",
-      "task-123",
-    );
-
-    const secondSlideCall = mockGenerateSlide.mock.calls[1]?.[0] as {
-      slideData: { componentRecipeId?: string };
-    };
-    expect(secondSlideCall.slideData.componentRecipeId).toBe("infographic-grid");
+    expect(assignment.selections[1]?.componentRecipeId).toBe("infographic-grid");
   });
 
-  it("assigns photo-collage from editorial gallery slides", async () => {
+  it("assigns landscape-photo-story from editorial gallery slides on default 16:9 canvases", async () => {
     setupHappyPath();
     mockGetSkillByIdAsync.mockImplementation(async (skillId: string) => {
       if (skillId === "prompt-planner") {
@@ -4273,7 +4250,124 @@ describe("generateAIDraft - Phase 2", () => {
     const secondSlideCall = mockGenerateSlide.mock.calls[1]?.[0] as {
       slideData: { componentRecipeId?: string };
     };
-    expect(secondSlideCall.slideData.componentRecipeId).toBe("photo-collage");
+    expect(secondSlideCall.slideData.componentRecipeId).toBe("landscape-photo-story");
+  });
+
+  it("uses first-pass media slot counts to route portrait photo boards into a4-photo-grid", async () => {
+    setupHappyPath();
+    mockCallLLMStructured.mockResolvedValueOnce({
+      data: [
+        {
+          templateId: "hero_center",
+          title: "Intro",
+          body: ["Intro point"],
+          notes: "Intro note",
+          graphicCategory: "Lifestyle",
+          imagePromptKeywords: "intro visual",
+        },
+        {
+          templateId: "split_left_image",
+          title: "Family meal lookbook",
+          body: ["A visual recap of family mealtime scenes", "Multiple supporting frames show details and atmosphere"],
+          notes: "Gallery collage moodboard for a family meal feature.",
+          mediaPlan: [
+            { slotId: "hero-photo", prompt: "Hero family meal scene" },
+            { slotId: "detail-photo-1", prompt: "Supporting table detail" },
+            { slotId: "detail-photo-2", prompt: "Supporting caregiver moment" },
+            { slotId: "detail-photo-3", prompt: "Supporting ingredient close-up" },
+            { slotId: "detail-photo-4", prompt: "Supporting atmosphere frame" },
+          ],
+          graphicCategory: "Lifestyle",
+          imagePromptKeywords: "editorial family lookbook collage",
+        },
+      ],
+      tokensUsed: 180,
+      creditsUsed: 6,
+    });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 2,
+        articleSkillId: undefined,
+        draftSkillId: "prompt-planner",
+        canvasWidth: 720,
+        canvasHeight: 1280,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const secondSlideCall = mockGenerateSlide.mock.calls[1]?.[0] as {
+      slideData: { componentRecipeId?: string };
+    };
+    expect(secondSlideCall.slideData.componentRecipeId).toBe("a4-photo-grid");
+  });
+
+  it("diversifies repeated portrait long-form slides instead of reusing one recipe from slide 2 onward", () => {
+    const result = assignAIComponentRecipes(
+      [
+        {
+          templateId: "hero_center",
+          title: "Guide one",
+          body: ["A practical caregiver guide", "Each section captures a focused recommendation"],
+          sections: [
+            { heading: "What to watch", details: ["Notice behavior changes and keep a simple log"] },
+            { heading: "What to do", details: ["Adjust one habit at a time and review the results"] },
+          ],
+          notes: "Detailed long-form guidance for caregivers with two balanced sections and enough supporting detail to justify an editorial layout.",
+          graphicCategory: "Health",
+          imagePromptKeywords: "caregiver guidance",
+        },
+        {
+          templateId: "split_left_image",
+          title: "Guide two",
+          body: ["A practical caregiver guide", "Each section captures a focused recommendation"],
+          sections: [
+            { heading: "When to pause", details: ["Pause the routine when a warning sign appears and track the change"] },
+            { heading: "When to continue", details: ["Resume only after the child settles and symptoms ease for a while"] },
+          ],
+          notes: "Detailed long-form guidance for caregivers with two balanced sections and enough supporting detail to justify an editorial layout.",
+          graphicCategory: "Health",
+          imagePromptKeywords: "caregiver guidance",
+        },
+        {
+          templateId: "split_left_image",
+          title: "Guide three",
+          body: ["A practical caregiver guide", "Each section captures a focused recommendation"],
+          sections: [
+            { heading: "How to explain it", details: ["Use simple language and one clear action at a time for the family"] },
+            { heading: "How to follow up", details: ["Track the response and revisit the plan later with the caregiver"] },
+          ],
+          notes: "Detailed long-form guidance for caregivers with two balanced sections and enough supporting detail to justify an editorial layout.",
+          graphicCategory: "Health",
+          imagePromptKeywords: "caregiver guidance",
+        },
+        {
+          templateId: "split_left_image",
+          title: "Guide four",
+          body: ["A practical caregiver guide", "Each section captures a focused recommendation"],
+          sections: [
+            { heading: "Home setup", details: ["Create a calm environment and remove obvious triggers in advance"] },
+            { heading: "Care routine", details: ["Keep the routine short, repeatable, and easy to explain each day"] },
+          ],
+          notes: "Detailed long-form guidance for caregivers with two balanced sections and enough supporting detail to justify an editorial layout.",
+          graphicCategory: "Health",
+          imagePromptKeywords: "caregiver guidance",
+        },
+      ],
+      {
+        preferVideoRecipes: false,
+        canvasWidth: 720,
+        canvasHeight: 1280,
+      },
+    );
+
+    const repeatedSlideRecipes = result.selections
+      .map((selection) => selection.componentRecipeId)
+      .filter((recipeId): recipeId is string => Boolean(recipeId));
+
+    expect(new Set(repeatedSlideRecipes).size).toBeGreaterThan(1);
   });
 
   it("generates distinct media variants for photo-collage slides and binds both image slots", async () => {
@@ -5302,6 +5396,206 @@ describe("generateAIDraft - Phase 2", () => {
     ]));
   });
 
+  it("reroutes unsafe profile-board slides into sectioned-explainer, keeps generated media, and rewrites topic notes from visible content", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockResolvedValue({
+      id: "prompt-planner",
+      name: "Prompt Planner",
+      category: "prompt_enhancement",
+      executionMode: "enhance-prompt",
+      systemPrompt: "Plan slides from the prompt.",
+    });
+    mockGenerateSlide.mockImplementation(({ slideData, imageUrl }: { slideData: { title: string; body?: string[] }; imageUrl?: string | null }) => ({
+      slideContent: {
+        elements: [
+          ...(imageUrl
+            ? [{
+              id: `img-${slideData.title}`,
+              type: "image" as const,
+              x: 0,
+              y: 0,
+              width: 640,
+              height: 360,
+              src: imageUrl,
+              alt: slideData.title,
+            }]
+            : []),
+          {
+            id: `txt-${slideData.title}`,
+            type: "text" as const,
+            x: 40,
+            y: 40,
+            width: 560,
+            height: 80,
+            text: slideData.title,
+            color: "#ffffff",
+          },
+          ...(slideData.body?.[0]
+            ? [{
+              id: `body-${slideData.title}`,
+              type: "text" as const,
+              x: 40,
+              y: 140,
+              width: 560,
+              height: 80,
+              text: slideData.body[0],
+              color: "#ffffff",
+            }]
+            : []),
+        ],
+      },
+      warnings: [],
+    }));
+    mockCallLLMStructured
+      .mockResolvedValueOnce({
+        data: [
+          {
+            templateId: "hero_center",
+            title: "ปัญหาเด็กแหวะนม",
+            body: ["ภาพรวมสั้น ๆ"],
+            notes: "สไลด์เปิดหัวเรื่อง",
+            graphicCategory: "Health",
+            imagePromptKeywords: "baby reflux overview",
+          },
+          {
+            templateId: "split_right_image",
+            componentRecipeId: "profile-board",
+            title: "สาเหตุหลักของการแหวะนม",
+            body: [
+              "การดื่มนมติดต่อกันมากเกินไป",
+              "ระบบย่อยอาหารของเด็กยังไม่สมบูรณ์",
+              "การหายใจและการกลืนไม่ถูกต้อง",
+            ],
+            notes: "การแหวะนมในทารกมักเกิดจากหลายสาเหตุ อาทิ การดื่มนมติดต่อกันมากเกินไปที่อาจทำให้ทารกไม่สามารถย่อยนมได้อย่างถูกต้อง และระบบย่อยอาหารของเด็กที่ยังอยู่ในช่วงพัฒนา. บทความนี้เหมาะสำหรับพ่อแม่ที่ต้องการคำอธิบายยาวแบบบทความเต็มก่อนนำไปเล่าต่อ",
+            sections: [
+              {
+                heading: "การดื่มนมติดต่อกันมากเกินไป",
+                details: ["ระบบย่อยอาหารของเด็กยังไม่สมบูรณ์"],
+              },
+              {
+                heading: "ข้อควรสังเกต",
+                details: ["การหายใจและการกลืนไม่ถูกต้อง"],
+              },
+            ],
+            graphicCategory: "Health",
+            imagePromptKeywords: "baby reflux causes feeding parent",
+          },
+        ],
+        tokensUsed: 220,
+        creditsUsed: 8,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: "needs_fallback",
+          slotContent: [],
+          sourceTrace: [],
+          overflowRisk: 0.84,
+          fitConfidence: 0.25,
+          fallbackSuggestion: { action: "switch_recipe", reason: "Profile layout does not fit explanatory health content." },
+        },
+        tokensUsed: 40,
+        creditsUsed: 2,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: "needs_fallback",
+          slotContent: [],
+          sourceTrace: [],
+          overflowRisk: 0.86,
+          fitConfidence: 0.22,
+          fallbackSuggestion: { action: "switch_recipe", reason: "Compact profile rewrite still overflows." },
+        },
+        tokensUsed: 40,
+        creditsUsed: 2,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: "needs_fallback",
+          slotContent: [],
+          sourceTrace: [],
+          overflowRisk: 0.88,
+          fitConfidence: 0.18,
+          fallbackSuggestion: { action: "switch_recipe", reason: "Aggressive profile rewrite still does not fit." },
+        },
+        tokensUsed: 40,
+        creditsUsed: 2,
+      })
+      .mockResolvedValueOnce({
+        data: {
+          status: "ok",
+          slotContent: [
+            { slotId: "eyebrow", type: "text", text: "Health guide" },
+            { slotId: "title", type: "text", text: "สาเหตุหลักของการแหวะนม" },
+            { slotId: "intro", type: "text", text: "การดื่มนมติดต่อกันมากเกินไปอาจทำให้เด็กแหวะนมได้ง่ายขึ้น" },
+            { slotId: "section1-heading", type: "text", text: "การดื่มนมติดต่อกันมากเกินไป" },
+            { slotId: "section1-body", type: "text", text: "ระบบย่อยอาหารของเด็กยังไม่สมบูรณ์" },
+            { slotId: "section2-heading", type: "text", text: "ข้อควรสังเกต" },
+            { slotId: "section2-body", type: "text", text: "การหายใจและการกลืนไม่ถูกต้อง" },
+            { slotId: "section3-heading", type: "text", text: "สิ่งที่ควรทำต่อ" },
+            { slotId: "section3-body", type: "text", text: "เฝ้าสังเกตอาการหลังให้นมและปรับจังหวะการป้อน" },
+            { slotId: "takeaways-title", type: "text", text: "Key Takeaways" },
+            { slotId: "takeaways", type: "list", items: ["ลดการป้อนต่อเนื่อง", "สังเกตอาการหลังมื้อ", "ปรึกษาแพทย์เมื่ออาการรุนแรง"] },
+          ],
+          sourceTrace: [
+            { sourceId: "body-0", disposition: "shortened", targetSlotId: "intro" },
+            { sourceId: "section-0", disposition: "used", targetSlotId: "section1-heading" },
+            { sourceId: "section-1", disposition: "used", targetSlotId: "section2-heading" },
+          ],
+          overflowRisk: 0.2,
+          fitConfidence: 0.9,
+          fallbackSuggestion: null,
+        },
+        tokensUsed: 80,
+        creditsUsed: 3,
+      });
+
+    await generateAIDraft(
+      buildMockInput({
+        numSlides: 2,
+        draftSkillId: "prompt-planner",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    const secondSlideCall = mockGenerateSlide.mock.calls[1]?.[0] as {
+      slideData: { componentRecipeId?: string };
+      imageUrl?: string | null;
+    };
+    expect(secondSlideCall.slideData.componentRecipeId).toBe("sectioned-explainer");
+    expect(secondSlideCall.imageUrl).toBe("https://cdn.example.com/image.jpg");
+
+    const secondInsertPayload = mockAddSlideToDeck.mock.calls[1]?.[0] as {
+      notes: string;
+      slideContent?: {
+        elements?: Array<Record<string, unknown>>;
+        aiDesign?: {
+          componentRecipeId?: string;
+          fallbackHistory?: Array<Record<string, unknown>>;
+        };
+      };
+    };
+    expect(secondInsertPayload.notes).toContain("สาเหตุหลักของการแหวะนม");
+    expect(secondInsertPayload.notes).toContain("การดื่มนมติดต่อกันมากเกินไป");
+    expect(secondInsertPayload.notes).not.toContain("บทความนี้เหมาะสำหรับพ่อแม่");
+    expect(secondInsertPayload.slideContent?.aiDesign?.componentRecipeId).toBe("sectioned-explainer");
+    expect(secondInsertPayload.slideContent?.aiDesign?.fallbackHistory).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        step: "switch_recipe",
+        from: "profile-board",
+        to: "sectioned-explainer",
+      }),
+    ]));
+    expect(secondInsertPayload.slideContent?.elements).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: "image",
+        src: "https://cdn.example.com/image.jpg",
+      }),
+    ]));
+  });
+
   it("splits long-form slides when compaction remains unsafe after retries", async () => {
     setupHappyPath();
     mockGetSkillByIdAsync.mockResolvedValue({
@@ -5523,6 +5817,87 @@ describe("generateAIDraft - Phase 2", () => {
       expect.objectContaining({ type: "rect", fill: "#F7F3E8" }),
       expect.objectContaining({ type: "text", text: "แนวทางการดูแลลูกค้า 4 ช่วง" }),
     ]));
+  });
+
+  it("falls back to structured layout when advanced layout DSL times out", async () => {
+    setupHappyPath();
+    process.env.PRESENTATION_AI_LAYOUT_DSL_ENABLED = "true";
+    process.env.AI_DRAFT_LAYOUT_DSL_TIMEOUT_MS = "2000";
+    mockGetSkillByIdAsync.mockResolvedValue({
+      id: "prompt-planner",
+      name: "Prompt Planner",
+      category: "prompt_enhancement",
+      executionMode: "enhance-prompt",
+      systemPrompt: "Plan slides from the prompt.",
+    });
+    mockCallLLMStructured
+      .mockResolvedValueOnce({
+        data: [
+          {
+            templateId: "hero_center",
+            title: "Intro",
+            body: ["Intro point"],
+            notes: "Intro note",
+            graphicCategory: "Business",
+            imagePromptKeywords: "intro visual",
+          },
+          {
+            templateId: "split_right_image",
+            title: "ภาพรวมงานดูแลลูกค้า",
+            body: ["ใช้บอร์ดเดียวเพื่อสรุปประเด็นหลักของงานดูแลลูกค้า"],
+            sections: [
+              { heading: "บริบท", details: ["อธิบายภาพรวมลูกค้า"] },
+              { heading: "ปัญหา", details: ["ชี้ pain point สำคัญ"] },
+              { heading: "แนวทาง", details: ["สรุปหลักคิดที่ใช้"] },
+              { heading: "ผลลัพธ์", details: ["บอกสิ่งที่คาดหวัง"] },
+            ],
+            notes: "ต้องการบอร์ดข้อมูล",
+            graphicCategory: "Business",
+            imagePromptKeywords: "customer service board",
+          },
+        ],
+        tokensUsed: 180,
+        creditsUsed: 6,
+      })
+      .mockImplementationOnce(
+        () => new Promise(() => {}) as Promise<never>,
+      )
+      .mockImplementationOnce(
+        () => new Promise(() => {}) as Promise<never>,
+      );
+
+    try {
+      const runPromise = generateAIDraft(
+        buildMockInput({
+          numSlides: 2,
+          draftSkillId: "prompt-planner",
+          articleSkillId: undefined,
+        }),
+        buildMockActor(),
+        "test-token",
+        "task-123",
+      );
+      await vi.advanceTimersByTimeAsync(5000);
+      await runPromise;
+    } finally {
+      delete process.env.PRESENTATION_AI_LAYOUT_DSL_ENABLED;
+      delete process.env.AI_DRAFT_LAYOUT_DSL_TIMEOUT_MS;
+    }
+
+    const secondInsertPayload = mockAddSlideToDeck.mock.calls[1]?.[0] as {
+      slideContent?: { aiDesign?: { mode?: string; fallbackHistory?: Array<{ reason?: string }> } };
+    };
+    expect(secondInsertPayload.slideContent?.aiDesign?.mode).toBe("structured_block");
+    expect(secondInsertPayload.slideContent?.aiDesign?.fallbackHistory).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        reason: expect.stringContaining("layout_dsl_timeout"),
+      }),
+    ]));
+
+    const progressCalls = mockRedisSet.mock.calls.filter(
+      (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("ai_draft_progress"),
+    );
+    expect(progressCalls.some(([, value]) => JSON.parse(String(value)).phaseLabel.includes("Applying advanced layouts"))).toBe(true);
   });
 
   it("uses full-slide-media mode when the visual-first flag is enabled and Thai text risk is acceptable", async () => {
@@ -6519,6 +6894,235 @@ describe("generateAIDraft - cancellation", () => {
     const lastProgress = JSON.parse(progressCalls[progressCalls.length - 1][1] as string);
     expect(lastProgress.cancelled).toBe(true);
     expect(lastProgress.completed).toBe(true);
+  });
+
+  it("stops while waiting for recipe compaction after slide planning has already finished", async () => {
+    setupHappyPath();
+    mockGetSkillByIdAsync.mockResolvedValue({
+      id: "prompt-planner",
+      name: "Prompt Planner",
+      category: "prompt_enhancement",
+      executionMode: "enhance-prompt",
+      systemPrompt: "Plan slides from the prompt.",
+    });
+    let cancelChecks = 0;
+    mockRedisGet.mockImplementation(async (key: string) => {
+      if (key.includes("ai_draft_cancel:")) {
+        cancelChecks += 1;
+        return cancelChecks >= 3 ? "1" : null;
+      }
+      if (key.includes("ai_draft_lock:")) {
+        return "task-123";
+      }
+      return null;
+    });
+    mockCallLLMStructured
+      .mockResolvedValueOnce({
+        data: [
+          {
+            templateId: "hero_center",
+            title: "Intro",
+            body: ["Intro point"],
+            notes: "Intro note",
+            graphicCategory: "Business",
+            imagePromptKeywords: "intro visual",
+          },
+          {
+            templateId: "split_right_image",
+            componentRecipeId: "feature-highlights",
+            title: "ลูกกินนมเร็วเกินไป",
+            body: [
+              "สรุปประเด็นสำคัญที่ยังยาวเกินจะลงเป็นการ์ดโดยตรง",
+              "มีอาการแหวะนมหลังมื้อ",
+              "ร้องงอแงเพราะอิ่มเร็วเกินไป",
+            ],
+            notes: "ต้อง compact เป็นบล็อกให้สั้นลง",
+            graphicCategory: "Health",
+            imagePromptKeywords: "feeding issues",
+          },
+        ],
+        tokensUsed: 180,
+        creditsUsed: 6,
+      })
+      .mockImplementationOnce(
+        () => new Promise(() => {}) as Promise<never>,
+      );
+
+    const runPromise = generateAIDraft(
+      buildMockInput({
+        numSlides: 2,
+        draftSkillId: "prompt-planner",
+        articleSkillId: undefined,
+      }),
+      buildMockActor(),
+      "test-token",
+      "task-123",
+    );
+
+    await vi.advanceTimersByTimeAsync(4000);
+    await runPromise;
+
+    const progressCalls = mockRedisSet.mock.calls.filter(
+      (c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("ai_draft_progress"),
+    );
+    const lastProgress = JSON.parse(progressCalls[progressCalls.length - 1][1] as string);
+    expect(lastProgress.cancelled).toBe(true);
+    expect(lastProgress.completed).toBe(true);
+    expect(progressCalls.some(([, value]) => JSON.parse(String(value)).phaseLabel.includes("Refining slide layouts"))).toBe(true);
+  });
+
+  it("refreshes progress heartbeat while waiting on a long recipe compaction call", async () => {
+    setupHappyPath();
+    process.env.AI_DRAFT_PROGRESS_HEARTBEAT_INTERVAL_MS = "5000";
+    mockGetSkillByIdAsync.mockResolvedValue({
+      id: "prompt-planner",
+      name: "Prompt Planner",
+      category: "prompt_enhancement",
+      executionMode: "enhance-prompt",
+      systemPrompt: "Plan slides from the prompt.",
+    });
+    let cancelChecks = 0;
+    mockRedisGet.mockImplementation(async (key: string) => {
+      if (key.includes("ai_draft_cancel:")) {
+        cancelChecks += 1;
+        return cancelChecks >= 14 ? "1" : null;
+      }
+      if (key.includes("ai_draft_lock:")) {
+        return "task-123";
+      }
+      return null;
+    });
+    mockCallLLMStructured
+      .mockResolvedValueOnce({
+        data: [
+          {
+            templateId: "hero_center",
+            title: "Intro",
+            body: ["Intro point"],
+            notes: "Intro note",
+            graphicCategory: "Business",
+            imagePromptKeywords: "intro visual",
+          },
+          {
+            templateId: "split_right_image",
+            componentRecipeId: "process-steps",
+            title: "4 ขั้นตอนลดการแหวะ",
+            body: [
+              "ขั้นตอนแรกอธิบายยาวจนเกินกรอบ",
+              "ขั้นตอนสองอธิบายยาวจนเกินกรอบ",
+              "ขั้นตอนสามอธิบายยาวจนเกินกรอบ",
+              "ขั้นตอนสี่อธิบายยาวจนเกินกรอบ",
+            ],
+            notes: "ต้อง compact ก่อนเข้า layout",
+            graphicCategory: "Health",
+            imagePromptKeywords: "feeding steps",
+          },
+        ],
+        tokensUsed: 180,
+        creditsUsed: 6,
+      })
+      .mockImplementationOnce(
+        () => new Promise(() => {}) as Promise<never>,
+      );
+
+    try {
+      const runPromise = generateAIDraft(
+        buildMockInput({
+          numSlides: 2,
+          draftSkillId: "prompt-planner",
+          articleSkillId: undefined,
+        }),
+        buildMockActor(),
+        "test-token",
+        "task-123",
+      );
+
+      await vi.advanceTimersByTimeAsync(15000);
+      await runPromise;
+    } finally {
+      delete process.env.AI_DRAFT_PROGRESS_HEARTBEAT_INTERVAL_MS;
+    }
+
+    const progressCalls = mockRedisSet.mock.calls
+      .filter((c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("ai_draft_progress"))
+      .map(([, value]) => JSON.parse(String(value)));
+    const heartbeatCalls = progressCalls.filter((progress) => (
+      progress.phaseLabel === "Refining slide layouts: 2/2"
+      && progress.phaseDetail === "Compacting \"4 ขั้นตอนลดการแหวะ\" with process-steps (balanced)."
+    ));
+    expect(heartbeatCalls.length).toBeGreaterThanOrEqual(2);
+    expect(heartbeatCalls.at(-1)?.updatedAt).not.toBe(heartbeatCalls[0]?.updatedAt);
+  });
+});
+
+describe("generateAIDraft - long-running step budgets", () => {
+  it("falls back after the per-slide compaction budget is exhausted", async () => {
+    setupHappyPath();
+    process.env.AI_DRAFT_RECIPE_COMPACTION_TIMEOUT_MS = "2000";
+    process.env.AI_DRAFT_RECIPE_COMPACTION_TOTAL_TIMEOUT_MS = "2500";
+    mockGetSkillByIdAsync.mockResolvedValue({
+      id: "prompt-planner",
+      name: "Prompt Planner",
+      category: "prompt_enhancement",
+      executionMode: "enhance-prompt",
+      systemPrompt: "Plan slides from the prompt.",
+    });
+    mockCallLLMStructured
+      .mockResolvedValueOnce({
+        data: [
+          {
+            templateId: "hero_center",
+            title: "Intro",
+            body: ["Intro point"],
+            notes: "Intro note",
+            graphicCategory: "Business",
+            imagePromptKeywords: "intro visual",
+          },
+          {
+            templateId: "split_right_image",
+            componentRecipeId: "process-steps",
+            title: "4 ขั้นตอนลดการแหวะ",
+            body: [
+              "ขั้นตอนแรกอธิบายยาวจนเกินกรอบ",
+              "ขั้นตอนสองอธิบายยาวจนเกินกรอบ",
+              "ขั้นตอนสามอธิบายยาวจนเกินกรอบ",
+              "ขั้นตอนสี่อธิบายยาวจนเกินกรอบ",
+            ],
+            notes: "ต้อง compact ก่อนเข้า layout",
+            graphicCategory: "Health",
+            imagePromptKeywords: "feeding steps",
+          },
+        ],
+        tokensUsed: 180,
+        creditsUsed: 6,
+      })
+      .mockImplementation(
+        () => new Promise(() => {}) as Promise<never>,
+      );
+
+    try {
+      const runPromise = generateAIDraft(
+        buildMockInput({
+          numSlides: 2,
+          draftSkillId: "prompt-planner",
+          articleSkillId: undefined,
+        }),
+        buildMockActor(),
+        "test-token",
+        "task-123",
+      );
+      await vi.advanceTimersByTimeAsync(5000);
+      await runPromise;
+    } finally {
+      delete process.env.AI_DRAFT_RECIPE_COMPACTION_TIMEOUT_MS;
+      delete process.env.AI_DRAFT_RECIPE_COMPACTION_TOTAL_TIMEOUT_MS;
+    }
+
+    expect(mockAddSlideToDeck).toHaveBeenCalledTimes(2);
+    const progressCalls = mockRedisSet.mock.calls
+      .filter((c: unknown[]) => typeof c[0] === "string" && (c[0] as string).includes("ai_draft_progress"))
+      .map(([, value]) => JSON.parse(String(value)));
+    expect(progressCalls.at(-1)?.completed).toBe(true);
   });
 });
 

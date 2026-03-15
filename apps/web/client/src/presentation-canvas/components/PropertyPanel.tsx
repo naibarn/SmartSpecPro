@@ -1529,10 +1529,12 @@ export function PropertyPanel({
         extractTaskResultUrl(taskResult)
         || extractGeneratedImageUrl(taskResult);
       if (!generatedUrl) {
-        const createdTaskId = (taskResult as { id?: unknown; taskId?: unknown }).id;
-        const taskId = typeof createdTaskId === "string" && createdTaskId.trim().length > 0
-          ? createdTaskId.trim()
-          : null;
+        const taskRecord = taskResult as { id?: unknown; taskId?: unknown };
+        const taskId = typeof taskRecord.id === "string" && taskRecord.id.trim().length > 0
+          ? taskRecord.id.trim()
+          : (typeof taskRecord.taskId === "string" && taskRecord.taskId.trim().length > 0
+            ? taskRecord.taskId.trim()
+            : null);
         if (!taskId) {
           throw new Error("Image generation started but task ID was not returned.");
         }
@@ -1651,10 +1653,12 @@ export function PropertyPanel({
 
       let generatedUrl = extractTaskResultUrl(taskResult);
       if (!generatedUrl) {
-        const createdTaskId = (taskResult as { id?: unknown; taskId?: unknown }).id;
-        const taskId = typeof createdTaskId === "string" && createdTaskId.trim().length > 0
-          ? createdTaskId.trim()
-          : null;
+        const taskRecord = taskResult as { id?: unknown; taskId?: unknown };
+        const taskId = typeof taskRecord.id === "string" && taskRecord.id.trim().length > 0
+          ? taskRecord.id.trim()
+          : (typeof taskRecord.taskId === "string" && taskRecord.taskId.trim().length > 0
+            ? taskRecord.taskId.trim()
+            : null);
         if (!taskId) {
           throw new Error("Video generation started but task ID was not returned.");
         }

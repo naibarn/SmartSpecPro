@@ -1,5 +1,10 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 
+import {
+  parseBrowserSessionArtifact,
+  type BrowserSessionArtifact,
+} from "@shared/browserSession";
+
 export interface AgencyStreamMessage {
   id: string;
   role: "user" | "assistant";
@@ -19,6 +24,13 @@ export interface AgencyActivityEvent {
 export interface UseAgencyStreamOptions {
   onRunFinished?: (creditsUsed: number) => void;
   onError?: (error: string) => void;
+  onBrowserSession?: (artifact: BrowserSessionArtifact) => void;
+  onPreviewReady?: (preview: {
+    runId: string;
+    previewArtifactIds: string[];
+    intent: string | null;
+    summary: string | null;
+  }) => void;
 }
 
 export interface UseAgencyStreamReturn {
@@ -33,6 +45,12 @@ export interface UseAgencyStreamReturn {
     conversationId?: string;
     message: string;
     modelOverride?: string;
+    /** v1.8: Target a specific agent by name */
+    recipientAgent?: string;
+    /** v1.8: File IDs to include */
+    fileIds?: string[];
+    /** v1.8: Per-run instruction override */
+    additionalInstructions?: string;
   }) => void;
   disconnect: () => void;
 }
@@ -89,10 +107,14 @@ export function useAgencyStream(
   // Store callbacks in refs to avoid stale closures (H3 fix)
   const onRunFinishedRef = useRef(options?.onRunFinished);
   const onErrorRef = useRef(options?.onError);
+  const onBrowserSessionRef = useRef(options?.onBrowserSession);
+  const onPreviewReadyRef = useRef(options?.onPreviewReady);
   useEffect(() => {
     onRunFinishedRef.current = options?.onRunFinished;
     onErrorRef.current = options?.onError;
-  }, [options?.onRunFinished, options?.onError]);
+    onBrowserSessionRef.current = options?.onBrowserSession;
+    onPreviewReadyRef.current = options?.onPreviewReady;
+  }, [options?.onRunFinished, options?.onError, options?.onBrowserSession, options?.onPreviewReady]);
 
   const disconnect = useCallback(() => {
     if (abortRef.current) {
@@ -113,6 +135,9 @@ export function useAgencyStream(
       conversationId?: string;
       message: string;
       modelOverride?: string;
+      recipientAgent?: string;
+      fileIds?: string[];
+      additionalInstructions?: string;
     }) => {
       // Reset state
       disconnect();
@@ -146,6 +171,9 @@ export function useAgencyStream(
               conversationId: params.conversationId,
               message: params.message,
               ...(params.modelOverride ? { modelOverride: params.modelOverride } : {}),
+              ...(params.recipientAgent ? { recipientAgent: params.recipientAgent } : {}),
+              ...(params.fileIds?.length ? { fileIds: params.fileIds } : {}),
+              ...(params.additionalInstructions ? { additionalInstructions: params.additionalInstructions } : {}),
             }),
             signal: controller.signal,
           });
@@ -300,6 +328,25 @@ export function useAgencyStream(
                 data,
               },
             ]);
+            break;
+
+          case "browser_session": {
+            const artifact = parseBrowserSessionArtifact(data);
+            if (artifact) {
+              onBrowserSessionRef.current?.(artifact);
+            }
+            break;
+          }
+
+          case "preview_ready":
+            onPreviewReadyRef.current?.({
+              runId: typeof data.run_id === "string" ? data.run_id : "",
+              previewArtifactIds: Array.isArray(data.preview_artifact_ids)
+                ? data.preview_artifact_ids.filter((value: unknown): value is string => typeof value === "string")
+                : [],
+              intent: typeof data.intent === "string" ? data.intent : null,
+              summary: typeof data.summary === "string" ? data.summary : null,
+            });
             break;
 
           case "run_finished": {

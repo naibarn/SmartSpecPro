@@ -28,26 +28,28 @@ export function CanvasShell({
 
   if (useStudioLayout) {
     return (
-      <div className="h-full overflow-hidden rounded-xl border border-slate-300/80 bg-slate-900/95" data-testid="canvas-shell">
+      <div className="h-full min-h-0 overflow-hidden rounded-xl border border-slate-300/80 bg-slate-900/95" data-testid="canvas-shell">
         <div
-          className="grid h-full transition-[grid-template-columns] duration-300"
+          className="grid h-full min-h-0 transition-[grid-template-columns] duration-300"
           style={{
             gridTemplateColumns: `${leftCollapsed ? "0px 0px" : "74px minmax(280px,320px)"} minmax(0,1fr) ${rightCollapsed ? "0px" : "minmax(280px,320px)"}`,
           }}
         >
           <aside
-            className={`overflow-hidden border-r border-slate-800 bg-slate-950 transition-all duration-300 ${
+            className={`min-h-0 min-w-0 overflow-hidden border-r border-slate-800 bg-slate-950 transition-all duration-300 ${
               leftCollapsed ? "pointer-events-none opacity-0" : "px-2 py-3 opacity-100"
             }`}
           >
             {toolRail}
           </aside>
           <aside
-            className={`overflow-hidden border-r border-slate-800 bg-slate-900 transition-all duration-300 ${
+            className={`min-h-0 min-w-0 overflow-hidden border-r border-slate-800 bg-slate-900 transition-all duration-300 ${
               leftCollapsed ? "pointer-events-none opacity-0" : "px-3 py-3 opacity-100"
             }`}
           >
-            {assetPanel}
+            <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+              {assetPanel}
+            </div>
           </aside>
           <section className="relative flex min-h-0 flex-col gap-1.5 bg-slate-100/90 p-2">
             <div className="absolute left-0 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2">

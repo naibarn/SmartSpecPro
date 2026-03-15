@@ -53,6 +53,7 @@ vi.mock("../services/traceContext", () => ({
 }));
 
 import {
+  commitCreditReservation,
   createCreditReservation,
   drawFromReservation,
   refundReservation,
@@ -222,6 +223,32 @@ describe("Credit Reservation Pattern", () => {
     it("should return 0 when reservation not found", async () => {
       const result = await refundReservation("nonexistent");
       expect(result.refundedAmount).toBe(0);
+    });
+  });
+
+  describe("commitCreditReservation", () => {
+    it("should commit the remaining reserved amount and remove the Redis key", async () => {
+      const reservation: CreditReservation = {
+        reservationId: "test-res-id",
+        userId: 1,
+        reservedAmount: 100,
+        drawnAmount: 25,
+        transactionId: 1,
+        sourceType: "browser_automation",
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 600000).toISOString(),
+      };
+      redisStore["credit:reservation:test-res-id"] = JSON.stringify(reservation);
+
+      const result = await commitCreditReservation("test-res-id");
+
+      expect(result.committedAmount).toBe(75);
+      expect(mockRedis.del).toHaveBeenCalledWith("credit:reservation:test-res-id");
+    });
+
+    it("should return 0 when reservation is already gone", async () => {
+      const result = await commitCreditReservation("nonexistent");
+      expect(result.committedAmount).toBe(0);
     });
   });
 });

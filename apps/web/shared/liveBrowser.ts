@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { browserSkillIdSchema } from "./browserSkills";
 
 export const liveBrowserActorTypeValues = [
   "agent",
@@ -9,6 +10,7 @@ export const liveBrowserActorTypeValues = [
 
 export const liveBrowserSourceTypeValues = [
   "automation",
+  "chat",
   "workflow",
   "agency",
 ] as const;
@@ -93,6 +95,13 @@ export const liveBrowserApprovalDecisionValues = [
   "rejected",
 ] as const;
 
+export const liveBrowserBarrierTypeValues = [
+  "login_required",
+  "captcha_required",
+  "payment_review_required",
+  "booking_confirmation_required",
+] as const;
+
 export const liveBrowserStreamScopeValues = [
   "viewer",
   "controller",
@@ -107,6 +116,7 @@ export const liveBrowserAssistRequestStatusSchema = z.enum(liveBrowserAssistRequ
 export const liveBrowserEventTypeSchema = z.enum(liveBrowserEventTypeValues);
 export const liveBrowserErrorCodeSchema = z.enum(liveBrowserErrorCodeValues);
 export const liveBrowserApprovalDecisionSchema = z.enum(liveBrowserApprovalDecisionValues);
+export const liveBrowserBarrierTypeSchema = z.enum(liveBrowserBarrierTypeValues);
 export const liveBrowserStreamScopeSchema = z.enum(liveBrowserStreamScopeValues);
 
 const stringRecordSchema = z.record(z.string(), z.unknown());
@@ -161,6 +171,7 @@ export const liveBrowserSessionSchema = z.object({
   controllerConnectionId: z.string().min(1).nullable().optional(),
   controllerLeaseExpiresAt: z.string().min(1).nullable().optional(),
   pauseReason: z.string().min(1).nullable().optional(),
+  barrierType: liveBrowserBarrierTypeSchema.nullable().optional(),
   pendingAssistRequestId: z.string().min(1).nullable().optional(),
   pendingApprovalRequestId: z.string().min(1).nullable().optional(),
   policyContext: stringRecordSchema.default({}),
@@ -173,13 +184,17 @@ export const liveBrowserSessionSchema = z.object({
   endReason: z.string().min(1).nullable().optional(),
 }).strict();
 
+export const liveBrowserEventPayloadSchema = z.object({
+  session: liveBrowserSessionSchema.optional(),
+}).catchall(z.unknown());
+
 export const liveBrowserEventEnvelopeSchema = z.object({
   eventId: z.string().min(1),
   sessionId: z.string().min(1),
   sessionVersion: z.number().int().nonnegative(),
   type: liveBrowserEventTypeSchema,
   timestamp: z.string().min(1),
-  payload: stringRecordSchema.default({}),
+  payload: liveBrowserEventPayloadSchema.default({}),
   cursor: z.string().min(1),
 }).strict();
 
@@ -211,6 +226,9 @@ export const liveBrowserCreateSessionRequestSchema = z.object({
   mode: liveBrowserControlModeSchema.default("observe"),
   executionIntent: z.object({
     prompt: z.string().min(1),
+    skillId: browserSkillIdSchema.optional(),
+    discoverWebsites: z.boolean().optional(),
+    autoDraftSkill: z.boolean().optional(),
   }).strict().optional(),
 }).strict();
 
@@ -237,6 +255,16 @@ export const liveBrowserSendCommandResponseSchema = z.object({
   queuedCommandId: z.string().min(1),
 }).strict();
 
+export const liveBrowserUpdatePolicyContextRequestSchema = liveBrowserMutationRequestBaseSchema.extend({
+  policyContextPatch: stringRecordSchema.default({}),
+}).strict();
+
+export const liveBrowserUpdatePolicyContextResponseSchema = z.object({
+  accepted: z.literal(true),
+  sessionVersion: z.number().int().nonnegative(),
+  policyContext: stringRecordSchema.default({}),
+}).strict();
+
 export const liveBrowserPauseAgentRequestSchema = liveBrowserMutationRequestBaseSchema.extend({
   reason: z.string().min(1),
 }).strict();
@@ -250,6 +278,7 @@ export const liveBrowserPauseAgentResponseSchema = z.object({
 
 export const liveBrowserTakeControlRequestSchema = liveBrowserMutationRequestBaseSchema.extend({
   reason: z.string().min(1),
+  stepUpCode: z.string().min(1).optional(),
 }).strict();
 
 export const liveBrowserTakeControlResponseSchema = z.object({
@@ -336,6 +365,7 @@ export const liveBrowserStreamTokenResponseSchema = z.object({
 
 export type LiveBrowserActor = z.infer<typeof liveBrowserActorSchema>;
 export type LiveBrowserSession = z.infer<typeof liveBrowserSessionSchema>;
+export type LiveBrowserEventPayload = z.infer<typeof liveBrowserEventPayloadSchema>;
 export type LiveBrowserEventEnvelope = z.infer<typeof liveBrowserEventEnvelopeSchema>;
 export type LiveBrowserError = z.infer<typeof liveBrowserErrorSchema>;
 export type LiveBrowserCreateSessionRequest = z.infer<typeof liveBrowserCreateSessionRequestSchema>;
@@ -343,6 +373,8 @@ export type LiveBrowserCreateSessionResponse = z.infer<typeof liveBrowserCreateS
 export type LiveBrowserGetSessionRequest = z.infer<typeof liveBrowserGetSessionRequestSchema>;
 export type LiveBrowserSendCommandRequest = z.infer<typeof liveBrowserSendCommandRequestSchema>;
 export type LiveBrowserSendCommandResponse = z.infer<typeof liveBrowserSendCommandResponseSchema>;
+export type LiveBrowserUpdatePolicyContextRequest = z.infer<typeof liveBrowserUpdatePolicyContextRequestSchema>;
+export type LiveBrowserUpdatePolicyContextResponse = z.infer<typeof liveBrowserUpdatePolicyContextResponseSchema>;
 export type LiveBrowserPauseAgentRequest = z.infer<typeof liveBrowserPauseAgentRequestSchema>;
 export type LiveBrowserPauseAgentResponse = z.infer<typeof liveBrowserPauseAgentResponseSchema>;
 export type LiveBrowserTakeControlRequest = z.infer<typeof liveBrowserTakeControlRequestSchema>;
@@ -359,3 +391,14 @@ export type LiveBrowserListEventsRequest = z.infer<typeof liveBrowserListEventsR
 export type LiveBrowserListEventsResponse = z.infer<typeof liveBrowserListEventsResponseSchema>;
 export type LiveBrowserStreamTokenRequest = z.infer<typeof liveBrowserStreamTokenRequestSchema>;
 export type LiveBrowserStreamTokenResponse = z.infer<typeof liveBrowserStreamTokenResponseSchema>;
+
+export function getLiveBrowserEventSessionSnapshot(
+  event: Pick<LiveBrowserEventEnvelope, "payload">,
+): LiveBrowserSession | null {
+  const candidate = event.payload?.session;
+  if (!candidate) {
+    return null;
+  }
+  const parsed = liveBrowserSessionSchema.safeParse(candidate);
+  return parsed.success ? parsed.data : null;
+}

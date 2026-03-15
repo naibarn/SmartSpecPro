@@ -18,6 +18,7 @@ import {
   BookOpen,
   Sparkles,
   UserCheck,
+  MonitorPlay,
 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -47,6 +48,7 @@ const NODE_TYPE_META: Record<string, { icon: typeof Bot; label: string; color: s
   knowledge_base: { icon: BookOpen, label: "Knowledge", color: "#10B981" },
   skill_call: { icon: Sparkles, label: "Skill", color: "#F59E0B" },
   human_approval: { icon: UserCheck, label: "Approval", color: "#EF4444" },
+  browser_session: { icon: MonitorPlay, label: "Browser Session", color: "#0891B2" },
 };
 
 function svgToDataUrl(svg: string): string {

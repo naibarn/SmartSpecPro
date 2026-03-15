@@ -203,4 +203,82 @@ describe('useSkillForm', () => {
     expect(result.current.errors.field1).toBe('Field 1 is required');
     expect(result.current.errors.field2).toBe('Field 2 is required');
   });
+
+  it('ignores hidden required fields controlled by dependsOn values', () => {
+    const conditionalSchema: SkillInputSchema = {
+      title: 'Conditional',
+      sections: [
+        {
+          id: 'conditional',
+          title: 'Conditional',
+          fields: [
+            {
+              id: 'mode',
+              type: 'select',
+              label: 'Mode',
+              default: 'image',
+              options: [
+                { value: 'image', label: 'Image' },
+                { value: 'video', label: 'Video' },
+              ],
+            },
+            {
+              id: 'sourceVideoUrl',
+              type: 'text',
+              label: 'Source Video URL',
+              required: true,
+              dependsOn: { field: 'mode', values: ['video'] },
+            },
+          ],
+        },
+      ],
+    };
+
+    const { result } = renderHook(() =>
+      useSkillForm({ schema: conditionalSchema })
+    );
+
+    act(() => {
+      result.current.validate();
+    });
+
+    expect(result.current.errors.sourceVideoUrl).toBeUndefined();
+
+    act(() => {
+      result.current.setValue('mode', 'video');
+      result.current.validate();
+    });
+
+    expect(result.current.errors.sourceVideoUrl).toBe('Source Video URL is required');
+  });
+
+  it('accepts data image URLs for image fields', () => {
+    const imageSchema: SkillInputSchema = {
+      title: 'Images',
+      sections: [
+        {
+          id: 'images',
+          title: 'Images',
+          fields: [
+            {
+              id: 'reference_images',
+              type: 'images',
+              label: 'Reference Images',
+              maxImages: 3,
+            },
+          ],
+        },
+      ],
+    };
+
+    const { result } = renderHook(() =>
+      useSkillForm({ schema: imageSchema })
+    );
+
+    act(() => {
+      result.current.setValue('reference_images', ['data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA']);
+    });
+
+    expect(result.current.errors.reference_images).toBeUndefined();
+  });
 });

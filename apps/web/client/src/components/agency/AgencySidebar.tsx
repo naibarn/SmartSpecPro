@@ -3,6 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import {
   Bot, Crown, GitBranch, Merge, Database, Zap, UserCheck,
+  MonitorPlay,
   Briefcase, FileText, Code, BarChart, Calendar, Search, PenTool,
   ChevronDown, Info,
 } from "lucide-react";
@@ -85,6 +86,14 @@ const NODE_TYPE_SECTIONS = [
     label: "Human in the Loop",
     color: "orange",
     items: [
+      {
+        nodeType: "browser_session",
+        label: "Browser Session",
+        description: "Launches a Browser Session for AI work and review",
+        detail: "Starts a shared Browser Session the agency can use, then hands it back as Continue in Browser, Review Required, or Needs Your Input without exposing low-level runtime terms.",
+        icon: <MonitorPlay className="h-3.5 w-3.5" />,
+        color: "text-cyan-500",
+      },
       {
         nodeType: "human_approval",
         label: "Human Approval",

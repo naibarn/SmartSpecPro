@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Bell, Clock, Calendar, Check, X, Edit2, Loader2 } from "lucide-react";
+import { Bell, Clock, Calendar, Check, X, Edit2, Loader2, Presentation } from "lucide-react";
 import { toast } from "sonner";
 
 interface ParsedSchedule {
@@ -15,6 +15,8 @@ interface ParsedSchedule {
   emailNotify: boolean;
   description?: string;
   timezone?: string;
+  skillId?: string | null;
+  dynamicParams?: Record<string, unknown> | null;
 }
 
 interface ScheduleConfirmCardProps {
@@ -56,6 +58,8 @@ export function ScheduleConfirmCard({
       modelId: model,
       conversationId: conversationId,
       timezone: form.timezone || "Asia/Bangkok",
+      skillId: form.skillId,
+      dynamicParams: form.dynamicParams as Record<string, any> | undefined,
     });
   };
 
@@ -73,8 +77,11 @@ export function ScheduleConfirmCard({
   return (
     <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-3 my-2 max-w-md">
       <div className="flex items-center gap-2 text-sm font-medium">
-        <Bell className="h-4 w-4 text-primary" />
-        Schedule Alert
+        {form.skillId === "auto-draft-presentation" ? (
+          <><Presentation className="h-4 w-4 text-primary" /> Schedule Presentation</>
+        ) : (
+          <><Bell className="h-4 w-4 text-primary" /> Schedule Alert</>
+        )}
       </div>
 
       {!editing ? (

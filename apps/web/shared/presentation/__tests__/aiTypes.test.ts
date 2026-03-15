@@ -342,6 +342,32 @@ describe("AIDraftProgressSchema", () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it("accepts diagnostics metadata for stalled-step inspection", () => {
+    const result = AIDraftProgressSchema.safeParse({
+      phase: 2,
+      phaseLabel: "Resolving dense slides: 1/5",
+      phaseDetail: "Retrying dense slide with sectioned-explainer.",
+      slidesCompleted: 0,
+      totalSlides: 5,
+      slidePreview: [],
+      completed: false,
+      updatedAt: "2026-03-14T06:55:40.142Z",
+      workerActive: true,
+      diagnostics: {
+        taskId: "b1c43b86-ff78-4aa7-86cc-e78e9020f8ca",
+        operation: "overflow_recipe_compaction",
+        model: "gpt-4o-mini",
+        recipeId: "sectioned-explainer",
+        compactionLevel: "balanced",
+        attempt: 1,
+        maxAttempts: 3,
+        startedAt: "2026-03-14T06:55:40.142Z",
+        deadlineAt: "2026-03-14T06:57:40.142Z",
+      },
+    });
+    expect(result.success).toBe(true);
+  });
 });
 
 describe("SlideStylePresetSchema", () => {

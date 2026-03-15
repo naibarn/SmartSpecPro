@@ -139,4 +139,89 @@ describe("agencyPreviewService", () => {
       }),
     );
   });
+
+  it("normalizes comparison previews into a stable comparison DTO", () => {
+    const preview = buildAgencyPreview({
+      ...makeRunResult(),
+      structuredResult: {
+        ...makeRunResult().structuredResult!,
+        intent: "hotel_comparison",
+        summary: "Comparison preview ready.",
+        payload: {
+          title: "Hotels near BTS Asok",
+          summary: "Best balance of price and distance.",
+          options: [
+            {
+              vendor: "Booking.com",
+              option_title: "Centre Point Asok",
+              price: "4200",
+              currency_code: "THB",
+              distance_meters: "350",
+              availability: "few_left",
+              refundable: "true",
+              booking_link: "https://example.com/hotel-1",
+              evidence: [
+                {
+                  title: "Rate card",
+                  url: "https://example.com/rate-1",
+                  snippet: "Breakfast included",
+                },
+              ],
+            },
+          ],
+          recommendations: ["Pick the closest refundable option."],
+        },
+      },
+      previewArtifacts: [
+        {
+          ...makeRunResult().previewArtifacts[0]!,
+          intent: "hotel_comparison",
+          artifact_type: "comparison",
+          summary: "Comparison preview ready.",
+          payload_json: {
+            title: "Hotels near BTS Asok",
+            summary: "Best balance of price and distance.",
+            options: [
+              {
+                vendor: "Booking.com",
+                option_title: "Centre Point Asok",
+                price: "4200",
+                currency_code: "THB",
+                distance_meters: "350",
+                availability: "few_left",
+                refundable: "true",
+                evidence: [
+                  {
+                    title: "Rate card",
+                    url: "https://example.com/rate-1",
+                    snippet: "Breakfast included",
+                  },
+                ],
+              },
+            ],
+            recommendations: ["Pick the closest refundable option."],
+          },
+        },
+      ],
+    });
+
+    expect(preview?.previewType).toBe("comparison");
+    expect(preview?.data).toEqual(
+      expect.objectContaining({
+        comparisonKind: "hotel",
+        title: "Hotels near BTS Asok",
+        recommendations: ["Pick the closest refundable option."],
+        options: [
+          expect.objectContaining({
+            optionTitle: "Centre Point Asok",
+            price: 4200,
+            currency: "THB",
+            distance: 350,
+            availabilityState: "limited",
+            refundable: true,
+          }),
+        ],
+      }),
+    );
+  });
 });

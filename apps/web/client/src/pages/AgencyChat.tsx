@@ -1,14 +1,26 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAgencyStream } from "@/hooks/useAgencyStream";
 import { useAgencyById } from "@/hooks/useAgencyQuery";
 import { ModelPicker } from "@/components/agency/ModelPicker";
 import AgencyActivityPanel from "@/components/agency/AgencyActivityPanel";
+import { BrowserSessionSummaryCard } from "@/components/browser-session/BrowserSessionSummaryCard";
+import { BrowserSessionLaunchSuggestionCard } from "@/components/browser-session/BrowserSessionLaunchSuggestionCard";
+import { AgencyPreviewCard, type AgencyPreviewProps } from "@/components/agency/preview";
+import { ChatHelpDialog } from "@/components/chat/ChatHelpDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { trpc } from "@/lib/trpc";
 import {
   Send,
   Loader2,
@@ -22,6 +34,8 @@ import {
   Crown,
   Settings2,
   RefreshCw,
+  MonitorPlay,
+  X,
 } from "lucide-react";
 import {
   Popover,
@@ -29,7 +43,33 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { SafeMarkdown } from "@/components/chat/SafeMarkdown";
+import {
+  trackBrowserSessionOpened,
+  trackBrowserSessionReopened,
+} from "@/lib/analytics/browserSessionEvents";
+import {
+  buildBrowserSessionPath,
+} from "@/lib/browserSessionRouting";
+import {
+  detectBrowserSessionLaunchSuggestion,
+  type BrowserSessionLaunchSuggestion,
+} from "@/lib/browserSessionInvocation";
+import {
+  buildBrowserSessionSummary,
+  parseBrowserSessionArtifact,
+  type BrowserSessionArtifact,
+  type BrowserSessionLaunchContext,
+} from "@shared/browserSession";
+import {
+  BROWSER_SKILL_PRESETS,
+  buildBrowserInstruction,
+  deriveBrowserSkillSelection,
+  inferBrowserSkillId,
+} from "@shared/browserSkills";
+import type { LiveBrowserCreateSessionRequest } from "@shared/liveBrowser";
+
 
 const AGENT_COLORS = [
   "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
@@ -48,7 +88,7 @@ function getAgentColor(name: string): string {
 }
 
 export default function AgencyChat() {
-  const { isLoading: authLoading, isAuthenticated } = useAuth();
+  const { isLoading: authLoading, isAuthenticated, user } = useAuth();
   const [, setLocation] = useLocation();
   const [matched, params] = useRoute("/agencies/:id");
   const agencyId = (params as Record<string, string>)?.id as
@@ -62,7 +102,26 @@ export default function AgencyChat() {
   const [conversationId] = useState<string | undefined>();
   const [modelOverride, setModelOverride] = useState("");
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
+  const [recipientAgent, setRecipientAgent] = useState("");
+  const [additionalInstructions, setAdditionalInstructions] = useState("");
+  const [runOptionsOpen, setRunOptionsOpen] = useState(false);
+  const [returnBrowserSessionId, setReturnBrowserSessionId] = useState<string | null>(null);
+  const [browserSessionSuggestion, setBrowserSessionSuggestion] = useState<BrowserSessionLaunchSuggestion | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const utils = trpc.useUtils();
+  const { data: tenantFlags } = trpc.tenantFeatureFlags.getFeatureFlags.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+  const createLiveBrowserSessionMutation = trpc.liveBrowser.createSession.useMutation();
+  const sendLiveBrowserCommandMutation = trpc.liveBrowser.sendCommand.useMutation();
+  const [browserSessionArtifact, setBrowserSessionArtifact] = useState<BrowserSessionArtifact | null>(null);
+  const [browserCommandDraft, setBrowserCommandDraft] = useState("");
+  const [browserCommandSkillId, setBrowserCommandSkillId] = useState(() => inferBrowserSkillId(""));
+  const [browserCommandSkillSelectionMode, setBrowserCommandSkillSelectionMode] = useState<"auto" | "manual">("auto");
+  const [browserCommandBusy, setBrowserCommandBusy] = useState(false);
+  const [browserCommandNotice, setBrowserCommandNotice] = useState<string | null>(null);
+  const [agencyPreview, setAgencyPreview] = useState<(AgencyPreviewProps & { runId: string }) | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   // Feature flag is enforced server-side: agency.getById throws NOT_FOUND
   // when AGENCY_SWARM_ENABLED is false, which sets isError=true below.
@@ -72,7 +131,49 @@ export default function AgencyChat() {
     isError: agencyError,
   } = useAgencyById(agencyId);
 
-  const stream = useAgencyStream();
+  const agencyBrowserSessionEnabled = Boolean(tenantFlags?.agencyBrowserSessionUi);
+
+  const browserSessionStorageKey = useMemo(
+    () => (agencyId ? `agency-browser-session:${agencyId}` : null),
+    [agencyId],
+  );
+  const stream = useAgencyStream({
+    onBrowserSession: (artifact) => {
+      storeBrowserSessionArtifact(artifact);
+    },
+    onPreviewReady: ({ runId }) => {
+      if (!agencyId || !runId) {
+        return;
+      }
+
+      setPreviewLoading(true);
+      utils.agency.getRunPreview.fetch({ agencyId, runId })
+        .then((result) => {
+          const preview = result.preview;
+          if (!preview) {
+            setAgencyPreview(null);
+            return;
+          }
+
+          setAgencyPreview({
+            previewType: preview.previewType,
+            artifactId: preview.artifactId,
+            intent: preview.intent,
+            lifecycleState: preview.lifecycleState,
+            summaryText: preview.summaryText,
+            provenance: preview.provenance,
+            commit: preview.commit,
+            data: preview.data,
+            runId,
+          });
+        })
+        .catch((error) => {
+          console.error("[AgencyChat] failed to load preview", error);
+          toast.error("Failed to load preview. Please try again.");
+        })
+        .finally(() => setPreviewLoading(false));
+    },
+  });
 
   // Auth redirect
   useEffect(() => {
@@ -95,13 +196,56 @@ export default function AgencyChat() {
     }
   }, [stream.messages]);
 
+  useEffect(() => {
+    if (!browserSessionStorageKey || typeof window === "undefined") {
+      setBrowserSessionArtifact(null);
+      return;
+    }
+
+    try {
+      setBrowserSessionArtifact(
+        parseBrowserSessionArtifact(
+          JSON.parse(window.sessionStorage.getItem(browserSessionStorageKey) ?? "null"),
+        ),
+      );
+    } catch {
+      setBrowserSessionArtifact(null);
+    }
+  }, [browserSessionStorageKey]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const browserSessionId = params.get("browserSessionId");
+    if (!browserSessionId) {
+      return;
+    }
+
+    setReturnBrowserSessionId(browserSessionId);
+    window.history.replaceState({}, "", agencyId ? `/agencies/${agencyId}` : "/agencies");
+  }, [agencyId]);
+
   const handleSend = () => {
-    if (!input.trim() || !agencyId || stream.isStreaming) return;
+    const message = input.trim();
+    if (!message || !agencyId || stream.isStreaming) return;
+
+    setBrowserSessionSuggestion(
+      agencyBrowserSessionEnabled
+        ? detectBrowserSessionLaunchSuggestion({
+          message,
+          originSurface: "agency",
+          sourceId: agencyId,
+        })
+        : null,
+    );
+    setAgencyPreview(null);
+
     stream.connect({
       agencyId,
       conversationId,
-      message: input.trim(),
+      message,
       ...(modelOverride ? { modelOverride } : {}),
+      ...(recipientAgent ? { recipientAgent } : {}),
+      ...(additionalInstructions ? { additionalInstructions } : {}),
     });
     setInput("");
   };
@@ -126,6 +270,202 @@ export default function AgencyChat() {
           ...(modelOverride ? { modelOverride } : {}),
         });
       }
+    }
+  };
+
+  const buildAgencyLaunchContext = (sessionId: string): BrowserSessionLaunchContext | null => {
+    if (!agencyId) {
+      return null;
+    }
+
+    return {
+      originSurface: "agency",
+      originLabel: "Agency",
+      sourceId: agencyId,
+      returnContext: {
+        path: `/agencies/${agencyId}?browserSessionId=${encodeURIComponent(sessionId)}`,
+        label: "Return to Agency",
+      },
+    };
+  };
+
+  function storeBrowserSessionArtifact(artifactInput: BrowserSessionArtifact) {
+    const launchContext = artifactInput.launchContext ?? buildAgencyLaunchContext(artifactInput.sessionId) ?? undefined;
+    const artifact = {
+      ...artifactInput,
+      launchContext,
+    } satisfies BrowserSessionArtifact;
+
+    setBrowserSessionArtifact(artifact);
+    if (browserSessionStorageKey && typeof window !== "undefined") {
+      window.sessionStorage.setItem(browserSessionStorageKey, JSON.stringify(artifact));
+    }
+    return artifact;
+  }
+
+  const persistBrowserSessionArtifact = async (sessionId: string) => {
+    if (!agencyId || !user?.id) {
+      return null;
+    }
+
+    const session = await utils.liveBrowser.getSession.fetch({
+      sessionId,
+      actor: { actorType: "user", actorId: String(user.id) },
+    });
+    const launchContext = buildAgencyLaunchContext(sessionId);
+    const artifact = {
+      sessionId,
+      summary: buildBrowserSessionSummary(session, { launchContext }),
+      launchContext: launchContext ?? undefined,
+      updatedAt: session.lastActivityAt,
+    } satisfies BrowserSessionArtifact;
+
+    return storeBrowserSessionArtifact(artifact);
+  };
+
+  useEffect(() => {
+    if (!returnBrowserSessionId || !agencyBrowserSessionEnabled) {
+      return;
+    }
+
+    persistBrowserSessionArtifact(returnBrowserSessionId).finally(() => {
+      setReturnBrowserSessionId(null);
+    });
+  }, [agencyBrowserSessionEnabled, returnBrowserSessionId]);
+
+  useEffect(() => {
+    if (!agencyBrowserSessionEnabled) {
+      setBrowserSessionSuggestion(null);
+    }
+  }, [agencyBrowserSessionEnabled, agencyId]);
+
+  useEffect(() => {
+    setBrowserCommandDraft("");
+    setBrowserCommandSkillId(inferBrowserSkillId(""));
+    setBrowserCommandSkillSelectionMode("auto");
+    setBrowserCommandBusy(false);
+    setBrowserCommandNotice(null);
+  }, [agencyId, browserSessionArtifact?.sessionId]);
+
+  const handleBrowserCommandDraftChange = (nextValue: string) => {
+    setBrowserCommandDraft(nextValue);
+    const nextSelection = deriveBrowserSkillSelection({
+      draft: nextValue,
+      currentSkillId: browserCommandSkillId,
+      selectionMode: browserCommandSkillSelectionMode,
+    });
+    setBrowserCommandSkillId(nextSelection.skillId);
+    setBrowserCommandSkillSelectionMode(nextSelection.selectionMode);
+  };
+
+  const handleBrowserCommandSkillChange = (value: typeof browserCommandSkillId) => {
+    setBrowserCommandSkillId(value);
+    setBrowserCommandSkillSelectionMode("manual");
+  };
+
+  const handleOpenBrowserSession = async (options?: {
+    launchPath?: "direct" | "suggested";
+    launchIntent?: BrowserSessionLaunchSuggestion["launchIntent"];
+    executionIntent?: LiveBrowserCreateSessionRequest["executionIntent"];
+  }) => {
+    if (!agencyId || !user?.id) {
+      return;
+    }
+
+    const launchPath = options?.launchPath ?? "direct";
+    const launchIntent = options?.launchIntent;
+
+    if (browserSessionArtifact?.sessionId) {
+      trackBrowserSessionReopened({
+        origin_surface: "agency",
+        compact_layout: window.innerWidth < 768,
+        session_kind: "resumed",
+        launch_path: launchPath,
+        launch_intent: launchIntent,
+      });
+      const launchContext = buildAgencyLaunchContext(browserSessionArtifact.sessionId);
+      setLocation(buildBrowserSessionPath(browserSessionArtifact.sessionId, launchContext));
+      return;
+    }
+
+    const created = await createLiveBrowserSessionMutation.mutateAsync({
+      actor: { actorType: "user", actorId: String(user.id) },
+      sourceType: "agency",
+      sourceId: agencyId,
+      mode: "observe",
+      executionIntent: options?.executionIntent,
+    });
+    const artifact = await persistBrowserSessionArtifact(created.sessionId);
+    trackBrowserSessionOpened({
+      origin_surface: "agency",
+      compact_layout: window.innerWidth < 768,
+      session_kind: "created",
+      launch_path: launchPath,
+      launch_intent: launchIntent,
+    });
+    setLocation(buildBrowserSessionPath(created.sessionId, artifact?.launchContext ?? buildAgencyLaunchContext(created.sessionId)));
+  };
+
+  const handleConfirmBrowserSessionSuggestion = async (
+    suggestion: BrowserSessionLaunchSuggestion,
+  ) => {
+    setBrowserSessionSuggestion(null);
+    await handleOpenBrowserSession({
+      launchPath: "suggested",
+      launchIntent: suggestion.launchIntent,
+      executionIntent: {
+        prompt: suggestion.triggerMessage,
+        skillId: inferBrowserSkillId(suggestion.triggerMessage),
+        discoverWebsites: suggestion.launchIntent === "research_in_browser",
+      },
+    });
+  };
+
+  const handleDismissBrowserSessionSuggestion = (suggestionId: string) => {
+    setBrowserSessionSuggestion((current) => (
+      current?.suggestionId === suggestionId ? null : current
+    ));
+  };
+
+  const handleSendBrowserSessionCommand = async () => {
+    if (!browserSessionArtifact?.sessionId || !agencyId || !user?.id || !browserCommandDraft.trim()) {
+      return;
+    }
+
+    try {
+      setBrowserCommandBusy(true);
+      setBrowserCommandNotice(null);
+      const actor = { actorType: "user" as const, actorId: String(user.id) };
+      const session = await utils.liveBrowser.getSession.fetch({
+        sessionId: browserSessionArtifact.sessionId,
+        actor,
+      });
+
+      await sendLiveBrowserCommandMutation.mutateAsync({
+        sessionId: session.sessionId,
+        sessionVersion: session.sessionVersion,
+        idempotencyKey: `agency-browser-cmd-${Date.now()}`,
+        actor,
+        command: {
+          type: "natural_language",
+          text: buildBrowserInstruction({
+            goal: browserCommandDraft.trim(),
+            skillId: browserCommandSkillId,
+          }),
+        },
+      });
+
+      await persistBrowserSessionArtifact(browserSessionArtifact.sessionId);
+      setBrowserCommandDraft("");
+      setBrowserCommandSkillId(inferBrowserSkillId(""));
+      setBrowserCommandSkillSelectionMode("auto");
+      setBrowserCommandNotice("Instruction queued for this Browser Session.");
+    } catch (error) {
+      setBrowserCommandNotice(
+        error instanceof Error ? error.message : "Failed to queue Browser Session instruction.",
+      );
+    } finally {
+      setBrowserCommandBusy(false);
     }
   };
 
@@ -197,6 +537,27 @@ export default function AgencyChat() {
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
+          <ChatHelpDialog
+            buttonVariant="ghost"
+            buttonSize="sm"
+            buttonClassName="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+            buttonLabel=""
+          />
+          {agencyBrowserSessionEnabled && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+              onClick={handleOpenBrowserSession}
+              disabled={createLiveBrowserSessionMutation.isPending}
+              title="Open Browser Session"
+            >
+              <MonitorPlay className="h-3.5 w-3.5" />
+              <span className="max-w-[160px] truncate">
+                {browserSessionArtifact?.summary.primaryActionLabel ?? "Open Browser Session"}
+              </span>
+            </Button>
+          )}
           {stream.creditsUsed > 0 && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground px-2">
               <CreditCard className="h-3 w-3" />
@@ -288,6 +649,105 @@ export default function AgencyChat() {
             className="flex-1 overflow-y-auto p-4"
           >
             <div className="mx-auto max-w-3xl space-y-4">
+              {agencyBrowserSessionEnabled && browserSessionArtifact ? (
+                <BrowserSessionSummaryCard
+                  artifact={browserSessionArtifact}
+                  onOpen={(artifact) => {
+                    setLocation(buildBrowserSessionPath(
+                      artifact.sessionId,
+                      artifact.launchContext ?? buildAgencyLaunchContext(artifact.sessionId),
+                    ));
+                  }}
+                >
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-900/70">
+                        Quick Browser Instruction
+                      </p>
+                      <p className="mt-1 text-xs text-slate-600">
+                        Describe the outcome you want or the next browser step without leaving Agency Chat.
+                      </p>
+                    </div>
+                    <Select
+                      value={browserCommandSkillId}
+                      onValueChange={(value) => handleBrowserCommandSkillChange(value as typeof browserCommandSkillId)}
+                    >
+                      <SelectTrigger className="bg-white">
+                        <SelectValue placeholder="Choose a browser skill" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {BROWSER_SKILL_PRESETS.map((preset) => (
+                          <SelectItem key={preset.id} value={preset.id}>
+                            {preset.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Textarea
+                      value={browserCommandDraft}
+                      onChange={(event) => handleBrowserCommandDraftChange(event.target.value)}
+                      placeholder="Example: Find the right site, compare choices, and continue automatically."
+                      className="min-h-[88px] bg-white"
+                    />
+                    {browserCommandNotice ? (
+                      <p className="text-xs text-slate-600">{browserCommandNotice}</p>
+                    ) : null}
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="gap-2 bg-cyan-700 text-white hover:bg-cyan-800"
+                      onClick={() => void handleSendBrowserSessionCommand()}
+                      disabled={!browserCommandDraft.trim() || browserCommandBusy}
+                    >
+                      {browserCommandBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                      {browserCommandBusy ? "Queuing Instruction..." : "Send Browser Instruction"}
+                    </Button>
+                  </div>
+                </BrowserSessionSummaryCard>
+              ) : null}
+
+              {previewLoading && !agencyPreview && (
+                <div className="animate-pulse rounded-xl border bg-muted/30 p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-muted" />
+                    <div className="space-y-2">
+                      <div className="h-4 w-40 rounded bg-muted" />
+                      <div className="h-3 w-24 rounded bg-muted" />
+                    </div>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    <div className="h-3 w-full rounded bg-muted" />
+                    <div className="h-3 w-3/4 rounded bg-muted" />
+                  </div>
+                </div>
+              )}
+
+              {agencyPreview && agencyId ? (
+                <AgencyPreviewCard
+                  preview={agencyPreview}
+                  agencyId={agencyId}
+                  runId={agencyPreview.runId}
+                  onDismiss={() => setAgencyPreview(null)}
+                  onCommitted={(result) =>
+                    setAgencyPreview((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            lifecycleState: "committed",
+                            commit: {
+                              ...prev.commit,
+                              status: "committed",
+                              available: false,
+                              targetType: result.targetType,
+                              targetId: result.targetId,
+                            },
+                          }
+                        : null,
+                    )
+                  }
+                />
+              ) : null}
+
               {/* Empty state — show agency info + agents */}
               {stream.messages.length === 0 && !stream.isStreaming && (
                 <div className="py-12 text-center">
@@ -383,6 +843,16 @@ export default function AgencyChat() {
                 </div>
               ))}
 
+              {browserSessionSuggestion ? (
+                <div className="mr-auto max-w-[80%]">
+                  <BrowserSessionLaunchSuggestionCard
+                    suggestion={browserSessionSuggestion}
+                    onConfirm={handleConfirmBrowserSessionSuggestion}
+                    onDismiss={handleDismissBrowserSessionSuggestion}
+                  />
+                </div>
+              ) : null}
+
               {stream.error && (
                 <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4">
                   <div className="flex items-start gap-3">
@@ -432,16 +902,77 @@ export default function AgencyChat() {
                 </button>
               </div>
             )}
+            {/* Run options (recipient agent, additional instructions) */}
+            {(recipientAgent || additionalInstructions || runOptionsOpen) && (
+              <div className="mx-auto mb-2 max-w-3xl space-y-2 rounded-md border bg-muted/30 px-3 py-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-medium text-muted-foreground">Run Options</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5"
+                    onClick={() => {
+                      setRunOptionsOpen(false);
+                      setRecipientAgent("");
+                      setAdditionalInstructions("");
+                    }}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+                {agency && (agency as any).agents?.length > 1 && (
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-muted-foreground">Target Agent</label>
+                    <Select value={recipientAgent} onValueChange={setRecipientAgent}>
+                      <SelectTrigger className="h-7 text-xs">
+                        <SelectValue placeholder="Auto (entry point)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Auto (entry point)</SelectItem>
+                        {((agency as any).agents ?? []).map((a: any) => (
+                          <SelectItem key={a.id || a.name} value={a.name}>
+                            {a.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div className="space-y-1">
+                  <label className="text-[10px] text-muted-foreground">Additional Instructions</label>
+                  <Textarea
+                    value={additionalInstructions}
+                    onChange={(e) => setAdditionalInstructions(e.target.value)}
+                    className="min-h-[32px] max-h-[80px] resize-none text-xs"
+                    rows={1}
+                    placeholder="Per-run instruction override (optional)"
+                  />
+                </div>
+              </div>
+            )}
             <div className="mx-auto flex max-w-3xl gap-2">
-              <Textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={`Message ${agency?.name ?? "agency"}… (Enter to send, Shift+Enter for new line)`}
-                className="min-h-[44px] max-h-[160px] resize-none"
-                rows={1}
-                disabled={stream.isStreaming}
-              />
+              <div className="flex flex-1 gap-1">
+                {!runOptionsOpen && !recipientAgent && !additionalInstructions && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-11 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                    onClick={() => setRunOptionsOpen(true)}
+                    title="Run options (target agent, instructions)"
+                  >
+                    <Settings2 className="h-4 w-4" />
+                  </Button>
+                )}
+                <Textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={`Message ${agency?.name ?? "agency"}… (Enter to send, Shift+Enter for new line)`}
+                  className="min-h-[44px] max-h-[160px] resize-none flex-1"
+                  rows={1}
+                  disabled={stream.isStreaming}
+                />
+              </div>
               <Button
                 onClick={handleSend}
                 disabled={!input.trim() || stream.isStreaming}

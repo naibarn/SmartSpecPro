@@ -54,6 +54,55 @@ function hasNonEmptyRequirements(
 }
 
 /**
+ * Normalize execution policy from legacy UI format to Feature 041 format.
+ *
+ * The Admin Skills UI saves Content Quality settings as flat keys:
+ *   { requires_web_search: true, requires_structured_output: true, thinking_level_hint: "high", ... }
+ *
+ * Feature 041 expects:
+ *   { mode: "requirements", requirements: { supportsWebSearch: true, supportsStructuredOutputs: true } }
+ *
+ * This function bridges the two formats so both work transparently.
+ */
+function normalizeExecutionPolicy(
+  raw: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+  if (!raw) return raw;
+
+  // Already in Feature 041 format (has "requirements" key with object value)
+  if (raw.requirements && typeof raw.requirements === "object") {
+    return raw;
+  }
+
+  // Check for legacy flat keys
+  const hasLegacyKeys =
+    raw.requires_web_search !== undefined ||
+    raw.requires_structured_output !== undefined ||
+    raw.requires_citations !== undefined;
+
+  if (!hasLegacyKeys) return raw;
+
+  // Map legacy keys → Feature 041 capability requirements
+  const requirements: Record<string, unknown> = {};
+  if (raw.requires_web_search === true) {
+    requirements.supportsWebSearch = true;
+  }
+  if (raw.requires_structured_output === true) {
+    requirements.supportsStructuredOutputs = true;
+  }
+  // requires_citations doesn't map to a model capability flag directly,
+  // but models that support web search generally support citations
+
+  const hasReqs = Object.keys(requirements).length > 0;
+
+  return {
+    ...raw,
+    mode: hasReqs ? "requirements" : raw.mode,
+    requirements: hasReqs ? requirements : raw.requirements,
+  };
+}
+
+/**
  * Resolve the effective execution policy for a skill invocation.
  *
  * Mode semantics:
@@ -81,7 +130,9 @@ export async function resolveSkillExecutionPolicy(
     strictProviderPin: skill.strictProviderPin,
   };
 
-  const policy = skill.executionPolicy;
+  const rawPolicy = skill.executionPolicy;
+  const policy = normalizeExecutionPolicy(rawPolicy as Record<string, unknown> | undefined) as
+    typeof rawPolicy;
   const mode = policy?.mode;
   const requirements = policy?.requirements;
   const hasReqs = hasNonEmptyRequirements(requirements);

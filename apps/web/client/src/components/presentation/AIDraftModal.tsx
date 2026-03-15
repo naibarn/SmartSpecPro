@@ -838,6 +838,38 @@ export function AIDraftModal({
     const parsed = Date.parse(progress.updatedAt);
     return Number.isFinite(parsed) ? parsed : null;
   }, [progress?.updatedAt]);
+  const progressStepStartedAtMs = useMemo(() => {
+    if (!progress?.diagnostics?.startedAt) {
+      return null;
+    }
+    const parsed = Date.parse(progress.diagnostics.startedAt);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [progress?.diagnostics?.startedAt]);
+  const progressStepDeadlineAtMs = useMemo(() => {
+    if (!progress?.diagnostics?.deadlineAt) {
+      return null;
+    }
+    const parsed = Date.parse(progress.diagnostics.deadlineAt);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [progress?.diagnostics?.deadlineAt]);
+  const lastBackendUpdateLabel = useMemo(() => {
+    if (!progressUpdatedAtMs) {
+      return null;
+    }
+    return new Date(progressUpdatedAtMs).toLocaleTimeString();
+  }, [progressUpdatedAtMs]);
+  const stepElapsedSeconds = useMemo(() => {
+    if (!progressStepStartedAtMs) {
+      return null;
+    }
+    return Math.max(0, Math.floor((Date.now() - progressStepStartedAtMs) / 1000));
+  }, [progressStepStartedAtMs, stalledSeconds]);
+  const stepBudgetRemainingSeconds = useMemo(() => {
+    if (!progressStepDeadlineAtMs) {
+      return null;
+    }
+    return Math.max(0, Math.ceil((progressStepDeadlineAtMs - Date.now()) / 1000));
+  }, [progressStepDeadlineAtMs, stalledSeconds]);
   const hasDetachedWorker = Boolean(
     taskId
     && progress
@@ -849,16 +881,16 @@ export function AIDraftModal({
       return "";
     }
     if (hasDetachedWorker) {
-      return `No active worker is attached to this run. The last backend update was ${stalledSeconds}s ago, so this draft likely stalled. Clear it and retry.`;
+      return `No active worker is attached to run ${progress.diagnostics?.taskId ?? taskId}. The last backend update was ${stalledSeconds}s ago${lastBackendUpdateLabel ? ` at ${lastBackendUpdateLabel}` : ""}, so this draft likely stalled. Clear it and retry.`;
     }
     if (progress.phase <= 2) {
-      return `No progress update for ${stalledSeconds}s while waiting for AI planning. The model may still be generating structured slide output. You can wait, or click Cancel and retry.`;
+      return `No progress update for ${stalledSeconds}s while waiting for AI planning${progress.diagnostics?.model ? ` on ${progress.diagnostics.model}` : ""}${lastBackendUpdateLabel ? ` (last backend update ${lastBackendUpdateLabel})` : ""}. You can wait, or click Cancel and retry.`;
     }
     if (progress.phase <= 5) {
-      return `No progress update for ${stalledSeconds}s while waiting for media generation. The media provider may be delayed or stuck. You can wait, or click Cancel and retry.`;
+      return `No progress update for ${stalledSeconds}s while waiting for media generation${lastBackendUpdateLabel ? ` (last backend update ${lastBackendUpdateLabel})` : ""}. You can wait, or click Cancel and retry.`;
     }
-    return `No progress update for ${stalledSeconds}s. The draft may be delayed or stuck. You can wait, or click Cancel and retry.`;
-  }, [hasDetachedWorker, progress, stalledSeconds]);
+    return `No progress update for ${stalledSeconds}s${lastBackendUpdateLabel ? ` (last backend update ${lastBackendUpdateLabel})` : ""}. The draft may be delayed or stuck. You can wait, or click Cancel and retry.`;
+  }, [hasDetachedWorker, lastBackendUpdateLabel, progress, stalledSeconds, taskId]);
 
   // Track completion
   useEffect(() => {
@@ -877,7 +909,7 @@ export function AIDraftModal({
     }
 
     const marker = progress
-      ? `${progress.phase}|${progress.phaseLabel}|${progress.phaseDetail ?? ""}|${progress.slidesCompleted}|${progress.totalSlides}|${progress.completed ? 1 : 0}|${progress.error?.code ?? ""}|${progress.updatedAt ?? ""}|${progress.workerActive ? 1 : 0}`
+      ? `${progress.phase}|${progress.phaseLabel}|${progress.phaseDetail ?? ""}|${progress.slidesCompleted}|${progress.totalSlides}|${progress.completed ? 1 : 0}|${progress.error?.code ?? ""}|${progress.updatedAt ?? ""}|${progress.workerActive ? 1 : 0}|${progress.diagnostics?.operation ?? ""}|${progress.diagnostics?.model ?? ""}|${progress.diagnostics?.attempt ?? ""}|${progress.diagnostics?.startedAt ?? ""}|${progress.diagnostics?.deadlineAt ?? ""}`
       : "pending";
 
     if (marker !== lastProgressMarkerRef.current) {
@@ -897,6 +929,11 @@ export function AIDraftModal({
     progress?.error?.code,
     progress?.updatedAt,
     progress?.workerActive,
+    progress?.diagnostics?.operation,
+    progress?.diagnostics?.model,
+    progress?.diagnostics?.attempt,
+    progress?.diagnostics?.startedAt,
+    progress?.diagnostics?.deadlineAt,
     progressUpdatedAtMs,
   ]);
 
@@ -1196,6 +1233,11 @@ export function AIDraftModal({
     [referenceImages.length, uploadReferenceMutation, persistReferenceImages],
   );
 
+  const effectiveHeaderEnabled = hideTextOnSlides ? false : headerEnabled;
+  const effectiveShowDeckTitle = hideTextOnSlides ? false : showDeckTitle;
+  const effectiveFooterEnabled = hideTextOnSlides ? false : footerEnabled;
+  const effectiveShowPageNumber = hideTextOnSlides ? false : showPageNumber;
+
   const handleAutoModeChange = useCallback((enabled: boolean) => {
     setAutoMode(enabled);
   }, []);
@@ -1216,6 +1258,13 @@ export function AIDraftModal({
       console.warn("[AIDraftModal] Auto-resolve failed, using defaults:", err);
     }
 
+    const overrides = {
+      headerEnabled: effectiveHeaderEnabled,
+      showDeckTitle: effectiveShowDeckTitle,
+      footerEnabled: effectiveFooterEnabled,
+      showPageNumber: effectiveShowPageNumber,
+    };
+
     generateDraft.mutate(
       {
         deckId,
@@ -1233,6 +1282,9 @@ export function AIDraftModal({
         useCustomArticle: false,
         hideTextOnSlides: false,
         generateAudio: false,
+        headerCustomText: headerTitleText.trim() || undefined,
+        footerCustomText: footerText || undefined,
+        styleOverrides: overrides,
       },
       {
         onSuccess: (data) => {
@@ -1244,7 +1296,23 @@ export function AIDraftModal({
         },
       },
     );
-  }, [topic, resolveAutoDraftMutation, generateDraft, deckId, expectedVersion, numSlides, language, selectedCanvasWidth, selectedCanvasHeight]);
+  }, [
+    topic,
+    resolveAutoDraftMutation,
+    generateDraft,
+    deckId,
+    expectedVersion,
+    numSlides,
+    language,
+    selectedCanvasWidth,
+    selectedCanvasHeight,
+    effectiveHeaderEnabled,
+    effectiveShowDeckTitle,
+    effectiveFooterEnabled,
+    effectiveShowPageNumber,
+    headerTitleText,
+    footerText,
+  ]);
 
   const handleGenerate = useCallback(() => {
     if (advancedMediaOptionsEnabled) {
@@ -1510,11 +1578,6 @@ export function AIDraftModal({
     ),
   );
 
-  // Effective values for advanced toggles
-  const effectiveHeaderEnabled = hideTextOnSlides ? false : headerEnabled;
-  const effectiveShowDeckTitle = hideTextOnSlides ? false : showDeckTitle;
-  const effectiveFooterEnabled = hideTextOnSlides ? false : footerEnabled;
-  const effectiveShowPageNumber = hideTextOnSlides ? false : showPageNumber;
   const updateMediaModelExtraParam = useCallback((key: string, value: unknown) => {
     setMediaModelExtraParams((prev) => {
       const next: Record<string, unknown> = { ...prev };
@@ -2554,6 +2617,35 @@ export function AIDraftModal({
           </div>
           {progress.phaseDetail ? (
             <p className="text-xs text-muted-foreground">{progress.phaseDetail}</p>
+          ) : null}
+          {progress.diagnostics ? (
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 rounded-md border border-border/60 bg-muted/30 p-3 text-[11px] text-muted-foreground sm:grid-cols-3">
+              <div>Run: <span className="font-mono text-foreground">{progress.diagnostics.taskId.slice(0, 8)}</span></div>
+              {progress.diagnostics.operation ? (
+                <div>Step: <span className="font-mono text-foreground">{progress.diagnostics.operation}</span></div>
+              ) : null}
+              {progress.diagnostics.model ? (
+                <div>Model: <span className="font-mono text-foreground">{progress.diagnostics.model}</span></div>
+              ) : null}
+              {typeof progress.diagnostics.attempt === "number" && typeof progress.diagnostics.maxAttempts === "number" ? (
+                <div>Attempt: <span className="font-mono text-foreground">{progress.diagnostics.attempt}/{progress.diagnostics.maxAttempts}</span></div>
+              ) : null}
+              {progress.diagnostics.recipeId ? (
+                <div>Recipe: <span className="font-mono text-foreground">{progress.diagnostics.recipeId}</span></div>
+              ) : null}
+              {progress.diagnostics.compactionLevel ? (
+                <div>Level: <span className="font-mono text-foreground">{progress.diagnostics.compactionLevel}</span></div>
+              ) : null}
+              {lastBackendUpdateLabel ? (
+                <div>Backend: <span className="font-mono text-foreground">{lastBackendUpdateLabel}</span></div>
+              ) : null}
+              {typeof stepElapsedSeconds === "number" ? (
+                <div>Elapsed: <span className="font-mono text-foreground">{stepElapsedSeconds}s</span></div>
+              ) : null}
+              {typeof stepBudgetRemainingSeconds === "number" ? (
+                <div>Budget left: <span className="font-mono text-foreground">{stepBudgetRemainingSeconds}s</span></div>
+              ) : null}
+            </div>
           ) : null}
           <Progress value={progressPercent} />
           {showStalledWarning && (

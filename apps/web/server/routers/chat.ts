@@ -309,17 +309,22 @@ function validateDynamicParams(
 }
 
 /**
- * Validate upload URLs
+ * Validate image input URLs
  * - Allow relative URLs (/uploads/...)
- * - Allow configured domains
- * - Reject javascript: and data: URLs
+ * - Allow public http/https URLs
+ * - Allow data:image/*;base64,... URIs
+ * - Reject dangerous protocols like javascript: and non-image data: URLs
  */
 function isValidUploadUrl(url: string): boolean {
   if (!url || typeof url !== 'string') return false;
 
   // Reject dangerous protocols
-  if (/^(javascript|data|vbscript):/i.test(url)) {
+  if (/^(javascript|vbscript):/i.test(url)) {
     return false;
+  }
+
+  if (/^data:/i.test(url)) {
+    return /^data:image\/[a-zA-Z0-9.+-]+;base64,[a-zA-Z0-9+/=\s]+$/i.test(url);
   }
 
   // Allow relative URLs
@@ -1347,6 +1352,7 @@ export const chatRouter = router({
       if (isLLMSkill) {
         const { getProviderForModel } = await import("../services/llmRouter");
         const { deductCreditsForModel } = await import("../services/creditService");
+        const { executeSkillLlmWithFallback } = await import("../services/skillModelFallback");
 
         // Load skill's systemPrompt and knowledgebase from DB
         const skillDb = await getDb();
@@ -1421,7 +1427,12 @@ export const chatRouter = router({
           ];
           for (const imgUrl of refImageUrls) {
             // Convert relative URLs (e.g. /uploads/...) to absolute for external LLM API
-            const absoluteUrl = imgUrl.startsWith("http") ? imgUrl : `${baseUrl}${imgUrl}`;
+            const absoluteUrl = (
+              imgUrl.startsWith("http")
+              || /^data:image\//i.test(imgUrl)
+            )
+              ? imgUrl
+              : `${baseUrl}${imgUrl}`;
             contentParts.push({ type: "image_url", image_url: { url: absoluteUrl } });
           }
           llmMessages.push({ role: "user", content: contentParts });
@@ -1495,183 +1506,107 @@ export const chatRouter = router({
           };
         }
 
-        // Resolve provider, applying skill-level provider pinning hints
-        const provider = await getProviderForModel(llmModel, {
-          preferredProviderId: executionPolicy.preferredProviderId,
-          strictProviderPin: executionPolicy.strictProviderPin,
+        debugLog("Chat", `[executeSkill] LLM skill '${input.skillId}' mode='${executionMode}', model=${llmModel}, modelSource=${executionPolicy.modelSource}, refImages=${refImageUrls.length}`);
+
+        // Execute with intelligent model-level fallback (tries up to 5 models)
+        const fallbackResult = await executeSkillLlmWithFallback({
+          messages: llmMessages,
+          skillSlug: input.skillId,
+          userId: ctx.user.id,
+          executionPolicy,
         });
-        if (!provider) {
+
+        if (!fallbackResult.success) {
+          // Log attempt history summary
+          const attemptSummary = fallbackResult.attempts
+            .map((a) => `#${a.attempt} ${a.providerName}/${a.modelId} → ${a.errorType || "no_provider"} (${a.durationMs}ms)`)
+            .join("; ");
+          console.error(`[executeSkill] All models failed for '${input.skillId}': ${attemptSummary}`);
+
           return {
             success: false,
             skillId: input.skillId,
             type: "text" as const,
-            error: "No LLM provider available. Please check provider settings.",
+            error: fallbackResult.error || "LLM skill execution failed after all model attempts",
             message: undefined as string | undefined,
             resultUrl: undefined as string | undefined,
             resultUrls: undefined as string[] | undefined,
           };
         }
 
-        debugLog("Chat", `[executeSkill] LLM skill '${input.skillId}' mode='${executionMode}', model=${llmModel}, modelSource=${executionPolicy.modelSource}, providerModel=${provider.providerModelId}, provider=${provider.providerName}, refImages=${refImageUrls.length}`);
+        // Success — extract results from the successful attempt
+        const content = fallbackResult.content!;
+        const usedModel = fallbackResult.modelId!;
+        const provider = fallbackResult.provider!;
+        const inputTokens = fallbackResult.inputTokens ?? 0;
+        const outputTokens = fallbackResult.outputTokens ?? 0;
 
-        try {
-          // Call provider API directly (same approach as proxyChatWithCredits)
-          const baseUrl = provider.baseUrl.replace(/\/+$/, "");
-          const apiUrl = baseUrl.includes("/v1") ? `${baseUrl}/chat/completions` : `${baseUrl}/v1/chat/completions`;
+        // Log if fallback was needed
+        if (fallbackResult.attempts.length > 1) {
+          const failedAttempts = fallbackResult.attempts.filter((a) => !a.success);
+          console.info(
+            `[executeSkill] Skill '${input.skillId}' succeeded on attempt ${fallbackResult.attempts.length} ` +
+            `(${provider.providerName}/${usedModel}) after ${failedAttempts.length} failed attempt(s): ` +
+            failedAttempts.map((a) => `${a.providerName}/${a.modelId}→${a.errorType}`).join(", "),
+          );
+        }
 
-          // Audit: log LLM skill request (scrub message content for PII)
-          const skillStartTime = Date.now();
-          auditLogger.log({
-            eventType: "llm_request",
-            userId: ctx.user.id,
-            providerId: provider.providerId,
-            providerName: provider.providerName,
-            model: provider.providerModelId,
-            requestType: "skill",
-            requestPayload: {
-              skillSlug: input.skillId,
-              messageCount: llmMessages.length,
-              messages: llmMessages.map((m) => ({
-                role: m.role,
-                contentLength: m.content.length,
-              })),
-            },
-          });
+        // Deduct credits for the successful model
+        const { creditsUsed } = await deductCreditsForModel({
+          userId: ctx.user.id,
+          model: usedModel,
+          provider: provider.providerName,
+          inputTokens,
+          outputTokens,
+          costUsd: fallbackResult.rawData?.usage?.cost as number | undefined,
+          conversationId: input.conversationId,
+          skillSlug: input.skillId,
+          sourceType: "skill",
+        });
 
-          const llmResponse = await fetch(apiUrl, {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${provider.apiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: provider.providerModelId,
-              messages: llmMessages,
-              stream: false,
-            }),
-          });
-
-          if (!llmResponse.ok) {
-            const errorText = await llmResponse.text().catch(() => "Unknown error");
-            console.error(`[executeSkill] LLM API error ${llmResponse.status}:`, errorText);
-            auditLogger.log({
-              eventType: "llm_response",
-              userId: ctx.user.id,
-              providerId: provider.providerId,
-              providerName: provider.providerName,
-              model: provider.providerModelId,
-              requestType: "skill",
-              statusCode: llmResponse.status,
-              errorType: `http_${llmResponse.status}`,
-              errorMessage: errorText.slice(0, 500),
-              timing: { totalMs: Date.now() - skillStartTime },
-            });
-            return {
-              success: false,
-              skillId: input.skillId,
-              type: "text" as const,
-              error: `LLM API error (${llmResponse.status}): ${errorText.substring(0, 200)}`,
-              message: undefined as string | undefined,
-              resultUrl: undefined as string | undefined,
-              resultUrls: undefined as string[] | undefined,
-            };
-          }
-
-          const llmData = await llmResponse.json();
-          const content = llmData?.choices?.[0]?.message?.content || "No response generated";
-          const inputTokens = llmData?.usage?.prompt_tokens ?? 0;
-          const outputTokens = llmData?.usage?.completion_tokens ?? 0;
-
-          // Audit: log LLM skill response
-          auditLogger.log({
-            eventType: "llm_response",
-            userId: ctx.user.id,
-            providerId: provider.providerId,
-            providerName: provider.providerName,
-            model: provider.providerModelId,
-            requestType: "skill",
-            inputTokens,
-            outputTokens,
-            statusCode: 200,
-            timing: { totalMs: Date.now() - skillStartTime },
-            responsePayload: {
-              usage: {
-                prompt_tokens: inputTokens,
-                completion_tokens: outputTokens,
-              },
-              contentLength: content.length,
-              skillSlug: input.skillId,
-            },
-          });
-
-          // Deduct credits
-          const { creditsUsed } = await deductCreditsForModel({
-            userId: ctx.user.id,
-            model: llmModel,
+        // Record step attempt for planner tracking
+        if (plannerResult) {
+          recordStepAttempt({
+            taskRunId: plannerResult.taskRunId,
+            plan: plannerResult.plan,
+            model: usedModel,
             provider: provider.providerName,
             inputTokens,
             outputTokens,
-            costUsd: llmData?.usage?.cost,
-            conversationId: input.conversationId,
-            skillSlug: input.skillId,
-            sourceType: "skill",
-          });
+            costUsd: (fallbackResult.rawData?.usage?.cost as number | undefined)?.toString(),
+            snapshot: plannerResult.snapshot,
+            creditsUsed,
+          }).catch(() => {});
+        }
 
-          // Record step attempt for planner tracking
-          if (plannerResult) {
-            recordStepAttempt({
-              taskRunId: plannerResult.taskRunId,
-              plan: plannerResult.plan,
-              model: llmModel ?? "unknown",
-              provider: provider.providerName,
+        // Save as assistant message in conversation
+        if (input.conversationId) {
+          try {
+            await createMessage({
+              conversationId: input.conversationId,
+              role: "assistant",
+              content,
               inputTokens,
               outputTokens,
-              costUsd: llmData?.usage?.cost?.toString(),
-              snapshot: plannerResult.snapshot,
-              creditsUsed,
-            }).catch(() => {});
+              creditsUsed: creditsUsed.toString(),
+              modelUsed: usedModel,
+              skillUsed: input.skillId,
+            });
+          } catch (err) {
+            console.error("[executeSkill] Failed to save LLM skill message:", err);
           }
-
-          // Save as assistant message in conversation
-          if (input.conversationId) {
-            try {
-              await createMessage({
-                conversationId: input.conversationId,
-                role: "assistant",
-                content,
-                inputTokens,
-                outputTokens,
-                creditsUsed: creditsUsed.toString(),
-                modelUsed: llmModel,
-                skillUsed: input.skillId,
-              });
-            } catch (err) {
-              console.error("[executeSkill] Failed to save LLM skill message:", err);
-            }
-          }
-
-          return {
-            success: true,
-            skillId: input.skillId,
-            type: "text" as const,
-            message: content,
-            creditsUsed,
-            resultUrl: undefined as string | undefined,
-            resultUrls: undefined as string[] | undefined,
-            error: undefined as string | undefined,
-          };
-        } catch (err) {
-          console.error("[executeSkill] LLM skill execution failed:", err);
-          return {
-            success: false,
-            skillId: input.skillId,
-            type: "text" as const,
-            error: err instanceof Error ? err.message : "LLM skill execution failed",
-            message: undefined as string | undefined,
-            resultUrl: undefined as string | undefined,
-            resultUrls: undefined as string[] | undefined,
-          };
         }
+
+        return {
+          success: true,
+          skillId: input.skillId,
+          type: "text" as const,
+          message: content,
+          creditsUsed,
+          resultUrl: undefined as string | undefined,
+          resultUrls: undefined as string[] | undefined,
+          error: undefined as string | undefined,
+        };
       }
 
       // Use the user's session token for media generation (from context)

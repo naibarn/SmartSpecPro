@@ -1,18 +1,52 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
-import { ChatSidebar, ChatView, MemoryPanel, SkillSettings, ArtifactPanel, MediaGenerationPanel, SchedulePanel, type Artifact } from "@/components/chat";
+import { ChatSidebar, ChatView, ChatHelpDialog, MemoryPanel, SkillSettings, ArtifactPanel, SchedulePanel, type Artifact } from "@/components/chat";
 import { CanvasPane } from "@/components/chat/canvas/CanvasPane";
+import { BrowserSessionHelpDialog } from "@/components/browser-session/BrowserSessionHelpDialog";
+import { BrowserSessionSummaryCard } from "@/components/browser-session/BrowserSessionSummaryCard";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, PanelLeftClose, Brain, Wand2, Layers, Sparkles, Bell, Menu } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { ChevronLeft, PanelLeftClose, Brain, Wand2, Layers, Bell, Menu, MonitorPlay, Loader2, Send, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  trackBrowserSessionOpened,
+  trackBrowserSessionReopened,
+} from "@/lib/analytics/browserSessionEvents";
+import {
+  buildBrowserSessionPath,
+} from "@/lib/browserSessionRouting";
+import {
+  detectBrowserSessionLaunchSuggestion,
+  type BrowserSessionLaunchSuggestion,
+} from "@/lib/browserSessionInvocation";
+import {
+  buildBrowserSessionSummary,
+  parseBrowserSessionArtifact,
+  type BrowserSessionArtifact,
+  type BrowserSessionLaunchContext,
+} from "@shared/browserSession";
+import {
+  BROWSER_SKILL_PRESETS,
+  buildBrowserInstruction,
+  deriveBrowserSkillSelection,
+  inferBrowserSkillId,
+} from "@shared/browserSkills";
+import type { LiveBrowserCreateSessionRequest } from "@shared/liveBrowser";
 
 
-type RightPanel = "none" | "memory" | "skills" | "artifacts" | "generate" | "schedule" | "canvas";
+type RightPanel = "none" | "memory" | "skills" | "artifacts" | "schedule" | "canvas";
 
 export default function Chat() {
-  const { isLoading, isAuthenticated } = useAuth();
+  const { isLoading, isAuthenticated, user } = useAuth();
   const [, setLocation] = useLocation();
 
   const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
@@ -23,22 +57,43 @@ export default function Chat() {
   const [initialDmUserId, setInitialDmUserId] = useState<number | null>(null);
   const [initialDmUserName, setInitialDmUserName] = useState<string>("");
   const [initialAlertId, setInitialAlertId] = useState<number | null>(null);
+  const [returnBrowserSessionId, setReturnBrowserSessionId] = useState<string | null>(null);
+  const [browserSessionSuggestion, setBrowserSessionSuggestion] = useState<BrowserSessionLaunchSuggestion | null>(null);
+  const [browserSessionArtifactOverride, setBrowserSessionArtifactOverride] = useState<BrowserSessionArtifact | null>(null);
+  const [browserCommandDraft, setBrowserCommandDraft] = useState("");
+  const [browserCommandSkillId, setBrowserCommandSkillId] = useState(() => inferBrowserSkillId(""));
+  const [browserCommandSkillSelectionMode, setBrowserCommandSkillSelectionMode] = useState<"auto" | "manual">("auto");
+  const [browserCommandBusy, setBrowserCommandBusy] = useState(false);
+  const [browserCommandNotice, setBrowserCommandNotice] = useState<string | null>(null);
 
   const utils = trpc.useUtils();
 
   // Get available models from LLM providers (for default model)
   const { data: modelsData } = trpc.llmProviders.availableModels.useQuery();
-
   // Fetch messages to extract artifacts
   const { data: messagesData } = trpc.chat.getMessages.useQuery(
     { conversationId: selectedConversationId!, limit: 100 },
     { enabled: !!selectedConversationId }
   );
+  const createLiveBrowserSessionMutation = trpc.liveBrowser.createSession.useMutation();
+  const sendLiveBrowserCommandMutation = trpc.liveBrowser.sendCommand.useMutation();
+  const saveAssistantMessageMutation = trpc.chat.saveAssistantMessage.useMutation();
+
+  const browserSessionArtifacts = useMemo(
+    () => (messagesData || [])
+      .flatMap((message) => (message.artifacts || []))
+      .map((artifact) => parseBrowserSessionArtifact(artifact.metadata?.browserSession))
+      .filter((artifact) => artifact !== null),
+    [messagesData],
+  );
+  const latestBrowserSessionArtifact = browserSessionArtifacts.at(-1) ?? null;
+  const activeBrowserSessionArtifact = browserSessionArtifactOverride ?? latestBrowserSessionArtifact;
+  const chatBrowserSessionEnabled = true;
 
   // Extract artifacts from messages
   const artifacts: Artifact[] = (messagesData || [])
     .flatMap((m) => (m.artifacts as Artifact[]) || [])
-    .filter((a): a is Artifact => !!a && typeof a === "object");
+    .filter((a): a is Artifact => !!a && typeof a === "object" && !a.metadata?.browserSession);
 
   // Create conversation mutation
   const createConversationMutation = trpc.chat.createConversation.useMutation({
@@ -71,9 +126,13 @@ export default function Chat() {
 
     const alertId = params.get("alertId");
     const conversationId = params.get("c");
+    const browserSessionId = params.get("browserSessionId");
 
     if (conversationId) {
       setSelectedConversationId(Number(conversationId));
+      if (browserSessionId) {
+        setReturnBrowserSessionId(browserSessionId);
+      }
       window.history.replaceState({}, "", "/chat");
     } else if (dm) {
       setInitialDmUserId(Number(dm));
@@ -87,15 +146,292 @@ export default function Chat() {
     }
   }, []);
 
-  // Create new conversation with default model from LLM Provider
-  const handleNewChat = async () => {
-    // Find the default model from LLM Provider settings
-    const defaultModel = modelsData?.models?.find(m => m.isDefault);
+  const buildChatLaunchContext = (
+    sessionId: string,
+    conversationId: number | null = selectedConversationId,
+  ): BrowserSessionLaunchContext | null => {
+    if (!conversationId) {
+      return null;
+    }
 
-    const result = await createConversationMutation.mutateAsync({
-      title: "New Chat",
-      model: defaultModel?.id, // Use default model from LLM Provider
+    return {
+      originSurface: "chat",
+      originLabel: "Chat",
+      sourceId: String(conversationId),
+      returnContext: {
+        path: `/chat?c=${conversationId}&browserSessionId=${encodeURIComponent(sessionId)}`,
+        label: "Return to Chat",
+      },
+    };
+  };
+
+  const buildChatBrowserSessionArtifact = async (
+    sessionId: string,
+    launchContext: BrowserSessionLaunchContext | null,
+    conversationId: number | null = selectedConversationId,
+  ): Promise<BrowserSessionArtifact | null> => {
+    if (!conversationId || !user?.id) {
+      return null;
+    }
+
+    const actor = {
+      actorType: "user" as const,
+      actorId: String(user.id),
+    };
+    const session = await utils.liveBrowser.getSession.fetch({
+      sessionId,
+      actor,
     });
+    return {
+      sessionId: session.sessionId,
+      summary: buildBrowserSessionSummary(session, { launchContext }),
+      launchContext: launchContext ?? undefined,
+      updatedAt: session.lastActivityAt,
+    } satisfies BrowserSessionArtifact;
+  };
+
+  const persistBrowserSessionSummary = async (
+    sessionId: string,
+    launchContext: BrowserSessionLaunchContext | null,
+    content: string,
+    conversationId: number | null = selectedConversationId,
+  ) => {
+    const artifact = await buildChatBrowserSessionArtifact(sessionId, launchContext, conversationId);
+    if (!conversationId || !artifact) {
+      return;
+    }
+    setBrowserSessionArtifactOverride(artifact);
+
+    await saveAssistantMessageMutation.mutateAsync({
+      conversationId,
+      content,
+      artifacts: [
+        {
+          id: `browser-session-${artifact.sessionId}-${artifact.updatedAt ?? "latest"}`,
+          type: "markdown",
+          title: "Browser Session",
+          content: artifact.summary.statusLine,
+          metadata: {
+            browserSession: {
+              sessionId: artifact.sessionId,
+              summary: artifact.summary,
+              launchContext: artifact.launchContext,
+              updatedAt: artifact.updatedAt,
+            },
+          },
+        },
+      ],
+    });
+    utils.chat.getMessages.invalidate({ conversationId });
+  };
+
+  useEffect(() => {
+    if (!returnBrowserSessionId || !selectedConversationId) {
+      return;
+    }
+
+    const launchContext = buildChatLaunchContext(returnBrowserSessionId);
+    persistBrowserSessionSummary(
+      returnBrowserSessionId,
+      launchContext,
+      "Browser Session returned to Chat.",
+    ).finally(() => {
+      setReturnBrowserSessionId(null);
+    });
+  }, [returnBrowserSessionId, selectedConversationId]);
+
+  useEffect(() => {
+    setBrowserSessionSuggestion(null);
+  }, [selectedConversationId, chatBrowserSessionEnabled]);
+
+  useEffect(() => {
+    setBrowserSessionArtifactOverride(null);
+    setBrowserCommandDraft("");
+    setBrowserCommandSkillId(inferBrowserSkillId(""));
+    setBrowserCommandSkillSelectionMode("auto");
+    setBrowserCommandNotice(null);
+    setBrowserCommandBusy(false);
+  }, [selectedConversationId]);
+
+  const handleBrowserCommandDraftChange = (nextValue: string) => {
+    setBrowserCommandDraft(nextValue);
+    const nextSelection = deriveBrowserSkillSelection({
+      draft: nextValue,
+      currentSkillId: browserCommandSkillId,
+      selectionMode: browserCommandSkillSelectionMode,
+    });
+    setBrowserCommandSkillId(nextSelection.skillId);
+    setBrowserCommandSkillSelectionMode(nextSelection.selectionMode);
+  };
+
+  const handleBrowserCommandSkillChange = (value: typeof browserCommandSkillId) => {
+    setBrowserCommandSkillId(value);
+    setBrowserCommandSkillSelectionMode("manual");
+  };
+
+  const createConversationWithDefaultModel = async (title = "New Chat") => {
+    const defaultModel = modelsData?.models?.find(m => m.isDefault);
+    return createConversationMutation.mutateAsync({
+      title,
+      model: defaultModel?.id,
+    });
+  };
+
+  const ensureConversationId = async () => {
+    if (selectedConversationId) {
+      return selectedConversationId;
+    }
+    const result = await createConversationWithDefaultModel();
+    setSelectedConversationId(result.id);
+    return result.id;
+  };
+
+  const handleOpenBrowserSession = async (options?: {
+    launchPath?: "direct" | "suggested";
+    launchIntent?: BrowserSessionLaunchSuggestion["launchIntent"];
+    executionIntent?: LiveBrowserCreateSessionRequest["executionIntent"];
+  }) => {
+    if (!user?.id) {
+      return;
+    }
+
+    const conversationId = await ensureConversationId();
+    const launchPath = options?.launchPath ?? "direct";
+    const launchIntent = options?.launchIntent;
+
+    if (
+      latestBrowserSessionArtifact?.sessionId
+      && latestBrowserSessionArtifact.launchContext?.sourceId === String(conversationId)
+    ) {
+      trackBrowserSessionReopened({
+        origin_surface: "chat",
+        compact_layout: window.innerWidth < 768,
+        session_kind: "resumed",
+        launch_path: launchPath,
+        launch_intent: launchIntent,
+      });
+      const launchContext = buildChatLaunchContext(latestBrowserSessionArtifact.sessionId, conversationId);
+      setLocation(buildBrowserSessionPath(latestBrowserSessionArtifact.sessionId, launchContext));
+      return;
+    }
+
+    const actor = {
+      actorType: "user" as const,
+      actorId: String(user.id),
+    };
+    const created = await createLiveBrowserSessionMutation.mutateAsync({
+      actor,
+      sourceType: "chat",
+      sourceId: String(conversationId),
+      mode: "observe",
+      executionIntent: options?.executionIntent,
+    });
+    const launchContext = buildChatLaunchContext(created.sessionId, conversationId);
+    await persistBrowserSessionSummary(
+      created.sessionId,
+      launchContext,
+      "Opened Browser Session from Chat.",
+      conversationId,
+    );
+    trackBrowserSessionOpened({
+      origin_surface: "chat",
+      compact_layout: window.innerWidth < 768,
+      session_kind: "created",
+      launch_path: launchPath,
+      launch_intent: launchIntent,
+    });
+    setLocation(buildBrowserSessionPath(created.sessionId, launchContext));
+  };
+
+  const handleUserMessageSent = (message: string) => {
+    if (!selectedConversationId || !chatBrowserSessionEnabled) {
+      setBrowserSessionSuggestion(null);
+      return;
+    }
+
+    setBrowserSessionSuggestion(
+      detectBrowserSessionLaunchSuggestion({
+        message,
+        originSurface: "chat",
+        sourceId: String(selectedConversationId),
+      }),
+    );
+  };
+
+  const handleConfirmBrowserSessionSuggestion = async (
+    suggestion: BrowserSessionLaunchSuggestion,
+  ) => {
+    setBrowserSessionSuggestion(null);
+    await handleOpenBrowserSession({
+      launchPath: "suggested",
+      launchIntent: suggestion.launchIntent,
+      executionIntent: {
+        prompt: suggestion.triggerMessage,
+        skillId: inferBrowserSkillId(suggestion.triggerMessage),
+        discoverWebsites: suggestion.launchIntent === "research_in_browser",
+      },
+    });
+  };
+
+  const handleDismissBrowserSessionSuggestion = (suggestionId: string) => {
+    setBrowserSessionSuggestion((current) => (
+      current?.suggestionId === suggestionId ? null : current
+    ));
+  };
+
+  const handleSendBrowserSessionCommand = async () => {
+    if (!activeBrowserSessionArtifact?.sessionId || !selectedConversationId || !user?.id || !browserCommandDraft.trim()) {
+      return;
+    }
+
+    try {
+      setBrowserCommandBusy(true);
+      setBrowserCommandNotice(null);
+      const actor = {
+        actorType: "user" as const,
+        actorId: String(user.id),
+      };
+      const session = await utils.liveBrowser.getSession.fetch({
+        sessionId: activeBrowserSessionArtifact.sessionId,
+        actor,
+      });
+
+      await sendLiveBrowserCommandMutation.mutateAsync({
+        sessionId: session.sessionId,
+        sessionVersion: session.sessionVersion,
+        idempotencyKey: `chat-browser-cmd-${Date.now()}`,
+        actor,
+        command: {
+          type: "natural_language",
+          text: buildBrowserInstruction({
+            goal: browserCommandDraft.trim(),
+            skillId: browserCommandSkillId,
+          }),
+        },
+      });
+
+      const refreshedArtifact = await buildChatBrowserSessionArtifact(
+        activeBrowserSessionArtifact.sessionId,
+        activeBrowserSessionArtifact.launchContext ?? buildChatLaunchContext(activeBrowserSessionArtifact.sessionId),
+      );
+      if (refreshedArtifact) {
+        setBrowserSessionArtifactOverride(refreshedArtifact);
+      }
+      setBrowserCommandDraft("");
+      setBrowserCommandSkillId(inferBrowserSkillId(""));
+      setBrowserCommandSkillSelectionMode("auto");
+      setBrowserCommandNotice("Instruction queued for this Browser Session.");
+    } catch (error) {
+      setBrowserCommandNotice(
+        error instanceof Error ? error.message : "Failed to queue Browser Session instruction.",
+      );
+    } finally {
+      setBrowserCommandBusy(false);
+    }
+  };
+
+  const handleNewChat = async () => {
+    const result = await createConversationWithDefaultModel();
     setSelectedConversationId(result.id);
   };
 
@@ -190,15 +526,7 @@ export default function Chat() {
           <h1 className="text-lg font-semibold hidden sm:block">AI Chat</h1>
         </div>
         <div className="flex items-center gap-1">
-          <Button
-            variant={rightPanel === "generate" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setRightPanel(rightPanel === "generate" ? "none" : "generate")}
-            className="gap-2"
-          >
-            <Sparkles className="h-4 w-4" />
-            <span className="hidden sm:inline">Generate</span>
-          </Button>
+          <ChatHelpDialog buttonVariant="ghost" buttonSize="sm" buttonClassName="gap-2" />
           <Button
             variant={rightPanel === "skills" ? "secondary" : "ghost"}
             size="sm"
@@ -241,6 +569,29 @@ export default function Chat() {
           >
             <Brain className="h-4 w-4" />
             <span className="hidden sm:inline">Memory</span>
+          </Button>
+          {chatBrowserSessionEnabled && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void handleOpenBrowserSession()}
+              className="gap-2"
+              disabled={createLiveBrowserSessionMutation.isPending}
+            >
+              <MonitorPlay className="h-4 w-4" />
+              <span className="hidden sm:inline">
+                {latestBrowserSessionArtifact?.summary.primaryActionLabel ?? "Open Browser Session"}
+              </span>
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLocation("/agencies")}
+            className="gap-2"
+          >
+            <Users className="h-4 w-4" />
+            <span className="hidden sm:inline">Agencies</span>
           </Button>
         </div>
       </div>
@@ -300,10 +651,110 @@ export default function Chat() {
         {/* Chat View */}
         <div className="flex-1 overflow-hidden">
           {selectedConversationId ? (
-            <ChatView
-              conversationId={selectedConversationId}
-              onTitleUpdate={handleTitleUpdate}
-            />
+            <div className="flex h-full flex-col">
+              {chatBrowserSessionEnabled && !activeBrowserSessionArtifact ? (
+                <div className="border-b border-cyan-100 bg-cyan-50/20 px-4 py-3">
+                  <div className="flex flex-col gap-3 rounded-xl border border-cyan-200 bg-white p-4 shadow-sm md:flex-row md:items-center md:justify-between">
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-900/70">
+                        Browser Session
+                      </p>
+                      <p className="text-sm font-semibold text-slate-900">
+                        Let AI work in a live browser directly from this chat.
+                      </p>
+                      <p className="text-xs text-slate-600">
+                        Start a Browser Session to let AI discover sites, navigate pages, and continue working while you stay in Chat.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        type="button"
+                        className="gap-2 bg-cyan-700 text-white hover:bg-cyan-800"
+                        onClick={() => void handleOpenBrowserSession()}
+                        disabled={createLiveBrowserSessionMutation.isPending}
+                      >
+                        {createLiveBrowserSessionMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <MonitorPlay className="h-4 w-4" />
+                        )}
+                        Start Browser Session
+                      </Button>
+                      <BrowserSessionHelpDialog />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+              {chatBrowserSessionEnabled && activeBrowserSessionArtifact ? (
+                <div className="border-b border-cyan-100 bg-cyan-50/30 px-4 py-3">
+                  <BrowserSessionSummaryCard
+                    artifact={activeBrowserSessionArtifact}
+                    onOpen={(artifact) => {
+                      const launchContext = artifact.launchContext ?? buildChatLaunchContext(artifact.sessionId);
+                      setLocation(buildBrowserSessionPath(artifact.sessionId, launchContext));
+                    }}
+                  >
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-900/70">
+                          Quick Browser Instruction
+                        </p>
+                        <p className="mt-1 text-xs text-slate-600">
+                          Describe the next result you want or the step AI should take without leaving Chat.
+                        </p>
+                      </div>
+                      <Select
+                        value={browserCommandSkillId}
+                        onValueChange={(value) => handleBrowserCommandSkillChange(value as typeof browserCommandSkillId)}
+                      >
+                        <SelectTrigger className="bg-white">
+                          <SelectValue placeholder="Choose a browser skill" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {BROWSER_SKILL_PRESETS.map((preset) => (
+                            <SelectItem key={preset.id} value={preset.id}>
+                              {preset.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Textarea
+                        value={browserCommandDraft}
+                        onChange={(event) => handleBrowserCommandDraftChange(event.target.value)}
+                        placeholder="Example: Find the best site for this task, compare options, and continue."
+                        className="min-h-[88px] bg-white"
+                      />
+                      {browserCommandNotice ? (
+                        <p className="text-xs text-slate-600">{browserCommandNotice}</p>
+                      ) : null}
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="gap-2 bg-cyan-700 text-white hover:bg-cyan-800"
+                        onClick={() => void handleSendBrowserSessionCommand()}
+                        disabled={!browserCommandDraft.trim() || browserCommandBusy}
+                      >
+                        {browserCommandBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                        {browserCommandBusy ? "Queuing Instruction..." : "Send Browser Instruction"}
+                      </Button>
+                    </div>
+                  </BrowserSessionSummaryCard>
+                </div>
+              ) : null}
+              <div className="min-h-0 flex-1 overflow-hidden">
+                <ChatView
+                  conversationId={selectedConversationId}
+                  onTitleUpdate={handleTitleUpdate}
+                  browserSessionSuggestion={browserSessionSuggestion}
+                  showBrowserSessionEntry={chatBrowserSessionEnabled}
+                  onStartBrowserSession={() => void handleOpenBrowserSession()}
+                  browserSessionEntryPending={createLiveBrowserSessionMutation.isPending}
+                  onUserMessageSent={handleUserMessageSent}
+                  onConfirmBrowserSessionSuggestion={handleConfirmBrowserSessionSuggestion}
+                  onDismissBrowserSessionSuggestion={handleDismissBrowserSessionSuggestion}
+                />
+              </div>
+            </div>
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-4">
               <div className="text-center">
@@ -315,15 +766,51 @@ export default function Chat() {
               <Button onClick={handleNewChat} size="lg" className="mt-4">
                 Start New Chat
               </Button>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {chatBrowserSessionEnabled ? (
+                  <>
+                    <Button
+                      type="button"
+                      size="lg"
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => void handleOpenBrowserSession()}
+                      disabled={createLiveBrowserSessionMutation.isPending}
+                    >
+                      {createLiveBrowserSessionMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <MonitorPlay className="h-4 w-4" />
+                      )}
+                      Start Browser Session
+                    </Button>
+                    <BrowserSessionHelpDialog buttonSize="lg" />
+                  </>
+                ) : null}
+                <Button
+                  type="button"
+                  size="lg"
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => setLocation("/agencies")}
+                >
+                  <Users className="h-4 w-4" />
+                  Explore Agencies
+                </Button>
+              </div>
             </div>
           )}
         </div>
 
         {/* Right Panel (Memory or Skills) */}
         <div
+          data-testid="chat-right-panel"
+          aria-hidden={rightPanel === "none"}
           className={cn(
-            "w-full sm:w-96 lg:w-[28rem] flex-shrink-0 border-l transition-all duration-200 overflow-hidden",
-            rightPanel !== "none" ? "translate-x-0" : "translate-x-full w-0 border-l-0"
+            "flex h-full min-h-0 flex-shrink-0 flex-col overflow-hidden transition-all duration-200",
+            rightPanel !== "none"
+              ? "w-full translate-x-0 border-l sm:w-96 lg:w-[28rem]"
+              : "pointer-events-none w-0 translate-x-full border-l-0"
           )}
         >
           {rightPanel === "memory" && (
@@ -350,9 +837,6 @@ export default function Chat() {
               conversationId={selectedConversationId}
               onClose={() => setRightPanel("none")}
             />
-          )}
-          {rightPanel === "generate" && (
-            <MediaGenerationPanel />
           )}
           {rightPanel === "schedule" && (
             <SchedulePanel

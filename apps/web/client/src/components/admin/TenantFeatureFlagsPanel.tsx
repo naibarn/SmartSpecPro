@@ -35,6 +35,9 @@ const FLAG_GROUPS: { title: string; flags: FlagInfo[] }[] = [
     flags: [
       { key: "browserTool", label: "Browser Automation", description: "AI-controlled web browsing" },
       { key: "automationCopilot", label: "Automation Copilot", description: "LLM-driven browser task planner and executor" },
+      { key: "chatBrowserSessionEntry", label: "Chat Browser Session", description: "Start and reopen Browser Session from Chat" },
+      { key: "agencyBrowserSessionUi", label: "Agency Browser Session", description: "Show Browser Session nodes and session state in Agency" },
+      { key: "workflowBrowserSessionNodes", label: "Workflow Browser Session Nodes", description: "Enable collaborative Browser Session nodes in Workflow" },
       { key: "canvas", label: "Canvas / AI Artifacts", description: "Interactive artifact rendering" },
       { key: "voiceChat", label: "Voice Chat Mode", description: "Real-time voice conversation" },
       { key: "crossAgency", label: "Cross-Agency Communication", description: "Agents calling other agents" },

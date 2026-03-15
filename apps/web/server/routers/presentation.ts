@@ -106,6 +106,104 @@ const DOCUMENT_MANAGEMENT_ROUTE_BASE =
   "/document-management?scope=my_library&sort=updated_desc&mode=editor&doc=";
 // 50MB binary file + base64 overhead.
 const MAX_PRESENTATION_UPLOAD_BASE64_LENGTH = 68_000_000;
+const AI_DRAFT_STALLED_PROGRESS_MS = 60_000;
+const AI_DRAFT_STALLED_LOCK_TTL_SECONDS = 240;
+
+type DraftProgressStatus = {
+  phase: number;
+  phaseLabel: string;
+  phaseDetail?: string;
+  slidesCompleted: number;
+  totalSlides: number;
+  slidePreview: Array<{ title: string; imageStatus: string }>;
+  completed: boolean;
+  updatedAt?: string;
+  workerActive?: boolean;
+  diagnostics?: {
+    taskId: string;
+    operation?: string;
+    model?: string;
+    recipeId?: string;
+    compactionLevel?: "balanced" | "compact" | "aggressive";
+    attempt?: number;
+    maxAttempts?: number;
+    startedAt?: string;
+    deadlineAt?: string;
+  };
+  cancelled?: boolean;
+  error?: { code: string; message: string };
+  result?: { slidesAdded: number; newDeckVersion: number; articlePreview: string; warnings: string[] };
+};
+
+type StoredDraftProgress = DraftProgressStatus & {
+  userId?: number;
+};
+
+export function finalizeStalledDraftProgress(options: {
+  progress: StoredDraftProgress;
+  taskId: string;
+  workerActive: boolean;
+  lockTtlSeconds?: number | null;
+  nowMs?: number;
+}): {
+  progress: StoredDraftProgress;
+  workerActive: boolean;
+  shouldPersist: boolean;
+  shouldReleaseLock: boolean;
+} {
+  const updatedAt = options.progress.updatedAt;
+  const updatedAtMs = updatedAt ? Date.parse(updatedAt) : Number.NaN;
+  const nowMs = options.nowMs ?? Date.now();
+  const isStale = Number.isFinite(updatedAtMs)
+    ? nowMs - updatedAtMs >= AI_DRAFT_STALLED_PROGRESS_MS
+    : false;
+
+  if (options.progress.completed || !isStale) {
+    return {
+      progress: options.progress,
+      workerActive: options.workerActive,
+      shouldPersist: false,
+      shouldReleaseLock: false,
+    };
+  }
+
+  let errorMessage: string | null = null;
+  if (!options.workerActive) {
+    errorMessage = `Draft run stopped because no active worker remained attached during "${options.progress.phaseLabel}". Retry the draft.`;
+  } else if (
+    typeof options.lockTtlSeconds === "number"
+    && options.lockTtlSeconds > 0
+    && options.lockTtlSeconds <= AI_DRAFT_STALLED_LOCK_TTL_SECONDS
+  ) {
+    errorMessage = `Draft run stopped responding during "${options.progress.phaseLabel}". Retry the draft.`;
+  }
+
+  if (!errorMessage) {
+    return {
+      progress: options.progress,
+      workerActive: options.workerActive,
+      shouldPersist: false,
+      shouldReleaseLock: false,
+    };
+  }
+
+  return {
+    progress: {
+      ...options.progress,
+      completed: true,
+      cancelled: false,
+      error: {
+        code: "stalled",
+        message: errorMessage,
+      },
+      updatedAt: new Date(nowMs).toISOString(),
+      workerActive: false,
+    },
+    workerActive: false,
+    shouldPersist: true,
+    shouldReleaseLock: true,
+  };
+}
 
 function buildWrongTypeGuard(itemId: number, itemType: string): PresentationRouteBlockedResult {
   return {
@@ -569,22 +667,11 @@ export const presentationRouter = router({
 
     getDraftProgress: protectedProcedure
       .input(z.object({ taskId: z.string().min(1).max(128) }))
-      .query(async ({ input, ctx }): Promise<{
-        phase: number;
-        phaseLabel: string;
-        phaseDetail?: string;
-        slidesCompleted: number;
-        totalSlides: number;
-        slidePreview: Array<{ title: string; imageStatus: string }>;
-        completed: boolean;
-        updatedAt?: string;
-        workerActive?: boolean;
-        cancelled?: boolean;
-        error?: { code: string; message: string };
-        result?: { slidesAdded: number; newDeckVersion: number; articlePreview: string; warnings: string[] };
-      }> => {
+      .query(async ({ input, ctx }): Promise<DraftProgressStatus> => {
         const redis = getRedisClient();
-        const notFoundResponse = {
+        const progressKey = `ai_draft_progress:${input.taskId}`;
+        const lockKey = `ai_draft_lock:${ctx.user.id}`;
+        const notFoundResponse: DraftProgressStatus = {
           phase: 0,
           phaseLabel: "Unknown",
           slidesCompleted: 0,
@@ -595,18 +682,18 @@ export const presentationRouter = router({
           error: { code: "not_found", message: "Draft progress not found" },
         };
 
-        const raw = await redis.get(`ai_draft_progress:${input.taskId}`);
+        const raw = await redis.get(progressKey);
         if (!raw) {
           return notFoundResponse;
         }
 
-        let parsed: Record<string, unknown>;
+        let parsed: StoredDraftProgress;
         try {
           const result = JSON.parse(raw);
           if (typeof result !== "object" || result === null) {
             return notFoundResponse;
           }
-          parsed = result as Record<string, unknown>;
+          parsed = result as StoredDraftProgress;
         } catch {
           return notFoundResponse;
         }
@@ -616,8 +703,24 @@ export const presentationRouter = router({
           return notFoundResponse;
         }
 
-        const lockOwner = await redis.get(`ai_draft_lock:${ctx.user.id}`);
-        const workerActive = lockOwner === input.taskId;
+        const lockOwner = await redis.get(lockKey);
+        const initialWorkerActive = lockOwner === input.taskId;
+        const lockTtlSeconds = initialWorkerActive
+          ? await redis.ttl(lockKey).catch(() => null)
+          : null;
+        const stalledResolution = finalizeStalledDraftProgress({
+          progress: parsed,
+          taskId: input.taskId,
+          workerActive: initialWorkerActive,
+          lockTtlSeconds,
+        });
+        if (stalledResolution.shouldPersist) {
+          parsed = stalledResolution.progress;
+          await redis.set(progressKey, JSON.stringify(parsed), "EX", 3600);
+          if (stalledResolution.shouldReleaseLock && lockOwner === input.taskId) {
+            await redis.del(lockKey).catch(() => {});
+          }
+        }
 
         return {
           phase: typeof parsed.phase === "number" ? parsed.phase : 0,
@@ -628,7 +731,8 @@ export const presentationRouter = router({
           slidePreview: Array.isArray(parsed.slidePreview) ? parsed.slidePreview : [],
           completed: typeof parsed.completed === "boolean" ? parsed.completed : false,
           updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : undefined,
-          workerActive,
+          workerActive: stalledResolution.workerActive,
+          diagnostics: parsed.diagnostics && typeof parsed.diagnostics === "object" ? parsed.diagnostics as DraftProgressStatus["diagnostics"] : undefined,
           cancelled: typeof parsed.cancelled === "boolean" ? parsed.cancelled : undefined,
           error: parsed.error && typeof parsed.error === "object" ? parsed.error as { code: string; message: string } : undefined,
           result: parsed.result && typeof parsed.result === "object" ? parsed.result as { slidesAdded: number; newDeckVersion: number; articlePreview: string; warnings: string[] } : undefined,

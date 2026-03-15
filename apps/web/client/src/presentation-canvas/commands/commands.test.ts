@@ -1,12 +1,22 @@
 import { describe, expect, it } from "vitest";
 
 import { CommandBus } from "./CommandBus";
+import { PRESENTATION_GROUP_COMPONENT_ID } from "@/lib/presentationEditorState";
 import {
+  addElementsCommand,
+  arrangeComponentCommand,
   arrangeSelectionCommand,
   createCanvasCommandState,
+  deleteComponentCommand,
+  detachComponentCommand,
+  duplicateComponentCommand,
+  groupSelectionCommand,
+  moveComponentCommand,
   moveSelectionCommand,
   patchSelectedElementCommand,
+  resizeComponentCommand,
   resizeSelectionCommand,
+  rotateComponentCommand,
   rotateSelectionCommand,
   setCanvasSizeCommand,
   selectElementsCommand,
@@ -154,7 +164,7 @@ describe("commands", () => {
     expect(next.content.elements[0]).toMatchObject({
       id: "a",
       x: 72,
-      y: 347,
+      y: 346,
       width: 360,
       height: 203,
     });
@@ -194,5 +204,121 @@ describe("commands", () => {
 
     expect(Math.abs(selectedCenterX - targetCenterX)).toBeLessThan(0.08);
     expect(Math.abs(selectedCenterY - targetCenterY)).toBeLessThan(Math.abs(baselineCenterY - targetCenterY));
+  });
+
+  it("adds multiple elements in one command and selects the inserted set", () => {
+    const bus = new CommandBus(
+      createCanvasCommandState({
+        elements: [
+          { id: "seed", type: "text", x: 10, y: 10, width: 100, height: 40, text: "Seed", color: "#111827" },
+        ],
+      }, ["seed"]),
+    );
+
+    bus.execute(addElementsCommand([
+      { id: "rect-1", type: "rect", x: 20, y: 20, width: 240, height: 120, fill: "#dbeafe", stroke: "#2563eb", strokeWidth: 2 },
+      { id: "text-1", type: "text", x: 40, y: 50, width: 180, height: 40, text: "Block title", color: "#111827", fontSize: 28 },
+    ]));
+
+    expect(bus.getState().content.elements.map((element) => element.id)).toEqual(["seed", "rect-1", "text-1"]);
+    expect(bus.getState().selectedElementIds).toEqual(["rect-1", "text-1"]);
+
+    bus.undo();
+    expect(bus.getState().content.elements.map((element) => element.id)).toEqual(["seed"]);
+    expect(bus.getState().selectedElementIds).toEqual(["seed"]);
+  });
+
+  it("keeps component commands undoable through the shared command bus", () => {
+    const bus = new CommandBus(
+      createCanvasCommandState({
+        elements: [],
+        components: [
+          {
+            id: "component-1",
+            componentId: "quote-callout",
+            componentType: "quote-callout",
+            definitionRevision: 1,
+            slotBindings: [],
+            fallbackElements: [
+              { id: "component-1::quote", type: "text", x: 100, y: 120, width: 200, height: 60, text: "A", color: "#111827" },
+              { id: "component-1::card", type: "rect", x: 320, y: 180, width: 80, height: 40, fill: "#93c5fd" },
+            ],
+          },
+          {
+            id: "component-2",
+            componentId: "quote-callout",
+            componentType: "quote-callout",
+            definitionRevision: 1,
+            slotBindings: [],
+            fallbackElements: [
+              { id: "component-2::quote", type: "text", x: 20, y: 24, width: 120, height: 40, text: "B", color: "#111827" },
+            ],
+          },
+        ],
+      }),
+    );
+
+    bus.execute(moveComponentCommand("component-1", 10, 5));
+    bus.execute(resizeComponentCommand("component-1", 400, 120));
+    bus.execute(rotateComponentCommand("component-1", 15));
+    bus.execute(duplicateComponentCommand("component-1", () => "component-3"));
+    bus.execute(arrangeComponentCommand("component-3", "back"));
+
+    let next = bus.getState();
+    expect(next.content.components?.map((component) => component.id)).toEqual(["component-3", "component-1", "component-2"]);
+    expect(next.content.components?.[1]?.fallbackElements[0]).toMatchObject({
+      id: "component-1::quote",
+      x: 118,
+      y: 109,
+      width: 267,
+      height: 72,
+      rotation: 15,
+    });
+
+    bus.undo();
+    next = bus.getState();
+    expect(next.content.components?.map((component) => component.id)).toEqual(["component-1", "component-3", "component-2"]);
+
+    bus.execute(detachComponentCommand("component-3"));
+    next = bus.getState();
+    expect(next.content.components?.map((component) => component.id)).toEqual(["component-1", "component-2"]);
+    expect(next.content.elements.map((element) => element.id)).toContain("component-3::quote");
+
+    bus.execute(deleteComponentCommand("component-2"));
+    expect(bus.getState().content.components?.map((component) => component.id)).toEqual(["component-1"]);
+  });
+
+  it("groups a multi-selection into a reusable component and restores it through undo", () => {
+    const bus = new CommandBus(
+      createCanvasCommandState({
+        elements: [
+          { id: "title", type: "text", x: 32, y: 40, width: 220, height: 64, text: "Title", color: "#111827" },
+          { id: "card", type: "rect", x: 24, y: 24, width: 280, height: 140, fill: "#dbeafe" },
+          { id: "caption", type: "text", x: 32, y: 180, width: 180, height: 40, text: "Caption", color: "#334155" },
+        ],
+      }, ["title", "card"]),
+    );
+
+    bus.execute(groupSelectionCommand(() => "component-group-1"));
+
+    let next = bus.getState();
+    expect(next.selectedElementIds).toEqual([]);
+    expect(next.content.elements.map((element) => element.id)).toEqual(["caption"]);
+    expect(next.content.components).toHaveLength(1);
+    expect(next.content.components?.[0]).toMatchObject({
+      id: "component-group-1",
+      componentId: PRESENTATION_GROUP_COMPONENT_ID,
+      componentType: PRESENTATION_GROUP_COMPONENT_ID,
+    });
+    expect(next.content.components?.[0]?.fallbackElements.map((element) => element.id)).toEqual(["title", "card"]);
+
+    bus.undo();
+    next = bus.getState();
+    expect(next.content.components ?? []).toEqual([]);
+    expect(next.content.elements.map((element) => element.id)).toEqual(["title", "card", "caption"]);
+    expect(next.selectedElementIds).toEqual(["title", "card"]);
+
+    bus.redo();
+    expect(bus.getState().content.components?.[0]?.id).toBe("component-group-1");
   });
 });

@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  trackAIModeLockToggled,
+  trackAIModeOverrideSet,
+  trackAIRecipeOverrideApplied,
   trackAutosaveResult,
+  trackPresentationCustomBlockSaved,
   setPresentationEventEmitterForTests,
   trackMobileAccidentalTransformCancelled,
   trackMobileModeSwitch,
@@ -26,6 +30,32 @@ describe("presentationEvents", () => {
       slideId: 71,
       mode: "autosave",
     });
+    trackAIRecipeOverrideApplied({
+      deckId: 7,
+      slideId: 71,
+      previousRecipeId: "poster-spotlight",
+      nextRecipeId: "quote-callout",
+      source: "editor",
+    });
+    trackAIModeOverrideSet({
+      deckId: 7,
+      slideId: 71,
+      previousMode: "structured_block",
+      nextMode: "long_form_block",
+      source: "editor",
+    });
+    trackAIModeLockToggled({
+      deckId: 7,
+      slideId: 71,
+      mode: "long_form_block",
+      locked: true,
+      source: "editor",
+    });
+    trackPresentationCustomBlockSaved({
+      componentId: "quote-callout",
+      visibility: "team",
+      source: "ai-layout",
+    });
 
     expect(emitter).toHaveBeenCalledWith(
       "presentation_mobile_mode_switch",
@@ -38,6 +68,44 @@ describe("presentationEvents", () => {
     expect(emitter).toHaveBeenCalledWith(
       "presentation_autosave_result",
       { result: "saved", deckId: 7, slideId: 71, mode: "autosave" },
+    );
+    expect(emitter).toHaveBeenCalledWith(
+      "presentation_ai_recipe_override_applied",
+      {
+        deckId: 7,
+        slideId: 71,
+        previousRecipeId: "poster-spotlight",
+        nextRecipeId: "quote-callout",
+        source: "editor",
+      },
+    );
+    expect(emitter).toHaveBeenCalledWith(
+      "presentation_ai_mode_override_set",
+      {
+        deckId: 7,
+        slideId: 71,
+        previousMode: "structured_block",
+        nextMode: "long_form_block",
+        source: "editor",
+      },
+    );
+    expect(emitter).toHaveBeenCalledWith(
+      "presentation_ai_mode_lock_toggled",
+      {
+        deckId: 7,
+        slideId: 71,
+        mode: "long_form_block",
+        locked: true,
+        source: "editor",
+      },
+    );
+    expect(emitter).toHaveBeenCalledWith(
+      "presentation_custom_block_saved",
+      {
+        componentId: "quote-callout",
+        visibility: "team",
+        source: "ai-layout",
+      },
     );
 
     setPresentationEventEmitterForTests(null);

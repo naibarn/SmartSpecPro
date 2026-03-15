@@ -20,7 +20,16 @@ import {
   Play,
   Clock,
 } from "lucide-react";
+import { useLocation } from "wouter";
 import { useExecutionStore, type LogEntry } from "@/stores/executionStore";
+import { BrowserSessionSummaryCard } from "@/components/browser-session/BrowserSessionSummaryCard";
+import { ComparisonPreviewCard } from "@/components/comparison/ComparisonPreviewCard";
+import { buildBrowserSessionPath } from "@/lib/browserSessionRouting";
+import {
+  getWorkflowBrowserSessionArtifact,
+  normalizeWorkflowComparisonPreview,
+  stripWorkflowPresentationFields,
+} from "@/lib/workflow/outputPresentation";
 import { ApprovalPanel } from "./ApprovalPanel";
 
 export interface ExecutionLogPanelProps {
@@ -191,7 +200,11 @@ function RichOutputSection({
   output: Record<string, unknown>;
   onCopy: (text: string) => void;
 }) {
+  const [, setLocation] = useLocation();
   const [viewMode, setViewMode] = useState<"rich" | "json">("rich");
+  const browserSessionArtifact = getWorkflowBrowserSessionArtifact(output);
+  const comparisonPreview = normalizeWorkflowComparisonPreview(output);
+  const displayOutput = stripWorkflowPresentationFields(output);
 
   return (
     <div className="space-y-1">
@@ -244,7 +257,24 @@ function RichOutputSection({
           {JSON.stringify(output, null, 2)}
         </pre>
       ) : (
-        <RichOutputRenderer output={output} />
+        <div className="space-y-3">
+          {browserSessionArtifact ? (
+            <BrowserSessionSummaryCard
+              artifact={browserSessionArtifact}
+              onOpen={(artifact) => {
+                setLocation(buildBrowserSessionPath(artifact.sessionId, artifact.launchContext));
+              }}
+            />
+          ) : null}
+
+          {comparisonPreview ? (
+            <ComparisonPreviewCard preview={comparisonPreview} />
+          ) : null}
+
+          {displayOutput ? (
+            <RichOutputRenderer output={displayOutput} />
+          ) : null}
+        </div>
       )}
     </div>
   );

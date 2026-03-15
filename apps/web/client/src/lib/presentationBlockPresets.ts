@@ -14,7 +14,7 @@ const SVG_BY_ID = new Map(SVG_GRAPHICS.map((graphic) => [graphic.id, graphic.svg
 export interface PresentationBlockPresetDefinition {
   id: BuiltInPresentationComponentId;
   label: string;
-  category: "Process" | "Marketing" | "Data" | "Profile" | "Storytelling" | "Long-form";
+  category: "Process" | "Marketing" | "Data" | "Profile" | "Storytelling" | "Long-form" | "Document";
   description: string;
   accentColor: string;
 }
@@ -35,6 +35,13 @@ export const PRESENTATION_BLOCK_PRESETS: readonly PresentationBlockPresetDefinit
     category: "Process",
     description: "Milestone roadmap layout for launches, phases, and chronological narratives.",
     accentColor: "#0ea5e9",
+  },
+  {
+    id: "timeline-report",
+    label: "Timeline Report",
+    category: "Document",
+    description: "Full-page roadmap board for milestones that still need explanatory copy and next steps.",
+    accentColor: "#2563eb",
   },
   {
     id: "feature-highlights",
@@ -60,9 +67,37 @@ export const PRESENTATION_BLOCK_PRESETS: readonly PresentationBlockPresetDefinit
   {
     id: "sectioned-explainer",
     label: "Sectioned Explainer",
-    category: "Long-form",
-    description: "Text-heavy explanatory board for dense multi-section educational or article-style slides.",
+    category: "Document",
+    description: "Full-page explainer for dense multi-section educational or article-style slides.",
     accentColor: "#2563eb",
+  },
+  {
+    id: "article-focus",
+    label: "Editorial",
+    category: "Document",
+    description: "Full-page editorial layout with large visual area, long body copy, and key points.",
+    accentColor: "#059669",
+  },
+  {
+    id: "two-column-article",
+    label: "Split Article",
+    category: "Document",
+    description: "Full-page editorial/report layout for two strong sections with longer copy and a takeaway strip.",
+    accentColor: "#4338ca",
+  },
+  {
+    id: "faq-stack",
+    label: "FAQ Stack",
+    category: "Document",
+    description: "Full-page question-and-answer stack for dense support topics and educational FAQs.",
+    accentColor: "#2563eb",
+  },
+  {
+    id: "profile-board",
+    label: "Profile Sheet",
+    category: "Document",
+    description: "Full-page bio/resume sheet with experience, skills, and contact sections.",
+    accentColor: "#334155",
   },
   {
     id: "profile-summary",
@@ -101,10 +136,52 @@ export const PRESENTATION_BLOCK_PRESETS: readonly PresentationBlockPresetDefinit
   },
   {
     id: "photo-collage",
-    label: "Photo Collage",
-    category: "Storytelling",
-    description: "Two-photo editorial collage with narrative copy and caption support.",
+    label: "Photo Board",
+    category: "Document",
+    description: "Full-page photo-first board with editorial copy and support for multiple visual areas.",
     accentColor: "#2563eb",
+  },
+  {
+    id: "a4-photo-grid",
+    label: "Multi-Photo Board",
+    category: "Document",
+    description: "Full-page portrait board with one hero photo, four supporting images, and a short editorial summary.",
+    accentColor: "#4338ca",
+  },
+  {
+    id: "landscape-photo-story",
+    label: "Landscape Showcase",
+    category: "Document",
+    description: "Landscape editorial board with one dominant image, three supporting frames, and a concise highlights panel.",
+    accentColor: "#0f766e",
+  },
+  {
+    id: "fullpage-image",
+    label: "Full-Page Image",
+    category: "Document",
+    description: "Edge-to-edge image covering the entire page — no text, no overlay.",
+    accentColor: "#0284c7",
+  },
+  {
+    id: "fullpage-image-landscape",
+    label: "Full-Page Image (Landscape)",
+    category: "Document",
+    description: "Landscape edge-to-edge image covering the entire page — no text, no overlay.",
+    accentColor: "#0284c7",
+  },
+  {
+    id: "fullpage-video",
+    label: "Full-Page Video",
+    category: "Document",
+    description: "Edge-to-edge video covering the entire page — no text, no overlay.",
+    accentColor: "#7c3aed",
+  },
+  {
+    id: "fullpage-video-landscape",
+    label: "Full-Page Video (Landscape)",
+    category: "Document",
+    description: "Landscape edge-to-edge video covering the entire page — no text, no overlay.",
+    accentColor: "#7c3aed",
   },
 ] as const;
 

@@ -7,6 +7,7 @@
  *   aggregator           → AggregatorForm
  *   knowledge_base       → KnowledgeBaseForm
  *   skill_call           → SkillCallForm
+ *   browser_session      → BrowserSessionForm
  *   human_approval       → HumanApprovalForm
  */
 
@@ -43,6 +44,7 @@ import {
 import { ToolPicker } from "./ToolPicker";
 import { ModelPicker } from "./ModelPicker";
 import type { AgencyNodeData } from "./nodes/types";
+import { BROWSER_SESSION_COPY } from "@shared/browserSession";
 import {
   X, Wrench, ChevronDown, ChevronRight, Trash2, Plus,
   Search, Loader2, Zap, GripVertical, Check, ChevronsUpDown,
@@ -132,6 +134,7 @@ export function NodePropertyPanel({ node, nodeId, siblingNodes = [], onChange, o
     aggregator: "Aggregator Properties",
     knowledge_base: "Knowledge Base Properties",
     skill_call: "Skill Call Properties",
+    browser_session: "Browser Session Properties",
     human_approval: "Human Approval Properties",
   };
 
@@ -168,6 +171,7 @@ export function NodePropertyPanel({ node, nodeId, siblingNodes = [], onChange, o
           {nodeType === "aggregator" && <AggregatorForm node={node} onChange={onChange} />}
           {nodeType === "knowledge_base" && <KnowledgeBaseForm node={node} onChange={onChange} />}
           {nodeType === "skill_call" && <SkillCallForm node={node} onChange={onChange} />}
+          {nodeType === "browser_session" && <BrowserSessionForm node={node} onChange={onChange} />}
           {nodeType === "human_approval" && <HumanApprovalForm node={node} onChange={onChange} />}
 
           <Separator />
@@ -198,6 +202,7 @@ function AgentSupervisorForm({
 }) {
   const [toolPickerOpen, setToolPickerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [v18FeaturesOpen, setV18FeaturesOpen] = useState(false);
   const [kbOpen, setKbOpen] = useState(false);
   const [kbDocPickerOpen, setKbDocPickerOpen] = useState(false);
   const [kbSettingsOpen, setKbSettingsOpen] = useState(false);
@@ -641,6 +646,186 @@ function AgentSupervisorForm({
 
       <Separator />
 
+      {/* v1.8 Agent Features */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setV18FeaturesOpen(!v18FeaturesOpen)}
+          className="flex w-full items-center justify-between text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+        >
+          <span className="flex items-center gap-1.5">
+            <Zap className="h-3.5 w-3.5" />
+            Agent Features
+          </span>
+          {v18FeaturesOpen ? (
+            <ChevronDown className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
+        </button>
+
+        {v18FeaturesOpen && (
+          <div className="mt-2 space-y-3">
+            {/* Conversation Starters */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Conversation Starters</Label>
+              <p className="text-[10px] text-muted-foreground">
+                Suggested opening messages shown to users.
+              </p>
+              {(ncGet<string[]>(node, "conversationStarters", []) ?? []).map(
+                (starter, i) => (
+                  <div key={i} className="flex items-center gap-1">
+                    <Input
+                      value={starter}
+                      onChange={(e) => {
+                        const starters = [...(ncGet<string[]>(node, "conversationStarters", []) ?? [])];
+                        starters[i] = e.target.value;
+                        onChange(ncSet(node, "conversationStarters", starters));
+                      }}
+                      className="h-7 text-xs"
+                      placeholder="e.g. How can I help?"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 shrink-0"
+                      onClick={() => {
+                        const starters = (ncGet<string[]>(node, "conversationStarters", []) ?? []).filter((_, idx) => idx !== i);
+                        onChange(ncSet(node, "conversationStarters", starters.length ? starters : undefined));
+                      }}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ),
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs w-full"
+                onClick={() => {
+                  const starters = [...(ncGet<string[]>(node, "conversationStarters", []) ?? []), ""];
+                  onChange(ncSet(node, "conversationStarters", starters));
+                }}
+              >
+                <Plus className="mr-1 h-3 w-3" />
+                Add Starter
+              </Button>
+            </div>
+
+            {/* Quick Replies */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Quick Replies</Label>
+              <p className="text-[10px] text-muted-foreground">
+                Pre-canned reply buttons shown after agent responses.
+              </p>
+              {(ncGet<string[]>(node, "quickReplies", []) ?? []).map(
+                (reply, i) => (
+                  <div key={i} className="flex items-center gap-1">
+                    <Input
+                      value={reply}
+                      onChange={(e) => {
+                        const replies = [...(ncGet<string[]>(node, "quickReplies", []) ?? [])];
+                        replies[i] = e.target.value;
+                        onChange(ncSet(node, "quickReplies", replies));
+                      }}
+                      className="h-7 text-xs"
+                      placeholder="e.g. Tell me more"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 shrink-0"
+                      onClick={() => {
+                        const replies = (ncGet<string[]>(node, "quickReplies", []) ?? []).filter((_, idx) => idx !== i);
+                        onChange(ncSet(node, "quickReplies", replies.length ? replies : undefined));
+                      }}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ),
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs w-full"
+                onClick={() => {
+                  const replies = [...(ncGet<string[]>(node, "quickReplies", []) ?? []), ""];
+                  onChange(ncSet(node, "quickReplies", replies));
+                }}
+              >
+                <Plus className="mr-1 h-3 w-3" />
+                Add Reply
+              </Button>
+            </div>
+
+            {/* Tool Use Behavior */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Tool Use Behavior</Label>
+              <Select
+                value={ncGet<string>(node, "toolUseBehavior", "")}
+                onValueChange={(v) => onChange(ncSet(node, "toolUseBehavior", v || undefined))}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Default (run LLM again)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="run_llm_again">Run LLM again (default)</SelectItem>
+                  <SelectItem value="stop_on_first_tool">Stop on first tool</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Files Folder */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Files Folder</Label>
+              <Input
+                value={ncGet<string>(node, "filesFolder", "")}
+                onChange={(e) => onChange(ncSet(node, "filesFolder", e.target.value || undefined))}
+                className="h-8 text-xs"
+                placeholder="Path to agent files (optional)"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Directory of documents for this agent. Auto-adds FileSearchTool.
+              </p>
+            </div>
+
+            {/* Output Type (JSON schema) */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Output Type (JSON Schema)</Label>
+              <Textarea
+                value={
+                  ncGet(node, "outputType", null)
+                    ? JSON.stringify(ncGet(node, "outputType", null), null, 2)
+                    : ""
+                }
+                onChange={(e) => {
+                  const val = e.target.value.trim();
+                  if (!val) {
+                    onChange(ncSet(node, "outputType", undefined));
+                    return;
+                  }
+                  try {
+                    onChange(ncSet(node, "outputType", JSON.parse(val)));
+                  } catch {
+                    // Don't update if invalid JSON — user is still typing
+                  }
+                }}
+                className="min-h-[60px] resize-y font-mono text-[11px]"
+                placeholder='{"type":"object","properties":{"result":{"type":"string"}}}'
+                rows={3}
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Enforce structured output. Paste a JSON Schema.
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <Separator />
+
       {/* Flags */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -741,7 +926,7 @@ function RouterForm({
   const nodeTypeIcon: Record<string, string> = {
     agent: "\uD83E\uDD16", supervisor: "\uD83D\uDC51", router: "\u2194\uFE0F",
     aggregator: "\uD83D\uDD00", knowledge_base: "\uD83D\uDCDA", skill_call: "\u26A1",
-    human_approval: "\uD83D\uDC64",
+    browser_session: "\uD83D\uDDA5\uFE0F", human_approval: "\uD83D\uDC64",
   };
 
   // Handle badge styles
@@ -1641,6 +1826,93 @@ function AgencySkillInputs({
         );
       })}
     </div>
+  );
+}
+
+// ── Browser Session Form ────────────────────────────────────────────────────
+
+function BrowserSessionForm({
+  node,
+  onChange,
+}: {
+  node: AgencyNodeData;
+  onChange: (updates: Partial<AgencyNodeData>) => void;
+}) {
+  const goal = ncGet(node, "goal", "");
+  const startUrl = ncGet(node, "startUrl", "");
+  const handoffMode = ncGet(node, "handoffMode", "continue_running");
+  const handoffSummary = ncGet(node, "handoffSummary", "");
+
+  const handoffHelp =
+    handoffMode === "review_required"
+      ? BROWSER_SESSION_COPY.reviewRequired
+      : handoffMode === "needs_user_input"
+        ? BROWSER_SESSION_COPY.needsYourInput
+        : BROWSER_SESSION_COPY.continue;
+
+  return (
+    <>
+      <div className="space-y-1.5">
+        <Label>Name</Label>
+        <Input
+          value={node.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+          placeholder="Browser Session"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Browser Goal</Label>
+        <Textarea
+          value={goal}
+          onChange={(e) => onChange(ncSet(node, "goal", e.target.value))}
+          placeholder="Explain what the agency should accomplish in the Browser Session."
+          rows={4}
+        />
+        <p className="text-xs text-muted-foreground">
+          Use user-facing language that matches what the AI should do in the browser.
+        </p>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Starting URL</Label>
+        <Input
+          value={startUrl}
+          onChange={(e) => onChange(ncSet(node, "startUrl", e.target.value))}
+          placeholder="https://example.com"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>When The Session Needs A Human</Label>
+        <Select
+          value={handoffMode}
+          onValueChange={(value) => onChange(ncSet(node, "handoffMode", value))}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="continue_running">{BROWSER_SESSION_COPY.continue}</SelectItem>
+            <SelectItem value="review_required">{BROWSER_SESSION_COPY.reviewRequired}</SelectItem>
+            <SelectItem value="needs_user_input">{BROWSER_SESSION_COPY.needsYourInput}</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          Agency Chat will summarize this Browser Session using {handoffHelp}.
+        </p>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>Human Handoff Summary</Label>
+        <Textarea
+          value={handoffSummary}
+          onChange={(e) => onChange(ncSet(node, "handoffSummary", e.target.value))}
+          placeholder="Explain what the person should review or provide when the Browser Session pauses."
+          rows={3}
+        />
+      </div>
+    </>
   );
 }
 

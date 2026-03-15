@@ -6,19 +6,29 @@
 
 import { useLocation, useRoute } from "wouter";
 import { AutomationChatModal } from "@/components/automation/AutomationChatModal";
+import {
+  buildBrowserSessionPath,
+  parseBrowserSessionLaunchContext,
+  resolveBrowserSessionReturnPath,
+} from "@/lib/browserSessionRouting";
 
 export default function AutomationPage() {
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/automation/live/:sessionId");
   const initialLiveSessionId = params?.sessionId ?? null;
+  const launchContext = parseBrowserSessionLaunchContext(
+    typeof window === "undefined" ? "" : window.location.search,
+  );
 
   return (
     <AutomationChatModal
       open={true}
       initialLiveSessionId={initialLiveSessionId}
-      onLiveSessionOpen={(sessionId) => setLocation(`/automation/live/${sessionId}`)}
+      onLiveSessionOpen={(sessionId) => setLocation(buildBrowserSessionPath(sessionId, launchContext))}
       onOpenChange={(open) => {
-        if (!open) setLocation("/dashboard");
+        if (!open) {
+          setLocation(resolveBrowserSessionReturnPath(launchContext));
+        }
       }}
     />
   );

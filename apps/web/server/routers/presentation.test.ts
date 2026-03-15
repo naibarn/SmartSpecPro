@@ -18,6 +18,7 @@ vi.mock("../_core/trpc", () => {
   return {
     router: (routes: any) => routes,
     protectedProcedure: createProcedure(),
+    adminProcedure: createProcedure(),
   };
 });
 
@@ -41,6 +42,16 @@ const templateServiceMocks = vi.hoisted(() => ({
   applyTemplateAssetToDeck: vi.fn(),
 }));
 
+const customBlockServiceMocks = vi.hoisted(() => ({
+  listPresentationCustomBlocks: vi.fn(),
+  listPresentationCustomBlockGovernanceAudit: vi.fn(),
+  renderPresentationCustomBlockPreview: vi.fn(),
+  savePresentationCustomBlock: vi.fn(),
+  deletePresentationCustomBlock: vi.fn(),
+  updatePresentationCustomBlock: vi.fn(),
+  trackPresentationCustomBlockUse: vi.fn(),
+}));
+
 const compatibilityMocks = vi.hoisted(() => ({
   getPresentationCompatibilityOpen: vi.fn(),
   convertOfficeSourceToPresentation: vi.fn(),
@@ -51,6 +62,14 @@ const playbackMocks = vi.hoisted(() => ({
   triggerPresentationExport: vi.fn(),
   getPresentationExportStatus: vi.fn(),
   buildPlayDeckPayload: vi.fn(),
+}));
+
+const aiServiceMocks = vi.hoisted(() => ({
+  repairSlideFromSavedNote: vi.fn(),
+  relayoutExistingSlideAsync: vi.fn(),
+  relayoutExistingSlide: vi.fn(),
+  generateAIDraft: vi.fn(),
+  resolvePendingMediaForDeck: vi.fn(),
 }));
 
 vi.mock("../services/presentationService", async () => {
@@ -87,6 +106,24 @@ vi.mock("../services/presentationPlaybackExport", () => ({
 
 vi.mock("../services/presentationTemplateService", () => ({
   applyTemplateAssetToDeck: templateServiceMocks.applyTemplateAssetToDeck,
+}));
+
+vi.mock("../services/aiPresentationService", () => ({
+  repairSlideFromSavedNote: aiServiceMocks.repairSlideFromSavedNote,
+  relayoutExistingSlideAsync: aiServiceMocks.relayoutExistingSlideAsync,
+  relayoutExistingSlide: aiServiceMocks.relayoutExistingSlide,
+  generateAIDraft: aiServiceMocks.generateAIDraft,
+  resolvePendingMediaForDeck: aiServiceMocks.resolvePendingMediaForDeck,
+}));
+
+vi.mock("../services/presentationCustomBlockService", () => ({
+  listPresentationCustomBlocks: customBlockServiceMocks.listPresentationCustomBlocks,
+  listPresentationCustomBlockGovernanceAudit: customBlockServiceMocks.listPresentationCustomBlockGovernanceAudit,
+  renderPresentationCustomBlockPreview: customBlockServiceMocks.renderPresentationCustomBlockPreview,
+  savePresentationCustomBlock: customBlockServiceMocks.savePresentationCustomBlock,
+  deletePresentationCustomBlock: customBlockServiceMocks.deletePresentationCustomBlock,
+  updatePresentationCustomBlock: customBlockServiceMocks.updatePresentationCustomBlock,
+  trackPresentationCustomBlockUse: customBlockServiceMocks.trackPresentationCustomBlockUse,
 }));
 
 import { presentationRouter } from "./presentation";
@@ -165,6 +202,39 @@ describe("presentationRouter", () => {
       restoredSlideVersion: 4,
       deckVersion: 9,
     });
+    aiServiceMocks.repairSlideFromSavedNote.mockResolvedValue({
+      title: "Repaired title",
+      slideContent: {
+        elements: [
+          { id: "repair-title", type: "text", x: 40, y: 40, width: 400, height: 80, text: "Repaired title", color: "#111827" },
+        ],
+      },
+      warnings: ["Regenerated image from saved note."],
+      applied: {
+        templateId: "split_right_image",
+        stylePresetId: "dark-professional",
+        graphicCategory: "Business",
+        regeneratedImage: true,
+      },
+    });
+    aiServiceMocks.relayoutExistingSlideAsync.mockResolvedValue({
+      slideContent: { elements: [] },
+      warnings: [],
+      applied: {
+        templateId: "split_right_image",
+        stylePresetId: "dark-professional",
+        graphicCategory: "Business",
+        reusedImage: true,
+      },
+    });
+    aiServiceMocks.generateAIDraft.mockResolvedValue(undefined);
+    aiServiceMocks.resolvePendingMediaForDeck.mockResolvedValue({
+      slidesUpdated: 0,
+      jobsChecked: 0,
+      jobsResolved: 0,
+      jobsRemaining: 0,
+      warnings: [],
+    });
     serviceMocks.uploadAssetToDeck.mockResolvedValue({
       item: {
         id: 901,
@@ -198,6 +268,82 @@ describe("presentationRouter", () => {
       deck: { id: 88, libraryItemId: 42 },
       slides: [],
       assets: [],
+    });
+    customBlockServiceMocks.listPresentationCustomBlocks.mockResolvedValue([]);
+    customBlockServiceMocks.listPresentationCustomBlockGovernanceAudit.mockResolvedValue([]);
+    customBlockServiceMocks.renderPresentationCustomBlockPreview.mockResolvedValue({
+      artifactKey: "",
+      artifactUrl: "",
+      previewHash: "preview-hash-1",
+      rendererVersion: "server-svg-v1",
+      generatedAt: "2026-03-13T00:00:00.000Z",
+      svg: "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 1280 720\"></svg>",
+    });
+    customBlockServiceMocks.savePresentationCustomBlock.mockResolvedValue({
+      id: "901",
+      label: "Team Promo Block",
+      description: "Saved from AI Layout.",
+      category: "Custom",
+      componentId: "poster-spotlight",
+      slotBindings: [],
+      savedAt: "2026-03-13T00:00:00.000Z",
+      visibility: "team",
+      isPinned: false,
+      isTeamFeatured: false,
+      usageCount: 0,
+      favoriteUserIds: [],
+      isFavorite: false,
+      ownerUserId: 1,
+      canDelete: true,
+      canFeature: true,
+      canTransferOwnership: true,
+      preview: {
+        artifactKey: "presentation/custom-block-previews/tenant-1/1/preview.svg",
+        artifactUrl: "/api/storage/files/presentation/custom-block-previews/tenant-1/1/preview.svg",
+        previewHash: "hash-1",
+        rendererVersion: "server-svg-v1",
+        generatedAt: "2026-03-13T00:00:00.000Z",
+      },
+    });
+    customBlockServiceMocks.deletePresentationCustomBlock.mockResolvedValue({ deleted: true });
+    customBlockServiceMocks.updatePresentationCustomBlock.mockImplementation(async (input: any, actor: any) => ({
+      id: input.blockId,
+      label: "Team Promo Block",
+      description: "Saved from AI Layout.",
+      category: "Custom",
+      componentId: "poster-spotlight",
+      slotBindings: [],
+      savedAt: "2026-03-13T00:00:00.000Z",
+      visibility: input.visibility ?? "team",
+      isPinned: input.isPinned ?? false,
+      isTeamFeatured: input.isTeamFeatured ?? false,
+      usageCount: 2,
+      favoriteUserIds: input.favorite ? [actor.userId] : [],
+      isFavorite: Boolean(input.favorite),
+      ownerUserId: input.transferToUserId ?? 1,
+      canDelete: (input.transferToUserId ?? 1) === actor.userId,
+      canFeature: actor.role === "admin" || actor.role === "super_admin" || actor.role === "domain_admin",
+      canTransferOwnership: actor.role === "admin" || actor.role === "super_admin" || actor.role === "domain_admin",
+    }));
+    customBlockServiceMocks.trackPresentationCustomBlockUse.mockResolvedValue({
+      id: "901",
+      label: "Team Promo Block",
+      description: "Saved from AI Layout.",
+      category: "Custom",
+      componentId: "poster-spotlight",
+      slotBindings: [],
+      savedAt: "2026-03-13T00:00:00.000Z",
+      visibility: "team",
+      isPinned: false,
+      isTeamFeatured: false,
+      usageCount: 3,
+      lastUsedAt: "2026-03-13T01:00:00.000Z",
+      favoriteUserIds: [],
+      isFavorite: false,
+      ownerUserId: 1,
+      canDelete: true,
+      canFeature: true,
+      canTransferOwnership: true,
     });
     serviceMocks.updateSlideAudioTrack.mockResolvedValue({ deckVersion: 2, slideVersion: 3 });
     serviceMocks.updateDeckProjectAudioTrack.mockResolvedValue({ deckVersion: 2 });
@@ -372,6 +518,175 @@ describe("presentationRouter", () => {
     });
   });
 
+  it("lists server-backed custom blocks", async () => {
+    customBlockServiceMocks.listPresentationCustomBlocks.mockResolvedValue([
+      {
+        id: "901",
+        label: "Team Promo Block",
+        description: "Saved from AI Layout.",
+        category: "Custom",
+        componentId: "poster-spotlight",
+        slotBindings: [],
+        savedAt: "2026-03-13T00:00:00.000Z",
+        visibility: "team",
+        ownerUserId: 1,
+        canDelete: true,
+        canFeature: true,
+        canTransferOwnership: true,
+      },
+    ]);
+
+    const fn = presentationRouter.listCustomBlocks as Function;
+    const result = await fn({
+      input: { scope: "team", search: "promo", sort: "featured", limit: 25 },
+      ctx: { tenantId: "tenant-1", user: { id: 1, role: "user", currentTenantId: "tenant-1" } },
+    });
+
+    expect(customBlockServiceMocks.listPresentationCustomBlocks).toHaveBeenCalledWith(
+      expect.objectContaining({ scope: "team", search: "promo", sort: "featured", limit: 25 }),
+      expect.objectContaining({ userId: 1, tenantId: "tenant-1" }),
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0]?.label).toBe("Team Promo Block");
+  });
+
+  it("lists governance audit rows for admins", async () => {
+    customBlockServiceMocks.listPresentationCustomBlockGovernanceAudit.mockResolvedValue([
+      {
+        blockId: "901",
+        blockLabel: "Team Promo Block",
+        ownerUserId: 1,
+        visibility: "team",
+        eventType: "featured_changed",
+        actorUserId: 3,
+        actorRole: "admin",
+        recordedAt: "2026-03-13T00:00:00.000Z",
+        detail: "Block featured for team",
+      },
+    ]);
+
+    const fn = presentationRouter.listCustomBlockGovernanceAudit as Function;
+    const result = await fn({
+      input: { eventType: "featured_changed", limit: 25 },
+      ctx: { tenantId: "tenant-1", user: { id: 3, role: "admin", currentTenantId: "tenant-1" } },
+    });
+
+    expect(customBlockServiceMocks.listPresentationCustomBlockGovernanceAudit).toHaveBeenCalledWith(
+      { eventType: "featured_changed", limit: 25 },
+      expect.objectContaining({ userId: 3, tenantId: "tenant-1" }),
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0]?.blockLabel).toBe("Team Promo Block");
+  });
+
+  it("saves server-backed custom blocks", async () => {
+    const fn = presentationRouter.saveCustomBlock as Function;
+    const result = await fn({
+      input: {
+        label: "Team Promo Block",
+        description: "Saved from AI Layout.",
+        componentId: "poster-spotlight",
+        slotBindings: [],
+        visibility: "team",
+        previewSource: {
+          canvas: { width: 1280, height: 720 },
+          fallbackElements: [],
+        },
+      },
+      ctx: { tenantId: "tenant-1", user: { id: 1, role: "user", currentTenantId: "tenant-1" } },
+    });
+
+    expect(customBlockServiceMocks.savePresentationCustomBlock).toHaveBeenCalledWith(
+      expect.objectContaining({ label: "Team Promo Block", visibility: "team" }),
+      expect.objectContaining({ userId: 1, tenantId: "tenant-1" }),
+    );
+    expect(result.id).toBe("901");
+  });
+
+  it("renders server-backed custom block previews without persisting a block", async () => {
+    const fn = presentationRouter.renderCustomBlockPreview as Function;
+    const result = await fn({
+      input: {
+        previewSource: {
+          canvas: { width: 1280, height: 720 },
+          fallbackElements: [
+            { id: "t-1", type: "text", x: 120, y: 120, width: 300, height: 80, text: "Preview", color: "#111827" },
+          ],
+        },
+      },
+      ctx: { tenantId: "tenant-1", user: { id: 1, role: "user", currentTenantId: "tenant-1" } },
+    });
+
+    expect(customBlockServiceMocks.renderPresentationCustomBlockPreview).toHaveBeenCalledWith(
+      expect.objectContaining({
+        previewSource: expect.objectContaining({
+          canvas: expect.objectContaining({ width: 1280, height: 720 }),
+        }),
+      }),
+      expect.objectContaining({ userId: 1, tenantId: "tenant-1" }),
+    );
+    expect(result.previewHash).toBe("preview-hash-1");
+    expect(result.rendererVersion).toBe("server-svg-v1");
+  });
+
+  it("deletes server-backed custom blocks", async () => {
+    const fn = presentationRouter.deleteCustomBlock as Function;
+    const result = await fn({
+      input: { blockId: "901" },
+      ctx: { tenantId: "tenant-1", user: { id: 1, role: "user", currentTenantId: "tenant-1" } },
+    });
+
+    expect(customBlockServiceMocks.deletePresentationCustomBlock).toHaveBeenCalledWith(
+      "901",
+      expect.objectContaining({ userId: 1, tenantId: "tenant-1" }),
+    );
+    expect(result).toEqual({ deleted: true });
+  });
+
+  it("updates server-backed custom blocks", async () => {
+    const fn = presentationRouter.updateCustomBlock as Function;
+    const result = await fn({
+      input: { blockId: "901", isPinned: true, isTeamFeatured: true, favorite: true },
+      ctx: { tenantId: "tenant-1", user: { id: 1, role: "user", currentTenantId: "tenant-1" } },
+    });
+
+    expect(customBlockServiceMocks.updatePresentationCustomBlock).toHaveBeenCalledWith(
+      { blockId: "901", isPinned: true, isTeamFeatured: true, favorite: true },
+      expect.objectContaining({ userId: 1, tenantId: "tenant-1" }),
+    );
+    expect(result.isPinned).toBe(true);
+    expect(result.isTeamFeatured).toBe(true);
+    expect(result.isFavorite).toBe(true);
+  });
+
+  it("transfers server-backed custom block ownership", async () => {
+    const fn = presentationRouter.updateCustomBlock as Function;
+    const result = await fn({
+      input: { blockId: "901", transferToUserId: 22 },
+      ctx: { tenantId: "tenant-1", user: { id: 1, role: "user", currentTenantId: "tenant-1" } },
+    });
+
+    expect(customBlockServiceMocks.updatePresentationCustomBlock).toHaveBeenCalledWith(
+      { blockId: "901", transferToUserId: 22 },
+      expect.objectContaining({ userId: 1, tenantId: "tenant-1" }),
+    );
+    expect(result.ownerUserId).toBe(22);
+  });
+
+  it("tracks server-backed custom block usage", async () => {
+    const fn = presentationRouter.trackCustomBlockUse as Function;
+    const result = await fn({
+      input: { blockId: "901" },
+      ctx: { tenantId: "tenant-1", user: { id: 1, role: "user", currentTenantId: "tenant-1" } },
+    });
+
+    expect(customBlockServiceMocks.trackPresentationCustomBlockUse).toHaveBeenCalledWith(
+      { blockId: "901" },
+      expect.objectContaining({ userId: 1, tenantId: "tenant-1" }),
+    );
+    expect(result.usageCount).toBe(3);
+  });
+
   it("maps limit violations to deterministic bad-request errors", async () => {
     serviceMocks.attachAssetToDeck.mockRejectedValue(
       new PresentationServiceError(
@@ -527,6 +842,119 @@ describe("presentationRouter", () => {
       { userId: 10, tenantId: "tenant-1", role: "user" },
     );
     expect(result.restoredSlideId).toBe(71);
+  });
+
+  it("repairs a slide from its saved note and updates the slide title/content", async () => {
+    process.env.PRESENTATION_EDITOR_ENABLED = "true";
+    process.env.PRESENTATION_AI_GENERATION_ENABLED = "true";
+    serviceMocks.getPresentationDeckDetail.mockResolvedValue({
+      deck: { id: 9, title: "Deck title", libraryItemId: 42 },
+      slides: [
+        {
+          id: 71,
+          deckId: 9,
+          orderIndex: 0,
+          version: 3,
+          title: "Broken title",
+          notes: "Saved note for repair",
+          slideContent: {
+            elements: [{ id: "old-title", type: "text", x: 20, y: 20, width: 200, height: 60, text: "Broken title", color: "#111827" }],
+          },
+        },
+      ],
+      assets: [],
+    });
+    serviceMocks.updateSlideInDeck.mockResolvedValue({
+      id: 71,
+      version: 4,
+      title: "Repaired title",
+      notes: "Saved note for repair",
+      slideContent: {
+        elements: [{ id: "repair-title", type: "text", x: 40, y: 40, width: 400, height: 80, text: "Repaired title", color: "#111827" }],
+      },
+    });
+
+    const fn = presentationRouter.ai.repairSlideFromNote as Function;
+    const result = await fn({
+      ctx: {
+        tenantId: "tenant-1",
+        user: { id: 10, role: "user" },
+        userToken: null,
+        req: { headers: {} },
+      },
+      input: { deckId: 9, slideId: 71, expectedVersion: 3 },
+    });
+
+    expect(aiServiceMocks.repairSlideFromSavedNote).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deckId: 9,
+        slideTitle: "Broken title",
+        slideNotes: "Saved note for repair",
+        slideIndex: 1,
+        totalSlides: 1,
+      }),
+      { userId: 10, tenantId: "tenant-1", role: "user" },
+      expect.any(String),
+    );
+    expect(serviceMocks.updateSlideInDeck).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deckId: 9,
+        slideId: 71,
+        expectedVersion: 3,
+        title: "Repaired title",
+      }),
+      { userId: 10, tenantId: "tenant-1", role: "user" },
+    );
+    expect(result.warnings).toContain("Regenerated image from saved note.");
+    expect(result.slide.version).toBe(4);
+  });
+
+  it("passes a manually selected block recipe through auto layout", async () => {
+    process.env.PRESENTATION_EDITOR_ENABLED = "true";
+    serviceMocks.getPresentationDeckDetail.mockResolvedValue({
+      deck: { id: 9, title: "Deck title", libraryItemId: 42 },
+      slides: [
+        {
+          id: 71,
+          deckId: 9,
+          orderIndex: 0,
+          version: 3,
+          title: "Routine",
+          notes: "Saved note",
+          slideContent: {
+            elements: [{ id: "old-title", type: "text", x: 20, y: 20, width: 200, height: 60, text: "Routine", color: "#111827" }],
+          },
+        },
+      ],
+      assets: [],
+    });
+    serviceMocks.updateSlideInDeck.mockResolvedValue({
+      id: 71,
+      version: 4,
+      title: "Routine",
+      notes: "Saved note",
+      slideContent: { elements: [] },
+    });
+
+    const fn = presentationRouter.ai.relayoutSlide as Function;
+    await fn({
+      ctx: {
+        tenantId: "tenant-1",
+        user: { id: 10, role: "user" },
+        userToken: null,
+        req: { headers: {} },
+      },
+      input: {
+        deckId: 9,
+        slideId: 71,
+        expectedVersion: 3,
+        componentRecipeId: "process-steps",
+      },
+    });
+
+    expect(aiServiceMocks.relayoutExistingSlideAsync).toHaveBeenCalledWith(expect.objectContaining({
+      preferredComponentRecipeId: "process-steps",
+    }), expect.objectContaining({ userId: 10 }));
   });
 
   it("returns conflict payload with stable schema version for stale expectedVersion", async () => {

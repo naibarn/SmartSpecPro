@@ -20,6 +20,7 @@ import { getDb } from "../db";
 import { presentationSlides } from "../../drizzle/schema";
 import { verifyBearerToken } from "../_core/tokens";
 import { PRESENTATION_MEDIA_MOTION_RUNTIME_CONFIG } from "@shared/presentation/mediaMotion";
+import { presentationSlideContentSchema, expandPresentationSlideContentForCompatibility } from "@shared/presentation/contracts";
 
 const LOOPBACK_ADDRESSES = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
 
@@ -98,8 +99,12 @@ export function createSlideRenderRouter(): Router {
     }
 
     const slide = slides[urlSlideIndex];
+    const parsedSlideContent = presentationSlideContentSchema.safeParse(slide.slideContent ?? {});
+    const slideContent = parsedSlideContent.success
+      ? expandPresentationSlideContentForCompatibility(parsedSlideContent.data).slideContent
+      : (slide.slideContent ?? {});
     // Escape `</script>` and `&` sequences to prevent XSS when embedding JSON in HTML
-    const slideContentJson = JSON.stringify(slide.slideContent ?? {})
+    const slideContentJson = JSON.stringify(slideContent)
       .replace(/</g, "\\u003c")
       .replace(/>/g, "\\u003e")
       .replace(/&/g, "\\u0026");
@@ -177,6 +182,36 @@ window.__slideReady = false;
     if (v < min) return min;
     if (v > max) return max;
     return v;
+  }
+
+  function resolveMediaCornerRadius(value) {
+    var radius = asNumber(value, 24);
+    return clamp(radius, 0, 1000);
+  }
+
+  function applyMediaShapeStyle(node, el) {
+    var shape = typeof el.mediaShape === "string" ? el.mediaShape : "rect";
+    if (shape === "rounded") {
+      node.style.borderRadius = resolveMediaCornerRadius(el.mediaCornerRadius) + "px";
+      return;
+    }
+    if (shape === "circle") {
+      node.style.borderRadius = "9999px";
+      node.style.clipPath = "circle(50% at 50% 50%)";
+      return;
+    }
+    if (shape === "ellipse") {
+      node.style.borderRadius = "9999px";
+      node.style.clipPath = "ellipse(50% 50% at 50% 50%)";
+      return;
+    }
+    if (shape === "diamond") {
+      node.style.clipPath = "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)";
+      return;
+    }
+    if (shape === "star") {
+      node.style.clipPath = "polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)";
+    }
   }
 
   function isLikelySvgMarkup(value) {
@@ -491,6 +526,7 @@ window.__slideReady = false;
     var wrapper = document.createElement("div");
     applyBaseStyle(wrapper, el);
     wrapper.style.overflow = "hidden";
+    applyMediaShapeStyle(wrapper, el);
     var posX = clamp(asNumber(el.imagePositionX, 50), 0, 100);
     var posY = clamp(asNumber(el.imagePositionY, 50), 0, 100);
     var zoom = clamp(asNumber(el.imageZoom, 1), 0.5, 3);
@@ -575,6 +611,7 @@ window.__slideReady = false;
     applyBaseStyle(wrapper, el);
     wrapper.style.overflow = "hidden";
     wrapper.style.background = "#000";
+    applyMediaShapeStyle(wrapper, el);
 
     var video = document.createElement("video");
     video.setAttribute("data-slide-media-id", typeof el.id === "string" ? el.id : "");
@@ -588,7 +625,7 @@ window.__slideReady = false;
     video.style.objectFit = fit;
     video.style.objectPosition = posX + "% " + posY + "%";
     registerMediaMotionNode(video, zoom, posX, posY, el.mediaMotion);
-    video.muted = el.muted !== false;
+    video.muted = true;
     video.loop = el.loop === true;
     video.autoplay = true;
     video.playsInline = true;

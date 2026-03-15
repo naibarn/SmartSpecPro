@@ -7,8 +7,8 @@
 import { z } from "zod";
 import { router, adminProcedure } from "../_core/trpc";
 import { db } from "../db";
-import { contentArtifacts, providerUsageLog } from "../../drizzle/schema";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { contentArtifacts, providerUsageLog, users } from "../../drizzle/schema";
+import { eq, and, sql, desc, inArray } from "drizzle-orm";
 
 function getTenantId(ctx: { tenantId: string | null }): string {
   return ctx.tenantId ?? "default";
@@ -130,8 +130,16 @@ export const contentQualityRouter = router({
         })
         .optional()
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      const tenantId = getTenantId(ctx);
       const days = input?.days ?? 30;
+
+      // providerUsageLog has no tenantId column; filter via userId belonging to tenant
+      const tenantUserIds = db
+        .select({ id: users.id })
+        .from(users)
+        .where(sql`${users.currentTenantId}::text = ${tenantId}`);
+
       const rows: { requestType: string | null; total_cost_usd: string; total_tokens: number; request_count: number }[] = await db
         .select({
           requestType: providerUsageLog.requestType,
@@ -143,7 +151,8 @@ export const contentQualityRouter = router({
         .where(
           and(
             eq(providerUsageLog.requestType, "skill"),
-            sql`${providerUsageLog.createdAt} >= NOW() - INTERVAL '${sql.raw(String(days))} days'`
+            sql`${providerUsageLog.createdAt} >= NOW() - INTERVAL '${sql.raw(String(days))} days'`,
+            inArray(providerUsageLog.userId, tenantUserIds)
           )
         )
         .groupBy(providerUsageLog.requestType)

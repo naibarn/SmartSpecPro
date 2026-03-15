@@ -140,9 +140,10 @@ export async function loadTenantAutomationPolicyStatus(
     effectiveConfig,
     policyState.metadata,
   );
-  const [browserToolGate, automationCopilotGate] = await Promise.all([
+  const [browserToolGate, automationCopilotGate, liveBrowserGate] = await Promise.all([
     getBrowserPolicySurfaceGateStatus({ surface: "browserTool" }),
     getBrowserPolicySurfaceGateStatus({ surface: "automationCopilot" }),
+    getBrowserPolicySurfaceGateStatus({ surface: "liveBrowser" }),
   ]);
 
   return {
@@ -172,6 +173,7 @@ export async function loadTenantAutomationPolicyStatus(
     releaseGates: {
       browserTool: browserToolGate,
       automationCopilot: automationCopilotGate,
+      liveBrowser: liveBrowserGate,
     },
   };
 }

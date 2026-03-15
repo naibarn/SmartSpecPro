@@ -652,9 +652,7 @@ export const multiProviderRouter = router({
         .from(modelProviderMap)
         .where(eq(modelProviderMap.priorityLocked, false));
 
-      let updatedCount = 0;
-
-      for (const row of unlockedRows) {
+      const updates = unlockedRows.map((row: typeof unlockedRows[number]) => {
         const priority = computeModelPriority({
           pricingInput: row.pricingInput ? Number(row.pricingInput) : null,
           pricingOutput: row.pricingOutput ? Number(row.pricingOutput) : null,
@@ -669,15 +667,14 @@ export const multiProviderRouter = router({
           supportsResponses: row.supportsResponses ?? false,
           supportsVision: row.supportsVision ?? false,
         });
-
-        await db
+        return db
           .update(modelProviderMap)
           .set({ priority })
           .where(eq(modelProviderMap.id, row.id));
+      });
 
-        updatedCount++;
-      }
+      await Promise.all(updates);
 
-      return { success: true as const, updatedCount };
+      return { success: true as const, updatedCount: updates.length };
     }),
 });

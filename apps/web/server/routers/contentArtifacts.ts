@@ -50,8 +50,8 @@ export const contentArtifactsRouter = router({
 
   getById: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .query(async ({ input }) => {
-      const artifact = await getArtifactById(input.id);
+    .query(async ({ ctx, input }) => {
+      const artifact = await getArtifactById(input.id, ctx.tenantId ?? "default");
       if (!artifact) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Artifact not found" });
       }
@@ -83,8 +83,8 @@ export const contentArtifactsRouter = router({
 
   refresh: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
-      const artifact = await refreshArtifact(input.id);
+    .mutation(async ({ ctx, input }) => {
+      const artifact = await refreshArtifact(input.id, ctx.tenantId ?? "default");
       if (!artifact) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Artifact not found" });
       }
@@ -93,8 +93,8 @@ export const contentArtifactsRouter = router({
 
   archive: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
-      const artifact = await archiveArtifact(input.id);
+    .mutation(async ({ ctx, input }) => {
+      const artifact = await archiveArtifact(input.id, ctx.tenantId ?? "default");
       if (!artifact) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Artifact not found" });
       }

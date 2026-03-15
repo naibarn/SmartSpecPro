@@ -9,8 +9,8 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
 import { scheduledMessages, scheduledMessageLogs, userNotifications } from "../../drizzle/schema";
-import { eq, and, desc, sql, inArray } from "drizzle-orm";
-import { createScheduledJob, cancelScheduledJob } from "../services/scheduler";
+import { eq, and, desc, sql, inArray, ilike, gte } from "drizzle-orm";
+import { createScheduledJob, cancelScheduledJob, deliverScheduledMessage } from "../services/scheduler";
 import { auditLogger } from "../services/auditLogger";
 import { deductCreditsForModel } from "../services/creditService";
 import { resolveEnabledLlmModelId } from "../services/enabledLlmModels";
@@ -208,6 +208,9 @@ export const scheduledMessagesRouter = router({
       limit: z.number().min(1).max(50).default(20),
       offset: z.number().min(0).default(0),
       status: z.enum(["active", "paused", "completed", "failed"]).optional(),
+      search: z.string().max(200).optional(),
+      skillId: z.string().max(100).optional(),
+      priority: z.enum(["low", "normal", "high", "critical"]).optional(),
     }))
     .query(async ({ ctx, input }) => {
       const db = await getDb();
@@ -216,6 +219,15 @@ export const scheduledMessagesRouter = router({
       const conditions = [eq(scheduledMessages.userId, ctx.user.id)];
       if (input.status) {
         conditions.push(eq(scheduledMessages.status, input.status));
+      }
+      if (input.search) {
+        conditions.push(ilike(scheduledMessages.prompt, `%${input.search}%`));
+      }
+      if (input.skillId) {
+        conditions.push(eq(scheduledMessages.skillId, input.skillId));
+      }
+      if (input.priority) {
+        conditions.push(eq(scheduledMessages.priority, input.priority));
       }
 
       const items = await db
@@ -493,6 +505,239 @@ export const scheduledMessagesRouter = router({
 
     return { success: true };
   }),
+
+  /**
+   * Skip the next scheduled run without affecting future executions.
+   * Sets a skipUntil timestamp that the scheduler checks before executing.
+   */
+  skipNextRun: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const [existing] = await db
+        .select()
+        .from(scheduledMessages)
+        .where(and(eq(scheduledMessages.id, input.id), eq(scheduledMessages.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+      if (!existing.isRecurring) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Skip only applies to recurring schedules" });
+      }
+      if (existing.status !== "active") {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Schedule must be active to skip" });
+      }
+
+      // Calculate when the next run would be, then set skipUntil just after it
+      // We store this in dynamicParams.skipUntil since we don't have a dedicated column
+      const now = new Date();
+      const nextRun = existing.nextRunAt ?? now;
+      // Set skipUntil to 1 minute after next planned run
+      const skipUntil = new Date(Math.max(nextRun.getTime(), now.getTime()) + 60_000);
+
+      const mergedParams = {
+        ...(existing.dynamicParams || {}),
+        _skipUntil: skipUntil.toISOString(),
+      };
+
+      await db.update(scheduledMessages)
+        .set({ dynamicParams: mergedParams, updatedAt: new Date() })
+        .where(eq(scheduledMessages.id, input.id));
+
+      // Log the skip
+      await db.insert(scheduledMessageLogs).values({
+        scheduledMessageId: input.id,
+        status: "skipped",
+        responseContent: `Next run skipped by user (skip until ${skipUntil.toISOString()})`,
+        creditsUsed: "0",
+      });
+
+      auditLogger.log({
+        eventType: "skill_execute",
+        userId: ctx.user.id,
+        requestPayload: { operation: "skip_next_run", scheduleId: input.id, skipUntil: skipUntil.toISOString() },
+      });
+
+      return { success: true, skipUntil: skipUntil.toISOString() };
+    }),
+
+  /**
+   * Manually trigger a schedule to execute immediately (Run Now).
+   * Does not affect the regular schedule.
+   */
+  triggerNow: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const [existing] = await db
+        .select()
+        .from(scheduledMessages)
+        .where(and(eq(scheduledMessages.id, input.id), eq(scheduledMessages.userId, ctx.user.id)))
+        .limit(1);
+
+      if (!existing) throw new TRPCError({ code: "NOT_FOUND" });
+
+      auditLogger.log({
+        eventType: "skill_execute",
+        userId: ctx.user.id,
+        requestPayload: { operation: "manual_trigger", scheduleId: input.id },
+      });
+
+      // Execute asynchronously — don't block the response
+      deliverScheduledMessage(input.id).catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : "Unknown";
+        console.error(`[triggerNow] scheduleId=${input.id} error: ${msg.slice(0, 200)}`);
+      });
+
+      return { success: true, message: "Schedule triggered — execution in progress" };
+    }),
+
+  /**
+   * Bulk operations: pause, resume, or delete multiple schedules at once
+   */
+  bulkAction: protectedProcedure
+    .input(z.object({
+      ids: z.array(z.number()).min(1).max(50),
+      action: z.enum(["pause", "resume", "delete"]),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      // Verify ownership of all IDs
+      const owned = await db
+        .select({ id: scheduledMessages.id, status: scheduledMessages.status, bullmqJobId: scheduledMessages.bullmqJobId })
+        .from(scheduledMessages)
+        .where(and(
+          inArray(scheduledMessages.id, input.ids),
+          eq(scheduledMessages.userId, ctx.user.id)
+        ));
+
+      const ownedIds = owned.map(o => o.id);
+      if (ownedIds.length === 0) throw new TRPCError({ code: "NOT_FOUND", message: "No matching schedules found" });
+
+      let affected = 0;
+
+      if (input.action === "delete") {
+        // Cancel all jobs first
+        for (const item of owned) {
+          await cancelScheduledJob(item.id, item.bullmqJobId).catch(() => {});
+        }
+        const result = await db.delete(scheduledMessages)
+          .where(and(inArray(scheduledMessages.id, ownedIds), eq(scheduledMessages.userId, ctx.user.id)));
+        affected = ownedIds.length;
+      } else if (input.action === "pause") {
+        const activeIds = owned.filter(o => o.status === "active").map(o => o.id);
+        if (activeIds.length > 0) {
+          for (const item of owned.filter(o => o.status === "active")) {
+            await cancelScheduledJob(item.id, item.bullmqJobId).catch(() => {});
+          }
+          await db.update(scheduledMessages)
+            .set({ status: "paused", updatedAt: new Date() })
+            .where(and(inArray(scheduledMessages.id, activeIds), eq(scheduledMessages.userId, ctx.user.id)));
+          affected = activeIds.length;
+        }
+      } else if (input.action === "resume") {
+        const pausedItems = owned.filter(o => o.status === "paused");
+        for (const item of pausedItems) {
+          // Re-fetch full schedule to get cron/scheduledAt
+          const [full] = await db.select().from(scheduledMessages).where(eq(scheduledMessages.id, item.id)).limit(1);
+          if (full) {
+            const jobId = await createScheduledJob(full.id, full.cronExpression, full.scheduledAt);
+            await db.update(scheduledMessages)
+              .set({ status: "active", bullmqJobId: jobId, updatedAt: new Date() })
+              .where(eq(scheduledMessages.id, full.id));
+          }
+        }
+        affected = pausedItems.length;
+      }
+
+      auditLogger.log({
+        eventType: "skill_execute",
+        userId: ctx.user.id,
+        requestPayload: { operation: "bulk_action", action: input.action, ids: ownedIds, affected },
+      });
+
+      return { success: true, affected };
+    }),
+
+  /**
+   * Get execution analytics for user's schedules
+   */
+  getAnalytics: protectedProcedure
+    .input(z.object({
+      scheduleId: z.number().optional(),
+      days: z.number().min(1).max(90).default(30),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const since = new Date(Date.now() - input.days * 24 * 60 * 60 * 1000);
+
+      // Get user's schedule IDs
+      const userSchedules = await db
+        .select({ id: scheduledMessages.id })
+        .from(scheduledMessages)
+        .where(eq(scheduledMessages.userId, ctx.user.id));
+
+      const scheduleIds = input.scheduleId
+        ? [input.scheduleId]
+        : userSchedules.map(s => s.id);
+
+      if (scheduleIds.length === 0) {
+        return { totalRuns: 0, successCount: 0, failureCount: 0, skippedCount: 0, totalCredits: "0", successRate: 100, dailyStats: [] };
+      }
+
+      // Aggregate stats
+      const [stats] = await db
+        .select({
+          totalRuns: sql<number>`count(*)::int`,
+          successCount: sql<number>`count(*) FILTER (WHERE ${scheduledMessageLogs.status} = 'success')::int`,
+          failureCount: sql<number>`count(*) FILTER (WHERE ${scheduledMessageLogs.status} = 'error')::int`,
+          skippedCount: sql<number>`count(*) FILTER (WHERE ${scheduledMessageLogs.status} = 'skipped')::int`,
+          totalCredits: sql<string>`COALESCE(sum(${scheduledMessageLogs.creditsUsed}::numeric), 0)::text`,
+        })
+        .from(scheduledMessageLogs)
+        .where(and(
+          inArray(scheduledMessageLogs.scheduledMessageId, scheduleIds),
+          gte(scheduledMessageLogs.executedAt, since),
+        ));
+
+      // Daily breakdown (last N days)
+      const dailyStats = await db
+        .select({
+          date: sql<string>`to_char(${scheduledMessageLogs.executedAt}, 'YYYY-MM-DD')`,
+          runs: sql<number>`count(*)::int`,
+          successes: sql<number>`count(*) FILTER (WHERE ${scheduledMessageLogs.status} = 'success')::int`,
+          failures: sql<number>`count(*) FILTER (WHERE ${scheduledMessageLogs.status} = 'error')::int`,
+          credits: sql<string>`COALESCE(sum(${scheduledMessageLogs.creditsUsed}::numeric), 0)::text`,
+        })
+        .from(scheduledMessageLogs)
+        .where(and(
+          inArray(scheduledMessageLogs.scheduledMessageId, scheduleIds),
+          gte(scheduledMessageLogs.executedAt, since),
+        ))
+        .groupBy(sql`to_char(${scheduledMessageLogs.executedAt}, 'YYYY-MM-DD')`)
+        .orderBy(sql`to_char(${scheduledMessageLogs.executedAt}, 'YYYY-MM-DD')`);
+
+      const total = stats.totalRuns || 0;
+      const successRate = total > 0 ? Math.round((stats.successCount / total) * 100) : 100;
+
+      return {
+        totalRuns: total,
+        successCount: stats.successCount,
+        failureCount: stats.failureCount,
+        skippedCount: stats.skippedCount,
+        totalCredits: stats.totalCredits,
+        successRate,
+        dailyStats,
+      };
+    }),
 
   /**
    * Parse schedule intent from natural language using LLM

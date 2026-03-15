@@ -189,14 +189,20 @@ export async function resolveAgencyRetrievalScope(params: {
   const dbClient = params.dbClient ?? db;
   const [agencyRow] = await dbClient
     .select({
+      sourceTemplateId: agencies.sourceTemplateId,
       slug: agencies.slug,
     })
     .from(agencies)
     .where(eq(agencies.id, params.agencyId))
     .limit(1);
 
+  const persistedTemplateId = typeof agencyRow?.sourceTemplateId === "string" ? agencyRow.sourceTemplateId : null;
   const slug = String(agencyRow?.slug ?? "");
-  const templateDefinition = EXPERIENCE_TEMPLATES.find((template) => slug.startsWith(slugifyTemplateName(template.name)));
+  const templateDefinition = (
+    persistedTemplateId
+      ? EXPERIENCE_TEMPLATES.find((template) => template.templateId === persistedTemplateId)
+      : null
+  ) ?? EXPERIENCE_TEMPLATES.find((template) => slug.startsWith(slugifyTemplateName(template.name)));
   if (!templateDefinition) {
     return null;
   }

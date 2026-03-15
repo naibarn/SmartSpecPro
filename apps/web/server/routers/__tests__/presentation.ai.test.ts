@@ -2,22 +2,27 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const {
   mockGenerateAIDraft,
+  mockRepairSlideFromSavedNote,
   mockRelayoutExistingSlide,
   mockResolvePendingMediaForDeck,
   mockRedisSet,
   mockRedisGet,
   mockRedisDel,
+  mockRedisTtl,
 } = vi.hoisted(() => ({
   mockGenerateAIDraft: vi.fn(),
+  mockRepairSlideFromSavedNote: vi.fn(),
   mockRelayoutExistingSlide: vi.fn(),
   mockResolvePendingMediaForDeck: vi.fn(),
   mockRedisSet: vi.fn(),
   mockRedisGet: vi.fn(),
   mockRedisDel: vi.fn(),
+  mockRedisTtl: vi.fn(),
 }));
 
 vi.mock("../../services/aiPresentationService", () => ({
   generateAIDraft: mockGenerateAIDraft,
+  repairSlideFromSavedNote: mockRepairSlideFromSavedNote,
   relayoutExistingSlide: mockRelayoutExistingSlide,
   resolvePendingMediaForDeck: mockResolvePendingMediaForDeck,
 }));
@@ -27,6 +32,7 @@ vi.mock("../../services/redis", () => ({
     set: mockRedisSet,
     get: mockRedisGet,
     del: mockRedisDel,
+    ttl: mockRedisTtl,
   }),
 }));
 
@@ -40,13 +46,26 @@ import {
   isPresentationAIGenerationEnabled,
   isPresentationFeatureEnabled,
 } from "@shared/presentation/constants";
+import { finalizeStalledDraftProgress } from "../presentation";
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockRedisSet.mockResolvedValue("OK");
   mockRedisGet.mockResolvedValue(null);
   mockRedisDel.mockResolvedValue(1);
+  mockRedisTtl.mockResolvedValue(300);
   mockGenerateAIDraft.mockResolvedValue(undefined);
+  mockRepairSlideFromSavedNote.mockResolvedValue({
+    title: "Repaired title",
+    slideContent: { elements: [] },
+    warnings: [],
+    applied: {
+      templateId: "split_right_image",
+      stylePresetId: "dark-professional",
+      graphicCategory: "Business",
+      regeneratedImage: true,
+    },
+  });
   mockResolvePendingMediaForDeck.mockResolvedValue({
     slidesUpdated: 0,
     jobsChecked: 0,
@@ -161,6 +180,55 @@ describe("getDraftProgress logic", () => {
     mockRedisGet.mockResolvedValue(null);
     const raw = await mockRedisGet("ai_draft_progress:unknown");
     expect(raw).toBeNull();
+  });
+
+  it("finalizes stale progress when no worker is attached anymore", () => {
+    const result = finalizeStalledDraftProgress({
+      progress: {
+        phase: 2,
+        phaseLabel: "Refining slide layouts: 2/5",
+        slidesCompleted: 1,
+        totalSlides: 5,
+        slidePreview: [],
+        completed: false,
+        updatedAt: "2026-03-14T06:33:30.953Z",
+      },
+      taskId: "task-1",
+      workerActive: false,
+      nowMs: Date.parse("2026-03-14T06:35:46.000Z"),
+    });
+
+    expect(result.shouldPersist).toBe(true);
+    expect(result.shouldReleaseLock).toBe(true);
+    expect(result.workerActive).toBe(false);
+    expect(result.progress.completed).toBe(true);
+    expect(result.progress.error?.code).toBe("stalled");
+    expect(result.progress.error?.message).toContain("no active worker remained attached");
+  });
+
+  it("finalizes stale progress when lock heartbeat has stopped advancing", () => {
+    const result = finalizeStalledDraftProgress({
+      progress: {
+        phase: 2,
+        phaseLabel: "Refining slide layouts: 2/5",
+        slidesCompleted: 1,
+        totalSlides: 5,
+        slidePreview: [],
+        completed: false,
+        updatedAt: "2026-03-14T06:33:30.953Z",
+      },
+      taskId: "task-1",
+      workerActive: true,
+      lockTtlSeconds: 154,
+      nowMs: Date.parse("2026-03-14T06:35:46.000Z"),
+    });
+
+    expect(result.shouldPersist).toBe(true);
+    expect(result.shouldReleaseLock).toBe(true);
+    expect(result.workerActive).toBe(false);
+    expect(result.progress.completed).toBe(true);
+    expect(result.progress.error?.code).toBe("stalled");
+    expect(result.progress.error?.message).toContain("stopped responding");
   });
 });
 

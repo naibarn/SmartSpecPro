@@ -307,8 +307,8 @@ export default function AdminSkills() {
   const { data: llmProvidersData } = trpc.llmProviders.list.useQuery();
   const systemDefaultLlmModel = visionModels?.models?.find((model) => model.isDefault) || visionModels?.models?.[0];
   const systemDefaultLlmLabel = systemDefaultLlmModel
-    ? `Use system default (${systemDefaultLlmModel.id})`
-    : "Use system default";
+    ? `Auto — skill requirements (fallback: ${systemDefaultLlmModel.id.split("/").pop()})`
+    : "Auto — skill requirements";
 
   // Fetch media models (image/video/audio) for media-generate skills
   const { data: imageModels } = trpc.mediaModels.list.useQuery({ type: "image" });
@@ -684,12 +684,31 @@ export default function AdminSkills() {
         ? "private"
         : "public" as "private" | "public",
       executionPolicy: {
+        // Spec 038 fields
         thinking_level_hint: (editingSkill as any)._thinkingLevel === "auto" ? null : (editingSkill as any)._thinkingLevel,
         requires_web_search: (editingSkill as any)._requiresWebSearch ?? false,
         min_citation_coverage: (editingSkill as any)._minCitationCoverage ?? 0,
         refresh_cadence_days: (editingSkill as any)._refreshCadenceDays ?? 30,
         disclosure_required: (editingSkill as any)._disclosureRequired ?? false,
         response_mode: (editingSkill as any)._responseMode ?? "markdown",
+        // Feature 041 fields
+        mode: (editingSkill as any)._execMode === "auto" ? undefined : (editingSkill as any)._execMode,
+        allowConversationOverride: (editingSkill as any)._allowConvOverride ?? true,
+        requirements: (() => {
+          const r: Record<string, boolean | number | undefined> = {
+            supportsVision: (editingSkill as any)._reqVision || undefined,
+            supportsFunctionTools: (editingSkill as any)._reqFunctionTools || undefined,
+            supportsStructuredOutputs: (editingSkill as any)._reqStructuredOutputs || undefined,
+            supportsWebSearch: (editingSkill as any)._reqWebSearch || undefined,
+            supportsCodeExecution: (editingSkill as any)._reqCodeExecution || undefined,
+            supportsComputerUse: (editingSkill as any)._reqComputerUse || undefined,
+            supportsBackground: (editingSkill as any)._reqBackground || undefined,
+            supportsResponses: (editingSkill as any)._reqResponses || undefined,
+            contextLength: (editingSkill as any)._reqContextLength || undefined,
+          };
+          // Only send requirements if at least one capability is set
+          return Object.values(r).some(Boolean) ? r : undefined;
+        })(),
       },
     });
   };
@@ -1023,6 +1042,18 @@ export default function AdminSkills() {
                                         _refreshCadenceDays: ep.refresh_cadence_days ?? 30,
                                         _requiresWebSearch: ep.requires_web_search ?? false,
                                         _disclosureRequired: ep.disclosure_required ?? false,
+                                        // Feature 041 fields
+                                        _execMode: ep.mode ?? "auto",
+                                        _allowConvOverride: ep.allowConversationOverride ?? true,
+                                        _reqVision: ep.requirements?.supportsVision ?? false,
+                                        _reqFunctionTools: ep.requirements?.supportsFunctionTools ?? false,
+                                        _reqStructuredOutputs: ep.requirements?.supportsStructuredOutputs ?? false,
+                                        _reqWebSearch: ep.requirements?.supportsWebSearch ?? false,
+                                        _reqCodeExecution: ep.requirements?.supportsCodeExecution ?? false,
+                                        _reqComputerUse: ep.requirements?.supportsComputerUse ?? false,
+                                        _reqBackground: ep.requirements?.supportsBackground ?? false,
+                                        _reqResponses: ep.requirements?.supportsResponses ?? false,
+                                        _reqContextLength: ep.requirements?.contextLength ?? null,
                                       } as Skill;
                                     })())
                                   }
@@ -2019,7 +2050,7 @@ export default function AdminSkills() {
                       </PopoverContent>
                     </Popover>
                     <p className="text-xs text-muted-foreground">
-                      The LLM model used for Auto Prompt in Media Studio. Users can override in Advanced Mode.
+                      Auto mode selects the best model based on skill requirements (model_requirements in skill.md). Users can override in Media Studio Advanced Mode.
                     </p>
 
                     <div className="mt-3 space-y-2 rounded-md border p-3">
@@ -2257,6 +2288,109 @@ export default function AdminSkills() {
                       <Label className="text-xs font-medium">Disclosure Required</Label>
                       <p className="text-[10px] text-muted-foreground">
                         Require disclosure notice (e.g. sponsored, affiliate, marketing content).
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Intelligent Model Selection — Feature 041 */}
+              <div className="space-y-3 rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/30 dark:bg-purple-950/20 p-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Zap className="h-4 w-4 text-purple-600" />
+                  <Label className="text-sm font-semibold text-purple-700 dark:text-purple-400">Intelligent Model Selection</Label>
+                </div>
+                <p className="text-xs text-muted-foreground -mt-1">
+                  Define model capability requirements. The system auto-selects the best model matching these requirements at the lowest cost.
+                </p>
+
+                {/* Execution Mode */}
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium">Selection Mode</Label>
+                  <Select
+                    value={(editingSkill as any)._execMode ?? "auto"}
+                    onValueChange={(val) =>
+                      setEditingSkill({ ...editingSkill, _execMode: val } as any)
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">Auto — use requirements if set, else legacy cascade</SelectItem>
+                      <SelectItem value="requirements">Requirements — always match by capabilities</SelectItem>
+                      <SelectItem value="fixed">Fixed — use skill's pinned model only</SelectItem>
+                      <SelectItem value="hybrid">Hybrid — try fixed model first, then requirements</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Capability Requirements */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Required Model Capabilities</Label>
+                  <div className="grid gap-2 md:grid-cols-2">
+                    {([
+                      { key: "_reqWebSearch", label: "Web Search", desc: "Real-time search for facts & citations" },
+                      { key: "_reqStructuredOutputs", label: "Structured Outputs", desc: "JSON schema-constrained responses" },
+                      { key: "_reqFunctionTools", label: "Function Calling", desc: "Tool use & function invocation" },
+                      { key: "_reqVision", label: "Vision", desc: "Image understanding & analysis" },
+                      { key: "_reqCodeExecution", label: "Code Execution", desc: "Run code in sandbox" },
+                      { key: "_reqResponses", label: "Responses API", desc: "OpenAI Responses API support" },
+                      { key: "_reqComputerUse", label: "Computer Use", desc: "Browser/desktop automation" },
+                      { key: "_reqBackground", label: "Background Mode", desc: "Long-running async tasks" },
+                    ] as const).map((cap) => (
+                      <div key={cap.key} className="flex items-center gap-2">
+                        <Switch
+                          checked={(editingSkill as any)[cap.key] ?? false}
+                          onCheckedChange={(checked) =>
+                            setEditingSkill({ ...editingSkill, [cap.key]: checked } as any)
+                          }
+                          className="scale-75"
+                        />
+                        <div>
+                          <Label className="text-xs font-medium">{cap.label}</Label>
+                          <p className="text-[10px] text-muted-foreground leading-tight">{cap.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Context Length + Allow Override */}
+                <div className="grid gap-3 md:grid-cols-2 pt-1">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Min Context Length (tokens)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={2000000}
+                      step={1000}
+                      placeholder="Not set"
+                      value={(editingSkill as any)._reqContextLength ?? ""}
+                      onChange={(e) =>
+                        setEditingSkill({
+                          ...editingSkill,
+                          _reqContextLength: e.target.value ? parseInt(e.target.value) || null : null,
+                        } as any)
+                      }
+                      className="h-8 text-xs"
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Only select models with at least this context window. Leave empty for no limit.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-4">
+                    <Switch
+                      checked={(editingSkill as any)._allowConvOverride ?? true}
+                      onCheckedChange={(checked) =>
+                        setEditingSkill({ ...editingSkill, _allowConvOverride: checked } as any)
+                      }
+                    />
+                    <div>
+                      <Label className="text-xs font-medium">Allow Conversation Override</Label>
+                      <p className="text-[10px] text-muted-foreground">
+                        Let users override with their conversation model when requirements fallback.
                       </p>
                     </div>
                   </div>

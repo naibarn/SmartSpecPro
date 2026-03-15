@@ -7,7 +7,7 @@ import { PlaybackEngine, type PlaybackState } from "@/presentation-canvas/play/P
 import { AudioTrackPlayer } from "@/presentation-canvas/play/AudioTrackPlayer";
 import { CanvasStage } from "@/presentation-canvas";
 import { normalizeCanvasSize } from "@/presentation-canvas/constants";
-import { ensureSlideContent } from "@/lib/presentationEditorState";
+import { ensureSlideContent, getRenderableSlideElements } from "@/lib/presentationEditorState";
 import { Button } from "@/components/ui/button";
 
 const PLAY_MODE_ROUTE = "/presentation/:itemId/play";
@@ -482,6 +482,7 @@ export default function PresentationPlayMode() {
 
   const currentSlide = playbackSlides[currentIndex] ?? null;
   const normalizedSlideContent = ensureSlideContent((currentSlide as any)?.slideContent ?? { elements: [] });
+  const renderableElements = getRenderableSlideElements(normalizedSlideContent);
   const canvasSize = normalizeCanvasSize(normalizedSlideContent.canvas);
   const transitionType = normalizePlayTransition(
     normalizedSlideContent.transition ?? (currentSlide as any)?.transition ?? "fade",
@@ -534,7 +535,7 @@ export default function PresentationPlayMode() {
           {/* H2: showTransformDock=false + suppressTransformHandles=true for read-only play mode */}
           {/* H3: no viewport prop — CanvasStage handles its own fit via ResizeObserver */}
           <CanvasStage
-            elements={normalizedSlideContent.elements}
+            elements={renderableElements}
             canvasSize={canvasSize}
             selectedElementIds={[]}
             snapGuides={[]}

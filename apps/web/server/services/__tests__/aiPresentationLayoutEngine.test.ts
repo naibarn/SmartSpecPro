@@ -68,7 +68,7 @@ function makeLayoutInput(
 // ── C.1: Template Rendering Tests ──────────────────────────
 
 describe("Visual-only slides", () => {
-  it("renders a full-canvas media slide without text elements", () => {
+  it("renders a full-canvas media slide using a fullpage-image component recipe", () => {
     const input = makeLayoutInput({
       visualOnly: true,
       canvasWidth: 720,
@@ -77,9 +77,12 @@ describe("Visual-only slides", () => {
 
     const result = generateSlide(input);
     const textElements = result.slideContent.elements.filter((element) => element.type === "text");
-    const imageElements = result.slideContent.elements.filter((element) => element.type === "image");
 
     expect(textElements).toHaveLength(0);
+    expect(result.slideContent.components).toHaveLength(1);
+    const component = result.slideContent.components![0];
+    expect(component.componentId).toBe("fullpage-image");
+    const imageElements = component.fallbackElements.filter((e) => e.type === "image");
     expect(imageElements).toHaveLength(1);
     expect(imageElements[0]).toMatchObject({
       x: 0,
@@ -91,7 +94,20 @@ describe("Visual-only slides", () => {
     });
   });
 
-  it("falls back to a full-canvas svg when generated media is unavailable", () => {
+  it("uses fullpage-image-landscape recipe for landscape canvas", () => {
+    const input = makeLayoutInput({
+      visualOnly: true,
+      canvasWidth: 1920,
+      canvasHeight: 1080,
+    });
+
+    const result = generateSlide(input);
+
+    expect(result.slideContent.components).toHaveLength(1);
+    expect(result.slideContent.components![0].componentId).toBe("fullpage-image-landscape");
+  });
+
+  it("creates an empty-src fullpage component when no media is available", () => {
     const input = makeLayoutInput({
       visualOnly: true,
       imageUrl: null,
@@ -101,9 +117,10 @@ describe("Visual-only slides", () => {
 
     const result = generateSlide(input);
     const textElements = result.slideContent.elements.filter((element) => element.type === "text");
-    const imageElements = result.slideContent.elements.filter((element) => element.type === "image");
 
     expect(textElements).toHaveLength(0);
+    expect(result.slideContent.components).toHaveLength(1);
+    const imageElements = result.slideContent.components![0].fallbackElements.filter((e) => e.type === "image");
     expect(imageElements).toHaveLength(1);
     expect(imageElements[0]).toMatchObject({
       x: 0,
@@ -112,9 +129,6 @@ describe("Visual-only slides", () => {
       height: 1080,
       src: "",
     });
-    if (imageElements[0]?.type === "image") {
-      expect(imageElements[0].svgContent).toContain("<svg");
-    }
   });
 });
 
@@ -215,6 +229,107 @@ describe("Component recipe rendering", () => {
     expect(renderable.elements.some((element) => element.type === "image" && element.id.includes("hero"))).toBe(true);
   });
 
+  it("renders faq-stack slides as first-class long-form components", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        componentRecipeId: "faq-stack",
+        title: "คำถามที่พบบ่อยเรื่องการนอนของเด็กเล็ก",
+        body: [
+          "เด็กตื่นกลางคืนบ่อยเป็นเรื่องปกติไหม",
+          "ควรปลอบทันทีทุกครั้งหรือไม่",
+          "เมื่อไรควรปรึกษาแพทย์",
+        ],
+        sections: [
+          { heading: "เด็กตื่นกลางคืนบ่อยเป็นเรื่องปกติไหม", details: ["ในวัยทารกยังพบได้ แต่ควรติดตามรูปแบบการกินและการนอนร่วมกัน"] },
+          { heading: "ควรปลอบทันทีทุกครั้งหรือไม่", details: ["เริ่มจากประเมินก่อนว่าเด็กต้องการความช่วยเหลือจริงหรือสามารถกลับไปหลับต่อเองได้"] },
+          { heading: "เมื่อไรควรปรึกษาแพทย์", details: ["หากมีอาการร่วม เช่น หายใจผิดปกติ น้ำหนักไม่ขึ้น หรือร้องกวนรุนแรง ควรปรึกษาแพทย์"] },
+        ],
+      }),
+    }));
+
+    expect(result.slideContent.components?.[0]?.componentId).toBe("faq-stack");
+    const renderable = getPresentationSlideRenderableElements(result.slideContent);
+    expect(renderable.elements.some((element) => element.type === "text" && element.id.includes("faq-1-q"))).toBe(true);
+  });
+
+  it("renders timeline-report slides as first-class long-form components", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        componentRecipeId: "timeline-report",
+        title: "แผนพัฒนาแพลตฟอร์มตลอดปี 2026",
+        body: [
+          "Q1 2026 รวบรวม pain points และนิยามปัญหาหลัก",
+          "Q2 2026 ทดลอง workflow ใหม่กับทีมหลัก",
+          "Q3 2026 ขยาย rollout พร้อม dashboard",
+        ],
+        sections: [
+          { heading: "Q1 2026 Discover the bottlenecks", details: ["สัมภาษณ์ทีมงานและสรุปปัญหาที่กระทบมากที่สุด"] },
+          { heading: "Q2 2026 Pilot the workflow", details: ["เก็บ feedback จริงและแก้ friction ก่อน rollout"] },
+          { heading: "Q3 2026 Scale and govern", details: ["กำหนด owner พร้อม governance และ dashboard หลังเปิดใช้"] },
+        ],
+      }),
+    }));
+
+    expect(result.slideContent.components?.[0]?.componentId).toBe("timeline-report");
+    const renderable = getPresentationSlideRenderableElements(result.slideContent);
+    expect(renderable.elements.some((element) => element.type === "text" && element.id.includes("phase-1-title"))).toBe(true);
+    expect(renderable.elements.some((element) => element.type === "text" && element.id.includes("next-steps"))).toBe(true);
+  });
+
+  it("renders two-column-article slides as first-class long-form components", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        componentRecipeId: "two-column-article",
+        title: "แนวทางปรับการทำงานร่วมกันของทีมข้ามสายงาน",
+        body: [
+          "ทีมข้ามสายงานมักสะดุดตั้งแต่ช่วงที่แต่ละฝ่ายยังตีความเป้าหมายไม่ตรงกัน",
+          "เมื่อเข้าสู่การทำงานจริง การขาดจังหวะอัปเดตที่ชัดเจนทำให้ประเด็นสำคัญถูกส่งต่อช้า",
+        ],
+        sections: [
+          { heading: "ตั้งภาษาและบริบทให้ตรงกัน", details: ["นิยามเป้าหมายและคำหลักร่วมกันก่อนเริ่ม execution เพื่อให้แต่ละฝ่ายเห็นภาพเดียวกัน"] },
+          { heading: "ออกแบบจังหวะการสื่อสาร", details: ["กำหนด cadence ที่เหมาะสมและแยกให้ชัดว่าอะไรควร sync สดหรือส่งต่อแบบ async"] },
+        ],
+      }),
+    }));
+
+    expect(result.slideContent.components?.[0]?.componentId).toBe("two-column-article");
+    const renderable = getPresentationSlideRenderableElements(result.slideContent);
+    expect(renderable.elements.some((element) => element.type === "text" && element.id.includes("left-title"))).toBe(true);
+    expect(renderable.elements.some((element) => element.type === "text" && element.id.includes("right-body"))).toBe(true);
+  });
+
+  it("renders two-column-article with a dedicated hero image block instead of a full-slide overlay", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        componentRecipeId: "two-column-article",
+        title: "แนวทางป้องกันและติดตามอย่างเป็นขั้นตอน",
+        body: [
+          "ผู้ปกครองควรสังเกตพฤติกรรมการกินควบคู่กับอารมณ์และช่วงเวลาที่เกิดอาการ",
+          "การปรับเทคนิคการป้อนและติดตามสัญญาณเตือนควรทำไปพร้อมกันอย่างต่อเนื่อง",
+        ],
+        sections: [
+          { heading: "ติดตามพฤติกรรม", details: ["จดช่วงเวลาที่เกิดอาการและสิ่งกระตุ้นร่วมเพื่อให้แพทย์เห็น pattern ที่ชัดขึ้น"] },
+          { heading: "ปรับวิธีดูแล", details: ["จัดท่ากิน ปรับจังหวะ และเช็กสัญญาณเตือนที่ควรพบแพทย์ให้เป็นระบบ"] },
+        ],
+      }),
+      imageUrl: "https://example.com/hero-two-column.jpg",
+    }));
+
+    const fallback = result.slideContent.components?.[0]?.fallbackElements ?? [];
+    const hero = fallback.find((element) => element.id.endsWith("::hero-image"));
+    const leftBody = fallback.find((element) => element.id.endsWith("::left-body"));
+    expect(hero?.type).toBe("image");
+    expect(leftBody?.type).toBe("text");
+    if (hero?.type === "image" && leftBody?.type === "text") {
+      expect(hero.x).toBeLessThan(leftBody.x);
+      expect(hero.height).toBeGreaterThan(leftBody.height);
+    }
+  });
+
   it("renders framed-image-story slides with an image fallback element", () => {
     const result = generateSlide(makeLayoutInput({
       slideData: makeSlideData({
@@ -292,6 +407,130 @@ describe("Component recipe rendering", () => {
     const renderable = getPresentationSlideRenderableElements(result.slideContent);
     expect(renderable.elements.some((element) => element.type === "text" && element.id.includes("section-1-heading"))).toBe(true);
     expect(renderable.elements.some((element) => element.type === "text" && element.id.includes("takeaways"))).toBe(true);
+  });
+
+  it("renders sectioned-explainer with a hero image card when media is available", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        componentRecipeId: "sectioned-explainer",
+        title: "แนวทางป้องกันแบบค่อยเป็นค่อยไป",
+        body: [
+          "เริ่มจากทำให้สภาพแวดล้อมระหว่างให้นมสงบและคาดเดาได้",
+          "หลังจากนั้นจึงติดตามรูปแบบอาการและสัญญาณเตือนอย่างเป็นระบบ",
+          "ผู้ดูแลทุกคนควรใช้แนวทางเดียวกันเพื่อให้การสังเกตต่อเนื่อง",
+        ],
+        sections: [
+          { heading: "ปรับบรรยากาศ", details: ["ลดสิ่งรบกวนและจัดท่าให้สบายขึ้นก่อนมื้อที่มักมีอาการ"] },
+          { heading: "ติดตาม pattern", details: ["บันทึกเวลา ปริมาณ และอาการร่วมทุกครั้งอย่างสม่ำเสมอ"] },
+          { heading: "ทบทวนกับแพทย์", details: ["นำข้อมูลที่บันทึกไว้ไปคุยเมื่ออาการไม่ดีขึ้นหรือมีสัญญาณเตือน"] },
+        ],
+      }),
+      imageUrl: "https://example.com/hero-sectioned.jpg",
+    }));
+
+    const fallback = result.slideContent.components?.[0]?.fallbackElements ?? [];
+    const hero = fallback.find((element) => element.id.endsWith("::hero-image"));
+    const takeaways = fallback.find((element) => element.id.endsWith("::takeaways"));
+    expect(hero?.type).toBe("image");
+    expect(takeaways?.type).toBe("text");
+    if (hero?.type === "image" && takeaways?.type === "text") {
+      expect(hero.x).toBeLessThan(takeaways.x);
+      expect(hero.y).toBeLessThan(takeaways.y);
+    }
+  });
+
+  it("renders sectioned-explainer as a full-page A4 layout on portrait canvases", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        componentRecipeId: "sectioned-explainer",
+        title: "แนวทางดูแลแบบเป็นลำดับ",
+        body: [
+          "เริ่มจากสังเกต pattern การเกิดอาการในแต่ละมื้อ",
+          "ปรับวิธีป้อนและท่าทางพร้อมจดบันทึกอาการร่วม",
+          "ทบทวนข้อมูลร่วมกับแพทย์เมื่ออาการไม่ดีขึ้น",
+        ],
+        sections: [
+          { heading: "สังเกต", details: ["จดเวลา ปริมาณ และอาการร่วมให้เห็นรูปแบบชัดเจน"] },
+          { heading: "ปรับวิธีดูแล", details: ["ลดสิ่งกระตุ้นระหว่างมื้อและค่อย ๆ ปรับจังหวะการป้อน"] },
+          { heading: "ติดตามผล", details: ["เปรียบเทียบผลหลังปรับเพื่อดูว่าปัจจัยใดช่วยจริง"] },
+        ],
+      }),
+      imageUrl: "https://example.com/a4-sectioned.jpg",
+      canvasWidth: 720,
+      canvasHeight: 1280,
+    }));
+
+    const fallback = result.slideContent.components?.[0]?.fallbackElements ?? [];
+    const canvasBg = fallback.find((element) => element.id.endsWith("::canvas-bg"));
+    const hero = fallback.find((element) => element.id.endsWith("::hero-image"));
+    expect(canvasBg?.type).toBe("rect");
+    expect(hero?.type).toBe("image");
+    if (canvasBg?.type === "rect" && hero?.type === "image") {
+      expect(canvasBg.height).toBeGreaterThan(1000);
+      expect(canvasBg.width).toBeGreaterThan(650);
+      expect(canvasBg.x).toBeLessThan(40);
+      expect(hero.width).toBeGreaterThan(560);
+      expect(hero.y - canvasBg.y).toBeLessThan(80);
+    }
+  });
+
+  it("renders article-focus with a split hero panel when media is available", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        componentRecipeId: "article-focus",
+        title: "แนวทางดูแลที่ต้องอธิบายละเอียดเป็นบทความ",
+        body: [
+          "ผู้ดูแลควรเริ่มจากเข้าใจบริบทก่อนว่าปัญหาเกิดช่วงไหนและมีปัจจัยแวดล้อมใดเกี่ยวข้อง",
+          "เมื่อเก็บข้อมูลต่อเนื่องแล้วจึงค่อยปรับพฤติกรรมทีละจุดเพื่อดูว่าปัจจัยใดช่วยให้อาการดีขึ้นจริง",
+        ],
+        notes: "สไลด์นี้ต้องคงลักษณะเป็นบทความยาว แต่ควรมีภาพหลักในบล็อกด้านขวาแทนการปูภาพทั้งฉาก",
+      }),
+      imageUrl: "https://example.com/article-focus.jpg",
+    }));
+
+    const fallback = result.slideContent.components?.[0]?.fallbackElements ?? [];
+    const hero = fallback.find((element) => element.id.endsWith("::hero-image"));
+    const body = fallback.find((element) => element.id.endsWith("::body"));
+    expect(hero?.type).toBe("image");
+    expect(body?.type).toBe("text");
+    if (hero?.type === "image" && body?.type === "text") {
+      expect(hero.x).toBeGreaterThan(body.x);
+      expect(body.width).toBeGreaterThan(600);
+    }
+  });
+
+  it("prefers explicit componentSlotBindings when compaction has already shaped the long-form copy", () => {
+    const result = generateSlide(makeLayoutInput({
+      slideData: makeSlideData({
+        templateId: "split_right_image",
+        componentRecipeId: "sectioned-explainer",
+        componentSlotBindings: [
+          { slotId: "eyebrow", type: "text", text: "Sleep guide" },
+          { slotId: "title", type: "text", text: "คู่มือการนอนของเด็กเล็ก" },
+          { slotId: "intro", type: "text", text: "เริ่มจากกิจวัตรเดิมทุกคืนและรักษาเวลาเข้านอนให้คงที่" },
+          { slotId: "section1-heading", type: "text", text: "ความผิดพลาดที่พบบ่อย" },
+          { slotId: "section1-body", type: "text", text: "หลีกเลี่ยงการเปลี่ยนเวลานอนทุกวันและอย่าตอบสนองทันทีทุกครั้ง" },
+          { slotId: "section2-heading", type: "text", text: "ใครควรอ่าน" },
+          { slotId: "section2-body", type: "text", text: "เหมาะกับพ่อแม่หรือผู้ดูแลเด็กเล็กที่กำลังฝึกนิสัยการนอนของลูก" },
+          { slotId: "section3-heading", type: "text", text: "สิ่งที่ควรทำต่อ" },
+          { slotId: "section3-body", type: "text", text: "เลือกเพียงหนึ่งถึงสองแนวทางแล้วทำซ้ำอย่างต่อเนื่อง" },
+          { slotId: "takeaways-title", type: "text", text: "Key Takeaways" },
+          { slotId: "takeaways", type: "list", items: ["ทำกิจวัตรเดิมทุกคืน", "รักษาเวลาเข้านอนให้คงที่"] },
+        ],
+        title: "ต้นฉบับที่ควรถูกแทนที่",
+        body: ["ข้อความยาวเดิมที่ไม่ควรถูกใช้"],
+        notes: "โน้ตเดิมที่ไม่ควรถูกใช้",
+      }),
+      imageUrl: null,
+    }));
+
+    expect(result.slideContent.components?.[0]?.slotBindings).toEqual(expect.arrayContaining([
+      expect.objectContaining({ slotId: "intro", type: "text", text: "เริ่มจากกิจวัตรเดิมทุกคืนและรักษาเวลาเข้านอนให้คงที่" }),
+      expect.objectContaining({ slotId: "takeaways", type: "list", items: ["ทำกิจวัตรเดิมทุกคืน", "รักษาเวลาเข้านอนให้คงที่"] }),
+    ]));
   });
 
   it("expands poster-spotlight text regions when the recipe copy is dense", () => {

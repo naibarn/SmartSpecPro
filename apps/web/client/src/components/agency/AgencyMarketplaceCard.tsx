@@ -21,6 +21,7 @@ const NODE_TYPE_COLORS: Record<string, string> = {
   knowledge_base: "bg-green-100 text-green-800",
   skill_call: "bg-amber-100 text-amber-800",
   human_approval: "bg-red-100 text-red-800",
+  browser_session: "bg-cyan-100 text-cyan-800",
 };
 
 export function AgencyMarketplaceCard({

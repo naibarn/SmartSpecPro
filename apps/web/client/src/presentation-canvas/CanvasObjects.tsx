@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactElement } from "react";
-import { Pause, Play } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Pause, Play, Search, X } from "lucide-react";
 
-import type { PresentationElement } from "@/lib/presentationEditorState";
+import type { PresentationElement, PresentationElementPatch } from "@/lib/presentationEditorState";
 import { normalizeMediaSourceUrl } from "@/lib/mediaUrl";
 import { computeMediaMotionTimelineFrame } from "@shared/presentation/mediaMotion";
 import type { PresentationMediaMotion } from "@shared/presentation/contracts";
+import { buildPresentationMediaShapeStyleForElement } from "@shared/presentation/mediaShape";
 
 export interface CanvasMediaMotionTiming {
   elapsedMs: number;
@@ -14,7 +15,8 @@ export interface CanvasMediaMotionTiming {
 interface CanvasObjectsProps {
   elements: PresentationElement[];
   selectedElementIds: string[];
-  onSelectElement: (elementId: string, options?: { additive?: boolean }) => void;
+  activeElementIds?: string[];
+  onSelectElement: (elementId: string, options?: { additive?: boolean; preferElement?: boolean }) => void;
   onFocusElement?: (elementId: string) => void;
   onMoveSelection: (deltaX: number, deltaY: number) => void;
   onResizeSelection: (width: number, height: number) => void;
@@ -28,6 +30,11 @@ interface CanvasObjectsProps {
   autoPlayVideos?: boolean;
   showVideoPlaybackToggle?: boolean;
   clipTextToElementBounds?: boolean;
+  cropModeElementId?: string | null;
+  cropModeTarget?: "content" | "frame";
+  onAdjustMediaCrop?: (elementId: string, patch: PresentationElementPatch) => void;
+  onToggleCropMode?: (elementId: string | null) => void;
+  onSetCropModeTarget?: (target: "content" | "frame") => void;
   mediaMotionTiming?: CanvasMediaMotionTiming;
 }
 
@@ -133,14 +140,59 @@ function getBaseElementClass(isSelected: boolean, showElementFrames: boolean): s
 }
 
 interface PointerDragState {
-  mode: "move" | "resize" | "rotate";
+  mode: "move" | "resize" | "rotate" | "crop" | "crop-resize";
   pointerId: number;
   startClientX: number;
   startClientY: number;
   lastAppliedDx: number;
   lastAppliedDy: number;
+  baseX?: number;
+  baseY?: number;
   baseWidth: number;
   baseHeight: number;
+  elementId?: string;
+  basePositionX?: number;
+  basePositionY?: number;
+  baseZoom?: number;
+  cropHandle?: "nw" | "n" | "ne" | "e" | "w" | "sw" | "s" | "se";
+}
+
+function getSelectionBounds(
+  elements: PresentationElement[],
+  elementIds: string[],
+): { x: number; y: number; width: number; height: number } | null {
+  if (!elementIds.length) {
+    return null;
+  }
+
+  const selectedIds = new Set(elementIds);
+  const selectedElements = elements.filter((element) => selectedIds.has(element.id));
+  if (!selectedElements.length) {
+    return null;
+  }
+
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+
+  for (const element of selectedElements) {
+    minX = Math.min(minX, element.x);
+    minY = Math.min(minY, element.y);
+    maxX = Math.max(maxX, element.x + element.width);
+    maxY = Math.max(maxY, element.y + Math.max(MIN_LINE_HEIGHT_PX, element.height));
+  }
+
+  if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) {
+    return null;
+  }
+
+  return {
+    x: minX,
+    y: minY,
+    width: Math.max(1, maxX - minX),
+    height: Math.max(1, maxY - minY),
+  };
 }
 
 interface RenderElementBodyOptions {
@@ -203,6 +255,7 @@ function renderElementBody(
     const resolvedSource = normalizeMediaSourceUrl(element.src);
     const hasSource = Boolean(resolvedSource);
     const imageRender = resolveImageRenderProps(element);
+    const mediaShapeStyle = buildPresentationMediaShapeStyleForElement(element);
     const inlineSvg = typeof element.svgContent === "string" ? element.svgContent.trim() : "";
     // Inline SVG graphic — transparent background, color-tinted
     if (inlineSvg) {
@@ -219,7 +272,7 @@ function renderElementBody(
       }
       const coloredSvg = inlineSvg.replace(/currentColor/g, color);
       return (
-        <div className="relative h-full w-full overflow-hidden">
+      <div className="relative h-full w-full overflow-hidden" style={mediaShapeStyle}>
           <div
             className="h-full w-full"
             style={{
@@ -239,7 +292,10 @@ function renderElementBody(
       );
     }
     return (
-      <div className={`relative h-full w-full ${hasSource ? "" : "bg-slate-100"}`}>
+      <div
+        className={`relative h-full w-full overflow-hidden ${hasSource ? "" : "bg-slate-100"}`}
+        style={mediaShapeStyle}
+      >
         {hasSource ? (
           <img
             data-testid={`canvas-image-${element.id}`}
@@ -286,8 +342,9 @@ function renderElementBody(
     const hasSource = Boolean(resolvedSource);
     const isPlaying = Boolean(options.videoPlaybackMap[element.id]);
     const videoRender = resolveVideoRenderProps(element);
+    const mediaShapeStyle = buildPresentationMediaShapeStyleForElement(element);
     return (
-      <div className="relative h-full w-full bg-black/85">
+      <div className="relative h-full w-full overflow-hidden bg-black/85" style={mediaShapeStyle}>
         {hasSource ? (
           <video
             ref={(node) => {
@@ -393,6 +450,7 @@ function renderElementBody(
 export function CanvasObjects({
   elements,
   selectedElementIds,
+  activeElementIds,
   onSelectElement,
   onFocusElement,
   onMoveSelection,
@@ -406,6 +464,11 @@ export function CanvasObjects({
   autoPlayVideos = false,
   showVideoPlaybackToggle = true,
   clipTextToElementBounds = false,
+  cropModeElementId = null,
+  cropModeTarget = "content",
+  onAdjustMediaCrop,
+  onToggleCropMode,
+  onSetCropModeTarget,
   mediaMotionTiming = { elapsedMs: 0, slideDurationMs: 3000 },
 }: CanvasObjectsProps) {
   const dragStateRef = useRef<PointerDragState | null>(null);
@@ -413,6 +476,15 @@ export function CanvasObjects({
   const [videoPlaybackMap, setVideoPlaybackMap] = useState<Record<string, boolean>>({});
   const stageScale = Math.max(0.0001, interactionScale);
   const selectedElement = elements.find((element) => element.id === selectedElementIds[0]) || null;
+  const interactionActiveIds = activeElementIds ?? selectedElementIds;
+  const selectionDragBounds = getSelectionBounds(elements, interactionActiveIds);
+  const shouldRenderSelectionHitArea = Boolean(
+    selectionDragBounds
+    && (
+      interactionActiveIds.length > 1
+      || (interactionActiveIds.length > 0 && selectedElementIds.length === 0)
+    ),
+  );
 
   const setVideoRef = useCallback((elementId: string, node: HTMLVideoElement | null) => {
     videoRefsRef.current[elementId] = node;
@@ -551,6 +623,79 @@ export function CanvasObjects({
         return;
       }
 
+      if (dragState.mode === "crop") {
+        const element = elements.find((entry) => entry.id === dragState.elementId);
+        if (!element || (element.type !== "image" && element.type !== "video") || !onAdjustMediaCrop) {
+          return;
+        }
+        const cropScale = Math.max(0.5, dragState.baseZoom ?? 1);
+        const nextPositionX = clamp(
+          Number(dragState.basePositionX ?? 50) + ((totalDx / Math.max(16, dragState.baseWidth)) * 100) / cropScale,
+          0,
+          100,
+        );
+        const nextPositionY = clamp(
+          Number(dragState.basePositionY ?? 50) + ((totalDy / Math.max(16, dragState.baseHeight)) * 100) / cropScale,
+          0,
+          100,
+        );
+        onAdjustMediaCrop(element.id, element.type === "image"
+          ? {
+            imagePositionX: Number(nextPositionX.toFixed(2)),
+            imagePositionY: Number(nextPositionY.toFixed(2)),
+          }
+          : {
+            videoPositionX: Number(nextPositionX.toFixed(2)),
+            videoPositionY: Number(nextPositionY.toFixed(2)),
+          });
+        return;
+      }
+
+      if (dragState.mode === "crop-resize") {
+        const element = elements.find((entry) => entry.id === dragState.elementId);
+        if (!element || (element.type !== "image" && element.type !== "video") || !onAdjustMediaCrop || !dragState.cropHandle) {
+          return;
+        }
+        const baseX = dragState.baseX ?? element.x;
+        const baseY = dragState.baseY ?? element.y;
+        let nextX = baseX;
+        let nextY = baseY;
+        let nextWidth = dragState.baseWidth;
+        let nextHeight = dragState.baseHeight;
+
+        if (dragState.cropHandle.includes("e")) {
+          nextWidth = Math.max(16, Math.round(dragState.baseWidth + totalDx));
+        }
+        if (dragState.cropHandle.includes("s")) {
+          nextHeight = Math.max(16, Math.round(dragState.baseHeight + totalDy));
+        }
+        if (dragState.cropHandle.includes("w")) {
+          nextWidth = Math.max(16, Math.round(dragState.baseWidth - totalDx));
+          nextX = Math.round(baseX + (dragState.baseWidth - nextWidth));
+        }
+        if (dragState.cropHandle.includes("n")) {
+          nextHeight = Math.max(16, Math.round(dragState.baseHeight - totalDy));
+          nextY = Math.round(baseY + (dragState.baseHeight - nextHeight));
+        }
+
+        if (
+          nextX === dragState.baseX
+          && nextY === dragState.baseY
+          && nextWidth === dragState.baseWidth
+          && nextHeight === dragState.baseHeight
+        ) {
+          return;
+        }
+
+        onAdjustMediaCrop(element.id, {
+          x: nextX,
+          y: nextY,
+          width: nextWidth,
+          height: nextHeight,
+        });
+        return;
+      }
+
       const nextWidth = Math.max(16, Math.round(dragState.baseWidth + totalDx));
       const nextHeight = Math.max(16, Math.round(dragState.baseHeight + totalDy));
       const lastWidth = dragState.baseWidth + dragState.lastAppliedDx;
@@ -596,12 +741,43 @@ export function CanvasObjects({
 
   return (
     <div className="relative h-full w-full">
+      {shouldRenderSelectionHitArea && selectionDragBounds ? (
+        <div
+          data-testid="canvas-selection-hit-area"
+          className="absolute rounded-[inherit] bg-transparent"
+          style={{
+            left: `${(selectionDragBounds.x / canvasWidth) * 100}%`,
+            top: `${(selectionDragBounds.y / canvasHeight) * 100}%`,
+            width: `${(selectionDragBounds.width / canvasWidth) * 100}%`,
+            height: `${(selectionDragBounds.height / canvasHeight) * 100}%`,
+          }}
+          onPointerDown={(event) => {
+            if (event.button !== 0 || event.altKey) {
+              return;
+            }
+            event.stopPropagation();
+            dragStateRef.current = {
+              mode: "move",
+              pointerId: event.pointerId,
+              startClientX: event.clientX,
+              startClientY: event.clientY,
+              lastAppliedDx: 0,
+              lastAppliedDy: 0,
+              baseWidth: selectionDragBounds.width,
+              baseHeight: selectionDragBounds.height,
+            };
+            event.currentTarget.setPointerCapture?.(event.pointerId);
+            event.preventDefault();
+          }}
+          aria-hidden="true"
+        />
+      ) : null}
       {elements.map((element, index) => (
         <button
           key={element.id}
           type="button"
           data-canvas-object="true"
-          className={getBaseElementClass(selectedElementIds.includes(element.id), showElementFrames)}
+          className={getBaseElementClass(interactionActiveIds.includes(element.id), showElementFrames)}
           style={{
             left: `${(element.x / canvasWidth) * 100}%`,
             top: `${(element.y / canvasHeight) * 100}%`,
@@ -621,39 +797,64 @@ export function CanvasObjects({
             if (event.button !== 0) {
               return;
             }
-            if (event.altKey) {
-              return;
-            }
             event.stopPropagation();
-            const isAlreadySelected = selectedElementIds.includes(element.id);
-            if (event.shiftKey) {
+            const isAlreadySelected = interactionActiveIds.includes(element.id);
+            if (event.altKey) {
+              onSelectElement(element.id, { preferElement: true });
+            } else if (event.shiftKey) {
               onSelectElement(element.id, { additive: true });
             } else if (!isAlreadySelected) {
               onSelectElement(element.id);
             } else {
               onFocusElement?.(element.id);
             }
-            dragStateRef.current = {
-              mode: "move",
-              pointerId: event.pointerId,
-              startClientX: event.clientX,
-              startClientY: event.clientY,
-              lastAppliedDx: 0,
-              lastAppliedDy: 0,
-              baseWidth: element.width,
-              baseHeight: element.height,
-            };
+            const cropModeActive = cropModeElementId === element.id && (element.type === "image" || element.type === "video");
+            dragStateRef.current = cropModeActive
+              ? (cropModeTarget === "frame"
+                ? {
+                  mode: "move",
+                  pointerId: event.pointerId,
+                  startClientX: event.clientX,
+                  startClientY: event.clientY,
+                  lastAppliedDx: 0,
+                  lastAppliedDy: 0,
+                  baseWidth: element.width,
+                  baseHeight: element.height,
+                }
+                : {
+                  mode: "crop",
+                  pointerId: event.pointerId,
+                  startClientX: event.clientX,
+                  startClientY: event.clientY,
+                  lastAppliedDx: 0,
+                  lastAppliedDy: 0,
+                  baseWidth: element.width,
+                  baseHeight: element.height,
+                  elementId: element.id,
+                  basePositionX: element.type === "image" ? element.imagePositionX ?? 50 : element.videoPositionX ?? 50,
+                  basePositionY: element.type === "image" ? element.imagePositionY ?? 50 : element.videoPositionY ?? 50,
+                  baseZoom: element.type === "image" ? element.imageZoom ?? 1 : element.videoZoom ?? 1,
+                })
+              : {
+                mode: "move",
+                pointerId: event.pointerId,
+                startClientX: event.clientX,
+                startClientY: event.clientY,
+                lastAppliedDx: 0,
+                lastAppliedDy: 0,
+                baseWidth: element.width,
+                baseHeight: element.height,
+              };
             event.currentTarget.setPointerCapture?.(event.pointerId);
             event.preventDefault();
           }}
           onClick={(event) => {
-            if (event.altKey) {
-              return;
-            }
             event.stopPropagation();
             if (event.detail === 0) {
-              const isAlreadySelected = selectedElementIds.includes(element.id);
-              if (event.shiftKey) {
+              const isAlreadySelected = interactionActiveIds.includes(element.id);
+              if (event.altKey) {
+                onSelectElement(element.id, { preferElement: true });
+              } else if (event.shiftKey) {
                 onSelectElement(element.id, { additive: true });
               } else if (!isAlreadySelected) {
                 onSelectElement(element.id);
@@ -681,7 +882,7 @@ export function CanvasObjects({
               mediaMotionTiming,
             })}
           </span>
-          {selectedElement?.id === element.id ? (
+          {selectedElement?.id === element.id && cropModeElementId !== element.id ? (
             <span
               className="absolute left-1/2 top-0 h-4 w-4 -translate-x-1/2 -translate-y-6 cursor-grab rounded-full border border-white bg-violet-500 shadow"
               role="button"
@@ -707,7 +908,7 @@ export function CanvasObjects({
               }}
             />
           ) : null}
-          {selectedElement?.id === element.id ? (
+          {selectedElement?.id === element.id && cropModeElementId !== element.id ? (
             <span
               className="absolute -bottom-1.5 -right-1.5 h-3.5 w-3.5 cursor-nwse-resize rounded-sm border border-white bg-sky-500 shadow"
               role="button"
@@ -732,6 +933,213 @@ export function CanvasObjects({
                 event.preventDefault();
               }}
             />
+          ) : null}
+          {selectedElement?.id === element.id && cropModeElementId === element.id && (element.type === "image" || element.type === "video") ? (
+            <>
+              <span className="pointer-events-none absolute inset-0 rounded-[inherit] border-2 border-amber-400 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.15)]" />
+              <span className="pointer-events-none absolute inset-0 grid place-items-center">
+                <span className="rounded-full bg-black/45 px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-white">
+                  {cropModeTarget === "frame" ? "Frame Mode" : "Content Mode"}
+                </span>
+              </span>
+              <span className="pointer-events-none absolute bottom-2 left-2 rounded-full bg-black/55 px-2 py-1 text-[10px] font-medium text-white">
+                {cropModeTarget === "frame" ? "Drag frame or resize handles" : "Drag media or use arrows to move content"}
+              </span>
+              <span
+                className="absolute left-2 top-2 z-10 flex gap-1"
+                data-testid="canvas-crop-toolbar"
+                onPointerDown={(event) => {
+                  event.stopPropagation();
+                }}
+              >
+                <span className="flex overflow-hidden rounded-full border border-white/20 bg-black/65 shadow">
+                  <span
+                    role="button"
+                    tabIndex={-1}
+                    aria-label="Edit Crop Content"
+                    className={`grid h-7 min-w-7 place-items-center px-2 text-[10px] font-medium text-white ${cropModeTarget === "content" ? "bg-sky-600" : "bg-transparent hover:bg-black/80"}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      event.preventDefault();
+                      onSetCropModeTarget?.("content");
+                    }}
+                  >
+                    Content
+                  </span>
+                  <span
+                    role="button"
+                    tabIndex={-1}
+                    aria-label="Edit Crop Frame"
+                    className={`grid h-7 min-w-7 place-items-center px-2 text-[10px] font-medium text-white ${cropModeTarget === "frame" ? "bg-amber-600" : "bg-transparent hover:bg-black/80"}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      event.preventDefault();
+                      onSetCropModeTarget?.("frame");
+                    }}
+                  >
+                    Frame
+                  </span>
+                </span>
+                <span
+                  role="button"
+                  tabIndex={-1}
+                  aria-label="Zoom Out Crop"
+                  className="grid h-7 w-7 place-items-center rounded-full bg-black/65 text-white shadow hover:bg-black/80"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    event.preventDefault();
+                    if (!onAdjustMediaCrop) {
+                      return;
+                    }
+                    onAdjustMediaCrop(element.id, element.type === "image"
+                      ? { imageZoom: clamp((element.imageZoom ?? 1) - 0.1, 0.5, 3) }
+                      : { videoZoom: clamp((element.videoZoom ?? 1) - 0.1, 0.5, 3) });
+                  }}
+                >
+                  <Search className="h-3.5 w-3.5" />
+                </span>
+                <span
+                  role="button"
+                  tabIndex={-1}
+                  aria-label="Zoom In Crop"
+                  className="grid h-7 w-7 place-items-center rounded-full bg-black/65 text-white shadow hover:bg-black/80"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    event.preventDefault();
+                    if (!onAdjustMediaCrop) {
+                      return;
+                    }
+                    onAdjustMediaCrop(element.id, element.type === "image"
+                      ? { imageZoom: clamp((element.imageZoom ?? 1) + 0.1, 0.5, 3) }
+                      : { videoZoom: clamp((element.videoZoom ?? 1) + 0.1, 0.5, 3) });
+                  }}
+                >
+                  <span className="text-sm font-bold leading-none">+</span>
+                </span>
+                {cropModeTarget === "content" ? ([
+                  { label: "Move Crop Content Left", icon: ArrowLeft, deltaX: -4, deltaY: 0 },
+                  { label: "Move Crop Content Up", icon: ArrowUp, deltaX: 0, deltaY: -4 },
+                  { label: "Move Crop Content Down", icon: ArrowDown, deltaX: 0, deltaY: 4 },
+                  { label: "Move Crop Content Right", icon: ArrowRight, deltaX: 4, deltaY: 0 },
+                ] as const).map((control) => {
+                  const Icon = control.icon;
+                  return (
+                    <span
+                      key={control.label}
+                      role="button"
+                      tabIndex={-1}
+                      aria-label={control.label}
+                      className="grid h-7 w-7 place-items-center rounded-full bg-black/65 text-white shadow hover:bg-black/80"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        event.preventDefault();
+                        if (!onAdjustMediaCrop) {
+                          return;
+                        }
+                        onAdjustMediaCrop(
+                          element.id,
+                          element.type === "image"
+                            ? {
+                              imagePositionX: clamp((element.imagePositionX ?? 50) + control.deltaX, 0, 100),
+                              imagePositionY: clamp((element.imagePositionY ?? 50) + control.deltaY, 0, 100),
+                            }
+                            : {
+                              videoPositionX: clamp((element.videoPositionX ?? 50) + control.deltaX, 0, 100),
+                              videoPositionY: clamp((element.videoPositionY ?? 50) + control.deltaY, 0, 100),
+                            },
+                        );
+                      }}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                    </span>
+                  );
+                }) : null}
+                <span
+                  role="button"
+                  tabIndex={-1}
+                  aria-label="Reset Crop"
+                  className="grid h-7 min-w-7 place-items-center rounded-full bg-black/65 px-2 text-[10px] font-medium text-white shadow hover:bg-black/80"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    event.preventDefault();
+                    if (!onAdjustMediaCrop) {
+                      return;
+                    }
+                    onAdjustMediaCrop(element.id, element.type === "image"
+                      ? {
+                        imageFit: "cover",
+                        imageZoom: 1,
+                        imagePositionX: 50,
+                        imagePositionY: 50,
+                      }
+                      : {
+                        videoFit: "cover",
+                        videoZoom: 1,
+                        videoPositionX: 50,
+                        videoPositionY: 50,
+                      });
+                  }}
+                >
+                  Reset
+                </span>
+                <span
+                  role="button"
+                  tabIndex={-1}
+                  aria-label="Exit Crop Mode"
+                  className="grid h-7 w-7 place-items-center rounded-full bg-black/65 text-white shadow hover:bg-black/80"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    event.preventDefault();
+                    onToggleCropMode?.(null);
+                  }}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </span>
+              </span>
+              <span className={`pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/35 px-2 py-1 text-[10px] font-medium text-white ${cropModeTarget === "frame" ? "border border-amber-300/90" : "border border-white/80"}`}>
+                {cropModeTarget === "frame" ? "Frame" : "Content"}
+              </span>
+              {cropModeTarget === "frame" ? ([
+                { handle: "nw", className: "left-0 top-0 -translate-x-1/3 -translate-y-1/3 cursor-nwse-resize", label: "Resize Crop Frame Top Left" },
+                { handle: "n", className: "left-1/2 top-0 -translate-x-1/2 -translate-y-1/3 cursor-ns-resize", label: "Resize Crop Frame Top" },
+                { handle: "ne", className: "right-0 top-0 translate-x-1/3 -translate-y-1/3 cursor-nesw-resize", label: "Resize Crop Frame Top Right" },
+                { handle: "e", className: "right-0 top-1/2 translate-x-1/3 -translate-y-1/2 cursor-ew-resize", label: "Resize Crop Frame Right" },
+                { handle: "w", className: "left-0 top-1/2 -translate-x-1/3 -translate-y-1/2 cursor-ew-resize", label: "Resize Crop Frame Left" },
+                { handle: "sw", className: "bottom-0 left-0 -translate-x-1/3 translate-y-1/3 cursor-nesw-resize", label: "Resize Crop Frame Bottom Left" },
+                { handle: "s", className: "bottom-0 left-1/2 -translate-x-1/2 translate-y-1/3 cursor-ns-resize", label: "Resize Crop Frame Bottom" },
+                { handle: "se", className: "bottom-0 right-0 translate-x-1/3 translate-y-1/3 cursor-nwse-resize", label: "Resize Crop Frame Bottom Right" },
+              ] as const).map((handleConfig) => (
+                <span
+                  key={handleConfig.handle}
+                  className={`absolute z-10 h-5 w-5 rounded-full border border-white bg-amber-500 shadow ${handleConfig.className}`}
+                  role="button"
+                  tabIndex={-1}
+                  aria-label={handleConfig.label}
+                  onPointerDown={(event) => {
+                    if (event.button !== 0) {
+                      return;
+                    }
+                    event.stopPropagation();
+                    dragStateRef.current = {
+                      mode: "crop-resize",
+                      pointerId: event.pointerId,
+                      startClientX: event.clientX,
+                      startClientY: event.clientY,
+                      lastAppliedDx: 0,
+                      lastAppliedDy: 0,
+                      baseX: element.x,
+                      baseY: element.y,
+                      baseWidth: element.width,
+                      baseHeight: element.height,
+                      elementId: element.id,
+                      cropHandle: handleConfig.handle,
+                    };
+                    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+                    event.preventDefault();
+                  }}
+                />
+              )) : null}
+            </>
           ) : null}
         </button>
       ))}

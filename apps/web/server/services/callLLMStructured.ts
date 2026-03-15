@@ -95,12 +95,14 @@ The JSON must strictly conform to the expected schema.`;
     tenantId,
     conversationModel: model,
     skillSlug: (billingMetadata?.skillSlug as string) ?? undefined,
+    executionPolicy: {
+      requirements: {
+        supportsStructuredOutputs: true,
+      },
+    },
   });
 
   let effectiveModel = model;
-  if (plannerResult?.resolvedModel) {
-    effectiveModel = plannerResult.resolvedModel;
-  }
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const isRetry = attempt > 0;
@@ -149,7 +151,7 @@ The JSON must strictly conform to the expected schema.`;
     // Deduct credits for this attempt
     const { creditsUsed } = await deductCreditsForModel({
       userId,
-      model,
+      model: effectiveModel,
       provider: result.providerName,
       inputTokens,
       outputTokens,
@@ -168,9 +170,6 @@ The JSON must strictly conform to the expected schema.`;
 
     // Record step attempt for each retry (per-attempt tracking)
     if (plannerResult) {
-      const attemptSnapshot = plannerResult.snapshot
-        ? { ...plannerResult.snapshot, attemptIndex: attempt }
-        : null;
       recordStepAttempt({
         taskRunId: plannerResult.taskRunId,
         plan: plannerResult.plan,
@@ -179,7 +178,7 @@ The JSON must strictly conform to the expected schema.`;
         inputTokens,
         outputTokens,
         costUsd: costUsd?.toString(),
-        snapshot: attemptSnapshot,
+        snapshot: null,
         creditsUsed,
       }).catch(() => {});
     }
@@ -222,7 +221,7 @@ The JSON must strictly conform to the expected schema.`;
     auditLogger.log({
       eventType: "llm_response",
       userId,
-      model,
+      model: effectiveModel,
       metadata: {
         structured: true,
         attempts: attempt + 1,

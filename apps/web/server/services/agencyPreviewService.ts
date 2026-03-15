@@ -1,5 +1,10 @@
 import { z } from "zod";
 import { AIPresentationSlideSchema } from "../../shared/presentation/aiTypes";
+import {
+  comparisonKindFromIntent,
+  normalizeAgencyComparisonPayload,
+  type AgencyComparisonPayload,
+} from "../../shared/agencyComparison";
 import type { PreviewArtifactMetadata, RunResult } from "./agencyBridge";
 
 export type PreviewArtifactLifecycleState =
@@ -63,6 +68,7 @@ const presentationPayloadSchema = z.object({
 type ResearchPayload = z.infer<typeof researchPayloadSchema>;
 type StoryboardPayload = z.infer<typeof storyboardPayloadSchema>;
 type PresentationPayload = z.infer<typeof presentationPayloadSchema>;
+type ComparisonPayload = AgencyComparisonPayload;
 
 interface PreviewProvenanceEntry {
   documentId: string | null;
@@ -134,6 +140,16 @@ export type AgencyPreview =
       language: "auto" | "en" | "th";
       stylePreset: string | null;
       slides: PresentationPayload["slides"];
+    }>
+  | PreviewBase<"comparison", {
+      comparisonKind: ComparisonPayload["comparisonKind"];
+      title: string;
+      summary: string | null;
+      locationSummary: string | null;
+      comparedAt: string | null;
+      sortHint: string | null;
+      recommendations: string[];
+      options: ComparisonPayload["options"];
     }>;
 
 function getPrimaryPreviewArtifact(run: Pick<RunResult, "previewArtifacts">): PreviewArtifactMetadata | null {
@@ -356,6 +372,35 @@ export function buildAgencyPreview(
           language: parsed.data.language,
           stylePreset: parsed.data.style_preset ?? null,
           slides: parsed.data.slides,
+        },
+      };
+    }
+  }
+
+  const comparisonKind = comparisonKindFromIntent(run.structuredResult.intent);
+  if (comparisonKind && payload) {
+    const parsed = normalizeAgencyComparisonPayload(payload, comparisonKind);
+    if (parsed) {
+      return {
+        previewType: "comparison",
+        artifactId: artifact.id,
+        intent: artifact.intent,
+        artifactType: artifact.artifact_type,
+        lifecycleState,
+        summaryText: artifact.summary ?? run.structuredResult.summary ?? run.response,
+        responseText: run.response,
+        provenance,
+        commit,
+        audit,
+        data: {
+          comparisonKind: parsed.comparisonKind,
+          title: parsed.title,
+          summary: parsed.summary ?? null,
+          locationSummary: parsed.locationSummary ?? null,
+          comparedAt: parsed.comparedAt ?? null,
+          sortHint: parsed.sortHint ?? null,
+          recommendations: parsed.recommendations,
+          options: parsed.options,
         },
       };
     }

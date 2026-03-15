@@ -28,7 +28,7 @@ export function SkillModelPreviewPanel({
   const [isOpen, setIsOpen] = useState(false);
   const [fetchEnabled, setFetchEnabled] = useState(false);
 
-  const { data, isFetching, refetch } = trpc.skills.previewModelResolution.useQuery(
+  const { data, isFetching, error, refetch } = trpc.skills.previewModelResolution.useQuery(
     { skillId },
     { enabled: fetchEnabled, staleTime: 0 },
   );
@@ -67,16 +67,26 @@ export function SkillModelPreviewPanel({
             onClick={() => refetch()}
             disabled={isFetching}
             className="h-6 w-6 p-0"
+            aria-label="Refresh model preview"
           >
             <RefreshCw className={`h-3 w-3 ${isFetching ? "animate-spin" : ""}`} />
           </Button>
         )}
       </div>
       <CollapsibleContent className="mt-2 space-y-1 px-3 pb-2 text-sm">
-        {isFetching && !data && (
+        {isFetching && !data && !error && (
           <p className="text-muted-foreground">Loading...</p>
         )}
-        {data && <PreviewResult data={data} />}
+        {error && (
+          <div className="flex items-center gap-2 text-destructive text-xs">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            <span>Failed to load preview.</span>
+            <Button variant="ghost" size="sm" className="h-5 px-1 text-xs" onClick={() => refetch()}>
+              Retry
+            </Button>
+          </div>
+        )}
+        {data && !error && <PreviewResult data={data} />}
       </CollapsibleContent>
     </Collapsible>
   );

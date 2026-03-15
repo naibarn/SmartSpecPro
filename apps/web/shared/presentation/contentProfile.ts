@@ -323,6 +323,16 @@ export function resolvePresentationLayoutMode(
     scoreMap.llm_layout_dsl += 6;
     reasonMap.llm_layout_dsl.push("Mixed dense structure suggests a custom bounded layout may fit better.");
   }
+  if (
+    enabledModes.llm_layout_dsl
+    && profile.sectionCount >= 4
+    && profile.signals.metric < 2
+    && profile.signals.timeline < 2
+    && profile.signals.process < 2
+  ) {
+    scoreMap.llm_layout_dsl += 3;
+    reasonMap.llm_layout_dsl.push("DSL mode gets an extra lift because multiple balanced sections do not map cleanly to the compact recipe set.");
+  }
 
   if (profile.visualFirstCandidate) {
     scoreMap.full_slide_media += 8;

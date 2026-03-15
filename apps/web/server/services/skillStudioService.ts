@@ -71,6 +71,10 @@ export interface SkillStudioLaunchResult {
   summary: string;
 }
 
+export interface SkillStudioLaunchHooks {
+  onCompleted?: (result: SkillExecutionResult) => Promise<void>;
+}
+
 type AccessibleSkill = {
   id: number;
   slug: string;
@@ -561,6 +565,7 @@ async function updateSkillVisibilityForReview(
 export async function launchSkillStudioTask(
   ctx: SkillStudioLaunchContext,
   input: SkillStudioRequest,
+  hooks?: SkillStudioLaunchHooks,
 ): Promise<SkillStudioLaunchResult> {
   const isAdmin = ctx.userRole === "admin";
   if (input.llmGatewayMode === "custom") {
@@ -630,27 +635,38 @@ export async function launchSkillStudioTask(
     executionToken,
     async (result) => {
       if (!result.success) {
+        if (hooks?.onCompleted) {
+          await hooks.onCompleted(result);
+        }
         return result;
       }
 
       if (input.mode === "create") {
         const createdSlug = extractCreatedSkillSlug(result);
         if (!createdSlug) {
-          return {
+          const finalResult = {
             ...result,
             message: `${result.message || ""}\n\n⚠️ Skill files were generated but the new skill could not be synced to the database automatically.`,
           };
+          if (hooks?.onCompleted) {
+            await hooks.onCompleted(finalResult);
+          }
+          return finalResult;
         }
 
         const skillId = await syncCreatedSkillRecord(ctx.userId, desiredVisibility, createdSlug);
         if (!skillId) {
-          return {
+          const finalResult = {
             ...result,
             message: `${result.message || ""}\n\n⚠️ Skill files were generated, but no database record was found for ${createdSlug}.`,
           };
+          if (hooks?.onCompleted) {
+            await hooks.onCompleted(finalResult);
+          }
+          return finalResult;
         }
 
-        return {
+        const finalResult = {
           ...result,
           message: `${result.message || ""}\n\n✅ Skill synced to the Skills library (id: ${skillId}, visibility: ${desiredVisibility}).`,
           metadata: {
@@ -660,6 +676,10 @@ export async function launchSkillStudioTask(
             desiredVisibility,
           },
         };
+        if (hooks?.onCompleted) {
+          await hooks.onCompleted(finalResult);
+        }
+        return finalResult;
       }
 
       const proposalFiles = extractSavedProposalFiles(result);
@@ -669,7 +689,7 @@ export async function launchSkillStudioTask(
       if (!isAdmin && latestDiffFile && targetSkill) {
         const applied = await applyIscProposalDiff(targetSkill.slug, latestDiffFile);
         await updateSkillVisibilityForReview(targetSkill.id, desiredVisibility);
-        return {
+        const finalResult = {
           ...result,
           message: `${result.message || ""}\n\n✅ Changes applied to your skill.\n${desiredVisibility === "pending_approval" ? "The updated skill has been submitted for admin review." : "The updated skill remains private."}\n${applied.output}`.trim(),
           metadata: {
@@ -679,12 +699,16 @@ export async function launchSkillStudioTask(
             desiredVisibility,
           },
         };
+        if (hooks?.onCompleted) {
+          await hooks.onCompleted(finalResult);
+        }
+        return finalResult;
       }
 
       if (isAdmin && input.autoApplyProposal && proposalFiles.length > 0) {
         const diffFile = latestDiffFile!;
         const applied = await applyIscProposalDiff(targetSkill!.slug, diffFile);
-        return {
+        const finalResult = {
           ...result,
           message: `${result.message || ""}\n\n✅ Latest proposal applied automatically.\n${applied.output}`.trim(),
           metadata: {
@@ -693,9 +717,13 @@ export async function launchSkillStudioTask(
             savedProposals: proposalFiles,
           },
         };
+        if (hooks?.onCompleted) {
+          await hooks.onCompleted(finalResult);
+        }
+        return finalResult;
       }
 
-      return {
+      const finalResult = {
         ...result,
         message: `${result.message || ""}\n\n${isAdmin ? "Review and apply the generated proposal from the ISC proposal queue if needed." : "Proposal submitted for admin review in the ISC proposal queue."}`.trim(),
         metadata: {
@@ -703,6 +731,10 @@ export async function launchSkillStudioTask(
           savedProposals: proposalFiles,
         },
       };
+      if (hooks?.onCompleted) {
+        await hooks.onCompleted(finalResult);
+      }
+      return finalResult;
     },
   );
 

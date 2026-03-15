@@ -52,7 +52,7 @@ const fakePlan = {
 const fakePlannerResult = {
   taskRunId: 42,
   plan: fakePlan,
-  resolvedModel: "gpt-4o",
+  resolvedModel: "qwen-cheap",
   snapshot: null,
   plannerLatencyMs: 5,
 };
@@ -88,20 +88,24 @@ describe("callLLMStructured planner wiring", () => {
         sourceType: "skill",
         userId: 1,
         tenantId: "tenant-1",
+        executionPolicy: expect.objectContaining({
+          requirements: expect.objectContaining({
+            supportsStructuredOutputs: true,
+          }),
+        }),
       }),
     );
   });
 
-  it("uses planner-selected model when planner resolves a model", async () => {
-    mockRunPlanner.mockResolvedValue({ ...fakePlannerResult, resolvedModel: "gpt-4o" });
+  it("keeps the caller-selected model even when planner resolves a different model", async () => {
+    mockRunPlanner.mockResolvedValue({ ...fakePlannerResult, resolvedModel: "qwen-cheap" });
     mockRecordStepAttempt.mockResolvedValue(undefined);
     setupSuccessfulLLMResponse();
 
     await callLLMStructured({ ...baseParams, model: "claude-sonnet-4-6" });
 
-    // Should use planner's resolvedModel, not the original
     expect(mockExecuteWithFallback).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "gpt-4o" }),
+      expect.objectContaining({ model: "claude-sonnet-4-6" }),
     );
   });
 
@@ -114,6 +118,18 @@ describe("callLLMStructured planner wiring", () => {
 
     // Should fall back to original model
     expect(mockExecuteWithFallback).toHaveBeenCalledWith(
+      expect.objectContaining({ model: "claude-sonnet-4-6" }),
+    );
+  });
+
+  it("bills against the effective structured model instead of planner overrides", async () => {
+    mockRunPlanner.mockResolvedValue({ ...fakePlannerResult, resolvedModel: "qwen-cheap" });
+    mockRecordStepAttempt.mockResolvedValue(undefined);
+    setupSuccessfulLLMResponse();
+
+    await callLLMStructured({ ...baseParams, model: "claude-sonnet-4-6" });
+
+    expect(mockDeductCredits).toHaveBeenCalledWith(
       expect.objectContaining({ model: "claude-sonnet-4-6" }),
     );
   });

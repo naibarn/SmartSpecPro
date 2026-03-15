@@ -1,14 +1,30 @@
 import {
+  addComponent,
   addElement,
+  addElements,
+  deleteComponents,
+  detachComponentById,
+  duplicateComponentById,
   deleteElements,
   duplicateElements,
+  findRenderableElementById,
+  getRenderableSlideElements,
+  groupElementsIntoComponent,
+  PRESENTATION_GROUP_COMPONENT_ID,
+  PRESENTATION_GROUP_COMPONENT_REVISION,
+  reorderComponentById,
   reorderElementById,
   resizeCanvas,
+  resizeComponentFallbackElements,
   resizeElementById,
   setSlideBackground,
+  rotateComponentFallbackElements,
+  translateComponentFallbackElements,
   translateElements,
+  updateComponentById,
   updateElementById,
   type ArrangeDirection,
+  type PresentationComponentInstance,
   type PresentationCanvasSize,
   type PresentationElement,
   type PresentationElementPatch,
@@ -91,6 +107,82 @@ export function addElementCommand(
   };
 }
 
+export function addComponentCommand(
+  component: PresentationComponentInstance,
+): CanvasCommand<CanvasCommandState> {
+  return {
+    id: "add-component",
+    apply: (state) => ({
+      ...state,
+      content: addComponent(state.content, component),
+      selectedElementIds: [],
+      snapGuides: [],
+    }),
+  };
+}
+
+export function groupSelectionCommand(
+  makeComponentId: () => string,
+): CanvasCommand<CanvasCommandState> {
+  return {
+    id: "group-selection",
+    apply: (state) => {
+      if (state.selectedElementIds.length < 2) {
+        return state;
+      }
+
+      const selectedIds = new Set(state.selectedElementIds);
+      const selectedElements = state.content.elements.filter((element) => selectedIds.has(element.id));
+      if (selectedElements.length < 2) {
+        return state;
+      }
+
+      return {
+        ...state,
+        content: groupElementsIntoComponent(state.content, state.selectedElementIds, {
+          id: makeComponentId(),
+          componentId: PRESENTATION_GROUP_COMPONENT_ID,
+          componentType: PRESENTATION_GROUP_COMPONENT_ID,
+          definitionRevision: PRESENTATION_GROUP_COMPONENT_REVISION,
+          slotBindings: [],
+          fallbackElements: [],
+        }),
+        selectedElementIds: [],
+        snapGuides: [],
+      };
+    },
+  };
+}
+
+export function addElementsCommand(
+  elements: PresentationElement[],
+): CanvasCommand<CanvasCommandState> {
+  return {
+    id: "add-elements",
+    apply: (state) => ({
+      ...state,
+      content: addElements(state.content, elements),
+      selectedElementIds: elements.map((element) => element.id),
+      snapGuides: [],
+    }),
+  };
+}
+
+export function updateComponentCommand(
+  componentId: string,
+  nextComponent: PresentationComponentInstance,
+): CanvasCommand<CanvasCommandState> {
+  return {
+    id: "update-component",
+    apply: (state) => ({
+      ...state,
+      content: updateComponentById(state.content, componentId, nextComponent),
+      selectedElementIds: [],
+      snapGuides: [],
+    }),
+  };
+}
+
 export function patchSelectedElementCommand(
   patch: PresentationElementPatch,
 ): CanvasCommand<CanvasCommandState> {
@@ -102,7 +194,7 @@ export function patchSelectedElementCommand(
         return state;
       }
 
-      const primary = state.content.elements.find((element) => element.id === targetId);
+      const primary = findRenderableElementById(state.content, targetId);
       if (!primary) {
         return state;
       }
@@ -159,12 +251,12 @@ function getFirstSelectedElement(state: CanvasCommandState): PresentationElement
     return null;
   }
 
-  return state.content.elements.find((element) => element.id === targetId) ?? null;
+  return findRenderableElementById(state.content, targetId);
 }
 
 function computeSnapCandidates(state: CanvasCommandState): SnapCandidate[] {
   const selected = new Set(state.selectedElementIds);
-  return state.content.elements
+  return getRenderableSlideElements(state.content)
     .filter((element) => !selected.has(element.id))
     .map((element) => ({
       id: element.id,
@@ -253,7 +345,7 @@ export function resizeSelectionCommand(
         };
       }
 
-      const primary = state.content.elements.find((element) => element.id === targetId);
+      const primary = findRenderableElementById(state.content, targetId);
       if (!primary) {
         return state;
       }
@@ -301,7 +393,7 @@ export function rotateSelectionCommand(
         return state;
       }
 
-      const current = state.content.elements.find((element) => element.id === targetId);
+      const current = findRenderableElementById(state.content, targetId);
       if (!current) {
         return state;
       }
@@ -364,6 +456,103 @@ export function arrangeSelectionCommand(
   };
 }
 
+export function moveComponentCommand(
+  componentId: string,
+  deltaX: number,
+  deltaY: number,
+): CanvasCommand<CanvasCommandState> {
+  return {
+    id: "move-component",
+    apply: (state) => ({
+      ...state,
+      content: translateComponentFallbackElements(state.content, componentId, deltaX, deltaY),
+      selectedElementIds: [],
+      snapGuides: [],
+    }),
+  };
+}
+
+export function resizeComponentCommand(
+  componentId: string,
+  width: number,
+  height: number,
+): CanvasCommand<CanvasCommandState> {
+  return {
+    id: "resize-component",
+    apply: (state) => ({
+      ...state,
+      content: resizeComponentFallbackElements(state.content, componentId, width, height),
+      selectedElementIds: [],
+      snapGuides: [],
+    }),
+  };
+}
+
+export function rotateComponentCommand(
+  componentId: string,
+  deltaDegrees: number,
+): CanvasCommand<CanvasCommandState> {
+  return {
+    id: "rotate-component",
+    apply: (state) => ({
+      ...state,
+      content: rotateComponentFallbackElements(state.content, componentId, deltaDegrees),
+      selectedElementIds: [],
+      snapGuides: [],
+    }),
+  };
+}
+
+export function arrangeComponentCommand(
+  componentId: string,
+  direction: ArrangeDirection,
+): CanvasCommand<CanvasCommandState> {
+  return {
+    id: `arrange-component-${direction}`,
+    apply: (state) => ({
+      ...state,
+      content: reorderComponentById(state.content, componentId, direction),
+      selectedElementIds: [],
+      snapGuides: [],
+    }),
+  };
+}
+
+export function deleteComponentCommand(
+  componentId: string,
+): CanvasCommand<CanvasCommandState> {
+  return {
+    id: "delete-component",
+    apply: (state) => ({
+      ...state,
+      content: deleteComponents(state.content, [componentId]),
+      selectedElementIds: [],
+      snapGuides: [],
+    }),
+  };
+}
+
+export function detachComponentCommand(
+  componentId: string,
+): CanvasCommand<CanvasCommandState> {
+  return {
+    id: "detach-component",
+    apply: (state) => {
+      const component = (state.content.components ?? []).find((item) => item.id === componentId);
+      if (!component) {
+        return state;
+      }
+
+      return {
+        ...state,
+        content: detachComponentById(state.content, componentId),
+        selectedElementIds: component.fallbackElements.map((element) => element.id),
+        snapGuides: [],
+      };
+    },
+  };
+}
+
 export function deleteSelectionCommand(): CanvasCommand<CanvasCommandState> {
   return {
     id: "delete-selection",
@@ -374,7 +563,8 @@ export function deleteSelectionCommand(): CanvasCommand<CanvasCommandState> {
       }
 
       const nextContent = deleteElements(state.content, ids);
-      const nextSelected = nextContent.elements[0]?.id ? [nextContent.elements[0].id] : [];
+      const nextSelectedElement = getRenderableSlideElements(nextContent)[0];
+      const nextSelected = nextSelectedElement ? [nextSelectedElement.id] : [];
       return {
         ...state,
         content: nextContent,
@@ -397,8 +587,8 @@ export function duplicateSelectionCommand(
       }
 
       const nextContent = duplicateElements(state.content, ids, makeId);
-      const originalSet = new Set(state.content.elements.map((element) => element.id));
-      const duplicates = nextContent.elements
+      const originalSet = new Set(getRenderableSlideElements(state.content).map((element) => element.id));
+      const duplicates = getRenderableSlideElements(nextContent)
         .filter((element) => !originalSet.has(element.id))
         .map((element) => element.id);
 
@@ -409,5 +599,20 @@ export function duplicateSelectionCommand(
         snapGuides: [],
       };
     },
+  };
+}
+
+export function duplicateComponentCommand(
+  componentId: string,
+  makeId: (source: PresentationComponentInstance) => string,
+): CanvasCommand<CanvasCommandState> {
+  return {
+    id: "duplicate-component",
+    apply: (state) => ({
+      ...state,
+      content: duplicateComponentById(state.content, componentId, makeId),
+      selectedElementIds: [],
+      snapGuides: [],
+    }),
   };
 }

@@ -20,6 +20,7 @@ import {
   type SkillType,
   type SkillDefinition,
   type SkillMetadata,
+  type SkillExecutionPolicyConfig,
   type PatternRule,
   parseSkillFile,
   mapCategoryToEnum,
@@ -38,6 +39,20 @@ export type { SkillType, SkillDefinition } from "@smartspec/skills";
  * Skills directory path
  */
 const SKILLS_DIR = path.resolve(process.cwd(), "skills");
+
+const SKILL_SLUG_ALIASES: Record<string, string> = {
+  "grok-imagine-creator": "grok-imagine-prompt-planner",
+};
+
+export function resolveSkillSlugAlias(slug: string): string {
+  return SKILL_SLUG_ALIASES[slug] ?? slug;
+}
+
+export function getLegacySkillSlugAliases(canonicalSlug: string): string[] {
+  return Object.entries(SKILL_SLUG_ALIASES)
+    .filter(([, resolvedSlug]) => resolvedSlug === canonicalSlug)
+    .map(([legacySlug]) => legacySlug);
+}
 
 /**
  * Map skill type to media type for model lookup
@@ -220,9 +235,10 @@ function getFrontmatterRoutingConfig(metadata: SkillMetadata, slug?: string): {
     : rawProviderId;
 
   // Extract model_requirements (snake_case or camelCase)
+  const metaRecord = metadata as unknown as Record<string, unknown>;
   const rawRequirements =
-    (metadata as any).model_requirements ??
-    (metadata as any).modelRequirements;
+    metaRecord.model_requirements ??
+    metaRecord.modelRequirements;
 
   const modelRequirements =
     rawRequirements != null && typeof rawRequirements === "object"
@@ -334,6 +350,27 @@ export async function autoSyncSkillsFromFolder(): Promise<{
 
   for (const folder of folderSkills) {
     try {
+      const legacySlugs = getLegacySkillSlugAliases(folder.slug);
+      const legacyExistingSlug = legacySlugs.find((legacySlug) => existingSlugs.has(legacySlug));
+
+      if (!existingSlugs.has(folder.slug) && legacyExistingSlug) {
+        await db.update(skillsTable).set({
+          slug: folder.slug,
+          folderPath: `skills/${folder.slug}`,
+        }).where(eq(skillsTable.slug, legacyExistingSlug));
+
+        const migratedSkill = existingSlugs.get(legacyExistingSlug);
+        if (migratedSkill) {
+          existingSlugs.delete(legacyExistingSlug);
+          existingSlugs.set(folder.slug, {
+            ...migratedSkill,
+            slug: folder.slug,
+          });
+        }
+
+        console.log(`[SkillRegistry] Migrated legacy skill slug ${legacyExistingSlug} -> ${folder.slug}`);
+      }
+
       // Read and parse skill.md
       const content = fs.readFileSync(folder.skillMdPath, "utf-8");
       const parsed = parseSkillFile(content);
@@ -342,9 +379,9 @@ export async function autoSyncSkillsFromFolder(): Promise<{
 
       // Merge model_requirements into executionPolicyJson (Feature 041)
       const baseExecutionPolicy = metadata.execution_policy ?? metadata.executionPolicy ?? null;
-      const executionPolicyJson =
+      const executionPolicyJson: SkillExecutionPolicyConfig | null =
         routingConfig.modelRequirements != null
-          ? { ...(baseExecutionPolicy ?? {}), requirements: routingConfig.modelRequirements }
+          ? { ...(baseExecutionPolicy ?? {}), requirements: routingConfig.modelRequirements } as SkillExecutionPolicyConfig
           : baseExecutionPolicy;
 
       const skillData = {
@@ -452,6 +489,7 @@ export async function autoSyncSkillsFromFolder(): Promise<{
  * Returns true if skill was synced, false if already up-to-date
  */
 export async function syncSingleSkillIfChanged(slug: string): Promise<{ synced: boolean; error?: string }> {
+  slug = resolveSkillSlugAlias(slug);
   const db = await getDb();
   if (!db) {
     return { synced: false, error: "Database not available" };
@@ -496,9 +534,9 @@ export async function syncSingleSkillIfChanged(slug: string): Promise<{ synced: 
 
     // Merge model_requirements into executionPolicyJson (Feature 041)
     const baseExecutionPolicy = metadata.execution_policy ?? metadata.executionPolicy ?? null;
-    const executionPolicyJson =
+    const executionPolicyJson: SkillExecutionPolicyConfig | null =
       routingConfig.modelRequirements != null
-        ? { ...(baseExecutionPolicy ?? {}), requirements: routingConfig.modelRequirements }
+        ? { ...(baseExecutionPolicy ?? {}), requirements: routingConfig.modelRequirements } as SkillExecutionPolicyConfig
         : baseExecutionPolicy;
 
     const updateData = {
@@ -678,14 +716,17 @@ export function getAvailableSkills(): SkillDefinition[] {
  */
 export async function getSkillByIdAsync(id: string): Promise<SkillDefinition | undefined> {
   const skills = await getSkillRegistryAsync();
-  return skills.find((s) => s.id === id);
+  const resolvedId = resolveSkillSlugAlias(id);
+  return skills.find((s) => s.id === resolvedId) ?? skills.find((s) => s.id === id);
 }
 
 /**
  * Get skill by ID (sync version for backward compatibility)
  */
 export function getSkillById(id: string): SkillDefinition | undefined {
-  return getSkillRegistry().find((s) => s.id === id);
+  const skills = getSkillRegistry();
+  const resolvedId = resolveSkillSlugAlias(id);
+  return skills.find((s) => s.id === resolvedId) ?? skills.find((s) => s.id === id);
 }
 
 /**
@@ -694,18 +735,19 @@ export function getSkillById(id: string): SkillDefinition | undefined {
  */
 export function getSkillByIdOrType(idOrType: string): SkillDefinition | undefined {
   const skills = getSkillRegistry();
+  const resolvedId = resolveSkillSlugAlias(idOrType);
 
   // First try exact ID match
-  const byId = skills.find((s) => s.id === idOrType);
+  const byId = skills.find((s) => s.id === resolvedId) ?? skills.find((s) => s.id === idOrType);
   if (byId) return byId;
 
   // Then try type match (return first skill of that type)
-  const byType = skills.find((s) => s.type === idOrType);
+  const byType = skills.find((s) => s.type === resolvedId) ?? skills.find((s) => s.type === idOrType);
   if (byType) return byType;
 
   // Try normalized variations (underscore <-> hyphen)
-  const normalized = idOrType.replace(/-/g, "_");
-  const normalizedHyphen = idOrType.replace(/_/g, "-");
+  const normalized = resolvedId.replace(/-/g, "_");
+  const normalizedHyphen = resolvedId.replace(/_/g, "-");
 
   return skills.find((s) =>
     s.id === normalized ||

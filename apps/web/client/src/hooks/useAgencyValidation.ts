@@ -92,6 +92,21 @@ export function useAgencyValidation(
         }
       }
 
+      // ── browser_session ───────────────────────────────────────────────────
+      if (nodeType === "browser_session") {
+        if (!String(nc.goal ?? "").trim()) {
+          nodeErrors.push("Browser goal is required");
+        }
+
+        const handoffMode = String(nc.handoffMode ?? "continue_running");
+        if (
+          (handoffMode === "review_required" || handoffMode === "needs_user_input")
+          && !String(nc.handoffSummary ?? "").trim()
+        ) {
+          nodeErrors.push("Human handoff summary is required");
+        }
+      }
+
       // ── human_approval ────────────────────────────────────────────────────
       if (nodeType === "human_approval") {
         const timeoutHours = nc.timeoutHours as number | undefined;

@@ -1247,6 +1247,14 @@ describe("Auto mode", () => {
         topic: "Automation test topic",
       });
       expect(mockGenerateDraftMutate).toHaveBeenCalledTimes(1);
+      expect(mockGenerateDraftMutate).toHaveBeenCalledWith(expect.objectContaining({
+        styleOverrides: {
+          headerEnabled: false,
+          showDeckTitle: false,
+          footerEnabled: false,
+          showPageNumber: false,
+        },
+      }), expect.any(Object));
     });
   });
 

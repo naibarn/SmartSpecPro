@@ -24,8 +24,107 @@ const mockGetLibraryItemById = vi.mocked(getLibraryItemById);
 const mockGetUserEffectivePermission = vi.mocked(getUserEffectivePermission);
 
 function makeRunResult(
-  intent: "research_report" | "video_storyboard" = "research_report",
+  intent: "research_report" | "video_storyboard" | "hotel_comparison" = "research_report",
 ): RunResult {
+  if (intent === "hotel_comparison") {
+    return {
+      runId: "run-1",
+      conversationId: "conv-1",
+      status: "completed",
+      response: "Comparison preview ready.",
+      creditsUsed: 0,
+      durationMs: 500,
+      stepAttemptSnapshots: [],
+      structuredResult: {
+        version: "1.0",
+        intent,
+        summary: "Comparison preview ready.",
+        payload: {
+          title: "Hotels near BTS Asok",
+          summary: "Best balance of price and distance.",
+          options: [
+            {
+              vendor: "Booking.com",
+              option_title: "Centre Point Asok",
+              price: "4200",
+              currency_code: "THB",
+              distance_meters: "350",
+              availability: "few_left",
+              refundable: "true",
+              booking_link: "https://example.com/hotel-1",
+              evidence: [
+                {
+                  title: "Rate card",
+                  url: "https://example.com/rate-1",
+                  snippet: "Breakfast included",
+                },
+              ],
+            },
+          ],
+          recommendations: ["Pick the closest refundable option."],
+        },
+        artifacts: [{ artifact_type: "comparison", title: "Hotels near BTS Asok" }],
+        references: [
+          {
+            document_id: "101",
+            chunk_id: "chunk-1",
+            title: "Quarterly demand report",
+            url: "https://example.com/report",
+          },
+        ],
+        metrics: {},
+      },
+      previewArtifacts: [
+        {
+          id: "artifact-1",
+          intent,
+          artifact_type: "comparison",
+          state: "preview_generated",
+          summary: "Comparison preview ready.",
+          commit_status: "not_committed",
+          commit_token: "commit-token-1",
+          payload_json: {
+            title: "Hotels near BTS Asok",
+            summary: "Best balance of price and distance.",
+            options: [
+              {
+                vendor: "Booking.com",
+                option_title: "Centre Point Asok",
+                price: "4200",
+                currency_code: "THB",
+                distance_meters: "350",
+                availability: "few_left",
+                refundable: "true",
+                booking_link: "https://example.com/hotel-1",
+                evidence: [
+                  {
+                    title: "Rate card",
+                    url: "https://example.com/rate-1",
+                    snippet: "Breakfast included",
+                  },
+                ],
+              },
+            ],
+            recommendations: ["Pick the closest refundable option."],
+          },
+          provenance_json: [
+            {
+              document_id: "101",
+              chunk_id: "chunk-1",
+              title: "Quarterly demand report",
+              url: "https://example.com/report",
+            },
+          ],
+          payload_storage_key: null,
+          target_type: null,
+          target_id: null,
+          committed_at: null,
+          expired_at: null,
+        },
+      ],
+    };
+  }
+
   if (intent === "video_storyboard") {
     return {
       runId: "run-1",
@@ -322,6 +421,33 @@ describe("agencyCommitService", () => {
 
     expect(result.status).toBe("committed");
     expect(result.targetType).toBe("library_item");
+  });
+
+  it("commits a comparison preview into the same library-backed path", async () => {
+    const preview = buildAgencyPreview(makeRunResult("hotel_comparison"));
+    const { db, mocks } = makeDb();
+
+    const result = await commitLibraryBackedPreview({
+      actor: { userId: 7, tenantId: "tenant-1", role: "user" },
+      artifactRecord: {
+        id: "artifact-1",
+        runId: "run-1",
+        tenantId: "tenant-1",
+        commitToken: "commit-token-1",
+        commitStatus: "not_committed",
+        targetType: null,
+        targetId: null,
+      },
+      commitToken: "commit-token-1",
+      dbClient: db,
+      preview,
+    });
+
+    const markdownInsert = mocks.insertValues.mock.calls[0]?.[0];
+    expect(markdownInsert.content).toContain("# Hotels near BTS Asok");
+    expect(markdownInsert.content).toContain("Price: THB 4,200");
+    expect(markdownInsert.content).toContain("Booking: https://example.com/hotel-1");
+    expect(result.status).toBe("committed");
   });
 
   it("rejects expired previews before creating a library artifact", async () => {

@@ -4,18 +4,24 @@ slug: agency-creator
 description: สร้าง multi-agent agency อัตโนมัติจาก prompt หรือ spec document พร้อม interview phase และ architecture preview
 category: automation
 icon: network
-version: "1.0.0"
+version: 1.0.0
 author: SmartAIHub
 isAutoTrigger: false
 enabledByDefault: true
 priority: 90
-creditMultiplier: 2.0
+creditMultiplier: 2
 config:
   _action: agency_create
   maxInterviewQuestions: 7
   useRAG: false
+tags: []
+auto_trigger: false
+trigger_patterns: []
+enabled_by_default: true
+credit_multiplier: 2
+execution_mode: llm-only
+strict_provider_pin: false
 ---
-
 # Agency Creator Skill
 
 ## Purpose

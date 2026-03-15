@@ -97,7 +97,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
-import { buildPresentationBlockPreset } from "@/lib/presentationBlockPresets";
+import { buildPresentationBlockPreset, PRESENTATION_BLOCK_PRESETS } from "@/lib/presentationBlockPresets";
 import {
   clonePresentationCustomBlock,
   loadLegacyPresentationCustomBlocks,
@@ -112,7 +112,6 @@ import {
   getBuiltInPresentationComponentDefinition,
   getPresentationComponentCanvasSlotAreas,
   rebuildBuiltInPresentationComponentInstance,
-  type BuiltInPresentationComponentId,
 } from "@/lib/presentationComponentCatalog";
 import { toast } from "sonner";
 import {
@@ -124,11 +123,13 @@ import {
   duplicateComponentById,
   duplicateElements,
   ensureSlideContent,
+  fitComponentFallbackElementsToCanvas,
   getRenderableSlideElements,
   groupRenderablesIntoComponent,
   isPresentationGroupComponent,
   PRESENTATION_GROUP_COMPONENT_ID,
   resizeCanvas,
+  resizeComponentSlotFallbackElements,
   translateComponentFallbackElements,
   translateElements,
   updateComponentById,
@@ -189,6 +190,8 @@ import {
   type CanvasCommandState,
 } from "@/presentation-canvas/commands/commands";
 import {
+  trackAIModeLockToggled,
+  trackAIModeOverrideSet,
   trackAIRecipeOverrideApplied,
   trackAutosaveResult,
   trackPresentationCustomBlockSaved,
@@ -219,9 +222,15 @@ import { BUILT_IN_PRESETS } from "@shared/presentation/aiStylePresets";
 import {
   BUILT_IN_PRESENTATION_COMPONENT_IDS,
   PRESENTATION_COMPONENT_AI_GUIDANCE,
+  PRESENTATION_COMPONENT_LAYOUT_FAMILIES,
   PRESENTATION_COMPONENT_MEDIA_SLOT_TYPES,
+  presentationMediaSlotSupportsType,
   type BuiltInPresentationComponentId,
 } from "@shared/presentation/componentRecipes";
+import {
+  PRESENTATION_AI_LAYOUT_MODES,
+  type PresentationAILayoutMode,
+} from "@shared/presentation/contentProfile";
 import { type PresentationCustomBlockVisibility } from "@shared/presentation/customBlocks";
 import {
   computeMediaMotionTimelineFrame,
@@ -266,6 +275,35 @@ const PRESENTATION_TRANSITION_OPTIONS: Array<{ value: PresentationTransition; la
   { value: "zoom-out", label: "Zoom Out" },
   { value: "blur", label: "Blur" },
 ];
+
+const PRESENTATION_AI_LAYOUT_MODE_LABELS: Record<PresentationAILayoutMode, string> = {
+  structured_block: "Structured Block",
+  long_form_block: "Long-Form Block",
+  llm_layout_dsl: "LLM Layout DSL",
+  full_slide_media: "Full-Slide Media",
+};
+
+const PRESENTATION_AI_LAYOUT_BLOCKED_BY_LABELS: Record<string, string> = {
+  feature_flag: "Feature flag",
+  provider_capability: "Provider capability",
+  cost: "Cost guardrail",
+  safety: "Safety guardrail",
+  lock_conflict: "Mode lock conflict",
+};
+
+function resolvePresentationModeForRecipe(
+  recipeId: BuiltInPresentationComponentId,
+): PresentationAILayoutMode {
+  return PRESENTATION_COMPONENT_LAYOUT_FAMILIES[recipeId] === "long_form"
+    ? "long_form_block"
+    : "structured_block";
+}
+
+function formatAILayoutUserText(value: string): string {
+  return value
+    .replace(/\brecipes\b/gi, "block layouts")
+    .replace(/\brecipe\b/gi, "block layout");
+}
 
 function readStoredMobileSheetTab(): MobileBottomSheetTab | null {
   try {
@@ -343,33 +381,10 @@ function getSlideshowPreviewTransitionStyle(
 type AutoLayoutScope = "current" | "all";
 type AutoLayoutTemplateChoice =
   | "auto"
-  | `template:${(typeof AI_LAYOUT_TEMPLATE_IDS)[number]}`
   | `block:${BuiltInPresentationComponentId}`;
 type AutoLayoutStyleChoice = "auto" | (typeof AI_STYLE_PRESET_IDS)[number];
 type AutoLayoutCropShapeChoice = (typeof AI_GEOMETRIC_CROP_SHAPES)[number];
 type AutoLayoutAccentShapeChoice = (typeof AI_GEOMETRIC_ACCENT_SHAPES)[number];
-const AUTO_LAYOUT_TEMPLATE_LABELS: Record<(typeof AI_LAYOUT_TEMPLATE_IDS)[number], string> = {
-  hero_center: "Hero Center",
-  split_left_image: "Split Left Image",
-  split_right_image: "Split Right Image",
-  top_image_text_bottom: "Image Top / Text Bottom",
-  bottom_image_text_top: "Text Top / Image Bottom",
-  feature_boxes_right: "Feature Boxes Right",
-};
-const AUTO_LAYOUT_BLOCK_LABELS: Record<BuiltInPresentationComponentId, string> = {
-  "process-steps": "Block: Process Steps",
-  "timeline-flow": "Block: Timeline Flow",
-  "feature-highlights": "Block: Feature Highlights",
-  "infographic-grid": "Block: Infographic Grid",
-  "stat-cards": "Block: Stat Cards",
-  "sectioned-explainer": "Block: Sectioned Explainer",
-  "profile-summary": "Block: Profile Summary",
-  "quote-callout": "Block: Quote Callout",
-  "video-spotlight": "Block: Video Spotlight",
-  "poster-spotlight": "Block: Poster Spotlight",
-  "framed-image-story": "Block: Framed Image Story",
-  "photo-collage": "Block: Photo Collage",
-};
 const AUTO_LAYOUT_CROP_SHAPE_LABELS: Record<AutoLayoutCropShapeChoice, string> = {
   auto: "Auto choose",
   rect: "Rectangle",
@@ -389,11 +404,6 @@ function resolveAutoLayoutTemplateSelection(choice: AutoLayoutTemplateChoice): {
 } {
   if (choice === "auto") {
     return {};
-  }
-  if (choice.startsWith("template:")) {
-    return {
-      templateId: choice.slice("template:".length) as (typeof AI_LAYOUT_TEMPLATE_IDS)[number],
-    };
   }
   return {
     componentRecipeId: choice.slice("block:".length) as BuiltInPresentationComponentId,
@@ -969,14 +979,19 @@ function inferAIOverrideMediaUrl(
 ): string | undefined {
   const renderableElements = getRenderableSlideElements(content);
   const preferredMediaTypes = Object.values(PRESENTATION_COMPONENT_MEDIA_SLOT_TYPES[recipeId] ?? {});
-  const preferredMediaType = preferredMediaTypes[0];
-  if (preferredMediaType === "video") {
-    const video = renderableElements.find((element) => element.type === "video");
-    return video?.src?.trim() || undefined;
-  }
-  if (preferredMediaType === "image") {
+  const prefersImage = preferredMediaTypes.some((slotType) => presentationMediaSlotSupportsType(slotType, "image"));
+  const prefersVideo = preferredMediaTypes.some((slotType) => presentationMediaSlotSupportsType(slotType, "video"));
+  if (prefersImage) {
     const image = renderableElements.find((element) => element.type === "image" && !element.svgContent);
-    return image?.src?.trim() || undefined;
+    if (image?.src?.trim()) {
+      return image.src.trim();
+    }
+  }
+  if (prefersVideo) {
+    const video = renderableElements.find((element) => element.type === "video");
+    if (video?.src?.trim()) {
+      return video.src.trim();
+    }
   }
   return undefined;
 }
@@ -1029,20 +1044,14 @@ function recipeSupportsAvailableMedia(
   recipeId: BuiltInPresentationComponentId,
   options: { hasImage: boolean; hasVideo: boolean },
 ): boolean {
-  const mediaTypes = new Set(Object.values(PRESENTATION_COMPONENT_MEDIA_SLOT_TYPES[recipeId] ?? {}));
-  if (mediaTypes.size === 0) {
+  const slotTypes = Object.values(PRESENTATION_COMPONENT_MEDIA_SLOT_TYPES[recipeId] ?? {});
+  if (slotTypes.length === 0) {
     return true;
   }
-  if (mediaTypes.size === 1 && mediaTypes.has("image")) {
-    return options.hasImage;
-  }
-  if (mediaTypes.size === 1 && mediaTypes.has("video")) {
-    return options.hasVideo;
-  }
-  return (
-    (!mediaTypes.has("image") || options.hasImage)
-    && (!mediaTypes.has("video") || options.hasVideo)
-  );
+  return slotTypes.every((slotType) => (
+    (presentationMediaSlotSupportsType(slotType, "image") && options.hasImage)
+    || (presentationMediaSlotSupportsType(slotType, "video") && options.hasVideo)
+  ));
 }
 
 function inferAIOverrideRecipeId(options: {
@@ -2227,6 +2236,26 @@ export default function PresentationEditor() {
   const repairSlideFromNoteMutation = trpc.presentation.ai.repairSlideFromNote.useMutation();
   const resolvePendingMediaMutation = trpc.presentation.ai.resolvePendingMedia.useMutation();
   const updateItemMutation = trpc.library.updateItem.useMutation();
+  // Skills for slide note AI content generator
+  const noteGenSkillsQuery = trpc.skills.list.useQuery(undefined, { staleTime: 300_000 });
+  const noteGenExecuteMutation = trpc.chat.executeSkill.useMutation();
+  const noteGenSkillItems = useMemo(() => {
+    const skills = noteGenSkillsQuery.data ?? [];
+    return skills
+      .filter((s: any) => {
+        const cat = String(s.category ?? "").toLowerCase();
+        const mode = String(s.executionMode ?? "").toLowerCase();
+        // Only text-generating skills (article, prompt_enhancement, chat_assistant)
+        return (
+          cat === "article_generation"
+          || cat === "prompt_enhancement"
+          || cat === "chat_assistant"
+          || mode === "enhance-prompt"
+          || /\b(article|writer|copywriter|blog|content)/i.test(String(s.slug ?? "") + " " + String(s.name ?? ""))
+        );
+      })
+      .map((s: any) => ({ value: s.slug as string, label: s.name as string }));
+  }, [noteGenSkillsQuery.data]);
 
   const deckData = deckQuery.data as any;
   const deck = deckData?.deck;
@@ -2303,6 +2332,19 @@ export default function PresentationEditor() {
   const [deckNoteDraft, setDeckNoteDraft] = useState("");
   const [slideNoteDraft, setSlideNoteDraft] = useState("");
   const [slideNoteRepairStatusIndex, setSlideNoteRepairStatusIndex] = useState(0);
+  // AI Layout block filter state
+  const [aiBlockCategoryFilter, setAiBlockCategoryFilter] = useState<string>("All");
+  const filteredBlockPresets = useMemo(
+    () => aiBlockCategoryFilter === "All"
+      ? PRESENTATION_BLOCK_PRESETS
+      : PRESENTATION_BLOCK_PRESETS.filter((p) => p.category === aiBlockCategoryFilter),
+    [aiBlockCategoryFilter],
+  );
+  // Slide note AI content generator state
+  const [noteGenSkill, setNoteGenSkill] = useState("");
+  const [noteGenWordLimit, setNoteGenWordLimit] = useState("");
+  const [isGeneratingNoteContent, setIsGeneratingNoteContent] = useState(false);
+  const [noteGenOpen, setNoteGenOpen] = useState(false);
   const [isProjectTitleEditing, setIsProjectTitleEditing] = useState(false);
   const [isProjectTitleSaving, setIsProjectTitleSaving] = useState(false);
   const [isDeckNoteDialogOpen, setIsDeckNoteDialogOpen] = useState(false);
@@ -2328,6 +2370,11 @@ export default function PresentationEditor() {
   const [isReorderDialogOpen, setIsReorderDialogOpen] = useState(false);
   const deckNoteDialogDrag = useDraggableDialog(isDeckNoteDialogOpen);
   const slideNoteDialogDrag = useDraggableDialog(isSlideNoteDialogOpen);
+  const aiLayoutPreviewDialogDrag = useDraggableDialog(isAILayoutPreviewDialogOpen);
+  const [aiPreviewZoom, setAiPreviewZoom] = useState(1);
+  const aiPreviewContainerRef = useRef<HTMLDivElement>(null);
+  const [aiPreviewPan, setAiPreviewPan] = useState({ x: 0, y: 0 });
+  const aiPreviewPanRef = useRef<{ dragging: boolean; startX: number; startY: number; panX: number; panY: number }>({ dragging: false, startX: 0, startY: 0, panX: 0, panY: 0 });
   const [autoLayoutScope, setAutoLayoutScope] = useState<AutoLayoutScope>("current");
   const [autoLayoutTemplateChoice, setAutoLayoutTemplateChoice] = useState<AutoLayoutTemplateChoice>("auto");
   const [autoLayoutStyleChoice, setAutoLayoutStyleChoice] = useState<AutoLayoutStyleChoice>("auto");
@@ -2741,6 +2788,33 @@ export default function PresentationEditor() {
   const isMobilePanMode = isMobileViewport && mobileGestures.state.mode === "pan_mode";
   const draftComponents = draftContent.components ?? [];
   const slideAIDesign = draftContent.aiDesign as PresentationSlideAIDesign | undefined;
+  const effectiveAILayoutMode = useMemo<PresentationAILayoutMode | null>(
+    () => slideAIDesign?.userOverrideMode ?? slideAIDesign?.mode ?? null,
+    [slideAIDesign?.mode, slideAIDesign?.userOverrideMode],
+  );
+  const aiLayoutCandidateModes = useMemo(
+    () => [...(slideAIDesign?.candidateModes ?? [])].sort((a, b) => b.score - a.score),
+    [slideAIDesign?.candidateModes],
+  );
+  const aiLayoutCurrentModeCandidate = useMemo(
+    () => (
+      effectiveAILayoutMode
+        ? aiLayoutCandidateModes.find((candidate) => candidate.mode === effectiveAILayoutMode) ?? null
+        : null
+    ),
+    [aiLayoutCandidateModes, effectiveAILayoutMode],
+  );
+  const aiLayoutSourceTraceSummary = useMemo(
+    () => (slideAIDesign?.sourceTrace ?? []).reduce<Record<string, number>>((summary, entry) => {
+      summary[entry.disposition] = (summary[entry.disposition] ?? 0) + 1;
+      return summary;
+    }, {}),
+    [slideAIDesign?.sourceTrace],
+  );
+  const aiLayoutFallbackPreview = useMemo(
+    () => [...(slideAIDesign?.fallbackHistory ?? [])].slice(-3).reverse(),
+    [slideAIDesign?.fallbackHistory],
+  );
   const currentComponentRecipeId = useMemo(() => {
     const firstComponentId = draftComponents[0]?.componentId;
     return isBuiltInPresentationComponentId(firstComponentId) ? firstComponentId : undefined;
@@ -2755,15 +2829,9 @@ export default function PresentationEditor() {
     () => getRenderableSlideElements(draftContent),
     [draftContent],
   );
-  const fallbackComponentIdByElementId = useMemo(
-    () => new Map(
-      draftComponents.flatMap((component) => component.fallbackElements.map((element) => [element.id, component.id] as const)),
-    ),
-    [draftComponents],
-  );
   const selectedElement = useMemo(
-    () => draftContent.elements.find((element) => element.id === selectedElementId) || null,
-    [draftContent.elements, selectedElementId],
+    () => renderableDraftElements.find((element) => element.id === selectedElementId) || null,
+    [renderableDraftElements, selectedElementId],
   );
   const selectedMediaElement = selectedElement && (selectedElement.type === "image" || selectedElement.type === "video")
     ? selectedElement
@@ -2892,8 +2960,8 @@ export default function PresentationEditor() {
   const hasMixedRenderableSelection = selectedElementIds.length > 0 && selectedComponentSelectionIds.length > 0;
   const totalRenderableSelectionCount = selectedElementIds.length + selectedComponentSelectionIds.length;
   const selectedElements = useMemo(
-    () => draftContent.elements.filter((element) => selectedElementIds.includes(element.id)),
-    [draftContent.elements, selectedElementIds],
+    () => renderableDraftElements.filter((element) => selectedElementIds.includes(element.id)),
+    [renderableDraftElements, selectedElementIds],
   );
   const selectionHasMixedTypes = useMemo(() => {
     if (selectedElements.length <= 1) {
@@ -3182,7 +3250,7 @@ export default function PresentationEditor() {
     },
   );
   const aiLayoutPanelPreviewWidth = activeCanvasSize.height > activeCanvasSize.width ? 220 : 272;
-  const aiLayoutDialogPreviewWidth = activeCanvasSize.height > activeCanvasSize.width ? 420 : 820;
+  const aiLayoutDialogPreviewWidth = activeCanvasSize.height > activeCanvasSize.width ? 560 : 820;
 
   function renderAILayoutPreview(size: "panel" | "dialog") {
     if (!aiRecipePreviewDefinition) {
@@ -3192,7 +3260,7 @@ export default function PresentationEditor() {
     const previewTestId = size === "dialog" ? "ai-layout-preview-dialog" : "ai-layout-preview";
     const previewWidth = size === "dialog" ? aiLayoutDialogPreviewWidth : aiLayoutPanelPreviewWidth;
     const previewClassName = size === "dialog"
-      ? "mt-3 max-h-[70vh] overflow-auto rounded-md border border-slate-200 bg-slate-50 p-4"
+      ? "rounded-md border border-slate-200 bg-white p-2"
       : "mt-2";
 
     if (aiRecipeCanonicalPreviewQuery.data?.svg) {
@@ -4124,9 +4192,21 @@ export default function PresentationEditor() {
       canvas: activeCanvasSize,
       instanceId: nextComponentId(componentId),
     });
+    const definition = getBuiltInPresentationComponentDefinition(componentId);
+    const fittedInstance = definition?.category === "Document"
+      ? fitComponentFallbackElementsToCanvas(
+        {
+          elements: [],
+          canvas: activeCanvasSize,
+          components: [nextInstance],
+        },
+        nextInstance.id,
+        "canvas",
+      ).components?.[0] ?? nextInstance
+      : nextInstance;
 
-    executeCommand(addComponentCommand(nextInstance));
-    selectSingleComponent(nextInstance.id);
+    executeCommand(addComponentCommand(fittedInstance));
+    selectSingleComponent(fittedInstance.id);
     setLibraryTab("slides");
     focusMobileProperties("element");
   }
@@ -4150,8 +4230,20 @@ export default function PresentationEditor() {
       instanceId: nextComponentId(block.componentId),
       slotBindings: block.slotBindings,
     });
-    executeCommand(addComponentCommand(nextInstance));
-    selectSingleComponent(nextInstance.id);
+    const definition = getBuiltInPresentationComponentDefinition(block.componentId);
+    const fittedInstance = definition?.category === "Document"
+      ? fitComponentFallbackElementsToCanvas(
+        {
+          elements: [],
+          canvas: activeCanvasSize,
+          components: [nextInstance],
+        },
+        nextInstance.id,
+        "canvas",
+      ).components?.[0] ?? nextInstance
+      : nextInstance;
+    executeCommand(addComponentCommand(fittedInstance));
+    selectSingleComponent(fittedInstance.id);
     setLibraryTab("slides");
     focusMobileProperties("element");
     try {
@@ -4338,6 +4430,15 @@ export default function PresentationEditor() {
     setComponentSelection(componentId ? [componentId] : [], { activeComponentId: componentId });
   }
 
+  function findParentComponentIdForElement(elementId: string): string | null {
+    for (const component of draftComponents) {
+      if (component.fallbackElements.some((element) => element.id === elementId)) {
+        return component.id;
+      }
+    }
+    return null;
+  }
+
   function handleChangeCanvasPreset(presetId: string) {
     const preset = getCanvasPresetById(presetId);
     if (!preset) {
@@ -4476,11 +4577,10 @@ export default function PresentationEditor() {
       return;
     }
 
-    const nextBindings = component.slotBindings.map((slot) => (
-      slot.slotId === slotId && slot.type === "image"
-        ? { ...slot, src, alt }
-        : slot
-    ));
+    const nextBindings = [
+      ...component.slotBindings.filter((slot) => !(slot.slotId === slotId && (slot.type === "image" || slot.type === "video"))),
+      { slotId, type: "image" as const, src, alt },
+    ];
     rebuildAndSaveComponent(component, nextBindings);
   }
 
@@ -4496,11 +4596,10 @@ export default function PresentationEditor() {
       return;
     }
 
-    const nextBindings = component.slotBindings.map((slot) => (
-      slot.slotId === slotId && slot.type === "video"
-        ? { ...slot, src, poster: poster || undefined, title: title || undefined }
-        : slot
-    ));
+    const nextBindings = [
+      ...component.slotBindings.filter((slot) => !(slot.slotId === slotId && (slot.type === "image" || slot.type === "video"))),
+      { slotId, type: "video" as const, src, poster: poster || undefined, title: title || undefined },
+    ];
     rebuildAndSaveComponent(component, nextBindings);
   }
 
@@ -4518,7 +4617,94 @@ export default function PresentationEditor() {
     rebuildAndSaveComponent(component, nextBindings);
   }
 
+  function updateSelectedSlideAIDesign(
+    updater: (current: PresentationSlideAIDesign) => PresentationSlideAIDesign,
+  ) {
+    const baseAIDesign: PresentationSlideAIDesign = slideAIDesign
+      ? {
+        ...slideAIDesign,
+        candidateModes: slideAIDesign.candidateModes?.map((candidate) => ({ ...candidate })),
+        candidateRecipes: slideAIDesign.candidateRecipes?.map((candidate) => ({ ...candidate })),
+        narrative: slideAIDesign.narrative
+          ? {
+            ...slideAIDesign.narrative,
+            body: [...slideAIDesign.narrative.body],
+            sections: slideAIDesign.narrative.sections?.map((section) => ({
+              heading: section.heading,
+              details: [...section.details],
+            })),
+            mediaPlan: slideAIDesign.narrative.mediaPlan?.map((plan) => ({ ...plan })),
+          }
+          : undefined,
+        overrideHistory: slideAIDesign.overrideHistory?.map((entry) => ({ ...entry })),
+        sourceTrace: slideAIDesign.sourceTrace?.map((entry) => ({ ...entry })),
+        fallbackHistory: slideAIDesign.fallbackHistory?.map((entry) => ({ ...entry })),
+        mediaModeMetadata: slideAIDesign.mediaModeMetadata
+          ? { ...slideAIDesign.mediaModeMetadata }
+          : undefined,
+      }
+      : {
+        source: "draft-with-ai",
+        schemaVersion: "presentation_ai_layout_v1",
+        selectionMode: "none",
+        generatedAt: new Date().toISOString(),
+      };
+
+    const nextAIDesign = updater({
+      ...baseAIDesign,
+      schemaVersion: "presentation_ai_layout_v1",
+    });
+    syncCommandState({
+      ...commandState,
+      content: {
+        ...draftContent,
+        aiDesign: nextAIDesign,
+      },
+    });
+  }
+
+  function handleSetAILayoutModeOverride(nextMode: PresentationAILayoutMode | null) {
+    if (!selectedSlide || !deck) {
+      return;
+    }
+    const previousMode = slideAIDesign?.userOverrideMode ?? null;
+    updateSelectedSlideAIDesign((current) => ({
+      ...current,
+      userOverrideMode: nextMode,
+      ...(nextMode && !current.modeLocked ? { mode: nextMode } : {}),
+      ...(nextMode === null && !current.modeLocked ? { mode: current.mode } : {}),
+    }));
+    trackAIModeOverrideSet({
+      deckId: deck.id,
+      slideId: selectedSlide.id,
+      previousMode,
+      nextMode,
+      source: "editor",
+    });
+  }
+
+  function handleToggleAILayoutModeLock(locked: boolean) {
+    if (!selectedSlide || !deck) {
+      return;
+    }
+    const mode = effectiveAILayoutMode;
+    updateSelectedSlideAIDesign((current) => ({
+      ...current,
+      modeLocked: locked,
+      ...(locked && mode && !current.userOverrideMode ? { userOverrideMode: mode } : {}),
+    }));
+    trackAIModeLockToggled({
+      deckId: deck.id,
+      slideId: selectedSlide.id,
+      mode,
+      locked,
+      source: "editor",
+    });
+  }
+
   function handleApplyAIRecipeOverride(recipeId: BuiltInPresentationComponentId) {
+    setAiPreviewZoom(1);
+    setAiPreviewPan({ x: 0, y: 0 });
     if (!selectedSlide) {
       return;
     }
@@ -4546,6 +4732,7 @@ export default function PresentationEditor() {
       graphicCategory: baseNarrative.graphicCategory,
       mediaUrl: inferAIOverrideMediaUrl(draftContent, recipeId),
     };
+    const recipeMode = resolvePresentationModeForRecipe(recipeId);
     const nextComponent = buildBuiltInPresentationComponentInstanceFromNarrative(recipeId, {
       canvas: activeCanvasSize,
       instanceId: nextComponentId(recipeId),
@@ -4554,7 +4741,8 @@ export default function PresentationEditor() {
 
     const previousRecipeId = slideAIDesign?.componentRecipeId ?? null;
     const appliedAt = new Date().toISOString();
-    applyComponentContentUpdate({
+    const preLayoutState = commandBusRef.current.getState();
+    const nextContent: PresentationSlideContent = {
       ...draftContent,
       background: inferAIOverrideBackground(draftContent, activeCanvasSize),
       elements: [],
@@ -4564,10 +4752,20 @@ export default function PresentationEditor() {
       aiDesign: {
         source: "draft-with-ai",
         taskId: slideAIDesign?.taskId,
+        schemaVersion: "presentation_ai_layout_v1",
+        mode: recipeMode,
+        ...(slideAIDesign?.candidateModes?.length ? { candidateModes: slideAIDesign.candidateModes } : {}),
+        ...(slideAIDesign?.modeLocked !== undefined ? { modeLocked: slideAIDesign.modeLocked } : {}),
+        userOverrideMode: recipeMode,
+        ...(slideAIDesign?.fitScore ? { fitScore: slideAIDesign.fitScore } : {}),
+        ...(slideAIDesign?.compactionLevel ? { compactionLevel: slideAIDesign.compactionLevel } : {}),
         componentRecipeId: recipeId,
         selectionMode: "manual-override",
         selectionReason: `Manual override applied in Presentation Edit: ${PRESENTATION_COMPONENT_AI_GUIDANCE[recipeId]?.label ?? recipeId}.`,
         candidateRecipes: slideAIDesign?.candidateRecipes,
+        sourceTrace: slideAIDesign?.sourceTrace,
+        fallbackHistory: slideAIDesign?.fallbackHistory,
+        mediaModeMetadata: slideAIDesign?.mediaModeMetadata,
         narrative: {
           title: narrative.title,
           body: [...narrative.body],
@@ -4593,7 +4791,17 @@ export default function PresentationEditor() {
         ].slice(-16),
         generatedAt: slideAIDesign?.generatedAt ?? new Date().toISOString(),
       },
-    }, nextComponent.id);
+    };
+    applyComponentContentUpdate(nextContent, nextComponent.id);
+    // Cache the draft so version-change useEffect doesn't reset to stale server content
+    if (selectedSlide) {
+      cacheSlideDraft(selectedSlide.id, nextContent, slideNoteDraft);
+    }
+    // Preserve undo history across version-change useEffect (same pattern as handleAutoRelayoutSlide)
+    pendingAutoLayoutUndoRef.current = {
+      preLayoutState,
+      postLayoutState: commandBusRef.current.getState(),
+    };
     setAiRecipeOverrideChoice(recipeId);
     if (deck && selectedSlide) {
       trackAIRecipeOverrideApplied({
@@ -4605,6 +4813,8 @@ export default function PresentationEditor() {
       });
     }
     toast.success(`Applied AI layout: ${PRESENTATION_COMPONENT_AI_GUIDANCE[recipeId]?.label ?? recipeId}.`);
+    // Auto-fit viewport after rebuild so the new layout fills the canvas area
+    setDesktopViewport({ scale: 1, offsetX: 0, offsetY: 0 });
   }
 
   function handleUpdateSelectedCanvasSlotText(slotId: string, text: string) {
@@ -4728,15 +4938,20 @@ export default function PresentationEditor() {
     focusMobileProperties("element");
   }
 
-  function handleSelectElement(elementId: string, options?: { additive?: boolean }) {
-    const fallbackComponentId = fallbackComponentIdByElementId.get(elementId);
-    if (fallbackComponentId) {
-      handleSelectComponent(fallbackComponentId, options);
-      return;
-    }
-
+  function handleSelectElement(elementId: string, options?: { additive?: boolean; preferElement?: boolean }) {
     setCropModeElementId(null);
     setCropModeTarget("content");
+    const parentComponentId = findParentComponentIdForElement(elementId);
+    const shouldPreferWholeComponent = (
+      !options?.preferElement
+      && !options?.additive
+      && parentComponentId
+    );
+    if (shouldPreferWholeComponent) {
+      selectSingleComponent(parentComponentId);
+      focusMobileProperties("element");
+      return;
+    }
     if (!options?.additive) {
       clearComponentSelection();
     } else if (selectedComponentSelectionIds.length > 0) {
@@ -4763,11 +4978,6 @@ export default function PresentationEditor() {
   }
 
   function handleFocusElement(elementId: string) {
-    const fallbackComponentId = fallbackComponentIdByElementId.get(elementId);
-    if (fallbackComponentId) {
-      handleSelectComponent(fallbackComponentId);
-      return;
-    }
     clearComponentSelection();
     focusMobileProperties("element");
   }
@@ -5000,7 +5210,76 @@ export default function PresentationEditor() {
 
   function handleDragResize(width: number, height: number) {
     if (isMobileViewport) return;
+    if (!selectedElementIds.length && selectedComponent) {
+      syncCommandState(
+        commandBusRef.current.executeAndMerge(resizeComponentCommand(selectedComponent.id, width, height)),
+      );
+      selectSingleComponent(selectedComponent.id);
+      return;
+    }
     syncCommandState(commandBusRef.current.executeAndMerge(resizeSelectionCommand(width, height)));
+  }
+
+  function handleDragResizeComponentSlot(slotId: string, width: number, height: number) {
+    if (isMobileViewport || !selectedComponent) {
+      return;
+    }
+    const slotArea = selectedComponentCanvasSlots.find((slot) => slot.slotId === slotId);
+    if (!slotArea?.targetElementIds.length) {
+      return;
+    }
+    syncCommandState(commandBusRef.current.executeAndMerge({
+      id: "resize-component-slot",
+      apply: (state) => ({
+        ...state,
+        content: resizeComponentSlotFallbackElements(
+          state.content,
+          selectedComponent.id,
+          slotArea.targetElementIds,
+          width,
+          height,
+        ),
+        snapGuides: [],
+      }),
+    }));
+    selectSingleComponent(selectedComponent.id);
+    setSelectedComponentSlotId(slotId);
+  }
+
+  function handleSelectRawComponentSlotElement(slotId: string) {
+    if (!selectedComponent) {
+      return;
+    }
+    const slotArea = selectedComponentCanvasSlots.find((slot) => slot.slotId === slotId);
+    const targetElementId = slotArea?.targetElementIds.find((elementId) => {
+      const element = selectedComponent.fallbackElements.find((candidate) => candidate.id === elementId);
+      return element?.type === "image" || element?.type === "video";
+    }) ?? slotArea?.targetElementIds[0];
+    if (!targetElementId) {
+      return;
+    }
+    setSelectedComponentSlotId(null);
+    handleSelectElement(targetElementId, { preferElement: true });
+  }
+
+  function handleAutoFitSelection() {
+    if (isMobileViewport || !selectedComponent || !selectedComponentDefinition) {
+      return;
+    }
+    const mode = selectedComponentDefinition.category === "Document" ? "canvas" : "width";
+    syncCommandState(commandBusRef.current.execute({
+      id: `fit-component-${mode}`,
+      apply: (state) => ({
+        ...state,
+        content: fitComponentFallbackElementsToCanvas(
+          state.content,
+          selectedComponent.id,
+          mode,
+        ),
+        snapGuides: [],
+      }),
+    }));
+    selectSingleComponent(selectedComponent.id);
   }
 
   function handleDragRotate(deltaDegrees: number) {
@@ -5116,7 +5395,7 @@ export default function PresentationEditor() {
       return;
     }
     const selectedIdSet = new Set(selectedElementIds);
-    const ordered = draftContent.elements.filter((element) => selectedIdSet.has(element.id));
+    const ordered = renderableDraftElements.filter((element) => selectedIdSet.has(element.id));
     if (!ordered.length) {
       return;
     }
@@ -6131,6 +6410,38 @@ export default function PresentationEditor() {
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Slide regeneration failed.");
+    }
+  }
+
+  // Generate slide note content using a skill
+  async function handleGenerateNoteContent() {
+    if (!noteGenSkill || isGeneratingNoteContent) return;
+    setIsGeneratingNoteContent(true);
+    try {
+      const currentNote = slideNoteDraft.trim();
+      // Build prompt: use current slide note as context, add word limit instruction if set
+      const wordLimitNum = noteGenWordLimit ? parseInt(noteGenWordLimit, 10) : 0;
+      const wordLimitInstruction = wordLimitNum > 0
+        ? `\n\nIMPORTANT: Limit the output to approximately ${wordLimitNum} words.`
+        : "";
+      const prompt = currentNote
+        ? `${currentNote}${wordLimitInstruction}`
+        : `Write content for this slide.${wordLimitInstruction}`;
+
+      const result = await noteGenExecuteMutation.mutateAsync({
+        skillId: noteGenSkill,
+        prompt,
+      });
+      if (result.success && result.message) {
+        setSlideNoteDraft(result.message);
+        toast.success("Content generated — review and save the note.");
+      } else {
+        toast.error((result as any).error || "Failed to generate content.");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to generate content.");
+    } finally {
+      setIsGeneratingNoteContent(false);
     }
   }
 
@@ -7668,6 +7979,18 @@ export default function PresentationEditor() {
         >
           Element Borders: {showElementFrames ? "On" : "Off"}
         </Button>
+        {aiRecipePreviewDefinition && (
+          <Button
+            onClick={() => setIsAILayoutPreviewDialogOpen(true)}
+            aria-label="AI Layout Preview"
+            variant={isAILayoutPreviewDialogOpen ? "secondary" : "outline"}
+            size="sm"
+            className="gap-1 text-xs"
+          >
+            <LayoutTemplate className="h-3.5 w-3.5" />
+            AI Layout
+          </Button>
+        )}
         <div className="ml-auto flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-900 px-2 py-0.5 text-xs text-slate-300">
           <Crop className="h-3 w-3" />
           <span>Canvas</span>
@@ -7902,10 +8225,16 @@ export default function PresentationEditor() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">AI Layout</p>
+              {effectiveAILayoutMode ? (
+                <p className="mt-1 text-[11px] text-sky-700" data-testid="ai-layout-mode-summary">
+                  Current mode: {PRESENTATION_AI_LAYOUT_MODE_LABELS[effectiveAILayoutMode]}
+                  {slideAIDesign?.modeLocked ? " · Locked" : ""}
+                </p>
+              ) : null}
               <p className="mt-1 text-[11px] text-sky-700">
-                Current recipe: {currentAILayoutRecipeId
+                Current block layout: {currentAILayoutRecipeId
                   ? (PRESENTATION_COMPONENT_AI_GUIDANCE[currentAILayoutRecipeId]?.label ?? currentAILayoutRecipeId)
-                  : "Plain template"}
+                  : "Automatic fallback"}
               </p>
               {slideAIDesign?.selectionMode ? (
                 <p className="mt-1 text-[11px] text-sky-700">
@@ -7914,7 +8243,7 @@ export default function PresentationEditor() {
               ) : null}
               {slideAIDesign?.selectionReason ? (
                 <p className="mt-1 text-[11px] text-sky-700">
-                  {slideAIDesign.selectionReason}
+                  {formatAILayoutUserText(slideAIDesign.selectionReason)}
                 </p>
               ) : null}
             </div>
@@ -7927,9 +8256,61 @@ export default function PresentationEditor() {
               </span>
             ) : null}
           </div>
+          {slideAIDesign?.fitScore ? (
+            <div className="mt-3 rounded-md border border-sky-200 bg-white p-2" data-testid="ai-layout-fit-summary">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-sky-800">
+                  {slideAIDesign.fitScore.status}
+                </span>
+                <span className="text-[11px] text-sky-800">
+                  Fit {(slideAIDesign.fitScore.overall * 100).toFixed(0)}%
+                </span>
+                <span className="text-[11px] text-sky-700">
+                  Overflow {(slideAIDesign.fitScore.overflowRisk * 100).toFixed(0)}%
+                </span>
+                <span className="text-[11px] text-sky-700">
+                  Readability {(slideAIDesign.fitScore.readability * 100).toFixed(0)}%
+                </span>
+              </div>
+              {aiLayoutCurrentModeCandidate?.reason ? (
+                <p className="mt-2 text-[11px] text-sky-700">{aiLayoutCurrentModeCandidate.reason}</p>
+              ) : null}
+            </div>
+          ) : null}
+          {aiLayoutCandidateModes.length ? (
+            <div className="mt-3 space-y-1" data-testid="ai-layout-candidate-modes">
+              <p className="text-[11px] font-medium text-sky-800">Candidate modes</p>
+              <div className="space-y-1">
+                {aiLayoutCandidateModes.slice(0, 4).map((candidate) => (
+                  <div
+                    key={candidate.mode}
+                    className="rounded-md border border-sky-200 bg-white px-2 py-1.5 text-[11px] text-sky-800"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium">
+                        {PRESENTATION_AI_LAYOUT_MODE_LABELS[candidate.mode]}
+                      </span>
+                      <span className="rounded-full border border-sky-100 bg-sky-50 px-1.5 py-0.5 text-[10px] text-sky-700">
+                        {candidate.fitStatus}
+                      </span>
+                      <span className="text-[10px] text-sky-600">
+                        {candidate.score.toFixed(0)}
+                      </span>
+                      {candidate.blockedBy ? (
+                        <span className="rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-700">
+                          {PRESENTATION_AI_LAYOUT_BLOCKED_BY_LABELS[candidate.blockedBy] ?? candidate.blockedBy}
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 text-[10px] text-sky-700">{candidate.reason}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
           {slideAIDesign?.candidateRecipes?.length ? (
             <div className="mt-3 space-y-1">
-              <p className="text-[11px] font-medium text-sky-800">Candidate recipes</p>
+              <p className="text-[11px] font-medium text-sky-800">Candidate block layouts</p>
               <div className="flex flex-wrap gap-1.5">
                 {slideAIDesign.candidateRecipes.slice(0, 4).map((candidate) => (
                   <span
@@ -7945,47 +8326,83 @@ export default function PresentationEditor() {
             </div>
           ) : null}
           {aiRecipePreviewDefinition ? (
-            <div className="mt-3 rounded-md border border-sky-200 bg-white p-2">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] font-medium text-sky-800">Preview</p>
-                <div className="flex items-center gap-2">
-                  <div className="text-right text-[10px] text-sky-600">
-                    <div>{aiRecipePreviewDefinition.label}</div>
-                    {aiRecipeCanonicalPreviewQuery.data ? (
-                      <div data-testid="ai-layout-preview-metadata">
-                        Canonical {aiRecipeCanonicalPreviewQuery.data.rendererVersion}
-                        {" · "}
-                        {aiRecipeCanonicalPreviewQuery.data.previewHash.slice(0, 8)}
-                      </div>
-                    ) : null}
-                  </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-7 border-sky-200 bg-white px-2 text-[11px] text-sky-800 hover:bg-sky-100"
-                    onClick={() => setIsAILayoutPreviewDialogOpen(true)}
-                  >
-                    <Maximize2 className="mr-1 h-3.5 w-3.5" />
-                    Open Large Preview
-                  </Button>
-                </div>
-              </div>
-              {renderAILayoutPreview("panel")}
+            <div className="mt-3 flex items-center justify-between gap-2 rounded-md border border-sky-200 bg-white px-2 py-1.5">
+              <span className="truncate text-[11px] font-medium text-sky-800">{aiRecipePreviewDefinition.label}</span>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 shrink-0 border-sky-200 bg-white px-2 text-[11px] text-sky-800 hover:bg-sky-100"
+                onClick={() => setIsAILayoutPreviewDialogOpen(true)}
+              >
+                <Maximize2 className="mr-1 h-3.5 w-3.5" />
+                Preview Block
+              </Button>
             </div>
           ) : null}
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
-            <label className="flex-1">
-              <span className="text-[11px] font-medium text-sky-800">Override recipe</span>
+          <div className="mt-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
+            <label>
+              <span className="text-[11px] font-medium text-sky-800">Preferred mode</span>
               <select
-                aria-label="AI Layout Recipe Override"
+                aria-label="AI Layout Mode Override"
+                className="mt-1 h-9 w-full rounded border border-sky-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none"
+                value={slideAIDesign?.userOverrideMode ?? ""}
+                onChange={(event) => {
+                  const nextValue = event.target.value.trim();
+                  handleSetAILayoutModeOverride(
+                    nextValue
+                      ? nextValue as PresentationAILayoutMode
+                      : null,
+                  );
+                }}
+              >
+                <option value="">Auto</option>
+                {PRESENTATION_AI_LAYOUT_MODES.map((mode) => (
+                  <option key={mode} value={mode}>
+                    {PRESENTATION_AI_LAYOUT_MODE_LABELS[mode]}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-[10px] text-sky-700">
+                Stored in slide metadata and reused by the next AI relayout pass.
+              </p>
+            </label>
+            <label className="flex items-center gap-2 rounded-md border border-sky-200 bg-white px-3 py-2 text-[11px] text-sky-800">
+              <input
+                aria-label="Lock AI Layout Mode"
+                type="checkbox"
+                className="h-4 w-4 rounded border-sky-300"
+                checked={Boolean(slideAIDesign?.modeLocked)}
+                onChange={(event) => handleToggleAILayoutModeLock(event.target.checked)}
+                disabled={!effectiveAILayoutMode}
+              />
+              <span>Lock current mode</span>
+            </label>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1">
+            {["All", "Process", "Document", "Marketing", "Data", "Profile", "Storytelling"].map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors ${aiBlockCategoryFilter === cat ? "bg-sky-600 text-white" : "bg-sky-100 text-sky-700 hover:bg-sky-200"}`}
+                onClick={() => setAiBlockCategoryFilter(cat)}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+          <div className="mt-1.5 flex flex-col gap-2 sm:flex-row sm:items-end">
+            <label className="flex-1">
+              <span className="text-[11px] font-medium text-sky-800">Override block layout</span>
+              <select
+                aria-label="AI Layout Block Override"
                 className="mt-1 h-9 w-full rounded border border-sky-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none"
                 value={aiRecipeOverrideChoice}
                 onChange={(event) => setAiRecipeOverrideChoice(event.target.value as BuiltInPresentationComponentId)}
               >
-                {BUILT_IN_PRESENTATION_COMPONENT_IDS.map((recipeId) => (
-                  <option key={recipeId} value={recipeId}>
-                    {PRESENTATION_COMPONENT_AI_GUIDANCE[recipeId]?.label ?? recipeId}
+                {filteredBlockPresets.map((preset) => (
+                  <option key={preset.id} value={preset.id}>
+                    {preset.label}
                   </option>
                 ))}
               </select>
@@ -8004,6 +8421,49 @@ export default function PresentationEditor() {
               Rebuild AI Layout
             </Button>
           </div>
+          {(aiLayoutFallbackPreview.length > 0 || Object.keys(aiLayoutSourceTraceSummary).length > 0 || slideAIDesign?.mediaModeMetadata) ? (
+            <div className="mt-3 space-y-2">
+              {aiLayoutFallbackPreview.length > 0 ? (
+                <div className="rounded-md border border-sky-200 bg-white p-2" data-testid="ai-layout-fallback-history">
+                  <p className="text-[11px] font-medium text-sky-800">Fallback history</p>
+                  <div className="mt-1 space-y-1">
+                    {aiLayoutFallbackPreview.map((entry, index) => (
+                      <p key={`${entry.step}-${entry.timestamp}-${index}`} className="text-[10px] text-sky-700">
+                        {entry.step}: {entry.reason}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              {Object.keys(aiLayoutSourceTraceSummary).length > 0 ? (
+                <div className="rounded-md border border-sky-200 bg-white p-2" data-testid="ai-layout-source-trace-summary">
+                  <p className="text-[11px] font-medium text-sky-800">Source trace</p>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {Object.entries(aiLayoutSourceTraceSummary).map(([disposition, count]) => (
+                      <span
+                        key={disposition}
+                        className="rounded-full border border-sky-200 bg-sky-50 px-2 py-1 text-[10px] text-sky-700"
+                      >
+                        {disposition} {count}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              {slideAIDesign?.mediaModeMetadata ? (
+                <div className="rounded-md border border-sky-200 bg-white p-2" data-testid="ai-layout-media-mode-metadata">
+                  <p className="text-[11px] font-medium text-sky-800">Media mode</p>
+                  <p className="mt-1 text-[10px] text-sky-700">
+                    Visual intent: {slideAIDesign.mediaModeMetadata.visualIntent ?? "n/a"}
+                    {" · "}
+                    Thai text risk: {slideAIDesign.mediaModeMetadata.thaiTextRisk ?? "n/a"}
+                    {" · "}
+                    Editable source retained: {slideAIDesign.mediaModeMetadata.editableSourceRetained ? "yes" : "no"}
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           {reusableBuiltInComponent ? (
             <div className="mt-2 flex flex-wrap gap-2">
               <Button
@@ -8185,11 +8645,14 @@ export default function PresentationEditor() {
         onSelectSlot={(slotId) => handleSelectComponentSlot(selectedComponent.id, slotId)}
         onClearSlot={() => setSelectedComponentSlotId(null)}
         onMoveComponent={handleMoveSelection}
+        onResizeComponent={handleDragResize}
+        onResizeSlot={handleDragResizeComponentSlot}
         onEndComponentDrag={handleDragEnd}
         onUpdateTextSlot={handleUpdateSelectedCanvasSlotText}
         onUpdateImageSlot={handleUpdateSelectedCanvasSlotImage}
         onUpdateVideoSlot={handleUpdateSelectedCanvasSlotVideo}
         onUpdateListSlot={handleUpdateSelectedCanvasSlotList}
+        onSelectRawSlotElement={handleSelectRawComponentSlotElement}
         imageAssets={mergedImageLibraryAssets}
         videoAssets={mergedVideoLibraryAssets}
         onPickImageAsset={handlePickSelectedCanvasImageAsset}
@@ -8276,6 +8739,8 @@ export default function PresentationEditor() {
             disabled={!selectedElement && !selectedComponent}
             onMove={handleMoveSelection}
             onResize={handleResizeSelection}
+            onAutoFit={selectedComponent ? handleAutoFitSelection : undefined}
+            autoFitLabel={selectedComponentDefinition?.category === "Document" ? "Fit Canvas" : "Fit Width"}
             onRotate={handleRotateSelection}
             onArrange={handleArrangeSelection}
             currentWidth={selectedElement?.width ?? selectedComponentBounds?.width ?? 0}
@@ -9021,11 +9486,17 @@ export default function PresentationEditor() {
         </div>
       ) : null}
       <Dialog open={isAILayoutPreviewDialogOpen} onOpenChange={setIsAILayoutPreviewDialogOpen}>
-        <DialogContent className="flex max-h-[92vh] w-[min(96vw,1320px)] max-w-[min(96vw,1320px)] flex-col overflow-hidden">
-          <DialogHeader>
+        <DialogContent
+          className="flex max-h-[94vh] w-[min(96vw,1600px)] max-w-[min(96vw,1600px)] flex-col overflow-hidden"
+          style={aiLayoutPreviewDialogDrag.dialogStyle}
+        >
+          <DialogHeader
+            className={aiLayoutPreviewDialogDrag.isDragging ? "cursor-grabbing select-none" : "cursor-move select-none"}
+            onMouseDown={aiLayoutPreviewDialogDrag.handleDragStart}
+          >
             <DialogTitle>AI Layout Preview</DialogTitle>
             <DialogDescription>
-              Review the rebuilt block layout in a larger canvas and apply recipe overrides without the narrow sidebar preview.
+              Review the rebuilt block layout in a larger canvas and apply block layout overrides without the narrow sidebar preview.
             </DialogDescription>
           </DialogHeader>
           {aiRecipePreviewDefinition ? (
@@ -9041,18 +9512,31 @@ export default function PresentationEditor() {
                     </p>
                   ) : null}
                 </div>
-                <div className="flex min-w-[260px] flex-1 flex-col gap-2 sm:flex-row sm:items-end sm:justify-end">
+                <div className="flex min-w-[260px] flex-1 flex-col gap-2">
+                  <div className="flex flex-wrap gap-1">
+                    {["All", "Process", "Document", "Marketing", "Data", "Profile", "Storytelling"].map((cat) => (
+                      <button
+                        key={cat}
+                        type="button"
+                        className={`rounded-full px-2.5 py-0.5 text-[10px] font-medium transition-colors ${aiBlockCategoryFilter === cat ? "bg-sky-600 text-white" : "bg-sky-100 text-sky-700 hover:bg-sky-200"}`}
+                        onClick={() => setAiBlockCategoryFilter(cat)}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex flex-row items-end gap-2">
                   <label className="flex-1 sm:max-w-xs">
-                    <span className="text-[11px] font-medium text-sky-800">Override recipe</span>
+                    <span className="text-[11px] font-medium text-sky-800">Override block layout</span>
                     <select
-                      aria-label="AI Layout Recipe Override Dialog"
+                      aria-label="AI Layout Block Override Dialog"
                       className="mt-1 h-9 w-full rounded border border-sky-200 bg-white px-2 py-1 text-xs text-slate-700 outline-none"
                       value={aiRecipeOverrideChoice}
                       onChange={(event) => setAiRecipeOverrideChoice(event.target.value as BuiltInPresentationComponentId)}
                     >
-                      {BUILT_IN_PRESENTATION_COMPONENT_IDS.map((recipeId) => (
-                        <option key={recipeId} value={recipeId}>
-                          {PRESENTATION_COMPONENT_AI_GUIDANCE[recipeId]?.label ?? recipeId}
+                      {filteredBlockPresets.map((preset) => (
+                        <option key={preset.id} value={preset.id}>
+                          {preset.label}
                         </option>
                       ))}
                     </select>
@@ -9070,10 +9554,78 @@ export default function PresentationEditor() {
                   >
                     Rebuild AI Layout
                   </Button>
+                  </div>
                 </div>
               </div>
-              <div className="min-h-0 flex-1 overflow-auto">
-                {renderAILayoutPreview("dialog")}
+              <div className="flex items-center gap-2 px-1">
+                <button
+                  type="button"
+                  className="rounded border border-slate-200 px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+                  disabled={aiPreviewZoom <= 0.25}
+                  onClick={() => { setAiPreviewZoom((z) => Math.max(0.25, +(z - 0.25).toFixed(2))); }}
+                  aria-label="Zoom out preview"
+                >
+                  -
+                </button>
+                <span className="min-w-[3.5rem] text-center text-xs text-slate-600">{Math.round(aiPreviewZoom * 100)}%</span>
+                <button
+                  type="button"
+                  className="rounded border border-slate-200 px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+                  disabled={aiPreviewZoom >= 3}
+                  onClick={() => { setAiPreviewZoom((z) => Math.min(3, +(z + 0.25).toFixed(2))); }}
+                  aria-label="Zoom in preview"
+                >
+                  +
+                </button>
+                <button
+                  type="button"
+                  className="rounded border border-slate-200 px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-100"
+                  onClick={() => { setAiPreviewZoom(1); setAiPreviewPan({ x: 0, y: 0 }); }}
+                  aria-label="Reset preview zoom"
+                >
+                  Reset
+                </button>
+                <span className="ml-auto text-[10px] text-slate-400">Scroll to zoom, drag to pan</span>
+              </div>
+              <div
+                ref={aiPreviewContainerRef}
+                className="min-h-0 flex-1 overflow-hidden rounded-md border border-slate-200 bg-slate-50"
+                style={{ cursor: aiPreviewZoom > 1 ? "grab" : "default" }}
+                onWheel={(e) => {
+                  e.preventDefault();
+                  const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                  setAiPreviewZoom((z) => Math.min(3, Math.max(0.25, +(z + delta).toFixed(2))));
+                }}
+                onMouseDown={(e) => {
+                  if (e.button !== 0) return;
+                  aiPreviewPanRef.current = { dragging: true, startX: e.clientX, startY: e.clientY, panX: aiPreviewPan.x, panY: aiPreviewPan.y };
+                  e.currentTarget.style.cursor = "grabbing";
+                  const onMove = (ev: MouseEvent) => {
+                    if (!aiPreviewPanRef.current.dragging) return;
+                    setAiPreviewPan({
+                      x: aiPreviewPanRef.current.panX + (ev.clientX - aiPreviewPanRef.current.startX),
+                      y: aiPreviewPanRef.current.panY + (ev.clientY - aiPreviewPanRef.current.startY),
+                    });
+                  };
+                  const onUp = () => {
+                    aiPreviewPanRef.current.dragging = false;
+                    if (aiPreviewContainerRef.current) aiPreviewContainerRef.current.style.cursor = aiPreviewZoom > 1 ? "grab" : "default";
+                    window.removeEventListener("mousemove", onMove);
+                    window.removeEventListener("mouseup", onUp);
+                  };
+                  window.addEventListener("mousemove", onMove);
+                  window.addEventListener("mouseup", onUp);
+                }}
+              >
+                <div
+                  className="flex h-full w-full items-center justify-center p-4"
+                  style={{
+                    transform: `scale(${aiPreviewZoom}) translate(${aiPreviewPan.x / aiPreviewZoom}px, ${aiPreviewPan.y / aiPreviewZoom}px)`,
+                    transformOrigin: "center center",
+                  }}
+                >
+                  {renderAILayoutPreview("dialog")}
+                </div>
               </div>
             </div>
           ) : (
@@ -9189,7 +9741,7 @@ export default function PresentationEditor() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>Template</Label>
+                <Label>Block layout</Label>
                 <Select
                   value={autoLayoutTemplateChoice}
                   onValueChange={(value) => setAutoLayoutTemplateChoice(value as AutoLayoutTemplateChoice)}
@@ -9200,14 +9752,9 @@ export default function PresentationEditor() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="auto">Auto choose</SelectItem>
-                    {AI_LAYOUT_TEMPLATE_IDS.map((templateId) => (
-                      <SelectItem key={templateId} value={`template:${templateId}`}>
-                        {AUTO_LAYOUT_TEMPLATE_LABELS[templateId]}
-                      </SelectItem>
-                    ))}
-                    {BUILT_IN_PRESENTATION_COMPONENT_IDS.map((componentId) => (
-                      <SelectItem key={componentId} value={`block:${componentId}`}>
-                        {AUTO_LAYOUT_BLOCK_LABELS[componentId]}
+                    {PRESENTATION_BLOCK_PRESETS.map((preset) => (
+                      <SelectItem key={preset.id} value={`block:${preset.id}`}>
+                        {preset.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -9353,7 +9900,7 @@ export default function PresentationEditor() {
                   disabled={autoLayoutBusy}
                 />
                 <p className="text-[11px] text-slate-500">
-                  Controls opacity for supplemental background media when Auto Layout uses text-first block recipes.
+                  Controls opacity for supplemental background media when Auto Layout uses text-first block layouts.
                 </p>
               </div>
             </div>
@@ -9644,6 +10191,73 @@ export default function PresentationEditor() {
               Internal note for slide {selectedSlide ? selectedSlide.orderIndex + 1 : "-"}. It is hidden from play mode and exports.
             </DialogDescription>
           </DialogHeader>
+
+          {/* AI Content Generator for slide note */}
+          <div className="rounded-md border border-dashed border-teal-300/50 bg-teal-50/30 dark:bg-teal-950/10">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-medium text-teal-700 hover:bg-teal-50/50 dark:text-teal-400"
+              onClick={() => setNoteGenOpen(!noteGenOpen)}
+            >
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5" />
+                AI Content Generator
+              </span>
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${noteGenOpen ? "rotate-180" : ""}`} />
+            </button>
+            {noteGenOpen && (
+              <div className="space-y-2.5 border-t border-teal-200/40 px-3 pb-3 pt-2">
+                <p className="text-[11px] text-muted-foreground">
+                  Select a skill to generate or rewrite content for this slide. The output will replace the note below.
+                </p>
+                <select
+                  className="h-8 w-full rounded border border-teal-200 bg-white px-2 text-xs text-slate-700 outline-none dark:bg-slate-900 dark:text-slate-200"
+                  value={noteGenSkill}
+                  onChange={(e) => setNoteGenSkill(e.target.value)}
+                >
+                  <option value="">Select a skill...</option>
+                  {noteGenSkillItems.map((item) => (
+                    <option key={item.value} value={item.value}>{item.label}</option>
+                  ))}
+                </select>
+                <div className="flex items-end gap-2">
+                  <label className="flex-1">
+                    <span className="text-[11px] text-muted-foreground">Word limit (optional)</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={10000}
+                      placeholder="e.g. 300"
+                      className="mt-0.5 h-8 text-xs"
+                      value={noteGenWordLimit}
+                      onChange={(e) => setNoteGenWordLimit(e.target.value)}
+                    />
+                  </label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 shrink-0 gap-1.5 border-teal-300 text-teal-700 hover:bg-teal-50 dark:border-teal-700 dark:text-teal-400"
+                    disabled={!noteGenSkill || isGeneratingNoteContent}
+                    onClick={() => void handleGenerateNoteContent()}
+                  >
+                    {isGeneratingNoteContent ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Generate Content
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs text-slate-500">
               <span>{slideNoteDirty ? "Unsaved changes" : "Saved"}</span>
@@ -9652,7 +10266,7 @@ export default function PresentationEditor() {
             <Textarea
               value={slideNoteDraft}
               onChange={(event) => setSlideNoteDraft(event.target.value)}
-              placeholder="Write slide-level notes here..."
+              placeholder="Write slide-level notes here, or use AI Content Generator above..."
               rows={14}
               disabled={!selectedSlide}
             />

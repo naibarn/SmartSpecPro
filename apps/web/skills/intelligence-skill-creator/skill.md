@@ -1,7 +1,7 @@
 ---
 id: intelligence-skill-creator
-name: Intelligence Skill Creator
-version: "0.4.0"
+name: intelligence-skill-creator
+version: 0.4.0
 type: automation
 languages: en, th
 category: automation
@@ -10,13 +10,21 @@ isAutoTrigger: false
 enabledByDefault: false
 visibleByDefault: true
 priority: 10
-tags: [skill-builder, code-generation, llm, python, javascript, schema]
+tags: []
 triggerPatterns:
-  - "create skill|build skill|สร้าง skill|ทำ skill ใหม่|ออกแบบ skill"
-  - "improve skill|ปรับปรุง skill|พัฒนา skill|แก้ไข skill"
-  - "intelligence skill creator|ISC|isc create|isc improve"
+  - create skill|build skill|สร้าง skill|ทำ skill ใหม่|ออกแบบ skill
+  - improve skill|ปรับปรุง skill|พัฒนา skill|แก้ไข skill
+  - intelligence skill creator|ISC|isc create|isc improve
+icon: sparkles
+auto_trigger: false
+trigger_patterns:
+  - create skill|build skill|สร้าง skill|ทำ skill ใหม่|ออกแบบ skill
+  - improve skill|ปรับปรุง skill|พัฒนา skill|แก้ไข skill
+  - intelligence skill creator|ISC|isc create|isc improve
+enabled_by_default: true
+credit_multiplier: 1
+strict_provider_pin: false
 ---
-
 # Intelligence Skill Creator (ISC) — v0.4.0
 
 7-phase multi-agent LLM pipeline that creates complete, production-ready SmartAIHub skills from a natural language description — or iteratively improves existing ones.

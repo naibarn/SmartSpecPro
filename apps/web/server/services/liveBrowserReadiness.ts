@@ -9,6 +9,11 @@ export interface LiveBrowserReadinessSnapshot {
   runtimeFailures: string[];
   providerFailures: string[];
   checkedAt: string | null;
+  publisher: string | null;
+  owner: string | null;
+  runbookUrl: string | null;
+  publishIntervalSeconds: number | null;
+  maxAgeSeconds: number | null;
 }
 
 export interface LiveBrowserEntryReadinessStatus {
@@ -32,6 +37,14 @@ function parseCheckedAt(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
+function parseString(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function parsePositiveNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
+}
+
 function parseSnapshot(raw: string | null): LiveBrowserReadinessSnapshot {
   if (!raw) {
     return {
@@ -40,6 +53,11 @@ function parseSnapshot(raw: string | null): LiveBrowserReadinessSnapshot {
       runtimeFailures: ["live_readiness_snapshot_missing"],
       providerFailures: [],
       checkedAt: null,
+      publisher: null,
+      owner: null,
+      runbookUrl: null,
+      publishIntervalSeconds: null,
+      maxAgeSeconds: null,
     };
   }
 
@@ -51,6 +69,11 @@ function parseSnapshot(raw: string | null): LiveBrowserReadinessSnapshot {
       runtimeFailures: parseStringArray(parsed.runtimeFailures),
       providerFailures: parseStringArray(parsed.providerFailures),
       checkedAt: parseCheckedAt(parsed.checkedAt),
+      publisher: parseString(parsed.publisher),
+      owner: parseString(parsed.owner),
+      runbookUrl: parseString(parsed.runbookUrl),
+      publishIntervalSeconds: parsePositiveNumber(parsed.publishIntervalSeconds),
+      maxAgeSeconds: parsePositiveNumber(parsed.maxAgeSeconds),
     };
   } catch {
     return {
@@ -59,6 +82,11 @@ function parseSnapshot(raw: string | null): LiveBrowserReadinessSnapshot {
       runtimeFailures: ["live_readiness_snapshot_invalid"],
       providerFailures: [],
       checkedAt: null,
+      publisher: null,
+      owner: null,
+      runbookUrl: null,
+      publishIntervalSeconds: null,
+      maxAgeSeconds: null,
     };
   }
 }
@@ -79,9 +107,30 @@ export function evaluateLiveBrowserEntryReadiness(
     failedChecks.push("provider_unready");
   }
 
+  if (!snapshot.publisher) {
+    failedChecks.push("live_readiness_publisher_missing");
+  }
+
+  if (!snapshot.owner) {
+    failedChecks.push("live_readiness_owner_missing");
+  }
+
+  if (!snapshot.runbookUrl) {
+    failedChecks.push("live_readiness_runbook_missing");
+  }
+
+  if (!snapshot.publishIntervalSeconds) {
+    failedChecks.push("live_readiness_publish_interval_missing");
+  }
+
+  if (!snapshot.maxAgeSeconds) {
+    failedChecks.push("live_readiness_max_age_missing");
+  }
+
   if (snapshot.checkedAt) {
     const checkedAtMs = Date.parse(snapshot.checkedAt);
-    if (!Number.isNaN(checkedAtMs) && Date.now() - checkedAtMs > LIVE_BROWSER_READINESS_MAX_AGE_MS) {
+    const maxAgeMs = (snapshot.maxAgeSeconds ?? LIVE_BROWSER_READINESS_MAX_AGE_MS / 1000) * 1000;
+    if (!Number.isNaN(checkedAtMs) && Date.now() - checkedAtMs > maxAgeMs) {
       failedChecks.push("live_readiness_snapshot_stale");
     }
   }
@@ -114,6 +163,9 @@ export async function assertLiveBrowserEntryReady(): Promise<void> {
       "Live Browser entry is blocked by readiness checks",
       `failed_checks=${status.failedChecks.join(",") || "none"}`,
       `checked_at=${status.snapshot.checkedAt ?? "unknown"}`,
+      `publisher=${status.snapshot.publisher ?? "unknown"}`,
+      `owner=${status.snapshot.owner ?? "unknown"}`,
+      `runbook_url=${status.snapshot.runbookUrl ?? "unknown"}`,
     ].join(" "),
   );
 }

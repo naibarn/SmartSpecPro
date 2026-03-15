@@ -252,6 +252,54 @@ describe("GET /internal/slide-render/:deckId/:slideIndex", () => {
     expect(res.text).toContain("window.__slideReady = false");
   });
 
+  it("flattens component fallback elements before embedding slide JSON", async () => {
+    const componentSlide = {
+      id: 500,
+      deckId: DECK_ID,
+      orderIndex: SLIDE_INDEX,
+      title: "Component Slide",
+      slideContent: {
+        elements: [],
+        components: [
+          {
+            id: "component-hero",
+            componentId: "hero",
+            componentType: "hero",
+            definitionRevision: 4,
+            slotBindings: [{ slotId: "title", type: "text", text: "Rendered from fallback" }],
+            fallbackElements: [
+              {
+                id: "fallback-title",
+                type: "text",
+                x: 120,
+                y: 180,
+                width: 540,
+                height: 90,
+                text: "Rendered from fallback",
+                color: "#111827",
+              },
+            ],
+          },
+        ],
+      },
+      audioTrack: null,
+      version: 1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    dbMocks.getDb.mockResolvedValue(dbMocks.makeChain([makeSlide(0), makeSlide(1), componentSlide, makeSlide(3)]));
+
+    const app = await buildApp();
+    const token = makeValidToken();
+    const res = await request(app)
+      .get(`/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}`)
+      .set("X-Internal-Token", token);
+
+    expect(res.status).toBe(200);
+    expect(res.text).toContain("Rendered from fallback");
+    expect(res.text).not.toContain("\"components\"");
+  });
+
   it("HTML response renders video elements with <video> tags (not black placeholder blocks)", async () => {
     const app = await buildApp();
     const token = makeValidToken();
@@ -312,6 +360,17 @@ describe("GET /internal/slide-render/:deckId/:slideIndex", () => {
       .set("X-Internal-Token", token);
     expect(res.text).toContain("function normalizeMediaSrc(value)");
     expect(res.text).toContain("video.muted = true");
+  });
+
+  it("HTML response includes media-shape rendering helpers for masked media", async () => {
+    const app = await buildApp();
+    const token = makeValidToken();
+    const res = await request(app)
+      .get(`/internal/slide-render/${DECK_ID}/${SLIDE_INDEX}`)
+      .set("X-Internal-Token", token);
+    expect(res.text).toContain("function applyMediaShapeStyle(node, el)");
+    expect(res.text).toContain("node.style.clipPath = \"polygon(50% 0%, 61% 35%");
+    expect(res.text).toContain("node.style.borderRadius = resolveMediaCornerRadius(el.mediaCornerRadius) + \"px\"");
   });
 
   it("HTML response includes media-motion runtime and applies it to live media nodes", async () => {

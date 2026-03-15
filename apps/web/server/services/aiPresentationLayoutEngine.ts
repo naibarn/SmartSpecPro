@@ -492,7 +492,7 @@ function resolveSlideSubtitleAndBodyLines(
       });
 
     const splitLines = (markdownBodyLines.length > 0 ? markdownBodyLines : bodyLines)
-      .flatMap((line) => splitLongBodyLine(line, 150, 30));
+      .flatMap((line) => splitLongBodyLine(line, markdownBodyLines.length > 0 ? 120 : 150, 24));
 
     return {
       subtitle,
@@ -508,7 +508,15 @@ function resolveSlideSubtitleAndBodyLines(
 
   const hasExplicitSections = Array.isArray(slideData.sections) && slideData.sections.length > 0;
   const structuredFirstBody = parseSectionFromBodyLine(slideData.body[0] ?? "");
-  const allowSubtitleFromSections = hasExplicitSections || Boolean(structuredFirstBody);
+  const structuredBodyChars = (slideData.body ?? []).reduce((sum, line) => sum + normalizeLayoutText(line).length, 0);
+  const structuredDetailCount = sections.reduce((sum, section) => sum + Math.max(1, section.details.length), 0);
+  const preserveStructuredItemsInBody = (
+    sections.length >= 4
+    || structuredDetailCount >= 6
+    || structuredBodyChars >= 480
+    || (slideData.notes?.length ?? 0) >= 700
+  );
+  const allowSubtitleFromSections = !preserveStructuredItemsInBody && (hasExplicitSections || Boolean(structuredFirstBody));
   const subtitleRaw = sections[0]?.heading ? normalizeLayoutText(sections[0].heading) : "";
   // Strip numbered list prefix (e.g. "1)", "2.", "A)") so subtitle matches title style
   const subtitleCandidate = subtitleRaw.replace(/^\d+\s*[).\-]\s*|^[a-zA-Z]\s*[).\-]\s*/i, "").trim();
@@ -626,7 +634,7 @@ function fitTitleTypography(
     fontSize -= 1;
     lineCount = estimateTextLineCount(text, width, fontSize, 12);
   }
-  return { fontSize, lineCount: Math.min(lineCount, maxLines) };
+  return { fontSize, lineCount };
 }
 
 function fitBodyFontSizeToHeight(opts: {
@@ -704,6 +712,15 @@ function fitBodyRowsToHeight(opts: {
 
   const targetFontSize = clamp(Math.round(baseFontSize), minFontSize, maxFontSize);
   for (let size = targetFontSize; size >= minFontSize; size -= 1) {
+    const rows = buildFittedRows(lines, size, width, lineHeightRatio, maxLinesPerRow);
+    const totalHeight = computeRowsHeight(rows, gapPx);
+    if (totalHeight <= availableHeightPx) {
+      return { fontSize: size, rows, totalHeight };
+    }
+  }
+
+  const emergencyMinFontSize = Math.max(9, Math.min(minFontSize - 1, Math.round(baseFontSize * 0.38)));
+  for (let size = minFontSize - 1; size >= emergencyMinFontSize; size -= 1) {
     const rows = buildFittedRows(lines, size, width, lineHeightRatio, maxLinesPerRow);
     const totalHeight = computeRowsHeight(rows, gapPx);
     if (totalHeight <= availableHeightPx) {
@@ -1610,10 +1627,15 @@ function buildTopImageTextBottom(ctx: TemplateContext): SlideElement[] {
   const { contentArea, slideData, preset, scale, canvasWidth, canvasHeight } = ctx;
   const elements: SlideElement[] = [];
   const portrait = isPortraitCanvas(canvasWidth, canvasHeight);
-  const imageHeight = Math.round(contentArea.height * (portrait ? 0.52 : 0.56));
+  const denseTextMode = (slideData.notes?.length ?? 0) >= 700 || (slideData.markdownHierarchy?.length ?? 0) >= 8;
+  const { subtitle, emphasisLines, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? (denseTextMode ? 14 : 10) : (denseTextMode ? 14 : 12));
+  const totalTextLen = (slideData.title?.length ?? 0) + (subtitle?.length ?? 0) + emphasisLines.join("").length + bodyLines.join("").length;
+  const imageRatio = portrait
+    ? (denseTextMode || totalTextLen > 1200 ? 0.18 : totalTextLen > 900 ? 0.24 : totalTextLen > 600 ? 0.32 : 0.52)
+    : (denseTextMode || totalTextLen > 900 ? 0.36 : totalTextLen > 700 ? 0.42 : 0.56);
+  const imageHeight = Math.round(contentArea.height * imageRatio);
   const bottomY = contentArea.y + imageHeight;
   const bottomHeight = Math.max(120, contentArea.height - imageHeight);
-  const { subtitle, emphasisLines, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 10 : 12);
   const thaiText = hasThaiCharacters(`${slideData.title}\n${subtitle ?? ""}\n${emphasisLines.join("\n")}\n${bodyLines.join("\n")}`);
   const titleLineHeight = getTitleLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLineHeightRatio = getBodyLineHeight(canvasWidth, canvasHeight, thaiText);
@@ -1742,7 +1764,7 @@ function buildTopImageTextBottom(ctx: TemplateContext): SlideElement[] {
   }
 
   // Body text — hard-clamp to bottom boundary so rows never overlap
-  const bodyGap = Math.round(8 * scale.scaleY);
+  const bodyGap = Math.round((denseTextMode ? 6 : 8) * scale.scaleY);
   const bodyTop = titleY + titleHeight + subtitleGap + subtitleHeight + Math.round(14 * scale.scaleY);
   const bodyBottomLimit = bottomY + bottomHeight - Math.round(26 * scale.scaleY);
   const availableBodyHeight = Math.max(56, bodyBottomLimit - bodyTop);
@@ -1768,12 +1790,12 @@ function buildTopImageTextBottom(ctx: TemplateContext): SlideElement[] {
     lines: bodyLines,
     width: titleWidth,
     baseFontSize: scaleBodyFontSize(26, scale, canvasWidth, canvasHeight),
-    minFontSize: portrait ? 14 : 12,
+    minFontSize: denseTextMode ? 10 : 12,
     maxFontSize: portrait ? 34 : 24,
     lineHeightRatio: bodyLineHeightRatio,
     gapPx: bodyGap,
     availableHeightPx: bodyAvailableHeight,
-    maxLinesPerRow: thaiText ? 4 : 2,
+    maxLinesPerRow: thaiText ? (portrait ? (denseTextMode ? 8 : 6) : 4) : (portrait ? (denseTextMode ? 4 : 3) : 2),
   });
 
   let bodyY = bodyTop;
@@ -1840,10 +1862,15 @@ function buildBottomImageTextTop(ctx: TemplateContext): SlideElement[] {
   const { contentArea, slideData, preset, scale, canvasWidth, canvasHeight } = ctx;
   const elements: SlideElement[] = [];
   const portrait = isPortraitCanvas(canvasWidth, canvasHeight);
-  const imageHeight = Math.round(contentArea.height * (portrait ? 0.52 : 0.56));
+  const denseTextMode = (slideData.notes?.length ?? 0) >= 700 || (slideData.markdownHierarchy?.length ?? 0) >= 8;
+  const { subtitle, emphasisLines, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? (denseTextMode ? 14 : 10) : (denseTextMode ? 14 : 12));
+  const totalTextLen = (slideData.title?.length ?? 0) + (subtitle?.length ?? 0) + emphasisLines.join("").length + bodyLines.join("").length;
+  const imageRatio = portrait
+    ? (denseTextMode || totalTextLen > 1200 ? 0.18 : totalTextLen > 900 ? 0.24 : totalTextLen > 600 ? 0.32 : 0.52)
+    : (denseTextMode || totalTextLen > 900 ? 0.36 : totalTextLen > 700 ? 0.42 : 0.56);
+  const imageHeight = Math.round(contentArea.height * imageRatio);
   const topHeight = Math.max(120, contentArea.height - imageHeight);
   const imageY = contentArea.y + topHeight;
-  const { subtitle, emphasisLines, bodyLines } = resolveSlideSubtitleAndBodyLines(slideData, portrait ? 10 : 12);
   const thaiText = hasThaiCharacters(`${slideData.title}\n${subtitle ?? ""}\n${emphasisLines.join("\n")}\n${bodyLines.join("\n")}`);
   const titleLineHeight = getTitleLineHeight(canvasWidth, canvasHeight, thaiText);
   const bodyLineHeightRatio = getBodyLineHeight(canvasWidth, canvasHeight, thaiText);
@@ -1955,7 +1982,7 @@ function buildBottomImageTextTop(ctx: TemplateContext): SlideElement[] {
   }
 
   // Body text — hard-clamp to top-section boundary so rows never overlap
-  const bodyGap = Math.round(8 * scale.scaleY);
+  const bodyGap = Math.round((denseTextMode ? 6 : 8) * scale.scaleY);
   const bodyTop = titleY + titleHeight + subtitleGap + subtitleHeight + Math.round(14 * scale.scaleY);
   const bodyBottomLimit = contentArea.y + topHeight - Math.round(22 * scale.scaleY);
   const availableBodyHeight = Math.max(56, bodyBottomLimit - bodyTop);
@@ -1981,12 +2008,12 @@ function buildBottomImageTextTop(ctx: TemplateContext): SlideElement[] {
     lines: bodyLines,
     width: titleWidth,
     baseFontSize: scaleBodyFontSize(26, scale, canvasWidth, canvasHeight),
-    minFontSize: portrait ? 14 : 12,
+    minFontSize: denseTextMode ? 10 : 12,
     maxFontSize: portrait ? 34 : 24,
     lineHeightRatio: bodyLineHeightRatio,
     gapPx: bodyGap,
     availableHeightPx: bodyAvailableHeight,
-    maxLinesPerRow: thaiText ? 4 : 2,
+    maxLinesPerRow: thaiText ? (portrait ? (denseTextMode ? 8 : 6) : 4) : (portrait ? (denseTextMode ? 4 : 3) : 2),
   });
 
   let bodyY = bodyTop;
@@ -2581,7 +2608,24 @@ export function generateSlide(input: LayoutEngineInput): LayoutEngineOutput {
   // 2. Template content
   let templateElements: SlideElement[];
   if (input.visualOnly) {
-    templateElements = buildVisualOnlyMediaElements(ctx);
+    const isLandscape = canvasWidth >= canvasHeight;
+    const fullpageRecipeId = isLandscape ? "fullpage-image-landscape" : "fullpage-image";
+    const fullpageComponent = buildAIRecipeComponentInstance({
+      slideData: { ...input.slideData, componentRecipeId: fullpageRecipeId },
+      stylePreset: input.stylePreset,
+      contentArea,
+      mediaUrl: input.imageUrl,
+      mediaUrls: input.imageUrls,
+      canvasWidth,
+      canvasHeight,
+    });
+    if (fullpageComponent) {
+      components = [fullpageComponent];
+      templateElements = [];
+      ctx.warnings.push(`Visual-only mode: using "${fullpageRecipeId}" component recipe.`);
+    } else {
+      templateElements = buildVisualOnlyMediaElements(ctx);
+    }
   } else {
     const recipeComponent = buildAIRecipeComponentInstance({
       slideData: input.slideData,

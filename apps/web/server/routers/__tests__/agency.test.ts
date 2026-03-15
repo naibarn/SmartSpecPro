@@ -125,6 +125,7 @@ vi.mock("../../../drizzle/schema", () => ({
   agencies: {
     id: "id",
     tenantId: "tenantId",
+    sourceTemplateId: "sourceTemplateId",
     slug: "slug",
     name: "name",
     description: "description",
@@ -944,6 +945,147 @@ describe("agencyRouter", () => {
         }),
       );
     });
+
+    it("commits a deck preview through the presentation commit service", async () => {
+      mockGetTenantFeatureFlag.mockResolvedValue(true);
+
+      mockBridgeGetRunDetails.mockResolvedValue({
+        runId: "run-001",
+        conversationId: "conv-001",
+        status: "completed",
+        response: "Deck preview ready.",
+        creditsUsed: 0,
+        durationMs: 900,
+        stepAttemptSnapshots: [],
+        structuredResult: {
+          version: "1.0",
+          intent: "presentation_deck",
+          summary: "Deck preview ready.",
+          payload: {
+            title: "Quarterly strategy deck",
+            description: "Board review",
+            language: "en",
+            style_preset: "editorial-clean",
+            slides: [
+              {
+                templateId: "hero_center",
+                title: "Overview",
+                body: ["Revenue up"],
+                notes: "Start here",
+                graphicCategory: "Business",
+                imagePromptKeywords: "business chart",
+              },
+            ],
+          },
+          artifacts: [],
+          references: [],
+          metrics: {},
+        },
+        previewArtifacts: [
+          {
+            id: "artifact-1",
+            intent: "presentation_deck",
+            artifact_type: "deck",
+            state: "preview_generated",
+            summary: "Deck preview ready.",
+            commit_status: "not_committed",
+            commit_token: "commit-token-1",
+            payload_json: {
+              title: "Quarterly strategy deck",
+              description: "Board review",
+              language: "en",
+              style_preset: "editorial-clean",
+              slides: [
+                {
+                  templateId: "hero_center",
+                  title: "Overview",
+                  body: ["Revenue up"],
+                  notes: "Start here",
+                  graphicCategory: "Business",
+                  imagePromptKeywords: "business chart",
+                },
+              ],
+            },
+            provenance_json: [],
+            payload_storage_key: null,
+            committed_at: null,
+            expired_at: null,
+          },
+        ],
+      });
+
+      const conversationSelect = {
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([
+              { id: "conv-001", agencyId: "agency-001", userId: 1 },
+            ]),
+          }),
+        }),
+      };
+      const artifactSelect = {
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([
+              {
+                id: "artifact-1",
+                runId: "run-001",
+                tenantId: "tenant-001",
+                commitToken: "commit-token-1",
+                commitStatus: "not_committed",
+                targetType: null,
+                targetId: null,
+              },
+            ]),
+          }),
+        }),
+      };
+      mockDbSelect
+        .mockReturnValueOnce(conversationSelect as any)
+        .mockReturnValueOnce(artifactSelect as any);
+
+      mockCommitPresentationPreview.mockResolvedValue({
+        artifactId: "artifact-1",
+        runId: "run-001",
+        commitToken: "commit-token-1",
+        status: "committed",
+        targetType: "presentation_deck",
+        targetId: JSON.stringify({ deckId: 42, libraryItemId: 99 }),
+        deckId: 42,
+        libraryItemId: 99,
+      });
+
+      const handler = agencyRouter.commitPreview;
+      const result = await handler({
+        ctx: makeCtx(),
+        input: {
+          agencyId: "agency-001",
+          runId: "run-001",
+          artifactId: "artifact-1",
+          commitToken: "commit-token-1",
+        },
+      });
+
+      expect(mockCommitPresentationPreview).toHaveBeenCalledWith(
+        expect.objectContaining({
+          commitToken: "commit-token-1",
+          preview: expect.objectContaining({
+            previewType: "deck",
+          }),
+        }),
+      );
+      expect(result).toEqual({
+        ok: true,
+        artifactId: "artifact-1",
+        runId: "run-001",
+        commitToken: "commit-token-1",
+        status: "committed",
+        targetType: "presentation_deck",
+        targetId: JSON.stringify({ deckId: 42, libraryItemId: 99 }),
+        deckId: 42,
+        libraryItemId: 99,
+      });
+    });
   });
 
   describe("adminToggleTenant", () => {
@@ -1139,6 +1281,9 @@ describe("agencyRouter", () => {
       expect(mockEnsureBuiltInAgencyExperienceTemplates).toHaveBeenCalled();
       expect(result).toHaveProperty("id");
       expect(insertCalls).toHaveLength(3);
+      expect(insertCalls[0]?.values).toEqual(expect.objectContaining({
+        sourceTemplateId: "platform-deep-research",
+      }));
       expect(insertCalls[2]?.values).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ toolId: "builtin-rag-knowledge" }),
