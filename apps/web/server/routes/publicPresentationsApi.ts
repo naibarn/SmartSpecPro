@@ -113,11 +113,17 @@ export function createPresentationPublicRouter(): Router {
           }
         }, 5 * 60 * 1000);
 
+        // 30s heartbeat to keep the connection alive through proxies
+        const heartbeat = setInterval(() => {
+          if (!res.writableEnded) res.write(": heartbeat\n\n");
+        }, 30_000);
+
         const interval = setInterval(async () => {
           try {
             const raw2 = await redis.get(`ai_draft_progress:${taskId}`);
             if (!raw2 || res.writableEnded) {
               clearInterval(interval);
+              clearInterval(heartbeat);
               clearTimeout(timeout);
               if (!res.writableEnded) res.end();
               return;
@@ -137,16 +143,19 @@ export function createPresentationPublicRouter(): Router {
               res.write("data: [DONE]\n\n");
               res.end();
               clearInterval(interval);
+              clearInterval(heartbeat);
               clearTimeout(timeout);
             }
           } catch {
             clearInterval(interval);
+            clearInterval(heartbeat);
             clearTimeout(timeout);
           }
         }, 2000);
 
         req.on("close", () => {
           clearInterval(interval);
+          clearInterval(heartbeat);
           clearTimeout(timeout);
         });
       } catch (err) {

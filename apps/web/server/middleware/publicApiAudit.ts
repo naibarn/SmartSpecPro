@@ -15,8 +15,8 @@ export function publicApiAuditMiddleware(
 
   res.on("finish", () => {
     const auth = (req as any).auth;
-    // Only log requests authenticated via API key (mode === 'api_key')
-    if (!auth?.ok || auth.mode !== "api_key") return;
+    // Log all authenticated /v1/* requests regardless of auth mode
+    if (!auth?.ok) return;
 
     // Read credits consumed by the route handler (set via X-Credits-Used response header)
     const creditsHeader = res.getHeader("X-Credits-Used");

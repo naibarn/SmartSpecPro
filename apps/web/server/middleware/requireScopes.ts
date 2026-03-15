@@ -19,6 +19,7 @@ export function requireScopes(...requiredScopes: string[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     const auth = req.auth;
     if (!auth) {
+      res.setHeader("X-Api-Error-Code", "invalid_api_key");
       res.status(401).json({
         error: {
           code: "invalid_api_key",
@@ -29,7 +30,9 @@ export function requireScopes(...requiredScopes: string[]) {
       return;
     }
 
-    // Session and bearer auth have implicit full access
+    // Session and bearer (JWT) auth modes get implicit full scope access.
+    // These represent authenticated web app users, not external API key callers.
+    // Only api_key mode is subject to scope enforcement.
     if (auth.mode === "session" || auth.mode === "bearer") {
       next();
       return;
@@ -39,6 +42,7 @@ export function requireScopes(...requiredScopes: string[]) {
     const keyScopes = auth.scopes ?? [];
     const missing = requiredScopes.filter((s) => !keyScopes.includes(s));
     if (missing.length > 0) {
+      res.setHeader("X-Api-Error-Code", "insufficient_scopes");
       res.status(403).json({
         error: {
           code: "insufficient_scopes",

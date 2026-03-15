@@ -18,9 +18,11 @@ export async function apiKeyAuthMiddleware(
 
   if (!auth.ok) {
     const isSuspended = auth.error === "key_suspended";
+    const code = isSuspended ? "key_suspended" : "invalid_api_key";
+    res.setHeader("X-Api-Error-Code", code);
     return res.status(isSuspended ? 403 : 401).json({
       error: {
-        code: isSuspended ? "key_suspended" : "invalid_api_key",
+        code,
         message: isSuspended
           ? "This API key has been suspended. Contact your administrator."
           : auth.error || "Authentication required",

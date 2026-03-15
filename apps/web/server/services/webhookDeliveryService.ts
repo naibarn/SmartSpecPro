@@ -96,7 +96,7 @@ export async function executeWebhookDelivery(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Signature-256": `sha256=${hmacHex}`,
+        "X-SmartSpec-Signature": `sha256=${hmacHex}`,
         "X-SmartSpec-Event": eventType,
         "X-SmartSpec-Delivery-Id": deliveryId,
       },

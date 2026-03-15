@@ -293,7 +293,7 @@ export async function createJob(
     amount: estimated,
     sourceType: "api_job",
     description: `Job reservation: ${type}`,
-  } as any);
+  });
 
   // Insert job record
   const jobId = randomUUID();
@@ -351,12 +351,13 @@ export async function executeJob(jobId: string): Promise<void> {
       .set({ status: "running", startedAt: new Date() })
       .where(eq(automationJobs.id, jobId));
 
-    // Emit progress: job started (0%)
+    // Emit progress: job started (step 0 of 2)
     emitPublicApiEvent(job.tenantId, "job.progress", {
+      type: "job.progress",
       job_id: jobId,
-      type: job.type,
-      progress_pct: 0,
-      status: "running",
+      step_index: 0,
+      total_steps: 2,
+      step_status: "running",
       timestamp: new Date().toISOString(),
     }).catch(() => {});
 
@@ -367,12 +368,13 @@ export async function executeJob(jobId: string): Promise<void> {
       message: `Job ${job.type} executed via automation service`,
     };
 
-    // Emit progress: job almost done (80%)
+    // Emit progress: job almost done (step 1 of 2)
     emitPublicApiEvent(job.tenantId, "job.progress", {
+      type: "job.progress",
       job_id: jobId,
-      type: job.type,
-      progress_pct: 80,
-      status: "running",
+      step_index: 1,
+      total_steps: 2,
+      step_status: "running",
       timestamp: new Date().toISOString(),
     }).catch(() => {});
 
@@ -393,7 +395,7 @@ export async function executeJob(jobId: string): Promise<void> {
           type: "refund",
           description: `Job refund: ${jobId}`,
           sourceType: "api_job",
-        } as any);
+        });
       }
     });
 

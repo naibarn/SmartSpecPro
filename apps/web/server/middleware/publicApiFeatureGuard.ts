@@ -12,6 +12,7 @@ export async function publicApiFeatureGuard(
 ) {
   const auth = req.auth;
   if (!auth) {
+    res.setHeader("X-Api-Error-Code", "invalid_api_key");
     res.status(401).json({
       error: {
         code: "invalid_api_key",
@@ -33,6 +34,7 @@ export async function publicApiFeatureGuard(
     try {
       const flags = await getTenantFeatureFlags(auth.tenantId);
       if (!flags.publicApi) {
+        res.setHeader("X-Api-Error-Code", "feature_disabled");
         res.status(403).json({
           error: {
             code: "feature_disabled",
@@ -43,6 +45,7 @@ export async function publicApiFeatureGuard(
         return;
       }
     } catch {
+      res.setHeader("X-Api-Error-Code", "internal_error");
       res.status(500).json({
         error: {
           code: "internal_error",
