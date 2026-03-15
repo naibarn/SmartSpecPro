@@ -7,7 +7,7 @@ import { sendApiError } from "../middleware/publicApiHeaders";
 import { agencyBridge } from "../services/agencyBridge";
 import { deductCredits, refundCredits, getCreditBalance } from "../services/creditService";
 import { incrementDailyCredits } from "../services/apiKeyRateLimiter";
-import { signBearerToken } from "../_core/tokens";
+import { createInternalTokenFromAuth } from "../_core/tokens";
 import { db } from "../db";
 import { agencies, agencyConversations } from "../../drizzle/schema";
 import { emitPublicApiEvent } from "../services/webhookDeliveryService";
@@ -221,8 +221,8 @@ export function createPublicAgencyRouter(): Router {
           } as any);
         }
 
-        // Generate a short-lived bearer token for the agency bridge
-        const userToken = signBearerToken({ sub: String(userId), userId, tenantId });
+        // Generate a short-lived (15 min) bearer token for the agency bridge
+        const userToken = createInternalTokenFromAuth({ userId });
 
         // Execute run
         const result = await agencyBridge.executeRun({
@@ -343,11 +343,7 @@ export function createPublicAgencyRouter(): Router {
 
         // Fetch run details and emit as SSE
         try {
-          const userToken = signBearerToken({
-            sub: String(userId),
-            userId,
-            tenantId,
-          });
+          const userToken = createInternalTokenFromAuth({ userId });
           const result = await agencyBridge.getRunDetails(agencyId, runId, userToken);
           res.write(`data: ${JSON.stringify({ type: "run_status", data: result })}\n\n`);
         } catch (e) {
@@ -387,7 +383,7 @@ export function createPublicAgencyRouter(): Router {
           return;
         }
 
-        const userToken = signBearerToken({ sub: String(userId), userId, tenantId });
+        const userToken = createInternalTokenFromAuth({ userId });
         const result = await agencyBridge.getRunDetails(agencyId, runId, userToken);
 
         res.json({

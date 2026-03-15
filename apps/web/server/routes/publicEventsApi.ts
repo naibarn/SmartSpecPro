@@ -36,12 +36,14 @@ export function createPublicEventsRouter(): Router {
     // Create a dedicated subscriber connection
     let subscriber: ReturnType<typeof getRealtimeClient> | null = null;
     let heartbeat: ReturnType<typeof setInterval> | null = null;
+    let maxDurationTimer: ReturnType<typeof setTimeout> | null = null;
     let closed = false;
 
     const cleanup = () => {
       if (closed) return;
       closed = true;
       if (heartbeat) clearInterval(heartbeat);
+      if (maxDurationTimer) clearTimeout(maxDurationTimer);
       if (subscriber) {
         subscriber.unsubscribe(channel).catch(() => {});
         subscriber.quit().catch(() => {});
@@ -76,6 +78,15 @@ export function createPublicEventsRouter(): Router {
         }
         res.write(": heartbeat\n\n");
       }, 30_000);
+
+      // Max 60-minute connection to prevent Redis connection pool exhaustion
+      maxDurationTimer = setTimeout(() => {
+        if (!res.writableEnded) {
+          res.write("event: close\ndata: {\"reason\":\"max_duration\"}\n\n");
+          res.end();
+        }
+        cleanup();
+      }, 60 * 60 * 1000);
 
       req.on("close", cleanup);
     } catch (err) {

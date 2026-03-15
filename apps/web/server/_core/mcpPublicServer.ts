@@ -606,12 +606,13 @@ async function handleInitialize(
 }
 
 async function handleToolsList(session: McpSession): Promise<unknown> {
-  // Filter tools by what the session can actually call
+  // Only expose tools the session can actually invoke:
+  // must have requiredScope AND (read tool OR mcp:write for write tools)
   const tools = TOOL_REGISTRY
     .filter((t) => {
       const hasScope = session.scopes.includes(t.requiredScope);
       const hasWriteAccess = t.readWrite === "Read" || session.scopes.includes("mcp:write");
-      return hasScope || hasWriteAccess;
+      return hasScope && hasWriteAccess;
     })
     .map((t) => ({
       name: t.name,
@@ -637,12 +638,11 @@ async function handleToolsCall(
     throw { code: -32601, message: `Tool not found: ${toolName}` };
   }
 
-  // Scope check
+  // Scope check: must have requiredScope AND (read tool OR mcp:write for write tools)
   const hasScope = session.scopes.includes(tool.requiredScope);
-  const hasWriteScope =
-    tool.readWrite === "Read" || session.scopes.includes("mcp:write");
+  const hasWriteAccess = tool.readWrite === "Read" || session.scopes.includes("mcp:write");
 
-  if (!hasScope && !hasWriteScope) {
+  if (!hasScope || !hasWriteAccess) {
     throw { code: -32603, message: `Insufficient scope. Required: ${tool.requiredScope}` };
   }
 

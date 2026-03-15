@@ -72,6 +72,7 @@ export type ApiErrorCode =
   | "daily_credit_limit_exceeded"
   | "quota_exceeded"
   | "invalid_request"
+  | "idempotency_conflict"
   | "not_found"
   | "internal_error"
   | "feature_disabled";

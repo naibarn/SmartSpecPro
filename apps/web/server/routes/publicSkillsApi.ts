@@ -16,6 +16,7 @@ import {
   getCreditBalance,
 } from "../services/creditService";
 import { incrementDailyCredits } from "../services/apiKeyRateLimiter";
+import { createInternalTokenFromAuth } from "../_core/tokens";
 
 // ---------------------------------------------------------------------------
 // Input schema cache
@@ -275,7 +276,7 @@ export function createPublicSkillsRouter(): Router {
           skill,
           execParams as any,
           userId,
-          `apikey:${(auth as any).apiKeyId ?? ""}`,
+          createInternalTokenFromAuth({ userId }),
           tenantId,
         );
 
