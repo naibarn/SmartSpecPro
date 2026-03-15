@@ -13,7 +13,42 @@ import {
 } from "../services/apiKeyService";
 import { ALLOWED_API_SCOPES } from "../../shared/publicApiTypes";
 import { getDb } from "../db";
-import { publicApiAuditLog, apiWebhookEndpoints } from "../../drizzle/schema";
+import { publicApiAuditLog, apiWebhookEndpoints, apiKeys } from "../../drizzle/schema";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Assert that a key belongs to the calling user (tenant-scoped). Throws NOT_FOUND otherwise. */
+async function assertKeyOwnership(keyId: string, tenantId: string, userId: number) {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const rows = await db
+    .select({ userId: apiKeys.userId })
+    .from(apiKeys)
+    .where(and(eq(apiKeys.id, keyId), eq(apiKeys.tenantId, tenantId)))
+    .limit(1);
+  if (!rows[0]) throw new TRPCError({ code: "NOT_FOUND", message: "API key not found" });
+  if (rows[0].userId !== userId)
+    throw new TRPCError({ code: "FORBIDDEN", message: "API key belongs to another user" });
+}
+
+/** Assert that a webhook belongs to the calling user via its apiKeyId. */
+async function assertWebhookOwnership(webhookId: string, tenantId: string, userId: number) {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  const rows = await db
+    .select({ apiKeyUserId: apiKeys.userId, webhookTenantId: apiWebhookEndpoints.tenantId })
+    .from(apiWebhookEndpoints)
+    .leftJoin(apiKeys, eq(apiWebhookEndpoints.apiKeyId, apiKeys.id))
+    .where(eq(apiWebhookEndpoints.id, webhookId))
+    .limit(1);
+  if (!rows[0] || rows[0].webhookTenantId !== tenantId)
+    throw new TRPCError({ code: "NOT_FOUND", message: "Webhook not found" });
+  // If no apiKeyId, only admin can manage it (created outside user context)
+  if (rows[0].apiKeyUserId !== null && rows[0].apiKeyUserId !== userId)
+    throw new TRPCError({ code: "FORBIDDEN", message: "Webhook belongs to another user" });
+}
 
 // ---------------------------------------------------------------------------
 // Router
@@ -21,18 +56,17 @@ import { publicApiAuditLog, apiWebhookEndpoints } from "../../drizzle/schema";
 
 export const apiKeysRouter = router({
   // -------------------------------------------------------------------------
-  // list — returns keys for current user (admin sees all tenant keys)
+  // list — returns only the calling user's own keys
   // -------------------------------------------------------------------------
   list: protectedProcedure.query(async ({ ctx }) => {
     const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
-    const { id: userId, role } = ctx.user;
-    const isAdmin = role === "admin" || role === "domain_admin";
-
-    return listKeys(tenantId, isAdmin ? undefined : userId);
+    const { id: userId } = ctx.user;
+    // Always scope to the calling user's keys — users manage only their own
+    return listKeys(tenantId, userId);
   }),
 
   // -------------------------------------------------------------------------
-  // create — generates new key, returns rawKey exactly once
+  // create — generates new key owned by the calling user
   // -------------------------------------------------------------------------
   create: protectedProcedure
     .input(
@@ -52,14 +86,10 @@ export const apiKeysRouter = router({
       const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
       const { id: userId } = ctx.user;
 
-      // Validate scopes
       const allowedSet = new Set(ALLOWED_API_SCOPES);
       for (const scope of input.scopes) {
         if (!allowedSet.has(scope as any)) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: `Invalid scope: ${scope}`,
-          });
+          throw new TRPCError({ code: "FORBIDDEN", message: `Invalid scope: ${scope}` });
         }
       }
 
@@ -77,17 +107,11 @@ export const apiKeysRouter = router({
         quotaMonthly: input.quotaMonthly ?? null,
       });
 
-      return {
-        id: result.id,
-        keyPrefix: result.keyPrefix,
-        rawKey: result.rawKey,
-        name: input.name,
-        scopes: input.scopes,
-      };
+      return { id: result.id, keyPrefix: result.keyPrefix, rawKey: result.rawKey, name: input.name, scopes: input.scopes };
     }),
 
   // -------------------------------------------------------------------------
-  // updateSettings — update limits/quotas on an existing key
+  // updateSettings — user edits limits on their OWN key only
   // -------------------------------------------------------------------------
   updateSettings: protectedProcedure
     .input(
@@ -103,67 +127,38 @@ export const apiKeysRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+      await assertKeyOwnership(input.keyId, tenantId, ctx.user.id);
       const { keyId, ...settings } = input;
       await updateKeySettings(keyId, tenantId, settings);
       return { success: true };
     }),
 
   // -------------------------------------------------------------------------
-  // suspend — temporarily block a key (admin only)
-  // -------------------------------------------------------------------------
-  suspend: adminProcedure
-    .input(
-      z.object({
-        keyId: z.string(),
-        reason: z.string().max(500).optional(),
-      }),
-    )
-    .mutation(async ({ input, ctx }) => {
-      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
-      const adminUserId = ctx.user.id;
-      await suspendKey(input.keyId, tenantId, adminUserId, input.reason);
-      return { success: true };
-    }),
-
-  // -------------------------------------------------------------------------
-  // unsuspend — lift suspension (admin only)
-  // -------------------------------------------------------------------------
-  unsuspend: adminProcedure
-    .input(z.object({ keyId: z.string() }))
-    .mutation(async ({ input, ctx }) => {
-      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
-      await unsuspendKey(input.keyId, tenantId);
-      return { success: true };
-    }),
-
-  // -------------------------------------------------------------------------
-  // revoke — deactivates key (tenant-scoped)
+  // revoke — user permanently deactivates their OWN key
   // -------------------------------------------------------------------------
   revoke: protectedProcedure
     .input(z.object({ keyId: z.string() }))
     .mutation(async ({ input, ctx }) => {
       const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+      await assertKeyOwnership(input.keyId, tenantId, ctx.user.id);
       await revokeKey(input.keyId, tenantId);
       return { success: true };
     }),
 
   // -------------------------------------------------------------------------
-  // getUsageStats — per-key analytics (admin only)
+  // getUsageStats — user views stats for their OWN key
   // -------------------------------------------------------------------------
-  getUsageStats: adminProcedure
-    .input(
-      z.object({
-        keyId: z.string(),
-        days: z.number().int().min(1).max(90).default(7),
-      }),
-    )
-    .query(async ({ input }) => {
+  getUsageStats: protectedProcedure
+    .input(z.object({ keyId: z.string(), days: z.number().int().min(1).max(90).default(7) }))
+    .query(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+      await assertKeyOwnership(input.keyId, tenantId, ctx.user.id);
+
       const db = await getDb();
       if (!db) return { requestsPerDay: [], totalRequests: 0, totalCredits: 0, errorRate: 0, topEndpoints: [] };
 
       const cutoff = new Date(Date.now() - input.days * 86_400_000);
 
-      // Requests per day (uses publicApiAuditLog — the correct table for public API audit events)
       const perDayRows = await db
         .select({
           date: sql<string>`date_trunc('day', ${publicApiAuditLog.createdAt})::date::text`,
@@ -172,28 +167,14 @@ export const apiKeysRouter = router({
           creditsUsed: sql<number>`coalesce(sum(${publicApiAuditLog.creditsUsed}), 0)::int`,
         })
         .from(publicApiAuditLog)
-        .where(
-          and(
-            eq(publicApiAuditLog.apiKeyId, input.keyId),
-            gte(publicApiAuditLog.createdAt, cutoff),
-          ),
-        )
+        .where(and(eq(publicApiAuditLog.apiKeyId, input.keyId), gte(publicApiAuditLog.createdAt, cutoff)))
         .groupBy(sql`date_trunc('day', ${publicApiAuditLog.createdAt})`)
         .orderBy(sql`date_trunc('day', ${publicApiAuditLog.createdAt})`);
 
-      // Top endpoints
       const topRows = await db
-        .select({
-          path: publicApiAuditLog.path,
-          count: sql<number>`count(*)::int`,
-        })
+        .select({ path: publicApiAuditLog.path, count: sql<number>`count(*)::int` })
         .from(publicApiAuditLog)
-        .where(
-          and(
-            eq(publicApiAuditLog.apiKeyId, input.keyId),
-            gte(publicApiAuditLog.createdAt, cutoff),
-          ),
-        )
+        .where(and(eq(publicApiAuditLog.apiKeyId, input.keyId), gte(publicApiAuditLog.createdAt, cutoff)))
         .groupBy(publicApiAuditLog.path)
         .orderBy(sql`count(*) desc`)
         .limit(10);
@@ -201,25 +182,27 @@ export const apiKeysRouter = router({
       const totalRequests = perDayRows.reduce((s, r) => s + r.count, 0);
       const totalErrors = perDayRows.reduce((s, r) => s + r.errors, 0);
       const totalCredits = perDayRows.reduce((s, r) => s + r.creditsUsed, 0);
-      const errorRate = totalRequests > 0 ? totalErrors / totalRequests : 0;
 
       return {
         requestsPerDay: perDayRows,
         totalRequests,
         totalCredits,
-        errorRate,
+        errorRate: totalRequests > 0 ? totalErrors / totalRequests : 0,
         topEndpoints: topRows,
       };
     }),
 
   // -------------------------------------------------------------------------
-  // listWebhooks — tenant webhook endpoints (admin only)
+  // listWebhooks — user views their OWN webhooks (via apiKeyId ownership)
   // -------------------------------------------------------------------------
-  listWebhooks: adminProcedure.query(async ({ ctx }) => {
+  listWebhooks: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) return [];
 
     const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+    const userId = ctx.user.id;
+
+    // Join through apiKeys to filter by userId
     const rows = await db
       .select({
         id: apiWebhookEndpoints.id,
@@ -231,7 +214,13 @@ export const apiKeysRouter = router({
         createdAt: apiWebhookEndpoints.createdAt,
       })
       .from(apiWebhookEndpoints)
-      .where(eq(apiWebhookEndpoints.tenantId, tenantId))
+      .innerJoin(apiKeys, eq(apiWebhookEndpoints.apiKeyId, apiKeys.id))
+      .where(
+        and(
+          eq(apiWebhookEndpoints.tenantId, tenantId),
+          eq(apiKeys.userId, userId),
+        ),
+      )
       .orderBy(desc(apiWebhookEndpoints.createdAt));
 
     return rows.map((r) => ({
@@ -242,56 +231,124 @@ export const apiKeysRouter = router({
   }),
 
   // -------------------------------------------------------------------------
-  // deleteWebhook — soft delete (admin only)
+  // deleteWebhook — user deletes their OWN webhook
   // -------------------------------------------------------------------------
-  deleteWebhook: adminProcedure
+  deleteWebhook: protectedProcedure
     .input(z.object({ webhookId: z.string() }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-
       const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
-      const rows = await db
-        .select({ tenantId: apiWebhookEndpoints.tenantId })
-        .from(apiWebhookEndpoints)
-        .where(eq(apiWebhookEndpoints.id, input.webhookId));
-
-      if (!rows[0] || rows[0].tenantId !== tenantId) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Webhook not found" });
-      }
-
+      await assertWebhookOwnership(input.webhookId, tenantId, ctx.user.id);
       await db
         .update(apiWebhookEndpoints)
         .set({ isActive: false, updatedAt: new Date() })
         .where(eq(apiWebhookEndpoints.id, input.webhookId));
-
       return { success: true };
     }),
 
   // -------------------------------------------------------------------------
-  // reEnableWebhook — reset failureCount and activate (admin only)
+  // reEnableWebhook — user re-enables their OWN dead-lettered webhook
   // -------------------------------------------------------------------------
-  reEnableWebhook: adminProcedure
+  reEnableWebhook: protectedProcedure
     .input(z.object({ webhookId: z.string() }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-
       const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
-      const rows = await db
-        .select({ tenantId: apiWebhookEndpoints.tenantId })
-        .from(apiWebhookEndpoints)
-        .where(eq(apiWebhookEndpoints.id, input.webhookId));
-
-      if (!rows[0] || rows[0].tenantId !== tenantId) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Webhook not found" });
-      }
-
+      await assertWebhookOwnership(input.webhookId, tenantId, ctx.user.id);
       await db
         .update(apiWebhookEndpoints)
         .set({ isActive: true, failureCount: 0, updatedAt: new Date() })
         .where(eq(apiWebhookEndpoints.id, input.webhookId));
-
       return { success: true };
+    }),
+
+  // =========================================================================
+  // ADMIN-ONLY — Security oversight: suspend/unsuspend any key, view all keys
+  // =========================================================================
+
+  // suspend — admin temporarily blocks any user's key
+  suspend: adminProcedure
+    .input(z.object({ keyId: z.string(), reason: z.string().max(500).optional() }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+      await suspendKey(input.keyId, tenantId, ctx.user.id, input.reason);
+      return { success: true };
+    }),
+
+  // unsuspend — admin lifts suspension
+  unsuspend: adminProcedure
+    .input(z.object({ keyId: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+      await unsuspendKey(input.keyId, tenantId);
+      return { success: true };
+    }),
+
+  // adminRevokeKey — admin force-revokes any user's key (emergency override)
+  adminRevokeKey: adminProcedure
+    .input(z.object({ keyId: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+      await revokeKey(input.keyId, tenantId);
+      return { success: true };
+    }),
+
+  // adminListAllKeys — admin views ALL tenant keys for oversight/anomaly detection
+  adminListAllKeys: adminProcedure.query(async ({ ctx }) => {
+    const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+    return listKeys(tenantId, undefined); // no userId filter = all tenant keys
+  }),
+
+  // adminListAllWebhooks — admin views ALL tenant webhooks
+  adminListAllWebhooks: adminProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return [];
+    const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+    const rows = await db
+      .select({
+        id: apiWebhookEndpoints.id,
+        url: apiWebhookEndpoints.url,
+        events: apiWebhookEndpoints.events,
+        isActive: apiWebhookEndpoints.isActive,
+        failureCount: apiWebhookEndpoints.failureCount,
+        lastDeliveredAt: apiWebhookEndpoints.lastDeliveredAt,
+        createdAt: apiWebhookEndpoints.createdAt,
+        apiKeyId: apiWebhookEndpoints.apiKeyId,
+      })
+      .from(apiWebhookEndpoints)
+      .where(eq(apiWebhookEndpoints.tenantId, tenantId))
+      .orderBy(desc(apiWebhookEndpoints.createdAt));
+    return rows.map((r) => ({
+      ...r,
+      lastDeliveredAt: r.lastDeliveredAt?.toISOString() ?? null,
+      createdAt: r.createdAt.toISOString(),
+    }));
+  }),
+
+  // adminGetTenantAuditLog — recent API activity across all keys (anomaly detection)
+  adminGetTenantAuditLog: adminProcedure
+    .input(z.object({ days: z.number().int().min(1).max(30).default(7) }))
+    .query(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) return [];
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+      const cutoff = new Date(Date.now() - input.days * 86_400_000);
+      const rows = await db
+        .select({
+          apiKeyId: publicApiAuditLog.apiKeyId,
+          method: publicApiAuditLog.method,
+          path: publicApiAuditLog.path,
+          statusCode: publicApiAuditLog.statusCode,
+          creditsUsed: publicApiAuditLog.creditsUsed,
+          latencyMs: publicApiAuditLog.latencyMs,
+          createdAt: publicApiAuditLog.createdAt,
+        })
+        .from(publicApiAuditLog)
+        .where(and(eq(publicApiAuditLog.tenantId, tenantId), gte(publicApiAuditLog.createdAt, cutoff)))
+        .orderBy(desc(publicApiAuditLog.createdAt))
+        .limit(500);
+      return rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() }));
     }),
 });

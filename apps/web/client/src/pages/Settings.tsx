@@ -58,6 +58,7 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import { GoogleDrivePanel } from '@/components/settings/GoogleDrivePanel';
 import { OneDrivePanel } from '@/components/settings/OneDrivePanel';
+import { UserAPIKeysPanel } from '@/components/settings/UserAPIKeysPanel';
 import { BudgetPanel } from '@/components/settings/BudgetPanel';
 import { PersonasPanel } from '@/components/settings/PersonasPanel';
 import { UserAutomationPreferencesPanel } from '@/components/settings/UserAutomationPreferencesPanel';
@@ -1389,49 +1390,7 @@ export default function Settings() {
               {/* API Keys Tab */}
               {activeTab === 'api' && (
                 <div className="space-y-6">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">API Keys</h2>
-                    <p className="text-gray-600">Manage your API keys for integration</p>
-                  </div>
-
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                    <div className="flex items-start gap-3">
-                      <Key className="w-5 h-5 text-blue-600 mt-0.5" />
-                      <div>
-                        <h3 className="font-semibold text-blue-900 mb-1">API Documentation</h3>
-                        <p className="text-sm text-blue-700">
-                          Learn how to integrate SmartAIHub with your applications using our API.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="p-4 bg-gray-50 rounded-xl">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="font-medium text-gray-900">Production API Key</div>
-                        <Button variant="outline" size="sm">Regenerate</Button>
-                      </div>
-                      <code className="text-sm text-gray-600 bg-white px-3 py-2 rounded border border-gray-200 block">
-                        sk_prod_••••••••••••••••••••••••••••
-                      </code>
-                    </div>
-
-                    <div className="p-4 bg-gray-50 rounded-xl">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="font-medium text-gray-900">Development API Key</div>
-                        <Button variant="outline" size="sm">Regenerate</Button>
-                      </div>
-                      <code className="text-sm text-gray-600 bg-white px-3 py-2 rounded border border-gray-200 block">
-                        sk_dev_••••••••••••••••••••••••••••
-                      </code>
-                    </div>
-                  </div>
-
-                  <Button className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
-                    <Key className="w-4 h-4 mr-2" />
-                    Create New Key
-                  </Button>
+                  <UserAPIKeysPanel />
 
                   {/* Context7 API Key */}
                   <div className="border-t border-gray-200 pt-6 mt-6">

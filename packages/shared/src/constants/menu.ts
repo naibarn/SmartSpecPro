@@ -68,7 +68,7 @@ export const defaultMenuItems: MenuItem[] = [
   { id: 'admin-channel-router', label: 'Channel Router',    labelTh: 'ตัวกำหนดเส้นทาง', icon: 'GitFork', path: '/admin/channel-router', platforms: ['web', 'desktop'], roles: ['admin', 'domain_admin'], group: 'admin', sortOrder: 30.2, requiresFeature: 'channelRouter' },
   { id: 'admin-content-quality', label: 'Content Quality',   labelTh: 'คุณภาพเนื้อหา', icon: 'ShieldCheck', path: '/admin/content-quality', platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 30.8 },
   { id: 'admin-gallery',        label: 'Gallery Admin',     icon: 'Images',      path: '/admin/gallery',            platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 31 },
-  { id: 'admin-api-keys',       label: 'API Keys',          labelTh: 'API Keys', icon: 'KeyRound',    path: '/admin/api-keys',           platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 31.5 },
+  { id: 'admin-api-keys',       label: 'API Oversight',     labelTh: 'ตรวจสอบ API', icon: 'ShieldAlert', path: '/admin/api-keys',           platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 31.5 },
   { id: 'admin-settings',       label: 'Platform Settings', icon: 'Settings',    path: '/admin/settings',           platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 32 },
 
   // === Domain admin group ===
