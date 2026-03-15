@@ -77,7 +77,7 @@ describe("MultimodalEmbeddingProvider", () => {
       expect(result).toHaveLength(768);
     });
 
-    it("handles API errors gracefully", async () => {
+    it("handles 500 server error gracefully", async () => {
       const provider = await makeGeminiProvider();
       mockFetch.mockResolvedValueOnce({
         ok: false,
@@ -86,6 +86,28 @@ describe("MultimodalEmbeddingProvider", () => {
       } as unknown as Response);
 
       await expect(provider.embedText({ text: "test" })).rejects.toThrow(/500/);
+    });
+
+    it("throws on 429 rate limit response", async () => {
+      const provider = await makeGeminiProvider();
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        text: async () => "Too Many Requests",
+      } as unknown as Response);
+
+      await expect(provider.embedText({ text: "rate limited" })).rejects.toThrow(/429/);
+    });
+
+    it("throws on 404 model not found response", async () => {
+      const provider = await makeGeminiProvider();
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        text: async () => "Model not found",
+      } as unknown as Response);
+
+      await expect(provider.embedText({ text: "test" })).rejects.toThrow(/404/);
     });
 
     it("getDimension returns 768", async () => {
@@ -184,6 +206,39 @@ describe("MultimodalEmbeddingProvider", () => {
 
       const provider = await module.getMultimodalEmbeddingProvider();
       expect(provider.getProviderName()).toBe("cloudflare");
+    });
+
+    it("returns cached provider without hitting DB on repeated calls within TTL", async () => {
+      const mockDb = makeDbWithGeminiKey("encrypted-gemini-key");
+      mockGetDb.mockResolvedValue(mockDb as any);
+
+      const module = await import("../multimodalEmbeddingProvider");
+      if (typeof (module as any)._resetCacheForTest === "function") {
+        (module as any)._resetCacheForTest();
+      }
+
+      await module.getMultimodalEmbeddingProvider();
+      await module.getMultimodalEmbeddingProvider();
+      await module.getMultimodalEmbeddingProvider();
+
+      // DB should only be queried once (subsequent calls served from cache)
+      expect(mockGetDb).toHaveBeenCalledTimes(1);
+    });
+
+    it("re-fetches provider from DB after cache is reset", async () => {
+      const mockDb = makeDbWithGeminiKey("encrypted-gemini-key");
+      mockGetDb.mockResolvedValue(mockDb as any);
+
+      const module = await import("../multimodalEmbeddingProvider");
+      if (typeof (module as any)._resetCacheForTest !== "function") return;
+
+      (module as any)._resetCacheForTest();
+      await module.getMultimodalEmbeddingProvider();
+      (module as any)._resetCacheForTest();
+      await module.getMultimodalEmbeddingProvider();
+
+      // Each reset forces a fresh DB lookup
+      expect(mockGetDb).toHaveBeenCalledTimes(2);
     });
   });
 });

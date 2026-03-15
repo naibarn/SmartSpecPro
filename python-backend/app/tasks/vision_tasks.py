@@ -34,7 +34,7 @@ logger = structlog.get_logger(__name__)
 
 # Retry backoff intervals (seconds)
 RETRY_BACKOFFS = [30, 120, 480]
-NSFW_THRESHOLD = 0.7
+NSFW_THRESHOLD = 0.5  # Must match Node.js visionMemoryService.ts NSFW_SCORE_THRESHOLD
 NSFW_CATEGORIES = {
     "SEXUALLY_EXPLICIT",
     "HARM_CATEGORY_SEXUALLY_EXPLICIT",

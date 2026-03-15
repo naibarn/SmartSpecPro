@@ -56,6 +56,31 @@ describe("backfill-media-assets", () => {
       const result = buildAssetStorageKey({ url: "not-a-valid-url" });
       expect(result).toBe("not-a-valid-url");
     });
+
+    it("should strip query string from parsed URL path", () => {
+      const result = buildAssetStorageKey({
+        url: "https://bucket.s3.amazonaws.com/uploads/img.jpg?X-Amz-Signature=abc123",
+      });
+      // pathname should not include query string
+      expect(result).toBe("uploads/img.jpg");
+      expect(result).not.toContain("?");
+    });
+
+    it("should handle S3-style URL with path prefix", () => {
+      const result = buildAssetStorageKey({
+        url: "https://my-bucket.s3.us-east-1.amazonaws.com/media/2024/photo.png",
+      });
+      expect(result).toBe("media/2024/photo.png");
+    });
+
+    it("should handle URL with fragment (# anchor)", () => {
+      const result = buildAssetStorageKey({
+        url: "https://cdn.example.com/images/photo.jpg#section",
+      });
+      // pathname doesn't include fragment in URL API
+      expect(result).toBe("images/photo.jpg");
+      expect(result).not.toContain("#");
+    });
   });
 
   describe("isAlreadyBackfilled", () => {

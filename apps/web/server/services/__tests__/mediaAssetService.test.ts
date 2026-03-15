@@ -78,6 +78,23 @@ describe("mediaAssetService", () => {
       const result = validateImage("application/octet-stream", 1024);
       expect(result.valid).toBe(false);
     });
+
+    it("accepts file at exactly 20MB boundary", () => {
+      const result = validateImage("image/jpeg", 20 * 1024 * 1024);
+      expect(result.valid).toBe(true);
+    });
+
+    it("rejects file one byte over 20MB", () => {
+      const result = validateImage("image/jpeg", 20 * 1024 * 1024 + 1);
+      expect(result.valid).toBe(false);
+      expect(result.reason).toMatch(/size/i);
+    });
+
+    it("accepts undefined size (size unknown — deferred to storage layer)", () => {
+      // Unknown size should not be rejected at validation time
+      const result = validateImage("image/jpeg", undefined);
+      expect(result.valid).toBe(true);
+    });
   });
 
   describe("generateSignedUrl", () => {

@@ -111,6 +111,21 @@ describe("deleteFromMemory", () => {
 
     expect(result).toEqual({ success: true, deletedItemCount: 0 });
   });
+
+  it("should still succeed even when removeAssetFromState throws (non-fatal)", async () => {
+    const db = makeDb();
+    db.limit.mockResolvedValueOnce([ASSET_ROW]);
+    db.returning.mockResolvedValueOnce([MEMORY_ITEM_ROW]);
+    mockGetDb.mockResolvedValue(db as any);
+    mockRemoveAsset.mockRejectedValueOnce(new Error("Redis unavailable"));
+
+    const { deleteFromMemory } = await import("../visionMemoryService");
+    // DB deletion succeeded; Redis state update failure should NOT propagate
+    const result = await deleteFromMemory(42, 1, "tenant-abc");
+
+    expect(result.success).toBe(true);
+    expect(result.deletedItemCount).toBe(1);
+  });
 });
 
 describe("pinToMemory", () => {
@@ -155,6 +170,20 @@ describe("pinToMemory", () => {
     await expect(pinToMemory(42, 1, "tenant-abc")).rejects.toMatchObject({
       code: "FORBIDDEN",
     });
+  });
+
+  it("should be idempotent — pinning an already-pinned asset returns success", async () => {
+    const db = makeDb();
+    db.limit.mockResolvedValueOnce([ASSET_ROW]);
+    // returning() still resolves even if salience was already 1.0 (UPDATE affected 0 rows is still fine)
+    db.returning.mockResolvedValueOnce([{ id: 7 }]);
+    mockGetDb.mockResolvedValue(db as any);
+
+    const { pinToMemory } = await import("../visionMemoryService");
+    const result = await pinToMemory(42, 1, "tenant-abc");
+
+    expect(result.success).toBe(true);
+    expect(db.update).toHaveBeenCalledTimes(1);
   });
 });
 

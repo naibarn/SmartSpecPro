@@ -155,6 +155,30 @@ describe("multimodalRetrievalService", () => {
       expect(result[0].assetId).toBe(10);
     });
 
+    it("returns empty array when LLM call throws (graceful degradation)", async () => {
+      mockGetState.mockResolvedValue(DEFAULT_STATE);
+      const db = makeDb([{ id: 10, shortCaption: "House", tenantId: "t1" }]);
+      mockGetDb.mockResolvedValue(db as any);
+      mockCallLLM.mockRejectedValueOnce(new Error("LLM unavailable"));
+
+      const { resolveVisualReferences } = await import("../multimodalRetrievalService");
+      const result = await resolveVisualReferences("show image", 1, 1, "t1");
+
+      expect(result).toEqual([]);
+    });
+
+    it("returns empty array when LLM returns null data", async () => {
+      mockGetState.mockResolvedValue(DEFAULT_STATE);
+      const db = makeDb([{ id: 10, shortCaption: "House", tenantId: "t1" }]);
+      mockGetDb.mockResolvedValue(db as any);
+      mockCallLLM.mockResolvedValueOnce({ data: null, tokensUsed: 0, creditsUsed: 0 });
+
+      const { resolveVisualReferences } = await import("../multimodalRetrievalService");
+      const result = await resolveVisualReferences("รูปนั้น", 1, 1, "t1");
+
+      expect(result).toEqual([]);
+    });
+
     it("LLM prompt includes position info for each image", async () => {
       mockGetState.mockResolvedValue(DEFAULT_STATE);
       const db = makeDb([{ id: 10, shortCaption: "House", tenantId: "t1" }]);
