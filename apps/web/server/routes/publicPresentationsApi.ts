@@ -412,6 +412,12 @@ export function createPresentationPublicRouter(): Router {
         if (auth.mode === "api_key") {
           incrementDailyCredits(auth.apiKeyId ?? "", 5).catch(() => {});
         }
+        let remaining = 0;
+        try {
+          const bal = await getCreditBalance(userId);
+          remaining = bal?.credits ?? 0;
+        } catch { /* non-fatal */ }
+        res.setHeader("X-Credits-Remaining", String(remaining));
 
         // Generate internal token for Python backend calls
         const userToken = createInternalTokenFromAuth({ userId }, [

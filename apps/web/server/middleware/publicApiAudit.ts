@@ -31,7 +31,9 @@ export function publicApiAuditMiddleware(
       statusCode: res.statusCode,
       creditsUsed,
       durationMs: Date.now() - startMs,
-      errorCode: res.statusCode >= 400 ? String(res.statusCode) : null,
+      errorCode: res.statusCode >= 400
+        ? (res.getHeader("X-Api-Error-Code") as string | null) ?? String(res.statusCode)
+        : null,
     });
   });
 

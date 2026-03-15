@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { randomUUID } from "crypto";
-import { eq, and, count } from "drizzle-orm";
+import { eq, and, count, gt } from "drizzle-orm";
 import { requireScopes } from "../middleware/requireScopes";
 import { sendApiError } from "../middleware/publicApiHeaders";
 import { agencyBridge } from "../services/agencyBridge";
@@ -41,7 +41,7 @@ async function getOrCreateAgencyApiConversation(
 ): Promise<string> {
   const drizzle = db.instance;
 
-  // Tenant-safe: JOIN through agencies to verify tenant ownership
+  // Tenant-safe: JOIN through agencies to verify tenant ownership; skip expired conversations
   const existing = await drizzle
     .select({ id: agencyConversations.id })
     .from(agencyConversations)
@@ -52,6 +52,7 @@ async function getOrCreateAgencyApiConversation(
         eq(agencyConversations.userId, auth.userId),
         eq(agencyConversations.source, "api"),
         eq(agencies.tenantId, auth.tenantId),
+        gt(agencyConversations.expiresAt, new Date()),
       ),
     )
     .limit(1);
@@ -199,6 +200,24 @@ export function createPublicAgencyRouter(): Router {
         // Get or create conversation
         let conversationId: string;
         if (conversation_id) {
+          // Validate caller-supplied conversation_id belongs to this user+agency+tenant
+          const owned = await db.instance
+            .select({ id: agencyConversations.id })
+            .from(agencyConversations)
+            .innerJoin(agencies, eq(agencyConversations.agencyId, agencies.id))
+            .where(
+              and(
+                eq(agencyConversations.id, conversation_id),
+                eq(agencyConversations.agencyId, agencyId),
+                eq(agencyConversations.userId, userId),
+                eq(agencies.tenantId, tenantId),
+              ),
+            )
+            .limit(1);
+          if (!owned.length) {
+            sendApiError(res, 404, "not_found", "Conversation not found");
+            return;
+          }
           conversationId = conversation_id;
         } else {
           conversationId = await getOrCreateAgencyApiConversation(agencyId, {
@@ -281,6 +300,7 @@ export function createPublicAgencyRouter(): Router {
           run_id: result.runId,
           status: result.status,
           credits_used: creditsUsed,
+          timestamp: new Date().toISOString(),
         }).catch(() => {});
 
         if (stream) {
@@ -289,7 +309,10 @@ export function createPublicAgencyRouter(): Router {
           res.setHeader("Cache-Control", "no-cache");
           res.setHeader("Connection", "keep-alive");
           res.setHeader("X-Accel-Buffering", "no");
+          const hb = setInterval(() => { if (!res.writableEnded) res.write(": heartbeat\n\n"); }, 15000);
+          req.on("close", () => clearInterval(hb));
           res.write(`data: ${JSON.stringify({ type: "result", data: result })}\n\n`);
+          clearInterval(hb);
           res.write("data: [DONE]\n\n");
           res.end();
         } else {

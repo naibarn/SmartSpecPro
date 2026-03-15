@@ -66,5 +66,6 @@ export function sendApiError(
   message: string,
   type?: string,
 ) {
+  res.setHeader("X-Api-Error-Code", code);
   res.status(statusCode).json(formatApiError(code, message, type));
 }

@@ -299,10 +299,12 @@ export function createPublicSkillsRouter(): Router {
           res.setHeader("Cache-Control", "no-cache");
           res.setHeader("Connection", "keep-alive");
           res.setHeader("X-Accel-Buffering", "no");
-
+          const hb = setInterval(() => { if (!res.writableEnded) res.write(": heartbeat\n\n"); }, 15000);
+          req.on("close", () => clearInterval(hb));
           res.write(
             `data: ${JSON.stringify({ type: "result", data: result })}\n\n`,
           );
+          clearInterval(hb);
           res.write("data: [DONE]\n\n");
           res.end();
         } else {

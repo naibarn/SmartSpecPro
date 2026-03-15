@@ -344,13 +344,13 @@ export async function executeJob(jobId: string): Promise<void> {
 
   const job = rows[0];
 
-  // Mark running
-  await drizzle
-    .update(automationJobs)
-    .set({ status: "running", startedAt: new Date() })
-    .where(eq(automationJobs.id, jobId));
-
   try {
+    // Mark running
+    await drizzle
+      .update(automationJobs)
+      .set({ status: "running", startedAt: new Date() })
+      .where(eq(automationJobs.id, jobId));
+
     // Emit progress: job started (0%)
     emitPublicApiEvent(job.tenantId, "job.progress", {
       job_id: jobId,
@@ -376,24 +376,26 @@ export async function executeJob(jobId: string): Promise<void> {
       timestamp: new Date().toISOString(),
     }).catch(() => {});
 
-    // Finalize
+    // Finalize — atomically update status and refund excess credits
     const creditsUsed = Math.min(job.creditsReserved, Math.ceil(job.creditsReserved * 0.8));
     const refundAmount = job.creditsReserved - creditsUsed;
 
-    await drizzle
-      .update(automationJobs)
-      .set({ status: "completed", result, creditsUsed, completedAt: new Date() })
-      .where(eq(automationJobs.id, jobId));
+    await db.instance.transaction(async (tx) => {
+      await tx
+        .update(automationJobs)
+        .set({ status: "completed", result, creditsUsed, completedAt: new Date() })
+        .where(eq(automationJobs.id, jobId));
 
-    if (refundAmount > 0) {
-      await addCredits({
-        userId: job.userId,
-        amount: refundAmount,
-        type: "refund",
-        description: `Job refund: ${jobId}`,
-        sourceType: "api_job",
-      } as any);
-    }
+      if (refundAmount > 0) {
+        await addCredits({
+          userId: job.userId,
+          amount: refundAmount,
+          type: "refund",
+          description: `Job refund: ${jobId}`,
+          sourceType: "api_job",
+        } as any);
+      }
+    });
 
     // Emit completion event — fans out to webhook endpoints AND SSE subscribers
     emitPublicApiEvent(job.tenantId, "job.completed", {
