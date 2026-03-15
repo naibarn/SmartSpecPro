@@ -95,6 +95,19 @@ describe("mediaAssetService", () => {
       expect(url).toBe("/api/storage/files/uploads/test.jpg");
     });
 
+    it("falls back to constructed path when storageResolveUrl also returns null", async () => {
+      mockStoragePresignGet.mockResolvedValueOnce(null);
+      mockStorageResolveUrl.mockResolvedValueOnce(null);
+      const url = await generateSignedUrl("uploads/test.jpg");
+      expect(url).toBe("/api/storage/files/uploads/test.jpg");
+    });
+
+    it("returns null when storageKey is null", async () => {
+      const url = await generateSignedUrl(null);
+      expect(url).toBeNull();
+      expect(mockStoragePresignGet).not.toHaveBeenCalled();
+    });
+
     it("respects custom expiry", async () => {
       mockStoragePresignGet.mockResolvedValueOnce({ url: "https://s3.example.com/signed", key: "k" });
       await generateSignedUrl("uploads/test.jpg", 7200);
@@ -103,28 +116,57 @@ describe("mediaAssetService", () => {
   });
 
   describe("computePerceptualHash", () => {
-    it("returns consistent hash string for image buffer", async () => {
-      const mockPipeline = {
+    function makePipeline(pixels: number[]) {
+      return {
         resize: vi.fn().mockReturnThis(),
         grayscale: vi.fn().mockReturnThis(),
         raw: vi.fn().mockReturnThis(),
-        toBuffer: vi.fn().mockResolvedValue(Buffer.from(Array(64).fill(128))),
+        toBuffer: vi.fn().mockResolvedValue(Buffer.from(pixels)),
       };
-      mockSharp.mockReturnValueOnce(mockPipeline as any);
+    }
 
+    it("returns exactly 16-char lowercase hex string", async () => {
+      // 9×8 = 72 pixels (9 wide so 8 differences per row × 8 rows = 64 bits → 16 hex)
+      mockSharp.mockReturnValueOnce(makePipeline(Array(72).fill(128)) as any);
       const hash = await computePerceptualHash(Buffer.from("fake-image"));
-      expect(typeof hash).toBe("string");
-      expect(hash.length).toBeGreaterThan(0);
+      expect(hash).not.toBeNull();
+      expect(hash!.length).toBe(16);
+      expect(/^[0-9a-f]{16}$/.test(hash!)).toBe(true);
+    });
+
+    it("returns same hash for same pixel pattern (deterministic)", async () => {
+      const pixels = Array(72).fill(0).map((_, i) => (i % 2 === 0 ? 100 : 200));
+      mockSharp.mockReturnValueOnce(makePipeline(pixels) as any);
+      const hash1 = await computePerceptualHash(Buffer.from("img-a"));
+
+      mockSharp.mockReturnValueOnce(makePipeline(pixels) as any);
+      const hash2 = await computePerceptualHash(Buffer.from("img-b"));
+
+      expect(hash1).toBe(hash2);
+    });
+
+    it("returns different hashes for different pixel patterns", async () => {
+      // dHash compares pixel[i] < pixel[i+1] per row — uniform values all give 0-bits.
+      // Use alternating patterns: ascending → all 1-bits, descending → all 0-bits.
+      const ascending = Array(72).fill(0).map((_, i) => (i % 2 === 0 ? 100 : 200)); // bit=1 each step
+      const descending = Array(72).fill(0).map((_, i) => (i % 2 === 0 ? 200 : 100)); // bit=0 each step
+      mockSharp.mockReturnValueOnce(makePipeline(ascending) as any);
+      const hashA = await computePerceptualHash(Buffer.from("img-a"));
+
+      mockSharp.mockReturnValueOnce(makePipeline(descending) as any);
+      const hashB = await computePerceptualHash(Buffer.from("img-b"));
+
+      expect(hashA).not.toBe(hashB);
     });
 
     it("returns null when sharp fails (corrupt image)", async () => {
-      const mockPipeline = {
+      const badPipeline = {
         resize: vi.fn().mockReturnThis(),
         grayscale: vi.fn().mockReturnThis(),
         raw: vi.fn().mockReturnThis(),
         toBuffer: vi.fn().mockRejectedValue(new Error("corrupt image")),
       };
-      mockSharp.mockReturnValueOnce(mockPipeline as any);
+      mockSharp.mockReturnValueOnce(badPipeline as any);
 
       const hash = await computePerceptualHash(Buffer.from("corrupt"));
       expect(hash).toBeNull();
@@ -177,6 +219,26 @@ describe("mediaAssetService", () => {
       const bigAttachment = { ...attachment, size: 25 * 1024 * 1024 };
       await expect(createAssetFromAttachment(bigAttachment, context)).rejects.toThrow();
     });
+
+    it("uses url as checksum key when attachment.key is absent", async () => {
+      const urlOnly = { type: "image" as const, url: "https://example.com/img.jpg", mimeType: "image/jpeg", size: 1024 };
+      const mockDb = {
+        select: vi.fn().mockReturnThis(),
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue([]),
+        insert: vi.fn().mockReturnThis(),
+        values: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([{ id: 55 }]),
+      };
+      mockGetDb.mockResolvedValue(mockDb as any);
+
+      const result = await createAssetFromAttachment(urlOnly, context);
+      expect(result.assetId).toBe(55);
+      expect(mockDb.insert).toHaveBeenCalled();
+      // storageKey should fall back to the URL itself
+      const insertedValues = mockDb.values.mock.calls[0][0];
+      expect(insertedValues.storageKey).toBe("https://example.com/img.jpg");
+    });
   });
 
   describe("fetchAsset", () => {
@@ -209,23 +271,64 @@ describe("mediaAssetService", () => {
   });
 
   describe("findSimilarAssets", () => {
-    it("returns assets below Hamming distance threshold", async () => {
-      // Same hash should have distance 0
-      const sameHash = "aaaa";
-      const assets = [
-        { id: 1, perceptualHash: sameHash, tenantId: "tenant-1" },
-        { id: 2, perceptualHash: "ffff", tenantId: "tenant-1" },
-      ];
-      const mockDb = {
+    function makeRetrievalDb(assets: any[]) {
+      return {
         select: vi.fn().mockReturnThis(),
         from: vi.fn().mockReturnThis(),
         where: vi.fn().mockResolvedValue(assets),
       };
-      mockGetDb.mockResolvedValue(mockDb as any);
+    }
 
-      const result = await findSimilarAssets(sameHash, "tenant-1", 10);
-      expect(result.length).toBeGreaterThan(0);
+    it("returns assets at or below Hamming distance threshold", async () => {
+      // "0000" vs "0000" → distance 0 (included)
+      // "0000" vs "ffff" → 'f'=1111, '0'=0000, XOR=1111=4 bits × 4 chars = distance 16 (excluded at threshold=10)
+      const targetHash = "0000";
+      const assets = [
+        { id: 1, perceptualHash: "0000", tenantId: "tenant-1" },
+        { id: 2, perceptualHash: "ffff", tenantId: "tenant-1" },
+      ];
+      mockGetDb.mockResolvedValue(makeRetrievalDb(assets) as any);
+
+      const result = await findSimilarAssets(targetHash, "tenant-1", 10);
+      expect(result).toHaveLength(1);
       expect(result[0].id).toBe(1);
+      expect(result[0].distance).toBe(0);
+    });
+
+    it("returns empty array when no assets exist", async () => {
+      mockGetDb.mockResolvedValue(makeRetrievalDb([]) as any);
+      const result = await findSimilarAssets("aaaa", "tenant-1", 10);
+      expect(result).toHaveLength(0);
+    });
+
+    it("returns empty array when all assets exceed threshold", async () => {
+      const assets = [{ id: 1, perceptualHash: "ffff", tenantId: "tenant-1" }];
+      mockGetDb.mockResolvedValue(makeRetrievalDb(assets) as any);
+      // "0000" vs "ffff" → distance 16, threshold=5 → excluded
+      const result = await findSimilarAssets("0000", "tenant-1", 5);
+      expect(result).toHaveLength(0);
+    });
+
+    it("sorts results by distance ascending (closest first)", async () => {
+      // "0000" vs "0001" → distance 1; vs "000f" → distance 4
+      const assets = [
+        { id: 1, perceptualHash: "000f", tenantId: "tenant-1" }, // distance 4
+        { id: 2, perceptualHash: "0001", tenantId: "tenant-1" }, // distance 1
+      ];
+      mockGetDb.mockResolvedValue(makeRetrievalDb(assets) as any);
+
+      const result = await findSimilarAssets("0000", "tenant-1", 10);
+      expect(result).toHaveLength(2);
+      expect(result[0].distance).toBeLessThanOrEqual(result[1].distance);
+      expect(result[0].id).toBe(2);
+    });
+
+    it("uses default threshold of 10 when not specified", async () => {
+      // distance 8 should be included at default threshold=10
+      const assets = [{ id: 1, perceptualHash: "00ff", tenantId: "tenant-1" }];
+      mockGetDb.mockResolvedValue(makeRetrievalDb(assets) as any);
+      const result = await findSimilarAssets("0000", "tenant-1");
+      expect(result).toHaveLength(1);
     });
   });
 
@@ -258,6 +361,17 @@ describe("mediaAssetService", () => {
       mockGetDb.mockResolvedValue(mockDb as any);
 
       await expect(deleteAsset(1, 1, "tenant-1")).rejects.toThrow();
+    });
+
+    it("throws when tenantId does not match (cross-tenant isolation)", async () => {
+      const mockDb = {
+        select: vi.fn().mockReturnThis(),
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue([]), // tenantId mismatch → no rows
+      };
+      mockGetDb.mockResolvedValue(mockDb as any);
+
+      await expect(deleteAsset(1, 1, "wrong-tenant")).rejects.toThrow(/not found or access denied/i);
     });
   });
 });
