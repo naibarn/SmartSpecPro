@@ -6,6 +6,7 @@ import { requireScopes } from "../middleware/requireScopes";
 import { sendApiError } from "../middleware/publicApiHeaders";
 import { agencyBridge } from "../services/agencyBridge";
 import { deductCredits, refundCredits, getCreditBalance } from "../services/creditService";
+import { incrementDailyCredits } from "../services/apiKeyRateLimiter";
 import { signBearerToken } from "../_core/tokens";
 import { db } from "../db";
 import { agencies, agencyConversations } from "../../drizzle/schema";
@@ -267,6 +268,9 @@ export function createPublicAgencyRouter(): Router {
           // Non-fatal
         }
 
+        if (creditsUsed > 0 && auth.mode === "api_key") {
+          incrementDailyCredits(apiKeyId, creditsUsed).catch(() => {});
+        }
         res.setHeader("X-Credits-Used", String(creditsUsed));
         res.setHeader("X-Credits-Remaining", String(remaining));
 

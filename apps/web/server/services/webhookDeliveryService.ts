@@ -155,8 +155,8 @@ export async function executeWebhookDelivery(
       }
     }
 
-    // Auto-disable after 3 consecutive failures (for both retry policies)
-    if (newCount >= 3) {
+    // Auto-disable after 3 consecutive failures (exponential retry only)
+    if (endpoint.retryPolicy === "exponential" && updated.length > 0 && newCount >= 3) {
       await db
         .update(apiWebhookEndpoints)
         .set({ isActive: false, updatedAt: new Date() })

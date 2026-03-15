@@ -131,7 +131,13 @@ export function createPublicJobsRouter(): Router {
   router.get("/", requireScopes("jobs:read"), async (req, res) => {
     const auth = req.auth!;
     const tenantId = (auth as any).tenantId as string;
-    const status = req.query.status as string | undefined;
+    const statusRaw = req.query.status as string | undefined;
+    const statusParsed = z.enum(["pending", "running", "completed", "failed", "cancelled"]).optional().safeParse(statusRaw);
+    if (!statusParsed.success) {
+      sendApiError(res, 400, "invalid_request", "Invalid status filter. Allowed: pending, running, completed, failed, cancelled");
+      return;
+    }
+    const status = statusParsed.data;
     const page = parseInt(String(req.query.page ?? "1"), 10) || 1;
     const limit = parseInt(String(req.query.limit ?? "20"), 10) || 20;
 

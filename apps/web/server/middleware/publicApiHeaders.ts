@@ -24,6 +24,7 @@ const ERROR_TYPE_MAP: Record<string, string> = {
   insufficient_scopes: "auth_error",
   feature_disabled: "auth_error",
   rate_limit_exceeded: "rate_limit_error",
+  quota_exceeded: "rate_limit_error",
   daily_credit_limit_exceeded: "billing_error",
   key_suspended: "auth_error",
   insufficient_credits: "billing_error",
@@ -33,6 +34,9 @@ const ERROR_TYPE_MAP: Record<string, string> = {
   idempotency_conflict: "invalid_request_error",
   credit_overflow: "invalid_request_error",
   invalid_job_type: "invalid_request_error",
+  job_not_cancellable: "invalid_request_error",
+  circular_pipeline_reference: "invalid_request_error",
+  max_template_depth_exceeded: "invalid_request_error",
 };
 
 /**

@@ -1,3 +1,4 @@
+import type { Request, Response, NextFunction } from "express";
 import { getRedisClient } from "./redis";
 
 const TENANT_RPM_LIMIT = 600;
@@ -127,13 +128,13 @@ export async function incrementDailyCredits(
  * Reads auth context from req.auth.
  */
 export function rateLimitMiddleware() {
-  return async (req: any, res: any, next: any) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     if (req.auth?.mode !== "api_key") return next();
 
     const result = await checkRateLimit(
       req.auth.apiKeyId,
       req.auth.tenantId,
-      (req as any).auth?.rateLimit ?? 60,
+      req.auth.rateLimit ?? 60,
     );
 
     for (const [key, value] of Object.entries(result.headers)) {

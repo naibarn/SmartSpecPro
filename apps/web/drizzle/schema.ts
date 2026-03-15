@@ -210,6 +210,13 @@ export const creditSourceTypeEnum = pgEnum("credit_source_type", [
   "widget_chat",
   "webhook_chat",
   "webhook_trigger",
+  // Public API (feature 043)
+  "api_skill",
+  "api_agency",
+  "api_job",
+  "api_media",
+  "api_presentation",
+  "api_video_project",
 ]);
 
 // Settlement status for creator revenue sharing
@@ -5447,6 +5454,11 @@ export const apiKeys = pgTable("api_keys", {
   expiresAt: timestamp("expiresAt", { withTimezone: true }),
   lastUsedAt: timestamp("lastUsedAt", { withTimezone: true }),
   isActive: boolean("isActive").default(true).notNull(),
+  // Admin-managed temporary suspension (separate from permanent revocation)
+  isSuspended: boolean("isSuspended").default(false).notNull(),
+  suspendedReason: varchar("suspendedReason", { length: 500 }),
+  suspendedAt: timestamp("suspendedAt", { withTimezone: true }),
+  suspendedBy: integer("suspendedBy").references(() => users.id, { onDelete: "set null" }),
   metadata: json("metadata").$type<Record<string, unknown>>(),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),

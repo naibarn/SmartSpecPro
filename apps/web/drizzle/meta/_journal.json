@@ -519,6 +519,34 @@
       "when": 1773475110413,
       "tag": "0073_slippery_juggernaut",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1773600000000,
+      "tag": "0074_composite_idempotency_idx",
+      "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1773513153803,
+      "tag": "0075_nifty_mole_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1773513452847,
+      "tag": "0076_calm_peter_quill",
+      "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1773533663244,
+      "tag": "0077_far_frank_castle",
+      "breakpoints": true
     }
   ]
 }

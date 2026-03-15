@@ -357,6 +357,7 @@ export async function executeJob(jobId: string): Promise<void> {
       type: job.type,
       progress_pct: 0,
       status: "running",
+      timestamp: new Date().toISOString(),
     }).catch(() => {});
 
     // Stub execution — in production, dispatch to actual services
@@ -372,6 +373,7 @@ export async function executeJob(jobId: string): Promise<void> {
       type: job.type,
       progress_pct: 80,
       status: "running",
+      timestamp: new Date().toISOString(),
     }).catch(() => {});
 
     // Finalize
@@ -400,6 +402,7 @@ export async function executeJob(jobId: string): Promise<void> {
       status: "completed",
       credits_used: creditsUsed,
       result,
+      timestamp: new Date().toISOString(),
     }).catch(() => {
       // non-fatal
     });
@@ -432,6 +435,7 @@ export async function executeJob(jobId: string): Promise<void> {
       type: job.type,
       status: "failed",
       error: execErr.message,
+      timestamp: new Date().toISOString(),
     }).catch(() => {
       // non-fatal
     });

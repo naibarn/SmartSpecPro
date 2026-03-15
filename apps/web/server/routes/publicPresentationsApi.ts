@@ -15,6 +15,7 @@ import {
 import { createLibraryItem } from "../services/libraryService";
 import { resolveAutoDraftParams } from "../services/autoDraftResolver";
 import { deductCredits, getCreditBalance } from "../services/creditService";
+import { incrementDailyCredits } from "../services/apiKeyRateLimiter";
 import { getRedisClient } from "../services/redis";
 import { createInternalTokenFromAuth } from "../_core/tokens";
 
@@ -407,6 +408,10 @@ export function createPresentationPublicRouter(): Router {
           sourceType: "api_presentation",
           description: `Presentation generation: ${topic.slice(0, 50)}`,
         } as any);
+        res.setHeader("X-Credits-Used", "5");
+        if (auth.mode === "api_key") {
+          incrementDailyCredits(auth.apiKeyId ?? "", 5).catch(() => {});
+        }
 
         // Generate internal token for Python backend calls
         const userToken = createInternalTokenFromAuth({ userId }, [
