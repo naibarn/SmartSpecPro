@@ -698,6 +698,11 @@ function transformRequestBody(
  * Extract user ID from auth result
  */
 async function getUserIdFromAuth(auth: AuthResult & { ok: true }): Promise<number | null> {
+  // For API key auth, userId is directly available
+  if (auth.mode === "api_key") {
+    return auth.userId;
+  }
+
   // For session auth, user object contains id
   if (auth.mode === "session" && auth.user?.id) {
     return auth.user.id;

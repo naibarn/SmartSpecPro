@@ -1,4 +1,4 @@
-import { integer, pgEnum, pgTable, text, timestamp, varchar, json, jsonb, boolean, numeric, serial, uniqueIndex, index, foreignKey, bigint, check, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { integer, pgEnum, pgTable, text, timestamp, varchar, json, jsonb, boolean, numeric, serial, uniqueIndex, index, foreignKey, bigint, bigserial, check, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 /**
@@ -210,6 +210,15 @@ export const creditSourceTypeEnum = pgEnum("credit_source_type", [
   "widget_chat",
   "webhook_chat",
   "webhook_trigger",
+  // Public API (feature 043)
+  "api_skill",
+  "api_agency",
+  "api_job",
+  "api_media",
+  "api_presentation",
+  "api_video_project",
+  "api_chat",
+  "api_mcp",
 ]);
 
 // Settlement status for creator revenue sharing
@@ -738,6 +747,9 @@ export const providerUsageLog = pgTable("provider_usage_log", {
 
   wasFallback: boolean("wasFallback").default(false).notNull(),
   fallbackFromProviderId: integer("fallbackFromProviderId").references(() => llmProviders.id),
+
+  /** API key that triggered this LLM usage (nullable) */
+  apiKeyId: varchar("apiKeyId", { length: 36 }),
 
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
@@ -1330,6 +1342,13 @@ export const conversations = pgTable("conversations", {
 
   /** AI persona used for this conversation */
   personaId: varchar("personaId", { length: 36 }).references((): AnyPgColumn => personaTemplates.id, { onDelete: "set null" }),
+
+  /** Origin: 'web', 'api', 'widget' */
+  source: varchar("source", { length: 20 }).default("web"),
+  /** API key that created this conversation (nullable, no FK) */
+  apiKeyId: varchar("apiKeyId", { length: 36 }),
+  /** Auto-expire API-created conversations */
+  expiresAt: timestamp("expiresAt", { withTimezone: true }),
 
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
@@ -4618,6 +4637,12 @@ export const agencyConversations = pgTable("agency_conversations", {
   totalCreditsUsed: numeric("totalCreditsUsed", { precision: 12, scale: 4 }).default("0"),
   messageCount: integer("messageCount").default(0).notNull(),
   isArchived: boolean("isArchived").default(false).notNull(),
+  /** Origin: 'web', 'api', 'widget' */
+  source: varchar("source", { length: 20 }).default("web"),
+  /** API key that created this conversation */
+  apiKeyId: varchar("apiKeyId", { length: 36 }),
+  /** Auto-expire API-created conversations */
+  expiresAt: timestamp("expiresAt", { withTimezone: true }),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
@@ -5406,3 +5431,153 @@ export const autoDraftSchedules = pgTable(
 
 export type AutoDraftSchedule = typeof autoDraftSchedules.$inferSelect;
 export type InsertAutoDraftSchedule = typeof autoDraftSchedules.$inferInsert;
+
+// ─── Public API Tables (Feature 043) ────────────────────────────────────────
+
+/**
+ * API Keys — central registry for public API authentication.
+ * Keys use sk-ssp_ prefix and HMAC-SHA256 hashing with server pepper.
+ */
+export const apiKeys = pgTable("api_keys", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id),
+  userId: integer("userId").notNull().references(() => users.id),
+  name: varchar("name", { length: 100 }).notNull(),
+  keyPrefix: varchar("keyPrefix", { length: 16 }).notNull(),
+  keyHash: varchar("keyHash", { length: 128 }).notNull(),
+  scopes: json("scopes").$type<string[]>().notNull(),
+  rateLimit: integer("rateLimit").default(60).notNull(),
+  creditLimit: integer("creditLimit"),
+  // Request-count quotas per time window (null = unlimited)
+  quotaHourly: integer("quotaHourly"),
+  quotaDaily: integer("quotaDaily"),
+  quotaWeekly: integer("quotaWeekly"),
+  quotaMonthly: integer("quotaMonthly"),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }),
+  lastUsedAt: timestamp("lastUsedAt", { withTimezone: true }),
+  isActive: boolean("isActive").default(true).notNull(),
+  // Admin-managed temporary suspension (separate from permanent revocation)
+  isSuspended: boolean("isSuspended").default(false).notNull(),
+  suspendedReason: varchar("suspendedReason", { length: 500 }),
+  suspendedAt: timestamp("suspendedAt", { withTimezone: true }),
+  suspendedBy: integer("suspendedBy").references(() => users.id, { onDelete: "set null" }),
+  metadata: json("metadata").$type<Record<string, unknown>>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("api_keys_key_hash_idx").on(t.keyHash),
+  index("api_keys_tenant_idx").on(t.tenantId),
+  index("api_keys_user_idx").on(t.userId),
+]);
+
+export type ApiKey = typeof apiKeys.$inferSelect;
+export type InsertApiKey = typeof apiKeys.$inferInsert;
+
+/**
+ * Public API Audit Log — log table for all API key requests.
+ * Separate from apiAuditEvents (media/skill/LLM structured logging).
+ * No foreign keys — should not cascade when keys are revoked.
+ * 90-day retention enforced by cleanup job.
+ */
+export const publicApiAuditLog = pgTable("public_api_audit_log", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  userId: integer("userId").notNull(),
+  apiKeyId: varchar("apiKeyId", { length: 36 }),
+  traceId: varchar("traceId", { length: 36 }),
+  method: varchar("method", { length: 10 }).notNull(),
+  path: varchar("path", { length: 255 }).notNull(),
+  statusCode: integer("statusCode"),
+  creditsUsed: integer("creditsUsed").default(0),
+  latencyMs: integer("latencyMs"),
+  ip: varchar("ip", { length: 45 }),
+  userAgent: text("userAgent"),
+  requestMeta: json("requestMeta").$type<Record<string, unknown>>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("public_api_audit_log_tenant_created_idx").on(t.tenantId, t.createdAt),
+  index("public_api_audit_log_api_key_idx").on(t.apiKeyId),
+  index("public_api_audit_log_trace_idx").on(t.traceId),
+]);
+
+export type PublicApiAuditLogEntry = typeof publicApiAuditLog.$inferSelect;
+export type InsertPublicApiAuditLogEntry = typeof publicApiAuditLog.$inferInsert;
+
+/**
+ * API Webhook Endpoints — outbound webhook registrations.
+ */
+export const apiWebhookEndpoints = pgTable("api_webhook_endpoints", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id),
+  apiKeyId: varchar("apiKeyId", { length: 36 }).references(() => apiKeys.id, { onDelete: "set null" }),
+  url: varchar("url", { length: 2048 }).notNull(),
+  secretEncrypted: text("secretEncrypted").notNull(),
+  events: json("events").$type<string[]>().notNull(),
+  retryPolicy: varchar("retryPolicy", { length: 20 }).default("exponential").notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  lastDeliveredAt: timestamp("lastDeliveredAt", { withTimezone: true }),
+  failureCount: integer("failureCount").default(0).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("api_webhook_endpoints_tenant_idx").on(t.tenantId),
+  index("api_webhook_endpoints_api_key_idx").on(t.apiKeyId),
+]);
+
+export type ApiWebhookEndpoint = typeof apiWebhookEndpoints.$inferSelect;
+export type InsertApiWebhookEndpoint = typeof apiWebhookEndpoints.$inferInsert;
+
+/**
+ * API Webhook Deliveries — delivery log with retry tracking.
+ */
+export const apiWebhookDeliveries = pgTable("api_webhook_deliveries", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  webhookEndpointId: varchar("webhookEndpointId", { length: 36 }).notNull()
+    .references(() => apiWebhookEndpoints.id, { onDelete: "cascade" }),
+  eventType: varchar("eventType", { length: 50 }).notNull(),
+  payload: json("payload").$type<Record<string, unknown>>().notNull(),
+  statusCode: integer("statusCode"),
+  attempt: integer("attempt").default(1).notNull(),
+  deliveredAt: timestamp("deliveredAt", { withTimezone: true }),
+  error: text("error"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type ApiWebhookDelivery = typeof apiWebhookDeliveries.$inferSelect;
+export type InsertApiWebhookDelivery = typeof apiWebhookDeliveries.$inferInsert;
+
+/**
+ * Automation Jobs — async job queue records for the Job Automation API.
+ */
+export const automationJobs = pgTable("automation_jobs", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id),
+  userId: integer("userId").notNull().references(() => users.id),
+  apiKeyId: varchar("apiKeyId", { length: 36 }).notNull(),
+  type: varchar("type", { length: 50 }).notNull(),
+  status: varchar("status", { length: 20 }).default("pending").notNull(),
+  params: json("params").$type<Record<string, unknown>>(),
+  result: json("result").$type<Record<string, unknown>>(),
+  error: json("error").$type<Record<string, unknown>>(),
+  progress: integer("progress").default(0).notNull(),
+  creditsReserved: integer("creditsReserved").default(0).notNull(),
+  creditsUsed: integer("creditsUsed").default(0).notNull(),
+  callbackUrl: varchar("callbackUrl", { length: 2048 }),
+  callbackSecretEncrypted: text("callbackSecretEncrypted"),
+  parentJobId: varchar("parentJobId", { length: 36 }),
+  stepIndex: integer("stepIndex"),
+  traceId: varchar("traceId", { length: 36 }),
+  idempotencyKey: varchar("idempotencyKey", { length: 64 }),
+  startedAt: timestamp("startedAt", { withTimezone: true }),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }),
+}, (t) => [
+  index("automation_jobs_tenant_status_idx").on(t.tenantId, t.status),
+  index("automation_jobs_api_key_idx").on(t.apiKeyId),
+  uniqueIndex("automation_jobs_idempotency_idx").on(t.tenantId, t.idempotencyKey),
+  index("automation_jobs_parent_idx").on(t.parentJobId),
+]);
+
+export type AutomationJob = typeof automationJobs.$inferSelect;
+export type InsertAutomationJob = typeof automationJobs.$inferInsert;

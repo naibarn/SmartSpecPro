@@ -20,6 +20,10 @@ export interface TenantFeatureFlags {
   responsesApi: boolean; // F13 — Responses API gateway (OpenAI-compatible)
   taskPlannerEnabled: boolean; // F14 — Task Planner (active model selection via task execution planner)
   taskPlannerAgencyEscalation: boolean; // F15 — Agency escalation via planner
+  chatBrowserSessionEntry: boolean; // F16 — Chat Browser Session entrypoints and reopen flows
+  agencyBrowserSessionUi: boolean; // F17 — Agency Builder and Agency Chat Browser Session UI
+  workflowBrowserSessionNodes: boolean; // F18 — Workflow collaborative Browser Session nodes
+  publicApi: boolean; // F19 — Public API & External Agent Gateway
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -44,6 +48,10 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "responsesApi",
   "taskPlannerEnabled",
   "taskPlannerAgencyEscalation",
+  "chatBrowserSessionEntry",
+  "agencyBrowserSessionUi",
+  "workflowBrowserSessionNodes",
+  "publicApi",
 ]);
 
 /**
@@ -67,4 +75,8 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   responsesApi: false,
   taskPlannerEnabled: false,
   taskPlannerAgencyEscalation: false,
+  chatBrowserSessionEntry: false,
+  agencyBrowserSessionUi: false,
+  workflowBrowserSessionNodes: false,
+  publicApi: false,
 };

@@ -3,6 +3,7 @@
  * Handles authorization scopes for MCP and other features
  */
 
+import crypto from "crypto";
 import jwt, { type SignOptions } from "jsonwebtoken";
 
 const jwtSecretEnv = process.env.JWT_SECRET;
@@ -121,4 +122,24 @@ export function getDefaultScopes(): string[] {
     "mcp:read",
     "profile:read",
   ];
+}
+
+/**
+ * Create a short-lived internal bearer token from an AuthContext.
+ * Used to call service functions that still expect a userToken string
+ * (e.g., Python backend communication via X-User-Token header).
+ */
+export function createInternalTokenFromAuth(
+  auth: { userId: number },
+  scopes?: string[],
+): string {
+  return signBearerToken(
+    {
+      sub: String(auth.userId),
+      type: "access",
+      scopes: scopes ?? ["media:generate", "presentation:export"],
+      jti: `api_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
+    },
+    "15m",
+  );
 }
