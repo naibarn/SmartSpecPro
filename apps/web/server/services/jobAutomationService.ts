@@ -487,9 +487,7 @@ export async function cancelJob(jobId: string, tenantId: string, userId: number)
         sourceType: "api_job",
       } as any);
     }
-  }).catch((e: Error) =>
-    console.error(`[JobAutomation] Cancel transaction failed:`, e.message),
-  );
+  });
 
   return { ...job, status: "cancelled" };
 }
