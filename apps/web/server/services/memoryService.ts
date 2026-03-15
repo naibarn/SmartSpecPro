@@ -22,6 +22,27 @@ import { sanitizeEntityForStorage, filterEntityFacts } from "./piiFilter";
 import { resolveEnabledLlmModelId } from "./enabledLlmModels";
 import { buildModelProviderMapLookupCondition } from "./modelLookup";
 
+// ==================== Multimodal Types ====================
+
+export type ContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
+export type MessageContent = string | ContentPart[];
+
+/**
+ * Extract plain text from a MessageContent value.
+ * - If string, returns it directly.
+ * - If ContentPart[], joins all text parts with a space.
+ */
+export function getTextContent(content: MessageContent): string {
+  if (typeof content === "string") return content;
+  return content
+    .filter((p): p is { type: "text"; text: string } => p.type === "text")
+    .map((p) => p.text)
+    .join(" ");
+}
+
 // Configuration
 const BUFFER_SIZE = 20; // Number of recent messages to keep in buffer
 const SUMMARIZE_THRESHOLD_PERCENT = 0.70; // Summarize when unsummarized chars exceed 70% of context
@@ -659,8 +680,16 @@ export interface ChatContext {
   systemPrompt?: string;
   entityContext: string | null;
   summaryContext: string | null;
-  bufferMessages: Array<{ role: "user" | "assistant" | "system"; content: string }>;
+  bufferMessages: Array<{ role: "user" | "assistant" | "system"; content: MessageContent }>;
   totalTokenEstimate: number;
+  // Section 07 — visual memory
+  visualMemoryContext: string | null;
+  imageAssets: Array<{
+    assetId: number;
+    fileUrl: string;
+    caption?: string;
+    role: "memory" | "current";
+  }>;
 }
 
 /**
@@ -677,6 +706,8 @@ export async function buildChatContext(
     memoryMode?: "full" | "no_long" | "off";  // memory toggle
     projectId?: string;           // for cross-session project summaries
     tenantId?: string;            // for persona resolution
+    // Section 07 — visual memory
+    modelCapabilities?: { supportsVision: boolean };
   }
 ): Promise<ChatContext> {
   const estimateTokens = (text: string) => Math.ceil(text.length / 4);
@@ -725,6 +756,21 @@ export async function buildChatContext(
   // System prompt (never trimmed)
   if (effectiveSystemPrompt) used += estimateTokens(effectiveSystemPrompt);
 
+  // --- Visual state early check (section 07) ---
+  // Single DB/Redis read to determine whether adaptive budgets apply.
+  let hasVisualContext = false;
+  try {
+    const { getOrCreateState } = await import("./visualStateService");
+    const visualState = await getOrCreateState(conversationId);
+    hasVisualContext = visualState.recentAssetIds.length > 0;
+  } catch {
+    // Non-fatal — treat as no visual context
+  }
+
+  // Adaptive budget percentages based on visual context presence
+  const entityPct = hasVisualContext ? 0.20 : 0.40;
+  const summaryPct = hasVisualContext ? 0.25 : 0.60;
+
   let entityContext: string | null = null;
 
   // Memory off → skip all memory tiers
@@ -751,8 +797,8 @@ export async function buildChatContext(
         rankedEntities = nonRuleEntities;
       }
 
-      // Include relevant entities (cap at 40% of budget)
-      const entityBudget = budget * 0.4;
+      // Include relevant entities (cap at entityPct of budget)
+      const entityBudget = budget * entityPct;
       const includedEntities: typeof rankedEntities = [];
       for (const entity of rankedEntities) {
         const entityText = `[${entity.entityType}:${entity.entityName}] ${entity.facts.slice(0, 3).join("; ")}`;
@@ -798,7 +844,7 @@ export async function buildChatContext(
     }
   }
   let summaryContext: string | null = null;
-  const summaryBudget = budget * 0.6;
+  const summaryBudget = budget * summaryPct;
   const includedSummaries: string[] = [];
   for (const s of allSummaries.reverse()) {
     const cost = estimateTokens(s.summary);
@@ -816,15 +862,80 @@ export async function buildChatContext(
     .filter((m) => m.role !== "system")
     .map((m) => ({
       role: m.role as "user" | "assistant" | "system",
-      content: m.content,
+      content: m.content as MessageContent,
     }));
 
   const bufferMessages: typeof filtered = [];
   for (let i = filtered.length - 1; i >= 0; i--) {
-    const cost = estimateTokens(filtered[i].content);
+    const cost = estimateTokens(getTextContent(filtered[i].content));
     if (used + cost > budget) break;
     bufferMessages.unshift(filtered[i]);
     used += cost;
+  }
+
+  // 4.5. Visual Memory Assembly (section 07)
+  // Only runs when: images exist in conversation, user provided a message.
+  // Failures are non-fatal — chat pipeline always completes.
+  let visualMemoryContext: string | null = null;
+  let imageAssets: ChatContext["imageAssets"] = [];
+
+  if (hasVisualContext && options?.currentUserMessage) {
+    try {
+      const {
+        hasImageReferenceKeywords,
+        resolveVisualReferences,
+        retrieveRelevantAssets,
+        buildImageContext,
+      } = await import("./multimodalRetrievalService");
+
+      const userMsg = options.currentUserMessage;
+      if (hasImageReferenceKeywords(userMsg)) {
+        const explicitRefs = await resolveVisualReferences(
+          userMsg,
+          conversationId,
+          userId,
+          options?.tenantId
+        );
+
+        const resolvedAssets = explicitRefs.length > 0
+          ? await retrieveRelevantAssets(userMsg, {
+              userId,
+              tenantId: options?.tenantId ?? "",
+              conversationId,
+              projectId: options?.projectId,
+              explicitRefs,
+            })
+          : [];
+
+        if (resolvedAssets.length > 0) {
+          const supportsVision = options?.modelCapabilities?.supportsVision ?? false;
+          const imageContext = await buildImageContext(
+            resolvedAssets,
+            { supportsVision },
+            { maxImages: 5, maxTextTokens: Math.floor(budget * 0.15) }
+          );
+
+          visualMemoryContext = imageContext.visualMemoryContext;
+          imageAssets = imageContext.imageAssets;
+        }
+      }
+    } catch {
+      // Non-fatal — continue with text-only context
+    }
+  }
+
+  // Append image-aware system instructions when visual context is present
+  if (visualMemoryContext || imageAssets.length > 0) {
+    const imageInstructions = [
+      "When the user refers to images, use ONLY the provided image references and memory cards.",
+      "Do NOT claim to remember images that are not in your current context.",
+      "When comparing images, cite specific visual differences from the provided analysis.",
+      "When referencing a specific image in your response, use the marker format [image:assetId:NNN] where NNN is the assetId from the provided image context. This enables the UI to render inline image preview chips. Example: \"The modern house [image:assetId:42] has a glass facade, while the cabin [image:assetId:55] uses wood panels.\"",
+    ].join("\n");
+
+    effectiveSystemPrompt = effectiveSystemPrompt
+      ? `${effectiveSystemPrompt}\n\n${imageInstructions}`
+      : imageInstructions;
   }
 
   return {
@@ -833,16 +944,19 @@ export async function buildChatContext(
     summaryContext,
     bufferMessages,
     totalTokenEstimate: used,
+    visualMemoryContext,
+    imageAssets,
   };
 }
 
 /**
- * Convert ChatContext to messages array for LLM API
+ * Convert ChatContext to messages array for LLM API.
+ * Supports multimodal content parts (section 07).
  */
 export function contextToMessages(
   context: ChatContext
-): Array<{ role: "system" | "user" | "assistant"; content: string }> {
-  const result: Array<{ role: "system" | "user" | "assistant"; content: string }> = [];
+): Array<{ role: "system" | "user" | "assistant"; content: MessageContent }> {
+  const result: Array<{ role: "system" | "user" | "assistant"; content: MessageContent }> = [];
 
   // System prompt with context
   const systemParts: string[] = [];
@@ -855,6 +969,10 @@ export function contextToMessages(
   if (context.summaryContext) {
     systemParts.push(context.summaryContext);
   }
+  // Inject visual memory context (text descriptions for text-only models)
+  if (context.visualMemoryContext) {
+    systemParts.push(`[VISUAL_MEMORY]\n${context.visualMemoryContext}\n[/VISUAL_MEMORY]`);
+  }
 
   if (systemParts.length > 0) {
     result.push({
@@ -865,6 +983,23 @@ export function contextToMessages(
 
   // Buffer messages
   result.push(...context.bufferMessages);
+
+  // Transform last user message into ContentPart[] when image assets are present
+  if (context.imageAssets.length > 0) {
+    const lastUserIdx = result.map((m) => m.role).lastIndexOf("user");
+    if (lastUserIdx >= 0) {
+      const original = result[lastUserIdx];
+      const textContent = getTextContent(original.content);
+      const parts: ContentPart[] = [
+        { type: "text", text: textContent },
+        ...context.imageAssets.map((a) => ({
+          type: "image_url" as const,
+          image_url: { url: a.fileUrl },
+        })),
+      ];
+      result[lastUserIdx] = { role: "user", content: parts };
+    }
+  }
 
   return result;
 }
