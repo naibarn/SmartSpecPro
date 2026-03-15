@@ -161,6 +161,16 @@ class Settings(BaseSettings):
     SENTRY_DSN: str = ""
     POSTHOG_API_KEY: str = ""
 
+    # Live Browser readiness / operations
+    LIVE_BROWSER_READINESS_PUBLISHER: str = "python_celery_beat"
+    LIVE_BROWSER_READINESS_OWNER: str = "python-live-browser-oncall"
+    LIVE_BROWSER_READINESS_RUNBOOK_URL: str = "https://runbooks.smartaihub.app/live-browser/readiness"
+    LIVE_BROWSER_READINESS_PUBLISH_INTERVAL_SECONDS: int = 60
+    LIVE_BROWSER_READINESS_WATCHDOG_INTERVAL_SECONDS: int = 120
+    LIVE_BROWSER_READINESS_MAX_AGE_SECONDS: int = 120
+    LIVE_BROWSER_READINESS_TTL_SECONDS: int = 300
+    LIVE_BROWSER_MAINTENANCE_INTERVAL_SECONDS: int = 300
+
     # LangSmith (Optional - for debugging and tracing)
     # Set LANGSMITH_ENABLED=true to enable tracing
     LANGSMITH_ENABLED: bool = False
@@ -229,6 +239,52 @@ class Settings(BaseSettings):
 
         if self.STRIPE_PUBLISHABLE_KEY and self.STRIPE_PUBLISHABLE_KEY.startswith("pk_test_"):
             raise ValueError("Stripe test keys cannot be used in production. Use pk_live_... keys")
+
+        return self
+
+    @model_validator(mode="after")
+    def validate_live_browser_operational_contract(self):
+        """Validate live-browser operational ownership and cadence config."""
+        if not self.LIVE_BROWSER_READINESS_PUBLISHER.strip():
+            raise ValueError("LIVE_BROWSER_READINESS_PUBLISHER must not be empty")
+
+        if not self.LIVE_BROWSER_READINESS_OWNER.strip():
+            raise ValueError("LIVE_BROWSER_READINESS_OWNER must not be empty")
+
+        runbook_url = self.LIVE_BROWSER_READINESS_RUNBOOK_URL.strip()
+        if not runbook_url:
+            raise ValueError("LIVE_BROWSER_READINESS_RUNBOOK_URL must not be empty")
+        if not runbook_url.startswith(("https://", "http://")):
+            raise ValueError("LIVE_BROWSER_READINESS_RUNBOOK_URL must be an absolute http(s) URL")
+
+        numeric_constraints = {
+            "LIVE_BROWSER_READINESS_PUBLISH_INTERVAL_SECONDS": self.LIVE_BROWSER_READINESS_PUBLISH_INTERVAL_SECONDS,
+            "LIVE_BROWSER_READINESS_WATCHDOG_INTERVAL_SECONDS": self.LIVE_BROWSER_READINESS_WATCHDOG_INTERVAL_SECONDS,
+            "LIVE_BROWSER_READINESS_MAX_AGE_SECONDS": self.LIVE_BROWSER_READINESS_MAX_AGE_SECONDS,
+            "LIVE_BROWSER_READINESS_TTL_SECONDS": self.LIVE_BROWSER_READINESS_TTL_SECONDS,
+            "LIVE_BROWSER_MAINTENANCE_INTERVAL_SECONDS": self.LIVE_BROWSER_MAINTENANCE_INTERVAL_SECONDS,
+        }
+        for field_name, value in numeric_constraints.items():
+            if int(value) <= 0:
+                raise ValueError(f"{field_name} must be greater than zero")
+
+        if self.LIVE_BROWSER_READINESS_MAX_AGE_SECONDS < self.LIVE_BROWSER_READINESS_PUBLISH_INTERVAL_SECONDS:
+            raise ValueError(
+                "LIVE_BROWSER_READINESS_MAX_AGE_SECONDS must be greater than or equal to "
+                "LIVE_BROWSER_READINESS_PUBLISH_INTERVAL_SECONDS"
+            )
+
+        if self.LIVE_BROWSER_READINESS_WATCHDOG_INTERVAL_SECONDS > self.LIVE_BROWSER_READINESS_MAX_AGE_SECONDS:
+            raise ValueError(
+                "LIVE_BROWSER_READINESS_WATCHDOG_INTERVAL_SECONDS must be less than or equal to "
+                "LIVE_BROWSER_READINESS_MAX_AGE_SECONDS"
+            )
+
+        if self.LIVE_BROWSER_READINESS_TTL_SECONDS <= self.LIVE_BROWSER_READINESS_MAX_AGE_SECONDS:
+            raise ValueError(
+                "LIVE_BROWSER_READINESS_TTL_SECONDS must be greater than "
+                "LIVE_BROWSER_READINESS_MAX_AGE_SECONDS"
+            )
 
         return self
 

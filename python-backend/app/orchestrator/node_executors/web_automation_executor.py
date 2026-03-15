@@ -14,6 +14,7 @@ from app.services.llm_gateway_client import (
     InsufficientCreditsError,
     LLMGatewayClient,
 )
+from app.services.live_browser_observability import emit_rollout_metric
 
 logger = structlog.get_logger(__name__)
 
@@ -53,6 +54,11 @@ class WebAutomationExecutor:
             prompt=prompt[:100],
             url=inputs.get("url"),
             tenant_id=tenant_id,
+        )
+        emit_rollout_metric(
+            "workflow_browser_session_legacy_fallback_total",
+            origin_surface="workflow",
+            reason_category="legacy_fallback",
         )
 
         try:

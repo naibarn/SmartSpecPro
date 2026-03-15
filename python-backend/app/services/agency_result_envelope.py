@@ -12,6 +12,9 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 AgencyIntent = Literal[
     "chat_reply",
     "research_report",
+    "ticket_comparison",
+    "hotel_comparison",
+    "shortlist",
     "video_storyboard",
     "presentation_deck",
     "media_prompt",

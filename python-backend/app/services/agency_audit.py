@@ -75,15 +75,28 @@ def log_agency_event(
 
 async def reconcile_credits(
     run_id: str,
-    gateway_total: float,
-    run_total_credits: float,
+    gateway_total: float | None,
+    run_total_credits: float | None,
     threshold: float = 1.0,
-) -> bool:
+) -> bool | None:
     """Compare gateway cost total against run's total_credits_used.
 
     If mismatch exceeds threshold, log a warning event.
-    Returns True if reconciled (match), False if mismatch detected.
+    Returns True if reconciled (match), False if mismatch detected,
+    or None if reconciliation remains deferred.
     """
+    if gateway_total is None or run_total_credits is None:
+        log_agency_event(
+            "agency_credit_reconciliation_pending",
+            run_id=run_id,
+            metadata={
+                "gateway_total": gateway_total,
+                "run_total_credits": run_total_credits,
+                "reason": "missing_credit_totals",
+            },
+        )
+        return None
+
     diff = abs(gateway_total - run_total_credits)
     if diff <= threshold:
         return True

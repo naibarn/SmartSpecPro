@@ -5,10 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from typing import Any, Protocol
+from urllib.parse import urlparse
 from uuid import uuid4
 
+from jose import JWTError, jwt
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.core.config import settings
 from app.models.live_browser import (
     LiveBrowserEvent as LiveBrowserEventModel,
     LiveBrowserIdempotencyKey as LiveBrowserIdempotencyKeyModel,
@@ -31,6 +34,34 @@ ACTIVE_SESSION_STATUSES = {
     "waiting_for_runtime_recovery",
 }
 MAX_COMMAND_QUEUE_DEPTH = 3
+LIVE_BROWSER_PAGE_SENSITIVITY_VALUES = {
+    "none",
+    "auth",
+    "financial",
+    "admin",
+    "sensitive_data",
+    "communication",
+    "code",
+}
+TAKEOVER_ELEVATED_PAGE_SENSITIVITIES = {"auth", "financial", "admin", "sensitive_data"}
+TAKEOVER_STEP_UP_PROOF_TYPE = "live_browser_takeover_step_up"
+TAKEOVER_STEP_UP_ASSURANCE_RECENT_SIGN_IN = "recent_sign_in"
+TAKEOVER_STEP_UP_ASSURANCE_MFA = "mfa"
+TAKEOVER_STEP_UP_MAX_AGE = timedelta(minutes=15)
+LIVE_BROWSER_BARRIER_TYPES = {
+    "login_required",
+    "captcha_required",
+    "payment_review_required",
+    "booking_confirmation_required",
+}
+LIVE_BROWSER_TAKEOVER_BARRIERS = {
+    "login_required",
+    "captcha_required",
+}
+LIVE_BROWSER_COMMITMENT_GATES = {
+    "payment_review_required",
+    "booking_confirmation_required",
+}
 
 
 @dataclass(slots=True)
@@ -173,6 +204,292 @@ def _current_origin(url: str | None) -> str | None:
         return f"{parsed.scheme}://{parsed.netloc}"
     except Exception:
         return None
+
+
+def _parse_datetime(value: Any) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
+def _normalize_barrier_type(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip().lower()
+    if normalized in LIVE_BROWSER_BARRIER_TYPES:
+        return normalized
+    return None
+
+
+def get_live_browser_barrier_type(session: LiveBrowserSessionRecord) -> str | None:
+    active_barrier = session.policy_context.get("activeBarrier")
+    if isinstance(active_barrier, dict):
+        return _normalize_barrier_type(active_barrier.get("type"))
+    return None
+
+
+def _event_session_snapshot(session: LiveBrowserSessionRecord) -> dict[str, Any]:
+    snapshot = {
+        "sessionId": session.session_id,
+        "tenantId": session.tenant_id,
+        "userId": session.user_id,
+        "sourceType": session.source_type,
+        "sourceId": session.source_id,
+        "status": session.status,
+        "controlMode": session.control_mode,
+        "sessionVersion": session.session_version,
+        "controllerActorType": session.controller_actor_type,
+        "controllerActorId": session.controller_actor_id,
+        "controllerConnectionId": session.controller_connection_id,
+        "controllerLeaseExpiresAt": (
+            session.controller_lease_expires_at.isoformat()
+            if session.controller_lease_expires_at
+            else None
+        ),
+        "pauseReason": session.pause_reason,
+        "barrierType": get_live_browser_barrier_type(session),
+        "pendingAssistRequestId": session.pending_assist_request_id,
+        "pendingApprovalRequestId": session.pending_approval_request_id,
+        "policyContext": _copy_json(session.policy_context),
+        "browserContextRef": _copy_json(session.browser_context_ref),
+        "activeTabCount": session.active_tab_count,
+        "startedAt": session.started_at.isoformat(),
+        "lastActivityAt": session.last_activity_at.isoformat(),
+        "endedAt": session.ended_at.isoformat() if session.ended_at else None,
+        "endReason": session.end_reason,
+    }
+    if session.stream_ref:
+        snapshot["stream"] = _copy_json(session.stream_ref)
+    return snapshot
+
+
+def _set_active_barrier(
+    policy_context: dict[str, Any],
+    *,
+    barrier_type: str | None,
+    request_id: str,
+    prompt: str,
+    gate: str,
+) -> dict[str, Any]:
+    updated = _copy_json(policy_context)
+    if barrier_type is None:
+        updated.pop("activeBarrier", None)
+        return updated
+
+    updated["activeBarrier"] = {
+        "type": barrier_type,
+        "requestId": request_id,
+        "prompt": prompt,
+        "gate": gate,
+        "requiresTakeover": barrier_type in LIVE_BROWSER_TAKEOVER_BARRIERS,
+        "commitmentGate": barrier_type in LIVE_BROWSER_COMMITMENT_GATES,
+    }
+    return updated
+
+
+def _clear_active_barrier(
+    policy_context: dict[str, Any],
+    *,
+    request_id: str | None = None,
+) -> dict[str, Any]:
+    updated = _copy_json(policy_context)
+    active_barrier = updated.get("activeBarrier")
+    if not isinstance(active_barrier, dict):
+        return updated
+    if request_id and active_barrier.get("requestId") not in {None, request_id}:
+        return updated
+    updated.pop("activeBarrier", None)
+    return updated
+
+
+def _merge_policy_context_patch(
+    policy_context: dict[str, Any],
+    patch: dict[str, Any],
+) -> dict[str, Any]:
+    updated = _copy_json(policy_context)
+    for key, value in patch.items():
+        if value is None:
+            updated.pop(key, None)
+        else:
+            updated[key] = _copy_json(value) if isinstance(value, dict) else value
+    return updated
+
+
+def _build_barrier_signal_text(
+    *,
+    session: LiveBrowserSessionRecord,
+    prompt: str,
+    request_type: str | None = None,
+) -> str:
+    parts = [
+        prompt,
+        request_type or "",
+        str(session.browser_context_ref.get("url") or ""),
+        str(session.browser_context_ref.get("pageTitle") or ""),
+        str(session.browser_context_ref.get("pageSensitivity") or ""),
+    ]
+    return " ".join(part.strip().lower() for part in parts if isinstance(part, str) and part.strip())
+
+
+def _infer_assist_barrier_type(
+    *,
+    session: LiveBrowserSessionRecord,
+    request_type: str,
+    prompt: str,
+) -> str | None:
+    text = _build_barrier_signal_text(session=session, prompt=prompt, request_type=request_type)
+    if any(token in text for token in ("captcha", "recaptcha", "hcaptcha", "verify you are human", "robot check")):
+        return "captcha_required"
+    if _resolve_session_page_sensitivity(session) == "auth":
+        return "login_required"
+    if any(
+        token in text
+        for token in (
+            "login",
+            "log in",
+            "sign in",
+            "signin",
+            "password",
+            "passkey",
+            "otp",
+            "2fa",
+            "mfa",
+            "authentication",
+            "authenticate",
+        )
+    ):
+        return "login_required"
+    return None
+
+
+def _infer_approval_barrier_type(
+    *,
+    session: LiveBrowserSessionRecord,
+    prompt: str,
+) -> str | None:
+    text = _build_barrier_signal_text(session=session, prompt=prompt)
+    if _resolve_session_page_sensitivity(session) == "financial":
+        return "payment_review_required"
+    if any(
+        token in text
+        for token in ("payment", "checkout", "billing", "invoice", "card", "wallet", "bank", "pay now")
+    ):
+        return "payment_review_required"
+    if any(
+        token in text
+        for token in (
+            "booking confirmation",
+            "confirm booking",
+            "confirm reservation",
+            "booking",
+            "reservation",
+            "reserve",
+            "itinerary",
+        )
+    ):
+        return "booking_confirmation_required"
+    return None
+
+
+def infer_live_browser_page_sensitivity(
+    *,
+    url: str | None,
+    page_title: str | None = None,
+    data_classes: list[str] | None = None,
+    explicit_page_sensitivity: str | None = None,
+) -> tuple[str, list[str]]:
+    if explicit_page_sensitivity in LIVE_BROWSER_PAGE_SENSITIVITY_VALUES:
+        return explicit_page_sensitivity, ["explicit_page_sensitivity"]
+
+    normalized_data_classes = {
+        str(value).strip().lower()
+        for value in (data_classes or [])
+        if str(value).strip()
+    }
+    parsed = urlparse(url or "")
+    host = parsed.netloc.lower()
+    path = parsed.path.lower()
+    title = (page_title or "").lower()
+    combined_text = " ".join(part for part in (host, path, title) if part)
+
+    if any(token in combined_text for token in ("admin", "console", "dashboard", "permissions", "settings")):
+        return "admin", ["admin_surface"]
+
+    if any(
+        token in combined_text
+        for token in ("billing", "checkout", "invoice", "payment", "wallet", "bank", "card", "stripe")
+    ):
+        return "financial", ["financial_surface"]
+
+    if any(
+        token in combined_text
+        for token in (
+            "login",
+            "log-in",
+            "signin",
+            "sign-in",
+            "signup",
+            "sign-up",
+            "password",
+            "passkey",
+            "oauth",
+            "verify",
+            "mfa",
+            "2fa",
+            "auth",
+        )
+    ) or any(host.startswith(prefix) for prefix in ("auth.", "accounts.", "login.", "id.")):
+        return "auth", ["auth_surface"]
+
+    if normalized_data_classes.intersection({"restricted", "confidential"}) or any(
+        token in combined_text for token in ("confidential", "restricted", "pii", "ssn", "passport")
+    ):
+        return "sensitive_data", ["sensitive_data"]
+
+    if "communication" in normalized_data_classes or any(
+        token in combined_text for token in ("inbox", "mail", "email", "chat", "messages", "slack")
+    ):
+        return "communication", ["communication_surface"]
+
+    if "code" in normalized_data_classes or any(
+        token in combined_text for token in ("github", "gitlab", "bitbucket", "/pull/", "/merge/", "/blob/")
+    ):
+        return "code", ["code_surface"]
+
+    return "none", []
+
+
+def _resolve_session_page_sensitivity(session: LiveBrowserSessionRecord) -> str:
+    page_sensitivity, _ = infer_live_browser_page_sensitivity(
+        url=str(session.browser_context_ref.get("url") or ""),
+        page_title=str(session.browser_context_ref.get("pageTitle") or ""),
+        data_classes=(
+            session.browser_context_ref.get("dataClasses")
+            if isinstance(session.browser_context_ref.get("dataClasses"), list)
+            else None
+        ),
+        explicit_page_sensitivity=(
+            str(session.browser_context_ref.get("pageSensitivity"))
+            if session.browser_context_ref.get("pageSensitivity") is not None
+            else None
+        ),
+    )
+    return page_sensitivity
+
+
+def _raise_step_up_auth_required(reason_code: str, message: str | None = None) -> None:
+    raise LiveBrowserSessionMutationError(
+        code="step_up_auth_required",
+        message=message or "Live Browser takeover requires recent step-up authentication proof",
+        retryable=False,
+        reason_codes=[reason_code],
+    )
 
 
 class InMemoryLiveBrowserStore:
@@ -630,6 +947,31 @@ class LiveBrowserSessionManager:
             transition=self._transition_pause_agent(reason),
         )
 
+    def update_policy_context(
+        self,
+        *,
+        session_id: str,
+        expected_session_version: int,
+        idempotency_key: str,
+        actor_type: str,
+        actor_id: str,
+        policy_context_patch: dict[str, Any],
+        now: datetime | None = None,
+    ) -> dict[str, Any]:
+        return self._run_mutation(
+            session_id=session_id,
+            expected_session_version=expected_session_version,
+            idempotency_key=idempotency_key,
+            actor_type=actor_type,
+            actor_id=actor_id,
+            event_type="session_state_changed",
+            mutation_name="update_policy_context",
+            now=now,
+            transition=self._transition_update_policy_context(
+                policy_context_patch=policy_context_patch,
+            ),
+        )
+
     def request_approval(
         self,
         *,
@@ -639,6 +981,7 @@ class LiveBrowserSessionManager:
         actor_id: str,
         approval_request_id: str,
         prompt: str,
+        barrier_type: str | None = None,
         tab_id: str | None = None,
         now: datetime | None = None,
     ) -> dict[str, Any]:
@@ -654,6 +997,7 @@ class LiveBrowserSessionManager:
             transition=self._transition_request_approval(
                 approval_request_id=approval_request_id,
                 prompt=prompt,
+                barrier_type=barrier_type,
                 tab_id=tab_id,
             ),
         )
@@ -696,6 +1040,7 @@ class LiveBrowserSessionManager:
         assist_request_id: str,
         request_type: str,
         prompt: str,
+        barrier_type: str | None = None,
         tab_id: str | None = None,
         now: datetime | None = None,
     ) -> dict[str, Any]:
@@ -712,6 +1057,7 @@ class LiveBrowserSessionManager:
                 assist_request_id=assist_request_id,
                 request_type=request_type,
                 prompt=prompt,
+                barrier_type=barrier_type,
                 tab_id=tab_id,
             ),
         )
@@ -750,11 +1096,18 @@ class LiveBrowserSessionManager:
         idempotency_key: str,
         actor_id: str,
         reason: str,
+        takeover_proof: str | None = None,
         now: datetime | None = None,
     ) -> dict[str, Any]:
         timestamp = now or datetime.now(UTC)
 
         def transition(session: LiveBrowserSessionRecord) -> MutationTransitionResult:
+            self._assert_takeover_proof(
+                session=session,
+                actor_id=actor_id,
+                takeover_proof=takeover_proof,
+                now=timestamp,
+            )
             if session.status not in {"ready", "waiting_for_human", "agent_running"}:
                 raise LiveBrowserSessionMutationError(
                     code="invalid_state_transition",
@@ -793,6 +1146,60 @@ class LiveBrowserSessionManager:
             now=timestamp,
             transition=transition,
         )
+
+    def _assert_takeover_proof(
+        self,
+        *,
+        session: LiveBrowserSessionRecord,
+        actor_id: str,
+        takeover_proof: str | None,
+        now: datetime,
+    ) -> None:
+        if not takeover_proof:
+            _raise_step_up_auth_required("missing_step_up_auth")
+
+        try:
+            payload = jwt.decode(
+                takeover_proof,
+                settings.JWT_SECRET,
+                algorithms=[settings.ALGORITHM],
+            )
+        except JWTError:
+            _raise_step_up_auth_required("invalid_step_up_auth")
+
+        if payload.get("type") != TAKEOVER_STEP_UP_PROOF_TYPE:
+            _raise_step_up_auth_required("invalid_step_up_auth")
+        assurance = payload.get("liveBrowserAssurance")
+        if assurance not in {
+            TAKEOVER_STEP_UP_ASSURANCE_RECENT_SIGN_IN,
+            TAKEOVER_STEP_UP_ASSURANCE_MFA,
+        }:
+            _raise_step_up_auth_required("invalid_step_up_auth")
+        if payload.get("sub") != actor_id or payload.get("liveBrowserActorId") != actor_id:
+            _raise_step_up_auth_required("invalid_step_up_auth")
+        if payload.get("liveBrowserSessionId") != session.session_id:
+            _raise_step_up_auth_required("invalid_step_up_auth")
+        if payload.get("liveBrowserSessionVersion") != session.session_version:
+            _raise_step_up_auth_required("invalid_step_up_auth")
+        if str(payload.get("liveBrowserUserId")) != str(session.user_id):
+            _raise_step_up_auth_required("invalid_step_up_auth")
+        if payload.get("liveBrowserTenantId") != session.tenant_id:
+            _raise_step_up_auth_required("invalid_step_up_auth")
+
+        reauthenticated_at = _parse_datetime(payload.get("liveBrowserReauthenticatedAt"))
+        if reauthenticated_at is None:
+            _raise_step_up_auth_required("invalid_step_up_auth")
+        if now - reauthenticated_at > TAKEOVER_STEP_UP_MAX_AGE:
+            _raise_step_up_auth_required("stale_step_up_auth")
+
+        if (
+            _resolve_session_page_sensitivity(session) in TAKEOVER_ELEVATED_PAGE_SENSITIVITIES
+            and assurance != TAKEOVER_STEP_UP_ASSURANCE_MFA
+        ):
+            _raise_step_up_auth_required(
+                "sensitive_page_mfa_required",
+                "Sensitive Live Browser pages require MFA-backed step-up authentication proof",
+            )
 
     def return_control(
         self,
@@ -888,6 +1295,9 @@ class LiveBrowserSessionManager:
         tab_id: str,
         url: str,
         dom_fingerprint: str,
+        page_title: str | None = None,
+        data_classes: list[str] | None = None,
+        page_sensitivity: str | None = None,
         now: datetime | None = None,
     ) -> dict[str, Any]:
         return self._run_mutation(
@@ -903,6 +1313,9 @@ class LiveBrowserSessionManager:
                 tab_id=tab_id,
                 url=url,
                 dom_fingerprint=dom_fingerprint,
+                page_title=page_title,
+                data_classes=data_classes,
+                page_sensitivity=page_sensitivity,
             ),
         )
 
@@ -1167,6 +1580,8 @@ class LiveBrowserSessionManager:
         screenshot_ref: str | None = None,
     ) -> LiveBrowserEventRecord:
         event_nonce = uuid4().hex
+        event_payload = dict(payload)
+        event_payload.setdefault("session", _event_session_snapshot(session))
         event = LiveBrowserEventRecord(
             event_id=f"lbe_{event_nonce}",
             session_id=session.session_id,
@@ -1175,7 +1590,7 @@ class LiveBrowserSessionManager:
             event_type=event_type,
             actor_type=actor_type,
             actor_id=actor_id,
-            payload=dict(payload),
+            payload=event_payload,
             cursor=f"{session.session_id}:{session.session_version}:{event_nonce}",
             created_at=now,
             screenshot_ref=screenshot_ref,
@@ -1262,6 +1677,26 @@ class LiveBrowserSessionManager:
 
         return transition
 
+    def _transition_update_policy_context(
+        self,
+        *,
+        policy_context_patch: dict[str, Any],
+    ):
+        def transition(session: LiveBrowserSessionRecord) -> MutationTransitionResult:
+            updated_policy_context = _merge_policy_context_patch(
+                session.policy_context,
+                policy_context_patch,
+            )
+            updated = replace(session, policy_context=updated_policy_context)
+            response = {
+                "accepted": True,
+                "sessionVersion": updated.session_version + 1,
+                "policyContext": _copy_json(updated_policy_context),
+            }
+            return MutationTransitionResult(session=updated, response=response)
+
+        return transition
+
     @staticmethod
     def _transition_pause_agent(reason: str):
         def transition(session: LiveBrowserSessionRecord) -> MutationTransitionResult:
@@ -1294,6 +1729,7 @@ class LiveBrowserSessionManager:
         *,
         approval_request_id: str,
         prompt: str,
+        barrier_type: str | None,
         tab_id: str | None,
     ):
         def transition(session: LiveBrowserSessionRecord) -> MutationTransitionResult:
@@ -1316,6 +1752,17 @@ class LiveBrowserSessionManager:
             }
             policy_context = _copy_json(session.policy_context)
             policy_context["pendingApproval"] = pending
+            resolved_barrier_type = _normalize_barrier_type(barrier_type) or _infer_approval_barrier_type(
+                session=session,
+                prompt=prompt,
+            )
+            policy_context = _set_active_barrier(
+                policy_context,
+                barrier_type=resolved_barrier_type,
+                request_id=approval_request_id,
+                prompt=prompt,
+                gate="approval",
+            )
             updated = replace(
                 session,
                 status="waiting_for_human",
@@ -1367,6 +1814,10 @@ class LiveBrowserSessionManager:
                 "decision": decision,
                 "notes": notes,
             }
+            policy_context = _clear_active_barrier(
+                policy_context,
+                request_id=approval_request_id,
+            )
             should_resume = decision == "approved"
             next_status, next_mode = self._resume_state_from_work_queue(session, allow_resume=should_resume)
             updated = replace(
@@ -1406,6 +1857,7 @@ class LiveBrowserSessionManager:
         assist_request_id: str,
         request_type: str,
         prompt: str,
+        barrier_type: str | None,
         tab_id: str | None,
     ):
         def transition(session: LiveBrowserSessionRecord) -> MutationTransitionResult:
@@ -1428,6 +1880,18 @@ class LiveBrowserSessionManager:
                 "origin": session.browser_context_ref.get("origin"),
                 "domFingerprint": session.browser_context_ref.get("domFingerprint"),
             }
+            resolved_barrier_type = _normalize_barrier_type(barrier_type) or _infer_assist_barrier_type(
+                session=session,
+                request_type=request_type,
+                prompt=prompt,
+            )
+            policy_context = _set_active_barrier(
+                policy_context,
+                barrier_type=resolved_barrier_type,
+                request_id=assist_request_id,
+                prompt=prompt,
+                gate="assist",
+            )
             updated = replace(
                 session,
                 status="waiting_for_human",
@@ -1472,20 +1936,27 @@ class LiveBrowserSessionManager:
                 )
 
             response_type = response_payload.get("type")
-            should_resume = response_type != "takeover_required"
             policy_context = _copy_json(session.policy_context)
             policy_context.pop("pendingAssist", None)
             policy_context["lastAssistResolution"] = {
                 "requestId": assist_request_id,
                 "response": dict(response_payload),
             }
+            barrier_type = get_live_browser_barrier_type(session)
+            requires_takeover = barrier_type in LIVE_BROWSER_TAKEOVER_BARRIERS
+            should_resume = response_type != "takeover_required" and not requires_takeover
+            if should_resume:
+                policy_context = _clear_active_barrier(
+                    policy_context,
+                    request_id=assist_request_id,
+                )
             next_status, next_mode = self._resume_state_from_work_queue(session, allow_resume=should_resume)
             updated = replace(
                 self._clear_human_blockers(session),
                 status=next_status if should_resume else "waiting_for_human",
                 control_mode=next_mode if should_resume else "approve_only",
                 policy_context=policy_context,
-                pause_reason=None if should_resume else "takeover_required",
+                pause_reason=None if should_resume else (barrier_type or "takeover_required"),
             )
             response = {
                 "accepted": True,
@@ -1527,20 +1998,24 @@ class LiveBrowserSessionManager:
                 )
 
             updated_session = self._clear_human_blockers(session)
+            policy_context = _copy_json(session.policy_context)
             if not revalidation_ok:
                 updated = replace(
                     updated_session,
                     status="waiting_for_human",
                     control_mode="approve_only",
                     pause_reason="revalidation_failed",
+                    policy_context=policy_context,
                 )
             else:
                 next_status, next_mode = self._resume_state_from_work_queue(session, allow_resume=True)
+                policy_context = _clear_active_barrier(policy_context)
                 updated = replace(
                     updated_session,
                     status=next_status,
                     control_mode=next_mode,
                     pause_reason=None,
+                    policy_context=policy_context,
                 )
 
             response = {
@@ -1575,16 +2050,31 @@ class LiveBrowserSessionManager:
         tab_id: str,
         url: str,
         dom_fingerprint: str,
+        page_title: str | None,
+        data_classes: list[str] | None,
+        page_sensitivity: str | None,
     ):
         def transition(session: LiveBrowserSessionRecord) -> MutationTransitionResult:
             context = _copy_json(session.browser_context_ref)
             previous_tab_id = context.get("activeTabId")
             previous_origin = context.get("origin")
             previous_dom_fingerprint = context.get("domFingerprint")
+            resolved_page_sensitivity, reason_codes = infer_live_browser_page_sensitivity(
+                url=url,
+                page_title=page_title,
+                data_classes=data_classes,
+                explicit_page_sensitivity=page_sensitivity,
+            )
             context["activeTabId"] = tab_id
             context["url"] = url
             context["origin"] = _current_origin(url)
             context["domFingerprint"] = dom_fingerprint
+            context["pageSensitivity"] = resolved_page_sensitivity
+            context["pageSensitivityReasonCodes"] = reason_codes
+            if page_title is not None:
+                context["pageTitle"] = page_title
+            if data_classes is not None:
+                context["dataClasses"] = list(data_classes)
 
             follow_up_events: list[FollowUpEvent] = []
             material_change = (
@@ -1607,6 +2097,7 @@ class LiveBrowserSessionManager:
                 "sessionVersion": updated.session_version + 1,
                 "activeTabId": tab_id,
                 "url": url,
+                "pageSensitivity": resolved_page_sensitivity,
             }
             return MutationTransitionResult(
                 session=updated,

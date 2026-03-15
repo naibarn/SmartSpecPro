@@ -32,6 +32,8 @@ from app.services.live_browser_session_manager import (
     LiveBrowserEventRecord,
     LiveBrowserSessionManager,
     LiveBrowserSessionRecord,
+    get_live_browser_barrier_type,
+    infer_live_browser_page_sensitivity,
 )
 
 _lock = Lock()
@@ -100,21 +102,51 @@ def _build_browser_context(provider_session: ManagedBrowserSession) -> dict[str,
         (tab for tab in provider_session.tabs if tab.is_active),
         provider_session.tabs[0],
     )
+    tabs: list[dict[str, Any]] = []
+    active_page_sensitivity = "none"
+    active_reason_codes: list[str] = []
+    for tab in provider_session.tabs:
+        page_sensitivity, reason_codes = infer_live_browser_page_sensitivity(
+            url=tab.url,
+            page_title=tab.title,
+        )
+        tab_payload = {
+            "tabId": tab.tab_id,
+            "url": tab.url,
+            "title": tab.title,
+            "isActive": tab.is_active,
+            "pageSensitivity": page_sensitivity,
+            "pageSensitivityReasonCodes": reason_codes,
+        }
+        tabs.append(tab_payload)
+        if tab.tab_id == active_tab.tab_id:
+            active_page_sensitivity = page_sensitivity
+            active_reason_codes = reason_codes
+
     return {
         "activeTabId": provider_session.active_tab_id,
         "url": active_tab.url,
         "pageTitle": active_tab.title,
-        "tabs": [
-            {
-                "tabId": tab.tab_id,
-                "url": tab.url,
-                "title": tab.title,
-                "isActive": tab.is_active,
-            }
-            for tab in provider_session.tabs
-        ],
+        "pageSensitivity": active_page_sensitivity,
+        "pageSensitivityReasonCodes": active_reason_codes,
+        "tabs": tabs,
         "commandQueue": [],
     }
+
+
+def _merge_browser_context(
+    existing: dict[str, Any],
+    provider_session: ManagedBrowserSession,
+) -> dict[str, Any]:
+    merged = dict(existing)
+    merged.update(_build_browser_context(provider_session))
+    if "commandQueue" in existing:
+        merged["commandQueue"] = list(existing["commandQueue"])
+    if "activeCommandId" in existing:
+        merged["activeCommandId"] = existing["activeCommandId"]
+    if "activeCommand" in existing:
+        merged["activeCommand"] = dict(existing["activeCommand"])
+    return merged
 
 
 def _to_stream_contract(stream_ref: dict[str, Any]) -> LiveBrowserStream | None:
@@ -132,7 +164,10 @@ def _persist_session_projection(
 ) -> LiveBrowserSessionRecord:
     updated = replace(
         session,
-        browser_context_ref=_build_browser_context(provider_session),
+        browser_context_ref=_merge_browser_context(
+            session.browser_context_ref,
+            provider_session,
+        ),
         active_tab_count=len(provider_session.tabs),
         stream_ref=dict(stream_ref or session.stream_ref),
     )
@@ -176,6 +211,7 @@ def serialize_live_browser_session(session: LiveBrowserSessionRecord) -> LiveBro
             else None
         ),
         pauseReason=session.pause_reason,
+        barrierType=get_live_browser_barrier_type(session),
         pendingAssistRequestId=session.pending_assist_request_id,
         pendingApprovalRequestId=session.pending_approval_request_id,
         policyContext=dict(session.policy_context),
@@ -196,7 +232,7 @@ def serialize_live_browser_event(event: LiveBrowserEventRecord) -> LiveBrowserEv
         sessionVersion=event.session_version_at,
         type=event.event_type,
         timestamp=event.created_at.isoformat(),
-        payload=dict(event.payload),
+        payload=event.payload,
         cursor=event.cursor,
     )
 
@@ -213,6 +249,7 @@ def create_live_browser_session(
     initial_url: str | None,
     mode: str,
     browser_policy_context: dict[str, Any],
+    execution_intent: dict[str, Any] | None = None,
 ) -> LiveBrowserCreateSessionResponse:
     with _lock:
         session_id = f"lbs_{uuid4().hex[:12]}"
@@ -230,6 +267,10 @@ def create_live_browser_session(
             "viewerToken": viewer_stream.token,
             "expiresAt": viewer_stream.expires_at.isoformat(),
         }
+        policy_context = dict(browser_policy_context)
+        if execution_intent:
+            policy_context["executionIntent"] = dict(execution_intent)
+
         created = manager.create_session(
             session_id=session_id,
             tenant_id=tenant_id,
@@ -238,16 +279,29 @@ def create_live_browser_session(
             source_id=source_id,
             status="ready",
             control_mode=mode,
-            policy_context=browser_policy_context,
+            policy_context=policy_context,
             browser_context_ref=_build_browser_context(provider_session),
             stream_ref=stream_ref,
         )
-        hydrated = _persist_session_projection(
-            manager,
-            created,
-            provider_session=provider_session,
-            stream_ref=stream_ref,
-        )
+
+        if execution_intent and execution_intent.get("prompt"):
+            manager.append_runtime_event(
+                session_id=session_id,
+                event_type="agent_started",
+                actor_type="agent",
+                actor_id="automation_copilot",
+                payload={"executionIntent": dict(execution_intent)},
+            )
+            manager.send_command(
+                session_id=session_id,
+                expected_session_version=created.session_version,
+                idempotency_key=f"launch-{session_id}",
+                actor_type="agent",
+                actor_id="automation_copilot",
+                command_text=str(execution_intent["prompt"]),
+            )
+
+        hydrated = manager.get_session(session_id)
         return LiveBrowserCreateSessionResponse(
             sessionId=hydrated.session_id,
             status=hydrated.status,

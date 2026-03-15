@@ -25,6 +25,7 @@ from app.services.agency_swarm_adapter import (
     AgentConfig,
     AgencyConfig,
     RunResult,
+    UsageBreakdown,
 )
 from app.services.agency_credits import AgencyCreditManager
 from app.services.agency_persistence import create_persistence_hooks
@@ -34,6 +35,11 @@ from app.services.agency_audit import log_agency_event, reconcile_credits
 from app.services.agency_orchestrator import AgencyOrchestrator, should_use_orchestrator
 
 logger = structlog.get_logger(__name__)
+
+# ── Stream cancellation registry (v1.6) ────────────────────────────
+# Maps run_id → active StreamingRunResponse so cancel_run() can signal it.
+# Entries are added when streaming starts and removed on completion/error.
+_active_streams: dict[str, Any] = {}
 
 
 # ── Exceptions ─────────────────────────────────────────────────────
@@ -413,7 +419,8 @@ class AgencyService:
         if not row:
             raise AgencyNotFoundError(f"Agency {agency_id} not found")
 
-        if row.tenant_id != tenant_id:
+        # Allow __system__ template agencies to be used by any tenant
+        if row.tenant_id != tenant_id and row.tenant_id != "__system__":
             raise AgencyPermissionError(
                 f"Agency {agency_id} belongs to tenant {row.tenant_id}, "
                 f"not {tenant_id}"
@@ -525,6 +532,9 @@ class AgencyService:
         agency_id: str,
         message: str,
         context: RunContext,
+        recipient_agent: str | None = None,
+        file_ids: list[str] | None = None,
+        additional_instructions: str | None = None,
     ) -> RunResult:
         """Full run lifecycle: load -> construct -> pre-check -> execute -> markup.
 
@@ -552,6 +562,8 @@ class AgencyService:
                 agency_id=agency_id,
                 node_count=len(agents_data),
             )
+            agency_whitelist = await self._load_tool_whitelist(agency_id)
+            retrieval_scope_mode = self._get_retrieval_scope_mode(context.run_metadata)
             edges_data = await self._load_flows_full(agency_id)
             orchestrator = AgencyOrchestrator(
                 nodes=agents_data,
@@ -559,6 +571,8 @@ class AgencyService:
                 adapter=self.adapter,
                 db=self.db,
                 agency_config=agency_config,
+                agency_whitelist=agency_whitelist,
+                retrieval_scope_mode=retrieval_scope_mode,
             )
             response_text = await orchestrator.run(
                 message=message,
@@ -607,7 +621,7 @@ class AgencyService:
             db_session_factory=AsyncSessionLocal,
         )
 
-        # 6. Construct agents via adapter (with agent-level KB retrieval)
+        # 6. Construct agents via adapter (with agent-level KB retrieval + v1.7 starters)
         agents = []
         for agent_data in agents_data:
             agent_instructions = agent_data["instructions"]
@@ -627,11 +641,23 @@ class AgencyService:
             agent = self.adapter.create_agent(
                 config=AgentConfig(
                     name=agent_data["name"],
+                    description=agent_data.get("description"),
                     instructions=agent_instructions,
                     model=agent_data["model"],
                     model_settings=agent_data["model_settings"],
                     tools=agent_tools.get(agent_data["id"], []),
                     is_entry_point=agent_data["is_entry_point"],
+                    conversation_starters=node_config.get("conversationStarters"),
+                    quick_replies=node_config.get("quickReplies"),
+                    output_type=node_config.get("outputType"),
+                    files_folder=node_config.get("filesFolder"),
+                    tool_use_behavior=node_config.get("toolUseBehavior"),
+                    validation_attempts=node_config.get("validationAttempts", 1),
+                    input_guardrails=node_config.get("inputGuardrails"),
+                    output_guardrails=node_config.get("outputGuardrails"),
+                    mcp_servers=node_config.get("mcpServers"),
+                    mcp_config=node_config.get("mcpConfig"),
+                    hooks=node_config.get("hooks"),
                 ),
                 user_token=context.user_token,
             )
@@ -669,6 +695,9 @@ class AgencyService:
                 timeout_seconds=agency_config.max_run_time_seconds,
                 agency_id=agency_id,
                 tenant_id=context.tenant_id,
+                recipient_agent=recipient_agent,
+                file_ids=file_ids,
+                additional_instructions=additional_instructions,
             )
 
             elapsed_ms = int((time.monotonic() - start_time) * 1000)
@@ -735,8 +764,8 @@ class AgencyService:
             # Credit reconciliation (gateway cost is 0.0 until reconciliation endpoint is wired)
             await reconcile_credits(
                 run_id=run_id,
-                gateway_total=0.0,
-                run_total_credits=0.0,
+                gateway_total=None,
+                run_total_credits=None,
             )
 
             # 12. Settle creator fee (post-run, fire-and-forget)
@@ -782,6 +811,9 @@ class AgencyService:
         context: RunContext,
         model_override: str | None = None,
         persona_prefix: str | None = None,
+        recipient_agent: str | None = None,
+        file_ids: list[str] | None = None,
+        additional_instructions: str | None = None,
     ) -> AsyncGenerator[dict, None]:
         """Streaming variant: yields SSE-formatted event dicts.
 
@@ -807,6 +839,8 @@ class AgencyService:
             if should_use_orchestrator(agents_data):
                 logger.info("agency_run_stream_orchestrator_path", agency_id=agency_id)
                 yield {"event": "run_started", "data": {"run_id": run_id}}
+                agency_whitelist = await self._load_tool_whitelist(agency_id)
+                retrieval_scope_mode = self._get_retrieval_scope_mode(context.run_metadata)
                 edges_data = await self._load_flows_full(agency_id)
                 orchestrator = AgencyOrchestrator(
                     nodes=agents_data,
@@ -814,13 +848,17 @@ class AgencyService:
                     adapter=self.adapter,
                     db=self.db,
                     agency_config=agency_config,
+                    agency_whitelist=agency_whitelist,
+                    retrieval_scope_mode=retrieval_scope_mode,
                 )
-                response_text = await orchestrator.run(
+                response_text, execution_context = await orchestrator.run_with_context(
                     message=message,
                     user_token=context.user_token,
                     tenant_id=context.tenant_id,
                     user_id=context.user_id,
                 )
+                for browser_session in execution_context.browser_sessions:
+                    yield {"event": "browser_session", "data": browser_session}
                 yield {"event": "token", "data": {"token": response_text}}
                 yield {"event": "run_finished", "data": {"run_id": run_id, "response": response_text}}
                 return
@@ -863,11 +901,23 @@ class AgencyService:
                 agent = self.adapter.create_agent(
                     config=AgentConfig(
                         name=agent_data["name"],
+                        description=agent_data.get("description"),
                         instructions=agent_instructions,
                         model=model_override or agent_data["model"],
                         model_settings=agent_data["model_settings"],
                         tools=agent_tools.get(agent_data["id"], []),
                         is_entry_point=agent_data["is_entry_point"],
+                        conversation_starters=node_config.get("conversationStarters"),
+                        quick_replies=node_config.get("quickReplies"),
+                        output_type=node_config.get("outputType"),
+                        files_folder=node_config.get("filesFolder"),
+                        tool_use_behavior=node_config.get("toolUseBehavior"),
+                        validation_attempts=node_config.get("validationAttempts", 1),
+                        input_guardrails=node_config.get("inputGuardrails"),
+                        output_guardrails=node_config.get("outputGuardrails"),
+                        mcp_servers=node_config.get("mcpServers"),
+                        mcp_config=node_config.get("mcpConfig"),
+                        hooks=node_config.get("hooks"),
                     ),
                     user_token=context.user_token,
                     run_config=run_config,
@@ -894,7 +944,13 @@ class AgencyService:
                 message=message,
                 agency_id=agency_id,
                 tenant_id=context.tenant_id,
+                recipient_agent=recipient_agent,
+                file_ids=file_ids,
+                additional_instructions=additional_instructions,
             )
+
+            # v1.6: Register stream for cancellation
+            _active_streams[run_id] = stream
 
             # Iterate stream events (StreamingRunResponse is an async iterable)
             current_agent_name = ""
@@ -978,10 +1034,22 @@ class AgencyService:
                         current_agent_name = agent_name
                         yield {"event": "agent_switch", "data": {"agent_name": agent_name}}
 
+            # v1.6: Unregister stream after iteration completes
+            _active_streams.pop(run_id, None)
+
+            # v1.6: Extract comprehensive usage from completed stream
+            # NOTE: Must use extract_stream_usage() which accesses stream.final_result,
+            # not _extract_usage() which expects a RunResult with raw_responses directly.
+            stream_usage = self.adapter.extract_stream_usage(stream)
+            stream_total_tokens, stream_pt, stream_ct, _, stream_breakdown = stream_usage
+
             logger.info(
                 "agency_stream_completed",
                 total_events=event_count,
                 tokens_yielded=token_count,
+                total_tokens=stream_total_tokens,
+                prompt_tokens=stream_pt,
+                completion_tokens=stream_ct,
             )
 
             normalized = self._normalize_structured_preview_result(
@@ -1013,6 +1081,12 @@ class AgencyService:
                 preview_artifacts=normalized["preview_artifacts"],
             )
 
+            await reconcile_credits(
+                run_id=run_id,
+                gateway_total=None,
+                run_total_credits=None,
+            )
+
             if normalized["preview_artifacts"]:
                 first_artifact = normalized["preview_artifacts"][0]
                 yield {
@@ -1027,7 +1101,17 @@ class AgencyService:
                     },
                 }
 
-            yield {"event": "run_finished", "data": {"run_id": run_id}}
+            yield {
+                "event": "run_finished",
+                "data": {
+                    "run_id": run_id,
+                    # v1.6: Include usage data in stream completion
+                    "total_tokens": stream_total_tokens,
+                    "prompt_tokens": stream_pt,
+                    "completion_tokens": stream_ct,
+                    "usage_breakdown": [b.model_dump() for b in stream_breakdown],
+                },
+            }
 
             # Settle creator fee (post-run, fire-and-forget)
             if agency_config.creator_fee_credits > 0 and agency_config.creator_id:
@@ -1042,6 +1126,9 @@ class AgencyService:
                 )
 
         except Exception as exc:
+            # v1.6: Clean up stream registry on error
+            _active_streams.pop(run_id, None)
+
             logger.error(
                 "agency_service_stream_failed",
                 run_id=run_id,
@@ -1174,10 +1261,11 @@ class AgencyService:
                 FROM agency_messages
                 WHERE conversation_id = :conversation_id
                   AND role = 'assistant'
+                  AND tenant_id = :tenant_id
                 ORDER BY created_at DESC
                 LIMIT 1
             """),
-            {"conversation_id": row.conversation_id},
+            {"conversation_id": row.conversation_id, "tenant_id": tenant_id},
         )
         response_row = response_result.first()
 
@@ -1189,9 +1277,10 @@ class AgencyService:
                        committed_at, expired_at
                 FROM agency_run_artifacts
                 WHERE run_id = :run_id
+                  AND tenant_id = :tenant_id
                 ORDER BY created_at ASC
             """),
-            {"run_id": run_id},
+            {"run_id": run_id, "tenant_id": tenant_id},
         )
 
         return {
@@ -1238,8 +1327,15 @@ class AgencyService:
         run_id: str,
         agency_id: str,
         tenant_id: str,
+        cancel_mode: str = "immediate",
     ) -> dict:
-        """Cancel a running agency run.
+        """Cancel a running agency run (v1.6 stream cancellation).
+
+        If the run has an active stream in _active_streams, signals it
+        via the agency-swarm cancel API with the specified mode.
+
+        Args:
+            cancel_mode: "immediate" stops now, "after_turn" finishes current turn.
 
         Raises AgencyNotFoundError if run not found or wrong tenant.
         """
@@ -1258,6 +1354,16 @@ class AgencyService:
 
         if row.status in ("completed", "failed", "cancelled"):
             return {"run_id": run_id, "status": row.status}
+
+        # v1.6: Signal the active stream if one exists
+        stream = _active_streams.get(run_id)
+        if stream is not None:
+            self.adapter.cancel_stream(stream, mode=cancel_mode)
+            logger.info(
+                "agency_stream_cancel_signalled",
+                run_id=run_id,
+                mode=cancel_mode,
+            )
 
         await self.db.execute(
             text("""
@@ -1278,6 +1384,92 @@ class AgencyService:
             run_id=run_id,
             agency_id=agency_id,
             tenant_id=tenant_id,
+            cancel_mode=cancel_mode,
         )
 
         return {"run_id": run_id, "status": "cancelled"}
+
+    async def get_agency_metadata(
+        self,
+        agency_id: str,
+        tenant_id: str,
+        user_token: str,
+        include_tools: bool = True,
+    ) -> dict[str, Any]:
+        """Build and return agency graph + metadata (v1.7).
+
+        Constructs the agency object (without running it) to extract the
+        ReactFlow-compatible graph with agent nodes, tool schemas,
+        conversation starters, and communication edges.
+        """
+        # Load agency config
+        agency_config = await self.load_agency(agency_id, tenant_id)
+        agency_config.user_id = 0
+        agency_config.conversation_id = ""
+
+        agents_data = await self._load_agents(agency_id)
+        agency_whitelist = await self._load_tool_whitelist(agency_id)
+
+        # Build agents (with tools but no KB retrieval — metadata only)
+        agents = []
+        for agent_data in agents_data:
+            if agent_data.get("node_type", "agent") != "agent":
+                continue
+
+            tools = await resolve_tools_for_agent(
+                db=self.db,
+                agent_id=agent_data["id"],
+                agency_whitelist=agency_whitelist,
+                adapter=self.adapter,
+            )
+
+            # Read conversation starters and quick replies from nodeConfig
+            node_config = agent_data.get("node_config") or {}
+            starters = node_config.get("conversationStarters")
+            quick_replies = node_config.get("quickReplies")
+
+            agent = self.adapter.create_agent(
+                config=AgentConfig(
+                    name=agent_data["name"],
+                    description=agent_data.get("description"),
+                    instructions=agent_data["instructions"],
+                    model=agent_data["model"],
+                    model_settings=agent_data["model_settings"],
+                    tools=tools,
+                    is_entry_point=agent_data["is_entry_point"],
+                    conversation_starters=starters,
+                    quick_replies=quick_replies,
+                    output_type=node_config.get("outputType"),
+                    files_folder=node_config.get("filesFolder"),
+                    tool_use_behavior=node_config.get("toolUseBehavior"),
+                    validation_attempts=node_config.get("validationAttempts", 1),
+                    input_guardrails=node_config.get("inputGuardrails"),
+                    output_guardrails=node_config.get("outputGuardrails"),
+                    mcp_servers=node_config.get("mcpServers"),
+                    mcp_config=node_config.get("mcpConfig"),
+                    hooks=node_config.get("hooks"),
+                ),
+                user_token=user_token or "metadata-only",
+            )
+            agents.append(agent)
+
+        if not agents:
+            return {
+                "nodes": [],
+                "edges": [],
+                "metadata": {
+                    "agencyName": agency_config.name,
+                    "totalAgents": 0,
+                    "totalTools": 0,
+                    "agents": [],
+                    "entryPoints": [],
+                },
+            }
+
+        # Construct agency to get graph
+        agency = self.adapter.create_agency(
+            config=agency_config,
+            agents=agents,
+        )
+
+        return self.adapter.get_agency_metadata(agency, include_tools=include_tools)

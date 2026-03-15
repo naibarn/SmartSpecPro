@@ -3870,6 +3870,199 @@ class NodeRegistry:
             )
         )
 
+        # Browser Session nodes
+        self.register_node_type(
+            NodeTypeSpec(
+                type="browser_session_start",
+                display_name="Browser Session Start",
+                description="Launch a collaborative Browser Session for workflow-driven browser work.",
+                icon="monitor-play",
+                color="cyan",
+                category="integrations",
+                inputs=[
+                    InputSpec(
+                        name="goal",
+                        display_name="Goal",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Describe what the Browser Session should accomplish...",
+                    ),
+                    InputSpec(
+                        name="startUrl",
+                        display_name="Start URL",
+                        data_type="text",
+                        ui_type="text",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder="https://example.com",
+                    ),
+                    InputSpec(
+                        name="launchContext",
+                        display_name="Launch Context",
+                        data_type="json",
+                        ui_type="json_editor",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder='{"originSurface":"workflow"}',
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="browserSessionId", display_name="Browser Session ID", data_type="text"),
+                    OutputSpec(name="sessionStatus", display_name="Session Status", data_type="text"),
+                    OutputSpec(name="browserSessionSummary", display_name="Browser Session Summary", data_type="json"),
+                    OutputSpec(name="browserSessionArtifact", display_name="Browser Session Artifact", data_type="json"),
+                    OutputSpec(name="reviewState", display_name="Review State", data_type="text"),
+                    OutputSpec(name="pendingUserStep", display_name="Pending User Step", data_type="json"),
+                    OutputSpec(name="outcome", display_name="Outcome", data_type="text"),
+                ],
+                executor="app.orchestrator.node_executors.browser_session_executor.BrowserSessionExecutor",
+            )
+        )
+
+        self.register_node_type(
+            NodeTypeSpec(
+                type="browser_session_instruction",
+                display_name="Browser Session Instruction",
+                description="Send another Browser Instruction into an existing Browser Session.",
+                icon="mouse-pointer-click",
+                color="cyan",
+                category="integrations",
+                inputs=[
+                    InputSpec(
+                        name="browserSessionId",
+                        display_name="Browser Session ID",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Connect browserSessionId from a previous node...",
+                    ),
+                    InputSpec(
+                        name="instructionText",
+                        display_name="Browser Instruction",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Tell the AI what to do next in this Browser Session.",
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="browserSessionId", display_name="Browser Session ID", data_type="text"),
+                    OutputSpec(name="sessionStatus", display_name="Session Status", data_type="text"),
+                    OutputSpec(name="browserSessionSummary", display_name="Browser Session Summary", data_type="json"),
+                    OutputSpec(name="browserSessionArtifact", display_name="Browser Session Artifact", data_type="json"),
+                    OutputSpec(name="reviewState", display_name="Review State", data_type="text"),
+                    OutputSpec(name="pendingUserStep", display_name="Pending User Step", data_type="json"),
+                    OutputSpec(name="outcome", display_name="Outcome", data_type="text"),
+                ],
+                executor="app.orchestrator.node_executors.browser_session_executor.BrowserSessionExecutor",
+            )
+        )
+
+        self.register_node_type(
+            NodeTypeSpec(
+                type="browser_session_wait_for_user",
+                display_name="Browser Session Wait For User",
+                description="Pause the workflow until a Browser Session needs user input.",
+                icon="message-square-warning",
+                color="cyan",
+                category="human",
+                inputs=[
+                    InputSpec(
+                        name="browserSessionId",
+                        display_name="Browser Session ID",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Connect browserSessionId from a previous node...",
+                    ),
+                    InputSpec(
+                        name="waitReason",
+                        display_name="Wait Reason",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder="Explain what the user needs to provide...",
+                    ),
+                    InputSpec(
+                        name="timeoutSeconds",
+                        display_name="Timeout Seconds",
+                        data_type="number",
+                        ui_type="number",
+                        required=False,
+                        accepts_connection=False,
+                        default=600,
+                        validation={"min": 30, "max": 86400},
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="browserSessionId", display_name="Browser Session ID", data_type="text"),
+                    OutputSpec(name="sessionStatus", display_name="Session Status", data_type="text"),
+                    OutputSpec(name="browserSessionSummary", display_name="Browser Session Summary", data_type="json"),
+                    OutputSpec(name="browserSessionArtifact", display_name="Browser Session Artifact", data_type="json"),
+                    OutputSpec(name="reviewState", display_name="Review State", data_type="text"),
+                    OutputSpec(name="pendingUserStep", display_name="Pending User Step", data_type="json"),
+                    OutputSpec(name="outcome", display_name="Outcome", data_type="text"),
+                ],
+                executor="app.orchestrator.node_executors.browser_session_executor.BrowserSessionExecutor",
+            )
+        )
+
+        self.register_node_type(
+            NodeTypeSpec(
+                type="browser_session_review_gate",
+                display_name="Browser Session Review Gate",
+                description="Pause the workflow until a Browser Session review decision is made.",
+                icon="shield-check",
+                color="cyan",
+                category="human",
+                inputs=[
+                    InputSpec(
+                        name="browserSessionId",
+                        display_name="Browser Session ID",
+                        data_type="text",
+                        ui_type="text",
+                        required=True,
+                        accepts_connection=True,
+                        placeholder="Connect browserSessionId from a previous node...",
+                    ),
+                    InputSpec(
+                        name="reviewReason",
+                        display_name="Review Reason",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder="Explain what needs review...",
+                    ),
+                    InputSpec(
+                        name="reviewSummary",
+                        display_name="Review Summary",
+                        data_type="text",
+                        ui_type="textarea",
+                        required=False,
+                        accepts_connection=True,
+                        placeholder="Summarize what the reviewer should check before approving.",
+                    ),
+                ],
+                outputs=[
+                    OutputSpec(name="browserSessionId", display_name="Browser Session ID", data_type="text"),
+                    OutputSpec(name="sessionStatus", display_name="Session Status", data_type="text"),
+                    OutputSpec(name="browserSessionSummary", display_name="Browser Session Summary", data_type="json"),
+                    OutputSpec(name="browserSessionArtifact", display_name="Browser Session Artifact", data_type="json"),
+                    OutputSpec(name="reviewState", display_name="Review State", data_type="text"),
+                    OutputSpec(name="pendingUserStep", display_name="Pending User Step", data_type="json"),
+                    OutputSpec(name="outcome", display_name="Outcome", data_type="text"),
+                ],
+                executor="app.orchestrator.node_executors.browser_session_executor.BrowserSessionExecutor",
+            )
+        )
+
         # Web Automation node
         self.register_node_type(
             NodeTypeSpec(
@@ -3956,6 +4149,7 @@ def get_executor(node_type: str):
     from app.orchestrator.node_executors.ai_executors.output_parser_executor import OutputParserExecutor
     from app.orchestrator.node_executors.ai_executors.multi_model_router_executor import MultiModelRouterExecutor
     from app.orchestrator.node_executors.approval_executor import ApprovalExecutor
+    from app.orchestrator.node_executors.browser_session_executor import BrowserSessionExecutor
     from app.orchestrator.node_executors.loop_executor import LoopExecutor
 
     executor_map = {
@@ -3993,6 +4187,10 @@ def get_executor(node_type: str):
         "multi_model_router": MultiModelRouterExecutor,
         # Flow (approval + loop)
         "approval_gate": ApprovalExecutor,
+        "browser_session_start": BrowserSessionExecutor,
+        "browser_session_instruction": BrowserSessionExecutor,
+        "browser_session_wait_for_user": BrowserSessionExecutor,
+        "browser_session_review_gate": BrowserSessionExecutor,
         "loop": LoopExecutor,
     }
     

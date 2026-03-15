@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
+import re
 import secrets
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import Field
 
 from app.core.config import settings
@@ -33,6 +36,8 @@ from app.services.live_browser_contract import (
     LiveBrowserSubmitAssistResponseResponse,
     LiveBrowserTakeControlRequest,
     LiveBrowserTakeControlResponse,
+    LiveBrowserUpdatePolicyContextRequest,
+    LiveBrowserUpdatePolicyContextResponse,
     StrictModel,
 )
 from app.services.live_browser_runtime import (
@@ -50,6 +55,9 @@ from app.services.live_browser_session_manager import (
 )
 
 router = APIRouter(prefix="/api/v1/live-browser", tags=["live-browser"])
+LIVE_BROWSER_CURSOR_PATTERN = re.compile(r"^[a-zA-Z0-9:_-]{1,200}$")
+LIVE_BROWSER_STREAM_POLL_INTERVAL_SECONDS = 0.5
+LIVE_BROWSER_STREAM_HEARTBEAT_INTERVAL_SECONDS = 15.0
 
 
 class LiveBrowserGatewayEnvelope(StrictModel):
@@ -81,12 +89,17 @@ class LiveBrowserSendCommandEnvelope(LiveBrowserGatewayEnvelope):
     request: LiveBrowserSendCommandRequest
 
 
+class LiveBrowserUpdatePolicyContextEnvelope(LiveBrowserGatewayEnvelope):
+    request: LiveBrowserUpdatePolicyContextRequest
+
+
 class LiveBrowserPauseAgentEnvelope(LiveBrowserGatewayEnvelope):
     request: LiveBrowserPauseAgentRequest
 
 
 class LiveBrowserTakeControlEnvelope(LiveBrowserGatewayEnvelope):
     request: LiveBrowserTakeControlRequest
+    takeoverProof: str | None = None
 
 
 class LiveBrowserReturnControlEnvelope(LiveBrowserGatewayEnvelope):
@@ -105,11 +118,11 @@ class LiveBrowserCancelSessionEnvelope(LiveBrowserGatewayEnvelope):
     request: LiveBrowserCancelSessionRequest
 
 
-def get_live_browser_manager_dependency() -> LiveBrowserSessionManager:
+async def get_live_browser_manager_dependency() -> LiveBrowserSessionManager:
     return get_live_browser_session_manager()
 
 
-def get_live_browser_adapter_dependency() -> ManagedLiveBrowserAdapter:
+async def get_live_browser_adapter_dependency() -> ManagedLiveBrowserAdapter:
     return get_live_browser_adapter()
 
 
@@ -123,9 +136,32 @@ async def _verify_proxy_token(x_proxy_token: str | None = Header(None)) -> None:
         raise HTTPException(status_code=401, detail="Unexpected proxy token")
 
 
+def _normalize_last_event_id(last_event_id: str | None) -> str | None:
+    if not last_event_id:
+        return None
+    if not LIVE_BROWSER_CURSOR_PATTERN.match(last_event_id):
+        return None
+    return last_event_id
+
+
 def _assert_actor_matches_user(actor_type: str, actor_id: str, user_id: int) -> None:
     if actor_type == "user" and actor_id != str(user_id):
         raise HTTPException(status_code=403, detail="Live Browser actor does not match authenticated user")
+
+
+def _assert_session_access(
+    *,
+    manager: LiveBrowserSessionManager,
+    session_id: str,
+    tenant_id: str,
+    user_id: int,
+) -> None:
+    try:
+        session = manager.get_session(session_id)
+    except LiveBrowserSessionMutationError as error:
+        raise HTTPException(status_code=_error_status(error.code), detail=error.message) from error
+    if session.tenant_id != tenant_id or session.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Live Browser session access denied")
 
 
 def _map_error_code(code: str) -> str:
@@ -219,6 +255,7 @@ async def create_session(
             initial_url=envelope.request.initialUrl,
             mode=envelope.request.mode,
             browser_policy_context=envelope.browserPolicyContext,
+            execution_intent=envelope.request.executionIntent,
         )
     )
     return result
@@ -241,6 +278,12 @@ async def get_session(
         envelope.request.actor.actorType,
         envelope.request.actor.actorId,
         envelope.userId,
+    )
+    _assert_session_access(
+        manager=manager,
+        session_id=session_id,
+        tenant_id=envelope.tenantId,
+        user_id=envelope.userId,
     )
     result = _run_or_error(
         lambda: serialize_live_browser_session(
@@ -271,6 +314,12 @@ async def send_command(
         envelope.request.actor.actorId,
         envelope.userId,
     )
+    _assert_session_access(
+        manager=manager,
+        session_id=session_id,
+        tenant_id=envelope.tenantId,
+        user_id=envelope.userId,
+    )
     return _run_or_error(
         lambda: manager.send_command(
             session_id=session_id,
@@ -279,6 +328,41 @@ async def send_command(
             actor_type=envelope.request.actor.actorType,
             actor_id=envelope.request.actor.actorId,
             command_text=envelope.request.command.text,
+        )
+    )
+
+
+@router.post(
+    "/sessions/{session_id}/policy-context",
+    response_model=LiveBrowserUpdatePolicyContextResponse,
+    dependencies=[Depends(_verify_proxy_token)],
+)
+async def update_policy_context(
+    session_id: str,
+    envelope: LiveBrowserUpdatePolicyContextEnvelope,
+    manager: LiveBrowserSessionManager = Depends(get_live_browser_manager_dependency),
+):
+    if session_id != envelope.request.sessionId:
+        raise HTTPException(status_code=400, detail="Session ID mismatch")
+    _assert_actor_matches_user(
+        envelope.request.actor.actorType,
+        envelope.request.actor.actorId,
+        envelope.userId,
+    )
+    _assert_session_access(
+        manager=manager,
+        session_id=session_id,
+        tenant_id=envelope.tenantId,
+        user_id=envelope.userId,
+    )
+    return _run_or_error(
+        lambda: manager.update_policy_context(
+            session_id=session_id,
+            expected_session_version=envelope.request.sessionVersion,
+            idempotency_key=envelope.request.idempotencyKey,
+            actor_type=envelope.request.actor.actorType,
+            actor_id=envelope.request.actor.actorId,
+            policy_context_patch=envelope.request.policyContextPatch,
         )
     )
 
@@ -295,6 +379,12 @@ async def pause_agent(
 ):
     if session_id != envelope.request.sessionId:
         raise HTTPException(status_code=400, detail="Session ID mismatch")
+    _assert_session_access(
+        manager=manager,
+        session_id=session_id,
+        tenant_id=envelope.tenantId,
+        user_id=envelope.userId,
+    )
     return _run_or_error(
         lambda: LiveBrowserPauseAgentResponse.model_validate(manager.pause_agent(
             session_id=session_id,
@@ -325,6 +415,12 @@ async def take_control(
         envelope.request.actor.actorId,
         envelope.userId,
     )
+    _assert_session_access(
+        manager=manager,
+        session_id=session_id,
+        tenant_id=envelope.tenantId,
+        user_id=envelope.userId,
+    )
 
     def _take():
         result = manager.take_control(
@@ -333,6 +429,7 @@ async def take_control(
             idempotency_key=envelope.request.idempotencyKey,
             actor_id=envelope.request.actor.actorId,
             reason=envelope.request.reason,
+            takeover_proof=envelope.takeoverProof,
         )
         stream = issue_resume_stream(
             manager=manager,
@@ -371,6 +468,12 @@ async def return_control(
         envelope.request.actor.actorId,
         envelope.userId,
     )
+    _assert_session_access(
+        manager=manager,
+        session_id=session_id,
+        tenant_id=envelope.tenantId,
+        user_id=envelope.userId,
+    )
     return _run_or_error(
         lambda: LiveBrowserReturnControlResponse.model_validate(manager.return_control(
             session_id=session_id,
@@ -399,6 +502,12 @@ async def resolve_approval(
         envelope.request.actor.actorType,
         envelope.request.actor.actorId,
         envelope.userId,
+    )
+    _assert_session_access(
+        manager=manager,
+        session_id=session_id,
+        tenant_id=envelope.tenantId,
+        user_id=envelope.userId,
     )
     return _run_or_error(
         lambda: manager.resolve_approval(
@@ -430,6 +539,12 @@ async def submit_assist_response(
         envelope.request.actor.actorId,
         envelope.userId,
     )
+    _assert_session_access(
+        manager=manager,
+        session_id=session_id,
+        tenant_id=envelope.tenantId,
+        user_id=envelope.userId,
+    )
     return _run_or_error(
         lambda: manager.submit_assist_response(
             session_id=session_id,
@@ -458,6 +573,12 @@ async def cancel_session(
         envelope.request.actor.actorType,
         envelope.request.actor.actorId,
         envelope.userId,
+    )
+    _assert_session_access(
+        manager=manager,
+        session_id=session_id,
+        tenant_id=envelope.tenantId,
+        user_id=envelope.userId,
     )
     return _run_or_error(
         lambda: manager.cancel_session(
@@ -488,6 +609,12 @@ async def list_events(
         envelope.request.actor.actorId,
         envelope.userId,
     )
+    _assert_session_access(
+        manager=manager,
+        session_id=session_id,
+        tenant_id=envelope.tenantId,
+        user_id=envelope.userId,
+    )
 
     def _list():
         events, next_cursor, has_more = manager.list_events(
@@ -503,3 +630,101 @@ async def list_events(
         )
 
     return _run_or_error(_list)
+
+
+@router.get(
+    "/sessions/{session_id}/stream",
+    dependencies=[Depends(_verify_proxy_token)],
+)
+async def stream_events(
+    session_id: str,
+    request: Request,
+    tenantId: str,
+    userId: int,
+    actorType: str,
+    actorId: str,
+    manager: LiveBrowserSessionManager = Depends(get_live_browser_manager_dependency),
+    last_event_id: str | None = Header(None, alias="Last-Event-ID"),
+    lastEventId: str | None = None,
+):
+    _assert_actor_matches_user(actorType, actorId, userId)
+    _assert_session_access(
+        manager=manager,
+        session_id=session_id,
+        tenant_id=tenantId,
+        user_id=userId,
+    )
+    normalized_cursor = _normalize_last_event_id(last_event_id or lastEventId)
+
+    async def _event_generator():
+        cursor = normalized_cursor
+        heartbeat_at = asyncio.get_running_loop().time() + LIVE_BROWSER_STREAM_HEARTBEAT_INTERVAL_SECONDS
+
+        try:
+            while True:
+                if await request.is_disconnected():
+                    return
+
+                try:
+                    events, next_cursor, _has_more = manager.list_events(
+                        session_id=session_id,
+                        cursor=cursor,
+                        limit=100,
+                    )
+                except LiveBrowserSessionMutationError as error:
+                    error_payload = json.dumps({
+                        "code": _map_error_code(error.code),
+                        "message": error.message,
+                    })
+                    yield f"event: stream_error\ndata: {error_payload}\n\n"
+                    return
+
+                if events:
+                    for event in events:
+                        serialized = serialize_live_browser_event(event)
+                        payload = json.dumps(serialized.model_dump(mode="json"))
+                        yield (
+                            f"id: {serialized.cursor}\n"
+                            "event: live_browser_event\n"
+                            f"data: {payload}\n\n"
+                        )
+                        cursor = serialized.cursor
+
+                    heartbeat_at = (
+                        asyncio.get_running_loop().time()
+                        + LIVE_BROWSER_STREAM_HEARTBEAT_INTERVAL_SECONDS
+                    )
+
+                    session = manager.get_session(session_id)
+                    if (
+                        session.status in {"completed", "cancelled", "failed", "expired"}
+                        and not session.pending_approval_request_id
+                        and not session.pending_assist_request_id
+                    ):
+                        return
+                    continue
+
+                if asyncio.get_running_loop().time() >= heartbeat_at:
+                    yield ": keepalive\n\n"
+                    heartbeat_at = (
+                        asyncio.get_running_loop().time()
+                        + LIVE_BROWSER_STREAM_HEARTBEAT_INTERVAL_SECONDS
+                    )
+
+                session = manager.get_session(session_id)
+                if session.status in {"completed", "cancelled", "failed", "expired"}:
+                    return
+
+                await asyncio.sleep(LIVE_BROWSER_STREAM_POLL_INTERVAL_SECONDS)
+        except asyncio.CancelledError:
+            return
+
+    return StreamingResponse(
+        _event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

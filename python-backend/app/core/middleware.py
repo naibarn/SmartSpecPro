@@ -61,10 +61,19 @@ class RequestTimeoutMiddleware(BaseHTTPMiddleware):
         "/api/v1/workflows/",
         "/api/v1/orchestrator/",
     )
+    # Internal live-browser routes already sit behind the web gateway, which applies
+    # its own request budget. Wrapping these endpoints with BaseHTTPMiddleware +
+    # asyncio.wait_for causes false 504s in-process while the handler keeps running.
+    EXEMPT_TIMEOUT_PREFIXES: tuple[str, ...] = (
+        "/api/v1/live-browser/",
+    )
 
     async def dispatch(self, request: Request, call_next):
         timeout = self.DEFAULT_TIMEOUT
         path = request.url.path
+
+        if any(path.startswith(prefix) for prefix in self.EXEMPT_TIMEOUT_PREFIXES):
+            return await call_next(request)
 
         if any(path.startswith(prefix) for prefix in self.LONG_TIMEOUT_PREFIXES):
             timeout = self.LONG_TIMEOUT

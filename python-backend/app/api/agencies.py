@@ -2,24 +2,69 @@
 
 import asyncio
 import json
+import secrets as _secrets
 import uuid
 from datetime import datetime, timezone
 from typing import AsyncIterator, Optional
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, verify_token
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.user import User
 
 _bearer_scheme = HTTPBearer()
+
+
+async def get_user_from_gateway_or_jwt(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(_bearer_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """Authenticate via gateway token (from Node.js bridge) or direct JWT.
+
+    The Node.js agency bridge sends:
+      - Authorization: Bearer <GATEWAY_TOKEN>
+      - X-User-Token: <user JWT>
+      - X-User-Id: <user id>
+      - X-Tenant-Id: <tenant id>
+
+    If the Bearer token matches the gateway token, we trust X-User-Id
+    and look up the user from DB. Otherwise we fall back to normal JWT auth.
+    """
+    bearer_token = credentials.credentials
+    gateway_expected = settings.SMARTSPEC_WEB_GATEWAY_TOKEN
+
+    # --- Path 1: Gateway token auth ---
+    if gateway_expected and _secrets.compare_digest(bearer_token, gateway_expected):
+        # Gateway token matches — read user from X-User-Id header
+        user_id_header = request.headers.get("x-user-id")
+        if not user_id_header:
+            raise HTTPException(status_code=401, detail="Missing X-User-Id header")
+        try:
+            user_id = int(user_id_header)
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=401, detail="Invalid X-User-Id header")
+
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if user is None:
+            raise HTTPException(status_code=401, detail="User not found")
+        if not user.is_active:
+            raise HTTPException(status_code=403, detail="User account is inactive")
+        return user
+
+    # --- Path 2: Direct JWT auth (fallback) ---
+    return await get_current_user(credentials, db)
+
+
 from app.models.agency import AgencyRunStatus
 from app.services.agency_service import (
     AgencyNotFoundError,
@@ -70,6 +115,16 @@ class AgencyRunRequest(BaseModel):
     retrieval_scope: Optional[dict] = Field(
         None, description="Resolved template retrieval scope for immutable run audit metadata"
     )
+    # v1.8: Run-level params
+    recipient_agent: Optional[str] = Field(
+        None, max_length=200, description="Target a specific agent by name"
+    )
+    file_ids: Optional[list[str]] = Field(
+        None, max_items=20, description="File IDs to include in the run"
+    )
+    additional_instructions: Optional[str] = Field(
+        None, max_length=5000, description="Per-run instruction override"
+    )
 
     @property
     def safe_persona_prefix(self) -> Optional[str]:
@@ -84,6 +139,15 @@ class AgencyRunRequest(BaseModel):
         return self.persona_prefix
 
 
+class UsageBreakdownResponse(BaseModel):
+    """Per-model token usage from a run (v1.6)."""
+
+    model: str = ""
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+
 class AgencyRunResponse(BaseModel):
     """Response from POST /run."""
 
@@ -96,6 +160,11 @@ class AgencyRunResponse(BaseModel):
     duration_ms: int
     structured_result: Optional[dict] = None
     preview_artifacts: list[dict] = Field(default_factory=list)
+    # v1.6: Token usage tracking
+    total_tokens: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    usage_breakdown: list[UsageBreakdownResponse] = Field(default_factory=list)
 
 
 class AgencyRunSummary(BaseModel):
@@ -133,11 +202,33 @@ class AgencyRunListResponse(BaseModel):
     total: int
 
 
+class AgencyCancelRequest(BaseModel):
+    """Request body for POST /cancel (v1.6)."""
+
+    mode: str = Field(
+        default="immediate",
+        pattern="^(immediate|after_turn)$",
+        description="Cancel mode: 'immediate' stops now, 'after_turn' waits for current turn",
+    )
+
+
 class AgencyCancelResponse(BaseModel):
     """Response from POST /cancel."""
 
     run_id: str
     status: str  # cancelled
+    mode: str = "immediate"
+
+
+class AgencyMetadataResponse(BaseModel):
+    """Response from GET /metadata (v1.7)."""
+
+    agency_name: str
+    total_agents: int = 0
+    total_tools: int = 0
+    agents: list[str] = Field(default_factory=list)
+    entry_points: list[str] = Field(default_factory=list)
+    graph: Optional[dict] = None
 
 
 # ── Error Classification ───────────────────────────────────────
@@ -244,6 +335,22 @@ async def require_agency_feature(
     raise HTTPException(status_code=404, detail="Agency feature is disabled")
 
 
+# ── Helpers ────────────────────────────────────────────────────
+
+
+def _resolve_user_token(request: Request, credentials: HTTPAuthorizationCredentials) -> str:
+    """Return the real user JWT for downstream LLM calls.
+
+    When the Node.js bridge uses gateway auth, the user JWT is in X-User-Token.
+    For direct JWT auth, the Bearer token itself is the user JWT.
+    """
+    gateway_expected = settings.SMARTSPEC_WEB_GATEWAY_TOKEN
+    bearer = credentials.credentials
+    if gateway_expected and _secrets.compare_digest(bearer, gateway_expected):
+        return request.headers.get("x-user-token", bearer)
+    return bearer
+
+
 # ── Endpoints ──────────────────────────────────────────────────
 
 
@@ -251,8 +358,9 @@ async def require_agency_feature(
 async def run_agency(
     agency_id: str,
     request: AgencyRunRequest,
+    raw_request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(_bearer_scheme),
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_user_from_gateway_or_jwt),
     db: AsyncSession = Depends(get_db),
     _flag: None = Depends(require_agency_feature),
 ) -> AgencyRunResponse:
@@ -263,7 +371,7 @@ async def run_agency(
         user_id=user.id,
         tenant_id=user.currentTenantId or "",
         conversation_id=conversation_id,
-        user_token=credentials.credentials,
+        user_token=_resolve_user_token(raw_request, credentials),
         run_metadata={
             **({"planner": request.task_metadata.model_dump(exclude_none=True)} if request.task_metadata else {}),
             **({"retrieval_scope": request.retrieval_scope} if request.retrieval_scope else {}),
@@ -284,7 +392,12 @@ async def run_agency(
 
     try:
         result = await with_retry(
-            lambda: service.execute_run(agency_id, request.message, context)
+            lambda: service.execute_run(
+                agency_id, request.message, context,
+                recipient_agent=request.recipient_agent,
+                file_ids=request.file_ids,
+                additional_instructions=request.additional_instructions,
+            )
         )
     except InsufficientCreditsError as exc:
         raise HTTPException(status_code=402, detail=str(exc))
@@ -311,6 +424,19 @@ async def run_agency(
         duration_ms=result.duration_ms,
         structured_result=result.structured_result,
         preview_artifacts=result.preview_artifacts,
+        # v1.6: Usage tracking
+        total_tokens=result.total_tokens,
+        prompt_tokens=result.prompt_tokens,
+        completion_tokens=result.completion_tokens,
+        usage_breakdown=[
+            UsageBreakdownResponse(
+                model=b.model,
+                prompt_tokens=b.prompt_tokens,
+                completion_tokens=b.completion_tokens,
+                total_tokens=b.total_tokens,
+            )
+            for b in result.usage_breakdown
+        ],
     )
 
 
@@ -318,8 +444,9 @@ async def run_agency(
 async def stream_agency(
     agency_id: str,
     request: AgencyRunRequest,
+    raw_request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(_bearer_scheme),
-    user: User = Depends(get_current_user),
+    user: User = Depends(get_user_from_gateway_or_jwt),
     db: AsyncSession = Depends(get_db),
     _flag: None = Depends(require_agency_feature),
 ):
@@ -330,7 +457,7 @@ async def stream_agency(
         user_id=user.id,
         tenant_id=user.currentTenantId or "",
         conversation_id=conversation_id,
-        user_token=credentials.credentials,
+        user_token=_resolve_user_token(raw_request, credentials),
         run_metadata={
             **({"planner": request.task_metadata.model_dump(exclude_none=True)} if request.task_metadata else {}),
             **({"retrieval_scope": request.retrieval_scope} if request.retrieval_scope else {}),
@@ -355,6 +482,9 @@ async def stream_agency(
                 agency_id, request.message, context,
                 model_override=request.model_override,
                 persona_prefix=request.safe_persona_prefix,
+                recipient_agent=request.recipient_agent,
+                file_ids=request.file_ids,
+                additional_instructions=request.additional_instructions,
             ):
                 event_type = event.get("event", "message")
                 event_data = json.dumps(event.get("data", {}))
@@ -445,17 +575,23 @@ async def get_run(
 async def cancel_run(
     agency_id: str,
     run_id: str,
+    request: Optional[AgencyCancelRequest] = None,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     _flag: None = Depends(require_agency_feature),
 ) -> AgencyCancelResponse:
-    """Cancel a running agency run."""
+    """Cancel a running agency run (v1.6 stream cancellation).
+
+    Accepts optional mode: "immediate" (default) or "after_turn".
+    """
+    cancel_mode = (request.mode if request else None) or "immediate"
     service = AgencyService(db=db)
     try:
         result = await service.cancel_run(
             run_id=run_id,
             agency_id=agency_id,
             tenant_id=user.currentTenantId or "",
+            cancel_mode=cancel_mode,
         )
     except AgencyNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
@@ -463,4 +599,41 @@ async def cancel_run(
     return AgencyCancelResponse(
         run_id=result["run_id"],
         status=result["status"],
+        mode=cancel_mode,
+    )
+
+
+@router.get("/{agency_id}/metadata")
+async def get_agency_metadata(
+    agency_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    _flag: None = Depends(require_agency_feature),
+    include_tools: bool = Query(default=True, description="Include tool details in graph"),
+) -> AgencyMetadataResponse:
+    """Return agency graph and metadata (v1.7).
+
+    Returns a ReactFlow-compatible graph with agent nodes, tool nodes,
+    communication edges, conversation starters, and tool input schemas.
+    """
+    service = AgencyService(db=db)
+    try:
+        metadata = await service.get_agency_metadata(
+            agency_id=agency_id,
+            tenant_id=user.currentTenantId or "",
+            user_token="",  # Metadata doesn't need LLM access
+            include_tools=include_tools,
+        )
+    except AgencyNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except AgencyPermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+
+    return AgencyMetadataResponse(
+        agency_name=metadata.get("metadata", {}).get("agencyName", ""),
+        total_agents=metadata.get("metadata", {}).get("totalAgents", 0),
+        total_tools=metadata.get("metadata", {}).get("totalTools", 0),
+        agents=metadata.get("metadata", {}).get("agents", []),
+        entry_points=metadata.get("metadata", {}).get("entryPoints", []),
+        graph=metadata,
     )

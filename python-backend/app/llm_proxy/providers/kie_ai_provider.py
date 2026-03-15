@@ -197,6 +197,135 @@ class KieAIProvider:
         if callback_url:
             logger.info("kie_ai_callback_configured", callback_url=callback_url)
 
+    @staticmethod
+    def _extract_task_id(result: Dict[str, Any], *, include_record_id: bool = False) -> Optional[str]:
+        """Extract a task identifier from common Kie submission responses."""
+        if not isinstance(result, dict):
+            return None
+
+        task_id = (
+            result.get("taskId") or
+            result.get("task_id") or
+            (result.get("data") or {}).get("taskId") or
+            (result.get("data") or {}).get("task_id")
+        )
+        if not task_id and include_record_id:
+            task_id = (
+                (result.get("data") or {}).get("recordId") or
+                result.get("recordId")
+            )
+
+        if isinstance(task_id, str):
+            task_id = task_id.strip()
+        return task_id or None
+
+    @staticmethod
+    def _extract_submission_error_message(result: Dict[str, Any]) -> Optional[str]:
+        """Extract a readable provider-side error from submission responses."""
+        if not isinstance(result, dict):
+            return None
+
+        candidates: list[Any] = [
+            result.get("msg"),
+            result.get("message"),
+            result.get("error"),
+            result.get("detail"),
+        ]
+        data = result.get("data")
+        if isinstance(data, dict):
+            candidates.extend([
+                data.get("msg"),
+                data.get("message"),
+                data.get("error"),
+                data.get("detail"),
+                data.get("errorMessage"),
+            ])
+
+        for candidate in candidates:
+            if isinstance(candidate, str) and candidate.strip():
+                return candidate.strip()
+        return None
+
+    @classmethod
+    def _is_retryable_submission_response(cls, result: Dict[str, Any]) -> bool:
+        """Detect transient provider failures returned in a JSON body with HTTP 200."""
+        if not isinstance(result, dict):
+            return False
+
+        codes: list[Any] = [result.get("code"), result.get("status"), result.get("errorCode")]
+        data = result.get("data")
+        if isinstance(data, dict):
+            codes.extend([data.get("code"), data.get("status"), data.get("errorCode")])
+
+        for code in codes:
+            if isinstance(code, int) and code >= 500:
+                return True
+            if isinstance(code, str):
+                normalized = code.strip().lower()
+                if normalized.isdigit() and int(normalized) >= 500:
+                    return True
+                if normalized in {"server_error", "internal_server_error"}:
+                    return True
+
+        message = (cls._extract_submission_error_message(result) or "").lower()
+        return any(fragment in message for fragment in (
+            "server exception",
+            "please try again later",
+            "contact customer service",
+            "temporarily unavailable",
+            "system busy",
+            "internal server error",
+        ))
+
+    async def _submit_generation_task(
+        self,
+        request_factory,
+        *,
+        operation: str,
+        include_record_id: bool = False,
+        max_attempts: int = 3,
+    ) -> tuple[Dict[str, Any], str]:
+        """Submit a task request and retry transient JSON-level provider errors."""
+        last_result: Optional[Dict[str, Any]] = None
+
+        for attempt in range(1, max_attempts + 1):
+            result = await request_factory()
+            last_result = result
+            task_id = self._extract_task_id(result, include_record_id=include_record_id)
+            if task_id:
+                return result, task_id
+
+            retryable = self._is_retryable_submission_response(result)
+            provider_message = self._extract_submission_error_message(result)
+            logger.error(
+                "kie_ai_no_task_id",
+                operation=operation,
+                attempt=attempt,
+                max_attempts=max_attempts,
+                retryable=retryable,
+                provider_message=provider_message,
+                result=result,
+            )
+
+            if retryable and attempt < max_attempts:
+                delay_seconds = float(attempt)
+                logger.warning(
+                    "kie_ai_task_submission_retrying",
+                    operation=operation,
+                    attempt=attempt,
+                    max_attempts=max_attempts,
+                    delay_seconds=delay_seconds,
+                    provider_message=provider_message,
+                )
+                await asyncio.sleep(delay_seconds)
+                continue
+
+            if provider_message:
+                raise Exception(f"Kie.ai task submission failed: {provider_message}")
+            raise Exception(f"Kie.ai did not return a task ID: {result}")
+
+        raise Exception(f"Kie.ai did not return a task ID: {last_result}")
+
     async def _make_request(self, method: str, endpoint: str, data: Optional[Dict] = None) -> Dict:
         """Make HTTP request to Kie.ai API"""
         headers = {
@@ -731,31 +860,22 @@ class KieAIProvider:
         # Determine endpoint — use api_config endpoint or default to create_task
         api_endpoint = _get_api_config_value(api_config, "endpoint", "api_endpoint", "apiEndpoint")
 
-        if api_endpoint and api_endpoint != "/api/v1/jobs/createTask":
-            # Use custom endpoint directly (e.g., /api/v1/veo/generate)
-            payload = {"prompt": prompt, **input_params}
-            if api_model:
-                payload["model"] = api_model
-            if callback_url:
-                payload["callBackUrl"] = callback_url
-            result = await self._make_request("POST", api_endpoint.removeprefix("/api/v1/"), data=payload)
-        else:
-            # Default: use Market Unified createTask endpoint
-            result = await self.create_task(api_model, input_params, callback_url)
+        async def submit_request() -> Dict[str, Any]:
+            if api_endpoint and api_endpoint != "/api/v1/jobs/createTask":
+                payload = {"prompt": prompt, **input_params}
+                if api_model:
+                    payload["model"] = api_model
+                if callback_url:
+                    payload["callBackUrl"] = callback_url
+                return await self._make_request("POST", api_endpoint.removeprefix("/api/v1/"), data=payload)
+            return await self.create_task(api_model, input_params, callback_url)
 
-        # Extract taskId - Kie.ai wraps response in {"code": 200, "data": {"taskId": "..."}}
-        task_id = (
-            result.get("taskId") or
-            result.get("task_id") or
-            (result.get("data") or {}).get("taskId") or
-            (result.get("data") or {}).get("task_id")
+        result, task_id = await self._submit_generation_task(
+            submit_request,
+            operation="image",
         )
 
         logger.info("kie_ai_task_created", task_id=task_id, has_callback=bool(callback_url), raw_result=result)
-
-        if not task_id:
-            logger.error("kie_ai_no_task_id", result=result)
-            raise Exception(f"Kie.ai did not return a task ID: {result}")
 
         # If no callback URL, poll for result (synchronous wait)
         if not callback_url:
@@ -827,32 +947,26 @@ class KieAIProvider:
         # Determine endpoint — use api_config endpoint or default to create_task
         api_endpoint = _get_api_config_value(api_config, "endpoint", "api_endpoint", "apiEndpoint")
 
-        if api_endpoint and api_endpoint != "/api/v1/jobs/createTask":
-            # Use custom endpoint (e.g., /api/v1/veo/generate, /api/v1/runway/generate)
-            payload = {"prompt": prompt, **input_params}
-            if api_model:
-                payload["model"] = api_model
-            if callback_url:
-                payload["callBackUrl"] = callback_url
-            result = await self._make_request("POST", api_endpoint.removeprefix("/api/v1/"), data=payload)
-            logger.info("kie_ai_custom_endpoint_response", endpoint=api_endpoint, result_keys=list(result.keys()) if isinstance(result, dict) else "not_dict", result_type=type(result).__name__)
+        async def submit_request() -> Dict[str, Any]:
+            if api_endpoint and api_endpoint != "/api/v1/jobs/createTask":
+                payload = {"prompt": prompt, **input_params}
+                if api_model:
+                    payload["model"] = api_model
+                if callback_url:
+                    payload["callBackUrl"] = callback_url
+                response = await self._make_request("POST", api_endpoint.removeprefix("/api/v1/"), data=payload)
+                logger.info("kie_ai_custom_endpoint_response", endpoint=api_endpoint, result_keys=list(response.keys()) if isinstance(response, dict) else "not_dict", result_type=type(response).__name__)
 
-            # Log full response for Veo to debug task ID extraction
-            if "veo" in api_endpoint.lower():
-                import json as _json
-                logger.warning("VEO_RESPONSE_DEBUG", endpoint=api_endpoint, full_response=_json.dumps(result, indent=2, default=str))
-        else:
-            result = await self.create_task(api_model, input_params, callback_url)
+                if "veo" in api_endpoint.lower():
+                    import json as _json
+                    logger.warning("VEO_RESPONSE_DEBUG", endpoint=api_endpoint, full_response=_json.dumps(response, indent=2, default=str))
+                return response
+            return await self.create_task(api_model, input_params, callback_url)
 
-        # Extract taskId from nested response
-        # Try multiple possible locations for task ID
-        task_id = (
-            result.get("taskId") or
-            result.get("task_id") or
-            (result.get("data") or {}).get("taskId") or
-            (result.get("data") or {}).get("task_id") or
-            (result.get("data") or {}).get("recordId") or  # Veo may use recordId
-            result.get("recordId")
+        result, task_id = await self._submit_generation_task(
+            submit_request,
+            operation="video",
+            include_record_id=True,
         )
 
         logger.info("kie_ai_video_task_id_extracted", task_id=task_id, has_callback=bool(callback_url), will_poll=bool(wait_for_completion and not callback_url and task_id), wait_for_completion=bool(wait_for_completion), result_structure={
@@ -862,10 +976,6 @@ class KieAIProvider:
             "has_data": "data" in result,
             "data_keys": list(result.get("data", {}).keys()) if isinstance(result.get("data"), dict) else None
         })
-
-        if not task_id:
-            logger.error("kie_ai_no_task_id", result=result)
-            raise Exception(f"Kie.ai did not return a task ID: {result}")
 
         # Poll only in explicit wait mode.
         # For async queue flows, return immediately after task submission.
@@ -944,27 +1054,20 @@ class KieAIProvider:
         # Determine endpoint — use api_config endpoint or default to create_task
         api_endpoint = _get_api_config_value(api_config, "endpoint", "api_endpoint", "apiEndpoint")
 
-        if api_endpoint and api_endpoint != "/api/v1/jobs/createTask":
-            payload = dict(input_params)
-            if api_model:
-                payload["model"] = api_model
-            if callback_url:
-                payload["callBackUrl"] = callback_url
-            result = await self._make_request("POST", api_endpoint.removeprefix("/api/v1/"), data=payload)
-        else:
-            result = await self.create_task(api_model, input_params, callback_url)
+        async def submit_request() -> Dict[str, Any]:
+            if api_endpoint and api_endpoint != "/api/v1/jobs/createTask":
+                payload = dict(input_params)
+                if api_model:
+                    payload["model"] = api_model
+                if callback_url:
+                    payload["callBackUrl"] = callback_url
+                return await self._make_request("POST", api_endpoint.removeprefix("/api/v1/"), data=payload)
+            return await self.create_task(api_model, input_params, callback_url)
 
-        # Extract taskId from nested response
-        task_id = (
-            result.get("taskId") or
-            result.get("task_id") or
-            (result.get("data") or {}).get("taskId") or
-            (result.get("data") or {}).get("task_id")
+        result, task_id = await self._submit_generation_task(
+            submit_request,
+            operation="audio",
         )
-
-        if not task_id:
-            logger.error("kie_ai_no_task_id", result=result)
-            raise Exception(f"Kie.ai did not return a task ID: {result}")
 
         # If no callback URL, poll for result (synchronous wait)
         if not callback_url:

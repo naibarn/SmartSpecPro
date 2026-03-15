@@ -8,7 +8,16 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 LiveBrowserActorType = Literal["agent", "user", "system", "policy"]
-LiveBrowserSourceType = Literal["automation", "workflow", "agency"]
+LiveBrowserSourceType = Literal["automation", "chat", "workflow", "agency"]
+LiveBrowserPresentationState = Literal[
+    "running",
+    "review_required",
+    "needs_user_input",
+    "person_in_control",
+    "ai_in_control",
+    "reconnecting",
+    "session_ended",
+]
 LiveBrowserSessionStatus = Literal[
     "created",
     "provisioning",
@@ -65,6 +74,12 @@ LiveBrowserErrorCode = Literal[
     "stream_unavailable",
 ]
 LiveBrowserApprovalDecision = Literal["approved", "rejected"]
+LiveBrowserBarrierType = Literal[
+    "login_required",
+    "captcha_required",
+    "payment_review_required",
+    "booking_confirmation_required",
+]
 LiveBrowserStreamScope = Literal["viewer", "controller"]
 
 
@@ -117,6 +132,25 @@ class LiveBrowserStream(StrictModel):
     leaseExpiresAt: str | None = None
 
 
+class LiveBrowserSessionSummary(StrictModel):
+    sessionId: str
+    state: LiveBrowserPresentationState
+    barrierType: LiveBrowserBarrierType | None = None
+    badgeLabel: str
+    statusLine: str
+    primaryActionLabel: str
+    pageTitle: str | None = None
+    url: str | None = None
+    compactNotice: str | None = None
+    sourceLabel: str
+
+
+class LiveBrowserSessionArtifact(StrictModel):
+    sessionId: str
+    summary: LiveBrowserSessionSummary
+    updatedAt: str | None = None
+
+
 class LiveBrowserSession(StrictModel):
     sessionId: str
     tenantId: str
@@ -131,6 +165,7 @@ class LiveBrowserSession(StrictModel):
     controllerConnectionId: str | None = None
     controllerLeaseExpiresAt: str | None = None
     pauseReason: str | None = None
+    barrierType: LiveBrowserBarrierType | None = None
     pendingAssistRequestId: str | None = None
     pendingApprovalRequestId: str | None = None
     policyContext: dict[str, Any] = Field(default_factory=dict)
@@ -143,13 +178,18 @@ class LiveBrowserSession(StrictModel):
     endReason: str | None = None
 
 
+class LiveBrowserEventPayload(BaseModel):
+    session: LiveBrowserSession | None = None
+    model_config = ConfigDict(extra="allow")
+
+
 class LiveBrowserEventEnvelope(StrictModel):
     eventId: str
     sessionId: str
     sessionVersion: int = Field(ge=0)
     type: LiveBrowserEventType
     timestamp: str
-    payload: dict[str, Any] = Field(default_factory=dict)
+    payload: LiveBrowserEventPayload = Field(default_factory=LiveBrowserEventPayload)
     cursor: str
 
 
@@ -203,6 +243,16 @@ class LiveBrowserSendCommandResponse(StrictModel):
     accepted: Literal[True]
     sessionVersion: int = Field(ge=0)
     queuedCommandId: str
+
+
+class LiveBrowserUpdatePolicyContextRequest(LiveBrowserMutationRequest):
+    policyContextPatch: dict[str, Any] = Field(default_factory=dict)
+
+
+class LiveBrowserUpdatePolicyContextResponse(StrictModel):
+    accepted: Literal[True]
+    sessionVersion: int = Field(ge=0)
+    policyContext: dict[str, Any] = Field(default_factory=dict)
 
 
 class LiveBrowserPauseAgentRequest(LiveBrowserMutationRequest):

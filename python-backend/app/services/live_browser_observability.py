@@ -7,9 +7,69 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Protocol
 
+from app.services.library_observability import emit_metric, log_observability_event
+
+ALLOWED_ORIGIN_SURFACES = {"automation", "chat", "agency", "workflow"}
+ALLOWED_REASON_CATEGORIES = {
+    "policy",
+    "step_up",
+    "state",
+    "navigation",
+    "render",
+    "legacy_fallback",
+    "unknown",
+}
+
 
 def _freeze_labels(labels: dict[str, str]) -> tuple[tuple[str, str], ...]:
     return tuple(sorted(labels.items()))
+
+
+def _emit_metric_count(name: str, value: int, labels: dict[str, str]) -> None:
+    for _ in range(max(value, 0)):
+        emit_metric(name, **labels)
+
+
+def _emit_incident_event(
+    *,
+    kind: str,
+    owner: str,
+    severity: str,
+    session_id: str | None,
+    details: dict[str, Any],
+) -> None:
+    emit_metric(
+        "live_browser_incidents_total",
+        kind=kind,
+        owner=owner,
+        severity=severity,
+    )
+    log_observability_event(
+        "live_browser_incident",
+        kind=kind,
+        owner=owner,
+        severity=severity,
+        session_id=session_id,
+        details=details,
+    )
+
+
+def emit_rollout_metric(
+    name: str,
+    *,
+    origin_surface: str,
+    reason_category: str | None = None,
+    value: int = 1,
+) -> None:
+    if origin_surface not in ALLOWED_ORIGIN_SURFACES:
+        raise ValueError(f"Unsupported origin_surface: {origin_surface}")
+    if reason_category is not None and reason_category not in ALLOWED_REASON_CATEGORIES:
+        raise ValueError(f"Unsupported reason_category: {reason_category}")
+
+    labels = {"origin_surface": origin_surface}
+    if reason_category is not None:
+        labels["reason_category"] = reason_category
+    _emit_metric_count(name, value, labels)
 
 
 class LiveBrowserTelemetry(Protocol):
@@ -43,6 +103,7 @@ class InMemoryLiveBrowserTelemetry:
     def increment(self, name: str, value: int = 1, **labels: str) -> None:
         key = (name, _freeze_labels(labels))
         self._counts[key] = self._counts.get(key, 0) + value
+        _emit_metric_count(name, value, labels)
 
     def get_count(self, name: str, **labels: str) -> int:
         return self._counts.get((name, _freeze_labels(labels)), 0)
@@ -56,14 +117,22 @@ class InMemoryLiveBrowserTelemetry:
         session_id: str | None = None,
         details: dict[str, Any] | None = None,
     ) -> None:
+        incident_details = dict(details or {})
         self.incidents.append(
             LiveBrowserIncident(
                 kind=kind,
                 owner=owner,
                 severity=severity,
                 session_id=session_id,
-                details=dict(details or {}),
+                details=incident_details,
             )
+        )
+        _emit_incident_event(
+            kind=kind,
+            owner=owner,
+            severity=severity,
+            session_id=session_id,
+            details=incident_details,
         )
 
 
@@ -92,6 +161,7 @@ class RedisBackedLiveBrowserTelemetry:
         key = self._counts_key(name)
         self._redis.hincrby(key, field_name, value)
         self._redis.expire(key, self._ttl_seconds)
+        _emit_metric_count(name, value, labels)
 
     def get_count(self, name: str, **labels: str) -> int:
         field_name = json.dumps(sorted(labels.items()))
@@ -107,17 +177,25 @@ class RedisBackedLiveBrowserTelemetry:
         session_id: str | None = None,
         details: dict[str, Any] | None = None,
     ) -> None:
+        incident_details = dict(details or {})
         payload = {
             "kind": kind,
             "owner": owner,
             "severity": severity,
             "session_id": session_id,
-            "details": dict(details or {}),
+            "details": incident_details,
             "timestamp": datetime.now(UTC).isoformat(),
         }
         key = self._incidents_key()
         self._redis.rpush(key, json.dumps(payload))
         self._redis.expire(key, self._ttl_seconds)
+        _emit_incident_event(
+            kind=kind,
+            owner=owner,
+            severity=severity,
+            session_id=session_id,
+            details=incident_details,
+        )
 
     def get_incidents(self) -> list[dict[str, Any]]:
         raw = self._redis.lrange(self._incidents_key(), 0, -1)

@@ -16,10 +16,12 @@ from __future__ import annotations
 import asyncio
 import os
 import re
-from typing import Any, AsyncGenerator
+from typing import Any
 
 import httpx
 import structlog
+
+from app.services.agency_browser_session_executor import AgencyBrowserSessionExecutor
 
 logger = structlog.get_logger(__name__)
 
@@ -58,6 +60,9 @@ class ExecutionContext:
         self.task_metadata: dict[str, Any] = task_metadata or {}
         # Step-attempt snapshots collected during execution (for billing reconciliation)
         self.step_attempts: list[dict[str, Any]] = []
+        # Browser Sessions opened or resumed during the run.
+        self.browser_sessions: list[dict[str, Any]] = []
+        self.active_browser_session_id: str | None = None
 
     def get_context_text(self) -> str:
         """Build a context string from accumulated knowledge and results."""
@@ -88,12 +93,17 @@ class AgencyOrchestrator:
         adapter=None,
         db=None,
         agency_config=None,
+        agency_whitelist: set[str] | None = None,
+        retrieval_scope_mode: str | None = None,
     ):
         self.nodes: dict[str, NodeRow] = {n["id"]: n for n in nodes}
         self.edges: list[EdgeRow] = edges
         self.adapter = adapter
         self.db = db
         self.agency_config = agency_config
+        self.agency_whitelist = agency_whitelist or set()
+        self.retrieval_scope_mode = retrieval_scope_mode
+        self.browser_session_executor = AgencyBrowserSessionExecutor()
 
         # Find entry node
         entry_candidates = [n for n in nodes if n.get("is_entry_point")]
@@ -114,9 +124,26 @@ class AgencyOrchestrator:
         user_id: int = 0,
         task_metadata: dict[str, Any] | None = None,
     ) -> str:
+        result, _ = await self.run_with_context(
+            message=message,
+            user_token=user_token,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            task_metadata=task_metadata,
+        )
+        return result
+
+    async def run_with_context(
+        self,
+        message: str,
+        user_token: str,
+        tenant_id: str,
+        user_id: int = 0,
+        task_metadata: dict[str, Any] | None = None,
+    ) -> tuple[str, ExecutionContext]:
         """Execute the agency graph starting from the entry node.
 
-        Returns final response text.
+        Returns final response text and execution context.
         """
         ctx = ExecutionContext(
             message, user_token, tenant_id,
@@ -132,7 +159,7 @@ class AgencyOrchestrator:
             )
 
         result = await self._execute_node(self.entry_node, ctx)
-        return result or ""
+        return result or "", ctx
 
     async def _execute_node(self, node: NodeRow, ctx: ExecutionContext) -> str:
         """Execute a single node and follow its outgoing edges."""
@@ -167,6 +194,14 @@ class AgencyOrchestrator:
 
             case "human_approval":
                 result = await self._await_approval(node, ctx)
+
+            case "browser_session":
+                execution = await self.browser_session_executor.execute(
+                    node,
+                    ctx,
+                    agency_id=getattr(self.agency_config, "agency_id", None),
+                )
+                result = str(execution.get("result") or "")
 
             case _:
                 logger.warning("agency_orchestrator_unknown_node_type", node_type=node_type)
@@ -235,12 +270,12 @@ class AgencyOrchestrator:
             tools = []
             if self.db:
                 from app.services.agency_tools import resolve_tools_for_agent
-                whitelist: set[str] = set()  # resolved externally if needed
                 tools = await resolve_tools_for_agent(
                     db=self.db,
                     agent_id=node["id"],
-                    agency_whitelist=whitelist,
+                    agency_whitelist=self.agency_whitelist,
                     adapter=self.adapter,
+                    retrieval_scope_mode=self.retrieval_scope_mode,
                 )
 
             agent = self.adapter.create_agent(
@@ -260,9 +295,20 @@ class AgencyOrchestrator:
             sub_config = SwarmAgencyConfig(
                 agency_id=f"sub-{node['id']}",
                 name=node.get("name", "Agent"),
-                flows=[],
-                user_id=0,
+                system_prompt=getattr(self.agency_config, "system_prompt", ""),
+                communication_flows=[],
                 tenant_id=ctx.tenant_id,
+                user_id=getattr(self.agency_config, "user_id", ctx.user_id),
+                conversation_id=getattr(
+                    self.agency_config,
+                    "conversation_id",
+                    f"orchestrator-{node['id']}",
+                ),
+                max_run_time_seconds=getattr(self.agency_config, "max_run_time_seconds", 600),
+                credit_multiplier=getattr(self.agency_config, "credit_multiplier", 1.0),
+                creator_fee_credits=getattr(self.agency_config, "creator_fee_credits", 0),
+                platform_share_pct=getattr(self.agency_config, "platform_share_pct", 20),
+                creator_id=getattr(self.agency_config, "creator_id", None),
             )
             agency_obj = self.adapter.create_agency(
                 config=sub_config,
@@ -270,10 +316,12 @@ class AgencyOrchestrator:
                 persistence_hooks=(None, None),
             )
 
-            run_result = await self.adapter.run_agency(
+            run_result = await self.adapter.run(
                 agency=agency_obj,
                 message=augmented_message,
-                user_token=ctx.user_token,
+                timeout_seconds=sub_config.max_run_time_seconds,
+                agency_id=sub_config.agency_id,
+                tenant_id=ctx.tenant_id,
             )
             return run_result.response
         except Exception as exc:

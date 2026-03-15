@@ -6,12 +6,15 @@ Multi-channel notification system (in-app, email, webhooks)
 import uuid
 import aiosmtplib
 import httpx
+import structlog
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, update
+
+logger = structlog.get_logger(__name__)
 
 from app.models.notification import Notification
 from app.core.config import settings
@@ -76,7 +79,7 @@ class NotificationService:
                 )
             except Exception as e:
                 # Log error but don't fail
-                print(f"Failed to send email notification: {e}")
+                logger.error("email_notification_failed", error=str(e))
         
         # Send webhook if requested
         if send_webhook:
@@ -90,7 +93,7 @@ class NotificationService:
                 )
             except Exception as e:
                 # Log error but don't fail
-                print(f"Failed to send webhook notification: {e}")
+                logger.error("webhook_notification_failed", error=str(e))
         
         return self._notification_to_dict(notification)
     

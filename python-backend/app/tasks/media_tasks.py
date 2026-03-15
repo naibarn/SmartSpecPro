@@ -70,6 +70,75 @@ def _run_async(coro):
     return loop.run_until_complete(coro)
 
 
+def _merge_task_result_data(
+    existing: Any,
+    patch: dict[str, Any],
+    *,
+    remove_keys: tuple[str, ...] = (),
+) -> dict[str, Any]:
+    """Merge task.result_data safely while allowing selected keys to be removed."""
+    merged = dict(existing) if isinstance(existing, dict) else {}
+    for key in remove_keys:
+        merged.pop(key, None)
+    merged.update(patch)
+    return merged
+
+
+async def _mark_task_retrying_async(task_id: str, error: Exception, retry_after_seconds: int) -> None:
+    """Move a task back to a non-terminal state while a Celery retry is pending."""
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(MediaTask).filter(MediaTask.id == task_id)
+        )
+        task = result.scalar_one_or_none()
+        if task is None:
+            return
+
+        task.status = TaskStatus.PENDING
+        task.error_message = None
+        task.started_at = None
+        task.completed_at = None
+        task.result_data = _merge_task_result_data(
+            task.result_data,
+            {
+                "retry": {
+                    "scheduled": True,
+                    "retry_after_seconds": retry_after_seconds,
+                    "last_error": str(error),
+                    "error_type": type(error).__name__,
+                },
+            },
+            remove_keys=("failure",),
+        )
+        await db.commit()
+
+
+async def _mark_task_failed_async(task_id: str, error: Exception) -> None:
+    """Persist terminal failure only after retries are exhausted."""
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(MediaTask).filter(MediaTask.id == task_id)
+        )
+        task = result.scalar_one_or_none()
+        if task is None:
+            return
+
+        task.status = TaskStatus.FAILED
+        task.error_message = str(error)
+        task.completed_at = datetime.utcnow()
+        task.result_data = _merge_task_result_data(
+            task.result_data,
+            {
+                "failure": {
+                    "error": str(error),
+                    "error_type": type(error).__name__,
+                },
+            },
+            remove_keys=("retry",),
+        )
+        await db.commit()
+
+
 def _extract_model_query_endpoint(config_json: Any) -> Optional[str]:
     """Extract model-specific status/query endpoint from configJson."""
     if not config_json:
@@ -583,11 +652,9 @@ async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
             # Update task status to failed
             try:
                 if task is not None:
-                    task.status = TaskStatus.FAILED
-                    task.error_message = str(e)
-                    existing_result_data = task.result_data if isinstance(task.result_data, dict) else {}
-                    task.result_data = {
-                        **existing_result_data,
+                    task.result_data = _merge_task_result_data(
+                        task.result_data,
+                        {
                         "debug": {
                             "trace_id": trace_id,
                             "provider_hint": api_config.get("provider"),
@@ -597,8 +664,9 @@ async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
                             "error": str(e),
                             "error_type": type(e).__name__,
                         },
-                    }
-                    task.completed_at = datetime.utcnow()
+                        },
+                        remove_keys=("retry",),
+                    )
                     await db.commit()
             except:
                 pass
@@ -622,9 +690,17 @@ def generate_image_task(self, task_id: str, user_id: str, request_data: dict):
 
         # Retry if max_retries not reached
         if self.request.retries < self.max_retries:
+            try:
+                _run_async(_mark_task_retrying_async(task_id, e, retry_after_seconds=60))
+            except Exception as retry_state_error:
+                logger.warning("generate_image_task_retry_state_update_failed", task_id=task_id, error=str(retry_state_error))
             raise self.retry(exc=e, countdown=60)  # Retry after 1 minute
 
         # Max retries exhausted — notify user + admins
+        try:
+            _run_async(_mark_task_failed_async(task_id, e))
+        except Exception as fail_state_error:
+            logger.warning("generate_image_task_final_state_update_failed", task_id=task_id, error=str(fail_state_error))
         _run_async(_send_failure_notifications(task_id, user_id, "image", str(e)))
         return {"status": "failed", "task_id": task_id, "error": str(e)}
 
@@ -634,6 +710,7 @@ async def _generate_video_async(task_id: str, user_id: str, request_data: dict):
     Async implementation of video generation
     """
     async with AsyncSessionLocal() as db:
+        task = None
         try:
             result = await db.execute(
                 select(MediaTask).filter(MediaTask.id == task_id)
@@ -684,10 +761,18 @@ async def _generate_video_async(task_id: str, user_id: str, request_data: dict):
             logger.error("generate_video_task_failed", task_id=task_id, error=str(e))
 
             try:
-                task.status = TaskStatus.FAILED
-                task.error_message = str(e)
-                task.completed_at = datetime.utcnow()
-                await db.commit()
+                if task is not None:
+                    task.result_data = _merge_task_result_data(
+                        task.result_data,
+                        {
+                            "failure": {
+                                "error": str(e),
+                                "error_type": type(e).__name__,
+                            },
+                        },
+                        remove_keys=("retry",),
+                    )
+                    await db.commit()
             except:
                 pass
 
@@ -709,9 +794,17 @@ def generate_video_task(self, task_id: str, user_id: str, request_data: dict):
         logger.error("generate_video_task_exception", task_id=task_id, error=str(e))
 
         if self.request.retries < self.max_retries:
+            try:
+                _run_async(_mark_task_retrying_async(task_id, e, retry_after_seconds=120))
+            except Exception as retry_state_error:
+                logger.warning("generate_video_task_retry_state_update_failed", task_id=task_id, error=str(retry_state_error))
             raise self.retry(exc=e, countdown=120)  # Retry after 2 minutes
 
         # Max retries exhausted — notify user + admins
+        try:
+            _run_async(_mark_task_failed_async(task_id, e))
+        except Exception as fail_state_error:
+            logger.warning("generate_video_task_final_state_update_failed", task_id=task_id, error=str(fail_state_error))
         _run_async(_send_failure_notifications(task_id, user_id, "video", str(e)))
         return {"status": "failed", "task_id": task_id, "error": str(e)}
 
@@ -816,8 +909,6 @@ async def _generate_audio_async(task_id: str, user_id: str, request_data: dict):
 
             try:
                 if task is not None:
-                    task.status = TaskStatus.FAILED
-                    task.error_message = str(e)
                     existing_result_data = task.result_data if isinstance(task.result_data, dict) else {}
                     api_debug = (
                         audio_debug_snapshot.get("api")
@@ -825,7 +916,11 @@ async def _generate_audio_async(task_id: str, user_id: str, request_data: dict):
                         else {}
                     )
                     task.result_data = {
-                        **existing_result_data,
+                        **{
+                            key: value
+                            for key, value in existing_result_data.items()
+                            if key != "retry"
+                        },
                         "debug": {
                             "trace_id": trace_id,
                             "provider_hint": audio_debug_snapshot.get("provider_hint"),
@@ -844,7 +939,6 @@ async def _generate_audio_async(task_id: str, user_id: str, request_data: dict):
                             "provider_detail": exception_debug.get("detail"),
                         },
                     }
-                    task.completed_at = datetime.utcnow()
                     await db.commit()
             except Exception:
                 pass
@@ -867,9 +961,17 @@ def generate_audio_task(self, task_id: str, user_id: str, request_data: dict):
         logger.error("generate_audio_task_exception", task_id=task_id, error=str(e))
 
         if self.request.retries < self.max_retries:
+            try:
+                _run_async(_mark_task_retrying_async(task_id, e, retry_after_seconds=60))
+            except Exception as retry_state_error:
+                logger.warning("generate_audio_task_retry_state_update_failed", task_id=task_id, error=str(retry_state_error))
             raise self.retry(exc=e, countdown=60)
 
         # Max retries exhausted — notify user + admins
+        try:
+            _run_async(_mark_task_failed_async(task_id, e))
+        except Exception as fail_state_error:
+            logger.warning("generate_audio_task_final_state_update_failed", task_id=task_id, error=str(fail_state_error))
         _run_async(_send_failure_notifications(task_id, user_id, "audio", str(e)))
         return {"status": "failed", "task_id": task_id, "error": str(e)}
 

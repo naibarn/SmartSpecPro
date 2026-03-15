@@ -72,6 +72,7 @@ _BUILTIN_ENDPOINTS: dict[str, str] = {
     "builtin-file-parse": "/api/internal/tools/file-parse",
     "builtin-schedule-draft": "/api/internal/tools/schedule-draft",
     "builtin-skill-discovery": "/api/internal/tools/skill-discovery",
+    "builtin-present-files": None,  # v1.8: Native agency-swarm tool, no HTTP endpoint
 }
 
 _BUILTIN_RISK_LEVELS: dict[str, str] = {
@@ -91,6 +92,13 @@ _BUILTIN_RISK_LEVELS: dict[str, str] = {
     "builtin-file-parse": "medium",
     "builtin-schedule-draft": "high",
     "builtin-skill-discovery": "low",
+    "builtin-present-files": "low",  # v1.8: File preview tool (local files only)
+}
+
+# v1.8: Builtin tools that are native agency-swarm classes (not HTTP-bridged).
+# These are returned directly from the adapter instead of via create_tool_bridge().
+_NATIVE_SWARM_TOOL_IDS: set[str] = {
+    "builtin-present-files",
 }
 
 _RETRIEVAL_SCOPE_BLOCKED_TOOL_IDS: dict[str, set[str]] = {
@@ -381,6 +389,10 @@ async def resolve_tools_for_agent(
 
     tool_classes: list[type] = []
     blocked_tool_ids = _RETRIEVAL_SCOPE_BLOCKED_TOOL_IDS.get(retrieval_scope_mode or "", set())
+
+    # Lazy import for native swarm tools
+    _native_tool_map: dict[str, type | None] = {}
+
     for row in rows:
         tool_id: str = row.tool_id
         if tool_id in blocked_tool_ids:
@@ -406,6 +418,18 @@ async def resolve_tools_for_agent(
 
         # For builtin tools not in agency_tools, infer risk level from our table
         risk_level: str = row.risk_level or _BUILTIN_RISK_LEVELS.get(tool_id, "low")
+
+        # v1.8: Native agency-swarm tools — return the tool class directly
+        if tool_id in _NATIVE_SWARM_TOOL_IDS:
+            if tool_id not in _native_tool_map:
+                if tool_id == "builtin-present-files" and adapter is not None:
+                    _native_tool_map[tool_id] = adapter.get_present_files_tool()
+                else:
+                    _native_tool_map[tool_id] = None
+            native_cls = _native_tool_map.get(tool_id)
+            if native_cls is not None:
+                tool_classes.append(native_cls)
+                continue
 
         config = ToolConfig(
             tool_id=tool_id,
