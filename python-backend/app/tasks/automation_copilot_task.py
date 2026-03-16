@@ -75,7 +75,6 @@ def get_status(task_id: str) -> dict | None:
 def automation_analyze_task(
     self,
     task_id: str,
-    user_jwt: str,
     user_id: int,
     tenant_id: str,
     prompt: str,
@@ -154,7 +153,6 @@ def automation_execute_task(
     self,
     task_id: str,
     execution_id: str,
-    user_jwt: str,
     user_id: int,
     tenant_id: str,
     intent_json: str,

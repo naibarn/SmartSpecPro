@@ -118,7 +118,6 @@ export const automationCopilotRouter = router({
           prompt: input.prompt,
           tenant_id: tenantId,
           user_id: ctx.user.id,
-          user_jwt: ctx.userToken ?? "",
         },
       });
 
@@ -233,7 +232,6 @@ export const automationCopilotRouter = router({
           task_id: input.taskId,
           execution_id: input.executionId,
           intent_json: input.intentJson,
-          user_jwt: ctx.userToken ?? "",
           tenant_id: tenantId,
           user_id: ctx.user.id,
           vision_model: visionModel,

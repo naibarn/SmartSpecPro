@@ -58,15 +58,14 @@ class TestAnalyzeEndpoint:
             "prompt": "click submit",
             "tenant_id": "t1",
             "user_id": 1,
-            "user_jwt": "jwt",
-        })
+                    })
         assert resp.status_code == 401
 
     def test_returns_403_if_feature_flag_disabled(self, client, internal_headers, mock_redis):
         mock_redis._store["feature_flag:automationCopilot:t1"] = "0"
         resp = client.post(
             f"{ENDPOINT_PREFIX}/analyze",
-            json={"prompt": "test", "tenant_id": "t1", "user_id": 1, "user_jwt": "jwt"},
+            json={"prompt": "test", "tenant_id": "t1", "user_id": 1},
             headers=internal_headers,
         )
         assert resp.status_code == 403
@@ -76,7 +75,7 @@ class TestAnalyzeEndpoint:
             mock_task.delay = MagicMock()
             resp = client.post(
                 f"{ENDPOINT_PREFIX}/analyze",
-                json={"prompt": "click submit", "tenant_id": "t1", "user_id": 1, "user_jwt": "jwt"},
+                json={"prompt": "click submit", "tenant_id": "t1", "user_id": 1},
                 headers=internal_headers,
             )
         assert resp.status_code == 200
@@ -128,8 +127,7 @@ class TestExecuteEndpoint:
                     "task_id": "task-1",
                     "execution_id": "exec-1",
                     "intent_json": "{}",
-                    "user_jwt": "jwt",
-                    "tenant_id": "t1",
+                                        "tenant_id": "t1",
                     "user_id": 1,
                     "vision_model": "gpt-4o",
                     "allowed_domains": ["example.com"],

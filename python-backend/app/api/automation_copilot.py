@@ -61,7 +61,6 @@ class AnalyzeRequest(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=10000)
     tenant_id: str = Field(..., max_length=100)
     user_id: int
-    user_jwt: str
 
 
 class CostEstimate(BaseModel):
@@ -74,7 +73,6 @@ class ExecuteRequest(BaseModel):
     task_id: str
     execution_id: str
     intent_json: str
-    user_jwt: str
     tenant_id: str = Field(..., max_length=100)
     user_id: int
     vision_model: str = Field(default="gpt-4o", max_length=100)
@@ -115,7 +113,7 @@ async def analyze(
     )
 
     automation_analyze_task.delay(
-        task_id, body.user_jwt, body.user_id, body.tenant_id, body.prompt
+        task_id, body.user_id, body.tenant_id, body.prompt
     )
     logger.info("automation_analyze_enqueued", task_id=task_id, tenant_id=body.tenant_id)
     return {"task_id": task_id}
@@ -191,7 +189,6 @@ async def execute(
     automation_execute_task.delay(
         body.task_id,
         body.execution_id,
-        body.user_jwt,
         body.user_id,
         body.tenant_id,
         body.intent_json,
