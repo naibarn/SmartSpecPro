@@ -123,7 +123,10 @@ app.set("trust proxy", 1);
 
 
 // Trusted origin check (shared between CORS and CSRF middleware)
-const ALLOWED_SUFFIXES = ['.smartspec.local', '.smartspec.pro', '.localhost', '.smartaihub.app'];
+const ALLOWED_SUFFIXES = [
+  '.smartaihub.app',
+  ...(process.env.NODE_ENV !== 'production' ? ['.smartspec.local', '.localhost'] : []),
+];
 const ALLOWED_EXACT = ['tauri://localhost', 'http://tauri.localhost'];
 
 function isAllowedOrigin(origin: string | undefined): boolean {
@@ -727,21 +730,41 @@ app.post("/api/internal/google-drive/cleanup", async (req, res) => {
 app.post("/api/internal/presentation-import/callback", presentationImportCallbackHandler);
 
 // Internal agency creation endpoint (Python AI Creator task -> Node.js)
-// Auth: user Bearer JWT (same token that started the creation task)
+// Auth: X-Internal-Token + X-User-Id (service-to-service), or Bearer JWT (legacy)
 app.post("/api/internal/agency/create", async (req, res) => {
   let user: Awaited<ReturnType<typeof sdk.authenticateRequest>> | null = null;
-  try {
-    user = await sdk.authenticateRequest(req);
-  } catch {
-    // Fallback: accept Bearer token as session token (for internal service calls from Python/Celery)
-    const authHeader = req.headers.authorization;
-    if (authHeader?.startsWith("Bearer ")) {
-      const token = authHeader.slice(7);
-      // Inject as cookie so authenticateRequest works
-      req.headers.cookie = `app_session_id=${token}`;
-      try {
-        user = await sdk.authenticateRequest(req);
-      } catch { /* still unauthorized */ }
+
+  // Primary: X-Internal-Token auth (service-to-service from Python/Celery)
+  const internalToken = req.headers["x-internal-token"] as string | undefined;
+  if (internalToken && ENV.webGatewayToken) {
+    const tokenBuf = Buffer.from(internalToken);
+    const expectedBuf = Buffer.from(ENV.webGatewayToken);
+    if (tokenBuf.length === expectedBuf.length) {
+      const crypto = await import("crypto");
+      if (crypto.timingSafeEqual(tokenBuf, expectedBuf)) {
+        const userIdHeader = req.headers["x-user-id"] as string | undefined;
+        const userId = userIdHeader ? parseInt(userIdHeader, 10) : 0;
+        if (userId > 0) {
+          // Create a minimal user-like object for the downstream code
+          user = { id: userId, currentTenantId: null } as any;
+        }
+      }
+    }
+  }
+
+  // Fallback: Bearer JWT auth (legacy path)
+  if (!user) {
+    try {
+      user = await sdk.authenticateRequest(req);
+    } catch {
+      const authHeader = req.headers.authorization;
+      if (authHeader?.startsWith("Bearer ")) {
+        const token = authHeader.slice(7);
+        req.headers.cookie = `app_session_id=${token}`;
+        try {
+          user = await sdk.authenticateRequest(req);
+        } catch { /* still unauthorized */ }
+      }
     }
   }
   if (!user) return res.status(401).json({ error: "Unauthorized" });

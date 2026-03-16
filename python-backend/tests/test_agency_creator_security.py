@@ -68,3 +68,30 @@ def test_no_bearer_header_in_llm_calls():
     assert "Bearer" not in llm_call_source, "Bearer JWT auth found in _llm_call"
     assert "Authorization" not in llm_call_source, "Authorization header found in _llm_call"
     assert "LLMGatewayClient" in llm_call_source, "LLMGatewayClient not used in _llm_call"
+
+
+def test_implement_agency_uses_internal_token():
+    """_implement_agency must use X-Internal-Token, not Bearer JWT."""
+    import pathlib
+
+    source_path = pathlib.Path(inspect.getfile(create_agency_discover_task.run)).resolve()
+    source = source_path.read_text()
+
+    # Extract _implement_agency source
+    impl_start = source.index("async def _implement_agency(")
+    impl_end = source.index("\n\nasync def _llm_document(")
+    impl_source = source[impl_start:impl_end]
+
+    assert "X-Internal-Token" in impl_source, "X-Internal-Token not found in _implement_agency"
+    assert "X-User-Id" in impl_source, "X-User-Id not found in _implement_agency"
+    assert "Bearer" not in impl_source, "Bearer JWT auth still in _implement_agency"
+    assert "user_jwt" not in impl_source, "user_jwt reference still in _implement_agency"
+
+
+def test_implement_agency_signature():
+    """_implement_agency must accept user_id, not user_jwt."""
+    from app.tasks.agency_creator_task import _implement_agency
+
+    sig = inspect.signature(_implement_agency)
+    assert "user_id" in sig.parameters, "user_id missing from _implement_agency"
+    assert "user_jwt" not in sig.parameters, "user_jwt still in _implement_agency"
