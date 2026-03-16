@@ -7,7 +7,7 @@ import { lazy, Suspense, useEffect, useRef } from "react";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { getPostHog } from "@/lib/posthog";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { TenantProvider } from "./contexts/TenantContext";
 
 // Route-based code splitting — all page components are loaded lazily
@@ -57,6 +57,7 @@ const AdminQueueDashboard = lazy(() => import("./pages/AdminQueueDashboard"));
 const AdminQueueLLM = lazy(() => import("./pages/AdminQueueLLM"));
 const AdminQueueMedia = lazy(() => import("./pages/AdminQueueMedia"));
 const AdminAuditLogs = lazy(() => import("./pages/AdminAuditLogs"));
+const AdminOrchestrationLogs = lazy(() => import("./pages/AdminOrchestrationLogs"));
 const AdminAPIKeys = lazy(() => import("./pages/AdminAPIKeys"));
 const AdminOpsDashboard = lazy(() => import("./pages/Admin/AdminOpsDashboard"));
 const AdminOverviewDashboard = lazy(() => import("./pages/Admin/AdminOverviewDashboard"));
@@ -107,6 +108,33 @@ const WebhookTriggers = lazy(() => import("./pages/WebhookTriggers"));
 const AdminChannelRouter = lazy(() => import("./pages/AdminChannelRouter"));
 const ContentQualityDashboard = lazy(() => import("./pages/ContentQualityDashboard"));
 
+/**
+ * Route-level guard for /admin/* routes.
+ * Redirects unauthenticated users to /login and non-admins to /dashboard.
+ * Renders nothing while auth is still loading to avoid a flash.
+ */
+function RequireAdmin({ children }: { children: React.ReactNode }) {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return null;
+  if (!user) return <Redirect to="/login" />;
+  if (user.role !== "admin") return <Redirect to="/dashboard" />;
+  return <>{children}</>;
+}
+
+/**
+ * Route-level guard for /domain-admin/* routes.
+ * Redirects unauthenticated users to /login and users without admin or
+ * domain_admin role to /dashboard.
+ */
+function RequireDomainAdmin({ children }: { children: React.ReactNode }) {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return null;
+  if (!user) return <Redirect to="/login" />;
+  if (user.role !== "admin" && user.role !== "domain_admin")
+    return <Redirect to="/dashboard" />;
+  return <>{children}</>;
+}
+
 function PostHogPageViewTracker() {
   const [location] = useLocation();
   const prevPath = useRef<string | null>(null);
@@ -146,39 +174,108 @@ function Router() {
         <Route path="/marketplace" component={Marketplace} />
         <Route path="/marketplace/:slug" component={Marketplace} />
         <Route path="/gallery" component={Gallery} />
-        <Route path="/admin/gallery" component={AdminGallery} />
-        <Route path="/admin/users" component={AdminUsers} />
-        <Route path="/admin/packages" component={AdminPackages} />
-        <Route path="/admin/llm-providers" component={AdminLLMProviders} />
-        <Route path="/admin/llm-models" component={AdminLLMModels} />
-        <Route path="/admin/media-providers" component={AdminMediaProviders} />
-        <Route path="/admin/media-models" component={AdminMediaModels} />
-        <Route path="/admin/skills" component={AdminSkills} />
-        <Route path="/admin/personas" component={AdminPersonas} />
-        <Route path="/admin/agencies" component={AdminAgencies} />
-        <Route path="/admin/approvals" component={AdminApprovals} />
-        <Route path="/admin/skill-repositories" component={AdminSkillRepositories} />
-        <Route path="/admin/storage-settings"><Redirect to="/admin/settings" /></Route>
-        <Route path="/admin/services" component={AdminServices} />
-        <Route path="/admin/settings" component={AdminSettings} />
-        <Route path="/admin/queues" component={AdminQueueDashboard} />
-        <Route path="/admin/queues/llm" component={AdminQueueLLM} />
-        <Route path="/admin/queues/media" component={AdminQueueMedia} />
-        <Route path="/admin/audit-logs" component={AdminAuditLogs} />
-        <Route path="/admin/api-keys" component={AdminAPIKeys} />
-        <Route path="/admin/ops" component={AdminOpsDashboard} />
-        <Route path="/admin/dashboard" component={AdminOverviewDashboard} />
-        <Route path="/admin/funnel" component={AdminFunnelDashboard} />
-        <Route path="/admin/channel-router" component={AdminChannelRouter} />
-        <Route path="/admin/sandbox" component={AdminSandbox} />
-        <Route path="/admin/content-quality" component={ContentQualityDashboard} />
-        <Route path="/admin/tenants" component={AdminTenants} />
-        <Route path="/domain-admin" component={DomainAdmin} />
-        <Route path="/domain-admin/theme" component={DomainThemeEditor} />
-        <Route path="/domain-admin/content" component={DomainAdminContent} />
-        <Route path="/domain-admin/users" component={DomainUsers} />
-        <Route path="/domain-admin/settings" component={TenantSettings} />
-        <Route path="/domain-admin/blog" component={DomainBlogAdmin} />
+        <Route path="/admin/gallery">
+          <RequireAdmin><AdminGallery /></RequireAdmin>
+        </Route>
+        <Route path="/admin/users">
+          <RequireAdmin><AdminUsers /></RequireAdmin>
+        </Route>
+        <Route path="/admin/packages">
+          <RequireAdmin><AdminPackages /></RequireAdmin>
+        </Route>
+        <Route path="/admin/llm-providers">
+          <RequireAdmin><AdminLLMProviders /></RequireAdmin>
+        </Route>
+        <Route path="/admin/llm-models">
+          <RequireAdmin><AdminLLMModels /></RequireAdmin>
+        </Route>
+        <Route path="/admin/media-providers">
+          <RequireAdmin><AdminMediaProviders /></RequireAdmin>
+        </Route>
+        <Route path="/admin/media-models">
+          <RequireAdmin><AdminMediaModels /></RequireAdmin>
+        </Route>
+        <Route path="/admin/skills">
+          <RequireAdmin><AdminSkills /></RequireAdmin>
+        </Route>
+        <Route path="/admin/personas">
+          <RequireAdmin><AdminPersonas /></RequireAdmin>
+        </Route>
+        <Route path="/admin/agencies">
+          <RequireAdmin><AdminAgencies /></RequireAdmin>
+        </Route>
+        <Route path="/admin/approvals">
+          <RequireAdmin><AdminApprovals /></RequireAdmin>
+        </Route>
+        <Route path="/admin/skill-repositories">
+          <RequireAdmin><AdminSkillRepositories /></RequireAdmin>
+        </Route>
+        <Route path="/admin/storage-settings">
+          <Redirect to="/admin/settings" />
+        </Route>
+        <Route path="/admin/services">
+          <RequireAdmin><AdminServices /></RequireAdmin>
+        </Route>
+        <Route path="/admin/settings">
+          <RequireAdmin><AdminSettings /></RequireAdmin>
+        </Route>
+        <Route path="/admin/queues">
+          <RequireAdmin><AdminQueueDashboard /></RequireAdmin>
+        </Route>
+        <Route path="/admin/queues/llm">
+          <RequireAdmin><AdminQueueLLM /></RequireAdmin>
+        </Route>
+        <Route path="/admin/queues/media">
+          <RequireAdmin><AdminQueueMedia /></RequireAdmin>
+        </Route>
+        <Route path="/admin/audit-logs">
+          <RequireAdmin><AdminAuditLogs /></RequireAdmin>
+        </Route>
+        <Route path="/admin/orchestration-logs">
+          <RequireAdmin><AdminOrchestrationLogs /></RequireAdmin>
+        </Route>
+        <Route path="/admin/api-keys">
+          <RequireAdmin><AdminAPIKeys /></RequireAdmin>
+        </Route>
+        <Route path="/admin/ops">
+          <RequireAdmin><AdminOpsDashboard /></RequireAdmin>
+        </Route>
+        <Route path="/admin/dashboard">
+          <RequireAdmin><AdminOverviewDashboard /></RequireAdmin>
+        </Route>
+        <Route path="/admin/funnel">
+          <RequireAdmin><AdminFunnelDashboard /></RequireAdmin>
+        </Route>
+        <Route path="/admin/channel-router">
+          <RequireAdmin><AdminChannelRouter /></RequireAdmin>
+        </Route>
+        <Route path="/admin/sandbox">
+          <RequireAdmin><AdminSandbox /></RequireAdmin>
+        </Route>
+        <Route path="/admin/content-quality">
+          <RequireAdmin><ContentQualityDashboard /></RequireAdmin>
+        </Route>
+        <Route path="/admin/tenants">
+          <RequireAdmin><AdminTenants /></RequireAdmin>
+        </Route>
+        <Route path="/domain-admin">
+          <RequireDomainAdmin><DomainAdmin /></RequireDomainAdmin>
+        </Route>
+        <Route path="/domain-admin/theme">
+          <RequireDomainAdmin><DomainThemeEditor /></RequireDomainAdmin>
+        </Route>
+        <Route path="/domain-admin/content">
+          <RequireDomainAdmin><DomainAdminContent /></RequireDomainAdmin>
+        </Route>
+        <Route path="/domain-admin/users">
+          <RequireDomainAdmin><DomainUsers /></RequireDomainAdmin>
+        </Route>
+        <Route path="/domain-admin/settings">
+          <RequireDomainAdmin><TenantSettings /></RequireDomainAdmin>
+        </Route>
+        <Route path="/domain-admin/blog">
+          <RequireDomainAdmin><DomainBlogAdmin /></RequireDomainAdmin>
+        </Route>
         <Route path="/login" component={Login} />
         <Route path="/signup" component={Signup} />
         <Route path="/forgot-password" component={ForgotPassword} />

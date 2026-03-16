@@ -159,6 +159,163 @@ export const auditRouter = router({
     }),
 
   /**
+   * Search orchestration audit events from JSONL logs.
+   * Filters by orchestration_* event types and supports date/traceId/userId filters.
+   */
+  orchestrationEvents: adminProcedure
+    .input(
+      z.object({
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        traceId: z.string().optional(),
+        userId: z.number().optional(),
+        eventType: z
+          .enum([
+            "orchestration_classify",
+            "orchestration_pipeline",
+            "orchestration_agent_step",
+            "orchestration_quality_gate",
+            "orchestration_param_extract",
+            "orchestration_fallback",
+          ])
+          .optional(),
+        limit: z.number().min(1).max(500).default(100),
+      })
+    )
+    .query(async ({ input }) => {
+      const targetDate = input.date
+        ? new Date(`${input.date}T00:00:00.000Z`)
+        : new Date();
+
+      // Read all orchestration events from JSONL
+      const orchestrationTypes = [
+        "orchestration_classify",
+        "orchestration_pipeline",
+        "orchestration_agent_step",
+        "orchestration_quality_gate",
+        "orchestration_param_extract",
+        "orchestration_fallback",
+      ];
+
+      let allEntries: any[] = [];
+
+      // Read target date ± 1 day
+      for (const offset of [-1, 0, 1]) {
+        const d = addDays(targetDate, offset);
+        if (input.eventType) {
+          // Filter by specific event type
+          const entries = await auditLogger.readEntries({
+            date: d,
+            eventType: input.eventType,
+            traceId: input.traceId,
+            userId: input.userId,
+            limit: input.limit,
+          });
+          allEntries.push(...entries);
+        } else {
+          // Fetch all orchestration event types
+          for (const eventType of orchestrationTypes) {
+            const entries = await auditLogger.readEntries({
+              date: d,
+              eventType,
+              traceId: input.traceId,
+              userId: input.userId,
+              limit: Math.ceil(input.limit / orchestrationTypes.length),
+            });
+            allEntries.push(...entries);
+          }
+        }
+      }
+
+      // Sort by timestamp descending and deduplicate
+      allEntries.sort((a, b) => {
+        const ta = a?.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const tb = b?.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return tb - ta;
+      });
+
+      // Deduplicate by timestamp+eventType+traceId
+      const seen = new Set<string>();
+      allEntries = allEntries.filter((e) => {
+        const key = `${e.timestamp}|${e.eventType}|${e.traceId}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
+      // Compute summary stats
+      const classifyEvents = allEntries.filter((e) => e.eventType === "orchestration_classify");
+      const fallbackEvents = allEntries.filter((e) => e.eventType === "orchestration_fallback");
+      const pipelineEvents = allEntries.filter((e) => e.eventType === "orchestration_pipeline");
+
+      const avgLatency = classifyEvents.length > 0
+        ? classifyEvents.reduce((sum: number, e: any) => sum + (e.metadata?.latencyMs ?? 0), 0) / classifyEvents.length
+        : 0;
+
+      const totalCredits = pipelineEvents.reduce(
+        (sum: number, e: any) => sum + (e.metadata?.totalCreditsUsed ?? e.creditsCharged ?? 0),
+        0,
+      );
+
+      const fallbackReasons: Record<string, number> = {};
+      for (const e of fallbackEvents) {
+        const reason = e.metadata?.reason ?? "unknown";
+        fallbackReasons[reason] = (fallbackReasons[reason] ?? 0) + 1;
+      }
+
+      // Skill usage distribution
+      const skillUsage: Record<string, number> = {};
+      for (const e of classifyEvents) {
+        const topSkill = e.metadata?.skills?.[0]?.skillId ?? e.skillSlug;
+        if (topSkill) {
+          skillUsage[topSkill] = (skillUsage[topSkill] ?? 0) + 1;
+        }
+      }
+
+      return {
+        entries: allEntries.slice(0, input.limit),
+        stats: {
+          totalEvents: allEntries.length,
+          classifyCount: classifyEvents.length,
+          fallbackCount: fallbackEvents.length,
+          pipelineCount: pipelineEvents.length,
+          avgClassifyLatencyMs: Math.round(avgLatency),
+          totalCreditsUsed: totalCredits,
+          fallbackReasons,
+          topSkills: Object.entries(skillUsage)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 10)
+            .map(([skillId, count]) => ({ skillId, count })),
+        },
+      };
+    }),
+
+  /**
+   * Get full orchestration trace — all events for a single traceId
+   */
+  orchestrationTrace: adminProcedure
+    .input(
+      z.object({
+        traceId: z.string(),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const preferredDate = input.date
+        ? new Date(`${input.date}T00:00:00.000Z`)
+        : new Date();
+      const entries = await readAuditEntriesWithFallback({
+        traceId: input.traceId,
+        preferredDate,
+        limit: 100,
+      });
+      // Filter to orchestration events only
+      const orchestrationEntries = entries.filter((e: any) =>
+        e.eventType?.startsWith("orchestration_"),
+      );
+      return { entries: orchestrationEntries, allEntries: entries };
+    }),
+
+  /**
    * Cost audit: cross-check providerUsageLog vs creditTransactions by traceId
    */
   costAudit: adminProcedure
