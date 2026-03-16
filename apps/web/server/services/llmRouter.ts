@@ -327,6 +327,8 @@ export async function executeWithFallback(params: {
   userId: number;
   conversationId?: number;
   preferredProvider?: number;
+  /** When true, sends reasoning.effort="high" for thinking mode (OpenRouter) */
+  enableThinking?: boolean;
 }): Promise<ExecuteResult> {
   const resolvedModel = await resolveEnabledLlmModelId([params.model]);
   if (!resolvedModel) {
@@ -383,6 +385,8 @@ export async function executeWithFallback(params: {
       });
 
       const fetchStart = Date.now();
+      const abortController = new AbortController();
+      const fetchTimeout = setTimeout(() => abortController.abort(), 120_000); // 2 min timeout
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -393,8 +397,11 @@ export async function executeWithFallback(params: {
           model: candidate.providerModelId,
           messages: params.messages,
           stream: params.stream,
+          ...(params.enableThinking ? { reasoning: { effort: "high" } } : {}),
         }),
+        signal: abortController.signal,
       });
+      clearTimeout(fetchTimeout);
       const networkMs = Date.now() - fetchStart;
 
       const responseTimeMs = Date.now() - startTime;

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/skills/skill-orchestrator/schemas/input.schema.json",
+  "title": "Skill Orchestrator - Input Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["request"],
+  "properties": {
+    "request": {
+      "type": "string",
+      "title": "What do you need?",
+      "description": "Describe what you want to accomplish. The orchestrator will find the best skill for your request."
+    },
+    "language": {
+      "type": "string",
+      "title": "Language",
+      "description": "Preferred output language.",
+      "enum": ["th", "en"],
+      "default": "th"
+    }
+  }
+}

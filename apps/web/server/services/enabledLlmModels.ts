@@ -11,6 +11,7 @@ export type EnabledLlmModelRow = {
   defaultModel: string | null;
   // Capability columns (from model_provider_map)
   supportsVision: boolean | null;
+  supportsThinking: boolean | null;
   supportsFunctionTools: boolean | null;
   supportsStructuredOutputs: boolean | null;
   supportsWebSearch: boolean | null;
@@ -107,6 +108,7 @@ export async function loadEnabledLlmModelRows(): Promise<EnabledLlmModelRow[]> {
       defaultModel: llmProviders.defaultModel,
       // Capability columns
       supportsVision: modelProviderMap.supportsVision,
+      supportsThinking: modelProviderMap.supportsThinking,
       supportsFunctionTools: modelProviderMap.supportsFunctionTools,
       supportsStructuredOutputs: modelProviderMap.supportsStructuredOutputs,
       supportsWebSearch: modelProviderMap.supportsWebSearch,
@@ -135,6 +137,7 @@ export async function loadEnabledLlmModelRows(): Promise<EnabledLlmModelRow[]> {
     providerModelId: row.providerModelId,
     defaultModel: row.defaultModel,
     supportsVision: row.supportsVision,
+    supportsThinking: row.supportsThinking,
     supportsFunctionTools: row.supportsFunctionTools,
     supportsStructuredOutputs: row.supportsStructuredOutputs,
     supportsWebSearch: row.supportsWebSearch,

@@ -95,7 +95,6 @@ export async function orchestrateSkill(
       traceId,
     );
     classificationLatencyMs = Date.now() - classifyStart;
-
     if (!classification) {
       auditLogger.log({
         eventType: "orchestration_fallback" as any,

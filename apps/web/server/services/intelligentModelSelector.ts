@@ -19,6 +19,7 @@ export interface ModelPriorityInput {
   supportsFunctionTools?: boolean | null;
   supportsStructuredOutputs?: boolean | null;
   supportsWebSearch?: boolean | null;
+  supportsThinking?: boolean | null;
   supportsCodeExecution?: boolean | null;
   supportsComputerUse?: boolean | null;
   supportsBackground?: boolean | null;
@@ -128,6 +129,7 @@ const CAPABILITY_KEYS: ReadonlyArray<
   keyof Omit<CapabilityRequirements, "contextLength">
 > = [
   "supportsVision",
+  "supportsThinking",
   "supportsFunctionTools",
   "supportsStructuredOutputs",
   "supportsWebSearch",
@@ -186,6 +188,11 @@ export function selectBestLlmModel(
 
   // Step 3: Sort by priority ASC (lower = higher priority)
   candidates.sort((a, b) => a.priority - b.priority);
+
+  // Debug: log candidates for orchestrator troubleshooting
+  if (candidates.length > 0) {
+    console.log(`[ModelSelector] ${candidates.length} candidates for requirements ${JSON.stringify(requirements)}: ${candidates.slice(0, 5).map(c => `${c.modelId}(p${c.priority})`).join(", ")}`);
+  }
 
   // Step 4: Return first match
   // TODO v2: apply disallowedModels filter here

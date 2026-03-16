@@ -48,6 +48,7 @@ import { eq, and, like } from "drizzle-orm";
 import { checkRateLimit } from "../middleware/distributedRateLimit";
 import { auditLogger } from "../services/auditLogger";
 import { checkAbuseGuard, hashPrompt } from "../services/abuseGuard";
+import { orchestrateSkill } from "../services/skillOrchestrator";
 import { resolveSkillExecutionPolicy } from "../services/skillExecutionPolicy";
 import { runPlanner, recordStepAttempt } from "../services/taskPlannerMiddleware";
 import { classifyArtifactIntent, selectExecutionRoute } from "../services/artifactRouter";
@@ -1336,6 +1337,66 @@ export const chatRouter = router({
         });
       }
 
+      // ── Skill Orchestrator intercept ──────────────────────────────────────
+      // When user selects "skill-orchestrator", use LLM classification to find
+      // the right skill, then re-route to the normal skill execution flow.
+      if (input.skillId === "skill-orchestrator") {
+        const userPrompt = input.prompt
+          || (input.extraParams?.request as string)
+          || (input.dynamicParams?.request as string)
+          || (input.extraParams?.prompt as string)
+          || (input.dynamicParams?.prompt as string)
+          || "";
+        if (!userPrompt.trim()) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Please describe what you need so the orchestrator can find the right skill.",
+          });
+        }
+
+        // Use orchestrator for CLASSIFICATION ONLY — find the best skill
+        const hasImages = (input.referenceImageUrls && input.referenceImageUrls.length > 0);
+        const { classifyIntent } = await import("../services/skillIntentClassifier");
+        const classification = await classifyIntent(
+          userPrompt,
+          ctx.user.id,
+          ctx.tenantId ?? "default",
+          input.conversationId,
+          undefined, // traceId
+          { hasImages: !!hasImages },
+        );
+
+        if (!classification || classification.skills.length === 0 || classification.skills[0].confidence < 0.5) {
+          return {
+            success: false,
+            skillId: input.skillId,
+            type: "text" as const,
+            message: "ไม่พบ Skill ที่ตรงกับคำขอ กรุณาลองอธิบายเพิ่มเติม หรือเลือก Skill โดยตรง",
+            resultUrl: undefined as string | undefined,
+            resultUrls: undefined as string[] | undefined,
+          };
+        }
+
+        const matchedSkill = classification.skills[0];
+        console.log(`[Orchestrator] classified → ${matchedSkill.skillId} (confidence: ${matchedSkill.confidence})`);
+
+        // Auto-detect language from prompt — Thai chars present = Thai, otherwise English
+        const hasThai = /[\u0E00-\u0E7F]/.test(userPrompt);
+        const detectedLang = hasThai ? "th" : "en";
+
+        // Re-route: replace skillId with matched skill, keep user's prompt
+        input.skillId = matchedSkill.skillId;
+        input.prompt = userPrompt;
+        // Pass detected language + any extracted params to the matched skill
+        input.dynamicParams = {
+          ...input.dynamicParams,
+          ...matchedSkill.extractedParams,
+          language: detectedLang,
+        };
+
+        // Fall through to normal skill execution below
+      }
+
       // Use getSkillByIdOrType to support both skill IDs and skill types
       const skill = getSkillByIdOrType(input.skillId);
 
@@ -1520,8 +1581,63 @@ export const chatRouter = router({
             conversationModel = conversation.model;
           }
         }
+        // Build dynamic model requirements based on context
+        // skill.executionPolicy may be a raw JSON string from DB — parse if needed
+        let parsedPolicy: Record<string, any> | null = null;
+        if (typeof skill.executionPolicy === "string") {
+          try { parsedPolicy = JSON.parse(skill.executionPolicy); } catch { /* ignore */ }
+        } else if (typeof skill.executionPolicy === "object" && skill.executionPolicy) {
+          parsedPolicy = skill.executionPolicy as Record<string, any>;
+        }
+        const baseReqs = parsedPolicy?.requirements || {};
+        const dynamicReqs: Record<string, unknown> = { ...baseReqs };
+        const skillPolicy = parsedPolicy;
+
+        // When reference images are present, require a vision-capable model
+        if (hasRefImages) {
+          dynamicReqs.supportsVision = true;
+        }
+
+        // When skill needs web search (e.g., product reviewers), require web-search model
+        if (skillPolicy?.requires_web_search || skillPolicy?.requires_citations) {
+          dynamicReqs.supportsWebSearch = true;
+        }
+
+        // When skill needs thinking mode, require thinking-capable model
+        if (skillPolicy?.requires_thinking || skillPolicy?.thinking_level_hint === "high" || skillPolicy?.thinking_level_hint === "medium") {
+          dynamicReqs.supportsThinking = true;
+        }
+
+        // For product reviews and complex skills: prefer newer, high-capability models
+        // by requiring large context + web search + thinking
+        const isReviewSkill = (skill.category || "").includes("review") || (skill.type || "").includes("review");
+        const isComplexTask = isReviewSkill || skillPolicy?.thinking_level_hint === "high";
+        if (isComplexTask) {
+          dynamicReqs.supportsWebSearch = true;
+          dynamicReqs.supportsThinking = true;
+          // Require 500K+ context to skip gpt-4o-mini (128K) and select
+          // newer models like gemini-3-flash (1M) or gpt-5.4 (1M)
+          if (!dynamicReqs.contextLength || (dynamicReqs.contextLength as number) < 500_000) {
+            dynamicReqs.contextLength = 500_000;
+          }
+        }
+
+        const hasOverrides = JSON.stringify(dynamicReqs) !== JSON.stringify(baseReqs);
+        if (hasOverrides) {
+          console.log(`[Orchestrator] model requirements override:`, dynamicReqs);
+        }
+        const skillForPolicy = hasOverrides
+          ? {
+              ...skill,
+              executionPolicy: {
+                ...(skillPolicy || {}),
+                mode: "requirements" as const,
+                requirements: dynamicReqs,
+              },
+            }
+          : skill;
         const executionPolicy = await resolveSkillExecutionPolicy({
-          skill,
+          skill: skillForPolicy,
           conversationModel,
         });
 
@@ -1559,9 +1675,14 @@ export const chatRouter = router({
           }
         }
 
-        // Model selection: planner is primary, legacy is fallback
+        // Model selection: when dynamic requirements were injected (vision/search),
+        // use executionPolicy result which respects those requirements.
+        // Otherwise, planner is primary with executionPolicy as fallback.
         let llmModel: string | null;
-        if (plannerResult?.resolvedModel) {
+        if (hasOverrides && executionPolicy.modelId) {
+          llmModel = executionPolicy.modelId;
+          debugLog("Chat", `[executeSkill] model from requirements override: ${llmModel} (matched: ${JSON.stringify(executionPolicy.matchedCapabilities)})`);
+        } else if (plannerResult?.resolvedModel) {
           llmModel = plannerResult.resolvedModel;
         } else {
           llmModel = executionPolicy.modelId;
@@ -1581,11 +1702,16 @@ export const chatRouter = router({
         debugLog("Chat", `[executeSkill] LLM skill '${input.skillId}' mode='${executionMode}', model=${llmModel}, modelSource=${executionPolicy.modelSource}, refImages=${refImageUrls.length}`);
 
         // Execute with intelligent model-level fallback (tries up to 5 models)
+        // Enable thinking mode when skill requires it (sends reasoning.effort="high")
+        const skillRequiresThinking = parsedPolicy?.requires_thinking === true
+          || parsedPolicy?.thinking_level_hint === "high"
+          || parsedPolicy?.thinking_level_hint === "medium";
         const fallbackResult = await executeSkillLlmWithFallback({
           messages: llmMessages,
           skillSlug: input.skillId,
           userId: ctx.user.id,
           executionPolicy,
+          enableThinking: skillRequiresThinking || undefined,
         });
 
         if (!fallbackResult.success) {

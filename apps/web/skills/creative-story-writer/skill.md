@@ -14,7 +14,7 @@ execution_mode: llm-only
 execution_policy:
   requires_web_search: false
   requires_citations: false
-  requires_structured_output: true
+  requires_thinking: true
   thinking_level_hint: "medium"
   output_format: "cms_article"
 content_quality:

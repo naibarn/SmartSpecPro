@@ -2589,6 +2589,7 @@ export const skillsRouter = router({
           // Feature 041: Capability requirements
           requirements: z.object({
             supportsVision: z.boolean().optional(),
+            supportsThinking: z.boolean().optional(),
             supportsFunctionTools: z.boolean().optional(),
             supportsStructuredOutputs: z.boolean().optional(),
             supportsWebSearch: z.boolean().optional(),

@@ -1,0 +1,38 @@
+{
+  "version": "1.0",
+  "skillId": "skill-orchestrator",
+  "title": "Skill Orchestrator",
+  "titleTh": "ระบบเลือก Skill อัตโนมัติ",
+  "description": "AI-powered skill router that automatically selects the best skill for your request",
+  "descriptionTh": "ระบบ AI ที่เลือก Skill ที่เหมาะสมกับคำขอของคุณโดยอัตโนมัติ",
+  "sections": [
+    {
+      "id": "main",
+      "title": "Skill Orchestrator",
+      "titleTh": "ระบบเลือก Skill อัตโนมัติ",
+      "icon": "sparkles",
+      "fields": [
+        {
+          "id": "request",
+          "type": "textarea",
+          "label": "What do you need?",
+          "labelTh": "ต้องการทำอะไร?",
+          "placeholder": "e.g., Review mamypoko diaper pants XXL / Write article about AI / Create cat image",
+          "placeholderTh": "เช่น: รีวิวสินค้ากางเกงผ้าอ้อม mamypoko / เขียนบทความเรื่อง AI / สร้างรูปแมวนั่งบนดวงจันทร์",
+          "required": true
+        },
+        {
+          "id": "language",
+          "type": "select",
+          "label": "Language",
+          "labelTh": "ภาษา",
+          "options": [
+            { "value": "th", "label": "ไทย" },
+            { "value": "en", "label": "English" }
+          ],
+          "default": "th"
+        }
+      ]
+    }
+  ]
+}

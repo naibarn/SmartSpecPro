@@ -103,6 +103,12 @@ interface MappingForm {
   isEnabled: boolean;
   priority: string;
   apiStyle: "chat-completions" | "responses" | "messages" | "gemini";
+  // Model capabilities
+  supportsVision: boolean;
+  supportsThinking: boolean;
+  supportsWebSearch: boolean;
+  supportsFunctionTools: boolean;
+  supportsStructuredOutputs: boolean;
 }
 
 const emptyMappingForm: MappingForm = {
@@ -117,6 +123,11 @@ const emptyMappingForm: MappingForm = {
   isEnabled: true,
   priority: "0",
   apiStyle: "chat-completions",
+  supportsVision: false,
+  supportsThinking: false,
+  supportsWebSearch: false,
+  supportsFunctionTools: false,
+  supportsStructuredOutputs: false,
 };
 
 function PriorityInlineEditor({
@@ -302,6 +313,11 @@ function ModelMappingsTab() {
       isEnabled: mapping.isEnabled !== false,
       priority: String(mapping.priority ?? 0),
       apiStyle: mapping.apiStyle ?? "chat-completions",
+      supportsVision: !!mapping.supportsVision,
+      supportsThinking: !!mapping.supportsThinking,
+      supportsWebSearch: !!mapping.supportsWebSearch,
+      supportsFunctionTools: !!mapping.supportsFunctionTools,
+      supportsStructuredOutputs: !!mapping.supportsStructuredOutputs,
     });
     setEditId(mapping.mappingId ?? mapping.id ?? null);
     setShowForm(true);
@@ -321,6 +337,11 @@ function ModelMappingsTab() {
       isEnabled: form.isEnabled,
       priority: Number(form.priority) || 0,
       apiStyle: form.apiStyle,
+      supportsVision: form.supportsVision,
+      supportsThinking: form.supportsThinking,
+      supportsWebSearch: form.supportsWebSearch,
+      supportsFunctionTools: form.supportsFunctionTools,
+      supportsStructuredOutputs: form.supportsStructuredOutputs,
     });
     await invalidateMappingQueries();
     resetForm();
@@ -606,6 +627,53 @@ function ModelMappingsTab() {
               />
               Enabled
             </label>
+          </div>
+
+          {/* Model Capabilities */}
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Capabilities</p>
+            <div className="flex flex-wrap items-center gap-4">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.supportsVision}
+                  onChange={(e) => setForm({ ...form, supportsVision: e.target.checked })}
+                />
+                Vision
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.supportsThinking}
+                  onChange={(e) => setForm({ ...form, supportsThinking: e.target.checked })}
+                />
+                Thinking
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.supportsWebSearch}
+                  onChange={(e) => setForm({ ...form, supportsWebSearch: e.target.checked })}
+                />
+                Web Search
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.supportsFunctionTools}
+                  onChange={(e) => setForm({ ...form, supportsFunctionTools: e.target.checked })}
+                />
+                Function Tools
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.supportsStructuredOutputs}
+                  onChange={(e) => setForm({ ...form, supportsStructuredOutputs: e.target.checked })}
+                />
+                Structured Outputs
+              </label>
+            </div>
           </div>
 
           <div className="flex justify-end gap-2">

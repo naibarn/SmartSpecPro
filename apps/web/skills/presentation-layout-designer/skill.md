@@ -14,7 +14,7 @@ priority: 40
 creditMultiplier: 1.0
 execution_mode: llm-only
 execution_policy:
-  requires_structured_output: true
+  requires_thinking: true
   thinking_level_hint: "high"
   output_format: "presentation_slide"
 tags:

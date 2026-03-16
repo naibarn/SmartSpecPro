@@ -61,6 +61,12 @@ export interface AdminModelCatalogRow {
   priority: number;
   priorityLocked: boolean;
   apiStyle: "chat-completions" | "responses" | "messages" | "gemini";
+  // Model capabilities
+  supportsVision?: boolean;
+  supportsThinking?: boolean;
+  supportsWebSearch?: boolean;
+  supportsFunctionTools?: boolean;
+  supportsStructuredOutputs?: boolean;
 }
 
 function defaultApiStyleForProvider(providerName: string): AdminModelCatalogRow["apiStyle"] {
@@ -115,6 +121,12 @@ export function mergeAdminModelCatalogRows(input: {
       priority: mapping.priority,
       priorityLocked: mapping.priorityLocked,
       apiStyle: mapping.apiStyle,
+      // Capability columns
+      supportsVision: !!(mapping as any).supportsVision,
+      supportsThinking: !!(mapping as any).supportsThinking,
+      supportsWebSearch: !!(mapping as any).supportsWebSearch,
+      supportsFunctionTools: !!(mapping as any).supportsFunctionTools,
+      supportsStructuredOutputs: !!(mapping as any).supportsStructuredOutputs,
     });
   }
 
@@ -195,6 +207,11 @@ export const multiProviderRouter = router({
         priority: modelProviderMap.priority,
         priorityLocked: modelProviderMap.priorityLocked,
         apiStyle: modelProviderMap.apiStyle,
+        // Capability columns
+        supportsVision: modelProviderMap.supportsVision,
+        supportsWebSearch: modelProviderMap.supportsWebSearch,
+        supportsFunctionTools: modelProviderMap.supportsFunctionTools,
+        supportsStructuredOutputs: modelProviderMap.supportsStructuredOutputs,
       })
       .from(modelProviderMap)
       .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
@@ -231,6 +248,12 @@ export const multiProviderRouter = router({
           priority: modelProviderMap.priority,
           priorityLocked: modelProviderMap.priorityLocked,
           apiStyle: modelProviderMap.apiStyle,
+          // Capability columns
+          supportsVision: modelProviderMap.supportsVision,
+          supportsThinking: modelProviderMap.supportsThinking,
+          supportsWebSearch: modelProviderMap.supportsWebSearch,
+          supportsFunctionTools: modelProviderMap.supportsFunctionTools,
+          supportsStructuredOutputs: modelProviderMap.supportsStructuredOutputs,
         })
         .from(modelProviderMap)
         .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
@@ -392,10 +415,32 @@ export const multiProviderRouter = router({
         isEnabled: z.boolean(),
         priority: z.number().int().min(0).max(999).optional(),
         apiStyle: z.enum(["chat-completions", "responses", "messages", "gemini"]).default("chat-completions"),
+        // Model capabilities — editable by admin
+        supportsVision: z.boolean().optional(),
+        supportsThinking: z.boolean().optional(),
+        supportsWebSearch: z.boolean().optional(),
+        supportsFunctionTools: z.boolean().optional(),
+        supportsStructuredOutputs: z.boolean().optional(),
+        supportsCodeExecution: z.boolean().optional(),
+        supportsComputerUse: z.boolean().optional(),
+        supportsBackground: z.boolean().optional(),
+        supportsResponses: z.boolean().optional(),
       })
     )
     .mutation(async ({ input }) => {
       const isExplicitPriority = input.priority !== undefined;
+
+      // Build capability fields object (only include fields that were explicitly sent)
+      const capabilityFields: Record<string, boolean> = {};
+      if (input.supportsVision !== undefined) capabilityFields.supportsVision = input.supportsVision;
+      if (input.supportsThinking !== undefined) capabilityFields.supportsThinking = input.supportsThinking;
+      if (input.supportsWebSearch !== undefined) capabilityFields.supportsWebSearch = input.supportsWebSearch;
+      if (input.supportsFunctionTools !== undefined) capabilityFields.supportsFunctionTools = input.supportsFunctionTools;
+      if (input.supportsStructuredOutputs !== undefined) capabilityFields.supportsStructuredOutputs = input.supportsStructuredOutputs;
+      if (input.supportsCodeExecution !== undefined) capabilityFields.supportsCodeExecution = input.supportsCodeExecution;
+      if (input.supportsComputerUse !== undefined) capabilityFields.supportsComputerUse = input.supportsComputerUse;
+      if (input.supportsBackground !== undefined) capabilityFields.supportsBackground = input.supportsBackground;
+      if (input.supportsResponses !== undefined) capabilityFields.supportsResponses = input.supportsResponses;
 
       if (input.id) {
         await db
@@ -411,6 +456,7 @@ export const multiProviderRouter = router({
             contextLength: input.contextLength,
             isEnabled: input.isEnabled,
             apiStyle: input.apiStyle,
+            ...capabilityFields,
             ...(isExplicitPriority ? { priority: input.priority, priorityLocked: true } : {}),
           })
           .where(eq(modelProviderMap.id, input.id));
@@ -425,14 +471,15 @@ export const multiProviderRouter = router({
             isFree: input.isFree,
             contextLength: input.contextLength,
             createdAt: undefined,
-            supportsFunctionTools: false,
-            supportsStructuredOutputs: false,
-            supportsWebSearch: false,
-            supportsCodeExecution: false,
-            supportsComputerUse: false,
-            supportsBackground: false,
-            supportsResponses: false,
-            supportsVision: false,
+            supportsFunctionTools: input.supportsFunctionTools ?? false,
+            supportsStructuredOutputs: input.supportsStructuredOutputs ?? false,
+            supportsWebSearch: input.supportsWebSearch ?? false,
+            supportsThinking: input.supportsThinking ?? false,
+            supportsCodeExecution: input.supportsCodeExecution ?? false,
+            supportsComputerUse: input.supportsComputerUse ?? false,
+            supportsBackground: input.supportsBackground ?? false,
+            supportsResponses: input.supportsResponses ?? false,
+            supportsVision: input.supportsVision ?? false,
           });
 
       const result = await db
@@ -450,6 +497,7 @@ export const multiProviderRouter = router({
           priority: computedPriority,
           priorityLocked: isExplicitPriority,
           apiStyle: input.apiStyle,
+          ...capabilityFields,
         })
         .returning({ id: modelProviderMap.id });
 

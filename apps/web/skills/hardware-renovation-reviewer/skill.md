@@ -20,7 +20,7 @@ strict_provider_pin: false
 execution_policy:
   requires_web_search: true
   requires_citations: true
-  requires_structured_output: true
+  requires_thinking: true
   thinking_level_hint: "medium"
   output_format: "cms_review"
 content_quality:

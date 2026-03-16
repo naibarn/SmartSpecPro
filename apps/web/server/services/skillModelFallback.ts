@@ -44,6 +44,8 @@ export interface SkillLlmRequest {
   temperature?: number;
   extraBodyParams?: Record<string, unknown>;
   stream?: boolean;
+  /** Enable thinking/reasoning mode (sends reasoning.effort="high" to OpenRouter) */
+  enableThinking?: boolean;
 }
 
 export interface FallbackAttempt {
@@ -92,7 +94,7 @@ const MAX_MODEL_ATTEMPTS = 5;
 export async function executeSkillLlmWithFallback(
   request: SkillLlmRequest,
 ): Promise<SkillLlmResult> {
-  const { messages, skillSlug, userId, executionPolicy, stream = false } = request;
+  const { messages, skillSlug, userId, executionPolicy, stream = false, enableThinking } = request;
   const overallStart = Date.now();
   const attempts: FallbackAttempt[] = [];
 
@@ -137,6 +139,7 @@ export async function executeSkillLlmWithFallback(
       stream,
       userId,
       preferredProvider: i === 0 ? executionPolicy.preferredProviderId : undefined,
+      enableThinking,
     });
 
     const durationMs = Date.now() - attemptStart;

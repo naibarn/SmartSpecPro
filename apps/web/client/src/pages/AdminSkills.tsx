@@ -697,6 +697,7 @@ export default function AdminSkills() {
         requirements: (() => {
           const r: Record<string, boolean | number | undefined> = {
             supportsVision: (editingSkill as any)._reqVision || undefined,
+            supportsThinking: (editingSkill as any)._reqThinking || undefined,
             supportsFunctionTools: (editingSkill as any)._reqFunctionTools || undefined,
             supportsStructuredOutputs: (editingSkill as any)._reqStructuredOutputs || undefined,
             supportsWebSearch: (editingSkill as any)._reqWebSearch || undefined,
@@ -1046,6 +1047,7 @@ export default function AdminSkills() {
                                         _execMode: ep.mode ?? "auto",
                                         _allowConvOverride: ep.allowConversationOverride ?? true,
                                         _reqVision: ep.requirements?.supportsVision ?? false,
+                                        _reqThinking: ep.requirements?.supportsThinking ?? false,
                                         _reqFunctionTools: ep.requirements?.supportsFunctionTools ?? false,
                                         _reqStructuredOutputs: ep.requirements?.supportsStructuredOutputs ?? false,
                                         _reqWebSearch: ep.requirements?.supportsWebSearch ?? false,
@@ -2331,6 +2333,7 @@ export default function AdminSkills() {
                   <div className="grid gap-2 md:grid-cols-2">
                     {([
                       { key: "_reqWebSearch", label: "Web Search", desc: "Real-time search for facts & citations" },
+                      { key: "_reqThinking", label: "Thinking Mode", desc: "Chain-of-thought reasoning (sends reasoning.effort=high)" },
                       { key: "_reqStructuredOutputs", label: "Structured Outputs", desc: "JSON schema-constrained responses" },
                       { key: "_reqFunctionTools", label: "Function Calling", desc: "Tool use & function invocation" },
                       { key: "_reqVision", label: "Vision", desc: "Image understanding & analysis" },

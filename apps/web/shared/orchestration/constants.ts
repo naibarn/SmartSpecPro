@@ -3,7 +3,7 @@
  */
 
 /** Max time to wait for classifier LLM response (ms) */
-export const CLASSIFIER_TIMEOUT_MS = 3000;
+export const CLASSIFIER_TIMEOUT_MS = 30_000;
 
 /** Error rate threshold (0-1) that triggers the circuit breaker */
 export const CLASSIFIER_CIRCUIT_BREAKER_THRESHOLD = 0.2;

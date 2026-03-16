@@ -18,6 +18,8 @@ import { getDb } from "../db";
  * Model capability metadata — normalized from model_provider_map rows.
  */
 export interface ModelCapabilities {
+  supportsVision?: boolean;
+  supportsThinking?: boolean;
   supportsResponses?: boolean;
   supportsStructuredOutputs?: boolean;
   supportsWebSearch?: boolean;

@@ -8,7 +8,7 @@ enabledByDefault: true
 execution_policy:
   requires_web_search: true
   requires_citations: true
-  requires_structured_output: true
+  requires_thinking: true
   thinking_level_hint: "high"
   output_format: "cms_article"
 content_quality:

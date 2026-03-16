@@ -699,6 +699,9 @@ export const modelProviderMap = pgTable("model_provider_map", {
   /** Supports vision / image input */
   supportsVision: boolean("supportsVision").default(false),
 
+  /** Supports thinking/reasoning mode (chain-of-thought) */
+  supportsThinking: boolean("supportsThinking").default(false),
+
   /** Whether priority was manually set by admin (locks against auto-reassignment) */
   priorityLocked: boolean("priorityLocked").default(false),
 
