@@ -174,6 +174,7 @@ class LLMGatewayClient:
         *,
         response_format: dict[str, Any] | None = None,
         temperature: float | None = None,
+        max_tokens: int | None = None,
         trace_id: str | None = None,
         timeout: int | None = None,
     ) -> dict[str, Any]:
@@ -185,6 +186,8 @@ class LLMGatewayClient:
             body["response_format"] = response_format
         if temperature is not None:
             body["temperature"] = temperature
+        if max_tokens is not None:
+            body["max_tokens"] = max_tokens
 
         response = await self._request_with_retry(
             "POST", "/v1/chat/completions", json_body=body, headers=headers,

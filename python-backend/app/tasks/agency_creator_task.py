@@ -322,6 +322,7 @@ async def _llm_call(
             model=model,
             user_id=user_id,
             temperature=0.7,
+            max_tokens=max_tokens,
             timeout=int(timeout),
         )
         choices = data.get("choices", [])
@@ -516,10 +517,16 @@ def _validate_spec(spec: dict) -> dict:
 
 
 async def _implement_agency(spec: dict, user_id: int, tenant_id: str = "") -> str | None:
-    """Phase 5: Create agency in database via Node.js internal API."""
+    """Phase 5: Create agency in database via Node.js internal API.
+
+    Uses X-Internal-Token + X-User-Id for service-to-service auth.
+    """
     import httpx
 
+    from app.core.config import settings
+
     internal_url = os.getenv("SMARTSPEC_INTERNAL_URL") or os.getenv("SMARTSPEC_WEB_GATEWAY_URL", "http://127.0.0.1:3000")
+    internal_token = getattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", "") or getattr(settings, "SMARTSPEC_PROXY_TOKEN", "")
 
     try:
         # Prepare saveBuilder payload
@@ -568,12 +575,12 @@ async def _implement_agency(spec: dict, user_id: int, tenant_id: str = "") -> st
             body_json["tenantId"] = tenant_id
 
         async with httpx.AsyncClient(timeout=30.0) as client:
-            # Create agency first
             create_resp = await client.post(
                 f"{internal_url}/api/internal/agency/create",
                 json=body_json,
                 headers={
-                    "Authorization": f"Bearer {user_jwt}",
+                    "X-Internal-Token": internal_token,
+                    "X-User-Id": str(user_id),
                     "Content-Type": "application/json",
                 },
             )
