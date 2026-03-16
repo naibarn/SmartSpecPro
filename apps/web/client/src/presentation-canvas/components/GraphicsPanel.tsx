@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
+import DOMPurify from "dompurify";
 import { Input } from "@/components/ui/input";
 import {
     type SvgGraphic,
@@ -78,7 +79,7 @@ export function GraphicsPanel({ onInsertGraphic }: GraphicsPanelProps) {
                             >
                                 <div
                                     className="h-8 w-8 text-slate-100 group-hover:text-sky-300 transition-colors"
-                                    dangerouslySetInnerHTML={{ __html: graphic.svg.replace(/currentColor/g, "currentColor") }}
+                                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(graphic.svg.replace(/currentColor/g, "currentColor"), { USE_PROFILES: { svg: true, svgFilters: true } }) }}
                                     style={{ color: "currentColor" }}
                                 />
                                 <span className="w-full truncate text-center text-[9px] text-slate-500 group-hover:text-slate-300">

@@ -62,10 +62,9 @@ const LOCAL_DB_TIMEOUT = 2000;
 const VECTOR_TIMEOUT = 3000;
 const DRIVE_TIMEOUT = 3000;
 
-const PYTHON_BACKEND_URL =
-  process.env.PYTHON_BACKEND_URL ||
-  process.env.VITE_PYTHON_BACKEND_URL ||
-  "http://localhost:8000";
+import { ENV } from "../_core/env";
+
+const PYTHON_BACKEND_URL = ENV.pythonBackendUrl || "http://localhost:8000";
 const PROXY_TOKEN = process.env.SMARTSPEC_PROXY_TOKEN || "";
 
 // ── Core Function ──────────────────────────────────────────────────────────

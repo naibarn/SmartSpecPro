@@ -23,10 +23,9 @@ import { resolveEnabledLlmModelId } from "./enabledLlmModels";
 
 // ==================== Google Drive Integration ====================
 
-const PY_BACKEND =
-  process.env.PYTHON_BACKEND_URL ||
-  process.env.VITE_PYTHON_BACKEND_URL ||
-  "http://localhost:8000";
+import { ENV } from "../_core/env";
+
+const PY_BACKEND = ENV.pythonBackendUrl || "http://localhost:8000";
 const PY_PROXY_TOKEN = process.env.SMARTSPEC_PROXY_TOKEN || "";
 
 async function checkUserHasDriveTools(userId: number): Promise<boolean> {

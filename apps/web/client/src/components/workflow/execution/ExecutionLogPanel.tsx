@@ -7,6 +7,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import DOMPurify from "dompurify";
 import {
   Check,
   X,
@@ -589,7 +590,7 @@ function MarkdownRenderer({ output }: { output: Record<string, unknown> }) {
       </div>
       <div
         className="text-sm text-gray-800 max-h-60 overflow-y-auto prose-sm"
-        dangerouslySetInnerHTML={{ __html: html }}
+        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html, { ALLOWED_TAGS: ['h3','h4','p','ul','ol','li','strong','em','b','i','code','pre','br','hr','span'], ALLOWED_ATTR: ['class'] }) }}
       />
     </div>
   );

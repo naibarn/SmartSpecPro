@@ -3,6 +3,7 @@ Simple Artifact Storage for LLM Chat
 Stores uploaded files temporarily and provides URLs for access
 """
 
+import logging
 import os
 import uuid
 import json
@@ -10,6 +11,8 @@ from pathlib import Path
 from typing import Dict, Optional
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/artifacts", tags=["Artifacts"])
 
@@ -42,7 +45,7 @@ def save_json_file(file_path: Path, data: Dict):
         with open(file_path, "w") as f:
             json.dump(data, f, indent=2)
     except Exception as e:
-        print(f"Error saving {file_path}: {e}")
+        logger.error("artifacts_save_json_failed", extra={"error_type": type(e).__name__})
 
 # Load existing data
 SESSIONS = load_json_file(SESSIONS_FILE)

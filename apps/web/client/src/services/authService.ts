@@ -269,6 +269,7 @@ export async function initializeAuth(): Promise<void> {
 
 // ============================================
 // API Key Management
+// TODO: Move API keys to server-side encrypted store (crypto.ts AES-256-GCM)
 // ============================================
 
 export type LLMProvider = 'openrouter' | 'openai' | 'anthropic' | 'deepseek' | 'google';
@@ -280,7 +281,7 @@ export async function setApiKey(provider: LLMProvider, apiKey: string): Promise<
       return;
     }
   } catch { /* fallback */ }
-  localStorage.setItem(`smartspec_apikey_${provider}`, apiKey);
+  sessionStorage.setItem(`smartspec_apikey_${provider}`, apiKey);
 }
 
 export async function getApiKey(provider: LLMProvider): Promise<string | null> {
@@ -289,7 +290,7 @@ export async function getApiKey(provider: LLMProvider): Promise<string | null> {
       return await safeInvoke<string | null>('get_api_key', { provider });
     }
   } catch { /* fallback */ }
-  return localStorage.getItem(`smartspec_apikey_${provider}`);
+  return sessionStorage.getItem(`smartspec_apikey_${provider}`);
 }
 
 export async function deleteApiKey(provider: LLMProvider): Promise<void> {
@@ -299,7 +300,7 @@ export async function deleteApiKey(provider: LLMProvider): Promise<void> {
       return;
     }
   } catch { /* fallback */ }
-  localStorage.removeItem(`smartspec_apikey_${provider}`);
+  sessionStorage.removeItem(`smartspec_apikey_${provider}`);
 }
 
 export async function listStoredApiKeys(): Promise<string[]> {
@@ -309,7 +310,7 @@ export async function listStoredApiKeys(): Promise<string[]> {
     }
   } catch { /* fallback */ }
   const providers: LLMProvider[] = ['openrouter', 'openai', 'anthropic', 'deepseek', 'google'];
-  return providers.filter(p => !!localStorage.getItem(`smartspec_apikey_${p}`));
+  return providers.filter(p => !!sessionStorage.getItem(`smartspec_apikey_${p}`));
 }
 
 export async function hasApiKey(provider: LLMProvider): Promise<boolean> {

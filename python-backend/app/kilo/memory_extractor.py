@@ -6,11 +6,14 @@ Uses LLM to identify decisions, plans, components, tasks, and code knowledge.
 """
 
 import json
+import logging
 import re
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
 import os
+
+logger = logging.getLogger(__name__)
 
 from .memory_store import (
     MemoryStore, Memory, MemoryType, 
@@ -196,7 +199,7 @@ class MemoryExtractor:
             extracted = self._parse_json_response(result_text)
             
         except Exception as e:
-            print(f"LLM extraction failed: {e}")
+            logger.error("memory_llm_extraction_failed", extra={"error_type": type(e).__name__})
             return self._extract_rule_based(conversation, project_id, source)
         
         # Save extracted memories
@@ -220,7 +223,7 @@ class MemoryExtractor:
                 self._save_embedding(memory)
                 
             except Exception as e:
-                print(f"Failed to save memory: {e}")
+                logger.error("memory_save_failed", extra={"error_type": type(e).__name__})
                 continue
         
         return saved_memories
@@ -356,7 +359,7 @@ class MemoryExtractor:
             self.memory_store.save_embedding(memory.id, embedding, self.embedding_model)
             
         except Exception as e:
-            print(f"Failed to generate embedding: {e}")
+            logger.error("memory_embedding_failed", extra={"error_type": type(e).__name__})
     
     def get_relevant_memories(
         self,
@@ -405,7 +408,7 @@ class MemoryExtractor:
                     results[memory.id] = (memory, score * 0.6)  # Weight: 60%
                     
             except Exception as e:
-                print(f"Semantic search failed: {e}")
+                logger.error("memory_semantic_search_failed", extra={"error_type": type(e).__name__})
         
         # 2. Full-text search
         try:
@@ -423,7 +426,7 @@ class MemoryExtractor:
                     results[memory.id] = (memory, score * 0.3)  # Weight: 30%
                     
         except Exception as e:
-            print(f"Text search failed: {e}")
+            logger.error("memory_text_search_failed", extra={"error_type": type(e).__name__})
         
         # 3. Always include high-importance memories
         important = self.memory_store.get_important_memories(

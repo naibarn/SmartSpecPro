@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { LayoutTemplate, Pin, Search, Sparkles, Star, Trash2, UserRound } from "lucide-react";
+import DOMPurify from "dompurify";
 
 import { Button } from "@/components/ui/button";
 import { DEFAULT_PRESENTATION_CANVAS_SIZE } from "@/presentation-canvas/constants";
@@ -591,7 +592,7 @@ export function BlocksPanel({
                       >
                         <div
                           className="aspect-[16/9] w-full [&>svg]:h-full [&>svg]:w-full"
-                          dangerouslySetInnerHTML={{ __html: getBuiltInPresentationComponentDefinition(preset.id)?.previewSvg ?? "" }}
+                          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(getBuiltInPresentationComponentDefinition(preset.id)?.previewSvg ?? "", { USE_PROFILES: { svg: true, svgFilters: true } }) }}
                         />
                         {preset.previewMediaZones.length > 0 ? (
                           <div className="pointer-events-none absolute inset-2">

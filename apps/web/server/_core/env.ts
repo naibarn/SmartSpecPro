@@ -1,6 +1,8 @@
+// Security: All server-side env vars should use non-VITE_ names.
+// VITE_ fallbacks are kept only for backwards compatibility — remove after .env migration.
+// VITE_ prefix vars are bundled into the client JS by Vite, exposing them to browsers.
 export const ENV = {
-  // Use VITE_APP_ID if available, fall back to sensible default for local development
-  appId: process.env.VITE_APP_ID ?? "smartspec-local-dev",
+  appId: process.env.APP_ID ?? process.env.VITE_APP_ID ?? "smartspec-local-dev",
   cookieSecret: process.env.JWT_SECRET ?? "",
   jwtSecret: process.env.JWT_SECRET ?? "",
   databaseUrl: process.env.DATABASE_URL ?? "",

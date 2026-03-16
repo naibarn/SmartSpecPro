@@ -21,7 +21,11 @@ _cache_ttl = 60  # seconds
 _last_fetch: Dict[str, float] = {}
 
 # Encryption key (must match SmartSpecWeb's LLM_ENCRYPTION_KEY)
-_RAW_KEY = os.environ.get("LLM_ENCRYPTION_KEY") or os.environ.get("MEDIA_ENCRYPTION_KEY") or "smartspec-media-key-32chars!"
+_RAW_KEY = os.environ.get("LLM_ENCRYPTION_KEY") or os.environ.get("MEDIA_ENCRYPTION_KEY")
+if not _RAW_KEY:
+    raise RuntimeError(
+        "Missing encryption key: set LLM_ENCRYPTION_KEY or MEDIA_ENCRYPTION_KEY environment variable"
+    )
 
 
 def _derive_key(raw_key: str) -> bytes:

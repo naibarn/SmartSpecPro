@@ -182,68 +182,8 @@ function nextExportId(): number {
 function resolvePythonBackendBaseUrl(): string {
   const candidate =
     ENV.pythonBackendUrl?.trim()
-    || process.env.PYTHON_BACKEND_URL?.trim()
-    || process.env.VITE_PYTHON_BACKEND_URL?.trim()
     || DEFAULT_PYTHON_BACKEND_URL;
   return candidate.replace(/\/+$/, "");
-}
-
-function buildBridgeResponsePreview(raw: string): string {
-  return raw
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 140);
-}
-
-function extractBridgeErrorDetail(raw: string): string | null {
-  const trimmed = raw.trim();
-  if (!trimmed) {
-    return null;
-  }
-  try {
-    const parsed = JSON.parse(trimmed) as Record<string, unknown>;
-    const detail = parsed.detail ?? parsed.message ?? parsed.error ?? parsed.error_message;
-    if (typeof detail === "string" && detail.trim()) {
-      return detail.trim().slice(0, 240);
-    }
-  } catch {
-    // Fall through to HTML/text detection.
-  }
-  if (/^\s*<!doctype html/i.test(trimmed) || /^\s*<html/i.test(trimmed)) {
-    return "bridge returned HTML instead of JSON. Check the Python backend URL, auth, or reverse proxy.";
-  }
-  return buildBridgeResponsePreview(trimmed);
-}
-
-export async function readPresentationBridgeJson<T>(
-  response: Response,
-  contextLabel: string,
-): Promise<T> {
-  const rawText = await response.text();
-  const detail = extractBridgeErrorDetail(rawText);
-  if (!response.ok) {
-    throw new PresentationServiceError(
-      PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
-      `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: ${contextLabel} returned HTTP ${response.status}${detail ? ` (${detail})` : ""}`,
-    );
-  }
-
-  const trimmed = rawText.trim();
-  if (!trimmed) {
-    throw new PresentationServiceError(
-      PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
-      `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: ${contextLabel} returned an empty response`,
-    );
-  }
-
-  try {
-    return JSON.parse(trimmed) as T;
-  } catch {
-    throw new PresentationServiceError(
-      PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
-      `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: ${contextLabel} returned invalid JSON${detail ? ` (${detail})` : ""}`,
-    );
-  }
 }
 
 function parseBooleanFlag(raw: string | undefined, fallback: boolean): boolean {
@@ -816,18 +756,13 @@ async function defaultEnqueueExportJob(
   });
 
   if (!response.ok) {
-    await readPresentationBridgeJson(response, "Python export bridge");
-  }
-  const json = await readPresentationBridgeJson<{ celery_task_id: string }>(
-    response,
-    "Python export bridge",
-  );
-  if (typeof json.celery_task_id !== "string" || !json.celery_task_id.trim()) {
     throw new PresentationServiceError(
       PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
-      `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: Python export bridge response is missing celery_task_id`,
+      `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: Python export bridge returned HTTP ${response.status}`,
     );
   }
+
+  const json = (await response.json()) as { celery_task_id: string };
   return { jobId: json.celery_task_id };
 }
 
@@ -1477,13 +1412,13 @@ export async function getPresentationExportStatus(
           { headers: { Authorization: `Bearer ${token}` } },
         );
         if (response.ok) {
-          const json = await readPresentationBridgeJson<{
+          const json = (await response.json()) as {
             state?: string;
             output_url?: string;
             error_message?: string;
             percent?: number;
             stage?: string;
-          }>(response, "Python export status bridge");
+          };
           if (json.state === "done" && json.output_url) {
             const updated = await updateExportRecord(
               record.id,

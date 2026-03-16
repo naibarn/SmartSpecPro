@@ -4,6 +4,7 @@ Telegram Bot Webhook Endpoint
 Handles /start {code} verification and Telegram account linking.
 """
 
+import logging
 import re
 import secrets
 import httpx
@@ -18,6 +19,8 @@ from redis.asyncio import Redis
 from app.core.database import get_db
 from app.core.redis_client import get_redis
 from app.core.smartspecweb_crypto import decrypt_smartspecweb as decrypt
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -253,7 +256,7 @@ async def telegram_webhook(
         await link_telegram_account(db, user_id, chat_id, username)
     except Exception as e:
         # Log error but return 200 OK to Telegram
-        print(f"[Telegram Webhook] Database error: {e}")
+        logger.error("telegram_webhook_database_error", extra={"error_type": type(e).__name__})
         return {"ok": True}
 
     # 9. Send confirmation message

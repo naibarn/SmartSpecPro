@@ -10,10 +10,13 @@ Split Redis client for Cloud Run deployment.
 - get_redis(): Compatibility shim that returns the cache client.
 """
 
+import logging
 import os
 from typing import Optional
 
 from redis.asyncio import Redis
+
+logger = logging.getLogger(__name__)
 
 _redis_client: Optional[Redis] = None
 _cache_client: Optional[Redis] = None
@@ -44,7 +47,7 @@ async def get_cache_redis() -> Optional[Redis]:
                 _cache_client = Redis.from_url(url, encoding="utf-8", decode_responses=True)
                 await _cache_client.ping()
             except Exception as e:
-                print(f"[Redis:Cache] Connection failed: {e}")
+                logger.error("redis_cache_connection_failed", extra={"error_type": type(e).__name__})
                 _cache_client = None
     return _cache_client
 
@@ -61,7 +64,7 @@ async def get_realtime_redis() -> Optional[Redis]:
                 _realtime_client = Redis.from_url(url, encoding="utf-8", decode_responses=True)
                 await _realtime_client.ping()
             except Exception as e:
-                print(f"[Redis:Realtime] Connection failed: {e}")
+                logger.error("redis_realtime_connection_failed", extra={"error_type": type(e).__name__})
                 _realtime_client = None
     return _realtime_client
 
@@ -82,6 +85,6 @@ async def get_redis() -> Optional[Redis]:
                 _redis_client = Redis.from_url(url, encoding="utf-8", decode_responses=True)
                 await _redis_client.ping()
         except Exception as e:
-            print(f"[Redis] Connection failed: {e}")
+            logger.error("redis_connection_failed", extra={"error_type": type(e).__name__})
             _redis_client = None
     return _redis_client

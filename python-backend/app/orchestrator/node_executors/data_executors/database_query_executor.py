@@ -285,7 +285,7 @@ class DatabaseQueryExecutor:
             try:
                 # Set statement timeout for this session (milliseconds)
                 await session.execute(
-                    text(f"SET statement_timeout = '{timeout_seconds * 1000}'")
+                    text("SET statement_timeout = :ms").bindparams(ms=timeout_seconds * 1000)
                 )
 
                 # Layer 2: Execute via parameterized text() binding

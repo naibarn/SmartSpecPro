@@ -23,9 +23,7 @@ function isProviderUsageLogUnavailableError(error: unknown): boolean {
   return (
     (message.includes("provider_usage_log") && message.includes("does not exist")) ||
     (message.includes("provider_usage_log") && message.includes("no such table")) ||
-    (message.includes("provider_usage_log") && message.includes("column")) ||
-    message.includes("errortype") ||
-    message.includes("createdat")
+    (message.includes("relation") && message.includes("does not exist"))
   );
 }
 
@@ -452,7 +450,7 @@ export const adminOpsRouter = router({
       if (db) {
         try {
           const { providerUsageLog } = await import('../../drizzle/schema');
-          const { sql, count } = await import('drizzle-orm');
+          const { sql, count, gte, isNotNull, and } = await import('drizzle-orm');
 
           const since = new Date();
           since.setHours(since.getHours() - 24);
@@ -462,7 +460,7 @@ export const adminOpsRouter = router({
             count: count(providerUsageLog.id).as('count'),
           })
             .from(providerUsageLog)
-            .where(sql`${providerUsageLog.createdAt} >= ${since} AND ${providerUsageLog.errorType} IS NOT NULL`)
+            .where(and(gte(providerUsageLog.createdAt, since), isNotNull(providerUsageLog.errorType)))
             .groupBy(providerUsageLog.errorType)
             .orderBy(sql`COUNT(${providerUsageLog.id}) DESC`)
             .limit(10);
@@ -528,22 +526,24 @@ export const adminOpsRouter = router({
         const topModels = topModelsResult.map(r => r.model);
 
         // Step 2: Daily breakdown with top 5 models + "Other" bucket
+        // Build the IN list as raw SQL to avoid parameterized GROUP BY (PostgreSQL rejects params in GROUP BY)
+        const escapedModels = topModels.map(m => `'${m.replace(/'/g, "''")}'`).join(', ');
         const modelCaseExpr = topModels.length > 0
-          ? sql<string>`CASE WHEN ${providerUsageLog.modelUsed} IN (${sql.join(topModels.map(m => sql`${m}`), sql`, `)}) THEN ${providerUsageLog.modelUsed} ELSE 'Other' END`
+          ? sql<string>`CASE WHEN "modelUsed" IN (${sql.raw(escapedModels)}) THEN "modelUsed" ELSE 'Other' END`
           : sql<string>`'Other'`;
 
         const dailyRows = await db.select({
-          date: sql<string>`date_trunc('day', ${providerUsageLog.createdAt})::date::text`.as('date'),
+          date: sql<string>`date_trunc('day', "createdAt")::date::text`.as('date'),
           model: modelCaseExpr.as('model'),
           requests: sql<number>`count(*)::int`.as('requests'),
-          cost: sql<number>`coalesce(sum(${providerUsageLog.costUsd}::numeric), 0)::float`.as('cost'),
-          inputTokens: sql<number>`coalesce(sum(${providerUsageLog.inputTokens}), 0)::int`.as('input_tokens'),
-          outputTokens: sql<number>`coalesce(sum(${providerUsageLog.outputTokens}), 0)::int`.as('output_tokens'),
+          cost: sql<number>`coalesce(sum("costUsd"::numeric), 0)::float`.as('cost'),
+          inputTokens: sql<number>`coalesce(sum("inputTokens"), 0)::int`.as('input_tokens'),
+          outputTokens: sql<number>`coalesce(sum("outputTokens"), 0)::int`.as('output_tokens'),
         })
           .from(providerUsageLog)
           .where(gte(providerUsageLog.createdAt, since))
-          .groupBy(sql`date_trunc('day', ${providerUsageLog.createdAt})`, modelCaseExpr)
-          .orderBy(sql`date_trunc('day', ${providerUsageLog.createdAt})`);
+          .groupBy(sql.raw(`1, 2`))
+          .orderBy(sql.raw(`1`));
 
         const totals = dailyRows.reduce((acc, r) => ({
           requests: acc.requests + r.requests,

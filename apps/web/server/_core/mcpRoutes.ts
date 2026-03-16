@@ -31,10 +31,9 @@ const REQUIRE_WRITE_TOKEN = process.env.MCP_REQUIRE_WRITE_TOKEN === "1";
 const WRITE_TOKEN = process.env.MCP_WRITE_TOKEN || "";
 const MCP_RPM = parseInt(process.env.WEB_MCP_RPM || "240");
 
-const PYTHON_BACKEND_URL =
-  process.env.PYTHON_BACKEND_URL ||
-  process.env.VITE_PYTHON_BACKEND_URL ||
-  "http://localhost:8000";
+import { ENV } from "./env";
+
+const PYTHON_BACKEND_URL = ENV.pythonBackendUrl || "http://localhost:8000";
 const PROXY_TOKEN = process.env.SMARTSPEC_PROXY_TOKEN || "";
 
 // Simple TTL cache for Python-native tools

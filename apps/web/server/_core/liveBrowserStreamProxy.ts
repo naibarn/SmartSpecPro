@@ -1,10 +1,8 @@
 import type { Express, Request, Response } from "express";
 import { authorizeRequest } from "./authz";
+import { ENV } from "./env";
 
-const PY_BACKEND =
-  process.env.PYTHON_BACKEND_URL
-  || process.env.VITE_PYTHON_BACKEND_URL
-  || "http://localhost:8000";
+const PY_BACKEND = ENV.pythonBackendUrl || "http://localhost:8000";
 const PROXY_TOKEN =
   process.env.SMARTSPEC_PROXY_TOKEN
   || process.env.SMARTSPEC_WEB_GATEWAY_TOKEN

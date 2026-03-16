@@ -86,8 +86,11 @@ declare global {
   }
 }
 
-// This is a PUBLIC restricted API key for the Maps proxy — intentionally client-side.
-// It is NOT a secret. If you need a secret Maps key, proxy through the Express server.
+// This is a PUBLIC restricted API key for the Forge Maps proxy — intentionally client-side.
+// It is NOT a secret — it authenticates to the Forge proxy at forge.butterfly-effect.dev,
+// which proxies Google Maps API calls. The Forge proxy should have domain restriction
+// configured to only accept requests from smartaihub.app.
+// SECURITY REVIEWED: 2026-03-16 — acceptable as public client key with proxy restriction.
 const API_KEY = import.meta.env.VITE_FRONTEND_FORGE_API_KEY;
 const FORGE_BASE_URL =
   import.meta.env.VITE_FRONTEND_FORGE_API_URL ||

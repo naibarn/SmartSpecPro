@@ -3,12 +3,16 @@ SmartAIHub - Current Tenant API
 Returns the current tenant information for the frontend
 """
 
+import logging
+
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
 from sqlalchemy import text
 
 from app.core.database import AsyncSessionLocal
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/tenant", tags=["Tenant"])
 
@@ -119,7 +123,7 @@ async def get_current_tenant(request: Request):
                 return TenantResponse(tenant=tenant_data)
     except Exception as e:
         # Log error but continue with default tenant
-        print(f"[tenant_current] Database error: {e}")
+        logger.error("tenant_current_database_error", extra={"error_type": type(e).__name__})
 
     # Return default tenant if not found
     default_tenant = TenantData(

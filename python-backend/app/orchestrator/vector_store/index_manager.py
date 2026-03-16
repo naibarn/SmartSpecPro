@@ -3,6 +3,7 @@ Index Manager for Vector Store
 Phase 3: SaaS Readiness
 """
 
+import re
 import structlog
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -88,6 +89,45 @@ class IndexInfo:
         }
 
 
+def _validate_identifier(name: str, label: str) -> str:
+    """Validate that a SQL identifier is safe (alphanumeric + underscore only).
+
+    Accepts identifiers matching ``[a-zA-Z_][a-zA-Z0-9_]{0,63}`` so that they
+    can be interpolated into DDL statements without risk of SQL injection.
+
+    Args:
+        name: The identifier string to validate.
+        label: Human-readable label used in the error message.
+
+    Returns:
+        The validated identifier unchanged.
+
+    Raises:
+        ValueError: If the identifier contains disallowed characters.
+    """
+    if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]{0,63}", name):
+        raise ValueError(f"Invalid {label}: {name!r}")
+    return name
+
+
+def _validate_positive_int(value: int, label: str) -> int:
+    """Validate that a value is a positive integer safe for DDL interpolation.
+
+    Args:
+        value: The value to validate.
+        label: Human-readable label used in the error message.
+
+    Returns:
+        The validated integer unchanged.
+
+    Raises:
+        ValueError: If the value is not a positive integer.
+    """
+    if not isinstance(value, int) or value <= 0:
+        raise ValueError(f"Invalid {label}: must be positive integer, got {value!r}")
+    return value
+
+
 class IndexManager:
     """
     Manager for vector store indexes.
@@ -127,43 +167,49 @@ class IndexManager:
         Returns:
             Index information
         """
-        # Validate table/column names to prevent SQL injection
-        import re as _re
-        if not _re.match(r'^[a-z_][a-z0-9_]{0,62}$', table_name):
-            raise ValueError(f"Invalid table name: {table_name}")
-        if not _re.match(r'^[a-z_][a-z0-9_]{0,62}$', column_name):
-            raise ValueError(f"Invalid column name: {column_name}")
+        # Validate identifiers and numeric parameters before DDL interpolation.
+        # DDL statements cannot use bind parameters for identifiers, so we
+        # enforce strict allowlist validation instead.
+        _validate_identifier(table_name, "table_name")
+        _validate_identifier(column_name, "column_name")
 
         config = config or IndexConfig()
         index_name = f"idx_{table_name}_{column_name}_{config.index_type.value}"
-        
+        # index_name is derived entirely from validated identifiers plus a
+        # known-safe enum value, but we validate it explicitly as a final
+        # defense-in-depth measure.
+        _validate_identifier(index_name, "index_name")
+
         info = IndexInfo(
             name=index_name,
             table_name=table_name,
             index_type=config.index_type,
             status=IndexStatus.BUILDING,
         )
-        
+
         self._indexes[index_name] = info
-        
+
         if self._connection:
             try:
                 # Build index SQL based on type
                 if config.index_type == IndexType.IVFFLAT:
                     ops = self._get_ops_class(config.distance_metric)
+                    lists = _validate_positive_int(config.lists, "lists")
                     sql = f"""
                         CREATE INDEX IF NOT EXISTS {index_name}
                         ON {table_name}
                         USING ivfflat ({column_name} {ops})
-                        WITH (lists = {config.lists})
+                        WITH (lists = {lists})
                     """
                 elif config.index_type == IndexType.HNSW:
                     ops = self._get_ops_class(config.distance_metric)
+                    m = _validate_positive_int(config.m, "m")
+                    ef_construction = _validate_positive_int(config.ef_construction, "ef_construction")
                     sql = f"""
                         CREATE INDEX IF NOT EXISTS {index_name}
                         ON {table_name}
                         USING hnsw ({column_name} {ops})
-                        WITH (m = {config.m}, ef_construction = {config.ef_construction})
+                        WITH (m = {m}, ef_construction = {ef_construction})
                     """
                 else:  # FLAT
                     sql = None

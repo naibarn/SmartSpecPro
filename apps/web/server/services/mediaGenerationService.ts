@@ -418,7 +418,7 @@ const NODE_ENV = process.env.NODE_ENV || "development";
 const PUBLIC_URL =
   process.env.PUBLIC_URL ||
   process.env.APP_PUBLIC_URL ||
-  process.env.VITE_APP_URL ||
+  process.env.APP_URL ||
   null;
 
 // Internal URL for Python backend to access Node.js server (for file downloads)
