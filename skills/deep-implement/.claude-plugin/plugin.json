@@ -1,0 +1,11 @@
+{
+  "name": "deep-implement",
+  "description": "Implement code from /deep-plan sections with TDD, review loops, and log-driven debugging (SmartSpecPro customized)",
+  "version": "1.0.0",
+  "author": {
+    "name": "SmartSpecPro",
+    "url": "https://smartaihub.app"
+  },
+  "license": "MIT",
+  "keywords": ["implementation", "tdd", "code-review", "autonomous", "log-driven-debugging"]
+}

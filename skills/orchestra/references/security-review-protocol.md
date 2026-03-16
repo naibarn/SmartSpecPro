@@ -68,6 +68,11 @@ Each Task Packet must include:
 - The specific files from the domain bucket (absolute paths)
 - The type of change made (new endpoint, auth modification, encryption change, etc.)
 - The finding categories relevant to the domain (see Finding Categories table)
+- **Reference cybersecurity skills** — include relevant skills from `skills/cybersecurity/` in the CONTEXT:
+  - tRPC agent: `exploiting-idor-vulnerabilities.md`, `exploiting-sql-injection-vulnerabilities.md`, `implementing-api-key-security-controls.md`
+  - FastAPI agent: `exploiting-sql-injection-vulnerabilities.md`, `performing-ssrf-vulnerability-exploitation.md`, `exploiting-insecure-deserialization.md`
+  - Frontend agent: `testing-for-xss-vulnerabilities.md`, `performing-csrf-attack-simulation.md`, `testing-jwt-token-security.md`
+  - Full protocol: `skills/cybersecurity/SECURITY-AUDIT-PROTOCOL.md`
 
 ### Step C: Dispatch All Specialists in a Single Message (Parallel)
 

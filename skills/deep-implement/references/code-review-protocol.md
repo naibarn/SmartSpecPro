@@ -1,47 +1,109 @@
 # Code Review Protocol
 
-Code review workflow for a completed section before commit.
+Code review workflow using a dedicated subagent for /deep-implement.
 
-## Purpose
+## Overview
 
-Catch correctness, regression, security, and test coverage issues before creating the section commit.
+This protocol covers running the code-reviewer subagent.
 
-## Artifacts
+After implementing a section, before committing:
 
-Write review artifacts under:
-- `{planning_dir}/reviews/section-NN-diff.md`
-- `{planning_dir}/reviews/section-NN-review.md`
+1. Track files created during implementation
+2. Stage all changes (new and modified)
+3. Generate diff and write to `{state_dir}/code_review/section-NN-diff.md`
+4. Launch code-reviewer subagent
+5. Write review to file
 
-## Steps
+Then proceed to the Code Review Interview (Step 7 in SKILL.md).
 
-### 1) Ensure Staged Diff Exists
+## Directory Structure
 
-```bash
-git diff --staged > {planning_dir}/reviews/section-NN-diff.md
+Create `code_review/` inside the state directory:
+
+```
+planning/
+├── sections/
+│   ├── index.md
+│   └── section-NN-*.md
+└── implementation/               # state_dir
+    ├── deep_implement_config.json
+    └── code_review/              # Created by this workflow
+        ├── section-01-diff.md       # Diff input for subagent
+        ├── section-01-review.md     # Review output from subagent
+        ├── section-01-interview.md  # Interview transcript (written by interview step)
+        ├── section-02-diff.md
+        ├── section-02-review.md
+        ├── section-02-interview.md
+        └── ...
 ```
 
-If staged diff is empty, skip review and continue.
+## Step Details
 
-### 2) Perform Local Review
+### 1. Track Created Files
 
-Review the staged diff against `section-NN-*.md` requirements:
-- Functional correctness
-- Regressions against existing behavior
-- Security/authorization/tenant checks
-- Performance red flags
-- Missing tests for changed behavior
+During implementation, maintain a list of files created.
 
-### 3) Write Review Notes
+This is needed because `git add -u` only stages **modified tracked files**, not new files.
 
-Create `{planning_dir}/reviews/section-NN-review.md` with:
-- Findings (severity-tagged if needed)
-- Suggested fixes
-- Optional follow-up items (non-blocking)
+### 2. Stage Changes
 
-Keep notes concise and implementation-focused.
+```bash
+# Stage NEW files explicitly
+git add path/to/new/file1.py path/to/new/file2.py ...
 
-### 4) Continue to Triage
+# Stage MODIFIED tracked files
+git add -u
+```
 
-Use `code-review-interview.md` to decide:
-- what to auto-fix,
-- what to ask user.
+### 3. Generate Diff and Write to File
+
+```bash
+git diff --staged > {code_review_dir}/section-NN-diff.md
+```
+
+If the diff is empty, skip review and proceed to commit.
+
+### 4. Launch Code Reviewer Subagent
+
+Launch the `code-reviewer` subagent with both the section plan and the diff:
+
+```
+Task:
+  subagent_type: "code-reviewer"
+  description: "Review section NN code"
+  prompt: |
+    Review this implementation:
+    - Section plan: {sections_dir}/section-NN-<name>.md
+    - Code changes: {code_review_dir}/section-NN-diff.md
+```
+
+The subagent:
+- Has tools: `Read, Grep, Glob` (NO Write)
+- Reads the section plan to understand requirements
+- Reads the diff to see what was implemented
+- Compares implementation against the plan
+- Returns JSON with section name and freeform review
+
+**Subagent returns:**
+```json
+{
+  "section": "section-NN-name",
+  "review": "Freeform review text with findings, suggestions, etc."
+}
+```
+
+The review is freeform prose - the subagent has flexibility in how it structures its feedback.
+
+### 5. Write Review to File
+
+Write the subagent's review to `{code_review_dir}/section-NN-review.md`:
+
+```markdown
+# Code Review: Section NN - Name
+
+{review text from subagent}
+```
+
+After writing the review file, proceed to [code-review-interview.md](code-review-interview.md) for the interactive interview process.
+
+See `agents/code-reviewer.md` for the custom subagent definition.

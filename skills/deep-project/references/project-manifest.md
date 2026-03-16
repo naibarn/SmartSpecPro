@@ -6,7 +6,7 @@ Before writing the manifest:
 - `{initial_file}` - The original requirements
 - `{planning_dir}/deep_project_interview.md` - Interview transcript with user clarifications
 
-The manifest captures the assistant's split proposal for user confirmation.
+The manifest captures Claude's split proposal for user confirmation.
 
 ## Required Block
 
@@ -44,7 +44,7 @@ If the manifest is invalid (missing, malformed, or has errors), `create-split-di
 
 ## Human-Readable Content
 
-After the manifest block, the assistant can structure the rest of the file however makes sense for the project. Common sections include:
+After the manifest block, Claude can structure the rest of the file however makes sense for the project. Common sections include:
 
 - Overview of the split structure
 - Dependency relationships between splits
@@ -52,4 +52,5 @@ After the manifest block, the assistant can structure the rest of the file howev
 - Cross-cutting concerns
 - /deep-plan commands to run
 
-The assistant is not locked to these sections, however.
+Claude is not locked to these sections, however.
+

@@ -1,45 +1,59 @@
 # Apply Interview Fixes
 
-Apply decisions recorded after section review triage.
+Apply all fixes recorded in the interview transcript.
 
-## Source of Truth
+## Overview
 
-Read:
-- `{planning_dir}/reviews/section-NN-interview.md`
+Read the transcript and implement:
+1. Fixes the user approved during the interview
+2. Auto-fixes you decided to make without asking
 
-This file contains:
-- user-approved changes
-- auto-fixes selected during triage
-- deferred items
+Both are recorded in `section-NN-interview.md` - this is your source of truth.
+
+**Recovery:** If compaction happens, the interview file is the checkpoint. Restart applying fixes from the beginning - you'll notice already-applied changes as you work.
+
+---
 
 ## Steps
 
-### 1) Load Decisions
+### 1. Read Transcript
 
-Parse the interview notes and list concrete code/test updates to apply now.
+Read `{code_review_dir}/section-NN-interview.md` to find:
+- Items in "Discussed with User" marked for fixing
+- Items in "Auto-Fixes" section
 
-### 2) Apply Fixes
+### 2. Apply Fixes
 
-For each selected fix:
-1. Check if already applied
-2. If not, implement it
-3. Keep scope limited to current section
+For each fix (both user-approved and auto-fixes):
 
-### 3) Validate
+1. Check if already applied (code already changed) → skip
+2. If not applied, implement the fix
+3. Note what was changed
 
-Run targeted tests (or section test command).
+**Why check first?** If compaction happened mid-way, some fixes may already be applied. You'll notice as you read the code.
 
-If tests fail, fix and re-run until green or escalate per section failure policy.
+### 3. Run Tests
 
-### 4) Re-Stage
+After all fixes applied:
+```bash
+{test_command}
+```
+
+If tests fail, fix them.
+
+### 4. Re-Stage Changes
 
 ```bash
 git add -u
-git add <new_files_if_any>
+git add <any_new_files>
 ```
 
-Then continue with section doc update and commit.
+Then proceed to update section documentation and commit.
+
+---
 
 ## Edge Cases
 
-- If interview file has no actionable fixes, treat as no-op and proceed.
+### No Fixes
+
+If the transcript has no fixes (user skipped everything, no auto-fixes), this step is a no-op. Proceed directly to documentation update and commit.

@@ -1,56 +1,114 @@
-# Automated Review Protocol
+# External Review Protocol
 
-This step always reviews `implementation-plan.md`. No manual choice to skip review.
+This step sends `claude-plan.md` for independent review. The review mode determines how the review is performed.
 
-## Review Mode Resolution (Automatic)
-Use `review_mode` already resolved by the main skill:
+## Review Modes
+
+Check `review_mode` from task context (e.g., `review_mode=opus_subagent`).
 
 | Mode | When Used | Action |
 |------|-----------|--------|
-| `external_llm` | At least one external credential is available | Run `review.py` |
-| `self_review` | External credentials unavailable or external run failed | Produce local self-review |
+| `external_llm` | External LLMs configured (default) | Run review.py |
+| `opus_subagent` | No external LLMs, user chose Opus | Launch subagent |
+| `skip` | User chose to skip review | Skip to step 16 |
 
-## Mode: external_llm
+---
 
-Run:
+## Mode: external_llm (Default)
+
+Run unified review script:
 ```bash
-uv run --directory {plugin_root} scripts/llm_clients/review.py --planning-dir "{planning_dir}" --iteration 1
+uv run --directory {plugin_root} scripts/llm_clients/review.py --planning-dir "{planning_dir}"
 ```
 
-Expected behavior:
-- Detects available providers (Gemini/OpenAI)
-- Writes review files in `{planning_dir}/reviews/`
-- If command fails or no usable files are produced, fallback to `self_review`
+The script automatically:
+- Detects which LLMs are available (Gemini, OpenAI, or both)
+- Runs available reviewers in parallel (if both) or single-threaded (if one)
+- Writes results to `{planning_dir}/reviews/`
 
-## Mode: self_review
+### Output Format
 
-Create:
-- `{planning_dir}/reviews/iteration-1-self-review.md`
+The script returns JSON:
+```json
+{
+  "reviews": {
+    "gemini": {"success": true, "provider": "gemini", "model": "...", "analysis": "..."},
+    "openai": {"success": true, "provider": "openai", "model": "...", "analysis": "..."}
+  },
+  "files_written": ["reviews/iteration-1-gemini.md", "reviews/iteration-1-openai.md"],
+  "gemini_available": true,
+  "openai_available": true
+}
+```
 
-Self-review must include:
-- findings by severity (`high`, `medium`, `low`)
-- concrete improvement recommendations
-- affected areas and rationale
+### Handling Failures
 
-## Mandatory Review Summary
+- If one LLM fails, the other still runs
+- Script exits 0 if at least one review succeeds, 1 if all fail
 
-After either mode, always create:
-- `{planning_dir}/reviews/iteration-1-summary.md`
+---
 
-Summary must include:
-- prioritized improvements
-- `high-impact` vs `low-impact` classification
-- recommendation for each item
+## Mode: opus_subagent
 
-## Decision Handling for Improvements
+Print status:
+```
+═══════════════════════════════════════════════════════════════
+STEP 13/22: OPUS PLAN REVIEW
+═══════════════════════════════════════════════════════════════
+Launching Claude Opus subagent for plan review...
+```
 
-Use the skill's `decision_mode` policy:
-- `ask_every_choice`: ask user for every improvement item.
-- `smart_auto`: ask user for `high-impact`, auto-decide `low-impact`.
-- `auto_by_default`: auto-decide all items unless destructive/irreversible risk exists.
+**Steps:**
 
-Always present the improvement summary to user before proceeding.
+1. Launch subagent (passes file path, not content):
+```
+Task(
+  subagent_type: "opus-plan-reviewer",
+  model: "opus",
+  prompt: "Review the implementation plan at: {planning_dir}/claude-plan.md"
+)
+```
+
+2. Create reviews directory if needed:
+```bash
+mkdir -p "{planning_dir}/reviews"
+```
+
+3. Write subagent output to `{planning_dir}/reviews/iteration-1-opus.md`:
+```markdown
+# Opus Review
+
+**Model:** claude-opus-4
+**Generated:** {ISO timestamp}
+
+---
+
+{subagent_output}
+```
+
+4. Proceed to step 14 (integrate feedback)
+
+---
+
+## Mode: skip
+
+Print status:
+```
+═══════════════════════════════════════════════════════════════
+STEP 13/22: EXTERNAL REVIEW - SKIPPED
+═══════════════════════════════════════════════════════════════
+External review skipped per user choice.
+Proceeding to TDD planning.
+───────────────────────────────────────────────────────────────
+```
+
+Skip directly to step 16 (TDD approach). Steps 14-15 are not applicable.
+
+---
 
 ## Output Location
 
-All review artifacts are written under `{planning_dir}/reviews/`.
+All modes write to `{planning_dir}/reviews/`:
+- `iteration-1-gemini.md` - Gemini review (external_llm mode)
+- `iteration-1-openai.md` - OpenAI review (external_llm mode)
+- `iteration-1-opus.md` - Opus review (opus_subagent mode)

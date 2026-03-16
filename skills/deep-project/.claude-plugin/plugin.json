@@ -1,0 +1,11 @@
+{
+  "name": "deep-project",
+  "description": "Split project requirements into well-scoped units for /deep-plan (SmartSpecPro customized)",
+  "version": "1.0.0",
+  "author": {
+    "name": "SmartSpecPro",
+    "url": "https://smartaihub.app"
+  },
+  "license": "MIT",
+  "keywords": ["planning", "decomposition", "project-management", "autonomous"]
+}

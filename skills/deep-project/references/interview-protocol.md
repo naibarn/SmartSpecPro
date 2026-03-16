@@ -7,7 +7,31 @@ Before starting the interview:
 
 ## Philosophy
 
-The interview surfaces the user's mental model. The assistant should ask adaptively with no fixed number of rounds. The goal is to reconcile user intent, constraints, and implementation reality before split analysis.
+The interview surfaces the user's mental model. Claude has freedom to ask questions adaptively - there's no fixed number of rounds. The goal is reconciling context from the user's brain with Claude's intelligence.
+
+**Key principle: Only ask what you cannot determine yourself.** Technical decisions should be made by Claude based on codebase analysis. Business and domain decisions require user input.
+
+## What to Ask vs What to Decide Yourself
+
+**ASK the user:**
+- Business scope and priorities ("Which of these features is highest priority?")
+- Domain rules only they know ("How does your approval workflow work?")
+- Natural boundaries they see in the work ("How do you think about dividing this?")
+- Ordering intuition ("What feels foundational to you?")
+- Uncertainty areas ("What parts are you least sure about?")
+
+**DECIDE yourself (do NOT ask):**
+- Technology choices → analyze codebase
+- Architecture patterns → follow existing conventions
+- Split granularity → use split-heuristics.md
+- Dependency ordering → analyze code imports and data flow
+- Testing approach → match existing setup
+
+**Log auto-decisions:**
+```
+Auto-decided: Split into 3 units based on clear system boundaries (frontend, backend API, data pipeline)
+Auto-decided: Sequential ordering because backend API depends on data models
+```
 
 ## Core Topics to Cover
 
@@ -22,7 +46,7 @@ Try to discover how the user naturally thinks about dividing the work while also
 
 ### 2. Ordering Intuition
 
-Understand what needs to come first or is foundational. Tease context out of the users mind about dependencies and combine it with your advice.
+Understand what needs to come first or is foundational. Tease context out of the user's mind about dependencies and combine it with your advice.
 
 **Listen for:**
 - Mentions of "core" or "foundation"
@@ -38,9 +62,6 @@ Identify what's clear vs. what needs exploration. Extract detail from the user o
 - Multiple alternatives being considered
 - "I'm not sure how to..."
 
-**Why it matters:**
-Uncertain parts may need dedicated splits for /deep-plan exploration. Don't assume - flag it.
-
 ### 4. Existing Context
 
 Capture constraints and integration points.
@@ -54,36 +75,17 @@ Capture constraints and integration points.
 
 ## When to Stop
 
+**Target: 2-4 rounds. Never exceed 5 rounds.**
+
 Stop the interview when you have enough information to:
 
 1. **Propose a split structure the user will recognize**
-   - Splits should match the mental model you and the user have been constructing
-   - May be a single unit if project is small enough / coherent
-
 2. **Identify dependencies between splits** (if multiple)
-   - What needs what
-   - What can run in parallel
-
 3. **Flag which splits could run in parallel** (if multiple)
-   - Independent work streams
-   - Interface-only dependencies
-
 4. **Capture key context and clarifications for /deep-plan**
-   - Decisions that affect implementation
-   - Constraints that must be respected
-   - Unknowns that need resolution
 
-## Required Completion Checklist
-
-Before ending the interview, ensure all items are satisfied:
-
-1. Natural boundaries are explicit.
-2. Ordering/dependencies are explicit.
-3. Uncertainty areas are identified.
-4. Existing constraints are captured.
-5. A concise recap is presented to user and user confirms or corrects it.
-6. Any corrections are incorporated through follow-up questions.
+If the user answers with 'I don't know' or 'Up to you' → that's a signal to decide yourself and move on.
 
 ## Output
 
-After the interview, write `{planning_dir}/deep_project_interview.md` with a complete transcript of the interview.
+After the interview, write `{planning_dir}/deep_project_interview.md` with a complete transcript of the interview, plus a section for **Auto-Decisions** listing technical choices made without asking.

@@ -13,12 +13,7 @@ Before critical operations, optionally prompt the user about context management.
 
 Compaction keeps the session alive but may cause instruction loss. `/clear` + re-run gives a clean slate with full instructions.
 
-## Quick Check: Context Task
-
-After step 4 (setup-planning-session), look for the context task:
-```
-review_mode=external_llm (or other value)
-```
+## Quick Check
 
 Check session config for `context_check_enabled`. If `false`, skip context checks entirely.
 
@@ -37,19 +32,24 @@ uv run {plugin_root}/scripts/checks/check-context-decision.py \
 | action | What to do |
 |--------|------------|
 | `skip` | Prompts disabled - proceed immediately |
-| `prompt` | Use AskUserQuestion with `prompt.message` and `prompt.options` |
+| `prompt` | **Auto-decide based on context usage** (see below) |
 
-### Option Handling
+### Auto-Decision Rules (DO NOT ask user)
 
-**If user chooses "Continue":**
-- Proceed with the operation
-- Auto-compact will trigger at ~95% context if needed
-- If Claude gets confused after auto-compact, user can `/clear` and re-run
+**If context usage < 80%:** Auto-continue. No need to interrupt the workflow.
 
-**If user chooses "/clear + re-run":**
-- User will run `/clear` then re-run `/deep-plan @<spec-file>`
-- This gives a fresh context window with full instructions
-- Progress is preserved - file-based recovery resumes where they left off
+**If context usage 80-95%:** Log a warning and auto-continue:
+```
+Context usage: {N}% — approaching limit. Will auto-compact at 95% if needed.
+```
+
+**If context usage > 95%:** Print recommendation and auto-continue:
+```
+Context usage: {N}% — high. Consider /clear + re-run after current step completes.
+Continuing automatically...
+```
+
+**Never ask the user to choose between "Continue" and "/clear".** The system handles this automatically. If context becomes critical, auto-compact will trigger. The user can always `/clear` manually if they notice issues.
 
 ## Trade-offs Explained
 
@@ -65,7 +65,7 @@ uv run {plugin_root}/scripts/checks/check-context-decision.py \
 
 ## When to Run Context Checks
 
-- Before External LLM Review (upcoming operation: "External LLM Review")
+- Before Plan Review (upcoming operation: "Plan Review")
 - Before Section Split (upcoming operation: "Section splitting")
 
 ## Configuration

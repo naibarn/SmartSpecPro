@@ -1,12 +1,12 @@
 # Interview Protocol
 
-The interview runs directly in this skill in the main conversation.
+The interview runs directly in this skill (not subagent) because `AskUserQuestion` only works in main conversation context.
 
 ## Context
 
 The interview should be informed by:
 - **Initial spec** (always available from `initial_file`)
-- **Research findings** (if step 7 produced `research-notes.md`)
+- **Research findings** (if step 7 produced `claude-research.md`)
 
 If research was done, use it to:
 - Skip questions already answered by research
@@ -16,86 +16,69 @@ If research was done, use it to:
 ## Philosophy
 
 - You are a senior architect accountable for this implementation
-- Surface everything the user knows but hasn't mentioned
-- Assume the initial spec is incomplete (research helps, but user context is still needed)
-- Extract context from user's head
+- **Only ask what you genuinely cannot determine from the codebase or spec**
+- For technical decisions (framework choice, architecture pattern, error handling strategy): **decide yourself** based on codebase research and best practices. Log the decision, don't ask.
+- For business/domain decisions (user-facing behavior, scope, priorities): **ask the user** — only they know this.
+- Extract context from user's head, but respect their time.
+
+## What to Ask vs What to Decide Yourself
+
+**ASK the user (domain knowledge only they have):**
+- Business rules and domain logic ("What happens when a subscription expires mid-task?")
+- Scope decisions ("Should this support batch processing or single items only?")
+- Priority and trade-offs ("Is speed more important than accuracy here?")
+- User-facing behavior ("Should error messages be shown inline or as toast?")
+- Integration constraints only they know ("Does the external API have rate limits?")
+
+**DECIDE yourself (technical decisions — do NOT ask):**
+- Framework/library choices → pick what matches codebase patterns
+- Architecture patterns → follow existing codebase conventions
+- Error handling strategy → use what the codebase already does
+- Database schema design → follow existing ORM patterns
+- Testing approach → match existing test conventions
+- File structure → follow existing project structure
+- API design patterns → match existing endpoints
+
+**Log auto-decisions** so user can review if they want:
+```
+Auto-decided: Using Zod validation (matches existing codebase pattern in server/routers/*.ts)
+Auto-decided: Redis caching with 60s TTL (matches existing pattern in services/cache.ts)
+```
 
 ## Technique
 
-- Ask focused questions in normal chat (2-4 per round)
-- Ask open-ended questions, not yes/no
+- Use AskUserQuestion with focused questions (1-3 per round)
+- Ask open-ended questions about business/domain, not technical implementation
 - Don't ask obvious questions already in spec
-- Dig deeper when answers reveal complexity
+- Don't ask questions that can be answered by reading the codebase
 - Summarize periodically to confirm understanding
-- Avoid nested numbered option lists; use short option codes/keywords instead.
-- Reuse known answers from existing planning files and ask only unresolved fields.
-
-## Improvement Mode (Existing Plan Refresh)
-
-When improving an existing plan, run a refresh interview before regenerating plan artifacts.
-
-Questioning must be separated into two phases:
-- **Stage A (Early Intake):** collect update inputs (`answer_mode`, `changes`, `gaps`, `focus`).
-- **Stage B (Late Recommendation):** happens after plan rewrite, where recommended uplift items are presented for user adoption decision.
-
-Required refresh flow:
-1. Ask what changed since the last plan (scope, constraints, timeline, risk tolerance).
-2. Ask what was missing or weak in the previous plan.
-3. Ask re-answer mode using keyword choice:
-   - `full` = Re-answer key questions fully
-   - `delta` = Answer only changed parts
-   - `keep` = Keep previous answers
-4. Capture decisions and rationale for each changed area.
-
-Use a single compact intake prompt in one message:
-
-```text
-Please reply in this format:
-answer_mode: full|delta|keep
-changes: <what changed>
-gaps: <what is missing/weak>
-focus: security|migration|tests|all
-```
-
-Do not re-ask these fields in follow-up unless:
-- a field is missing/ambiguous, or
-- user explicitly asks to revise a previous answer.
-
-Do not ask Stage B recommendation/adoption questions during Stage A.
-Stage B must occur after `implementation-plan.md` and `plan-uplift.md` are prepared.
-
-Save refresh transcript to:
-- `<planning_dir>/interview-refresh.md`
-
-Then merge/append into:
-- `<planning_dir>/interview-notes.md`
+- **Keep it short** — aim for 2-4 rounds maximum
 
 ## Example Questions
 
-**Good questions:**
-- "What happens when X fails? Should we retry, log, or surface to user?"
-- "Are there existing patterns in the codebase for Y that we should follow?"
+**Good questions (domain knowledge):**
 - "What's the expected scale - dozens, thousands, or millions of Z?"
+- "Should failed tasks retry automatically or require manual intervention?"
+- "Who is the primary user of this feature — admins or end users?"
 
-**Bad questions (too vague):**
-- "Anything else?"
-- "Is that all?"
-- "Do you have any other requirements?"
+**Bad questions (technical — decide yourself):**
+- ~~"Should we use Redis or in-memory caching?"~~ → Check codebase, pick what's already used
+- ~~"What happens when X fails? Should we retry, log, or surface to user?"~~ → Follow existing error handling patterns
+- ~~"Are there existing patterns in the codebase for Y?"~~ → You already researched this in Step 7
+- ~~"Should we use TypeScript or JavaScript?"~~ → Look at the existing codebase
 
 ## When to Stop
 
-Stop interviewing when you are confident you can:
-1. Write a detailed implementation plan
-2. Make no assumptions about requirements
-3. Handle all edge cases the user cares about
+Stop interviewing when you have enough **business context** to write the plan. Technical details should come from codebase research, not the user.
 
-If uncertain, ask one more round. It's better to over-clarify than to make wrong assumptions.
+If the user answers with 'I don't know' or 'Up to you' → that's a signal to decide yourself. Stop asking and move on.
 
-If the user is predominantly answering with 'I don't know' or 'Up to you' to most questions, stop and move on.
+**Target: 2-4 rounds. Never exceed 6 rounds.**
 
 ## Saving the Transcript
 
-After the interview, save the full Q&A to `<planning_dir>/interview-notes.md`:
+After the interview, save the full Q&A to `<planning_dir>/claude-interview.md`:
 - Format each question as a markdown heading
 - Include the user's full answer below
 - Number questions for reference (Q1, Q2, etc.)
+- Include a section for **Auto-Decisions** listing technical choices made without asking

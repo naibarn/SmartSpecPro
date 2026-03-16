@@ -4,8 +4,8 @@ Create `<planning_dir>/sections/index.md` to define implementation sections.
 
 ## Input Files
 
-- `<planning_dir>/implementation-plan.md` - implementation plan
-- `<planning_dir>/implementation-plan-tdd.md` - test stubs mirroring plan structure
+- `<planning_dir>/claude-plan.md` - implementation plan
+- `<planning_dir>/claude-plan-tdd.md` - test stubs mirroring plan structure
 
 ## Output
 

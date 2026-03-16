@@ -8,7 +8,7 @@ Before analyzing splits:
 
 ## Overview
 
-/deep-plan transforms requirements into detailed implementation plans via research, interviews, and review.
+/deep-plan is a Claude Code plugin that transforms requirements into detailed implementation plans via research, interviews, and multi-LLM review.
 
 The goal of a split is to create a unit of work that is ideal for deeper planning via the /deep-plan plugin. We do not want to pass vague ideas that are too broad to /deep-plan (the plan will become too much context) and we do not want to pass small/targeted units of work to /deep-plan (it will be overkill for them). Your goal is to find the ideal split that has natural boundaries and will benefit from much deeper/thorough planning without being too broad.
 
