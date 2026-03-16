@@ -746,7 +746,7 @@ app.post("/api/internal/agency/create", async (req, res) => {
         const userId = userIdHeader ? parseInt(userIdHeader, 10) : 0;
         if (userId > 0) {
           // Create a minimal user-like object for the downstream code
-          user = { id: userId, currentTenantId: null } as any;
+          user = { id: userId, currentTenantId: null, __internalAuth: true } as any;
         }
       }
     }
@@ -783,6 +783,18 @@ app.post("/api/internal/agency/create", async (req, res) => {
     // Prefer explicit tenantId from request body (passed by Celery task from the user's tRPC context),
     // then fall back to tenant middleware, then user's currentTenantId
     const tenantId: string = req.body.tenantId || tenantReq.tenant?.id || String(user.currentTenantId ?? "");
+
+    // Verify user belongs to the specified tenant (prevents cross-tenant agency creation via internal token)
+    if (tenantId && (user as any).__internalAuth) {
+      const { users: usersTable } = await import("../../drizzle/schema");
+      const { eq, and } = await import("drizzle-orm");
+      const userRow = await drizzleDb.select({ id: usersTable.id }).from(usersTable)
+        .where(and(eq(usersTable.id, user.id), eq(usersTable.currentTenantId, tenantId)))
+        .limit(1);
+      if (userRow.length === 0) {
+        return res.status(403).json({ error: "User does not belong to the specified tenant" });
+      }
+    }
 
     const {
       name,

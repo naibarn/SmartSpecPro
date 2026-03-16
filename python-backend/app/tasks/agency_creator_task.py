@@ -100,6 +100,7 @@ def create_agency_discover_task(
     task_id: str,
     user_id: int,
     payload: dict,
+    **kwargs,  # Accept legacy keyword args from in-flight messages during rolling deploy
 ):
     """Phase 1-2: DISCOVER + INTERVIEW.
 
@@ -198,6 +199,7 @@ def create_agency_design_task(
     task_id: str,
     user_id: int,
     payload: dict,
+    **kwargs,  # Accept legacy keyword args from in-flight messages during rolling deploy
 ):
     """Phase 3-7: DESIGN → VALIDATE → IMPLEMENT → VERIFY → DOCUMENT.
 
@@ -260,15 +262,25 @@ async def _design_async(task_id: str, user_id: int, payload: dict) -> dict:
     })
     agency_id = await _implement_agency(spec, user_id, tenant_id)
 
-    # Phase 6: VERIFY (basic sanity check — skip if no agency_id)
-    if agency_id:
+    if not agency_id:
         _set_status(task_id, {
-            "status": "processing",
-            "phase": "verify",
-            "message": "Verifying agency...",
+            "status": "failed",
+            "phase": "implement",
+            "error": "Agency creation failed (internal API error)",
             "_user_id": user_id,
-            "agencyId": agency_id,
+            "previewJson": spec,
         })
+        logger.error("agency_creator_implement_returned_none", task_id=task_id)
+        return {"status": "failed", "error": "Agency creation failed"}
+
+    # Phase 6: VERIFY
+    _set_status(task_id, {
+        "status": "processing",
+        "phase": "verify",
+        "message": "Verifying agency...",
+        "_user_id": user_id,
+        "agencyId": agency_id,
+    })
 
     # Phase 7: DOCUMENT
     _set_status(task_id, {
@@ -527,6 +539,10 @@ async def _implement_agency(spec: dict, user_id: int, tenant_id: str = "") -> st
 
     internal_url = os.getenv("SMARTSPEC_INTERNAL_URL") or os.getenv("SMARTSPEC_WEB_GATEWAY_URL", "http://127.0.0.1:3000")
     internal_token = getattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", "") or getattr(settings, "SMARTSPEC_PROXY_TOKEN", "")
+
+    if not internal_token:
+        logger.error("agency_creator_no_internal_token", msg="SMARTSPEC_WEB_GATEWAY_TOKEN is not configured")
+        return None
 
     try:
         # Prepare saveBuilder payload

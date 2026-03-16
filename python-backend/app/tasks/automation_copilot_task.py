@@ -78,6 +78,7 @@ def automation_analyze_task(
     user_id: int,
     tenant_id: str,
     prompt: str,
+    **kwargs,  # Accept legacy keyword args from in-flight messages during rolling deploy
 ) -> dict:
     """Phase 1: Parse prompt into intent, return preview or clarification questions."""
 
@@ -157,9 +158,10 @@ def automation_execute_task(
     tenant_id: str,
     intent_json: str,
     vision_model: str,
-    allowed_domains: list[str],
+    allowed_domains: list[str] | None = None,
     browser_policy_context: dict | None = None,
     reservation_id: str | None = None,
+    **kwargs,  # Accept legacy keyword args from in-flight messages during rolling deploy
 ) -> dict:
     """Phase 2: Generate scripts + execute with self-healing."""
 
