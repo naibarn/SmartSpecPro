@@ -29,7 +29,7 @@
     ],
     "_comment": "Timeout and retry settings for external LLM calls"
   },
-  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-plan/0.3.0",
+  "plugin_root": "/home/dev/.claude/plugins/local/smartspec-plugins/deep-plan",
   "planning_dir": "/home/dev/projects/SmartSpecPro/planning/llm-multi-provider",
   "initial_file": "/home/dev/projects/SmartSpecPro/planning/llm-multi-provider/spec.md",
   "review_mode": "opus_subagent"

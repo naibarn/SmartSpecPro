@@ -1,5 +1,5 @@
 {
-  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.0",
+  "plugin_root": "/home/dev/.claude/plugins/local/smartspec-plugins/deep-implement",
   "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/023-PresentationExportAudioVideo/sections",
   "target_dir": "/home/dev/projects/SmartSpecPro",
   "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/023-PresentationExportAudioVideo/implementation",
