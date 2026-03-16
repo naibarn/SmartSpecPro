@@ -260,7 +260,8 @@ When encountering ANY bug, error, or test failure, you MUST follow this protocol
 
 ### Hard Rules
 
-- **3-attempt limit**: If the same error persists after 3 fix attempts, STOP and ask the user for guidance. Do not keep trying.
+- **2-attempt log rule**: If the same bug persists after 2 fix attempts, **STOP guessing immediately**. Create file-based debug logging at all decision points in the affected flow, reproduce the bug, and read the log to find the ACTUAL root cause. Do NOT attempt a 3rd fix without log evidence. This rule exists because the slide-switch-overwrite bug wasted multiple days of guessing (autosave timing, React effect order, ref vs state races) when a single log session revealed the real cause (`pendingAutoLayoutUndoRef` not cleared) in minutes.
+- **3-attempt limit**: If the same error persists after 3 fix attempts (with logging), STOP and ask the user for guidance. Do not keep trying.
 - **No shotgun debugging**: Never change multiple things at once "to see if it helps." One change, one test, one verification.
 - **No silent assumptions**: If you're unsure what a variable contains or what a function returns, READ the code or add a log. Never assume.
 - **Revert failed fixes**: If a change makes things worse, revert it immediately before trying something else.

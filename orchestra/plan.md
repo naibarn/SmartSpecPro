@@ -1,20 +1,23 @@
 # Orchestra Plan
 
 ## Task
-Move Reference Images from "Visual & References" section to right after Topic in "Content" section, add thumbnail previews, and pass reference images to article generation skill execution.
+Security audit of 3 local deep-* plugins (deep-plan, deep-project, deep-implement) and identify relevant cybersecurity skills from external repo to strengthen them.
 
 ## Classification
-- scope: small
-- risk: low
-- affected_domains: [frontend]
-- estimated_file_count: 1-2
-- chosen_route: single agent (conductor direct edit)
-- task_summary: Relocate Reference Images UI to Content section, enhance with thumbnails, pass to article generate skill
-- bug_route: N/A
+- scope: medium
+- risk: high
+- affected_domains: [security, plugins, scripts]
+- estimated_file_count: 30+
+- chosen_route: multi-agent waves
+- task_summary: Audit local plugins for input validation, path traversal, command injection, secrets exposure, and subagent isolation gaps. Match findings to cybersecurity skills.
+- decision_mode: auto_by_default
 
-## Changes Required
-1. CUT the Reference Images block (lines ~1995-2096) from "Visual & References" section
-2. PASTE it into "Content" section right after Topic textarea (after line ~1478)
-3. Update description to clarify multi-purpose use (article gen, image gen, video start/stop frame)
-4. Pass referenceImageUrls to the handleGenerateArticle executeSkill call
-5. Thumbnails already exist in current implementation (grid with img tags) — they're already there
+## Wave Plan
+
+### Wave 1: Parallel Security Audit (3 agents)
+- Agent A: ssp-security-fastapi — audit Python scripts in all 3 plugins
+- Agent B: ssp-security-frontend — audit SKILL.md and reference docs for prompt injection / subagent isolation
+- Agent C: ssp-research — fetch and analyze cybersecurity skills repo for relevant matches
+
+### Wave 2: Aggregation (1 agent)
+- Agent D: Conductor — synthesize findings, produce prioritized vulnerability list + skill recommendations
