@@ -39,6 +39,7 @@ const REDIS_SYNCED_FLAGS: ReadonlySet<TenantFeatureFlagKey> = new Set([
   "workflowBrowserSessionNodes",
   "publicApi",
   "multimodalMemory",
+  "skillOrchestrator",
 ]);
 
 /**

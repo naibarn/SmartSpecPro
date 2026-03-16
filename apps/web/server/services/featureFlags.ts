@@ -87,3 +87,41 @@ export async function setTenantFeatureFlag(
     value ? "true" : "false",
   );
 }
+
+/** String-valued feature flag keys (not boolean, so separate from TenantFeatureFlags) */
+export type StringValuedFeatureFlag = "skillOrchestratorMaxLevel";
+
+/**
+ * Read a raw string value from the Redis feature-flag namespace.
+ *
+ * Used for string-valued settings like `skillOrchestratorMaxLevel` that cannot
+ * be stored in the boolean-only TenantFeatureFlags interface.
+ *
+ * Returns null if the key is not set (caller should apply its own default).
+ */
+export async function getTenantFeatureFlagValue(
+  flagName: StringValuedFeatureFlag,
+  tenantId: string,
+): Promise<string | null> {
+  try {
+    const redis = getRedisClient();
+    return await redis.get(`feature-flag:${flagName}:${tenantId}`);
+  } catch {
+    // Redis unavailable — caller should apply default
+    return null;
+  }
+}
+
+/**
+ * Write a raw string value to the Redis feature-flag namespace.
+ *
+ * Used for string-valued settings like `skillOrchestratorMaxLevel`.
+ */
+export async function setTenantFeatureFlagValue(
+  flagName: StringValuedFeatureFlag,
+  tenantId: string,
+  value: string,
+): Promise<void> {
+  const redis = getRedisClient();
+  await redis.set(`feature-flag:${flagName}:${tenantId}`, value);
+}

@@ -25,6 +25,7 @@ export interface TenantFeatureFlags {
   workflowBrowserSessionNodes: boolean; // F18 — Workflow collaborative Browser Session nodes
   publicApi: boolean; // F19 — Public API & External Agent Gateway
   multimodalMemory: boolean; // F20 — Multimodal chat memory (image analysis, embedding, retrieval)
+  skillOrchestrator: boolean; // F21 — Hybrid Skill Orchestrator (multi-skill routing)
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -54,6 +55,7 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "workflowBrowserSessionNodes",
   "publicApi",
   "multimodalMemory",
+  "skillOrchestrator",
 ]);
 
 /**
@@ -82,4 +84,5 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   workflowBrowserSessionNodes: false,
   publicApi: false,
   multimodalMemory: false,
+  skillOrchestrator: false,
 };
