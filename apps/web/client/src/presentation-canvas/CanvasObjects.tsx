@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactElement } from "react";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Pause, Play, Search, X } from "lucide-react";
+import DOMPurify from "dompurify";
 
 import type { PresentationElement, PresentationElementPatch } from "@/lib/presentationEditorState";
 import { normalizeMediaSourceUrl } from "@/lib/mediaUrl";
@@ -111,7 +112,7 @@ function resolveVideoRenderProps(element: PresentationElement): {
 
 function getElementDisplayText(element: PresentationElement): string {
   if (element.type === "text") {
-    return element.text || "Text";
+    return element.text || "";
   }
 
   if (element.type === "image") {
@@ -243,9 +244,9 @@ function renderElementBody(
             ...(element.textShadow ? { textShadow: element.textShadow } : {}),
             ...(element.textStroke ? { WebkitTextStroke: element.textStroke } : {}),
           }}
-          title={element.text || "Text"}
+          title={element.text || ""}
         >
-          {element.text || "Text"}
+          {element.text || ""}
         </p>
       </div>
     );
@@ -286,7 +287,7 @@ function renderElementBody(
               ),
             }}
             data-testid={`canvas-inline-svg-${element.id}`}
-            dangerouslySetInnerHTML={{ __html: coloredSvg }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(coloredSvg, { USE_PROFILES: { svg: true, svgFilters: true } }) }}
           />
         </div>
       );

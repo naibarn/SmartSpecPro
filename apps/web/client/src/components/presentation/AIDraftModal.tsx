@@ -359,6 +359,7 @@ export function AIDraftModal({
   const [hideTextOnSlides, setHideTextOnSlides] = useState(false);
   const [numSlides, setNumSlides] = useState(5);
   const [language, setLanguage] = useState<"auto" | "en" | "th">("auto");
+  const [textModel, setTextModel] = useState("");
   const [selectedArticleSkill, setSelectedArticleSkill] = useState(() => loadSavedValue("smartspec_aiDraft_articleSkill"));
   const [selectedImageSkill, setSelectedImageSkill] = useState(() => loadSavedValue("smartspec_aiDraft_imageSkill"));
   const [imageModel, setImageModel] = useState("");
@@ -418,6 +419,27 @@ export function AIDraftModal({
   // Fetch skills
   const skillsQuery = trpc.skills.getUserVisibleSkills.useQuery({ limit: 100 });
   const skills = (skillsQuery.data?.skills ?? []) as VisibleSkillOption[];
+
+  // Available LLM models for text model override
+  const llmModelsQuery = trpc.llmProviders.availableModels.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000,
+    enabled: isOpen,
+  });
+  const llmModelItems = useMemo(() => {
+    const items: Array<{ value: string; label: string }> = [
+      { value: "", label: "Auto (recommended)" },
+    ];
+    if (llmModelsQuery.data?.models) {
+      for (const m of llmModelsQuery.data.models) {
+        items.push({
+          value: m.id,
+          label: `${m.name || m.id}${m.providerDisplayName ? ` (${m.providerDisplayName})` : ""}`,
+        });
+      }
+    }
+    return items;
+  }, [llmModelsQuery.data?.models]);
+
   const watermarkLibraryQuery = trpc.library.listDocuments.useQuery(
     {
       query: debouncedWatermarkSearchQuery || undefined,
@@ -797,6 +819,7 @@ export function AIDraftModal({
       const result = await executeSkillMutation.mutateAsync({
         skillId: articleGenSkill,
         prompt: topic.trim() || undefined,
+        model: textModel || undefined,
         dynamicParams: Object.keys(articleGenParams).length > 0
           ? articleGenParams
           : undefined,
@@ -816,7 +839,7 @@ export function AIDraftModal({
     } finally {
       setIsGeneratingArticle(false);
     }
-  }, [articleGenSkill, isGeneratingArticle, topic, articleGenParams, normalizedReferenceImageUrls, executeSkillMutation]);
+  }, [articleGenSkill, isGeneratingArticle, topic, textModel, articleGenParams, normalizedReferenceImageUrls, executeSkillMutation]);
 
   // Polling progress
   const progressQuery = trpc.presentation.ai.getDraftProgress.useQuery(
@@ -1359,6 +1382,7 @@ export function AIDraftModal({
         prompt: effectivePrompt,
         numSlides,
         language: language as "auto" | "en" | "th",
+        textModel: textModel || undefined,
         draftSkillId:
           !useCustomArticle && selectedArticleSkill
             ? selectedArticleSkill
@@ -1446,6 +1470,7 @@ export function AIDraftModal({
     hideTextOnSlides,
     numSlides,
     language,
+    textModel,
     selectedArticleSkill,
     selectedDraftSkillRecord,
     selectedImageSkill,
@@ -2008,6 +2033,23 @@ export function AIDraftModal({
             <SelectItem value="th">Thai</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      {/* LLM Model override */}
+      <div className="space-y-1.5">
+        <Label>LLM Model</Label>
+        <p className="text-xs text-muted-foreground">
+          Override the LLM used for article generation and slide structuring. "Auto" lets the system choose the best model automatically.
+        </p>
+        <SearchableCombobox
+          items={llmModelItems}
+          value={textModel}
+          onValueChange={setTextModel}
+          placeholder="Auto (recommended)"
+          searchPlaceholder="Search models..."
+          emptyMessage="No models found."
+          disabled={llmModelsQuery.isLoading}
+        />
       </div>
       </>)}
       </fieldset>

@@ -38,6 +38,12 @@ export class CommandBus<State> {
     return this.state;
   }
 
+  /** Apply a command without creating an undo entry (e.g. selection-only changes). */
+  applyWithoutUndo(command: CanvasCommand<State>): State {
+    this.state = command.apply(this.state);
+    return this.state;
+  }
+
   /**
    * Continuous (drag) execute — the first call in a group pushes one undo entry;
    * subsequent calls with the same command.id reuse that entry so the entire

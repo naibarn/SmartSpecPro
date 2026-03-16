@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "title": "Presentation Layout Designer Input",
+  "description": "Input parameters for AI-powered presentation layout generation",
+  "properties": {
+    "content": {
+      "type": "string",
+      "title": "Content / Notes",
+      "description": "The text content or notes to transform into slide layout(s)",
+      "minLength": 1,
+      "maxLength": 20000
+    },
+    "stylePresetId": {
+      "type": "string",
+      "title": "Style Preset",
+      "description": "Visual style theme for the presentation",
+      "enum": [
+        "dark-professional",
+        "light-minimalist",
+        "corporate-blue",
+        "nature-green",
+        "warm-sunset",
+        "editorial-clean",
+        "midnight-luxe"
+      ],
+      "default": "dark-professional"
+    },
+    "mode": {
+      "type": "string",
+      "title": "Mode",
+      "description": "Single slide or split into multiple slides",
+      "enum": ["single_slide", "full_presentation"],
+      "default": "single_slide"
+    },
+    "numSlides": {
+      "type": "integer",
+      "title": "Number of Slides",
+      "description": "Target slide count (for full_presentation mode). Leave blank for auto-calculation.",
+      "minimum": 1,
+      "maximum": 30
+    }
+  },
+  "required": ["content"]
+}

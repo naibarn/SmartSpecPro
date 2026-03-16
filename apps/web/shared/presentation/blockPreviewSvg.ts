@@ -147,9 +147,18 @@ function buildElementMarkup(
   if (element.type === "text") {
     const text = escapeXml(element.text || "");
     const fontSize = clampNumber(Number(element.fontSize ?? 24), 8, 72);
-    const x = element.x + 8;
-    const y = element.y + fontSize + 4;
-    return `<text x="${x}" y="${y}" fill="${escapeXml(element.color || "#0f172a")}" font-size="${fontSize}" font-family="${escapeXml(element.fontFamily || "Arial, sans-serif")}" font-weight="${escapeXml(element.fontWeight || "600")}">${text.slice(0, 120)}</text>`;
+    const fontFamily = escapeXml(element.fontFamily || "Arial, sans-serif");
+    const fontWeight = escapeXml(element.fontWeight || "600");
+    const color = escapeXml(element.color || "#0f172a");
+    const textAlign = ["left", "center", "right", "justify"].includes(String(element.textAlign))
+      ? String(element.textAlign)
+      : "left";
+    const style = `width:100%;height:100%;overflow:hidden;padding:8px;box-sizing:border-box;word-break:break-word;white-space:pre-wrap;font-size:${fontSize}px;font-family:${fontFamily};font-weight:${fontWeight};color:${color};text-align:${textAlign}`;
+    return [
+      `<foreignObject x="${element.x}" y="${element.y}" width="${element.width}" height="${element.height}">`,
+      `<div xmlns="http://www.w3.org/1999/xhtml" style="${style}">${text.slice(0, 120)}</div>`,
+      "</foreignObject>",
+    ].join("");
   }
   if (element.type === "image") {
     return buildMediaShapeMarkup("image", element, options);
@@ -186,7 +195,7 @@ export function buildPresentationBlockPreviewSvg(
 ): string {
   const markup = elements.map((element) => buildElementMarkup(element, options)).join("");
   return [
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${canvasSize.width} ${canvasSize.height}" width="${canvasSize.width}" height="${canvasSize.height}">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${canvasSize.width} ${canvasSize.height}" style="width:100%;height:auto;display:block;">`,
     buildBackgroundMarkup(background, canvasSize, options),
     markup,
     "</svg>",

@@ -29,10 +29,16 @@ export function useAutosaveController(
   const inFlightRef = useRef(false);
   const persistedSignatureRef = useRef<string | null>(null);
   const autosaveRef = useRef(onAutosave);
+  // Track the latest draftSignature for re-checking in the timer callback
+  const latestDraftSignatureRef = useRef(draftSignature);
 
   useEffect(() => {
     autosaveRef.current = onAutosave;
   }, [onAutosave]);
+
+  useEffect(() => {
+    latestDraftSignatureRef.current = draftSignature;
+  }, [draftSignature]);
 
   const clearTimer = useCallback(() => {
     if (!timerRef.current) {
@@ -59,11 +65,19 @@ export function useAutosaveController(
         return;
       }
 
+      // Re-check: signature may have been marked as persisted while we waited.
+      // This prevents saving stale content after slide switches where
+      // markPersisted runs after the timer was already scheduled.
+      const currentSig = latestDraftSignatureRef.current;
+      if (currentSig === persistedSignatureRef.current) {
+        return;
+      }
+
       inFlightRef.current = true;
       void autosaveRef.current()
         .then((result) => {
           if (result === "saved") {
-            persistedSignatureRef.current = draftSignature;
+            persistedSignatureRef.current = latestDraftSignatureRef.current;
           }
         })
         .finally(() => {
@@ -82,7 +96,9 @@ export function useAutosaveController(
 
   const clear = useCallback(() => {
     clearTimer();
-    persistedSignatureRef.current = null;
+    // Do NOT reset persistedSignatureRef — switchToSlide() calls clear() before
+    // changing selectedSlideId. Resetting would cause the next render's effect
+    // to schedule a new autosave with the wrong slide context.
   }, [clearTimer]);
 
   return useMemo(() => ({

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type DragEvent, type MouseEvent as ReactMouseEvent, type ReactElement } from "react";
 import { useLocation, useRoute } from "wouter";
+import DOMPurify from "dompurify";
 import {
   BookMarked,
   Check,
@@ -231,7 +232,7 @@ import {
   PRESENTATION_AI_LAYOUT_MODES,
   type PresentationAILayoutMode,
 } from "@shared/presentation/contentProfile";
-import { type PresentationCustomBlockVisibility } from "@shared/presentation/customBlocks";
+import { type PresentationCustomBlockPreviewSource, type PresentationCustomBlockVisibility } from "@shared/presentation/customBlocks";
 import {
   computeMediaMotionTimelineFrame,
   hasActiveMediaMotion,
@@ -244,7 +245,7 @@ import type {
   PresentationSlideBackground,
   PresentationTransition,
 } from "@shared/presentation/contracts";
-import { presentationRenderOrderIdForComponent } from "@shared/presentation/contracts";
+import { presentationRenderOrderIdForComponent, presentationRenderOrderIdForElement } from "@shared/presentation/contracts";
 
 function parseDocId(value: string | undefined): number | null {
   if (!value) return null;
@@ -468,7 +469,8 @@ function ResponsiveSvgPreview({
       ref={containerRef}
       className={className}
       data-testid={testId}
-      dangerouslySetInnerHTML={{ __html: svg }}
+      style={{ overflow: "hidden" }}
+      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true, svgFilters: true } }) }}
     />
   );
 }
@@ -956,6 +958,17 @@ function inferAIOverrideBackground(
   if (content.background) {
     return content.background;
   }
+  const backgroundImage = content.elements.find((element) => (
+    element.type === "image"
+    && element.x === 0
+    && element.y === 0
+    && element.width === canvas.width
+    && element.height === canvas.height
+    && element.src?.trim()
+  ));
+  if (backgroundImage?.type === "image" && backgroundImage.src?.trim()) {
+    return { type: "image", url: backgroundImage.src.trim() };
+  }
   const backgroundRect = content.elements.find((element) => (
     element.type === "rect"
     && element.x === 0
@@ -971,6 +984,28 @@ function inferAIOverrideBackground(
     type: "color",
     value: backgroundRect.fill,
   };
+}
+
+/**
+ * Returns full-canvas rect elements that act as overlay tints (e.g. dark semi-transparent overlays).
+ * These are preserved when applying AI Layout so the visual style of the slide is retained.
+ */
+function getOverlayLayerElements(
+  content: PresentationSlideContent,
+  canvas: { width: number; height: number },
+  background: PresentationSlideBackground | undefined,
+): PresentationElement[] {
+  return content.elements.filter((element) => (
+    element.type === "rect"
+    && element.x === 0
+    && element.y === 0
+    && element.width === canvas.width
+    && element.height === canvas.height
+    // Exclude rects with stroke (they are borders, not overlays)
+    && (!element.strokeWidth || element.strokeWidth === 0)
+    // Exclude the rect that was already promoted to content.background as a solid color
+    && !(background?.type === "color" && element.fill === background.value && !element.opacity)
+  ));
 }
 
 function inferAIOverrideMediaUrl(
@@ -1060,41 +1095,81 @@ function inferAIOverrideRecipeId(options: {
   sections: Array<{ heading: string; details: string[] }>;
   hasImage: boolean;
   hasVideo: boolean;
+  slideIndex?: number;
 }): BuiltInPresentationComponentId {
   const bodyCount = options.body.filter(Boolean).length;
   const sectionCount = options.sections.length;
+  const totalTextLength = options.body.join("").length + options.title.length;
   const longBodyLineCount = options.body.filter((line) => line.length > 120).length;
   const joinedText = `${options.title}\n${options.body.join("\n")}`.toLowerCase();
   const looksNumeric = /\b\d+(?:[%.,]\d+)?\b/.test(joinedText);
+  const isLongContent = totalTextLength > 300 || longBodyLineCount > 0 || bodyCount >= 5;
+
+  // Build a list of suitable candidates, then pick based on slideIndex for variety
+  const candidates: BuiltInPresentationComponentId[] = [];
 
   if (options.hasVideo) {
     return "video-spotlight";
   }
-  if (sectionCount >= 2 && (bodyCount >= 3 || longBodyLineCount > 0) && !options.hasImage) {
-    return "sectioned-explainer";
+
+  // Long content with sections → document-style blocks
+  if (sectionCount >= 2 && isLongContent) {
+    candidates.push("sectioned-explainer", "article-focus", "two-column-article");
+    if (options.hasImage) {
+      candidates.push("image-top-article", "image-left-article");
+    }
   }
-  if (sectionCount >= 2 && sectionCount <= 3) {
-    return "process-steps";
+  // Sections without long content → process/structured blocks
+  else if (sectionCount >= 2 && sectionCount <= 3) {
+    candidates.push("process-steps", "timeline-flow", "feature-highlights");
   }
-  if (sectionCount >= 4) {
-    return options.hasImage ? "framed-image-story" : "infographic-grid";
+  else if (sectionCount >= 4) {
+    candidates.push(
+      options.hasImage ? "framed-image-story" : "infographic-grid",
+      "faq-stack",
+    );
   }
+
+  // Numeric content → data blocks
   if (looksNumeric && bodyCount <= 4) {
-    return "stat-cards";
+    candidates.push("stat-cards");
   }
-  if (options.hasImage && bodyCount >= 5) {
-    return "framed-image-story";
+
+  // Image + long text → article/image blocks
+  if (options.hasImage && isLongContent && candidates.length === 0) {
+    candidates.push(
+      "image-top-article", "image-bottom-article",
+      "image-left-article", "image-right-article",
+      "framed-image-story",
+    );
   }
-  if (options.hasImage && (bodyCount >= 2 || longBodyLineCount > 0)) {
-    return "poster-spotlight";
+  // Image + medium text → spotlight blocks
+  else if (options.hasImage && bodyCount >= 2) {
+    if (candidates.length === 0) {
+      candidates.push("poster-spotlight", "framed-image-story");
+      if (isLongContent) {
+        candidates.push("image-top-article", "image-right-article");
+      }
+    }
   }
-  if (bodyCount <= 2) {
-    return "quote-callout";
+
+  // Short content → compact blocks
+  if (candidates.length === 0) {
+    if (bodyCount <= 2) {
+      candidates.push("quote-callout", "poster-spotlight");
+    } else if (bodyCount <= 4) {
+      candidates.push("feature-highlights", "process-steps");
+    } else {
+      candidates.push(
+        options.hasImage ? "framed-image-story" : "infographic-grid",
+        "article-focus",
+      );
+    }
   }
-  if (bodyCount <= 4) {
-    return "feature-highlights";
-  }
-  return options.hasImage ? "framed-image-story" : "infographic-grid";
+
+  // Pick from candidates using slideIndex for variety across slides
+  const idx = options.slideIndex ?? 0;
+  return candidates[idx % candidates.length] ?? candidates[0];
 }
 
 function adaptAIOverrideNarrativeForRecipe(
@@ -1952,7 +2027,7 @@ function renderReadonlySlideElement(
                 slideDurationMs,
               ),
             }}
-            dangerouslySetInnerHTML={{ __html: coloredSvg }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(coloredSvg, { USE_PROFILES: { svg: true, svgFilters: true } }) }}
           />
         ) : hasInlineSvg ? (
           <div
@@ -2234,6 +2309,8 @@ export default function PresentationEditor() {
   const trackCustomBlockUseMutation = trpc.presentation.trackCustomBlockUse.useMutation();
   const relayoutSlideMutation = trpc.presentation.ai.relayoutSlide.useMutation();
   const repairSlideFromNoteMutation = trpc.presentation.ai.repairSlideFromNote.useMutation();
+  const generateLayoutFromNoteMutation = trpc.presentation.ai.generateLayoutFromNote.useMutation();
+  const generateLayoutFromDeckNoteMutation = trpc.presentation.ai.generateLayoutFromDeckNote.useMutation();
   const resolvePendingMediaMutation = trpc.presentation.ai.resolvePendingMedia.useMutation();
   const updateItemMutation = trpc.library.updateItem.useMutation();
   // Skills for slide note AI content generator
@@ -2332,14 +2409,32 @@ export default function PresentationEditor() {
   const [deckNoteDraft, setDeckNoteDraft] = useState("");
   const [slideNoteDraft, setSlideNoteDraft] = useState("");
   const [slideNoteRepairStatusIndex, setSlideNoteRepairStatusIndex] = useState(0);
+  // AI Layout from Note state
+  const [layoutGenPresetId, setLayoutGenPresetId] = useState<(typeof AI_STYLE_PRESET_IDS)[number]>("dark-professional");
+  const [layoutGenPresetOpen, setLayoutGenPresetOpen] = useState(false);
+  const [deckLayoutGenPresetId, setDeckLayoutGenPresetId] = useState<(typeof AI_STYLE_PRESET_IDS)[number]>("dark-professional");
+  const [deckLayoutGenOpen, setDeckLayoutGenOpen] = useState(false);
+  const [deckLayoutGenSlideCount, setDeckLayoutGenSlideCount] = useState("");
+  const layoutGenBusy = generateLayoutFromNoteMutation.isPending;
+  const deckLayoutGenBusy = generateLayoutFromDeckNoteMutation.isPending;
   // AI Layout block filter state
   const [aiBlockCategoryFilter, setAiBlockCategoryFilter] = useState<string>("All");
-  const filteredBlockPresets = useMemo(
-    () => aiBlockCategoryFilter === "All"
-      ? PRESENTATION_BLOCK_PRESETS
-      : PRESENTATION_BLOCK_PRESETS.filter((p) => p.category === aiBlockCategoryFilter),
-    [aiBlockCategoryFilter],
-  );
+  const filteredBlockPresets = useMemo(() => {
+    const canvas = commandState.content.canvas;
+    const cw = canvas?.width ?? 720;
+    const ch = canvas?.height ?? 1280;
+    const canvasIsPortrait = ch > cw;
+    const canvasIsLandscape = cw > ch;
+    return PRESENTATION_BLOCK_PRESETS.filter((p) => {
+      // Orientation filter: hide blocks that won't fit the canvas orientation
+      if (canvasIsPortrait && p.canvasIntent === "landscape-16:9") return false;
+      if (canvasIsLandscape && p.canvasIntent === "portrait-document") return false;
+      if (!canvasIsPortrait && !canvasIsLandscape && p.canvasIntent !== "adaptive") return false;
+      // Category filter
+      if (aiBlockCategoryFilter === "All") return true;
+      return p.category === aiBlockCategoryFilter || (p.tags ?? []).includes(aiBlockCategoryFilter);
+    });
+  }, [aiBlockCategoryFilter, commandState.content.canvas]);
   // Slide note AI content generator state
   const [noteGenSkill, setNoteGenSkill] = useState("");
   const [noteGenWordLimit, setNoteGenWordLimit] = useState("");
@@ -2392,6 +2487,14 @@ export default function PresentationEditor() {
   const [autoLayoutWatermarkSelectionCache, setAutoLayoutWatermarkSelectionCache] = useState<LibraryWatermarkOption | null>(null);
   const [autoLayoutProgress, setAutoLayoutProgress] = useState<{ done: number; total: number } | null>(null);
   const [aiRecipeOverrideChoice, setAiRecipeOverrideChoice] = useState<BuiltInPresentationComponentId | "">("");
+  // Tracks the slide ID on which the user has manually applied a recipe override via "Rebuild AI Layout".
+  // While set, the auto-init effect won't reset the choice (prevents server-data refetch from undoing the rebuild).
+  const aiRecipeManuallyAppliedSlideIdRef = useRef<number | null>(null);
+  // Tracks which slide ID the current draftContent belongs to.
+  // Used by autosave to skip saving if draftContent hasn't been loaded for the current slide yet.
+  const draftContentSlideIdRef = useRef<number | null>(null);
+  /** True while a slide switch is in progress — blocks autosave until content-loading completes */
+  const switchingSlideRef = useRef(false);
   const [timingDurationSecInput, setTimingDurationSecInput] = useState<string>("3");
   const [timingApplyAllPending, setTimingApplyAllPending] = useState(false);
   const [transitionApplyAllPending, setTransitionApplyAllPending] = useState(false);
@@ -2406,6 +2509,18 @@ export default function PresentationEditor() {
   const videoUploadInputRef = useRef<HTMLInputElement | null>(null);
   const mobileHeaderMenuRef = useRef<HTMLDivElement | null>(null);
   const deckNoteDraftRef = useRef(deckNoteDraft);
+  const deckLayoutGenPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const deckLayoutGenTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (deckLayoutGenPollRef.current) {
+        clearInterval(deckLayoutGenPollRef.current);
+      }
+      if (deckLayoutGenTimeoutRef.current) {
+        clearTimeout(deckLayoutGenTimeoutRef.current);
+      }
+    };
+  }, []);
   const deckNoteLastSyncedRef = useRef("");
   const [selectedSavedVersionId, setSelectedSavedVersionId] = useState<number | null>(null);
   const [restoreDialogVersionId, setRestoreDialogVersionId] = useState<number | null>(null);
@@ -2857,10 +2972,19 @@ export default function PresentationEditor() {
       sections: parsedAIOverrideSections,
       hasImage: draftHasImage,
       hasVideo: draftHasVideo,
+      slideIndex: selectedSlide?.orderIndex ?? 0,
     }),
-    [aiOverrideBodyLines, draftHasImage, draftHasVideo, parsedAIOverrideSections, selectedSlide?.title],
+    [aiOverrideBodyLines, draftHasImage, draftHasVideo, parsedAIOverrideSections, selectedSlide?.orderIndex, selectedSlide?.title],
   );
   useEffect(() => {
+    // Don't override a recipe the user just manually applied via "Rebuild AI Layout" on this slide.
+    // The ref is cleared when they navigate to a different slide.
+    if (
+      selectedSlide?.id != null
+      && aiRecipeManuallyAppliedSlideIdRef.current === selectedSlide.id
+    ) {
+      return;
+    }
     const candidates = [
       slideAIDesign?.componentRecipeId,
       currentComponentRecipeId,
@@ -3231,15 +3355,18 @@ export default function PresentationEditor() {
     reusableBuiltInComponent,
     selectedComponentId,
   ]);
-  const aiRecipePreviewSource = useMemo(() => (
-    aiRecipePreviewElements
-      ? {
-        canvas: activeCanvasSize,
-        fallbackElements: aiRecipePreviewElements,
-        background: inferAIOverrideBackground(draftContent, activeCanvasSize),
-      }
-      : null
-  ), [activeCanvasSize, aiRecipePreviewElements, draftContent]);
+  const aiRecipePreviewSource = useMemo((): PresentationCustomBlockPreviewSource | null => {
+    if (!aiRecipePreviewElements) return null;
+    const previewBackground = inferAIOverrideBackground(draftContent, activeCanvasSize);
+    const previewOverlays = getOverlayLayerElements(draftContent, activeCanvasSize, previewBackground);
+    const truncateText = <T extends PresentationElement>(el: T): T =>
+      el.type === "text" ? { ...el, text: el.text.slice(0, 120) } : el;
+    return {
+      canvas: activeCanvasSize,
+      fallbackElements: [...previewOverlays, ...aiRecipePreviewElements].map(truncateText),
+      background: previewBackground,
+    };
+  }, [activeCanvasSize, aiRecipePreviewElements, draftContent]);
   const aiRecipeCanonicalPreviewQuery = trpc.presentation.renderCustomBlockPreview.useQuery(
     aiRecipePreviewSource
       ? { previewSource: aiRecipePreviewSource }
@@ -3265,20 +3392,24 @@ export default function PresentationEditor() {
 
     if (aiRecipeCanonicalPreviewQuery.data?.svg) {
       return (
-        <ResponsiveSvgPreview
-          svg={aiRecipeCanonicalPreviewQuery.data.svg}
-          className={previewClassName}
-          testId={previewTestId}
-        />
+        <div style={{ maxWidth: previewWidth, width: "100%" }}>
+          <ResponsiveSvgPreview
+            svg={aiRecipeCanonicalPreviewQuery.data.svg}
+            className={previewClassName}
+            testId={previewTestId}
+          />
+        </div>
       );
     }
 
     if (aiRecipePreviewElements) {
+      const fallbackBackground = inferAIOverrideBackground(draftContent, activeCanvasSize);
+      const fallbackOverlays = getOverlayLayerElements(draftContent, activeCanvasSize, fallbackBackground);
       return (
         <SlideElementPreview
-          elements={aiRecipePreviewElements}
+          elements={[...fallbackOverlays, ...aiRecipePreviewElements]}
           canvasSize={activeCanvasSize}
-          background={draftContent.background}
+          background={fallbackBackground}
           targetWidth={previewWidth}
           testId={previewTestId}
           className={previewClassName}
@@ -3287,11 +3418,13 @@ export default function PresentationEditor() {
     }
 
     return (
-      <ResponsiveSvgPreview
-        svg={aiRecipePreviewDefinition.previewSvg}
-        className={previewClassName}
-        testId={previewTestId}
-      />
+      <div style={{ maxWidth: previewWidth, width: "100%" }}>
+        <ResponsiveSvgPreview
+          svg={aiRecipePreviewDefinition.previewSvg}
+          className={previewClassName}
+          testId={previewTestId}
+        />
+      </div>
     );
   }
   const slidesById = useMemo(() => {
@@ -3443,6 +3576,11 @@ export default function PresentationEditor() {
     syncCommandState(commandBusRef.current.execute(command));
   }
 
+  /** Apply selection-only changes without creating undo entries. */
+  function applySelectionOnly(command: Parameters<CommandBus<CanvasCommandState>["applyWithoutUndo"]>[0]) {
+    syncCommandState(commandBusRef.current.applyWithoutUndo(command));
+  }
+
   function cacheSlideDraft(
     slideId: number | null,
     content: PresentationSlideContent,
@@ -3471,7 +3609,17 @@ export default function PresentationEditor() {
     if (selectedSlideId === nextSlideId) {
       return;
     }
+    // Block autosave during the transition period — draftContent still belongs
+    // to the previous slide until the content-loading effect completes.
+    switchingSlideRef.current = true;
+    // Clear any pending autosave BEFORE switching — prevents race condition where
+    // the old slide's draftContent could be saved under the new slide's ID.
+    autosaveController.clear();
     cacheSlideDraft(selectedSlideId, draftContent, slideNoteDraft);
+    // Clear ALL slide-specific refs when navigating away so the new slide initializes correctly.
+    aiRecipeManuallyAppliedSlideIdRef.current = null;
+    pendingAutoLayoutUndoRef.current = null;
+    restoredAutoLayoutHistoryRef.current = null;
     setSelectedSlideId(nextSlideId);
   }
 
@@ -3773,6 +3921,10 @@ export default function PresentationEditor() {
         apply: () => pendingUndo.postLayoutState,
       });
       setCommandState(restored);
+    } else if (aiRecipeManuallyAppliedSlideIdRef.current === selectedSlide.id) {
+      // User manually applied a recipe override on this slide — don't reset content
+      // from server on subsequent version changes (e.g., autosave bumping the version).
+      // The current draftContent already has the rebuilt layout.
     } else {
       commandBusRef.current.reset(nextState);
       setCommandState(nextState);
@@ -3780,7 +3932,23 @@ export default function PresentationEditor() {
     setSaveState("idle");
     setExpectedSlideVersion(selectedSlide.version);
     setSlideNoteDraft(cachedDraft?.notes ?? selectedSlide.notes ?? "");
+    // NOTE: do NOT set draftContentSlideIdRef or switchingSlideRef here!
+    // setCommandState is batched — draftContent won't update until the NEXT render.
+    // Setting refs here creates a window where refs say "slide 2" but draftContent
+    // is still slide 1's content, causing autosave to save the wrong content.
+    // These refs are updated in a separate effect below that depends on commandState.
   }, [selectedSlide?.id, selectedSlide?.version, selectedSlide?.notes]);
+
+  // Mark draftContent ownership ONLY after commandState has actually propagated.
+  // This effect runs on the render AFTER setCommandState() takes effect,
+  // ensuring draftContent and draftContentSlideIdRef are always in sync.
+  // Without this separation, autosave could save slide A's content to slide B.
+  useEffect(() => {
+    if (selectedSlide && commandState) {
+      draftContentSlideIdRef.current = selectedSlide.id;
+      switchingSlideRef.current = false;
+    }
+  }, [commandState, selectedSlide?.id]);
 
   async function refreshDeck() {
     const tasks: Array<Promise<unknown>> = [];
@@ -4497,11 +4665,17 @@ export default function PresentationEditor() {
   }
 
   function applyComponentContentUpdate(nextContent: PresentationSlideContent, nextComponentId: string | null) {
-    syncCommandState({
-      ...commandState,
-      content: nextContent,
-      selectedElementIds: [],
-      snapGuides: [],
+    // Use executeCommand (not syncCommandState) so the CommandBus internal state
+    // is updated. Without this, the next executeCommand (e.g., element selection)
+    // would read stale content from the CommandBus and reset the layout.
+    executeCommand({
+      id: "apply-component-content",
+      apply: (state) => ({
+        ...state,
+        content: nextContent,
+        selectedElementIds: [],
+        snapGuides: [],
+      }),
     });
     setCropModeElementId(null);
     setCropModeTarget("content");
@@ -4742,12 +4916,17 @@ export default function PresentationEditor() {
     const previousRecipeId = slideAIDesign?.componentRecipeId ?? null;
     const appliedAt = new Date().toISOString();
     const preLayoutState = commandBusRef.current.getState();
+    const inferredBackground = inferAIOverrideBackground(draftContent, activeCanvasSize);
+    const overlayElements = getOverlayLayerElements(draftContent, activeCanvasSize, inferredBackground);
     const nextContent: PresentationSlideContent = {
       ...draftContent,
-      background: inferAIOverrideBackground(draftContent, activeCanvasSize),
-      elements: [],
+      background: inferredBackground,
+      elements: overlayElements,
       components: [nextComponent],
-      renderOrder: [presentationRenderOrderIdForComponent(nextComponent.id)],
+      renderOrder: [
+        ...overlayElements.map((el) => presentationRenderOrderIdForElement(el.id)),
+        presentationRenderOrderIdForComponent(nextComponent.id),
+      ],
       pendingMediaJobs: undefined,
       aiDesign: {
         source: "draft-with-ai",
@@ -4793,6 +4972,7 @@ export default function PresentationEditor() {
       },
     };
     applyComponentContentUpdate(nextContent, nextComponent.id);
+    draftContentSlideIdRef.current = selectedSlide.id;
     // Cache the draft so version-change useEffect doesn't reset to stale server content
     if (selectedSlide) {
       cacheSlideDraft(selectedSlide.id, nextContent, slideNoteDraft);
@@ -4803,6 +4983,8 @@ export default function PresentationEditor() {
       postLayoutState: commandBusRef.current.getState(),
     };
     setAiRecipeOverrideChoice(recipeId);
+    // Prevent the auto-init effect from resetting this choice due to server-data refetches.
+    aiRecipeManuallyAppliedSlideIdRef.current = selectedSlide.id;
     if (deck && selectedSlide) {
       trackAIRecipeOverrideApplied({
         deckId: deck.id,
@@ -4942,16 +5124,22 @@ export default function PresentationEditor() {
     setCropModeElementId(null);
     setCropModeTarget("content");
     const parentComponentId = findParentComponentIdForElement(elementId);
-    const shouldPreferWholeComponent = (
-      !options?.preferElement
-      && !options?.additive
-      && parentComponentId
-    );
-    if (shouldPreferWholeComponent) {
-      selectSingleComponent(parentComponentId);
-      focusMobileProperties("element");
-      return;
+
+    // If element belongs to a group component, select the group instead
+    // (unless preferElement is set, which allows individual element selection)
+    if (parentComponentId && !options?.preferElement && !options?.additive) {
+      const parentComponent = draftComponents.find((c) => c.id === parentComponentId);
+      if (parentComponent && isPresentationGroupComponent(parentComponent)) {
+        clearComponentSelection();
+        applySelectionOnly(selectElementsCommand([]));
+        selectSingleComponent(parentComponentId);
+        focusMobileProperties("element");
+        return;
+      }
     }
+
+    // Allow individual element selection within built-in components
+    // so users can click, resize, and reposition individual elements.
     if (!options?.additive) {
       clearComponentSelection();
     } else if (selectedComponentSelectionIds.length > 0) {
@@ -4966,14 +5154,14 @@ export default function PresentationEditor() {
       const nextSelectedIds = toggled.selectedIds.includes(elementId)
         ? [elementId, ...toggled.selectedIds.filter((id) => id !== elementId)]
         : toggled.selectedIds;
-      executeCommand(selectElementsCommand(nextSelectedIds));
+      applySelectionOnly(selectElementsCommand(nextSelectedIds));
       if (nextSelectedIds.length > 0) {
         focusMobileProperties("element");
       }
       return;
     }
 
-    executeCommand(selectElementsCommand([elementId]));
+    applySelectionOnly(selectElementsCommand([elementId]));
     focusMobileProperties("element");
   }
 
@@ -5027,7 +5215,7 @@ export default function PresentationEditor() {
     const orderedComponentIds = ordered
       .map(fromComponentSelectionId)
       .filter((id): id is string => Boolean(id));
-    executeCommand(selectElementsCommand(orderedElementIds));
+    applySelectionOnly(selectElementsCommand(orderedElementIds));
     setComponentSelection(orderedComponentIds, {
       activeComponentId: orderedElementIds.length === 0 && orderedComponentIds.length === 1
         ? orderedComponentIds[0] ?? null
@@ -5848,6 +6036,20 @@ export default function PresentationEditor() {
       return "skipped";
     }
 
+    // Safety guard: during slide transitions, selectedSlide updates before draftContent
+    // (content-loading useEffect runs after render). Skip autosave if the content-loading
+    // effect hasn't run yet for this slide — draftContent still belongs to the previous slide.
+    if (saveMode === "autosave" && draftContentSlideIdRef.current !== selectedSlide.id) {
+      return "skipped";
+    }
+
+    // Additional guard: detect if draftContent is stale (belongs to a previous slide).
+    // After slide switch, the ref may update before the state. If the draft signature
+    // matches the PREVIOUS slide's persisted signature, skip to avoid cross-slide saves.
+    if (saveMode === "autosave" && switchingSlideRef.current) {
+      return "skipped";
+    }
+
     const normalizedPolicy = normalizeConflictPolicy(conflictPolicyRef.current, Date.now());
     if (normalizedPolicy !== conflictPolicyRef.current) {
       setConflictPolicy(normalizedPolicy);
@@ -5873,6 +6075,7 @@ export default function PresentationEditor() {
 
     const version = expectedSlideVersion ?? selectedSlide.version;
     setSaveState("pending");
+
 
     const finalizeSaveSuccess = (nextSlide: unknown, fallbackVersion: number) => {
       const returnedVersion = Number((nextSlide as any)?.version);
@@ -6410,6 +6613,193 @@ export default function PresentationEditor() {
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Slide regeneration failed.");
+    }
+  }
+
+  async function handleGenerateLayoutFromNote() {
+    if (!deck || !selectedSlide) {
+      toast.error("No active slide.");
+      return;
+    }
+
+    const selectedId = selectedSlide.id;
+    const currentDraftNote = slideNoteDraft.trim();
+    const savedNote = String(selectedSlide.notes ?? "").trim();
+    if (!currentDraftNote && !savedNote) {
+      toast.error("Add and save a slide note first.");
+      return;
+    }
+
+    if (slideNoteDirty) {
+      const saved = await handleSaveSlide({ silent: true });
+      if (!saved) {
+        toast.error("Save the slide note first.");
+        return;
+      }
+    }
+
+    let expectedVersion = Number.isFinite(Number(selectedSlide.version))
+      ? Number(selectedSlide.version)
+      : 0;
+    if (typeof deckQuery.refetch === "function") {
+      const latest = await deckQuery.refetch();
+      const latestSlides = Array.isArray((latest.data as any)?.slides)
+        ? (latest.data as any).slides
+        : [];
+      const latestSlide = latestSlides.find((slide: any) => Number(slide?.id) === selectedId);
+      const nextVersion = Number(latestSlide?.version);
+      if (Number.isFinite(nextVersion) && nextVersion >= 0) {
+        expectedVersion = nextVersion;
+      }
+    }
+
+    const preLayoutState = commandBusRef.current.getState();
+
+    try {
+      const result = await generateLayoutFromNoteMutation.mutateAsync({
+        deckId: deck.id,
+        slideId: selectedId,
+        expectedVersion,
+        stylePresetId: layoutGenPresetId,
+      });
+      // Guard: if user switched to a different slide during the LLM call (30-60s),
+      // do NOT apply the result to the wrong slide — just discard silently.
+      if (selectedSlideId !== selectedId) {
+        toast.info("Slide เปลี่ยนระหว่างรอ AI — ผลลัพธ์ถูกยกเลิก กรุณากดจัดหน้าใหม่");
+        return;
+      }
+      const updatedSlide = (result as any)?.slide;
+      const nextVersion = Number(updatedSlide?.version);
+      const nextContent = ensureSlideContent((updatedSlide?.slideContent ?? selectedSlide.slideContent) as PresentationSlideContent);
+      const nextSelected = nextContent.elements[0]?.id ? [nextContent.elements[0].id] : [];
+      executeCommand({
+        id: "apply-layout-from-note",
+        apply: (state) => ({
+          ...state,
+          content: nextContent,
+          selectedElementIds: nextSelected,
+          snapGuides: [],
+        }),
+      });
+      pendingAutoLayoutUndoRef.current = {
+        preLayoutState,
+        postLayoutState: commandBusRef.current.getState(),
+      };
+      clearCachedSlideDraft(selectedId);
+      if (Number.isFinite(nextVersion)) {
+        setExpectedSlideVersion(nextVersion);
+      }
+      autosaveController.markPersisted(
+        buildDraftSignature(
+          selectedId,
+          nextContent,
+          String(updatedSlide?.notes ?? selectedSlide.notes ?? slideNoteDraft),
+        ),
+      );
+      setSaveState("saved");
+      await Promise.all([
+        refreshDeck(),
+        trpcUtils.presentation.listVersions.invalidate(),
+      ]);
+      const pendingUndo = pendingAutoLayoutUndoRef.current;
+      if (pendingUndo) {
+        pendingAutoLayoutUndoRef.current = null;
+        commandBusRef.current.reset(pendingUndo.preLayoutState);
+        const restored = commandBusRef.current.execute({
+          id: "restore-post-layout-gen-after-refresh",
+          apply: () => pendingUndo.postLayoutState,
+        });
+        restoredAutoLayoutHistoryRef.current = {
+          slideId: selectedId,
+          slideVersion: Number.isFinite(nextVersion) ? nextVersion : null,
+        };
+        setCommandState(restored);
+      }
+      setLayoutGenPresetOpen(false);
+      toast.success("จัดหน้า slide ด้วย AI สำเร็จ");
+      const resultWarnings = Array.isArray((result as any)?.warnings)
+        ? (result as any).warnings.filter((warning: unknown) => typeof warning === "string")
+        : [];
+      if (resultWarnings.length > 0) {
+        toast.info(resultWarnings[0] as string);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "การจัดหน้า slide ล้มเหลว");
+    }
+  }
+
+  async function handleGenerateLayoutFromDeckNote() {
+    if (!deck) {
+      toast.error("No active deck.");
+      return;
+    }
+    const deckNotes = deckNoteDraft.trim();
+    if (!deckNotes) {
+      toast.error("Add deck notes first.");
+      return;
+    }
+    // Save deck note first if dirty
+    if (deckNoteDirty) {
+      const saved = await handleSaveDeckNote();
+      if (!saved) {
+        toast.error("บันทึก deck note ก่อนสร้าง slides");
+        return;
+      }
+    }
+    try {
+      const rawNum = deckLayoutGenSlideCount ? parseInt(deckLayoutGenSlideCount, 10) : NaN;
+      const numSlides = Number.isFinite(rawNum) ? Math.min(30, Math.max(1, rawNum)) : undefined;
+      const result = await generateLayoutFromDeckNoteMutation.mutateAsync({
+        deckId: deck.id,
+        expectedVersion: deck.version,
+        stylePresetId: deckLayoutGenPresetId,
+        ...(numSlides && numSlides > 0 ? { numSlides } : {}),
+      });
+      const taskId = (result as any)?.taskId;
+      if (taskId) {
+        setDeckLayoutGenOpen(false);
+        setIsDeckNoteDialogOpen(false);
+        toast.success("เริ่มสร้าง slides จาก notes แล้ว กรุณารอสักครู่...");
+        // Poll for completion using existing getDraftProgress
+        const pollId = setInterval(async () => {
+          try {
+            const progress = await trpcUtils.presentation.ai.getDraftProgress.fetch({ taskId });
+            if ((progress as any)?.completed) {
+              clearInterval(pollId);
+              if (deckLayoutGenPollRef.current === pollId) {
+                deckLayoutGenPollRef.current = null;
+              }
+              await deckQuery.refetch();
+              if ((progress as any)?.error) {
+                toast.error((progress as any).error.message || "การสร้าง layout ล้มเหลว");
+              } else {
+                const addedCount = (progress as any)?.result?.slidesAdded ?? 0;
+                toast.success(`สร้าง ${addedCount} slides จาก deck notes สำเร็จ`);
+              }
+            }
+          } catch {
+            clearInterval(pollId);
+            if (deckLayoutGenPollRef.current === pollId) {
+              deckLayoutGenPollRef.current = null;
+            }
+          }
+        }, 2000);
+        // Track for cleanup on unmount
+        if (deckLayoutGenPollRef.current) {
+          clearInterval(deckLayoutGenPollRef.current);
+        }
+        deckLayoutGenPollRef.current = pollId;
+        // Safety timeout: stop polling after 5 minutes
+        deckLayoutGenTimeoutRef.current = setTimeout(() => {
+          clearInterval(pollId);
+          if (deckLayoutGenPollRef.current === pollId) {
+            deckLayoutGenPollRef.current = null;
+          }
+          deckLayoutGenTimeoutRef.current = null;
+        }, 300_000);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "การสร้าง slides จาก notes ล้มเหลว");
     }
   }
 
@@ -7504,7 +7894,7 @@ export default function PresentationEditor() {
                     data-testid={`slide-preview-inline-svg-${slide.orderIndex + 1}`}
                     style={{ color: preview.inlineSvgColor || "#ffffff" }}
                     dangerouslySetInnerHTML={{
-                      __html: preview.inlineSvgContent.replace(/currentColor/g, preview.inlineSvgColor || "#ffffff"),
+                      __html: DOMPurify.sanitize(preview.inlineSvgContent.replace(/currentColor/g, preview.inlineSvgColor || "#ffffff"), { USE_PROFILES: { svg: true, svgFilters: true } }),
                     }}
                   />
                 ) : (
@@ -8633,11 +9023,11 @@ export default function PresentationEditor() {
       onDeleteComponent={handleDeleteComponent}
     />
   );
-  const componentCanvasOverlay = selectedComponent && selectedComponentBounds && selectedComponentDefinition
+  const componentCanvasOverlay = selectedComponent && selectedComponentBounds && (selectedComponentDefinition || selectedComponentIsGroup)
     ? ({ interactionScale }: { interactionScale: number }) => (
       <ComponentCanvasOverlay
         component={selectedComponent}
-        componentLabel={selectedComponentDefinition.label}
+        componentLabel={selectedComponentDefinition?.label ?? "Group"}
         interactionScale={interactionScale}
         componentBounds={selectedComponentBounds}
         slotAreas={selectedComponentCanvasSlots}
@@ -9499,11 +9889,10 @@ export default function PresentationEditor() {
               Review the rebuilt block layout in a larger canvas and apply block layout overrides without the narrow sidebar preview.
             </DialogDescription>
           </DialogHeader>
-          {aiRecipePreviewDefinition ? (
-            <div className="flex min-h-0 flex-1 flex-col space-y-3 overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col space-y-3 overflow-hidden">
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-sky-200 bg-sky-50 px-3 py-2">
                 <div>
-                  <p className="text-sm font-semibold text-sky-900">{aiRecipePreviewDefinition.label}</p>
+                  <p className="text-sm font-semibold text-sky-900">{aiRecipePreviewDefinition?.label ?? "Select a block layout"}</p>
                   {aiRecipeCanonicalPreviewQuery.data ? (
                     <p className="text-xs text-sky-700">
                       Canonical {aiRecipeCanonicalPreviewQuery.data.rendererVersion}
@@ -9562,7 +9951,10 @@ export default function PresentationEditor() {
                   type="button"
                   className="rounded border border-slate-200 px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-100 disabled:opacity-40"
                   disabled={aiPreviewZoom <= 0.25}
-                  onClick={() => { setAiPreviewZoom((z) => Math.max(0.25, +(z - 0.25).toFixed(2))); }}
+                  onClick={() => {
+                    const next = Math.max(0.25, +(aiPreviewZoom - 0.25).toFixed(2));
+                    setAiPreviewZoom(next);
+                  }}
                   aria-label="Zoom out preview"
                 >
                   -
@@ -9589,50 +9981,30 @@ export default function PresentationEditor() {
               </div>
               <div
                 ref={aiPreviewContainerRef}
-                className="min-h-0 flex-1 overflow-hidden rounded-md border border-slate-200 bg-slate-50"
-                style={{ cursor: aiPreviewZoom > 1 ? "grab" : "default" }}
+                className="min-h-0 flex-1 overflow-auto rounded-md border border-slate-200 bg-slate-50"
                 onWheel={(e) => {
+                  if (!e.ctrlKey && !e.metaKey) return;
                   e.preventDefault();
                   const delta = e.deltaY > 0 ? -0.1 : 0.1;
-                  setAiPreviewZoom((z) => Math.min(3, Math.max(0.25, +(z + delta).toFixed(2))));
-                }}
-                onMouseDown={(e) => {
-                  if (e.button !== 0) return;
-                  aiPreviewPanRef.current = { dragging: true, startX: e.clientX, startY: e.clientY, panX: aiPreviewPan.x, panY: aiPreviewPan.y };
-                  e.currentTarget.style.cursor = "grabbing";
-                  const onMove = (ev: MouseEvent) => {
-                    if (!aiPreviewPanRef.current.dragging) return;
-                    setAiPreviewPan({
-                      x: aiPreviewPanRef.current.panX + (ev.clientX - aiPreviewPanRef.current.startX),
-                      y: aiPreviewPanRef.current.panY + (ev.clientY - aiPreviewPanRef.current.startY),
-                    });
-                  };
-                  const onUp = () => {
-                    aiPreviewPanRef.current.dragging = false;
-                    if (aiPreviewContainerRef.current) aiPreviewContainerRef.current.style.cursor = aiPreviewZoom > 1 ? "grab" : "default";
-                    window.removeEventListener("mousemove", onMove);
-                    window.removeEventListener("mouseup", onUp);
-                  };
-                  window.addEventListener("mousemove", onMove);
-                  window.addEventListener("mouseup", onUp);
+                  const nextZoom = Math.min(3, Math.max(0.25, +(aiPreviewZoom + delta).toFixed(2)));
+                  setAiPreviewZoom(nextZoom);
                 }}
               >
+                {aiRecipePreviewDefinition ? (
                 <div
-                  className="flex h-full w-full items-center justify-center p-4"
-                  style={{
-                    transform: `scale(${aiPreviewZoom}) translate(${aiPreviewPan.x / aiPreviewZoom}px, ${aiPreviewPan.y / aiPreviewZoom}px)`,
-                    transformOrigin: "center center",
-                  }}
+                  className="flex min-h-full w-full items-center justify-center p-4"
                 >
-                  {renderAILayoutPreview("dialog")}
+                  <div style={{ zoom: aiPreviewZoom, flexShrink: 0 }}>
+                    {renderAILayoutPreview("dialog")}
+                  </div>
                 </div>
+                ) : (
+                  <div className="flex h-full items-center justify-center p-8 text-sm text-slate-500">
+                    Select a block layout above and click Rebuild AI Layout to preview.
+                  </div>
+                )}
               </div>
             </div>
-          ) : (
-            <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-sm text-slate-500">
-              No AI layout preview is available for this slide yet.
-            </div>
-          )}
         </DialogContent>
       </Dialog>
       <Dialog
@@ -10103,6 +10475,89 @@ export default function PresentationEditor() {
               Internal note for this presentation only. It is hidden from play mode and exports.
             </DialogDescription>
           </DialogHeader>
+          {/* AI Layout from Deck Note */}
+          <div className="rounded-md border border-dashed border-violet-300/50 bg-violet-50/30 dark:bg-violet-950/10">
+            <button
+              type="button"
+              aria-expanded={deckLayoutGenOpen}
+              aria-controls="deck-layout-gen-panel"
+              className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-medium text-violet-700 hover:bg-violet-50/50 dark:text-violet-400"
+              onClick={() => setDeckLayoutGenOpen(!deckLayoutGenOpen)}
+            >
+              <span className="flex items-center gap-1.5">
+                <WandSparkles className="h-3.5 w-3.5" />
+                สร้าง Slides จาก Notes ด้วย AI
+              </span>
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${deckLayoutGenOpen ? "rotate-180" : ""}`} />
+            </button>
+            {deckLayoutGenOpen && (
+              <div id="deck-layout-gen-panel" className="space-y-2.5 border-t border-violet-200/40 px-3 pb-3 pt-2">
+                <p className="text-[11px] text-muted-foreground">
+                  AI จะแยก notes เป็นหลาย slides พร้อมจัดหน้าสวยงามตาม preset ที่เลือก (ใช้เครดิตประมาณ 10 + 5/slide)
+                </p>
+                <div>
+                  <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300">ธีมสไตล์</span>
+                  <div className="mt-1 grid grid-cols-3 gap-1.5 sm:grid-cols-4">
+                    {BUILT_IN_PRESETS.map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        className={`flex flex-col items-center gap-1 rounded-md border p-1.5 text-[10px] transition-colors ${
+                          deckLayoutGenPresetId === preset.id
+                            ? "border-violet-500 bg-violet-50 ring-1 ring-violet-300 dark:bg-violet-950/30"
+                            : "border-slate-200 hover:border-violet-300 dark:border-slate-700"
+                        }`}
+                        aria-pressed={deckLayoutGenPresetId === preset.id}
+                        aria-label={`เลือกธีม ${preset.nameLocalized?.th ?? preset.name}`}
+                        onClick={() => setDeckLayoutGenPresetId(preset.id)}
+                      >
+                        <div className="flex gap-0.5">
+                          <div className="h-3 w-3 rounded-sm" style={{ background: preset.colors.background, border: "1px solid #ddd" }} />
+                          <div className="h-3 w-3 rounded-sm" style={{ background: preset.colors.primary }} />
+                          <div className="h-3 w-3 rounded-sm" style={{ background: preset.colors.secondary }} />
+                        </div>
+                        <span className="truncate">{preset.nameLocalized?.th ?? preset.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-end gap-2">
+                  <label className="flex-1">
+                    <span className="text-[11px] text-muted-foreground">จำนวน slides (ว่างไว้ = อัตโนมัติ)</span>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={30}
+                      placeholder="Auto"
+                      className="mt-0.5 h-8 text-xs"
+                      value={deckLayoutGenSlideCount}
+                      onChange={(e) => setDeckLayoutGenSlideCount(e.target.value)}
+                    />
+                  </label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-8 shrink-0 gap-1.5 bg-violet-600 text-white hover:bg-violet-500"
+                    disabled={!deckNoteDraft.trim() || deckLayoutGenBusy}
+                    onClick={() => void handleGenerateLayoutFromDeckNote()}
+                  >
+                    {deckLayoutGenBusy ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        กำลังสร้าง...
+                      </>
+                    ) : (
+                      <>
+                        <WandSparkles className="h-3.5 w-3.5" />
+                        สร้าง Slides
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs text-slate-500">
               <span>
@@ -10258,6 +10713,75 @@ export default function PresentationEditor() {
             )}
           </div>
 
+          {/* AI Layout Generator — preset selector */}
+          <div className="rounded-md border border-dashed border-violet-300/50 bg-violet-50/30 dark:bg-violet-950/10">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-medium text-violet-700 hover:bg-violet-50/50 dark:text-violet-400"
+              aria-expanded={layoutGenPresetOpen}
+              aria-controls="slide-layout-gen-panel"
+              onClick={() => setLayoutGenPresetOpen(!layoutGenPresetOpen)}
+            >
+              <span className="flex items-center gap-1.5">
+                <WandSparkles className="h-3.5 w-3.5" />
+                จัดหน้า Slide ด้วย AI
+              </span>
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${layoutGenPresetOpen ? "rotate-180" : ""}`} />
+            </button>
+            {layoutGenPresetOpen && (
+              <div id="slide-layout-gen-panel" className="space-y-2.5 border-t border-violet-200/40 px-3 pb-3 pt-2">
+                <p className="text-[11px] text-muted-foreground">
+                  แปลง note ของ slide นี้ให้เป็น layout สวยงามตาม preset ที่เลือก (ใช้เครดิตประมาณ 50)
+                </p>
+                <div>
+                  <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300">ธีมสไตล์</span>
+                  <div className="mt-1 grid grid-cols-3 gap-1.5 sm:grid-cols-4">
+                    {BUILT_IN_PRESETS.map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        className={`flex flex-col items-center gap-1 rounded-md border p-1.5 text-[10px] transition-colors ${
+                          layoutGenPresetId === preset.id
+                            ? "border-violet-500 bg-violet-50 ring-1 ring-violet-300 dark:bg-violet-950/30"
+                            : "border-slate-200 hover:border-violet-300 dark:border-slate-700"
+                        }`}
+                        aria-pressed={layoutGenPresetId === preset.id}
+                        aria-label={`เลือกธีม ${preset.nameLocalized?.th ?? preset.name}`}
+                        onClick={() => setLayoutGenPresetId(preset.id)}
+                      >
+                        <div className="flex gap-0.5">
+                          <div className="h-3 w-3 rounded-sm" style={{ background: preset.colors.background, border: "1px solid #ddd" }} />
+                          <div className="h-3 w-3 rounded-sm" style={{ background: preset.colors.primary }} />
+                          <div className="h-3 w-3 rounded-sm" style={{ background: preset.colors.secondary }} />
+                        </div>
+                        <span className="truncate">{preset.nameLocalized?.th ?? preset.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="w-full gap-1.5 bg-violet-600 text-white hover:bg-violet-500"
+                  disabled={!selectedSlide || layoutGenBusy || (!slideNoteDraft.trim() && !(selectedSlide?.notes ?? "").trim())}
+                  onClick={() => void handleGenerateLayoutFromNote()}
+                >
+                  {layoutGenBusy ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      กำลังจัดหน้า...
+                    </>
+                  ) : (
+                    <>
+                      <WandSparkles className="h-3.5 w-3.5" />
+                      จัดหน้า Slide ด้วย AI
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+          </div>
+
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs text-slate-500">
               <span>{slideNoteDirty ? "Unsaved changes" : "Saved"}</span>
@@ -10270,10 +10794,10 @@ export default function PresentationEditor() {
               rows={14}
               disabled={!selectedSlide}
             />
-            {slideNoteRepairBusy ? (
+            {slideNoteRepairBusy || layoutGenBusy ? (
               <div className="flex items-center gap-2 text-xs text-slate-500">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                <span>{slideNoteRepairStatusLabel}</span>
+                <span>{layoutGenBusy ? "กำลังจัดหน้า slide ด้วย AI..." : slideNoteRepairStatusLabel}</span>
               </div>
             ) : null}
           </div>
@@ -10298,7 +10822,7 @@ export default function PresentationEditor() {
               type="button"
               variant="secondary"
               onClick={() => void handleRepairSlideFromNote()}
-              disabled={!selectedSlide || slideNoteRepairBusy || (!slideNoteDraft.trim() && !(selectedSlide?.notes ?? "").trim())}
+              disabled={!selectedSlide || slideNoteRepairBusy || layoutGenBusy || (!slideNoteDraft.trim() && !(selectedSlide?.notes ?? "").trim())}
             >
               {slideNoteRepairBusy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
               {slideNoteDirty ? "Save + Generate" : "Generate Slide"}

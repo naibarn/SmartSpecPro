@@ -243,16 +243,20 @@ function createSectionedExplainerSlotBindings(
   );
   const resolveSection = (index: number) => {
     const section = sections[index];
+    // Only populate section if there's actual unique content for it.
+    // Don't recycle body text into empty sections — that causes duplicated content.
+    if (!section) {
+      return { heading: "", detail: "" };
+    }
     const heading = clampTextToBudget(
       "sectioned-explainer",
       `section${index + 1}-heading`,
-      section?.heading || body[index] || `Section ${index + 1}`,
+      section.heading || "",
     );
-    const detailSource = section?.details?.join(" ") || narrativeCandidates[index + 1] || body[index + 1] || "";
     const detail = clampTextToBudget(
       "sectioned-explainer",
       `section${index + 1}-body`,
-      detailSource,
+      section.details?.join(" ") || "",
     );
     return { heading, detail };
   };
@@ -298,7 +302,7 @@ function createTimelineReportSlotBindings(
   const narrativeCandidates = buildUniqueNarrativeCandidates(input, sections, body);
   const resolvePhase = (index: number) => {
     const section = sections[index];
-    const headingSource = section?.heading?.trim() || body[index] || `Phase ${index + 1}`;
+    const headingSource = section?.heading?.trim() || body[index] || "";
     const date = clampTextToBudget(
       "timeline-report",
       `phase${index + 1}-date`,
@@ -313,7 +317,7 @@ function createTimelineReportSlotBindings(
     const title = clampTextToBudget(
       "timeline-report",
       `phase${index + 1}-title`,
-      cleanedHeading || `Phase ${index + 1}`,
+      cleanedHeading,
     );
     const detailSource = [
       section?.details?.join(" "),
@@ -453,7 +457,7 @@ function createProcessStepsSlotBindings(
   const body = clampListItems(input.body, 9);
   const resolveStep = (index: number) => {
     const section = sections[index];
-    const title = section?.heading || body[index * 2] || `Step ${index + 1}`;
+    const title = section?.heading || body[index * 2] || "";
     const detail = resolveIndexedDetailFallback(input, sections, body, index);
     return { title, detail };
   };
@@ -483,9 +487,9 @@ function createTimelineFlowSlotBindings(
   const body = clampListItems(input.body, 9);
   const resolveMilestone = (index: number) => {
     const section = sections[index];
-    const title = section?.heading || body[index * 2] || `Milestone ${index + 1}`;
+    const title = section?.heading || body[index * 2] || "";
     const detail = resolveIndexedDetailFallback(input, sections, body, index);
-    const date = section?.details?.[1] || `Phase ${index + 1}`;
+    const date = section?.details?.[1] || "";
     return { title, detail, date };
   };
   const first = resolveMilestone(0);
@@ -826,6 +830,106 @@ function createTwoColumnArticleSlotBindings(
   ];
 }
 
+function createImageTopArticleSlotBindings(
+  input: PresentationRecipeNarrativeInput,
+): PresentationComponentSlotBinding[] {
+  const sections = input.sections ?? [];
+  const body = clampListItems(input.body, 10);
+  const leadText = clampTextToBudget(
+    "image-top-article",
+    "lead",
+    input.notes?.trim() || body.slice(0, 3).join(" ") || sections[0]?.details?.join(" ") || "",
+  );
+  const bodyText = clampTextToBudget(
+    "image-top-article",
+    "body",
+    [...body.slice(3), ...sections.flatMap((s) => s.details)].join(" ") || body.join(" "),
+  );
+  return [
+    { slotId: "eyebrow", type: "text", text: clampTextToBudget("image-top-article", "eyebrow", input.graphicCategory || sections[0]?.heading || "Article") },
+    { slotId: "title", type: "text", text: clampTextToBudget("image-top-article", "title", input.title) },
+    { slotId: "hero", type: "image", src: input.mediaUrl ?? "", alt: input.title.slice(0, 512) || "Hero visual" },
+    { slotId: "lead", type: "text", text: leadText },
+    { slotId: "body", type: "text", text: bodyText },
+    { slotId: "footnote", type: "text", text: "" },
+  ];
+}
+
+function createImageBottomArticleSlotBindings(
+  input: PresentationRecipeNarrativeInput,
+): PresentationComponentSlotBinding[] {
+  const sections = input.sections ?? [];
+  const body = clampListItems(input.body, 10);
+  const leadText = clampTextToBudget(
+    "image-bottom-article",
+    "lead",
+    input.notes?.trim() || body.slice(0, 3).join(" ") || sections[0]?.details?.join(" ") || "",
+  );
+  const bodyText = clampTextToBudget(
+    "image-bottom-article",
+    "body",
+    [...body.slice(3), ...sections.flatMap((s) => s.details)].join(" ") || body.join(" "),
+  );
+  return [
+    { slotId: "eyebrow", type: "text", text: clampTextToBudget("image-bottom-article", "eyebrow", input.graphicCategory || sections[0]?.heading || "Article") },
+    { slotId: "title", type: "text", text: clampTextToBudget("image-bottom-article", "title", input.title) },
+    { slotId: "lead", type: "text", text: leadText },
+    { slotId: "body", type: "text", text: bodyText },
+    { slotId: "hero", type: "image", src: input.mediaUrl ?? "", alt: input.title.slice(0, 512) || "Supporting visual" },
+    { slotId: "footnote", type: "text", text: "" },
+  ];
+}
+
+function createImageLeftArticleSlotBindings(
+  input: PresentationRecipeNarrativeInput,
+): PresentationComponentSlotBinding[] {
+  const sections = input.sections ?? [];
+  const body = clampListItems(input.body, 10);
+  const leadText = clampTextToBudget(
+    "image-left-article",
+    "lead",
+    input.notes?.trim() || body.slice(0, 2).join(" ") || sections[0]?.details?.join(" ") || "",
+  );
+  const bodyText = clampTextToBudget(
+    "image-left-article",
+    "body",
+    [...body.slice(2), ...sections.flatMap((s) => s.details)].join(" ") || body.join(" "),
+  );
+  return [
+    { slotId: "eyebrow", type: "text", text: clampTextToBudget("image-left-article", "eyebrow", input.graphicCategory || sections[0]?.heading || "Article") },
+    { slotId: "title", type: "text", text: clampTextToBudget("image-left-article", "title", input.title) },
+    { slotId: "hero", type: "image", src: input.mediaUrl ?? "", alt: input.title.slice(0, 512) || "Article visual" },
+    { slotId: "lead", type: "text", text: leadText },
+    { slotId: "body", type: "text", text: bodyText },
+    { slotId: "footnote", type: "text", text: "" },
+  ];
+}
+
+function createImageRightArticleSlotBindings(
+  input: PresentationRecipeNarrativeInput,
+): PresentationComponentSlotBinding[] {
+  const sections = input.sections ?? [];
+  const body = clampListItems(input.body, 10);
+  const leadText = clampTextToBudget(
+    "image-right-article",
+    "lead",
+    input.notes?.trim() || body.slice(0, 2).join(" ") || sections[0]?.details?.join(" ") || "",
+  );
+  const bodyText = clampTextToBudget(
+    "image-right-article",
+    "body",
+    [...body.slice(2), ...sections.flatMap((s) => s.details)].join(" ") || body.join(" "),
+  );
+  return [
+    { slotId: "eyebrow", type: "text", text: clampTextToBudget("image-right-article", "eyebrow", input.graphicCategory || sections[0]?.heading || "Article") },
+    { slotId: "title", type: "text", text: clampTextToBudget("image-right-article", "title", input.title) },
+    { slotId: "lead", type: "text", text: leadText },
+    { slotId: "body", type: "text", text: bodyText },
+    { slotId: "hero", type: "image", src: input.mediaUrl ?? "", alt: input.title.slice(0, 512) || "Article visual" },
+    { slotId: "footnote", type: "text", text: "" },
+  ];
+}
+
 function createFaqStackSlotBindings(
   input: PresentationRecipeNarrativeInput,
 ): PresentationComponentSlotBinding[] {
@@ -955,6 +1059,59 @@ export function buildPresentationComponentRecipeSlotBindings(
       return createA4PhotoGridSlotBindings(input);
     case "landscape-photo-story":
       return createLandscapePhotoStorySlotBindings(input);
+    case "image-top-article":
+    case "image-bottom-article":
+    case "image-left-article":
+    case "image-right-article": {
+      const bodyLines = Array.isArray(input.body) ? input.body : [];
+      const sections = input.sections ?? [];
+      const lead = sections[0]?.details.join(" ") || input.notes || bodyLines[0] || "";
+      const bodyText = sections.slice(1)
+        .map((s) => [s.heading, ...s.details].join("\n"))
+        .join("\n\n") || bodyLines.join("\n\n");
+      return [
+        { slotId: "eyebrow", type: "text", text: clampTextToBudget(componentId, "eyebrow", input.graphicCategory || "Article") },
+        { slotId: "title", type: "text", text: clampTextToBudget(componentId, "title", input.title) },
+        { slotId: "hero", type: "image", src: input.mediaUrl ?? "", alt: input.title || "Article image" },
+        { slotId: "lead", type: "text", text: clampTextToBudget(componentId, "lead", lead) },
+        { slotId: "body", type: "text", text: clampTextToBudget(componentId, "body", bodyText) },
+        { slotId: "footnote", type: "text", text: "" },
+      ];
+    }
+    case "wide-hero-article":
+    case "split-image-article":
+    case "centered-hero-article": {
+      const bodyLines = Array.isArray(input.body) ? input.body : [];
+      const sections = input.sections ?? [];
+      const lead = sections[0]?.details.join(" ") || input.notes || bodyLines[0] || "";
+      const bodyText = sections.slice(1)
+        .map((s) => [s.heading, ...s.details].join("\n"))
+        .join("\n\n") || bodyLines.join("\n\n");
+      return [
+        { slotId: "eyebrow", type: "text", text: clampTextToBudget(componentId, "eyebrow", input.graphicCategory || "Article") },
+        { slotId: "title", type: "text", text: clampTextToBudget(componentId, "title", input.title) },
+        { slotId: "hero", type: "image", src: input.mediaUrl ?? "", alt: input.title || "Article image" },
+        { slotId: "lead", type: "text", text: clampTextToBudget(componentId, "lead", lead) },
+        { slotId: "body", type: "text", text: clampTextToBudget(componentId, "body", bodyText) },
+        { slotId: "footnote", type: "text", text: "" },
+      ];
+    }
+    case "compact-article": {
+      const bodyLines = Array.isArray(input.body) ? input.body : [];
+      const sections = input.sections ?? [];
+      const lead = sections[0]?.details.join(" ") || input.notes || bodyLines[0] || "";
+      const bodyText = bodyLines.slice(1).join("\n\n")
+        || sections.slice(1).map((s) => [s.heading, ...s.details].join("\n")).join("\n\n");
+      const sidebar = sections.map((s) => s.heading).filter(Boolean).join("\n• ") || bodyLines.slice(0, 3).join("\n• ");
+      return [
+        { slotId: "eyebrow", type: "text", text: clampTextToBudget(componentId, "eyebrow", input.graphicCategory || "Article") },
+        { slotId: "title", type: "text", text: clampTextToBudget(componentId, "title", input.title) },
+        { slotId: "lead", type: "text", text: clampTextToBudget(componentId, "lead", lead) },
+        { slotId: "body", type: "text", text: clampTextToBudget(componentId, "body", bodyText) },
+        { slotId: "sidebar", type: "text", text: clampTextToBudget(componentId, "sidebar", sidebar ? `• ${sidebar}` : "") },
+        { slotId: "footnote", type: "text", text: "" },
+      ];
+    }
     case "fullpage-image":
     case "fullpage-image-landscape":
       return [{ slotId: "fullpage", type: "image", src: input.mediaUrl ?? "", alt: input.title || "Full-page image" }];

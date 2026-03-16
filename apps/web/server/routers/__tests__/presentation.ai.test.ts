@@ -5,6 +5,8 @@ const {
   mockRepairSlideFromSavedNote,
   mockRelayoutExistingSlide,
   mockResolvePendingMediaForDeck,
+  mockGenerateLayoutFromNoteAsync,
+  mockGenerateLayoutFromDeckNoteAsync,
   mockRedisSet,
   mockRedisGet,
   mockRedisDel,
@@ -14,6 +16,8 @@ const {
   mockRepairSlideFromSavedNote: vi.fn(),
   mockRelayoutExistingSlide: vi.fn(),
   mockResolvePendingMediaForDeck: vi.fn(),
+  mockGenerateLayoutFromNoteAsync: vi.fn(),
+  mockGenerateLayoutFromDeckNoteAsync: vi.fn(),
   mockRedisSet: vi.fn(),
   mockRedisGet: vi.fn(),
   mockRedisDel: vi.fn(),
@@ -25,6 +29,8 @@ vi.mock("../../services/aiPresentationService", () => ({
   repairSlideFromSavedNote: mockRepairSlideFromSavedNote,
   relayoutExistingSlide: mockRelayoutExistingSlide,
   resolvePendingMediaForDeck: mockResolvePendingMediaForDeck,
+  generateLayoutFromNoteAsync: mockGenerateLayoutFromNoteAsync,
+  generateLayoutFromDeckNoteAsync: mockGenerateLayoutFromDeckNoteAsync,
 }));
 
 vi.mock("../../services/redis", () => ({

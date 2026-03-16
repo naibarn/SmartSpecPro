@@ -968,6 +968,84 @@ function defaultSlotBindingsFor(componentId: BuiltInPresentationComponentId): Pr
           "Use the highlight list for short features or selling points",
         ] },
       ];
+    case "image-top-article":
+      return [
+        { slotId: "eyebrow", type: "text", text: "Article" },
+        { slotId: "title", type: "text", text: "Use this layout when one strong image sets the context before a long article body." },
+        { slotId: "hero", type: "image", src: "", alt: "Article image" },
+        { slotId: "lead", type: "text", text: "The lead paragraph hooks the reader and frames the article before the main body begins." },
+        { slotId: "body", type: "text", text: "The body carries the full article narrative. This layout supports long Thai and English text without forcing it into cards or bullet grids." },
+        { slotId: "footnote", type: "text", text: "" },
+      ];
+    case "image-bottom-article":
+      return [
+        { slotId: "eyebrow", type: "text", text: "Article" },
+        { slotId: "title", type: "text", text: "Use this layout for long articles that conclude with a visual — chart, photo, diagram, or summary image." },
+        { slotId: "lead", type: "text", text: "The lead sets the context and draws the reader into the full article body below it." },
+        { slotId: "body", type: "text", text: "The body holds the main narrative. The image at the bottom acts as a visual conclusion or supporting evidence for the argument above." },
+        { slotId: "hero", type: "image", src: "", alt: "Article image" },
+        { slotId: "footnote", type: "text", text: "" },
+      ];
+    case "image-left-article":
+      return [
+        { slotId: "eyebrow", type: "text", text: "Article" },
+        { slotId: "title", type: "text", text: "Use this classic split layout when the image provides visual context for the article on the right." },
+        { slotId: "hero", type: "image", src: "", alt: "Article image" },
+        { slotId: "lead", type: "text", text: "The lead paragraph on the right frames the article and draws the reader into the body text below." },
+        { slotId: "body", type: "text", text: "The body on the right side carries the full article narrative alongside the image. Works well for Thai and English editorial content." },
+        { slotId: "footnote", type: "text", text: "" },
+      ];
+    case "image-right-article":
+      return [
+        { slotId: "eyebrow", type: "text", text: "Article" },
+        { slotId: "title", type: "text", text: "Use this classic split layout when the article body leads and the image reinforces on the right." },
+        { slotId: "lead", type: "text", text: "The lead paragraph sets the context for the article. The image on the right provides visual support without competing with the text." },
+        { slotId: "body", type: "text", text: "The body on the left side carries the full article narrative. Works well for Thai and English editorial content." },
+        { slotId: "hero", type: "image", src: "", alt: "Article image" },
+        { slotId: "footnote", type: "text", text: "" },
+      ];
+    case "fullpage-image":
+    case "fullpage-image-landscape":
+      return [{ slotId: "fullpage", type: "image", src: "", alt: "Full-page image" }];
+    case "fullpage-video":
+    case "fullpage-video-landscape":
+      return [{ slotId: "fullpage", type: "video", src: "", poster: "", title: "Full-page video" }];
+    case "wide-hero-article":
+      return [
+        { slotId: "eyebrow", type: "text", text: "Wide Article" },
+        { slotId: "title", type: "text", text: "Use this layout when a wide banner image sets the mood before a two-column article body." },
+        { slotId: "hero", type: "image", src: "", alt: "Wide hero banner" },
+        { slotId: "lead", type: "text", text: "The right column carries the lead or secondary text. Use it for pull quotes, supporting context, or a shorter companion narrative." },
+        { slotId: "body", type: "text", text: "The left column carries the main article body. This layout works well for editorial openers, campaign stories, and long-form slides that benefit from a wide establishing image before the text begins." },
+        { slotId: "footnote", type: "text", text: "" },
+      ];
+    case "split-image-article":
+      return [
+        { slotId: "eyebrow", type: "text", text: "Editorial" },
+        { slotId: "title", type: "text", text: "Use the 50/50 split when one strong image should stay in balance with the article text." },
+        { slotId: "hero", type: "image", src: "", alt: "Article image" },
+        { slotId: "lead", type: "text", text: "The lead paragraph on the right sets the context for the article and draws the reader into the body text below." },
+        { slotId: "body", type: "text", text: "The body carries the full article narrative alongside the image. Works well for Thai and English editorial content — the left image provides constant visual grounding as the reader moves through the text." },
+        { slotId: "footnote", type: "text", text: "" },
+      ];
+    case "centered-hero-article":
+      return [
+        { slotId: "eyebrow", type: "text", text: "Feature Story" },
+        { slotId: "title", type: "text", text: "One centered hero image with the title anchored at the bottom edge and the article flowing cleanly below." },
+        { slotId: "hero", type: "image", src: "", alt: "Hero image" },
+        { slotId: "lead", type: "text", text: "The lead sits just below the image frame. Use it for the opening hook, the story question, or the one sentence that makes the reader want to continue." },
+        { slotId: "body", type: "text", text: "The body carries the main article narrative. This layout works equally well on wider 5:4 slides and narrower 4:5 slides because all content is center-anchored." },
+        { slotId: "footnote", type: "text", text: "" },
+      ];
+    case "compact-article":
+      return [
+        { slotId: "eyebrow", type: "text", text: "Opinion" },
+        { slotId: "title", type: "text", text: "Use this clean text-only layout when the writing itself is the visual — no image required." },
+        { slotId: "lead", type: "text", text: "The lead paragraph opens the argument, frames the topic, or hooks the reader before the body text begins." },
+        { slotId: "body", type: "text", text: "The body carries the full article. This layout preserves narrative flow and works well for editorials, opinion pieces, guides, and any slide where strong typography should carry the story without a supporting image." },
+        { slotId: "sidebar", type: "text", text: "Use the sidebar panel for pull quotes, key stats, glossary terms, related links, or a short author note that complements the main article without interrupting it." },
+        { slotId: "footnote", type: "text", text: "" },
+      ];
   }
 }
 
@@ -3819,37 +3897,114 @@ function buildSectionedExplainerComponent(
   if (isPortraitCanvas(options.canvas)) {
     const frame = getPortraitDocumentFrame(options.canvas);
     const heroFrameStyle = PRESENTATION_COMPONENT_MEDIA_FRAME_STYLES["sectioned-explainer"]?.hero;
+
+    // ─── Dynamic vertical layout: compute Y positions from actual content heights ───
+    // Use full portrait height — the frame's offsetY already provides symmetric top/bottom margins.
+    const canvasBottom = PORTRAIT_LAYOUT_HEIGHT;
+
+    // Hero (fixed)
+    const heroY = 54;
+    const heroH = 370;
+    const heroBottom = heroY + heroH; // 424
+
+    // Eyebrow (fixed)
+    const eyebrowY = heroBottom + 30; // 454
+    const eyebrowH = 42;
+    const eyebrowBottom = eyebrowY + eyebrowH; // 496
+
+    // Title (compact — prioritize section body space)
+    const titleY = eyebrowBottom + 20;
+    const titleText = textBinding(slotBindings, "title", "");
+    const titleH = 80;
     const titleFit = fitTextBox({
-      text: textBinding(slotBindings, "title", ""),
-      width: 888, height: 108, baseFontSize: 48, minFontSize: 30, lineHeight: 1.08, maxLines: 3,
+      text: titleText,
+      width: 888, height: titleH, baseFontSize: 42, minFontSize: 28, lineHeight: 1.08, maxLines: 2,
     });
+    const titleBottom = titleY + titleH;
+
+    // Intro (compact)
+    const introY = titleBottom + 12;
+    const introText = textBinding(slotBindings, "intro", "");
+    const introH = 100;
     const introFit = fitTextBox({
-      text: textBinding(slotBindings, "intro", ""),
-      width: 888, height: 110, baseFontSize: 22, minFontSize: 14, lineHeight: 1.36, maxLines: 5,
+      text: introText,
+      width: 888, height: introH, baseFontSize: 18, minFontSize: 12, lineHeight: 1.36, maxLines: 6,
     });
+    const introBottom = introY + introH;
+
+    // Section headings — dynamic height based on longest heading text
+    const SECT_W = 258;
+    const sectionHeadY = introBottom + 16;
+    const s1HeadText = textBinding(slotBindings, "section1-heading", "");
+    const s2HeadText = textBinding(slotBindings, "section2-heading", "");
+    const s3HeadText = textBinding(slotBindings, "section3-heading", "");
+    const calcHeadRequiredH = (text: string) => {
+      if (!text.trim()) return 30;
+      const lines = estimateComponentTextLineCount(text.trim(), SECT_W, 20);
+      return Math.max(30, estimateComponentTextHeight(20, 1.2, lines));
+    };
+    const sectionHeadH = Math.min(100, Math.max(
+      calcHeadRequiredH(s1HeadText),
+      calcHeadRequiredH(s2HeadText),
+      calcHeadRequiredH(s3HeadText),
+    ));
+    const sectionBodyY = sectionHeadY + sectionHeadH + 4;
+
+    // Compute available space for section bodies + takeaways
+    const SECT_MIN_FONT = 11;
+    const SECT_LINE_H = 1.38;
+    const SECT_GAP_TO_TAKEAWAYS = 20;
+    const TAKEAWAYS_PADDING_TOP = 32;
+    const TAKEAWAYS_PADDING_BOTTOM = 20;
+    const TAKEAWAYS_TITLE_H = 28;
+    const TAKEAWAYS_GAP = 8;
+
+    const s1BodyText = textBinding(slotBindings, "section1-body", "");
+    const s2BodyText = textBinding(slotBindings, "section2-body", "");
+    const s3BodyText = textBinding(slotBindings, "section3-body", "");
+    const takeawaysItems = listBinding(slotBindings, "takeaways", []);
+
+    // Proportionally fill all available vertical space — sections get 70%, takeaways 30%.
+    // Text estimation is unreliable for Thai text, so we allocate generously and let
+    // fitTextBox choose the best font size for the given space.
+    const availableH = canvasBottom - sectionBodyY - SECT_GAP_TO_TAKEAWAYS;
+    const sectBodyH = Math.max(200, Math.round(availableH * 0.75));
+    const actualTakeawaysCardH = Math.max(100, availableH - sectBodyH);
+    const actualTakeawaysTextH = Math.max(40,
+      actualTakeawaysCardH - TAKEAWAYS_PADDING_TOP - TAKEAWAYS_TITLE_H - TAKEAWAYS_GAP - TAKEAWAYS_PADDING_BOTTOM);
+
+    const sectMaxLines = Math.max(20, Math.floor((sectBodyH - SECT_MIN_FONT * 0.24) / (SECT_MIN_FONT * SECT_LINE_H)));
     const s1Body = fitTextBox({
-      text: textBinding(slotBindings, "section1-body", ""),
-      width: 258, height: 234, baseFontSize: 18, minFontSize: 12, lineHeight: 1.42, maxLines: 12,
+      text: s1BodyText,
+      width: SECT_W, height: sectBodyH, baseFontSize: 18, minFontSize: SECT_MIN_FONT, lineHeight: SECT_LINE_H, maxLines: sectMaxLines,
     });
     const s2Body = fitTextBox({
-      text: textBinding(slotBindings, "section2-body", ""),
-      width: 258, height: 234, baseFontSize: 18, minFontSize: 12, lineHeight: 1.42, maxLines: 12,
+      text: s2BodyText,
+      width: SECT_W, height: sectBodyH, baseFontSize: 18, minFontSize: SECT_MIN_FONT, lineHeight: SECT_LINE_H, maxLines: sectMaxLines,
     });
     const s3Body = fitTextBox({
-      text: textBinding(slotBindings, "section3-body", ""),
-      width: 258, height: 234, baseFontSize: 18, minFontSize: 12, lineHeight: 1.42, maxLines: 12,
+      text: s3BodyText,
+      width: SECT_W, height: sectBodyH, baseFontSize: 18, minFontSize: SECT_MIN_FONT, lineHeight: SECT_LINE_H, maxLines: sectMaxLines,
     });
+
+    // Position takeaways dynamically
+    const takeawaysCardY = sectionBodyY + sectBodyH + SECT_GAP_TO_TAKEAWAYS;
+    const takeawaysTitleY = takeawaysCardY + TAKEAWAYS_PADDING_TOP;
+    const takeawaysTextY = takeawaysTitleY + TAKEAWAYS_TITLE_H + TAKEAWAYS_GAP;
+
+    const takeawaysFitMaxLines = Math.max(3, Math.floor((actualTakeawaysTextH - 12 * 0.24) / (12 * 1.42)));
     const takeawaysFit = fitListTextBox({
-      items: listBinding(slotBindings, "takeaways", []),
-      width: 816, height: 108, baseFontSize: 18, minFontSize: 12, lineHeight: 1.42, maxLines: 6, bulletPrefix: "• ",
+      items: takeawaysItems,
+      width: 816, height: actualTakeawaysTextH, baseFontSize: 18, minFontSize: 11, lineHeight: 1.42, maxLines: takeawaysFitMaxLines, bulletPrefix: "• ",
     });
+
     const heroElements = buildMediaSlotElements(frame, options.instanceId, slotBindings, {
       slotId: "hero",
       suffixBase: "hero",
       x: 56,
-      y: 54,
+      y: heroY,
       width: 888,
-      height: 370,
+      height: heroH,
       fallbackAlt: "Hero visual",
       placeholderText: "Explainer image or video",
       placeholderColor: "#1D4ED8",
@@ -3872,15 +4027,15 @@ function buildSectionedExplainerComponent(
       makeRect(frame, options.instanceId, {
         suffix: "eyebrow-bg",
         x: 56,
-        y: 454,
+        y: eyebrowY,
         width: 230,
-        height: 42,
+        height: eyebrowH,
         fill: "#DBEAFE",
       }),
       makeText(frame, options.instanceId, {
         suffix: "eyebrow",
         x: 86,
-        y: 466,
+        y: eyebrowY + 12,
         width: 170,
         height: 16,
         text: textBinding(slotBindings, "eyebrow", ""),
@@ -3892,9 +4047,9 @@ function buildSectionedExplainerComponent(
       makeText(frame, options.instanceId, {
         suffix: "title",
         x: 56,
-        y: 520,
+        y: titleY,
         width: 888,
-        height: 108,
+        height: titleH,
         text: titleFit.text,
         color: "#0F172A",
         fontSize: titleFit.fontSize,
@@ -3904,9 +4059,9 @@ function buildSectionedExplainerComponent(
       makeText(frame, options.instanceId, {
         suffix: "intro",
         x: 56,
-        y: 652,
+        y: introY,
         width: 888,
-        height: 110,
+        height: introH,
         text: introFit.text,
         color: "#475569",
         fontSize: introFit.fontSize,
@@ -3916,83 +4071,86 @@ function buildSectionedExplainerComponent(
       makeText(frame, options.instanceId, {
         suffix: "section-1-heading",
         x: 56,
-        y: 794,
-        width: 258,
-        height: 30,
-        text: textBinding(slotBindings, "section1-heading", ""),
+        y: sectionHeadY,
+        width: SECT_W,
+        height: sectionHeadH,
+        text: s1HeadText,
         color: "#0F172A",
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: "700",
+        lineHeight: 1.2,
       }),
       makeText(frame, options.instanceId, {
         suffix: "section-1-body",
         x: 56,
-        y: 836,
-        width: 258,
-        height: 234,
+        y: sectionBodyY,
+        width: SECT_W,
+        height: sectBodyH,
         text: s1Body.text,
         color: "#334155",
         fontSize: s1Body.fontSize,
-        lineHeight: 1.42,
+        lineHeight: SECT_LINE_H,
       }),
       makeText(frame, options.instanceId, {
         suffix: "section-2-heading",
         x: 370,
-        y: 794,
-        width: 258,
-        height: 30,
-        text: textBinding(slotBindings, "section2-heading", ""),
+        y: sectionHeadY,
+        width: SECT_W,
+        height: sectionHeadH,
+        text: s2HeadText,
         color: "#0F172A",
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: "700",
+        lineHeight: 1.2,
       }),
       makeText(frame, options.instanceId, {
         suffix: "section-2-body",
         x: 370,
-        y: 836,
-        width: 258,
-        height: 234,
+        y: sectionBodyY,
+        width: SECT_W,
+        height: sectBodyH,
         text: s2Body.text,
         color: "#334155",
         fontSize: s2Body.fontSize,
-        lineHeight: 1.42,
+        lineHeight: SECT_LINE_H,
       }),
       makeText(frame, options.instanceId, {
         suffix: "section-3-heading",
         x: 686,
-        y: 794,
-        width: 258,
-        height: 30,
-        text: textBinding(slotBindings, "section3-heading", ""),
+        y: sectionHeadY,
+        width: SECT_W,
+        height: sectionHeadH,
+        text: s3HeadText,
         color: "#0F172A",
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: "700",
+        lineHeight: 1.2,
       }),
       makeText(frame, options.instanceId, {
         suffix: "section-3-body",
         x: 686,
-        y: 836,
-        width: 258,
-        height: 234,
+        y: sectionBodyY,
+        width: SECT_W,
+        height: sectBodyH,
         text: s3Body.text,
         color: "#334155",
         fontSize: s3Body.fontSize,
-        lineHeight: 1.42,
+        lineHeight: SECT_LINE_H,
       }),
       makeRect(frame, options.instanceId, {
         suffix: "takeaways-card",
         x: 56,
-        y: 1124,
+        y: takeawaysCardY,
         width: 888,
-        height: 220,
+        height: actualTakeawaysCardH,
         fill: "#EEF2FF",
       }),
       makeText(frame, options.instanceId, {
         suffix: "takeaways-title",
         x: 92,
-        y: 1160,
+        y: takeawaysTitleY,
         width: 220,
-        height: 28,
+        height: TAKEAWAYS_TITLE_H,
         text: textBinding(slotBindings, "takeaways-title", "Key Takeaways"),
         color: "#4338CA",
         fontSize: 22,
@@ -4001,9 +4159,9 @@ function buildSectionedExplainerComponent(
       makeText(frame, options.instanceId, {
         suffix: "takeaways",
         x: 92,
-        y: 1208,
+        y: takeawaysTextY,
         width: 816,
-        height: 108,
+        height: actualTakeawaysTextH,
         text: takeawaysFit.text,
         color: "#334155",
         fontSize: takeawaysFit.fontSize,
@@ -4214,6 +4372,665 @@ function buildSectionedExplainerComponent(
   ];
 }
 
+function buildImageTopArticleComponent(
+  options: BuildComponentInstanceOptions,
+  slotBindings: PresentationComponentSlotBinding[],
+): PresentationSlideElement[] {
+  const frame = getPortraitDocumentFrame(options.canvas);
+  const heroFrameStyle = PRESENTATION_COMPONENT_MEDIA_FRAME_STYLES["image-top-article"]?.hero;
+  const titleFit = fitTextBox({ text: textBinding(slotBindings, "title", ""), width: 888, height: 114, baseFontSize: 48, minFontSize: 28, lineHeight: 1.06, maxLines: 3 });
+  const leadFit = fitTextBox({ text: textBinding(slotBindings, "lead", ""), width: 888, height: 110, baseFontSize: 22, minFontSize: 14, lineHeight: 1.38, maxLines: 4 });
+  const bodyFit = fitTextBox({ text: textBinding(slotBindings, "body", ""), width: 888, height: 448, baseFontSize: 19, minFontSize: 12, lineHeight: 1.44, maxLines: 20 });
+  const heroElements = buildMediaSlotElements(frame, options.instanceId, slotBindings, {
+    slotId: "hero", suffixBase: "hero", x: 56, y: 54, width: 888, height: 436,
+    fallbackAlt: "Article image", placeholderText: "Drop image or video",
+    placeholderColor: "#475569", placeholderFontSize: 36, placeholderFill: "#E2E8F0",
+    mediaShape: heroFrameStyle?.mediaShape, mediaCornerRadius: heroFrameStyle?.mediaCornerRadius,
+  });
+  return [
+    makeRect(frame, options.instanceId, { suffix: "bg", x: 0, y: 0, width: PORTRAIT_LAYOUT_WIDTH, height: PORTRAIT_LAYOUT_HEIGHT, fill: "#FFFFFF" }),
+    ...heroElements,
+    makeRect(frame, options.instanceId, { suffix: "eyebrow-bg", x: 56, y: 528, width: 180, height: 38, fill: "#EFF6FF" }),
+    makeText(frame, options.instanceId, { suffix: "eyebrow", x: 76, y: 539, width: 140, height: 16, text: textBinding(slotBindings, "eyebrow", ""), color: "#2563EB", fontSize: 17, fontWeight: "700", textAlign: "center" }),
+    makeText(frame, options.instanceId, { suffix: "title", x: 56, y: 590, width: 888, height: 114, text: titleFit.text, color: "#0F172A", fontSize: titleFit.fontSize, fontWeight: "700", lineHeight: 1.06 }),
+    makeText(frame, options.instanceId, { suffix: "lead", x: 56, y: 724, width: 888, height: 110, text: leadFit.text, color: "#334155", fontSize: leadFit.fontSize, fontWeight: "500", lineHeight: 1.38 }),
+    makeText(frame, options.instanceId, { suffix: "body", x: 56, y: 858, width: 888, height: 448, text: bodyFit.text, color: "#475569", fontSize: bodyFit.fontSize, lineHeight: 1.44 }),
+    makeText(frame, options.instanceId, { suffix: "footnote", x: 56, y: 1358, width: 888, height: 22, text: textBinding(slotBindings, "footnote", ""), color: "#94A3B8", fontSize: 13 }),
+  ];
+}
+
+function buildImageBottomArticleComponent(
+  options: BuildComponentInstanceOptions,
+  slotBindings: PresentationComponentSlotBinding[],
+): PresentationSlideElement[] {
+  const frame = getPortraitDocumentFrame(options.canvas);
+  const heroFrameStyle = PRESENTATION_COMPONENT_MEDIA_FRAME_STYLES["image-bottom-article"]?.hero;
+  const titleFit = fitTextBox({ text: textBinding(slotBindings, "title", ""), width: 888, height: 114, baseFontSize: 48, minFontSize: 28, lineHeight: 1.06, maxLines: 3 });
+  const leadFit = fitTextBox({ text: textBinding(slotBindings, "lead", ""), width: 888, height: 110, baseFontSize: 22, minFontSize: 14, lineHeight: 1.38, maxLines: 4 });
+  const bodyFit = fitTextBox({ text: textBinding(slotBindings, "body", ""), width: 888, height: 448, baseFontSize: 19, minFontSize: 12, lineHeight: 1.44, maxLines: 20 });
+  const heroElements = buildMediaSlotElements(frame, options.instanceId, slotBindings, {
+    slotId: "hero", suffixBase: "hero", x: 56, y: 876, width: 888, height: 436,
+    fallbackAlt: "Article image", placeholderText: "Drop image or video",
+    placeholderColor: "#475569", placeholderFontSize: 36, placeholderFill: "#E2E8F0",
+    mediaShape: heroFrameStyle?.mediaShape, mediaCornerRadius: heroFrameStyle?.mediaCornerRadius,
+  });
+  return [
+    makeRect(frame, options.instanceId, { suffix: "bg", x: 0, y: 0, width: PORTRAIT_LAYOUT_WIDTH, height: PORTRAIT_LAYOUT_HEIGHT, fill: "#FFFFFF" }),
+    makeRect(frame, options.instanceId, { suffix: "eyebrow-bg", x: 56, y: 54, width: 180, height: 38, fill: "#EFF6FF" }),
+    makeText(frame, options.instanceId, { suffix: "eyebrow", x: 76, y: 65, width: 140, height: 16, text: textBinding(slotBindings, "eyebrow", ""), color: "#2563EB", fontSize: 17, fontWeight: "700", textAlign: "center" }),
+    makeText(frame, options.instanceId, { suffix: "title", x: 56, y: 116, width: 888, height: 114, text: titleFit.text, color: "#0F172A", fontSize: titleFit.fontSize, fontWeight: "700", lineHeight: 1.06 }),
+    makeText(frame, options.instanceId, { suffix: "lead", x: 56, y: 250, width: 888, height: 110, text: leadFit.text, color: "#334155", fontSize: leadFit.fontSize, fontWeight: "500", lineHeight: 1.38 }),
+    makeText(frame, options.instanceId, { suffix: "body", x: 56, y: 382, width: 888, height: 448, text: bodyFit.text, color: "#475569", fontSize: bodyFit.fontSize, lineHeight: 1.44 }),
+    ...heroElements,
+    makeText(frame, options.instanceId, { suffix: "footnote", x: 56, y: 1358, width: 888, height: 22, text: textBinding(slotBindings, "footnote", ""), color: "#94A3B8", fontSize: 13 }),
+  ];
+}
+
+function buildImageLeftArticleComponent(
+  options: BuildComponentInstanceOptions,
+  slotBindings: PresentationComponentSlotBinding[],
+): PresentationSlideElement[] {
+  const frame = getPortraitDocumentFrame(options.canvas);
+  const heroFrameStyle = PRESENTATION_COMPONENT_MEDIA_FRAME_STYLES["image-left-article"]?.hero;
+  const titleFit = fitTextBox({ text: textBinding(slotBindings, "title", ""), width: 460, height: 190, baseFontSize: 44, minFontSize: 24, lineHeight: 1.06, maxLines: 4 });
+  const leadFit = fitTextBox({ text: textBinding(slotBindings, "lead", ""), width: 460, height: 140, baseFontSize: 20, minFontSize: 13, lineHeight: 1.38, maxLines: 6 });
+  const bodyFit = fitTextBox({ text: textBinding(slotBindings, "body", ""), width: 460, height: 658, baseFontSize: 18, minFontSize: 12, lineHeight: 1.44, maxLines: 28 });
+  const heroElements = buildMediaSlotElements(frame, options.instanceId, slotBindings, {
+    slotId: "hero", suffixBase: "hero", x: 40, y: 54, width: 420, height: 870,
+    fallbackAlt: "Article image", placeholderText: "Drop image or video",
+    placeholderColor: "#475569", placeholderFontSize: 30, placeholderFill: "#E2E8F0",
+    mediaShape: heroFrameStyle?.mediaShape, mediaCornerRadius: heroFrameStyle?.mediaCornerRadius,
+  });
+  return [
+    makeRect(frame, options.instanceId, { suffix: "bg", x: 0, y: 0, width: PORTRAIT_LAYOUT_WIDTH, height: PORTRAIT_LAYOUT_HEIGHT, fill: "#FFFFFF" }),
+    makeRect(frame, options.instanceId, { suffix: "divider", x: 478, y: 54, width: 2, height: 870, fill: "#E2E8F0" }),
+    ...heroElements,
+    makeRect(frame, options.instanceId, { suffix: "eyebrow-bg", x: 500, y: 54, width: 164, height: 38, fill: "#EFF6FF" }),
+    makeText(frame, options.instanceId, { suffix: "eyebrow", x: 520, y: 65, width: 124, height: 16, text: textBinding(slotBindings, "eyebrow", ""), color: "#2563EB", fontSize: 17, fontWeight: "700", textAlign: "center" }),
+    makeText(frame, options.instanceId, { suffix: "title", x: 500, y: 116, width: 460, height: 190, text: titleFit.text, color: "#0F172A", fontSize: titleFit.fontSize, fontWeight: "700", lineHeight: 1.06 }),
+    makeText(frame, options.instanceId, { suffix: "lead", x: 500, y: 326, width: 460, height: 140, text: leadFit.text, color: "#334155", fontSize: leadFit.fontSize, fontWeight: "500", lineHeight: 1.38 }),
+    makeText(frame, options.instanceId, { suffix: "body", x: 500, y: 490, width: 460, height: 658, text: bodyFit.text, color: "#475569", fontSize: bodyFit.fontSize, lineHeight: 1.44 }),
+    makeText(frame, options.instanceId, { suffix: "footnote", x: 40, y: 1358, width: 920, height: 22, text: textBinding(slotBindings, "footnote", ""), color: "#94A3B8", fontSize: 13 }),
+  ];
+}
+
+function buildImageRightArticleComponent(
+  options: BuildComponentInstanceOptions,
+  slotBindings: PresentationComponentSlotBinding[],
+): PresentationSlideElement[] {
+  const frame = getPortraitDocumentFrame(options.canvas);
+  const heroFrameStyle = PRESENTATION_COMPONENT_MEDIA_FRAME_STYLES["image-right-article"]?.hero;
+  const titleFit = fitTextBox({ text: textBinding(slotBindings, "title", ""), width: 460, height: 190, baseFontSize: 44, minFontSize: 24, lineHeight: 1.06, maxLines: 4 });
+  const leadFit = fitTextBox({ text: textBinding(slotBindings, "lead", ""), width: 460, height: 140, baseFontSize: 20, minFontSize: 13, lineHeight: 1.38, maxLines: 6 });
+  const bodyFit = fitTextBox({ text: textBinding(slotBindings, "body", ""), width: 460, height: 658, baseFontSize: 18, minFontSize: 12, lineHeight: 1.44, maxLines: 28 });
+  const heroElements = buildMediaSlotElements(frame, options.instanceId, slotBindings, {
+    slotId: "hero", suffixBase: "hero", x: 540, y: 54, width: 420, height: 870,
+    fallbackAlt: "Article image", placeholderText: "Drop image or video",
+    placeholderColor: "#475569", placeholderFontSize: 30, placeholderFill: "#E2E8F0",
+    mediaShape: heroFrameStyle?.mediaShape, mediaCornerRadius: heroFrameStyle?.mediaCornerRadius,
+  });
+  return [
+    makeRect(frame, options.instanceId, { suffix: "bg", x: 0, y: 0, width: PORTRAIT_LAYOUT_WIDTH, height: PORTRAIT_LAYOUT_HEIGHT, fill: "#FFFFFF" }),
+    makeRect(frame, options.instanceId, { suffix: "divider", x: 520, y: 54, width: 2, height: 870, fill: "#E2E8F0" }),
+    makeRect(frame, options.instanceId, { suffix: "eyebrow-bg", x: 40, y: 54, width: 164, height: 38, fill: "#EFF6FF" }),
+    makeText(frame, options.instanceId, { suffix: "eyebrow", x: 60, y: 65, width: 124, height: 16, text: textBinding(slotBindings, "eyebrow", ""), color: "#2563EB", fontSize: 17, fontWeight: "700", textAlign: "center" }),
+    makeText(frame, options.instanceId, { suffix: "title", x: 40, y: 116, width: 460, height: 190, text: titleFit.text, color: "#0F172A", fontSize: titleFit.fontSize, fontWeight: "700", lineHeight: 1.06 }),
+    makeText(frame, options.instanceId, { suffix: "lead", x: 40, y: 326, width: 460, height: 140, text: leadFit.text, color: "#334155", fontSize: leadFit.fontSize, fontWeight: "500", lineHeight: 1.38 }),
+    makeText(frame, options.instanceId, { suffix: "body", x: 40, y: 490, width: 460, height: 658, text: bodyFit.text, color: "#475569", fontSize: bodyFit.fontSize, lineHeight: 1.44 }),
+    ...heroElements,
+    makeText(frame, options.instanceId, { suffix: "footnote", x: 40, y: 1358, width: 920, height: 22, text: textBinding(slotBindings, "footnote", ""), color: "#94A3B8", fontSize: 13 }),
+  ];
+}
+
+// ─── Adaptive Article Block Builders ─────────────────────────────────────────
+
+function buildWideHeroArticleComponent(
+  options: BuildComponentInstanceOptions,
+  slotBindings: PresentationComponentSlotBinding[],
+): PresentationSlideElement[] {
+  // Base 1280×720 adaptive canvas. Hero banner ~40% height (288px), text below.
+  const frame = getLayoutFrame(options.canvas);
+  const heroFrameStyle = PRESENTATION_COMPONENT_MEDIA_FRAME_STYLES["wide-hero-article"]?.hero;
+
+  const titleFit = fitTextBox({
+    text: textBinding(slotBindings, "title", ""),
+    width: 1120, height: 80, baseFontSize: 52, minFontSize: 28, lineHeight: 1.06, maxLines: 2,
+  });
+  const leftBodyFit = fitTextBox({
+    text: textBinding(slotBindings, "body", ""),
+    width: 530, height: 208, baseFontSize: 20, minFontSize: 13, lineHeight: 1.42, maxLines: 10,
+  });
+  const rightBodyFit = fitTextBox({
+    text: textBinding(slotBindings, "lead", ""),
+    width: 530, height: 208, baseFontSize: 20, minFontSize: 13, lineHeight: 1.42, maxLines: 10,
+  });
+
+  const heroElements = buildMediaSlotElements(frame, options.instanceId, slotBindings, {
+    slotId: "hero",
+    suffixBase: "hero",
+    x: 80,
+    y: 48,
+    width: 1120,
+    height: 290,
+    fallbackAlt: "Hero banner",
+    placeholderText: "Wide hero image or video",
+    placeholderColor: "#94A3B8",
+    placeholderFontSize: 32,
+    placeholderFill: "#1E293B",
+    placeholderStroke: "#334155",
+    placeholderStrokeWidth: 2,
+    mediaShape: heroFrameStyle?.mediaShape,
+    mediaCornerRadius: heroFrameStyle?.mediaCornerRadius,
+  });
+
+  return [
+    makeRect(frame, options.instanceId, {
+      suffix: "canvas-bg",
+      x: 60,
+      y: 28,
+      width: 1160,
+      height: 664,
+      fill: "#FFFFFF",
+      stroke: "#E2E8F0",
+      strokeWidth: 2,
+    }),
+    ...heroElements,
+    makeRect(frame, options.instanceId, {
+      suffix: "eyebrow-bg",
+      x: 80,
+      y: 362,
+      width: 200,
+      height: 34,
+      fill: "#EFF6FF",
+    }),
+    makeText(frame, options.instanceId, {
+      suffix: "eyebrow",
+      x: 100,
+      y: 372,
+      width: 160,
+      height: 14,
+      text: textBinding(slotBindings, "eyebrow", ""),
+      color: "#2563EB",
+      fontSize: 15,
+      fontWeight: "700",
+      textAlign: "center",
+    }),
+    makeText(frame, options.instanceId, {
+      suffix: "title",
+      x: 80,
+      y: 412,
+      width: 1120,
+      height: 80,
+      text: titleFit.text,
+      color: "#0F172A",
+      fontSize: titleFit.fontSize,
+      fontWeight: "700",
+      lineHeight: 1.06,
+    }),
+    makeRect(frame, options.instanceId, {
+      suffix: "col-divider",
+      x: 639,
+      y: 508,
+      width: 2,
+      height: 160,
+      fill: "#E2E8F0",
+    }),
+    makeText(frame, options.instanceId, {
+      suffix: "body",
+      x: 80,
+      y: 508,
+      width: 530,
+      height: 208,
+      text: leftBodyFit.text,
+      color: "#334155",
+      fontSize: leftBodyFit.fontSize,
+      lineHeight: 1.42,
+    }),
+    makeText(frame, options.instanceId, {
+      suffix: "lead",
+      x: 659,
+      y: 508,
+      width: 530,
+      height: 208,
+      text: rightBodyFit.text,
+      color: "#334155",
+      fontSize: rightBodyFit.fontSize,
+      lineHeight: 1.42,
+    }),
+    makeText(frame, options.instanceId, {
+      suffix: "footnote",
+      x: 80,
+      y: 672,
+      width: 1120,
+      height: 20,
+      text: textBinding(slotBindings, "footnote", ""),
+      color: "#94A3B8",
+      fontSize: 13,
+    }),
+  ];
+}
+
+function buildSplitImageArticleComponent(
+  options: BuildComponentInstanceOptions,
+  slotBindings: PresentationComponentSlotBinding[],
+): PresentationSlideElement[] {
+  // 50/50 split — image left (x:80, w:530), text right (x:650, w:530), base 1280×720.
+  const frame = getLayoutFrame(options.canvas);
+  const heroFrameStyle = PRESENTATION_COMPONENT_MEDIA_FRAME_STYLES["split-image-article"]?.hero;
+
+  const titleFit = fitTextBox({
+    text: textBinding(slotBindings, "title", ""),
+    width: 530, height: 130, baseFontSize: 46, minFontSize: 24, lineHeight: 1.06, maxLines: 3,
+  });
+  const leadFit = fitTextBox({
+    text: textBinding(slotBindings, "lead", ""),
+    width: 530, height: 88, baseFontSize: 21, minFontSize: 13, lineHeight: 1.38, maxLines: 4,
+  });
+  const bodyFit = fitTextBox({
+    text: textBinding(slotBindings, "body", ""),
+    width: 530, height: 280, baseFontSize: 19, minFontSize: 12, lineHeight: 1.44, maxLines: 14,
+  });
+
+  const heroElements = buildMediaSlotElements(frame, options.instanceId, slotBindings, {
+    slotId: "hero",
+    suffixBase: "hero",
+    x: 80,
+    y: 48,
+    width: 530,
+    height: 624,
+    fallbackAlt: "Article image",
+    placeholderText: "Drop image or video",
+    placeholderColor: "#94A3B8",
+    placeholderFontSize: 28,
+    placeholderFill: "#1E293B",
+    placeholderStroke: "#334155",
+    placeholderStrokeWidth: 2,
+    mediaShape: heroFrameStyle?.mediaShape,
+    mediaCornerRadius: heroFrameStyle?.mediaCornerRadius,
+  });
+
+  return [
+    makeRect(frame, options.instanceId, {
+      suffix: "canvas-bg",
+      x: 60,
+      y: 28,
+      width: 1160,
+      height: 664,
+      fill: "#FFFFFF",
+      stroke: "#E2E8F0",
+      strokeWidth: 2,
+    }),
+    ...heroElements,
+    makeRect(frame, options.instanceId, {
+      suffix: "col-divider",
+      x: 628,
+      y: 48,
+      width: 2,
+      height: 624,
+      fill: "#E2E8F0",
+    }),
+    makeRect(frame, options.instanceId, {
+      suffix: "eyebrow-bg",
+      x: 650,
+      y: 48,
+      width: 180,
+      height: 34,
+      fill: "#ECFDF5",
+    }),
+    makeText(frame, options.instanceId, {
+      suffix: "eyebrow",
+      x: 670,
+      y: 58,
+      width: 140,
+      height: 14,
+      text: textBinding(slotBindings, "eyebrow", ""),
+      color: "#059669",
+      fontSize: 15,
+      fontWeight: "700",
+      textAlign: "center",
+    }),
+    makeText(frame, options.instanceId, {
+      suffix: "title",
+      x: 650,
+      y: 100,
+      width: 530,
+      height: 130,
+      text: titleFit.text,
+      color: "#0F172A",
+      fontSize: titleFit.fontSize,
+      fontWeight: "700",
+      lineHeight: 1.06,
+    }),
+    makeRect(frame, options.instanceId, {
+      suffix: "title-divider",
+      x: 650,
+      y: 248,
+      width: 60,
+      height: 4,
+      fill: "#059669",
+    }),
+    makeText(frame, options.instanceId, {
+      suffix: "lead",
+      x: 650,
+      y: 268,
+      width: 530,
+      height: 88,
+      text: leadFit.text,
+      color: "#334155",
+      fontSize: leadFit.fontSize,
+      fontWeight: "500",
+      lineHeight: 1.38,
+    }),
+    makeText(frame, options.instanceId, {
+      suffix: "body",
+      x: 650,
+      y: 372,
+      width: 530,
+      height: 280,
+      text: bodyFit.text,
+      color: "#475569",
+      fontSize: bodyFit.fontSize,
+      lineHeight: 1.44,
+    }),
+    makeText(frame, options.instanceId, {
+      suffix: "footnote",
+      x: 650,
+      y: 668,
+      width: 530,
+      height: 20,
+      text: textBinding(slotBindings, "footnote", ""),
+      color: "#94A3B8",
+      fontSize: 13,
+    }),
+  ];
+}
+
+function buildCenteredHeroArticleComponent(
+  options: BuildComponentInstanceOptions,
+  slotBindings: PresentationComponentSlotBinding[],
+): PresentationSlideElement[] {
+  // Centered hero image (~50% height), title overlay at bottom of image, body text below.
+  // Works on 5:4 and 4:5 — uses adaptive coordinate system.
+  const frame = getLayoutFrame(options.canvas);
+  const heroFrameStyle = PRESENTATION_COMPONENT_MEDIA_FRAME_STYLES["centered-hero-article"]?.hero;
+
+  const titleFit = fitTextBox({
+    text: textBinding(slotBindings, "title", ""),
+    width: 1000, height: 76, baseFontSize: 50, minFontSize: 26, lineHeight: 1.06, maxLines: 2,
+  });
+  const leadFit = fitTextBox({
+    text: textBinding(slotBindings, "lead", ""),
+    width: 1000, height: 72, baseFontSize: 22, minFontSize: 13, lineHeight: 1.38, maxLines: 3,
+  });
+  const bodyFit = fitTextBox({
+    text: textBinding(slotBindings, "body", ""),
+    width: 1000, height: 196, baseFontSize: 20, minFontSize: 12, lineHeight: 1.42, maxLines: 9,
+  });
+
+  const heroElements = buildMediaSlotElements(frame, options.instanceId, slotBindings, {
+    slotId: "hero",
+    suffixBase: "hero",
+    x: 80,
+    y: 48,
+    width: 1120,
+    height: 316,
+    fallbackAlt: "Hero image",
+    placeholderText: "Hero image or video",
+    placeholderColor: "#94A3B8",
+    placeholderFontSize: 32,
+    placeholderFill: "#1E293B",
+    placeholderStroke: "#334155",
+    placeholderStrokeWidth: 2,
+    mediaShape: heroFrameStyle?.mediaShape,
+    mediaCornerRadius: heroFrameStyle?.mediaCornerRadius,
+  });
+
+  return [
+    makeRect(frame, options.instanceId, {
+      suffix: "canvas-bg",
+      x: 60,
+      y: 28,
+      width: 1160,
+      height: 664,
+      fill: "#FFFFFF",
+      stroke: "#E2E8F0",
+      strokeWidth: 2,
+    }),
+    ...heroElements,
+    // Title overlay bar at bottom of hero image
+    makeRect(frame, options.instanceId, {
+      suffix: "title-overlay",
+      x: 80,
+      y: 292,
+      width: 1120,
+      height: 72,
+      fill: "rgba(15,23,42,0.82)",
+    }),
+    makeRect(frame, options.instanceId, {
+      suffix: "eyebrow-dot",
+      x: 120,
+      y: 310,
+      width: 8,
+      height: 8,
+      fill: "#38BDF8",
+    }),
+    makeText(frame, options.instanceId, {
+      suffix: "eyebrow",
+      x: 138,
+      y: 307,
+      width: 240,
+      height: 14,
+      text: textBinding(slotBindings, "eyebrow", ""),
+      color: "#38BDF8",
+      fontSize: 14,
+      fontWeight: "700",
+    }),
+    makeText(frame, options.instanceId, {
+      suffix: "title",
+      x: 140,
+      y: 326,
+      width: 1000,
+      height: 76,
+      text: titleFit.text,
+      color: "#F8FAFC",
+      fontSize: titleFit.fontSize,
+      fontWeight: "700",
+      lineHeight: 1.06,
+    }),
+    makeRect(frame, options.instanceId, {
+      suffix: "lead-divider",
+      x: 140,
+      y: 384,
+      width: 48,
+      height: 3,
+      fill: "#38BDF8",
+    }),
+    makeText(frame, options.instanceId, {
+      suffix: "lead",
+      x: 140,
+      y: 400,
+      width: 1000,
+      height: 72,
+      text: leadFit.text,
+      color: "#334155",
+      fontSize: leadFit.fontSize,
+      fontWeight: "500",
+      lineHeight: 1.38,
+    }),
+    makeText(frame, options.instanceId, {
+      suffix: "body",
+      x: 140,
+      y: 484,
+      width: 1000,
+      height: 196,
+      text: bodyFit.text,
+      color: "#475569",
+      fontSize: bodyFit.fontSize,
+      lineHeight: 1.42,
+    }),
+    makeText(frame, options.instanceId, {
+      suffix: "footnote",
+      x: 140,
+      y: 672,
+      width: 1000,
+      height: 20,
+      text: textBinding(slotBindings, "footnote", ""),
+      color: "#94A3B8",
+      fontSize: 13,
+    }),
+  ];
+}
+
+function buildCompactArticleComponent(
+  options: BuildComponentInstanceOptions,
+  slotBindings: PresentationComponentSlotBinding[],
+): PresentationSlideElement[] {
+  // Text-only article: no image, clean typography — title, divider, lead, body, sidebar, footnote.
+  const frame = getLayoutFrame(options.canvas);
+
+  const titleFit = fitTextBox({
+    text: textBinding(slotBindings, "title", ""),
+    width: 740, height: 100, baseFontSize: 52, minFontSize: 26, lineHeight: 1.06, maxLines: 2,
+  });
+  const leadFit = fitTextBox({
+    text: textBinding(slotBindings, "lead", ""),
+    width: 740, height: 96, baseFontSize: 22, minFontSize: 14, lineHeight: 1.38, maxLines: 4,
+  });
+  const bodyFit = fitTextBox({
+    text: textBinding(slotBindings, "body", ""),
+    width: 740, height: 336, baseFontSize: 20, minFontSize: 12, lineHeight: 1.42, maxLines: 16,
+  });
+  const sidebarFit = fitTextBox({
+    text: textBinding(slotBindings, "sidebar", ""),
+    width: 254, height: 450, baseFontSize: 18, minFontSize: 12, lineHeight: 1.42, maxLines: 22,
+  });
+
+  return [
+    makeRect(frame, options.instanceId, {
+      suffix: "canvas-bg",
+      x: 60,
+      y: 28,
+      width: 1160,
+      height: 664,
+      fill: "#FAFAFA",
+      stroke: "#E2E8F0",
+      strokeWidth: 2,
+    }),
+    // Left content column
+    makeRect(frame, options.instanceId, {
+      suffix: "eyebrow-bg",
+      x: 80,
+      y: 60,
+      width: 190,
+      height: 34,
+      fill: "#FEF3C7",
+    }),
+    makeText(frame, options.instanceId, {
+      suffix: "eyebrow",
+      x: 100,
+      y: 70,
+      width: 150,
+      height: 14,
+      text: textBinding(slotBindings, "eyebrow", ""),
+      color: "#92400E",
+      fontSize: 14,
+      fontWeight: "700",
+      textAlign: "center",
+    }),
+    makeText(frame, options.instanceId, {
+      suffix: "title",
+      x: 80,
+      y: 112,
+      width: 740,
+      height: 100,
+      text: titleFit.text,
+      color: "#0F172A",
+      fontSize: titleFit.fontSize,
+      fontWeight: "700",
+      lineHeight: 1.06,
+    }),
+    makeRect(frame, options.instanceId, {
+      suffix: "rule",
+      x: 80,
+      y: 228,
+      width: 740,
+      height: 2,
+      fill: "#E2E8F0",
+    }),
+    makeRect(frame, options.instanceId, {
+      suffix: "rule-accent",
+      x: 80,
+      y: 228,
+      width: 80,
+      height: 2,
+      fill: "#F59E0B",
+    }),
+    makeText(frame, options.instanceId, {
+      suffix: "lead",
+      x: 80,
+      y: 244,
+      width: 740,
+      height: 96,
+      text: leadFit.text,
+      color: "#334155",
+      fontSize: leadFit.fontSize,
+      fontWeight: "500",
+      lineHeight: 1.38,
+    }),
+    makeText(frame, options.instanceId, {
+      suffix: "body",
+      x: 80,
+      y: 352,
+      width: 740,
+      height: 336,
+      text: bodyFit.text,
+      color: "#475569",
+      fontSize: bodyFit.fontSize,
+      lineHeight: 1.42,
+    }),
+    // Right sidebar
+    makeRect(frame, options.instanceId, {
+      suffix: "sidebar-panel",
+      x: 866,
+      y: 60,
+      width: 294,
+      height: 554,
+      fill: "#FFFFFF",
+      stroke: "#E2E8F0",
+      strokeWidth: 2,
+    }),
+    makeRect(frame, options.instanceId, {
+      suffix: "sidebar-accent",
+      x: 866,
+      y: 60,
+      width: 294,
+      height: 4,
+      fill: "#F59E0B",
+    }),
+    makeText(frame, options.instanceId, {
+      suffix: "sidebar",
+      x: 886,
+      y: 84,
+      width: 254,
+      height: 450,
+      text: sidebarFit.text,
+      color: "#334155",
+      fontSize: sidebarFit.fontSize,
+      lineHeight: 1.42,
+    }),
+    makeText(frame, options.instanceId, {
+      suffix: "footnote",
+      x: 80,
+      y: 672,
+      width: 1120,
+      height: 20,
+      text: textBinding(slotBindings, "footnote", ""),
+      color: "#94A3B8",
+      fontSize: 13,
+    }),
+  ];
+}
+
 function buildFullpageImageComponent(
   options: BuildComponentInstanceOptions,
   slotBindings: PresentationComponentSlotBinding[],
@@ -4306,6 +5123,22 @@ function buildFallbackElementsForComponent(
       return buildFaqStackComponent(options, slotBindings);
     case "profile-board":
       return buildProfileBoardComponent(options, slotBindings);
+    case "image-top-article":
+      return buildImageTopArticleComponent(options, slotBindings);
+    case "image-bottom-article":
+      return buildImageBottomArticleComponent(options, slotBindings);
+    case "image-left-article":
+      return buildImageLeftArticleComponent(options, slotBindings);
+    case "image-right-article":
+      return buildImageRightArticleComponent(options, slotBindings);
+    case "wide-hero-article":
+      return buildWideHeroArticleComponent(options, slotBindings);
+    case "split-image-article":
+      return buildSplitImageArticleComponent(options, slotBindings);
+    case "centered-hero-article":
+      return buildCenteredHeroArticleComponent(options, slotBindings);
+    case "compact-article":
+      return buildCompactArticleComponent(options, slotBindings);
     case "fullpage-image":
     case "fullpage-image-landscape":
       return buildFullpageImageComponent(options, slotBindings);
@@ -4520,6 +5353,70 @@ const COMPONENT_SLOT_DEFINITIONS: Record<BuiltInPresentationComponentId, readonl
     { id: "detail-photo-3", label: "Detail Media 3", type: "media", placeholder: "https://..." },
     { id: "highlights-title", label: "Highlights Title", type: "text" },
     { id: "highlights", label: "Highlights", type: "list", placeholder: "One bullet per line" },
+  ],
+  "image-top-article": [
+    { id: "eyebrow", label: "Eyebrow", type: "text" },
+    { id: "title", label: "Title", type: "text", multiline: true },
+    { id: "hero", label: "Article Image", type: "media", placeholder: "https://..." },
+    { id: "lead", label: "Lead Paragraph", type: "text", multiline: true },
+    { id: "body", label: "Body Text", type: "text", multiline: true },
+    { id: "footnote", label: "Footnote", type: "text" },
+  ],
+  "image-bottom-article": [
+    { id: "eyebrow", label: "Eyebrow", type: "text" },
+    { id: "title", label: "Title", type: "text", multiline: true },
+    { id: "lead", label: "Lead Paragraph", type: "text", multiline: true },
+    { id: "body", label: "Body Text", type: "text", multiline: true },
+    { id: "hero", label: "Article Image", type: "media", placeholder: "https://..." },
+    { id: "footnote", label: "Footnote", type: "text" },
+  ],
+  "image-left-article": [
+    { id: "eyebrow", label: "Eyebrow", type: "text" },
+    { id: "title", label: "Title", type: "text", multiline: true },
+    { id: "hero", label: "Article Image (Left)", type: "media", placeholder: "https://..." },
+    { id: "lead", label: "Lead Paragraph", type: "text", multiline: true },
+    { id: "body", label: "Body Text", type: "text", multiline: true },
+    { id: "footnote", label: "Footnote", type: "text" },
+  ],
+  "image-right-article": [
+    { id: "eyebrow", label: "Eyebrow", type: "text" },
+    { id: "title", label: "Title", type: "text", multiline: true },
+    { id: "lead", label: "Lead Paragraph", type: "text", multiline: true },
+    { id: "body", label: "Body Text", type: "text", multiline: true },
+    { id: "hero", label: "Article Image (Right)", type: "media", placeholder: "https://..." },
+    { id: "footnote", label: "Footnote", type: "text" },
+  ],
+  "wide-hero-article": [
+    { id: "eyebrow", label: "Eyebrow", type: "text" },
+    { id: "title", label: "Title", type: "text", multiline: true },
+    { id: "hero", label: "Hero Banner", type: "media", placeholder: "https://..." },
+    { id: "lead", label: "Right Column Text", type: "text", multiline: true },
+    { id: "body", label: "Left Column Text", type: "text", multiline: true },
+    { id: "footnote", label: "Footnote", type: "text" },
+  ],
+  "split-image-article": [
+    { id: "eyebrow", label: "Eyebrow", type: "text" },
+    { id: "title", label: "Title", type: "text", multiline: true },
+    { id: "hero", label: "Article Image (Left)", type: "media", placeholder: "https://..." },
+    { id: "lead", label: "Lead Paragraph", type: "text", multiline: true },
+    { id: "body", label: "Body Text", type: "text", multiline: true },
+    { id: "footnote", label: "Footnote", type: "text" },
+  ],
+  "centered-hero-article": [
+    { id: "eyebrow", label: "Eyebrow", type: "text" },
+    { id: "title", label: "Title", type: "text", multiline: true },
+    { id: "hero", label: "Hero Image", type: "media", placeholder: "https://..." },
+    { id: "lead", label: "Lead Paragraph", type: "text", multiline: true },
+    { id: "body", label: "Body Text", type: "text", multiline: true },
+    { id: "footnote", label: "Footnote", type: "text" },
+  ],
+  "compact-article": [
+    { id: "eyebrow", label: "Eyebrow", type: "text" },
+    { id: "title", label: "Title", type: "text", multiline: true },
+    { id: "lead", label: "Lead Paragraph", type: "text", multiline: true },
+    { id: "body", label: "Body Text", type: "text", multiline: true },
+    { id: "sidebar", label: "Sidebar / Pull Quote", type: "text", multiline: true },
+    { id: "footnote", label: "Footnote", type: "text" },
   ],
   "fullpage-image": [
     { id: "fullpage", label: "Image", type: "media", placeholder: "https://..." },
@@ -4941,6 +5838,133 @@ const COMPONENT_PREVIEWS: Record<BuiltInPresentationComponentId, string> = {
       <rect x="226" y="140" width="62" height="12" rx="6" fill="#F8FAFC" stroke="#CBD5E1"/>
     </svg>
   `,
+  "image-top-article": `
+    <svg viewBox="0 0 180 254" xmlns="http://www.w3.org/2000/svg" fill="none">
+      <rect width="180" height="254" fill="#FFFFFF"/>
+      <rect x="10" y="8" width="160" height="72" rx="6" fill="#CBD5E1"/>
+      <rect x="10" y="88" width="60" height="10" rx="5" fill="#DBEAFE"/>
+      <rect x="10" y="104" width="160" height="14" rx="5" fill="#0F172A"/>
+      <rect x="10" y="124" width="148" height="9" rx="4" fill="#334155"/>
+      <rect x="10" y="138" width="160" height="7" rx="3" fill="#64748B"/>
+      <rect x="10" y="150" width="152" height="7" rx="3" fill="#64748B"/>
+      <rect x="10" y="162" width="156" height="7" rx="3" fill="#64748B"/>
+      <rect x="10" y="174" width="144" height="7" rx="3" fill="#64748B"/>
+      <rect x="10" y="186" width="150" height="7" rx="3" fill="#64748B"/>
+      <rect x="10" y="198" width="136" height="7" rx="3" fill="#64748B"/>
+      <rect x="10" y="244" width="100" height="5" rx="2.5" fill="#CBD5E1"/>
+    </svg>
+  `,
+  "image-bottom-article": `
+    <svg viewBox="0 0 180 254" xmlns="http://www.w3.org/2000/svg" fill="none">
+      <rect width="180" height="254" fill="#FFFFFF"/>
+      <rect x="10" y="8" width="60" height="10" rx="5" fill="#DBEAFE"/>
+      <rect x="10" y="24" width="160" height="14" rx="5" fill="#0F172A"/>
+      <rect x="10" y="44" width="148" height="9" rx="4" fill="#334155"/>
+      <rect x="10" y="58" width="160" height="7" rx="3" fill="#64748B"/>
+      <rect x="10" y="70" width="152" height="7" rx="3" fill="#64748B"/>
+      <rect x="10" y="82" width="156" height="7" rx="3" fill="#64748B"/>
+      <rect x="10" y="94" width="144" height="7" rx="3" fill="#64748B"/>
+      <rect x="10" y="106" width="150" height="7" rx="3" fill="#64748B"/>
+      <rect x="10" y="118" width="160" height="7" rx="3" fill="#64748B"/>
+      <rect x="10" y="166" width="160" height="72" rx="6" fill="#CBD5E1"/>
+      <rect x="10" y="244" width="100" height="5" rx="2.5" fill="#CBD5E1"/>
+    </svg>
+  `,
+  "image-left-article": `
+    <svg viewBox="0 0 180 254" xmlns="http://www.w3.org/2000/svg" fill="none">
+      <rect width="180" height="254" fill="#FFFFFF"/>
+      <rect x="8" y="8" width="74" height="152" rx="6" fill="#CBD5E1"/>
+      <rect x="90" y="8" width="56" height="10" rx="5" fill="#DBEAFE"/>
+      <rect x="90" y="24" width="82" height="22" rx="4" fill="#0F172A"/>
+      <rect x="90" y="52" width="80" height="8" rx="4" fill="#334155"/>
+      <rect x="90" y="65" width="82" height="7" rx="3" fill="#64748B"/>
+      <rect x="90" y="77" width="78" height="7" rx="3" fill="#64748B"/>
+      <rect x="90" y="89" width="82" height="7" rx="3" fill="#64748B"/>
+      <rect x="90" y="101" width="76" height="7" rx="3" fill="#64748B"/>
+      <rect x="90" y="113" width="80" height="7" rx="3" fill="#64748B"/>
+      <rect x="90" y="125" width="72" height="7" rx="3" fill="#64748B"/>
+      <rect x="8" y="244" width="164" height="5" rx="2.5" fill="#CBD5E1"/>
+    </svg>
+  `,
+  "image-right-article": `
+    <svg viewBox="0 0 180 254" xmlns="http://www.w3.org/2000/svg" fill="none">
+      <rect width="180" height="254" fill="#FFFFFF"/>
+      <rect x="8" y="8" width="56" height="10" rx="5" fill="#DBEAFE"/>
+      <rect x="8" y="24" width="82" height="22" rx="4" fill="#0F172A"/>
+      <rect x="8" y="52" width="80" height="8" rx="4" fill="#334155"/>
+      <rect x="8" y="65" width="82" height="7" rx="3" fill="#64748B"/>
+      <rect x="8" y="77" width="78" height="7" rx="3" fill="#64748B"/>
+      <rect x="8" y="89" width="82" height="7" rx="3" fill="#64748B"/>
+      <rect x="8" y="101" width="76" height="7" rx="3" fill="#64748B"/>
+      <rect x="8" y="113" width="80" height="7" rx="3" fill="#64748B"/>
+      <rect x="8" y="125" width="72" height="7" rx="3" fill="#64748B"/>
+      <rect x="98" y="8" width="74" height="152" rx="6" fill="#CBD5E1"/>
+      <rect x="8" y="244" width="164" height="5" rx="2.5" fill="#CBD5E1"/>
+    </svg>
+  `,
+  "wide-hero-article": `
+    <svg viewBox="0 0 180 100" xmlns="http://www.w3.org/2000/svg" fill="none">
+      <rect width="180" height="100" rx="8" fill="#FFFFFF"/>
+      <rect x="8" y="6" width="164" height="36" rx="5" fill="#CBD5E1"/>
+      <rect x="8" y="48" width="56" height="8" rx="4" fill="#DBEAFE"/>
+      <rect x="8" y="60" width="82" height="8" rx="4" fill="#0F172A"/>
+      <rect x="1" y="72" width="80" height="6" rx="3" fill="#64748B"/>
+      <rect x="8" y="80" width="76" height="6" rx="3" fill="#64748B"/>
+      <rect x="8" y="88" width="70" height="6" rx="3" fill="#64748B"/>
+      <rect x="93" y="72" width="80" height="6" rx="3" fill="#64748B"/>
+      <rect x="93" y="80" width="76" height="6" rx="3" fill="#64748B"/>
+      <rect x="93" y="88" width="68" height="6" rx="3" fill="#64748B"/>
+      <rect x="88" y="68" width="1" height="32" fill="#E2E8F0"/>
+    </svg>
+  `,
+  "split-image-article": `
+    <svg viewBox="0 0 180 100" xmlns="http://www.w3.org/2000/svg" fill="none">
+      <rect width="180" height="100" rx="8" fill="#FFFFFF"/>
+      <rect x="8" y="8" width="78" height="84" rx="5" fill="#CBD5E1"/>
+      <rect x="93" y="8" width="52" height="8" rx="4" fill="#ECFDF5"/>
+      <rect x="93" y="21" width="79" height="14" rx="4" fill="#0F172A"/>
+      <rect x="93" y="40" width="79" height="6" rx="3" fill="#334155"/>
+      <rect x="93" y="50" width="76" height="5" rx="2.5" fill="#64748B"/>
+      <rect x="93" y="59" width="79" height="5" rx="2.5" fill="#64748B"/>
+      <rect x="93" y="68" width="72" height="5" rx="2.5" fill="#64748B"/>
+      <rect x="93" y="77" width="78" height="5" rx="2.5" fill="#64748B"/>
+      <rect x="93" y="86" width="64" height="5" rx="2.5" fill="#64748B"/>
+    </svg>
+  `,
+  "centered-hero-article": `
+    <svg viewBox="0 0 180 100" xmlns="http://www.w3.org/2000/svg" fill="none">
+      <rect width="180" height="100" rx="8" fill="#FFFFFF"/>
+      <rect x="8" y="6" width="164" height="44" rx="5" fill="#CBD5E1"/>
+      <rect x="8" y="40" width="164" height="14" rx="0" fill="rgba(15,23,42,0.80)"/>
+      <rect x="16" y="44" width="100" height="6" rx="3" fill="#F8FAFC"/>
+      <rect x="14" y="58" width="48" height="2" rx="1" fill="#38BDF8"/>
+      <rect x="14" y="64" width="152" height="6" rx="3" fill="#334155"/>
+      <rect x="14" y="74" width="152" height="5" rx="2.5" fill="#64748B"/>
+      <rect x="14" y="83" width="144" height="5" rx="2.5" fill="#64748B"/>
+      <rect x="14" y="92" width="100" height="4" rx="2" fill="#CBD5E1"/>
+    </svg>
+  `,
+  "compact-article": `
+    <svg viewBox="0 0 180 100" xmlns="http://www.w3.org/2000/svg" fill="none">
+      <rect width="180" height="100" rx="8" fill="#FAFAFA"/>
+      <rect x="8" y="8" width="52" height="10" rx="5" fill="#FEF3C7"/>
+      <rect x="8" y="23" width="118" height="14" rx="4" fill="#0F172A"/>
+      <rect x="8" y="42" width="118" height="2" rx="1" fill="#E2E8F0"/>
+      <rect x="8" y="42" width="20" height="2" rx="1" fill="#F59E0B"/>
+      <rect x="8" y="48" width="118" height="5" rx="2.5" fill="#334155"/>
+      <rect x="8" y="57" width="118" height="5" rx="2.5" fill="#64748B"/>
+      <rect x="8" y="66" width="118" height="5" rx="2.5" fill="#64748B"/>
+      <rect x="8" y="75" width="118" height="5" rx="2.5" fill="#64748B"/>
+      <rect x="8" y="84" width="100" height="5" rx="2.5" fill="#64748B"/>
+      <rect x="136" y="8" width="36" height="86" rx="5" fill="#FFFFFF" stroke="#E2E8F0"/>
+      <rect x="136" y="8" width="36" height="3" rx="1.5" fill="#F59E0B"/>
+      <rect x="140" y="16" width="28" height="5" rx="2.5" fill="#64748B"/>
+      <rect x="140" y="25" width="28" height="5" rx="2.5" fill="#64748B"/>
+      <rect x="140" y="34" width="24" height="5" rx="2.5" fill="#64748B"/>
+      <rect x="140" y="43" width="28" height="5" rx="2.5" fill="#64748B"/>
+      <rect x="140" y="52" width="26" height="5" rx="2.5" fill="#64748B"/>
+    </svg>
+  `,
   "fullpage-image": `
     <svg viewBox="0 0 180 320" xmlns="http://www.w3.org/2000/svg" fill="none">
       <rect width="180" height="320" fill="#CBD5E1"/>
@@ -4973,7 +5997,7 @@ const COMPONENT_PREVIEWS: Record<BuiltInPresentationComponentId, string> = {
   `,
 };
 
-const COMPONENT_CANVAS_INTENTS: Record<BuiltInPresentationComponentId, BuiltInPresentationComponentCanvasIntent> = {
+export const COMPONENT_CANVAS_INTENTS: Record<BuiltInPresentationComponentId, BuiltInPresentationComponentCanvasIntent> = {
   "process-steps": "adaptive",
   "timeline-flow": "adaptive",
   "timeline-report": "portrait-document",
@@ -4993,10 +6017,18 @@ const COMPONENT_CANVAS_INTENTS: Record<BuiltInPresentationComponentId, BuiltInPr
   "photo-collage": "portrait-document",
   "a4-photo-grid": "portrait-document",
   "landscape-photo-story": "landscape-16:9",
+  "image-top-article": "portrait-document",
+  "image-bottom-article": "portrait-document",
+  "image-left-article": "portrait-document",
+  "image-right-article": "portrait-document",
   "fullpage-image": "portrait-document",
   "fullpage-image-landscape": "landscape-16:9",
   "fullpage-video": "portrait-document",
   "fullpage-video-landscape": "landscape-16:9",
+  "wide-hero-article": "adaptive",
+  "split-image-article": "adaptive",
+  "centered-hero-article": "adaptive",
+  "compact-article": "adaptive",
 };
 
 const COMPONENT_PREVIEW_MEDIA_ZONES: Partial<Record<BuiltInPresentationComponentId, readonly BuiltInPresentationComponentPreviewMediaZone[]>> = {
@@ -5052,6 +6084,27 @@ const COMPONENT_PREVIEW_MEDIA_ZONES: Partial<Record<BuiltInPresentationComponent
   ],
   "fullpage-video-landscape": [
     { x: 0, y: 0, width: 100, height: 100, label: "Video", slotType: "video" },
+  ],
+  "image-top-article": [
+    { x: 6, y: 3, width: 88, height: 28, label: "Image", slotType: "media" },
+  ],
+  "image-bottom-article": [
+    { x: 6, y: 65, width: 88, height: 28, label: "Image", slotType: "media" },
+  ],
+  "image-left-article": [
+    { x: 4, y: 3, width: 42, height: 60, label: "Image", slotType: "media" },
+  ],
+  "image-right-article": [
+    { x: 54, y: 3, width: 42, height: 60, label: "Image", slotType: "media" },
+  ],
+  "wide-hero-article": [
+    { x: 4, y: 6, width: 91, height: 36, label: "Hero Banner", slotType: "media" },
+  ],
+  "split-image-article": [
+    { x: 4, y: 4, width: 43, height: 92, label: "Image", slotType: "media" },
+  ],
+  "centered-hero-article": [
+    { x: 4, y: 6, width: 91, height: 44, label: "Hero", slotType: "media" },
   ],
 };
 
@@ -5273,6 +6326,78 @@ export const BUILT_IN_PRESENTATION_COMPONENTS: readonly BuiltInPresentationCompo
     accentColor: "#7c3aed",
     previewSvg: COMPONENT_PREVIEWS["fullpage-video-landscape"],
     slotDefinitions: COMPONENT_SLOT_DEFINITIONS["fullpage-video-landscape"],
+  },
+  {
+    id: "image-top-article",
+    label: "Image Top + Article",
+    category: "Document",
+    description: "Classic portrait article with hero image at top and long-form body text below.",
+    accentColor: "#0284c7",
+    previewSvg: COMPONENT_PREVIEWS["image-top-article"],
+    slotDefinitions: COMPONENT_SLOT_DEFINITIONS["image-top-article"],
+  },
+  {
+    id: "image-bottom-article",
+    label: "Article + Image Bottom",
+    category: "Document",
+    description: "Classic portrait article with body text on top and hero image at the bottom.",
+    accentColor: "#0284c7",
+    previewSvg: COMPONENT_PREVIEWS["image-bottom-article"],
+    slotDefinitions: COMPONENT_SLOT_DEFINITIONS["image-bottom-article"],
+  },
+  {
+    id: "image-left-article",
+    label: "Image Left + Article",
+    category: "Document",
+    description: "Split layout with image on the left and article text on the right.",
+    accentColor: "#059669",
+    previewSvg: COMPONENT_PREVIEWS["image-left-article"],
+    slotDefinitions: COMPONENT_SLOT_DEFINITIONS["image-left-article"],
+  },
+  {
+    id: "image-right-article",
+    label: "Article + Image Right",
+    category: "Document",
+    description: "Split layout with article text on the left and image on the right.",
+    accentColor: "#059669",
+    previewSvg: COMPONENT_PREVIEWS["image-right-article"],
+    slotDefinitions: COMPONENT_SLOT_DEFINITIONS["image-right-article"],
+  },
+  {
+    id: "wide-hero-article",
+    label: "Wide Hero Article",
+    category: "Long-form",
+    description: "Wide banner image at top with title and two-column article body below. Works well on 5:4 canvases.",
+    accentColor: "#2563eb",
+    previewSvg: COMPONENT_PREVIEWS["wide-hero-article"],
+    slotDefinitions: COMPONENT_SLOT_DEFINITIONS["wide-hero-article"],
+  },
+  {
+    id: "split-image-article",
+    label: "Split Image Article",
+    category: "Long-form",
+    description: "50/50 split with image on the left and article text on the right. Works well on 5:4 canvases.",
+    accentColor: "#059669",
+    previewSvg: COMPONENT_PREVIEWS["split-image-article"],
+    slotDefinitions: COMPONENT_SLOT_DEFINITIONS["split-image-article"],
+  },
+  {
+    id: "centered-hero-article",
+    label: "Centered Hero Article",
+    category: "Long-form",
+    description: "Centered hero image with title overlay at the bottom edge and article body below. Works on 5:4 and 4:5.",
+    accentColor: "#0ea5e9",
+    previewSvg: COMPONENT_PREVIEWS["centered-hero-article"],
+    slotDefinitions: COMPONENT_SLOT_DEFINITIONS["centered-hero-article"],
+  },
+  {
+    id: "compact-article",
+    label: "Compact Article",
+    category: "Long-form",
+    description: "Text-only article: clean typography with title, divider, lead, body, and sidebar panel. No image required.",
+    accentColor: "#f59e0b",
+    previewSvg: COMPONENT_PREVIEWS["compact-article"],
+    slotDefinitions: COMPONENT_SLOT_DEFINITIONS["compact-article"],
   },
 ] as const).map((component) => ({
   ...component,

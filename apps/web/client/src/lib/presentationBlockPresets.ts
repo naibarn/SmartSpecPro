@@ -1,6 +1,8 @@
 import type { PresentationCanvasSize } from "@/presentation-canvas/constants";
 import {
   buildBuiltInPresentationComponentInstance,
+  COMPONENT_CANVAS_INTENTS,
+  type BuiltInPresentationComponentCanvasIntent,
   type BuiltInPresentationComponentId,
 } from "@/lib/presentationComponentCatalog";
 import type { PresentationElement, PresentationElementType } from "@/lib/presentationEditorState";
@@ -15,8 +17,11 @@ export interface PresentationBlockPresetDefinition {
   id: BuiltInPresentationComponentId;
   label: string;
   category: "Process" | "Marketing" | "Data" | "Profile" | "Storytelling" | "Long-form" | "Document";
+  /** Additional category tags for multi-category filtering (e.g., adaptive blocks that suit document pages) */
+  tags?: readonly string[];
   description: string;
   accentColor: string;
+  canvasIntent: BuiltInPresentationComponentCanvasIntent;
 }
 
 export type PresentationBlockPresetId = PresentationBlockPresetDefinition["id"];
@@ -26,15 +31,19 @@ export const PRESENTATION_BLOCK_PRESETS: readonly PresentationBlockPresetDefinit
     id: "process-steps",
     label: "Process Steps",
     category: "Process",
+    tags: ["Document"],
     description: "Stacked cards for tutorials, SOPs, or explainers.",
     accentColor: "#f59e0b",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["process-steps"],
   },
   {
     id: "timeline-flow",
     label: "Timeline Flow",
     category: "Process",
+    tags: ["Document"],
     description: "Milestone roadmap layout for launches, phases, and chronological narratives.",
     accentColor: "#0ea5e9",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["timeline-flow"],
   },
   {
     id: "timeline-report",
@@ -42,27 +51,34 @@ export const PRESENTATION_BLOCK_PRESETS: readonly PresentationBlockPresetDefinit
     category: "Document",
     description: "Full-page roadmap board for milestones that still need explanatory copy and next steps.",
     accentColor: "#2563eb",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["timeline-report"],
   },
   {
     id: "feature-highlights",
     label: "Feature Highlights",
     category: "Marketing",
+    tags: ["Document"],
     description: "Three-column value props with icons and supporting copy.",
     accentColor: "#0ea5e9",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["feature-highlights"],
   },
   {
     id: "infographic-grid",
     label: "Infographic Grid",
     category: "Data",
+    tags: ["Document"],
     description: "Four-cell framework block for comparisons, pillars, and balanced explainers.",
     accentColor: "#7c3aed",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["infographic-grid"],
   },
   {
     id: "stat-cards",
     label: "Stat Cards",
     category: "Data",
+    tags: ["Document"],
     description: "Three-up metric cards for KPI snapshots, campaign numbers, and proof points.",
     accentColor: "#2563eb",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["stat-cards"],
   },
   {
     id: "sectioned-explainer",
@@ -70,6 +86,7 @@ export const PRESENTATION_BLOCK_PRESETS: readonly PresentationBlockPresetDefinit
     category: "Document",
     description: "Full-page explainer for dense multi-section educational or article-style slides.",
     accentColor: "#2563eb",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["sectioned-explainer"],
   },
   {
     id: "article-focus",
@@ -77,6 +94,7 @@ export const PRESENTATION_BLOCK_PRESETS: readonly PresentationBlockPresetDefinit
     category: "Document",
     description: "Full-page editorial layout with large visual area, long body copy, and key points.",
     accentColor: "#059669",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["article-focus"],
   },
   {
     id: "two-column-article",
@@ -84,6 +102,7 @@ export const PRESENTATION_BLOCK_PRESETS: readonly PresentationBlockPresetDefinit
     category: "Document",
     description: "Full-page editorial/report layout for two strong sections with longer copy and a takeaway strip.",
     accentColor: "#4338ca",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["two-column-article"],
   },
   {
     id: "faq-stack",
@@ -91,6 +110,7 @@ export const PRESENTATION_BLOCK_PRESETS: readonly PresentationBlockPresetDefinit
     category: "Document",
     description: "Full-page question-and-answer stack for dense support topics and educational FAQs.",
     accentColor: "#2563eb",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["faq-stack"],
   },
   {
     id: "profile-board",
@@ -98,20 +118,25 @@ export const PRESENTATION_BLOCK_PRESETS: readonly PresentationBlockPresetDefinit
     category: "Document",
     description: "Full-page bio/resume sheet with experience, skills, and contact sections.",
     accentColor: "#334155",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["profile-board"],
   },
   {
     id: "profile-summary",
     label: "Profile Summary",
     category: "Profile",
+    tags: ["Document"],
     description: "Speaker, team member, or resume-style intro block.",
     accentColor: "#334155",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["profile-summary"],
   },
   {
     id: "quote-callout",
     label: "Quote Callout",
     category: "Storytelling",
+    tags: ["Document"],
     description: "Editorial pull-quote with attribution and accent line.",
     accentColor: "#8b5cf6",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["quote-callout"],
   },
   {
     id: "video-spotlight",
@@ -119,6 +144,7 @@ export const PRESENTATION_BLOCK_PRESETS: readonly PresentationBlockPresetDefinit
     category: "Storytelling",
     description: "Promo-ready copy block with a featured video frame.",
     accentColor: "#0ea5e9",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["video-spotlight"],
   },
   {
     id: "poster-spotlight",
@@ -126,13 +152,16 @@ export const PRESENTATION_BLOCK_PRESETS: readonly PresentationBlockPresetDefinit
     category: "Marketing",
     description: "Campaign-style hero with image frame, short benefits, and CTA.",
     accentColor: "#2563eb",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["poster-spotlight"],
   },
   {
     id: "framed-image-story",
     label: "Framed Image Story",
     category: "Storytelling",
+    tags: ["Document"],
     description: "Editorial image-and-copy block with framed visual and highlights.",
     accentColor: "#7c3aed",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["framed-image-story"],
   },
   {
     id: "photo-collage",
@@ -140,6 +169,7 @@ export const PRESENTATION_BLOCK_PRESETS: readonly PresentationBlockPresetDefinit
     category: "Document",
     description: "Full-page photo-first board with editorial copy and support for multiple visual areas.",
     accentColor: "#2563eb",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["photo-collage"],
   },
   {
     id: "a4-photo-grid",
@@ -147,6 +177,7 @@ export const PRESENTATION_BLOCK_PRESETS: readonly PresentationBlockPresetDefinit
     category: "Document",
     description: "Full-page portrait board with one hero photo, four supporting images, and a short editorial summary.",
     accentColor: "#4338ca",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["a4-photo-grid"],
   },
   {
     id: "landscape-photo-story",
@@ -154,6 +185,7 @@ export const PRESENTATION_BLOCK_PRESETS: readonly PresentationBlockPresetDefinit
     category: "Document",
     description: "Landscape editorial board with one dominant image, three supporting frames, and a concise highlights panel.",
     accentColor: "#0f766e",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["landscape-photo-story"],
   },
   {
     id: "fullpage-image",
@@ -161,6 +193,7 @@ export const PRESENTATION_BLOCK_PRESETS: readonly PresentationBlockPresetDefinit
     category: "Document",
     description: "Edge-to-edge image covering the entire page — no text, no overlay.",
     accentColor: "#0284c7",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["fullpage-image"],
   },
   {
     id: "fullpage-image-landscape",
@@ -168,6 +201,7 @@ export const PRESENTATION_BLOCK_PRESETS: readonly PresentationBlockPresetDefinit
     category: "Document",
     description: "Landscape edge-to-edge image covering the entire page — no text, no overlay.",
     accentColor: "#0284c7",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["fullpage-image-landscape"],
   },
   {
     id: "fullpage-video",
@@ -175,6 +209,7 @@ export const PRESENTATION_BLOCK_PRESETS: readonly PresentationBlockPresetDefinit
     category: "Document",
     description: "Edge-to-edge video covering the entire page — no text, no overlay.",
     accentColor: "#7c3aed",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["fullpage-video"],
   },
   {
     id: "fullpage-video-landscape",
@@ -182,6 +217,79 @@ export const PRESENTATION_BLOCK_PRESETS: readonly PresentationBlockPresetDefinit
     category: "Document",
     description: "Landscape edge-to-edge video covering the entire page — no text, no overlay.",
     accentColor: "#7c3aed",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["fullpage-video-landscape"],
+  },
+  {
+    id: "image-top-article",
+    label: "Image Top + Article",
+    category: "Long-form",
+    tags: ["Document"],
+    description: "Full-width image at the top, with a long article body below — classic editorial layout for visual openers.",
+    accentColor: "#2563EB",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["image-top-article"],
+  },
+  {
+    id: "image-bottom-article",
+    label: "Article + Image Bottom",
+    category: "Long-form",
+    tags: ["Document"],
+    description: "Long article text at the top, concluding with a full-width image at the bottom.",
+    accentColor: "#2563EB",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["image-bottom-article"],
+  },
+  {
+    id: "image-left-article",
+    label: "Image Left + Article",
+    category: "Long-form",
+    tags: ["Document"],
+    description: "Image on the left half, long article body on the right — a classic portrait split for editorial content.",
+    accentColor: "#2563EB",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["image-left-article"],
+  },
+  {
+    id: "image-right-article",
+    label: "Article + Image Right",
+    category: "Long-form",
+    tags: ["Document"],
+    description: "Long article text on the left, image on the right — classic portrait split layout.",
+    accentColor: "#2563EB",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["image-right-article"],
+  },
+  {
+    id: "wide-hero-article",
+    label: "Wide Hero Article",
+    category: "Long-form",
+    tags: ["Document"],
+    description: "Full-width banner image at top with title and body below — optimized for 5:4 and wider canvases.",
+    accentColor: "#0284C7",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["wide-hero-article"],
+  },
+  {
+    id: "split-image-article",
+    label: "Split Image + Article",
+    category: "Long-form",
+    tags: ["Document"],
+    description: "50/50 split: image fills the left half, article text on the right — great for 5:4 landscape.",
+    accentColor: "#059669",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["split-image-article"],
+  },
+  {
+    id: "centered-hero-article",
+    label: "Centered Hero Article",
+    category: "Long-form",
+    tags: ["Document"],
+    description: "Centered hero image with title and body text below — works well on any canvas ratio.",
+    accentColor: "#7C3AED",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["centered-hero-article"],
+  },
+  {
+    id: "compact-article",
+    label: "Compact Text Article",
+    category: "Long-form",
+    tags: ["Document"],
+    description: "Clean text-only article with title, body, and sidebar highlights — no image required.",
+    accentColor: "#334155",
+    canvasIntent: COMPONENT_CANVAS_INTENTS["compact-article"],
   },
 ] as const;
 

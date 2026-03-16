@@ -10,6 +10,7 @@ import {
   AI_COMPONENT_RECIPE_IDS,
   AI_GEOMETRIC_ACCENT_SHAPES,
   AIWatermarkSchema,
+  AIPresentationSchema,
   AIPresentationSlideSchema,
   AI_GEOMETRIC_CROP_SHAPES,
   AI_LAYOUT_TEMPLATE_IDS,
@@ -109,6 +110,7 @@ import {
   findAIRecipePendingMediaTargets,
 } from "./aiPresentationComponentRecipes";
 import { resolveTtsTextFromSlideNote } from "./ttsText";
+import { buildAlgorithmicSlideLayout } from "./aiPresentationAlgorithmicLayout";
 import { executeWithFallback, resolveProviders } from "./llmRouter";
 import { loadEnabledModelsWithPricing } from "./capabilityRegistry";
 import { loadEnabledLlmModelRows } from "./enabledLlmModels";
@@ -3367,6 +3369,18 @@ function scoreAIComponentRecipes(options: {
     "photo-collage": 0,
     "a4-photo-grid": 0,
     "landscape-photo-story": 0,
+    "image-top-article": 0,
+    "image-bottom-article": 0,
+    "image-left-article": 0,
+    "image-right-article": 0,
+    "wide-hero-article": 0,
+    "split-image-article": 0,
+    "centered-hero-article": 0,
+    "compact-article": 0,
+    "fullpage-image": 0,
+    "fullpage-image-landscape": 0,
+    "fullpage-video": 0,
+    "fullpage-video-landscape": 0,
   };
 
   if (options.preferVideoRecipes && (options.ignoreLegacyTemplateHints || options.slide.templateId !== "feature_boxes_right")) {
@@ -4282,9 +4296,13 @@ function applyAIRecipeSelectionDiversity(options: {
   allowMediaRecipeSwitch: boolean;
 }): ResolvedAIComponentRecipeSelection {
   const selectedRecipeId = options.selection.componentRecipeId;
-  if (!selectedRecipeId || options.selection.selectionMode !== "heuristic" || options.slideIndex <= 0) {
+  const isLlmSelection = options.selection.selectionMode === "llm";
+  if (!selectedRecipeId || (options.selection.selectionMode !== "heuristic" && !isLlmSelection) || options.slideIndex <= 0) {
     return options.selection;
   }
+  // LLM selections require at least 2 consecutive repeats before diversity override,
+  // versus 1 for heuristic — we respect the LLM's intent more strongly.
+  const minConsecutiveRunForDiversity = isLlmSelection ? 2 : 1;
 
   const previousRecipeId = options.priorSelections[options.priorSelections.length - 1]?.componentRecipeId;
   const recipeUsage = new Map<AIPresentationComponentRecipeId, number>();
@@ -4305,7 +4323,7 @@ function applyAIRecipeSelectionDiversity(options: {
     consecutiveRecipeRun += 1;
   }
 
-  if (consecutiveRecipeRun === 0) {
+  if (consecutiveRecipeRun < minConsecutiveRunForDiversity) {
     return options.selection;
   }
 
@@ -4336,10 +4354,21 @@ function applyAIRecipeSelectionDiversity(options: {
     })
     .sort((left, right) => right.score - left.score);
 
+  // Relax activation threshold for alternatives based on consecutive run length:
+  // LLM selections use a stricter threshold (multiplier capped at 0.85) so we only
+  // override when a clearly distinct layout is available.
+  // Heuristic: after 2 consecutive → 65%; after 3+ → 50%
+  // LLM: after 2 consecutive → 75%; after 3+ → 60%
+  const diversityThresholdMultiplier = isLlmSelection
+    ? (consecutiveRecipeRun >= 3 ? 0.6 : 0.75)
+    : (consecutiveRecipeRun >= 3 ? 0.5 : consecutiveRecipeRun >= 2 ? 0.65 : 0.85);
+
   const currentCandidate = rescoredCandidates.find((candidate) => candidate.recipeId === selectedRecipeId);
   const alternativeCandidate = rescoredCandidates.find((candidate) => (
     candidate.recipeId !== selectedRecipeId
-    && candidate.score >= getAIComponentRecipeActivationThreshold(candidate.recipeId)
+    && candidate.score >= Math.ceil(
+      getAIComponentRecipeActivationThreshold(candidate.recipeId) * diversityThresholdMultiplier,
+    )
   ));
 
   if (!alternativeCandidate || !currentCandidate) {
@@ -4349,9 +4378,13 @@ function applyAIRecipeSelectionDiversity(options: {
     };
   }
 
-  const shouldSwitch = consecutiveRecipeRun >= 1
-    ? alternativeCandidate.score >= currentCandidate.score - 4
-    : alternativeCandidate.score > currentCandidate.score;
+  // Allow wider score gap for longer consecutive runs so diversity is actually enforced.
+  // LLM selections allow a narrower gap because the LLM intentionally chose this recipe —
+  // we only override when the alternative is competitive.
+  const switchGapAllowance = isLlmSelection
+    ? (consecutiveRecipeRun >= 3 ? 12 : 4)
+    : (consecutiveRecipeRun >= 3 ? 100 : consecutiveRecipeRun >= 2 ? 8 : 4);
+  const shouldSwitch = alternativeCandidate.score >= currentCandidate.score - switchGapAllowance;
 
   if (!shouldSwitch) {
     return {
@@ -4364,6 +4397,7 @@ function applyAIRecipeSelectionDiversity(options: {
     ...options.selection,
     mode: resolveLayoutModeForRecipe(alternativeCandidate.recipeId),
     componentRecipeId: alternativeCandidate.recipeId,
+    selectionMode: "heuristic",
     selectionReason: `${options.selection.selectionReason ?? "Heuristic selection."} Diversity pass switched slide ${options.slideIndex + 1} to ${describeAIComponentRecipe(alternativeCandidate.recipeId)} to avoid repeating ${describeAIComponentRecipe(selectedRecipeId)} across consecutive slides.`,
     candidateRecipes: rescoredCandidates,
   };
@@ -7189,11 +7223,46 @@ function appendPromptContext(prompt: string, context?: string | null): string {
   if (!context) {
     return cleanedPrompt;
   }
-  const normalizedContext = context.toLowerCase();
-  if (cleanedPrompt.toLowerCase().includes(normalizedContext)) {
+  // Always append the user's context — this is the user's explicit intent.
+  // Even if the skill LLM may have rephrased the context into the prompt,
+  // the explicit block ensures the media API always sees it verbatim.
+  // Only skip if the exact "Additional visual requirements:" block is already present.
+  if (cleanedPrompt.includes("Additional visual requirements:")) {
     return cleanedPrompt;
   }
   return `${cleanedPrompt}\n\nAdditional visual requirements:\n${context}`;
+}
+
+/**
+ * Normalize the raw text returned by an image-prompt skill LLM.
+ * Some models wrap the prompt in JSON (`{"prompt":"..."}`) or markdown
+ * code fences.  This function strips those wrappers so downstream
+ * consumers always receive a plain-text prompt string.
+ */
+function normalizeSkillPromptOutput(raw: string): string {
+  let text = raw.trim();
+  // Strip markdown code fences (```json ... ``` or ``` ... ```)
+  const fenced = text.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?\s*```$/);
+  if (fenced) {
+    text = fenced[1].trim();
+  }
+  // If the result looks like a JSON object, try to extract a prompt field
+  if (text.startsWith("{") && text.endsWith("}")) {
+    try {
+      const parsed = JSON.parse(text);
+      if (typeof parsed === "object" && parsed !== null) {
+        // Look for common prompt field names
+        const promptValue =
+          parsed.prompt ?? parsed.imagePrompt ?? parsed.image_prompt ?? parsed.text ?? parsed.description;
+        if (typeof promptValue === "string" && promptValue.trim().length > 0) {
+          return promptValue.trim();
+        }
+      }
+    } catch {
+      // Not valid JSON — use as-is
+    }
+  }
+  return text;
 }
 
 function compactUniquePromptLines(lines: Array<string | null | undefined>, limit: number): string[] {
@@ -7222,17 +7291,29 @@ function deriveMediaGenerationPlanForSlide(
   basePrompt: string,
   isVideoSkill: boolean,
 ): MediaGenerationPlanEntry[] {
-  const normalizedBasePrompt = basePrompt.trim();
+  const normalizedBasePrompt = basePrompt.trim()
+    // Fallback: if prompt is empty, derive from slide title/content to ensure image generation
+    || slide.title?.trim()
+    || slide.imagePromptKeywords?.trim()
+    || (Array.isArray(slide.body) ? slide.body.filter(Boolean).join(", ").slice(0, 200) : "")?.trim()
+    || (Array.isArray(slide.sections) ? slide.sections.map((s) => s.heading).filter(Boolean).join(", ").slice(0, 200) : "")?.trim()
+    || "professional presentation slide visual";
   if (!normalizedBasePrompt) {
     return [];
   }
   if (Array.isArray(slide.mediaPlan) && slide.mediaPlan.length > 0) {
-    return slide.mediaPlan
+    const planEntries = slide.mediaPlan
       .map((entry) => ({
         slotId: entry.slotId,
-        prompt: appendPromptContext(entry.prompt, null),
+        prompt: (entry.prompt?.trim() || "").length > 0
+          ? entry.prompt!.trim()
+          : normalizedBasePrompt,
       }))
-      .filter((entry) => entry.prompt.trim().length > 0);
+      .filter((entry) => entry.prompt.length > 0);
+    if (planEntries.length > 0) {
+      return planEntries;
+    }
+    // mediaPlan entries were all empty — fall through to use normalizedBasePrompt
   }
   const recipeMediaSlots = slide.componentRecipeId
     ? PRESENTATION_COMPONENT_MEDIA_SLOTS[slide.componentRecipeId] ?? []
@@ -8613,27 +8694,48 @@ export async function repairSlideFromSavedNote(
     }
   }
 
-  const svgGraphic = pickRandomSvgFromCategory(repairedSlide.graphicCategory);
-  const { slideContent, warnings: layoutWarnings } = generateSlide({
-    slideData: repairedSlide,
-    imageUrl: mediaUrls[0] ?? null,
-    imageUrls: mediaUrls,
-    svgGraphic,
-    stylePreset,
-    deckTitle: input.slideIndex === 1 ? input.deckTitle?.slice(0, 36) : undefined,
-    slideIndex: Math.max(0, input.slideIndex - 1),
-    totalSlides: input.totalSlides,
-    canvasWidth: canvas.width,
-    canvasHeight: canvas.height,
-  });
-  warnings.push(...layoutWarnings);
+  let slideContent: PresentationSlideContent;
+  if (shouldPreferPlainTextCoverage) {
+    // Use algorithmic layout for dense content — preserves ALL text without slot truncation
+    const algoResult = buildAlgorithmicSlideLayout({
+      title: repairedSlide.title,
+      body: repairedSlide.body,
+      sections: repairedSlide.sections ?? [],
+      notes: trimmedNotes,
+      imageUrls: mediaUrls.filter((url): url is string => Boolean(url)),
+      canvasWidth: canvas.width,
+      canvasHeight: canvas.height,
+      stylePreset,
+      idPrefix: `repair-${repairTaskId.slice(-6)}`,
+      existingBackground: parsedContent.background,
+      existingTransition: parsedContent.transition,
+      existingDurationMs: parsedContent.durationMs,
+      canvasPreset,
+    });
+    slideContent = algoResult.slideContent;
+    warnings.push(...algoResult.warnings);
+  } else {
+    // Use recipe-based layout for short content
+    const svgGraphic = pickRandomSvgFromCategory(repairedSlide.graphicCategory);
+    const genResult = generateSlide({
+      slideData: repairedSlide,
+      imageUrl: mediaUrls[0] ?? null,
+      imageUrls: mediaUrls,
+      svgGraphic,
+      stylePreset,
+      deckTitle: input.slideIndex === 1 ? input.deckTitle?.slice(0, 36) : undefined,
+      slideIndex: Math.max(0, input.slideIndex - 1),
+      totalSlides: input.totalSlides,
+      canvasWidth: canvas.width,
+      canvasHeight: canvas.height,
+    });
+    slideContent = genResult.slideContent;
+    warnings.push(...genResult.warnings);
+  }
 
   const promptForSlide = mediaGenerationPlan[0]?.prompt?.trim();
   const elementsWithMediaMetadata = slideContent.elements.map((element) => {
     if (element.type !== "image") {
-      return element;
-    }
-    if (!element.src || !element.src.trim()) {
       return element;
     }
     return {
@@ -8747,6 +8849,7 @@ You MUST return exactly the number of slides requested by the user message.
 The first slide MUST keep templateId "hero_center" as the intro fallback frame.
 For every slide after planning the content, prefer setting componentRecipeId whenever one built-in block clearly fits.
 Use templateId only as an internal fallback frame for rendering compatibility. Do not force template variety when a block layout is a better fit.
+IMPORTANT: Vary the componentRecipeId across slides. Do NOT use the same componentRecipeId on two or more consecutive slides. Choose the most fitting distinct layout for each slide — use the content type and information density to guide selection.
 
 Component recipe guide:
 ${COMPONENT_RECIPE_PROMPT_GUIDE}
@@ -8793,6 +8896,7 @@ You MUST return exactly the number of slides requested by the user message.
 The first slide MUST keep templateId "hero_center" as the intro fallback frame.
 For every slide after planning the content, prefer setting componentRecipeId whenever one built-in block clearly fits.
 Use templateId only as an internal fallback frame for rendering compatibility. Do not force template variety when a block layout is a better fit.
+IMPORTANT: Vary the componentRecipeId across slides. Do NOT use the same componentRecipeId on two or more consecutive slides. Choose the most fitting distinct layout for each slide — use the content type and information density to guide selection.
 
 Component recipe guide:
 ${COMPONENT_RECIPE_PROMPT_GUIDE}
@@ -11132,8 +11236,18 @@ export async function generateAIDraft(
           }
 
           // Phase 3: Image prompt enhancement
-          const baseImagePrompt = appendPromptContext(slide.imagePromptKeywords, sanitizedImagePromptContext);
-          let imagePrompt = baseImagePrompt;
+          // Build a meaningful prompt from the slide's own content.
+          // Cascade: imagePromptKeywords → title → body text → sections → generic fallback.
+          const rawImageKeywords =
+            slide.imagePromptKeywords?.trim()
+            || slide.title?.trim()
+            || (Array.isArray(slide.body) ? slide.body.filter(Boolean).join(". ").slice(0, 300) : "")?.trim()
+            || (Array.isArray(slide.sections) ? slide.sections.map((s) => s.heading).filter(Boolean).join(". ").slice(0, 300) : "")?.trim()
+            || `presentation slide ${index + 1}`;
+          // Do NOT append imagePromptContext to the raw keywords yet — it will be
+          // appended once after skill enhancement (or as-is when no skill is used)
+          // to avoid duplicate "Additional visual requirements:" blocks.
+          let imagePrompt = rawImageKeywords;
 
           await updateProgress({
             phase: 4,
@@ -11146,7 +11260,10 @@ export async function generateAIDraft(
           if (imageSkillSystemPrompt) {
             try {
               // Enrich prompt with media skill params if provided
-              let enrichedImagePrompt = baseImagePrompt;
+              let enrichedImagePrompt = rawImageKeywords;
+              if (sanitizedImagePromptContext) {
+                enrichedImagePrompt = appendPromptContext(enrichedImagePrompt, sanitizedImagePromptContext);
+              }
               const msp = input.mediaSkillParams;
               if (msp && Object.keys(msp).length > 0) {
                 const paramLines = Object.entries(msp)
@@ -11156,7 +11273,7 @@ export async function generateAIDraft(
                   enrichedImagePrompt += `\n\nUser-selected skill parameters:\n${paramLines.join("\n")}`;
                 }
               }
-              imagePrompt = await awaitUntilCancellable(withTimeout(
+              let skillResult = await awaitUntilCancellable(withTimeout(
                 invokeSkillTextLLM({
                   model: imageSkillModel,
                   systemPrompt: imageSkillSystemPrompt,
@@ -11172,7 +11289,7 @@ export async function generateAIDraft(
                     phase: 3,
                     stage: "image_prompt_enhancement",
                     slideIndex: index,
-                    promptPreview: baseImagePrompt.slice(0, 500),
+                    promptPreview: rawImageKeywords.slice(0, 500),
                   },
                   taskRunId,
                   plannerPlan: plannerResult?.plan,
@@ -11181,7 +11298,9 @@ export async function generateAIDraft(
                 IMAGE_PROMPT_ENHANCE_TIMEOUT_MS,
                 "image_prompt_enhancement_timeout",
               ), "image_prompt_enhancement_cancelled");
-              imagePrompt = appendPromptContext(imagePrompt, sanitizedImagePromptContext);
+              // Normalize: strip JSON/markdown wrappers if the LLM returned them
+              skillResult = normalizeSkillPromptOutput(skillResult);
+              imagePrompt = skillResult;
             } catch (err) {
               if (isCancellationError(err)) {
                 throw err;
@@ -11193,7 +11312,21 @@ export async function generateAIDraft(
               warnings.push(`Slide ${index + 1}: image prompt enhancement failed (${sanitizeErrorMessage(err)}), using raw keywords`);
             }
           }
-          const mediaGenerationPlan = deriveMediaGenerationPlanForSlide(slide, imagePrompt, isVideoSkill);
+          // ALWAYS append the user's imagePromptContext to the final prompt.
+          // This is the user's explicit intent — it must be present on every
+          // prompt sent out, regardless of whether a skill was used or not.
+          // appendPromptContext already deduplicates if the text is already present.
+          imagePrompt = appendPromptContext(imagePrompt, sanitizedImagePromptContext);
+          const rawMediaGenerationPlan = deriveMediaGenerationPlanForSlide(slide, imagePrompt, isVideoSkill);
+          // Ensure every prompt variant carries the user's imagePromptContext.
+          // deriveMediaGenerationPlanForSlide may return mediaPlan prompts that
+          // were generated by the LLM and don't include the user's context yet.
+          const mediaGenerationPlan = sanitizedImagePromptContext
+            ? rawMediaGenerationPlan.map((entry) => ({
+              ...entry,
+              prompt: appendPromptContext(entry.prompt, sanitizedImagePromptContext),
+            }))
+            : rawMediaGenerationPlan;
           imagePromptsPerSlide[index] = mediaGenerationPlan;
           const mediaApiConfigForSlide = {
             ...(mediaApiConfig ?? {}),
@@ -11597,19 +11730,47 @@ export async function generateAIDraft(
     for (let i = 0; i < slides.length; i++) {
       const svg = pickRandomSvgFromCategory(slides[i].graphicCategory);
       const mediaUrlsForSlide = mediaUrlsPerSlide[i] ?? [];
-      const { slideContent, warnings: layoutWarnings } = generateSlide({
-        slideData: slides[i],
-        imageUrl: mediaUrlsForSlide[0] ?? null,
-        imageUrls: mediaUrlsForSlide,
-        svgGraphic: svg,
-        stylePreset: presetCopy,
-        deckTitle: i === 0 ? sanitizedPrompt.slice(0, 36) : undefined,
-        slideIndex: i,
-        totalSlides: slides.length,
-        canvasWidth,
-        canvasHeight,
-        visualOnly: input.hideTextOnSlides,
-      });
+      // Use algorithmic layout for text-dense slides, recipe layout for short/visual slides
+      const slideBodyChars = slides[i].body.reduce((s, l) => s + l.length, 0);
+      const slideSectionChars = (slides[i].sections ?? []).reduce(
+        (s, sec) => s + sec.heading.length + sec.details.reduce((d, t) => d + t.length, 0), 0,
+      );
+      const useAlgorithmicLayout = (slideBodyChars + slideSectionChars) >= 200
+        || (slides[i].sections?.length ?? 0) >= 3;
+
+      let slideContent: PresentationSlideContent;
+      let layoutWarnings: string[];
+      if (useAlgorithmicLayout && !input.hideTextOnSlides) {
+        const algoResult = buildAlgorithmicSlideLayout({
+          title: slides[i].title,
+          body: slides[i].body,
+          sections: slides[i].sections ?? [],
+          notes: slides[i].notes ?? "",
+          imageUrls: mediaUrlsForSlide.filter((u): u is string => Boolean(u)),
+          canvasWidth,
+          canvasHeight,
+          stylePreset: presetCopy,
+          idPrefix: `draft-${taskId.slice(-6)}-s${i}`,
+        });
+        slideContent = algoResult.slideContent;
+        layoutWarnings = algoResult.warnings;
+      } else {
+        const genResult = generateSlide({
+          slideData: slides[i],
+          imageUrl: mediaUrlsForSlide[0] ?? null,
+          imageUrls: mediaUrlsForSlide,
+          svgGraphic: svg,
+          stylePreset: presetCopy,
+          deckTitle: i === 0 ? sanitizedPrompt.slice(0, 36) : undefined,
+          slideIndex: i,
+          totalSlides: slides.length,
+          canvasWidth,
+          canvasHeight,
+          visualOnly: input.hideTextOnSlides,
+        });
+        slideContent = genResult.slideContent;
+        layoutWarnings = genResult.warnings;
+      }
       const promptForSlide = imagePromptsPerSlide[i]?.[0]?.prompt?.trim();
       const imageModelIdForSlide = selectedImageModel?.id ?? imageModelToUse;
       const extraParamsForSlide = mediaExtraParamsPerSlide[i];
@@ -11618,7 +11779,12 @@ export async function generateAIDraft(
           return element;
         }
         if (!element.src || !element.src.trim()) {
-          return element;
+          // Placeholder element (no src yet) — still attach prompt/model so generation can proceed later
+          return {
+            ...element,
+            ...(promptForSlide ? { imagePrompt: promptForSlide.slice(0, 4000) } : {}),
+            ...(imageModelIdForSlide ? { imageModelId: imageModelIdForSlide } : {}),
+          };
         }
         if (isVideoSkill) {
           return {
@@ -12593,4 +12759,667 @@ async function mapWithConcurrency<T, R>(
     throw firstError;
   }
   return results;
+}
+
+// ── Generate Layout from Note ──────────────────────────────
+
+function buildLayoutGenerationSystemPrompt(opts: {
+  mode: "single_slide" | "full_presentation";
+  stylePreset: SlideStylePreset;
+  canvasWidth: number;
+  canvasHeight: number;
+  preferredRecipeId?: string;
+  numSlides?: number;
+}): string {
+  const { stylePreset: preset, canvasWidth, canvasHeight, mode } = opts;
+  const colorBlock = [
+    `- background: ${preset.colors.background}`,
+    `- backgroundAlt: ${preset.colors.backgroundAlt}`,
+    `- primary: ${preset.colors.primary}`,
+    `- secondary: ${preset.colors.secondary}`,
+    `- text: ${preset.colors.text}`,
+    `- textMuted: ${preset.colors.textMuted}`,
+    `- cardBg: ${preset.colors.cardBg.join(", ")}`,
+    `- overlay: ${preset.colors.overlay}`,
+  ].join("\n");
+  const typoBlock = [
+    `- Title font: ${preset.typography.titleFontFamily} (weight ${preset.typography.titleFontWeight})`,
+    `- Body font: ${preset.typography.bodyFontFamily} (weight ${preset.typography.bodyFontWeight})`,
+  ].join("\n");
+
+  const recipeConstraint = opts.preferredRecipeId
+    ? `\nThe user prefers layout "${opts.preferredRecipeId}". Use it if the content fits; otherwise pick the best alternative.`
+    : "";
+
+  const modeInstructions = mode === "single_slide"
+    ? `Format the provided note text into exactly ONE slide with a visually stunning, modern layout.
+CRITICAL: Preserve ALL content from the note — every sentence, detail, and step. Do NOT summarize.
+Choose the most visually appropriate componentRecipeId based on content type:
+- Step/process content → "process-steps" or "timeline-flow" (shows numbered steps with icons and accent colors)
+- Long articles/paragraphs → "article-focus", "two-column-article", "sectioned-explainer", or "compact-article"
+- Data/metrics → "stat-cards" or "infographic-grid" (shows numbers in styled cards)
+- Image-heavy → "framed-image-story", "photo-collage", "poster-spotlight", or "landscape-photo-story"
+- Quotes/testimonials → "quote-callout" (large quote with accent line and attribution)
+- People/profiles → "profile-summary" or "profile-board" (photo frame + bio sections)
+- FAQ/Q&A → "faq-stack" (question-answer pairs)
+- Features/benefits → "feature-highlights" (3-column cards with icons)`
+    : `Split the provided article into ${opts.numSlides ?? "an appropriate number of"} slides. Each slide MUST have a DIFFERENT visual layout.
+CRITICAL: Preserve ALL content across slides. Do NOT drop any information.
+The first slide MUST use templateId "hero_center".
+
+MANDATORY VARIETY — use a DIFFERENT componentRecipeId for each slide. Example flow for a 5-slide deck:
+  Slide 1: hero_center (intro)
+  Slide 2: "process-steps" or "timeline-flow" (steps)
+  Slide 3: "article-focus" or "framed-image-story" (detail)
+  Slide 4: "stat-cards" or "infographic-grid" (data)
+  Slide 5: "quote-callout" or "poster-spotlight" (conclusion)
+NEVER use the same recipe on two consecutive slides.`;
+
+  return `You are a world-class presentation designer known for creating visually stunning, modern slide layouts. You combine bold typography, geometric shapes, accent lines, SVG icons, and varied image framing to make each slide unique and magazine-quality.
+
+## Instructions
+${modeInstructions}${recipeConstraint}
+
+## Design Theme: "${preset.name}"
+
+### Color Palette (use ONLY these colors)
+${colorBlock}
+
+### Typography
+${typoBlock}
+
+## Canvas
+- Width: ${canvasWidth}px, Height: ${canvasHeight}px
+
+## Output Format
+For each slide, produce a JSON object:
+- templateId: one of ${JSON.stringify(AI_LAYOUT_TEMPLATE_IDS)} — this is the fallback frame; the visual design comes from componentRecipeId
+- componentRecipeId: one of ${JSON.stringify(AI_COMPONENT_RECIPE_IDS)} — ALWAYS set this. This determines the visual layout style (cards, grids, editorial, photo frames, etc.)
+- mediaPlan (optional): array of { slotId, prompt } for media slots — generate vivid, specific image prompts
+- title: compelling slide title (max 200 chars)
+- body: array of 1-10 strings with FULL text from the source (not abbreviated bullets)
+- notes: the COMPLETE original text for this slide (max 5000 chars)
+- sections (REQUIRED): array of { heading (max 180 chars), details: string[] (1-4 items, full sentences up to 260 chars each) }. Use 3-6 sections to organize all content.
+- graphicCategory: one of ${JSON.stringify(AI_SVG_CATEGORIES)} — pick the most relevant category for decorative SVG icons. Icons add visual interest alongside text.
+- imagePromptKeywords: vivid, detailed prompt for AI image generation (max 500 chars). Be specific about style, composition, and mood.
+
+${mode === "single_slide" ? "Output ONLY a single valid JSON object (not an array)." : "Output ONLY a valid JSON array. No markdown fences, no explanatory text."}
+
+## Component Recipe Guide (each creates a DISTINCT visual layout)
+${COMPONENT_RECIPE_PROMPT_GUIDE}
+
+## Media Slot Guide (for recipes with image/video areas)
+${COMPONENT_RECIPE_MEDIA_PLAN_GUIDE}
+
+## Visual Design Principles
+1. **Color discipline**: Use ONLY colors from the palette. Use primary for headings/accents, secondary for cards/borders, cardBg for section backgrounds.
+2. **Content preservation**: Keep ALL text from source notes. Reorganize into sections but never drop content.
+3. **Visual hierarchy**: title (large, bold) → sections[].heading (medium, colored) → sections[].details[] (body text with full sentences).
+4. **Recipe variety**: ALWAYS set componentRecipeId. Each recipe produces a different visual structure (cards, columns, grids, editorial layouts, photo frames). For multi-slide decks, NEVER repeat the same recipe consecutively.
+5. **Rich visual elements**: The layout engine automatically adds decorative elements based on the recipe — accent lines, colored rectangles, SVG icons, geometric image frames (circle, rounded, diamond crops). Pick the right graphicCategory to get relevant icons.
+6. **Image generation**: Write imagePromptKeywords as detailed prompts — specify subject, style (photorealistic, illustration, infographic), composition, lighting, and mood. This directly drives AI image generation quality.
+7. **Content-to-recipe matching**:
+   - Steps/processes → process-steps, timeline-flow (numbered cards with icons)
+   - Long text → article-focus, two-column-article, sectioned-explainer (editorial layouts with image area)
+   - Statistics → stat-cards, infographic-grid (metric cards with large numbers)
+   - Photos → photo-collage, framed-image-story, landscape-photo-story (multiple image frames)
+   - Quotes → quote-callout (large quote with accent decoration)
+   - People → profile-summary, profile-board (portrait frame + bio)
+   - Marketing → poster-spotlight, feature-highlights (hero image + benefit cards)
+   - Q&A → faq-stack (question-answer pairs)
+8. **Modern aesthetics**: Think magazine editorial, not PowerPoint. Bold type, asymmetric layouts, accent colors, whitespace.`;
+}
+
+interface GenerateLayoutFromNoteServiceInput {
+  deckId: number;
+  slideId: number;
+  expectedVersion: number;
+  stylePresetId: StylePresetId;
+  componentRecipeId?: AIPresentationComponentRecipeId;
+}
+
+interface GenerateLayoutFromNoteServiceOutput {
+  title: string;
+  slideContent: PresentationSlideContent;
+  warnings: string[];
+  applied: {
+    templateId: LayoutTemplateId;
+    stylePresetId: StylePresetId;
+    componentRecipeId?: string;
+    graphicCategory: GraphicCategoryId;
+    regeneratedImage: boolean;
+  };
+}
+
+export async function generateLayoutFromNoteAsync(
+  input: GenerateLayoutFromNoteServiceInput,
+  actor: PresentationActor,
+  userToken: string,
+): Promise<GenerateLayoutFromNoteServiceOutput> {
+  const detail = await getPresentationDeckDetail(input.deckId, actor);
+  const slide = detail.slides.find((s) => s.id === input.slideId);
+  if (!slide) {
+    throw new Error(
+      `${PRESENTATION_ERROR_CODE.NOT_FOUND}: slide ${input.slideId} not found in deck ${input.deckId}`,
+    );
+  }
+
+  const trimmedNotes = String(slide.notes ?? "").trim();
+  if (!trimmedNotes) {
+    throw new Error(
+      `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: slide note text is required to generate layout`,
+    );
+  }
+
+  const warnings: string[] = [];
+  const parsedContent = presentationSlideContentSchema.parse(slide.slideContent ?? { elements: [] });
+  const canvas = parsedContent.canvas ?? {
+    width: DEFAULT_CANVAS_WIDTH,
+    height: DEFAULT_CANVAS_HEIGHT,
+  };
+  const canvasAspectRatio = toAspectRatio(canvas.width, canvas.height);
+  const canvasPreset = CANVAS_PRESET_BY_RATIO[canvasAspectRatio];
+
+  const baseStylePreset = getBuiltInPreset(input.stylePresetId) ?? getBuiltInPreset("dark-professional")!;
+  const stylePreset = applyRelayoutChromePolicy(baseStylePreset);
+  const watermark = normalizeWatermarkInput(extractWatermarkFromSlideContent(parsedContent), warnings);
+
+  // Check credit balance before proceeding
+  const estimatedCost = CREDIT_SPLIT + CREDIT_IMAGE_GEN;
+  const hasCredits = await hasEnoughCredits(actor.userId, estimatedCost);
+  if (!hasCredits) {
+    throw new Error(
+      `${PRESENTATION_ERROR_CODE.AI_INSUFFICIENT_CREDITS ?? "INSUFFICIENT_CREDITS"}: not enough credits for layout generation (estimated ${estimatedCost} credits)`,
+    );
+  }
+
+  // Extract ALL existing images from slide — elements, components, and background
+  const collectedImageSrcs: string[] = [];
+  const seenSrcs = new Set<string>();
+  for (const el of parsedContent.elements) {
+    const src = (el as any).src as string | undefined;
+    if (el.type === "image" && src && !src.startsWith("data:") && !(el as any).svgContent && !seenSrcs.has(src)) {
+      seenSrcs.add(src);
+      collectedImageSrcs.push(src);
+    }
+  }
+  for (const comp of parsedContent.components ?? []) {
+    for (const fbEl of comp.fallbackElements ?? []) {
+      const src = (fbEl as any).src as string | undefined;
+      if (fbEl.type === "image" && src && !src.startsWith("data:") && !(fbEl as any).svgContent && !seenSrcs.has(src)) {
+        seenSrcs.add(src);
+        collectedImageSrcs.push(src);
+      }
+    }
+    for (const binding of comp.slotBindings ?? []) {
+      if (binding.type === "image" && binding.src && !seenSrcs.has(binding.src)) {
+        seenSrcs.add(binding.src);
+        collectedImageSrcs.push(binding.src);
+      }
+    }
+  }
+  if (parsedContent.background?.type === "image" && (parsedContent.background as any).url) {
+    const bgUrl = (parsedContent.background as any).url as string;
+    if (!seenSrcs.has(bgUrl)) {
+      collectedImageSrcs.push(bgUrl);
+    }
+  }
+  const hasImages = collectedImageSrcs.length > 0;
+  const primaryImageUrl = collectedImageSrcs[0] ?? null;
+
+  // Build LLM prompt — LLM structures content AND picks the best recipe
+  const systemPrompt = buildLayoutGenerationSystemPrompt({
+    mode: "single_slide",
+    stylePreset: baseStylePreset,
+    canvasWidth: canvas.width,
+    canvasHeight: canvas.height,
+    preferredRecipeId: input.componentRecipeId,
+  });
+
+  const userMessage = `จัดเรียงข้อความต่อไปนี้เข้า slide โดย:
+
+**กฎสำคัญที่สุด: ห้ามเปลี่ยนข้อความ ห้ามแปลภาษา ห้ามเขียนใหม่ ให้คัดลอกข้อความต้นฉบับเท่านั้น**
+
+1. หาหัวข้อหลักจากข้อความ → ใส่ใน title (คัดลอกคำต่อคำ)
+2. แยกหัวข้อย่อยและเนื้อหา → ใส่ใน sections[].heading + sections[].details[] (คัดลอกประโยคจากต้นฉบับ)
+3. จัดเนื้อหาที่เหลือ → ใส่ใน body[] (คัดลอกประโยคจากต้นฉบับ)
+4. ใส่ข้อความทั้งหมดใน notes (คัดลอกทั้งหมด)
+5. body ต้องมีอย่างน้อย 1 รายการเสมอ — ใส่สรุปเนื้อหาหลักหรือประโยคแรกของข้อความ
+
+เลือก componentRecipeId ที่เหมาะสม:
+${hasImages ? `มีรูปภาพ → "image-top-article", "image-left-article", "image-right-article", "article-focus", "framed-image-story"` : `ไม่มีรูป → "sectioned-explainer", "compact-article", "faq-stack", "two-column-article"`}
+- เนื้อหาเป็นขั้นตอน → "process-steps" หรือ "timeline-flow"
+- เนื้อหาเป็นตัวเลข → "stat-cards" หรือ "infographic-grid"
+
+ข้อความต้นฉบับ (คัดลอกเท่านั้น ห้ามแก้ไข):
+
+${trimmedNotes}`;
+
+  const textModel = await resolveDefaultTextModel();
+  let aiSlide: AIPresentationSlide;
+  try {
+    const structuredResult = await callLLMStructured({
+      systemPrompt,
+      userMessage,
+      model: textModel,
+      zodSchema: AIPresentationSlideSchema,
+      userId: actor.userId,
+      tenantId: actor.tenantId,
+      billingDescription: `AI Layout from Note (Deck #${input.deckId}, Slide #${input.slideId})`,
+      billingMetadata: {
+        operation: "ai_layout_from_note",
+        deckId: input.deckId,
+        slideId: input.slideId,
+      },
+    });
+    aiSlide = structuredResult.data;
+  } catch (err) {
+    throw new Error(
+      `${PRESENTATION_ERROR_CODE.AI_GENERATION_FAILED}: LLM layout generation failed — ${sanitizeErrorMessage(err)}`,
+    );
+  }
+
+  // Deduct flat overhead fee (in addition to per-token cost already charged by callLLMStructured)
+  try {
+    await deductCredits({
+      userId: actor.userId,
+      tenantId: actor.tenantId,
+      amount: CREDIT_SPLIT,
+      description: "AI Layout from Note (orchestration fee)",
+      metadata: { type: "ai_layout_from_note", deckId: input.deckId, slideId: input.slideId },
+    });
+  } catch {
+    warnings.push("Credit deduction failed — layout was still generated.");
+  }
+
+  // Use shared algorithmic layout engine
+  const normalizedSlide = normalizeSlideHierarchy(aiSlide);
+  const taskId = `layout-note-${randomBytes(8).toString("hex")}`;
+  const generatedAt = new Date().toISOString();
+
+  const { slideContent: layoutContent, warnings: layoutWarnings } = buildAlgorithmicSlideLayout({
+    title: normalizedSlide.title,
+    body: normalizedSlide.body,
+    sections: normalizedSlide.sections ?? [],
+    notes: trimmedNotes,
+    imageUrls: collectedImageSrcs,
+    canvasWidth: canvas.width,
+    canvasHeight: canvas.height,
+    stylePreset,
+    idPrefix: `ai-el-${taskId.slice(-6)}`,
+    existingBackground: parsedContent.background,
+    existingTransition: parsedContent.transition,
+    existingDurationMs: parsedContent.durationMs,
+    canvasPreset,
+  });
+  warnings.push(...layoutWarnings);
+
+  let finalContent: PresentationSlideContent = {
+    ...layoutContent,
+    aiDesign: {
+      source: "draft-with-ai",
+      taskId,
+      schemaVersion: "presentation_ai_layout_v1",
+      mode: "structured_block" as PresentationAILayoutMode,
+      selectionMode: "heuristic",
+      narrative: {
+        title: normalizedSlide.title,
+        body: normalizedSlide.body.slice(0, AI_NARRATIVE_MAX_BODY_LINES),
+        ...(normalizedSlide.notes ? { notes: normalizedSlide.notes } : {}),
+        templateId: "hero_center" as LayoutTemplateId,
+      },
+      generatedAt,
+    },
+  };
+
+  if (watermark) {
+    const watermarkApplied = applyWatermarkToSlideContent(finalContent, watermark);
+    finalContent = watermarkApplied.slideContent;
+    warnings.push(...watermarkApplied.warnings);
+  }
+
+  finalContent = finalizeSlideContentAfterRepair(finalContent, warnings);
+
+  return {
+    title: normalizedSlide.title,
+    slideContent: finalContent,
+    warnings,
+    applied: {
+      templateId: normalizedSlide.templateId,
+      stylePresetId: input.stylePresetId,
+      graphicCategory: normalizedSlide.graphicCategory,
+      regeneratedImage: false,
+    },
+  };
+}
+
+// ── Generate Layout from Deck Note (multi-slide) ───────────
+
+interface GenerateLayoutFromDeckNoteServiceInput {
+  deckId: number;
+  expectedVersion: number;
+  numSlides?: number;
+  stylePresetId: StylePresetId;
+}
+
+export async function generateLayoutFromDeckNoteAsync(
+  input: GenerateLayoutFromDeckNoteServiceInput,
+  actor: PresentationActor,
+  userToken: string,
+  taskId: string,
+): Promise<void> {
+  const redis = getRedisClient();
+  const progressKey = `ai_draft_progress:${taskId}`;
+  const lockKey = `ai_draft_lock:${actor.userId}`;
+
+  async function updateProgress(data: Record<string, unknown>): Promise<void> {
+    try {
+      await redis.set(progressKey, JSON.stringify({
+        ...data,
+        userId: actor.userId,
+        updatedAt: new Date().toISOString(),
+      }), "EX", PROGRESS_TTL_SECONDS);
+    } catch { /* ignore Redis write failures */ }
+  }
+
+  // Acquire lock
+  const lockAcquired = await redis.set(lockKey, taskId, "EX", LOCK_TTL_SECONDS, "NX");
+  if (!lockAcquired) {
+    await updateProgress({
+      phase: 0,
+      phaseLabel: "Error",
+      phaseDetail: "Another generation is in progress for this deck",
+      slidesCompleted: 0,
+      totalSlides: 0,
+      slidePreview: [],
+      completed: true,
+      error: { code: "LOCK_CONFLICT", message: "มีการสร้าง layout อื่นกำลังทำงานอยู่ กรุณารอสักครู่" },
+    });
+    return;
+  }
+
+  try {
+    const detail = await getPresentationDeckDetail(input.deckId, actor);
+    const deckNotes = String(detail.deck.notes ?? "").trim();
+
+    if (!deckNotes) {
+      await updateProgress({
+        phase: 0,
+        phaseLabel: "Error",
+        slidesCompleted: 0,
+        totalSlides: 0,
+        slidePreview: [],
+        completed: true,
+        error: { code: PRESENTATION_ERROR_CODE.VALIDATION_FAILED, message: "Deck note text is required" },
+      });
+      return;
+    }
+
+    // Auto-calculate slide count if not specified
+    const wordCount = deckNotes.split(/\s+/).filter(Boolean).length;
+    const wordsPerSlide = /[\u0E00-\u0E7F]/.test(deckNotes) ? ARTICLE_WORDS_PER_SLIDE_TH : ARTICLE_WORDS_PER_SLIDE_EN;
+    const autoSlideCount = clampInteger(Math.ceil(wordCount / wordsPerSlide), 3, MAX_AI_DRAFT_SLIDES);
+    const numSlides = input.numSlides ?? autoSlideCount;
+
+    const baseStylePreset = getBuiltInPreset(input.stylePresetId) ?? getBuiltInPreset("dark-professional")!;
+    const stylePreset = applyRelayoutChromePolicy(baseStylePreset);
+    const canvas = {
+      width: DEFAULT_CANVAS_WIDTH,
+      height: DEFAULT_CANVAS_HEIGHT,
+    };
+    // Use existing deck's canvas if slides exist
+    if (detail.slides.length > 0) {
+      const firstSlideContent = presentationSlideContentSchema.safeParse(detail.slides[0]?.slideContent);
+      if (firstSlideContent.success && firstSlideContent.data.canvas) {
+        canvas.width = firstSlideContent.data.canvas.width;
+        canvas.height = firstSlideContent.data.canvas.height;
+      }
+    }
+    const canvasAspectRatio = toAspectRatio(canvas.width, canvas.height);
+    const canvasPreset = CANVAS_PRESET_BY_RATIO[canvasAspectRatio];
+
+    // Check credit balance
+    const estimatedCost = CREDIT_SPLIT + (5 * numSlides);
+    const hasCredits = await hasEnoughCredits(actor.userId, estimatedCost);
+    if (!hasCredits) {
+      await updateProgress({
+        phase: 0,
+        phaseLabel: "Error",
+        slidesCompleted: 0,
+        totalSlides: 0,
+        slidePreview: [],
+        completed: true,
+        error: { code: "INSUFFICIENT_CREDITS", message: `เครดิตไม่เพียงพอ ต้องใช้ประมาณ ${estimatedCost} credits` },
+      });
+      return;
+    }
+
+    // Phase 1: LLM split into slides
+    await updateProgress({
+      phase: 1,
+      phaseLabel: "Designing slides",
+      phaseDetail: `Splitting content into ${numSlides} slides with AI...`,
+      slidesCompleted: 0,
+      totalSlides: numSlides,
+      slidePreview: [],
+      completed: false,
+    });
+
+    const systemPrompt = buildLayoutGenerationSystemPrompt({
+      mode: "full_presentation",
+      stylePreset: baseStylePreset,
+      canvasWidth: canvas.width,
+      canvasHeight: canvas.height,
+      numSlides,
+    });
+
+    const userMessage = `Target slide count: ${numSlides}\n\nArticle:\n${deckNotes}`;
+    const textModel = await resolveDefaultTextModel();
+
+    let aiSlides: AIPresentationSlide[];
+    try {
+      const structuredResult = await callLLMStructured({
+        systemPrompt,
+        userMessage,
+        model: textModel,
+        zodSchema: AIPresentationSchema,
+        userId: actor.userId,
+        tenantId: actor.tenantId,
+        billingDescription: `AI Layout from Deck Note (Deck #${input.deckId})`,
+        billingMetadata: {
+          operation: "ai_layout_from_deck_note",
+          taskId,
+          deckId: input.deckId,
+          numSlides,
+        },
+      });
+      aiSlides = structuredResult.data;
+    } catch (err) {
+      await updateProgress({
+        phase: 1,
+        phaseLabel: "Error",
+        slidesCompleted: 0,
+        totalSlides: numSlides,
+        slidePreview: [],
+        completed: true,
+        error: { code: PRESENTATION_ERROR_CODE.AI_GENERATION_FAILED, message: sanitizeErrorMessage(err) },
+      });
+      return;
+    }
+
+    // Deduct flat overhead fee (in addition to per-token cost already charged by callLLMStructured).
+    // This covers orchestration + recipe assignment + slide persistence pipeline.
+    try {
+      await deductCredits({
+        userId: actor.userId,
+        tenantId: actor.tenantId,
+        amount: CREDIT_SPLIT + (5 * aiSlides.length),
+        description: "AI Layout from Deck Note (orchestration fee)",
+        metadata: {
+          type: "ai_layout_from_deck_note",
+          deckId: input.deckId,
+          numSlides: aiSlides.length,
+        },
+      });
+    } catch {
+      // Non-blocking
+    }
+
+    // Phase 2: Normalize + assign recipes
+    await updateProgress({
+      phase: 2,
+      phaseLabel: "Assigning layouts",
+      phaseDetail: "Selecting best component recipe for each slide...",
+      slidesCompleted: 0,
+      totalSlides: aiSlides.length,
+      slidePreview: aiSlides.map((s) => ({ title: s.title, imageStatus: "pending" as const })),
+      completed: false,
+    });
+
+    const normalizedSlides = aiSlides.map((s) => normalizeSlideHierarchy(s));
+    const aiRecipeAssignments = assignAIComponentRecipes(normalizedSlides, {
+      preferVideoRecipes: false,
+      canvasWidth: canvas.width,
+      canvasHeight: canvas.height,
+    });
+    const finalSlides = aiRecipeAssignments.slides;
+
+    // Phase 3: Generate slide content for each
+    const existingSlideCount = detail.slides.length;
+    let latestVersion = detail.deck.version;
+
+    for (let i = 0; i < finalSlides.length; i++) {
+      const slideData = finalSlides[i]!;
+      const selection = aiRecipeAssignments.selections[i];
+
+      await updateProgress({
+        phase: 3,
+        phaseLabel: "Building slides",
+        phaseDetail: `Creating slide ${i + 1}/${finalSlides.length}: ${slideData.title}`,
+        slidesCompleted: i,
+        totalSlides: finalSlides.length,
+        slidePreview: finalSlides.map((s, idx) => ({
+          title: s.title,
+          imageStatus: idx < i ? "done" as const : idx === i ? "generating" as const : "pending" as const,
+        })),
+        completed: false,
+      });
+
+      // Use algorithmic layout for full text preservation
+      const { slideContent, warnings: layoutWarnings } = buildAlgorithmicSlideLayout({
+        title: slideData.title,
+        body: slideData.body,
+        sections: slideData.sections ?? [],
+        notes: slideData.notes ?? "",
+        imageUrls: [],
+        canvasWidth: canvas.width,
+        canvasHeight: canvas.height,
+        stylePreset,
+        idPrefix: `deck-${taskId.slice(-6)}-s${i}`,
+        canvasPreset,
+      });
+
+      // Build narrative for aiDesign
+      const narrativeBody = slideData.body
+        .map((line) => normalizeNarrativeBodyLine(line))
+        .filter((line) => line.length > 0)
+        .slice(0, AI_NARRATIVE_MAX_BODY_LINES);
+      const narrativeSections = (slideData.sections ?? [])
+        .map((section) => normalizeNarrativeSection(section))
+        .filter((section): section is { heading: string; details: string[] } => Boolean(section))
+        .slice(0, 6);
+      const generatedAt = new Date().toISOString();
+
+      let finalContent: PresentationSlideContent = {
+        ...slideContent,
+        canvas: {
+          ...(canvasPreset ? { preset: canvasPreset } : {}),
+          width: canvas.width,
+          height: canvas.height,
+        },
+        aiDesign: {
+          source: "draft-with-ai",
+          taskId,
+          schemaVersion: "presentation_ai_layout_v1",
+          mode: selection?.mode ?? "structured_block",
+          componentRecipeId: selection?.componentRecipeId,
+          selectionMode: selection?.selectionMode ?? "none",
+          narrative: {
+            title: slideData.title,
+            body: narrativeBody.length > 0 ? narrativeBody : ["Key point"],
+            ...(slideData.notes ? { notes: slideData.notes } : {}),
+            ...(narrativeSections.length > 0 ? { sections: narrativeSections } : {}),
+            ...(slideData.graphicCategory ? { graphicCategory: slideData.graphicCategory } : {}),
+            templateId: slideData.templateId,
+          },
+          generatedAt,
+        },
+      };
+
+      finalContent = finalizeSlideContentAfterRepair(finalContent, layoutWarnings);
+
+      // Persist slide — re-fetch version to handle concurrent writes
+      try {
+        const freshDetail = await getPresentationDeckDetail(input.deckId, actor);
+        latestVersion = freshDetail.deck.version;
+        await addSlideToDeck(
+          {
+            deckId: input.deckId,
+            expectedVersion: latestVersion,
+            title: slideData.title.slice(0, 255),
+            notes: slideData.notes ?? "",
+            slideContent: finalContent as Record<string, unknown>,
+          },
+          actor,
+        );
+        latestVersion++;
+      } catch (err) {
+        await updateProgress({
+          phase: 3,
+          phaseLabel: "Error",
+          phaseDetail: `Failed to save slide ${i + 1}: ${sanitizeErrorMessage(err)}`,
+          slidesCompleted: i,
+          totalSlides: finalSlides.length,
+          slidePreview: finalSlides.map((s) => ({ title: s.title, imageStatus: "pending" as const })),
+          completed: true,
+          error: { code: PRESENTATION_ERROR_CODE.INTERNAL_ERROR, message: sanitizeErrorMessage(err) },
+        });
+        return;
+      }
+    }
+
+    // Phase 4: Complete
+    await updateProgress({
+      phase: 4,
+      phaseLabel: "Complete",
+      phaseDetail: `Generated ${finalSlides.length} slides from deck notes`,
+      slidesCompleted: finalSlides.length,
+      totalSlides: finalSlides.length,
+      slidePreview: finalSlides.map((s) => ({ title: s.title, imageStatus: "done" as const })),
+      completed: true,
+      result: {
+        slidesAdded: finalSlides.length,
+        newDeckVersion: latestVersion,
+        articlePreview: deckNotes.slice(0, 200),
+        warnings: [],
+      },
+    });
+  } catch (err) {
+    await updateProgress({
+      phase: 0,
+      phaseLabel: "Error",
+      slidesCompleted: 0,
+      totalSlides: 0,
+      slidePreview: [],
+      completed: true,
+      error: { code: PRESENTATION_ERROR_CODE.INTERNAL_ERROR, message: sanitizeErrorMessage(err) },
+    });
+  } finally {
+    try {
+      const currentLock = await redis.get(lockKey);
+      if (currentLock === taskId) {
+        await redis.del(lockKey);
+      }
+    } catch { /* ignore */ }
+  }
 }

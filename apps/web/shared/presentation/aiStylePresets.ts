@@ -4,6 +4,7 @@ import { SlideStylePresetSchema, AI_STYLE_PRESET_IDS } from "./aiTypes";
 const darkProfessional: SlideStylePreset = {
   id: "dark-professional",
   name: "Dark Professional",
+  nameLocalized: { th: "โทนเข้มมืออาชีพ", en: "Dark Professional" },
   colors: {
     background: "#1a1a2e",
     backgroundAlt: "#16213e",
@@ -45,6 +46,7 @@ const darkProfessional: SlideStylePreset = {
 const lightMinimalist: SlideStylePreset = {
   id: "light-minimalist",
   name: "Light Minimalist",
+  nameLocalized: { th: "โทนสว่างมินิมอล", en: "Light Minimalist" },
   colors: {
     background: "#ffffff",
     backgroundAlt: "#f5f5f5",
@@ -75,6 +77,7 @@ const lightMinimalist: SlideStylePreset = {
 const corporateBlue: SlideStylePreset = {
   id: "corporate-blue",
   name: "Corporate Blue",
+  nameLocalized: { th: "คอร์ปอเรทบลู", en: "Corporate Blue" },
   colors: {
     background: "#f0f4f8",
     backgroundAlt: "#d9e2ec",
@@ -117,6 +120,7 @@ const corporateBlue: SlideStylePreset = {
 const natureGreen: SlideStylePreset = {
   id: "nature-green",
   name: "Nature Green",
+  nameLocalized: { th: "ธรรมชาติเขียว", en: "Nature Green" },
   colors: {
     background: "#f0f7f0",
     backgroundAlt: "#d4edda",
@@ -158,6 +162,7 @@ const natureGreen: SlideStylePreset = {
 const warmSunset: SlideStylePreset = {
   id: "warm-sunset",
   name: "Warm Sunset",
+  nameLocalized: { th: "อุ่นอาทิตย์อัสดง", en: "Warm Sunset" },
   colors: {
     background: "#fff8f0",
     backgroundAlt: "#ffecd2",
@@ -188,6 +193,7 @@ const warmSunset: SlideStylePreset = {
 const editorialClean: SlideStylePreset = {
   id: "editorial-clean",
   name: "Editorial Clean",
+  nameLocalized: { th: "เอดิทอเรียลสะอาด", en: "Editorial Clean" },
   colors: {
     background: "#f7f7f4",
     backgroundAlt: "#ecebe5",
@@ -229,6 +235,7 @@ const editorialClean: SlideStylePreset = {
 const midnightLuxe: SlideStylePreset = {
   id: "midnight-luxe",
   name: "Midnight Luxe",
+  nameLocalized: { th: "หรูหราเที่ยงคืน", en: "Midnight Luxe" },
   colors: {
     background: "#0d1117",
     backgroundAlt: "#161b22",

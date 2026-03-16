@@ -314,3 +314,33 @@ export const AIDraftProgressSchema = z.object({
 
 export type AIDraftProgress = z.infer<typeof AIDraftProgressSchema>;
 export type AIDraftProgressDiagnostics = z.infer<typeof AIDraftProgressDiagnosticsSchema>;
+
+// ── Generate Layout from Note schemas ────────────────────
+
+export const GenerateLayoutFromNoteInputSchema = z.object({
+  deckId: z.number().int().positive(),
+  slideId: z.number().int().positive(),
+  expectedVersion: z.number().int().nonnegative(),
+  stylePresetId: z.enum(AI_STYLE_PRESET_IDS).default("dark-professional"),
+  componentRecipeId: AIPresentationComponentRecipeIdSchema.optional(),
+});
+
+export type GenerateLayoutFromNoteInput = z.infer<
+  typeof GenerateLayoutFromNoteInputSchema
+>;
+
+export const GenerateLayoutFromDeckNoteInputSchema = z.object({
+  deckId: z.number().int().positive(),
+  expectedVersion: z.number().int().nonnegative(),
+  numSlides: z
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_AI_DRAFT_SLIDES)
+    .optional(),
+  stylePresetId: z.enum(AI_STYLE_PRESET_IDS).default("dark-professional"),
+});
+
+export type GenerateLayoutFromDeckNoteInput = z.infer<
+  typeof GenerateLayoutFromDeckNoteInputSchema
+>;

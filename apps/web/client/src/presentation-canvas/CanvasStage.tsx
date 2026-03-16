@@ -80,8 +80,8 @@ export interface CanvasStageDropAssetPayload extends CanvasStageDroppedAsset {
   y: number;
 }
 
-const MIN_STAGE_ZOOM = 0.5;
-const MAX_STAGE_ZOOM = 2;
+const MIN_STAGE_ZOOM = 0.25;
+const MAX_STAGE_ZOOM = 3;
 const STAGE_ZOOM_STEP = 0.1;
 const TRANSFORM_DOCK_WIDTH = 228;
 
@@ -254,16 +254,18 @@ export function CanvasStage({
     : null;
 
   function clampViewportOffsets(scale: number, nextOffsetX: number, nextOffsetY: number) {
-    if (scale <= 1) {
-      return { offsetX: 0, offsetY: 0 };
-    }
+    const scaledW = fittedStageSize.width * scale;
+    const scaledH = fittedStageSize.height * scale;
+    const containerW = fittedStageSize.width;
+    const containerH = fittedStageSize.height;
 
-    const minOffsetX = fittedStageSize.width - (fittedStageSize.width * scale);
-    const minOffsetY = fittedStageSize.height - (fittedStageSize.height * scale);
+    // Keep at least 10% of the canvas visible within the container
+    const padX = containerW * 0.1;
+    const padY = containerH * 0.1;
 
     return {
-      offsetX: Math.max(minOffsetX, Math.min(0, nextOffsetX)),
-      offsetY: Math.max(minOffsetY, Math.min(0, nextOffsetY)),
+      offsetX: Math.max(padX - scaledW, Math.min(containerW - padX, nextOffsetX)),
+      offsetY: Math.max(padY - scaledH, Math.min(containerH - padY, nextOffsetY)),
     };
   }
 
@@ -500,7 +502,7 @@ export function CanvasStage({
 
     const target = event.target as HTMLElement | null;
     const clickedCanvasObject = Boolean(target?.closest("[data-canvas-object='true']"));
-    if (isLeftButton && clickedCanvasObject && !isModifierPan && !event.shiftKey) {
+    if (isLeftButton && clickedCanvasObject && !isModifierPan) {
       return;
     }
 
@@ -509,7 +511,6 @@ export function CanvasStage({
       && !clickedCanvasObject
       && !isModifierPan
       && marqueeSelectRef.current
-      && (!activeViewport || activeViewport.scale <= 1)
     );
     if (shouldStartMarquee) {
       const point = toCanvasCoordinates(event.currentTarget, event.clientX, event.clientY);
@@ -533,7 +534,7 @@ export function CanvasStage({
       return;
     }
 
-    if (!activeViewport || !activeViewportChange || activeViewport.scale <= 1) {
+    if (!activeViewport || !activeViewportChange) {
       return;
     }
 
@@ -550,7 +551,7 @@ export function CanvasStage({
   }
 
   function handleCanvasContextMenu(event: ReactMouseEvent<HTMLDivElement>) {
-    if (effectiveScale > 1) {
+    if (panStateRef.current) {
       event.preventDefault();
     }
   }
@@ -723,7 +724,7 @@ export function CanvasStage({
               className="h-6 px-2 text-[11px]"
               aria-label="Center Canvas View"
               onClick={handleCenterViewport}
-              disabled={effectiveScale <= 1}
+              disabled={effectiveScale === 1 && offsetX === 0 && offsetY === 0}
             >
               Center
             </Button>
@@ -743,32 +744,17 @@ export function CanvasStage({
                 style={{
                   width: `${fittedStageSize.width}px`,
                   height: `${fittedStageSize.height}px`,
-                  backgroundColor: slideBackground?.type === "color"
-                    ? slideBackground.value
-                    : slideBackground?.type === "image"
-                      ? "transparent"
-                      : "#ffffff",
+                  backgroundColor: "#cbd5e1",
                 }}
                 aria-label="Canvas workspace"
                 onWheel={handleCanvasWheel}
               >
-                {slideBackground?.type === "image" && (
-                  <div
-                    className="absolute inset-0 pointer-events-none"
-                    style={{
-                      backgroundImage: `url(${slideBackground.url})`,
-                      backgroundSize: "cover",
-                      backgroundPosition: "center",
-                      backgroundRepeat: "no-repeat",
-                    }}
-                  />
-                )}
                 <div
                   data-testid="canvas-stage-layer-background"
                   className="absolute inset-0"
                   style={{
                     backgroundImage:
-                      "radial-gradient(circle at 1px 1px, rgba(148,163,184,0.26) 1px, transparent 0)",
+                      "radial-gradient(circle at 1px 1px, rgba(148,163,184,0.35) 1px, transparent 0)",
                     backgroundSize: "20px 20px",
                   }}
                 >
@@ -777,7 +763,7 @@ export function CanvasStage({
 
                 <div
                   data-testid="canvas-stage-layer-content"
-                  className={`absolute inset-0 touch-none ${effectiveScale > 1 ? "cursor-grab active:cursor-grabbing" : ""}`}
+                  className="absolute inset-0 touch-none cursor-grab active:cursor-grabbing"
                   onPointerDown={handlePanPointerDown}
                   onTouchStart={handleCanvasTouchStart}
                   onTouchMove={handleCanvasTouchMove}
@@ -791,13 +777,27 @@ export function CanvasStage({
                 >
                   <div
                     data-testid="canvas-stage-pan-surface"
-                    className="relative h-full w-full origin-top-left"
+                    className="relative h-full w-full origin-top-left rounded-sm shadow-lg"
                     style={{
                       width: `${canvasWidth}px`,
                       height: `${canvasHeight}px`,
                       transform: `translate(${offsetX}px, ${offsetY}px) scale(${baseRenderScale * effectiveScale})`,
+                      backgroundColor: slideBackground?.type === "color"
+                        ? slideBackground.value
+                        : "#ffffff",
                     }}
                   >
+                    {slideBackground?.type === "image" && (
+                      <div
+                        className="absolute inset-0 pointer-events-none"
+                        style={{
+                          backgroundImage: `url(${slideBackground.url})`,
+                          backgroundSize: "cover",
+                          backgroundPosition: "center",
+                          backgroundRepeat: "no-repeat",
+                        }}
+                      />
+                    )}
                     <CanvasObjects
                       elements={elements}
                       selectedElementIds={selectedElementIds}
@@ -842,6 +842,74 @@ export function CanvasStage({
                     ) : null}
                   </div>
                 </div>
+
+                {viewport && (effectiveScale !== 1 || offsetX !== 0 || offsetY !== 0) && (() => {
+                  const canvasScreenW = fittedStageSize.width * effectiveScale;
+                  const canvasScreenH = fittedStageSize.height * effectiveScale;
+                  return (
+                    <div
+                      data-testid="canvas-stage-layer-boundary-guides"
+                      className="pointer-events-none absolute inset-0 overflow-hidden"
+                    >
+                      {/* Canvas boundary frame */}
+                      <div
+                        className="absolute border border-dashed border-indigo-400/60"
+                        style={{
+                          left: offsetX,
+                          top: offsetY,
+                          width: canvasScreenW,
+                          height: canvasScreenH,
+                        }}
+                      />
+                      {/* Corner marks — top-left */}
+                      <div className="absolute bg-indigo-500/70" style={{ left: offsetX - 1, top: offsetY - 8, width: 2, height: 10 }} />
+                      <div className="absolute bg-indigo-500/70" style={{ left: offsetX - 8, top: offsetY - 1, width: 10, height: 2 }} />
+                      {/* Corner marks — top-right */}
+                      <div className="absolute bg-indigo-500/70" style={{ left: offsetX + canvasScreenW - 1, top: offsetY - 8, width: 2, height: 10 }} />
+                      <div className="absolute bg-indigo-500/70" style={{ left: offsetX + canvasScreenW - 1, top: offsetY - 1, width: 10, height: 2 }} />
+                      {/* Corner marks — bottom-left */}
+                      <div className="absolute bg-indigo-500/70" style={{ left: offsetX - 1, top: offsetY + canvasScreenH - 1, width: 2, height: 10 }} />
+                      <div className="absolute bg-indigo-500/70" style={{ left: offsetX - 8, top: offsetY + canvasScreenH - 1, width: 10, height: 2 }} />
+                      {/* Corner marks — bottom-right */}
+                      <div className="absolute bg-indigo-500/70" style={{ left: offsetX + canvasScreenW - 1, top: offsetY + canvasScreenH - 1, width: 2, height: 10 }} />
+                      <div className="absolute bg-indigo-500/70" style={{ left: offsetX + canvasScreenW - 1, top: offsetY + canvasScreenH - 1, width: 10, height: 2 }} />
+                      {/* Preset label at top-left corner of canvas */}
+                      <div
+                        className="absolute"
+                        style={{
+                          left: Math.max(4, offsetX + 4),
+                          top: Math.max(4, offsetY - 22),
+                        }}
+                      >
+                        <span className="rounded bg-indigo-500/80 px-1.5 py-0.5 text-[10px] font-medium text-white shadow-sm">
+                          {canvasSize.preset || "custom"} · {canvasWidth}×{canvasHeight}
+                        </span>
+                      </div>
+                      {/* Width dimension at top */}
+                      <div
+                        className="absolute flex justify-center"
+                        style={{
+                          left: offsetX,
+                          top: Math.max(4, offsetY - 20),
+                          width: canvasScreenW,
+                        }}
+                      >
+                        <span className="text-[10px] font-medium text-indigo-400/80">{canvasWidth}px</span>
+                      </div>
+                      {/* Height dimension at left */}
+                      <div
+                        className="absolute flex items-center"
+                        style={{
+                          left: Math.max(2, offsetX - 34),
+                          top: offsetY,
+                          height: canvasScreenH,
+                        }}
+                      >
+                        <span className="origin-center -rotate-90 text-[10px] font-medium text-indigo-400/80 whitespace-nowrap">{canvasHeight}px</span>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 <div
                   data-testid="canvas-stage-layer-selection-guides"
@@ -896,9 +964,9 @@ export function CanvasStage({
           </div>
         </div>
 
-        {effectiveScale > 1 ? (
+        {viewport ? (
           <p className="pointer-events-none absolute bottom-2 right-2 rounded bg-black/70 px-2 py-1 text-[11px] text-white">
-            Scroll to zoom. Pan: Alt+drag or right/middle-mouse drag. Select: drag empty area. Shift adds to selection.
+            Scroll to zoom · Alt+drag / middle-mouse to pan · Drag empty area to select
           </p>
         ) : null}
       </div>

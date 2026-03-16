@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import DOMPurify from "dompurify";
 
 import { normalizeMediaSourceUrl } from "@/lib/mediaUrl";
 import type {
@@ -34,6 +35,7 @@ function renderPreviewElement(
   index: number,
   canvasWidth: number,
   canvasHeight: number,
+  renderScale: number,
 ): JSX.Element {
   const commonStyle = {
     left: `${(element.x / canvasWidth) * 100}%`,
@@ -49,13 +51,16 @@ function renderPreviewElement(
   } satisfies CSSProperties;
 
   if (element.type === "text") {
-    const fontSize = typeof element.fontSize === "number" && Number.isFinite(element.fontSize)
+    const rawFontSize = typeof element.fontSize === "number" && Number.isFinite(element.fontSize)
       ? element.fontSize
       : 48;
+    const fontSize = rawFontSize * renderScale;
     const lineHeight = Number.isFinite(element.lineHeight) ? element.lineHeight : 1.25;
-    const letterSpacing = typeof element.letterSpacing === "number" && Number.isFinite(element.letterSpacing)
+    const rawLetterSpacing = typeof element.letterSpacing === "number" && Number.isFinite(element.letterSpacing)
       ? element.letterSpacing
       : 0;
+    const letterSpacing = rawLetterSpacing * renderScale;
+    const padding = 8 * renderScale;
     return (
       <div
         key={element.id || `preview-${index}`}
@@ -63,12 +68,12 @@ function renderPreviewElement(
         style={{
           ...commonStyle,
           backgroundColor: element.backgroundColor || "transparent",
-          padding: "8px",
+          padding: `${padding}px`,
           boxSizing: "border-box",
         }}
       >
         <p
-          className="w-full whitespace-pre-wrap break-all"
+          className="w-full whitespace-pre-wrap break-words"
           style={{
             color: element.color || "#111827",
             fontSize,
@@ -83,7 +88,7 @@ function renderPreviewElement(
             ...(element.textStroke ? { WebkitTextStroke: element.textStroke } : {}),
           }}
         >
-          {element.text || "Text"}
+          {element.text || ""}
         </p>
       </div>
     );
@@ -118,7 +123,7 @@ function renderPreviewElement(
               transform: `scale(${zoom})`,
               transformOrigin: `${positionX}% ${positionY}%`,
             }}
-            dangerouslySetInnerHTML={{ __html: coloredSvg }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(coloredSvg, { USE_PROFILES: { svg: true, svgFilters: true } }) }}
           />
         ) : source ? (
           <img
@@ -134,7 +139,7 @@ function renderPreviewElement(
             }}
           />
         ) : (
-          <div className="grid h-full w-full place-items-center text-[10px] font-medium text-slate-500">
+          <div className="grid h-full w-full place-items-center font-medium text-slate-500" style={{ fontSize: `${Math.max(8, 10 * renderScale)}px` }}>
             Image
           </div>
         )}
@@ -173,7 +178,7 @@ function renderPreviewElement(
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-950" />
         )}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-2 py-1 text-[11px] text-white">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent text-white" style={{ padding: `${Math.max(2, 4 * renderScale)}px ${Math.max(4, 8 * renderScale)}px`, fontSize: `${Math.max(8, 11 * renderScale)}px` }}>
           <span className="truncate">{element.title || "Video"}</span>
         </div>
       </div>
@@ -181,6 +186,7 @@ function renderPreviewElement(
   }
 
   if (element.type === "rect") {
+    const strokeWidth = Math.max(0, (element.strokeWidth ?? 0) * renderScale);
     return (
       <div
         key={element.id || `preview-${index}`}
@@ -188,7 +194,7 @@ function renderPreviewElement(
         style={{
           ...commonStyle,
           backgroundColor: element.fill || "#93c5fd",
-          border: `${Math.max(0, element.strokeWidth ?? 0)}px solid ${element.stroke || "transparent"}`,
+          border: `${strokeWidth}px solid ${element.stroke || "transparent"}`,
         }}
       />
     );
@@ -203,7 +209,7 @@ function renderPreviewElement(
       <div
         className="absolute left-0 right-0 top-1/2"
         style={{
-          borderTop: `${Math.max(1, element.strokeWidth || 1)}px solid ${element.stroke || "#1f2937"}`,
+          borderTop: `${Math.max(1, (element.strokeWidth || 1) * renderScale)}px solid ${element.stroke || "#1f2937"}`,
         }}
       />
     </div>
@@ -219,6 +225,7 @@ export function SlideElementPreview({
   className = "",
 }: SlideElementPreviewProps) {
   const previewHeight = Math.max(120, Math.round((targetWidth * canvasSize.height) / canvasSize.width));
+  const renderScale = targetWidth / canvasSize.width;
   const backgroundColor = background?.type === "color" ? background.value : "#ffffff";
 
   return (
@@ -247,15 +254,10 @@ export function SlideElementPreview({
             />
           ) : null}
           <div
-            className="absolute inset-0 origin-top-left"
-            style={{
-              width: `${canvasSize.width}px`,
-              height: `${canvasSize.height}px`,
-              transform: `scale(${targetWidth / canvasSize.width})`,
-            }}
+            className="absolute inset-0"
           >
             {elements.map((element, index) => (
-              renderPreviewElement(element, index, canvasSize.width, canvasSize.height)
+              renderPreviewElement(element, index, canvasSize.width, canvasSize.height, renderScale)
             ))}
           </div>
         </div>

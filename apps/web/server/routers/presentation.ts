@@ -67,6 +67,8 @@ import { applyTemplateAssetToDeck } from "../services/presentationTemplateServic
 import { getRedisClient } from "../services/redis";
 import {
   generateAIDraft,
+  generateLayoutFromNoteAsync,
+  generateLayoutFromDeckNoteAsync,
   repairSlideFromSavedNote,
   relayoutExistingSlideAsync,
   resolvePendingMediaForDeck,
@@ -90,6 +92,9 @@ import {
   AI_STYLE_PRESET_IDS,
   AIWatermarkSchema,
   GenerateAIDraftInputSchema,
+  GenerateLayoutFromNoteInputSchema,
+  GenerateLayoutFromDeckNoteInputSchema,
+  MAX_AI_DRAFT_SLIDES,
   type GenerateAIDraftInput,
 } from "@shared/presentation/aiTypes";
 import { BUILT_IN_PRESENTATION_COMPONENT_IDS } from "@shared/presentation/componentRecipes";
@@ -657,6 +662,118 @@ export const presentationRouter = router({
             warnings: repaired.warnings,
             applied: repaired.applied,
           };
+        } catch (err) {
+          if (err instanceof PresentationServiceError) {
+            throw mapPresentationServiceError(err);
+          }
+          throw err;
+        }
+      }),
+
+    generateLayoutFromNote: protectedProcedure
+      .use(createRateLimitMiddleware({ namespace: "ai-layout-note", limit: 10, windowMs: 60_000 }))
+      .input(GenerateLayoutFromNoteInputSchema)
+      .mutation(async ({ input, ctx }) => {
+        try {
+          ensureFeatureEnabled();
+          ensureAIGenerationEnabled();
+          const actor = toPresentationActor(ctx);
+          const userToken = getPresentationToken(ctx, ["media:generate"]);
+          const result = await generateLayoutFromNoteAsync(
+            {
+              deckId: input.deckId,
+              slideId: input.slideId,
+              expectedVersion: input.expectedVersion,
+              stylePresetId: input.stylePresetId,
+              componentRecipeId: input.componentRecipeId,
+            },
+            actor,
+            userToken,
+          );
+          // Re-fetch latest slide version after LLM + image gen (may take 30-60s)
+          const freshDetail = await getPresentationDeckDetail(input.deckId, actor);
+          const freshSlide = freshDetail.slides.find((s) => s.id === input.slideId);
+          const latestSlideVersion = freshSlide?.version ?? input.expectedVersion;
+          const updatedSlide = await updateSlideInDeck(
+            {
+              deckId: input.deckId,
+              slideId: input.slideId,
+              expectedVersion: latestSlideVersion,
+              saveMode: "manual",
+              title: result.title,
+              slideContent: result.slideContent,
+            },
+            actor,
+          );
+          return {
+            slide: updatedSlide,
+            warnings: result.warnings,
+            applied: result.applied,
+          };
+        } catch (err) {
+          if (err instanceof PresentationServiceError) {
+            throw mapPresentationServiceError(err);
+          }
+          throw err;
+        }
+      }),
+
+    generateLayoutFromDeckNote: protectedProcedure
+      .use(createRateLimitMiddleware({ namespace: "ai-layout-deck", limit: 3, windowMs: 60_000 }))
+      .input(GenerateLayoutFromDeckNoteInputSchema)
+      .mutation(async ({ input, ctx }) => {
+        try {
+          ensureFeatureEnabled();
+          ensureAIGenerationEnabled();
+          const actor = toPresentationActor(ctx);
+          const userToken = getPresentationToken(ctx, ["media:generate"]);
+
+          // Verify deck exists and has notes
+          const detail = await getPresentationDeckDetail(input.deckId, actor);
+          const deckNotes = String(detail.deck.notes ?? "").trim();
+          if (!deckNotes) {
+            throw new PresentationServiceError(
+              PRESENTATION_ERROR_CODE.VALIDATION_FAILED,
+              `${PRESENTATION_ERROR_CODE.VALIDATION_FAILED}: deck notes are empty — add notes before generating layout`,
+            );
+          }
+
+          const taskId = `layout-deck-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+          // Fire-and-forget pipeline
+          generateLayoutFromDeckNoteAsync(
+            {
+              deckId: input.deckId,
+              expectedVersion: input.expectedVersion,
+              numSlides: input.numSlides,
+              stylePresetId: input.stylePresetId,
+            },
+            actor,
+            userToken,
+            taskId,
+          ).catch(async (err) => {
+            try {
+              const errMsg = err instanceof Error ? err.message : "Unknown error";
+              const redis = getRedisClient();
+              await redis.set(
+                `ai_draft_progress:${taskId}`,
+                JSON.stringify({
+                  phase: 0,
+                  phaseLabel: "Error",
+                  slidesCompleted: 0,
+                  totalSlides: 0,
+                  slidePreview: [],
+                  completed: true,
+                  userId: actor.userId,
+                  error: { code: "INTERNAL_ERROR", message: errMsg.slice(0, 500) },
+                }),
+                "EX",
+                3600,
+              );
+            } catch { /* ignore */ }
+          });
+
+          return { taskId };
         } catch (err) {
           if (err instanceof PresentationServiceError) {
             throw mapPresentationServiceError(err);
