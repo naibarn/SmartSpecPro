@@ -115,29 +115,48 @@ export default function AdminOrchestrationLogs() {
   const entries = data?.entries ?? [];
 
   return (
-    <div className="container mx-auto p-4 space-y-4">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/admin")}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h1 className="text-xl font-bold">Orchestration Audit Logs</h1>
-          <p className="text-sm text-muted-foreground">
-            Hybrid Skill Orchestrator (Feature 045) — classification, pipeline,
-            and fallback events
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+      {/* Sticky Header */}
+      <header className="bg-white/70 backdrop-blur-xl border-b sticky top-0 z-10">
+        <div className="px-4 sm:px-6 lg:px-8 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/admin/dashboard")}
+              >
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                Back
+              </Button>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
+                  <Activity className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold leading-tight">
+                    Orchestration Logs
+                  </h1>
+                  <p className="text-xs text-muted-foreground">
+                    Classification, pipeline, and fallback events
+                  </p>
+                </div>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+            >
+              <RefreshCw className="h-3.5 w-3.5 mr-1" />
+              Refresh
+            </Button>
+          </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          className="ml-auto"
-        >
-          <RefreshCw className="h-3.5 w-3.5 mr-1" />
-          Refresh
-        </Button>
-      </div>
+      </header>
+
+      {/* Content */}
+      <div className="px-4 sm:px-6 lg:px-8 py-4 space-y-4">
 
       {/* Stats Cards */}
       {stats && (
@@ -356,6 +375,8 @@ export default function AdminOrchestrationLogs() {
           )}
         </CardContent>
       </Card>
+
+      </div>{/* end content */}
 
       {/* Trace Detail Dialog */}
       <Dialog
