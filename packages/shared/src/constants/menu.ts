@@ -53,6 +53,7 @@ export const defaultMenuItems: MenuItem[] = [
   { id: 'admin-queues-llm',     label: 'LLM Monitor',       icon: 'Brain',       path: '/admin/queues/llm',         platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 21.6 },
   { id: 'admin-queues-media',   label: 'Media Monitor',     icon: 'PlayCircle',  path: '/admin/queues/media',       platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 21.7 },
   { id: 'admin-audit-logs',     label: 'Audit Logs',        labelTh: 'บันทึกตรวจสอบ', icon: 'Activity', path: '/admin/audit-logs', platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 21.75 },
+  { id: 'admin-orchestration-logs', label: 'Orchestration Logs', labelTh: 'บันทึก Orchestrator', icon: 'Workflow', path: '/admin/orchestration-logs', platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 21.8 },
   { id: 'admin-task-queue',     label: 'Task Queue',        labelTh: 'คิวงาน',  icon: 'ListChecks', path: '/tasks',                    platforms: ['web', 'desktop'], group: 'main', sortOrder: 9.6 },
   { id: 'admin-docker',         label: 'Docker Status',     icon: 'Activity',    path: 'https://docker.smartaihub.app',    platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 22,   external: true },
   { id: 'admin-glitchtip',      label: 'Error Tracking',    icon: 'Bug',         path: 'https://glitchtip.smartaihub.app', platforms: ['web', 'desktop'], roles: ['admin'], group: 'admin', sortOrder: 22.5, external: true },
