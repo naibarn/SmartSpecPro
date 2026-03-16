@@ -53,6 +53,7 @@ import {
   Package,
   Gauge,
   Timer,
+  Workflow,
 } from "lucide-react";
 
 // --- Chart configs ---
@@ -320,6 +321,7 @@ export default function AdminOverviewDashboard() {
     { label: "LLM Models", icon: Cpu, path: "/admin/llm-models" },
     { label: "Media Monitor", icon: PlayCircle, path: "/admin/queues/media" },
     { label: "Audit Logs", icon: Shield, path: "/admin/audit-logs" },
+    { label: "Orchestration Logs", icon: Workflow, path: "/admin/orchestration-logs" },
     { label: "Infrastructure", icon: Server, path: "/admin/settings" },
     { label: "Users", icon: Users, path: "/admin/users" },
     { label: "Tenants", icon: Building2, path: "/admin/tenants" },
