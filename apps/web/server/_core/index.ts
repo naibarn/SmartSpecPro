@@ -769,6 +769,40 @@ app.post("/api/internal/agency/create", async (req, res) => {
   }
   if (!user) return res.status(401).json({ error: "Unauthorized" });
 
+  // Validate request body schema
+  const { z } = await import("zod");
+  const agencyCreateSchema = z.object({
+    name: z.string().min(1).max(200),
+    description: z.string().max(2000).optional().default(""),
+    tenantId: z.string().max(100).optional().default(""),
+    agents: z.array(z.object({
+      id: z.string(),
+      name: z.string().min(1).max(200),
+      description: z.string().max(2000).optional().default(""),
+      instructions: z.string().max(10000).optional().default(""),
+      model: z.string().max(100).optional().default("gpt-4o"),
+      nodeType: z.string().max(50).optional().default("agent"),
+      nodeConfig: z.record(z.unknown()).optional().default({}),
+      isEntryPoint: z.boolean().optional().default(false),
+      isOptional: z.boolean().optional().default(false),
+      position: z.object({ x: z.number(), y: z.number() }).optional(),
+      toolIds: z.array(z.string().max(100)).optional().default([]),
+      toolConfigs: z.record(z.record(z.unknown())).optional().default({}),
+    })).min(1).max(20),
+    communicationFlows: z.array(z.object({
+      id: z.string().optional(),
+      fromAgentId: z.string(),
+      toAgentId: z.string(),
+      flowType: z.string().max(50).optional().default("delegation"),
+    })).optional().default([]),
+  });
+
+  const bodyParse = agencyCreateSchema.safeParse(req.body);
+  if (!bodyParse.success) {
+    return res.status(400).json({ error: "Invalid request body", details: bodyParse.error.issues.map(i => i.message).join(", ") });
+  }
+  const validatedBody = bodyParse.data;
+
   try {
     const {
       agencies: agenciesTable,
@@ -782,7 +816,7 @@ app.post("/api/internal/agency/create", async (req, res) => {
     const tenantReq = req as any;
     // Prefer explicit tenantId from request body (passed by Celery task from the user's tRPC context),
     // then fall back to tenant middleware, then user's currentTenantId
-    const tenantId: string = req.body.tenantId || tenantReq.tenant?.id || String(user.currentTenantId ?? "");
+    const tenantId: string = validatedBody.tenantId || tenantReq.tenant?.id || String(user.currentTenantId ?? "");
 
     // Verify user belongs to the specified tenant (prevents cross-tenant agency creation via internal token)
     if (tenantId && (user as any).__internalAuth) {
@@ -796,34 +830,7 @@ app.post("/api/internal/agency/create", async (req, res) => {
       }
     }
 
-    const {
-      name,
-      description,
-      agents = [],
-      communicationFlows = [],
-    } = req.body as {
-      name: string;
-      description?: string;
-      agents: Array<{
-        id: string; // spec-level ID used in communicationFlows
-        name: string;
-        description?: string;
-        instructions?: string;
-        model?: string;
-        nodeType?: string;
-        nodeConfig?: Record<string, unknown>;
-        isEntryPoint?: boolean;
-        isOptional?: boolean;
-        position?: { x: number; y: number };
-        toolIds?: string[];
-        toolConfigs?: Record<string, Record<string, unknown>>;
-      }>;
-      communicationFlows: Array<{
-        fromAgentId: string; // spec-level ID
-        toAgentId: string;
-        flowType?: string;
-      }>;
-    };
+    const { name, description, agents, communicationFlows } = validatedBody;
 
     if (!name?.trim()) {
       return res.status(400).json({ error: "name is required" });

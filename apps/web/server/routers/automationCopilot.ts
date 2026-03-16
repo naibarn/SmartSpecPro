@@ -28,7 +28,7 @@ import { loadLegacyAutomationSettings } from "../services/browserPolicySettingsB
 
 const PY_URL =
   process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
-const PROXY_TOKEN = process.env.SMARTSPEC_PROXY_TOKEN || process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || "";
+const INTERNAL_TOKEN = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN || process.env.SMARTSPEC_PROXY_TOKEN || "";
 const AUTOMATION_PREFIX = "/api/v1/automation-copilot";
 const CREDIT_RESERVE_AMOUNT = 100;
 const MIN_CREDITS_TO_START = 10;
@@ -46,7 +46,7 @@ async function callPythonBackend(
       method,
       headers: {
         "Content-Type": "application/json",
-        ...(PROXY_TOKEN ? { "x-proxy-token": PROXY_TOKEN } : {}),
+        ...(INTERNAL_TOKEN ? { "x-internal-token": INTERNAL_TOKEN } : {}),
       },
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal,
@@ -424,14 +424,22 @@ export const automationCopilotRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "Template not found" });
       }
 
-      // Increment usage
+      // Increment usage — scoped by tenant to prevent cross-tenant updates
       await db
         .update(automationTemplates)
         .set({
           usageCount: sqlFn`${automationTemplates.usageCount} + 1`,
           lastUsedAt: new Date(),
         })
-        .where(eq(automationTemplates.id, input.templateId));
+        .where(
+          and(
+            eq(automationTemplates.id, input.templateId),
+            or(
+              eq(automationTemplates.tenantId, tenantId),
+              eq(automationTemplates.isPublic, true),
+            ),
+          ),
+        );
 
       return {
         intent: template.intent,

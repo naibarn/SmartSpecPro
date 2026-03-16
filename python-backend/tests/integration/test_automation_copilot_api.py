@@ -40,8 +40,7 @@ def mock_redis():
 @pytest.fixture
 def client(app, mock_redis):
     with patch("app.api.automation_copilot.settings") as mock_settings:
-        mock_settings.SMARTSPEC_PROXY_TOKEN = VALID_TOKEN
-        mock_settings.SMARTSPEC_WEB_GATEWAY_TOKEN = None
+        mock_settings.SMARTSPEC_WEB_GATEWAY_TOKEN = VALID_TOKEN
         mock_settings.CELERY_BROKER_URL = "redis://localhost:6379/0"
         with patch("app.api.automation_copilot._get_redis", return_value=mock_redis):
             yield TestClient(app)

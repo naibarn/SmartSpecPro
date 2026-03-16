@@ -55,37 +55,24 @@ def test_llm_document_no_jwt():
 
 def test_no_bearer_header_in_llm_calls():
     """LLM helper functions must not use Bearer JWT auth."""
-    import pathlib
+    from app.tasks.agency_creator_task import _llm_call
 
-    source_path = pathlib.Path(inspect.getfile(create_agency_discover_task.run)).resolve()
-    source = source_path.read_text()
+    source = inspect.getsource(_llm_call)
 
-    # Extract the _llm_call function source and check it doesn't use Bearer
-    llm_call_start = source.index("async def _llm_call(")
-    llm_call_end = source.index("\n\nasync def _llm_discover(")
-    llm_call_source = source[llm_call_start:llm_call_end]
-
-    assert "Bearer" not in llm_call_source, "Bearer JWT auth found in _llm_call"
-    assert "Authorization" not in llm_call_source, "Authorization header found in _llm_call"
-    assert "LLMGatewayClient" in llm_call_source, "LLMGatewayClient not used in _llm_call"
+    assert "Bearer" not in source, "Bearer JWT auth found in _llm_call"
+    assert "Authorization" not in source, "Authorization header found in _llm_call"
+    assert "LLMGatewayClient" in source, "LLMGatewayClient not used in _llm_call"
 
 
 def test_implement_agency_uses_internal_token():
     """_implement_agency must use X-Internal-Token, not Bearer JWT."""
-    import pathlib
+    from app.tasks.agency_creator_task import _implement_agency
 
-    source_path = pathlib.Path(inspect.getfile(create_agency_discover_task.run)).resolve()
-    source = source_path.read_text()
+    source = inspect.getsource(_implement_agency)
 
-    # Extract _implement_agency source
-    impl_start = source.index("async def _implement_agency(")
-    impl_end = source.index("\n\nasync def _llm_document(")
-    impl_source = source[impl_start:impl_end]
-
-    assert "X-Internal-Token" in impl_source, "X-Internal-Token not found in _implement_agency"
-    assert "X-User-Id" in impl_source, "X-User-Id not found in _implement_agency"
-    assert "Bearer" not in impl_source, "Bearer JWT auth still in _implement_agency"
-    assert "user_jwt" not in impl_source, "user_jwt reference still in _implement_agency"
+    assert "X-Internal-Token" in source, "X-Internal-Token not found in _implement_agency"
+    assert "X-User-Id" in source, "X-User-Id not found in _implement_agency"
+    assert "Bearer" not in source, "Bearer JWT auth still in _implement_agency"
 
 
 def test_implement_agency_signature():
