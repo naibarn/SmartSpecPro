@@ -43,7 +43,7 @@ import { skillDetectionLimiter, skillExecutionLimiter } from "../services/rateLi
 import { debugLog, debugError } from "../_core/logger";
 import { ENABLE_FUNNEL_TRACKING, trackFirstConversation } from "../services/funnelMilestones";
 import { getDb } from "../db";
-import { skills as skillsTable, userSkillVisibility } from "../../drizzle/schema";
+import { skills as skillsTable, userSkillVisibility, conversations } from "../../drizzle/schema";
 import { eq, and, like } from "drizzle-orm";
 import { checkRateLimit } from "../middleware/distributedRateLimit";
 import { auditLogger } from "../services/auditLogger";
@@ -1963,6 +1963,91 @@ export const chatRouter = router({
         status: task.status,
         skillId: task.skillId,
         result: task.result ?? null,
+      };
+    }),
+
+  /**
+   * Confirm orchestration parameters and execute skill directly.
+   * Called by OrchestrationConfirmForm after user fills missing fields.
+   * Feature 045: Hybrid Skill Orchestrator (Section 11).
+   */
+  confirmOrchestration: protectedProcedure
+    .input(
+      z.object({
+        conversationId: z.number(),
+        skillId: z.string(),
+        params: z
+          .record(z.unknown())
+          .refine(
+            (v) => JSON.stringify(v).length < 50_000,
+            "Params payload too large (max 50 KB)",
+          ),
+        traceId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // 1. Verify conversation ownership
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const [conv] = await db
+        .select({ id: conversations.id })
+        .from(conversations)
+        .where(
+          and(
+            eq(conversations.id, input.conversationId),
+            eq(conversations.userId, ctx.user.id),
+          ),
+        )
+        .limit(1);
+
+      if (!conv) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Conversation not found" });
+      }
+
+      // 2. Look up skill and execute
+      const { getSkillByIdAsync } = await import("../services/skillRegistry");
+      const { executeSkill } = await import("../services/skillExecutor");
+      const skillDef = await getSkillByIdAsync(input.skillId);
+      if (!skillDef) {
+        throw new TRPCError({ code: "NOT_FOUND", message: `Skill not found: ${input.skillId}` });
+      }
+
+      // 3. Execute skill with confirmed params
+      const execParams = {
+        prompt:
+          (input.params.prompt as string) ||
+          (input.params.topic as string) ||
+          (input.params.content as string) ||
+          "",
+        conversationId: input.conversationId.toString(),
+        extraParams: input.params as Record<string, any>,
+        traceId: input.traceId,
+      };
+
+      const userToken = ctx.userToken || createSkillToken(ctx.user.id);
+      const result = await executeSkill(
+        skillDef,
+        execParams,
+        ctx.user.id,
+        userToken,
+        ctx.tenantId ?? undefined,
+      );
+
+      return {
+        type: "orchestration_result" as const,
+        sections: [
+          {
+            skillId: input.skillId,
+            type: result.success ? (result.type === "text" ? "text" : "image") : "error",
+            content: result.message,
+            urls: result.resultUrls ?? (result.resultUrl ? [result.resultUrl] : undefined),
+            creditsUsed: result.creditsUsed ?? 0,
+            durationMs: 0,
+          },
+        ],
+        totalCreditsUsed: result.creditsUsed ?? 0,
+        traceId: input.traceId,
       };
     }),
 });

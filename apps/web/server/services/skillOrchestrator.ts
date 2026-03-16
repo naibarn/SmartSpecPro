@@ -188,8 +188,8 @@ export async function orchestrateSkill(
         const section: OrchestrationResultSection = {
           skillId: skill.skillId,
           type: execResult.success ? (execResult.type === "text" ? "text" : "image") : "error",
-          content: execResult.content,
-          urls: execResult.urls ? [execResult.urls].flat() : undefined,
+          content: execResult.message,
+          urls: execResult.resultUrls ?? (execResult.resultUrl ? [execResult.resultUrl] : undefined),
           metadata: {
             creditsUsed: execResult.creditsUsed ?? 0,
             durationMs: Date.now() - startMs,
