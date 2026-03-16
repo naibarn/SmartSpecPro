@@ -32,6 +32,8 @@ import {
   resolveRelativeSkillManifestPath,
   resolveSkillManifestPath,
 } from "./skillFiles";
+import { clearSchemaCache } from "./skillSchemaLoader";
+import { clearSkillCatalogCache } from "./skillCatalog";
 
 export type { SkillType, SkillDefinition } from "@smartspec/skills";
 
@@ -687,6 +689,8 @@ export function getSkillRegistry(): SkillDefinition[] {
 export function clearSkillRegistryCache(): void {
   _skillRegistryCache = null;
   _skillRegistryCacheTime = 0;
+  clearSkillCatalogCache();
+  clearSchemaCache();
 }
 
 /**
@@ -797,3 +801,6 @@ export async function initializeSkillRegistry(): Promise<void> {
 
   console.log("[SkillRegistry] Initialization complete");
 }
+
+// Re-export catalog functions from skillCatalog.ts (Feature 045)
+export { getSkillCatalogSummary, buildSkillCategoryGroups } from "./skillCatalog";

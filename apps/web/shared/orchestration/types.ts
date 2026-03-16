@@ -113,6 +113,26 @@ export interface ParamExtractionResult {
   needsConfirmation: boolean;
 }
 
+/** Compact skill info for the LLM classifier catalog */
+export interface SkillCatalogEntry {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  inputTypes: string[];
+  outputTypes: string[];
+  hasInputSchema: boolean;
+  requiredFields: string[];
+}
+
+/** Parsed metadata from a skill's input.schema.json */
+export interface SkillInputSchemaInfo {
+  schema: Record<string, unknown>;
+  requiredFields: string[];
+  fieldsWithDefaults: string[];
+  enumFields: string[];
+}
+
 /** Max orchestration level setting for tenant configuration */
 export type SkillOrchestratorMaxLevel = "disabled" | "simple" | "compound" | "complex";
 
