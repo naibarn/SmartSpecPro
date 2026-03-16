@@ -8,13 +8,10 @@ Endpoints:
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
 from app.core.auth import get_current_user
 from app.models.user import User
-
-_bearer_scheme = HTTPBearer()
 
 router = APIRouter()
 logger = structlog.get_logger(__name__)
@@ -37,7 +34,6 @@ class AgencyCreatorAnswerRequest(BaseModel):
 @router.post("/start")
 async def start_agency_creator(
     body: AgencyCreatorStartRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(_bearer_scheme),
     current_user: User = Depends(get_current_user),
 ):
     """Submit agency creation to Celery queue. Returns task_id immediately."""
@@ -66,12 +62,8 @@ async def start_agency_creator(
         payload["specFileBase64"] = body.spec_file_base64
 
     try:
-        # Get the bearer token from Authorization header
-        user_jwt = credentials.credentials
-
         create_agency_discover_task.delay(
             task_id=task_id,
-            user_jwt=user_jwt,
             user_id=current_user.id,
             payload=payload,
         )
@@ -88,7 +80,7 @@ async def start_agency_creator(
         })
         import threading
         t = threading.Thread(
-            target=lambda: _run_async(_discover_async(task_id, user_jwt, current_user.id, payload)),
+            target=lambda: _run_async(_discover_async(task_id, current_user.id, payload)),
             daemon=True,
         )
         t.start()
@@ -119,7 +111,6 @@ async def get_agency_creator_status(
 @router.post("/answer")
 async def submit_agency_creator_answers(
     body: AgencyCreatorAnswerRequest,
-    credentials: HTTPAuthorizationCredentials = Depends(_bearer_scheme),
     current_user: User = Depends(get_current_user),
 ):
     """Store interview answers and dispatch the design task."""
@@ -142,8 +133,6 @@ async def submit_agency_creator_answers(
     payload = status.get("_payload", {})
     intent = status.get("_intent", {})
     model = status.get("_model", "gpt-4o")
-    user_jwt = credentials.credentials  # Use fresh token from current request
-
     design_payload = {**payload, "intent": intent, "answers": body.answers, "model": model}
 
     _set_status(body.task_id, {
@@ -156,7 +145,6 @@ async def submit_agency_creator_answers(
     try:
         create_agency_design_task.delay(
             task_id=body.task_id,
-            user_jwt=user_jwt,
             user_id=current_user.id,
             payload=design_payload,
         )
@@ -166,7 +154,7 @@ async def submit_agency_creator_answers(
         from app.tasks.agency_creator_task import _run_async, _design_async
         import threading
         t = threading.Thread(
-            target=lambda: _run_async(_design_async(body.task_id, user_jwt, current_user.id, design_payload)),
+            target=lambda: _run_async(_design_async(body.task_id, current_user.id, design_payload)),
             daemon=True,
         )
         t.start()

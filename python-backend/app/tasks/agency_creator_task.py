@@ -98,7 +98,6 @@ def create_task_id() -> str:
 def create_agency_discover_task(
     self,
     task_id: str,
-    user_jwt: str,
     user_id: int,
     payload: dict,
 ):
@@ -117,7 +116,7 @@ def create_agency_discover_task(
     })
 
     try:
-        result = _run_async(_discover_async(task_id, user_jwt, user_id, payload))
+        result = _run_async(_discover_async(task_id, user_id, payload))
         return result
     except Exception as exc:
         logger.error("agency_creator_discover_failed", task_id=task_id, error=str(exc)[:300])
@@ -129,7 +128,7 @@ def create_agency_discover_task(
         return {"status": "failed"}
 
 
-async def _discover_async(task_id: str, user_jwt: str, user_id: int, payload: dict) -> dict:
+async def _discover_async(task_id: str, user_id: int, payload: dict) -> dict:
     """Async implementation of DISCOVER + INTERVIEW phases."""
     requirement: str = payload.get("requirement", "")
     skip_interview: bool = payload.get("skipInterview", False)
@@ -143,7 +142,7 @@ async def _discover_async(task_id: str, user_jwt: str, user_id: int, payload: di
         "_user_id": user_id,
     })
 
-    intent = await _llm_discover(requirement, model, user_jwt)
+    intent = await _llm_discover(requirement, model, user_id)
 
     # Phase 2: INTERVIEW — decide if we need more info
     if skip_interview or intent.get("is_clear", True):
@@ -156,7 +155,6 @@ async def _discover_async(task_id: str, user_jwt: str, user_id: int, payload: di
         })
         create_agency_design_task.delay(
             task_id=task_id,
-            user_jwt=user_jwt,
             user_id=user_id,
             payload={**payload, "intent": intent, "answers": {}},
         )
@@ -167,7 +165,6 @@ async def _discover_async(task_id: str, user_jwt: str, user_id: int, payload: di
         # No questions → go straight to design
         create_agency_design_task.delay(
             task_id=task_id,
-            user_jwt=user_jwt,
             user_id=user_id,
             payload={**payload, "intent": intent, "answers": {}},
         )
@@ -182,7 +179,7 @@ async def _discover_async(task_id: str, user_jwt: str, user_id: int, payload: di
         "_payload": payload,  # stored for when design task is dispatched
         "_intent": intent,
         "_model": model,
-        "_user_jwt": user_jwt,
+        # _user_jwt intentionally omitted — never persist bearer tokens at rest in Redis
     })
     return {"status": "awaiting_answers", "questions": questions}
 
@@ -199,7 +196,6 @@ async def _discover_async(task_id: str, user_jwt: str, user_id: int, payload: di
 def create_agency_design_task(
     self,
     task_id: str,
-    user_jwt: str,
     user_id: int,
     payload: dict,
 ):
@@ -216,7 +212,7 @@ def create_agency_design_task(
     })
 
     try:
-        result = _run_async(_design_async(task_id, user_jwt, user_id, payload))
+        result = _run_async(_design_async(task_id, user_id, payload))
         return result
     except Exception as exc:
         logger.error("agency_creator_design_failed", task_id=task_id, error=str(exc)[:300])
@@ -228,7 +224,7 @@ def create_agency_design_task(
         return {"status": "failed"}
 
 
-async def _design_async(task_id: str, user_jwt: str, user_id: int, payload: dict) -> dict:
+async def _design_async(task_id: str, user_id: int, payload: dict) -> dict:
     """Async implementation of DESIGN → DOCUMENT phases."""
     requirement: str = payload.get("requirement", "")
     intent: dict = payload.get("intent", {})
@@ -243,7 +239,7 @@ async def _design_async(task_id: str, user_jwt: str, user_id: int, payload: dict
         "message": "Designing agency architecture...",
         "_user_id": user_id,
     })
-    spec = await _llm_design(requirement, intent, answers, model, user_jwt)
+    spec = await _llm_design(requirement, intent, answers, model, user_id)
 
     # Phase 4: VALIDATE (self-review)
     _set_status(task_id, {
@@ -262,7 +258,7 @@ async def _design_async(task_id: str, user_jwt: str, user_id: int, payload: dict
         "_user_id": user_id,
         "previewJson": spec,
     })
-    agency_id = await _implement_agency(spec, user_jwt, tenant_id)
+    agency_id = await _implement_agency(spec, user_id, tenant_id)
 
     # Phase 6: VERIFY (basic sanity check — skip if no agency_id)
     if agency_id:
@@ -282,7 +278,7 @@ async def _design_async(task_id: str, user_jwt: str, user_id: int, payload: dict
         "_user_id": user_id,
         "agencyId": agency_id,
     })
-    guide = await _llm_document(spec, model, user_jwt)
+    guide = await _llm_document(spec, model, user_id)
 
     _set_status(task_id, {
         "status": "completed",
@@ -299,68 +295,47 @@ async def _design_async(task_id: str, user_jwt: str, user_id: int, payload: dict
 # ─── LLM helpers ─────────────────────────────────────────────────────────────
 
 
-def _get_web_gateway_url() -> str:
-    """Return the Node.js web gateway URL for LLM calls.
-
-    The web gateway (/v1/chat/completions) uses the working OpenRouter key
-    from the llm_providers table and handles credit deduction automatically.
-    """
-    return (
-        os.getenv("SMARTSPEC_INTERNAL_URL")
-        or os.getenv("SMARTSPEC_WEB_GATEWAY_URL", "http://127.0.0.1:3000")
-    )
-
 
 async def _llm_call(
     system_prompt: str,
     user_message: str,
     model: str,
-    user_jwt: str,
+    user_id: int,
     max_tokens: int = 4000,
     timeout: float = 120.0,
 ) -> str | None:
-    """Call LLM via the Node.js web gateway (OpenAI-compatible endpoint).
+    """Call LLM via LLMGatewayClient (X-Internal-Token auth).
 
     Returns the assistant message content on success, or None on failure.
     """
-    import httpx
+    from app.services.llm_gateway_client import LLMGatewayClient
 
-    gateway_url = _get_web_gateway_url()
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_message},
     ]
 
+    gateway = LLMGatewayClient()
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            resp = await client.post(
-                f"{gateway_url}/v1/chat/completions",
-                json={
-                    "model": model,
-                    "messages": messages,
-                    "max_tokens": max_tokens,
-                    "temperature": 0.7,
-                },
-                headers={"Authorization": f"Bearer {user_jwt}"},
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                choices = data.get("choices", [])
-                if choices:
-                    return choices[0].get("message", {}).get("content", "")
-            else:
-                logger.warning(
-                    "agency_creator_llm_call_failed",
-                    status=resp.status_code,
-                    body=resp.text[:300],
-                )
+        data = await gateway.chat_completion(
+            messages=messages,
+            model=model,
+            user_id=user_id,
+            temperature=0.7,
+            timeout=int(timeout),
+        )
+        choices = data.get("choices", [])
+        if choices:
+            return choices[0].get("message", {}).get("content", "")
     except Exception as exc:
         logger.warning("agency_creator_llm_call_error", error=str(exc)[:200])
+    finally:
+        await gateway.aclose()
 
     return None
 
 
-async def _llm_discover(requirement: str, model: str, user_jwt: str) -> dict:
+async def _llm_discover(requirement: str, model: str, user_id: int) -> dict:
     """Phase 1: Analyse requirement and generate interview questions if needed."""
 
     system_prompt = """You are an AI agency architect. Analyse the user's requirement for building a multi-agent AI agency.
@@ -382,7 +357,7 @@ Only ask questions that are truly necessary to design the agency. Skip if the re
         system_prompt=system_prompt,
         user_message=f"Requirement: {requirement}",
         model=model,
-        user_jwt=user_jwt,
+        user_id=user_id,
         max_tokens=1000,
         timeout=60.0,
     )
@@ -393,7 +368,7 @@ Only ask questions that are truly necessary to design the agency. Skip if the re
     return {"is_clear": True, "domain": "general", "estimated_agents": 3, "questions": []}
 
 
-async def _llm_design(requirement: str, intent: dict, answers: dict, model: str, user_jwt: str) -> dict:
+async def _llm_design(requirement: str, intent: dict, answers: dict, model: str, user_id: int) -> dict:
     """Phase 3: Design the agency architecture as JSON spec."""
     answers_text = ""
     if answers:
@@ -466,7 +441,7 @@ OTHER RULES:
         system_prompt=system_prompt,
         user_message=user_message,
         model=model,
-        user_jwt=user_jwt,
+        user_id=user_id,
         max_tokens=4000,
         timeout=120.0,
     )
@@ -540,7 +515,7 @@ def _validate_spec(spec: dict) -> dict:
     return spec
 
 
-async def _implement_agency(spec: dict, user_jwt: str, tenant_id: str = "") -> str | None:
+async def _implement_agency(spec: dict, user_id: int, tenant_id: str = "") -> str | None:
     """Phase 5: Create agency in database via Node.js internal API."""
     import httpx
 
@@ -611,7 +586,7 @@ async def _implement_agency(spec: dict, user_jwt: str, tenant_id: str = "") -> s
     return None
 
 
-async def _llm_document(spec: dict, model: str, user_jwt: str) -> str:
+async def _llm_document(spec: dict, model: str, user_id: int) -> str:
     """Phase 7: Generate usage guide for the created agency."""
     system_prompt = "Write a concise usage guide (max 300 words) for this AI agency. Include: purpose, how to start a conversation, and 3 example prompts."
     user_message = f"Agency: {spec.get('name')}\nDescription: {spec.get('description')}\nNodes: {[n.get('name') for n in spec.get('nodes', [])]}"
@@ -620,7 +595,7 @@ async def _llm_document(spec: dict, model: str, user_jwt: str) -> str:
         system_prompt=system_prompt,
         user_message=user_message,
         model=model,
-        user_jwt=user_jwt,
+        user_id=user_id,
         max_tokens=500,
         timeout=60.0,
     )
