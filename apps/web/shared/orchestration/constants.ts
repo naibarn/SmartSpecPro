@@ -36,6 +36,7 @@ export const COMBINED_EXTRACTION_MAX_FIELDS = 10;
 export const ASYNC_SKILL_POLL_TIMEOUT_MS = 60_000;
 
 import type { SkillOrchestratorMaxLevel } from "./types";
+export type { SkillOrchestratorMaxLevel } from "./types";
 
 /** Default max level for new tenants — simple only until admin elevates */
 export const ORCHESTRATOR_MAX_LEVEL_DEFAULT: SkillOrchestratorMaxLevel = "simple";

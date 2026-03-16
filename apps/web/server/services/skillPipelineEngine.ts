@@ -159,7 +159,6 @@ function buildExecParams(
     duration, voice, resolution, referenceImageUrls,
     referenceStyleUrl,
     extraParams: Object.keys(rest).length > 0 ? rest : undefined,
-    traceId,
   };
 }
 
