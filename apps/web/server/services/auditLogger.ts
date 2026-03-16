@@ -84,6 +84,12 @@ export type AuditEventType =
   | "widget_ingest_error"
   | "model_suggest_response"
   | "auto_draft.model_selected"
+  | "orchestration_classify"
+  | "orchestration_pipeline"
+  | "orchestration_agent_step"
+  | "orchestration_quality_gate"
+  | "orchestration_param_extract"
+  | "orchestration_fallback"
   | "error";
 
 export interface AuditLogEntry {
