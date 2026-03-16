@@ -29,3 +29,25 @@ def test_execute_request_model_no_jwt():
     from app.api.automation_copilot import ExecuteRequest
 
     assert "user_jwt" not in ExecuteRequest.model_fields, "user_jwt still in ExecuteRequest"
+
+
+def test_no_jwt_in_task_source():
+    """automation_copilot_task.py must not contain user_jwt references."""
+    import pathlib
+
+    source_path = pathlib.Path(inspect.getfile(automation_analyze_task.run)).resolve()
+    source = source_path.read_text()
+
+    # No user_jwt in parameter lists or function bodies
+    assert "user_jwt" not in source, "user_jwt reference found in automation_copilot_task.py"
+
+
+def test_no_jwt_in_api_source():
+    """automation_copilot.py API must not contain user_jwt references."""
+    import pathlib
+    from app.api import automation_copilot
+
+    source_path = pathlib.Path(inspect.getfile(automation_copilot)).resolve()
+    source = source_path.read_text()
+
+    assert "user_jwt" not in source, "user_jwt reference found in automation_copilot.py API"
