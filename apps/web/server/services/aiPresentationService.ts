@@ -131,7 +131,7 @@ const IMAGE_POLL_BASE_TIMEOUT_MS = (() => {
   if (Number.isFinite(raw) && raw >= 5000) {
     return raw;
   }
-  return 90000;
+  return 120000;
 })();
 const IMAGE_POLL_TIMEOUT_PER_SLIDE_MS = (() => {
   const raw = Number.parseInt(process.env.AI_DRAFT_IMAGE_POLL_TIMEOUT_PER_SLIDE_MS ?? "", 10);
@@ -230,7 +230,7 @@ const ARTICLE_WORD_PRESET_TARGETS: Record<string, number> = {
   medium: 700,
   long: 1200,
 };
-const MAX_IMAGE_CONCURRENCY = 3;
+const MAX_IMAGE_CONCURRENCY = 5;
 const MEDIA_SUBMIT_TIMEOUT_MS = (() => {
   const raw = Number.parseInt(process.env.AI_DRAFT_MEDIA_SUBMIT_TIMEOUT_MS ?? "", 10);
   if (Number.isFinite(raw) && raw >= 5000) {
@@ -4596,6 +4596,22 @@ function buildLayoutDslPromptRequest(options: {
       title: options.slide.title,
       body: options.slide.body,
       ...(options.slide.notes ? { notes: options.slide.notes } : {}),
+      ...(() => {
+        const validSections = (options.slide.sections ?? [])
+          .filter(s => s.heading && s.details?.length > 0)
+          .map(s => ({
+            heading: s.heading.slice(0, 180),
+            details: s.details.filter(d => d && d.length > 0).slice(0, 4).map(d => d.slice(0, 260)),
+          }))
+          .filter(s => s.details.length > 0);
+        return validSections.length > 0 ? { sections: validSections } : {};
+      })(),
+      ...(() => {
+        const validHierarchy = (options.slide.markdownHierarchy ?? [])
+          .filter(h => h.text && h.text.length > 0)
+          .map(h => ({ level: h.level, text: h.text.slice(0, 260) }));
+        return validHierarchy.length > 0 ? { markdownHierarchy: validHierarchy } : {};
+      })(),
     },
   }), null, 2);
 }
@@ -4809,14 +4825,24 @@ async function resolveAdvancedLayoutModes(options: {
   canvasHeight: number;
   preferredProviderId?: number;
   strictProviderPin?: boolean;
+  onSlideProgress?: (slideIndex: number, totalSlides: number) => Promise<void>;
 }): Promise<{
   slides: AIPresentationSlide[];
   metadata: SlideAdvancedModeMetadata[];
 }> {
   const resolvedSlides = [...options.slides];
-  const metadata: SlideAdvancedModeMetadata[] = [];
+  const metadata: SlideAdvancedModeMetadata[] = new Array(options.slides.length);
 
-  for (let index = 0; index < options.slides.length; index += 1) {
+  // Process all slides in parallel (up to 5 concurrent LLM calls)
+  const DSL_LAYOUT_CONCURRENCY = 5;
+  let progressCount = 0;
+  await mapWithConcurrency(
+    options.slides.map((_, i) => i),
+    async (index) => {
+    if (options.onSlideProgress) {
+      progressCount++;
+      await options.onSlideProgress(progressCount - 1, options.slides.length);
+    }
     const slide = resolvedSlides[index]!;
     const selection = options.selections[index];
     const mode = selection?.recommendedMode ?? selection?.mode;
@@ -4825,32 +4851,67 @@ async function resolveAdvancedLayoutModes(options: {
     const fallbackHistory: PresentationAIDesignFallbackHistory[] = [];
     let modeMetadata: SlideAdvancedModeMetadata = {};
 
-    if (
-      isPresentationLayoutDslEnabled()
-      && !(
-        selection?.componentRecipeId === "stat-cards"
-        || selection?.componentRecipeId === "timeline-flow"
-        || selection?.componentRecipeId === "process-steps"
-        || selection?.componentRecipeId === "sectioned-explainer"
-      )
-      && (
-        mode === "llm_layout_dsl"
-        || (
-          dslCandidate?.fitStatus === "fits"
-          && structuredCandidate
-          && dslCandidate.score >= (structuredCandidate.score - 1)
-        )
-      )
-    ) {
+    if (isPresentationLayoutDslEnabled()) {
+      // All slides use LLM DSL layout — no recipe exclusions or fitStatus checks.
       let repaired = false;
       let lastReason = "Layout DSL returned no usable slide content.";
+
+      // Randomize layout variant per slide for visual variety
+      const layoutVariants = [
+        { imagePosition: "top", textPosition: "bottom", description: "Image fills the top 50% of the slide, text content below" },
+        { imagePosition: "bottom", textPosition: "top", description: "Text and headings at top, image fills the bottom 40-50%" },
+        { imagePosition: "left", textPosition: "right", description: "Image on the left 40-50%, text content on the right side" },
+        { imagePosition: "right", textPosition: "left", description: "Text content on the left, image on the right 40-50%" },
+        { imagePosition: "background", textPosition: "overlay", description: "Full-bleed background image (opacity 0.3-0.5) with text elements overlaid using dark/light contrast colors" },
+        { imagePosition: "top-left", textPosition: "wrap", description: "Image in top-left corner (30-40% width), text wraps around it on the right and below" },
+        { imagePosition: "center-strip", textPosition: "split", description: "Horizontal image strip in the middle (30% height), title above, body text below" },
+      ];
+      const variant = layoutVariants[index % layoutVariants.length]!;
+      console.log(`[DSL-Debug] Slide ${index}: Starting DSL layout (variant=${variant.imagePosition})`);
       for (let attempt = 0; attempt < 2; attempt += 1) {
-        const dsl = await callLLMStructured({
+        let dsl;
+        try {
+        dsl = await callLLMStructured({
           systemPrompt: [
-            "Design a bounded presentation slide as JSON only.",
-            "Use only the allowed primitives.",
-            "Keep within the provided element budgets.",
-            "Do not emit HTML, markdown, or unsupported properties.",
+            `Design a slide layout on a ${options.canvasWidth}×${options.canvasHeight}px canvas.`,
+            "Return: { \"status\": \"ok\", \"elements\": [ ... ] }",
+            "",
+            "Element types (flat fields, NO nested objects):",
+            "- text: id, x, y, width, height, text, color (hex), fontSize. Optional: fontWeight, textAlign, lineHeight",
+            "- rect: id, x, y, width, height, fill (hex). Optional: opacity",
+            "- line: id, x, y, width, height, stroke (hex), strokeWidth",
+            '- image: id, x, y, width, height, src ("__PLACEHOLDER__"), alt. Optional: imageFit (cover/contain)',
+            "",
+            `## LAYOUT: Image ${variant.imagePosition.toUpperCase()} — ${variant.description}`,
+            "",
+            "## CRITICAL RULES (violations cause rendering errors):",
+            "",
+            "### NO OVERLAP between image and text zones",
+            "Divide the canvas into SEPARATE non-overlapping zones:",
+            `- IMAGE ZONE: allocate ~30% of canvas for the image (e.g., ${Math.round(options.canvasHeight * 0.3)}px height)`,
+            "- TEXT ZONE: remaining ~70% for all text, rects, and lines",
+            "- These zones must NOT overlap. No text element may have coordinates inside the image zone.",
+            "- No image element may have coordinates inside the text zone.",
+            "",
+            "### FILL THE ENTIRE CANVAS — no large empty areas",
+            "- Calculate text content height. If text uses only 40% of text zone, INCREASE fontSize:",
+            "  H1: up to 36px, H2: up to 26px, Body: up to 18px",
+            "- Space text elements evenly across the text zone using equal gaps.",
+            "- Add section background rects to fill remaining vertical space.",
+            "",
+            "### TEXT SIZE AUTO-SCALING",
+            "- If content is SHORT (1-2 paragraphs): use LARGE fonts (H1: 32-36, H2: 24-26, Body: 16-18)",
+            "- If content is MEDIUM (3-4 paragraphs): use NORMAL fonts (H1: 26-30, H2: 20-22, Body: 14-15)",
+            "- If content is LONG (5+ paragraphs): use COMPACT fonts (H1: 22-26, H2: 17-19, Body: 12-13)",
+            "",
+            "### ELEMENT ORDER in array = render order (first = back, last = front)",
+            "1. rect backgrounds (full-width, alternating soft colors, opacity 0.15-0.3)",
+            "2. lines/accent bars",
+            "3. image (with __PLACEHOLDER__)",
+            "4. text elements (always last = rendered on top)",
+            "",
+            `### BOUNDARIES: x>=0, y>=0, x+width<=${options.canvasWidth}, y+height<=${options.canvasHeight}`,
+            "Text padding: 24px from left/right, 16px from top/bottom.",
           ].join("\n"),
           userMessage: buildLayoutDslPromptRequest({
             slide,
@@ -4861,6 +4922,7 @@ async function resolveAdvancedLayoutModes(options: {
           preferredProviderId: options.preferredProviderId,
           strictProviderPin: options.strictProviderPin,
           zodSchema: presentationLayoutDslResponseSchema,
+          maxRetries: 2,
           userId: options.actor.userId,
           tenantId: options.actor.tenantId,
           billingDescription: `AI Draft layout DSL (${slide.title.slice(0, 80)}) (Deck #${options.deckId})`,
@@ -4873,22 +4935,36 @@ async function resolveAdvancedLayoutModes(options: {
             slideIndex: index,
           },
         });
+        console.log(`[DSL-Debug] Slide ${index} attempt ${attempt}: LLM returned status="${dsl.data.status}", elements=${dsl.data.elements?.length ?? 0}, fallback=${dsl.data.fallbackSuggestion?.reason ?? "none"}`);
+        // Force status to "ok" — we always want to use the DSL layout regardless
+        // of the LLM's self-assessment. The elements are still valid.
+        if (dsl.data.status === "needs_fallback" && dsl.data.elements?.length > 0) {
+          dsl.data.status = "ok";
+          console.log(`[DSL-Debug] Slide ${index} attempt ${attempt}: Overriding needs_fallback → ok (has ${dsl.data.elements.length} elements)`);
+        }
         const normalized = normalizePresentationLayoutDslToSlideContent({
           draft: dsl.data,
           canvasWidth: options.canvasWidth,
           canvasHeight: options.canvasHeight,
         });
+        console.log(`[DSL-Debug] Slide ${index} attempt ${attempt}: normalized=${normalized ? `${normalized.elements?.length ?? 0} elements` : "null"}`);
         if (dsl.data.status === "ok" && normalized) {
           modeMetadata = {
             mode: "llm_layout_dsl",
             slideContentOverride: normalized,
           };
+          console.log(`[DSL-Debug] Slide ${index}: DSL SUCCESS — using llm_layout_dsl mode`);
           break;
         }
         repaired = true;
         lastReason = dsl.data.fallbackSuggestion?.reason ?? lastReason;
+        } catch (dslErr) {
+          console.log(`[DSL-Debug] Slide ${index} attempt ${attempt}: DSL FAILED — ${dslErr instanceof Error ? dslErr.message : String(dslErr)}`);
+          lastReason = dslErr instanceof Error ? dslErr.message : String(dslErr);
+        }
       }
       if (!modeMetadata.slideContentOverride) {
+        console.log(`[DSL-Debug] Slide ${index}: FALLBACK to structured_block — reason: ${lastReason}`);
         fallbackHistory.push(makeFallbackHistoryEntry({
           step: "switch_mode",
           from: "llm_layout_dsl",
@@ -4941,15 +5017,17 @@ async function resolveAdvancedLayoutModes(options: {
       }
     }
 
-    metadata.push({
+    metadata[index] = {
       ...modeMetadata,
       ...(fallbackHistory.length > 0 ? { fallbackHistory } : {}),
-    });
-  }
+    };
+    },
+    DSL_LAYOUT_CONCURRENCY,
+  );
 
   return {
     slides: resolvedSlides,
-    metadata,
+    metadata: metadata.map(m => m ?? {}),
   };
 }
 
@@ -5816,34 +5894,47 @@ function applyResolvedMediaToElements(
   elements: SlideElement[],
   job: SlidePendingMediaJob,
   sourceUrl: string,
-  slideTitle: string,
+  _slideTitle: string,
 ): SlideElement[] {
-  const target = {
-    elementId: job.targetElementId,
-    x: job.targetX,
-    y: job.targetY,
-    width: job.targetWidth,
-    height: job.targetHeight,
-  };
-  const replacement = buildResolvedMediaElement(
-    job.mediaType,
-    sourceUrl,
-    target,
-    slideTitle,
-    {
-      prompt: job.prompt,
-      modelId: job.modelId,
-    },
+  // Simple approach: find the mockup element and just update its src URL.
+  // Keep all other properties (position, size, opacity, etc.) unchanged.
+  // The mockup was already positioned correctly by the DSL layout.
+
+  const isMockupSrc = (src: string | undefined | null): boolean =>
+    !src || src === "" || src.startsWith("data:image/svg+xml") || src === "__PLACEHOLDER__";
+
+  // 1. Find mockup placeholder (highest priority)
+  let targetIndex = elements.findIndex((el) =>
+    (el.type === "image" || el.type === "video") && "src" in el && isMockupSrc((el as any).src),
   );
-  const targetIndex = job.targetElementId
-    ? elements.findIndex((element) => element.id === job.targetElementId)
-    : -1;
+  console.log(`[Resolve-Debug] findMockup: targetIndex=${targetIndex}, elements=${elements.filter(e => e.type === "image").map(e => `${e.id}:${((e as any).src ?? "").substring(0, 20)}`).join("|")}`);
+  // 2. Fallback: match by element ID (only if not already a real URL)
+  if (targetIndex < 0 && job.targetElementId) {
+    const idx = elements.findIndex((el) => el.id === job.targetElementId);
+    if (idx >= 0 && isMockupSrc((elements[idx] as any)?.src)) {
+      targetIndex = idx;
+    }
+  }
+  // 3. Fallback: match by position
+  if (targetIndex < 0) {
+    targetIndex = elements.findIndex((el) =>
+      (el.type === "image" || el.type === "video")
+      && el.x === job.targetX && el.y === job.targetY
+      && el.width === job.targetWidth && el.height === job.targetHeight
+      && isMockupSrc((el as any).src),
+    );
+  }
+
   if (targetIndex >= 0) {
+    // Just swap the src — keep everything else (position, size, opacity, crop settings)
     const next = [...elements];
-    next[targetIndex] = replacement as SlideElement;
+    next[targetIndex] = { ...elements[targetIndex]!, src: sourceUrl } as SlideElement;
     return next;
   }
-  return [...elements, replacement as SlideElement];
+
+  // No mockup found — don't append, just return unchanged
+  // (appending causes the duplicate image issue)
+  return elements;
 }
 
 async function withTimeout<T>(
@@ -9407,7 +9498,10 @@ export async function generateAIDraft(
     }).catch(() => null);
     const taskRunId = plannerResult?.taskRunId;
 
+    const _draftStartMs = Date.now();
+    const _phaseTimer = (label: string) => console.log(`[Draft-Timing] ${label}: ${((Date.now() - _draftStartMs) / 1000).toFixed(1)}s elapsed`);
     // ── Phase 1: Draft Source Preparation ────────────────
+    _phaseTimer("Phase 1 START");
     if (await isCancelled()) { await setCancelled(); return; }
 
     const shouldPlanSlidesDirectlyFromTopic =
@@ -9602,6 +9696,7 @@ export async function generateAIDraft(
       }
     }
 
+    _phaseTimer("Phase 2 START (Slide Planning)");
     // ── Phase 2: Slide Planning / Split ───────────────────
     if (await isCancelled()) { await setCancelled(); return; }
 
@@ -9687,6 +9782,13 @@ export async function generateAIDraft(
       return;
     }
 
+    await updateProgress({
+      phase: 2,
+      phaseLabel: "Optimizing slide layouts...",
+      phaseDetail: `Structuring ${slides.length} slides for optimal readability.`,
+      totalSlides: slides.length,
+    });
+
     // Force slide 1 to hero_center
     if (slides.length > 0 && slides[0].templateId !== "hero_center") {
       slides[0] = normalizeSlideHierarchy({ ...slides[0], templateId: "hero_center" });
@@ -9707,8 +9809,30 @@ export async function generateAIDraft(
     });
     slides = aiRecipeAssignments.slides;
     let aiRecipeSelections = aiRecipeAssignments.selections;
+    // When DSL layout is enabled, check which slides will use it.
+    // Slides that will use DSL don't need compaction or overflow handling
+    // because DSL generates its own layout and ignores recipe slot bindings.
+    const dslEnabled = isPresentationLayoutDslEnabled();
+    const slidesWillUseDsl: boolean[] = slides.map((_, slideIndex) => {
+      if (!dslEnabled) return false;
+      // Force all slides to use LLM DSL layout — no block recipe fallback.
+      // LLM can handle any content length by adjusting font size and layout.
+      return true;
+    });
+
     let aiRecipeCompactionResults: RecipeCompactionOutcome[] = [];
     for (let slideIndex = 0; slideIndex < slides.length; slideIndex += 1) {
+      if (slidesWillUseDsl[slideIndex]) {
+        // Skip compaction — DSL will override the layout entirely
+        aiRecipeCompactionResults.push({ slide: slides[slideIndex]! });
+        continue;
+      }
+      await updateProgress({
+        phase: 2,
+        phaseLabel: `Optimizing slide ${slideIndex + 1}/${slides.length}...`,
+        phaseDetail: `Compacting content for slide "${slides[slideIndex]!.title?.slice(0, 40) ?? `Slide ${slideIndex + 1}`}".`,
+        totalSlides: slides.length,
+      });
       const compactionOutcome = await compactSlideForRecipe({
         slide: slides[slideIndex]!,
         selection: aiRecipeSelections[slideIndex],
@@ -9722,21 +9846,38 @@ export async function generateAIDraft(
       slides[slideIndex] = compactionOutcome.slide;
       aiRecipeCompactionResults.push(compactionOutcome);
     }
-    const overflowFallbackResolution = await applyOverflowFallbacks({
-      slides,
-      selections: aiRecipeSelections,
-      compactionResults: aiRecipeCompactionResults,
-      actor,
-      taskId,
-      deckId: input.deckId,
-      model: articleModel,
-      preferredProviderId: articlePreferredProviderId,
-      strictProviderPin: articleStrictProviderPin,
+
+    let aiRecipeFallbackMetadata: SlideOverflowFallbackMetadata[] = [];
+    const hasNonDslSlides = slidesWillUseDsl.some((v) => !v);
+    if (hasNonDslSlides) {
+      await updateProgress({
+        phase: 2,
+        phaseLabel: "Checking content overflow...",
+        phaseDetail: "Verifying slide content fits within layout boundaries.",
+        totalSlides: slides.length,
+      });
+      const overflowFallbackResolution = await applyOverflowFallbacks({
+        slides,
+        selections: aiRecipeSelections,
+        compactionResults: aiRecipeCompactionResults,
+        actor,
+        taskId,
+        deckId: input.deckId,
+        model: articleModel,
+        preferredProviderId: articlePreferredProviderId,
+        strictProviderPin: articleStrictProviderPin,
+      });
+      slides = overflowFallbackResolution.slides;
+      aiRecipeSelections = overflowFallbackResolution.selections;
+      aiRecipeCompactionResults = overflowFallbackResolution.compactionResults;
+      aiRecipeFallbackMetadata = overflowFallbackResolution.fallbackMetadata;
+    }
+    await updateProgress({
+      phase: 2,
+      phaseLabel: "Resolving layout modes...",
+      phaseDetail: "Selecting optimal visual layout for each slide.",
+      totalSlides: slides.length,
     });
-    slides = overflowFallbackResolution.slides;
-    aiRecipeSelections = overflowFallbackResolution.selections;
-    aiRecipeCompactionResults = overflowFallbackResolution.compactionResults;
-    const aiRecipeFallbackMetadata = overflowFallbackResolution.fallbackMetadata;
     const advancedModeResolution = await resolveAdvancedLayoutModes({
       slides,
       selections: aiRecipeSelections,
@@ -9748,6 +9889,14 @@ export async function generateAIDraft(
       canvasHeight,
       preferredProviderId: articlePreferredProviderId,
       strictProviderPin: articleStrictProviderPin,
+      onSlideProgress: async (slideIndex, totalSlides) => {
+        await updateProgress({
+          phase: 2,
+          phaseLabel: `Designing layout ${slideIndex + 1}/${totalSlides}...`,
+          phaseDetail: `LLM is generating visual layout for slide "${slides[slideIndex]?.title?.slice(0, 40) ?? `Slide ${slideIndex + 1}`}".`,
+          totalSlides: slides.length,
+        });
+      },
     });
     slides = advancedModeResolution.slides;
     const aiAdvancedModeMetadata = advancedModeResolution.metadata;
@@ -9871,31 +10020,13 @@ export async function generateAIDraft(
             return;
           }
           const advancedMode = aiAdvancedModeMetadata[index];
-          if (
-            advancedMode?.mode === "llm_layout_dsl"
-            && advancedMode.slideContentOverride
-            && !getPresentationSlideRenderableElements(advancedMode.slideContentOverride).elements.some(
-              (element) => element.type === "image" || element.type === "video",
-            )
-          ) {
-            mediaUrlsPerSlide[index] = [];
-            deferredMediaTasksPerSlide[index] = [];
-            slidePreview[index] = {
-              ...slidePreview[index],
-              imageStatus: "placeholder",
-            };
-            mediaSlidesFinalized += 1;
-            await updateProgress({
-              phase: 4,
-              phaseLabel: `${isVideoSkill ? "Videos" : "Images"}: ${mediaSlidesFinalized}/${slides.length}`,
-              slidesCompleted: mediaSlidesFinalized,
-              totalSlides: slides.length,
-              slidePreview,
-            });
-            return;
-          }
+          // NOTE: Even when DSL layout has no image/video elements, we still
+          // generate media so it can be used as a slide background or fallback.
+          // Previously this skipped media generation entirely, causing slides
+          // to appear without any images.
 
           // Phase 3: Image prompt enhancement
+          if (index === 0) _phaseTimer("Phase 3+4 START (Media Generation)");
           const baseImagePrompt = appendPromptContext(slide.imagePromptKeywords, sanitizedImagePromptContext);
           let imagePrompt = baseImagePrompt;
 
@@ -9957,7 +10088,18 @@ export async function generateAIDraft(
               warnings.push(`Slide ${index + 1}: image prompt enhancement failed (${sanitizeErrorMessage(err)}), using raw keywords`);
             }
           }
-          const mediaGenerationPlan = deriveMediaGenerationPlanForSlide(slide, imagePrompt, isVideoSkill);
+          let mediaGenerationPlan = deriveMediaGenerationPlanForSlide(slide, imagePrompt, isVideoSkill);
+          // If DSL layout has more image elements than the plan, generate extra images
+          const dslImageCount = (aiAdvancedModeMetadata[index]?.slideContentOverride?.elements ?? [])
+            .filter((el: any) => el.type === "image").length;
+          if (dslImageCount > mediaGenerationPlan.length && mediaGenerationPlan.length > 0) {
+            const baseEntry = mediaGenerationPlan[0]!;
+            for (let extra = mediaGenerationPlan.length; extra < dslImageCount; extra++) {
+              mediaGenerationPlan.push({
+                prompt: `${baseEntry.prompt} (variant ${extra + 1}, different angle or composition)`,
+              });
+            }
+          }
           imagePromptsPerSlide[index] = mediaGenerationPlan;
           const mediaApiConfigForSlide = {
             ...(mediaApiConfig ?? {}),
@@ -10029,23 +10171,15 @@ export async function generateAIDraft(
                 MEDIA_SUBMIT_TIMEOUT_MS,
                 "media_submit_timeout",
               ), "media_submit_cancelled");
-              const pollResult = await awaitUntilCancellable(pollMediaTask(
-                mediaTask.id,
-                userToken,
-                mediaPollTimeoutMs,
-                {
-                  activeGraceMs: mediaActiveGraceMs,
-                  shouldAbort: () => Boolean(phase4AbortError),
-                  auditContext: {
-                    userId: actor.userId,
-                    traceId: mediaTraceId,
-                    source: "ai_draft.generateAIDraft",
-                    stage: "phase_4_media_poll",
-                    deckId: input.deckId,
-                    slideIndex: index,
-                  },
-                },
-              ), "media_poll_cancelled");
+              // Submit-only: no polling. Create pendingMediaJob immediately.
+              // The kie.ai callback + frontend pending media poller will resolve URLs.
+              // This makes Draft with AI complete in seconds instead of minutes.
+              const pollResult: PollMediaTaskResult = {
+                url: null,
+                status: "pending" as any,
+                reason: "submit_only_no_poll",
+                task: { taskId: mediaTask.taskId, id: mediaTask.id, status: "pending" } as any,
+              };
               throwIfPhase4Aborted();
               if (pollResult.task) {
                 await chargeMediaCreditsForAIDraftTask({
@@ -10132,7 +10266,7 @@ export async function generateAIDraft(
           });
         },
         MAX_IMAGE_CONCURRENCY,
-        { stopOnError: true },
+        { stopOnErrorFilter: (err) => isCancellationError(err) || err instanceof BillingChargeError },
       );
     } catch (err) {
       if (isCancellationError(err)) {
@@ -10149,6 +10283,7 @@ export async function generateAIDraft(
       return;
     }
 
+    _phaseTimer("Phase 5 START (Audio)");
     // ── Phase 5: Slide Audio Generation (optional) ────────
     if (await isCancelled()) { await setCancelled(); return; }
 
@@ -10290,6 +10425,7 @@ export async function generateAIDraft(
       });
     }
 
+    _phaseTimer("Phase 6 START (Layout Compilation)");
     // ── Phase 6: Layout Compilation ───────────────────────
     if (await isCancelled()) { await setCancelled(); return; }
 
@@ -10361,10 +10497,20 @@ export async function generateAIDraft(
     for (let i = 0; i < slides.length; i++) {
       const svg = pickRandomSvgFromCategory(slides[i].graphicCategory);
       const mediaUrlsForSlide = mediaUrlsPerSlide[i] ?? [];
+      // Use mockup placeholder for slides where media is still generating
+      const firstUrl = mediaUrlsForSlide[0] ?? null;
+      const hasDeferredMedia = (deferredMediaTasksPerSlide[i] ?? []).length > 0;
+      let effectiveImageUrl = firstUrl;
+      if (!effectiveImageUrl && hasDeferredMedia) {
+        const mockW = canvasWidth;
+        const mockH = Math.round(canvasHeight * 0.4);
+        const mockSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${mockW}" height="${mockH}" viewBox="0 0 ${mockW} ${mockH}"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#e0e7ff"/><stop offset="100%" style="stop-color:#c7d2fe"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#g)"/><g transform="translate(${mockW / 2 - 24},${mockH / 2 - 24})"><rect x="4" y="4" width="40" height="40" rx="6" fill="none" stroke="#6366f1" stroke-width="2" opacity="0.5"/><circle cx="16" cy="18" r="4" fill="#6366f1" opacity="0.5"/><path d="M8 36 L18 24 L26 30 L34 20 L40 28 L40 36 Z" fill="#6366f1" opacity="0.3"/></g><text x="${mockW / 2}" y="${mockH / 2 + 36}" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#6366f1" opacity="0.7">${isVideoSkill ? "Video" : "Image"} generating...</text></svg>`;
+        effectiveImageUrl = `data:image/svg+xml,${encodeURIComponent(mockSvg)}`;
+      }
       const { slideContent, warnings: layoutWarnings } = generateSlide({
         slideData: slides[i],
-        imageUrl: mediaUrlsForSlide[0] ?? null,
-        imageUrls: mediaUrlsForSlide,
+        imageUrl: effectiveImageUrl,
+        imageUrls: mediaUrlsForSlide.map(u => u ?? effectiveImageUrl),
         svgGraphic: svg,
         stylePreset: presetCopy,
         deckTitle: i === 0 ? sanitizedPrompt.slice(0, 36) : undefined,
@@ -10441,11 +10587,13 @@ export async function generateAIDraft(
       const deferredTasks = deferredMediaTasksPerSlide[i] ?? [];
       const pendingMediaJobs: SlidePendingMediaJob[] = [];
       if (deferredTasks.length > 0) {
-        const renderable = getPresentationSlideRenderableElements(slideContentWithMediaMetadata);
-        const recipeTargets = findAIRecipePendingMediaTargets(slideContentWithMediaMetadata);
+        // Use DSL content for target resolution when available (DSL has different element IDs)
+        const contentForTargets = (aiAdvancedMode?.slideContentOverride ?? slideContentWithMediaMetadata) as PresentationSlideContent;
+        const renderable = getPresentationSlideRenderableElements(contentForTargets);
+        const recipeTargets = findAIRecipePendingMediaTargets(contentForTargets);
         const fallbackRecipeTarget = recipeTargets.length > 0
           ? null
-          : findAIRecipePendingMediaTarget(slideContentWithMediaMetadata);
+          : findAIRecipePendingMediaTarget(contentForTargets);
         const targets = recipeTargets.length > 0
           ? recipeTargets
           : fallbackRecipeTarget
@@ -10506,9 +10654,86 @@ export async function generateAIDraft(
         aiRecipeCompaction?.fallbackHistory,
         aiAdvancedMode?.fallbackHistory,
       );
+      // When DSL layout override exists, replace __PLACEHOLDER__ image src
+      // with the actual generated media URL from Phase 4.
+      // If media is still pending (deferred), keep the placeholder —
+      // the pendingMediaJobs system will replace it when the callback arrives.
+      let dslOverrideWithMedia = aiAdvancedMode?.slideContentOverride;
+      if (dslOverrideWithMedia) {
+        const dslElements = (dslOverrideWithMedia.elements ?? []) as any[];
+        const availableUrls = (mediaUrlsForSlide ?? []).filter((u): u is string => Boolean(u));
+        let urlIndex = 0;
+        const patchedElements = dslElements.map((el: any) => {
+          if (el.type === "image" && (!el.src || el.src === "__PLACEHOLDER__")) {
+            const url = availableUrls[urlIndex] ?? availableUrls[0] ?? null;
+            urlIndex++;
+            if (url) {
+              return {
+                ...el,
+                src: url,
+                ...(promptForSlide ? { imagePrompt: promptForSlide.slice(0, 4000) } : {}),
+                ...(imageModelIdForSlide ? { imageModelId: imageModelIdForSlide } : {}),
+              };
+            }
+            // No URL yet (deferred) — use mockup placeholder image
+            // pendingMediaJobs will replace this with the real URL when media completes
+            const mockupSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${el.width || 720}" height="${el.height || 400}" viewBox="0 0 ${el.width || 720} ${el.height || 400}"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#e0e7ff;stop-opacity:1"/><stop offset="100%" style="stop-color:#c7d2fe;stop-opacity:1"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#g)"/><g transform="translate(${(el.width || 720) / 2 - 24},${(el.height || 400) / 2 - 24})"><rect x="4" y="4" width="40" height="40" rx="6" fill="none" stroke="#6366f1" stroke-width="2" opacity="0.5"/><circle cx="16" cy="18" r="4" fill="#6366f1" opacity="0.5"/><path d="M8 36 L18 24 L26 30 L34 20 L40 28 L40 36 Z" fill="#6366f1" opacity="0.3"/></g><text x="${(el.width || 720) / 2}" y="${(el.height || 400) / 2 + 36}" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#6366f1" opacity="0.7">${isVideoSkill ? "Video" : "Image"} generating...</text></svg>`;
+            const mockupDataUri = `data:image/svg+xml,${encodeURIComponent(mockupSvg)}`;
+            return {
+              ...el,
+              src: mockupDataUri,
+              alt: el.alt ?? `Slide ${i + 1} ${isVideoSkill ? "video" : "image"} (generating...)`,
+              ...(promptForSlide ? { imagePrompt: promptForSlide.slice(0, 4000) } : {}),
+              ...(imageModelIdForSlide ? { imageModelId: imageModelIdForSlide } : {}),
+            };
+          }
+          return el;
+        });
+        // If any image is used as background (covers >60% of canvas),
+        // reduce its opacity and add a semi-transparent overlay panel for text readability
+        const bgThresholdArea = canvasWidth * canvasHeight * 0.6;
+        const finalElements: any[] = [];
+        for (const el of patchedElements) {
+          if (
+            el.type === "image"
+            && el.width * el.height >= bgThresholdArea
+            && el.src && !el.src.startsWith("data:image/svg+xml")
+          ) {
+            // This image is a background — reduce opacity
+            finalElements.push({ ...el, opacity: el.opacity ?? 0.35 });
+            // Add dark overlay panel on top of background image for text readability
+            finalElements.push({
+              id: `${el.id}-overlay`,
+              type: "rect",
+              x: el.x,
+              y: el.y,
+              width: el.width,
+              height: el.height,
+              fill: "#000000",
+              opacity: 0.25,
+            });
+          } else {
+            finalElements.push(el);
+          }
+        }
+        // If background image has overlay, adjust text colors to white for contrast
+        const hasBgOverlay = finalElements.some((el: any) => el.id?.endsWith("-overlay"));
+        if (hasBgOverlay) {
+          for (const el of finalElements) {
+            if (el.type === "text" && el.color) {
+              // Only change dark text colors to white (keep already-light colors)
+              const c = el.color.toLowerCase();
+              if (c.startsWith("#") && !c.startsWith("#f") && !c.startsWith("#e") && !c.startsWith("#d") && !c.startsWith("#c") && c !== "#fff" && c !== "#ffffff") {
+                el.color = "#ffffff";
+              }
+            }
+          }
+        }
+        dslOverrideWithMedia = { ...dslOverrideWithMedia, elements: finalElements };
+      }
       let slideWithCanvas: PresentationSlideContent = {
-        ...(aiAdvancedMode?.slideContentOverride
-          ? aiAdvancedMode.slideContentOverride
+        ...(dslOverrideWithMedia
+          ? dslOverrideWithMedia
           : aiAdvancedMode?.mode === "full_slide_media" && mediaUrlsForSlide[0]
             ? buildFullSlideMediaContent({
               slide: slides[i],
@@ -10642,6 +10867,7 @@ export async function generateAIDraft(
       }
     }
 
+    _phaseTimer("Phase 7 START (Deck Insertion)");
     // ── Phase 7: Deck Insertion ───────────────────────────
     if (await isCancelled()) { await setCancelled(); return; }
 
@@ -10843,6 +11069,7 @@ export async function resolvePendingMediaForDeck(
       }
       jobsChecked += 1;
       const checkedAt = toIsoNow();
+      console.log(`[Resolve] Slide ${slide.orderIndex} checking job ${i}: taskId=${job.mediaTaskId}, targetEl=${job.targetElementId || "none"}`);
 
       let task;
       try {
@@ -10869,6 +11096,7 @@ export async function resolvePendingMediaForDeck(
         continue;
       }
 
+      console.log(`[Resolve] Slide ${slide.orderIndex} job ${job.mediaTaskId}: task.status=${task.status}, resultUrl=${task.resultUrl ? "yes" : "no"}`);
       const isTerminalTaskStatus =
         task.status === "completed"
         || task.status === "failed"
@@ -10904,26 +11132,23 @@ export async function resolvePendingMediaForDeck(
 
       if (task.status === "completed") {
         const resolvedUrl = task.resultUrl || extractMediaUrlFromResultData(task.resultData);
+        console.log(`[Resolve-Debug] Slide ${slide.orderIndex} job ${job.mediaTaskId}: status=completed, url=${resolvedUrl ? "has_url" : "no_url"}, targetElementId=${job.targetElementId}`);
         if (resolvedUrl) {
-          const resolvedRecipeContent = applyResolvedMediaToAIRecipeSlideContent(
-            nextSlideContent,
+          const _isMock = (s: any) => !s || s === "" || String(s).startsWith("data:image/svg+xml") || s === "__PLACEHOLDER__";
+          const beforeMockupCount = nextSlideContent.elements.filter((e: any) => e.type === "image" && _isMock((e as any).src)).length;
+          // Always try element-level replace first (handles mockup → real URL)
+          const updatedElements = applyResolvedMediaToElements(
+            nextSlideContent.elements,
             job,
             resolvedUrl,
             slide.title,
           );
-          if (resolvedRecipeContent === nextSlideContent) {
-            nextSlideContent = {
-              ...resolvedRecipeContent,
-              elements: applyResolvedMediaToElements(
-                resolvedRecipeContent.elements,
-                job,
-                resolvedUrl,
-                slide.title,
-              ),
-            };
-          } else {
-            nextSlideContent = resolvedRecipeContent;
-          }
+          const afterMockupCount = updatedElements.filter((e: any) => e.type === "image" && _isMock((e as any).src)).length;
+          console.log(`[Resolve-Debug] Slide ${slide.orderIndex}: beforeMockups=${beforeMockupCount}, afterMockups=${afterMockupCount}, changed=${beforeMockupCount !== afterMockupCount}`);
+          nextSlideContent = {
+            ...nextSlideContent,
+            elements: updatedElements,
+          };
           if (job.mediaType === "video") {
             const resolvedVideoDurationMs = resolveGeneratedMediaDurationMs(task);
             if (resolvedVideoDurationMs != null) {
@@ -10977,6 +11202,10 @@ export async function resolvePendingMediaForDeck(
     }
 
     const compactJobs = nextJobs.filter((job): job is SlidePendingMediaJob => Boolean(job));
+    const _isMock2 = (s: any) => !s || s === "" || String(s).startsWith("data:image/svg+xml") || s === "__PLACEHOLDER__";
+    const finalMockups = nextSlideContent.elements.filter((e: any) => e.type === "image" && _isMock2((e as any).src)).length;
+    const finalReals = nextSlideContent.elements.filter((e: any) => e.type === "image" && (e as any).src?.startsWith("http")).length;
+    console.log(`[Resolve] Slide ${slide.orderIndex} SAVE: resolved=${slideResolvedCount}, remainingJobs=${compactJobs.length}, mockups=${finalMockups}, reals=${finalReals}`);
     const { pendingMediaJobs: _existingPendingMediaJobs, ...contentWithoutPending } = nextSlideContent;
     const finalSlideContent: PresentationSlideContent = {
       ...contentWithoutPending,
@@ -11236,11 +11465,18 @@ async function pollMediaTask(
         reason: "aborted_due_to_billing_failure",
       };
     }
+    const elapsed = Date.now() - start;
+    // Hard limit: 10 minutes max per image — if still pending after this, something is wrong
+    if (elapsed > 600_000) {
+      break;
+    }
     if (Date.now() > deadline) {
-      if (
-        remainingActiveGraceMs > 0
-        && (lastObservedStatus === "pending" || lastObservedStatus === "processing")
-      ) {
+      // If the task is still actively processing (pending/processing),
+      // keep waiting — kie.ai images always complete eventually.
+      // Only timeout when status is unknown or status fetch keeps failing.
+      if (lastObservedStatus === "pending" || lastObservedStatus === "processing") {
+        deadline += 30000;
+      } else if (remainingActiveGraceMs > 0) {
         const extensionMs = Math.min(remainingActiveGraceMs, 30000);
         remainingActiveGraceMs -= extensionMs;
         deadline += extensionMs;
@@ -11304,28 +11540,32 @@ async function mapWithConcurrency<T, R>(
   items: T[],
   fn: (item: T, index: number) => Promise<R>,
   concurrency: number,
-  options?: { stopOnError?: boolean },
+  options?: { stopOnError?: boolean; stopOnErrorFilter?: (err: unknown) => boolean },
 ): Promise<R[]> {
   const results: R[] = new Array(items.length);
   let nextIndex = 0;
-  let firstError: unknown = null;
+  let fatalError: unknown = null;
+  const errors: Array<{ index: number; error: unknown }> = [];
 
   async function worker(): Promise<void> {
     while (nextIndex < items.length) {
-      if (options?.stopOnError && firstError) {
+      if (fatalError) {
         return;
       }
       const i = nextIndex++;
       try {
         results[i] = await fn(items[i], i);
       } catch (err) {
-        if (!firstError) {
-          firstError = err;
+        errors.push({ index: i, error: err });
+        // If stopOnError is true, any error is fatal
+        // If stopOnErrorFilter is provided, only matching errors are fatal
+        const isFatal = options?.stopOnError
+          || (options?.stopOnErrorFilter && options.stopOnErrorFilter(err));
+        if (isFatal) {
+          fatalError = err;
+          return;
         }
-        if (!options?.stopOnError) {
-          throw err;
-        }
-        return;
+        // Non-fatal: continue to next item
       }
     }
   }
@@ -11335,8 +11575,8 @@ async function mapWithConcurrency<T, R>(
     () => worker(),
   );
   await Promise.all(workers);
-  if (firstError) {
-    throw firstError;
+  if (fatalError) {
+    throw fatalError;
   }
   return results;
 }

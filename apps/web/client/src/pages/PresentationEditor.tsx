@@ -1471,37 +1471,30 @@ export function mergeResolvedPendingMediaIntoCachedDraft(
 
   let nextElements = [...cached.elements];
   for (const job of resolvedJobs) {
-    const replacement = persisted.elements.find((element) => {
-      if (element.type !== "image" && element.type !== "video") {
-        return false;
-      }
-      if (job.targetElementId) {
-        return element.id === job.targetElementId;
-      }
-      return (
-        element.x === job.targetX
-        && element.y === job.targetY
-        && element.width === job.targetWidth
-        && element.height === job.targetHeight
-      );
+    // Find the real URL from persisted content for this job
+    const resolvedElement = persisted.elements.find((element) => {
+      if (element.type !== "image" && element.type !== "video") return false;
+      if (!("src" in element) || !element.src || !element.src.startsWith("http")) return false;
+      if (job.targetElementId) return element.id === job.targetElementId;
+      return element.x === job.targetX && element.y === job.targetY;
     });
-    if (!replacement) {
-      continue;
+    const resolvedSrc = resolvedElement && "src" in resolvedElement ? resolvedElement.src : null;
+    if (!resolvedSrc) continue;
+
+    // Find mockup in cached elements and just swap src
+    const isMockup = (el: any) =>
+      (el.type === "image" || el.type === "video")
+      && "src" in el
+      && (!el.src || el.src === "" || el.src.startsWith("data:image/svg+xml") || el.src === "__PLACEHOLDER__");
+
+    let targetIndex = nextElements.findIndex(isMockup);
+    if (targetIndex < 0 && job.targetElementId) {
+      targetIndex = nextElements.findIndex((el) => el.id === job.targetElementId && isMockup(el));
     }
 
-    const targetIndex = job.targetElementId
-      ? nextElements.findIndex((element) => element.id === job.targetElementId)
-      : nextElements.findIndex((element) => (
-        element.x === job.targetX
-        && element.y === job.targetY
-        && element.width === job.targetWidth
-        && element.height === job.targetHeight
-      ));
-
     if (targetIndex >= 0) {
-      nextElements[targetIndex] = replacement;
-    } else {
-      nextElements.push(replacement);
+      // Just update src — keep position, size, opacity, everything else
+      nextElements[targetIndex] = { ...nextElements[targetIndex]!, src: resolvedSrc };
     }
   }
 
@@ -2350,6 +2343,48 @@ export default function PresentationEditor() {
       }
     }, 0)
   ), [slides]);
+
+  // Auto-poll pending media every 5s when there are pending jobs
+  const autoResolvePendingMediaRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoResolveInFlightRef = useRef(false);
+  useEffect(() => {
+    if (pendingMediaJobCount > 0 && deck) {
+      if (autoResolvePendingMediaRef.current) return;
+      autoResolvePendingMediaRef.current = setInterval(async () => {
+        if (autoResolveInFlightRef.current) return;
+        autoResolveInFlightRef.current = true;
+        try {
+          const result = await resolvePendingMediaMutation.mutateAsync({
+            deckId: deck.id,
+            maxJobs: 60,
+          });
+          if (result.jobsResolved > 0) {
+            await refreshDeck();
+          }
+          if (result.jobsRemaining <= 0) {
+            if (autoResolvePendingMediaRef.current) {
+              clearInterval(autoResolvePendingMediaRef.current);
+              autoResolvePendingMediaRef.current = null;
+            }
+          }
+        } catch {
+          // Silently retry on next interval
+        } finally {
+          autoResolveInFlightRef.current = false;
+        }
+      }, 5000);
+    } else if (pendingMediaJobCount <= 0 && autoResolvePendingMediaRef.current) {
+      clearInterval(autoResolvePendingMediaRef.current);
+      autoResolvePendingMediaRef.current = null;
+    }
+    return () => {
+      if (autoResolvePendingMediaRef.current) {
+        clearInterval(autoResolvePendingMediaRef.current);
+        autoResolvePendingMediaRef.current = null;
+      }
+    };
+  }, [pendingMediaJobCount, deck?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const projectTitle = String(itemQuery.data?.title || deck?.title || (docId ? `Presentation ${docId}` : "Presentation"));
   const currentUserId = useMemo(() => {
     const parsed = Number(user?.id);

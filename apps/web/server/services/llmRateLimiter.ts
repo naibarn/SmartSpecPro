@@ -104,7 +104,7 @@ export const MEDIA_PROVIDER_LIMITS: Record<string, MediaProviderLimitConfig> = {
   'kie.ai': {
     // Kie AI rate limit: 20 requests per 10 seconds, ~100+ concurrent tasks
     maxConcurrent: 50,        // Kie AI supports 100+ concurrent, use 50 for safety
-    minTime: 500,             // 500ms between requests for smoother distribution
+    minTime: 200,             // 200ms between requests — kie.ai rate limit is generous
     reservoir: 20,
     reservoirRefreshInterval: 10000, // 20 per 10 seconds (per Kie AI spec)
     timeout: 300000,          // 5 min max wait (image gen can take 2-3+ min)
