@@ -1,23 +1,24 @@
 # Orchestra Plan
 
 ## Task
-Security audit of 3 local deep-* plugins (deep-plan, deep-project, deep-implement) and identify relevant cybersecurity skills from external repo to strengthen them.
+Comprehensive completeness review, improvement identification, and security audit for Feature 045 Celery JWT Refactor
 
 ## Classification
 - scope: medium
 - risk: high
-- affected_domains: [security, plugins, scripts]
-- estimated_file_count: 30+
-- chosen_route: multi-agent waves
-- task_summary: Audit local plugins for input validation, path traversal, command injection, secrets exposure, and subagent isolation gaps. Match findings to cybersecurity skills.
-- decision_mode: auto_by_default
+- affected_domains: [Python backend, Node.js backend, Nginx, tRPC, Tests]
+- estimated_file_count: 12
+- chosen_route: multi-agent review (read-only)
+- task_summary: Verify all 4 deep-implement sections completed correctly, all 10 post-review fixes applied, and no remaining security gaps
 
 ## Wave Plan
+### Wave 1 (completed): Parallel Verification
+- Python tests (30/30 passed)
+- Python lint (all clean after auto-fix)
+- Vitest security tests (4/4 passed)
+- Code grep verification (no user_jwt in production code)
+- Nginx /api/internal/ block confirmed (both HTTP + HTTPS)
 
-### Wave 1: Parallel Security Audit (3 agents)
-- Agent A: ssp-security-fastapi — audit Python scripts in all 3 plugins
-- Agent B: ssp-security-frontend — audit SKILL.md and reference docs for prompt injection / subagent isolation
-- Agent C: ssp-research — fetch and analyze cybersecurity skills repo for relevant matches
-
-### Wave 2: Aggregation (1 agent)
-- Agent D: Conductor — synthesize findings, produce prioritized vulnerability list + skill recommendations
+### Wave 2 (completed): Post-Completion Review
+- Cross-reference all 10 fixes against actual code
+- Generate final report

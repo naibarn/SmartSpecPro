@@ -11,7 +11,7 @@ Feature: 032-Browser-Automation-Copilot, Section 02
 import asyncio
 import logging
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 

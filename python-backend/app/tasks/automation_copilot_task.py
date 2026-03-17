@@ -8,7 +8,6 @@ Status is stored in Redis under key:
   automation:{task_id} → JSON status dict, TTL 3600s
 """
 
-import asyncio
 import json
 import os
 from typing import Any
@@ -83,14 +82,14 @@ def automation_analyze_task(
     """Phase 1: Parse prompt into intent, return preview or clarification questions."""
 
     async def _analyze():
+        import redis.asyncio as aioredis
+
         from app.services.automation_copilot import AutomationCopilot
         from app.services.browser_pool import get_browser_pool
         from app.services.llm_gateway_client import LLMGatewayClient
-        from app.services.selector_cache import SelectorCache
         from app.services.playwright_script_generator import PlaywrightScriptGenerator
+        from app.services.selector_cache import SelectorCache
         from app.services.self_healing_executor import SelfHealingExecutor
-
-        import redis.asyncio as aioredis
 
         redis_client = aioredis.from_url(REDIS_URL)
         gateway = LLMGatewayClient()
@@ -166,16 +165,16 @@ def automation_execute_task(
     """Phase 2: Generate scripts + execute with self-healing."""
 
     async def _execute():
+        import redis.asyncio as aioredis
+
         from app.services.automation_copilot import AutomationCopilot, AutomationIntent
-        from app.services.browser_pool import get_browser_pool
         from app.services.browser_policy_contract import BrowserPolicyExecutionContext
         from app.services.browser_policy_node_client import BrowserPolicyNodeClient
+        from app.services.browser_pool import get_browser_pool
         from app.services.llm_gateway_client import LLMGatewayClient
-        from app.services.selector_cache import SelectorCache
         from app.services.playwright_script_generator import PlaywrightScriptGenerator
+        from app.services.selector_cache import SelectorCache
         from app.services.self_healing_executor import SelfHealingExecutor
-
-        import redis.asyncio as aioredis
 
         redis_client = aioredis.from_url(REDIS_URL)
         gateway = LLMGatewayClient()
@@ -259,7 +258,7 @@ def automation_execute_task(
             # Build scripts
             task_count = len(intent.browser_tasks) if intent.browser_tasks else 0
             await status_callback("generating", f"Building scripts for {task_count} task(s)...")
-            build_result = await copilot.build(
+            await copilot.build(
                 intent=intent,
                 execution_id=execution_id,
                 tenant_id=tenant_id,

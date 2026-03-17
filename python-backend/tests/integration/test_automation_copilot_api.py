@@ -169,7 +169,7 @@ class TestCancelEndpoint:
 
 
 class TestTemplatesEndpoint:
-    def test_returns_empty_list_placeholder(self, client, internal_headers):
+    def test_returns_empty_list_when_no_templates(self, client, internal_headers):
         resp = client.get(
             f"{ENDPOINT_PREFIX}/templates?tenant_id=t1",
             headers=internal_headers,

@@ -495,6 +495,17 @@ const VALID_SOURCE_TYPES = new Set([
   "tts", "browser_automation", "widget_chat", "webhook_chat", "webhook_trigger",
 ]);
 
+// Helper: timing-safe Bearer token validation for internal endpoints
+function verifyInternalBearerToken(authHeader: string): boolean {
+  if (!authHeader.startsWith("Bearer ") || !ENV.webGatewayToken) return false;
+  const token = authHeader.slice(7);
+  const tokenBuf = Buffer.from(token);
+  const expectedBuf = Buffer.from(ENV.webGatewayToken);
+  if (tokenBuf.length !== expectedBuf.length) return false;
+  const crypto = require("crypto");
+  return crypto.timingSafeEqual(tokenBuf, expectedBuf);
+}
+
 // Helper: derive sourceType from service tag when not explicitly provided
 function deriveSourceTypeFromService(service: string): string {
   if (service.startsWith("library.") || service.startsWith("gdrive.index")) return "indexing";
@@ -505,13 +516,8 @@ function deriveSourceTypeFromService(service: string): string {
 
 // Internal credit billing endpoint (Python backend -> Node.js)
 app.post("/api/internal/credits/charge", async (req, res) => {
-  // Authenticate via gateway token
-  const authHeader = req.headers.authorization || "";
-  if (!authHeader.startsWith("Bearer ") || !ENV.webGatewayToken) {
-    return res.status(401).json({ success: false, error: "Unauthorized" });
-  }
-  const token = authHeader.slice(7);
-  if (token !== ENV.webGatewayToken) {
+  // Authenticate via gateway token (timing-safe)
+  if (!verifyInternalBearerToken(req.headers.authorization || "")) {
     return res.status(401).json({ success: false, error: "Unauthorized" });
   }
 
@@ -565,12 +571,7 @@ app.post("/api/internal/credits/charge", async (req, res) => {
 
 // Internal agency multiplier markup endpoint (Python backend -> Node.js)
 app.post("/api/internal/credits/agency-markup", async (req, res) => {
-  const authHeader = req.headers.authorization || "";
-  if (!authHeader.startsWith("Bearer ") || !ENV.webGatewayToken) {
-    return res.status(401).json({ success: false, error: "Unauthorized" });
-  }
-  const token = authHeader.slice(7);
-  if (token !== ENV.webGatewayToken) {
+  if (!verifyInternalBearerToken(req.headers.authorization || "")) {
     return res.status(401).json({ success: false, error: "Unauthorized" });
   }
 
@@ -616,12 +617,7 @@ app.post("/api/internal/credits/agency-markup", async (req, res) => {
 
 // Internal creator fee settlement endpoint (Python backend -> Node.js)
 app.post("/api/internal/credits/creator-fee-settle", async (req, res) => {
-  const authHeader = req.headers.authorization || "";
-  if (!authHeader.startsWith("Bearer ") || !ENV.webGatewayToken) {
-    return res.status(401).json({ success: false, error: "Unauthorized" });
-  }
-  const token = authHeader.slice(7);
-  if (token !== ENV.webGatewayToken) {
+  if (!verifyInternalBearerToken(req.headers.authorization || "")) {
     return res.status(401).json({ success: false, error: "Unauthorized" });
   }
 
@@ -674,12 +670,7 @@ app.post("/api/internal/credits/creator-fee-settle", async (req, res) => {
 
 // Internal Google Drive cleanup endpoint (Python backend -> Node.js)
 app.post("/api/internal/google-drive/cleanup", async (req, res) => {
-  const authHeader = req.headers.authorization || "";
-  if (!authHeader.startsWith("Bearer ") || !ENV.webGatewayToken) {
-    return res.status(401).json({ success: false, error: "Unauthorized" });
-  }
-  const token = authHeader.slice(7);
-  if (token !== ENV.webGatewayToken) {
+  if (!verifyInternalBearerToken(req.headers.authorization || "")) {
     return res.status(401).json({ success: false, error: "Unauthorized" });
   }
 
@@ -1285,6 +1276,20 @@ async function main() {
 
   server.listen(port, '0.0.0.0', () => {
     console.log(`SmartAIHub Web listening on http://0.0.0.0:${port}`);
+
+    // Start background scheduler to resolve pending media images
+    import("../services/aiPresentationService").then(({ startPendingMediaScheduler }) => {
+      startPendingMediaScheduler();
+    }).catch((err) => {
+      console.error("[Startup] Failed to start pending media scheduler:", err);
+    });
+
+    // Start queue health monitor
+    import("../services/queueHealthMonitor").then(({ startQueueHealthMonitor }) => {
+      startQueueHealthMonitor();
+    }).catch((err) => {
+      console.error("[Startup] Failed to start queue health monitor:", err);
+    });
   });
 }
 
@@ -1306,6 +1311,14 @@ process.on("unhandledRejection", (reason, promise) => {
 // Graceful shutdown: stop accepting new connections, flush logs, close queues and connections
 process.on("SIGTERM", async () => {
   console.log("[Shutdown] SIGTERM received, starting graceful shutdown...");
+
+  // 0. Stop background schedulers
+  import("../services/aiPresentationService").then(({ stopPendingMediaScheduler }) => {
+    stopPendingMediaScheduler();
+  }).catch(() => {});
+  import("../services/queueHealthMonitor").then(({ stopQueueHealthMonitor }) => {
+    stopQueueHealthMonitor();
+  }).catch(() => {});
 
   // 1. Stop accepting new connections
   if (httpServer) {
