@@ -347,6 +347,7 @@ async function buildCandidateList(
 
 const CAPABILITY_KEYS = [
   "supportsVision",
+  "supportsThinking",
   "supportsFunctionTools",
   "supportsStructuredOutputs",
   "supportsWebSearch",

@@ -68,6 +68,7 @@ describe("computeModelPriority", () => {
       supportsFunctionTools: true,
       supportsStructuredOutputs: true,
       supportsWebSearch: true,
+      supportsThinking: true,
       supportsCodeExecution: true,
       supportsComputerUse: true,
       supportsBackground: true,

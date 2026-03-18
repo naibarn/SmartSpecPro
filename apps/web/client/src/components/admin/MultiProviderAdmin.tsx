@@ -34,6 +34,7 @@ import {
   filterAdminModelCatalogRows,
   filterModelMappingGroups,
   getAdminModelSelectionKey,
+  type EnabledFilter,
 } from "./multiProviderAdminModelMappings";
 
 type Tab = "mappings" | "rules" | "health" | "usage";
@@ -109,6 +110,10 @@ interface MappingForm {
   supportsWebSearch: boolean;
   supportsFunctionTools: boolean;
   supportsStructuredOutputs: boolean;
+  supportsComputerUse: boolean;
+  supportsCodeExecution: boolean;
+  supportsBackground: boolean;
+  supportsResponses: boolean;
 }
 
 const emptyMappingForm: MappingForm = {
@@ -128,6 +133,10 @@ const emptyMappingForm: MappingForm = {
   supportsWebSearch: false,
   supportsFunctionTools: false,
   supportsStructuredOutputs: false,
+  supportsComputerUse: false,
+  supportsCodeExecution: false,
+  supportsBackground: false,
+  supportsResponses: false,
 };
 
 function PriorityInlineEditor({
@@ -229,6 +238,7 @@ function ModelMappingsTab() {
   const [form, setForm] = useState<MappingForm>(emptyMappingForm);
   const [searchQuery, setSearchQuery] = useState("");
   const [providerFilter, setProviderFilter] = useState("all");
+  const [enabledFilter, setEnabledFilter] = useState<EnabledFilter>("all");
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [mappingView, setMappingView] = useState<MappingView>("all");
 
@@ -246,8 +256,8 @@ function ModelMappingsTab() {
   }, [allSelectableKeys]);
 
   const filteredCatalogRows = useMemo(
-    () => filterAdminModelCatalogRows(catalogRows, searchQuery, providerFilter),
-    [catalogRows, providerFilter, searchQuery],
+    () => filterAdminModelCatalogRows(catalogRows, searchQuery, providerFilter, enabledFilter),
+    [catalogRows, providerFilter, searchQuery, enabledFilter],
   );
 
   const filteredGroups = useMemo(
@@ -318,6 +328,10 @@ function ModelMappingsTab() {
       supportsWebSearch: !!mapping.supportsWebSearch,
       supportsFunctionTools: !!mapping.supportsFunctionTools,
       supportsStructuredOutputs: !!mapping.supportsStructuredOutputs,
+      supportsComputerUse: !!mapping.supportsComputerUse,
+      supportsCodeExecution: !!mapping.supportsCodeExecution,
+      supportsBackground: !!mapping.supportsBackground,
+      supportsResponses: !!mapping.supportsResponses,
     });
     setEditId(mapping.mappingId ?? mapping.id ?? null);
     setShowForm(true);
@@ -342,6 +356,10 @@ function ModelMappingsTab() {
       supportsWebSearch: form.supportsWebSearch,
       supportsFunctionTools: form.supportsFunctionTools,
       supportsStructuredOutputs: form.supportsStructuredOutputs,
+      supportsComputerUse: form.supportsComputerUse,
+      supportsCodeExecution: form.supportsCodeExecution,
+      supportsBackground: form.supportsBackground,
+      supportsResponses: form.supportsResponses,
     });
     await invalidateMappingQueries();
     resetForm();
@@ -418,6 +436,15 @@ function ModelMappingsTab() {
                   {provider.displayName} ({provider.providerName})
                 </option>
               ))}
+            </select>
+            <select
+              className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={enabledFilter}
+              onChange={(event) => setEnabledFilter(event.target.value as EnabledFilter)}
+            >
+              <option value="all">All status</option>
+              <option value="enabled">Enabled only</option>
+              <option value="disabled">Disabled only</option>
             </select>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -673,6 +700,38 @@ function ModelMappingsTab() {
                 />
                 Structured Outputs
               </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.supportsComputerUse}
+                  onChange={(e) => setForm({ ...form, supportsComputerUse: e.target.checked })}
+                />
+                Computer Use
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.supportsCodeExecution}
+                  onChange={(e) => setForm({ ...form, supportsCodeExecution: e.target.checked })}
+                />
+                Code Execution
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.supportsBackground}
+                  onChange={(e) => setForm({ ...form, supportsBackground: e.target.checked })}
+                />
+                Background
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.supportsResponses}
+                  onChange={(e) => setForm({ ...form, supportsResponses: e.target.checked })}
+                />
+                Responses API
+              </label>
             </div>
           </div>
 
@@ -745,6 +804,19 @@ function ModelMappingsTab() {
                         <span>Priority: {mapping.priority}</span>
                       )}
                     </div>
+                    {mapping.isMapped && (
+                      <div className="flex flex-wrap gap-1">
+                        {mapping.supportsVision && <Badge variant="outline" className="text-[10px] px-1.5 py-0">Vision</Badge>}
+                        {mapping.supportsThinking && <Badge variant="outline" className="text-[10px] px-1.5 py-0">Thinking</Badge>}
+                        {mapping.supportsFunctionTools && <Badge variant="outline" className="text-[10px] px-1.5 py-0">Tools</Badge>}
+                        {mapping.supportsStructuredOutputs && <Badge variant="outline" className="text-[10px] px-1.5 py-0">Structured</Badge>}
+                        {mapping.supportsWebSearch && <Badge variant="outline" className="text-[10px] px-1.5 py-0">Web Search</Badge>}
+                        {mapping.supportsComputerUse && <Badge variant="outline" className="text-[10px] px-1.5 py-0">Computer Use</Badge>}
+                        {mapping.supportsCodeExecution && <Badge variant="outline" className="text-[10px] px-1.5 py-0">Code Exec</Badge>}
+                        {mapping.supportsBackground && <Badge variant="outline" className="text-[10px] px-1.5 py-0">Background</Badge>}
+                        {mapping.supportsResponses && <Badge variant="outline" className="text-[10px] px-1.5 py-0">Responses</Badge>}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">

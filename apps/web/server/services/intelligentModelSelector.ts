@@ -39,6 +39,7 @@ type CapabilityFlag = keyof Pick<
   | "supportsBackground"
   | "supportsResponses"
   | "supportsVision"
+  | "supportsThinking"
 >;
 
 const CAPABILITY_FLAGS: CapabilityFlag[] = [
@@ -50,6 +51,7 @@ const CAPABILITY_FLAGS: CapabilityFlag[] = [
   "supportsBackground",
   "supportsResponses",
   "supportsVision",
+  "supportsThinking",
 ];
 
 function recencyScore(createdAt: number | null | undefined): number {
@@ -88,7 +90,7 @@ function capabilityScore(model: ModelPriorityInput): number {
   for (const flag of CAPABILITY_FLAGS) {
     if (model[flag] === true) count++;
   }
-  return Math.floor((count / 8) * 30);
+  return Math.floor((count / CAPABILITY_FLAGS.length) * 30);
 }
 
 /**
@@ -114,6 +116,7 @@ export function computeModelPriority(model: ModelPriorityInput): number {
  */
 export interface CapabilityRequirements {
   supportsVision?: boolean;
+  supportsThinking?: boolean;
   supportsFunctionTools?: boolean;
   supportsStructuredOutputs?: boolean;
   supportsWebSearch?: boolean;

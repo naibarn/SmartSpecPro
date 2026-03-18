@@ -25,6 +25,16 @@ export interface ModelMappingListRow {
   priority: number;
   priorityLocked: boolean;
   apiStyle: "chat-completions" | "responses" | "messages" | "gemini";
+  // Model capabilities
+  supportsVision?: boolean;
+  supportsThinking?: boolean;
+  supportsWebSearch?: boolean;
+  supportsFunctionTools?: boolean;
+  supportsStructuredOutputs?: boolean;
+  supportsCodeExecution?: boolean;
+  supportsComputerUse?: boolean;
+  supportsBackground?: boolean;
+  supportsResponses?: boolean;
 }
 
 interface ProviderCatalogModel {
@@ -67,6 +77,10 @@ export interface AdminModelCatalogRow {
   supportsWebSearch?: boolean;
   supportsFunctionTools?: boolean;
   supportsStructuredOutputs?: boolean;
+  supportsCodeExecution?: boolean;
+  supportsComputerUse?: boolean;
+  supportsBackground?: boolean;
+  supportsResponses?: boolean;
 }
 
 function defaultApiStyleForProvider(providerName: string): AdminModelCatalogRow["apiStyle"] {
@@ -122,11 +136,15 @@ export function mergeAdminModelCatalogRows(input: {
       priorityLocked: mapping.priorityLocked,
       apiStyle: mapping.apiStyle,
       // Capability columns
-      supportsVision: !!(mapping as any).supportsVision,
-      supportsThinking: !!(mapping as any).supportsThinking,
-      supportsWebSearch: !!(mapping as any).supportsWebSearch,
-      supportsFunctionTools: !!(mapping as any).supportsFunctionTools,
-      supportsStructuredOutputs: !!(mapping as any).supportsStructuredOutputs,
+      supportsVision: !!mapping.supportsVision,
+      supportsThinking: !!mapping.supportsThinking,
+      supportsWebSearch: !!mapping.supportsWebSearch,
+      supportsFunctionTools: !!mapping.supportsFunctionTools,
+      supportsStructuredOutputs: !!mapping.supportsStructuredOutputs,
+      supportsCodeExecution: !!mapping.supportsCodeExecution,
+      supportsComputerUse: !!mapping.supportsComputerUse,
+      supportsBackground: !!mapping.supportsBackground,
+      supportsResponses: !!mapping.supportsResponses,
     });
   }
 
@@ -209,9 +227,14 @@ export const multiProviderRouter = router({
         apiStyle: modelProviderMap.apiStyle,
         // Capability columns
         supportsVision: modelProviderMap.supportsVision,
+        supportsThinking: modelProviderMap.supportsThinking,
         supportsWebSearch: modelProviderMap.supportsWebSearch,
         supportsFunctionTools: modelProviderMap.supportsFunctionTools,
         supportsStructuredOutputs: modelProviderMap.supportsStructuredOutputs,
+        supportsCodeExecution: modelProviderMap.supportsCodeExecution,
+        supportsComputerUse: modelProviderMap.supportsComputerUse,
+        supportsBackground: modelProviderMap.supportsBackground,
+        supportsResponses: modelProviderMap.supportsResponses,
       })
       .from(modelProviderMap)
       .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
@@ -254,6 +277,10 @@ export const multiProviderRouter = router({
           supportsWebSearch: modelProviderMap.supportsWebSearch,
           supportsFunctionTools: modelProviderMap.supportsFunctionTools,
           supportsStructuredOutputs: modelProviderMap.supportsStructuredOutputs,
+          supportsCodeExecution: modelProviderMap.supportsCodeExecution,
+          supportsComputerUse: modelProviderMap.supportsComputerUse,
+          supportsBackground: modelProviderMap.supportsBackground,
+          supportsResponses: modelProviderMap.supportsResponses,
         })
         .from(modelProviderMap)
         .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
@@ -361,6 +388,7 @@ export const multiProviderRouter = router({
                 supportsFunctionTools: false,
                 supportsStructuredOutputs: false,
                 supportsWebSearch: false,
+                supportsThinking: false,
                 supportsCodeExecution: false,
                 supportsComputerUse: false,
                 supportsBackground: false,
@@ -709,6 +737,7 @@ export const multiProviderRouter = router({
           supportsFunctionTools: row.supportsFunctionTools ?? false,
           supportsStructuredOutputs: row.supportsStructuredOutputs ?? false,
           supportsWebSearch: row.supportsWebSearch ?? false,
+          supportsThinking: row.supportsThinking ?? false,
           supportsCodeExecution: row.supportsCodeExecution ?? false,
           supportsComputerUse: row.supportsComputerUse ?? false,
           supportsBackground: row.supportsBackground ?? false,
