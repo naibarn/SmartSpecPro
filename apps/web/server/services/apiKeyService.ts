@@ -117,6 +117,11 @@ export async function validateKey(
     return null;
   }
 
+  // Timing-safe verification of the hash to prevent side-channel attacks
+  if (!crypto.timingSafeEqual(Buffer.from(keyHash, "hex"), Buffer.from(row.keyHash, "hex"))) {
+    return null;
+  }
+
   if (row.expiresAt && row.expiresAt < new Date()) {
     return null;
   }
@@ -245,6 +250,7 @@ export async function unsuspendKey(
 export async function updateKeySettings(
   keyId: string,
   tenantId: string,
+  userId: number,
   settings: {
     rateLimit?: number;
     creditLimit?: number | null;
@@ -257,7 +263,7 @@ export async function updateKeySettings(
   const result = await db
     .update(apiKeys)
     .set({ ...settings, updatedAt: new Date() })
-    .where(and(eq(apiKeys.id, keyId), eq(apiKeys.tenantId, tenantId)));
+    .where(and(eq(apiKeys.id, keyId), eq(apiKeys.tenantId, tenantId), eq(apiKeys.userId, userId)));
 
   if (result.rowCount === 0) {
     throw new Error("API key not found");
@@ -272,11 +278,16 @@ export async function updateKeySettings(
 export async function revokeKey(
   keyId: string,
   tenantId: string,
+  userId?: number,
 ): Promise<{ revoked: boolean }> {
+  const conditions = [eq(apiKeys.id, keyId), eq(apiKeys.tenantId, tenantId)];
+  if (userId !== undefined) {
+    conditions.push(eq(apiKeys.userId, userId));
+  }
   const result = await db
     .update(apiKeys)
     .set({ isActive: false, updatedAt: new Date() })
-    .where(and(eq(apiKeys.id, keyId), eq(apiKeys.tenantId, tenantId)));
+    .where(and(...conditions));
 
   if (result.rowCount === 0) {
     throw new Error("API key not found");

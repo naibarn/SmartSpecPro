@@ -141,7 +141,7 @@ describe("UserLlmKeysPanel", () => {
     expect(mockInvalidate).toHaveBeenCalledTimes(1);
   });
 
-  it("delete button calls deleteKey mutation with provider, then invalidates cache", () => {
+  it("delete button calls deleteKey mutation with provider after confirmation, then invalidates cache", () => {
     render(<UserLlmKeysPanel />);
 
     // Icon-only buttons have empty textContent — these are the delete buttons
@@ -152,6 +152,10 @@ describe("UserLlmKeysPanel", () => {
 
     expect(deleteButtons.length).toBeGreaterThan(0);
     fireEvent.click(deleteButtons[0]);
+
+    // Confirm the deletion via AlertDialog
+    const confirmBtn = screen.getByText("Delete Key");
+    fireEvent.click(confirmBtn);
 
     expect(mockDeleteKeyMutate).toHaveBeenCalledWith({
       provider: "openai",
@@ -187,7 +191,7 @@ describe("UserLlmKeysPanel", () => {
     fireEvent.change(input, { target: { value: "sk-test-fail" } });
     fireEvent.click(screen.getByText("Save"));
 
-    expect(toast.error).toHaveBeenCalledWith("Rate limit exceeded");
+    expect(toast.error).toHaveBeenCalledWith("Failed to save key");
     expect(mockInvalidate).not.toHaveBeenCalled();
   });
 
@@ -198,13 +202,18 @@ describe("UserLlmKeysPanel", () => {
 
     render(<UserLlmKeysPanel />);
 
+    // Click the icon-only delete button to open confirmation dialog
     const allButtons = screen.getAllByRole("button");
     const deleteButtons = allButtons.filter(
       (btn) => btn.textContent === "",
     );
     fireEvent.click(deleteButtons[0]);
 
-    expect(toast.error).toHaveBeenCalledWith("Server error");
+    // Click the confirm "Delete Key" button in the AlertDialog
+    const confirmBtn = screen.getByText("Delete Key");
+    fireEvent.click(confirmBtn);
+
+    expect(toast.error).toHaveBeenCalledWith("Failed to delete key");
     expect(mockInvalidate).not.toHaveBeenCalled();
   });
 

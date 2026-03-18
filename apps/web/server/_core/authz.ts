@@ -4,6 +4,7 @@ import { sdk } from "./sdk";
 import { verifyBearerToken } from "./tokens";
 import { isJtiRevoked } from "./revocation";
 import { validateKey } from "../services/apiKeyService";
+import { getRedisClient } from "../services/redis";
 
 export type AuthResult =
   | { ok: true; mode: "bearer"; sub: string; scopes: string[] }
@@ -54,6 +55,19 @@ export async function authorizeRequest(
     if (token) {
       // API key detection (sk-ssp_ prefix)
       if (token.startsWith("sk-ssp_")) {
+        // Brute-force protection: check if IP is blocked
+        const clientIp = (req as any).ip || "unknown";
+        try {
+          const redis = getRedisClient();
+          if (redis) {
+            const failKey = `auth:apikey:fail:${clientIp}`;
+            const failCount = parseInt(await redis.get(failKey) || "0", 10);
+            if (failCount >= 20) {
+              return { ok: false, error: "Too many failed attempts. Try again later." };
+            }
+          }
+        } catch {}
+
         const authCtx = await validateKey(token);
         if (authCtx) {
           // Suspended keys return a sentinel object with _suspended flag
@@ -76,6 +90,17 @@ export async function authorizeRequest(
             quotaMonthly: authCtx.quotaMonthly ?? null,
           };
         }
+
+        // Track failed attempt
+        try {
+          const redis = getRedisClient();
+          if (redis) {
+            const failKey = `auth:apikey:fail:${clientIp}`;
+            await redis.incr(failKey);
+            await redis.expire(failKey, 300); // 5 minute window
+          }
+        } catch {}
+
         return { ok: false, error: "Invalid API key" };
       }
 

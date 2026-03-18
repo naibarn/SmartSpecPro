@@ -136,6 +136,18 @@ function RequireAdmin({ children }: { children: React.ReactNode }) {
  * Redirects unauthenticated users to /login and users without admin or
  * domain_admin role to /dashboard.
  */
+/**
+ * Route-level guard for authenticated-only routes.
+ * Redirects unauthenticated users to /login.
+ * Renders nothing while auth is still loading to avoid a flash.
+ */
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return null;
+  if (!user) return <Redirect to="/login" />;
+  return <>{children}</>;
+}
+
 function RequireDomainAdmin({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
   if (isLoading) return null;
@@ -323,9 +335,9 @@ function Router() {
         <Route path="/groups/discover" component={GroupDiscovery} />
         <Route path="/groups/:groupId" component={GroupDetailPanel} />
         <Route path="/document-management" component={DocumentManagement} />
-        <Route path="/settings" component={Settings} />
-        <Route path="/settings/personas" component={PersonaSettings} />
-        <Route path="/settings/skills" component={SkillBrowser} />
+        <Route path="/settings"><RequireAuth><Settings /></RequireAuth></Route>
+        <Route path="/settings/personas"><RequireAuth><PersonaSettings /></RequireAuth></Route>
+        <Route path="/settings/skills"><RequireAuth><SkillBrowser /></RequireAuth></Route>
         <Route path="/my-feedback" component={MyFeedback} />
         <Route path="/profile" component={Profile} />
         <Route path="/terms" component={Terms} />

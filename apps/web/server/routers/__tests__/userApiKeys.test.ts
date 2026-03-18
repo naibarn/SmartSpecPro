@@ -85,7 +85,7 @@ describe("userApiKeys router", () => {
       const caller = createCaller(createUnauthenticatedContext());
 
       await expect(
-        caller.setKey({ provider: "openai", apiKey: "sk-test-1234" }),
+        caller.setKey({ provider: "openai", apiKey: "sk-test-1234-longenough-key" }),
       ).rejects.toThrow(/login/);
     });
 
@@ -115,14 +115,14 @@ describe("userApiKeys router", () => {
 
       const result = await caller.setKey({
         provider: "openai",
-        apiKey: "sk-test-key-1234",
+        apiKey: "sk-test-key-1234-longenough",
       });
 
       expect(mockSetUserApiKey).toHaveBeenCalledWith(
         1,
         "tenant-1",
         "openai",
-        "sk-test-key-1234",
+        "sk-test-key-1234-longenough",
       );
       expect(result).toEqual({
         provider: "openai",
@@ -140,7 +140,7 @@ describe("userApiKeys router", () => {
 
       const result = await caller.setKey({
         provider: "anthropic",
-        apiKey: "sk-ant-abcXYZW",
+        apiKey: "sk-ant-abcXYZW-longenough",
       });
 
       expect(result).not.toHaveProperty("apiKey");
@@ -155,7 +155,7 @@ describe("userApiKeys router", () => {
       const caller = createCaller(createAuthenticatedContext());
 
       await expect(
-        caller.setKey({ provider: "badprovider" as any, apiKey: "sk-test" }),
+        caller.setKey({ provider: "badprovider" as any, apiKey: "sk-test-badprovider-key-longenough" }),
       ).rejects.toThrow();
     });
 
@@ -167,11 +167,11 @@ describe("userApiKeys router", () => {
       ).rejects.toThrow();
     });
 
-    it("setKey rejects apiKey under 8 chars", async () => {
+    it("setKey rejects apiKey under 20 chars", async () => {
       const caller = createCaller(createAuthenticatedContext());
 
       await expect(
-        caller.setKey({ provider: "openai", apiKey: "sk-abc" }),
+        caller.setKey({ provider: "openai", apiKey: "sk-short-key" }),
       ).rejects.toThrow();
     });
 

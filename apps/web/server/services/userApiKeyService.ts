@@ -2,6 +2,7 @@ import { eq, and } from "drizzle-orm";
 import { getDb } from "../db";
 import { userLlmApiKeys } from "../../drizzle/schema";
 import { encrypt, decrypt } from "./crypto";
+import { debugLog } from "../_core/logger";
 
 /**
  * Set (upsert) a user's LLM API key for a specific provider.
@@ -13,8 +14,8 @@ export async function setUserApiKey(
   provider: string,
   apiKey: string,
 ): Promise<{ provider: string; keyHint: string }> {
-  if (!apiKey || apiKey.length < 8) {
-    throw new Error("API key must be at least 8 characters");
+  if (!apiKey || apiKey.length < 20) {
+    throw new Error("API key must be at least 20 characters");
   }
 
   const db = await getDb();
@@ -41,6 +42,7 @@ export async function setUserApiKey(
       },
     });
 
+  debugLog("userApiKeyService", "User LLM API key set", { userId, provider, action: "llm_key_set" });
   return { provider, keyHint };
 }
 
@@ -81,6 +83,7 @@ export async function deleteUserApiKey(
         eq(userLlmApiKeys.provider, provider),
       ),
     );
+  debugLog("userApiKeyService", "User LLM API key deleted", { userId, provider, action: "llm_key_delete" });
 }
 
 /**

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { protectedProcedure, router } from "../_core/trpc";
+import { protectedProcedure, adminProcedure, router } from "../_core/trpc";
 import { createRateLimitMiddleware } from "../_core/rateLimitedProcedure";
 import {
   setUserApiKey,
@@ -24,12 +24,20 @@ const rateLimitedProtected = protectedProcedure.use(
   }),
 );
 
+const rateLimitedDelete = protectedProcedure.use(
+  createRateLimitMiddleware({
+    namespace: "user-api-key-delete",
+    limit: 10,
+    windowMs: 3_600_000,
+  }),
+);
+
 export const userApiKeysRouter = router({
   setKey: rateLimitedProtected
     .input(
       z.object({
         provider: providerEnum,
-        apiKey: z.string().min(8).max(500),
+        apiKey: z.string().min(20).max(500),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -59,10 +67,17 @@ export const userApiKeysRouter = router({
     }));
   }),
 
-  deleteKey: rateLimitedProtected
+  deleteKey: rateLimitedDelete
     .input(z.object({ provider: providerEnum }))
     .mutation(async ({ ctx, input }) => {
       await deleteUserApiKey(ctx.user.id, input.provider);
+      return { success: true };
+    }),
+
+  adminDeleteKey: adminProcedure
+    .input(z.object({ userId: z.number(), provider: providerEnum }))
+    .mutation(async ({ input }) => {
+      await deleteUserApiKey(input.userId, input.provider);
       return { success: true };
     }),
 });

@@ -49,9 +49,9 @@ describe("userApiKeyService", () => {
       mockInsert.mockReturnValue({ values });
       setupDb();
 
-      await setUserApiKey(1, null, "openai", "sk-test-key-1234");
+      await setUserApiKey(1, null, "openai", "sk-test-key-1234-longenough");
 
-      expect(encrypt).toHaveBeenCalledWith("sk-test-key-1234");
+      expect(encrypt).toHaveBeenCalledWith("sk-test-key-1234-longenough");
     });
 
     it("extracts the last 4 characters as keyHint", async () => {
@@ -60,9 +60,9 @@ describe("userApiKeyService", () => {
       mockInsert.mockReturnValue({ values });
       setupDb();
 
-      const result = await setUserApiKey(1, null, "openai", "sk-test-key-1234");
+      const result = await setUserApiKey(1, null, "openai", "sk-test-key-1234-longenough");
 
-      expect(result.keyHint).toBe("1234");
+      expect(result.keyHint).toBe("ough");
     });
 
     it("upserts — inserts new row when no existing key for user+provider", async () => {
@@ -71,7 +71,7 @@ describe("userApiKeyService", () => {
       mockInsert.mockReturnValue({ values });
       setupDb();
 
-      await setUserApiKey(1, "tenant-1", "openai", "sk-test-key-1234");
+      await setUserApiKey(1, "tenant-1", "openai", "sk-test-key-1234-longenough");
 
       expect(mockInsert).toHaveBeenCalled();
       expect(values).toHaveBeenCalledWith(
@@ -79,15 +79,15 @@ describe("userApiKeyService", () => {
           userId: 1,
           tenantId: "tenant-1",
           provider: "openai",
-          apiKeyEncrypted: "mock-encrypted:sk-test-key-1234",
-          keyHint: "1234",
+          apiKeyEncrypted: "mock-encrypted:sk-test-key-1234-longenough",
+          keyHint: "ough",
         }),
       );
       expect(onConflictDoUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
           set: expect.objectContaining({
-            apiKeyEncrypted: "mock-encrypted:sk-test-key-1234",
-            keyHint: "1234",
+            apiKeyEncrypted: "mock-encrypted:sk-test-key-1234-longenough",
+            keyHint: "ough",
           }),
         }),
       );
@@ -100,7 +100,7 @@ describe("userApiKeyService", () => {
       mockInsert.mockReturnValue({ values });
       setupDb();
 
-      await setUserApiKey(1, null, "openai", "sk-new-key-5678");
+      await setUserApiKey(1, null, "openai", "sk-new-key-5678-longenough");
 
       expect(onConflictDoUpdate).toHaveBeenCalled();
     });
@@ -111,9 +111,9 @@ describe("userApiKeyService", () => {
       mockInsert.mockReturnValue({ values });
       setupDb();
 
-      const result = await setUserApiKey(1, null, "anthropic", "sk-ant-abcXYZW");
+      const result = await setUserApiKey(1, null, "anthropic", "sk-ant-abcXYZW-longenough");
 
-      expect(result).toEqual({ provider: "anthropic", keyHint: "XYZW" });
+      expect(result).toEqual({ provider: "anthropic", keyHint: "ough" });
       expect(result).not.toHaveProperty("apiKeyEncrypted");
     });
 
@@ -125,12 +125,12 @@ describe("userApiKeyService", () => {
       ).rejects.toThrow();
     });
 
-    it("throws when apiKey is shorter than 8 characters", async () => {
+    it("throws when apiKey is shorter than 20 characters", async () => {
       setupDb();
 
       await expect(
-        setUserApiKey(1, null, "openai", "sk-abc"),
-      ).rejects.toThrow("API key must be at least 8 characters");
+        setUserApiKey(1, null, "openai", "sk-short-key"),
+      ).rejects.toThrow("API key must be at least 20 characters");
     });
 
     it("throws when apiKey is empty", async () => {
@@ -138,14 +138,14 @@ describe("userApiKeyService", () => {
 
       await expect(
         setUserApiKey(1, null, "openai", ""),
-      ).rejects.toThrow("API key must be at least 8 characters");
+      ).rejects.toThrow("API key must be at least 20 characters");
     });
   });
 
   describe("getUserApiKeys", () => {
     it("returns all providers for a user with keyHint only", async () => {
       const mockRows = [
-        { provider: "openai", keyHint: "1234" },
+        { provider: "openai", keyHint: "ough" },
         { provider: "anthropic", keyHint: "5678" },
       ];
       const where = vi.fn().mockResolvedValue(mockRows);

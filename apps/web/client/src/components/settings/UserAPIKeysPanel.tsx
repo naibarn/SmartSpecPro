@@ -108,6 +108,7 @@ export function UserAPIKeysPanel() {
 
   const [createdKey, setCreatedKey] = useState<{ rawKey: string; name: string } | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<{ id: string; name: string } | null>(null);
+  const [confirmDeleteWebhook, setConfirmDeleteWebhook] = useState<string | null>(null);
   const [viewingStats, setViewingStats] = useState<string | null>(null);
   const [editingLimits, setEditingLimits] = useState<{
     id: string; name: string;
@@ -130,7 +131,7 @@ export function UserAPIKeysPanel() {
       resetCreateForm();
       utils.apiKeys.list.invalidate();
     },
-    onError: (err) => toast.error(err.message),
+    onError: () => toast.error("Operation failed. Please try again."),
   });
 
   const revokeMutation = trpc.apiKeys.revoke.useMutation({
@@ -139,15 +140,16 @@ export function UserAPIKeysPanel() {
       utils.apiKeys.list.invalidate();
       toast.success("API key revoked");
     },
-    onError: (err) => toast.error(err.message),
+    onError: () => toast.error("Operation failed. Please try again."),
   });
 
   const deleteWebhookMutation = trpc.apiKeys.deleteWebhook.useMutation({
     onSuccess: () => {
+      setConfirmDeleteWebhook(null);
       utils.apiKeys.listWebhooks.invalidate();
       toast.success("Webhook deleted");
     },
-    onError: (err) => toast.error(err.message),
+    onError: () => toast.error("Operation failed. Please try again."),
   });
 
   const reEnableWebhookMutation = trpc.apiKeys.reEnableWebhook.useMutation({
@@ -155,7 +157,7 @@ export function UserAPIKeysPanel() {
       utils.apiKeys.listWebhooks.invalidate();
       toast.success("Webhook re-enabled");
     },
-    onError: (err) => toast.error(err.message),
+    onError: () => toast.error("Operation failed. Please try again."),
   });
 
   const updateSettingsMutation = trpc.apiKeys.updateSettings.useMutation({
@@ -164,7 +166,7 @@ export function UserAPIKeysPanel() {
       utils.apiKeys.list.invalidate();
       toast.success("Limits updated");
     },
-    onError: (err) => toast.error(err.message),
+    onError: () => toast.error("Operation failed. Please try again."),
   });
 
   function resetCreateForm() {
@@ -327,6 +329,12 @@ export function UserAPIKeysPanel() {
                           ) : (
                             <span className="text-xs">Never</span>
                           )}
+                          {key.expiresAt && new Date(key.expiresAt as string) > new Date() &&
+                           new Date(key.expiresAt as string).getTime() - Date.now() < 30 * 86_400_000 && (
+                            <Badge variant="outline" className="text-amber-600 border-amber-300 ml-2">
+                              Expiring soon
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {key.lastUsedAt
@@ -453,7 +461,7 @@ export function UserAPIKeysPanel() {
                               variant="ghost"
                               size="sm"
                               className="text-destructive"
-                              onClick={() => deleteWebhookMutation.mutate({ webhookId: wh.id })}
+                              onClick={() => setConfirmDeleteWebhook(wh.id)}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -672,6 +680,27 @@ export function UserAPIKeysPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Webhook delete confirmation */}
+      <AlertDialog open={!!confirmDeleteWebhook} onOpenChange={(open) => !open && setConfirmDeleteWebhook(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Webhook?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will stop all webhook deliveries to this URL. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => confirmDeleteWebhook && deleteWebhookMutation.mutate({ webhookId: confirmDeleteWebhook })}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Edit Limits */}
       {editingLimits && (

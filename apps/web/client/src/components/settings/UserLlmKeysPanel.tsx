@@ -18,6 +18,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Key, Trash2, CheckCircle2, Pencil, Plus, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -36,6 +46,7 @@ export function UserLlmKeysPanel() {
     null,
   );
   const [apiKeyInput, setApiKeyInput] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<ProviderId | null>(null);
 
   const utils = trpc.useUtils();
   const listQuery = trpc.userApiKeys.listKeys.useQuery();
@@ -48,17 +59,18 @@ export function UserLlmKeysPanel() {
       utils.userApiKeys.listKeys.invalidate();
     },
     onError: (error) => {
-      toast.error(error.message || "Failed to save key");
+      toast.error(error.message?.includes("UNAUTHORIZED") ? "Please log in" : "Failed to save key");
     },
   });
 
   const deleteKeyMutation = trpc.userApiKeys.deleteKey.useMutation({
     onSuccess: (_data, variables) => {
       toast.success(`${variables.provider} key removed`);
+      setConfirmDelete(null);
       utils.userApiKeys.listKeys.invalidate();
     },
     onError: (error) => {
-      toast.error(error.message || "Failed to delete key");
+      toast.error(error.message?.includes("UNAUTHORIZED") ? "Please log in" : "Failed to delete key");
     },
   });
 
@@ -72,7 +84,14 @@ export function UserLlmKeysPanel() {
   }
 
   function handleDelete(provider: ProviderId) {
-    deleteKeyMutation.mutate({ provider });
+    setConfirmDelete(provider);
+  }
+
+  function confirmDeleteKey() {
+    if (confirmDelete) {
+      deleteKeyMutation.mutate({ provider: confirmDelete });
+      setConfirmDelete(null);
+    }
   }
 
   return (
@@ -206,6 +225,21 @@ export function UserLlmKeysPanel() {
         </div>
         )}
       </CardContent>
+
+      <AlertDialog open={!!confirmDelete} onOpenChange={(open) => !open && setConfirmDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove API Key</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete your {confirmDelete} API key. Any active requests using this key will fail.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteKey}>Delete Key</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { eq, and, gte, desc, sql, count } from "drizzle-orm";
 import { protectedProcedure, adminProcedure, router } from "../_core/trpc";
+import { createRateLimitMiddleware } from "../_core/rateLimitedProcedure";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import {
   createKey,
@@ -59,7 +60,8 @@ export const apiKeysRouter = router({
   // list — returns only the calling user's own keys
   // -------------------------------------------------------------------------
   list: protectedProcedure.query(async ({ ctx }) => {
-    const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+    const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+    if (!tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
     const { id: userId } = ctx.user;
     // Always scope to the calling user's keys — users manage only their own
     return listKeys(tenantId, userId);
@@ -69,6 +71,7 @@ export const apiKeysRouter = router({
   // create — generates new key owned by the calling user
   // -------------------------------------------------------------------------
   create: protectedProcedure
+    .use(createRateLimitMiddleware({ namespace: "api-key-create", limit: 10, windowMs: 3_600_000 }))
     .input(
       z.object({
         name: z.string().min(1).max(100),
@@ -83,8 +86,21 @@ export const apiKeysRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
       const { id: userId } = ctx.user;
+
+      // Enforce max 20 active keys per user
+      const db = await getDb();
+      if (db) {
+        const [{ cnt }] = await db
+          .select({ cnt: count() })
+          .from(apiKeys)
+          .where(and(eq(apiKeys.userId, userId), eq(apiKeys.tenantId, tenantId), eq(apiKeys.isActive, true)));
+        if (cnt >= 20) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Maximum 20 active API keys per user" });
+        }
+      }
 
       const allowedSet = new Set(ALLOWED_API_SCOPES);
       for (const scope of input.scopes) {
@@ -126,10 +142,11 @@ export const apiKeysRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
       await assertKeyOwnership(input.keyId, tenantId, ctx.user.id);
       const { keyId, ...settings } = input;
-      await updateKeySettings(keyId, tenantId, settings);
+      await updateKeySettings(keyId, tenantId, ctx.user.id, settings);
       return { success: true };
     }),
 
@@ -139,10 +156,75 @@ export const apiKeysRouter = router({
   revoke: protectedProcedure
     .input(z.object({ keyId: z.string() }))
     .mutation(async ({ input, ctx }) => {
-      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
       await assertKeyOwnership(input.keyId, tenantId, ctx.user.id);
-      await revokeKey(input.keyId, tenantId);
+      await revokeKey(input.keyId, tenantId, ctx.user.id);
       return { success: true };
+    }),
+
+  // -------------------------------------------------------------------------
+  // rotate — atomically revoke old key and create new key with same settings
+  // -------------------------------------------------------------------------
+  rotate: protectedProcedure
+    .use(createRateLimitMiddleware({ namespace: "api-key-create", limit: 10, windowMs: 3_600_000 }))
+    .input(
+      z.object({
+        keyId: z.string(),
+        name: z.string().min(1).max(100).optional(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
+      await assertKeyOwnership(input.keyId, tenantId, ctx.user.id);
+
+      // Read old key's settings
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const [oldKey] = await db
+        .select({
+          name: apiKeys.name,
+          scopes: apiKeys.scopes,
+          rateLimit: apiKeys.rateLimit,
+          creditLimit: apiKeys.creditLimit,
+          expiresAt: apiKeys.expiresAt,
+          quotaHourly: apiKeys.quotaHourly,
+          quotaDaily: apiKeys.quotaDaily,
+          quotaWeekly: apiKeys.quotaWeekly,
+          quotaMonthly: apiKeys.quotaMonthly,
+        })
+        .from(apiKeys)
+        .where(and(eq(apiKeys.id, input.keyId), eq(apiKeys.tenantId, tenantId)))
+        .limit(1);
+      if (!oldKey) throw new TRPCError({ code: "NOT_FOUND", message: "API key not found" });
+
+      // Create new key with same settings
+      const result = await createKey(
+        tenantId,
+        ctx.user.id,
+        input.name || oldKey.name,
+        oldKey.scopes as string[],
+        {
+          expiresAt: oldKey.expiresAt ?? undefined,
+          creditLimit: oldKey.creditLimit ?? undefined,
+          rateLimit: oldKey.rateLimit ?? undefined,
+          quotaHourly: oldKey.quotaHourly ?? null,
+          quotaDaily: oldKey.quotaDaily ?? null,
+          quotaWeekly: oldKey.quotaWeekly ?? null,
+          quotaMonthly: oldKey.quotaMonthly ?? null,
+        },
+      );
+
+      // Revoke old key
+      await revokeKey(input.keyId, tenantId, ctx.user.id);
+
+      return {
+        id: result.id,
+        keyPrefix: result.keyPrefix,
+        rawKey: result.rawKey,
+        name: input.name || oldKey.name,
+      };
     }),
 
   // -------------------------------------------------------------------------
@@ -151,7 +233,8 @@ export const apiKeysRouter = router({
   getUsageStats: protectedProcedure
     .input(z.object({ keyId: z.string(), days: z.number().int().min(1).max(90).default(7) }))
     .query(async ({ input, ctx }) => {
-      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
       await assertKeyOwnership(input.keyId, tenantId, ctx.user.id);
 
       const db = await getDb();
@@ -199,7 +282,8 @@ export const apiKeysRouter = router({
     const db = await getDb();
     if (!db) return [];
 
-    const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+    const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+    if (!tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
     const userId = ctx.user.id;
 
     // Join through apiKeys to filter by userId
@@ -238,7 +322,8 @@ export const apiKeysRouter = router({
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
       await assertWebhookOwnership(input.webhookId, tenantId, ctx.user.id);
       await db
         .update(apiWebhookEndpoints)
@@ -255,7 +340,8 @@ export const apiKeysRouter = router({
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
       await assertWebhookOwnership(input.webhookId, tenantId, ctx.user.id);
       await db
         .update(apiWebhookEndpoints)
@@ -272,7 +358,8 @@ export const apiKeysRouter = router({
   suspend: adminProcedure
     .input(z.object({ keyId: z.string(), reason: z.string().max(500).optional() }))
     .mutation(async ({ input, ctx }) => {
-      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
       await suspendKey(input.keyId, tenantId, ctx.user.id, input.reason);
       return { success: true };
     }),
@@ -281,7 +368,8 @@ export const apiKeysRouter = router({
   unsuspend: adminProcedure
     .input(z.object({ keyId: z.string() }))
     .mutation(async ({ input, ctx }) => {
-      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
       await unsuspendKey(input.keyId, tenantId);
       return { success: true };
     }),
@@ -290,7 +378,8 @@ export const apiKeysRouter = router({
   adminRevokeKey: adminProcedure
     .input(z.object({ keyId: z.string() }))
     .mutation(async ({ input, ctx }) => {
-      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
       await revokeKey(input.keyId, tenantId);
       return { success: true };
     }),
@@ -300,7 +389,8 @@ export const apiKeysRouter = router({
   adminListAllKeys: adminProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) return [];
-    const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+    const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+    if (!tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
     const rows = await db
       .select({
         id: apiKeys.id,
@@ -328,7 +418,8 @@ export const apiKeysRouter = router({
   adminListAllWebhooks: adminProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) return [];
-    const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+    const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+    if (!tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
     const rows = await db
       .select({
         id: apiWebhookEndpoints.id,
@@ -356,7 +447,8 @@ export const apiKeysRouter = router({
     .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) return [];
-      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? "";
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
+      if (!tenantId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Tenant context required" });
       const cutoff = new Date(Date.now() - input.days * 86_400_000);
       const rows = await db
         .select({
