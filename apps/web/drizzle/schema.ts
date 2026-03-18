@@ -6464,3 +6464,94 @@ export const systemResourceState = pgTable("system_resource_state", {
 
 export type SystemResourceState = typeof systemResourceState.$inferSelect;
 export type InsertSystemResourceState = typeof systemResourceState.$inferInsert;
+
+// ==========================================
+// Virtual AI Office Orchestrator — Automation Handoffs & External Intake (Section 16)
+// ==========================================
+
+export const handoffStatusEnum = pgEnum("handoff_status", [
+  "pending", "approved", "rejected", "executing", "completed", "failed",
+]);
+export const handoffApprovalStateEnum = pgEnum("handoff_approval_state", [
+  "not_required", "pending", "approved", "rejected",
+]);
+export const externalTaskStatusEnum = pgEnum("external_task_status", [
+  "received", "awaiting_review", "approved", "rejected", "materialized", "failed",
+]);
+export const trustTierEnum = pgEnum("trust_tier", [
+  "untrusted", "basic", "verified", "privileged",
+]);
+
+/**
+ * automation_handoffs — cross-surface actions initiated by team agents.
+ */
+export const automationHandoffs = pgTable("automation_handoffs", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  teamId: varchar("teamId", { length: 36 }).notNull(),
+  roomId: varchar("roomId", { length: 36 }).notNull(),
+  runId: varchar("runId", { length: 36 }).notNull(),
+  assistantId: varchar("assistantId", { length: 36 }).notNull(),
+  destinationType: varchar("destinationType", { length: 50 }).notNull(),
+  destinationId: varchar("destinationId", { length: 100 }),
+  status: handoffStatusEnum("status").notNull().default("pending"),
+  approvalState: handoffApprovalStateEnum("approvalState").notNull().default("pending"),
+  requestPayloadJson: jsonb("requestPayloadJson"),
+  resultPayloadJson: jsonb("resultPayloadJson"),
+  approvedByUserId: integer("approvedByUserId"),
+  errorDetail: text("errorDetail"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("automation_handoffs_run_idx").on(t.runId),
+  index("automation_handoffs_team_idx").on(t.teamId),
+]);
+
+export type AutomationHandoff = typeof automationHandoffs.$inferSelect;
+export type InsertAutomationHandoff = typeof automationHandoffs.$inferInsert;
+
+/**
+ * external_task_sources — registered external systems that can submit tasks.
+ */
+export const externalTaskSources = pgTable("external_task_sources", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  sourceType: varchar("sourceType", { length: 50 }).notNull(),
+  trustTier: trustTierEnum("trustTier").notNull().default("untrusted"),
+  configJson: jsonb("configJson"),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("external_task_sources_tenant_idx").on(t.tenantId),
+]);
+
+export type ExternalTaskSource = typeof externalTaskSources.$inferSelect;
+
+/**
+ * external_task_inbox — incoming tasks from external systems.
+ */
+export const externalTaskInbox = pgTable("external_task_inbox", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  sourceId: varchar("sourceId", { length: 36 }).notNull().references(() => externalTaskSources.id),
+  targetTeamId: varchar("targetTeamId", { length: 36 }),
+  status: externalTaskStatusEnum("status").notNull().default("received"),
+  priority: varchar("priority", { length: 20 }).default("normal"),
+  title: varchar("title", { length: 500 }).notNull(),
+  description: text("description"),
+  payloadJson: jsonb("payloadJson"),
+  materializedRoomId: varchar("materializedRoomId", { length: 36 }),
+  materializedRunId: varchar("materializedRunId", { length: 36 }),
+  reviewedByUserId: integer("reviewedByUserId"),
+  errorDetail: text("errorDetail"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("external_task_inbox_tenant_status_idx").on(t.tenantId, t.status),
+  index("external_task_inbox_source_idx").on(t.sourceId),
+]);
+
+export type ExternalTaskInboxItem = typeof externalTaskInbox.$inferSelect;
+export type InsertExternalTaskInboxItem = typeof externalTaskInbox.$inferInsert;

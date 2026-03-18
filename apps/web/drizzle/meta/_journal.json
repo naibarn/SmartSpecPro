@@ -617,6 +617,13 @@
       "when": 1773798172126,
       "tag": "0087_first_husk",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1773798794549,
+      "tag": "0088_spicy_shen",
+      "breakpoints": true
     }
   ]
 }
