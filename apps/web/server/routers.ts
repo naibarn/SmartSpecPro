@@ -79,6 +79,7 @@ import { contentArtifactsRouter } from "./routers/contentArtifacts";
 import { contentQualityRouter } from "./routers/contentQuality";
 import { apiKeysRouter } from "./routers/apiKeys";
 import { virtualAdminRouter } from "./routers/virtualAdmin";
+import { feedbackRouter } from "./routers/feedback";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -1792,6 +1793,7 @@ export const appRouter = router({
   contentQuality: contentQualityRouter,
   apiKeys: apiKeysRouter,
   virtualAdmin: virtualAdminRouter,
+  feedback: feedbackRouter,
 });
 
 export type AppRouter = typeof appRouter;
