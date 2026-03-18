@@ -133,6 +133,62 @@
 5. **`AgencyPreviewCard` not passed `onCommitted` from `AgencyChat.tsx`** — the `onCommitted` prop exists on the interface but `AgencyChat.tsx:698-702` does not pass it. After commit, preview card state is not updated in the parent.
 6. **Test gap: `commitPreview` deck path** — `agency.test.ts` tests research commit and deck commit-flag-block, but no test exercises a successful deck commit through `commitPresentationPreview`.
 
+## Feature 045 — Celery JWT Refactor (2026-03-16)
+
+See `project_045_celery_jwt_refactor.md`. Two review passes recorded.
+
+**Post-implementation verdict: APPROVE_WITH_FIXES**. All plan blockers fixed. Remaining:
+- HIGH: In-flight old Celery messages (user_jwt arg) will TypeError on new worker — needs drain procedure before deploy
+- MEDIUM: Fragile string-slice assertions in `test_agency_creator_security.py` lines 63-68, 81-83 (ValueError if function order changes)
+- MEDIUM: `_implement_agency()` silently marks agency_id=None and proceeds if both tokens are empty string
+- LOW: No Node.js tRPC layer test verifying user_jwt absent from POST body to Python
+
+## Spec Virtual AI Office Orchestrator — Final Verification Review (2026-03-18, Round 4)
+
+### Verdict: READY FOR IMPLEMENTATION (with 3 residual findings)
+
+### Check results (20/20 evaluated)
+- PASS (17): checks 1-partial, 2, 3, 4, 5, 7-partial, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
+- CONDITIONAL PASS (1): check 6 — roomLanguage in team_rooms is in section-17 (additive), not inline in section-02 schema table
+- FAIL (1): check 1 partial — notifyOrchestrator still has `db: DrizzleDB` param and `tenantId: number` (should be string). recordEvent correctly has no db param.
+- FAIL (1): check 7 partial — assistant_profiles.preferredLanguage is in spec.md §3821 but NOT in section-01 implementation table. Section-17 only adds roomLanguage to team_rooms; no corresponding column on assistant_profiles.
+
+### New issues found in final pass
+- HIGH: notifyOrchestrator interface in S07 has `tenantId: number` but all other tenant isolation uses `string` (varchar UUID). Type mismatch will cause TypeScript error at call site.
+- HIGH: `computeRunSummaries` and `detectStuckAgent` in S07 still take `db: DrizzleDB` parameter even though `recordEvent` and `captureSnapshot` use module-level db. Inconsistent — implementer must pick one pattern.
+- MEDIUM: `assistant_profiles.preferredLanguage` mentioned in spec §22.3 and claude-plan.md §10 but not in section-01 implementation table. Field will be missing from the schema unless implementer reads the spec separately.
+- LOW: `notifyOrchestrator` test stub in S07 calls it as `notifyOrchestrator(userId, { ... })` (2 args) but the interface shows a single params object. Stub is inconsistent with implementation spec.
+
+## Spec Virtual AI Office Orchestrator — Schema & API Completeness Review (2026-03-18)
+
+### Coverage summary
+- **20/20 tables** from spec §16.4.2 present across sections 01, 02, 03, 09, 16
+- **67/72 tRPC procedures** from spec §17 present in section-10; 5 missing (`approval.list/get/approve/reject/requestChanges` from §17.12)
+- **3/3 SSE endpoints** present in section-11
+- **All 3 internal REST endpoints** (`/api/internal/orchestrator/*`) present in section-09
+- **4/5 external REST endpoints** present in section-16 (2 are comment-stub-only, not fully described)
+
+### Key gaps
+- **`approval.*` (5 tRPC procedures)** — spec §17.12 Human Review APIs have no owning section
+- **`handoff_completed` event** — in spec §18.3 core types but missing from section-16's event table
+- **9 core event types** have no section explicitly claiming ownership (room_created, participant_joined, run_queued, tool_call_started/completed, artifact_created/updated, memory_written, summary_updated)
+- **`monitoring.getActivityTimeline` missing `assistantId?` + `eventCategory?` filters** — spec §17.8 shows these but section-10 Zod schema omits them
+- **`teamRun.start` missing `autonomyLevel` + `summaryMode`** — top-level inputs in spec §17.5 not in section-10 schema
+- **Extra fields in `assistant_teams`** not in spec: `defaultModelId`, `modelBudgetPolicy`
+- **Section-16 `POST /v1/rooms/:roomId/tasks` and `POST /v1/external-tasks/:sourceId`** are comment stubs without full handler description
+
+## Feedback Attachment Upload Security Review (2026-03-18)
+
+See `project_feedback_upload_review.md`. Verdict: REQUEST_CHANGES.
+- CRITICAL: Auth runs after multer writes temp files — unauthenticated requests write files to disk with no cleanup.
+- CRITICAL: `tenantReq.tenant?.role` is always `undefined` — `Tenant` schema has no `role` field. All isAdmin checks in the Express upload route evaluate to false; no admin can upload to another user's ticket.
+- HIGH: MIME+ext fileFilter uses OR logic — `.js` file with `Content-Type: image/jpeg` is accepted.
+- HIGH: Multer `LIMIT_FILE_SIZE`/`LIMIT_FILE_COUNT` errors bypass the route handler try/catch — they propagate as unhandled Express errors.
+- HIGH: No tenant isolation on the upload route — cross-tenant upload possible if ticketId is known.
+- MEDIUM: COUNT(*) + INSERT not atomic — concurrent uploads can exceed the 5-attachment cap.
+- MEDIUM: `storagePut` success followed by DB insert failure leaves orphaned storage objects.
+- MEDIUM: `parseInt(auth.sub)` is NaN for static-token bearer (`auth.sub = "static"`) — ownership check is silently bypassed.
+
 ## Feature 044 — Generate Layout with AI (2026-03-15)
 
 See `project_044_layout_from_note.md`. Key confirmed bugs:

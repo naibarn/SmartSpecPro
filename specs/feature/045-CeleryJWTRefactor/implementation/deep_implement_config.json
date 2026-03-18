@@ -1,0 +1,42 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.1",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/045-CeleryJWTRefactor/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/045-CeleryJWTRefactor/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-automation-copilot-cleanup",
+    "section-02-agency-creator-llm-client",
+    "section-03-agency-creator-internal-api",
+    "section-04-verification-tests"
+  ],
+  "sections_state": {
+    "section-01-automation-copilot-cleanup": {
+      "status": "complete",
+      "commit_hash": "273b5a86"
+    },
+    "section-02-agency-creator-llm-client": {
+      "status": "complete",
+      "commit_hash": "02d2c013"
+    },
+    "section-03-agency-creator-internal-api": {
+      "status": "complete",
+      "commit_hash": "d0980833"
+    },
+    "section-04-verification-tests": {
+      "status": "complete",
+      "commit_hash": "3529c531"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-03-16T08:15:35.271054+00:00"
+}

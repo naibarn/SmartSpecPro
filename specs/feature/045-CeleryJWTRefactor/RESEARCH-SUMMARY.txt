@@ -1,0 +1,319 @@
+================================================================================
+FEATURE 045: REMOVE JWT FROM CELERY TASK ARGUMENTS — RESEARCH COMPLETE
+================================================================================
+
+RESEARCH ARTIFACTS LOCATION:
+  /specs/feature/045-CeleryJWTRefactor/
+
+FILES CREATED:
+  ✓ claude-research.md      (12 KB) — Complete 12-section technical analysis
+  ✓ QUICK-REF.md            (8 KB)  — Fast lookup, impact matrix, checklist
+  ✓ RESEARCH-SUMMARY.txt    (this file)
+
+================================================================================
+KEY FINDINGS
+================================================================================
+
+1. CURRENT PROBLEM (Security Risk)
+   ─────────────────────────────────
+   • 2 Celery tasks pass user JWT tokens as arguments:
+     - Agency Creator: create_agency_discover_task(), create_agency_design_task()
+     - Automation Copilot: automation_analyze_task(), automation_execute_task()
+
+   • JWT stored in plaintext in Redis queue (severe security issue)
+   • Tokens accessible via:
+     - Celery monitoring tools (Flower)
+     - Worker logs
+     - Task history/replay
+     - Redis snapshots
+
+   • Exposure window: 2-10+ minutes per task
+
+
+2. HTTP ENDPOINTS RECEIVING JWT
+   ────────────────────────────────
+
+   Agency Creator (USES JWT):
+   • POST /v1/chat/completions (Node.js LLM gateway)
+     - 3x in discover phase (system prompt analysis)
+     - 2x in design phase (spec generation)
+     - 1x in document phase (usage guide)
+
+   • POST /api/internal/agency/create (Node.js agency endpoint)
+     - 1x after spec validation
+
+   Automation Copilot (JWT UNUSED):
+   • No HTTP calls use the JWT passed as argument
+   • Uses LLMGatewayClient which uses X-Internal-Token (different auth)
+   • Contains TODO comments: "Replace user_jwt with user_id + internal service token"
+
+
+3. EXISTING INTERNAL TOKEN INFRASTRUCTURE
+   ───────────────────────────────────────
+
+   ✓ LLMGatewayClient (production-proven):
+     - Header: X-Internal-Token (env var: SMARTSPEC_WEB_GATEWAY_TOKEN)
+     - Context: X-User-Id, X-Tenant-Id
+     - Used by: Automation Copilot (correctly)
+     - File: python-backend/app/services/llm_gateway_client.py:65-82
+
+   ✓ Token verification (Node.js):
+     - Function: verifyInternalToken() with timing-safe comparison
+     - File: apps/web/server/_core/llmRoutes.ts:1219-1232
+
+   ✓ Short-lived token generation (Node.js):
+     - Function: createInternalTokenFromAuth() — 15-min expiry
+     - File: apps/web/server/_core/tokens.ts:127-145
+
+   → These patterns can be reused for Agency Creator
+
+
+4. JWT CLAIM STRUCTURE (for reference)
+   ──────────────────────────────────────
+
+   {
+     "sub": "12345",        // User ID as string
+     "type": "access",      // Token type
+     "scopes": ["..."],     // Permission array
+     "jti": "unique_id",    // JWT ID (one per token)
+     "exp": 1234567890,     // Expiration timestamp (seconds)
+     "iat": 1234567800      // Issued-at timestamp
+   }
+
+
+5. DATA FLOW ANALYSIS
+   ──────────────────
+
+   AGENCY CREATOR:
+   Browser (JWT)
+     → Node.js tRPC (extract: ctx.userToken)
+     → Python FastAPI (body: user_jwt from credentials)
+     → Celery Queue (task arg: user_jwt — PROBLEM)
+     → Worker (use for 4x HTTP calls)
+
+   AUTOMATION COPILOT:
+   Browser (JWT)
+     → Node.js tRPC (extract: ctx.userToken)
+     → Python FastAPI (auth: X-Internal-Token; body: user_jwt — UNUSED)
+     → Celery Queue (task arg: user_jwt — NOT USED)
+     → Worker (ignores JWT, uses LLMGatewayClient instead)
+
+
+6. RECOMMENDED SOLUTION (Option A: Preferred)
+   ───────────────────────────────────────────
+
+   Replace user JWT with existing internal service token pattern:
+
+   REMOVE from task arguments:
+     • user_jwt: str
+
+   KEEP in task arguments:
+     • user_id: int
+     • tenant_id: str (add if missing)
+
+   AT TASK RUNTIME:
+     • Use LLMGatewayClient() with user_id + tenant_id headers
+     • Or extend Node.js endpoints to accept X-Internal-Token + X-User-Id
+
+   BENEFITS:
+     ✓ No JWT in Redis queue
+     ✓ Uses proven production pattern (LLMGatewayClient)
+     ✓ Internal token never expires (monolithic)
+     ✓ Minimal code changes
+
+   ALTERNATIVE (Option B):
+     • Generate fresh 15-min bearer token at task runtime
+     • Requires exporting signBearerToken from Node.js to Python
+     • More granular per-user, short-lived
+
+
+7. FILES REQUIRING CHANGES
+   ────────────────────────
+
+   MUST CHANGE (P0):
+   • python-backend/app/tasks/agency_creator_task.py
+     - Remove user_jwt from signatures (3 places)
+     - Update _llm_call() calls
+     - Update _implement_agency() calls
+
+   • python-backend/app/api/agency_creator.py
+     - Stop queuing task with user_jwt (2 places)
+
+   SHOULD CHANGE (P1):
+   • python-backend/app/tasks/automation_copilot_task.py
+     - Remove unused user_jwt parameters (2 places)
+
+   • python-backend/app/api/automation_copilot.py
+     - Stop queuing task with user_jwt (2 places)
+
+   • apps/web/server/routers/automationCopilot.ts
+     - Stop sending user_jwt in request body (2 places)
+
+   FOR REFERENCE (no changes):
+   • apps/web/server/_core/tokens.ts (reuse existing functions)
+   • apps/web/server/_core/llmRoutes.ts (verify token validation)
+   • python-backend/app/services/llm_gateway_client.py (use this pattern)
+
+
+8. RISK ASSESSMENT
+   ────────────────
+
+   IMPLEMENTATION RISKS:
+   • Token expiry if task > 15 min: Use 1-hour expiry or refresh token
+   • Node.js endpoint changes: Keep bearer token support (no breaking changes)
+   • User context lost: Already passing user_id + tenant_id (safe)
+
+   TESTING RISKS:
+   • E2E tests must verify: no JWT in Redis, logs, or Celery monitoring
+   • Rate limiting must still work per-user (uses user_id, not JWT)
+   • Audit logging must contain correct user context
+
+
+9. EFFORT ESTIMATE
+   ────────────────
+
+   Analysis & Planning:     4 hours (COMPLETE)
+   Implementation:          6-8 hours
+   Testing & Integration:   4-6 hours
+   Documentation:           2 hours
+   ─────────────────────────────────────
+   TOTAL:                   16-20 hours (2 sprint days)
+
+
+10. IMPLEMENTATION PHASES
+    ──────────────────────
+
+    Phase 1 (Week 1 – CRITICAL):
+    • Fix Agency Creator (highest security impact)
+    • Choose Option A or B
+    • Add integration tests
+
+    Phase 2 (Week 2 – IMPORTANT):
+    • Fix Automation Copilot (already unused JWT, low risk)
+    • Update tRPC router
+
+    Phase 3 (Week 3+ – OPTIONAL):
+    • Audit for other sensitive data in Celery tasks
+    • Celery monitoring hardening
+    • Performance benchmarking
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+1. REVIEW PHASE:
+   ✓ Read: claude-research.md (comprehensive technical analysis)
+   ✓ Review: QUICK-REF.md (impact matrix, code locations, checklist)
+   ✓ Decide: Option A (X-Internal-Token) or Option B (fresh bearer token)
+
+2. DESIGN PHASE:
+   ✓ Decide whether to modify Node.js endpoints or use LLMGatewayClient
+   ✓ Plan token expiry strategy (15 min vs. 1 hour)
+   ✓ Update: This research document once approach is finalized
+
+3. IMPLEMENTATION PHASE:
+   ✓ Start with Agency Creator (P0, highest impact)
+   ✓ Use QUICK-REF.md as implementation checklist
+   ✓ Write integration tests FIRST (TDD approach)
+
+4. VALIDATION PHASE:
+   ✓ E2E test: Agency Creator complete workflow
+   ✓ E2E test: Automation Copilot complete workflow
+   ✓ Verify: No JWT in Redis queue (use redis-cli)
+   ✓ Verify: No JWT in worker logs
+   ✓ Verify: Celery Flower UI doesn't expose JWT
+
+================================================================================
+RESEARCH DOCUMENT STRUCTURE
+================================================================================
+
+CLAUDE-RESEARCH.MD (Complete Technical Brief):
+
+  1. Executive Summary
+  2. Current JWT Usage in Celery Tasks
+     2.1 Agency Creator Task Flow
+     2.2 Automation Copilot Task Flow
+  3. Complete JWT Call Chain
+     3.1 Agency Creator: Call Flow Diagram
+     3.2 Automation Copilot: Call Flow Diagram
+  4. Node.js Endpoints That Receive JWT
+     4.1 LLM Gateway Endpoint
+     4.2 Internal Agency Creation Endpoint
+  5. Existing Internal Token Infrastructure
+     5.1 X-Internal-Token Pattern
+     5.2 Existing Internal Token Verification
+     5.3 Existing Bearer Token Creation Pattern
+  6. JWT Verification on Node.js Side
+     6.1 How Bearer Tokens are Verified
+     6.2 Python Authentication
+  7. HTTP Call Sites Using User JWT
+     7.1 Agency Creator HTTP Calls (table)
+     7.2 Automation Copilot HTTP Calls (table)
+  8. Data Flow for JWT Token Context
+     8.1 Where User JWT Comes From
+     8.2 JWT Claims Structure
+     8.3 What Node.js Extracts from JWT
+  9. Why Current Approach is Problematic
+     9.1 Security Issues
+     9.2 Architectural Issues
+ 10. Recommended Refactor Pattern
+     10.1 New Approach: Internal Service Tokens
+     10.2 Implementation Options (3 options)
+     10.3 Phase-Based Implementation
+ 11. Risks & Considerations
+     11.1 Compatibility Risks
+     11.2 Behavioral Changes
+     11.3 Implementation Gotchas
+ 12. Code Review Checklist for Refactor
+     • Before Implementation
+     • During Implementation
+     • After Implementation
+
+QUICK-REF.MD (Fast Lookup Guide):
+  • Problem Statement (1 paragraph)
+  • Current Flow (diagram)
+  • Impact Map (tables for each feature)
+  • Key Code Locations (with line numbers)
+  • Existing Infrastructure (code snippets)
+  • Recommended Solution (Option A + Option B)
+  • Implementation Checklist (3 phases)
+  • Testing Strategy (unit/integration/E2E)
+  • Risk Assessment (table)
+  • Rollback Plan
+  • Success Criteria
+
+RESEARCH-SUMMARY.TXT (This File):
+  • Key Findings (10 sections)
+  • Next Steps
+  • Document Structure
+
+================================================================================
+CRITICAL FINDINGS SUMMARY
+================================================================================
+
+✓ JWT EXPOSURE CONFIRMED:
+  - 4 Celery tasks pass user JWT as arguments
+  - Tokens stored in Redis queue plaintext
+  - Accessible via monitoring tools, logs, snapshots
+
+✓ INTERNAL TOKEN INFRASTRUCTURE READY:
+  - LLMGatewayClient already uses X-Internal-Token (proven)
+  - Token verification exists on Node.js
+  - Short-lived token generation pattern exists
+
+✓ SOLUTION IS LOW-RISK:
+  - Can reuse existing patterns (no new infrastructure)
+  - Backward-compatible changes
+  - Full rollback possible
+
+✓ AUTOMATION COPILOT IS EASY WIN:
+  - JWT passed but unused (already has TODO comment)
+  - Just need to remove parameter
+  - No HTTP changes needed
+
+✓ ESTIMATED EFFORT: 16-20 HOURS (2 sprint days)
+  - Analysis: Complete
+  - Implementation: Straightforward
+  - Testing: Well-defined
+
+================================================================================
