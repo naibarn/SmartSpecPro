@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, and, desc, sql, inArray } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, like } from "drizzle-orm";
 import { router } from "../_core/trpc";
 import { adminProcedure } from "../_core/trpc";
 import { getDb } from "../db";
@@ -7,6 +7,7 @@ import {
   virtualAdminIncidents,
   virtualAdminApprovals,
   virtualAdminSensorConfig,
+  systemSettings,
 } from "../../drizzle/schema";
 import { decideApproval } from "../services/virtualAdmin/actuatorRegistry";
 import { getSensors, collectSafe } from "../services/virtualAdmin/sensorRegistry";
@@ -27,36 +28,37 @@ export const virtualAdminRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
 
-      const conditions = [];
-      if (ctx.tenantId) conditions.push(eq(virtualAdminIncidents.tenantId, ctx.tenantId));
+      if (!ctx.tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant required" });
+
+      const conditions = [eq(virtualAdminIncidents.tenantId, ctx.tenantId)];
       if (input.status) conditions.push(eq(virtualAdminIncidents.status, input.status));
       if (input.severity) conditions.push(eq(virtualAdminIncidents.severity, input.severity));
       if (input.sensorId) conditions.push(eq(virtualAdminIncidents.sensorId, input.sensorId));
 
-      const query = db
+      const rows = await db
         .select()
         .from(virtualAdminIncidents)
+        .where(and(...conditions))
         .orderBy(desc(virtualAdminIncidents.createdAt))
         .limit(input.limit)
         .offset(input.offset);
-
-      const rows = conditions.length > 0
-        ? await query.where(and(...conditions))
-        : await query;
 
       return rows;
     }),
 
   getIncident: adminProcedure
     .input(z.object({ id: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const conditions = [eq(virtualAdminIncidents.id, input.id)];
+      if (ctx.tenantId) conditions.push(eq(virtualAdminIncidents.tenantId, ctx.tenantId));
 
       const incidents = await db
         .select()
         .from(virtualAdminIncidents)
-        .where(eq(virtualAdminIncidents.id, input.id))
+        .where(and(...conditions))
         .limit(1);
 
       if (incidents.length === 0) throw new TRPCError({ code: "NOT_FOUND" });
@@ -75,10 +77,13 @@ export const virtualAdminRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
+      const conditions = [eq(virtualAdminIncidents.id, input.id)];
+      if (ctx.tenantId) conditions.push(eq(virtualAdminIncidents.tenantId, ctx.tenantId));
+
       await db
         .update(virtualAdminIncidents)
         .set({ status: "acknowledged", updatedAt: new Date() })
-        .where(eq(virtualAdminIncidents.id, input.id));
+        .where(and(...conditions));
 
       return { success: true };
     }),
@@ -89,6 +94,9 @@ export const virtualAdminRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
+      const conditions = [eq(virtualAdminIncidents.id, input.id)];
+      if (ctx.tenantId) conditions.push(eq(virtualAdminIncidents.tenantId, ctx.tenantId));
+
       await db
         .update(virtualAdminIncidents)
         .set({
@@ -98,7 +106,7 @@ export const virtualAdminRouter = router({
           actionResult: input.comment ?? null,
           updatedAt: new Date(),
         })
-        .where(eq(virtualAdminIncidents.id, input.id));
+        .where(and(...conditions));
 
       return { success: true };
     }),
@@ -144,6 +152,7 @@ export const virtualAdminRouter = router({
         input.approvalId,
         input.decision,
         ctx.user.id,
+        ctx.tenantId ?? undefined,
         input.comment,
       );
       if (!result.success) {
@@ -208,10 +217,9 @@ export const virtualAdminRouter = router({
   getDashboardStats: adminProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    if (!ctx.tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant required" });
 
-    const conditions = ctx.tenantId
-      ? sql`${virtualAdminIncidents.tenantId} = ${ctx.tenantId}`
-      : sql`1=1`;
+    const conditions = sql`${virtualAdminIncidents.tenantId} = ${ctx.tenantId}`;
 
     const stats = await db.execute(sql`
       SELECT
@@ -248,12 +256,31 @@ export const virtualAdminRouter = router({
       const tenantId = ctx.tenantId;
       if (!tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant required" });
 
-      await db.execute(
-        sql`INSERT INTO system_settings (category, key, value, "tenantId", "isSensitive")
-            VALUES ('virtual_admin', 'VIRTUAL_ADMIN_ENABLED', ${String(input.enabled)}, ${tenantId}, false)
-            ON CONFLICT (category, key) WHERE "tenantId" = ${tenantId}
-            DO UPDATE SET value = ${String(input.enabled)}`,
-      );
+      const settingKey = `VIRTUAL_ADMIN_ENABLED:${tenantId}`;
+      const existing = await db
+        .select({ id: systemSettings.id })
+        .from(systemSettings)
+        .where(
+          and(
+            eq(systemSettings.category, "virtual_admin"),
+            eq(systemSettings.key, settingKey),
+          ),
+        )
+        .limit(1);
+
+      if (existing.length > 0) {
+        await db
+          .update(systemSettings)
+          .set({ value: String(input.enabled), updatedAt: new Date() })
+          .where(eq(systemSettings.id, existing[0].id));
+      } else {
+        await db.insert(systemSettings).values({
+          category: "virtual_admin",
+          key: settingKey,
+          value: String(input.enabled),
+          isSensitive: false,
+        });
+      }
 
       return { success: true, enabled: input.enabled };
     }),
@@ -262,17 +289,40 @@ export const virtualAdminRouter = router({
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
 
-    const settings = await db.execute(
-      sql`SELECT key, value FROM system_settings
-          WHERE category = 'virtual_admin'
-          AND ("tenantId" = ${ctx.tenantId} OR "tenantId" IS NULL)
-          ORDER BY "tenantId" NULLS LAST`,
-    );
+    const tenantId = ctx.tenantId ?? "";
 
+    // Fetch all virtual_admin settings: tenant-specific (key ends with :{tenantId})
+    // and global defaults (key contains no colon-tenantId suffix)
+    const rows = await db
+      .select({ key: systemSettings.key, value: systemSettings.value })
+      .from(systemSettings)
+      .where(
+        and(
+          eq(systemSettings.category, "virtual_admin"),
+          like(systemSettings.key, "VIRTUAL_ADMIN_%"),
+        ),
+      );
+
+    // Build result: tenant-specific values take precedence over global defaults.
+    // Tenant-specific keys have the form "VIRTUAL_ADMIN_XXX:{tenantId}".
+    // Global default keys have the form "VIRTUAL_ADMIN_XXX" (no colon suffix).
+    const tenantSuffix = `:${tenantId}`;
     const result: Record<string, string> = {};
-    for (const row of settings.rows as any[]) {
-      if (!(row.key in result)) result[row.key] = row.value;
+
+    // First pass: collect global defaults (no colon in key after VIRTUAL_ADMIN_)
+    for (const row of rows) {
+      if (!row.key.includes(":") && row.value != null) {
+        result[row.key] = row.value;
+      }
     }
+    // Second pass: overlay tenant-specific values
+    for (const row of rows) {
+      if (row.key.endsWith(tenantSuffix) && row.value != null) {
+        const baseKey = row.key.slice(0, -tenantSuffix.length);
+        result[baseKey] = row.value;
+      }
+    }
+
     return result;
   }),
 
@@ -288,12 +338,33 @@ export const virtualAdminRouter = router({
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only VIRTUAL_ADMIN_* settings allowed" });
       }
 
-      await db.execute(
-        sql`INSERT INTO system_settings (category, key, value, "tenantId", "isSensitive")
-            VALUES ('virtual_admin', ${input.key}, ${input.value}, ${tenantId}, false)
-            ON CONFLICT (category, key) WHERE "tenantId" = ${tenantId}
-            DO UPDATE SET value = ${input.value}`,
-      );
+      // Embed tenantId in the key so we don't need a tenantId column
+      const settingKey = `${input.key}:${tenantId}`;
+
+      const existing = await db
+        .select({ id: systemSettings.id })
+        .from(systemSettings)
+        .where(
+          and(
+            eq(systemSettings.category, "virtual_admin"),
+            eq(systemSettings.key, settingKey),
+          ),
+        )
+        .limit(1);
+
+      if (existing.length > 0) {
+        await db
+          .update(systemSettings)
+          .set({ value: input.value, updatedAt: new Date() })
+          .where(eq(systemSettings.id, existing[0].id));
+      } else {
+        await db.insert(systemSettings).values({
+          category: "virtual_admin",
+          key: settingKey,
+          value: input.value,
+          isSensitive: false,
+        });
+      }
 
       return { success: true };
     }),

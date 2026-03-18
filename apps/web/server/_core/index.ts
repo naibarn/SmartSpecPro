@@ -43,6 +43,7 @@ import "../services/channelAdapters/slack"; // Register Slack adapter
 import "../services/channelAdapters/discord"; // Register Discord adapter
 import { adapterRegistry } from "../services/channelAdapters/registry";
 import { createSlideRenderRouter } from "../routes/slideRender";
+import { createGuardianSSERouter } from "../routes/guardianSSE";
 import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
 import { registerServicesRoutes } from "../routers/services";
 import { registerTenantRoutes } from "../routers/tenant";
@@ -465,6 +466,7 @@ registerModelSuggestToolRoute(app);
 registerFileParseToolRoute(app);
 registerScheduleDraftToolRoute(app);
 registerSkillDiscoveryToolRoute(app);
+app.use("/api/virtual-admin/events", createGuardianSSERouter());
 
 // Proxy remote images through same-origin endpoint so browser canvas operations
 // (split/crop preview) work even when source host doesn't expose CORS headers.

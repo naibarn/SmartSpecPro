@@ -97,15 +97,41 @@ async function createApprovalRecord(
 
 /**
  * Decide on a pending approval (approve/reject) with optimistic locking.
+ * tenantId is required to ensure the approval's incident belongs to the
+ * caller's tenant (cross-tenant isolation guard).
  */
 export async function decideApproval(
   approvalId: number,
   decision: "approved" | "rejected",
   decidedBy: number,
+  tenantId?: string,
   comment?: string,
 ): Promise<ActuatorResult> {
   const db = await getDb();
   if (!db) return { success: false, message: "Database not available" };
+
+  // Cross-tenant isolation: verify the approval's incident belongs to the caller's tenant.
+  if (tenantId) {
+    const ownerCheck = await db
+      .select({ incidentId: virtualAdminApprovals.incidentId })
+      .from(virtualAdminApprovals)
+      .where(eq(virtualAdminApprovals.id, approvalId))
+      .limit(1);
+
+    if (ownerCheck.length === 0) {
+      return { success: false, message: "Approval not found" };
+    }
+
+    const incidentCheck = await db
+      .select({ tenantId: virtualAdminIncidents.tenantId })
+      .from(virtualAdminIncidents)
+      .where(eq(virtualAdminIncidents.id, ownerCheck[0].incidentId))
+      .limit(1);
+
+    if (incidentCheck.length === 0 || incidentCheck[0].tenantId !== tenantId) {
+      return { success: false, message: "Approval not found" };
+    }
+  }
 
   // Optimistic locking: only update if still pending
   const result = await db

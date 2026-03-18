@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { router, protectedProcedure, adminProcedure } from "../_core/trpc";
+import { createRateLimitMiddleware } from "../_core/rateLimitedProcedure";
 import { getDb } from "../db";
 import {
   feedbackTickets,
@@ -9,6 +10,15 @@ import {
 } from "../../drizzle/schema";
 import { processTicket } from "../services/virtualAdmin/feedbackProcessor";
 import { TRPCError } from "@trpc/server";
+
+// Rate-limited procedure for feedback submission: max 10 per hour per IP.
+// Keyed on IP (same as all other rate-limited procedures in the codebase) so a
+// single address cannot spam the ticket queue regardless of how many accounts it
+// holds.  Auth check via protectedProcedure runs first, before any rate-limit
+// bucket is consumed.
+const feedbackSubmitProcedure = protectedProcedure.use(
+  createRateLimitMiddleware({ namespace: "feedback-submit", limit: 10, windowMs: 60 * 60_000 }),
+);
 
 // Input sanitization
 function sanitizeHtml(str: string): string {
@@ -22,7 +32,7 @@ function sanitizeHtml(str: string): string {
 export const feedbackRouter = router({
   // ─── User Endpoints ─────────────────────────────────────
 
-  submit: protectedProcedure
+  submit: feedbackSubmitProcedure
     .input(
       z.object({
         ticketType: z.enum(["bug", "feature_request", "observation", "question"]),

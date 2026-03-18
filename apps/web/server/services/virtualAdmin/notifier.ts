@@ -101,9 +101,9 @@ async function sendInApp(n: GuardianNotification): Promise<void> {
       .where(inArray(users.role, ["admin", "domain_admin"]));
 
     // Create in-app notification for each admin
-    const { notifications } = await import("../../../drizzle/schema");
+    const { userNotifications } = await import("../../../drizzle/schema");
     for (const admin of admins.slice(0, 50)) {
-      await db.insert(notifications).values({
+      await db.insert(userNotifications).values({
         userId: admin.id,
         type: "system",
         title: `[${n.severity.toUpperCase()}] ${n.title}`,

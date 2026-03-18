@@ -51,5 +51,5 @@ async def celery_health() -> dict[str, Any]:
             "activeTasks": 0,
             "queueLengths": {},
             "healthy": False,
-            "error": str(e),
+            "error": "health check unavailable",
         }

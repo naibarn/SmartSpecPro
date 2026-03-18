@@ -1,6 +1,6 @@
-import { eq, sql } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { getDb } from "../../../db";
-import { llmProviders } from "../../../../drizzle/schema";
+import { llmProviders, systemSettings } from "../../../../drizzle/schema";
 import { registerActuator } from "../actuatorRegistry";
 import type { ActuatorFn } from "../types";
 
@@ -86,11 +86,30 @@ const emergencyMaintenance: ActuatorFn = async (params) => {
     const db = await getDb();
     if (!db) return { success: false, message: "Database not available" };
 
-    await db.execute(
-      sql`INSERT INTO system_settings (category, key, value, "isSensitive")
-          VALUES ('system', 'maintenance_mode', 'true', false)
-          ON CONFLICT (category, key) DO UPDATE SET value = 'true'`,
-    );
+    const existing = await db
+      .select({ id: systemSettings.id })
+      .from(systemSettings)
+      .where(
+        and(
+          eq(systemSettings.category, "system"),
+          eq(systemSettings.key, "maintenance_mode"),
+        ),
+      )
+      .limit(1);
+
+    if (existing.length > 0) {
+      await db
+        .update(systemSettings)
+        .set({ value: "true", updatedAt: new Date() })
+        .where(eq(systemSettings.id, existing[0].id));
+    } else {
+      await db.insert(systemSettings).values({
+        category: "system",
+        key: "maintenance_mode",
+        value: "true",
+        isSensitive: false,
+      });
+    }
 
     return { success: true, message: `Maintenance mode enabled: ${reason}` };
   } catch (err) {

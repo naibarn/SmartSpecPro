@@ -9,6 +9,7 @@ import { getPostHog } from "@/lib/posthog";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { TenantProvider } from "./contexts/TenantContext";
+import { I18nProvider } from "@/lib/i18n";
 
 // Route-based code splitting — all page components are loaded lazily
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -106,7 +107,11 @@ const WorkflowEditor = lazy(() => import("./pages/WorkflowEditor"));
 const WorkflowGallery = lazy(() => import("./pages/WorkflowGallery"));
 const WebhookTriggers = lazy(() => import("./pages/WebhookTriggers"));
 const AdminChannelRouter = lazy(() => import("./pages/AdminChannelRouter"));
+const AdminSystemGuardian = lazy(() => import("./pages/AdminSystemGuardian"));
+const AdminFeedbackHub = lazy(() => import("./pages/AdminFeedbackHub"));
 const ContentQualityDashboard = lazy(() => import("./pages/ContentQualityDashboard"));
+const HelpPage = lazy(() => import("./pages/Help"));
+const HelpTopicPage = lazy(() => import("./pages/HelpTopic"));
 
 /**
  * Route-level guard for /admin/* routes.
@@ -161,6 +166,8 @@ function Router() {
         <Route path="/features" component={Features} />
         <Route path="/docs" component={Docs} />
         <Route path="/docs/:slug+" component={DocPage} />
+        <Route path="/help" component={HelpPage} />
+        <Route path="/help/:slug+" component={HelpTopicPage} />
         <Route path="/contact" component={Contact} />
         <Route path="/about" component={About} />
         <Route path="/changelog" component={Changelog} />
@@ -255,6 +262,12 @@ function Router() {
         <Route path="/admin/content-quality">
           <RequireAdmin><ContentQualityDashboard /></RequireAdmin>
         </Route>
+        <Route path="/admin/system-guardian">
+          <RequireAdmin><AdminSystemGuardian /></RequireAdmin>
+        </Route>
+        <Route path="/admin/feedback-hub">
+          <RequireAdmin><AdminFeedbackHub /></RequireAdmin>
+        </Route>
         <Route path="/admin/tenants">
           <RequireAdmin><AdminTenants /></RequireAdmin>
         </Route>
@@ -335,6 +348,7 @@ function App() {
   return (
     <ErrorBoundary>
       <HelmetProvider>
+        <I18nProvider>
         <ThemeProvider defaultTheme="light">
           <AuthProvider>
             <TenantProvider>
@@ -346,6 +360,7 @@ function App() {
             </TenantProvider>
           </AuthProvider>
         </ThemeProvider>
+        </I18nProvider>
       </HelmetProvider>
     </ErrorBoundary>
   );
