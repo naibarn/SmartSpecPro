@@ -72,7 +72,9 @@ export async function setAuthToken(token: string): Promise<void> {
 }
 
 /**
- * Get stored user info
+ * Get stored user info.
+ * Browser context: uses in-memory cache only (populated by verifyToken).
+ * Tauri context: reads from native secure store.
  */
 export async function getUser(): Promise<User | null> {
   if (cachedUser) return cachedUser;
@@ -86,13 +88,8 @@ export async function getUser(): Promise<User | null> {
     }
   } catch { /* fallback */ }
 
-  try {
-    const userJson = localStorage.getItem('smartspec_user_data');
-    if (userJson) {
-      cachedUser = JSON.parse(userJson);
-      return cachedUser;
-    }
-  } catch { /* ignore */ }
+  // Browser: rely on in-memory cache (set by verifyToken/setUser).
+  // Do NOT read from localStorage to avoid exposing is_admin to XSS.
   return null;
 }
 
@@ -104,7 +101,9 @@ export function getUserSync(): User | null {
 }
 
 /**
- * Set user data
+ * Set user data.
+ * Browser context: in-memory cache only (no localStorage — avoids XSS exposure of is_admin).
+ * Tauri context: writes to native secure store.
  */
 export async function setUser(user: User): Promise<void> {
   cachedUser = user;
@@ -115,7 +114,7 @@ export async function setUser(user: User): Promise<void> {
     }
   } catch { /* fallback */ }
 
-  localStorage.setItem('smartspec_user_data', JSON.stringify(user));
+  // Browser: in-memory only. verifyToken() refreshes this on page load.
 }
 
 /**
