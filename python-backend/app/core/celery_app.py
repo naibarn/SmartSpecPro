@@ -36,6 +36,7 @@ celery_app.conf.update(
     timezone="UTC",
     enable_utc=True,
     task_track_started=True,
+    task_default_queue="media",  # Route unmatched tasks to media queue (has active workers)
     task_time_limit=1800,  # 30 minutes
     task_soft_time_limit=1740,  # 29 minutes
     worker_prefetch_multiplier=1,
@@ -79,12 +80,12 @@ celery_app.conf.update(
         "app.tasks.workflow_gen_tasks.generate_workflow": {"queue": "media"},
         # Workflow AI editing (LLM call) -> media queue (network-bound, same as gen)
         "app.tasks.workflow_edit_tasks.edit_workflow": {"queue": "media"},
-        # Workflow tasks -> celery queue (lightweight, frequent)
-        "app.tasks.workflow_tasks.check_scheduled_workflows": {"queue": "celery"},
-        "app.tasks.workflow_tasks.process_system_event": {"queue": "celery"},
-        "app.tasks.workflow_tasks.process_queue_message": {"queue": "celery"},
-        "app.tasks.workflow_tasks.execute_webhook_workflow": {"queue": "celery"},
-        "app.tasks.workflow_tasks.execute_delayed_node": {"queue": "celery"},
+        # Workflow tasks -> media queue (lightweight, frequent — must use a queue with active workers)
+        "app.tasks.workflow_tasks.check_scheduled_workflows": {"queue": "media"},
+        "app.tasks.workflow_tasks.process_system_event": {"queue": "media"},
+        "app.tasks.workflow_tasks.process_queue_message": {"queue": "media"},
+        "app.tasks.workflow_tasks.execute_webhook_workflow": {"queue": "media"},
+        "app.tasks.workflow_tasks.execute_delayed_node": {"queue": "media"},
         # OneDrive sync & maintenance -> media queue (network-bound)
         "onedrive.initial_sync": {"queue": "media"},
         "onedrive.process_changes": {"queue": "media"},
@@ -92,13 +93,13 @@ celery_app.conf.update(
         "onedrive.cleanup_edit_sessions": {"queue": "media"},
         "onedrive.disconnect_cleanup": {"queue": "media"},
         "poll_onedrive_changes": {"queue": "media"},
-        # Approval timeout checker -> celery queue (lightweight, periodic)
-        "app.tasks.approval_timeout_tasks.check_expired_approvals": {"queue": "celery"},
-        # Browser policy audit partition maintenance -> celery queue
-        "app.tasks.browser_policy_maintenance_tasks.ensure_browser_policy_decision_partitions": {"queue": "celery"},
-        "app.tasks.live_browser_tasks.publish_live_browser_readiness_snapshot": {"queue": "celery"},
-        "app.tasks.live_browser_tasks.watch_live_browser_readiness_snapshot": {"queue": "celery"},
-        "app.tasks.live_browser_tasks.run_live_browser_maintenance": {"queue": "celery"},
+        # Approval timeout checker -> media queue (lightweight, periodic — must use queue with active workers)
+        "app.tasks.approval_timeout_tasks.check_expired_approvals": {"queue": "media"},
+        # Browser policy audit partition maintenance -> media queue
+        "app.tasks.browser_policy_maintenance_tasks.ensure_browser_policy_decision_partitions": {"queue": "media"},
+        "app.tasks.live_browser_tasks.publish_live_browser_readiness_snapshot": {"queue": "media"},
+        "app.tasks.live_browser_tasks.watch_live_browser_readiness_snapshot": {"queue": "media"},
+        "app.tasks.live_browser_tasks.run_live_browser_maintenance": {"queue": "media"},
         # Presentation headless rendering (CPU + Playwright + FFmpeg)
         "app.tasks.presentation_render.render_presentation": {"queue": "presentation_export"},
         # Presentation import (PPTX/Google Slides -> slides JSON)
@@ -114,7 +115,7 @@ celery_app.conf.update(
         # Sandbox job execution -> sandbox queue (isolated, resource-intensive)
         "app.workers.sandbox_job_worker.execute_sandbox_job": {"queue": "sandbox"},
         # Sandbox maintenance tasks
-        "app.tasks.sandbox_maintenance_tasks.cleanup_expired_sandbox_jobs": {"queue": "celery"},
+        "app.tasks.sandbox_maintenance_tasks.cleanup_expired_sandbox_jobs": {"queue": "media"},
         "app.tasks.sandbox_maintenance_tasks.cleanup_orphan_sandboxes": {"queue": "sandbox"},
         "app.tasks.sandbox_maintenance_tasks.detect_stuck_sandbox_jobs": {"queue": "sandbox"},
         # Vision analysis (Gemini 2.5 Flash image analysis) -> vision queue
@@ -226,7 +227,19 @@ celery_app.autodiscover_tasks(["app.tasks", "app.workers"])
 # ---------------------------------------------------------------------------
 @worker_process_init.connect
 def _init_browser_pool_on_worker(**kwargs):
-    """Start BrowserPool when a media worker process forks."""
+    """Reinitialize DB engine and BrowserPool when a worker child process forks."""
+    # CRITICAL: After fork(), the inherited asyncpg connection pool is corrupted.
+    # Dispose it and recreate with NullPool to prevent
+    # "cannot perform operation: another operation is in progress" errors.
+    try:
+        from app.core.database import reinit_engine_for_celery_worker
+        reinit_engine_for_celery_worker()
+    except Exception:
+        _celery_logger.error("DB engine reinit failed after fork — killing worker", exc_info=True)
+        # Worker must not continue with a corrupted connection pool.
+        # Celery prefork supervisor will respawn this child process.
+        os._exit(1)
+
     queues = os.getenv("CELERY_WORKER_QUEUES", "")
     # The -Q flag sets CELERY_WORKER_QUEUES at runtime; also check argv
     import sys

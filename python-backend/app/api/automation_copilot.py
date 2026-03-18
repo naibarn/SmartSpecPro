@@ -13,7 +13,6 @@ from __future__ import annotations
 import json
 import secrets
 import uuid
-from typing import Optional
 
 import redis as sync_redis
 import structlog
@@ -38,7 +37,7 @@ def _get_redis() -> sync_redis.Redis:
 
 
 async def _verify_internal_token(
-    x_internal_token: Optional[str] = Header(None),
+    x_internal_token: str | None = Header(None),
 ) -> None:
     expected = getattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", None)
     if not expected:

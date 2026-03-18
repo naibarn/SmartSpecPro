@@ -208,7 +208,12 @@ class SDKServer {
       const { payload } = await jwtVerify(cookieValue, secretKey, {
         algorithms: ["HS256"],
       });
-      const { openId, appId, name, jti } = payload as Record<string, unknown>;
+      const { openId, appId, name, jti, userId, role } = payload as Record<string, unknown>;
+
+      // System user JWT uses userId + role instead of openId + appId
+      if (userId === -1 && role === "system_agent") {
+        return { openId: "", appId: "", name: "System Guardian", userId, role } as any;
+      }
 
       // Only openId and appId are required - name can be empty
       if (!isNonEmptyString(openId) || !isNonEmptyString(appId)) {
@@ -257,10 +262,23 @@ class SDKServer {
     const cookies = this.parseCookies(req.headers.cookie);
     const sessionCookie = cookies.get(COOKIE_NAME);
 
-    const session = await this.verifySession(sessionCookie);
+    // Also check Authorization bearer header
+    const authHeader = req.headers.authorization;
+    const tokenToVerify = authHeader?.startsWith("Bearer ")
+      ? authHeader.substring(7)
+      : sessionCookie;
+
+    const session = await this.verifySession(tokenToVerify);
 
     if (!session) {
       throw ForbiddenError("Invalid session cookie");
+    }
+
+    // Handle system user JWT (has userId instead of openId)
+    if ((session as any).userId === -1 && (session as any).role === "system_agent") {
+      const systemUser = await db.getUserById(-1);
+      if (systemUser) return systemUser as User;
+      throw ForbiddenError("System user not found");
     }
 
     const sessionUserId = session.openId;

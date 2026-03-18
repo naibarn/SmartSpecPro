@@ -18,6 +18,7 @@ import { registerLLMRoutes } from "./llmRoutes";
 import { registerMCPRoutes } from "./mcpRoutes";
 import { registerMcpPublicRoutes } from "./mcpPublicServer";
 import { registerMediaJobRoutes } from "../routers/mediaJobs";
+import { registerFeedbackUploadRoutes } from "../routers/feedback";
 import { registerAgencyStreamRoutes } from "./agencyStreamProxy";
 import { registerLiveBrowserStreamRoutes } from "./liveBrowserStreamProxy";
 import { registerContentAutomationRoutes } from "../routers/contentAutomationRoutes";
@@ -43,6 +44,9 @@ import "../services/channelAdapters/slack"; // Register Slack adapter
 import "../services/channelAdapters/discord"; // Register Discord adapter
 import { adapterRegistry } from "../services/channelAdapters/registry";
 import { createSlideRenderRouter } from "../routes/slideRender";
+import { createGuardianSSERouter } from "../routes/guardianSSE";
+import orchestratorStreamRouter from "../routes/orchestratorStream";
+import internalOrchestratorRouter from "../routes/internalOrchestrator";
 import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
 import { registerServicesRoutes } from "../routers/services";
 import { registerTenantRoutes } from "../routers/tenant";
@@ -197,6 +201,16 @@ app.use(cookieParser(ENV.cookieSecret));
  */
 app.get("/healthz", (_req, res) => {
   res.json({ status: "ok" });
+});
+
+app.get("/api/virtual-admin/health", async (_req, res) => {
+  try {
+    const { getGuardianHealthFull } = await import("../services/virtualAdmin/guardianScheduler");
+    const health = await getGuardianHealthFull();
+    res.json(health);
+  } catch {
+    res.json({ running: false, error: "Guardian not initialized" });
+  }
 });
 
 /**
@@ -457,6 +471,7 @@ registerLLMRoutes(app);
 registerMCPRoutes(app);
 registerMcpPublicRoutes(app);
 registerMediaJobRoutes(app);
+registerFeedbackUploadRoutes(app);
 registerAgencyStreamRoutes(app);
 registerLiveBrowserStreamRoutes(app);
 registerContentAutomationRoutes(app);
@@ -465,6 +480,9 @@ registerModelSuggestToolRoute(app);
 registerFileParseToolRoute(app);
 registerScheduleDraftToolRoute(app);
 registerSkillDiscoveryToolRoute(app);
+app.use("/api/virtual-admin/events", createGuardianSSERouter());
+app.use(orchestratorStreamRouter);
+app.use(internalOrchestratorRouter);
 
 // Proxy remote images through same-origin endpoint so browser canvas operations
 // (split/crop preview) work even when source host doesn't expose CORS headers.
@@ -495,6 +513,16 @@ const VALID_SOURCE_TYPES = new Set([
   "tts", "browser_automation", "widget_chat", "webhook_chat", "webhook_trigger",
 ]);
 
+// Helper: timing-safe Bearer token validation for internal endpoints
+function verifyInternalBearerToken(authHeader: string): boolean {
+  if (!authHeader.startsWith("Bearer ") || !ENV.webGatewayToken) return false;
+  const token = authHeader.slice(7);
+  const tokenBuf = Buffer.from(token);
+  const expectedBuf = Buffer.from(ENV.webGatewayToken);
+  if (tokenBuf.length !== expectedBuf.length) return false;
+  return crypto.timingSafeEqual(tokenBuf, expectedBuf);
+}
+
 // Helper: derive sourceType from service tag when not explicitly provided
 function deriveSourceTypeFromService(service: string): string {
   if (service.startsWith("library.") || service.startsWith("gdrive.index")) return "indexing";
@@ -505,13 +533,8 @@ function deriveSourceTypeFromService(service: string): string {
 
 // Internal credit billing endpoint (Python backend -> Node.js)
 app.post("/api/internal/credits/charge", async (req, res) => {
-  // Authenticate via gateway token
-  const authHeader = req.headers.authorization || "";
-  if (!authHeader.startsWith("Bearer ") || !ENV.webGatewayToken) {
-    return res.status(401).json({ success: false, error: "Unauthorized" });
-  }
-  const token = authHeader.slice(7);
-  if (token !== ENV.webGatewayToken) {
+  // Authenticate via gateway token (timing-safe)
+  if (!verifyInternalBearerToken(req.headers.authorization || "")) {
     return res.status(401).json({ success: false, error: "Unauthorized" });
   }
 
@@ -565,12 +588,7 @@ app.post("/api/internal/credits/charge", async (req, res) => {
 
 // Internal agency multiplier markup endpoint (Python backend -> Node.js)
 app.post("/api/internal/credits/agency-markup", async (req, res) => {
-  const authHeader = req.headers.authorization || "";
-  if (!authHeader.startsWith("Bearer ") || !ENV.webGatewayToken) {
-    return res.status(401).json({ success: false, error: "Unauthorized" });
-  }
-  const token = authHeader.slice(7);
-  if (token !== ENV.webGatewayToken) {
+  if (!verifyInternalBearerToken(req.headers.authorization || "")) {
     return res.status(401).json({ success: false, error: "Unauthorized" });
   }
 
@@ -616,12 +634,7 @@ app.post("/api/internal/credits/agency-markup", async (req, res) => {
 
 // Internal creator fee settlement endpoint (Python backend -> Node.js)
 app.post("/api/internal/credits/creator-fee-settle", async (req, res) => {
-  const authHeader = req.headers.authorization || "";
-  if (!authHeader.startsWith("Bearer ") || !ENV.webGatewayToken) {
-    return res.status(401).json({ success: false, error: "Unauthorized" });
-  }
-  const token = authHeader.slice(7);
-  if (token !== ENV.webGatewayToken) {
+  if (!verifyInternalBearerToken(req.headers.authorization || "")) {
     return res.status(401).json({ success: false, error: "Unauthorized" });
   }
 
@@ -674,12 +687,7 @@ app.post("/api/internal/credits/creator-fee-settle", async (req, res) => {
 
 // Internal Google Drive cleanup endpoint (Python backend -> Node.js)
 app.post("/api/internal/google-drive/cleanup", async (req, res) => {
-  const authHeader = req.headers.authorization || "";
-  if (!authHeader.startsWith("Bearer ") || !ENV.webGatewayToken) {
-    return res.status(401).json({ success: false, error: "Unauthorized" });
-  }
-  const token = authHeader.slice(7);
-  if (token !== ENV.webGatewayToken) {
+  if (!verifyInternalBearerToken(req.headers.authorization || "")) {
     return res.status(401).json({ success: false, error: "Unauthorized" });
   }
 
@@ -740,7 +748,6 @@ app.post("/api/internal/agency/create", async (req, res) => {
     const tokenBuf = Buffer.from(internalToken);
     const expectedBuf = Buffer.from(ENV.webGatewayToken);
     if (tokenBuf.length === expectedBuf.length) {
-      const crypto = await import("crypto");
       if (crypto.timingSafeEqual(tokenBuf, expectedBuf)) {
         const userIdHeader = req.headers["x-user-id"] as string | undefined;
         const userId = userIdHeader ? parseInt(userIdHeader, 10) : 0;
@@ -812,7 +819,6 @@ app.post("/api/internal/agency/create", async (req, res) => {
     } = await import("../../drizzle/schema");
     const drizzleDb = await getDb();
     if (!drizzleDb) return res.status(503).json({ error: "Database unavailable" });
-    const cryptoModule = await import("crypto");
     const tenantReq = req as any;
     // Prefer explicit tenantId from request body (passed by Celery task from the user's tRPC context),
     // then fall back to tenant middleware, then user's currentTenantId
@@ -839,11 +845,11 @@ app.post("/api/internal/agency/create", async (req, res) => {
       return res.status(400).json({ error: "at least 1 agent is required" });
     }
 
-    const agencyId = cryptoModule.default.randomUUID();
+    const agencyId = crypto.randomUUID();
     // Map spec-level agent IDs → new DB UUIDs
     const specIdToDbId: Record<string, string> = {};
     const agentRows = agents.map((a, idx) => {
-      const dbId = cryptoModule.default.randomUUID();
+      const dbId = crypto.randomUUID();
       specIdToDbId[a.id] = dbId;
       return {
         id: dbId,
@@ -888,7 +894,7 @@ app.post("/api/internal/agency/create", async (req, res) => {
 
       const flowRows = communicationFlows
         .map((f) => ({
-          id: cryptoModule.default.randomUUID(),
+          id: crypto.randomUUID(),
           agencyId,
           fromAgentId: specIdToDbId[f.fromAgentId] ?? null,
           toAgentId: specIdToDbId[f.toAgentId] ?? null,
@@ -913,7 +919,7 @@ app.post("/api/internal/agency/create", async (req, res) => {
         for (const toolId of agent.toolIds) {
           if (!toolId || typeof toolId !== "string") continue;
           toolRows.push({
-            id: cryptoModule.default.randomUUID(),
+            id: crypto.randomUUID(),
             agentId: dbAgentId,
             toolId: String(toolId).slice(0, 100),
             toolConfig: agent.toolConfigs?.[toolId] ?? {},
@@ -1285,6 +1291,27 @@ async function main() {
 
   server.listen(port, '0.0.0.0', () => {
     console.log(`SmartAIHub Web listening on http://0.0.0.0:${port}`);
+
+    // Start background scheduler to resolve pending media images
+    import("../services/aiPresentationService").then(({ startPendingMediaScheduler }) => {
+      startPendingMediaScheduler();
+    }).catch((err) => {
+      console.error("[Startup] Failed to start pending media scheduler:", err);
+    });
+
+    // Start queue health monitor
+    import("../services/queueHealthMonitor").then(({ startQueueHealthMonitor }) => {
+      startQueueHealthMonitor();
+    }).catch((err) => {
+      console.error("[Startup] Failed to start queue health monitor:", err);
+    });
+
+    // Start System Guardian (Virtual Admin Agent)
+    import("../services/virtualAdmin/guardianScheduler").then(({ startGuardian }) => {
+      startGuardian();
+    }).catch((err) => {
+      console.error("[Startup] Failed to start System Guardian:", err);
+    });
   });
 }
 
@@ -1306,6 +1333,17 @@ process.on("unhandledRejection", (reason, promise) => {
 // Graceful shutdown: stop accepting new connections, flush logs, close queues and connections
 process.on("SIGTERM", async () => {
   console.log("[Shutdown] SIGTERM received, starting graceful shutdown...");
+
+  // 0. Stop background schedulers
+  import("../services/aiPresentationService").then(({ stopPendingMediaScheduler }) => {
+    stopPendingMediaScheduler();
+  }).catch(() => {});
+  import("../services/queueHealthMonitor").then(({ stopQueueHealthMonitor }) => {
+    stopQueueHealthMonitor();
+  }).catch(() => {});
+  import("../services/virtualAdmin/guardianScheduler").then(({ stopGuardian }) => {
+    stopGuardian();
+  }).catch(() => {});
 
   // 1. Stop accepting new connections
   if (httpServer) {

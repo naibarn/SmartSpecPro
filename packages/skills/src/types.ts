@@ -151,6 +151,7 @@ export interface SkillExecutionPolicyConfig {
   /** Capability requirements for model selection */
   requirements?: {
     supportsVision?: boolean;
+    supportsThinking?: boolean;
     supportsResponses?: boolean;
     supportsStructuredOutputs?: boolean;
     supportsWebSearch?: boolean;

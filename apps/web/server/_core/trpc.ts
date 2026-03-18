@@ -33,7 +33,7 @@ export const adminProcedure = t.procedure.use(
   t.middleware(async opts => {
     const { ctx, next } = opts;
 
-    if (!ctx.user || ctx.user.role !== 'admin') {
+    if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'system_agent')) {
       throw new TRPCError({ code: "FORBIDDEN", message: NOT_ADMIN_ERR_MSG });
     }
 
@@ -68,7 +68,7 @@ export const resetPasswordProcedure = t.procedure.use(
 export const rateLimitedAdminProcedure = t.procedure
   .use(
     t.middleware(async opts => {
-      if (!opts.ctx.user || opts.ctx.user.role !== 'admin') {
+      if (!opts.ctx.user || (opts.ctx.user.role !== 'admin' && opts.ctx.user.role !== 'system_agent')) {
         throw new TRPCError({ code: "FORBIDDEN", message: NOT_ADMIN_ERR_MSG });
       }
       return opts.next({ ctx: { ...opts.ctx, user: opts.ctx.user } });
@@ -81,7 +81,7 @@ export const domainAdminProcedure = t.procedure.use(
   t.middleware(async opts => {
     const { ctx, next } = opts;
 
-    if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'domain_admin')) {
+    if (!ctx.user || (ctx.user.role !== 'admin' && ctx.user.role !== 'domain_admin' && ctx.user.role !== 'system_agent')) {
       throw new TRPCError({ code: "FORBIDDEN", message: "Domain admin access required" });
     }
 
@@ -99,7 +99,7 @@ export const domainAdminProcedure = t.procedure.use(
 export const rateLimitedDomainAdminProcedure = t.procedure
   .use(
     t.middleware(async opts => {
-      if (!opts.ctx.user || (opts.ctx.user.role !== 'admin' && opts.ctx.user.role !== 'domain_admin')) {
+      if (!opts.ctx.user || (opts.ctx.user.role !== 'admin' && opts.ctx.user.role !== 'domain_admin' && opts.ctx.user.role !== 'system_agent')) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Domain admin access required" });
       }
       return opts.next({ ctx: { ...opts.ctx, user: opts.ctx.user } });

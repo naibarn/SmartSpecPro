@@ -30,6 +30,19 @@ export interface VideoDraftAIGenerateRequest {
   extraParams?: Record<string, unknown>;
 }
 
+export interface FocusedClipMeta {
+  clipId: string;
+  assetId: string;
+  type: "image" | "video";
+  title: string;
+  url: string;
+  thumbnailUrl: string;
+  generationPrompt?: string;
+  referenceUrls?: string[];
+  generationModelId?: string;
+  model?: string;
+}
+
 interface VideoDraftAIPanelProps {
   projectWidth: number;
   projectHeight: number;
@@ -37,6 +50,7 @@ interface VideoDraftAIPanelProps {
   isPreparingPresentationDraft?: boolean;
   onGenerate: (request: VideoDraftAIGenerateRequest) => Promise<void>;
   onOpenPresentationDraft?: () => void;
+  focusedClipMeta?: FocusedClipMeta | null;
 }
 
 const MAX_REFERENCE_IMAGES = 5;
@@ -71,6 +85,7 @@ export const VideoDraftAIPanel: React.FC<VideoDraftAIPanelProps> = ({
   isPreparingPresentationDraft = false,
   onGenerate,
   onOpenPresentationDraft,
+  focusedClipMeta,
 }) => {
   const [mediaType, setMediaType] = useState<"image" | "video">("video");
   const [prompt, setPrompt] = useState("");
@@ -87,6 +102,7 @@ export const VideoDraftAIPanel: React.FC<VideoDraftAIPanelProps> = ({
   const [debouncedReferenceLibrarySearchQuery, setDebouncedReferenceLibrarySearchQuery] = useState("");
   const [referenceUrlInput, setReferenceUrlInput] = useState("");
   const referenceFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [referenceSource, setReferenceSource] = useState<"library" | "generated">("generated");
 
   const mediaModelsQuery = trpc.media.getModels.useQuery(
     { type: mediaType },
@@ -123,7 +139,19 @@ export const VideoDraftAIPanel: React.FC<VideoDraftAIPanelProps> = ({
       },
     },
     {
-      enabled: true,
+      enabled: referenceSource === "library",
+    },
+  );
+  const mediaHistoryQuery = trpc.media.listTasks.useQuery(
+    {
+      mediaType: "image",
+      status: "completed",
+      limit: 50,
+      daysAgo: 30,
+    },
+    {
+      enabled: referenceSource === "generated",
+      staleTime: 60_000,
     },
   );
   const uploadReferenceMutation = trpc.ai.upload.useMutation();
@@ -159,23 +187,92 @@ export const VideoDraftAIPanel: React.FC<VideoDraftAIPanelProps> = ({
   const referenceLibraryItems = useMemo(() => {
     const results = (referenceLibraryQuery.data?.results ?? []) as Array<{
       source_url?: string | null;
+      thumbnail_url?: string | null;
       title?: string | null;
       metadata?: { extension?: string | null } | null;
     }>;
-    return results.reduce<Array<{ value: string; label: string; description?: string }>>((acc, item) => {
+    return results.reduce<Array<{ value: string; label: string; description?: string; icon?: React.ReactNode }>>((acc, item) => {
       const url = String(item.source_url || "").trim();
       if (!url) {
         return acc;
       }
+      const thumbUrl = String(item.thumbnail_url || item.source_url || "").trim();
       const extension = String(item.metadata?.extension || "").trim();
       acc.push({
         value: url,
         label: String(item.title || url.split("/").pop() || "Library image"),
         description: extension ? `.${extension}` : undefined,
+        icon: thumbUrl ? (
+          <span style={{ width: 36, height: 36, display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 4, background: "#27272a", flexShrink: 0, overflow: "hidden" }}>
+            <img
+              src={thumbUrl}
+              alt=""
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              loading="lazy"
+              onError={(e) => {
+                const img = e.target as HTMLImageElement;
+                img.style.display = "none";
+                if (img.parentElement) {
+                  img.parentElement.textContent = "\uD83D\uDDBC";
+                  img.parentElement.style.fontSize = "16px";
+                  img.parentElement.style.color = "#71717a";
+                }
+              }}
+            />
+          </span>
+        ) : undefined,
       });
       return acc;
     }, []);
   }, [referenceLibraryQuery.data?.results]);
+
+  const mediaHistoryItems = useMemo(() => {
+    const tasks = (mediaHistoryQuery.data?.tasks ?? []) as Array<{
+      id?: string;
+      resultUrl?: string;
+      prompt?: string;
+      model?: string;
+      mediaType?: string;
+      createdAt?: string;
+    }>;
+    return tasks.reduce<Array<{ value: string; label: string; description?: string; icon?: React.ReactNode }>>((acc, task) => {
+      const url = String(task.resultUrl || "").trim();
+      if (!url) return acc;
+      const promptLabel = task.prompt
+        ? (task.prompt.length > 50 ? `${task.prompt.slice(0, 50)}...` : task.prompt)
+        : "Generated image";
+      const modelLabel = task.model || "";
+      acc.push({
+        value: url,
+        label: promptLabel,
+        description: modelLabel
+          ? `${modelLabel}${task.createdAt ? ` \u2022 ${new Date(task.createdAt).toLocaleDateString()}` : ""}`
+          : undefined,
+        icon: (
+          <span style={{ width: 36, height: 36, display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 4, background: "#27272a", flexShrink: 0, overflow: "hidden" }}>
+            <img
+              src={url}
+              alt=""
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              loading="lazy"
+              onError={(e) => {
+                const img = e.target as HTMLImageElement;
+                img.style.display = "none";
+                if (img.parentElement) {
+                  img.parentElement.textContent = "\uD83D\uDDBC";
+                  img.parentElement.style.fontSize = "16px";
+                  img.parentElement.style.color = "#71717a";
+                }
+              }}
+            />
+          </span>
+        ),
+      });
+      return acc;
+    }, []);
+  }, [mediaHistoryQuery.data?.tasks]);
+
+  const activeReferenceItems = referenceSource === "generated" ? mediaHistoryItems : referenceLibraryItems;
 
   const modelItems = useMemo(() => {
     const defaultLabel = defaultMediaModelId ? `Default (${defaultMediaModelId})` : "Default model";
@@ -398,10 +495,140 @@ export const VideoDraftAIPanel: React.FC<VideoDraftAIPanelProps> = ({
     selectedModelId,
   ]);
 
+  const handleReuseFromClip = useCallback(() => {
+    if (!focusedClipMeta) return;
+    // Always reset all form fields — clear stale state from previous clip
+    setPrompt(focusedClipMeta.generationPrompt || "");
+    setMediaType(focusedClipMeta.type === "video" ? "video" : "image");
+    setSelectedModelId(focusedClipMeta.generationModelId || "");
+    setReferenceImages(
+      focusedClipMeta.referenceUrls && focusedClipMeta.referenceUrls.length > 0
+        ? focusedClipMeta.referenceUrls
+            .filter(isValidReferenceUrl)
+            .slice(0, MAX_REFERENCE_IMAGES)
+            .map((url, i) => ({ url, name: `Reference ${i + 1}` }))
+        : [],
+    );
+    setAdvancedMediaOptionsEnabled(false);
+    setMediaModelExtraParams({});
+    toast.success("Loaded prompt and settings from selected clip.");
+  }, [focusedClipMeta]);
+
   return (
     <div className="space-y-3 p-3">
       <style>{panelStyles}</style>
       <div className="section-title">Draft with AI</div>
+
+      {/* Focused Clip Prompt Section */}
+      {focusedClipMeta && (focusedClipMeta.generationPrompt || (focusedClipMeta.referenceUrls && focusedClipMeta.referenceUrls.length > 0)) && (
+        <div className="rounded-lg border border-indigo-700/50 bg-indigo-950/40 p-3">
+          <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-indigo-300">
+            Selected Clip Prompt
+          </div>
+          <div className="mb-2 flex items-start gap-2">
+            {focusedClipMeta.thumbnailUrl && (
+              <img
+                src={focusedClipMeta.thumbnailUrl}
+                alt=""
+                style={{
+                  width: 56,
+                  height: 40,
+                  objectFit: "cover",
+                  borderRadius: 6,
+                  flexShrink: 0,
+                }}
+              />
+            )}
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div className="text-xs font-medium text-white" style={{ marginBottom: 2 }}>
+                {focusedClipMeta.title}
+              </div>
+              <div className="text-xs text-slate-400">
+                {focusedClipMeta.type === "video" ? "Video" : "Image"}
+                {focusedClipMeta.model ? ` \u2022 ${focusedClipMeta.model}` : ""}
+              </div>
+            </div>
+          </div>
+          {focusedClipMeta.generationPrompt && (
+            <div style={{ position: "relative", marginBottom: 6 }}>
+              <div
+                className="text-xs text-slate-200"
+                style={{
+                  background: "#1e1b4b",
+                  borderRadius: 6,
+                  padding: "6px 28px 6px 8px",
+                  maxHeight: 80,
+                  overflowY: "auto",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                }}
+              >
+                {focusedClipMeta.generationPrompt}
+              </div>
+              <button
+                type="button"
+                title="Copy prompt"
+                style={{
+                  position: "absolute",
+                  top: 4,
+                  right: 4,
+                  background: "rgba(99,102,241,0.3)",
+                  border: "none",
+                  borderRadius: 4,
+                  color: "#c7d2fe",
+                  cursor: "pointer",
+                  padding: "2px 4px",
+                  fontSize: 11,
+                  lineHeight: 1,
+                }}
+                onClick={() => {
+                  void navigator.clipboard.writeText(focusedClipMeta.generationPrompt || "");
+                  toast.success("Prompt copied to clipboard");
+                }}
+              >
+                &#x2398;
+              </button>
+            </div>
+          )}
+          {focusedClipMeta.referenceUrls && focusedClipMeta.referenceUrls.length > 0 && (
+            <div style={{ marginBottom: 6 }}>
+              <div className="text-xs text-indigo-300" style={{ marginBottom: 4 }}>
+                Reference Images ({focusedClipMeta.referenceUrls.length})
+              </div>
+              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                {focusedClipMeta.referenceUrls.map((url, i) => (
+                  <img
+                    key={i}
+                    src={url}
+                    alt={`Ref ${i + 1}`}
+                    style={{
+                      width: 44,
+                      height: 32,
+                      objectFit: "cover",
+                      borderRadius: 4,
+                      border: "1px solid #4338ca",
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+          <div style={{ display: "flex", gap: 6 }}>
+            <button
+              type="button"
+              className="generate-button"
+              style={{ fontSize: 12, padding: "6px 12px", flex: 1 }}
+              onClick={handleReuseFromClip}
+              disabled={isGenerating}
+            >
+              Load into form
+            </button>
+          </div>
+          <div className="text-xs text-slate-500" style={{ marginTop: 4 }}>
+            Loads prompt, model, and references into the form below for editing and regeneration.
+          </div>
+        </div>
+      )}
 
       {onOpenPresentationDraft && (
         <div className="rounded-lg border border-slate-700 bg-slate-900/80 p-3">
@@ -500,16 +727,56 @@ export const VideoDraftAIPanel: React.FC<VideoDraftAIPanelProps> = ({
 
       <div className="control-group">
         <label className="control-label">Reference Images</label>
+        <div style={{ display: "flex", gap: 4, marginBottom: 6 }}>
+          <button
+            type="button"
+            style={{
+              flex: 1,
+              padding: "4px 8px",
+              fontSize: 11,
+              borderRadius: 4,
+              border: "1px solid",
+              borderColor: referenceSource === "generated" ? "#3b82f6" : "#3f3f46",
+              background: referenceSource === "generated" ? "#1e3a5f" : "transparent",
+              color: referenceSource === "generated" ? "#93c5fd" : "#a1a1aa",
+              cursor: "pointer",
+            }}
+            onClick={() => setReferenceSource("generated")}
+          >
+            Generated
+          </button>
+          <button
+            type="button"
+            style={{
+              flex: 1,
+              padding: "4px 8px",
+              fontSize: 11,
+              borderRadius: 4,
+              border: "1px solid",
+              borderColor: referenceSource === "library" ? "#3b82f6" : "#3f3f46",
+              background: referenceSource === "library" ? "#1e3a5f" : "transparent",
+              color: referenceSource === "library" ? "#93c5fd" : "#a1a1aa",
+              cursor: "pointer",
+            }}
+            onClick={() => setReferenceSource("library")}
+          >
+            Library
+          </button>
+        </div>
         <SearchableCombobox
-          items={referenceLibraryItems}
+          items={activeReferenceItems}
           value={selectedReferenceLibraryUrl}
           onValueChange={(value) => {
             setSelectedReferenceLibraryUrl(value);
             handleAddReferenceFromLibrary(value);
           }}
-          placeholder="Search image from Library..."
-          searchPlaceholder="Search library images..."
-          emptyMessage={referenceLibraryQuery.isLoading ? "Loading library..." : "No images found."}
+          placeholder={referenceSource === "generated" ? "Select from generated images..." : "Search image from Library..."}
+          searchPlaceholder={referenceSource === "generated" ? "Search by prompt..." : "Search library images..."}
+          emptyMessage={
+            referenceSource === "generated"
+              ? (mediaHistoryQuery.isLoading ? "Loading generated images..." : "No generated images found.")
+              : (referenceLibraryQuery.isLoading ? "Loading library..." : "No images found.")
+          }
           disabled={referenceImages.length >= MAX_REFERENCE_IMAGES || isGenerating}
           searchValue={referenceLibrarySearchQuery}
           onSearchValueChange={setReferenceLibrarySearchQuery}

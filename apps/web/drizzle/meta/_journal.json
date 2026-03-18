@@ -568,6 +568,62 @@
       "when": 1773547152628,
       "tag": "0080_shocking_pete_wisdom",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1773800000000,
+      "tag": "0081_persona_template_sources",
+      "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1773803600000,
+      "tag": "0082_persona_identity",
+      "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1773792343344,
+      "tag": "0083_rapid_prima",
+      "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1773795806272,
+      "tag": "0084_heavy_pixie",
+      "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1773796213273,
+      "tag": "0085_secret_harpoon",
+      "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1773796435953,
+      "tag": "0086_supreme_speedball",
+      "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1773798172126,
+      "tag": "0087_first_husk",
+      "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1773798794549,
+      "tag": "0088_spicy_shen",
+      "breakpoints": true
     }
   ]
 }

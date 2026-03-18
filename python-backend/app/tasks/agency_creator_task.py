@@ -538,7 +538,7 @@ async def _implement_agency(spec: dict, user_id: int, tenant_id: str = "") -> st
     from app.core.config import settings
 
     internal_url = os.getenv("SMARTSPEC_INTERNAL_URL") or os.getenv("SMARTSPEC_WEB_GATEWAY_URL", "http://127.0.0.1:3000")
-    internal_token = getattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", "") or getattr(settings, "SMARTSPEC_PROXY_TOKEN", "")
+    internal_token = getattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", "")
 
     if not internal_token:
         logger.error("agency_creator_no_internal_token", msg="SMARTSPEC_WEB_GATEWAY_TOKEN is not configured")

@@ -43,14 +43,13 @@ def _run_async(coro):
     worker process lifetime.
     """
     try:
-        # Check if we're already in an async context
         loop = asyncio.get_running_loop()
-        # If we're here, we're already in async context - this shouldn't happen in Celery
-        # but handle it gracefully
+        # Already in async context — should not happen in Celery prefork workers
         raise RuntimeError("Already in async context - cannot run nested async")
-    except RuntimeError:
+    except RuntimeError as e:
+        if "Already in async context" in str(e):
+            raise
         # No running loop - this is expected in Celery workers
-        pass
 
     try:
         # Try to get the existing event loop
@@ -1552,17 +1551,142 @@ async def _recover_stuck_tasks_async():
             raise
 
 
+async def _recover_stuck_pending_tasks_async():
+    """
+    Recover tasks stuck in 'pending' status.
+
+    This catches tasks where the Celery worker failed (e.g. asyncpg connection error)
+    but never updated the DB status. These tasks have a celery_task_id but never
+    transitioned to 'processing' — they were silently dropped.
+
+    Strategy: check the Celery result backend for the task's state.
+    - If Celery says the task completed (SUCCESS/FAILURE/REVOKED) but DB is still
+      pending, mark the DB task as failed. Do NOT re-submit: the original Celery
+      task already ran and either silently failed or returned a failure dict.
+    - If Celery state is still PENDING/STARTED/RETRY, the task might still be
+      queued or retrying — leave it alone unless it's been > 30 minutes.
+    """
+    from celery.result import AsyncResult
+    from datetime import timezone
+
+    async with AsyncSessionLocal() as db:
+        try:
+            cutoff = datetime.now(timezone.utc) - timedelta(minutes=10)
+
+            result = await db.execute(
+                select(MediaTask).filter(
+                    MediaTask.status == TaskStatus.PENDING,
+                    MediaTask.created_at < cutoff,
+                    MediaTask.celery_task_id.isnot(None),  # Was submitted to Celery
+                    MediaTask.started_at.is_(None),  # But never started
+                ).limit(10)
+            )
+            stuck_pending = result.scalars().all()
+
+            if not stuck_pending:
+                return {"status": "success", "recovered": 0}
+
+            recovered = 0
+            now = datetime.now(timezone.utc)
+
+            for task in stuck_pending:
+                # Ensure created_at is timezone-aware for comparison
+                task_created = task.created_at
+                if task_created.tzinfo is None:
+                    task_created = task_created.replace(tzinfo=timezone.utc)
+                age_minutes = int((now - task_created).total_seconds() / 60)
+
+                # Check Celery task state to avoid duplicate execution
+                celery_state = "UNKNOWN"
+                celery_result_info = None
+                try:
+                    ar = AsyncResult(task.celery_task_id, app=celery_app)
+                    celery_state = ar.state  # PENDING, STARTED, RETRY, SUCCESS, FAILURE, REVOKED
+                    if celery_state in ("SUCCESS", "FAILURE"):
+                        celery_result_info = ar.result
+                except Exception:
+                    pass  # Redis unavailable — fall back to age-based logic
+
+                # Terminal Celery states: task already ran but DB wasn't updated
+                if celery_state in ("SUCCESS", "FAILURE", "REVOKED"):
+                    error_detail = ""
+                    if isinstance(celery_result_info, dict):
+                        error_detail = celery_result_info.get("error", "")[:200]
+                    elif isinstance(celery_result_info, Exception):
+                        error_detail = str(celery_result_info)[:200]
+
+                    task.status = TaskStatus.FAILED
+                    task.error_message = (
+                        f"Celery task finished ({celery_state}) but DB status was never updated. "
+                        f"{error_detail}"
+                    ).strip()
+                    task.completed_at = now
+                    recovered += 1
+                    logger.warning(
+                        "recover_stuck_pending_celery_terminal",
+                        task_id=task.id,
+                        celery_state=celery_state,
+                        age_minutes=age_minutes,
+                    )
+
+                elif age_minutes >= 30:
+                    # Very old pending task with non-terminal Celery state — give up
+                    task.status = TaskStatus.FAILED
+                    task.error_message = (
+                        f"Task stuck in pending state for {age_minutes} minutes "
+                        f"(celery_state={celery_state}). Likely lost."
+                    )
+                    task.completed_at = now
+                    recovered += 1
+                    logger.warning(
+                        "recover_stuck_pending_timeout",
+                        task_id=task.id,
+                        celery_state=celery_state,
+                        age_minutes=age_minutes,
+                    )
+                else:
+                    # Non-terminal Celery state, < 30 min old — leave it alone
+                    logger.info(
+                        "recover_stuck_pending_waiting",
+                        task_id=task.id,
+                        celery_state=celery_state,
+                        age_minutes=age_minutes,
+                    )
+
+            await db.commit()
+
+            logger.info(
+                "recover_stuck_pending_completed",
+                recovered=recovered,
+                total_checked=len(stuck_pending),
+            )
+            return {"status": "success", "recovered": recovered}
+
+        except Exception as e:
+            logger.error("recover_stuck_pending_failed_error", error=str(e))
+            raise
+
+
 @celery_app.task
 def recover_stuck_tasks():
     """
-    Periodic task to recover tasks stuck in 'processing' status
-    Handles cases where worker restarts interrupted polling
+    Periodic task to recover tasks stuck in 'processing' or 'pending' status.
+    Handles cases where worker restarts, asyncpg errors, or other failures
+    left tasks in a non-terminal state.
     Runs every 2 minutes (see celery beat schedule)
     """
     logger.info("recover_stuck_tasks_started")
 
     try:
         result = _run_async(_recover_stuck_tasks_async())
+
+        # Also recover tasks stuck in 'pending' (silently dropped by Celery)
+        try:
+            pending_result = _run_async(_recover_stuck_pending_tasks_async())
+            result["pending_recovered"] = pending_result.get("recovered", 0)
+        except Exception as e:
+            logger.error("recover_stuck_pending_exception", error=str(e))
+
         return result
 
     except Exception as e:

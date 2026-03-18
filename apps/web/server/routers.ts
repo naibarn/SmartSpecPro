@@ -78,6 +78,14 @@ import { tenantFeatureFlagsRouter } from "./routers/tenantFeatureFlags";
 import { contentArtifactsRouter } from "./routers/contentArtifacts";
 import { contentQualityRouter } from "./routers/contentQuality";
 import { apiKeysRouter } from "./routers/apiKeys";
+import { helpRouter } from "./routers/help";
+import { virtualAdminRouter } from "./routers/virtualAdmin";
+import { feedbackRouter } from "./routers/feedback";
+import { teamRouter } from "./routers/team";
+import { teamRoomRouter } from "./routers/teamRoom";
+import { teamRunRouter } from "./routers/teamRun";
+import { scopedMemoryRouter } from "./routers/scopedMemory";
+import { monitoringRouter } from "./routers/monitoring";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -1790,6 +1798,16 @@ export const appRouter = router({
   contentArtifacts: contentArtifactsRouter,
   contentQuality: contentQualityRouter,
   apiKeys: apiKeysRouter,
+  virtualAdmin: virtualAdminRouter,
+  feedback: feedbackRouter,
+
+  // Virtual AI Office Orchestrator
+  team: teamRouter,
+  teamRoom: teamRoomRouter,
+  teamRun: teamRunRouter,
+  scopedMemory: scopedMemoryRouter,
+  monitoring: monitoringRouter,
+  help: helpRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 /**
  * Enums
  */
-export const roleEnum = pgEnum("role", ["user", "admin", "domain_admin"]);
+export const roleEnum = pgEnum("role", ["user", "admin", "domain_admin", "system_agent"]);
 export const planEnum = pgEnum("plan", ["free", "starter", "pro", "enterprise"]);
 export const transactionTypeEnum = pgEnum("transaction_type", [
   "purchase",
@@ -350,6 +350,9 @@ export const users = pgTable("users", {
   /** Default AI persona for this user */
   defaultPersonaId: varchar("defaultPersonaId", { length: 36 })
     .references((): AnyPgColumn => personaTemplates.id, { onDelete: "set null" }),
+
+  /** Whether this is a system/virtual user (not a human login) */
+  isSystemUser: boolean("isSystemUser").default(false),
 
   /** PDPA/GDPR voice consent: NULL = not consented, timestamp = when consent was given */
   voiceConsentGrantedAt: timestamp("voiceConsentGrantedAt", { withTimezone: true }),
@@ -4960,6 +4963,11 @@ export const personaTemplates = pgTable("persona_templates", {
   userId: integer("userId").references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   description: text("description"),
+  assistantNickname: text("assistantNickname"),
+  assistantGender: text("assistantGender").default("neutral"),
+  sourceTemplateIds: text("sourceTemplateIds").array().default(sql`'{}'`).notNull(),
+  sourceTemplateLabels: text("sourceTemplateLabels").array().default(sql`'{}'`).notNull(),
+  sourceTemplateCategories: text("sourceTemplateCategories").array().default(sql`'{}'`).notNull(),
   systemPromptPrefix: text("systemPromptPrefix").notNull(),
   tone: text("tone"),
   language: text("language").default("auto"),
@@ -4972,6 +4980,8 @@ export const personaTemplates = pgTable("persona_templates", {
 }, (t) => [
   index("persona_templates_tenant_scope_idx").on(t.tenantId, t.scope),
   index("persona_templates_user_idx").on(t.userId),
+  index("persona_templates_source_template_ids_idx").using("gin", t.sourceTemplateIds),
+  check("persona_templates_assistant_gender_check", sql`"assistantGender" IN ('female','male','neutral') OR "assistantGender" IS NULL`),
   check("persona_templates_tone_check", sql`"tone" IN ('formal','casual','friendly','technical','creative') OR "tone" IS NULL`),
   check("persona_templates_scope_check", sql`"scope" IN ('platform','tenant','user')`),
 ]);
@@ -5755,3 +5765,796 @@ export const multimodalMemoryLinks = pgTable("multimodal_memory_links", {
 
 export type MultimodalMemoryLink = typeof multimodalMemoryLinks.$inferSelect;
 export type InsertMultimodalMemoryLink = typeof multimodalMemoryLinks.$inferInsert;
+
+// ==========================================
+// Virtual AI Office Orchestrator — Core Identity
+// ==========================================
+
+export const orchestratorViewModeEnum = pgEnum("orchestrator_view_mode", [
+  "transparent", "milestone", "summary",
+]);
+export const orchestratorAutonomyLevelEnum = pgEnum("orchestrator_autonomy_level", [
+  "manual", "guided", "autonomous",
+]);
+export const assistantTeamStatusEnum = pgEnum("assistant_team_status", [
+  "active", "archived", "draft",
+]);
+export const modelSelectionPolicyEnum = pgEnum("model_selection_policy", [
+  "fixed", "cost_optimized", "quality_optimized", "auto",
+]);
+
+/**
+ * user_orchestrator_profiles — per-user orchestration preferences.
+ * One row per user storing view mode, autonomy level, and approval policies.
+ */
+export const userOrchestratorProfiles = pgTable("user_orchestrator_profiles", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  defaultPersonaId: varchar("defaultPersonaId", { length: 36 }).references(() => personaTemplates.id, { onDelete: "set null" }),
+  orchestratorDisplayName: varchar("orchestratorDisplayName", { length: 255 }),
+  preferredViewMode: orchestratorViewModeEnum("preferredViewMode").default("transparent"),
+  preferredAutonomyLevel: orchestratorAutonomyLevelEnum("preferredAutonomyLevel").default("guided"),
+  preferredSummaryStyle: varchar("preferredSummaryStyle", { length: 50 }),
+  defaultApprovalPolicy: jsonb("defaultApprovalPolicy"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("user_orchestrator_profiles_user_idx").on(t.userId),
+]);
+
+export type UserOrchestratorProfile = typeof userOrchestratorProfiles.$inferSelect;
+export type InsertUserOrchestratorProfile = typeof userOrchestratorProfiles.$inferInsert;
+
+/**
+ * assistant_teams — product-facing team definition.
+ * Each team wraps exactly one agency and provides orchestration-level config.
+ */
+export const assistantTeams = pgTable("assistant_teams", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  ownerUserId: integer("ownerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  agencyId: varchar("agencyId", { length: 36 }).notNull().references(() => agencies.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 100 }),
+  teamPersonaOverlay: jsonb("teamPersonaOverlay"),
+  defaultViewMode: orchestratorViewModeEnum("defaultViewMode").default("transparent"),
+  defaultSummaryMode: varchar("defaultSummaryMode", { length: 50 }),
+  defaultAutonomyLevel: orchestratorAutonomyLevelEnum("defaultAutonomyLevel").default("guided"),
+  defaultModelId: varchar("defaultModelId", { length: 100 }),
+  modelBudgetPolicy: jsonb("modelBudgetPolicy"),
+  memoryPolicyJson: jsonb("memoryPolicyJson"),
+  artifactPolicyJson: jsonb("artifactPolicyJson"),
+  status: assistantTeamStatusEnum("status").default("draft"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("assistant_teams_tenant_idx").on(t.tenantId),
+  index("assistant_teams_owner_idx").on(t.ownerUserId),
+  index("assistant_teams_agency_idx").on(t.agencyId),
+]);
+
+export type AssistantTeam = typeof assistantTeams.$inferSelect;
+export type InsertAssistantTeam = typeof assistantTeams.$inferInsert;
+
+/**
+ * assistant_profiles — per-member assistant identity.
+ * Wraps one agency_agent + one persona_template, providing orchestration persona.
+ *
+ * NOTE: The partial unique index for isLead (one lead per team) must be applied
+ * via raw SQL migration since Drizzle doesn't support partial unique indexes.
+ */
+export const assistantProfiles = pgTable("assistant_profiles", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  teamId: varchar("teamId", { length: 36 }).notNull().references(() => assistantTeams.id, { onDelete: "cascade" }),
+  agencyAgentId: varchar("agencyAgentId", { length: 36 }).notNull().references(() => agencyAgents.id, { onDelete: "cascade" }),
+  personaId: varchar("personaId", { length: 36 }).references(() => personaTemplates.id, { onDelete: "set null" }),
+  displayName: varchar("displayName", { length: 255 }),
+  nickname: varchar("nickname", { length: 100 }),
+  roleTitle: varchar("roleTitle", { length: 100 }),
+  genderStyle: varchar("genderStyle", { length: 20 }),
+  specialtyTags: text("specialtyTags").array(),
+  preferredModelId: varchar("preferredModelId", { length: 100 }),
+  modelSelectionPolicy: modelSelectionPolicyEnum("modelSelectionPolicy").default("auto"),
+  toolPolicyJson: jsonb("toolPolicyJson"),
+  approvalPolicyJson: jsonb("approvalPolicyJson"),
+  memoryPolicyJson: jsonb("memoryPolicyJson"),
+  visibilityPolicyJson: jsonb("visibilityPolicyJson"),
+  preferredLanguage: varchar("preferredLanguage", { length: 10 }),
+  sortOrder: integer("sortOrder").default(0).notNull(),
+  isLead: boolean("isLead").default(false).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("assistant_profiles_team_idx").on(t.teamId),
+  index("assistant_profiles_agent_idx").on(t.agencyAgentId),
+  index("assistant_profiles_persona_idx").on(t.personaId),
+]);
+
+export type AssistantProfile = typeof assistantProfiles.$inferSelect;
+export type InsertAssistantProfile = typeof assistantProfiles.$inferInsert;
+
+/**
+ * assistant_team_templates — reusable team presets.
+ * tenantId=null + isSystem=true means platform-wide template.
+ */
+export const assistantTeamTemplates = pgTable("assistant_team_templates", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 100 }),
+  teamConfigJson: jsonb("teamConfigJson"),
+  memberTemplateJson: jsonb("memberTemplateJson"),
+  defaultDiscussionMode: varchar("defaultDiscussionMode", { length: 50 }),
+  isSystem: boolean("isSystem").default(false).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("assistant_team_templates_tenant_idx").on(t.tenantId),
+]);
+
+export type AssistantTeamTemplate = typeof assistantTeamTemplates.$inferSelect;
+export type InsertAssistantTeamTemplate = typeof assistantTeamTemplates.$inferInsert;
+
+// ─── Virtual Admin (System Guardian) ────────────────────────────────────────
+
+export const incidentSeverityEnum = pgEnum("incident_severity", ["info", "warning", "error", "critical"]);
+export const incidentStatusEnum = pgEnum("incident_status", ["open", "acknowledged", "resolved", "expired"]);
+export const approvalStatusEnum = pgEnum("approval_status", ["pending", "approved", "rejected", "expired", "execution_failed"]);
+export const ticketTypeEnum = pgEnum("ticket_type", ["bug", "feature_request", "observation", "question"]);
+export const ticketStatusEnum = pgEnum("ticket_status", ["new", "triaged", "in_progress", "deferred", "resolved", "duplicate", "closed"]);
+export const ticketResolutionEnum = pgEnum("ticket_resolution", ["fixed", "wont_fix", "duplicate", "cannot_reproduce", "planned", "by_design"]);
+
+export const virtualAdminIncidents = pgTable("virtual_admin_incidents", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id),
+  sensorId: varchar("sensorId", { length: 64 }).notNull(),
+  ruleId: varchar("ruleId", { length: 64 }).notNull(),
+  severity: incidentSeverityEnum("severity").notNull(),
+  status: incidentStatusEnum("status").default("open").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message"),
+  metricsJson: json("metricsJson"),
+  actionTaken: varchar("actionTaken", { length: 64 }),
+  actionResult: text("actionResult"),
+  resolvedBy: integer("resolvedBy").references(() => users.id),
+  resolvedAt: timestamp("resolvedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("va_incidents_tenant_idx").on(t.tenantId),
+  index("va_incidents_status_idx").on(t.status),
+  index("va_incidents_severity_idx").on(t.severity),
+  index("va_incidents_sensor_idx").on(t.sensorId),
+]);
+
+export type VirtualAdminIncident = typeof virtualAdminIncidents.$inferSelect;
+export type InsertVirtualAdminIncident = typeof virtualAdminIncidents.$inferInsert;
+
+export const virtualAdminApprovals = pgTable("virtual_admin_approvals", {
+  id: serial("id").primaryKey(),
+  incidentId: integer("incidentId").notNull().references(() => virtualAdminIncidents.id),
+  actionType: varchar("actionType", { length: 64 }).notNull(),
+  actionParamsJson: json("actionParamsJson"),
+  status: approvalStatusEnum("status").default("pending").notNull(),
+  requestedAt: timestamp("requestedAt", { withTimezone: true }).defaultNow().notNull(),
+  decidedAt: timestamp("decidedAt", { withTimezone: true }),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+  decidedBy: integer("decidedBy").references(() => users.id),
+  decisionComment: text("decisionComment"),
+});
+
+export type VirtualAdminApproval = typeof virtualAdminApprovals.$inferSelect;
+export type InsertVirtualAdminApproval = typeof virtualAdminApprovals.$inferInsert;
+
+export const virtualAdminSensorConfig = pgTable("virtual_admin_sensor_config", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id),
+  sensorId: varchar("sensorId", { length: 64 }).notNull(),
+  enabled: boolean("enabled").default(true).notNull(),
+  intervalMs: integer("intervalMs"),
+  thresholdsJson: json("thresholdsJson"),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type VirtualAdminSensorConfig = typeof virtualAdminSensorConfig.$inferSelect;
+
+export const feedbackTickets = pgTable("feedback_tickets", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id),
+  submittedBy: integer("submittedBy").references(() => users.id),
+  submittedByType: varchar("submittedByType", { length: 16 }).notNull(),
+  ticketType: ticketTypeEnum("ticketType").notNull(),
+  priority: reminderPriorityEnum("priority").default("normal").notNull(),
+  severity: varchar("severity", { length: 16 }),
+  category: varchar("category", { length: 64 }),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  stepsToReproduce: text("stepsToReproduce"),
+  expectedBehavior: text("expectedBehavior"),
+  actualBehavior: text("actualBehavior"),
+  contextJson: json("contextJson"),
+  autoCategory: varchar("autoCategory", { length: 64 }),
+  autoPriority: varchar("autoPriority", { length: 16 }),
+  autoSummary: text("autoSummary"),
+  duplicateOf: integer("duplicateOf").references((): AnyPgColumn => feedbackTickets.id),
+  relatedIncidentId: integer("relatedIncidentId").references(() => virtualAdminIncidents.id),
+  status: ticketStatusEnum("status").default("new").notNull(),
+  assignedTo: integer("assignedTo").references(() => users.id),
+  adminResponse: text("adminResponse"),
+  resolutionNotes: text("resolutionNotes"),
+  resolutionType: ticketResolutionEnum("resolutionType"),
+  plannedVersion: varchar("plannedVersion", { length: 32 }),
+  planningDocUrl: varchar("planningDocUrl", { length: 500 }),
+  devBranch: varchar("devBranch", { length: 100 }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  triagedAt: timestamp("triagedAt", { withTimezone: true }),
+  respondedAt: timestamp("respondedAt", { withTimezone: true }),
+  resolvedAt: timestamp("resolvedAt", { withTimezone: true }),
+  closedAt: timestamp("closedAt", { withTimezone: true }),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("ft_tenant_status_idx").on(t.tenantId, t.status),
+  index("ft_submitted_by_idx").on(t.submittedBy),
+]);
+
+export type FeedbackTicket = typeof feedbackTickets.$inferSelect;
+export type InsertFeedbackTicket = typeof feedbackTickets.$inferInsert;
+
+export const feedbackTicketComments = pgTable("feedback_ticket_comments", {
+  id: serial("id").primaryKey(),
+  ticketId: integer("ticketId").notNull().references(() => feedbackTickets.id, { onDelete: "cascade" }),
+  authorId: integer("authorId").references(() => users.id),
+  authorType: varchar("authorType", { length: 16 }).notNull(),
+  content: text("content").notNull(),
+  isInternal: boolean("isInternal").default(false).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type FeedbackTicketComment = typeof feedbackTicketComments.$inferSelect;
+
+export const feedbackTicketAttachments = pgTable("feedback_ticket_attachments", {
+  id: serial("id").primaryKey(),
+  ticketId: integer("ticketId").notNull().references(() => feedbackTickets.id, { onDelete: "cascade" }),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  fileUrl: varchar("fileUrl", { length: 500 }).notNull(),
+  fileSize: integer("fileSize"),
+  mimeType: varchar("mimeType", { length: 100 }),
+  uploadedBy: integer("uploadedBy").references(() => users.id),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type FeedbackTicketAttachment = typeof feedbackTicketAttachments.$inferSelect;
+
+// ==========================================
+// Virtual AI Office Orchestrator — Rooms, Runs, Monitoring (Section 02)
+// ==========================================
+
+export const teamRoomTypeEnum = pgEnum("team_room_type", [
+  "direct", "team", "auto_team", "job_review",
+]);
+export const teamRoomStatusEnum = pgEnum("team_room_status", [
+  "active", "archived", "paused",
+]);
+export const roomParticipantTypeEnum = pgEnum("room_participant_type", [
+  "user", "assistant", "observer",
+]);
+export const roomMessageSenderTypeEnum = pgEnum("room_message_sender_type", [
+  "user", "assistant", "system",
+]);
+export const roomMessageRecipientTypeEnum = pgEnum("room_message_recipient_type", [
+  "all", "assistant", "subgroup", "user",
+]);
+export const roomMessageTurnTypeEnum = pgEnum("room_message_turn_type", [
+  "discussion", "handoff", "review", "decision", "execution_update", "summary",
+]);
+export const roomMessageVisibilityEnum = pgEnum("room_message_visibility", [
+  "transparent", "milestone", "summary_only", "private_internal",
+]);
+export const teamRunStatusEnum = pgEnum("team_run_status", [
+  "queued", "running", "paused", "completed", "failed", "stopped",
+]);
+export const teamRunExecutionModeEnum = pgEnum("team_run_execution_mode", [
+  "team_chat", "auto_team", "review",
+]);
+export const agentEventCategoryEnum = pgEnum("agent_event_category", [
+  "status_change", "communication", "tool_use", "memory_op",
+  "artifact_op", "handoff", "approval", "error",
+]);
+export const notificationSeverityEnum = pgEnum("notification_severity", [
+  "info", "warning", "error", "critical",
+]);
+
+/**
+ * team_rooms — durable room abstraction for team conversations.
+ */
+export const teamRooms = pgTable("team_rooms", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  teamId: varchar("teamId", { length: 36 }).notNull().references(() => assistantTeams.id, { onDelete: "cascade" }),
+  orchestratorUserId: integer("orchestratorUserId").notNull().references(() => users.id),
+  backingAgencyConversationId: varchar("backingAgencyConversationId", { length: 36 }).references(() => agencyConversations.id, { onDelete: "set null" }),
+  roomType: teamRoomTypeEnum("roomType").notNull(),
+  title: varchar("title", { length: 255 }),
+  goalPrompt: text("goalPrompt"),
+  projectId: integer("projectId"),
+  viewMode: varchar("viewMode", { length: 30 }).default("transparent"),
+  summaryMode: varchar("summaryMode", { length: 30 }),
+  autonomyLevel: varchar("autonomyLevel", { length: 30 }),
+  status: teamRoomStatusEnum("status").notNull().default("active"),
+  lastRunId: varchar("lastRunId", { length: 36 }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("team_rooms_tenant_team_idx").on(t.tenantId, t.teamId),
+  index("team_rooms_orchestrator_idx").on(t.orchestratorUserId),
+]);
+
+export type TeamRoom = typeof teamRooms.$inferSelect;
+export type InsertTeamRoom = typeof teamRooms.$inferInsert;
+
+/**
+ * team_room_participants — explicit participant roster per room.
+ * Partial unique indexes prevent same user/assistant from joining twice.
+ */
+export const teamRoomParticipants = pgTable("team_room_participants", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  roomId: varchar("roomId", { length: 36 }).notNull().references(() => teamRooms.id, { onDelete: "cascade" }),
+  participantType: roomParticipantTypeEnum("participantType").notNull(),
+  participantUserId: integer("participantUserId").references(() => users.id),
+  participantAssistantId: varchar("participantAssistantId", { length: 36 }).references(() => assistantProfiles.id),
+  participantLabel: varchar("participantLabel", { length: 255 }),
+  roleInRoom: varchar("roleInRoom", { length: 100 }),
+  isMuted: boolean("isMuted").default(false).notNull(),
+  canWriteSharedMemory: boolean("canWriteSharedMemory").default(true).notNull(),
+  joinedAt: timestamp("joinedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("team_room_participants_room_idx").on(t.roomId),
+]);
+
+export type TeamRoomParticipant = typeof teamRoomParticipants.$inferSelect;
+export type InsertTeamRoomParticipant = typeof teamRoomParticipants.$inferInsert;
+
+/**
+ * team_room_messages — multi-party message store.
+ * senderAssistantId required when senderType=assistant (enforced at app level).
+ */
+export const teamRoomMessages = pgTable("team_room_messages", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  roomId: varchar("roomId", { length: 36 }).notNull().references(() => teamRooms.id, { onDelete: "cascade" }),
+  runId: varchar("runId", { length: 36 }),
+  senderType: roomMessageSenderTypeEnum("senderType").notNull(),
+  senderUserId: integer("senderUserId").references(() => users.id),
+  senderAssistantId: varchar("senderAssistantId", { length: 36 }).references(() => assistantProfiles.id),
+  recipientType: roomMessageRecipientTypeEnum("recipientType").notNull().default("all"),
+  recipientAssistantId: varchar("recipientAssistantId", { length: 36 }),
+  recipientGroupJson: jsonb("recipientGroupJson"),
+  turnType: roomMessageTurnTypeEnum("turnType").notNull().default("discussion"),
+  visibility: roomMessageVisibilityEnum("visibility").notNull().default("transparent"),
+  content: text("content").notNull(),
+  summaryContent: text("summaryContent"),
+  artifactRefsJson: jsonb("artifactRefsJson"),
+  memoryRefsJson: jsonb("memoryRefsJson"),
+  metadataJson: jsonb("metadataJson"),
+  tokenUsageJson: jsonb("tokenUsageJson").$type<{ inputTokens?: number; outputTokens?: number; model?: string }>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("team_room_messages_room_created_idx").on(t.roomId, t.createdAt),
+  index("team_room_messages_run_created_idx").on(t.runId, t.createdAt),
+]);
+
+export type TeamRoomMessage = typeof teamRoomMessages.$inferSelect;
+export type InsertTeamRoomMessage = typeof teamRoomMessages.$inferInsert;
+
+/**
+ * team_runs — one orchestrated work session inside a room.
+ */
+export interface StopPolicy {
+  maxRounds: number;
+  maxDurationMinutes: number;
+  maxBudgetCredits: number;
+  stopOnConsensus: boolean;
+  stopOnArtifactReady: boolean;
+  stopOnLeadSummary: boolean;
+  requireFinalSummary: boolean;
+  idleTimeoutSeconds: number;
+}
+
+export interface BudgetSnapshot {
+  totalCreditsUsed: number;
+  perAgent: Record<string, {
+    creditsUsed: number;
+    inputTokens: number;
+    outputTokens: number;
+    turnCount: number;
+  }>;
+}
+
+export const teamRuns = pgTable("team_runs", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  roomId: varchar("roomId", { length: 36 }).notNull().references(() => teamRooms.id, { onDelete: "cascade" }),
+  teamId: varchar("teamId", { length: 36 }).notNull().references(() => assistantTeams.id),
+  backingAgencyRunId: varchar("backingAgencyRunId", { length: 36 }),
+  initiatedByUserId: integer("initiatedByUserId").notNull().references(() => users.id),
+  executionMode: teamRunExecutionModeEnum("executionMode").notNull(),
+  objective: text("objective"),
+  constraintsJson: jsonb("constraintsJson"),
+  status: teamRunStatusEnum("status").notNull().default("queued"),
+  activeAssistantId: varchar("activeAssistantId", { length: 36 }),
+  stopPolicyJson: jsonb("stopPolicyJson").$type<StopPolicy>(),
+  approvalPolicyJson: jsonb("approvalPolicyJson"),
+  budgetSnapshotJson: jsonb("budgetSnapshotJson").$type<BudgetSnapshot>(),
+  summaryArtifactId: varchar("summaryArtifactId", { length: 36 }),
+  stopReason: text("stopReason"),
+  startedAt: timestamp("startedAt", { withTimezone: true }),
+  endedAt: timestamp("endedAt", { withTimezone: true }),
+}, (t) => [
+  index("team_runs_room_status_idx").on(t.roomId, t.status),
+  index("team_runs_team_status_idx").on(t.teamId, t.status),
+  index("team_runs_initiated_by_idx").on(t.initiatedByUserId),
+]);
+
+export type TeamRun = typeof teamRuns.$inferSelect;
+export type InsertTeamRun = typeof teamRuns.$inferInsert;
+
+/**
+ * agent_activity_events — append-only event log for monitoring.
+ * No updatedAt by design. No FKs for write performance.
+ */
+export const agentActivityEvents = pgTable("agent_activity_events", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  teamId: varchar("teamId", { length: 36 }).notNull(),
+  roomId: varchar("roomId", { length: 36 }).notNull(),
+  runId: varchar("runId", { length: 36 }).notNull(),
+  assistantId: varchar("assistantId", { length: 36 }),
+  eventType: text("eventType").notNull(),
+  eventCategory: agentEventCategoryEnum("eventCategory").notNull(),
+  visibility: roomMessageVisibilityEnum("visibility").notNull().default("transparent"),
+  summary: text("summary"),
+  detailJson: jsonb("detailJson"),
+  tokenUsageSnapshot: integer("tokenUsageSnapshot"),
+  costSnapshot: numeric("costSnapshot", { precision: 12, scale: 4 }),
+  durationMs: integer("durationMs"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("agent_activity_events_run_created_idx").on(t.runId, t.createdAt),
+  index("agent_activity_events_assistant_created_idx").on(t.assistantId, t.createdAt),
+]);
+
+export type AgentActivityEvent = typeof agentActivityEvents.$inferSelect;
+export type InsertAgentActivityEvent = typeof agentActivityEvents.$inferInsert;
+
+/**
+ * agent_run_summaries — per-agent performance summary computed when a run completes.
+ */
+export const agentRunSummaries = pgTable("agent_run_summaries", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  runId: varchar("runId", { length: 36 }).notNull().references(() => teamRuns.id, { onDelete: "cascade" }),
+  assistantId: varchar("assistantId", { length: 36 }).notNull().references(() => assistantProfiles.id),
+  turnCount: integer("turnCount").default(0).notNull(),
+  totalInputTokens: integer("totalInputTokens").default(0).notNull(),
+  totalOutputTokens: integer("totalOutputTokens").default(0).notNull(),
+  totalCostCredits: numeric("totalCostCredits", { precision: 12, scale: 4 }).default("0").notNull(),
+  toolCallCount: integer("toolCallCount").default(0).notNull(),
+  toolSuccessCount: integer("toolSuccessCount").default(0).notNull(),
+  toolFailureCount: integer("toolFailureCount").default(0).notNull(),
+  memoriesRead: integer("memoriesRead").default(0).notNull(),
+  memoriesWritten: integer("memoriesWritten").default(0).notNull(),
+  memoriesPromoted: integer("memoriesPromoted").default(0).notNull(),
+  artifactsCreated: integer("artifactsCreated").default(0).notNull(),
+  handoffsSent: integer("handoffsSent").default(0).notNull(),
+  handoffsReceived: integer("handoffsReceived").default(0).notNull(),
+  errorCount: integer("errorCount").default(0).notNull(),
+  activeDurationMs: integer("activeDurationMs").default(0).notNull(),
+  waitDurationMs: integer("waitDurationMs").default(0).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("agent_run_summaries_run_idx").on(t.runId),
+]);
+
+export type AgentRunSummary = typeof agentRunSummaries.$inferSelect;
+export type InsertAgentRunSummary = typeof agentRunSummaries.$inferInsert;
+
+/**
+ * run_snapshots — periodic state captures during active runs.
+ */
+export const runSnapshots = pgTable("run_snapshots", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  runId: varchar("runId", { length: 36 }).notNull().references(() => teamRuns.id, { onDelete: "cascade" }),
+  capturedAt: timestamp("capturedAt", { withTimezone: true }).defaultNow().notNull(),
+  activeAssistantId: varchar("activeAssistantId", { length: 36 }),
+  agentStatusesJson: jsonb("agentStatusesJson"),
+  tokenUsageJson: jsonb("tokenUsageJson"),
+  costJson: jsonb("costJson"),
+  artifactCountJson: jsonb("artifactCountJson"),
+  pendingApprovalsCount: integer("pendingApprovalsCount").default(0).notNull(),
+}, (t) => [
+  index("run_snapshots_run_captured_idx").on(t.runId, t.capturedAt),
+]);
+
+export type RunSnapshot = typeof runSnapshots.$inferSelect;
+export type InsertRunSnapshot = typeof runSnapshots.$inferInsert;
+
+/**
+ * orchestrator_notifications — persistent notification records.
+ */
+export const orchestratorNotifications = pgTable("orchestrator_notifications", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id),
+  teamId: varchar("teamId", { length: 36 }),
+  roomId: varchar("roomId", { length: 36 }),
+  runId: varchar("runId", { length: 36 }),
+  notificationType: text("notificationType").notNull(),
+  severity: notificationSeverityEnum("severity").notNull().default("info"),
+  title: varchar("title", { length: 255 }).notNull(),
+  body: text("body"),
+  actionUrl: text("actionUrl"),
+  isRead: boolean("isRead").default(false).notNull(),
+  isDismissed: boolean("isDismissed").default(false).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  readAt: timestamp("readAt", { withTimezone: true }),
+}, (t) => [
+  index("orchestrator_notifications_user_unread_idx").on(t.userId, t.isRead, t.createdAt),
+  index("orchestrator_notifications_tenant_created_idx").on(t.tenantId, t.createdAt),
+]);
+
+export type OrchestratorNotification = typeof orchestratorNotifications.$inferSelect;
+export type InsertOrchestratorNotification = typeof orchestratorNotifications.$inferInsert;
+
+// ==========================================
+// Virtual AI Office Orchestrator — Scoped Memory (Section 03)
+// ==========================================
+
+export const memoryOwnerTypeEnum = pgEnum("memory_owner_type", [
+  "user", "agent", "team", "room", "project", "run",
+]);
+export const memoryKindEnum = pgEnum("memory_kind", [
+  "fact", "rule", "preference", "decision", "note",
+  "checklist", "artifact_note", "handoff_note", "episode",
+]);
+export const memoryVisibilityEnum = pgEnum("memory_visibility", [
+  "private", "shared_team", "shared_room", "shared_project",
+]);
+export const memorySourceTypeEnum = pgEnum("memory_source_type", [
+  "auto", "manual", "promoted",
+]);
+
+/**
+ * pgvector custom column type for 1536-dimension embeddings (OpenAI text-embedding-3-small).
+ */
+const vector1536 = customType<{ data: number[]; driverParam: string }>({
+  dataType() {
+    return "vector(1536)";
+  },
+  toDriver(value: number[]): string {
+    return `[${value.join(",")}]`;
+  },
+  fromDriver(value: string): number[] {
+    return JSON.parse(value);
+  },
+});
+
+/**
+ * scoped_memories — hierarchical memory store with scope isolation.
+ * Supports keyword + vector (hybrid) retrieval via pgvector.
+ */
+export const scopedMemories = pgTable("scoped_memories", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  ownerType: memoryOwnerTypeEnum("ownerType").notNull(),
+  ownerId: text("ownerId").notNull(),
+  memoryKind: memoryKindEnum("memoryKind").notNull(),
+  visibility: memoryVisibilityEnum("visibility").notNull().default("private"),
+  sourceType: memorySourceTypeEnum("sourceType").notNull().default("auto"),
+  sourceUserId: integer("sourceUserId"),
+  sourceAssistantId: text("sourceAssistantId"),
+  sourceRoomId: text("sourceRoomId"),
+  projectId: varchar("projectId", { length: 100 }),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  summary: text("summary"),
+  tags: text("tags").array(),
+  metadataJson: jsonb("metadataJson"),
+  embedding: vector1536("embedding"),
+  confidence: numeric("confidence", { precision: 3, scale: 2 }).default("0.80"),
+  importance: integer("importance").default(5),
+  reinforcementCount: integer("reinforcementCount").default(0),
+  lastAccessedAt: timestamp("lastAccessedAt", { withTimezone: true }),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("scoped_memories_owner_created_idx").on(t.ownerType, t.ownerId, t.createdAt),
+  index("scoped_memories_tenant_kind_idx").on(t.tenantId, t.memoryKind),
+]);
+
+export type ScopedMemory = typeof scopedMemories.$inferSelect;
+export type InsertScopedMemory = typeof scopedMemories.$inferInsert;
+
+/**
+ * memory_promotions — audit trail for scope promotions.
+ */
+export const memoryPromotions = pgTable("memory_promotions", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  memoryId: text("memoryId").notNull().references(() => scopedMemories.id, { onDelete: "cascade" }),
+  fromOwnerType: memoryOwnerTypeEnum("fromOwnerType").notNull(),
+  fromOwnerId: text("fromOwnerId").notNull(),
+  toOwnerType: memoryOwnerTypeEnum("toOwnerType").notNull(),
+  toOwnerId: text("toOwnerId").notNull(),
+  promotedByUserId: integer("promotedByUserId"),
+  promotedByAssistantId: text("promotedByAssistantId"),
+  reason: text("reason"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("memory_promotions_memory_idx").on(t.memoryId),
+]);
+
+export type MemoryPromotion = typeof memoryPromotions.$inferSelect;
+export type InsertMemoryPromotion = typeof memoryPromotions.$inferInsert;
+
+// ==========================================
+// Virtual AI Office Orchestrator — Inter-Agent Communication (Section 09)
+// ==========================================
+
+export const interAgentChannelEnum = pgEnum("inter_agent_channel", [
+  "system_broadcast", "system_control", "team_escalation", "system_direct", "system_context",
+]);
+export const interAgentSourceTypeEnum = pgEnum("inter_agent_source_type", [
+  "team", "system", "external",
+]);
+export const interAgentTargetTypeEnum = pgEnum("inter_agent_target_type", [
+  "room", "run", "team", "user", "all_active_runs",
+]);
+export const interAgentPriorityEnum = pgEnum("inter_agent_priority", [
+  "low", "normal", "high", "critical",
+]);
+export const interAgentStatusEnum = pgEnum("inter_agent_status", [
+  "delivered", "acknowledged",
+]);
+export const resourceStatusEnum = pgEnum("resource_status", [
+  "healthy", "degraded", "down", "critical",
+]);
+
+/**
+ * inter_agent_messages — messages between system agents and team agents.
+ */
+export const interAgentMessages = pgTable("inter_agent_messages", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  channel: interAgentChannelEnum("channel").notNull(),
+  sourceAgentType: interAgentSourceTypeEnum("sourceAgentType").notNull(),
+  sourceAgentId: varchar("sourceAgentId", { length: 100 }).notNull(),
+  targetType: interAgentTargetTypeEnum("targetType").notNull(),
+  targetId: varchar("targetId", { length: 100 }),
+  priority: interAgentPriorityEnum("priority").notNull().default("normal"),
+  messageType: varchar("messageType", { length: 64 }).notNull(),
+  payload: jsonb("payload"),
+  displayMessage: text("displayMessage"),
+  actionRequired: boolean("actionRequired").default(false).notNull(),
+  status: interAgentStatusEnum("status").notNull().default("delivered"),
+  acknowledgedAt: timestamp("acknowledgedAt", { withTimezone: true }),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }),
+  relatedIncidentId: integer("relatedIncidentId"),
+  relatedRunId: varchar("relatedRunId", { length: 36 }),
+  relatedRoomId: varchar("relatedRoomId", { length: 36 }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("inter_agent_messages_target_created_idx").on(t.targetType, t.targetId, t.createdAt),
+  index("inter_agent_messages_incident_idx").on(t.relatedIncidentId),
+  index("inter_agent_messages_run_idx").on(t.relatedRunId),
+]);
+
+export type InterAgentMessage = typeof interAgentMessages.$inferSelect;
+export type InsertInterAgentMessage = typeof interAgentMessages.$inferInsert;
+
+/**
+ * system_resource_state — current health status of system resources.
+ */
+export const systemResourceState = pgTable("system_resource_state", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }),
+  resourceType: varchar("resourceType", { length: 32 }).notNull(),
+  status: resourceStatusEnum("status").notNull(),
+  stateJson: jsonb("stateJson"),
+  updatedBy: varchar("updatedBy", { length: 64 }),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type SystemResourceState = typeof systemResourceState.$inferSelect;
+export type InsertSystemResourceState = typeof systemResourceState.$inferInsert;
+
+// ==========================================
+// Virtual AI Office Orchestrator — Automation Handoffs & External Intake (Section 16)
+// ==========================================
+
+export const handoffStatusEnum = pgEnum("handoff_status", [
+  "pending", "approved", "rejected", "executing", "completed", "failed",
+]);
+export const handoffApprovalStateEnum = pgEnum("handoff_approval_state", [
+  "not_required", "pending", "approved", "rejected",
+]);
+export const externalTaskStatusEnum = pgEnum("external_task_status", [
+  "received", "awaiting_review", "approved", "rejected", "materialized", "failed",
+]);
+export const trustTierEnum = pgEnum("trust_tier", [
+  "untrusted", "basic", "verified", "privileged",
+]);
+
+/**
+ * automation_handoffs — cross-surface actions initiated by team agents.
+ */
+export const automationHandoffs = pgTable("automation_handoffs", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  teamId: varchar("teamId", { length: 36 }).notNull(),
+  roomId: varchar("roomId", { length: 36 }).notNull(),
+  runId: varchar("runId", { length: 36 }).notNull(),
+  assistantId: varchar("assistantId", { length: 36 }).notNull(),
+  destinationType: varchar("destinationType", { length: 50 }).notNull(),
+  destinationId: varchar("destinationId", { length: 100 }),
+  status: handoffStatusEnum("status").notNull().default("pending"),
+  approvalState: handoffApprovalStateEnum("approvalState").notNull().default("pending"),
+  requestPayloadJson: jsonb("requestPayloadJson"),
+  resultPayloadJson: jsonb("resultPayloadJson"),
+  approvedByUserId: integer("approvedByUserId"),
+  errorDetail: text("errorDetail"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("automation_handoffs_run_idx").on(t.runId),
+  index("automation_handoffs_team_idx").on(t.teamId),
+]);
+
+export type AutomationHandoff = typeof automationHandoffs.$inferSelect;
+export type InsertAutomationHandoff = typeof automationHandoffs.$inferInsert;
+
+/**
+ * external_task_sources — registered external systems that can submit tasks.
+ */
+export const externalTaskSources = pgTable("external_task_sources", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  sourceType: varchar("sourceType", { length: 50 }).notNull(),
+  trustTier: trustTierEnum("trustTier").notNull().default("untrusted"),
+  configJson: jsonb("configJson"),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("external_task_sources_tenant_idx").on(t.tenantId),
+]);
+
+export type ExternalTaskSource = typeof externalTaskSources.$inferSelect;
+
+/**
+ * external_task_inbox — incoming tasks from external systems.
+ */
+export const externalTaskInbox = pgTable("external_task_inbox", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  sourceId: varchar("sourceId", { length: 36 }).notNull().references(() => externalTaskSources.id),
+  targetTeamId: varchar("targetTeamId", { length: 36 }),
+  status: externalTaskStatusEnum("status").notNull().default("received"),
+  priority: varchar("priority", { length: 20 }).default("normal"),
+  title: varchar("title", { length: 500 }).notNull(),
+  description: text("description"),
+  payloadJson: jsonb("payloadJson"),
+  materializedRoomId: varchar("materializedRoomId", { length: 36 }),
+  materializedRunId: varchar("materializedRunId", { length: 36 }),
+  reviewedByUserId: integer("reviewedByUserId"),
+  errorDetail: text("errorDetail"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("external_task_inbox_tenant_status_idx").on(t.tenantId, t.status),
+  index("external_task_inbox_source_idx").on(t.sourceId),
+]);
+
+export type ExternalTaskInboxItem = typeof externalTaskInbox.$inferSelect;
+export type InsertExternalTaskInboxItem = typeof externalTaskInbox.$inferInsert;

@@ -38,9 +38,9 @@ async def start_agency_creator(
 ):
     """Submit agency creation to Celery queue. Returns task_id immediately."""
     from app.tasks.agency_creator_task import (
+        _set_status,
         create_agency_discover_task,
         create_task_id,
-        _set_status,
     )
 
     task_id = create_task_id()
@@ -71,7 +71,7 @@ async def start_agency_creator(
     except Exception as exc:
         logger.error("agency_creator_queue_failed", error=str(exc)[:200])
         # Fallback: run synchronously (for development without Celery)
-        from app.tasks.agency_creator_task import _run_async, _discover_async
+        from app.tasks.agency_creator_task import _discover_async, _run_async
         _set_status(task_id, {
             "status": "processing",
             "phase": "discover",
@@ -115,10 +115,10 @@ async def submit_agency_creator_answers(
 ):
     """Store interview answers and dispatch the design task."""
     from app.tasks.agency_creator_task import (
+        _set_status,
+        create_agency_design_task,
         get_status,
         store_answers,
-        create_agency_design_task,
-        _set_status,
     )
 
     status = get_status(body.task_id, user_id=current_user.id)
@@ -151,8 +151,9 @@ async def submit_agency_creator_answers(
     except Exception as exc:
         logger.error("agency_creator_design_dispatch_failed", error=str(exc)[:200])
         # Fallback sync
-        from app.tasks.agency_creator_task import _run_async, _design_async
         import threading
+
+        from app.tasks.agency_creator_task import _design_async, _run_async
         t = threading.Thread(
             target=lambda: _run_async(_design_async(body.task_id, current_user.id, design_payload)),
             daemon=True,

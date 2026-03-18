@@ -14,6 +14,16 @@ export interface AdminModelMappingRow {
   priority: number;
   priorityLocked: boolean;
   apiStyle: "chat-completions" | "responses" | "messages" | "gemini";
+  // Model capabilities
+  supportsVision?: boolean;
+  supportsThinking?: boolean;
+  supportsWebSearch?: boolean;
+  supportsFunctionTools?: boolean;
+  supportsStructuredOutputs?: boolean;
+  supportsCodeExecution?: boolean;
+  supportsComputerUse?: boolean;
+  supportsBackground?: boolean;
+  supportsResponses?: boolean;
 }
 
 export interface AdminModelCatalogRow {
@@ -33,6 +43,16 @@ export interface AdminModelCatalogRow {
   priority: number;
   priorityLocked: boolean;
   apiStyle: "chat-completions" | "responses" | "messages" | "gemini";
+  // Model capabilities
+  supportsVision?: boolean;
+  supportsThinking?: boolean;
+  supportsWebSearch?: boolean;
+  supportsFunctionTools?: boolean;
+  supportsStructuredOutputs?: boolean;
+  supportsCodeExecution?: boolean;
+  supportsComputerUse?: boolean;
+  supportsBackground?: boolean;
+  supportsResponses?: boolean;
 }
 
 export type AdminModelMappingsGrouped = Record<string, AdminModelMappingRow[]>;
@@ -86,13 +106,17 @@ export function getAdminModelSelectionKey(row: Pick<AdminModelCatalogRow, "mappi
   return `catalog:${row.providerId}:${row.providerModelId}`;
 }
 
+export type EnabledFilter = "all" | "enabled" | "disabled";
+
 export function filterAdminModelCatalogRows(
   rows: AdminModelCatalogRow[] | undefined,
   searchQuery: string,
   providerFilter: string,
+  enabledFilter: EnabledFilter = "all",
 ): AdminModelCatalogRow[] {
   return (rows ?? [])
     .filter((row) => matchesModelMappingFilters(row, searchQuery, providerFilter))
+    .filter((row) => enabledFilter === "all" || (enabledFilter === "enabled" ? row.isEnabled : !row.isEnabled))
     .sort((left, right) => {
       const nameCompare = left.modelName.localeCompare(right.modelName);
       if (nameCompare !== 0) {
