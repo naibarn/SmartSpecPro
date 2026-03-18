@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
  * Enums
  */
 export const roleEnum = pgEnum("role", ["user", "admin", "domain_admin", "system_agent"]);
+export const inviteCodeTypeEnum = pgEnum("invite_code_type", ["admin", "user"]);
 export const planEnum = pgEnum("plan", ["free", "starter", "pro", "enterprise"]);
 export const transactionTypeEnum = pgEnum("transaction_type", [
   "purchase",
@@ -356,6 +357,15 @@ export const users = pgTable("users", {
 
   /** PDPA/GDPR voice consent: NULL = not consented, timestamp = when consent was given */
   voiceConsentGrantedAt: timestamp("voiceConsentGrantedAt", { withTimezone: true }),
+
+  /** Invite code used during registration */
+  referredByInviteCodeId: integer("referredByInviteCodeId").references((): AnyPgColumn => inviteCodes.id, { onDelete: "set null" }),
+
+  /** Reason for account disable (null = not disabled or no specific reason) */
+  disabledReason: varchar("disabledReason", { length: 64 }),
+
+  /** Last time user consumed credits (for inactivity detection) */
+  lastCreditUsedAt: timestamp("lastCreditUsedAt", { withTimezone: true }),
 
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
@@ -6558,3 +6568,79 @@ export const externalTaskInbox = pgTable("external_task_inbox", {
 
 export type ExternalTaskInboxItem = typeof externalTaskInbox.$inferSelect;
 export type InsertExternalTaskInboxItem = typeof externalTaskInbox.$inferInsert;
+
+// ==================== Invite Code System ====================
+
+/** Invite codes for controlled registration (admin-managed and user referral codes) */
+export const inviteCodes = pgTable("invite_codes", {
+  id: serial("id").primaryKey(),
+  /** The invite code string (auto-generated or custom) */
+  code: varchar("code", { length: 32 }).notNull().unique(),
+  /** Display label for admin codes (e.g. "โค้ด Facebook", "โค้ด Event") */
+  label: varchar("label", { length: 128 }),
+  /** Code type: admin-created or user-referral */
+  type: inviteCodeTypeEnum("type").notNull(),
+  /** User who owns/created this code */
+  ownerId: integer("ownerId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  /** Bonus credits given to the new user who registers with this code */
+  bonusCreditsForNewUser: integer("bonusCreditsForNewUser").default(0).notNull(),
+  /** Bonus credits given to the code owner when someone uses it (user referral) */
+  bonusCreditsForOwner: integer("bonusCreditsForOwner").default(0).notNull(),
+  /** Max number of times this code can be used (null = unlimited) */
+  maxUses: integer("maxUses"),
+  /** Current number of times this code has been used */
+  currentUses: integer("currentUses").default(0).notNull(),
+  /** Expiration date (null = never expires) */
+  expiresAt: timestamp("expiresAt", { withTimezone: true }),
+  /** Whether this code is currently active */
+  isActive: boolean("isActive").default(true).notNull(),
+  /** Admin description/notes */
+  description: text("description"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("invite_codes_owner_idx").on(t.ownerId),
+  index("invite_codes_type_active_idx").on(t.type, t.isActive),
+]);
+
+export type InviteCode = typeof inviteCodes.$inferSelect;
+export type InsertInviteCode = typeof inviteCodes.$inferInsert;
+
+/** Tracks each use of an invite code */
+export const inviteCodeUsage = pgTable("invite_code_usage", {
+  id: serial("id").primaryKey(),
+  /** The invite code that was used */
+  inviteCodeId: integer("inviteCodeId").notNull().references(() => inviteCodes.id, { onDelete: "cascade" }),
+  /** The user who registered using this code */
+  registeredUserId: integer("registeredUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  /** Credits given to the registered user */
+  creditsGivenToUser: integer("creditsGivenToUser").default(0).notNull(),
+  /** Credits given to the code owner */
+  creditsGivenToOwner: integer("creditsGivenToOwner").default(0).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("invite_code_usage_code_idx").on(t.inviteCodeId),
+  index("invite_code_usage_user_idx").on(t.registeredUserId),
+]);
+
+/**
+ * User LLM API Keys — encrypted storage for user-provided LLM provider keys.
+ * Keys are encrypted with AES-256-GCM via crypto.ts (same as llmProviders.apiKeyEncrypted).
+ * One key per provider per user, enforced by unique index.
+ */
+export const userLlmApiKeys = pgTable("user_llm_api_keys", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 36 }),
+  provider: varchar("provider", { length: 50 }).notNull(),
+  apiKeyEncrypted: text("apiKeyEncrypted").notNull(),
+  keyHint: varchar("keyHint", { length: 8 }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("user_llm_api_keys_user_provider_idx").on(t.userId, t.provider),
+  index("user_llm_api_keys_user_idx").on(t.userId),
+]);
+
+export type UserLlmApiKey = typeof userLlmApiKeys.$inferSelect;
+export type InsertUserLlmApiKey = typeof userLlmApiKeys.$inferInsert;
