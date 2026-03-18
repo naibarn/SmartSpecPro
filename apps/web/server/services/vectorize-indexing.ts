@@ -36,85 +36,8 @@ interface VectorEntry {
   metadata: VectorMetadata;
 }
 
-interface VectorizeClient {
-  upsert(vectors: VectorEntry[]): Promise<{ count: number }>;
-  delete(ids: string[]): Promise<{ count: number }>;
-  query(
-    vector: number[],
-    options: {
-      topK: number;
-      filter?: Record<string, string | number>;
-    },
-  ): Promise<{
-    matches: Array<{
-      id: string;
-      score: number;
-      metadata: VectorMetadata;
-    }>;
-  }>;
-}
-
 /**
- * Get a Vectorize client for the given index.
- * Uses Cloudflare API REST endpoints.
- */
-export function getVectorizeClient(indexName: string): VectorizeClient {
-  const cloudflareOnlyConfig = {
-    ...getVectorProviderConfigFromEnv(),
-    provider: "cloudflare_vectorize",
-    currentReadProvider: "cloudflare_vectorize",
-    targetProvider: "cloudflare_vectorize",
-  };
-
-  return {
-    async upsert(vectors: VectorEntry[]) {
-      const result = await dispatchVectorOperation({
-        operation: "index",
-        indexName,
-        vectors,
-        providerConfig: cloudflareOnlyConfig,
-      });
-      return result as { count: number };
-    },
-
-    async delete(ids: string[]) {
-      const result = await dispatchVectorOperation({
-        operation: "delete",
-        indexName,
-        ids,
-        providerConfig: cloudflareOnlyConfig,
-      });
-      return result as { count: number };
-    },
-
-    async query(
-      vector: number[],
-      options: {
-        topK: number;
-        filter?: Record<string, string | number>;
-      },
-    ) {
-      const result = await dispatchVectorOperation({
-        operation: "search",
-        indexName,
-        vector,
-        topK: options.topK,
-        filter: options.filter,
-        providerConfig: cloudflareOnlyConfig,
-      });
-      return result as {
-        matches: Array<{
-          id: string;
-          score: number;
-          metadata: VectorMetadata;
-        }>;
-      };
-    },
-  };
-}
-
-/**
- * Index a text document by chunking, embedding, and upserting to Vectorize.
+ * Index a text document by chunking, embedding, and upserting to the active vector provider.
  */
 export async function indexDocument(params: {
   id: string;

@@ -1,12 +1,18 @@
 """
-SmartSpec Pro - Vector Database Client
+SmartSpec Pro - Vector Database Client (Legacy ChromaDB Adapter)
 
-This module provides a ChromaDB client wrapper for managing vector embeddings
-used in episodic memory and semantic search.
+This module provides a ChromaDB-based vector collection wrapper used by
+episodic memory, Google Drive indexing, OneDrive indexing, and library
+indexing services.
+
+NOTE: The platform's primary vector provider is now pgvector (configured
+via VECTOR_DB_PROVIDER env var and system_settings table). This module
+is retained for backward compatibility with ChromaDB-based embedding
+workflows. For new vector storage, use PgVectorStore from
+app.orchestrator.vector_store.pgvector_store instead.
 
 Features:
-- Persistent and ephemeral storage modes
-- Collection management
+- Collection management (ChromaDB-backed)
 - Embedding storage and retrieval
 - Similarity search
 """

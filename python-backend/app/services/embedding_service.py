@@ -63,21 +63,22 @@ class EmbeddingProvider(ABC):
         pass
 
 
-class ChromaDefaultEmbedding(EmbeddingProvider):
+class LocalMiniLMEmbedding(EmbeddingProvider):
     """
-    Use ChromaDB's default embedding function.
-    
-    This uses the all-MiniLM-L6-v2 model by default, which is
-    automatically downloaded and cached by ChromaDB.
+    Local embedding provider using all-MiniLM-L6-v2 (384 dimensions).
+
+    Uses the sentence-transformers model shipped with the chromadb package.
+    This is a local CPU-based embedding model — no API key required.
+    Works with any vector store provider (pgvector, Cloudflare Vectorize, etc.).
     """
-    
+
     def __init__(self):
-        """Initialize the default ChromaDB embedding function."""
+        """Initialize the all-MiniLM-L6-v2 local embedding function."""
         from chromadb.utils import embedding_functions
-        
+
         self._ef = embedding_functions.DefaultEmbeddingFunction()
         self._dimension = 384  # all-MiniLM-L6-v2 dimension
-        logger.info("Initialized ChromaDB default embedding function")
+        logger.info("Initialized local MiniLM embedding function (384D)")
     
     def embed_text(self, text: str) -> List[float]:
         """Generate embedding for a single text."""
@@ -183,7 +184,7 @@ class EmbeddingService:
             cache_enabled: Whether to cache embeddings
             max_cache_size: Maximum number of cached embeddings
         """
-        self._provider = provider or ChromaDefaultEmbedding()
+        self._provider = provider or LocalMiniLMEmbedding()
         self._cache_enabled = cache_enabled
         self._cache: Dict[str, List[float]] = {}
         self._max_cache_size = max_cache_size
