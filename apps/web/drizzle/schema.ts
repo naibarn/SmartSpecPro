@@ -6025,3 +6025,280 @@ export const feedbackTicketAttachments = pgTable("feedback_ticket_attachments", 
 });
 
 export type FeedbackTicketAttachment = typeof feedbackTicketAttachments.$inferSelect;
+
+// ==========================================
+// Virtual AI Office Orchestrator — Rooms, Runs, Monitoring (Section 02)
+// ==========================================
+
+export const teamRoomTypeEnum = pgEnum("team_room_type", [
+  "direct", "team", "auto_team", "job_review",
+]);
+export const teamRoomStatusEnum = pgEnum("team_room_status", [
+  "active", "archived", "paused",
+]);
+export const roomParticipantTypeEnum = pgEnum("room_participant_type", [
+  "user", "assistant", "observer",
+]);
+export const roomMessageSenderTypeEnum = pgEnum("room_message_sender_type", [
+  "user", "assistant", "system",
+]);
+export const roomMessageRecipientTypeEnum = pgEnum("room_message_recipient_type", [
+  "all", "assistant", "subgroup", "user",
+]);
+export const roomMessageTurnTypeEnum = pgEnum("room_message_turn_type", [
+  "discussion", "handoff", "review", "decision", "execution_update", "summary",
+]);
+export const roomMessageVisibilityEnum = pgEnum("room_message_visibility", [
+  "transparent", "milestone", "summary_only", "private_internal",
+]);
+export const teamRunStatusEnum = pgEnum("team_run_status", [
+  "queued", "running", "paused", "completed", "failed", "stopped",
+]);
+export const teamRunExecutionModeEnum = pgEnum("team_run_execution_mode", [
+  "team_chat", "auto_team", "review",
+]);
+export const agentEventCategoryEnum = pgEnum("agent_event_category", [
+  "status_change", "communication", "tool_use", "memory_op",
+  "artifact_op", "handoff", "approval", "error",
+]);
+export const notificationSeverityEnum = pgEnum("notification_severity", [
+  "info", "warning", "error", "critical",
+]);
+
+/**
+ * team_rooms — durable room abstraction for team conversations.
+ */
+export const teamRooms = pgTable("team_rooms", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  teamId: varchar("teamId", { length: 36 }).notNull().references(() => assistantTeams.id, { onDelete: "cascade" }),
+  orchestratorUserId: integer("orchestratorUserId").notNull().references(() => users.id),
+  backingAgencyConversationId: varchar("backingAgencyConversationId", { length: 36 }).references(() => agencyConversations.id, { onDelete: "set null" }),
+  roomType: teamRoomTypeEnum("roomType").notNull(),
+  title: varchar("title", { length: 255 }),
+  goalPrompt: text("goalPrompt"),
+  projectId: integer("projectId"),
+  viewMode: varchar("viewMode", { length: 30 }).default("transparent"),
+  summaryMode: varchar("summaryMode", { length: 30 }),
+  autonomyLevel: varchar("autonomyLevel", { length: 30 }),
+  status: teamRoomStatusEnum("status").notNull().default("active"),
+  lastRunId: varchar("lastRunId", { length: 36 }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("team_rooms_tenant_team_idx").on(t.tenantId, t.teamId),
+  index("team_rooms_orchestrator_idx").on(t.orchestratorUserId),
+]);
+
+export type TeamRoom = typeof teamRooms.$inferSelect;
+export type InsertTeamRoom = typeof teamRooms.$inferInsert;
+
+/**
+ * team_room_participants — explicit participant roster per room.
+ * Partial unique indexes prevent same user/assistant from joining twice.
+ */
+export const teamRoomParticipants = pgTable("team_room_participants", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  roomId: varchar("roomId", { length: 36 }).notNull().references(() => teamRooms.id, { onDelete: "cascade" }),
+  participantType: roomParticipantTypeEnum("participantType").notNull(),
+  participantUserId: integer("participantUserId").references(() => users.id),
+  participantAssistantId: varchar("participantAssistantId", { length: 36 }).references(() => assistantProfiles.id),
+  participantLabel: varchar("participantLabel", { length: 255 }),
+  roleInRoom: varchar("roleInRoom", { length: 100 }),
+  isMuted: boolean("isMuted").default(false).notNull(),
+  canWriteSharedMemory: boolean("canWriteSharedMemory").default(true).notNull(),
+  joinedAt: timestamp("joinedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("team_room_participants_room_idx").on(t.roomId),
+]);
+
+export type TeamRoomParticipant = typeof teamRoomParticipants.$inferSelect;
+export type InsertTeamRoomParticipant = typeof teamRoomParticipants.$inferInsert;
+
+/**
+ * team_room_messages — multi-party message store.
+ * senderAssistantId required when senderType=assistant (enforced at app level).
+ */
+export const teamRoomMessages = pgTable("team_room_messages", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  roomId: varchar("roomId", { length: 36 }).notNull().references(() => teamRooms.id, { onDelete: "cascade" }),
+  runId: varchar("runId", { length: 36 }),
+  senderType: roomMessageSenderTypeEnum("senderType").notNull(),
+  senderUserId: integer("senderUserId").references(() => users.id),
+  senderAssistantId: varchar("senderAssistantId", { length: 36 }).references(() => assistantProfiles.id),
+  recipientType: roomMessageRecipientTypeEnum("recipientType").notNull().default("all"),
+  recipientAssistantId: varchar("recipientAssistantId", { length: 36 }),
+  recipientGroupJson: jsonb("recipientGroupJson"),
+  turnType: roomMessageTurnTypeEnum("turnType").notNull().default("discussion"),
+  visibility: roomMessageVisibilityEnum("visibility").notNull().default("transparent"),
+  content: text("content").notNull(),
+  summaryContent: text("summaryContent"),
+  artifactRefsJson: jsonb("artifactRefsJson"),
+  memoryRefsJson: jsonb("memoryRefsJson"),
+  metadataJson: jsonb("metadataJson"),
+  tokenUsageJson: jsonb("tokenUsageJson").$type<{ inputTokens?: number; outputTokens?: number; model?: string }>(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("team_room_messages_room_created_idx").on(t.roomId, t.createdAt),
+  index("team_room_messages_run_created_idx").on(t.runId, t.createdAt),
+]);
+
+export type TeamRoomMessage = typeof teamRoomMessages.$inferSelect;
+export type InsertTeamRoomMessage = typeof teamRoomMessages.$inferInsert;
+
+/**
+ * team_runs — one orchestrated work session inside a room.
+ */
+export interface StopPolicy {
+  maxRounds: number;
+  maxDurationMinutes: number;
+  maxBudgetCredits: number;
+  stopOnConsensus: boolean;
+  stopOnArtifactReady: boolean;
+  stopOnLeadSummary: boolean;
+  requireFinalSummary: boolean;
+  idleTimeoutSeconds: number;
+}
+
+export interface BudgetSnapshot {
+  totalCreditsUsed: number;
+  perAgent: Record<string, {
+    creditsUsed: number;
+    inputTokens: number;
+    outputTokens: number;
+    turnCount: number;
+  }>;
+}
+
+export const teamRuns = pgTable("team_runs", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  roomId: varchar("roomId", { length: 36 }).notNull().references(() => teamRooms.id, { onDelete: "cascade" }),
+  teamId: varchar("teamId", { length: 36 }).notNull().references(() => assistantTeams.id),
+  backingAgencyRunId: varchar("backingAgencyRunId", { length: 36 }),
+  initiatedByUserId: integer("initiatedByUserId").notNull().references(() => users.id),
+  executionMode: teamRunExecutionModeEnum("executionMode").notNull(),
+  objective: text("objective"),
+  constraintsJson: jsonb("constraintsJson"),
+  status: teamRunStatusEnum("status").notNull().default("queued"),
+  activeAssistantId: varchar("activeAssistantId", { length: 36 }),
+  stopPolicyJson: jsonb("stopPolicyJson").$type<StopPolicy>(),
+  approvalPolicyJson: jsonb("approvalPolicyJson"),
+  budgetSnapshotJson: jsonb("budgetSnapshotJson").$type<BudgetSnapshot>(),
+  summaryArtifactId: varchar("summaryArtifactId", { length: 36 }),
+  stopReason: text("stopReason"),
+  startedAt: timestamp("startedAt", { withTimezone: true }),
+  endedAt: timestamp("endedAt", { withTimezone: true }),
+}, (t) => [
+  index("team_runs_room_status_idx").on(t.roomId, t.status),
+  index("team_runs_team_status_idx").on(t.teamId, t.status),
+  index("team_runs_initiated_by_idx").on(t.initiatedByUserId),
+]);
+
+export type TeamRun = typeof teamRuns.$inferSelect;
+export type InsertTeamRun = typeof teamRuns.$inferInsert;
+
+/**
+ * agent_activity_events — append-only event log for monitoring.
+ * No updatedAt by design. No FKs for write performance.
+ */
+export const agentActivityEvents = pgTable("agent_activity_events", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  teamId: varchar("teamId", { length: 36 }).notNull(),
+  roomId: varchar("roomId", { length: 36 }).notNull(),
+  runId: varchar("runId", { length: 36 }).notNull(),
+  assistantId: varchar("assistantId", { length: 36 }),
+  eventType: text("eventType").notNull(),
+  eventCategory: agentEventCategoryEnum("eventCategory").notNull(),
+  visibility: roomMessageVisibilityEnum("visibility").notNull().default("transparent"),
+  summary: text("summary"),
+  detailJson: jsonb("detailJson"),
+  tokenUsageSnapshot: integer("tokenUsageSnapshot"),
+  costSnapshot: numeric("costSnapshot", { precision: 12, scale: 4 }),
+  durationMs: integer("durationMs"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("agent_activity_events_run_created_idx").on(t.runId, t.createdAt),
+  index("agent_activity_events_assistant_created_idx").on(t.assistantId, t.createdAt),
+]);
+
+export type AgentActivityEvent = typeof agentActivityEvents.$inferSelect;
+export type InsertAgentActivityEvent = typeof agentActivityEvents.$inferInsert;
+
+/**
+ * agent_run_summaries — per-agent performance summary computed when a run completes.
+ */
+export const agentRunSummaries = pgTable("agent_run_summaries", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  runId: varchar("runId", { length: 36 }).notNull().references(() => teamRuns.id, { onDelete: "cascade" }),
+  assistantId: varchar("assistantId", { length: 36 }).notNull().references(() => assistantProfiles.id),
+  turnCount: integer("turnCount").default(0).notNull(),
+  totalInputTokens: integer("totalInputTokens").default(0).notNull(),
+  totalOutputTokens: integer("totalOutputTokens").default(0).notNull(),
+  totalCostCredits: numeric("totalCostCredits", { precision: 12, scale: 4 }).default("0").notNull(),
+  toolCallCount: integer("toolCallCount").default(0).notNull(),
+  toolSuccessCount: integer("toolSuccessCount").default(0).notNull(),
+  toolFailureCount: integer("toolFailureCount").default(0).notNull(),
+  memoriesRead: integer("memoriesRead").default(0).notNull(),
+  memoriesWritten: integer("memoriesWritten").default(0).notNull(),
+  memoriesPromoted: integer("memoriesPromoted").default(0).notNull(),
+  artifactsCreated: integer("artifactsCreated").default(0).notNull(),
+  handoffsSent: integer("handoffsSent").default(0).notNull(),
+  handoffsReceived: integer("handoffsReceived").default(0).notNull(),
+  errorCount: integer("errorCount").default(0).notNull(),
+  activeDurationMs: integer("activeDurationMs").default(0).notNull(),
+  waitDurationMs: integer("waitDurationMs").default(0).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("agent_run_summaries_run_idx").on(t.runId),
+]);
+
+export type AgentRunSummary = typeof agentRunSummaries.$inferSelect;
+export type InsertAgentRunSummary = typeof agentRunSummaries.$inferInsert;
+
+/**
+ * run_snapshots — periodic state captures during active runs.
+ */
+export const runSnapshots = pgTable("run_snapshots", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  runId: varchar("runId", { length: 36 }).notNull().references(() => teamRuns.id, { onDelete: "cascade" }),
+  capturedAt: timestamp("capturedAt", { withTimezone: true }).defaultNow().notNull(),
+  activeAssistantId: varchar("activeAssistantId", { length: 36 }),
+  agentStatusesJson: jsonb("agentStatusesJson"),
+  tokenUsageJson: jsonb("tokenUsageJson"),
+  costJson: jsonb("costJson"),
+  artifactCountJson: jsonb("artifactCountJson"),
+  pendingApprovalsCount: integer("pendingApprovalsCount").default(0).notNull(),
+}, (t) => [
+  index("run_snapshots_run_captured_idx").on(t.runId, t.capturedAt),
+]);
+
+export type RunSnapshot = typeof runSnapshots.$inferSelect;
+export type InsertRunSnapshot = typeof runSnapshots.$inferInsert;
+
+/**
+ * orchestrator_notifications — persistent notification records.
+ */
+export const orchestratorNotifications = pgTable("orchestrator_notifications", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  userId: integer("userId").notNull().references(() => users.id),
+  teamId: varchar("teamId", { length: 36 }),
+  roomId: varchar("roomId", { length: 36 }),
+  runId: varchar("runId", { length: 36 }),
+  notificationType: text("notificationType").notNull(),
+  severity: notificationSeverityEnum("severity").notNull().default("info"),
+  title: varchar("title", { length: 255 }).notNull(),
+  body: text("body"),
+  actionUrl: text("actionUrl"),
+  isRead: boolean("isRead").default(false).notNull(),
+  isDismissed: boolean("isDismissed").default(false).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  readAt: timestamp("readAt", { withTimezone: true }),
+}, (t) => [
+  index("orchestrator_notifications_user_unread_idx").on(t.userId, t.isRead, t.createdAt),
+  index("orchestrator_notifications_tenant_created_idx").on(t.tenantId, t.createdAt),
+]);
+
+export type OrchestratorNotification = typeof orchestratorNotifications.$inferSelect;
+export type InsertOrchestratorNotification = typeof orchestratorNotifications.$inferInsert;

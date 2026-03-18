@@ -1,6 +1,6 @@
 {
-  "id": "cd7c763c-92c7-49f1-8cf5-3fdece36e476",
-  "prevId": "7cd93c4c-2a70-4d2c-ab63-7d32e2df2fc3",
+  "id": "60c3cef6-6594-4489-aaba-ba0dd30fb014",
+  "prevId": "74af733e-5838-487c-99f8-0a311dc95025",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1531,6 +1531,351 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.agent_activity_events": {
+      "name": "agent_activity_events",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(36)",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tenantId": {
+          "name": "tenantId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "teamId": {
+          "name": "teamId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "roomId": {
+          "name": "roomId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "runId": {
+          "name": "runId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "assistantId": {
+          "name": "assistantId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "eventType": {
+          "name": "eventType",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "eventCategory": {
+          "name": "eventCategory",
+          "type": "agent_event_category",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "visibility": {
+          "name": "visibility",
+          "type": "room_message_visibility",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'transparent'"
+        },
+        "summary": {
+          "name": "summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "detailJson": {
+          "name": "detailJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tokenUsageSnapshot": {
+          "name": "tokenUsageSnapshot",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "costSnapshot": {
+          "name": "costSnapshot",
+          "type": "numeric(12, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "durationMs": {
+          "name": "durationMs",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "agent_activity_events_run_created_idx": {
+          "name": "agent_activity_events_run_created_idx",
+          "columns": [
+            {
+              "expression": "runId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "createdAt",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "agent_activity_events_assistant_created_idx": {
+          "name": "agent_activity_events_assistant_created_idx",
+          "columns": [
+            {
+              "expression": "assistantId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "createdAt",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.agent_run_summaries": {
+      "name": "agent_run_summaries",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(36)",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "runId": {
+          "name": "runId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "assistantId": {
+          "name": "assistantId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "turnCount": {
+          "name": "turnCount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "totalInputTokens": {
+          "name": "totalInputTokens",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "totalOutputTokens": {
+          "name": "totalOutputTokens",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "totalCostCredits": {
+          "name": "totalCostCredits",
+          "type": "numeric(12, 4)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "toolCallCount": {
+          "name": "toolCallCount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "toolSuccessCount": {
+          "name": "toolSuccessCount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "toolFailureCount": {
+          "name": "toolFailureCount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "memoriesRead": {
+          "name": "memoriesRead",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "memoriesWritten": {
+          "name": "memoriesWritten",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "memoriesPromoted": {
+          "name": "memoriesPromoted",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "artifactsCreated": {
+          "name": "artifactsCreated",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "handoffsSent": {
+          "name": "handoffsSent",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "handoffsReceived": {
+          "name": "handoffsReceived",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "errorCount": {
+          "name": "errorCount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "activeDurationMs": {
+          "name": "activeDurationMs",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "waitDurationMs": {
+          "name": "waitDurationMs",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "agent_run_summaries_run_idx": {
+          "name": "agent_run_summaries_run_idx",
+          "columns": [
+            {
+              "expression": "runId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "agent_run_summaries_runId_team_runs_id_fk": {
+          "name": "agent_run_summaries_runId_team_runs_id_fk",
+          "tableFrom": "agent_run_summaries",
+          "tableTo": "team_runs",
+          "columnsFrom": [
+            "runId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "agent_run_summaries_assistantId_assistant_profiles_id_fk": {
+          "name": "agent_run_summaries_assistantId_assistant_profiles_id_fk",
+          "tableFrom": "agent_run_summaries",
+          "tableTo": "assistant_profiles",
+          "columnsFrom": [
+            "assistantId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.agent_templates": {
       "name": "agent_templates",
       "schema": "",
@@ -2342,6 +2687,587 @@
             "id"
           ],
           "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.assistant_profiles": {
+      "name": "assistant_profiles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(36)",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tenantId": {
+          "name": "tenantId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "teamId": {
+          "name": "teamId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agencyAgentId": {
+          "name": "agencyAgentId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "personaId": {
+          "name": "personaId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "displayName": {
+          "name": "displayName",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nickname": {
+          "name": "nickname",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "roleTitle": {
+          "name": "roleTitle",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "genderStyle": {
+          "name": "genderStyle",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "specialtyTags": {
+          "name": "specialtyTags",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "preferredModelId": {
+          "name": "preferredModelId",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "modelSelectionPolicy": {
+          "name": "modelSelectionPolicy",
+          "type": "model_selection_policy",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'auto'"
+        },
+        "toolPolicyJson": {
+          "name": "toolPolicyJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "approvalPolicyJson": {
+          "name": "approvalPolicyJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memoryPolicyJson": {
+          "name": "memoryPolicyJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "visibilityPolicyJson": {
+          "name": "visibilityPolicyJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "preferredLanguage": {
+          "name": "preferredLanguage",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sortOrder": {
+          "name": "sortOrder",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "isLead": {
+          "name": "isLead",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "isActive": {
+          "name": "isActive",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "assistant_profiles_team_idx": {
+          "name": "assistant_profiles_team_idx",
+          "columns": [
+            {
+              "expression": "teamId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "assistant_profiles_agent_idx": {
+          "name": "assistant_profiles_agent_idx",
+          "columns": [
+            {
+              "expression": "agencyAgentId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "assistant_profiles_persona_idx": {
+          "name": "assistant_profiles_persona_idx",
+          "columns": [
+            {
+              "expression": "personaId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "assistant_profiles_tenantId_tenants_id_fk": {
+          "name": "assistant_profiles_tenantId_tenants_id_fk",
+          "tableFrom": "assistant_profiles",
+          "tableTo": "tenants",
+          "columnsFrom": [
+            "tenantId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "assistant_profiles_teamId_assistant_teams_id_fk": {
+          "name": "assistant_profiles_teamId_assistant_teams_id_fk",
+          "tableFrom": "assistant_profiles",
+          "tableTo": "assistant_teams",
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "assistant_profiles_agencyAgentId_agency_agents_id_fk": {
+          "name": "assistant_profiles_agencyAgentId_agency_agents_id_fk",
+          "tableFrom": "assistant_profiles",
+          "tableTo": "agency_agents",
+          "columnsFrom": [
+            "agencyAgentId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "assistant_profiles_personaId_persona_templates_id_fk": {
+          "name": "assistant_profiles_personaId_persona_templates_id_fk",
+          "tableFrom": "assistant_profiles",
+          "tableTo": "persona_templates",
+          "columnsFrom": [
+            "personaId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.assistant_team_templates": {
+      "name": "assistant_team_templates",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(36)",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tenantId": {
+          "name": "tenantId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category": {
+          "name": "category",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "teamConfigJson": {
+          "name": "teamConfigJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memberTemplateJson": {
+          "name": "memberTemplateJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "defaultDiscussionMode": {
+          "name": "defaultDiscussionMode",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "isSystem": {
+          "name": "isSystem",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "assistant_team_templates_tenant_idx": {
+          "name": "assistant_team_templates_tenant_idx",
+          "columns": [
+            {
+              "expression": "tenantId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "assistant_team_templates_tenantId_tenants_id_fk": {
+          "name": "assistant_team_templates_tenantId_tenants_id_fk",
+          "tableFrom": "assistant_team_templates",
+          "tableTo": "tenants",
+          "columnsFrom": [
+            "tenantId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.assistant_teams": {
+      "name": "assistant_teams",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(36)",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tenantId": {
+          "name": "tenantId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ownerUserId": {
+          "name": "ownerUserId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agencyId": {
+          "name": "agencyId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category": {
+          "name": "category",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "teamPersonaOverlay": {
+          "name": "teamPersonaOverlay",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "defaultViewMode": {
+          "name": "defaultViewMode",
+          "type": "orchestrator_view_mode",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'transparent'"
+        },
+        "defaultSummaryMode": {
+          "name": "defaultSummaryMode",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "defaultAutonomyLevel": {
+          "name": "defaultAutonomyLevel",
+          "type": "orchestrator_autonomy_level",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'guided'"
+        },
+        "defaultModelId": {
+          "name": "defaultModelId",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "modelBudgetPolicy": {
+          "name": "modelBudgetPolicy",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memoryPolicyJson": {
+          "name": "memoryPolicyJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "artifactPolicyJson": {
+          "name": "artifactPolicyJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "assistant_team_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'draft'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "assistant_teams_tenant_idx": {
+          "name": "assistant_teams_tenant_idx",
+          "columns": [
+            {
+              "expression": "tenantId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "assistant_teams_owner_idx": {
+          "name": "assistant_teams_owner_idx",
+          "columns": [
+            {
+              "expression": "ownerUserId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "assistant_teams_agency_idx": {
+          "name": "assistant_teams_agency_idx",
+          "columns": [
+            {
+              "expression": "agencyId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "assistant_teams_tenantId_tenants_id_fk": {
+          "name": "assistant_teams_tenantId_tenants_id_fk",
+          "tableFrom": "assistant_teams",
+          "tableTo": "tenants",
+          "columnsFrom": [
+            "tenantId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "assistant_teams_ownerUserId_users_id_fk": {
+          "name": "assistant_teams_ownerUserId_users_id_fk",
+          "tableFrom": "assistant_teams",
+          "tableTo": "users",
+          "columnsFrom": [
+            "ownerUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "assistant_teams_agencyId_agencies_id_fk": {
+          "name": "assistant_teams_agencyId_agencies_id_fk",
+          "tableFrom": "assistant_teams",
+          "tableTo": "agencies",
+          "columnsFrom": [
+            "agencyId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -6944,6 +7870,464 @@
             "id"
           ],
           "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.feedback_ticket_attachments": {
+      "name": "feedback_ticket_attachments",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "ticketId": {
+          "name": "ticketId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fileName": {
+          "name": "fileName",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fileUrl": {
+          "name": "fileUrl",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fileSize": {
+          "name": "fileSize",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mimeType": {
+          "name": "mimeType",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "uploadedBy": {
+          "name": "uploadedBy",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "feedback_ticket_attachments_ticketId_feedback_tickets_id_fk": {
+          "name": "feedback_ticket_attachments_ticketId_feedback_tickets_id_fk",
+          "tableFrom": "feedback_ticket_attachments",
+          "tableTo": "feedback_tickets",
+          "columnsFrom": [
+            "ticketId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "feedback_ticket_attachments_uploadedBy_users_id_fk": {
+          "name": "feedback_ticket_attachments_uploadedBy_users_id_fk",
+          "tableFrom": "feedback_ticket_attachments",
+          "tableTo": "users",
+          "columnsFrom": [
+            "uploadedBy"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.feedback_ticket_comments": {
+      "name": "feedback_ticket_comments",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "ticketId": {
+          "name": "ticketId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "authorId": {
+          "name": "authorId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "authorType": {
+          "name": "authorType",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "isInternal": {
+          "name": "isInternal",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "feedback_ticket_comments_ticketId_feedback_tickets_id_fk": {
+          "name": "feedback_ticket_comments_ticketId_feedback_tickets_id_fk",
+          "tableFrom": "feedback_ticket_comments",
+          "tableTo": "feedback_tickets",
+          "columnsFrom": [
+            "ticketId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "feedback_ticket_comments_authorId_users_id_fk": {
+          "name": "feedback_ticket_comments_authorId_users_id_fk",
+          "tableFrom": "feedback_ticket_comments",
+          "tableTo": "users",
+          "columnsFrom": [
+            "authorId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.feedback_tickets": {
+      "name": "feedback_tickets",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "tenantId": {
+          "name": "tenantId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "submittedBy": {
+          "name": "submittedBy",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "submittedByType": {
+          "name": "submittedByType",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ticketType": {
+          "name": "ticketType",
+          "type": "ticket_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "priority": {
+          "name": "priority",
+          "type": "reminder_priority",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'normal'"
+        },
+        "severity": {
+          "name": "severity",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category": {
+          "name": "category",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stepsToReproduce": {
+          "name": "stepsToReproduce",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expectedBehavior": {
+          "name": "expectedBehavior",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actualBehavior": {
+          "name": "actualBehavior",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contextJson": {
+          "name": "contextJson",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "autoCategory": {
+          "name": "autoCategory",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "autoPriority": {
+          "name": "autoPriority",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "autoSummary": {
+          "name": "autoSummary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duplicateOf": {
+          "name": "duplicateOf",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "relatedIncidentId": {
+          "name": "relatedIncidentId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "ticket_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'new'"
+        },
+        "assignedTo": {
+          "name": "assignedTo",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "adminResponse": {
+          "name": "adminResponse",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resolutionNotes": {
+          "name": "resolutionNotes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resolutionType": {
+          "name": "resolutionType",
+          "type": "ticket_resolution",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "plannedVersion": {
+          "name": "plannedVersion",
+          "type": "varchar(32)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "planningDocUrl": {
+          "name": "planningDocUrl",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "devBranch": {
+          "name": "devBranch",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "triagedAt": {
+          "name": "triagedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "respondedAt": {
+          "name": "respondedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resolvedAt": {
+          "name": "resolvedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closedAt": {
+          "name": "closedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "feedback_tickets_tenantId_tenants_id_fk": {
+          "name": "feedback_tickets_tenantId_tenants_id_fk",
+          "tableFrom": "feedback_tickets",
+          "tableTo": "tenants",
+          "columnsFrom": [
+            "tenantId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "feedback_tickets_submittedBy_users_id_fk": {
+          "name": "feedback_tickets_submittedBy_users_id_fk",
+          "tableFrom": "feedback_tickets",
+          "tableTo": "users",
+          "columnsFrom": [
+            "submittedBy"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "feedback_tickets_duplicateOf_feedback_tickets_id_fk": {
+          "name": "feedback_tickets_duplicateOf_feedback_tickets_id_fk",
+          "tableFrom": "feedback_tickets",
+          "tableTo": "feedback_tickets",
+          "columnsFrom": [
+            "duplicateOf"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "feedback_tickets_relatedIncidentId_virtual_admin_incidents_id_fk": {
+          "name": "feedback_tickets_relatedIncidentId_virtual_admin_incidents_id_fk",
+          "tableFrom": "feedback_tickets",
+          "tableTo": "virtual_admin_incidents",
+          "columnsFrom": [
+            "relatedIncidentId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "feedback_tickets_assignedTo_users_id_fk": {
+          "name": "feedback_tickets_assignedTo_users_id_fk",
+          "tableFrom": "feedback_tickets",
+          "tableTo": "users",
+          "columnsFrom": [
+            "assignedTo"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
@@ -12116,6 +13500,13 @@
           "notNull": false,
           "default": false
         },
+        "supportsThinking": {
+          "name": "supportsThinking",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
         "priorityLocked": {
           "name": "priorityLocked",
           "type": "boolean",
@@ -13006,6 +14397,191 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.orchestrator_notifications": {
+      "name": "orchestrator_notifications",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(36)",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tenantId": {
+          "name": "tenantId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "teamId": {
+          "name": "teamId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "roomId": {
+          "name": "roomId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "runId": {
+          "name": "runId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notificationType": {
+          "name": "notificationType",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "severity": {
+          "name": "severity",
+          "type": "notification_severity",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'info'"
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "body": {
+          "name": "body",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actionUrl": {
+          "name": "actionUrl",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "isRead": {
+          "name": "isRead",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "isDismissed": {
+          "name": "isDismissed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "readAt": {
+          "name": "readAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "orchestrator_notifications_user_unread_idx": {
+          "name": "orchestrator_notifications_user_unread_idx",
+          "columns": [
+            {
+              "expression": "userId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "isRead",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "createdAt",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "orchestrator_notifications_tenant_created_idx": {
+          "name": "orchestrator_notifications_tenant_created_idx",
+          "columns": [
+            {
+              "expression": "tenantId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "createdAt",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "orchestrator_notifications_tenantId_tenants_id_fk": {
+          "name": "orchestrator_notifications_tenantId_tenants_id_fk",
+          "tableFrom": "orchestrator_notifications",
+          "tableTo": "tenants",
+          "columnsFrom": [
+            "tenantId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "orchestrator_notifications_userId_users_id_fk": {
+          "name": "orchestrator_notifications_userId_users_id_fk",
+          "tableFrom": "orchestrator_notifications",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.persona_templates": {
       "name": "persona_templates",
       "schema": "",
@@ -13040,6 +14616,40 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "assistantNickname": {
+          "name": "assistantNickname",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "assistantGender": {
+          "name": "assistantGender",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'neutral'"
+        },
+        "sourceTemplateIds": {
+          "name": "sourceTemplateIds",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
+        },
+        "sourceTemplateLabels": {
+          "name": "sourceTemplateLabels",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
+        },
+        "sourceTemplateCategories": {
+          "name": "sourceTemplateCategories",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
         },
         "systemPromptPrefix": {
           "name": "systemPromptPrefix",
@@ -13138,6 +14748,21 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "persona_templates_source_template_ids_idx": {
+          "name": "persona_templates_source_template_ids_idx",
+          "columns": [
+            {
+              "expression": "sourceTemplateIds",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "gin",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -13172,6 +14797,10 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
+        "persona_templates_assistant_gender_check": {
+          "name": "persona_templates_assistant_gender_check",
+          "value": "\"assistantGender\" IN ('female','male','neutral') OR \"assistantGender\" IS NULL"
+        },
         "persona_templates_tone_check": {
           "name": "persona_templates_tone_check",
           "value": "\"tone\" IN ('formal','casual','friendly','technical','creative') OR \"tone\" IS NULL"
@@ -15094,6 +16723,112 @@
       },
       "indexes": {},
       "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.run_snapshots": {
+      "name": "run_snapshots",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(36)",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "runId": {
+          "name": "runId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "capturedAt": {
+          "name": "capturedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "activeAssistantId": {
+          "name": "activeAssistantId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "agentStatusesJson": {
+          "name": "agentStatusesJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tokenUsageJson": {
+          "name": "tokenUsageJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "costJson": {
+          "name": "costJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "artifactCountJson": {
+          "name": "artifactCountJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pendingApprovalsCount": {
+          "name": "pendingApprovalsCount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {
+        "run_snapshots_run_captured_idx": {
+          "name": "run_snapshots_run_captured_idx",
+          "columns": [
+            {
+              "expression": "runId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "capturedAt",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "run_snapshots_runId_team_runs_id_fk": {
+          "name": "run_snapshots_runId_team_runs_id_fk",
+          "tableFrom": "run_snapshots",
+          "tableTo": "team_runs",
+          "columnsFrom": [
+            "runId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -17647,6 +19382,776 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.team_room_messages": {
+      "name": "team_room_messages",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(36)",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "roomId": {
+          "name": "roomId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "runId": {
+          "name": "runId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "senderType": {
+          "name": "senderType",
+          "type": "room_message_sender_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "senderUserId": {
+          "name": "senderUserId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "senderAssistantId": {
+          "name": "senderAssistantId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "recipientType": {
+          "name": "recipientType",
+          "type": "room_message_recipient_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'all'"
+        },
+        "recipientAssistantId": {
+          "name": "recipientAssistantId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "recipientGroupJson": {
+          "name": "recipientGroupJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "turnType": {
+          "name": "turnType",
+          "type": "room_message_turn_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'discussion'"
+        },
+        "visibility": {
+          "name": "visibility",
+          "type": "room_message_visibility",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'transparent'"
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "summaryContent": {
+          "name": "summaryContent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "artifactRefsJson": {
+          "name": "artifactRefsJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memoryRefsJson": {
+          "name": "memoryRefsJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadataJson": {
+          "name": "metadataJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tokenUsageJson": {
+          "name": "tokenUsageJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "team_room_messages_room_created_idx": {
+          "name": "team_room_messages_room_created_idx",
+          "columns": [
+            {
+              "expression": "roomId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "createdAt",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "team_room_messages_run_created_idx": {
+          "name": "team_room_messages_run_created_idx",
+          "columns": [
+            {
+              "expression": "runId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "createdAt",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "team_room_messages_roomId_team_rooms_id_fk": {
+          "name": "team_room_messages_roomId_team_rooms_id_fk",
+          "tableFrom": "team_room_messages",
+          "tableTo": "team_rooms",
+          "columnsFrom": [
+            "roomId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "team_room_messages_senderUserId_users_id_fk": {
+          "name": "team_room_messages_senderUserId_users_id_fk",
+          "tableFrom": "team_room_messages",
+          "tableTo": "users",
+          "columnsFrom": [
+            "senderUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "team_room_messages_senderAssistantId_assistant_profiles_id_fk": {
+          "name": "team_room_messages_senderAssistantId_assistant_profiles_id_fk",
+          "tableFrom": "team_room_messages",
+          "tableTo": "assistant_profiles",
+          "columnsFrom": [
+            "senderAssistantId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.team_room_participants": {
+      "name": "team_room_participants",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(36)",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "roomId": {
+          "name": "roomId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "participantType": {
+          "name": "participantType",
+          "type": "room_participant_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "participantUserId": {
+          "name": "participantUserId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "participantAssistantId": {
+          "name": "participantAssistantId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "participantLabel": {
+          "name": "participantLabel",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "roleInRoom": {
+          "name": "roleInRoom",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "isMuted": {
+          "name": "isMuted",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "canWriteSharedMemory": {
+          "name": "canWriteSharedMemory",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "joinedAt": {
+          "name": "joinedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "team_room_participants_room_idx": {
+          "name": "team_room_participants_room_idx",
+          "columns": [
+            {
+              "expression": "roomId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "team_room_participants_roomId_team_rooms_id_fk": {
+          "name": "team_room_participants_roomId_team_rooms_id_fk",
+          "tableFrom": "team_room_participants",
+          "tableTo": "team_rooms",
+          "columnsFrom": [
+            "roomId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "team_room_participants_participantUserId_users_id_fk": {
+          "name": "team_room_participants_participantUserId_users_id_fk",
+          "tableFrom": "team_room_participants",
+          "tableTo": "users",
+          "columnsFrom": [
+            "participantUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "team_room_participants_participantAssistantId_assistant_profiles_id_fk": {
+          "name": "team_room_participants_participantAssistantId_assistant_profiles_id_fk",
+          "tableFrom": "team_room_participants",
+          "tableTo": "assistant_profiles",
+          "columnsFrom": [
+            "participantAssistantId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.team_rooms": {
+      "name": "team_rooms",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(36)",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tenantId": {
+          "name": "tenantId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "teamId": {
+          "name": "teamId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "orchestratorUserId": {
+          "name": "orchestratorUserId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "backingAgencyConversationId": {
+          "name": "backingAgencyConversationId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "roomType": {
+          "name": "roomType",
+          "type": "team_room_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "goalPrompt": {
+          "name": "goalPrompt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "projectId": {
+          "name": "projectId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "viewMode": {
+          "name": "viewMode",
+          "type": "varchar(30)",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'transparent'"
+        },
+        "summaryMode": {
+          "name": "summaryMode",
+          "type": "varchar(30)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "autonomyLevel": {
+          "name": "autonomyLevel",
+          "type": "varchar(30)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "team_room_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "lastRunId": {
+          "name": "lastRunId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "team_rooms_tenant_team_idx": {
+          "name": "team_rooms_tenant_team_idx",
+          "columns": [
+            {
+              "expression": "tenantId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "teamId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "team_rooms_orchestrator_idx": {
+          "name": "team_rooms_orchestrator_idx",
+          "columns": [
+            {
+              "expression": "orchestratorUserId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "team_rooms_tenantId_tenants_id_fk": {
+          "name": "team_rooms_tenantId_tenants_id_fk",
+          "tableFrom": "team_rooms",
+          "tableTo": "tenants",
+          "columnsFrom": [
+            "tenantId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "team_rooms_teamId_assistant_teams_id_fk": {
+          "name": "team_rooms_teamId_assistant_teams_id_fk",
+          "tableFrom": "team_rooms",
+          "tableTo": "assistant_teams",
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "team_rooms_orchestratorUserId_users_id_fk": {
+          "name": "team_rooms_orchestratorUserId_users_id_fk",
+          "tableFrom": "team_rooms",
+          "tableTo": "users",
+          "columnsFrom": [
+            "orchestratorUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "team_rooms_backingAgencyConversationId_agency_conversations_id_fk": {
+          "name": "team_rooms_backingAgencyConversationId_agency_conversations_id_fk",
+          "tableFrom": "team_rooms",
+          "tableTo": "agency_conversations",
+          "columnsFrom": [
+            "backingAgencyConversationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.team_runs": {
+      "name": "team_runs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(36)",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "roomId": {
+          "name": "roomId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "teamId": {
+          "name": "teamId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "backingAgencyRunId": {
+          "name": "backingAgencyRunId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "initiatedByUserId": {
+          "name": "initiatedByUserId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "executionMode": {
+          "name": "executionMode",
+          "type": "team_run_execution_mode",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "objective": {
+          "name": "objective",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "constraintsJson": {
+          "name": "constraintsJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "team_run_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'queued'"
+        },
+        "activeAssistantId": {
+          "name": "activeAssistantId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stopPolicyJson": {
+          "name": "stopPolicyJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "approvalPolicyJson": {
+          "name": "approvalPolicyJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "budgetSnapshotJson": {
+          "name": "budgetSnapshotJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "summaryArtifactId": {
+          "name": "summaryArtifactId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stopReason": {
+          "name": "stopReason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "startedAt": {
+          "name": "startedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "endedAt": {
+          "name": "endedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "team_runs_room_status_idx": {
+          "name": "team_runs_room_status_idx",
+          "columns": [
+            {
+              "expression": "roomId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "team_runs_team_status_idx": {
+          "name": "team_runs_team_status_idx",
+          "columns": [
+            {
+              "expression": "teamId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "team_runs_initiated_by_idx": {
+          "name": "team_runs_initiated_by_idx",
+          "columns": [
+            {
+              "expression": "initiatedByUserId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "team_runs_roomId_team_rooms_id_fk": {
+          "name": "team_runs_roomId_team_rooms_id_fk",
+          "tableFrom": "team_runs",
+          "tableTo": "team_rooms",
+          "columnsFrom": [
+            "roomId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "team_runs_teamId_assistant_teams_id_fk": {
+          "name": "team_runs_teamId_assistant_teams_id_fk",
+          "tableFrom": "team_runs",
+          "tableTo": "assistant_teams",
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "team_runs_initiatedByUserId_users_id_fk": {
+          "name": "team_runs_initiatedByUserId_users_id_fk",
+          "tableFrom": "team_runs",
+          "tableTo": "users",
+          "columnsFrom": [
+            "initiatedByUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.telegram_connections": {
       "name": "telegram_connections",
       "schema": "",
@@ -19716,6 +22221,129 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.user_orchestrator_profiles": {
+      "name": "user_orchestrator_profiles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(36)",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "userId": {
+          "name": "userId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "defaultPersonaId": {
+          "name": "defaultPersonaId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "orchestratorDisplayName": {
+          "name": "orchestratorDisplayName",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "preferredViewMode": {
+          "name": "preferredViewMode",
+          "type": "orchestrator_view_mode",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'transparent'"
+        },
+        "preferredAutonomyLevel": {
+          "name": "preferredAutonomyLevel",
+          "type": "orchestrator_autonomy_level",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'guided'"
+        },
+        "preferredSummaryStyle": {
+          "name": "preferredSummaryStyle",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "defaultApprovalPolicy": {
+          "name": "defaultApprovalPolicy",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "user_orchestrator_profiles_user_idx": {
+          "name": "user_orchestrator_profiles_user_idx",
+          "columns": [
+            {
+              "expression": "userId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "user_orchestrator_profiles_userId_users_id_fk": {
+          "name": "user_orchestrator_profiles_userId_users_id_fk",
+          "tableFrom": "user_orchestrator_profiles",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "user_orchestrator_profiles_defaultPersonaId_persona_templates_id_fk": {
+          "name": "user_orchestrator_profiles_defaultPersonaId_persona_templates_id_fk",
+          "tableFrom": "user_orchestrator_profiles",
+          "tableTo": "persona_templates",
+          "columnsFrom": [
+            "defaultPersonaId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.user_skill_visibility": {
       "name": "user_skill_visibility",
       "schema": "",
@@ -20009,6 +22637,13 @@
           "primaryKey": false,
           "notNull": false
         },
+        "isSystemUser": {
+          "name": "isSystemUser",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
         "voiceConsentGrantedAt": {
           "name": "voiceConsentGrantedAt",
           "type": "timestamp with time zone",
@@ -20220,6 +22855,376 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.virtual_admin_approvals": {
+      "name": "virtual_admin_approvals",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "incidentId": {
+          "name": "incidentId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actionType": {
+          "name": "actionType",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actionParamsJson": {
+          "name": "actionParamsJson",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "approval_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "requestedAt": {
+          "name": "requestedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "decidedAt": {
+          "name": "decidedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expiresAt": {
+          "name": "expiresAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "decidedBy": {
+          "name": "decidedBy",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "decisionComment": {
+          "name": "decisionComment",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "virtual_admin_approvals_incidentId_virtual_admin_incidents_id_fk": {
+          "name": "virtual_admin_approvals_incidentId_virtual_admin_incidents_id_fk",
+          "tableFrom": "virtual_admin_approvals",
+          "tableTo": "virtual_admin_incidents",
+          "columnsFrom": [
+            "incidentId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "virtual_admin_approvals_decidedBy_users_id_fk": {
+          "name": "virtual_admin_approvals_decidedBy_users_id_fk",
+          "tableFrom": "virtual_admin_approvals",
+          "tableTo": "users",
+          "columnsFrom": [
+            "decidedBy"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.virtual_admin_incidents": {
+      "name": "virtual_admin_incidents",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "tenantId": {
+          "name": "tenantId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sensorId": {
+          "name": "sensorId",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ruleId": {
+          "name": "ruleId",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "severity": {
+          "name": "severity",
+          "type": "incident_severity",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "incident_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'open'"
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "message": {
+          "name": "message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metricsJson": {
+          "name": "metricsJson",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actionTaken": {
+          "name": "actionTaken",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actionResult": {
+          "name": "actionResult",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resolvedBy": {
+          "name": "resolvedBy",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resolvedAt": {
+          "name": "resolvedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "va_incidents_tenant_idx": {
+          "name": "va_incidents_tenant_idx",
+          "columns": [
+            {
+              "expression": "tenantId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "va_incidents_status_idx": {
+          "name": "va_incidents_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "va_incidents_severity_idx": {
+          "name": "va_incidents_severity_idx",
+          "columns": [
+            {
+              "expression": "severity",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "va_incidents_sensor_idx": {
+          "name": "va_incidents_sensor_idx",
+          "columns": [
+            {
+              "expression": "sensorId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "virtual_admin_incidents_tenantId_tenants_id_fk": {
+          "name": "virtual_admin_incidents_tenantId_tenants_id_fk",
+          "tableFrom": "virtual_admin_incidents",
+          "tableTo": "tenants",
+          "columnsFrom": [
+            "tenantId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "virtual_admin_incidents_resolvedBy_users_id_fk": {
+          "name": "virtual_admin_incidents_resolvedBy_users_id_fk",
+          "tableFrom": "virtual_admin_incidents",
+          "tableTo": "users",
+          "columnsFrom": [
+            "resolvedBy"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.virtual_admin_sensor_config": {
+      "name": "virtual_admin_sensor_config",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(64)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "tenantId": {
+          "name": "tenantId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sensorId": {
+          "name": "sensorId",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "enabled": {
+          "name": "enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "intervalMs": {
+          "name": "intervalMs",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "thresholdsJson": {
+          "name": "thresholdsJson",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "virtual_admin_sensor_config_tenantId_tenants_id_fk": {
+          "name": "virtual_admin_sensor_config_tenantId_tenants_id_fk",
+          "tableFrom": "virtual_admin_sensor_config",
+          "tableTo": "tenants",
+          "columnsFrom": [
+            "tenantId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
@@ -22832,6 +25837,20 @@
     }
   },
   "enums": {
+    "public.agent_event_category": {
+      "name": "agent_event_category",
+      "schema": "public",
+      "values": [
+        "status_change",
+        "communication",
+        "tool_use",
+        "memory_op",
+        "artifact_op",
+        "handoff",
+        "approval",
+        "error"
+      ]
+    },
     "public.api_style": {
       "name": "api_style",
       "schema": "public",
@@ -22842,6 +25861,17 @@
         "gemini"
       ]
     },
+    "public.approval_status": {
+      "name": "approval_status",
+      "schema": "public",
+      "values": [
+        "pending",
+        "approved",
+        "rejected",
+        "expired",
+        "execution_failed"
+      ]
+    },
     "public.aspect_ratio": {
       "name": "aspect_ratio",
       "schema": "public",
@@ -22849,6 +25879,15 @@
         "1:1",
         "9:16",
         "16:9"
+      ]
+    },
+    "public.assistant_team_status": {
+      "name": "assistant_team_status",
+      "schema": "public",
+      "values": [
+        "active",
+        "archived",
+        "draft"
       ]
     },
     "public.backfill_run_status": {
@@ -23021,6 +26060,26 @@
       "values": [
         "active",
         "blocked"
+      ]
+    },
+    "public.incident_severity": {
+      "name": "incident_severity",
+      "schema": "public",
+      "values": [
+        "info",
+        "warning",
+        "error",
+        "critical"
+      ]
+    },
+    "public.incident_status": {
+      "name": "incident_status",
+      "schema": "public",
+      "values": [
+        "open",
+        "acknowledged",
+        "resolved",
+        "expired"
       ]
     },
     "public.indexing_mode": {
@@ -23197,6 +26256,26 @@
         "system"
       ]
     },
+    "public.model_selection_policy": {
+      "name": "model_selection_policy",
+      "schema": "public",
+      "values": [
+        "fixed",
+        "cost_optimized",
+        "quality_optimized",
+        "auto"
+      ]
+    },
+    "public.notification_severity": {
+      "name": "notification_severity",
+      "schema": "public",
+      "values": [
+        "info",
+        "warning",
+        "error",
+        "critical"
+      ]
+    },
     "public.notification_type": {
       "name": "notification_type",
       "schema": "public",
@@ -23205,6 +26284,24 @@
         "follow_request",
         "alert",
         "system"
+      ]
+    },
+    "public.orchestrator_autonomy_level": {
+      "name": "orchestrator_autonomy_level",
+      "schema": "public",
+      "values": [
+        "manual",
+        "guided",
+        "autonomous"
+      ]
+    },
+    "public.orchestrator_view_mode": {
+      "name": "orchestrator_view_mode",
+      "schema": "public",
+      "values": [
+        "transparent",
+        "milestone",
+        "summary"
       ]
     },
     "public.package_type": {
@@ -23260,7 +26357,58 @@
       "values": [
         "user",
         "admin",
-        "domain_admin"
+        "domain_admin",
+        "system_agent"
+      ]
+    },
+    "public.room_message_recipient_type": {
+      "name": "room_message_recipient_type",
+      "schema": "public",
+      "values": [
+        "all",
+        "assistant",
+        "subgroup",
+        "user"
+      ]
+    },
+    "public.room_message_sender_type": {
+      "name": "room_message_sender_type",
+      "schema": "public",
+      "values": [
+        "user",
+        "assistant",
+        "system"
+      ]
+    },
+    "public.room_message_turn_type": {
+      "name": "room_message_turn_type",
+      "schema": "public",
+      "values": [
+        "discussion",
+        "handoff",
+        "review",
+        "decision",
+        "execution_update",
+        "summary"
+      ]
+    },
+    "public.room_message_visibility": {
+      "name": "room_message_visibility",
+      "schema": "public",
+      "values": [
+        "transparent",
+        "milestone",
+        "summary_only",
+        "private_internal"
+      ]
+    },
+    "public.room_participant_type": {
+      "name": "room_participant_type",
+      "schema": "public",
+      "values": [
+        "user",
+        "assistant",
+        "observer"
       ]
     },
     "public.sandbox_artifact_type": {
@@ -23411,6 +26559,46 @@
         "cancelled"
       ]
     },
+    "public.team_room_status": {
+      "name": "team_room_status",
+      "schema": "public",
+      "values": [
+        "active",
+        "archived",
+        "paused"
+      ]
+    },
+    "public.team_room_type": {
+      "name": "team_room_type",
+      "schema": "public",
+      "values": [
+        "direct",
+        "team",
+        "auto_team",
+        "job_review"
+      ]
+    },
+    "public.team_run_execution_mode": {
+      "name": "team_run_execution_mode",
+      "schema": "public",
+      "values": [
+        "team_chat",
+        "auto_team",
+        "review"
+      ]
+    },
+    "public.team_run_status": {
+      "name": "team_run_status",
+      "schema": "public",
+      "values": [
+        "queued",
+        "running",
+        "paused",
+        "completed",
+        "failed",
+        "stopped"
+      ]
+    },
     "public.template_status": {
       "name": "template_status",
       "schema": "public",
@@ -23420,6 +26608,41 @@
         "published",
         "archived",
         "rejected"
+      ]
+    },
+    "public.ticket_resolution": {
+      "name": "ticket_resolution",
+      "schema": "public",
+      "values": [
+        "fixed",
+        "wont_fix",
+        "duplicate",
+        "cannot_reproduce",
+        "planned",
+        "by_design"
+      ]
+    },
+    "public.ticket_status": {
+      "name": "ticket_status",
+      "schema": "public",
+      "values": [
+        "new",
+        "triaged",
+        "in_progress",
+        "deferred",
+        "resolved",
+        "duplicate",
+        "closed"
+      ]
+    },
+    "public.ticket_type": {
+      "name": "ticket_type",
+      "schema": "public",
+      "values": [
+        "bug",
+        "feature_request",
+        "observation",
+        "question"
       ]
     },
     "public.transaction_type": {

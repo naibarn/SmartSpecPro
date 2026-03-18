@@ -1,6 +1,6 @@
 {
-  "id": "cd7c763c-92c7-49f1-8cf5-3fdece36e476",
-  "prevId": "7cd93c4c-2a70-4d2c-ab63-7d32e2df2fc3",
+  "id": "024707b9-79ac-4980-af8e-2469b46690cc",
+  "prevId": "ebbaa827-99f4-478d-b444-9c913eb0f452",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -2342,6 +2342,587 @@
             "id"
           ],
           "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.assistant_profiles": {
+      "name": "assistant_profiles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(36)",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tenantId": {
+          "name": "tenantId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "teamId": {
+          "name": "teamId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agencyAgentId": {
+          "name": "agencyAgentId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "personaId": {
+          "name": "personaId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "displayName": {
+          "name": "displayName",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nickname": {
+          "name": "nickname",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "roleTitle": {
+          "name": "roleTitle",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "genderStyle": {
+          "name": "genderStyle",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "specialtyTags": {
+          "name": "specialtyTags",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "preferredModelId": {
+          "name": "preferredModelId",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "modelSelectionPolicy": {
+          "name": "modelSelectionPolicy",
+          "type": "model_selection_policy",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'auto'"
+        },
+        "toolPolicyJson": {
+          "name": "toolPolicyJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "approvalPolicyJson": {
+          "name": "approvalPolicyJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memoryPolicyJson": {
+          "name": "memoryPolicyJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "visibilityPolicyJson": {
+          "name": "visibilityPolicyJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "preferredLanguage": {
+          "name": "preferredLanguage",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sortOrder": {
+          "name": "sortOrder",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "isLead": {
+          "name": "isLead",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "isActive": {
+          "name": "isActive",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "assistant_profiles_team_idx": {
+          "name": "assistant_profiles_team_idx",
+          "columns": [
+            {
+              "expression": "teamId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "assistant_profiles_agent_idx": {
+          "name": "assistant_profiles_agent_idx",
+          "columns": [
+            {
+              "expression": "agencyAgentId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "assistant_profiles_persona_idx": {
+          "name": "assistant_profiles_persona_idx",
+          "columns": [
+            {
+              "expression": "personaId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "assistant_profiles_tenantId_tenants_id_fk": {
+          "name": "assistant_profiles_tenantId_tenants_id_fk",
+          "tableFrom": "assistant_profiles",
+          "tableTo": "tenants",
+          "columnsFrom": [
+            "tenantId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "assistant_profiles_teamId_assistant_teams_id_fk": {
+          "name": "assistant_profiles_teamId_assistant_teams_id_fk",
+          "tableFrom": "assistant_profiles",
+          "tableTo": "assistant_teams",
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "assistant_profiles_agencyAgentId_agency_agents_id_fk": {
+          "name": "assistant_profiles_agencyAgentId_agency_agents_id_fk",
+          "tableFrom": "assistant_profiles",
+          "tableTo": "agency_agents",
+          "columnsFrom": [
+            "agencyAgentId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "assistant_profiles_personaId_persona_templates_id_fk": {
+          "name": "assistant_profiles_personaId_persona_templates_id_fk",
+          "tableFrom": "assistant_profiles",
+          "tableTo": "persona_templates",
+          "columnsFrom": [
+            "personaId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.assistant_team_templates": {
+      "name": "assistant_team_templates",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(36)",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tenantId": {
+          "name": "tenantId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category": {
+          "name": "category",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "teamConfigJson": {
+          "name": "teamConfigJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memberTemplateJson": {
+          "name": "memberTemplateJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "defaultDiscussionMode": {
+          "name": "defaultDiscussionMode",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "isSystem": {
+          "name": "isSystem",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "assistant_team_templates_tenant_idx": {
+          "name": "assistant_team_templates_tenant_idx",
+          "columns": [
+            {
+              "expression": "tenantId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "assistant_team_templates_tenantId_tenants_id_fk": {
+          "name": "assistant_team_templates_tenantId_tenants_id_fk",
+          "tableFrom": "assistant_team_templates",
+          "tableTo": "tenants",
+          "columnsFrom": [
+            "tenantId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.assistant_teams": {
+      "name": "assistant_teams",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(36)",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "tenantId": {
+          "name": "tenantId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ownerUserId": {
+          "name": "ownerUserId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "agencyId": {
+          "name": "agencyId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category": {
+          "name": "category",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "teamPersonaOverlay": {
+          "name": "teamPersonaOverlay",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "defaultViewMode": {
+          "name": "defaultViewMode",
+          "type": "orchestrator_view_mode",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'transparent'"
+        },
+        "defaultSummaryMode": {
+          "name": "defaultSummaryMode",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "defaultAutonomyLevel": {
+          "name": "defaultAutonomyLevel",
+          "type": "orchestrator_autonomy_level",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'guided'"
+        },
+        "defaultModelId": {
+          "name": "defaultModelId",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "modelBudgetPolicy": {
+          "name": "modelBudgetPolicy",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memoryPolicyJson": {
+          "name": "memoryPolicyJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "artifactPolicyJson": {
+          "name": "artifactPolicyJson",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "assistant_team_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'draft'"
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "assistant_teams_tenant_idx": {
+          "name": "assistant_teams_tenant_idx",
+          "columns": [
+            {
+              "expression": "tenantId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "assistant_teams_owner_idx": {
+          "name": "assistant_teams_owner_idx",
+          "columns": [
+            {
+              "expression": "ownerUserId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "assistant_teams_agency_idx": {
+          "name": "assistant_teams_agency_idx",
+          "columns": [
+            {
+              "expression": "agencyId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "assistant_teams_tenantId_tenants_id_fk": {
+          "name": "assistant_teams_tenantId_tenants_id_fk",
+          "tableFrom": "assistant_teams",
+          "tableTo": "tenants",
+          "columnsFrom": [
+            "tenantId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "assistant_teams_ownerUserId_users_id_fk": {
+          "name": "assistant_teams_ownerUserId_users_id_fk",
+          "tableFrom": "assistant_teams",
+          "tableTo": "users",
+          "columnsFrom": [
+            "ownerUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "assistant_teams_agencyId_agencies_id_fk": {
+          "name": "assistant_teams_agencyId_agencies_id_fk",
+          "tableFrom": "assistant_teams",
+          "tableTo": "agencies",
+          "columnsFrom": [
+            "agencyId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -12116,6 +12697,13 @@
           "notNull": false,
           "default": false
         },
+        "supportsThinking": {
+          "name": "supportsThinking",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
         "priorityLocked": {
           "name": "priorityLocked",
           "type": "boolean",
@@ -13041,6 +13629,40 @@
           "primaryKey": false,
           "notNull": false
         },
+        "assistantNickname": {
+          "name": "assistantNickname",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "assistantGender": {
+          "name": "assistantGender",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'neutral'"
+        },
+        "sourceTemplateIds": {
+          "name": "sourceTemplateIds",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
+        },
+        "sourceTemplateLabels": {
+          "name": "sourceTemplateLabels",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
+        },
+        "sourceTemplateCategories": {
+          "name": "sourceTemplateCategories",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
+        },
         "systemPromptPrefix": {
           "name": "systemPromptPrefix",
           "type": "text",
@@ -13138,6 +13760,21 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "persona_templates_source_template_ids_idx": {
+          "name": "persona_templates_source_template_ids_idx",
+          "columns": [
+            {
+              "expression": "sourceTemplateIds",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "gin",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -13172,6 +13809,10 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
+        "persona_templates_assistant_gender_check": {
+          "name": "persona_templates_assistant_gender_check",
+          "value": "\"assistantGender\" IN ('female','male','neutral') OR \"assistantGender\" IS NULL"
+        },
         "persona_templates_tone_check": {
           "name": "persona_templates_tone_check",
           "value": "\"tone\" IN ('formal','casual','friendly','technical','creative') OR \"tone\" IS NULL"
@@ -19716,6 +20357,129 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.user_orchestrator_profiles": {
+      "name": "user_orchestrator_profiles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(36)",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "userId": {
+          "name": "userId",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "defaultPersonaId": {
+          "name": "defaultPersonaId",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "orchestratorDisplayName": {
+          "name": "orchestratorDisplayName",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "preferredViewMode": {
+          "name": "preferredViewMode",
+          "type": "orchestrator_view_mode",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'transparent'"
+        },
+        "preferredAutonomyLevel": {
+          "name": "preferredAutonomyLevel",
+          "type": "orchestrator_autonomy_level",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'guided'"
+        },
+        "preferredSummaryStyle": {
+          "name": "preferredSummaryStyle",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "defaultApprovalPolicy": {
+          "name": "defaultApprovalPolicy",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "user_orchestrator_profiles_user_idx": {
+          "name": "user_orchestrator_profiles_user_idx",
+          "columns": [
+            {
+              "expression": "userId",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "user_orchestrator_profiles_userId_users_id_fk": {
+          "name": "user_orchestrator_profiles_userId_users_id_fk",
+          "tableFrom": "user_orchestrator_profiles",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "user_orchestrator_profiles_defaultPersonaId_persona_templates_id_fk": {
+          "name": "user_orchestrator_profiles_defaultPersonaId_persona_templates_id_fk",
+          "tableFrom": "user_orchestrator_profiles",
+          "tableTo": "persona_templates",
+          "columnsFrom": [
+            "defaultPersonaId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.user_skill_visibility": {
       "name": "user_skill_visibility",
       "schema": "",
@@ -22851,6 +23615,15 @@
         "16:9"
       ]
     },
+    "public.assistant_team_status": {
+      "name": "assistant_team_status",
+      "schema": "public",
+      "values": [
+        "active",
+        "archived",
+        "draft"
+      ]
+    },
     "public.backfill_run_status": {
       "name": "backfill_run_status",
       "schema": "public",
@@ -23197,6 +23970,16 @@
         "system"
       ]
     },
+    "public.model_selection_policy": {
+      "name": "model_selection_policy",
+      "schema": "public",
+      "values": [
+        "fixed",
+        "cost_optimized",
+        "quality_optimized",
+        "auto"
+      ]
+    },
     "public.notification_type": {
       "name": "notification_type",
       "schema": "public",
@@ -23205,6 +23988,24 @@
         "follow_request",
         "alert",
         "system"
+      ]
+    },
+    "public.orchestrator_autonomy_level": {
+      "name": "orchestrator_autonomy_level",
+      "schema": "public",
+      "values": [
+        "manual",
+        "guided",
+        "autonomous"
+      ]
+    },
+    "public.orchestrator_view_mode": {
+      "name": "orchestrator_view_mode",
+      "schema": "public",
+      "values": [
+        "transparent",
+        "milestone",
+        "summary"
       ]
     },
     "public.package_type": {
