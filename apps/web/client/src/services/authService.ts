@@ -28,7 +28,9 @@ let cachedUser: User | null = null;
 let cachedToken: string | null = null;
 
 /**
- * Get stored auth token from secure store
+ * Get stored auth token from secure store.
+ * Browser context: returns null (httpOnly cookie handles auth automatically).
+ * Tauri context: reads from native secure store.
  */
 export async function getAuthToken(): Promise<string | null> {
   if (cachedToken) return cachedToken;
@@ -41,8 +43,8 @@ export async function getAuthToken(): Promise<string | null> {
     }
   } catch { /* fallback */ }
 
-  cachedToken = localStorage.getItem('smartspec_auth_token') || null;
-  return cachedToken;
+  // Browser: httpOnly cookie handles auth. No client-side token needed.
+  return null;
 }
 
 /**
@@ -53,19 +55,20 @@ export function getAuthTokenSync(): string | null {
 }
 
 /**
- * Set auth token in secure store
+ * Set auth token in secure store.
+ * Browser context: no-op (server sets httpOnly cookie via Set-Cookie header).
+ * Tauri context: writes to native secure store.
  */
 export async function setAuthToken(token: string): Promise<void> {
-  cachedToken = token;
   try {
     if (hasTauri()) {
+      cachedToken = token;
       await safeInvoke('set_auth_token', { token });
       return;
     }
   } catch { /* fallback */ }
 
-  if (token) localStorage.setItem('smartspec_auth_token', token);
-  else localStorage.removeItem('smartspec_auth_token');
+  // Browser: no-op. Server sets httpOnly cookie via Set-Cookie header.
 }
 
 /**
@@ -116,23 +119,33 @@ export async function setUser(user: User): Promise<void> {
 }
 
 /**
- * Check if token is expired
+ * Check if token is expired.
+ * Browser context: server ping (cannot decode httpOnly cookie).
+ * Tauri context: decodes JWT from secure store.
  */
 export async function isTokenExpired(): Promise<boolean> {
-  const token = await getAuthToken();
-  if (!token) return true;
-
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    const exp = payload.exp;
-    if (exp && typeof exp === 'number') {
-      return Date.now() / 1000 > (exp - 300);
+  if (hasTauri()) {
+    const token = await getAuthToken();
+    if (!token) return true;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const exp = payload.exp;
+      if (exp && typeof exp === 'number') {
+        return Date.now() / 1000 > (exp - 300);
+      }
+    } catch (e) {
+      console.error('Failed to decode token:', e);
     }
-  } catch (e) {
-    console.error('Failed to decode token:', e);
+    return false;
   }
 
-  return false;
+  // Browser: server ping to check session validity
+  try {
+    const response = await fetch('/api/auth/me', { credentials: 'include' });
+    return response.status === 401;
+  } catch {
+    return true; // Network error = treat as expired
+  }
 }
 
 /**
@@ -163,18 +176,23 @@ export async function logout(navigate?: (path: string) => void): Promise<void> {
 }
 
 /**
- * Verify token with backend
+ * Verify token with backend.
+ * Browser context: uses credentials:'include' (httpOnly cookie).
+ * Tauri context: sends Bearer token header.
  */
 export async function verifyToken(): Promise<boolean> {
-  const token = await getAuthToken();
-  if (!token) return false;
-
   try {
-    const response = await fetch(`${BASE_URL}/auth/me`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    let response: Response;
+
+    if (hasTauri()) {
+      const token = await getAuthToken();
+      if (!token) return false;
+      response = await fetch(`${BASE_URL}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    } else {
+      response = await fetch('/api/auth/me', { credentials: 'include' });
+    }
 
     if (response.ok) {
       const user = await response.json();
@@ -212,12 +230,19 @@ export function setupAuthInterceptor() {
       const url = args[0] instanceof Request ? args[0].url : args[0].toString();
 
       if (!url.includes('/auth/login') && !url.includes('/auth/register') && !url.includes('/auth/desktop/login')) {
-        const hasToken = !!(await getAuthToken());
         const onLoginPage = window.location.pathname === '/login';
-
-        if (hasToken && !onLoginPage) {
-          console.warn('Auth error detected, logging out...');
-          await logout();
+        if (!onLoginPage) {
+          if (hasTauri()) {
+            const hasToken = !!(await getAuthToken());
+            if (hasToken) {
+              console.warn('Auth error detected, logging out...');
+              await logout();
+            }
+          } else {
+            // Browser: cookie auth — if server says 401, session is invalid
+            console.warn('Auth error detected, logging out...');
+            await logout();
+          }
         }
       }
     }
@@ -235,7 +260,9 @@ export async function isAdmin(): Promise<boolean> {
 }
 
 /**
- * Check if authenticated
+ * Check if authenticated.
+ * Browser context: server ping (httpOnly cookie sent automatically).
+ * Tauri context: checks native secure store.
  */
 export async function isAuthenticated(): Promise<boolean> {
   try {
@@ -244,26 +271,33 @@ export async function isAuthenticated(): Promise<boolean> {
     }
   } catch { /* fallback */ }
 
-  const token = await getAuthToken();
-  return !!token;
+  // Browser: check session via server ping
+  try {
+    const response = await fetch('/api/auth/me', { credentials: 'include' });
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
 
 /**
- * Initialize auth on app start
+ * Initialize auth on app start.
+ * Browser: skips local token check, goes straight to server verify.
+ * Tauri: checks local token first, then verifies with server.
  */
 export async function initializeAuth(): Promise<void> {
   setupAuthInterceptor();
 
-  const token = await getAuthToken();
-  if (!token) {
-    return;
+  if (hasTauri()) {
+    const token = await getAuthToken();
+    if (!token) return;
+    if (await isTokenExpired()) {
+      await logout();
+      return;
+    }
   }
 
-  if (await isTokenExpired()) {
-    await logout();
-    return;
-  }
-
+  // Both paths: verify with server
   await verifyToken();
 }
 

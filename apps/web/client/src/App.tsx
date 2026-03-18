@@ -10,6 +10,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { TenantProvider } from "./contexts/TenantContext";
 import { I18nProvider } from "@/lib/i18n";
+import { cleanupLegacyAuth } from "@/lib/cleanupLegacyAuth";
 
 // Route-based code splitting — all page components are loaded lazily
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -352,6 +353,8 @@ function Router() {
 }
 
 function App() {
+  useEffect(() => { cleanupLegacyAuth(); }, []);
+
   return (
     <ErrorBoundary>
       <HelmetProvider>
