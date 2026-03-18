@@ -603,6 +603,20 @@
       "when": 1773796213273,
       "tag": "0085_secret_harpoon",
       "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1773796435953,
+      "tag": "0086_supreme_speedball",
+      "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1773798172126,
+      "tag": "0087_first_husk",
+      "breakpoints": true
     }
   ]
 }

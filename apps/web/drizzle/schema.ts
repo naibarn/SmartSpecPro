@@ -6302,3 +6302,165 @@ export const orchestratorNotifications = pgTable("orchestrator_notifications", {
 
 export type OrchestratorNotification = typeof orchestratorNotifications.$inferSelect;
 export type InsertOrchestratorNotification = typeof orchestratorNotifications.$inferInsert;
+
+// ==========================================
+// Virtual AI Office Orchestrator — Scoped Memory (Section 03)
+// ==========================================
+
+export const memoryOwnerTypeEnum = pgEnum("memory_owner_type", [
+  "user", "agent", "team", "room", "project", "run",
+]);
+export const memoryKindEnum = pgEnum("memory_kind", [
+  "fact", "rule", "preference", "decision", "note",
+  "checklist", "artifact_note", "handoff_note", "episode",
+]);
+export const memoryVisibilityEnum = pgEnum("memory_visibility", [
+  "private", "shared_team", "shared_room", "shared_project",
+]);
+export const memorySourceTypeEnum = pgEnum("memory_source_type", [
+  "auto", "manual", "promoted",
+]);
+
+/**
+ * pgvector custom column type for 1536-dimension embeddings (OpenAI text-embedding-3-small).
+ */
+const vector1536 = customType<{ data: number[]; driverParam: string }>({
+  dataType() {
+    return "vector(1536)";
+  },
+  toDriver(value: number[]): string {
+    return `[${value.join(",")}]`;
+  },
+  fromDriver(value: string): number[] {
+    return JSON.parse(value);
+  },
+});
+
+/**
+ * scoped_memories — hierarchical memory store with scope isolation.
+ * Supports keyword + vector (hybrid) retrieval via pgvector.
+ */
+export const scopedMemories = pgTable("scoped_memories", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  ownerType: memoryOwnerTypeEnum("ownerType").notNull(),
+  ownerId: text("ownerId").notNull(),
+  memoryKind: memoryKindEnum("memoryKind").notNull(),
+  visibility: memoryVisibilityEnum("visibility").notNull().default("private"),
+  sourceType: memorySourceTypeEnum("sourceType").notNull().default("auto"),
+  sourceUserId: integer("sourceUserId"),
+  sourceAssistantId: text("sourceAssistantId"),
+  sourceRoomId: text("sourceRoomId"),
+  projectId: varchar("projectId", { length: 100 }),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  summary: text("summary"),
+  tags: text("tags").array(),
+  metadataJson: jsonb("metadataJson"),
+  embedding: vector1536("embedding"),
+  confidence: numeric("confidence", { precision: 3, scale: 2 }).default("0.80"),
+  importance: integer("importance").default(5),
+  reinforcementCount: integer("reinforcementCount").default(0),
+  lastAccessedAt: timestamp("lastAccessedAt", { withTimezone: true }),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("scoped_memories_owner_created_idx").on(t.ownerType, t.ownerId, t.createdAt),
+  index("scoped_memories_tenant_kind_idx").on(t.tenantId, t.memoryKind),
+]);
+
+export type ScopedMemory = typeof scopedMemories.$inferSelect;
+export type InsertScopedMemory = typeof scopedMemories.$inferInsert;
+
+/**
+ * memory_promotions — audit trail for scope promotions.
+ */
+export const memoryPromotions = pgTable("memory_promotions", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  memoryId: text("memoryId").notNull().references(() => scopedMemories.id, { onDelete: "cascade" }),
+  fromOwnerType: memoryOwnerTypeEnum("fromOwnerType").notNull(),
+  fromOwnerId: text("fromOwnerId").notNull(),
+  toOwnerType: memoryOwnerTypeEnum("toOwnerType").notNull(),
+  toOwnerId: text("toOwnerId").notNull(),
+  promotedByUserId: integer("promotedByUserId"),
+  promotedByAssistantId: text("promotedByAssistantId"),
+  reason: text("reason"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("memory_promotions_memory_idx").on(t.memoryId),
+]);
+
+export type MemoryPromotion = typeof memoryPromotions.$inferSelect;
+export type InsertMemoryPromotion = typeof memoryPromotions.$inferInsert;
+
+// ==========================================
+// Virtual AI Office Orchestrator — Inter-Agent Communication (Section 09)
+// ==========================================
+
+export const interAgentChannelEnum = pgEnum("inter_agent_channel", [
+  "system_broadcast", "system_control", "team_escalation", "system_direct", "system_context",
+]);
+export const interAgentSourceTypeEnum = pgEnum("inter_agent_source_type", [
+  "team", "system", "external",
+]);
+export const interAgentTargetTypeEnum = pgEnum("inter_agent_target_type", [
+  "room", "run", "team", "user", "all_active_runs",
+]);
+export const interAgentPriorityEnum = pgEnum("inter_agent_priority", [
+  "low", "normal", "high", "critical",
+]);
+export const interAgentStatusEnum = pgEnum("inter_agent_status", [
+  "delivered", "acknowledged",
+]);
+export const resourceStatusEnum = pgEnum("resource_status", [
+  "healthy", "degraded", "down", "critical",
+]);
+
+/**
+ * inter_agent_messages — messages between system agents and team agents.
+ */
+export const interAgentMessages = pgTable("inter_agent_messages", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull(),
+  channel: interAgentChannelEnum("channel").notNull(),
+  sourceAgentType: interAgentSourceTypeEnum("sourceAgentType").notNull(),
+  sourceAgentId: varchar("sourceAgentId", { length: 100 }).notNull(),
+  targetType: interAgentTargetTypeEnum("targetType").notNull(),
+  targetId: varchar("targetId", { length: 100 }),
+  priority: interAgentPriorityEnum("priority").notNull().default("normal"),
+  messageType: varchar("messageType", { length: 64 }).notNull(),
+  payload: jsonb("payload"),
+  displayMessage: text("displayMessage"),
+  actionRequired: boolean("actionRequired").default(false).notNull(),
+  status: interAgentStatusEnum("status").notNull().default("delivered"),
+  acknowledgedAt: timestamp("acknowledgedAt", { withTimezone: true }),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }),
+  relatedIncidentId: integer("relatedIncidentId"),
+  relatedRunId: varchar("relatedRunId", { length: 36 }),
+  relatedRoomId: varchar("relatedRoomId", { length: 36 }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("inter_agent_messages_target_created_idx").on(t.targetType, t.targetId, t.createdAt),
+  index("inter_agent_messages_incident_idx").on(t.relatedIncidentId),
+  index("inter_agent_messages_run_idx").on(t.relatedRunId),
+]);
+
+export type InterAgentMessage = typeof interAgentMessages.$inferSelect;
+export type InsertInterAgentMessage = typeof interAgentMessages.$inferInsert;
+
+/**
+ * system_resource_state — current health status of system resources.
+ */
+export const systemResourceState = pgTable("system_resource_state", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }),
+  resourceType: varchar("resourceType", { length: 32 }).notNull(),
+  status: resourceStatusEnum("status").notNull(),
+  stateJson: jsonb("stateJson"),
+  updatedBy: varchar("updatedBy", { length: 64 }),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type SystemResourceState = typeof systemResourceState.$inferSelect;
+export type InsertSystemResourceState = typeof systemResourceState.$inferInsert;
