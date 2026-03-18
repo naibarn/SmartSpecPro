@@ -42,3 +42,28 @@ export interface IncidentRule {
   actionPlan: ActionPlan;
   cooldownMs: number;
 }
+
+export type ActionType =
+  | "retry_failed_job" | "cleanup_temp_files" | "clear_stale_cache" | "failover_provider"
+  | "notify_admin" | "notify_user" | "notify_slack"
+  | "pause_queue" | "restart_celery_worker" | "disable_provider" | "kill_stuck_task" | "emergency_maintenance";
+
+export interface ActuatorResult {
+  success: boolean;
+  message: string;
+  data?: Record<string, unknown>;
+}
+
+export type ActuatorFn = (
+  params: Record<string, unknown>,
+  incident: { id: number; tenantId?: string | null; severity: string },
+) => Promise<ActuatorResult>;
+
+export const APPROVAL_REQUIRED_ACTIONS = new Set<string>([
+  "pause_queue", "restart_celery_worker", "disable_provider", "kill_stuck_task", "emergency_maintenance",
+]);
+
+export const APPROVAL_TTL = {
+  critical: 4 * 60 * 60 * 1000,
+  default: 24 * 60 * 60 * 1000,
+};
