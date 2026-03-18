@@ -18,6 +18,7 @@ import { registerLLMRoutes } from "./llmRoutes";
 import { registerMCPRoutes } from "./mcpRoutes";
 import { registerMcpPublicRoutes } from "./mcpPublicServer";
 import { registerMediaJobRoutes } from "../routers/mediaJobs";
+import { registerFeedbackUploadRoutes } from "../routers/feedback";
 import { registerAgencyStreamRoutes } from "./agencyStreamProxy";
 import { registerLiveBrowserStreamRoutes } from "./liveBrowserStreamProxy";
 import { registerContentAutomationRoutes } from "../routers/contentAutomationRoutes";
@@ -44,6 +45,8 @@ import "../services/channelAdapters/discord"; // Register Discord adapter
 import { adapterRegistry } from "../services/channelAdapters/registry";
 import { createSlideRenderRouter } from "../routes/slideRender";
 import { createGuardianSSERouter } from "../routes/guardianSSE";
+import orchestratorStreamRouter from "../routes/orchestratorStream";
+import internalOrchestratorRouter from "../routes/internalOrchestrator";
 import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
 import { registerServicesRoutes } from "../routers/services";
 import { registerTenantRoutes } from "../routers/tenant";
@@ -468,6 +471,7 @@ registerLLMRoutes(app);
 registerMCPRoutes(app);
 registerMcpPublicRoutes(app);
 registerMediaJobRoutes(app);
+registerFeedbackUploadRoutes(app);
 registerAgencyStreamRoutes(app);
 registerLiveBrowserStreamRoutes(app);
 registerContentAutomationRoutes(app);
@@ -477,6 +481,8 @@ registerFileParseToolRoute(app);
 registerScheduleDraftToolRoute(app);
 registerSkillDiscoveryToolRoute(app);
 app.use("/api/virtual-admin/events", createGuardianSSERouter());
+app.use(orchestratorStreamRouter);
+app.use(internalOrchestratorRouter);
 
 // Proxy remote images through same-origin endpoint so browser canvas operations
 // (split/crop preview) work even when source host doesn't expose CORS headers.
@@ -514,7 +520,6 @@ function verifyInternalBearerToken(authHeader: string): boolean {
   const tokenBuf = Buffer.from(token);
   const expectedBuf = Buffer.from(ENV.webGatewayToken);
   if (tokenBuf.length !== expectedBuf.length) return false;
-  const crypto = require("crypto");
   return crypto.timingSafeEqual(tokenBuf, expectedBuf);
 }
 
@@ -743,7 +748,6 @@ app.post("/api/internal/agency/create", async (req, res) => {
     const tokenBuf = Buffer.from(internalToken);
     const expectedBuf = Buffer.from(ENV.webGatewayToken);
     if (tokenBuf.length === expectedBuf.length) {
-      const crypto = await import("crypto");
       if (crypto.timingSafeEqual(tokenBuf, expectedBuf)) {
         const userIdHeader = req.headers["x-user-id"] as string | undefined;
         const userId = userIdHeader ? parseInt(userIdHeader, 10) : 0;
@@ -815,7 +819,6 @@ app.post("/api/internal/agency/create", async (req, res) => {
     } = await import("../../drizzle/schema");
     const drizzleDb = await getDb();
     if (!drizzleDb) return res.status(503).json({ error: "Database unavailable" });
-    const cryptoModule = await import("crypto");
     const tenantReq = req as any;
     // Prefer explicit tenantId from request body (passed by Celery task from the user's tRPC context),
     // then fall back to tenant middleware, then user's currentTenantId
@@ -842,11 +845,11 @@ app.post("/api/internal/agency/create", async (req, res) => {
       return res.status(400).json({ error: "at least 1 agent is required" });
     }
 
-    const agencyId = cryptoModule.default.randomUUID();
+    const agencyId = crypto.randomUUID();
     // Map spec-level agent IDs → new DB UUIDs
     const specIdToDbId: Record<string, string> = {};
     const agentRows = agents.map((a, idx) => {
-      const dbId = cryptoModule.default.randomUUID();
+      const dbId = crypto.randomUUID();
       specIdToDbId[a.id] = dbId;
       return {
         id: dbId,
@@ -891,7 +894,7 @@ app.post("/api/internal/agency/create", async (req, res) => {
 
       const flowRows = communicationFlows
         .map((f) => ({
-          id: cryptoModule.default.randomUUID(),
+          id: crypto.randomUUID(),
           agencyId,
           fromAgentId: specIdToDbId[f.fromAgentId] ?? null,
           toAgentId: specIdToDbId[f.toAgentId] ?? null,
@@ -916,7 +919,7 @@ app.post("/api/internal/agency/create", async (req, res) => {
         for (const toolId of agent.toolIds) {
           if (!toolId || typeof toolId !== "string") continue;
           toolRows.push({
-            id: cryptoModule.default.randomUUID(),
+            id: crypto.randomUUID(),
             agentId: dbAgentId,
             toolId: String(toolId).slice(0, 100),
             toolConfig: agent.toolConfigs?.[toolId] ?? {},

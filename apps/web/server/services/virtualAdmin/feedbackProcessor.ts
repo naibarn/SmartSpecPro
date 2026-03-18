@@ -1,7 +1,7 @@
 import { eq, and, sql, desc } from "drizzle-orm";
 import { getDb } from "../../db";
-import { feedbackTickets, virtualAdminIncidents } from "../../../drizzle/schema";
-import type { InsertFeedbackTicket } from "../../../drizzle/schema";
+import { feedbackTickets, virtualAdminIncidents, users } from "../../../drizzle/schema";
+import { createNotification } from "../notificationService";
 
 interface ProcessedTicket {
   autoCategory: string | null;
@@ -122,6 +122,34 @@ export async function processTicket(ticketId: number): Promise<ProcessedTicket> 
       updatedAt: new Date(),
     })
     .where(eq(feedbackTickets.id, ticketId));
+
+  // Notify all admins about the new feedback ticket
+  try {
+    const adminRows = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(sql`${users.role} IN ('admin', 'domain_admin')`);
+
+    const priorityMap: Record<string, "low" | "normal" | "high" | "critical"> = {
+      high: "high",
+      normal: "normal",
+      low: "low",
+    };
+
+    for (const admin of adminRows) {
+      if (admin.id === ticket.submittedBy) continue;
+      await createNotification({
+        db,
+        userId: admin.id,
+        type: "alert",
+        title: `New Feedback: ${ticket.title.slice(0, 80)}`,
+        content: `[${ticket.ticketType}] ${result.autoSummary ?? ticket.title}\nTicket #${ticketId}`,
+        priority: priorityMap[result.autoPriority ?? "normal"] ?? "normal",
+      });
+    }
+  } catch (err) {
+    console.error("[Feedback] Failed to notify admins:", err);
+  }
 
   return result;
 }

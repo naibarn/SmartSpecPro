@@ -8,7 +8,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
-import { Bell, AlarmClock, X, Check } from "lucide-react";
+import { Bell, AlarmClock, X, Check, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 
 export function GlobalAlerts() {
@@ -466,6 +466,7 @@ function GlobalNotificationBell() {
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const { data } = trpc.scheduledMessages.getNotificationCount.useQuery(
@@ -655,12 +656,17 @@ function GlobalNotificationBell() {
                     gap: "10px",
                     alignItems: "flex-start",
                     background: n.isRead ? "transparent" : "rgba(0, 120, 212, 0.06)",
-                    cursor: n.conversationId ? "pointer" : "default",
+                    cursor: "pointer",
                   }}
                   onClick={() => {
                     if (n.conversationId) {
                       setShowDropdown(false);
                       setLocation(`/chat?c=${n.conversationId}`);
+                    } else if (n.title?.startsWith("Reply on feedback:")) {
+                      setShowDropdown(false);
+                      setLocation("/my-feedback");
+                    } else {
+                      setExpandedId(expandedId === n.id ? null : n.id);
                     }
                     if (!n.isRead) markRead.mutate({ id: n.id });
                   }}
@@ -705,40 +711,161 @@ function GlobalNotificationBell() {
                           color: "var(--muted-foreground, #888)",
                           marginTop: "2px",
                           lineHeight: 1.4,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          display: "-webkit-box",
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: "vertical",
+                          ...(expandedId === n.id
+                            ? { whiteSpace: "pre-wrap" }
+                            : {
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                display: "-webkit-box",
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: "vertical" as const,
+                              }),
                         }}
                       >
                         {n.content}
                       </p>
                     )}
+                    {/* Action link for expanded alerts without conversation */}
+                    {expandedId === n.id && !n.conversationId && (
+                      <div style={{ marginTop: "6px", display: "flex", gap: "8px" }}>
+                        {n.type === "alert" && n.title?.includes("Media Job") && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowDropdown(false);
+                              setLocation("/media-studio");
+                            }}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "#0078d4",
+                              fontSize: "12px",
+                              cursor: "pointer",
+                              padding: 0,
+                            }}
+                          >
+                            Open Media Studio &rarr;
+                          </button>
+                        )}
+                        {n.type === "alert" && (n.title?.includes("credit") || n.title?.includes("Credit")) && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowDropdown(false);
+                              setLocation("/admin/settings");
+                            }}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "#0078d4",
+                              fontSize: "12px",
+                              cursor: "pointer",
+                              padding: 0,
+                            }}
+                          >
+                            Admin Settings &rarr;
+                          </button>
+                        )}
+                        {n.type === "alert" && (n.title?.includes("latency") || n.title?.includes("API error")) && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowDropdown(false);
+                              setLocation("/admin/system-guardian");
+                            }}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "#0078d4",
+                              fontSize: "12px",
+                              cursor: "pointer",
+                              padding: 0,
+                            }}
+                          >
+                            System Guardian &rarr;
+                          </button>
+                        )}
+                        {n.type === "alert" && (n.title?.includes("Feedback") || n.title?.includes("feedback")) && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowDropdown(false);
+                              const ticketMatch = n.content?.match(/Ticket #(\d+)/);
+                              const ticketId = ticketMatch?.[1];
+                              setLocation(ticketId ? `/admin/feedback-hub?ticketId=${ticketId}` : "/admin/feedback-hub");
+                            }}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "#0078d4",
+                              fontSize: "12px",
+                              cursor: "pointer",
+                              padding: 0,
+                            }}
+                          >
+                            View Feedback &rarr;
+                          </button>
+                        )}
+                        {n.scheduledMessageId && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowDropdown(false);
+                              setLocation(`/chat?panel=schedule&alertId=${n.scheduledMessageId}`);
+                            }}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "#0078d4",
+                              fontSize: "12px",
+                              cursor: "pointer",
+                              padding: 0,
+                            }}
+                          >
+                            View Schedule &rarr;
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Mark read button */}
-                  {!n.isRead && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        markRead.mutate({ id: n.id });
-                      }}
-                      title="Mark as read"
-                      style={{
-                        background: "none",
-                        border: "none",
-                        color: "var(--muted-foreground, #666)",
-                        cursor: "pointer",
-                        padding: "4px",
-                        borderRadius: "4px",
-                        display: "flex",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <Check style={{ width: 14, height: 14 }} />
-                    </button>
-                  )}
+                  {/* Expand indicator / Mark read */}
+                  <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
+                    {!n.conversationId && n.content && n.content !== n.title && (
+                      <div
+                        style={{
+                          color: "var(--muted-foreground, #666)",
+                          padding: "4px",
+                          display: "flex",
+                          transform: expandedId === n.id ? "rotate(180deg)" : "rotate(0deg)",
+                          transition: "transform 0.15s",
+                        }}
+                      >
+                        <ChevronDown style={{ width: 14, height: 14 }} />
+                      </div>
+                    )}
+                    {!n.isRead && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          markRead.mutate({ id: n.id });
+                        }}
+                        title="Mark as read"
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "var(--muted-foreground, #666)",
+                          cursor: "pointer",
+                          padding: "4px",
+                          borderRadius: "4px",
+                          display: "flex",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Check style={{ width: 14, height: 14 }} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))
             ) : (
