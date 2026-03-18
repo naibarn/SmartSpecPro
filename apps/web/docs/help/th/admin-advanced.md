@@ -107,12 +107,29 @@ System Guardian คือระบบตรวจสอบสุขภาพอ�
 
 ## Feedback Hub (/admin/feedback-hub)
 
-Feedback Hub รวบรวม feedback ของผู้ใช้ที่ส่งผ่านกลไก feedback ในแอป
+Feedback Hub เป็นศูนย์กลางจัดการ ticket feedback ทั้งหมดที่ผู้ใช้ส่งมา
 
-- **Feedback ทั้งหมด** — รายการ feedback ที่กรองได้ตามคะแนน พื้นที่ฟีเจอร์ และวันที่
-- **แนวโน้ม sentiment** — sentiment เชิงบวก/ลบรวมตามเวลา
-- **ปัญหาหลัก** — หัวข้อที่จัดกลุ่มโดยอัตโนมัติจาก feedback ข้อความเสรี
-- **Export** — ดาวน์โหลดข้อมูล feedback เป็น CSV สำหรับการวิเคราะห์ในเครื่องมือภายนอก
+### การจัดการ ticket
+
+- **รายการกรองได้** — กรอง ticket ตามสถานะ (New, Triaged, In Progress, Resolved, Closed) และประเภท (Bug, Feature Request, Observation, Question)
+- **AI auto-triage** — ticket ใหม่ทุกรายการจะถูกจัดประเภทอัตโนมัติตามหมวดหมู่และความสำคัญ ticket ที่ซ้ำจะถูกตรวจจับและเชื่อมโยง
+- **Status workflow** — อัปเดตสถานะ ticket ด้วยคลิกเดียว: Triaged → In Progress → Resolved → Closed
+- **Deep link** — เข้าถึง ticket โดยตรงผ่าน `/admin/feedback-hub?ticketId=123`
+
+### ไฟล์แนบ
+
+ผู้ใช้สามารถแนบได้สูงสุด 5 ไฟล์ต่อ ticket (รูปภาพ, PDF, markdown — สูงสุด 5 MB ต่อไฟล์)
+
+- **Thumbnail preview** — ไฟล์แนบที่เป็นรูปภาพจะแสดงเป็น thumbnail ในแผงรายละเอียด ticket
+- **ดาวน์โหลด** — กดที่ไฟล์แนบเพื่อเปิดหรือดาวน์โหลดในแท็บใหม่
+- **ลบ** — hover เหนือไฟล์แนบแล้วกดปุ่ม X เพื่อลบ ไฟล์จะถูกลบออกจาก storage ด้วย
+
+### Comment และการแจ้งเตือน
+
+- **ตอบกลับผู้ใช้** — เพิ่ม comment ที่ผู้ส่ง ticket จะได้รับเป็นการแจ้งเตือน
+- **Internal notes** — ทำเครื่องหมาย comment เป็น "Internal" (ไอคอนกุญแจ) เพื่อให้เฉพาะแอดมินเห็น ผู้ส่งไม่เห็น
+- **แจ้งเตือนสถานะ** — เมื่อเปลี่ยนสถานะ ticket เป็น In Progress, Resolved, หรือ Closed ผู้ส่งจะได้รับแจ้งเตือนอัตโนมัติ
+- **แจ้งเตือน ticket ใหม่** — แอดมินและ domain admin ทุกคนจะได้รับแจ้งเตือนเมื่อมี ticket ใหม่ พร้อมลิงก์ตรงไปยัง ticket
 
 ## Content Quality (/admin/content-quality)
 

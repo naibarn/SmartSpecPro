@@ -107,12 +107,29 @@ The System Guardian is an automated health monitoring system that evaluates the 
 
 ## Feedback Hub (/admin/feedback-hub)
 
-The Feedback Hub aggregates user feedback submitted through the in-app feedback mechanism.
+The Feedback Hub is the central place to manage all user-submitted feedback tickets.
 
-- **All feedback** — filterable list of feedback items by rating, feature area, and date.
-- **Sentiment trends** — aggregate positive/negative sentiment over time.
-- **Top issues** — automatically grouped themes from free-text feedback.
-- **Export** — download feedback data as CSV for analysis in external tools.
+### Ticket management
+
+- **Filterable list** — filter tickets by status (New, Triaged, In Progress, Resolved, Closed) and type (Bug, Feature Request, Observation, Question).
+- **AI auto-triage** — every new ticket is automatically classified by category and priority using keyword analysis. Duplicate tickets are detected and linked.
+- **Status workflow** — update ticket status with one click: Triaged → In Progress → Resolved → Closed.
+- **Deep link** — access a specific ticket directly via `/admin/feedback-hub?ticketId=123`.
+
+### Attachments
+
+Users can attach up to 5 files per ticket (images, PDFs, markdown — max 5 MB each).
+
+- **Thumbnail preview** — image attachments display as thumbnails in the ticket detail panel.
+- **Download** — click any attachment to open or download it in a new tab.
+- **Delete** — hover over an attachment and click the X button to remove it. Deleted files are also removed from storage.
+
+### Comments and notifications
+
+- **Reply to user** — add a comment that the ticket submitter will receive as a notification.
+- **Internal notes** — mark a comment as "Internal" (lock icon) so it is only visible to admins, not the submitter.
+- **Status notifications** — when you change a ticket to In Progress, Resolved, or Closed, the submitter is automatically notified.
+- **New ticket alerts** — all admins and domain admins receive a notification when a new feedback ticket is submitted, with a direct link to the ticket.
 
 ## Content Quality (/admin/content-quality)
 
