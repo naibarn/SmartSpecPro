@@ -71,6 +71,7 @@ from app.api import (
     automation_copilot,  # Automation Copilot API
     live_browser,  # Live browser runtime API
     vision,  # Vision analysis pipeline (multimodal memory)
+    virtual_admin,  # Virtual Admin (System Guardian) internal endpoints
  )
 from app.api.v1 import (
     skills,
@@ -310,6 +311,7 @@ app.include_router(internal_onedrive.router, tags=["Internal OneDrive"])
 app.include_router(admin_alerts.router, tags=["Admin Alerts"])
 app.include_router(internal_library.router, tags=["Internal Library"])
 app.include_router(internal_sandbox.router, tags=["Internal Sandbox"])
+app.include_router(virtual_admin.router, tags=["Virtual Admin"])
 app.include_router(stt.router, tags=["Internal STT/TTS"])
 app.include_router(agencies.router, tags=["Agencies"])
 app.include_router(agency_creator.router, prefix="/api/v1/agency-creator", tags=["Agency Creator"])

@@ -9,3 +9,21 @@ export interface SensorReading {
   message: string;
   tenantId?: string;
 }
+
+export interface Sensor {
+  id: string;
+  name: string;
+  defaultIntervalMs: number;
+  category: "system" | "per_tenant" | "cross_system";
+  collect(tenantId?: string): Promise<SensorReading>;
+}
+
+export interface SensorConfig {
+  id: string;
+  tenantId: string;
+  sensorId: string;
+  enabled: boolean;
+  intervalMs: number | null;
+  thresholdsJson: Record<string, unknown> | null;
+  updatedAt: Date;
+}
