@@ -297,4 +297,56 @@ export const virtualAdminRouter = router({
 
       return { success: true };
     }),
+
+  // ─── Chat ─────────────────────────────────────────────
+
+  sendGuardianMessage: adminProcedure
+    .input(z.object({ message: z.string().min(1).max(2000) }))
+    .mutation(async ({ input, ctx }) => {
+      const { handleGuardianMessage } = await import("../services/virtualAdmin/chatHandler");
+      return handleGuardianMessage(ctx.user.id, input.message, ctx.tenantId);
+    }),
+
+  getGuardianHistory: adminProcedure
+    .input(
+      z.object({
+        limit: z.number().min(1).max(100).default(50),
+        offset: z.number().min(0).default(0),
+      }),
+    )
+    .query(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const { conversations, messages: messagesTable } = await import("../../drizzle/schema");
+      const { isNull } = await import("drizzle-orm");
+
+      const convs = await db
+        .select()
+        .from(conversations)
+        .where(
+          and(
+            eq(conversations.userId, ctx.user.id),
+            sql`${conversations.systemPrompt} LIKE '%[system_guardian]%'`,
+            isNull(conversations.trashedAt),
+          ),
+        )
+        .orderBy(desc(conversations.updatedAt))
+        .limit(1);
+
+      if (convs.length === 0) {
+        return { conversationId: null, messages: [] };
+      }
+
+      const conv = convs[0];
+      const msgs = await db
+        .select()
+        .from(messagesTable)
+        .where(eq(messagesTable.conversationId, conv.id))
+        .orderBy(desc(messagesTable.createdAt))
+        .limit(input.limit)
+        .offset(input.offset);
+
+      return { conversationId: conv.id, messages: msgs.reverse() };
+    }),
 });
