@@ -4,7 +4,7 @@ const en: TranslationDictionary = {
   // ── Help dialog chrome ───────────────────────────────────────
   "help.title": "Complete User Guide",
   "help.description":
-    "How to use Chat, Skills, Media, Presentations, Auto Skill Detection, Memory, Browser Session, and Agencies.",
+    "How to use Chat, Skills, Media, Presentations, Auto Skill Detection, Memory, Browser Session, Agencies, and AI Team Orchestrator.",
 
   // ── What Chat is best for ────────────────────────────────────
   "help.chatBestFor.title": "What Chat is best for",
@@ -407,6 +407,57 @@ const en: TranslationDictionary = {
   "bsHelp.pause.1": "OTP, MFA, or device verification.",
   "bsHelp.pause.2": "Payments, bookings, purchases, or any irreversible action.",
   "bsHelp.pause.3": "Anything sensitive that you want to review before submission.",
+
+  // ── AI Team Orchestrator ────────────────────────────────────
+  "help.orchestrator.title": "AI Team Orchestrator",
+  "help.orchestrator.intro":
+    "The AI Team Orchestrator lets you create teams of AI agents that collaborate in real-time conversations. Each agent has its own persona, expertise, and role — working together to research, write, review, and produce results.",
+
+  // Teams
+  "help.orchestrator.teams.title": "Creating Teams",
+  "help.orchestrator.teams.1": "Go to Teams and click New Team. Give it a name, description, and choose a category.",
+  "help.orchestrator.teams.2": "Add 2-10 members. Each member needs a Persona (personality/expertise) and a Role Title (e.g., Lead Researcher, Editor).",
+  "help.orchestrator.teams.3": "Exactly one member must be the Lead — they coordinate the discussion and produce final summaries.",
+  "help.orchestrator.teams.4": "Use Templates for quick setup: Research & Analysis, Content Creation, or Code Review teams come pre-configured.",
+  "help.orchestrator.teams.5": "Each team member can have their own preferred AI model and cost policy.",
+
+  // Team Rooms
+  "help.orchestrator.rooms.title": "Team Rooms",
+  "help.orchestrator.rooms.1": "A Room is where team conversations happen. Create a room by selecting a team and describing the goal.",
+  "help.orchestrator.rooms.2": "Room types: Team (collaborative), Direct (1-on-1 with an agent), Auto Team (system-managed), Job Review (structured review).",
+  "help.orchestrator.rooms.3": "Three view modes control what you see: Transparent (everything), Milestone (key decisions only), Summary (final summaries only).",
+  "help.orchestrator.rooms.4": "You can send messages to all agents or target a specific agent. Agents can be muted if you want to exclude them temporarily.",
+
+  // Runs
+  "help.orchestrator.runs.title": "Runs — Orchestrated Execution",
+  "help.orchestrator.runs.1": "A Run is an automated work session. Start a run by describing the objective and setting a stop policy.",
+  "help.orchestrator.runs.2": "Stop policies control when the run ends: max rounds, time limit, budget cap, idle timeout, or when the lead summarizes.",
+  "help.orchestrator.runs.3": "You can Pause a running session to review progress, Resume to continue, or Stop to end it immediately.",
+  "help.orchestrator.runs.4": "Budget tracking shows per-agent token usage and cost in real-time. Set a max budget to prevent overspending.",
+  "help.orchestrator.runs.5": "When a run completes, the system generates per-agent performance summaries and an optional final report.",
+
+  // Scoped Memory
+  "help.orchestrator.memory.title": "Scoped Memory",
+  "help.orchestrator.memory.1": "Each agent has private memory that other agents cannot see. Team-level memory is shared among all members.",
+  "help.orchestrator.memory.2": "Memory scopes (from most to least specific): Agent → Run → Room → Team → Project → User.",
+  "help.orchestrator.memory.3": "Search uses hybrid retrieval: keyword matching + vector similarity for the most relevant results.",
+  "help.orchestrator.memory.4": "Promote a memory from agent-scope to team-scope to share a discovery with the whole team.",
+  "help.orchestrator.memory.5": "Memory types include: Fact, Rule, Preference, Decision, Note, Checklist, and Episode.",
+
+  // Monitoring
+  "help.orchestrator.monitoring.title": "Monitoring & Notifications",
+  "help.orchestrator.monitoring.1": "The Run Monitor panel shows live events, agent status (active/idle), and cost counters in real-time.",
+  "help.orchestrator.monitoring.2": "Event timeline displays each agent action: messages, tool calls, handoffs, decisions, and errors.",
+  "help.orchestrator.monitoring.3": "Stuck detection: if an agent hasn't produced output for 2 minutes, you'll get a notification.",
+  "help.orchestrator.monitoring.4": "Notifications appear for: run completed, budget warning, agent stuck, and system alerts.",
+
+  // Tips
+  "help.orchestrator.tips.title": "Tips for effective teams",
+  "help.orchestrator.tips.1": "Start with a template and customize — it's faster than building from scratch.",
+  "help.orchestrator.tips.2": "Give each agent a distinct specialty. Overlapping roles produce redundant output.",
+  "help.orchestrator.tips.3": "Set a reasonable budget cap (100-500 credits) and max rounds (10-30) to avoid runaway costs.",
+  "help.orchestrator.tips.4": "Use Milestone view mode when you only care about key decisions, not the full discussion.",
+  "help.orchestrator.tips.5": "Review the lead's summary before stopping a run — it captures the team's conclusions.",
 
   // ── Shared UI labels ─────────────────────────────────────────
   "common.output": "Output",

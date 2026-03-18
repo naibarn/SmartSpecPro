@@ -557,6 +557,47 @@ export function ChatHelpDialog({
             </div>
           </CollapsibleSection>
 
+          {/* ── AI Team Orchestrator ── */}
+          <CollapsibleSection
+            title={t("help.orchestrator.title")}
+            icon={Users}
+            accent="indigo"
+          >
+            <p className="text-sm text-slate-600 mb-4">
+              {t("help.orchestrator.intro")}
+            </p>
+
+            {/* Creating Teams */}
+            <MemorySubSection title={t("help.orchestrator.teams.title")} icon={Users}>
+              <TBulletList t={t} prefix="help.orchestrator.teams" count={5} />
+            </MemorySubSection>
+
+            {/* Team Rooms */}
+            <MemorySubSection title={t("help.orchestrator.rooms.title")} icon={FolderOpen}>
+              <TBulletList t={t} prefix="help.orchestrator.rooms" count={4} />
+            </MemorySubSection>
+
+            {/* Runs */}
+            <MemorySubSection title={t("help.orchestrator.runs.title")} icon={Zap}>
+              <TBulletList t={t} prefix="help.orchestrator.runs" count={5} />
+            </MemorySubSection>
+
+            {/* Scoped Memory */}
+            <MemorySubSection title={t("help.orchestrator.memory.title")} icon={Database}>
+              <TBulletList t={t} prefix="help.orchestrator.memory" count={5} />
+            </MemorySubSection>
+
+            {/* Monitoring */}
+            <MemorySubSection title={t("help.orchestrator.monitoring.title")} icon={Settings}>
+              <TBulletList t={t} prefix="help.orchestrator.monitoring" count={4} />
+            </MemorySubSection>
+
+            {/* Tips */}
+            <MemorySubSection title={t("help.orchestrator.tips.title")} icon={Lightbulb}>
+              <TBulletList t={t} prefix="help.orchestrator.tips" count={5} />
+            </MemorySubSection>
+          </CollapsibleSection>
+
           {/* ── Common use cases ── */}
           <CollapsibleSection title={t("help.useCases.title")}>
             <div className="mt-3 grid gap-2 md:grid-cols-2">

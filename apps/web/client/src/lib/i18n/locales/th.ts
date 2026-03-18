@@ -4,7 +4,7 @@ const th: TranslationDictionary = {
   // ── Help dialog chrome ───────────────────────────────────────
   "help.title": "คู่มือการใช้งาน",
   "help.description":
-    "วิธีใช้ Chat, Skills, สร้างสื่อ, สร้าง Presentation, ระบบเลือก Skill อัตโนมัติ, Memory, Browser Session และ Agencies",
+    "วิธีใช้ Chat, Skills, สร้างสื่อ, สร้าง Presentation, ระบบเลือก Skill อัตโนมัติ, Memory, Browser Session, Agencies และ AI Team Orchestrator",
 
   // ── What Chat is best for ────────────────────────────────────
   "help.chatBestFor.title": "Chat เหมาะสำหรับอะไร",
@@ -407,6 +407,57 @@ const th: TranslationDictionary = {
   "bsHelp.pause.1": "OTP, MFA หรือการยืนยันอุปกรณ์",
   "bsHelp.pause.2": "การชำระเงิน การจอง การซื้อ หรือการดำเนินการที่ย้อนกลับไม่ได้",
   "bsHelp.pause.3": "สิ่งที่ละเอียดอ่อนที่คุณต้องการตรวจสอบก่อนส่ง",
+
+  // ── AI Team Orchestrator ────────────────────────────────────
+  "help.orchestrator.title": "AI Team Orchestrator — ระบบทีม AI",
+  "help.orchestrator.intro":
+    "AI Team Orchestrator ให้คุณสร้างทีม AI หลายตัวที่ทำงานร่วมกันแบบเรียลไทม์ แต่ละตัวมีบุคลิก ความเชี่ยวชาญ และบทบาทเฉพาะ — ร่วมกันวิจัย เขียน ตรวจทาน และผลิตผลงาน",
+
+  // ทีม
+  "help.orchestrator.teams.title": "การสร้างทีม",
+  "help.orchestrator.teams.1": "ไปที่เมนู Teams แล้วกด New Team ตั้งชื่อ คำอธิบาย และเลือกหมวดหมู่",
+  "help.orchestrator.teams.2": "เพิ่มสมาชิก 2-10 คน แต่ละคนต้องมี Persona (บุคลิก/ความเชี่ยวชาญ) และ Role Title (เช่น หัวหน้านักวิจัย, บรรณาธิการ)",
+  "help.orchestrator.teams.3": "ต้องมีสมาชิกที่เป็น Lead หนึ่งคนเสมอ — เป็นผู้ประสานงานและสรุปผลการทำงาน",
+  "help.orchestrator.teams.4": "ใช้ Template เพื่อตั้งค่าเร็ว: ทีมวิจัย & วิเคราะห์, ทีมสร้างเนื้อหา หรือทีม Code Review มี preset พร้อมใช้งาน",
+  "help.orchestrator.teams.5": "สมาชิกแต่ละคนสามารถเลือกโมเดล AI และนโยบายค่าใช้จ่ายของตัวเองได้",
+
+  // ห้องทีม
+  "help.orchestrator.rooms.title": "ห้องทีม (Team Rooms)",
+  "help.orchestrator.rooms.1": "Room คือพื้นที่สนทนาของทีม สร้างห้องโดยเลือกทีมแล้วระบุเป้าหมาย",
+  "help.orchestrator.rooms.2": "ประเภทห้อง: Team (ทำงานร่วมกัน), Direct (คุยกับ agent ตัวเดียว), Auto Team (ระบบจัดการ), Job Review (ตรวจงานแบบมีโครงสร้าง)",
+  "help.orchestrator.rooms.3": "โหมดมุมมอง 3 แบบ: Transparent (เห็นทุกอย่าง), Milestone (เห็นเฉพาะการตัดสินใจสำคัญ), Summary (เห็นเฉพาะสรุป)",
+  "help.orchestrator.rooms.4": "คุณสามารถส่งข้อความถึง agent ทุกตัวหรือเจาะจงตัวเดียว สามารถ Mute agent ที่ไม่ต้องการให้พูดชั่วคราว",
+
+  // การรัน
+  "help.orchestrator.runs.title": "Runs — การรันงานอัตโนมัติ",
+  "help.orchestrator.runs.1": "Run คือเซสชันทำงานอัตโนมัติ เริ่มรันโดยระบุเป้าหมายและตั้ง Stop Policy",
+  "help.orchestrator.runs.2": "Stop Policy ควบคุมเมื่อไหร่จะหยุด: จำนวนรอบสูงสุด, เวลาจำกัด, งบประมาณ, หมดเวลาว่าง หรือเมื่อ Lead สรุปเสร็จ",
+  "help.orchestrator.runs.3": "คุณสามารถ Pause (หยุดชั่วคราว), Resume (ทำต่อ) หรือ Stop (หยุดทันที) ได้ตลอดเวลา",
+  "help.orchestrator.runs.4": "ระบบติดตามค่าใช้จ่ายต่อ agent แบบเรียลไทม์ ตั้งงบสูงสุดเพื่อป้องกันค่าใช้จ่ายเกิน",
+  "help.orchestrator.runs.5": "เมื่อรันเสร็จ ระบบสร้างสรุปประสิทธิภาพต่อ agent และรายงานสรุปผล",
+
+  // Scoped Memory
+  "help.orchestrator.memory.title": "Scoped Memory — หน่วยความจำแบบแบ่งขอบเขต",
+  "help.orchestrator.memory.1": "แต่ละ agent มีหน่วยความจำส่วนตัวที่ agent อื่นมองไม่เห็น หน่วยความจำระดับทีมแชร์ให้สมาชิกทุกคน",
+  "help.orchestrator.memory.2": "ลำดับขอบเขต (จากเฉพาะเจาะจงไปกว้าง): Agent → Run → Room → Team → Project → User",
+  "help.orchestrator.memory.3": "ค้นหาใช้ระบบ Hybrid: จับคู่คำสำคัญ + ความคล้ายคลึงเชิงเวกเตอร์ เพื่อผลลัพธ์ที่ตรงที่สุด",
+  "help.orchestrator.memory.4": "Promote ความจำจากระดับ agent ไประดับทีม เพื่อแชร์การค้นพบกับทั้งทีม",
+  "help.orchestrator.memory.5": "ประเภทความจำ: Fact, Rule, Preference, Decision, Note, Checklist และ Episode",
+
+  // การติดตาม
+  "help.orchestrator.monitoring.title": "การติดตามและแจ้งเตือน",
+  "help.orchestrator.monitoring.1": "Run Monitor แสดง event สด, สถานะ agent (กำลังทำงาน/ว่าง) และตัวนับค่าใช้จ่ายแบบเรียลไทม์",
+  "help.orchestrator.monitoring.2": "Timeline แสดงการกระทำทุกอย่าง: ข้อความ, การเรียกเครื่องมือ, การส่งต่องาน, การตัดสินใจ และ error",
+  "help.orchestrator.monitoring.3": "ตรวจจับ agent ค้าง: ถ้า agent ไม่มีผลงาน 2 นาที คุณจะได้รับแจ้งเตือน",
+  "help.orchestrator.monitoring.4": "การแจ้งเตือนสำหรับ: รันเสร็จ, เตือนงบประมาณ, agent ค้าง และแจ้งเตือนระบบ",
+
+  // เคล็ดลับ
+  "help.orchestrator.tips.title": "เคล็ดลับสำหรับทีมที่มีประสิทธิภาพ",
+  "help.orchestrator.tips.1": "เริ่มจาก Template แล้วปรับแต่ง — เร็วกว่าสร้างใหม่ตั้งแต่ต้น",
+  "help.orchestrator.tips.2": "ให้แต่ละ agent มีความเชี่ยวชาญเฉพาะทาง บทบาทที่ซ้ำกันจะได้ผลลัพธ์ซ้ำซ้อน",
+  "help.orchestrator.tips.3": "ตั้งงบประมาณที่เหมาะสม (100-500 เครดิต) และจำนวนรอบ (10-30) เพื่อป้องกันค่าใช้จ่ายบานปลาย",
+  "help.orchestrator.tips.4": "ใช้โหมด Milestone เมื่อสนใจเฉพาะการตัดสินใจสำคัญ ไม่ต้องอ่านทั้งหมด",
+  "help.orchestrator.tips.5": "ตรวจสอบสรุปของ Lead ก่อนหยุดรัน — สรุปจะรวมข้อสรุปของทีมทั้งหมด",
 
   // ── Shared UI labels ─────────────────────────────────────────
   "common.output": "ผลลัพธ์",
