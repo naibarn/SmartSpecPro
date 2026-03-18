@@ -103,6 +103,11 @@ export interface Asset {
   // Cache
   thumbnailPath?: string;
   waveformData?: number[];   // for audio visualization
+
+  // Generation metadata (prompt, reference images, model used)
+  generationPrompt?: string;
+  referenceUrls?: string[];
+  generationModelId?: string;
 }
 
 export interface AudioMixing {
@@ -350,6 +355,12 @@ export interface MediaLibraryAsset {
   format: string;
   localPath?: string;
   fileSize?: number;
+  /** Original generation prompt (from Draft with AI or Quick Generate) */
+  generationPrompt?: string;
+  /** Reference image URLs used during generation */
+  referenceUrls?: string[];
+  /** Model ID used during generation */
+  generationModelId?: string;
 }
 
 // ========================================
@@ -502,7 +513,10 @@ export function addAssetToProject(
     filename: localPath.split('/').pop() || localPath.split('\\').pop() || 'unknown',
     format: asset.format,
     duration: asset.duration,
-    thumbnailPath: asset.thumbnailUrl || undefined
+    thumbnailPath: asset.thumbnailUrl || undefined,
+    generationPrompt: asset.generationPrompt,
+    referenceUrls: asset.referenceUrls,
+    generationModelId: asset.generationModelId,
   };
 
   project.assets[newAsset.id] = newAsset;

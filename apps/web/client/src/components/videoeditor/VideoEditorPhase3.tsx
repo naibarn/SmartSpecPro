@@ -18,7 +18,7 @@ import KeyboardShortcutsOverlay from './KeyboardShortcutsOverlay';
 import HistoryPanel from './HistoryPanel';
 import TransitionsPanel from './TransitionsPanel';
 import OverlayPanel from './OverlayPanel';
-import { VideoDraftAIPanel, type VideoDraftAIGenerateRequest } from './VideoDraftAIPanel';
+import { VideoDraftAIPanel, type VideoDraftAIGenerateRequest, type FocusedClipMeta } from './VideoDraftAIPanel';
 import { AIDraftModal } from '../presentation/AIDraftModal';
 import SilenceDetectionPanel from './SilenceDetectionPanel';
 import SilenceDetectionDialog from './SilenceDetectionDialog';
@@ -62,14 +62,16 @@ import {
   type PresentationSlideContent,
 } from '@shared/presentation/contracts';
 
-const SIDEBAR_DEFAULT_WIDTH = 320;
-const SIDEBAR_MIN_WIDTH = 260;
-const SIDEBAR_MAX_WIDTH = 680;
+const SIDEBAR_DEFAULT_WIDTH = 380;
+const SIDEBAR_MIN_WIDTH = 320;
+const SIDEBAR_MAX_WIDTH = 720;
 const EDITOR_MAIN_MIN_WIDTH = 520;
 const TASK_POLL_INTERVAL_MS = 2000;
 const TASK_POLL_MAX_ATTEMPTS = 90;
 const IMPORTED_DRAFT_DURATION_EPSILON = 0.05;
 const IMPORTED_DRAFT_REPAIR_DIFF_THRESHOLD = 0.25;
+const DRAFT_MEDIA_BG_POLL_MS = 10_000; // background poll interval
+const DRAFT_MEDIA_BG_MAX_POLLS = 720; // 2 hours max (720 * 10s)
 
 function getErrorMessage(error: unknown, fallback = 'Failed to generate media'): string {
   if (error instanceof Error && error.message.trim()) {
@@ -455,6 +457,18 @@ export const VideoEditorPhase3: React.FC = () => {
     expectedVersion: number;
   } | null>(null);
   const importedDraftRepairKeyRef = React.useRef<string | null>(null);
+  const [draftMediaBgStatus, setDraftMediaBgStatus] = useState<
+    | null
+    | { state: 'polling'; deckId: number; libraryItemId: number; pendingCount: number }
+    | { state: 'importing'; deckId: number }
+  >(null);
+  const draftMediaBgTimerRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const draftMediaBgInFlightRef = React.useRef(false);
+  const draftMediaBgSessionRef = React.useRef<{
+    libraryItemId: number;
+    deckId: number;
+    expectedVersion: number;
+  } | null>(null);
 
   // Save project to sessionStorage for error recovery
   useEffect(() => {
@@ -862,37 +876,30 @@ export const VideoEditorPhase3: React.FC = () => {
     presentationDraftSession,
   ]);
 
-  const handleImportPresentationDraft = useCallback(async ({
-    deckId,
-    close,
-  }: {
-    deckId: number;
-    taskId: string;
-    result: {
-      slidesAdded: number;
-      newDeckVersion: number;
-      articlePreview: string;
-      warnings: string[];
-    };
-    close: () => void;
-  }) => {
-    if (!presentationDraftSession || presentationDraftSession.deckId !== deckId) {
-      throw new Error('AI draft session is no longer available.');
-    }
+  // Helper: count pending media jobs across slides
+  const countSlidePendingJobs = useCallback((rawSlides: Array<{ slideContent: unknown }>) =>
+    rawSlides.reduce((sum, s) => {
+      const parsed = presentationSlideContentSchema.safeParse(s.slideContent);
+      return sum + (parsed.success ? (parsed.data.pendingMediaJobs?.length ?? 0) : 0);
+    }, 0),
+  []);
 
+  // Core import logic — called when media is ready (either immediately or after background poll)
+  const executeDraftImport = useCallback(async (
+    session: { libraryItemId: number; deckId: number; expectedVersion: number },
+  ) => {
     setIsImportingPresentationDraft(true);
+    setDraftMediaBgStatus({ state: 'importing', deckId: session.deckId });
     try {
       const [deckDetail, playDeck] = await Promise.all([
-        trpcUtils.presentation.getDeck.fetch({ deckId }),
-        trpcUtils.presentation.getPlayDeck.fetch({ itemId: presentationDraftSession.libraryItemId }),
+        trpcUtils.presentation.getDeck.fetch({ deckId: session.deckId }),
+        trpcUtils.presentation.getPlayDeck.fetch({ itemId: session.libraryItemId }),
       ]);
 
       const slides = deckDetail.slides
         .map((slide) => {
           const parsed = presentationSlideContentSchema.safeParse(slide.slideContent);
-          if (!parsed.success) {
-            return null;
-          }
+          if (!parsed.success) return null;
           return {
             id: slide.id,
             orderIndex: slide.orderIndex,
@@ -914,7 +921,9 @@ export const VideoEditorPhase3: React.FC = () => {
       });
 
       if (segments.length === 0) {
-        throw new Error('AI draft completed but no usable media was found to import.');
+        showToast('AI draft media generation failed — no usable media to import.', 'error');
+        void cleanupPresentationDraftSession(session);
+        return;
       }
 
       const preparedSegments = await Promise.all(segments.map(async (segment) => {
@@ -968,6 +977,9 @@ export const VideoEditorPhase3: React.FC = () => {
                 visual.src,
                 visual.type === 'image' ? 'png' : 'mp4',
               ),
+              generationPrompt: visual.prompt,
+              referenceUrls: visual.referenceUrls,
+              generationModelId: visual.modelId,
             },
             localPath,
             clipDuration: segment.duration,
@@ -1092,22 +1104,161 @@ export const VideoEditorPhase3: React.FC = () => {
         setSelectedClipId(lastInsertedClipId);
       }
 
-      const session = presentationDraftSession;
       setIsPresentationDraftModalOpen(false);
       setPresentationDraftSession(null);
       await cleanupPresentationDraftSession(session);
       showToast(`Imported ${preparedSegments.length} AI draft segments to timeline.`, 'success');
-      close();
     } finally {
       setIsImportingPresentationDraft(false);
+      setDraftMediaBgStatus(null);
+      draftMediaBgSessionRef.current = null;
     }
   }, [
     addToHistory,
     cleanupPresentationDraftSession,
+    countSlidePendingJobs,
     currentTime,
-    presentationDraftSession,
     trpcUtils.presentation.getDeck,
     trpcUtils.presentation.getPlayDeck,
+  ]);
+
+  // Stop background media polling
+  const stopDraftMediaBgPoll = useCallback(() => {
+    if (draftMediaBgTimerRef.current) {
+      clearInterval(draftMediaBgTimerRef.current);
+      draftMediaBgTimerRef.current = null;
+    }
+    draftMediaBgInFlightRef.current = false;
+  }, []);
+
+  // Start background media polling for a draft session
+  const startDraftMediaBgPoll = useCallback((
+    session: { libraryItemId: number; deckId: number; expectedVersion: number },
+  ) => {
+    stopDraftMediaBgPoll();
+    draftMediaBgSessionRef.current = session;
+    setDraftMediaBgStatus({ state: 'polling', deckId: session.deckId, libraryItemId: session.libraryItemId, pendingCount: 0 });
+    let pollCount = 0;
+
+    draftMediaBgTimerRef.current = setInterval(async () => {
+      if (draftMediaBgInFlightRef.current) return;
+      draftMediaBgInFlightRef.current = true;
+      pollCount++;
+      try {
+        // Ask server to resolve pending media
+        try {
+          const resolved = await trpcUtils.client.presentation.ai.resolvePendingMedia.mutate({
+            deckId: session.deckId,
+            maxJobs: 60,
+          });
+          if (resolved.jobsRemaining <= 0) {
+            // All media resolved — import now
+            stopDraftMediaBgPoll();
+            void executeDraftImport(session);
+            return;
+          }
+          setDraftMediaBgStatus({
+            state: 'polling',
+            deckId: session.deckId,
+            libraryItemId: session.libraryItemId,
+            pendingCount: resolved.jobsRemaining,
+          });
+        } catch {
+          // Check directly if pending jobs remain
+          const deckDetail = await trpcUtils.presentation.getDeck.fetch({ deckId: session.deckId });
+          const pending = countSlidePendingJobs(deckDetail.slides);
+          if (pending <= 0) {
+            stopDraftMediaBgPoll();
+            void executeDraftImport(session);
+            return;
+          }
+          setDraftMediaBgStatus({
+            state: 'polling',
+            deckId: session.deckId,
+            libraryItemId: session.libraryItemId,
+            pendingCount: pending,
+          });
+        }
+
+        if (pollCount >= DRAFT_MEDIA_BG_MAX_POLLS) {
+          stopDraftMediaBgPoll();
+          setDraftMediaBgStatus(null);
+          draftMediaBgSessionRef.current = null;
+          showToast('Media generation timed out. You can try "Draft with AI" again.', 'error');
+          void cleanupPresentationDraftSession(session);
+        }
+      } catch {
+        // Silently retry next interval
+      } finally {
+        draftMediaBgInFlightRef.current = false;
+      }
+    }, DRAFT_MEDIA_BG_POLL_MS);
+  }, [
+    cleanupPresentationDraftSession,
+    countSlidePendingJobs,
+    executeDraftImport,
+    stopDraftMediaBgPoll,
+    trpcUtils.client.presentation.ai.resolvePendingMedia,
+    trpcUtils.presentation.getDeck,
+  ]);
+
+  // Cleanup background poll on unmount
+  useEffect(() => {
+    return () => {
+      if (draftMediaBgTimerRef.current) {
+        clearInterval(draftMediaBgTimerRef.current);
+        draftMediaBgTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  // onComplete handler: decides between immediate import or background polling
+  const handleImportPresentationDraft = useCallback(async ({
+    deckId,
+    close,
+  }: {
+    deckId: number;
+    taskId: string;
+    result: {
+      slidesAdded: number;
+      newDeckVersion: number;
+      articlePreview: string;
+      warnings: string[];
+    };
+    close: () => void;
+  }) => {
+    if (!presentationDraftSession || presentationDraftSession.deckId !== deckId) {
+      throw new Error('AI draft session is no longer available.');
+    }
+
+    const session = { ...presentationDraftSession };
+
+    // Check if media is still pending
+    const deckDetail = await trpcUtils.presentation.getDeck.fetch({ deckId });
+    const pendingCount = countSlidePendingJobs(deckDetail.slides);
+
+    if (pendingCount > 0) {
+      // Media still generating — close modal, start background poll
+      setPresentationDraftSession(null);
+      setIsPresentationDraftModalOpen(false);
+      close();
+      showToast(
+        `Media is generating (${pendingCount} pending). Will auto-import to timeline when ready.`,
+        'info',
+      );
+      startDraftMediaBgPoll(session);
+      return;
+    }
+
+    // All media ready — import immediately
+    close();
+    await executeDraftImport(session);
+  }, [
+    countSlidePendingJobs,
+    executeDraftImport,
+    presentationDraftSession,
+    startDraftMediaBgPoll,
+    trpcUtils.presentation.getDeck,
   ]);
 
   const repairImportedDraftDurations = useCallback(async () => {
@@ -1337,6 +1488,9 @@ export const VideoEditorPhase3: React.FC = () => {
         createdAt,
         resolution: extractResolutionLabel(terminalTask),
         format: extractFormatFromUrl(resultUrl, request.mediaType === 'image' ? 'png' : 'mp4'),
+        generationPrompt: normalizedPrompt,
+        referenceUrls: referenceImageUrls,
+        generationModelId: request.modelId?.trim() || undefined,
       };
 
       const localPath = await videoEditorMediaLibrary.downloadToWorkspace(mediaAsset);
@@ -2459,6 +2613,32 @@ export const VideoEditorPhase3: React.FC = () => {
     return null;
   }, [project.timeline.tracks, project.assets, currentTime]);
 
+  // Build focused clip metadata for Draft AI panel (prompt, reference images, model)
+  const focusedClipMeta = useMemo((): FocusedClipMeta | null => {
+    if (!selectedClipId) return null;
+    for (const track of project.timeline.tracks) {
+      if (track.type !== 'video' && track.type !== 'overlay') continue;
+      const clip = track.clips.find((c) => c.id === selectedClipId);
+      if (!clip) continue;
+      const asset = project.assets[clip.assetId];
+      if (!asset) continue;
+      if (!asset.generationPrompt && !asset.referenceUrls?.length) continue;
+      return {
+        clipId: clip.id,
+        assetId: clip.assetId,
+        type: asset.type === 'video' ? 'video' : 'image',
+        title: asset.name || clip.id,
+        url: asset.originalPath || asset.path,
+        thumbnailUrl: asset.thumbnailPath || (asset.type === 'image' ? asset.path : ''),
+        generationPrompt: asset.generationPrompt,
+        referenceUrls: asset.referenceUrls,
+        generationModelId: asset.generationModelId,
+        model: asset.model,
+      };
+    }
+    return null;
+  }, [selectedClipId, project.timeline.tracks, project.assets]);
+
   const activeTextClips = useMemo((): ActiveTextClipInfo[] => {
     const textTracks = project.timeline.tracks.filter(
       (track) => track.type === 'text' && track.visible !== false,
@@ -3231,20 +3411,23 @@ export const VideoEditorPhase3: React.FC = () => {
 
           .sidebar-tabs {
             display: flex;
+            flex-wrap: wrap;
             background: #2a2a2a;
             border-bottom: 1px solid #444;
           }
 
           .sidebar-tab {
-            flex: 1;
-            padding: 10px;
+            flex: 0 0 auto;
+            padding: 6px 8px;
             background: transparent;
             border: none;
             border-bottom: 2px solid transparent;
             color: #888;
-            font-size: 12px;
+            font-size: 11px;
             cursor: pointer;
             transition: all 0.2s;
+            white-space: nowrap;
+            line-height: 1.2;
           }
 
           .sidebar-tab:hover {
@@ -3439,12 +3622,14 @@ export const VideoEditorPhase3: React.FC = () => {
           <button
             className="header-button primary"
             onClick={() => void handleOpenPresentationDraft()}
-            disabled={isPreparingPresentationDraft || isImportingPresentationDraft}
+            disabled={isPreparingPresentationDraft || isImportingPresentationDraft || !!draftMediaBgStatus}
             title="Draft with AI"
           >
             {isPreparingPresentationDraft || isImportingPresentationDraft
               ? '...'
-              : '✨ Draft with AI'}
+              : draftMediaBgStatus
+                ? '⏳ Generating...'
+                : '✨ Draft with AI'}
           </button>
           <button className="header-button" onClick={handleSave} disabled={isSaving} title="Save to cloud">
             {isSaving ? '...' : '\uD83D\uDCBE'} Save
@@ -3463,6 +3648,54 @@ export const VideoEditorPhase3: React.FC = () => {
             📚 {mobileSidebarOpen ? 'Close' : 'Panel'}
           </button>
         </div>
+
+        {/* Background media generation status banner */}
+        {draftMediaBgStatus && (
+          <div
+            style={{
+              padding: '6px 16px',
+              background: draftMediaBgStatus.state === 'importing' ? '#065f46' : '#1e3a5f',
+              color: '#e0f2fe',
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>
+              &#9696;
+            </span>
+            {draftMediaBgStatus.state === 'polling'
+              ? `Waiting for AI media generation (${draftMediaBgStatus.pendingCount} pending)... Will auto-import when ready.`
+              : 'Importing AI draft media to timeline...'}
+            {draftMediaBgStatus.state === 'polling' && (
+              <button
+                style={{
+                  marginLeft: 'auto',
+                  background: 'rgba(255,255,255,0.15)',
+                  border: 'none',
+                  color: '#e0f2fe',
+                  padding: '2px 10px',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                }}
+                onClick={() => {
+                  stopDraftMediaBgPoll();
+                  setDraftMediaBgStatus(null);
+                  const session = draftMediaBgSessionRef.current;
+                  draftMediaBgSessionRef.current = null;
+                  if (session) {
+                    void cleanupPresentationDraftSession(session);
+                  }
+                  showToast('Background media import cancelled.', 'info');
+                }}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Main Layout */}
         <div className="editor-layout" ref={editorLayoutRef}>
@@ -3722,6 +3955,7 @@ export const VideoEditorPhase3: React.FC = () => {
                   isPreparingPresentationDraft={isPreparingPresentationDraft || isImportingPresentationDraft}
                   onOpenPresentationDraft={() => void handleOpenPresentationDraft()}
                   onGenerate={handleGenerateDraftMedia}
+                  focusedClipMeta={focusedClipMeta}
                 />
               )}
               {sidebarView === 'silence' && (
