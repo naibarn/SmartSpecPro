@@ -376,7 +376,9 @@ def _pgvector_vector_upsert(
     password = cfg.get("pgvectorPassword", "")
     conn_str = f"postgresql://{user}:{password}@{host}:{port}/{database}"
 
-    store = PgVectorStore(connection_string=conn_str)
+    # Detect embedding dimension from first embedding (default 384 for MiniLM)
+    embed_dim = len(embeddings[0]) if embeddings else 384
+    store = PgVectorStore(connection_string=conn_str, embedding_dimension=embed_dim)
 
     vector_ids = [f"lib:{tenant_id}:{item_id}:{chunk['chunk_index']}" for chunk in chunks]
 
@@ -399,7 +401,29 @@ def _pgvector_vector_upsert(
         for vid, chunk, emb in zip(vector_ids, chunks, embeddings)
     ]
 
-    store.add_documents(docs)
+    # Use synchronous psycopg (v3) to avoid async event loop conflicts in Celery
+    import psycopg
+    conn = psycopg.connect(conn_str.replace("+asyncpg", ""))
+    try:
+        cur = conn.cursor()
+        for doc in docs:
+            embedding_str = "[" + ",".join(str(x) for x in doc.embedding) + "]"
+            import json as _json
+            metadata_str = _json.dumps(doc.metadata) if doc.metadata else "{}"
+            cur.execute(
+                """INSERT INTO vector_documents (doc_id, content, embedding, metadata, tenant_id, doc_type, source, created_at, updated_at)
+                   VALUES (gen_random_uuid(), %s, %s::vector, %s::jsonb, %s, %s, %s, NOW(), NOW())
+                   ON CONFLICT (doc_id) DO UPDATE SET embedding = EXCLUDED.embedding, metadata = EXCLUDED.metadata, updated_at = NOW()""",
+                (doc.content, embedding_str, metadata_str, doc.tenant_id or tenant_id, doc.doc_type or "library_chunk", doc.source or f"library_item:{item_id}")
+            )
+        conn.commit()
+        logger.info("pgvector_upsert_success", item_id=item_id, vectors=len(docs), dim=embed_dim)
+    except Exception as e:
+        conn.rollback()
+        logger.error("pgvector_upsert_failed", item_id=item_id, error=str(e))
+        raise
+    finally:
+        conn.close()
     return vector_ids
 
 

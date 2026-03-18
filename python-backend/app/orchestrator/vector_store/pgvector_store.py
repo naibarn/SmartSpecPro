@@ -271,14 +271,16 @@ class PgVectorStore:
         if self._use_memory:
             self._documents[doc.doc_id] = doc
         else:
+            # Convert embedding list to pgvector string format
+            embedding_str = "[" + ",".join(str(x) for x in embedding) + "]" if embedding else None
             await self._connection.execute(f"""
                 INSERT INTO {self.table_name}
                 (doc_id, content, embedding, metadata, tenant_id, project_id, doc_type, source)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                VALUES ($1, $2, $3::vector, $4, $5, $6, $7, $8)
             """,
                 uuid.UUID(doc.doc_id),
                 content,
-                embedding,
+                embedding_str,
                 json.dumps(metadata or {}),
                 tenant_id,
                 project_id,
@@ -564,7 +566,9 @@ class PgVectorStore:
         """pgvector search implementation."""
         # Build WHERE clause
         conditions = []
-        params = [query_embedding]
+        # asyncpg requires embedding as string for pgvector type
+        embedding_str = "[" + ",".join(str(x) for x in query_embedding) + "]"
+        params = [embedding_str]
         param_idx = 2
         
         if tenant_id:
@@ -593,12 +597,12 @@ class PgVectorStore:
         if mode == SearchMode.VECTOR:
             query = f"""
                 SELECT *,
-                    1 - (embedding <=> $1) as vector_score,
+                    1 - (embedding <=> $1::vector) as vector_score,
                     0 as keyword_score,
-                    1 - (embedding <=> $1) as score
+                    1 - (embedding <=> $1::vector) as score
                 FROM {self.table_name}
                 WHERE {where_clause}
-                ORDER BY embedding <=> $1
+                ORDER BY embedding <=> $1::vector
                 LIMIT {limit}
             """
         elif mode == SearchMode.KEYWORD and query_text:
@@ -618,9 +622,9 @@ class PgVectorStore:
             params.append(query_text or "")
             query = f"""
                 SELECT *,
-                    1 - (embedding <=> $1) as vector_score,
+                    1 - (embedding <=> $1::vector) as vector_score,
                     ts_rank(search_vector, plainto_tsquery('english', ${param_idx})) as keyword_score,
-                    0.7 * (1 - (embedding <=> $1)) + 
+                    0.7 * (1 - (embedding <=> $1::vector)) + 
                     0.3 * ts_rank(search_vector, plainto_tsquery('english', ${param_idx})) as score
                 FROM {self.table_name}
                 WHERE {where_clause}
