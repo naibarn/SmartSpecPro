@@ -27,3 +27,18 @@ export interface SensorConfig {
   thresholdsJson: Record<string, unknown> | null;
   updatedAt: Date;
 }
+
+export interface ActionPlan {
+  autoFix?: { type: string; params: Record<string, unknown> };
+  notify: { channels: ("in_app" | "email" | "slack" | "telegram")[] };
+  requiresApproval?: boolean;
+}
+
+export interface IncidentRule {
+  id: string;
+  sensorId: string;
+  condition: (reading: SensorReading) => boolean;
+  severity: "info" | "warning" | "error" | "critical";
+  actionPlan: ActionPlan;
+  cooldownMs: number;
+}
