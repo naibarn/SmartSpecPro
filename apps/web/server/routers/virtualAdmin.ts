@@ -114,6 +114,7 @@ export const virtualAdminRouter = router({
   listPendingApprovals: adminProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    if (!ctx.tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant required" });
 
     const approvals = await db
       .select()
@@ -121,22 +122,28 @@ export const virtualAdminRouter = router({
       .where(eq(virtualAdminApprovals.status, "pending"))
       .orderBy(desc(virtualAdminApprovals.requestedAt));
 
-    // Enrich with incident context
+    // Enrich with incident context and filter by tenant
     const incidentIds = [...new Set(approvals.map((a) => a.incidentId))];
     const incidents =
       incidentIds.length > 0
         ? await db
             .select()
             .from(virtualAdminIncidents)
-            .where(inArray(virtualAdminIncidents.id, incidentIds))
+            .where(and(
+              inArray(virtualAdminIncidents.id, incidentIds),
+              eq(virtualAdminIncidents.tenantId, ctx.tenantId),
+            ))
         : [];
 
     const incidentMap = new Map(incidents.map((i) => [i.id, i]));
 
-    return approvals.map((a) => ({
-      ...a,
-      incident: incidentMap.get(a.incidentId) ?? null,
-    }));
+    // Only return approvals whose incidents belong to this tenant
+    return approvals
+      .filter((a) => incidentMap.has(a.incidentId))
+      .map((a) => ({
+        ...a,
+        incident: incidentMap.get(a.incidentId) ?? null,
+      }));
   }),
 
   decideApproval: adminProcedure

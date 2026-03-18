@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
+vi.mock("../notifier", () => ({
+  dispatchNotification: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("../../../db", () => {
   const mockDb = {
     select: vi.fn().mockReturnThis(),
@@ -154,14 +158,16 @@ describe("RuleEngine", () => {
   });
 
   it("sends notification via configured channels", async () => {
+    const { dispatchNotification } = await import("../notifier");
+
     const reading = makeReading({ status: "degraded" });
     await evaluateReading(reading);
 
-    expect(mockNotify).toHaveBeenCalledWith(
-      expect.any(Number),
-      "warning",
-      ["in_app"],
-      undefined,
+    expect(dispatchNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        severity: "warning",
+        sensorId: "queue_health",
+      }),
     );
   });
 

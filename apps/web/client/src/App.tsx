@@ -111,6 +111,8 @@ const AdminSystemGuardian = lazy(() => import("./pages/AdminSystemGuardian"));
 const AdminFeedbackHub = lazy(() => import("./pages/AdminFeedbackHub"));
 const ContentQualityDashboard = lazy(() => import("./pages/ContentQualityDashboard"));
 const HelpPage = lazy(() => import("./pages/Help"));
+import { SystemHealthBanner } from "./components/guardian/SystemHealthBanner";
+import { FeedbackButton } from "./components/guardian/FeedbackButton";
 const HelpTopicPage = lazy(() => import("./pages/HelpTopic"));
 
 /**
@@ -355,7 +357,9 @@ function App() {
               <TooltipProvider>
                 <Toaster />
                 <GlobalAlerts />
+                <SystemHealthBanner />
                 <Router />
+                <FeedbackButton />
               </TooltipProvider>
             </TenantProvider>
           </AuthProvider>

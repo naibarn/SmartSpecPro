@@ -25,6 +25,7 @@ vi.mock("../ruleEngine", () => ({
 
 vi.mock("../actuatorRegistry", () => ({
   expireStaleApprovals: vi.fn().mockResolvedValue(undefined),
+  registerActuator: vi.fn(),
 }));
 
 vi.mock("../systemUser", () => ({
@@ -37,6 +38,7 @@ vi.mock("../notifier", () => ({
 
 vi.mock("../actuators/autoFixActions", () => ({}));
 vi.mock("../actuators/approvalActions", () => ({}));
+vi.mock("../actuators/notifyActions", () => ({}));
 
 import {
   startGuardian,

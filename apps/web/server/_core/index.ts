@@ -200,6 +200,16 @@ app.get("/healthz", (_req, res) => {
   res.json({ status: "ok" });
 });
 
+app.get("/api/virtual-admin/health", async (_req, res) => {
+  try {
+    const { getGuardianHealthFull } = await import("../services/virtualAdmin/guardianScheduler");
+    const health = await getGuardianHealthFull();
+    res.json(health);
+  } catch {
+    res.json({ running: false, error: "Guardian not initialized" });
+  }
+});
+
 /**
  * GET /readyz - Readiness probe
  * Performs shallow checks of DB and Redis connections
@@ -1292,6 +1302,13 @@ async function main() {
     }).catch((err) => {
       console.error("[Startup] Failed to start queue health monitor:", err);
     });
+
+    // Start System Guardian (Virtual Admin Agent)
+    import("../services/virtualAdmin/guardianScheduler").then(({ startGuardian }) => {
+      startGuardian();
+    }).catch((err) => {
+      console.error("[Startup] Failed to start System Guardian:", err);
+    });
   });
 }
 
@@ -1320,6 +1337,9 @@ process.on("SIGTERM", async () => {
   }).catch(() => {});
   import("../services/queueHealthMonitor").then(({ stopQueueHealthMonitor }) => {
     stopQueueHealthMonitor();
+  }).catch(() => {});
+  import("../services/virtualAdmin/guardianScheduler").then(({ stopGuardian }) => {
+    stopGuardian();
   }).catch(() => {});
 
   // 1. Stop accepting new connections

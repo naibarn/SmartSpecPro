@@ -1,6 +1,7 @@
 import { eq, and, sql, gt } from "drizzle-orm";
 import { getDb } from "../../db";
 import { virtualAdminIncidents, virtualAdminApprovals } from "../../../drizzle/schema";
+import { dispatchNotification } from "./notifier";
 import type { SensorReading, IncidentRule, ActionPlan } from "./types";
 
 // ─── Cooldown Map ──────────────────────────────────────────
@@ -296,9 +297,25 @@ async function executeActionPlan(
   incidentId: number,
   severity: string,
   tenantId?: string,
+  ruleId?: string,
+  sensorId?: string,
+  title?: string,
+  message?: string,
 ): Promise<void> {
-  // Always notify
-  await notifyFn(incidentId, severity, plan.notify.channels, tenantId);
+  // Always notify — call dispatchNotification directly with full context
+  try {
+    await dispatchNotification({
+      tenantId,
+      incidentId,
+      severity: severity as any,
+      title: title ?? `Incident #${incidentId}`,
+      message: message ?? `Severity: ${severity}`,
+      ruleId: ruleId ?? "unknown",
+      sensorId: sensorId ?? "unknown",
+    });
+  } catch {
+    // Non-critical — don't block action plan execution
+  }
 
   // Auto-fix if enabled
   if (plan.autoFix) {
@@ -394,8 +411,12 @@ export async function evaluateReading(reading: SensorReading): Promise<void> {
       const incidentId = inserted[0].id;
       setCooldown(rule.id, reading.tenantId);
 
-      // Execute action plan
-      await executeActionPlan(rule.actionPlan, incidentId, rule.severity, reading.tenantId);
+      // Execute action plan with full context for notifications
+      const incidentTitle = `[${rule.severity.toUpperCase()}] ${rule.id.replace(/_/g, " ")}`;
+      await executeActionPlan(
+        rule.actionPlan, incidentId, rule.severity, reading.tenantId,
+        rule.id, reading.sensorId, incidentTitle, reading.message,
+      );
     } catch (err) {
       console.error(`[RuleEngine] Error evaluating rule ${rule.id}:`, err);
     }

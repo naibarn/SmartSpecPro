@@ -5,23 +5,36 @@ import { expireStaleApprovals } from "./actuatorRegistry";
 import { ensureSystemUser } from "./systemUser";
 import { setNotifier } from "./ruleEngine";
 import { dispatchNotification } from "./notifier";
+import {
+  startWatchdog,
+  stopWatchdog,
+  recordSensorPoll,
+  getHealthStatus,
+  getLastPollTimestamps,
+} from "./guardianWatchdog";
+import { getDb } from "../../db";
+import { tenants } from "../../../drizzle/schema";
 import type { Sensor } from "./types";
 
 // Import actuator registrations (side-effect imports)
 import "./actuators/autoFixActions";
 import "./actuators/approvalActions";
+import "./actuators/notifyActions";
 
 let isRunning = false;
 let sensorTimers: Map<string, ReturnType<typeof setInterval>> = new Map();
 let approvalExpiryTimer: ReturnType<typeof setInterval> | null = null;
-let watchdogTimer: ReturnType<typeof setInterval> | null = null;
-let lastPollTimestamps: Map<string, number> = new Map();
 
 /**
  * Start the System Guardian lifecycle.
  * Initializes system user, registers sensors, loads cooldowns, and starts polling.
  */
 export async function startGuardian(): Promise<void> {
+  if (process.env.VIRTUAL_ADMIN_ENABLED === "false") {
+    console.log("[Guardian] Disabled via VIRTUAL_ADMIN_ENABLED=false");
+    return;
+  }
+
   if (isRunning) {
     console.log("[Guardian] Already running, skipping start");
     return;
@@ -71,9 +84,7 @@ export async function startGuardian(): Promise<void> {
     }, 5 * 60 * 1000);
 
     // Phase 4: Watchdog self-monitor every 60 seconds
-    watchdogTimer = setInterval(() => {
-      watchdogCheck();
-    }, 60_000);
+    startWatchdog();
 
     isRunning = true;
     console.log(`[Guardian] Started with ${sensors.length} sensors`);
@@ -87,12 +98,26 @@ function scheduleSensor(sensor: Sensor): void {
 
   async function poll() {
     try {
-      const reading = await collectSafe(sensor);
-      lastPollTimestamps.set(sensor.id, Date.now());
-      await evaluateReading(reading);
-
-      // For per-tenant sensors, also poll per active tenant
-      // (skipped for MVP — would need tenant list)
+      if (sensor.category === "per_tenant") {
+        // Poll per active tenant
+        const db = await getDb();
+        if (db) {
+          const activeTenants = await db
+            .select({ id: tenants.id })
+            .from(tenants)
+            .limit(100);
+          for (const tenant of activeTenants) {
+            const reading = await collectSafe(sensor, tenant.id);
+            recordSensorPoll(sensor.id);
+            await evaluateReading(reading);
+          }
+        }
+      } else {
+        // System-wide or cross-system
+        const reading = await collectSafe(sensor);
+        recordSensorPoll(sensor.id);
+        await evaluateReading(reading);
+      }
     } catch (err) {
       console.error(`[Guardian] Sensor ${sensor.id} poll error:`, err);
     }
@@ -104,17 +129,6 @@ function scheduleSensor(sensor: Sensor): void {
   // Recurring poll
   const timer = setInterval(poll, intervalMs);
   sensorTimers.set(sensor.id, timer);
-}
-
-function watchdogCheck(): void {
-  const now = Date.now();
-  const staleThreshold = 10 * 60 * 1000; // 10 minutes
-
-  for (const [sensorId, lastPoll] of lastPollTimestamps) {
-    if (now - lastPoll > staleThreshold) {
-      console.warn(`[Guardian] Watchdog: sensor ${sensorId} has not polled for ${Math.round((now - lastPoll) / 60000)}min`);
-    }
-  }
 }
 
 /**
@@ -135,12 +149,8 @@ export function stopGuardian(): void {
     approvalExpiryTimer = null;
   }
 
-  if (watchdogTimer) {
-    clearInterval(watchdogTimer);
-    watchdogTimer = null;
-  }
+  stopWatchdog();
 
-  lastPollTimestamps.clear();
   isRunning = false;
   console.log("[Guardian] Stopped");
 }
@@ -150,7 +160,8 @@ export function isGuardianRunning(): boolean {
 }
 
 /**
- * Health check endpoint data for the guardian.
+ * Synchronous health check — legacy shape, safe for callers that don't await.
+ * Returns last-known poll timestamps from the watchdog module.
  */
 export function getGuardianHealth(): {
   running: boolean;
@@ -158,15 +169,22 @@ export function getGuardianHealth(): {
   lastPollTimes: Record<string, string>;
 } {
   const lastPolls: Record<string, string> = {};
-  for (const [id, ts] of lastPollTimestamps) {
+  for (const [id, ts] of getLastPollTimestamps()) {
     lastPolls[id] = new Date(ts).toISOString();
   }
-
   return {
     running: isRunning,
     sensorCount: getSensors().length,
     lastPollTimes: lastPolls,
   };
+}
+
+/**
+ * Full async health status — includes stuck sensor detection, memory usage,
+ * and open incident count. Delegates to the watchdog module.
+ */
+export async function getGuardianHealthFull() {
+  return getHealthStatus();
 }
 
 // Handle SIGTERM for graceful shutdown
