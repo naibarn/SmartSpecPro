@@ -60,6 +60,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { GoogleDrivePanel } from '@/components/settings/GoogleDrivePanel';
 import { OneDrivePanel } from '@/components/settings/OneDrivePanel';
 import { UserAPIKeysPanel } from '@/components/settings/UserAPIKeysPanel';
+import { UserLlmKeysPanel } from '@/components/settings/UserLlmKeysPanel';
 import { BudgetPanel } from '@/components/settings/BudgetPanel';
 import { PersonasPanel } from '@/components/settings/PersonasPanel';
 import { UserAutomationPreferencesPanel } from '@/components/settings/UserAutomationPreferencesPanel';
@@ -1393,6 +1394,9 @@ export default function Settings() {
               {activeTab === 'api' && (
                 <div className="space-y-6">
                   <UserAPIKeysPanel />
+                  <div className="border-t border-gray-200 pt-6 mt-6">
+                    <UserLlmKeysPanel />
+                  </div>
 
                   {/* Context7 API Key */}
                   <div className="border-t border-gray-200 pt-6 mt-6">
