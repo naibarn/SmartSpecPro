@@ -41,6 +41,9 @@ export async function ensureSystemUser(): Promise<void> {
       email: SYSTEM_USER_EMAIL,
       name: "System Guardian",
       role: "system_agent",
+      plan: "free",
+      credits: 0,
+      isDisabled: false,
       isSystemUser: true,
       loginMethod: "system",
     })

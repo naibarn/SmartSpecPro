@@ -157,10 +157,10 @@ function detectCycles(steps: Array<{ id: string; params: Record<string, unknown>
 let automationQueue: any = null;
 let automationWorker: any = null;
 
-export function initAutomationJobsQueue(): void {
+export async function initAutomationJobsQueue(): Promise<void> {
   try {
     // Lazy import to avoid crashing if BullMQ is not available in test env
-    const { Queue, Worker } = require("bullmq");
+    const { Queue, Worker } = await import("bullmq");
     const connection = getRedisClient();
     automationQueue = new Queue(AUTOMATION_JOBS_QUEUE, { connection });
     automationWorker = new Worker(

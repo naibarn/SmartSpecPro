@@ -19,31 +19,50 @@ logger = structlog.get_logger()
 # Create declarative base for models
 Base = declarative_base()
 
+# Track whether we're in a Celery worker child process.
+# Set to True by reinit_engine_for_celery_worker() called from worker_process_init.
+_is_celery_worker = False
+
 def sanitize_db_url(url: str) -> str:
     """
     Sanitize database URL by removing password
     """
     return re.sub(r'://([^:]+):([^@]+)@', r'://\1:****@', url)
 
-# Create async engine
-if settings.DATABASE_URL.startswith("sqlite"):
-    engine = create_async_engine(
-        settings.DATABASE_URL,
-        echo=settings.DEBUG,
-    )
-else:
-    # NOTE: pool_pre_ping=False because it's incompatible with asyncpg
-    # (causes MissingGreenlet error). Use pool_recycle instead.
+
+def _create_engine():
+    """Create the async engine with appropriate pool settings."""
+    if settings.DATABASE_URL.startswith("sqlite"):
+        return create_async_engine(
+            settings.DATABASE_URL,
+            echo=settings.DEBUG,
+        )
+
+    if _is_celery_worker:
+        # Celery prefork workers: use NullPool to avoid connection pool corruption.
+        # After fork(), inherited asyncpg connections are in undefined state.
+        # NullPool creates a fresh connection per session and closes it immediately,
+        # eliminating "cannot perform operation: another operation is in progress" errors.
+        return create_async_engine(
+            settings.DATABASE_URL,
+            echo=settings.DEBUG,
+            poolclass=NullPool,
+        )
+
+    # FastAPI / non-worker: use connection pool for performance.
     _pool_size = int(os.environ.get("DB_POOL_SIZE", "5"))
     _max_overflow = int(os.environ.get("DB_MAX_OVERFLOW", "5"))
-    engine = create_async_engine(
+    return create_async_engine(
         settings.DATABASE_URL,
         echo=settings.DEBUG,
         pool_pre_ping=False,
         pool_size=_pool_size,
         max_overflow=_max_overflow,
-        pool_recycle=300,  # Recycle connections every 5 minutes
+        pool_recycle=300,
     )
+
+
+engine = _create_engine()
 
 # Create async session factory
 AsyncSessionLocal = async_sessionmaker(
@@ -53,6 +72,43 @@ AsyncSessionLocal = async_sessionmaker(
     autocommit=False,
     autoflush=False,
 )
+
+
+def reinit_engine_for_celery_worker():
+    """
+    Reinitialize the engine with NullPool after Celery worker fork.
+
+    Must be called from celery worker_process_init signal. This:
+    1. Disposes inherited (corrupted) connections from the parent process
+    2. Recreates the engine with NullPool so each session gets a fresh connection
+    3. Reconfigures AsyncSessionLocal in-place (via .configure()) so that ALL
+       modules that imported it at module level see the new engine binding
+    """
+    global engine, _is_celery_worker
+    _is_celery_worker = True
+
+    # Dispose inherited connections — they are invalid after fork()
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    loop.run_until_complete(engine.dispose())
+
+    # Recreate engine with NullPool
+    engine = _create_engine()
+
+    # Reconfigure the EXISTING AsyncSessionLocal in-place.
+    # This is critical: other modules that did `from database import AsyncSessionLocal`
+    # hold a reference to this object. Creating a new one would leave them with a stale
+    # session factory bound to the old, disposed engine.
+    AsyncSessionLocal.configure(bind=engine)
+
+    logger.info("celery_worker_engine_reinitialized", poolclass="NullPool")
 
 
 async def get_db() -> AsyncSession:
