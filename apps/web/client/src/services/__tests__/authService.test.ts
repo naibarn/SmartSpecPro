@@ -132,18 +132,40 @@ describe("authService — browser context (hasTauri=false)", () => {
     });
 
     it("calls logout on 401 response", async () => {
-      // verifyToken calls logout which redirects — mock location
+      localStorage.setItem("smartspec_auth_token", "old");
       const originalLocation = window.location;
+      const mockLocation = { ...originalLocation, href: "/dashboard", pathname: "/dashboard" };
       Object.defineProperty(window, "location", {
         writable: true,
-        value: { ...originalLocation, href: "/dashboard", pathname: "/dashboard" },
+        value: mockLocation,
       });
 
       mockFetch.mockResolvedValueOnce(makeResponse(401));
       const result = await authService.verifyToken();
       expect(result).toBe(false);
+      // Assert logout was triggered
+      expect(mockLocation.href).toBe("/login");
+      expect(localStorage.getItem("smartspec_auth_token")).toBeNull();
 
-      // Restore
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: originalLocation,
+      });
+    });
+
+    it("calls logout on 403 response", async () => {
+      const originalLocation = window.location;
+      const mockLocation = { ...originalLocation, href: "/dashboard", pathname: "/dashboard" };
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: mockLocation,
+      });
+
+      mockFetch.mockResolvedValueOnce(makeResponse(403));
+      const result = await authService.verifyToken();
+      expect(result).toBe(false);
+      expect(mockLocation.href).toBe("/login");
+
       Object.defineProperty(window, "location", {
         writable: true,
         value: originalLocation,
@@ -191,9 +213,10 @@ describe("authService — browser context (hasTauri=false)", () => {
 
     it("triggers logout on 401 response for non-auth URLs", async () => {
       const originalLocation = window.location;
+      const mockLocation = { ...originalLocation, href: "/dashboard", pathname: "/dashboard" };
       Object.defineProperty(window, "location", {
         writable: true,
-        value: { ...originalLocation, href: "/dashboard", pathname: "/dashboard" },
+        value: mockLocation,
       });
 
       // Set up the underlying fetch to return 401
@@ -201,14 +224,41 @@ describe("authService — browser context (hasTauri=false)", () => {
       vi.stubGlobal("fetch", underlyingFetch);
       delete (window as any).__authInterceptorSetup;
 
-      // Re-import to get fresh module
+      // Re-import to get fresh module — must be after stubGlobal
       const freshModule = await import("../../services/authService");
       freshModule.setupAuthInterceptor();
 
       // Call the intercepted fetch
       await window.fetch("/api/some-endpoint");
 
+      // Assert logout was triggered (navigated to /login)
+      expect(mockLocation.href).toBe("/login");
+
       // Restore
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: originalLocation,
+      });
+    });
+
+    it("triggers logout on 403 response for non-auth URLs", async () => {
+      const originalLocation = window.location;
+      const mockLocation = { ...originalLocation, href: "/dashboard", pathname: "/dashboard" };
+      Object.defineProperty(window, "location", {
+        writable: true,
+        value: mockLocation,
+      });
+
+      const underlyingFetch = vi.fn().mockResolvedValue(makeResponse(403));
+      vi.stubGlobal("fetch", underlyingFetch);
+      delete (window as any).__authInterceptorSetup;
+
+      const freshModule = await import("../../services/authService");
+      freshModule.setupAuthInterceptor();
+
+      await window.fetch("/api/some-endpoint");
+      expect(mockLocation.href).toBe("/login");
+
       Object.defineProperty(window, "location", {
         writable: true,
         value: originalLocation,
@@ -351,10 +401,38 @@ describe("authService — Tauri context (hasTauri=true)", () => {
       expect(result).toBe(true);
     });
 
+    it("returns true when token expires within 300s buffer", async () => {
+      // Token expires in 200s — within the 300s early-expiry buffer
+      const nearExp = Math.floor(Date.now() / 1000) + 200;
+      const payload = btoa(JSON.stringify({ exp: nearExp }));
+      const fakeJwt = `header.${payload}.signature`;
+
+      tauriInvoke.mockResolvedValueOnce(fakeJwt);
+      const result = await authService.isTokenExpired();
+      expect(result).toBe(true);
+    });
+
     it("returns true when no token is stored", async () => {
       tauriInvoke.mockResolvedValueOnce(null);
       const result = await authService.isTokenExpired();
       expect(result).toBe(true);
+    });
+
+    it("returns false for malformed JWT (non-base64 payload)", async () => {
+      tauriInvoke.mockResolvedValueOnce("header.!!!invalid!!!.signature");
+      const result = await authService.isTokenExpired();
+      // Current behavior: catch block falls through to return false
+      expect(result).toBe(false);
+    });
+
+    it("returns false for JWT with no exp field", async () => {
+      const payload = btoa(JSON.stringify({ sub: "user1" }));
+      const fakeJwt = `header.${payload}.signature`;
+
+      tauriInvoke.mockResolvedValueOnce(fakeJwt);
+      const result = await authService.isTokenExpired();
+      // No exp field → falls through to return false
+      expect(result).toBe(false);
     });
   });
 
@@ -382,6 +460,24 @@ describe("authService — Tauri context (hasTauri=true)", () => {
       const navigate = vi.fn();
       await authService.logout(navigate);
       expect(tauriInvoke).toHaveBeenCalledWith("clear_all_credentials", undefined);
+    });
+
+    it("also clears all 5 legacy localStorage keys", async () => {
+      tauriInvoke.mockResolvedValueOnce(undefined);
+      localStorage.setItem("smartspec_auth_token", "token");
+      localStorage.setItem("smartspec_user_data", "{}");
+      localStorage.setItem("smartspec_web_refresh_token", "rt");
+      localStorage.setItem("smartspec_web_token_expiry", "123");
+      localStorage.setItem("smartspec_web_user", "{}");
+
+      const navigate = vi.fn();
+      await authService.logout(navigate);
+
+      expect(localStorage.getItem("smartspec_auth_token")).toBeNull();
+      expect(localStorage.getItem("smartspec_user_data")).toBeNull();
+      expect(localStorage.getItem("smartspec_web_refresh_token")).toBeNull();
+      expect(localStorage.getItem("smartspec_web_token_expiry")).toBeNull();
+      expect(localStorage.getItem("smartspec_web_user")).toBeNull();
     });
   });
 
