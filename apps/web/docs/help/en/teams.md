@@ -5,8 +5,8 @@ description: Create and manage collaborative AI assistant teams
 icon: UsersRound
 section: features
 order: 25
-pages: ["/teams", "/teams/:teamId"]
-tags: [team, assistant, collaboration, agent, orchestrator, room, discussion]
+pages: ["/teams", "/teams/:teamId", "/chat"]
+tags: [team, assistant, collaboration, agent, orchestrator, room, discussion, sidebar]
 ---
 
 # AI Teams
@@ -20,6 +20,22 @@ Common uses:
 - Content drafts that need both creation and editorial review
 - Multi-step workflows where each step requires a different specialty
 - Brainstorming sessions with structured synthesis
+
+## Finding Teams
+
+Teams are accessible from **two places**:
+
+### Teams Page
+
+Click **Teams** in the main sidebar (requires the `ORCHESTRATOR_ENABLED` feature flag).
+
+The Teams page has two panels:
+- **Left sidebar** — lists all your teams with search. Each entry shows member count and room count.
+- **Main area** — shows the selected team's rooms or the active team room conversation.
+
+### Chat Sidebar
+
+At the bottom of the **Chat** sidebar, there's a collapsible **Team Rooms** section. Click to expand and see your teams. Clicking a team navigates you to the Teams page.
 
 ## Creating a Team
 
@@ -50,16 +66,37 @@ Click **Add Member** in the team detail page. Each member is a persona (an AI as
 
 ## Team Rooms
 
-Each team has one or more **rooms** — discussion spaces where agents exchange messages during a run. Rooms are similar to chat threads but multi-participant.
+Each team has one or more **rooms** — discussion spaces where agents exchange messages during a run.
 
-- The **main room** is created automatically and contains the full conversation.
-- You can create additional rooms to isolate parallel workstreams (e.g., a research room and an editing room).
+### Creating a Room
 
-View room activity by clicking the room name in the team sidebar. Messages are attributed to each agent so you can follow the discussion thread.
+1. Select a team on the Teams page.
+2. Click **New Room** in the top bar.
+3. Choose a **Room Type**:
+   - **Team** — collaborative multi-agent discussion (most common).
+   - **Direct** — one-on-one with a specific agent.
+   - **Auto Team** — system-managed execution with minimal user interaction.
+   - **Job Review** — structured review workflow.
+4. Describe the **Objective / Goal** — e.g., "Research the top 5 CRM tools for small businesses."
+5. Click **Create Room**.
+
+### Room Cards
+
+On the team detail page, rooms appear as cards showing:
+- Room type and status (active / archived)
+- The goal prompt
+- Click a card to enter the room conversation
+
+### Sending Messages
+
+Inside a room, use the message input at the bottom:
+- Messages go to **all agents** by default.
+- Target a **specific agent** using the recipient selector.
+- System messages (budget warnings, errors) appear with a distinct style.
 
 ## Starting a Run
 
-1. Open the team and click **Start Run**.
+1. Open a room and click **Start Run**.
 2. Enter your prompt — describe what you want the team to accomplish.
 3. Click **Send**.
 
@@ -72,10 +109,16 @@ The lead agent receives your prompt first, breaks it into subtasks, and assigns 
 While a run is active:
 
 - The **Activity** panel shows each agent's current status: idle, thinking, or responding.
-- Messages appear in the room in real time as agents produce them.
+- Messages appear in the room in **real time** via live streaming (SSE).
 - A **progress indicator** shows how many subtasks are complete vs. pending.
 
 You can interrupt a run at any time by clicking **Stop Run**. Partial results remain in the room.
+
+## URL Deep-Linking
+
+You can bookmark or share direct links to teams:
+- `/teams` — opens the Teams page
+- `/teams/:teamId` — opens the Teams page with a specific team pre-selected
 
 ## Templates
 
@@ -89,3 +132,7 @@ Use a pre-built team template to get started quickly:
 | Technical Review | One implementer, one code reviewer, one documentation writer |
 
 Select a template when creating a new team to pre-populate member roles. You can customize personas and roles after the team is created.
+
+## Archiving a Team
+
+Click the **Archive** button on the team's top bar. Archived teams are hidden from the default list but can be recovered by an admin.

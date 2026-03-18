@@ -5,10 +5,10 @@
  * Right: selected team's room with TeamRoomView.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
-import { useLocation } from "wouter";
+import { useLocation, useRoute } from "wouter";
 import { TeamRoomView } from "@/components/orchestrator/TeamRoomView";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,7 +39,6 @@ import {
   Menu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useEffect } from "react";
 
 interface CreateRoomState {
   teamId: string;
@@ -50,6 +49,7 @@ interface CreateRoomState {
 export default function Teams() {
   const { isLoading: authLoading, isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
+  const [, routeParams] = useRoute("/teams/:teamId");
   const [search, setSearch] = useState("");
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
@@ -62,12 +62,19 @@ export default function Teams() {
     if (!authLoading && !isAuthenticated) setLocation("/login");
   }, [authLoading, isAuthenticated, setLocation]);
 
+  // Handle URL deep-linking: /teams/:teamId
+  useEffect(() => {
+    if (routeParams?.teamId && !selectedTeamId) {
+      setSelectedTeamId(routeParams.teamId);
+    }
+  }, [routeParams?.teamId]);
+
   // Fetch teams
   const { data: teamsData, isLoading: teamsLoading } = trpc.team.list.useQuery();
   const teams = teamsData ?? [];
 
   // Fetch rooms for selected team
-  const { data: teamDetail } = trpc.team.get.useQuery(
+  const { data: teamRooms } = trpc.teamRoom.listByTeam.useQuery(
     { teamId: selectedTeamId! },
     { enabled: !!selectedTeamId },
   );
@@ -77,7 +84,7 @@ export default function Teams() {
     onSuccess: (data) => {
       setSelectedRoomId(data.id);
       setCreateRoomDialog(null);
-      utils.team.get.invalidate({ teamId: selectedTeamId! });
+      utils.teamRoom.listByTeam.invalidate({ teamId: selectedTeamId! });
     },
   });
 
@@ -151,15 +158,15 @@ export default function Teams() {
             <div className="flex flex-col gap-0.5 px-2 py-1">
               {filteredTeams.map((team: any) => (
                 <button
-                  key={team.id ?? team.teamId}
+                  key={team.id}
                   onClick={() => {
-                    setSelectedTeamId(team.id ?? team.teamId);
+                    setSelectedTeamId(team.id);
                     setSelectedRoomId(null);
                     if (window.innerWidth < 1024) setSidebarOpen(false);
                   }}
                   className={cn(
                     "flex items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm transition-colors hover:bg-accent",
-                    (team.id ?? team.teamId) === selectedTeamId && "bg-accent",
+                    (team.id) === selectedTeamId && "bg-accent",
                   )}
                 >
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -168,7 +175,7 @@ export default function Teams() {
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-medium">{team.name}</div>
                     <div className="truncate text-xs text-muted-foreground">
-                      {team.category ?? "team"} · {team.status ?? "active"}
+                      {team.memberCount ?? 0} members · {team.roomCount ?? 0} rooms
                     </div>
                   </div>
                 </button>
@@ -204,7 +211,7 @@ export default function Teams() {
                   size="sm"
                   onClick={() =>
                     setCreateRoomDialog({
-                      teamId: selectedTeam.id ?? selectedTeam.teamId,
+                      teamId: selectedTeam.id,
                       goalPrompt: "",
                       roomType: "team",
                     })
@@ -216,7 +223,7 @@ export default function Teams() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => archiveMutation.mutate({ teamId: selectedTeam.id ?? selectedTeam.teamId })}
+                  onClick={() => archiveMutation.mutate({ teamId: selectedTeam.id })}
                 >
                   <Archive className="h-4 w-4" />
                 </Button>
@@ -241,9 +248,9 @@ export default function Teams() {
               <h3 className="mb-4 text-lg font-medium">
                 Rooms in {selectedTeam?.name ?? "Team"}
               </h3>
-              {teamDetail?.rooms && teamDetail.rooms.length > 0 ? (
+              {teamRooms && teamRooms.length > 0 ? (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {teamDetail.rooms.map((room: any) => (
+                  {teamRooms.map((room: any) => (
                     <button
                       key={room.id}
                       onClick={() => setSelectedRoomId(room.id)}

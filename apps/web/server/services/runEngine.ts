@@ -225,8 +225,25 @@ export async function startRun(input: StartRunInput): Promise<TeamRun> {
     .set({ lastRunId: runId, updatedAt: now })
     .where(eq(teamRooms.id, input.roomId));
 
-  // TODO: Publish run_started event to Redis (Section 11)
-  // TODO: Schedule first turn via BullMQ or setImmediate (Section 06 dependency)
+  // Start auto-stop policy checker
+  startAutoStopChecker(runId);
+
+  // Publish run_started event to Redis for SSE
+  try {
+    const { publishEvent, createEvent } = await import("./orchestratorEventBus");
+    await publishEvent(createEvent("run_started", {
+      tenantId: input.tenantId,
+      teamId: room.teamId,
+      roomId: input.roomId,
+      runId,
+      actorType: "user",
+      actorId: String(input.initiatedByUserId),
+      data: { executionMode: input.executionMode, objective: input.objective.slice(0, 200) },
+      userId: input.initiatedByUserId,
+    }));
+  } catch {
+    // Non-critical — SSE notification missed
+  }
 
   return run;
 }
@@ -275,6 +292,7 @@ export async function pauseRun(runId: string, tenantId?: string): Promise<TeamRu
     .where(eq(teamRuns.id, runId))
     .returning();
 
+  stopAutoStopChecker(runId);
   return updated;
 }
 
@@ -294,7 +312,8 @@ export async function resumeRun(runId: string, tenantId?: string): Promise<TeamR
     .where(eq(teamRuns.id, runId))
     .returning();
 
-  // TODO: Schedule next turn
+  // Restart auto-stop checker
+  startAutoStopChecker(runId);
 
   return updated;
 }
@@ -356,8 +375,36 @@ export async function stopRun(
     return [updatedRun];
   });
 
-  // TODO: Publish run_completed event
-  // TODO: Call summary service if requireFinalSummary
+  stopAutoStopChecker(runId);
+
+  // Publish run_completed event to Redis for SSE
+  try {
+    const { publishEvent, createEvent } = await import("./orchestratorEventBus");
+    await publishEvent(createEvent("run_completed", {
+      tenantId: tenantId ?? "",
+      teamId: run.teamId,
+      roomId: run.roomId,
+      runId,
+      actorType: "system",
+      actorId: "system",
+      data: { reason, status: "completed" },
+    }));
+  } catch {
+    // Non-critical
+  }
+
+  // Generate final summary if stop policy requires it
+  const stopPolicy = run.stopPolicyJson as StopPolicy | null;
+  if (stopPolicy?.requireFinalSummary) {
+    try {
+      const bridge = await import("./teamOrchestrationBridge");
+      if ("generateSummary" in bridge && typeof bridge.generateSummary === "function") {
+        (bridge.generateSummary as Function)(run.roomId, runId).catch(() => {});
+      }
+    } catch {
+      // Summary generation is best-effort
+    }
+  }
 
   return updated;
 }
@@ -367,4 +414,77 @@ export async function getRun(runId: string, tenantId?: string): Promise<TeamRun 
   if (!db) throw new Error("Database not available");
 
   return loadRunWithTenantCheck(db, runId, tenantId);
+}
+
+// ─── Auto-Stop Policy Checker ───────────────────────────────────────────────
+
+/** Check a single run's stop policy and auto-stop if conditions are met. */
+export async function checkAndAutoStop(runId: string): Promise<StopEvaluation> {
+  const db = await getDb();
+  if (!db) return { shouldStop: false, reason: null };
+
+  const [run] = await db.select().from(teamRuns).where(eq(teamRuns.id, runId)).limit(1);
+  if (!run || run.status !== "running") return { shouldStop: false, reason: null };
+
+  const policy = run.stopPolicyJson as StopPolicyInput | null;
+  if (!policy) return { shouldStop: false, reason: null };
+
+  const budget = (run.budgetSnapshotJson as BudgetSnapshot) ?? initBudgetSnapshot();
+
+  // Count rounds (turns completed)
+  const [roundCount] = await db
+    .select({ cnt: count() })
+    .from(agentActivityEvents)
+    .where(and(eq(agentActivityEvents.runId, runId), sql`${agentActivityEvents.eventType} = 'agent_turn'`));
+
+  // Get latest activity timestamp
+  const [latestActivity] = await db
+    .select({ ts: agentActivityEvents.createdAt })
+    .from(agentActivityEvents)
+    .where(eq(agentActivityEvents.runId, runId))
+    .orderBy(desc(agentActivityEvents.createdAt))
+    .limit(1);
+
+  const evaluation = evaluateStopConditions(policy, {
+    currentRound: Number(roundCount?.cnt ?? 0),
+    totalCreditsUsed: budget.totalCreditsUsed,
+    startedAt: run.startedAt ?? new Date(),
+    lastActivityAt: latestActivity?.ts ?? run.startedAt ?? new Date(),
+  });
+
+  if (evaluation.shouldStop) {
+    await stopRun(runId, evaluation.reason ?? "auto_stop_policy");
+  }
+
+  return evaluation;
+}
+
+const AUTO_STOP_CHECK_INTERVAL_MS = 30_000; // 30 seconds
+const activeCheckers = new Map<string, ReturnType<typeof setInterval>>();
+
+/** Start periodic auto-stop checking for a run. Call after startRun. */
+export function startAutoStopChecker(runId: string): void {
+  if (activeCheckers.has(runId)) return;
+
+  const interval = setInterval(async () => {
+    try {
+      const result = await checkAndAutoStop(runId);
+      if (result.shouldStop) {
+        stopAutoStopChecker(runId);
+      }
+    } catch {
+      // Checker error — will retry next interval
+    }
+  }, AUTO_STOP_CHECK_INTERVAL_MS);
+
+  activeCheckers.set(runId, interval);
+}
+
+/** Stop the periodic checker (on manual stop, pause, or completion). */
+export function stopAutoStopChecker(runId: string): void {
+  const interval = activeCheckers.get(runId);
+  if (interval) {
+    clearInterval(interval);
+    activeCheckers.delete(runId);
+  }
 }

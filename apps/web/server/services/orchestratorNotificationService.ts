@@ -50,7 +50,29 @@ export async function createNotification(
     })
     .returning();
 
-  // TODO: Publish to Redis for SSE delivery (Section 11)
+  // Publish notification to Redis for real-time SSE delivery
+  try {
+    const { publishEvent, createEvent } = await import("./orchestratorEventBus");
+    if (input.runId && input.teamId) {
+      await publishEvent(createEvent("notification", {
+        tenantId: input.tenantId,
+        teamId: input.teamId,
+        roomId: input.roomId ?? "",
+        runId: input.runId,
+        actorType: "system",
+        actorId: "system",
+        data: {
+          notificationId: notification.id,
+          notificationType: input.notificationType,
+          title: input.title,
+          severity: input.severity ?? "info",
+        },
+        userId: input.userId,
+      }));
+    }
+  } catch {
+    // Non-critical — notification persisted, SSE delivery is best-effort
+  }
 
   return notification;
 }

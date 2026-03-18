@@ -257,9 +257,10 @@ export async function searchMemories(
             : "keyword")
         : "keyword";
 
+      const recency = computeRecencyFactor(row.memory.updatedAt ?? row.memory.createdAt);
       seen.set(key, {
         memory: row.memory,
-        score: Number(row.combinedScore),
+        score: Number(row.combinedScore) * recency,
         matchType,
       });
     }

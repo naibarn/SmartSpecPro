@@ -36,7 +36,7 @@ export function useRunStream(options: UseRunStreamOptions) {
   const eventSourceRef = useRef<EventSource | null>(null);
   const lastEventIdRef = useRef<string>("");
   const retryCountRef = useRef(0);
-  const retryTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const connect = useCallback(() => {
     if (!enabled) return;
@@ -45,8 +45,11 @@ export function useRunStream(options: UseRunStreamOptions) {
     const streamId = runId ?? teamId;
     if (!streamType || !streamId) return;
 
-    const url = `/api/orchestrator/stream/${streamType}/${streamId}`;
-    const es = new EventSource(url);
+    const lastId = lastEventIdRef.current;
+    const url = lastId
+      ? `/api/orchestrator/stream/${streamType}/${streamId}?lastEventId=${encodeURIComponent(lastId)}`
+      : `/api/orchestrator/stream/${streamType}/${streamId}`;
+    const es = new EventSource(url, { withCredentials: true });
 
     es.onopen = () => {
       setConnected(true);

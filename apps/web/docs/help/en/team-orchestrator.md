@@ -5,8 +5,8 @@ description: Create AI agent teams that collaborate in real-time conversations
 icon: Users
 section: advanced
 order: 75
-pages: ["/chat", "/team"]
-tags: [team, orchestrator, agents, collaboration, room, run, multi-agent, discussion]
+pages: ["/chat", "/teams", "/teams/:teamId"]
+tags: [team, orchestrator, agents, collaboration, room, run, multi-agent, discussion, auto-stop, inter-agent]
 ---
 
 # AI Team Orchestrator
@@ -89,13 +89,22 @@ A **Run** is an automated work session inside a room.
    - **Stop on consensus** — end when agents agree.
    - **Require final summary** — generate a structured report at the end.
 
+### Auto-Stop Policy Enforcement
+
+Stop policies are **actively enforced** every 30 seconds by an automatic checker:
+
+- The system evaluates all stop conditions (rounds, duration, budget, idle timeout) continuously.
+- If any condition triggers, the run is **automatically stopped** with the appropriate reason.
+- The checker starts when a run begins and stops when the run is paused, completed, or stopped.
+- You don't need to monitor — the system protects against runaway costs and duration.
+
 ### Run Controls
 
 | Action | When to use |
 |--------|-------------|
-| **Pause** | Review progress mid-run without losing context |
-| **Resume** | Continue a paused run from where it left off |
-| **Stop** | End the run immediately; generates summaries |
+| **Pause** | Review progress mid-run without losing context. The auto-stop checker pauses too. |
+| **Resume** | Continue a paused run from where it left off. The auto-stop checker resumes. |
+| **Stop** | End the run immediately; generates summaries. |
 
 ### Budget Tracking
 
@@ -108,8 +117,38 @@ A **Run** is an automated work session inside a room.
 When a run ends (via stop policy or manual stop):
 
 1. **Agent Run Summaries** are generated — per-agent stats including turn count, tokens used, cost, tool calls, and error count.
-2. If **Require Final Summary** is enabled, a structured report is produced with key decisions, findings, artifacts, and next steps.
+2. If **Require Final Summary** is enabled, a structured report is produced with key decisions, findings, artifacts, and next steps. This calls the Python backend to generate an LLM-powered summary.
 3. An **orchestrator notification** is sent to you.
+4. Events are published via SSE for any connected clients to update in real time.
+
+## Inter-Agent Communication
+
+Agents can interact with external systems and other teams:
+
+### System Broadcasts
+
+When a system-wide event occurs (e.g., all LLM providers go down, credit pool exhausted), the system broadcasts an alert to all active runs. Each run receives an **impact assessment**:
+
+| Impact Level | Meaning |
+|-------------|---------|
+| **Critical** | Run cannot continue — LLM access is blocked or budget depleted |
+| **Degraded** | Run can continue but quality may be reduced — a provider went offline |
+| **Unaffected** | No impact on this run |
+
+### Automation Handoffs
+
+Agents can hand off work to external automation systems (e.g., trigger a media generation task, start a browser session). Handoffs are tracked and auditable.
+
+## Turn Order Strategies
+
+The orchestrator supports multiple turn-order strategies for how agents take turns:
+
+| Strategy | How it works |
+|----------|-------------|
+| **Round Robin** | Each agent speaks in fixed order |
+| **Lead First** | Lead always goes first, then members |
+| **Autonomy Based** | Agents with higher autonomy level speak first |
+| **Consensus Driven** | Lead polls members, then synthesizes |
 
 ## Tips for Effective Teams
 
@@ -119,3 +158,4 @@ When a run ends (via stop policy or manual stop):
 4. **Use Milestone view mode** when you only care about key decisions, not the full discussion.
 5. **Review the lead's summary** before stopping a run — it captures the team's conclusions.
 6. **Pause to intervene** — if agents go off-track, pause, send a correction message, then resume.
+7. **Auto-stop protects you** — even if you forget to stop a run, the policy checker will enforce limits every 30 seconds.

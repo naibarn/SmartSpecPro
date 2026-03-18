@@ -14,6 +14,7 @@ import {
   assistantProfiles,
   assistantTeamTemplates,
   personaTemplates,
+  teamRooms,
   type AssistantTeam,
   type AssistantProfile,
 } from "../../drizzle/schema";
@@ -472,8 +473,28 @@ export async function listTeams(
 
   const countMap = new Map(counts.map((c) => [c.teamId, Number(c.memberCount)]));
 
+  // Get room counts per team
+  const roomCounts = teamIds.length > 0
+    ? await db
+        .select({
+          teamId: teamRooms.teamId,
+          roomCount: count(),
+        })
+        .from(teamRooms)
+        .where(
+          and(
+            sql`${teamRooms.teamId} IN (${sql.join(teamIds.map(id => sql`${id}`), sql`, `)})`,
+            eq(teamRooms.tenantId, tenantId),
+          ),
+        )
+        .groupBy(teamRooms.teamId)
+    : [];
+
+  const roomCountMap = new Map(roomCounts.map((c) => [c.teamId, Number(c.roomCount)]));
+
   return teams.map((t) => ({
     ...t,
     memberCount: countMap.get(t.id) ?? 0,
+    roomCount: roomCountMap.get(t.id) ?? 0,
   }));
 }

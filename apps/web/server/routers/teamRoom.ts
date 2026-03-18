@@ -56,6 +56,13 @@ export const teamRoomRouter = router({
       });
     }),
 
+  listByTeam: protectedProcedure
+    .input(z.object({ teamId: z.string().min(1) }))
+    .query(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx);
+      return roomService.listRoomsByTeam(input.teamId, tenantId);
+    }),
+
   getMessages: protectedProcedure
     .input(z.object({
       roomId: z.string().min(1),

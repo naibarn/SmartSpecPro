@@ -8,6 +8,7 @@ import {
   teamRooms,
   teamRoomParticipants,
   teamRoomMessages,
+  teamRuns,
   assistantTeams,
   assistantProfiles,
   type TeamRoom,
@@ -236,8 +237,32 @@ export async function sendMessage(input: SendMessageInput): Promise<TeamRoomMess
     })
     .returning();
 
-  // TODO: Publish to Redis pub/sub for SSE (Section 11)
-  // redisPublisher.publish(`room:${input.roomId}:messages`, JSON.stringify(message));
+  // Publish to Redis pub/sub for SSE (Section 11)
+  try {
+    const { publishEvent, createEvent } = await import("./orchestratorEventBus");
+    // Find active run for this room to include runId
+    const [activeRun] = await db
+      .select({ id: teamRuns.id, teamId: teamRuns.teamId })
+      .from(teamRuns)
+      .where(and(eq(teamRuns.roomId, input.roomId), sql`${teamRuns.status} IN ('running', 'queued')`))
+      .limit(1);
+
+    if (activeRun) {
+      await publishEvent(createEvent("message", {
+        tenantId: input.tenantId,
+        teamId: activeRun.teamId,
+        roomId: input.roomId,
+        runId: activeRun.id,
+        actorType: input.senderType,
+        actorId: input.senderAssistantId ?? String(input.senderUserId ?? "system"),
+        visibility: (input.visibility as any) ?? "transparent",
+        data: { messageId: message.id, content: input.content.slice(0, 200) },
+        userId: input.senderUserId ?? undefined,
+      }));
+    }
+  } catch {
+    // Non-critical — SSE update missed but message persisted
+  }
 
   return message;
 }
@@ -280,6 +305,26 @@ export async function getMessages(
     filters.viewMode ?? "transparent",
     filters.callerType,
   );
+}
+
+export async function listRoomsByTeam(
+  teamId: string,
+  tenantId: string,
+): Promise<TeamRoom[]> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db
+    .select()
+    .from(teamRooms)
+    .where(
+      and(
+        eq(teamRooms.teamId, teamId),
+        eq(teamRooms.tenantId, tenantId),
+      ),
+    )
+    .orderBy(desc(teamRooms.createdAt))
+    .limit(50);
 }
 
 export async function getRoom(
