@@ -86,6 +86,8 @@ import { teamRoomRouter } from "./routers/teamRoom";
 import { teamRunRouter } from "./routers/teamRun";
 import { scopedMemoryRouter } from "./routers/scopedMemory";
 import { monitoringRouter } from "./routers/monitoring";
+import { inviteCodeRouter } from "./routers/inviteCode";
+import { userApiKeysRouter } from "./routers/userApiKeys";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -331,6 +333,7 @@ export const appRouter = router({
         password: strongPasswordSchema,
         company: z.string().max(255).optional(),
         plan: z.enum(['free', 'pro']).default('free'),
+        inviteCode: z.string().min(1).max(32).regex(/^[A-Za-z0-9-]+$/).optional(),
       }))
       .mutation(async ({ input, ctx }) => {
         const { getUserByEmail } = await import("./db");
@@ -338,6 +341,27 @@ export const appRouter = router({
         const bcrypt = await import("bcrypt");
         const { users, emailVerificationTokens, systemSettings, tenants } = await import("../drizzle/schema");
         const { eq, and } = await import("drizzle-orm");
+        const { checkRegistrationAllowed, checkDeviceFraudLimit, processInviteCodeUsage, giveInviteCodeBonuses, getAuthMethodsConfig } = await import("./services/inviteCodeService");
+
+        // Check if email auth method is allowed
+        const authMethods = await getAuthMethodsConfig();
+        if (!authMethods.email) {
+          throw new Error('Email registration is currently disabled');
+        }
+
+        // Check registration mode (open vs invite-only)
+        const regCheck = await checkRegistrationAllowed(input.inviteCode);
+        if (!regCheck.allowed) {
+          throw new Error(regCheck.error || 'Registration not allowed');
+        }
+
+        // Check device fraud limit
+        const fingerprintHash = ctx.req.cookies?.["__fp"] || undefined;
+        const ipAddress = (ctx.req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || ctx.req.ip || "unknown";
+        const fraudCheck = await checkDeviceFraudLimit(fingerprintHash, ipAddress);
+        if (!fraudCheck.allowed) {
+          throw new Error(fraudCheck.reason || 'Registration blocked');
+        }
 
         // Check if email already registered with a password
         const existing = await getUserByEmail(input.email);
@@ -407,6 +431,28 @@ export const appRouter = router({
 
         const user = await getUserByEmail(input.email);
         if (!user) throw new Error('Failed to create account');
+
+        // Record device fingerprint for fraud detection (matching OAuth path)
+        if (fingerprintHash) {
+          try {
+            const { recordDeviceFingerprint } = await import("./services/trustScoring");
+            await recordDeviceFingerprint(user.id, fingerprintHash);
+          } catch (err) {
+            console.error("[Register] Failed to record device fingerprint:", err);
+          }
+        }
+
+        // Process invite code if provided
+        if (regCheck.codeId) {
+          try {
+            const usageResult = await processInviteCodeUsage(regCheck.codeId, user.id);
+            if (usageResult.success) {
+              await giveInviteCodeBonuses(regCheck.codeId, user.id);
+            }
+          } catch (err) {
+            console.error("[Register] Failed to process invite code:", err);
+          }
+        }
 
         // Generate 6-digit verification code
         const code = String(crypto.randomInt(100000, 999999));
@@ -1420,6 +1466,9 @@ export const appRouter = router({
   // System settings management (admin) - Stripe, Invoice configuration
   systemSettings: systemSettingsRouter,
 
+  // Invite code management (admin + user referrals)
+  inviteCode: inviteCodeRouter,
+
   // Scheduled Messages / Chat Alerts
   scheduledMessages: scheduledMessagesRouter,
 
@@ -1798,6 +1847,7 @@ export const appRouter = router({
   contentArtifacts: contentArtifactsRouter,
   contentQuality: contentQualityRouter,
   apiKeys: apiKeysRouter,
+  userApiKeys: userApiKeysRouter,
   virtualAdmin: virtualAdminRouter,
   feedback: feedbackRouter,
 
