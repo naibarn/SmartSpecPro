@@ -71,6 +71,7 @@ const DomainAdminContent = lazy(() => import("./pages/DomainAdminContent"));
 const DomainUsers = lazy(() => import("./pages/DomainUsers"));
 const TenantSettings = lazy(() => import("./pages/TenantSettings"));
 const Chat = lazy(() => import("./pages/Chat"));
+const Notifications = lazy(() => import("./pages/Notifications"));
 const Generate = lazy(() => import("./pages/Generate"));
 const MediaStudio = lazy(() => import("./pages/MediaStudio"));
 const Credits = lazy(() => import("./pages/Credits"));
@@ -309,37 +310,41 @@ function Router() {
         <Route path="/login" component={Login} />
         <Route path="/signup" component={Signup} />
         <Route path="/forgot-password" component={ForgotPassword} />
-        <Route path="/chat" component={Chat} />
-        <Route path="/automation" component={AutomationPage} />
-        <Route path="/automation/live/:sessionId" component={AutomationPage} />
-        <Route path="/teams" component={Teams} />
-        <Route path="/teams/:teamId" component={Teams} />
-        <Route path="/agencies" component={AgencyBrowser} />
-        <Route path="/agencies/templates" component={AgencyTemplates} />
-        <Route path="/agencies/marketplace" component={AgencyMarketplace} />
-        <Route path="/agencies/:id/edit" component={AgencyBuilder} />
-        <Route path="/agencies/:id" component={AgencyChat} />
-        <Route path="/workflows" component={Workflows} />
-        <Route path="/workflows/editor" component={WorkflowEditor} />
-        <Route path="/workflows/gallery" component={WorkflowGallery} />
-        <Route path="/workflows/editor/:id" component={WorkflowEditor} />
-        <Route path="/webhook-triggers" component={WebhookTriggers} />
-        <Route path="/dashboard" component={Dashboard} />
-        <Route path="/generate/:type?" component={Generate} />
-        <Route path="/media-studio" component={MediaStudio} />
-        <Route path="/credits" component={Credits} />
-        <Route path="/usage" component={UsageAnalytics} />
-        <Route path="/tasks" component={TaskQueueMonitor} />
-        <Route path="/media-history" component={MediaHistory} />
-        <Route path="/groups" component={GroupManagement} />
-        <Route path="/groups/discover" component={GroupDiscovery} />
-        <Route path="/groups/:groupId" component={GroupDetailPanel} />
-        <Route path="/document-management" component={DocumentManagement} />
+        <Route path="/chat"><RequireAuth><Chat /></RequireAuth></Route>
+        <Route path="/automation"><RequireAuth><AutomationPage /></RequireAuth></Route>
+        <Route path="/automation/live/:sessionId"><RequireAuth><AutomationPage /></RequireAuth></Route>
+        <Route path="/teams"><RequireAuth><Teams /></RequireAuth></Route>
+        <Route path="/teams/:teamId"><RequireAuth><Teams /></RequireAuth></Route>
+        <Route path="/agencies"><RequireAuth><AgencyBrowser /></RequireAuth></Route>
+        <Route path="/agencies/templates"><RequireAuth><AgencyTemplates /></RequireAuth></Route>
+        <Route path="/agencies/marketplace"><RequireAuth><AgencyMarketplace /></RequireAuth></Route>
+        <Route path="/agencies/:id/edit"><RequireAuth><AgencyBuilder /></RequireAuth></Route>
+        <Route path="/agencies/:id"><RequireAuth><AgencyChat /></RequireAuth></Route>
+        <Route path="/workflows"><RequireAuth><Workflows /></RequireAuth></Route>
+        <Route path="/workflows/editor"><RequireAuth><WorkflowEditor /></RequireAuth></Route>
+        <Route path="/workflows/gallery"><RequireAuth><WorkflowGallery /></RequireAuth></Route>
+        <Route path="/workflows/editor/:id"><RequireAuth><WorkflowEditor /></RequireAuth></Route>
+        <Route path="/webhook-triggers"><RequireAuth><WebhookTriggers /></RequireAuth></Route>
+        <Route path="/dashboard"><RequireAuth><Dashboard /></RequireAuth></Route>
+        <Route path="/notifications"><RequireAuth><Notifications /></RequireAuth></Route>
+        <Route path="/generate/:type?"><RequireAuth><Generate /></RequireAuth></Route>
+        <Route path="/media-studio"><RequireAuth><MediaStudio /></RequireAuth></Route>
+        <Route path="/credits"><RequireAuth><Credits /></RequireAuth></Route>
+        <Route path="/usage"><RequireAuth><UsageAnalytics /></RequireAuth></Route>
+        <Route path="/tasks"><RequireAuth><TaskQueueMonitor /></RequireAuth></Route>
+        <Route path="/media-history"><RequireAuth><MediaHistory /></RequireAuth></Route>
+        <Route path="/groups"><RequireAuth><GroupManagement /></RequireAuth></Route>
+        <Route path="/groups/discover"><RequireAuth><GroupDiscovery /></RequireAuth></Route>
+        <Route path="/groups/:groupId"><RequireAuth><GroupDetailPanel /></RequireAuth></Route>
+        <Route path="/document-management"><RequireAuth><DocumentManagement /></RequireAuth></Route>
         <Route path="/settings"><RequireAuth><Settings /></RequireAuth></Route>
         <Route path="/settings/personas"><RequireAuth><PersonaSettings /></RequireAuth></Route>
         <Route path="/settings/skills"><RequireAuth><SkillBrowser /></RequireAuth></Route>
-        <Route path="/my-feedback" component={MyFeedback} />
-        <Route path="/profile" component={Profile} />
+        <Route path="/my-feedback"><RequireAuth><MyFeedback /></RequireAuth></Route>
+        <Route path="/profile"><RequireAuth><Profile /></RequireAuth></Route>
+        <Route path="/video-editor"><RequireAuth><VideoEditorPage /></RequireAuth></Route>
+        <Route path="/presentations"><RequireAuth><PresentationLibrary /></RequireAuth></Route>
+        <Route path="/presentation-editor/:docId"><RequireAuth><PresentationEditor /></RequireAuth></Route>
         <Route path="/terms" component={Terms} />
         <Route path="/privacy" component={Privacy} />
         <Route path="/verify-email" component={VerifyEmail} />
@@ -347,13 +352,10 @@ function Router() {
         <Route path="/auth/callback/onedrive" component={OneDriveCallback} />
         <Route path="/auth/callback/:provider" component={AuthCallback} />
         <Route path="/auth/device" component={DeviceAuth} />
-        <Route path="/factory" component={Factory} />
-        <Route path="/terminal" component={TerminalPage} />
-        <Route path="/kilo" component={CLIPage} />
-        <Route path="/docker" component={DockerPage} />
-        <Route path="/video-editor" component={VideoEditorPage} />
-        <Route path="/presentations" component={PresentationLibrary} />
-        <Route path="/presentation-editor/:docId" component={PresentationEditor} />
+        <Route path="/factory"><RequireAuth><Factory /></RequireAuth></Route>
+        <Route path="/terminal"><RequireAuth><TerminalPage /></RequireAuth></Route>
+        <Route path="/kilo"><RequireAuth><CLIPage /></RequireAuth></Route>
+        <Route path="/docker"><RequireAuth><DockerPage /></RequireAuth></Route>
         <Route path="/presentation/:itemId/play" component={PresentationPlayMode} />
         <Route path="/docker-redirect" component={DockerRedirect} />
         <Route path="/404" component={NotFound} />

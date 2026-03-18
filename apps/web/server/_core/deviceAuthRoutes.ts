@@ -122,7 +122,10 @@ function generateUserCode(): string {
  * Get JWT signing key
  */
 function getSigningKey() {
-  const secret = ENV.cookieSecret || "default-secret-change-me";
+  const secret = ENV.cookieSecret;
+  if (!secret) {
+    throw new Error("FATAL: JWT_SECRET (cookieSecret) not configured for device auth");
+  }
   return new TextEncoder().encode(secret);
 }
 
@@ -664,7 +667,8 @@ export function registerDeviceAuthRoutes(app: Express) {
    * Get current user info (for desktop app)
    * GET /auth/me
    */
-  app.get("/auth/me", async (req: Request, res: Response) => {
+  const meLimiter = rateLimit("auth_me", { rpm: 60 });
+  app.get("/auth/me", meLimiter, async (req: Request, res: Response) => {
     const auth = await authorizeRequest(req, { allowBearer: true, allowSession: true });
     
     if (!auth.ok) {
