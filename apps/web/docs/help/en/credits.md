@@ -1,0 +1,61 @@
+---
+slug: credits
+title: Credits System
+description: Understanding and managing your AI credits
+icon: Coins
+section: getting-started
+order: 5
+pages: ["/credits", "/dashboard"]
+tags: [credits, pricing, usage, cost, balance]
+---
+
+# Credits System
+
+Credits are the currency used to pay for AI requests on SmartAI Hub. Every time you send a message, generate media, or run an agency, credits are deducted based on the cost of the underlying AI model call.
+
+## How credits work
+
+- Each LLM request consumes credits proportional to the number of tokens processed (input + output).
+- Media generation (images, video, audio) consumes a fixed credit amount per generation based on the provider and quality settings.
+- Agencies consume credits for each agent step within the workflow.
+- Credit costs are shown in the UI before expensive operations where possible.
+
+## Checking your balance
+
+Your current credit balance is displayed in the top bar. Click **Credits** in the sidebar for a detailed breakdown including:
+
+- Current balance
+- Recent transactions with timestamps and amounts
+- Per-request cost breakdown by model
+
+## Topping up
+
+Click the **Top Up** button on the Credits page to purchase additional credits. Credits are non-expiring and tied to your account.
+
+## Model pricing
+
+Different AI models cost different amounts of credits:
+
+- **Economy models** (e.g., Gemini Flash, GPT-4o-mini) — lowest cost, good for simple tasks
+- **Standard models** (e.g., GPT-4o, Claude Sonnet) — balanced cost and capability
+- **Premium models** (e.g., GPT-o1, Claude Opus) — highest cost, best for complex reasoning
+- **Media generation** — fixed cost per generation, varies by provider and quality
+
+The exact cost per request is shown in the message cost badge after each response.
+
+## Usage analytics
+
+Navigate to **Usage** in the sidebar to see:
+
+- Daily/weekly/monthly credit consumption
+- Breakdown by model and feature type
+- Top cost drivers
+- Budget alerts if configured
+
+## Cost-saving tips
+
+- Use lighter models (e.g., smaller parameter models) for simple tasks like summarization and classification.
+- Reserve high-capability models for complex reasoning, code generation, or creative tasks.
+- Enable **Brainstorm Mode** only when you need two models to collaborate — it uses twice the credits per exchange.
+- Use skills to structure prompts efficiently rather than re-typing long instructions manually.
+- Check the model picker tooltip to compare costs before switching models.

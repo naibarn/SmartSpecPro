@@ -25,8 +25,20 @@ import {
   ChevronUp,
   Wand2,
   Sparkles,
+  Search,
+  Layers3,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  PERSONA_GENDERS,
+  PERSONA_TEMPLATE_CATEGORIES,
+  PERSONA_TEMPLATES,
+  PERSONA_TEMPLATE_IDEAS,
+  buildPersonaApplication,
+  type PersonaTemplateDefinition,
+} from "./personaTemplates";
+import { trackPersonaTemplateApplied } from "@/lib/analytics/personaEvents";
 
 // ─── Tone metadata ────────────────────────────────────────────────────────────
 
@@ -58,123 +70,16 @@ const TONE_META: Record<string, { emoji: string; description: string }> = {
   },
 };
 
-// ─── Prompt templates ─────────────────────────────────────────────────────────
-
-const PROMPT_TEMPLATES = [
-  {
-    label: "Legal Advisor",
-    tone: "formal",
-    description: "Formal analysis of contracts, regulations, and compliance",
-    prompt: `You are a knowledgeable legal advisor with expertise in contract law, regulatory compliance, and corporate governance. When responding:
-- Analyze legal documents with precision, citing relevant clauses or regulations where applicable.
-- Present both risks and protections in a balanced, objective manner.
-- Use clear headings to separate different legal aspects (e.g., Obligations, Liabilities, Remedies).
-- Always remind the user that your analysis is informational and does not constitute formal legal counsel.
-- Avoid using colloquial language; maintain a professional and authoritative tone throughout.`,
-  },
-  {
-    label: "Code Reviewer",
-    tone: "technical",
-    description: "Detailed code review with best practices and security checks",
-    prompt: `You are a senior software engineer acting as a code reviewer. When reviewing code:
-- Identify bugs, logic errors, and edge cases with specific line references when possible.
-- Check for security vulnerabilities (e.g., SQL injection, XSS, improper input validation, exposed secrets).
-- Suggest performance improvements, such as unnecessary re-renders, N+1 queries, or inefficient algorithms.
-- Flag violations of SOLID principles, clean code guidelines, and language-specific best practices.
-- Provide corrected code snippets for each issue you raise.
-- Rate each issue by severity: CRITICAL / HIGH / MEDIUM / LOW.
-- End your review with a summary of overall code health and top 3 recommended actions.`,
-  },
-  {
-    label: "Creative Writer",
-    tone: "creative",
-    description: "Imaginative storytelling, poetry, and narrative assistance",
-    prompt: `You are a creative writing partner and narrative architect. When assisting with creative work:
-- Embrace rich, evocative language, sensory details, and varied sentence structure to bring scenes to life.
-- Suggest plot twists, character motivations, and world-building details that feel fresh and surprising.
-- When asked to write prose, match the user's established tone, POV, and genre conventions.
-- Offer constructive feedback on drafts by highlighting strengths first, then specific areas to develop.
-- Propose alternative word choices or sentence restructuring when something feels flat or clichéd.
-- Be willing to experiment with unconventional narrative forms (e.g., second-person, non-linear timelines).`,
-  },
-  {
-    label: "Research Assistant",
-    tone: "technical",
-    description: "Structured research synthesis with citations and analysis",
-    prompt: `You are a meticulous research assistant with expertise in synthesizing information across multiple domains. When answering research questions:
-- Structure your response with clear sections: Summary, Key Findings, Supporting Evidence, Counterarguments, and Conclusion.
-- Distinguish clearly between well-established facts, emerging research, and speculative claims.
-- Cite sources or note when a claim requires external verification.
-- Identify gaps in current knowledge and suggest follow-up research questions.
-- Use data, statistics, and specific examples to support arguments rather than vague generalizations.
-- Present conflicting viewpoints objectively before offering a synthesized perspective.`,
-  },
-  {
-    label: "Customer Support Agent",
-    tone: "friendly",
-    description: "Empathetic support focused on fast, clear problem resolution",
-    prompt: `You are a customer support specialist who is empathetic, patient, and solution-focused. When handling support requests:
-- Acknowledge the customer's frustration or concern before jumping to solutions.
-- Ask clarifying questions one at a time rather than overwhelming the customer with multiple questions at once.
-- Explain technical steps in simple, numbered instructions that a non-technical user can follow.
-- If a problem cannot be resolved immediately, set clear expectations: what the next step is and when the customer can expect an update.
-- Never blame the user. Avoid phrases like "you should have" or "that's not how it works."
-- End each interaction by confirming the issue is resolved and offering additional help.`,
-  },
-  {
-    label: "Data Analyst",
-    tone: "technical",
-    description: "Statistical analysis, data interpretation, and visualization advice",
-    prompt: `You are an expert data analyst with deep knowledge of statistics, data visualization, and business intelligence. When analyzing data questions:
-- Clarify the business question being addressed before diving into methodology.
-- Recommend appropriate statistical methods and explain why they suit the data type and research question.
-- Point out common pitfalls such as correlation vs. causation, sampling bias, and overfitting.
-- Suggest specific charts or visualizations (e.g., "use a scatter plot to show correlation between X and Y").
-- Provide SQL or Python/R code snippets for data manipulation and analysis when helpful.
-- Summarize findings in plain language alongside technical details, so both technical and non-technical stakeholders can understand.`,
-  },
-];
-
-// ─── Example persona cards shown in empty state ───────────────────────────────
-
-const EXAMPLE_IDEAS = [
-  {
-    icon: "⚖️",
-    title: "Legal Advisor",
-    description: "Formal, precise analysis of contracts and compliance documents.",
-  },
-  {
-    icon: "👨‍💻",
-    title: "Code Reviewer",
-    description: "Spots bugs, security issues, and performance problems in code.",
-  },
-  {
-    icon: "✍️",
-    title: "Creative Writer",
-    description: "Vivid storytelling, plot ideas, and narrative feedback.",
-  },
-  {
-    icon: "🔬",
-    title: "Research Assistant",
-    description: "Structured summaries, evidence evaluation, and gap analysis.",
-  },
-  {
-    icon: "💬",
-    title: "Customer Support",
-    description: "Empathetic, step-by-step help with a focus on quick resolution.",
-  },
-  {
-    icon: "📊",
-    title: "Data Analyst",
-    description: "Statistical advice, chart recommendations, and SQL/Python snippets.",
-  },
-];
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface PersonaFormData {
   name: string;
   description: string;
+  assistantNickname: string;
+  assistantGender: "female" | "male" | "neutral";
+  sourceTemplateIds: string[];
+  sourceTemplateLabels: string[];
+  sourceTemplateCategories: string[];
   systemPromptPrefix: string;
   tone: string;
   language: string;
@@ -184,6 +89,11 @@ interface PersonaFormData {
 const emptyForm: PersonaFormData = {
   name: "",
   description: "",
+  assistantNickname: "",
+  assistantGender: "neutral",
+  sourceTemplateIds: [],
+  sourceTemplateLabels: [],
+  sourceTemplateCategories: [],
   systemPromptPrefix: "",
   tone: "friendly",
   language: "auto",
@@ -199,6 +109,10 @@ export function PersonasPanel() {
   const [newRestriction, setNewRestriction] = useState("");
   const [showTemplates, setShowTemplates] = useState(false);
   const [showToneInfo, setShowToneInfo] = useState(false);
+  const [templateQuery, setTemplateQuery] = useState("");
+  const [activeTemplateCategory, setActiveTemplateCategory] = useState<string>("All");
+  const [mixMode, setMixMode] = useState(false);
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
 
   const utils = trpc.useUtils();
   const { data: personas, isLoading } = trpc.persona.list.useQuery();
@@ -243,6 +157,10 @@ export function PersonasPanel() {
     setShowForm(false);
     setShowTemplates(false);
     setShowToneInfo(false);
+    setTemplateQuery("");
+    setActiveTemplateCategory("All");
+    setMixMode(false);
+    setSelectedTemplateIds([]);
   }
 
   function handleSubmit() {
@@ -251,6 +169,11 @@ export function PersonasPanel() {
         id: editingId,
         name: form.name,
         description: form.description || null,
+        assistantNickname: form.assistantNickname || null,
+        assistantGender: form.assistantGender,
+        sourceTemplateIds: form.sourceTemplateIds,
+        sourceTemplateLabels: form.sourceTemplateLabels,
+        sourceTemplateCategories: form.sourceTemplateCategories,
         systemPromptPrefix: form.systemPromptPrefix,
         tone: form.tone as any,
         language: form.language,
@@ -260,6 +183,11 @@ export function PersonasPanel() {
       createMutation.mutate({
         name: form.name,
         description: form.description || null,
+        assistantNickname: form.assistantNickname || null,
+        assistantGender: form.assistantGender,
+        sourceTemplateIds: form.sourceTemplateIds,
+        sourceTemplateLabels: form.sourceTemplateLabels,
+        sourceTemplateCategories: form.sourceTemplateCategories,
         systemPromptPrefix: form.systemPromptPrefix,
         tone: form.tone as any,
         language: form.language,
@@ -273,6 +201,11 @@ export function PersonasPanel() {
     setForm({
       name: persona.name,
       description: persona.description || "",
+      assistantNickname: persona.assistantNickname || "",
+      assistantGender: persona.assistantGender || "neutral",
+      sourceTemplateIds: persona.sourceTemplateIds || [],
+      sourceTemplateLabels: persona.sourceTemplateLabels || [],
+      sourceTemplateCategories: persona.sourceTemplateCategories || [],
       systemPromptPrefix: persona.systemPromptPrefix,
       tone: persona.tone || "friendly",
       language: persona.language || "auto",
@@ -283,15 +216,61 @@ export function PersonasPanel() {
     setShowTemplates(false);
   }
 
-  function applyTemplate(tpl: (typeof PROMPT_TEMPLATES)[number]) {
-    setForm((f) => ({
-      ...f,
-      name: f.name || tpl.label,
-      description: f.description || tpl.description,
-      systemPromptPrefix: tpl.prompt,
-      tone: tpl.tone,
-    }));
+  function applyTemplateApplication(templates: PersonaTemplateDefinition[]) {
+    const application = buildPersonaApplication(templates);
+    setForm({
+      name: application.name,
+      description: application.description,
+      assistantNickname: application.assistantNickname,
+      assistantGender: application.assistantGender,
+      sourceTemplateIds: application.sourceTemplateIds,
+      sourceTemplateLabels: application.sourceTemplateLabels,
+      sourceTemplateCategories: application.sourceTemplateCategories,
+      systemPromptPrefix: application.prompt,
+      tone: application.tone,
+      language: application.language,
+      restrictions: [...application.restrictions],
+    });
+    trackPersonaTemplateApplied({
+      templateIds: application.sourceTemplateIds,
+      templateLabels: application.sourceTemplateLabels,
+      templateCategories: application.sourceTemplateCategories,
+      templateCount: application.sourceTemplateIds.length,
+      applyMode: application.sourceTemplateIds.length > 1 ? "mixed" : "single",
+      editorMode: editingId ? "edit" : "create",
+      surface: "settings_personas",
+    });
     setShowTemplates(false);
+    setMixMode(false);
+    setSelectedTemplateIds([]);
+  }
+
+  function applyTemplate(tpl: PersonaTemplateDefinition) {
+    applyTemplateApplication([tpl]);
+  }
+
+  function toggleTemplateSelection(templateId: string) {
+    setSelectedTemplateIds((current) => {
+      if (current.includes(templateId)) {
+        return current.filter((id) => id !== templateId);
+      }
+      if (current.length >= 3) {
+        toast.error("You can mix up to 3 templates at once");
+        return current;
+      }
+      return [...current, templateId];
+    });
+  }
+
+  function applyMixedTemplates() {
+    const selectedTemplates = PERSONA_TEMPLATES.filter((template) =>
+      selectedTemplateIds.includes(template.id),
+    );
+    if (selectedTemplates.length < 2) {
+      toast.error("Select at least 2 templates to create a mixed persona");
+      return;
+    }
+    applyTemplateApplication(selectedTemplates);
   }
 
   function addRestriction() {
@@ -313,6 +292,19 @@ export function PersonasPanel() {
 
   const userPersonas = personas?.filter((p) => p.scope === "user") || [];
   const otherPersonas = personas?.filter((p) => p.scope !== "user") || [];
+  const visibleTemplates = PERSONA_TEMPLATES.filter((template) => {
+    const matchesCategory =
+      activeTemplateCategory === "All" || template.category === activeTemplateCategory;
+    const normalizedQuery = templateQuery.trim().toLowerCase();
+    const matchesQuery =
+      normalizedQuery.length === 0 ||
+      [template.label, template.description, template.category]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedQuery);
+
+    return matchesCategory && matchesQuery;
+  });
 
   return (
     <div className="space-y-6">
@@ -398,27 +390,130 @@ export function PersonasPanel() {
 
           {/* Template picker */}
           {showTemplates && (
-            <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-                Quick-start templates — click to load into form
+            <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                Reviewed quick-start templates - click to load into form
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {PROMPT_TEMPLATES.map((tpl) => (
-                  <button
-                    key={tpl.label}
+              <p className="text-xs text-gray-500">
+                {PERSONA_TEMPLATES.length} templates covering engineering, legal, research,
+                finance, marketing, operations, healthcare, education, and more.
+              </p>
+              <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto] gap-3 items-start">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={templateQuery}
+                    onChange={(e) => setTemplateQuery(e.target.value)}
+                    placeholder="Search by role, industry, or use case"
+                    className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
                     type="button"
-                    onClick={() => applyTemplate(tpl)}
-                    className="text-left p-3 rounded-xl border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-all group"
+                    variant={mixMode ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      setMixMode((current) => {
+                        const next = !current;
+                        if (!next) setSelectedTemplateIds([]);
+                        return next;
+                      });
+                    }}
+                    className={mixMode ? "bg-purple-600 text-white hover:bg-purple-700" : ""}
                   >
-                    <div className="font-medium text-gray-900 group-hover:text-purple-700 text-sm">
-                      {tpl.label}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-0.5">{tpl.description}</div>
-                    <span className="inline-block mt-1 text-[10px] px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">
-                      {tpl.tone}
-                    </span>
+                    <Layers3 className="h-4 w-4 mr-1" />
+                    Mix templates
+                  </Button>
+                  {selectedTemplateIds.length > 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedTemplateIds([])}
+                    >
+                      <RotateCcw className="h-4 w-4 mr-1" />
+                      Clear
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {PERSONA_TEMPLATE_CATEGORIES.map((category) => (
+                  <button
+                    key={category}
+                    type="button"
+                    onClick={() => setActiveTemplateCategory(category)}
+                    className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
+                      activeTemplateCategory === category
+                        ? "border-purple-300 bg-purple-50 text-purple-700"
+                        : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                    }`}
+                  >
+                    {category}
                   </button>
                 ))}
+              </div>
+              {mixMode && (
+                <div className="rounded-xl border border-purple-200 bg-purple-50 px-3 py-2.5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="text-xs text-purple-800 leading-relaxed">
+                    Mix up to 3 templates for people with multi-role work or hobbies across domains.
+                    The combined persona will keep all selected template origins for later analysis.
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={applyMixedTemplates}
+                    disabled={selectedTemplateIds.length < 2}
+                    className="bg-purple-600 text-white hover:bg-purple-700"
+                  >
+                    Apply combined template ({selectedTemplateIds.length}/3)
+                  </Button>
+                </div>
+              )}
+              <div className="max-h-[28rem] overflow-y-auto pr-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+                  {visibleTemplates.map((tpl) => {
+                    const isSelected = selectedTemplateIds.includes(tpl.id);
+                    return (
+                    <button
+                      key={tpl.id}
+                      type="button"
+                      onClick={() => mixMode ? toggleTemplateSelection(tpl.id) : applyTemplate(tpl)}
+                      className={`text-left p-3 rounded-xl border transition-all group ${
+                        isSelected
+                          ? "border-purple-400 bg-purple-50"
+                          : "border-gray-200 hover:border-purple-300 hover:bg-purple-50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 font-medium text-gray-900 group-hover:text-purple-700 text-sm">
+                        <span className="text-base leading-none">{tpl.icon}</span>
+                        <span>{tpl.label}</span>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-0.5">{tpl.description}</div>
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        <span className="inline-block text-[10px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">
+                          {tpl.category}
+                        </span>
+                        <span className="inline-block text-[10px] px-2 py-0.5 bg-purple-100 text-purple-600 rounded-full">
+                          {tpl.tone}
+                        </span>
+                        {isSelected && (
+                          <span className="inline-block text-[10px] px-2 py-0.5 bg-purple-600 text-white rounded-full">
+                            selected
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                    );
+                  })}
+                </div>
+                {visibleTemplates.length === 0 && (
+                  <div className="text-sm text-gray-500 border border-dashed border-gray-200 rounded-xl p-6 text-center">
+                    No templates match this search/filter yet. Try another keyword or switch category.
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -440,53 +535,98 @@ export function PersonasPanel() {
                 A short label you'll recognize in the persona picker. Keep it under 40 characters.
               </p>
             </div>
+          </div>
+
+          {/* Nickname + Gender */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                AI Nickname
+              </label>
+              <input
+                type="text"
+                value={form.assistantNickname}
+                onChange={(e) => setForm((f) => ({ ...f, assistantNickname: e.target.value }))}
+                placeholder="e.g., น้องเจน, Coach Max, Analyst Aom"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Optional. Users can call the assistant by this name in chat, and the persona
+                prompt will treat it as the AI's self-introduction name.
+              </p>
+            </div>
 
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-sm font-medium text-gray-700">Tone</label>
-                <button
-                  type="button"
-                  onClick={() => setShowToneInfo((v) => !v)}
-                  className="text-xs text-purple-600 hover:text-purple-800 flex items-center gap-1"
-                >
-                  <Info className="h-3 w-3" />
-                  {showToneInfo ? "Hide details" : "What do these mean?"}
-                </button>
-              </div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Gender Style
+              </label>
               <Select
-                value={form.tone}
-                onValueChange={(v) => setForm((f) => ({ ...f, tone: v }))}
+                value={form.assistantGender}
+                onValueChange={(value) => setForm((f) => ({ ...f, assistantGender: value as PersonaFormData["assistantGender"] }))}
               >
                 <SelectTrigger className="w-full h-12 border-gray-200 rounded-xl">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(TONE_META).map(([key, meta]) => (
-                    <SelectItem key={key} value={key}>
-                      <span className="flex items-center gap-2">
-                        <span>{meta.emoji}</span>
-                        <span>{key.charAt(0).toUpperCase() + key.slice(1)}</span>
-                      </span>
+                  {PERSONA_GENDERS.map((gender) => (
+                    <SelectItem key={gender} value={gender}>
+                      <span className="capitalize">{gender}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-
-              {/* Tone info panel */}
-              {showToneInfo && (
-                <div className="mt-2 bg-white border border-gray-200 rounded-xl p-3 space-y-1.5">
-                  {Object.entries(TONE_META).map(([key, meta]) => (
-                    <div key={key} className={`flex items-start gap-2 text-xs p-2 rounded-lg ${form.tone === key ? "bg-purple-50" : ""}`}>
-                      <span className="text-sm leading-none mt-0.5">{meta.emoji}</span>
-                      <div>
-                        <span className="font-semibold text-gray-700 capitalize">{key}:</span>{" "}
-                        <span className="text-gray-500">{meta.description}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <p className="text-xs text-gray-400 mt-1">
+                Shapes self-reference and Thai politeness style: <span className="font-medium">female</span> tends toward
+                <span className="font-mono"> ค่ะ/คะ</span>, <span className="font-medium">male</span> toward
+                <span className="font-mono"> ครับ</span>, and <span className="font-medium">neutral</span> keeps wording polite without forcing gendered particles.
+              </p>
             </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-700">Tone</label>
+              <button
+                type="button"
+                onClick={() => setShowToneInfo((v) => !v)}
+                className="text-xs text-purple-600 hover:text-purple-800 flex items-center gap-1"
+              >
+                <Info className="h-3 w-3" />
+                {showToneInfo ? "Hide details" : "What do these mean?"}
+              </button>
+            </div>
+            <Select
+              value={form.tone}
+              onValueChange={(v) => setForm((f) => ({ ...f, tone: v }))}
+            >
+              <SelectTrigger className="w-full h-12 border-gray-200 rounded-xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(TONE_META).map(([key, meta]) => (
+                  <SelectItem key={key} value={key}>
+                    <span className="flex items-center gap-2">
+                      <span>{meta.emoji}</span>
+                      <span>{key.charAt(0).toUpperCase() + key.slice(1)}</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {showToneInfo && (
+              <div className="mt-2 bg-white border border-gray-200 rounded-xl p-3 space-y-1.5">
+                {Object.entries(TONE_META).map(([key, meta]) => (
+                  <div key={key} className={`flex items-start gap-2 text-xs p-2 rounded-lg ${form.tone === key ? "bg-purple-50" : ""}`}>
+                    <span className="text-sm leading-none mt-0.5">{meta.emoji}</span>
+                    <div>
+                      <span className="font-semibold text-gray-700 capitalize">{key}:</span>{" "}
+                      <span className="text-gray-500">{meta.description}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Description */}
@@ -739,13 +879,13 @@ export function PersonasPanel() {
                 Persona ideas to get you started
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {EXAMPLE_IDEAS.map((idea) => (
+                {PERSONA_TEMPLATE_IDEAS.map((idea) => (
                   <div
-                    key={idea.title}
+                    key={idea.id}
                     className="p-3 bg-white border border-gray-200 rounded-xl"
                   >
                     <div className="text-2xl mb-1">{idea.icon}</div>
-                    <div className="font-medium text-gray-700 text-sm">{idea.title}</div>
+                    <div className="font-medium text-gray-700 text-sm">{idea.label}</div>
                     <div className="text-xs text-gray-400 mt-0.5 leading-relaxed">
                       {idea.description}
                     </div>
@@ -764,6 +904,11 @@ export function PersonasPanel() {
                 <div className="min-w-0">
                   <div className="font-medium text-gray-900 flex items-center gap-2 flex-wrap">
                     {p.name}
+                    {p.assistantNickname && (
+                      <span className="text-[10px] px-2 py-0.5 bg-blue-100 text-blue-600 rounded-full font-medium">
+                        @{p.assistantNickname}
+                      </span>
+                    )}
                     {p.tone && (
                       <span className="text-[10px] px-2 py-0.5 bg-purple-100 text-purple-600 rounded-full font-medium">
                         {TONE_META[p.tone]?.emoji} {p.tone}

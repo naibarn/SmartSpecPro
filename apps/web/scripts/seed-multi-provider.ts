@@ -2,11 +2,12 @@
  * Runner script for multi-provider seed
  */
 
-import { seedZenProvider } from "../drizzle/seed";
+import { seedZenProvider, seedAssistantTeamTemplates } from "../drizzle/seed";
 
 async function main() {
   console.log("[Seed] Starting multi-provider seed...");
   await seedZenProvider();
+  await seedAssistantTeamTemplates();
   console.log("[Seed] Done!");
   process.exit(0);
 }

@@ -34,11 +34,15 @@ describe("buildChatContext persona integration", () => {
     const segments = buildPersonaPromptSegments({
       systemPromptPrefix: "Hello",
       tone: "technical",
+      assistantNickname: "น้องเจน",
+      assistantGender: "female",
       responseStyle: { format: "markdown", detail: "high" },
       restrictions: [],
     });
 
     expect(segments.styleInstructions).toContain("technical");
+    expect(segments.styleInstructions).toContain("น้องเจน");
+    expect(segments.styleInstructions).toContain("ค่ะ");
     expect(segments.styleInstructions).toContain("format: markdown");
     expect(segments.styleInstructions).toContain("detail: high");
   });
@@ -47,6 +51,8 @@ describe("buildChatContext persona integration", () => {
     const segments = buildPersonaPromptSegments({
       systemPromptPrefix: "Hello",
       tone: null,
+      assistantNickname: null,
+      assistantGender: "neutral",
       responseStyle: {},
       restrictions: ["No profanity", "Keep responses under 200 words"],
     });
@@ -60,6 +66,8 @@ describe("buildChatContext persona integration", () => {
     const segments = buildPersonaPromptSegments({
       systemPromptPrefix: "Simple",
       tone: null,
+      assistantNickname: null,
+      assistantGender: null,
       responseStyle: {},
       restrictions: [],
     });
@@ -73,10 +81,26 @@ describe("buildChatContext persona integration", () => {
     const segments = buildPersonaPromptSegments({
       systemPromptPrefix: "Hello",
       tone: "casual",
+      assistantNickname: null,
+      assistantGender: "neutral",
       responseStyle: {},
       restrictions: [],
     });
 
-    expect(segments.styleInstructions).toBe("Respond in a casual tone.");
+    expect(segments.styleInstructions).toContain("Respond in a casual tone.");
+  });
+
+  it("adds nickname and masculine Thai style instructions even without responseStyle keys", () => {
+    const segments = buildPersonaPromptSegments({
+      systemPromptPrefix: "Hello",
+      tone: "friendly",
+      assistantNickname: "พี่ภูมิ",
+      assistantGender: "male",
+      responseStyle: {},
+      restrictions: [],
+    });
+
+    expect(segments.styleInstructions).toContain("พี่ภูมิ");
+    expect(segments.styleInstructions).toContain("ครับ");
   });
 });

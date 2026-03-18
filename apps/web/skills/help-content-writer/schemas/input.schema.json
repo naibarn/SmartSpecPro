@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "topic_slug": {
+      "type": "string",
+      "description": "URL-safe topic identifier (kebab-case, e.g. 'chat', 'media-generation')"
+    },
+    "section": {
+      "type": "string",
+      "enum": ["getting-started", "features", "content-creation", "advanced", "admin"],
+      "description": "Which help section this topic belongs to"
+    },
+    "action": {
+      "type": "string",
+      "enum": ["create", "update"],
+      "default": "create",
+      "description": "Whether to create a new topic or update an existing one"
+    },
+    "description": {
+      "type": "string",
+      "description": "What the topic should cover"
+    },
+    "existing_content": {
+      "type": "string",
+      "description": "Existing content to update (for action=update)"
+    },
+    "screenshots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": { "type": "string", "description": "URL path of the screenshot image" },
+          "step": { "type": "string", "description": "Step name (kebab-case)" },
+          "caption_en": { "type": "string", "description": "English caption for the image" },
+          "caption_th": { "type": "string", "description": "Thai caption for the image" }
+        },
+        "required": ["url", "step"]
+      },
+      "description": "Screenshots to embed in the help content (captured via admin UI)"
+    }
+  },
+  "required": ["topic_slug", "section", "description"]
+}

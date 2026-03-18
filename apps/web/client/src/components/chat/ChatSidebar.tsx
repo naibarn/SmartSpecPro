@@ -33,6 +33,8 @@ import {
   X,
   Undo2,
   Trash,
+  UsersRound,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -40,12 +42,14 @@ interface ChatSidebarProps {
   selectedConversationId: number | null;
   onSelectConversation: (id: number) => void;
   onNewChat: () => void;
+  onOpenTeamRoom?: (roomId: string) => void;
 }
 
 export function ChatSidebar({
   selectedConversationId,
   onSelectConversation,
   onNewChat,
+  onOpenTeamRoom,
 }: ChatSidebarProps) {
   const [search, setSearch] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -522,6 +526,9 @@ export function ChatSidebar({
         </div>
       </div>
 
+      {/* Team Rooms Section */}
+      {onOpenTeamRoom && <TeamRoomsSidebarSection onOpenTeamRoom={onOpenTeamRoom} />}
+
       {/* Footer */}
       <div className="border-t p-2 space-y-1">
         {!selectMode && emptyCount > 0 && (
@@ -614,6 +621,49 @@ export function ChatSidebar({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+/** Collapsible sidebar section showing recent team rooms */
+function TeamRoomsSidebarSection({ onOpenTeamRoom }: { onOpenTeamRoom: (roomId: string) => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const { data: teamsData } = trpc.team.list.useQuery(undefined, { enabled: expanded });
+
+  return (
+    <div className="border-t">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center justify-between px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+      >
+        <div className="flex items-center gap-2">
+          <UsersRound className="h-4 w-4" />
+          Team Rooms
+        </div>
+        <ChevronDown className={cn("h-4 w-4 transition-transform", expanded && "rotate-180")} />
+      </button>
+      {expanded && (
+        <div className="px-2 pb-2">
+          {!teamsData || teamsData.length === 0 ? (
+            <div className="px-2 py-3 text-center text-xs text-muted-foreground">
+              No teams yet
+            </div>
+          ) : (
+            <div className="space-y-0.5">
+              {teamsData.slice(0, 10).map((team: any) => (
+                <button
+                  key={team.id ?? team.teamId}
+                  onClick={() => onOpenTeamRoom(team.id ?? team.teamId)}
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-left text-sm hover:bg-accent"
+                >
+                  <UsersRound className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className="truncate">{team.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

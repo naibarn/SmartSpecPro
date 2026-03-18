@@ -18,10 +18,11 @@ AgencyIntent = Literal[
     "video_storyboard",
     "presentation_deck",
     "media_prompt",
+    "text_content",
 ]
 
 _ENVELOPE_FENCE_RE = re.compile(
-    r"```(?:agency-result|agency_result|json)\s*(\{.*?\})\s*```",
+    r"```(?:agency-result|agency_result)\s*(\{.*?\})\s*```",
     re.IGNORECASE | re.DOTALL,
 )
 

@@ -466,14 +466,16 @@ function autoScaleTextElements(
     }
   }
 
-  // Redistribute vertically to fill text zone
+  // Redistribute vertically within text zone — cap gaps to avoid sparse layouts
   const sorted = [...textElements].sort((a: any, b: any) => a.y - b.y);
   const padding = 24;
   const totalHeight = sorted.reduce((sum: number, el: any) => sum + (el.height || 30), 0);
   const availableH = textZoneHeight - padding * 2;
-  const gap = sorted.length > 1
-    ? Math.max(12, (availableH - totalHeight) / (sorted.length - 1))
+  const naturalGap = sorted.length > 1
+    ? (availableH - totalHeight) / (sorted.length - 1)
     : 0;
+  // Cap gaps: heading→body = 16px, body→heading = 32px, max 48px
+  const gap = Math.min(48, Math.max(12, naturalGap));
 
   let currentY = textZoneTop + padding;
   for (const el of sorted) {
@@ -539,6 +541,8 @@ export function normalizePresentationLayoutDslToSlideContent(options: {
   fixTextImageOverlap(flattened, options.canvasWidth, options.canvasHeight);
   // Auto-scale text to fill available space if there's too much empty area
   autoScaleTextElements(flattened, options.canvasWidth, options.canvasHeight);
+  // Re-check overlaps after redistribution (autoScale can push text into images)
+  fixTextImageOverlap(flattened, options.canvasWidth, options.canvasHeight);
 
   const slideContent = presentationSlideContentSchema.safeParse({
     elements: flattened,

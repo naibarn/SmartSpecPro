@@ -8,6 +8,7 @@ import {
   interAgentMessages,
   systemResourceState,
   teamRuns,
+  teamRooms,
   type InterAgentMessage,
   type SystemResourceState,
 } from "../../drizzle/schema";
@@ -41,22 +42,25 @@ export async function sendSystemBroadcast(
   if (!db) throw new Error("Database not available");
 
   let delivered = 0;
-  for (const roomId of targetRoomIds) {
-    await db.insert(interAgentMessages).values({
-      tenantId,
-      channel: "system_broadcast",
-      sourceAgentType: "system",
-      sourceAgentId: "virtual-admin",
-      targetType: "room",
-      targetId: roomId,
-      priority: severity,
-      messageType,
-      displayMessage,
-      relatedIncidentId: relatedIncidentId ?? null,
-      relatedRoomId: roomId,
-    });
-    delivered++;
-  }
+
+  await db.transaction(async (tx) => {
+    for (const roomId of targetRoomIds) {
+      await tx.insert(interAgentMessages).values({
+        tenantId,
+        channel: "system_broadcast",
+        sourceAgentType: "system",
+        sourceAgentId: "virtual-admin",
+        targetType: "room",
+        targetId: roomId,
+        priority: severity,
+        messageType,
+        displayMessage,
+        relatedIncidentId: relatedIncidentId ?? null,
+        relatedRoomId: roomId,
+      });
+      delivered++;
+    }
+  });
 
   return { messagesDelivered: delivered, roomsNotified: targetRoomIds };
 }
@@ -72,16 +76,19 @@ export async function assessImpact(
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  // Load all active runs for tenant
+  // Load all active runs for tenant (join through teamRooms for tenant isolation)
   const activeRuns = await db
-    .select()
+    .select({ teamRuns })
     .from(teamRuns)
+    .innerJoin(teamRooms, eq(teamRuns.roomId, teamRooms.id))
     .where(
       and(
         sql`${teamRuns.status} IN ('queued', 'running')`,
+        eq(teamRooms.tenantId, tenantId),
       ),
     )
-    .limit(100);
+    .limit(100)
+    .then(rows => rows.map(r => r.teamRuns));
 
   const assessments: ImpactAssessment[] = [];
 

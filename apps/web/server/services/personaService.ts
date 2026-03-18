@@ -29,6 +29,11 @@ import { getFeatureFlag } from "./featureFlags";
 export interface PersonaCreateInput {
   name: string;
   description?: string | null;
+  assistantNickname?: string | null;
+  assistantGender?: "female" | "male" | "neutral" | null;
+  sourceTemplateIds?: string[];
+  sourceTemplateLabels?: string[];
+  sourceTemplateCategories?: string[];
   systemPromptPrefix: string;
   tone?: "formal" | "casual" | "friendly" | "technical" | "creative" | null;
   language?: string;
@@ -54,6 +59,11 @@ export const PLATFORM_DEFAULT_PERSONA: Omit<PersonaTemplate, "createdAt" | "upda
   userId: null,
   name: "SmartSpec Default",
   description: "Helpful, concise, markdown-friendly general assistant",
+  assistantNickname: null,
+  assistantGender: "neutral",
+  sourceTemplateIds: [],
+  sourceTemplateLabels: [],
+  sourceTemplateCategories: [],
   systemPromptPrefix: "You are a friendly, helpful AI assistant. Provide clear, concise, and well-formatted responses using markdown when appropriate.",
   tone: "friendly",
   language: "auto",
@@ -83,6 +93,58 @@ export function sanitizePersonaInput(input: PersonaCreateInput): PersonaCreateIn
   // Validate systemPromptPrefix length
   if (sanitized.systemPromptPrefix.length > 2000) {
     throw new Error("systemPromptPrefix must not exceed 2000 characters");
+  }
+
+  if (sanitized.assistantNickname !== undefined && sanitized.assistantNickname !== null) {
+    sanitized.assistantNickname = sanitized.assistantNickname.trim();
+    if (sanitized.assistantNickname.length === 0) {
+      sanitized.assistantNickname = null;
+    } else if (sanitized.assistantNickname.length > 80) {
+      throw new Error("assistantNickname must not exceed 80 characters");
+    }
+  }
+
+  if (
+    sanitized.assistantGender !== undefined &&
+    sanitized.assistantGender !== null &&
+    !["female", "male", "neutral"].includes(sanitized.assistantGender)
+  ) {
+    throw new Error("assistantGender must be female, male, or neutral");
+  }
+
+  const sourceTemplateFields = [
+    { key: "sourceTemplateIds", value: sanitized.sourceTemplateIds, maxLength: 120 },
+    { key: "sourceTemplateLabels", value: sanitized.sourceTemplateLabels, maxLength: 200 },
+    { key: "sourceTemplateCategories", value: sanitized.sourceTemplateCategories, maxLength: 100 },
+  ] as const;
+
+  for (const field of sourceTemplateFields) {
+    if (!field.value) continue;
+    if (field.value.length > 5) {
+      throw new Error(`${field.key} must not exceed 5 entries`);
+    }
+    const normalized = field.value.map((entry) => entry.trim());
+    if (normalized.some((entry) => entry.length === 0)) {
+      throw new Error(`${field.key} must not contain empty values`);
+    }
+    if (normalized.some((entry) => entry.length > field.maxLength)) {
+      throw new Error(`${field.key} contains a value that exceeds ${field.maxLength} characters`);
+    }
+    if (new Set(normalized).size !== normalized.length) {
+      throw new Error(`${field.key} must contain unique values`);
+    }
+
+    sanitized[field.key] = normalized;
+  }
+
+  const templateFieldLengths = [
+    sanitized.sourceTemplateIds?.length ?? 0,
+    sanitized.sourceTemplateLabels?.length ?? 0,
+    sanitized.sourceTemplateCategories?.length ?? 0,
+  ];
+  const nonZeroTemplateFieldLengths = templateFieldLengths.filter((length) => length > 0);
+  if (nonZeroTemplateFieldLengths.length > 0 && new Set(nonZeroTemplateFieldLengths).size !== 1) {
+    throw new Error("source template metadata arrays must have matching lengths");
   }
 
   // Block known jailbreak patterns
@@ -129,7 +191,10 @@ export function sanitizePersonaInput(input: PersonaCreateInput): PersonaCreateIn
 // ── Prompt Building ──────────────────────────────────────────
 
 export function buildPersonaPromptSegments(
-  persona: Pick<PersonaTemplate, "systemPromptPrefix" | "responseStyle" | "restrictions" | "tone">,
+  persona: Pick<
+    PersonaTemplate,
+    "systemPromptPrefix" | "responseStyle" | "restrictions" | "tone" | "assistantNickname" | "assistantGender"
+  >,
 ): PersonaPromptSegments {
   const prefix = `[PERSONA START]\n${persona.systemPromptPrefix}\n[PERSONA END]`;
 
@@ -137,13 +202,39 @@ export function buildPersonaPromptSegments(
   const style = persona.responseStyle as Record<string, unknown> | null;
   if (style && Object.keys(style).length > 0) {
     const parts: string[] = [];
+    if (persona.assistantNickname) {
+      parts.push(`Your nickname is ${persona.assistantNickname}. Introduce yourself with this name when it helps the conversation feel natural.`);
+    }
     if (persona.tone) parts.push(`Respond in a ${persona.tone} tone.`);
+    if (persona.assistantGender === "female") {
+      parts.push("If responding in Thai, use feminine polite particles such as ค่ะ or คะ when natural.");
+    } else if (persona.assistantGender === "male") {
+      parts.push("If responding in Thai, use masculine polite particles such as ครับ when natural.");
+    } else if (persona.assistantGender === "neutral") {
+      parts.push("If responding in Thai, prefer polite neutral phrasing and avoid forcing gendered particles when they feel unnatural.");
+    }
     for (const [key, value] of Object.entries(style)) {
       if (value) parts.push(`${key}: ${value}`);
     }
     if (parts.length > 0) styleInstructions = parts.join(" ");
-  } else if (persona.tone) {
-    styleInstructions = `Respond in a ${persona.tone} tone.`;
+  } else {
+    const parts: string[] = [];
+    if (persona.assistantNickname) {
+      parts.push(`Your nickname is ${persona.assistantNickname}. Introduce yourself with this name when it helps the conversation feel natural.`);
+    }
+    if (persona.tone) {
+      parts.push(`Respond in a ${persona.tone} tone.`);
+    }
+    if (persona.assistantGender === "female") {
+      parts.push("If responding in Thai, use feminine polite particles such as ค่ะ or คะ when natural.");
+    } else if (persona.assistantGender === "male") {
+      parts.push("If responding in Thai, use masculine polite particles such as ครับ when natural.");
+    } else if (persona.assistantGender === "neutral") {
+      parts.push("If responding in Thai, prefer polite neutral phrasing and avoid forcing gendered particles when they feel unnatural.");
+    }
+    if (parts.length > 0) {
+      styleInstructions = parts.join(" ");
+    }
   }
 
   let restrictionsBulletPoints: string | null = null;
@@ -283,6 +374,11 @@ export async function createPersona(input: PersonaCreateInput): Promise<PersonaT
     .values({
       name: sanitized.name,
       description: sanitized.description,
+      assistantNickname: sanitized.assistantNickname || null,
+      assistantGender: sanitized.assistantGender || "neutral",
+      sourceTemplateIds: sanitized.sourceTemplateIds || [],
+      sourceTemplateLabels: sanitized.sourceTemplateLabels || [],
+      sourceTemplateCategories: sanitized.sourceTemplateCategories || [],
       systemPromptPrefix: sanitized.systemPromptPrefix,
       tone: sanitized.tone,
       language: sanitized.language || "auto",
@@ -306,7 +402,14 @@ export async function updatePersona(
   if (!db) return null;
 
   // Run sanitization when any sanitizable field is present
-  const needsSanitization = input.systemPromptPrefix !== undefined || input.restrictions !== undefined;
+  const needsSanitization =
+    input.systemPromptPrefix !== undefined ||
+    input.restrictions !== undefined ||
+    input.assistantNickname !== undefined ||
+    input.assistantGender !== undefined ||
+    input.sourceTemplateIds !== undefined ||
+    input.sourceTemplateLabels !== undefined ||
+    input.sourceTemplateCategories !== undefined;
   const sanitized = needsSanitization
     ? sanitizePersonaInput({
         ...input,
@@ -319,6 +422,11 @@ export async function updatePersona(
   const updateFields: Record<string, unknown> = {};
   if (sanitized.name !== undefined) updateFields.name = sanitized.name;
   if (sanitized.description !== undefined) updateFields.description = sanitized.description;
+  if (sanitized.assistantNickname !== undefined) updateFields.assistantNickname = sanitized.assistantNickname;
+  if (sanitized.assistantGender !== undefined) updateFields.assistantGender = sanitized.assistantGender;
+  if (sanitized.sourceTemplateIds !== undefined) updateFields.sourceTemplateIds = sanitized.sourceTemplateIds;
+  if (sanitized.sourceTemplateLabels !== undefined) updateFields.sourceTemplateLabels = sanitized.sourceTemplateLabels;
+  if (sanitized.sourceTemplateCategories !== undefined) updateFields.sourceTemplateCategories = sanitized.sourceTemplateCategories;
   if (sanitized.systemPromptPrefix !== undefined) updateFields.systemPromptPrefix = sanitized.systemPromptPrefix;
   if (sanitized.tone !== undefined) updateFields.tone = sanitized.tone;
   if (sanitized.language !== undefined) updateFields.language = sanitized.language;

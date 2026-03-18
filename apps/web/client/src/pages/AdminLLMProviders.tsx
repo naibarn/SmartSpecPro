@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { trpc } from "../lib/trpc";
 import { Button } from "@/components/ui/button";
+import { HelpButton } from "@/components/help";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -448,10 +449,13 @@ export default function AdminLLMProviders() {
               Configure API keys, endpoints, and provider-level defaults for LLM providers
             </p>
           </div>
-          <Button onClick={() => setLocation("/admin/llm-models")}>
-            <Cpu className="h-4 w-4 mr-2" />
-            Manage LLM Models
-          </Button>
+          <div className="flex items-center gap-2">
+            <HelpButton page="/admin/providers" variant="outline" size="sm" />
+            <Button onClick={() => setLocation("/admin/llm-models")}>
+              <Cpu className="h-4 w-4 mr-2" />
+              Manage LLM Models
+            </Button>
+          </div>
         </div>
       </div>
 

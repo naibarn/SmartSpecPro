@@ -1,1 +1,1 @@
-standard
+claude-code

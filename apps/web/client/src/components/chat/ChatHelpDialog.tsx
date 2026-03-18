@@ -2,18 +2,24 @@ import { useState } from "react";
 import {
   Bot,
   Brain,
+  ChevronDown,
+  Database,
   FileText,
   Film,
+  FolderOpen,
+  Globe,
   HelpCircle,
   ImagePlus,
-  Layers,
+  Lightbulb,
   MonitorPlay,
   Presentation,
   ReceiptText,
   Save,
+  Settings,
   Sparkles,
   Users,
   Wand2,
+  Zap,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -26,107 +32,48 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { useI18n, AVAILABLE_LOCALES, LOCALE_LABELS } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n";
 
-/* ─── Chat basics ────────────────────────────────────────────── */
+/* ─── Static data (not translatable — icons, colors, keys) ───── */
 
-const chatBasics = [
-  "Type a normal message to chat with the selected model.",
-  "Use the model picker at the top of the conversation to switch the active LLM.",
-  "Turn on Brainstorm Mode when you want two models to collaborate before returning a summary.",
-  "Attach files or images when the task depends on source material.",
-];
+/* Trigger phrases are locale-dependent — stored in translation files. */
 
-const skillUsage = [
-  "Type / in the message box to open the slash-command skill menu.",
-  "Open the Skills panel to control which skills are enabled for the current conversation.",
-  "Use skills when you want the assistant to follow a specialized workflow instead of a plain answer.",
-  "If the task is repetitive or domain-specific, prefer a skill over repeating the same instructions manually.",
-];
+const PRESENTATION_PARAM_KEYS = ["topic", "slides", "aspect", "language"] as const;
+const PRESENTATION_PARAM_REQUIRED: Record<string, boolean> = { topic: true };
 
-const mediaUsage = [
-  "Use Generate Image to seed the prompt with create image: and describe the visual outcome you want.",
-  "Use Generate Video to seed the prompt with create video: for motion-focused outputs.",
-  "Use Generate Audio when you want voice, music, or sound generation.",
-  "Use the prompt-enhance action when you already typed a rough image idea and want the system to improve it first.",
-  "You can attach a reference image and ask the model to edit or extend it.",
-];
+const PRESENTATION_EXAMPLE_KEYS = [
+  "basic",
+  "count",
+  "portrait",
+  "landscape",
+  "lang",
+  "full",
+] as const;
 
-const memoryUsage = [
-  "Open Memory to review saved facts, preferences, summaries, and project-linked context.",
-  "Use Save to Memory when a message contains something worth reusing later.",
-  "Memory is conversation-aware and can carry project context across follow-up chats.",
-  "Use Memory when you want the assistant to remember stable preferences instead of repeating them every time.",
-];
+const SKILL_TIP_KEYS = ["tip1", "tip2", "tip3", "tip4"] as const;
 
-const browserSessionUsage = [
-  "Use Browser Session when the task requires live websites, comparison across pages, or a real browser workflow.",
-  "Start Browser Session from Chat, then continue in the live workspace or keep sending quick browser instructions from Chat.",
-  "Browser Session is best for finding websites, navigating pages, comparing options, and pausing for approval-sensitive steps.",
-];
+const AGENCY_TEMPLATE_META = [
+  { key: "research", icon: FileText },
+  { key: "storyboard", icon: Film },
+  { key: "deck", icon: Presentation },
+  { key: "comparison", icon: ReceiptText },
+] as const;
 
-/* ─── Agency guide ───────────────────────────────────────────── */
+const AGENCY_PREVIEW_STATES = [
+  { key: "ready", color: "bg-blue-100 text-blue-800" },
+  { key: "saving", color: "bg-slate-100 text-slate-700" },
+  { key: "committed", color: "bg-green-100 text-green-800" },
+  { key: "failed", color: "bg-red-100 text-red-800" },
+  { key: "expired", color: "bg-amber-100 text-amber-800" },
+] as const;
 
-const agencyOverview = [
-  "Agencies are multi-agent teams that work together to complete complex tasks.",
-  "Each agency has specialized agents (researcher, writer, planner) that collaborate automatically.",
-  "Access agencies via the Agencies button in the toolbar or the Explore Agencies button on the welcome screen.",
-  "Agencies produce structured output such as research reports, storyboards, presentation decks, and comparisons.",
-];
+const AGENCY_COMMIT_KEYS = ["research", "deck"] as const;
 
-const agencyTemplates = [
-  {
-    name: "Deep Research",
-    icon: FileText,
-    output: "Research Report",
-    example: "\"Research AI marketing trends in Southeast Asia 2026\"",
-    description: "Multi-source research with executive summary, key findings, sections, and recommendations.",
-  },
-  {
-    name: "Storyboard Planner",
-    icon: Film,
-    output: "Video Storyboard",
-    example: "\"Create a 60-second product launch storyboard for a fitness app\"",
-    description: "Scene-by-scene video plan with dialogue, camera angles, lighting, and audio/video prompts.",
-  },
-  {
-    name: "Deck Builder",
-    icon: Presentation,
-    output: "Presentation Deck",
-    example: "\"Build a Q4 earnings presentation with 8 slides\"",
-    description: "Full slide deck with titles, bullet points, speaker notes, and graphic suggestions. Saves directly to the Presentation Editor.",
-  },
-  {
-    name: "Comparison Agent",
-    icon: ReceiptText,
-    output: "Comparison Table",
-    example: "\"Compare 5 hotels in Chiang Mai under 3000 THB/night\"",
-    description: "Side-by-side options with pricing, availability, evidence links, and recommendations.",
-  },
-];
-
-const agencyPreviewLifecycle = [
-  { state: "Preview Ready", color: "bg-blue-100 text-blue-800", description: "The agents finished. Review the preview and decide whether to save." },
-  { state: "Saving...", color: "bg-slate-100 text-slate-700", description: "Commit is in progress." },
-  { state: "Committed", color: "bg-green-100 text-green-800", description: "Saved successfully. For decks you are redirected to the Presentation Editor. For other types a View in Library link appears in the toast." },
-  { state: "Save Failed", color: "bg-red-100 text-red-800", description: "Something went wrong. A Retry Save button appears so you can try again." },
-  { state: "Expired", color: "bg-amber-100 text-amber-800", description: "The preview timed out before you saved it. Run the agency again to get a fresh preview." },
-];
-
-const agencyCommitActions = [
-  { type: "Research / Storyboard / Comparison", button: "Save to Library", destination: "Library (toast shows View in Library link)" },
-  { type: "Presentation Deck", button: "Save as Presentation", destination: "Redirects to Presentation Editor automatically" },
-];
-
-/* ─── Common use cases ───────────────────────────────────────── */
-
-const useCases = [
-  "Ask for a concise answer, then save the final decision to Memory.",
-  "Use /skills to run a specialized document, code, or research workflow.",
-  "Generate an image concept, enhance the prompt, then create the final image.",
-  "Switch to Browser Session when the task moves from planning into live website execution.",
-  "Use Brainstorm Mode when you want two models to explore alternatives before choosing one.",
-  "Move to Agencies when the task needs a multi-agent team to produce structured deliverables like reports or decks.",
-];
+const MEMORY_TYPE_KEYS = [
+  "rule", "user", "project", "preference", "technical",
+  "decision", "plan", "architecture", "task",
+] as const;
 
 /* ─── Component ──────────────────────────────────────────────── */
 
@@ -144,6 +91,7 @@ export function ChatHelpDialog({
   buttonVariant = "ghost",
 }: ChatHelpDialogProps) {
   const [open, setOpen] = useState(false);
+  const { t, locale, setLocale } = useI18n();
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -157,122 +105,375 @@ export function ChatHelpDialog({
         <HelpCircle className="h-4 w-4" />
         {buttonLabel}
       </Button>
-      <DialogContent className="max-w-4xl max-h-[88vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[90vw] md:max-w-[85vw] lg:max-w-5xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Bot className="h-5 w-5 text-primary" />
-            Complete User Guide
-          </DialogTitle>
-          <DialogDescription>
-            How to use Chat, Skills, Media, Memory, Browser Session, and
-            Agencies with preview and commit.
-          </DialogDescription>
+          <div className="flex items-center justify-between pr-8">
+            <DialogTitle className="flex items-center gap-2">
+              <Bot className="h-5 w-5 text-primary" />
+              {t("help.title")}
+            </DialogTitle>
+
+            {/* ── Language toggle ── */}
+            <div className="flex items-center gap-1 shrink-0">
+              <Globe className="h-3.5 w-3.5 text-slate-400" />
+              {AVAILABLE_LOCALES.map((loc: Locale) => (
+                <Button
+                  key={loc}
+                  type="button"
+                  variant={locale === loc ? "default" : "outline"}
+                  size="sm"
+                  className="h-7 px-2.5 text-xs"
+                  onClick={() => setLocale(loc)}
+                >
+                  {LOCALE_LABELS[loc]}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <DialogDescription>{t("help.description")}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 text-sm text-slate-700">
+        <div className="space-y-3 text-sm text-slate-700">
           {/* ── What Chat is best for ── */}
           <section className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <h3 className="text-sm font-semibold text-slate-900">
-              What Chat is best for
+              {t("help.chatBestFor.title")}
             </h3>
-            <p className="mt-2">
-              Chat is the fastest place to ask for answers, drafts,
-              brainstorming, prompt building, analysis, and follow-up work.
-              Start here when you want direct interaction with an AI model
-              and only move into Browser Session or Agencies when the task
-              needs a different execution surface.
-            </p>
+            <p className="mt-2">{t("help.chatBestFor.body")}</p>
           </section>
 
           {/* ── Chat basics ── */}
-          <HelpSection title="Chat basics">
-            <BulletList items={chatBasics} />
-          </HelpSection>
+          <CollapsibleSection title={t("help.chatBasics.title")}>
+            <TBulletList t={t} prefix="help.chatBasics" count={4} />
+          </CollapsibleSection>
 
           {/* ── Skills ── */}
-          <HelpSection title="Skills and slash commands" icon={Wand2}>
-            <BulletList items={skillUsage} />
-          </HelpSection>
+          <CollapsibleSection title={t("help.skills.title")} icon={Wand2}>
+            <TBulletList t={t} prefix="help.skills" count={4} />
+          </CollapsibleSection>
 
           {/* ── Media ── */}
-          <HelpSection title="Image, video, and audio generation" icon={ImagePlus}>
-            <BulletList items={mediaUsage} />
-          </HelpSection>
+          <CollapsibleSection title={t("help.media.title")} icon={ImagePlus}>
+            <TBulletList t={t} prefix="help.media" count={5} />
+          </CollapsibleSection>
 
-          {/* ── Memory ── */}
-          <HelpSection title="Memory" icon={Brain}>
-            <BulletList items={memoryUsage} />
-          </HelpSection>
+          {/* ── Presentation from Chat ── */}
+          <CollapsibleSection
+            title={t("help.presentation.title")}
+            icon={Presentation}
+            accent="sky"
+          >
+            <p className="text-sm text-slate-600 mb-4">
+              {t("help.presentation.intro")}
+            </p>
+
+            {/* Trigger phrases */}
+            <div className="rounded-lg border border-sky-100 bg-white p-3 space-y-2 mb-4">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-sky-700">
+                {t("help.presentation.triggers.title")}
+              </h4>
+              <div className="flex flex-wrap gap-1.5">
+                {t("help.presentation.triggers.list").split(",").map((phrase) => (
+                  <Badge
+                    key={phrase}
+                    variant="outline"
+                    className="text-[11px] font-mono"
+                  >
+                    {phrase}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            {/* Parameters table */}
+            <div className="mb-4">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
+                {t("help.presentation.params.title")}
+              </h4>
+              <div className="rounded-lg border bg-white overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b bg-slate-50">
+                      <th className="px-3 py-2 text-left font-medium text-slate-700">
+                        {t("help.presentation.params.col.param")}
+                      </th>
+                      <th className="px-3 py-2 text-left font-medium text-slate-700">
+                        {t("help.presentation.params.col.required")}
+                      </th>
+                      <th className="px-3 py-2 text-left font-medium text-slate-700">
+                        {t("help.presentation.params.col.desc")}
+                      </th>
+                      <th className="px-3 py-2 text-left font-medium text-slate-700">
+                        {t("help.presentation.params.col.examples")}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {PRESENTATION_PARAM_KEYS.map((pk) => (
+                      <tr key={pk} className="border-b last:border-b-0">
+                        <td className="px-3 py-2 font-medium">
+                          {t(`help.presentation.params.${pk}.name`)}
+                        </td>
+                        <td className="px-3 py-2">
+                          <Badge
+                            variant={
+                              PRESENTATION_PARAM_REQUIRED[pk]
+                                ? "default"
+                                : "outline"
+                            }
+                            className="text-[10px]"
+                          >
+                            {PRESENTATION_PARAM_REQUIRED[pk]
+                              ? t("help.presentation.required")
+                              : t("help.presentation.optional")}
+                          </Badge>
+                        </td>
+                        <td className="px-3 py-2 text-slate-600">
+                          {t(`help.presentation.params.${pk}.desc`)}
+                        </td>
+                        <td className="px-3 py-2 font-mono text-[10px] text-slate-500">
+                          {t(`help.presentation.params.${pk}.examples`)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Examples */}
+            <div className="mb-4">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
+                {t("help.presentation.examples.title")}
+              </h4>
+              <div className="grid gap-2 md:grid-cols-2">
+                {PRESENTATION_EXAMPLE_KEYS.map((ek) => (
+                  <div
+                    key={ek}
+                    className="rounded-lg border bg-white p-3 space-y-1"
+                  >
+                    <Badge variant="outline" className="text-[10px] shrink-0">
+                      {t(`help.presentation.ex.${ek}.label`)}
+                    </Badge>
+                    <p className="font-mono text-[11px] text-sky-700 break-all">
+                      {t(`help.presentation.ex.${ek}.cmd`)}
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      &rarr; {t(`help.presentation.ex.${ek}.result`)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* How it works */}
+            <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-1.5">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t("help.presentation.howItWorks.title")}
+              </h4>
+              <ol className="list-decimal space-y-1.5 pl-5 text-xs text-slate-600">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <li key={n}>
+                    {t(`help.presentation.howItWorks.${n}`)}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </CollapsibleSection>
+
+          {/* ── Auto Skill Detection ── */}
+          <CollapsibleSection
+            title={t("help.skillDetection.title")}
+            icon={Sparkles}
+            accent="emerald"
+          >
+            <TBulletList t={t} prefix="help.skillDetection" count={4} />
+
+            <div className="mt-4">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
+                {t("help.skillDetection.tips.title")}
+              </h4>
+              <div className="grid gap-2 md:grid-cols-2">
+                {SKILL_TIP_KEYS.map((tk) => (
+                  <div
+                    key={tk}
+                    className="rounded-lg border bg-white p-3 space-y-1.5"
+                  >
+                    <p className="font-semibold text-xs text-slate-900">
+                      {t(`help.skillDetection.${tk}.title`)}
+                    </p>
+                    <p className="font-mono text-[11px] text-emerald-700">
+                      {t(`help.skillDetection.${tk}.example`)}
+                    </p>
+                    <p className="text-[11px] text-slate-500">
+                      {t(`help.skillDetection.${tk}.why`)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-lg border border-slate-200 bg-white p-3 space-y-1.5">
+              <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                {t("help.skillDetection.howItWorks.title")}
+              </h4>
+              <ol className="list-decimal space-y-1.5 pl-5 text-xs text-slate-600">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <li key={n}>
+                    {t(`help.skillDetection.howItWorks.${n}`)}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </CollapsibleSection>
+
+          {/* ── Memory (Expanded) ── */}
+          <CollapsibleSection
+            title={t("help.memory.title")}
+            icon={Brain}
+            accent="violet"
+          >
+            <p className="text-sm text-slate-600 mb-4">
+              {t("help.memory.intro")}
+            </p>
+
+            {/* What Memory stores */}
+            <MemorySubSection
+              title={t("help.memory.what.title")}
+              icon={Database}
+            >
+              <TBulletList t={t} prefix="help.memory.what" count={5} />
+            </MemorySubSection>
+
+            {/* Memory modes */}
+            <MemorySubSection
+              title={t("help.memory.modes.title")}
+              icon={Settings}
+            >
+              <div className="mt-3 grid gap-2 md:grid-cols-3">
+                {(["full", "nolong", "off"] as const).map((mode) => (
+                  <div key={mode} className="rounded-lg border bg-white p-3 space-y-1">
+                    <p className="font-semibold text-xs text-slate-900">
+                      {t(`help.memory.modes.${mode}.name`)}
+                    </p>
+                    <p className="text-[11px] text-slate-600">
+                      {t(`help.memory.modes.${mode}.desc`)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </MemorySubSection>
+
+            {/* Memory types */}
+            <MemorySubSection
+              title={t("help.memory.types.title")}
+              icon={FolderOpen}
+            >
+              <ul className="mt-3 space-y-1.5 text-xs text-slate-600">
+                {MEMORY_TYPE_KEYS.map((tk) => (
+                  <li key={tk} className="flex gap-2 items-start">
+                    <span className="shrink-0 mt-0.5 h-1.5 w-1.5 rounded-full bg-violet-400" />
+                    {t(`help.memory.types.${tk}`)}
+                  </li>
+                ))}
+              </ul>
+            </MemorySubSection>
+
+            {/* Automatic memory */}
+            <MemorySubSection
+              title={t("help.memory.auto.title")}
+              icon={Zap}
+            >
+              <TBulletList t={t} prefix="help.memory.auto" count={4} />
+            </MemorySubSection>
+
+            {/* Auto-summarization */}
+            <MemorySubSection
+              title={t("help.memory.summary.title")}
+              icon={FileText}
+            >
+              <TBulletList t={t} prefix="help.memory.summary" count={4} />
+            </MemorySubSection>
+
+            {/* Projects and cross-chat */}
+            <MemorySubSection
+              title={t("help.memory.projects.title")}
+              icon={FolderOpen}
+            >
+              <TBulletList t={t} prefix="help.memory.projects" count={3} />
+            </MemorySubSection>
+
+            {/* Managing memories */}
+            <MemorySubSection
+              title={t("help.memory.manage.title")}
+              icon={Settings}
+            >
+              <TBulletList t={t} prefix="help.memory.manage" count={4} />
+            </MemorySubSection>
+
+            {/* Tips */}
+            <MemorySubSection
+              title={t("help.memory.tips.title")}
+              icon={Lightbulb}
+            >
+              <TBulletList t={t} prefix="help.memory.tips" count={4} />
+            </MemorySubSection>
+          </CollapsibleSection>
 
           {/* ── Browser Session ── */}
-          <HelpSection title="Browser Session" icon={MonitorPlay}>
-            <BulletList items={browserSessionUsage} />
-          </HelpSection>
+          <CollapsibleSection title={t("help.browser.title")} icon={MonitorPlay}>
+            <TBulletList t={t} prefix="help.browser" count={3} />
+          </CollapsibleSection>
 
           <Separator />
 
           {/* ── Agencies ── */}
-          <section className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-4 space-y-4">
-            <div className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-indigo-700" />
-              <h3 className="text-base font-semibold text-slate-900">
-                Agencies &mdash; Multi-Agent Teams
-              </h3>
-            </div>
-
-            <BulletList items={agencyOverview} />
+          <CollapsibleSection
+            title={t("help.agencies.title")}
+            icon={Users}
+            accent="indigo"
+          >
+            <TBulletList t={t} prefix="help.agencies" count={4} />
 
             {/* Getting started */}
-            <div className="rounded-lg border border-indigo-100 bg-white p-3 space-y-2">
+            <div className="mt-4 rounded-lg border border-indigo-100 bg-white p-3 space-y-2">
               <h4 className="text-xs font-semibold uppercase tracking-wide text-indigo-700">
-                How to get started
+                {t("help.agencies.howToStart.title")}
               </h4>
               <ol className="list-decimal space-y-1.5 pl-5">
-                <li>
-                  Click <strong>Agencies</strong> in the Chat toolbar (or{" "}
-                  <strong>Explore Agencies</strong> on the welcome screen).
-                </li>
-                <li>
-                  Browse available agencies or create one from a template
-                  (Deep Research, Storyboard Planner, Deck Builder).
-                </li>
-                <li>
-                  Open an agency and type your request in the Agency Chat.
-                </li>
-                <li>
-                  The agents work together automatically. When finished, a{" "}
-                  <strong>Preview Card</strong> appears.
-                </li>
-                <li>
-                  Review the preview and click <strong>Save</strong> to
-                  commit it to your Library or Presentation Editor.
-                </li>
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <li key={n}>{t(`help.agencies.howToStart.${n}`)}</li>
+                ))}
               </ol>
             </div>
 
             {/* Templates */}
-            <div>
+            <div className="mt-4">
               <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
-                Available agency templates
+                {t("help.agencies.templates.title")}
               </h4>
               <div className="grid gap-2 md:grid-cols-2">
-                {agencyTemplates.map((t) => (
+                {AGENCY_TEMPLATE_META.map(({ key, icon: TplIcon }) => (
                   <div
-                    key={t.name}
+                    key={key}
                     className="rounded-lg border bg-white p-3 space-y-1.5"
                   >
                     <div className="flex items-center gap-2">
-                      <t.icon className="h-4 w-4 text-indigo-600" />
+                      <TplIcon className="h-4 w-4 text-indigo-600" />
                       <span className="font-semibold text-slate-900">
-                        {t.name}
+                        {t(`help.agencies.tpl.${key}.name`)}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-600">{t.description}</p>
+                    <p className="text-xs text-slate-600">
+                      {t(`help.agencies.tpl.${key}.desc`)}
+                    </p>
                     <p className="text-xs italic text-slate-400">
-                      Example: {t.example}
+                      {t("common.example")}:{" "}
+                      {t(`help.agencies.tpl.${key}.example`)}
                     </p>
                     <Badge variant="outline" className="text-[10px]">
-                      Output: {t.output}
+                      {t("common.output")}:{" "}
+                      {t(`help.agencies.tpl.${key}.output`)}
                     </Badge>
                   </div>
                 ))}
@@ -280,23 +481,21 @@ export function ChatHelpDialog({
             </div>
 
             {/* Preview lifecycle */}
-            <div>
+            <div className="mt-4">
               <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
-                Preview card states
+                {t("help.agencies.preview.title")}
               </h4>
               <div className="space-y-1.5">
-                {agencyPreviewLifecycle.map((s) => (
+                {AGENCY_PREVIEW_STATES.map(({ key, color }) => (
                   <div
-                    key={s.state}
+                    key={key}
                     className="flex items-start gap-2 rounded-lg border bg-white px-3 py-2"
                   >
-                    <Badge
-                      className={`shrink-0 text-[10px] ${s.color}`}
-                    >
-                      {s.state}
+                    <Badge className={`shrink-0 text-[10px] ${color}`}>
+                      {t(`help.agencies.preview.${key}`)}
                     </Badge>
                     <span className="text-xs text-slate-600">
-                      {s.description}
+                      {t(`help.agencies.preview.${key}.desc`)}
                     </span>
                   </div>
                 ))}
@@ -304,37 +503,39 @@ export function ChatHelpDialog({
             </div>
 
             {/* Commit actions */}
-            <div>
+            <div className="mt-4">
               <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">
-                Save actions by type
+                {t("help.agencies.commit.title")}
               </h4>
               <div className="rounded-lg border bg-white overflow-hidden">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b bg-slate-50">
                       <th className="px-3 py-2 text-left font-medium text-slate-700">
-                        Preview Type
+                        {t("help.agencies.commit.col.type")}
                       </th>
                       <th className="px-3 py-2 text-left font-medium text-slate-700">
-                        Button Label
+                        {t("help.agencies.commit.col.button")}
                       </th>
                       <th className="px-3 py-2 text-left font-medium text-slate-700">
-                        Where It Goes
+                        {t("help.agencies.commit.col.dest")}
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {agencyCommitActions.map((a) => (
-                      <tr key={a.type} className="border-b last:border-b-0">
-                        <td className="px-3 py-2">{a.type}</td>
+                    {AGENCY_COMMIT_KEYS.map((ck) => (
+                      <tr key={ck} className="border-b last:border-b-0">
+                        <td className="px-3 py-2">
+                          {t(`help.agencies.commit.${ck}.type`)}
+                        </td>
                         <td className="px-3 py-2">
                           <span className="inline-flex items-center gap-1">
                             <Save className="h-3 w-3" />
-                            {a.button}
+                            {t(`help.agencies.commit.${ck}.button`)}
                           </span>
                         </td>
                         <td className="px-3 py-2 text-slate-600">
-                          {a.destination}
+                          {t(`help.agencies.commit.${ck}.dest`)}
                         </td>
                       </tr>
                     ))}
@@ -344,43 +545,31 @@ export function ChatHelpDialog({
             </div>
 
             {/* Dismiss & error */}
-            <div className="rounded-lg border border-slate-200 bg-white p-3 space-y-1.5">
+            <div className="mt-4 rounded-lg border border-slate-200 bg-white p-3 space-y-1.5">
               <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Other actions
+                {t("help.agencies.other.title")}
               </h4>
               <ul className="list-disc space-y-1 pl-5 text-xs text-slate-600">
-                <li>
-                  Click the <strong>X</strong> button on a Preview Card to
-                  dismiss it without saving.
-                </li>
-                <li>
-                  If the preview fails to load, a red error toast appears.
-                  Send the same message again to retry.
-                </li>
-                <li>
-                  If the save fails, the button changes to{" "}
-                  <strong>Retry Save</strong>. Click it to try again.
-                </li>
+                {[1, 2, 3].map((n) => (
+                  <li key={n}>{t(`help.agencies.other.${n}`)}</li>
+                ))}
               </ul>
             </div>
-          </section>
+          </CollapsibleSection>
 
           {/* ── Common use cases ── */}
-          <section>
-            <h3 className="text-sm font-semibold text-slate-900">
-              Common use cases
-            </h3>
+          <CollapsibleSection title={t("help.useCases.title")}>
             <div className="mt-3 grid gap-2 md:grid-cols-2">
-              {useCases.map((item) => (
+              {[1, 2, 3, 4, 5, 6].map((n) => (
                 <div
-                  key={item}
+                  key={n}
                   className="rounded-lg border border-slate-200 bg-white p-3"
                 >
-                  {item}
+                  {t(`help.useCases.${n}`)}
                 </div>
               ))}
             </div>
-          </section>
+          </CollapsibleSection>
         </div>
       </DialogContent>
     </Dialog>
@@ -389,7 +578,45 @@ export function ChatHelpDialog({
 
 /* ─── Helpers ────────────────────────────────────────────────── */
 
-function HelpSection({
+const ACCENT_COLORS: Record<string, { border: string; bg: string; text: string }> = {
+  sky: { border: "border-sky-200", bg: "bg-sky-50/40", text: "text-sky-700" },
+  emerald: { border: "border-emerald-200", bg: "bg-emerald-50/40", text: "text-emerald-700" },
+  violet: { border: "border-violet-200", bg: "bg-violet-50/40", text: "text-violet-700" },
+  indigo: { border: "border-indigo-200", bg: "bg-indigo-50/40", text: "text-indigo-700" },
+};
+
+/** A collapsible section with a chevron toggle. */
+function CollapsibleSection({
+  title,
+  icon: Icon,
+  accent,
+  children,
+  defaultOpen = false,
+}: {
+  title: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  accent?: keyof typeof ACCENT_COLORS;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const colors = accent ? ACCENT_COLORS[accent] : undefined;
+  return (
+    <details
+      className={`group rounded-xl border ${colors?.border ?? "border-slate-200"} ${colors?.bg ?? "bg-white"} overflow-hidden`}
+      {...(defaultOpen ? { open: true } : {})}
+    >
+      <summary className="flex cursor-pointer select-none items-center gap-2 px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50/50 [&::-webkit-details-marker]:hidden list-none">
+        <ChevronDown className="h-4 w-4 shrink-0 text-slate-400 transition-transform group-open:rotate-180" />
+        {Icon && <Icon className={`h-4 w-4 ${colors?.text ?? "text-primary"}`} />}
+        {title}
+      </summary>
+      <div className="px-4 pb-4 pt-1">{children}</div>
+    </details>
+  );
+}
+
+/** A sub-section inside the Memory section. */
+function MemorySubSection({
   title,
   icon: Icon,
   children,
@@ -399,21 +626,32 @@ function HelpSection({
   children: React.ReactNode;
 }) {
   return (
-    <section>
-      <div className="flex items-center gap-2">
-        {Icon && <Icon className="h-4 w-4 text-primary" />}
-        <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+    <div className="mt-4 rounded-lg border border-violet-100 bg-white p-3">
+      <div className="flex items-center gap-2 mb-1">
+        {Icon && <Icon className="h-3.5 w-3.5 text-violet-500" />}
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-violet-700">
+          {title}
+        </h4>
       </div>
       {children}
-    </section>
+    </div>
   );
 }
 
-function BulletList({ items }: { items: string[] }) {
+/** Renders a numbered bullet list from sequential translation keys. */
+function TBulletList({
+  t,
+  prefix,
+  count,
+}: {
+  t: (key: string) => string;
+  prefix: string;
+  count: number;
+}) {
   return (
     <ul className="mt-3 list-disc space-y-2 pl-5">
-      {items.map((item) => (
-        <li key={item}>{item}</li>
+      {Array.from({ length: count }, (_, i) => (
+        <li key={i}>{t(`${prefix}.${i + 1}`)}</li>
       ))}
     </ul>
   );

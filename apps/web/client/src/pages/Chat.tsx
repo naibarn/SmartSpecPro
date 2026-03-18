@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
-import { ChatSidebar, ChatView, ChatHelpDialog, MemoryPanel, SkillSettings, ArtifactPanel, SchedulePanel, type Artifact } from "@/components/chat";
+import { ChatSidebar, ChatView, MemoryPanel, SkillSettings, ArtifactPanel, SchedulePanel, type Artifact } from "@/components/chat";
 import { CanvasPane } from "@/components/chat/canvas/CanvasPane";
-import { BrowserSessionHelpDialog } from "@/components/browser-session/BrowserSessionHelpDialog";
+import { HelpButton } from "@/components/help";
 import { BrowserSessionSummaryCard } from "@/components/browser-session/BrowserSessionSummaryCard";
 import { Button } from "@/components/ui/button";
 import {
@@ -435,6 +435,10 @@ export default function Chat() {
     setSelectedConversationId(result.id);
   };
 
+  const handleOpenTeamRoom = (teamId: string) => {
+    setLocation(`/teams/${teamId}`);
+  };
+
   const upsertMemoryMutation = trpc.memory.upsertEntityMemory.useMutation();
 
   // Create new chat continuing the same project, with summary from previous chat
@@ -526,7 +530,7 @@ export default function Chat() {
           <h1 className="text-lg font-semibold hidden sm:block">AI Chat</h1>
         </div>
         <div className="flex items-center gap-1">
-          <ChatHelpDialog buttonVariant="ghost" buttonSize="sm" buttonClassName="gap-2" />
+          <HelpButton page="/chat" variant="ghost" size="sm" />
           <Button
             variant={rightPanel === "skills" ? "secondary" : "ghost"}
             size="sm"
@@ -621,6 +625,7 @@ export default function Chat() {
               setSidebarOpen(false);
             }}
             onNewChat={handleNewChat}
+            onOpenTeamRoom={handleOpenTeamRoom}
           />
         </div>
         {/* Desktop sidebar inline */}
@@ -635,6 +640,7 @@ export default function Chat() {
               selectedConversationId={selectedConversationId}
               onSelectConversation={(id) => setSelectedConversationId(id)}
               onNewChat={handleNewChat}
+              onOpenTeamRoom={handleOpenTeamRoom}
             />
           )}
         </div>
@@ -680,7 +686,7 @@ export default function Chat() {
                         )}
                         Start Browser Session
                       </Button>
-                      <BrowserSessionHelpDialog />
+                      <HelpButton page="/chat" topic="browser-session" variant="ghost" size="sm" />
                     </div>
                   </div>
                 </div>
@@ -784,7 +790,7 @@ export default function Chat() {
                       )}
                       Start Browser Session
                     </Button>
-                    <BrowserSessionHelpDialog buttonSize="lg" />
+                    <HelpButton page="/chat" topic="browser-session" size="default" />
                   </>
                 ) : null}
                 <Button

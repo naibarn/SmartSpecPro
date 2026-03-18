@@ -117,7 +117,7 @@ export function validateTeamInput(input: CreateTeamInput): void {
   }
 
   for (const member of input.members) {
-    if (!member.personaId) {
+    if (!member.personaId?.trim()) {
       throw new Error("Every member must have a personaId");
     }
   }
@@ -275,12 +275,12 @@ export async function createFromTemplate(
   const input: CreateTeamInput = {
     tenantId,
     ownerUserId,
+    ...overrides,
     name: overrides?.name ?? template.name,
     description: overrides?.description ?? template.description ?? undefined,
     category: overrides?.category ?? template.category ?? undefined,
     defaultViewMode: (teamConfig.defaultViewMode as any) ?? "transparent",
     members: overrides?.members ?? members,
-    ...overrides,
   };
 
   return createTeam(input);
@@ -330,7 +330,7 @@ export async function updateTeamMember(
     await tx
       .update(assistantProfiles)
       .set(profileUpdates)
-      .where(eq(assistantProfiles.id, profileId));
+      .where(and(eq(assistantProfiles.id, profileId), eq(assistantProfiles.tenantId, tenantId)));
 
     // Update agent-level fields if present
     if (updates.instructions !== undefined || updates.model !== undefined) {
@@ -358,7 +358,7 @@ export async function updateTeamMember(
       await tx
         .update(assistantProfiles)
         .set({ isLead: true })
-        .where(eq(assistantProfiles.id, profileId));
+        .where(and(eq(assistantProfiles.id, profileId), eq(assistantProfiles.tenantId, tenantId)));
     }
   });
 }
@@ -385,16 +385,18 @@ export async function archiveTeam(
     throw new Error(`Team ${teamId} not found`);
   }
 
-  await db
-    .update(assistantTeams)
-    .set({ status: "archived", updatedAt: new Date() })
-    .where(eq(assistantTeams.id, teamId));
+  await db.transaction(async (tx) => {
+    await tx
+      .update(assistantTeams)
+      .set({ status: "archived", updatedAt: new Date() })
+      .where(and(eq(assistantTeams.id, teamId), eq(assistantTeams.tenantId, tenantId)));
 
-  // Also archive the backing agency
-  await db
-    .update(agencies)
-    .set({ status: "archived", updatedAt: new Date() })
-    .where(eq(agencies.id, team.agencyId));
+    // Also archive the backing agency
+    await tx
+      .update(agencies)
+      .set({ status: "archived", updatedAt: new Date() })
+      .where(eq(agencies.id, team.agencyId));
+  });
 }
 
 export async function getTeam(

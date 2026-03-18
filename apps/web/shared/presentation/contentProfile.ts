@@ -258,7 +258,13 @@ function evaluateFitStatus(
       }
       return "fits";
     case "llm_layout_dsl":
-      return profile.sectionCount >= 4 || (profile.sectionCount >= 2 && profile.bulletCount >= 2) ? "fits" : "cramped";
+      if (profile.totalChars >= 1_600 || profile.paragraphCount >= 14) {
+        return "unsafe";
+      }
+      if (profile.totalChars >= 1_000 || profile.sectionCount >= 6) {
+        return "cramped";
+      }
+      return "fits";
     case "full_slide_media":
       if (profile.denseTextCandidate || profile.signals.contact > 0 || profile.signals.profile > 0) {
         return "unsafe";

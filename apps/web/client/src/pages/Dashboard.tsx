@@ -6,6 +6,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useLocation } from 'wouter';
 import { formatRelativeTime } from '@smartspec/shared';
+import { HelpButton } from "@/components/help";
 import type { UserRole } from '@smartspec/shared';
 import { detectPlatform } from '@smartspec/shared';
 import { motion } from 'framer-motion';
@@ -381,15 +382,18 @@ export default function Dashboard() {
                 Here's what's happening with your account today.
               </p>
             </div>
-            <a
-              href="/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/70 backdrop-blur-xl border border-white/50 shadow-lg shadow-purple-500/5 text-sm font-medium text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition-colors"
-            >
-              <ExternalLink className="w-4 h-4" />
-              Website Preview
-            </a>
+            <div className="flex items-center gap-2">
+              <HelpButton page="/dashboard" variant="outline" size="sm" />
+              <a
+                href="/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/70 backdrop-blur-xl border border-white/50 shadow-lg shadow-purple-500/5 text-sm font-medium text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Website Preview
+              </a>
+            </div>
           </div>
         </motion.div>
 

@@ -2779,4 +2779,23 @@ export const agencyRouter = router({
 
       return { items, total: countResult.cnt };
     }),
+
+  /**
+   * Route an agency result envelope to its destination.
+   * Called by the frontend after an agency run produces structured output.
+   */
+  routeResult: protectedProcedure
+    .input(z.object({
+      envelope: z.unknown(),
+      agencyId: z.string().min(1).max(36).optional(),
+      agencyRunId: z.string().min(1).max(100).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const { parseAndRouteAgencyResult } = await import("../services/agencyResultRouter");
+      return parseAndRouteAgencyResult(input.envelope, {
+        agencyId: input.agencyId,
+        agencyRunId: input.agencyRunId,
+        userId: ctx.user!.id,
+      });
+    }),
 });

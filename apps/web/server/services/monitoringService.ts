@@ -10,6 +10,7 @@ import {
   agentRunSummaries,
   runSnapshots,
   teamRuns,
+  teamRooms,
   assistantProfiles,
   type AgentActivityEvent,
   type InsertAgentActivityEvent,
@@ -83,23 +84,27 @@ export async function recordEvent(
 
 export async function captureSnapshot(
   runId: string,
+  tenantId: string,
 ): Promise<RunSnapshot> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
   const [run] = await db
-    .select()
+    .select({ run: teamRuns })
     .from(teamRuns)
-    .where(eq(teamRuns.id, runId))
-    .limit(1);
+    .innerJoin(teamRooms, eq(teamRooms.id, teamRuns.roomId))
+    .where(and(eq(teamRuns.id, runId), eq(teamRooms.tenantId, tenantId)))
+    .limit(1)
+    .then((rows) => rows.map((r) => r.run));
 
   if (!run) throw new Error(`Run ${runId} not found`);
 
   const budget = (run.budgetSnapshotJson as BudgetSnapshot) ?? { totalCreditsUsed: 0, perAgent: {} };
+  const perAgent = budget.perAgent ?? {};
 
   // Build agent statuses
   const agentStatuses: Record<string, string> = {};
-  for (const [agentId, data] of Object.entries(budget.perAgent)) {
+  for (const [agentId] of Object.entries(perAgent)) {
     agentStatuses[agentId] = agentId === run.activeAssistantId ? "active" : "idle";
   }
 
@@ -110,13 +115,13 @@ export async function captureSnapshot(
       activeAssistantId: run.activeAssistantId,
       agentStatusesJson: agentStatuses,
       tokenUsageJson: Object.fromEntries(
-        Object.entries(budget.perAgent).map(([id, d]) => [
+        Object.entries(perAgent).map(([id, d]) => [
           id,
           { inputTokens: d.inputTokens, outputTokens: d.outputTokens },
         ]),
       ),
       costJson: Object.fromEntries(
-        Object.entries(budget.perAgent).map(([id, d]) => [id, d.creditsUsed]),
+        Object.entries(perAgent).map(([id, d]) => [id, d.creditsUsed]),
       ),
     })
     .returning();
@@ -128,15 +133,18 @@ export async function captureSnapshot(
 
 export async function checkStuckAgent(
   runId: string,
+  tenantId: string,
 ): Promise<StuckAgentCheck> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
   const [run] = await db
-    .select()
+    .select({ run: teamRuns })
     .from(teamRuns)
-    .where(eq(teamRuns.id, runId))
-    .limit(1);
+    .innerJoin(teamRooms, eq(teamRooms.id, teamRuns.roomId))
+    .where(and(eq(teamRuns.id, runId), eq(teamRooms.tenantId, tenantId)))
+    .limit(1)
+    .then((rows) => rows.map((r) => r.run));
 
   if (!run || run.status !== "running") {
     return { isStuck: false, agentId: null, reason: null, lastActivityAge: null };
@@ -169,6 +177,7 @@ export async function checkStuckAgent(
 
 export async function getRunEvents(
   runId: string,
+  tenantId: string,
   limit: number = 100,
 ): Promise<AgentActivityEvent[]> {
   const db = await getDb();
@@ -177,7 +186,7 @@ export async function getRunEvents(
   return db
     .select()
     .from(agentActivityEvents)
-    .where(eq(agentActivityEvents.runId, runId))
+    .where(and(eq(agentActivityEvents.runId, runId), eq(agentActivityEvents.tenantId, tenantId)))
     .orderBy(desc(agentActivityEvents.createdAt))
     .limit(limit);
 }

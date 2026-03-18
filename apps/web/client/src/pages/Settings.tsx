@@ -8,6 +8,7 @@ import { useLocation, useSearch } from 'wouter';
 import { motion } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { HelpButton } from "@/components/help";
 import {
   Dialog,
   DialogContent,
@@ -615,6 +616,7 @@ export default function Settings() {
                   <h1 className="text-xl font-bold text-gray-900">Settings</h1>
                   <p className="text-sm text-gray-500">Manage your account settings</p>
                 </div>
+                <HelpButton page="/settings" variant="ghost" size="sm" />
               </div>
             </div>
             {saveSuccess && (

@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
-import { Button } from "@smartspec/ui/components/button";
-import { Input } from "@smartspec/ui/components/input";
-import { ScrollArea } from "@smartspec/ui/components/scroll-area";
+import { Button } from "@smartspec/ui/src/components/ui/button";
+import { Input } from "@smartspec/ui/src/components/ui/input";
+import { ScrollArea } from "@smartspec/ui/src/components/ui/scroll-area";
 
 interface ChatMessage {
   role: "user" | "assistant";

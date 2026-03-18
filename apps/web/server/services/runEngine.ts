@@ -31,6 +31,7 @@ export interface StopEvaluation {
 
 export interface StartRunInput {
   roomId: string;
+  tenantId: string;
   initiatedByUserId: number;
   executionMode: "team_chat" | "auto_team" | "review";
   objective: string;
@@ -158,11 +159,11 @@ export async function startRun(input: StartRunInput): Promise<TeamRun> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  // Load room
+  // Load room — verify it belongs to the caller's tenant
   const [room] = await db
     .select()
     .from(teamRooms)
-    .where(eq(teamRooms.id, input.roomId))
+    .where(and(eq(teamRooms.id, input.roomId), eq(teamRooms.tenantId, input.tenantId)))
     .limit(1);
 
   if (!room || room.status !== "active") {
@@ -230,16 +231,39 @@ export async function startRun(input: StartRunInput): Promise<TeamRun> {
   return run;
 }
 
-export async function pauseRun(runId: string): Promise<TeamRun> {
-  const db = await getDb();
-  if (!db) throw new Error("Database not available");
-
+/**
+ * Load a run by ID, verifying it belongs to the given tenant via its room.
+ * Returns null if not found or tenant mismatch.
+ */
+async function loadRunWithTenantCheck(
+  db: Awaited<ReturnType<typeof getDb>>,
+  runId: string,
+  tenantId?: string,
+): Promise<TeamRun | null> {
+  if (!db) return null;
   const [run] = await db
     .select()
     .from(teamRuns)
     .where(eq(teamRuns.id, runId))
     .limit(1);
+  if (!run) return null;
+  if (tenantId) {
+    // Verify via room
+    const [room] = await db
+      .select({ tenantId: teamRooms.tenantId })
+      .from(teamRooms)
+      .where(and(eq(teamRooms.id, run.roomId), eq(teamRooms.tenantId, tenantId)))
+      .limit(1);
+    if (!room) return null;
+  }
+  return run;
+}
 
+export async function pauseRun(runId: string, tenantId?: string): Promise<TeamRun> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const run = await loadRunWithTenantCheck(db, runId, tenantId);
   if (!run) throw new Error(`Run ${runId} not found`);
   if (run.status !== "running") {
     throw new Error(`Run must be 'running' to pause, current status: ${run.status}`);
@@ -254,16 +278,11 @@ export async function pauseRun(runId: string): Promise<TeamRun> {
   return updated;
 }
 
-export async function resumeRun(runId: string): Promise<TeamRun> {
+export async function resumeRun(runId: string, tenantId?: string): Promise<TeamRun> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const [run] = await db
-    .select()
-    .from(teamRuns)
-    .where(eq(teamRuns.id, runId))
-    .limit(1);
-
+  const run = await loadRunWithTenantCheck(db, runId, tenantId);
   if (!run) throw new Error(`Run ${runId} not found`);
   if (run.status !== "paused") {
     throw new Error(`Run must be 'paused' to resume, current status: ${run.status}`);
@@ -283,16 +302,12 @@ export async function resumeRun(runId: string): Promise<TeamRun> {
 export async function stopRun(
   runId: string,
   reason: string,
+  tenantId?: string,
 ): Promise<TeamRun> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const [run] = await db
-    .select()
-    .from(teamRuns)
-    .where(eq(teamRuns.id, runId))
-    .limit(1);
-
+  const run = await loadRunWithTenantCheck(db, runId, tenantId);
   if (!run) throw new Error(`Run ${runId} not found`);
   if (run.status !== "running" && run.status !== "paused") {
     throw new Error(`Run must be 'running' or 'paused' to stop, current status: ${run.status}`);
@@ -347,15 +362,9 @@ export async function stopRun(
   return updated;
 }
 
-export async function getRun(runId: string): Promise<TeamRun | null> {
+export async function getRun(runId: string, tenantId?: string): Promise<TeamRun | null> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const [run] = await db
-    .select()
-    .from(teamRuns)
-    .where(eq(teamRuns.id, runId))
-    .limit(1);
-
-  return run ?? null;
+  return loadRunWithTenantCheck(db, runId, tenantId);
 }

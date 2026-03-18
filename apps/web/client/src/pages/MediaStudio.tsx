@@ -7,6 +7,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { HelpButton } from "@/components/help";
 import { pickEnabledModelId } from "@/lib/enabledModelSelection";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -2755,6 +2756,7 @@ export default function MediaStudio() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <HelpButton page="/media-studio" variant="ghost" size="sm" />
               <Badge variant="secondary" className="gap-1">
                 <Zap className="h-3 w-3" />
                 {credits?.credits || 0} credits

@@ -33,7 +33,7 @@ services:
       context: ./python-backend
       dockerfile: Dockerfile
     container_name: smartspec-celery-media
-    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=2 --max-tasks-per-child=20 --max-memory-per-child=900000 -Q media -n media@%h
+    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=8 --max-tasks-per-child=50 --max-memory-per-child=1200000 -Q media -n media@%h
     env_file:
       - ./python-backend/.env
     environment:

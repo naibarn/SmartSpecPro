@@ -7,6 +7,7 @@
 
 import React from "react";
 import type { ActiveThreadRef } from "@/lib/threadRef";
+import { TeamRoomView } from "@/components/orchestrator/TeamRoomView";
 
 interface ThreadRouterProps {
   activeThread: ActiveThreadRef | null;
@@ -27,13 +28,7 @@ export function ThreadRouter({ activeThread }: ThreadRouterProps) {
       return null; // Parent component renders ChatView when kind === "chat"
 
     case "team_room":
-      return (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 text-muted-foreground">
-          <h3 className="text-lg font-medium">Team Room</h3>
-          <p className="text-sm">Room ID: {activeThread.id}</p>
-          <p className="text-xs">Team Room view will be implemented in the room monitor component</p>
-        </div>
-      );
+      return <TeamRoomView roomId={activeThread.id} />;
 
     case "agency_conversation":
       return null; // Existing AgencyChat handles this

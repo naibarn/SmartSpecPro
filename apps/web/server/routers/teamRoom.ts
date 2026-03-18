@@ -44,8 +44,10 @@ export const teamRoomRouter = router({
       recipientAssistantId: z.string().optional(),
     }))
     .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx);
       return roomService.sendMessage({
         roomId: input.roomId,
+        tenantId,
         senderType: "user",
         senderUserId: ctx.userId,
         recipientType: input.recipientType,
@@ -61,8 +63,9 @@ export const teamRoomRouter = router({
       cursor: z.string().optional(),
       limit: z.number().int().min(1).max(100).optional(),
     }))
-    .query(async ({ input }) => {
-      return roomService.getMessages(input.roomId, {
+    .query(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx);
+      return roomService.getMessages(input.roomId, tenantId, {
         viewMode: input.viewMode,
         callerType: "user",
         cursor: input.cursor,

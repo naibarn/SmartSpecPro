@@ -13,11 +13,15 @@ import {
   ExternalLink,
   MapPin,
   X,
+  Wand2,
+  Type,
 } from "lucide-react";
 import { PreviewCommitButton } from "./PreviewCommitButton";
 import { ResearchPreviewContent } from "./ResearchPreviewContent";
 import { StoryboardPreviewContent } from "./StoryboardPreviewContent";
 import { DeckPreviewContent } from "./DeckPreviewContent";
+import { MediaPromptPreviewContent } from "./MediaPromptPreviewContent";
+import { TextContentPreviewContent } from "./TextContentPreviewContent";
 import type { AgencyComparisonPayload } from "@shared/agencyComparison";
 
 /**
@@ -25,7 +29,7 @@ import type { AgencyComparisonPayload } from "@shared/agencyComparison";
  * We only use the fields the UI actually needs.
  */
 export interface AgencyPreviewProps {
-  previewType: "research" | "storyboard" | "deck" | "comparison";
+  previewType: "research" | "storyboard" | "deck" | "comparison" | "media_prompt" | "text_content";
   artifactId: string;
   intent: string;
   lifecycleState:
@@ -87,6 +91,20 @@ const typeConfig = {
     borderColor: "border-sky-200",
     bgColor: "bg-sky-50/40",
     iconBg: "bg-sky-100 text-sky-700",
+  },
+  media_prompt: {
+    icon: Wand2,
+    label: "Media Prompt",
+    borderColor: "border-orange-200",
+    bgColor: "bg-orange-50/40",
+    iconBg: "bg-orange-100 text-orange-700",
+  },
+  text_content: {
+    icon: Type,
+    label: "Text Content",
+    borderColor: "border-slate-200",
+    bgColor: "bg-slate-50/40",
+    iconBg: "bg-slate-100 text-slate-700",
   },
 } as const;
 
@@ -222,6 +240,12 @@ export function AgencyPreviewCard({
         )}
         {preview.previewType === "deck" && (
           <DeckPreviewContent data={preview.data as any} />
+        )}
+        {preview.previewType === "media_prompt" && (
+          <MediaPromptPreviewContent data={preview.data as any} />
+        )}
+        {preview.previewType === "text_content" && (
+          <TextContentPreviewContent data={preview.data as any} />
         )}
         {preview.previewType === "comparison" && comparisonData && (
           <ComparisonContent data={comparisonData} />

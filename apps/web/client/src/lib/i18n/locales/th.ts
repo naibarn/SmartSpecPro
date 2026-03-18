@@ -1,0 +1,416 @@
+import type { TranslationDictionary } from "../types";
+
+const th: TranslationDictionary = {
+  // ── Help dialog chrome ───────────────────────────────────────
+  "help.title": "คู่มือการใช้งาน",
+  "help.description":
+    "วิธีใช้ Chat, Skills, สร้างสื่อ, สร้าง Presentation, ระบบเลือก Skill อัตโนมัติ, Memory, Browser Session และ Agencies",
+
+  // ── What Chat is best for ────────────────────────────────────
+  "help.chatBestFor.title": "Chat เหมาะสำหรับอะไร",
+  "help.chatBestFor.body":
+    "Chat เป็นช่องทางที่เร็วที่สุดในการถามคำตอบ ร่างเนื้อหา ระดมสมอง สร้างพรอมต์ วิเคราะห์ และทำงานต่อเนื่อง เริ่มที่นี่เมื่อต้องการโต้ตอบกับ AI โดยตรง และย้ายไปใช้ Browser Session หรือ Agencies เมื่องานต้องการพื้นที่ทำงานแบบอื่น",
+
+  // ── Chat basics ──────────────────────────────────────────────
+  "help.chatBasics.title": "พื้นฐาน Chat",
+  "help.chatBasics.1": "พิมพ์ข้อความปกติเพื่อแชทกับโมเดลที่เลือก",
+  "help.chatBasics.2":
+    "ใช้ตัวเลือกโมเดลด้านบนของบทสนทนาเพื่อเปลี่ยน LLM ที่ใช้งาน",
+  "help.chatBasics.3":
+    "เปิด Brainstorm Mode เมื่อต้องการให้สองโมเดลร่วมกันก่อนส่งสรุป",
+  "help.chatBasics.4":
+    "แนบไฟล์หรือรูปภาพเมื่องานต้องใช้เอกสารประกอบ",
+
+  // ── Skills ───────────────────────────────────────────────────
+  "help.skills.title": "Skills และคำสั่ง Slash",
+  "help.skills.1":
+    "พิมพ์ / ในช่องข้อความเพื่อเปิดเมนู Slash-command skill",
+  "help.skills.2":
+    "เปิดแผง Skills เพื่อควบคุมว่า skill ใดเปิดใช้งานในบทสนทนาปัจจุบัน",
+  "help.skills.3":
+    "ใช้ skills เมื่อต้องการให้ผู้ช่วยทำตามขั้นตอนเฉพาะทาง แทนคำตอบทั่วไป",
+  "help.skills.4":
+    "หากงานซ้ำ ๆ หรือเฉพาะด้าน ให้เลือก skill แทนการพิมพ์คำสั่งเดิมซ้ำ",
+
+  // ── Media ────────────────────────────────────────────────────
+  "help.media.title": "สร้างรูปภาพ วิดีโอ และเสียง",
+  "help.media.1":
+    "ใช้ Generate Image เพื่อเริ่มด้วย create image: แล้วอธิบายภาพที่ต้องการ",
+  "help.media.2":
+    "ใช้ Generate Video เพื่อเริ่มด้วย create video: สำหรับผลลัพธ์แบบเคลื่อนไหว",
+  "help.media.3":
+    "ใช้ Generate Audio เมื่อต้องการสร้างเสียงพูด เพลง หรือเสียงประกอบ",
+  "help.media.4":
+    "ใช้ prompt-enhance เมื่อพิมพ์ไอเดียคร่าว ๆ แล้วต้องการให้ระบบปรับปรุงพรอมต์ก่อน",
+  "help.media.5":
+    "แนบภาพตัวอย่างและขอให้โมเดลแก้ไขหรือต่อยอดได้",
+
+  // ── Presentation from Chat ───────────────────────────────────
+  "help.presentation.title": "สร้าง Presentation จาก Chat",
+  "help.presentation.intro":
+    "พิมพ์ข้อความที่เริ่มด้วยคำสั่ง เช่น \"สร้าง presentation\", \"create presentation\" หรือ \"make slides\" ตามด้วยหัวข้อ ระบบจะสร้างชุดสไลด์พร้อมเนื้อหาและรูปภาพ AI อัตโนมัติ",
+  "help.presentation.triggers.title": "คำสั่งเริ่มต้น",
+  "help.presentation.triggers.list":
+    "สร้าง presentation,ทำ presentation,create presentation,make slides,generate slides,build a deck",
+  "help.presentation.params.title": "พารามิเตอร์ที่ใช้ได้",
+  "help.presentation.params.col.param": "พารามิเตอร์",
+  "help.presentation.params.col.required": "จำเป็น",
+  "help.presentation.params.col.desc": "คำอธิบาย",
+  "help.presentation.params.col.examples": "ตัวอย่าง",
+  "help.presentation.params.topic.name": "หัวข้อ",
+  "help.presentation.params.topic.desc":
+    "เรื่องของ presentation ระบุหลังคำสั่งเริ่มต้น",
+  "help.presentation.params.topic.examples":
+    "\"เรื่อง AI\" / \"about Marketing\"",
+  "help.presentation.params.slides.name": "จำนวนสไลด์",
+  "help.presentation.params.slides.desc":
+    "จำนวนสไลด์ (1–30) ค่าเริ่มต้น: 5",
+  "help.presentation.params.slides.examples":
+    "\"จำนวน 10 สไลด์\" / \"8 slides\"",
+  "help.presentation.params.aspect.name": "อัตราส่วนภาพ",
+  "help.presentation.params.aspect.desc":
+    "ขนาดแคนวาส ค่าเริ่มต้น: 16:9 แนวนอน",
+  "help.presentation.params.aspect.examples":
+    "\"16:9\" / \"9:16\" / \"แนวนอน\" / \"แนวตั้ง\" / \"landscape\" / \"portrait\"",
+  "help.presentation.params.language.name": "ภาษา",
+  "help.presentation.params.language.desc":
+    "กำหนดภาษาของเนื้อหา ค่าเริ่มต้น: ตรวจจับจากหัวข้ออัตโนมัติ",
+  "help.presentation.params.language.examples":
+    "\"ภาษาไทย\" / \"ภาษาอังกฤษ\" / \"in Thai\" / \"in English\"",
+  "help.presentation.required": "จำเป็น",
+  "help.presentation.optional": "ไม่บังคับ",
+  "help.presentation.examples.title": "ตัวอย่าง",
+  "help.presentation.ex.basic.label": "พื้นฐาน",
+  "help.presentation.ex.basic.cmd":
+    "สร้าง presentation เรื่อง Digital Marketing",
+  "help.presentation.ex.basic.result":
+    "5 สไลด์, 16:9 แนวนอน, ตรวจจับภาษาอัตโนมัติ",
+  "help.presentation.ex.count.label": "กำหนดจำนวนสไลด์",
+  "help.presentation.ex.count.cmd":
+    "สร้าง presentation เรื่อง AI in Healthcare จำนวน 10 สไลด์",
+  "help.presentation.ex.count.result": "10 สไลด์, 16:9 แนวนอน",
+  "help.presentation.ex.portrait.label": "แนวตั้ง (9:16)",
+  "help.presentation.ex.portrait.cmd":
+    "สร้าง presentation เรื่อง Social Media Tips 9:16 แนวตั้ง",
+  "help.presentation.ex.portrait.result": "5 สไลด์, 9:16 แนวตั้ง",
+  "help.presentation.ex.landscape.label": "แนวนอน (16:9)",
+  "help.presentation.ex.landscape.cmd":
+    "create presentation about Startup Pitch 8 slides 16:9",
+  "help.presentation.ex.landscape.result": "8 สไลด์, 16:9 แนวนอน",
+  "help.presentation.ex.lang.label": "กำหนดภาษา",
+  "help.presentation.ex.lang.cmd":
+    "สร้าง presentation เรื่อง Cloud Computing ภาษาอังกฤษ 16:9",
+  "help.presentation.ex.lang.result":
+    "5 สไลด์, 16:9 แนวนอน, ภาษาอังกฤษ",
+  "help.presentation.ex.full.label": "ครบทุกตัวเลือก",
+  "help.presentation.ex.full.cmd":
+    "สร้าง presentation เรื่อง พัฒนาการเด็ก 10 slides 9:16 ภาษาไทย",
+  "help.presentation.ex.full.result": "10 สไลด์, 9:16 แนวตั้ง, ภาษาไทย",
+  "help.presentation.howItWorks.title": "วิธีการทำงาน",
+  "help.presentation.howItWorks.1":
+    "ส่งข้อความที่มีคำสั่งเริ่มต้น + หัวข้อ",
+  "help.presentation.howItWorks.2":
+    "ระบบดึงหัวข้อ จำนวนสไลด์ อัตราส่วนภาพ และภาษาจากข้อความ",
+  "help.presentation.howItWorks.3":
+    "สร้างชุดสไลด์ใหม่ทันทีพร้อมลิงก์ไปหน้าแก้ไข",
+  "help.presentation.howItWorks.4":
+    "AI สร้างเนื้อหา เลย์เอาต์ และรูปภาพเบื้องหลัง",
+  "help.presentation.howItWorks.5":
+    "เมื่อเสร็จสิ้น แจ้งเตือนปรากฏใน chat พร้อมลิงก์สุดท้าย",
+
+  // ── Auto Skill Detection ─────────────────────────────────────
+  "help.skillDetection.title": "ระบบเลือก Skill อัตโนมัติ",
+  "help.skillDetection.1":
+    "ระบบตรวจจับ skill ที่เหมาะสมจากคีย์เวิร์ดในข้อความโดยอัตโนมัติ",
+  "help.skillDetection.2":
+    "ไม่ต้องเลือก skill เอง — แค่อธิบายสิ่งที่ต้องการ ระบบจะจับคู่ให้",
+  "help.skillDetection.3":
+    "หากระบบเลือกผิด ใช้เมนู / เพื่อเลือก skill ที่ต้องการด้วยตนเอง",
+  "help.skillDetection.4":
+    "Skill ที่มีคะแนนลำดับความสำคัญสูงจะถูกตรวจสอบก่อน คีย์เวิร์ดเฉพาะทางช่วยเพิ่มความแม่นยำ",
+  "help.skillDetection.tips.title": "เคล็ดลับให้จับคู่ skill ได้แม่นยำ",
+  "help.skillDetection.tip1.title": "ระบุประเภทผลลัพธ์ให้ชัดเจน",
+  "help.skillDetection.tip1.example":
+    "\"Write a product review for Nike Air Max\" จะเรียก skill product-reviewer",
+  "help.skillDetection.tip1.why":
+    "คำนามที่เฉพาะเจาะจงช่วยให้ระบบจับคู่ skill ที่ถูกต้อง",
+  "help.skillDetection.tip2.title": "ระบุหมวดหมู่หรือโดเมน",
+  "help.skillDetection.tip2.example":
+    "\"Create an image prompt for a sunset landscape\" จะเรียก skill image-prompt-engineer",
+  "help.skillDetection.tip2.why":
+    "คีย์เวิร์ดโดเมน (image, video, article, review) เป็นสัญญาณที่แข็งแกร่ง",
+  "help.skillDetection.tip3.title": "ใช้ภาษาของ skill อย่างเป็นธรรมชาติ",
+  "help.skillDetection.tip3.example":
+    "\"สร้าง presentation เรื่อง AI\" จะเริ่มสร้าง presentation อัตโนมัติ",
+  "help.skillDetection.tip3.why":
+    "รองรับคำสั่งทั้งภาษาไทยและภาษาอังกฤษ",
+  "help.skillDetection.tip4.title":
+    "ผสมคีย์เวิร์ดสร้างสื่อและสไตล์",
+  "help.skillDetection.tip4.example":
+    "\"Generate a video of a talking cat using viral style\" จะเรียก skill viral-talking-objects",
+  "help.skillDetection.tip4.why":
+    "คีย์เวิร์ดประเภทสื่อ + สไตล์ช่วยนำทางการเลือก skill",
+  "help.skillDetection.howItWorks.title": "ระบบตรวจจับอัตโนมัติทำงานอย่างไร",
+  "help.skillDetection.howItWorks.1":
+    "เมื่อส่งข้อความ ระบบสแกนหาคีย์เวิร์ดที่รู้จัก",
+  "help.skillDetection.howItWorks.2":
+    "แต่ละ skill ที่เปิดใช้งานมีแท็กและรูปแบบที่ใช้ให้คะแนนเทียบกับข้อความ",
+  "help.skillDetection.howItWorks.3":
+    "Skill ที่มีคะแนนความมั่นใจสูงสุดจะถูกเลือกอัตโนมัติ",
+  "help.skillDetection.howItWorks.4":
+    "หากไม่มี skill ใดเกินเกณฑ์ ข้อความจะส่งไปยัง LLM ทั่วไป",
+  "help.skillDetection.howItWorks.5":
+    "สามารถเปลี่ยนเองได้โดยเลือก skill จากเมนู / ก่อนส่ง",
+
+  // ── Memory ───────────────────────────────────────────────────
+  "help.memory.title": "Memory (ความจำ)",
+  "help.memory.intro":
+    "Memory ช่วยให้ AI จดจำค่ากำหนด บริบทโปรเจกต์ การตัดสินใจ และข้อเท็จจริงสำคัญข้ามทุกบทสนทนา เปิดแผง Memory ที่แถบด้านขวาเพื่อจัดการทั้งหมด",
+
+  "help.memory.what.title": "Memory เก็บอะไรบ้าง",
+  "help.memory.what.1": "ค่ากำหนดและสไตล์ — วิธีทำงานที่ชอบ เครื่องมือที่ใช้",
+  "help.memory.what.2": "รายละเอียดโปรเจกต์ — tech stack เป้าหมาย ชื่อทีม",
+  "help.memory.what.3": "การตัดสินใจและแผน — สิ่งที่ตัดสินใจแล้ว เป้าหมาย ขั้นตอนถัดไป",
+  "help.memory.what.4": "ความรู้ทางเทคนิค — frameworks, databases, APIs, รูปแบบสถาปัตยกรรม",
+  "help.memory.what.5": "กฎ — ข้อจำกัดที่ AI ต้องปฏิบัติตามเสมอ",
+
+  "help.memory.modes.title": "โหมด Memory",
+  "help.memory.modes.full.name": "Full Memory (ค่าเริ่มต้น)",
+  "help.memory.modes.full.desc": "AI จดจำทุกอย่าง: ค่ากำหนด ข้อเท็จจริงโปรเจกต์ การตัดสินใจ กฎ รวมถึงสรุปบทสนทนาเก่า",
+  "help.memory.modes.nolong.name": "No Long Memory",
+  "help.memory.modes.nolong.desc": "AI เห็นเฉพาะข้อความล่าสุดและสรุปเก่า ลืมค่ากำหนดและข้อเท็จจริงโปรเจกต์ เหมาะสำหรับมุมมองใหม่",
+  "help.memory.modes.off.name": "Memory Off",
+  "help.memory.modes.off.desc": "AI เห็นเฉพาะบทสนทนาปัจจุบัน ไม่มีอะไรจากก่อนหน้า เหมาะสำหรับความเป็นส่วนตัวหรือหัวข้อละเอียดอ่อน",
+
+  "help.memory.types.title": "ประเภท Memory",
+  "help.memory.types.rule": "Rule — ข้อจำกัดที่ AI ต้องปฏิบัติตามเสมอ ความสำคัญ 10 ไม่ถูกลบอัตโนมัติ",
+  "help.memory.types.user": "User — ข้อเท็จจริงเกี่ยวกับคุณ: บทบาท ความเชี่ยวชาญ ชื่อ",
+  "help.memory.types.project": "Project — ชื่อโปรเจกต์ วัตถุประสงค์ tech stack เป้าหมาย",
+  "help.memory.types.preference": "Preference — วิธีทำงาน: เครื่องมือ สไตล์การเขียนโค้ด การสื่อสาร",
+  "help.memory.types.technical": "Technical — Frameworks, databases, APIs ที่ใช้",
+  "help.memory.types.decision": "Decision — ทางเลือกสำคัญที่ตัดสินใจระหว่างทำงาน",
+  "help.memory.types.plan": "Plan — แผนงาน เป้าหมาย ขั้นตอนถัดไป",
+  "help.memory.types.architecture": "Architecture — การออกแบบระบบ โครงสร้างโมดูล รูปแบบ",
+  "help.memory.types.task": "Task — รายการสิ่งที่ต้องทำ",
+
+  "help.memory.auto.title": "Memory อัตโนมัติ",
+  "help.memory.auto.1": "AI ดึงข้อเท็จจริงจากบทสนทนาและบันทึกอัตโนมัติ",
+  "help.memory.auto.2": "ข้อมูลสำคัญน้อยบันทึกเงียบ ๆ ข้อมูลสำคัญมากจะถามยืนยันก่อน",
+  "help.memory.auto.3": "ข้อมูลส่วนตัว (อีเมล รหัสผ่าน API key) จะถูกกรองออกและไม่ถูกบันทึก",
+  "help.memory.auto.4": "Memory อยู่ได้ 180 วันหากไม่ถูกเข้าถึง กฎ (Rules) ไม่ถูกลบอัตโนมัติ",
+
+  "help.memory.summary.title": "สรุปและบีบอัดอัตโนมัติ",
+  "help.memory.summary.1": "เมื่อข้อความเก่าใช้พื้นที่ 70% ของ context window AI จะสร้างสรุปอัตโนมัติ",
+  "help.memory.summary.2": "สรุปจับประเด็นการตัดสินใจ สิ่งที่ต้องทำ และบริบทสำคัญจากข้อความเก่า",
+  "help.memory.summary.3": "เมื่อมีสรุป 2 รายการขึ้นไป จะรวมเป็นสรุปรวมหนึ่งเดียวเพื่อประสิทธิภาพ",
+  "help.memory.summary.4": "ใช้ปุ่ม Compact เพื่อบังคับสรุปทันที ใช้ Clear Old เพื่อลบ memory เก่ากว่า 1/3/6 เดือน",
+
+  "help.memory.projects.title": "โปรเจกต์และ Memory ข้ามแชท",
+  "help.memory.projects.1": "แท็กบทสนทนาด้วยชื่อโปรเจกต์ในแผง Memory",
+  "help.memory.projects.2": "Memory ทั้งหมดที่สร้างในโปรเจกต์นั้นจะพร้อมใช้ในทุกแชทที่แท็กโปรเจกต์เดียวกัน",
+  "help.memory.projects.3": "Memory ทั่วไป (ไม่มีแท็กโปรเจกต์) จะมองเห็นได้ในทุกแชท",
+
+  "help.memory.manage.title": "จัดการ Memory",
+  "help.memory.manage.1": "เพิ่ม: คลิกปุ่ม + Add เลือกประเภท ตั้งชื่อ เขียนเนื้อหา ตั้งความสำคัญ (1-10)",
+  "help.memory.manage.2": "ลบ: เลื่อนเมาส์ไปบน memory แล้วคลิกไอคอนถังขยะ",
+  "help.memory.manage.3": "กรอง: ใช้ปุ่มกรองประเภท (All, User, Project, Preference ฯลฯ) เพื่อค้นหา",
+  "help.memory.manage.4": "ความสำคัญ: คะแนนสูง (8-10) = AI พิจารณาเสมอ คะแนนต่ำ (1-4) = ข้อมูลเสริม",
+
+  "help.memory.tips.title": "เคล็ดลับใช้ Memory ให้ดี",
+  "help.memory.tips.1": "เจาะจง: \"ชอบชื่อตัวแปรอ่านง่ายและใส่ JSDoc comments\" ดีกว่า \"ชอบโค้ดดี ๆ\"",
+  "help.memory.tips.2": "หนึ่งข้อเท็จจริงต่อหนึ่ง memory — อัปเดตหรือลบทีละรายการได้ง่าย",
+  "help.memory.tips.3": "ใช้ Rules (ความสำคัญ 10) สำหรับข้อจำกัดเข้มงวด เช่น \"ใช้ HTTPS เสมอ\" หรือ \"ห้าม commit secrets\"",
+  "help.memory.tips.4": "อัปเดตเมื่อสิ่งต่าง ๆ เปลี่ยน — ลบ memory ที่ล้าสมัยและเพิ่มอันใหม่",
+
+  // ── Browser Session ──────────────────────────────────────────
+  "help.browser.title": "Browser Session",
+  "help.browser.1":
+    "ใช้ Browser Session เมื่องานต้องเปิดเว็บไซต์จริง เปรียบเทียบหลายหน้า หรือทำขั้นตอนในเบราว์เซอร์",
+  "help.browser.2":
+    "เริ่ม Browser Session จาก Chat แล้วทำงานต่อในพื้นที่ทำงานจริงหรือส่งคำสั่งเร็วจาก Chat",
+  "help.browser.3":
+    "Browser Session เหมาะสำหรับค้นหาเว็บไซต์ เปิดหน้าเว็บ เปรียบเทียบตัวเลือก และหยุดรอการอนุมัติ",
+
+  // ── Agencies ─────────────────────────────────────────────────
+  "help.agencies.title": "Agencies — ทีม AI หลายตัว",
+  "help.agencies.1":
+    "Agencies คือทีม AI หลายตัวที่ทำงานร่วมกันเพื่อจัดการงานซับซ้อน",
+  "help.agencies.2":
+    "แต่ละ agency มีเอเจนต์เฉพาะทาง (นักวิจัย, นักเขียน, นักวางแผน) ที่ร่วมงานกันอัตโนมัติ",
+  "help.agencies.3":
+    "เข้าถึง agencies ผ่านปุ่ม Agencies ในแถบเครื่องมือ หรือปุ่ม Explore Agencies บนหน้าต้อนรับ",
+  "help.agencies.4":
+    "Agencies สร้างผลลัพธ์แบบมีโครงสร้าง เช่น รายงานวิจัย สตอรี่บอร์ด ชุดสไลด์ และตารางเปรียบเทียบ",
+  "help.agencies.howToStart.title": "วิธีเริ่มต้น",
+  "help.agencies.howToStart.1":
+    "คลิก Agencies ในแถบเครื่องมือ Chat (หรือ Explore Agencies บนหน้าต้อนรับ)",
+  "help.agencies.howToStart.2":
+    "เลือกจาก agency ที่มีอยู่หรือสร้างจากเทมเพลต (Deep Research, Storyboard Planner, Deck Builder)",
+  "help.agencies.howToStart.3":
+    "เปิด agency และพิมพ์คำร้องขอใน Agency Chat",
+  "help.agencies.howToStart.4":
+    "เอเจนต์ทำงานร่วมกันอัตโนมัติ เมื่อเสร็จ Preview Card จะปรากฏ",
+  "help.agencies.howToStart.5":
+    "ตรวจสอบ preview และคลิก Save เพื่อบันทึกลง Library หรือ Presentation Editor",
+  "help.agencies.templates.title": "เทมเพลต Agency ที่มีให้ใช้",
+  "help.agencies.tpl.research.name": "Deep Research",
+  "help.agencies.tpl.research.output": "รายงานวิจัย",
+  "help.agencies.tpl.research.example":
+    "\"Research AI marketing trends in Southeast Asia 2026\"",
+  "help.agencies.tpl.research.desc":
+    "งานวิจัยจากหลายแหล่งพร้อมบทสรุปผู้บริหาร ข้อค้นพบสำคัญ หัวข้อย่อย และข้อเสนอแนะ",
+  "help.agencies.tpl.storyboard.name": "Storyboard Planner",
+  "help.agencies.tpl.storyboard.output": "สตอรี่บอร์ดวิดีโอ",
+  "help.agencies.tpl.storyboard.example":
+    "\"Create a 60-second product launch storyboard for a fitness app\"",
+  "help.agencies.tpl.storyboard.desc":
+    "แผนวิดีโอแบบฉากต่อฉากพร้อมบทพูด มุมกล้อง แสง และพรอมต์เสียง/ภาพ",
+  "help.agencies.tpl.deck.name": "Deck Builder",
+  "help.agencies.tpl.deck.output": "ชุดสไลด์ Presentation",
+  "help.agencies.tpl.deck.example":
+    "\"Build a Q4 earnings presentation with 8 slides\"",
+  "help.agencies.tpl.deck.desc":
+    "ชุดสไลด์ครบพร้อมหัวข้อ หัวข้อย่อย โน้ตผู้บรรยาย และข้อเสนอกราฟิก บันทึกตรงไปยัง Presentation Editor",
+  "help.agencies.tpl.comparison.name": "Comparison Agent",
+  "help.agencies.tpl.comparison.output": "ตารางเปรียบเทียบ",
+  "help.agencies.tpl.comparison.example":
+    "\"Compare 5 hotels in Chiang Mai under 3000 THB/night\"",
+  "help.agencies.tpl.comparison.desc":
+    "เปรียบเทียบตัวเลือกแบบเคียงข้างพร้อมราคา ความพร้อม ลิงก์หลักฐาน และข้อแนะนำ",
+  "help.agencies.preview.title": "สถานะ Preview Card",
+  "help.agencies.preview.ready": "พร้อม Preview",
+  "help.agencies.preview.ready.desc":
+    "เอเจนต์ทำเสร็จแล้ว ตรวจสอบ preview แล้วเลือกว่าจะบันทึกหรือไม่",
+  "help.agencies.preview.saving": "กำลังบันทึก...",
+  "help.agencies.preview.saving.desc": "กำลังดำเนินการ commit",
+  "help.agencies.preview.committed": "บันทึกแล้ว",
+  "help.agencies.preview.committed.desc":
+    "บันทึกสำเร็จ สำหรับสไลด์จะเปลี่ยนไปหน้า Presentation Editor ประเภทอื่นจะแสดงลิงก์ View in Library ใน toast",
+  "help.agencies.preview.failed": "บันทึกล้มเหลว",
+  "help.agencies.preview.failed.desc":
+    "เกิดข้อผิดพลาด ปุ่ม Retry Save จะปรากฏเพื่อลองอีกครั้ง",
+  "help.agencies.preview.expired": "หมดเวลา",
+  "help.agencies.preview.expired.desc":
+    "Preview หมดอายุก่อนบันทึก เรียก agency อีกครั้งเพื่อรับ preview ใหม่",
+  "help.agencies.commit.title": "การบันทึกตามประเภท",
+  "help.agencies.commit.col.type": "ประเภท Preview",
+  "help.agencies.commit.col.button": "ปุ่ม",
+  "help.agencies.commit.col.dest": "ปลายทาง",
+  "help.agencies.commit.research.type":
+    "วิจัย / สตอรี่บอร์ด / เปรียบเทียบ",
+  "help.agencies.commit.research.button": "Save to Library",
+  "help.agencies.commit.research.dest":
+    "Library (toast แสดงลิงก์ View in Library)",
+  "help.agencies.commit.deck.type": "ชุดสไลด์ Presentation",
+  "help.agencies.commit.deck.button": "Save as Presentation",
+  "help.agencies.commit.deck.dest":
+    "เปลี่ยนไปหน้า Presentation Editor อัตโนมัติ",
+  "help.agencies.other.title": "การดำเนินการอื่น",
+  "help.agencies.other.1":
+    "คลิกปุ่ม X บน Preview Card เพื่อยกเลิกโดยไม่บันทึก",
+  "help.agencies.other.2":
+    "หาก preview โหลดไม่สำเร็จ จะแสดง toast สีแดง ส่งข้อความเดิมอีกครั้งเพื่อลองใหม่",
+  "help.agencies.other.3":
+    "หากบันทึกไม่สำเร็จ ปุ่มจะเปลี่ยนเป็น Retry Save คลิกเพื่อลองอีกครั้ง",
+
+  // ── Common use cases ─────────────────────────────────────────
+  "help.useCases.title": "กรณีการใช้งานทั่วไป",
+  "help.useCases.1":
+    "ถามคำตอบสั้น ๆ แล้วบันทึกการตัดสินใจลง Memory",
+  "help.useCases.2":
+    "ใช้ /skills เพื่อเรียก workflow เฉพาะทางสำหรับเอกสาร โค้ด หรือวิจัย",
+  "help.useCases.3":
+    "สร้างแนวคิดภาพ ปรับปรุงพรอมต์ แล้วสร้างภาพสุดท้าย",
+  "help.useCases.4":
+    "เปลี่ยนไป Browser Session เมื่องานย้ายจากวางแผนไปปฏิบัติบนเว็บไซต์จริง",
+  "help.useCases.5":
+    "ใช้ Brainstorm Mode เมื่อต้องการให้สองโมเดลสำรวจทางเลือกก่อนเลือก",
+  "help.useCases.6":
+    "ย้ายไป Agencies เมื่องานต้องการทีม AI หลายตัวเพื่อสร้างผลลัพธ์แบบมีโครงสร้าง เช่น รายงานหรือสไลด์",
+
+  // ── Browser Session Help ──────────────────────────────────────
+  "bsHelp.title": "คู่มือ Browser Session",
+  "bsHelp.description":
+    "ใช้ Browser Session เมื่อต้องการให้ AI ค้นหาเว็บไซต์ เปิดหน้าเว็บ เปรียบเทียบตัวเลือก และทำงานต่อในเบราว์เซอร์จริงให้คุณ",
+  "bsHelp.what.title": "Browser Session ทำอะไรได้",
+  "bsHelp.what.body":
+    "คุณอธิบายผลลัพธ์ที่ต้องการ ระบบจะเลือก skill ที่เหมาะสม ค้นหาเว็บไซต์ที่เกี่ยวข้อง เปิด browser session จริง และทำงานต่อเนื่องขณะที่คุณดูแลหรือเข้ามาช่วยเฉพาะเมื่อจำเป็น",
+  "bsHelp.quickStart.title": "เริ่มต้นอย่างรวดเร็ว",
+  "bsHelp.quickStart.1": "คลิก Start Browser Session จาก Chat",
+  "bsHelp.quickStart.2": "อธิบายผลลัพธ์ที่ต้องการเป็นภาษาธรรมดา",
+  "bsHelp.quickStart.3":
+    "ปล่อยให้ระบบค้นหาเว็บไซต์ที่เกี่ยวข้องและเริ่มเปิดดู",
+  "bsHelp.quickStart.4":
+    "เปิด live session หากต้องการดูหรือบังคับเบราว์เซอร์แบบเรียลไทม์",
+  "bsHelp.quickStart.5":
+    "ส่งคำสั่งเพิ่มเติมแทนการเริ่มใหม่ตั้งแต่ต้น",
+  "bsHelp.request.title": "วิธีเขียนคำขอที่ดี",
+  "bsHelp.request.1":
+    "เป้าหมาย: ระบุผลลัพธ์ที่ต้องการ ไม่ต้องบอกทุกคลิก",
+  "bsHelp.request.2":
+    "เงื่อนไข: งบประมาณ ภูมิภาค วันที่ แบรนด์ ฟิลเตอร์ที่ต้องมี หรือสิ่งที่ต้องหลีกเลี่ยง",
+  "bsHelp.request.3":
+    "ผลลัพธ์: ขอรายการสั้น ตารางเปรียบเทียบ สรุป หรือลิงก์หลักฐาน",
+  "bsHelp.prompts.title": "ตัวอย่างคำสั่ง",
+  "bsHelp.prompts.1":
+    "หาเว็บไซต์โรงแรมบูติกในโตเกียว วันที่ 10-13 เม.ย. 2569 งบต่อคืนไม่เกิน 5,000 บาท เลือก 3 อันดับแรกพร้อมข้อดีข้อเสีย",
+  "bsHelp.prompts.2":
+    "วิจัยเครื่องมือ CRM สำหรับทีมขาย 10 คน เปรียบเทียบราคาและฟีเจอร์ออโตเมชัน แนะนำตัวเลือกที่ดีที่สุดสำหรับสตาร์ทอัพงบน้อย",
+  "bsHelp.prompts.3":
+    "หาโน้ตบุ๊กสำหรับตัดต่อวิดีโอราคาไม่เกิน 40,000 บาท หลีกเลี่ยงเครื่อง refurbished อธิบายว่ารุ่นไหนคุ้มค่าที่สุด",
+  "bsHelp.prompts.4":
+    "เปิดหน้าล็อกอินของ Service X ไปที่หน้าตั้งค่าบัญชี หยุดเมื่อต้องใส่ OTP หรือ MFA",
+  "bsHelp.prompts.5":
+    "หาสถานที่จัดงาน 3 แห่งในกรุงเทพสำหรับเวิร์กช็อป 100 คน เปรียบเทียบราคาแพ็กเกจ บันทึกข้อมูลที่จอดรถและอุปกรณ์ AV",
+  "bsHelp.prompts.6":
+    "ค้นหาแหล่งข้อมูลสาธารณะที่ดีที่สุดเกี่ยวกับกฎระเบียบใหม่ สรุปผลกระทบในทางปฏิบัติ พร้อมลิงก์ไปยังหน้าทางการ",
+  "bsHelp.running.title": "ขณะ session กำลังทำงาน",
+  "bsHelp.running.1":
+    "เปิด live Browser Session เพื่อดูเบราว์เซอร์แบบเรียลไทม์",
+  "bsHelp.running.2":
+    "ใช้ Send Browser Instruction เพื่อปรับแต่งงานขณะ session ทำงานอยู่",
+  "bsHelp.running.3":
+    "เปลี่ยน skill หากงานเปลี่ยนจากวิจัยเป็นเปรียบเทียบ จอง หรือเข้าถึงบัญชี",
+  "bsHelp.running.4":
+    "หากระบบหยุดรอการอนุมัติ MFA หรือการชำระเงิน ให้เข้าควบคุมชั่วคราวแล้วคืนการควบคุม",
+  "bsHelp.best.title": "แนวทางปฏิบัติที่ดี",
+  "bsHelp.best.1":
+    "เริ่มด้วยผลลัพธ์ที่ต้องการ เช่น \"หา 3 ผู้ขายที่ดีที่สุดสำหรับ X แล้วอธิบายข้อแตกต่าง\"",
+  "bsHelp.best.2":
+    "บอกสิ่งที่ต้องหลีกเลี่ยง เช่น \"หลีกเลี่ยง marketplace สินค้า sponsored และเว็บที่ราคาไม่ชัดเจน\"",
+  "bsHelp.best.3":
+    "บอก AI ว่าเมื่อไหร่ต้องหยุดรอ เช่น \"หยุดก่อนชำระเงิน ยืนยันล็อกอิน หรือ OTP\"",
+  "bsHelp.best.4":
+    "ขอโครงสร้างผลลัพธ์ เช่น \"ส่งตารางเปรียบเทียบจัดอันดับพร้อมข้อดี ข้อเสีย และข้อแนะนำสุดท้าย\"",
+  "bsHelp.best.5":
+    "ใช้คำสั่งเพิ่มเติมแทนการเริ่มใหม่ เช่น \"จำกัดเฉพาะตัวเลือกที่มีในกรุงเทพ\"",
+  "bsHelp.useCases.title": "กรณีการใช้งานหลากหลาย",
+  "bsHelp.useCases.1": "วางแผนท่องเที่ยว: หาเที่ยวบิน เปรียบเทียบโรงแรม คัดเลือกแผนการเดินทาง",
+  "bsHelp.useCases.2": "วิจัยสินค้า: เปรียบเทียบโน้ตบุ๊ก มือถือ กล้อง หรืออุปกรณ์สำนักงานข้ามหลายเว็บ",
+  "bsHelp.useCases.3": "ค้นหาผู้ให้บริการ: หาเครื่องมือ SaaS เอเจนซี่ หรือซัพพลายเออร์พร้อมสรุปราคาและความสามารถ",
+  "bsHelp.useCases.4": "สำรวจอสังหาริมทรัพย์: ค้นหาประกาศ เปรียบเทียบย่าน เลือกตัวเลือกที่ดีที่สุด",
+  "bsHelp.useCases.5": "สนับสนุนการสรรหา: รวบรวมหน้าผู้สมัคร ลิงก์ผลงาน และหลักฐานสำหรับคัดเลือก",
+  "bsHelp.useCases.6": "สร้างลีด: ค้นพบเว็บไซต์บริษัทที่เกี่ยวข้องและรวบรวมข้อมูลสำหรับการติดต่อ",
+  "bsHelp.useCases.7": "วิจัยตลาด: ระบุคู่แข่ง รูปแบบราคา การวางตำแหน่งฟีเจอร์ และข้อความสาธารณะ",
+  "bsHelp.useCases.8": "จัดซื้อ: หาผู้จัดจำหน่ายหรือค้าส่งและเปรียบเทียบขั้นต่ำ การจัดส่ง และตัวเลือกชำระเงิน",
+  "bsHelp.useCases.9": "วางแผนอีเวนต์: ค้นหาสถานที่ เปรียบเทียบแพ็กเกจ สรุปข้อกำหนดการจอง",
+  "bsHelp.useCases.10": "วิจัยการศึกษา: หาคอร์ส เปรียบเทียบหลักสูตร คัดเลือกตามตารางและค่าใช้จ่าย",
+  "bsHelp.useCases.11": "วิจัยทุนหรือประกวดราคา: ค้นหาแหล่งทางการ เปรียบเทียบข้อกำหนด สรุปกำหนดส่ง",
+  "bsHelp.useCases.12": "ช่วยบริการลูกค้า: ค้นหาเอกสารสินค้าหรือศูนย์ช่วยเหลือและนำคำตอบที่ตรงประเด็นกลับมา",
+  "bsHelp.useCases.13": "งานบัญชี: เปิดบริการ ไปหน้าตั้งค่าที่ถูกต้อง หยุดก่อนดำเนินการที่ละเอียดอ่อน",
+  "bsHelp.useCases.14": "ผู้ช่วยจอง: เตรียมขั้นตอนชำระเงินหรือจอง หยุดเมื่อต้องยืนยัน",
+  "bsHelp.useCases.15": "ค้นหาเนื้อหา: หาแหล่งข้อมูลหลัก กรณีศึกษา หรือตัวอย่างสำหรับรายงาน",
+  "bsHelp.useCases.16": "ติดตามราคา: กลับไปหน้าสินค้า จับสัญญาณราคาปัจจุบัน สรุปการเปลี่ยนแปลง",
+  "bsHelp.useCases.17": "ค้นหาพาร์ทเนอร์ B2B: หาพาร์ทเนอร์ที่มีศักยภาพในภูมิภาคและจัดอันดับตามความเหมาะสม",
+  "bsHelp.useCases.18": "ค้นหานโยบายหรือกฎระเบียบ: หาหน้าทางการและสรุปส่วนที่เกี่ยวข้องกับเป้าหมาย",
+  "bsHelp.pause.title": "เมื่อไหร่ที่ AI ควรหยุดรอคุณ",
+  "bsHelp.pause.1": "OTP, MFA หรือการยืนยันอุปกรณ์",
+  "bsHelp.pause.2": "การชำระเงิน การจอง การซื้อ หรือการดำเนินการที่ย้อนกลับไม่ได้",
+  "bsHelp.pause.3": "สิ่งที่ละเอียดอ่อนที่คุณต้องการตรวจสอบก่อนส่ง",
+
+  // ── Shared UI labels ─────────────────────────────────────────
+  "common.output": "ผลลัพธ์",
+  "common.example": "ตัวอย่าง",
+};
+
+export default th;

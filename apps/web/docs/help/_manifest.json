@@ -1,0 +1,9 @@
+{
+  "sections": [
+    { "id": "getting-started", "label": { "en": "Getting Started", "th": "เริ่มต้นใช้งาน" }, "order": 1 },
+    { "id": "features", "label": { "en": "Features", "th": "ฟีเจอร์" }, "order": 2 },
+    { "id": "content-creation", "label": { "en": "Content Creation", "th": "สร้างคอนเทนต์" }, "order": 3 },
+    { "id": "advanced", "label": { "en": "Advanced", "th": "ขั้นสูง" }, "order": 4 },
+    { "id": "admin", "label": { "en": "Administration", "th": "การจัดการ" }, "order": 5 }
+  ]
+}
