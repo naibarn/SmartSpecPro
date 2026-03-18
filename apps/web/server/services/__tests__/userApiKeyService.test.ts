@@ -125,12 +125,12 @@ describe("userApiKeyService", () => {
       ).rejects.toThrow();
     });
 
-    it("throws when apiKey is shorter than 4 characters", async () => {
+    it("throws when apiKey is shorter than 8 characters", async () => {
       setupDb();
 
       await expect(
-        setUserApiKey(1, null, "openai", "abc"),
-      ).rejects.toThrow("API key must be at least 4 characters");
+        setUserApiKey(1, null, "openai", "sk-abc"),
+      ).rejects.toThrow("API key must be at least 8 characters");
     });
 
     it("throws when apiKey is empty", async () => {
@@ -138,7 +138,7 @@ describe("userApiKeyService", () => {
 
       await expect(
         setUserApiKey(1, null, "openai", ""),
-      ).rejects.toThrow("API key must be at least 4 characters");
+      ).rejects.toThrow("API key must be at least 8 characters");
     });
   });
 

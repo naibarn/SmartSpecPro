@@ -13,8 +13,8 @@ export async function setUserApiKey(
   provider: string,
   apiKey: string,
 ): Promise<{ provider: string; keyHint: string }> {
-  if (!apiKey || apiKey.length < 4) {
-    throw new Error("API key must be at least 4 characters");
+  if (!apiKey || apiKey.length < 8) {
+    throw new Error("API key must be at least 8 characters");
   }
 
   const db = await getDb();

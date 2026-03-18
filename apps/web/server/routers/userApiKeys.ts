@@ -29,7 +29,7 @@ export const userApiKeysRouter = router({
     .input(
       z.object({
         provider: providerEnum,
-        apiKey: z.string().min(1).max(500),
+        apiKey: z.string().min(8).max(500),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -59,7 +59,7 @@ export const userApiKeysRouter = router({
     }));
   }),
 
-  deleteKey: protectedProcedure
+  deleteKey: rateLimitedProtected
     .input(z.object({ provider: providerEnum }))
     .mutation(async ({ ctx, input }) => {
       await deleteUserApiKey(ctx.user.id, input.provider);

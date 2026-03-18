@@ -167,6 +167,14 @@ describe("userApiKeys router", () => {
       ).rejects.toThrow();
     });
 
+    it("setKey rejects apiKey under 8 chars", async () => {
+      const caller = createCaller(createAuthenticatedContext());
+
+      await expect(
+        caller.setKey({ provider: "openai", apiKey: "sk-abc" }),
+      ).rejects.toThrow();
+    });
+
     it("setKey rejects apiKey over 500 chars", async () => {
       const caller = createCaller(createAuthenticatedContext());
 
