@@ -2,78 +2,212 @@
  * RunMonitorPanel — live run monitoring dashboard panel.
  *
  * Shows agent roster with status, timeline of events,
- * and run controls (pause/resume/stop).
+ * cost/token counters, and run controls.
  */
 
-import React, { useState } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { useRunStream, type RunStreamEvent } from "@/hooks/useRunStream";
+
+interface AgentStatus {
+  id: string;
+  name: string;
+  status: "active" | "idle" | "error" | "muted";
+  turnCount: number;
+  tokenCount: number;
+  lastActivity: string | null;
+}
 
 interface RunMonitorPanelProps {
   runId: string;
+  teamName?: string;
+  runStatus?: "queued" | "running" | "paused" | "completed" | "failed" | "stopped";
+  agents?: Array<{ id: string; displayName: string | null; isLead: boolean }>;
   onPause?: () => void;
   onResume?: () => void;
   onStop?: () => void;
 }
 
-export function RunMonitorPanel({ runId, onPause, onResume, onStop }: RunMonitorPanelProps) {
+export function RunMonitorPanel({
+  runId,
+  teamName,
+  runStatus = "running",
+  agents = [],
+  onPause,
+  onResume,
+  onStop,
+}: RunMonitorPanelProps) {
   const [timeline, setTimeline] = useState<RunStreamEvent[]>([]);
+  const [agentStats, setAgentStats] = useState<Map<string, { turns: number; tokens: number }>>(new Map());
 
   const { connected } = useRunStream({
     runId,
-    enabled: true,
-    onEvent: (event) => {
-      setTimeline((prev) => [...prev.slice(-99), event]); // Keep last 100
-    },
+    enabled: runStatus === "running",
+    onEvent: useCallback((event: RunStreamEvent) => {
+      setTimeline((prev) => [...prev.slice(-199), event]);
+
+      // Track per-agent stats
+      if (event.actorType === "assistant") {
+        setAgentStats((prev) => {
+          const next = new Map(prev);
+          const existing = next.get(event.actorId) ?? { turns: 0, tokens: 0 };
+          const usage = (event.data as any)?.tokenUsage;
+          next.set(event.actorId, {
+            turns: existing.turns + 1,
+            tokens: existing.tokens + (usage?.inputTokens ?? 0) + (usage?.outputTokens ?? 0),
+          });
+          return next;
+        });
+      }
+    }, []),
   });
 
+  const totalTokens = useMemo(
+    () => Array.from(agentStats.values()).reduce((sum, s) => sum + s.tokens, 0),
+    [agentStats],
+  );
+
+  const statusColor: Record<string, string> = {
+    running: "text-green-600",
+    paused: "text-amber-600",
+    completed: "text-blue-600",
+    failed: "text-red-600",
+    stopped: "text-gray-600",
+    queued: "text-gray-500",
+  };
+
+  const eventIcon: Record<string, string> = {
+    assistant_message_final: "💬",
+    run_started: "🚀",
+    run_completed: "✅",
+    run_paused: "⏸️",
+    tool_call_started: "🔧",
+    handoff_requested: "🤝",
+    error: "❌",
+    status_change: "🔄",
+  };
+
   return (
-    <div className="flex flex-col gap-4 p-4">
-      {/* Connection status */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium">Run Monitor</h3>
-        <span className={`rounded-full px-2 py-0.5 text-xs ${connected ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-          {connected ? "Connected" : "Disconnected"}
-        </span>
+    <div className="flex flex-col h-full border-l bg-background">
+      {/* Header */}
+      <div className="border-b px-4 py-3">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold">Run Monitor</h3>
+          <div className="flex items-center gap-1.5">
+            <span className={`h-2 w-2 rounded-full ${connected ? "bg-green-500 animate-pulse" : "bg-gray-400"}`} />
+            <span className={`text-xs font-medium capitalize ${statusColor[runStatus] ?? "text-gray-500"}`}>
+              {runStatus}
+            </span>
+          </div>
+        </div>
+
+        {/* Stats bar */}
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="rounded-lg bg-blue-50 px-2 py-1.5 dark:bg-blue-900/20">
+            <div className="text-lg font-bold text-blue-600">{timeline.length}</div>
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Events</div>
+          </div>
+          <div className="rounded-lg bg-violet-50 px-2 py-1.5 dark:bg-violet-900/20">
+            <div className="text-lg font-bold text-violet-600">
+              {totalTokens > 1000 ? `${(totalTokens / 1000).toFixed(1)}K` : totalTokens}
+            </div>
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Tokens</div>
+          </div>
+          <div className="rounded-lg bg-emerald-50 px-2 py-1.5 dark:bg-emerald-900/20">
+            <div className="text-lg font-bold text-emerald-600">{agents.length}</div>
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Agents</div>
+          </div>
+        </div>
       </div>
 
+      {/* Agent roster */}
+      {agents.length > 0 && (
+        <div className="border-b px-4 py-3">
+          <h4 className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">Agent Roster</h4>
+          <div className="space-y-1.5">
+            {agents.map((agent) => {
+              const stats = agentStats.get(agent.id);
+              return (
+                <div key={agent.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-accent transition-colors">
+                  <div className="h-6 w-6 rounded-full bg-gradient-to-br from-blue-400 to-violet-400 flex items-center justify-center text-white text-[10px] font-bold">
+                    {(agent.displayName ?? "A")[0].toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium truncate">
+                      {agent.displayName ?? agent.id.slice(0, 8)}
+                      {agent.isLead && (
+                        <span className="ml-1 rounded bg-amber-100 px-1 py-0.5 text-[9px] text-amber-700">Lead</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    {stats ? `${stats.turns}t` : "—"}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Controls */}
-      <div className="flex gap-2">
-        <button
-          onClick={onPause}
-          className="rounded-md bg-yellow-100 px-3 py-1.5 text-xs font-medium text-yellow-800 hover:bg-yellow-200"
-        >
-          Pause
-        </button>
-        <button
-          onClick={onResume}
-          className="rounded-md bg-green-100 px-3 py-1.5 text-xs font-medium text-green-800 hover:bg-green-200"
-        >
-          Resume
-        </button>
-        <button
-          onClick={onStop}
-          className="rounded-md bg-red-100 px-3 py-1.5 text-xs font-medium text-red-800 hover:bg-red-200"
-        >
-          Stop
-        </button>
+      <div className="border-b px-4 py-2">
+        <div className="flex gap-1.5">
+          {runStatus === "running" && (
+            <>
+              <button onClick={onPause} className="flex-1 rounded-lg bg-amber-50 px-2 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 transition-colors border border-amber-200">
+                ⏸ Pause
+              </button>
+              <button onClick={onStop} className="flex-1 rounded-lg bg-red-50 px-2 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 transition-colors border border-red-200">
+                ⏹ Stop
+              </button>
+            </>
+          )}
+          {runStatus === "paused" && (
+            <>
+              <button onClick={onResume} className="flex-1 rounded-lg bg-green-50 px-2 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100 transition-colors border border-green-200">
+                ▶ Resume
+              </button>
+              <button onClick={onStop} className="flex-1 rounded-lg bg-red-50 px-2 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 transition-colors border border-red-200">
+                ⏹ Stop
+              </button>
+            </>
+          )}
+          {(runStatus === "completed" || runStatus === "stopped" || runStatus === "failed") && (
+            <div className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-medium text-center ${statusColor[runStatus]}`}>
+              Run {runStatus}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Event timeline */}
-      <div className="max-h-[400px] overflow-y-auto">
-        <div className="flex flex-col gap-1">
-          {timeline.map((event) => (
-            <div key={event.eventId} className="flex items-start gap-2 rounded px-2 py-1 text-xs hover:bg-accent">
-              <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-blue-400" />
-              <div className="flex-1">
-                <span className="font-medium">{event.eventType}</span>
-                <span className="ml-2 text-muted-foreground">
-                  {new Date(event.ts).toLocaleTimeString()}
-                </span>
+      <div className="flex-1 overflow-y-auto px-4 py-2">
+        <h4 className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider sticky top-0 bg-background py-1">
+          Event Timeline
+        </h4>
+        <div className="relative pl-4 space-y-0.5">
+          {/* Timeline line */}
+          <div className="absolute left-[7px] top-0 bottom-0 w-px bg-border" />
+
+          {timeline.length === 0 ? (
+            <p className="py-6 text-center text-xs text-muted-foreground">Waiting for events...</p>
+          ) : (
+            [...timeline].reverse().map((event) => (
+              <div key={event.eventId} className="relative flex items-start gap-2 py-1.5 group">
+                {/* Timeline dot */}
+                <div className="absolute left-[-13px] top-2.5 h-2 w-2 rounded-full bg-blue-400 ring-2 ring-background group-hover:bg-blue-600 transition-colors" />
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-xs">{eventIcon[event.eventType] ?? "📌"}</span>
+                    <span className="text-xs font-medium truncate">{event.eventType.replace(/_/g, " ")}</span>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">
+                    {event.actorId.slice(0, 12)} · {new Date(event.ts).toLocaleTimeString()}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
-          {timeline.length === 0 && (
-            <p className="py-4 text-center text-xs text-muted-foreground">No events yet</p>
+            ))
           )}
         </div>
       </div>

@@ -125,27 +125,97 @@ export async function generateSummary(
   const totalCost = budget.totalCreditsUsed ?? 0;
   const totalDuration = calculateDuration(run.startedAt, run.endedAt);
 
-  // Extractive method (default)
-  const relevant = method === "extractive"
-    ? messages.filter((m) => EXTRACTIVE_TURN_TYPES.has(m.turnType))
-    : messages;
+  // Extractive method — pure data extraction, no LLM
+  if (method === "extractive") {
+    const relevant = messages.filter((m) => EXTRACTIVE_TURN_TYPES.has(m.turnType));
+    const { decisions, findings, artifacts } = extractKeyPoints(relevant);
+    return {
+      runId: input.runId,
+      method,
+      objective: run.objective,
+      participants,
+      keyDecisions: decisions,
+      keyFindings: findings,
+      artifactsProduced: artifacts,
+      openQuestions: [],
+      nextSteps: [],
+      totalCost,
+      totalDuration,
+      generatedAt: new Date(),
+    };
+  }
 
-  const { decisions, findings, artifacts } = extractKeyPoints(relevant);
+  // LLM-based summary (agent_generated or system_generated)
+  // Calls Python backend for structured summary generation
+  const { decisions, findings, artifacts } = extractKeyPoints(messages);
 
-  // For agent_generated and system_generated, we would call the LLM here.
-  // For now, both fall back to extractive with the full message set.
-  // TODO: Add LLM call for agent_generated and system_generated methods
+  try {
+    const PY = process.env.PYTHON_BACKEND_URL ?? "http://localhost:8000";
 
+    // Find lead persona context for agent_generated method
+    let personaContext: string | undefined;
+    if (method === "agent_generated") {
+      const lead = participants.find((p) => p.roleTitle);
+      if (lead) {
+        personaContext = `${lead.displayName ?? "Lead Agent"}, ${lead.roleTitle}`;
+      }
+    }
+
+    const res = await fetch(`${PY}/api/team-orchestrator/generate-summary`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        runId: input.runId,
+        messages: messages.slice(-50).map((m) => ({
+          senderType: m.senderType,
+          turnType: m.turnType,
+          content: m.content,
+          artifactRefsJson: m.artifactRefsJson,
+        })),
+        method,
+        personaContext,
+      }),
+    });
+
+    if (res.ok) {
+      const llmResult = (await res.json()) as {
+        keyDecisions?: string[];
+        keyFindings?: string[];
+        artifactsProduced?: string[];
+        openQuestions?: string[];
+        nextSteps?: string[];
+      };
+
+      return {
+        runId: input.runId,
+        method,
+        objective: run.objective,
+        participants,
+        keyDecisions: llmResult.keyDecisions ?? decisions,
+        keyFindings: llmResult.keyFindings ?? findings,
+        artifactsProduced: llmResult.artifactsProduced ?? artifacts,
+        openQuestions: llmResult.openQuestions ?? [],
+        nextSteps: llmResult.nextSteps ?? [],
+        totalCost,
+        totalDuration,
+        generatedAt: new Date(),
+      };
+    }
+  } catch {
+    // LLM call failed — fall back to extractive
+  }
+
+  // Fallback to extractive results
   return {
     runId: input.runId,
-    method,
+    method: "extractive",
     objective: run.objective,
     participants,
     keyDecisions: decisions,
     keyFindings: findings,
     artifactsProduced: artifacts,
-    openQuestions: [], // TODO: Extract from messages or LLM analysis
-    nextSteps: [], // TODO: Extract from messages or LLM analysis
+    openQuestions: [],
+    nextSteps: [],
     totalCost,
     totalDuration,
     generatedAt: new Date(),
