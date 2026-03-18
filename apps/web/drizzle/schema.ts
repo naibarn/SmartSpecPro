@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 /**
  * Enums
  */
-export const roleEnum = pgEnum("role", ["user", "admin", "domain_admin"]);
+export const roleEnum = pgEnum("role", ["user", "admin", "domain_admin", "system_agent"]);
 export const planEnum = pgEnum("plan", ["free", "starter", "pro", "enterprise"]);
 export const transactionTypeEnum = pgEnum("transaction_type", [
   "purchase",
@@ -350,6 +350,9 @@ export const users = pgTable("users", {
   /** Default AI persona for this user */
   defaultPersonaId: varchar("defaultPersonaId", { length: 36 })
     .references((): AnyPgColumn => personaTemplates.id, { onDelete: "set null" }),
+
+  /** Whether this is a system/virtual user (not a human login) */
+  isSystemUser: boolean("isSystemUser").default(false),
 
   /** PDPA/GDPR voice consent: NULL = not consented, timestamp = when consent was given */
   voiceConsentGrantedAt: timestamp("voiceConsentGrantedAt", { withTimezone: true }),
@@ -4960,6 +4963,11 @@ export const personaTemplates = pgTable("persona_templates", {
   userId: integer("userId").references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   description: text("description"),
+  assistantNickname: text("assistantNickname"),
+  assistantGender: text("assistantGender").default("neutral"),
+  sourceTemplateIds: text("sourceTemplateIds").array().default(sql`'{}'`).notNull(),
+  sourceTemplateLabels: text("sourceTemplateLabels").array().default(sql`'{}'`).notNull(),
+  sourceTemplateCategories: text("sourceTemplateCategories").array().default(sql`'{}'`).notNull(),
   systemPromptPrefix: text("systemPromptPrefix").notNull(),
   tone: text("tone"),
   language: text("language").default("auto"),
@@ -4972,6 +4980,8 @@ export const personaTemplates = pgTable("persona_templates", {
 }, (t) => [
   index("persona_templates_tenant_scope_idx").on(t.tenantId, t.scope),
   index("persona_templates_user_idx").on(t.userId),
+  index("persona_templates_source_template_ids_idx").using("gin", t.sourceTemplateIds),
+  check("persona_templates_assistant_gender_check", sql`"assistantGender" IN ('female','male','neutral') OR "assistantGender" IS NULL`),
   check("persona_templates_tone_check", sql`"tone" IN ('formal','casual','friendly','technical','creative') OR "tone" IS NULL`),
   check("persona_templates_scope_check", sql`"scope" IN ('platform','tenant','user')`),
 ]);
@@ -5755,3 +5765,263 @@ export const multimodalMemoryLinks = pgTable("multimodal_memory_links", {
 
 export type MultimodalMemoryLink = typeof multimodalMemoryLinks.$inferSelect;
 export type InsertMultimodalMemoryLink = typeof multimodalMemoryLinks.$inferInsert;
+
+// ==========================================
+// Virtual AI Office Orchestrator — Core Identity
+// ==========================================
+
+export const orchestratorViewModeEnum = pgEnum("orchestrator_view_mode", [
+  "transparent", "milestone", "summary",
+]);
+export const orchestratorAutonomyLevelEnum = pgEnum("orchestrator_autonomy_level", [
+  "manual", "guided", "autonomous",
+]);
+export const assistantTeamStatusEnum = pgEnum("assistant_team_status", [
+  "active", "archived", "draft",
+]);
+export const modelSelectionPolicyEnum = pgEnum("model_selection_policy", [
+  "fixed", "cost_optimized", "quality_optimized", "auto",
+]);
+
+/**
+ * user_orchestrator_profiles — per-user orchestration preferences.
+ * One row per user storing view mode, autonomy level, and approval policies.
+ */
+export const userOrchestratorProfiles = pgTable("user_orchestrator_profiles", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  defaultPersonaId: varchar("defaultPersonaId", { length: 36 }).references(() => personaTemplates.id, { onDelete: "set null" }),
+  orchestratorDisplayName: varchar("orchestratorDisplayName", { length: 255 }),
+  preferredViewMode: orchestratorViewModeEnum("preferredViewMode").default("transparent"),
+  preferredAutonomyLevel: orchestratorAutonomyLevelEnum("preferredAutonomyLevel").default("guided"),
+  preferredSummaryStyle: varchar("preferredSummaryStyle", { length: 50 }),
+  defaultApprovalPolicy: jsonb("defaultApprovalPolicy"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("user_orchestrator_profiles_user_idx").on(t.userId),
+]);
+
+export type UserOrchestratorProfile = typeof userOrchestratorProfiles.$inferSelect;
+export type InsertUserOrchestratorProfile = typeof userOrchestratorProfiles.$inferInsert;
+
+/**
+ * assistant_teams — product-facing team definition.
+ * Each team wraps exactly one agency and provides orchestration-level config.
+ */
+export const assistantTeams = pgTable("assistant_teams", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  ownerUserId: integer("ownerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  agencyId: varchar("agencyId", { length: 36 }).notNull().references(() => agencies.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 100 }),
+  teamPersonaOverlay: jsonb("teamPersonaOverlay"),
+  defaultViewMode: orchestratorViewModeEnum("defaultViewMode").default("transparent"),
+  defaultSummaryMode: varchar("defaultSummaryMode", { length: 50 }),
+  defaultAutonomyLevel: orchestratorAutonomyLevelEnum("defaultAutonomyLevel").default("guided"),
+  defaultModelId: varchar("defaultModelId", { length: 100 }),
+  modelBudgetPolicy: jsonb("modelBudgetPolicy"),
+  memoryPolicyJson: jsonb("memoryPolicyJson"),
+  artifactPolicyJson: jsonb("artifactPolicyJson"),
+  status: assistantTeamStatusEnum("status").default("draft"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("assistant_teams_tenant_idx").on(t.tenantId),
+  index("assistant_teams_owner_idx").on(t.ownerUserId),
+  index("assistant_teams_agency_idx").on(t.agencyId),
+]);
+
+export type AssistantTeam = typeof assistantTeams.$inferSelect;
+export type InsertAssistantTeam = typeof assistantTeams.$inferInsert;
+
+/**
+ * assistant_profiles — per-member assistant identity.
+ * Wraps one agency_agent + one persona_template, providing orchestration persona.
+ *
+ * NOTE: The partial unique index for isLead (one lead per team) must be applied
+ * via raw SQL migration since Drizzle doesn't support partial unique indexes.
+ */
+export const assistantProfiles = pgTable("assistant_profiles", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  teamId: varchar("teamId", { length: 36 }).notNull().references(() => assistantTeams.id, { onDelete: "cascade" }),
+  agencyAgentId: varchar("agencyAgentId", { length: 36 }).notNull().references(() => agencyAgents.id, { onDelete: "cascade" }),
+  personaId: varchar("personaId", { length: 36 }).references(() => personaTemplates.id, { onDelete: "set null" }),
+  displayName: varchar("displayName", { length: 255 }),
+  nickname: varchar("nickname", { length: 100 }),
+  roleTitle: varchar("roleTitle", { length: 100 }),
+  genderStyle: varchar("genderStyle", { length: 20 }),
+  specialtyTags: text("specialtyTags").array(),
+  preferredModelId: varchar("preferredModelId", { length: 100 }),
+  modelSelectionPolicy: modelSelectionPolicyEnum("modelSelectionPolicy").default("auto"),
+  toolPolicyJson: jsonb("toolPolicyJson"),
+  approvalPolicyJson: jsonb("approvalPolicyJson"),
+  memoryPolicyJson: jsonb("memoryPolicyJson"),
+  visibilityPolicyJson: jsonb("visibilityPolicyJson"),
+  preferredLanguage: varchar("preferredLanguage", { length: 10 }),
+  sortOrder: integer("sortOrder").default(0).notNull(),
+  isLead: boolean("isLead").default(false).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("assistant_profiles_team_idx").on(t.teamId),
+  index("assistant_profiles_agent_idx").on(t.agencyAgentId),
+  index("assistant_profiles_persona_idx").on(t.personaId),
+]);
+
+export type AssistantProfile = typeof assistantProfiles.$inferSelect;
+export type InsertAssistantProfile = typeof assistantProfiles.$inferInsert;
+
+/**
+ * assistant_team_templates — reusable team presets.
+ * tenantId=null + isSystem=true means platform-wide template.
+ */
+export const assistantTeamTemplates = pgTable("assistant_team_templates", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 100 }),
+  teamConfigJson: jsonb("teamConfigJson"),
+  memberTemplateJson: jsonb("memberTemplateJson"),
+  defaultDiscussionMode: varchar("defaultDiscussionMode", { length: 50 }),
+  isSystem: boolean("isSystem").default(false).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("assistant_team_templates_tenant_idx").on(t.tenantId),
+]);
+
+export type AssistantTeamTemplate = typeof assistantTeamTemplates.$inferSelect;
+export type InsertAssistantTeamTemplate = typeof assistantTeamTemplates.$inferInsert;
+
+// ─── Virtual Admin (System Guardian) ────────────────────────────────────────
+
+export const incidentSeverityEnum = pgEnum("incident_severity", ["info", "warning", "error", "critical"]);
+export const incidentStatusEnum = pgEnum("incident_status", ["open", "acknowledged", "resolved", "expired"]);
+export const approvalStatusEnum = pgEnum("approval_status", ["pending", "approved", "rejected", "expired", "execution_failed"]);
+export const ticketTypeEnum = pgEnum("ticket_type", ["bug", "feature_request", "observation", "question"]);
+export const ticketStatusEnum = pgEnum("ticket_status", ["new", "triaged", "in_progress", "deferred", "resolved", "duplicate", "closed"]);
+export const ticketResolutionEnum = pgEnum("ticket_resolution", ["fixed", "wont_fix", "duplicate", "cannot_reproduce", "planned", "by_design"]);
+
+export const virtualAdminIncidents = pgTable("virtual_admin_incidents", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id),
+  sensorId: varchar("sensorId", { length: 64 }).notNull(),
+  ruleId: varchar("ruleId", { length: 64 }).notNull(),
+  severity: incidentSeverityEnum("severity").notNull(),
+  status: incidentStatusEnum("status").default("open").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message"),
+  metricsJson: json("metricsJson"),
+  actionTaken: varchar("actionTaken", { length: 64 }),
+  actionResult: text("actionResult"),
+  resolvedBy: integer("resolvedBy").references(() => users.id),
+  resolvedAt: timestamp("resolvedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("va_incidents_tenant_idx").on(t.tenantId),
+  index("va_incidents_status_idx").on(t.status),
+  index("va_incidents_severity_idx").on(t.severity),
+  index("va_incidents_sensor_idx").on(t.sensorId),
+]);
+
+export type VirtualAdminIncident = typeof virtualAdminIncidents.$inferSelect;
+export type InsertVirtualAdminIncident = typeof virtualAdminIncidents.$inferInsert;
+
+export const virtualAdminApprovals = pgTable("virtual_admin_approvals", {
+  id: serial("id").primaryKey(),
+  incidentId: integer("incidentId").notNull().references(() => virtualAdminIncidents.id),
+  actionType: varchar("actionType", { length: 64 }).notNull(),
+  actionParamsJson: json("actionParamsJson"),
+  status: approvalStatusEnum("status").default("pending").notNull(),
+  requestedAt: timestamp("requestedAt", { withTimezone: true }).defaultNow().notNull(),
+  decidedAt: timestamp("decidedAt", { withTimezone: true }),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+  decidedBy: integer("decidedBy").references(() => users.id),
+  decisionComment: text("decisionComment"),
+});
+
+export type VirtualAdminApproval = typeof virtualAdminApprovals.$inferSelect;
+export type InsertVirtualAdminApproval = typeof virtualAdminApprovals.$inferInsert;
+
+export const virtualAdminSensorConfig = pgTable("virtual_admin_sensor_config", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id),
+  sensorId: varchar("sensorId", { length: 64 }).notNull(),
+  enabled: boolean("enabled").default(true).notNull(),
+  intervalMs: integer("intervalMs"),
+  thresholdsJson: json("thresholdsJson"),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type VirtualAdminSensorConfig = typeof virtualAdminSensorConfig.$inferSelect;
+
+export const feedbackTickets = pgTable("feedback_tickets", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id),
+  submittedBy: integer("submittedBy").references(() => users.id),
+  submittedByType: varchar("submittedByType", { length: 16 }).notNull(),
+  ticketType: ticketTypeEnum("ticketType").notNull(),
+  priority: reminderPriorityEnum("priority").default("normal").notNull(),
+  severity: varchar("severity", { length: 16 }),
+  category: varchar("category", { length: 64 }),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  stepsToReproduce: text("stepsToReproduce"),
+  expectedBehavior: text("expectedBehavior"),
+  actualBehavior: text("actualBehavior"),
+  contextJson: json("contextJson"),
+  autoCategory: varchar("autoCategory", { length: 64 }),
+  autoPriority: varchar("autoPriority", { length: 16 }),
+  autoSummary: text("autoSummary"),
+  duplicateOf: integer("duplicateOf").references((): AnyPgColumn => feedbackTickets.id),
+  relatedIncidentId: integer("relatedIncidentId").references(() => virtualAdminIncidents.id),
+  status: ticketStatusEnum("status").default("new").notNull(),
+  assignedTo: integer("assignedTo").references(() => users.id),
+  adminResponse: text("adminResponse"),
+  resolutionNotes: text("resolutionNotes"),
+  resolutionType: ticketResolutionEnum("resolutionType"),
+  plannedVersion: varchar("plannedVersion", { length: 32 }),
+  planningDocUrl: varchar("planningDocUrl", { length: 500 }),
+  devBranch: varchar("devBranch", { length: 100 }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  triagedAt: timestamp("triagedAt", { withTimezone: true }),
+  respondedAt: timestamp("respondedAt", { withTimezone: true }),
+  resolvedAt: timestamp("resolvedAt", { withTimezone: true }),
+  closedAt: timestamp("closedAt", { withTimezone: true }),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type FeedbackTicket = typeof feedbackTickets.$inferSelect;
+export type InsertFeedbackTicket = typeof feedbackTickets.$inferInsert;
+
+export const feedbackTicketComments = pgTable("feedback_ticket_comments", {
+  id: serial("id").primaryKey(),
+  ticketId: integer("ticketId").notNull().references(() => feedbackTickets.id, { onDelete: "cascade" }),
+  authorId: integer("authorId").references(() => users.id),
+  authorType: varchar("authorType", { length: 16 }).notNull(),
+  content: text("content").notNull(),
+  isInternal: boolean("isInternal").default(false).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type FeedbackTicketComment = typeof feedbackTicketComments.$inferSelect;
+
+export const feedbackTicketAttachments = pgTable("feedback_ticket_attachments", {
+  id: serial("id").primaryKey(),
+  ticketId: integer("ticketId").notNull().references(() => feedbackTickets.id, { onDelete: "cascade" }),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  fileUrl: varchar("fileUrl", { length: 500 }).notNull(),
+  fileSize: integer("fileSize"),
+  mimeType: varchar("mimeType", { length: 100 }),
+  uploadedBy: integer("uploadedBy").references(() => users.id),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type FeedbackTicketAttachment = typeof feedbackTicketAttachments.$inferSelect;

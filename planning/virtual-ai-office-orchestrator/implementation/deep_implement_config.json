@@ -1,0 +1,39 @@
+{
+  "plugin_root": "/home/dev/.claude/plugins/cache/piercelamb-plugins/deep-implement/0.2.1",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/planning/virtual-ai-office-orchestrator/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/planning/virtual-ai-office-orchestrator/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-schema-identity",
+    "section-02-schema-rooms-runs",
+    "section-03-scoped-memory",
+    "section-04-team-service",
+    "section-05-room-run-engine",
+    "section-06-prompt-composer-turn-order",
+    "section-07-monitoring-notifications",
+    "section-08-summary-service",
+    "section-09-inter-agent-communication",
+    "section-10-trpc-routers",
+    "section-11-sse-streaming",
+    "section-12-frontend-shell-sidebar",
+    "section-13-frontend-team-builder",
+    "section-14-frontend-room-monitor",
+    "section-15-python-orchestrator-memory",
+    "section-16-automation-external-intake",
+    "section-17-brainstorm-cutover-migration",
+    "section-18-testing-integration"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-03-17T23:59:20.109894+00:00"
+}
