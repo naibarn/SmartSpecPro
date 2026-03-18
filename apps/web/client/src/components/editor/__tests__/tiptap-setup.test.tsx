@@ -50,9 +50,10 @@ describe("Tiptap Setup", () => {
         immediatelyRender: false,
       }),
     );
-    result.current?.commands.setContent("<p>Hello</p>");
-    const html = result.current?.getHTML();
-    expect(html).toContain("<p>Hello</p>");
+    const editor = result.current;
+    expect(editor).not.toBeNull();
+    editor!.commands.setContent("<p>Hello</p>");
+    expect(editor!.getHTML()).toContain("<p>Hello</p>");
   });
 
   it("editor.isEditable is false when editable: false is passed", () => {

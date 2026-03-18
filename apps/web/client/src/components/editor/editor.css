@@ -1,6 +1,7 @@
 /* Tiptap ProseMirror base styles — scoped to .tiptap-editor */
 
 .tiptap-editor .ProseMirror {
+  width: 100%;
   min-height: 200px;
   padding: 1rem;
   outline: none;
@@ -94,6 +95,13 @@
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
     "Liberation Mono", monospace;
   font-size: 0.875em;
+}
+
+.tiptap-editor .ProseMirror pre code {
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
 }
 
 .tiptap-editor .ProseMirror hr {
