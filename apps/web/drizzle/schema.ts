@@ -5996,7 +5996,10 @@ export const feedbackTickets = pgTable("feedback_tickets", {
   resolvedAt: timestamp("resolvedAt", { withTimezone: true }),
   closedAt: timestamp("closedAt", { withTimezone: true }),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [
+  index("ft_tenant_status_idx").on(t.tenantId, t.status),
+  index("ft_submitted_by_idx").on(t.submittedBy),
+]);
 
 export type FeedbackTicket = typeof feedbackTickets.$inferSelect;
 export type InsertFeedbackTicket = typeof feedbackTickets.$inferInsert;

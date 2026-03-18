@@ -119,14 +119,17 @@ export const feedbackRouter = router({
 
   getTicket: adminProcedure
     .input(z.object({ id: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const conditions = [eq(feedbackTickets.id, input.id)];
+      if (ctx.tenantId) conditions.push(eq(feedbackTickets.tenantId, ctx.tenantId));
 
       const tickets = await db
         .select()
         .from(feedbackTickets)
-        .where(eq(feedbackTickets.id, input.id))
+        .where(and(...conditions))
         .limit(1);
 
       if (tickets.length === 0) throw new TRPCError({ code: "NOT_FOUND" });
