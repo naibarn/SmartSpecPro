@@ -95,6 +95,7 @@ const BlogPost = lazy(() => import("./pages/BlogPost"));
 const DomainBlogAdmin = lazy(() => import("./pages/DomainBlogAdmin"));
 const UsageAnalytics = lazy(() => import("./pages/UsageAnalytics"));
 const TaskQueueMonitor = lazy(() => import("./pages/TaskQueueMonitor"));
+const Teams = lazy(() => import("./pages/Teams"));
 const AgencyBrowser = lazy(() => import("./pages/AgencyBrowser"));
 const AgencyChat = lazy(() => import("./pages/AgencyChat"));
 const AgencyBuilder = lazy(() => import("./pages/AgencyBuilder"));
@@ -109,6 +110,7 @@ const WebhookTriggers = lazy(() => import("./pages/WebhookTriggers"));
 const AdminChannelRouter = lazy(() => import("./pages/AdminChannelRouter"));
 const AdminSystemGuardian = lazy(() => import("./pages/AdminSystemGuardian"));
 const AdminFeedbackHub = lazy(() => import("./pages/AdminFeedbackHub"));
+const MyFeedback = lazy(() => import("./pages/MyFeedback"));
 const ContentQualityDashboard = lazy(() => import("./pages/ContentQualityDashboard"));
 const HelpPage = lazy(() => import("./pages/Help"));
 import { SystemHealthBanner } from "./components/guardian/SystemHealthBanner";
@@ -297,6 +299,8 @@ function Router() {
         <Route path="/chat" component={Chat} />
         <Route path="/automation" component={AutomationPage} />
         <Route path="/automation/live/:sessionId" component={AutomationPage} />
+        <Route path="/teams" component={Teams} />
+        <Route path="/teams/:teamId" component={Teams} />
         <Route path="/agencies" component={AgencyBrowser} />
         <Route path="/agencies/templates" component={AgencyTemplates} />
         <Route path="/agencies/marketplace" component={AgencyMarketplace} />
@@ -321,6 +325,7 @@ function Router() {
         <Route path="/settings" component={Settings} />
         <Route path="/settings/personas" component={PersonaSettings} />
         <Route path="/settings/skills" component={SkillBrowser} />
+        <Route path="/my-feedback" component={MyFeedback} />
         <Route path="/profile" component={Profile} />
         <Route path="/terms" component={Terms} />
         <Route path="/privacy" component={Privacy} />

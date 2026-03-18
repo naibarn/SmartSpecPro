@@ -40,6 +40,7 @@ import {
   getDeadLetterCount,
   getFailedTaskEvents,
 } from '../services/cloudTasksMetrics';
+import { getQueueHealthStatus } from '../services/queueHealthMonitor';
 
 export const queuesRouter = router({
   /**
@@ -466,4 +467,12 @@ export const queuesRouter = router({
         },
       };
     }),
+
+  /**
+   * Get Celery/Redis queue health status with anomaly alerts.
+   * Includes queue lengths, active alerts, and 30-check history.
+   */
+  getQueueHealth: adminProcedure.query(async () => {
+    return getQueueHealthStatus();
+  }),
 });

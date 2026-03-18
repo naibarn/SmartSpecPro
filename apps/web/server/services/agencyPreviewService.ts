@@ -65,6 +65,20 @@ const presentationPayloadSchema = z.object({
   slides: z.array(normalizedPresentationSlideSchema).min(1).max(30),
 });
 
+const mediaPromptPayloadSchema = z.object({
+  mediaType: z.enum(["image", "video", "audio"]),
+  prompt: z.string().min(1),
+  model: z.string().nullable().optional(),
+  referenceImageUrls: z.array(z.string()).default([]),
+  extraParams: z.record(z.unknown()).optional(),
+});
+
+const textContentPayloadSchema = z.object({
+  title: z.string().nullable().optional(),
+  content: z.string().min(1),
+  format: z.enum(["plain", "markdown", "html"]).default("markdown"),
+});
+
 type ResearchPayload = z.infer<typeof researchPayloadSchema>;
 type StoryboardPayload = z.infer<typeof storyboardPayloadSchema>;
 type PresentationPayload = z.infer<typeof presentationPayloadSchema>;
@@ -137,9 +151,9 @@ export type AgencyPreview =
   | PreviewBase<"deck", {
       title: string;
       description: string | null;
-      language: "auto" | "en" | "th";
+      language: string;
       stylePreset: string | null;
-      slides: PresentationPayload["slides"];
+      slides: Array<Record<string, unknown>>;
     }>
   | PreviewBase<"comparison", {
       comparisonKind: ComparisonPayload["comparisonKind"];
@@ -150,6 +164,17 @@ export type AgencyPreview =
       sortHint: string | null;
       recommendations: string[];
       options: ComparisonPayload["options"];
+    }>
+  | PreviewBase<"media_prompt", {
+      mediaType: "image" | "video" | "audio";
+      prompt: string;
+      model: string | null;
+      referenceImageUrls: string[];
+    }>
+  | PreviewBase<"text_content", {
+      title: string;
+      content: string;
+      format: "plain" | "markdown" | "html";
     }>;
 
 function getPrimaryPreviewArtifact(run: Pick<RunResult, "previewArtifacts">): PreviewArtifactMetadata | null {
@@ -201,7 +226,8 @@ function normalizeProvenance(rawEntries: unknown): PreviewProvenanceEntry[] {
 
 function normalizeDeckSlides(rawSlides: unknown): PresentationPayload["slides"] {
   if (!Array.isArray(rawSlides)) return [];
-  return rawSlides.map((slide) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return rawSlides.map((slide): any => {
     const item = slide && typeof slide === "object" ? slide as Record<string, unknown> : {};
     return {
       templateId:
@@ -372,6 +398,53 @@ export function buildAgencyPreview(
           language: parsed.data.language,
           stylePreset: parsed.data.style_preset ?? null,
           slides: parsed.data.slides,
+        },
+      };
+    }
+  }
+
+  if (run.structuredResult.intent === "media_prompt" && payload) {
+    const parsed = mediaPromptPayloadSchema.safeParse(payload);
+    if (parsed.success) {
+      return {
+        previewType: "media_prompt",
+        artifactId: artifact.id,
+        intent: artifact.intent,
+        artifactType: artifact.artifact_type,
+        lifecycleState,
+        summaryText: artifact.summary ?? run.structuredResult.summary ?? run.response,
+        responseText: run.response,
+        provenance,
+        commit,
+        audit,
+        data: {
+          mediaType: parsed.data.mediaType,
+          prompt: parsed.data.prompt,
+          model: parsed.data.model ?? null,
+          referenceImageUrls: parsed.data.referenceImageUrls,
+        },
+      };
+    }
+  }
+
+  if (run.structuredResult.intent === "text_content" && payload) {
+    const parsed = textContentPayloadSchema.safeParse(payload);
+    if (parsed.success) {
+      return {
+        previewType: "text_content",
+        artifactId: artifact.id,
+        intent: artifact.intent,
+        artifactType: artifact.artifact_type,
+        lifecycleState,
+        summaryText: artifact.summary ?? parsed.data.title ?? run.response,
+        responseText: run.response,
+        provenance,
+        commit,
+        audit,
+        data: {
+          title: parsed.data.title ?? "Generated Content",
+          content: parsed.data.content,
+          format: parsed.data.format,
         },
       };
     }

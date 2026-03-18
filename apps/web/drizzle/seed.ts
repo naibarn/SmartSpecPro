@@ -4,7 +4,7 @@
  */
 
 import { getDb } from "../server/db";
-import { llmProviders, modelProviderMap, routingRules, personaTemplates } from "./schema";
+import { llmProviders, modelProviderMap, routingRules, personaTemplates, assistantTeamTemplates } from "./schema";
 import { eq } from "drizzle-orm";
 
 interface ModelMapping {
@@ -399,6 +399,8 @@ export async function seedPersonaTemplates(): Promise<void> {
         userId: null,
         name: persona.name,
         description: persona.description,
+        assistantNickname: null,
+        assistantGender: "neutral",
         systemPromptPrefix: persona.systemPromptPrefix,
         tone: persona.tone,
         language: persona.language,
@@ -411,4 +413,89 @@ export async function seedPersonaTemplates(): Promise<void> {
   }
 
   console.log(`[Seed] ${personas.length} platform persona templates seeded`);
+}
+
+/**
+ * Seed system team templates for the Virtual AI Office Orchestrator.
+ * These are platform-wide templates (tenantId=null, isSystem=true).
+ */
+export async function seedAssistantTeamTemplates(): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Seed] Database not available");
+    return;
+  }
+
+  const templates = [
+    {
+      id: "tmpl-team-research-analysis",
+      name: "Research & Analysis Team",
+      description: "A team focused on research, data analysis, and report writing. Ideal for market research, competitive analysis, and technical investigations.",
+      category: "research",
+      teamConfigJson: {
+        defaultDiscussionMode: "round-robin",
+        maxTurnsPerRun: 20,
+        defaultStopPolicy: "lead_satisfied",
+      },
+      memberTemplateJson: [
+        { role: "Lead Researcher", isLead: true, specialty: ["research", "strategy"], modelPolicy: "quality_optimized" },
+        { role: "Data Analyst", isLead: false, specialty: ["data", "statistics", "visualization"], modelPolicy: "auto" },
+        { role: "Report Writer", isLead: false, specialty: ["writing", "editing", "formatting"], modelPolicy: "auto" },
+      ],
+      defaultDiscussionMode: "round-robin",
+    },
+    {
+      id: "tmpl-team-content-creation",
+      name: "Content Creation Team",
+      description: "A creative team for content strategy, writing, and editing. Perfect for blog posts, marketing copy, and social media content.",
+      category: "content",
+      teamConfigJson: {
+        defaultDiscussionMode: "lead-directed",
+        maxTurnsPerRun: 15,
+        defaultStopPolicy: "lead_satisfied",
+      },
+      memberTemplateJson: [
+        { role: "Content Strategist", isLead: true, specialty: ["strategy", "seo", "planning"], modelPolicy: "quality_optimized" },
+        { role: "Writer", isLead: false, specialty: ["writing", "storytelling", "tone"], modelPolicy: "auto" },
+        { role: "Editor", isLead: false, specialty: ["editing", "grammar", "fact-checking"], modelPolicy: "auto" },
+      ],
+      defaultDiscussionMode: "lead-directed",
+    },
+    {
+      id: "tmpl-team-code-review",
+      name: "Code Review Team",
+      description: "A technical team for architecture review, security audit, and code quality assessment. Best for pull request reviews and technical debt analysis.",
+      category: "engineering",
+      teamConfigJson: {
+        defaultDiscussionMode: "round-robin",
+        maxTurnsPerRun: 25,
+        defaultStopPolicy: "consensus",
+      },
+      memberTemplateJson: [
+        { role: "Lead Architect", isLead: true, specialty: ["architecture", "design-patterns", "scalability"], modelPolicy: "quality_optimized" },
+        { role: "Security Reviewer", isLead: false, specialty: ["security", "vulnerabilities", "owasp"], modelPolicy: "quality_optimized" },
+        { role: "Quality Reviewer", isLead: false, specialty: ["testing", "code-quality", "best-practices"], modelPolicy: "auto" },
+      ],
+      defaultDiscussionMode: "round-robin",
+    },
+  ];
+
+  for (const tmpl of templates) {
+    await db
+      .insert(assistantTeamTemplates)
+      .values({
+        id: tmpl.id,
+        tenantId: null,
+        name: tmpl.name,
+        description: tmpl.description,
+        category: tmpl.category,
+        teamConfigJson: tmpl.teamConfigJson,
+        memberTemplateJson: tmpl.memberTemplateJson,
+        defaultDiscussionMode: tmpl.defaultDiscussionMode,
+        isSystem: true,
+      })
+      .onConflictDoNothing();
+  }
+
+  console.log(`[Seed] ${templates.length} system team templates seeded`);
 }

@@ -114,8 +114,9 @@ import { executeWithFallback, resolveProviders } from "./llmRouter";
 import { loadEnabledModelsWithPricing } from "./capabilityRegistry";
 import { loadEnabledLlmModelRows } from "./enabledLlmModels";
 import { selectBestLlmModel } from "./intelligentModelSelector";
-import { llmProviders, modelProviderMap, presentationDecks } from "../../drizzle/schema";
-import { and, asc, eq } from "drizzle-orm";
+import { libraryItems, llmProviders, modelProviderMap, presentationDecks, presentationSlides } from "../../drizzle/schema";
+import { and, asc, eq, sql } from "drizzle-orm";
+import { signBearerToken } from "../_core/tokens";
 import {
   applyWatermarkToSlideContent,
   extractWatermarkFromSlideContent,
@@ -4568,8 +4569,12 @@ function buildLayoutDslPromptRequest(options: {
   slide: AIPresentationSlide;
   canvasWidth: number;
   canvasHeight: number;
+  stylePresetId?: string;
 }): string {
   const profile = buildPresentationContentProfile(options.slide);
+  const preset = options.stylePresetId
+    ? getBuiltInPreset(options.stylePresetId as any) ?? getBuiltInPreset("dark-professional")!
+    : getBuiltInPreset("dark-professional")!;
   return JSON.stringify(presentationLayoutDslRequestSchema.parse({
     mode: "llm_layout_dsl",
     language: "th",
@@ -4584,8 +4589,8 @@ function buildLayoutDslPromptRequest(options: {
     },
     allowedPrimitives: PRESENTATION_LAYOUT_DSL_ALLOWED_PRIMITIVES,
     styleTokens: {
-      themeId: "presentation-ai-default",
-      typographyPack: "presentation-ai-default",
+      themeId: options.stylePresetId ?? "dark-professional",
+      typographyPack: preset.typography?.titleFontFamily ?? "Inter",
     },
     hardLimits: {
       maxElements: PRESENTATION_LAYOUT_DSL_MAX_ELEMENTS,
@@ -4825,6 +4830,7 @@ async function resolveAdvancedLayoutModes(options: {
   canvasHeight: number;
   preferredProviderId?: number;
   strictProviderPin?: boolean;
+  stylePresetId?: string;
   onSlideProgress?: (slideIndex: number, totalSlides: number) => Promise<void>;
 }): Promise<{
   slides: AIPresentationSlide[];
@@ -4912,11 +4918,30 @@ async function resolveAdvancedLayoutModes(options: {
             "",
             `### BOUNDARIES: x>=0, y>=0, x+width<=${options.canvasWidth}, y+height<=${options.canvasHeight}`,
             "Text padding: 24px from left/right, 16px from top/bottom.",
+            "",
+            ...(() => {
+              const presetForDsl = options.stylePresetId
+                ? getBuiltInPreset(options.stylePresetId as any) ?? getBuiltInPreset("dark-professional")!
+                : getBuiltInPreset("dark-professional")!;
+              return [
+                `### COLOR PALETTE (from style preset "${presetForDsl.id}"):`,
+                `- Background: ${presetForDsl.colors.background}`,
+                `- Background alt: ${presetForDsl.colors.backgroundAlt ?? presetForDsl.colors.background}`,
+                `- Title text color: ${presetForDsl.colors.text}`,
+                `- Body text color: ${presetForDsl.colors.textMuted ?? presetForDsl.colors.text}`,
+                `- Primary accent: ${presetForDsl.colors.primary}`,
+                `- Secondary accent: ${presetForDsl.colors.secondary ?? presetForDsl.colors.primary}`,
+                `- Card backgrounds: ${(presetForDsl.colors.cardBg ?? []).slice(0, 3).join(", ") || presetForDsl.colors.backgroundAlt}`,
+                "Use ONLY these colors for rect fills, text colors, and line strokes.",
+                "Ensure text color has sufficient contrast against its background rect.",
+              ];
+            })(),
           ].join("\n"),
           userMessage: buildLayoutDslPromptRequest({
             slide,
             canvasWidth: options.canvasWidth,
             canvasHeight: options.canvasHeight,
+            stylePresetId: options.stylePresetId,
           }),
           model: options.model,
           preferredProviderId: options.preferredProviderId,
@@ -9889,6 +9914,7 @@ export async function generateAIDraft(
       canvasHeight,
       preferredProviderId: articlePreferredProviderId,
       strictProviderPin: articleStrictProviderPin,
+      stylePresetId: input.stylePresetId,
       onSlideProgress: async (slideIndex, totalSlides) => {
         await updateProgress({
           phase: 2,
@@ -10081,10 +10107,8 @@ export async function generateAIDraft(
               if (isCancellationError(err)) {
                 throw err;
               }
-              if (err instanceof BillingChargeError) {
-                setPhase4AbortError(err);
-                throw err;
-              }
+              // BillingChargeError during prompt enhancement: skip enhancement, use raw keywords
+              // Don't abort — the slide can still use unenhanced prompt
               warnings.push(`Slide ${index + 1}: image prompt enhancement failed (${sanitizeErrorMessage(err)}), using raw keywords`);
             }
           }
@@ -10237,8 +10261,12 @@ export async function generateAIDraft(
                 throw err;
               }
               if (err instanceof BillingChargeError) {
-                setPhase4AbortError(err);
-                throw err;
+                // Log but don't abort — continue submitting remaining slides
+                // so the presentation isn't left incomplete
+                const reason = sanitizeErrorMessage(err);
+                mediaFailureReasons[index] = reason;
+                warnings.push(`Slide ${index + 1}: billing failed for variant ${variantIndex + 1} (${reason}), skipping remaining variants`);
+                break; // Skip remaining variants for this slide, but continue other slides
               }
               const reason = sanitizeErrorMessage(err);
               mediaFailureReasons[index] = reason;
@@ -10266,7 +10294,7 @@ export async function generateAIDraft(
           });
         },
         MAX_IMAGE_CONCURRENCY,
-        { stopOnErrorFilter: (err) => isCancellationError(err) || err instanceof BillingChargeError },
+        { stopOnErrorFilter: (err) => isCancellationError(err) },
       );
     } catch (err) {
       if (isCancellationError(err)) {
@@ -10906,7 +10934,24 @@ export async function generateAIDraft(
           throw new Error(`${PRESENTATION_ERROR_CODE.NOT_FOUND}: deck ${input.deckId} not found`);
         }
 
-        let expectedVersion = deckRow.version;
+        // Remove any pre-existing blank slides (auto-created by createPresentationDeckForLibraryItem)
+        // before inserting AI-generated slides
+        await tx
+          .delete(presentationSlides)
+          .where(eq(presentationSlides.deckId, input.deckId));
+
+        // Reset deck version to account for deleted slides
+        await tx
+          .update(presentationDecks)
+          .set({ version: 0, updatedAt: new Date() })
+          .where(
+            and(
+              eq(presentationDecks.id, input.deckId),
+              eq(presentationDecks.tenantId, actor.tenantId),
+            ),
+          );
+
+        let expectedVersion = 0;
         insertionBaseVersion = expectedVersion;
         for (let index = 0; index < compiledSlides.length; index += 1) {
           const slideContent = compiledSlides[index];
@@ -11698,5 +11743,110 @@ export async function generateLayoutFromDeckNoteAsync(
       error: { code: "INTERNAL_ERROR", message: errMsg.slice(0, 500) },
     });
     throw err;
+  }
+}
+
+// ── Background Scheduler: Resolve Pending Media ──────────────────
+// Polls for decks that have slides with pendingMediaJobs and resolves them
+// automatically, regardless of whether the user is on the editor page.
+
+const PENDING_MEDIA_POLL_INTERVAL_MS = 30_000; // 30 seconds
+const PENDING_MEDIA_MAX_JOBS_PER_TICK = 30;
+let pendingMediaSchedulerRunning = false;
+
+async function tickResolvePendingMedia(): Promise<void> {
+  if (pendingMediaSchedulerRunning) return;
+  pendingMediaSchedulerRunning = true;
+  try {
+    const db = await getDb();
+    if (!db) return;
+
+    // Find decks that have slides with pendingMediaJobs in their slideContent
+    const slidesWithPending = await db
+      .select({
+        deckId: presentationSlides.deckId,
+        slideContent: presentationSlides.slideContent,
+      })
+      .from(presentationSlides)
+      .where(sql`${presentationSlides.slideContent}::text LIKE '%pendingMediaJobs%'`)
+      .limit(50);
+
+    // Deduplicate by deckId
+    const deckIds = [...new Set(slidesWithPending.map((s) => s.deckId))];
+    if (deckIds.length === 0) return;
+
+    console.log(`[PendingMediaScheduler] Found ${deckIds.length} deck(s) with pending media`);
+
+    for (const deckId of deckIds) {
+      try {
+        // Get the deck owner via libraryItems join
+        const [deckInfo] = await db
+          .select({
+            id: presentationDecks.id,
+            tenantId: presentationDecks.tenantId,
+            ownerUserId: libraryItems.ownerUserId,
+          })
+          .from(presentationDecks)
+          .innerJoin(libraryItems, eq(presentationDecks.libraryItemId, libraryItems.id))
+          .where(eq(presentationDecks.id, deckId))
+          .limit(1);
+
+        if (!deckInfo) continue;
+
+        const actor: PresentationActor = {
+          userId: deckInfo.ownerUserId,
+          tenantId: deckInfo.tenantId,
+        };
+
+        // Sign a short-lived token matching createPresentationToken format
+        const userToken = signBearerToken(
+          {
+            sub: String(deckInfo.ownerUserId),
+            type: "access",
+            scopes: ["media:generate"],
+            jti: `pending_media_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
+          },
+          "5m",
+        );
+
+        const result = await resolvePendingMediaForDeck(
+          { deckId, maxJobs: PENDING_MEDIA_MAX_JOBS_PER_TICK },
+          actor,
+          userToken,
+        );
+
+        if (result.jobsResolved > 0) {
+          console.log(
+            `[PendingMediaScheduler] Deck ${deckId}: resolved ${result.jobsResolved} jobs, ${result.jobsRemaining} remaining`,
+          );
+        }
+      } catch (err) {
+        console.error(`[PendingMediaScheduler] Deck ${deckId} failed:`, sanitizeErrorMessage(err));
+      }
+    }
+  } catch (err) {
+    console.error("[PendingMediaScheduler] Tick failed:", sanitizeErrorMessage(err));
+  } finally {
+    pendingMediaSchedulerRunning = false;
+  }
+}
+
+let pendingMediaSchedulerTimer: ReturnType<typeof setInterval> | null = null;
+
+export function startPendingMediaScheduler(): void {
+  if (pendingMediaSchedulerTimer) return;
+  console.log(`[PendingMediaScheduler] Started (interval=${PENDING_MEDIA_POLL_INTERVAL_MS}ms)`);
+  pendingMediaSchedulerTimer = setInterval(() => {
+    tickResolvePendingMedia().catch(() => {});
+  }, PENDING_MEDIA_POLL_INTERVAL_MS);
+  // Run first tick after a short delay to let the server finish startup
+  setTimeout(() => { tickResolvePendingMedia().catch(() => {}); }, 5_000);
+}
+
+export function stopPendingMediaScheduler(): void {
+  if (pendingMediaSchedulerTimer) {
+    clearInterval(pendingMediaSchedulerTimer);
+    pendingMediaSchedulerTimer = null;
+    console.log("[PendingMediaScheduler] Stopped");
   }
 }

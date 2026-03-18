@@ -90,6 +90,7 @@ export type AuditEventType =
   | "orchestration_quality_gate"
   | "orchestration_param_extract"
   | "orchestration_fallback"
+  | "agency_result_routed"
   | "error";
 
 export interface AuditLogEntry {

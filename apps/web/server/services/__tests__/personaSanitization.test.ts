@@ -70,6 +70,45 @@ describe("persona prompt injection mitigation", () => {
     expect(() => sanitizePersonaInput(input)).toThrow("500 characters");
   });
 
+  it("rejects source template metadata when the array lengths do not match", () => {
+    const input = {
+      ...baseInput,
+      sourceTemplateIds: ["marketing-strategist", "financial-analyst"],
+      sourceTemplateLabels: ["Marketing Strategist"],
+      sourceTemplateCategories: ["Marketing", "Finance"],
+    };
+    expect(() => sanitizePersonaInput(input)).toThrow("matching lengths");
+  });
+
+  it("rejects assistant nickname when it exceeds the max length", () => {
+    const input = {
+      ...baseInput,
+      assistantNickname: "n".repeat(81),
+    };
+    expect(() => sanitizePersonaInput(input)).toThrow("assistantNickname");
+  });
+
+  it("rejects unsupported assistant gender values", () => {
+    const input = {
+      ...baseInput,
+      assistantGender: "unknown" as "female",
+    };
+    expect(() => sanitizePersonaInput(input)).toThrow("assistantGender");
+  });
+
+  it("normalizes and preserves valid source template metadata", () => {
+    const input = {
+      ...baseInput,
+      sourceTemplateIds: [" marketing-strategist ", "financial-analyst"],
+      sourceTemplateLabels: ["Marketing Strategist", "Financial Analyst"],
+      sourceTemplateCategories: ["Marketing", "Finance"],
+    };
+    const result = sanitizePersonaInput(input);
+    expect(result.sourceTemplateIds).toEqual(["marketing-strategist", "financial-analyst"]);
+    expect(result.sourceTemplateLabels).toEqual(["Marketing Strategist", "Financial Analyst"]);
+    expect(result.sourceTemplateCategories).toEqual(["Marketing", "Finance"]);
+  });
+
   it("passes valid input through unchanged (except newline normalization)", () => {
     const input = {
       ...baseInput,

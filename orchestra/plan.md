@@ -1,24 +1,26 @@
 # Orchestra Plan
 
 ## Task
-Comprehensive completeness review, improvement identification, and security audit for Feature 045 Celery JWT Refactor
+Review Feature 046 (Virtual Admin Agent / System Guardian) implementation for completeness, gaps, security issues, and recommended improvements.
 
 ## Classification
 - scope: medium
-- risk: high
-- affected_domains: [Python backend, Node.js backend, Nginx, tRPC, Tests]
-- estimated_file_count: 12
-- chosen_route: multi-agent review (read-only)
-- task_summary: Verify all 4 deep-implement sections completed correctly, all 10 post-review fixes applied, and no remaining security gaps
+- risk: low
+- affected_domains: [frontend, backend-trpc, python-backend, database, security]
+- estimated_file_count: 40+
+- chosen_route: multi-agent waves (parallel review)
+- task_summary: Post-implementation completeness and quality review of the Virtual Admin Agent feature (10 sections, 74 tests, ~40 files)
+- bug_route: N/A (review task, not a bug)
 
 ## Wave Plan
-### Wave 1 (completed): Parallel Verification
-- Python tests (30/30 passed)
-- Python lint (all clean after auto-fix)
-- Vitest security tests (4/4 passed)
-- Code grep verification (no user_jwt in production code)
-- Nginx /api/internal/ block confirmed (both HTTP + HTTPS)
 
-### Wave 2 (completed): Post-Completion Review
-- Cross-reference all 10 fixes against actual code
-- Generate final report
+### Wave 1: Parallel Review (3 agents)
+1. **ssp-reviewer** — Review all TypeScript implementation files for correctness, contract compliance, quality
+2. **ssp-security-trpc** — Audit tRPC routers (virtualAdmin.ts, feedback.ts) for auth, validation, IDOR
+3. **ssp-security-fastapi** — Audit Python endpoint (virtual_admin.py) for security
+
+### Wave 2: Integration Check (1 agent)
+4. **ssp-security-review** — Aggregate findings and produce final verdict
+
+### Wave 3: Conductor synthesis
+5. Conductor synthesizes all findings into post-completion review report

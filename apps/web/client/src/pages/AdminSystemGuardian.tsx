@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { GuardianChat } from "@/components/guardian/GuardianChat";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@smartspec/ui/components/tabs";
-import { Badge } from "@smartspec/ui/components/badge";
-import { Button } from "@smartspec/ui/components/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@smartspec/ui/components/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@smartspec/ui/src/components/ui/tabs";
+import { Badge } from "@smartspec/ui/src/components/ui/badge";
+import { Button } from "@smartspec/ui/src/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@smartspec/ui/src/components/ui/card";
 
 export default function AdminSystemGuardian() {
   const [activeTab, setActiveTab] = useState("dashboard");

@@ -69,7 +69,7 @@ import { MessageCostBadge } from "./MessageCostBadge";
 import { formatModelCost, getCheapestProvider, type AvailableModel, type ModelProvider } from "@/lib/modelPricing";
 import { BrowserSessionSummaryCard } from "@/components/browser-session/BrowserSessionSummaryCard";
 import { BrowserSessionLaunchSuggestionCard } from "@/components/browser-session/BrowserSessionLaunchSuggestionCard";
-import { BrowserSessionHelpDialog } from "@/components/browser-session/BrowserSessionHelpDialog";
+import { HelpButton } from "@/components/help";
 import { ComparisonPreviewCard } from "@/components/comparison/ComparisonPreviewCard";
 import type { BrowserSessionLaunchSuggestion } from "@/lib/browserSessionInvocation";
 import {
@@ -449,7 +449,8 @@ export function ChatView({
   const uploadMutation = trpc.ai.upload.useMutation();
   const sendMessageMutation = trpc.chat.sendMessage.useMutation();
   const updateConversationMutation = trpc.chat.updateConversation.useMutation();
-  // Note: saveAssistantMutation removed - server now saves message at end of streaming
+  // saveAssistantMessage for non-streaming flows (presentation, scheduling, etc.)
+  const saveAssistantMessageMutation = trpc.chat.saveAssistantMessage.useMutation();
   const processMemoryMutation = trpc.memory.processMemory.useMutation();
   const detectSkillMutation = trpc.chat.detectSkill.useMutation();
   const executeSkillMutation = trpc.chat.executeSkill.useMutation();
@@ -708,15 +709,41 @@ export function ChatView({
             `[Open Presentation Editor](${task.editorUrl})`,
           ].join("\n");
 
-      lastLocalAddTime.current = Date.now();
-      setMessages((prev) => [...prev, {
-        id: Date.now(),
-        role: "assistant" as const,
-        content: completionContent,
-        createdAt: new Date(),
-      }]);
+      // Save to database so it persists across page reloads
+      if (conversationId) {
+        saveAssistantMessageMutation.mutateAsync({
+          conversationId,
+          content: completionContent,
+          skillUsed: "auto-draft-presentation",
+        }).then((saved) => {
+          lastLocalAddTime.current = Date.now();
+          setMessages((prev) => [...prev, {
+            id: saved?.id ?? Date.now(),
+            role: "assistant" as const,
+            content: completionContent,
+            createdAt: new Date(),
+          }]);
+        }).catch((err) => {
+          console.error("[ChatView] Failed to save completion message:", err);
+          lastLocalAddTime.current = Date.now();
+          setMessages((prev) => [...prev, {
+            id: Date.now(),
+            role: "assistant" as const,
+            content: completionContent,
+            createdAt: new Date(),
+          }]);
+        });
+      } else {
+        lastLocalAddTime.current = Date.now();
+        setMessages((prev) => [...prev, {
+          id: Date.now(),
+          role: "assistant" as const,
+          content: completionContent,
+          createdAt: new Date(),
+        }]);
+      }
     }
-  }, [presentationProgressQuery.data, pendingPresentationTask]);
+  }, [presentationProgressQuery.data, pendingPresentationTask, conversationId, saveAssistantMessageMutation]);
 
   // Lightbox state for viewing images
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -1711,11 +1738,17 @@ export function ChatView({
           };
 
           setPendingSchedule(scheduleParsed);
+          const schedContent = `I detected a scheduled presentation request. Please confirm the schedule below.`;
+          const schedSaved = conversationId ? await saveAssistantMessageMutation.mutateAsync({
+            conversationId,
+            content: schedContent,
+            skillUsed: "chat-alert",
+          }).catch(() => null) : null;
           lastLocalAddTime.current = Date.now();
           setMessages((prev) => [...prev, {
-            id: Date.now(),
+            id: schedSaved?.id ?? Date.now(),
             role: "assistant" as const,
-            content: `I detected a scheduled presentation request. Please confirm the schedule below.`,
+            content: schedContent,
             createdAt: new Date(),
             skillUsed: "chat-alert",
           }]);
@@ -1733,20 +1766,55 @@ export function ChatView({
         ? parseInt(slideCountMatch[1] || slideCountMatch[2] || "5", 10)
         : 5;
 
-      // Extract topic: remove trigger phrase AND slide count suffix
+      // Extract aspect ratio: "16:9", "9:16", "แนวนอน", "แนวตั้ง", "landscape", "portrait"
+      const aspectRatioMatch = text.match(/(?:ขนาด\s*)?(?:16\s*:\s*9|9\s*:\s*16)|(?:แนวนอน|แนวตั้ง|landscape|portrait)/i);
+      let canvasWidth: number | undefined;
+      let canvasHeight: number | undefined;
+      if (aspectRatioMatch) {
+        const matched = aspectRatioMatch[0].toLowerCase().replace(/\s/g, "");
+        if (matched.includes("9:16") || matched.includes("แนวตั้ง") || matched === "portrait") {
+          canvasWidth = 720;
+          canvasHeight = 1280;
+        } else {
+          canvasWidth = 1280;
+          canvasHeight = 720;
+        }
+      }
+
+      // Extract language: "ภาษาไทย", "ภาษาอังกฤษ", "in Thai", "in English"
+      const langMatch = text.match(/(?:ภาษา\s*(?:ไทย|อังกฤษ|english|thai))|(?:(?:in|ใน)\s*(?:Thai|English|ไทย|อังกฤษ))/i);
+      let language: "auto" | "en" | "th" | undefined;
+      if (langMatch) {
+        const langStr = langMatch[0].toLowerCase();
+        if (langStr.includes("ไทย") || langStr.includes("thai")) {
+          language = "th";
+        } else if (langStr.includes("อังกฤษ") || langStr.includes("english")) {
+          language = "en";
+        }
+      }
+
+      // Extract topic: remove trigger phrase, slide count, aspect ratio, and language
       const topicClean = text
         .replace(/(?:(?:ช่วย)?(?:สร้าง|ทำ)\s*(?:presentation|เพรเซนเทชัน|สไลด์|slide|พรีเซนเทชั่น|ppt|งานนำเสนอ)|(?:make|create|generate|build|prepare)\s+(?:a\s+)?(?:presentation|slides?|ppt|deck))\s*(?:about|on|for|เกี่ยวกับ|เรื่อง)?\s*/i, "")
         .replace(/\s*(?:จำนวน\s*\d+\s*(?:สไลด์|slide|แผ่น|หน้า)?|\d+\s*(?:slides?|สไลด์|แผ่น|หน้า))\s*/gi, "")
         .replace(/\s*(?:เสร็จแล้วแจ้ง|แจ้งเมื่อเสร็จ|notify\s+(?:me\s+)?when\s+done)\s*/gi, "")
+        .replace(/\s*(?:ขนาด\s*)?(?:16\s*:\s*9|9\s*:\s*16)\s*/gi, "")
+        .replace(/\s*(?:แนวนอน|แนวตั้ง|landscape|portrait)\s*/gi, "")
+        .replace(/\s*(?:ภาษา\s*(?:ไทย|อังกฤษ|english|thai)|(?:in|ใน)\s*(?:Thai|English|ไทย|อังกฤษ))\s*/gi, "")
         .trim();
 
       if (topicClean.length < 3) {
         // User provided trigger phrase but no meaningful topic
+        const promptContent = "Please provide a topic for your presentation.\n\nExamples:\n- \"สร้าง presentation เรื่อง Digital Marketing จำนวน 5 สไลด์\"\n- \"สร้าง presentation เรื่อง AI 10 slides ขนาด 16:9 ภาษาอังกฤษ\"\n- \"create presentation about AI in Healthcare 9:16 portrait\"";
+        const saved = await saveAssistantMessageMutation.mutateAsync({
+          conversationId: conversationId!,
+          content: promptContent,
+        }).catch(() => null);
         lastLocalAddTime.current = Date.now();
         setMessages((prev) => [...prev, {
-          id: Date.now(),
+          id: saved?.id ?? Date.now(),
           role: "assistant" as const,
-          content: "Please provide a topic for your presentation.\n\nExample: \"สร้าง presentation เกี่ยวกับ Digital Marketing จำนวน 5 สไลด์\"\nOr: \"create presentation about AI in Healthcare\"",
+          content: promptContent,
           createdAt: new Date(),
         }]);
         return;
@@ -1759,23 +1827,42 @@ export function ChatView({
         const result = await autoGeneratePresentationMutation.mutateAsync({
           topic: topicClean,
           numSlides: Math.min(Math.max(numSlides, 1), 30),
+          ...(canvasWidth ? { canvasWidth } : {}),
+          ...(canvasHeight ? { canvasHeight } : {}),
+          ...(language ? { language } : {}),
         });
 
+        const aspectLabel = canvasWidth && canvasHeight
+          ? (canvasWidth > canvasHeight ? "16:9" : "9:16")
+          : "16:9";
+        const langLabel = language === "th" ? "Thai" : language === "en" ? "English" : undefined;
         const editorUrl = result.editorUrl || `/presentation/${result.libraryItemId}`;
         const responseContent = [
           `Presentation created`,
           ``,
           `**Topic:** ${topicClean}`,
           `**Slides:** ${numSlides}`,
+          `**Size:** ${aspectLabel}`,
+          ...(langLabel ? [`**Language:** ${langLabel}`] : []),
           ``,
           `[Open Presentation Editor](${editorUrl})`,
           ``,
           `_AI is generating content in the background — I'll notify you when it's ready._`,
         ].join("\n");
 
+        // Save to database so it persists across page reloads
+        const saved = await saveAssistantMessageMutation.mutateAsync({
+          conversationId: conversationId!,
+          content: responseContent,
+          skillUsed: "auto-draft-presentation",
+        }).catch((err) => {
+          console.error("[ChatView] Failed to save presentation message:", err);
+          return null;
+        });
+
         lastLocalAddTime.current = Date.now();
         setMessages((prev) => [...prev, {
-          id: Date.now(),
+          id: saved?.id ?? Date.now(),
           role: "assistant" as const,
           content: responseContent,
           createdAt: new Date(),
@@ -1793,13 +1880,22 @@ export function ChatView({
       } catch (error) {
         const errMsg = error instanceof Error ? error.message : "Unknown error";
         const isRateLimit = errMsg.toLowerCase().includes("rate") || errMsg.toLowerCase().includes("too many");
+        const errorContent = isRateLimit
+          ? "Too many presentation requests. Please wait a minute and try again."
+          : `Could not create presentation: ${errMsg}`;
+
+        // Save error message to database too
+        const saved = await saveAssistantMessageMutation.mutateAsync({
+          conversationId: conversationId!,
+          content: errorContent,
+          error: errMsg,
+        }).catch(() => null);
+
         lastLocalAddTime.current = Date.now();
         setMessages((prev) => [...prev, {
-          id: Date.now(),
+          id: saved?.id ?? Date.now(),
           role: "assistant" as const,
-          content: isRateLimit
-            ? "Too many presentation requests. Please wait a minute and try again."
-            : `Could not create presentation: ${errMsg}`,
+          content: errorContent,
           createdAt: new Date(),
         }]);
       } finally {
@@ -1817,14 +1913,21 @@ export function ChatView({
           model: selectedModel || conversation?.model || undefined,
         });
         setPendingSchedule(parsed);
-        // Add assistant message about the schedule
+        // Add assistant message about the schedule and persist it
+        const alertContent = `I detected a scheduling request. Please confirm the details below.`;
+        const alertSaved = conversationId ? await saveAssistantMessageMutation.mutateAsync({
+          conversationId,
+          content: alertContent,
+          skillUsed: "chat-alert",
+        }).catch(() => null) : null;
+        lastLocalAddTime.current = Date.now();
         setMessages((prev) => [
           ...prev,
           {
-            id: Date.now(),
+            id: alertSaved?.id ?? Date.now(),
             conversationId: conversationId || 0,
             role: "assistant" as const,
-            content: `I detected a scheduling request. Please confirm the details below.`,
+            content: alertContent,
             createdAt: new Date(),
             skillUsed: "chat-alert",
           },
@@ -2429,7 +2532,7 @@ export function ChatView({
                     )}
                     Start Browser Session
                   </Button>
-                  <BrowserSessionHelpDialog />
+                  <HelpButton page="/chat" topic="browser-session" variant="ghost" size="sm" />
                 </div>
               ) : null}
             </div>

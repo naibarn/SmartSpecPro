@@ -1507,6 +1507,33 @@ export function registerLLMRoutes(app: Express) {
         }
       }
 
+      // Help assistant integration: inject matching help docs from help center
+      if (skillUsed === "help-assistant" && Array.isArray(req.body?.messages)) {
+        try {
+          const { buildHelpContext } = await import("../services/helpContextInjector");
+          const lastUserMsg = [...req.body.messages].reverse().find((m: any) => m.role === "user");
+          if (lastUserMsg?.content) {
+            const msgText = typeof lastUserMsg.content === "string"
+              ? lastUserMsg.content
+              : JSON.stringify(lastUserMsg.content);
+            const locale = /[\u0E00-\u0E7F]/.test(msgText) ? "th" : "en";
+            const helpContext = await buildHelpContext(msgText, locale);
+            if (helpContext) {
+              const helpMsg = { role: "system" as const, content: helpContext };
+              const firstNonSystem = req.body.messages.findIndex((m: any) => m.role !== "system");
+              if (firstNonSystem > 0) {
+                req.body.messages.splice(firstNonSystem, 0, helpMsg);
+              } else {
+                req.body.messages.unshift(helpMsg);
+              }
+              debugLog("LLM", `Help context injected (${helpContext.length} chars)`);
+            }
+          }
+        } catch (err: any) {
+          debugLog("LLM", "Help context injection failed (non-fatal)", err?.message);
+        }
+      }
+
       try {
         await proxyChatWithCredits(req, res, "stream", check.userId, conversationId, skillUsed);
       } catch (err: any) {

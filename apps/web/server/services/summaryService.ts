@@ -7,7 +7,7 @@
  * 3. Extractive: Pure data extraction from decision/summary messages
  */
 
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { eq, and, desc, inArray, gt } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   teamRuns,
@@ -15,6 +15,7 @@ import {
   assistantProfiles,
   agentRunSummaries,
   type TeamRoomMessage,
+  type InsertAgentRunSummary,
 } from "../../drizzle/schema";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -125,11 +126,24 @@ export async function generateSummary(
   const totalCost = budget.totalCreditsUsed ?? 0;
   const totalDuration = calculateDuration(run.startedAt, run.endedAt);
 
+  /** Persist one agentRunSummaries row per participant then return the summary */
+  async function persistAndReturn(summary: RunSummary): Promise<RunSummary> {
+    if (participants.length > 0) {
+      const rows: InsertAgentRunSummary[] = participants.map((p) => ({
+        runId: input.runId,
+        assistantId: p.id,
+      }));
+      // Use INSERT … ON CONFLICT DO NOTHING so re-generation doesn't fail
+      await db!.insert(agentRunSummaries).values(rows).onConflictDoNothing();
+    }
+    return summary;
+  }
+
   // Extractive method — pure data extraction, no LLM
   if (method === "extractive") {
     const relevant = messages.filter((m) => EXTRACTIVE_TURN_TYPES.has(m.turnType));
     const { decisions, findings, artifacts } = extractKeyPoints(relevant);
-    return {
+    return persistAndReturn({
       runId: input.runId,
       method,
       objective: run.objective,
@@ -142,7 +156,7 @@ export async function generateSummary(
       totalCost,
       totalDuration,
       generatedAt: new Date(),
-    };
+    });
   }
 
   // LLM-based summary (agent_generated or system_generated)
@@ -186,7 +200,7 @@ export async function generateSummary(
         nextSteps?: string[];
       };
 
-      return {
+      return persistAndReturn({
         runId: input.runId,
         method,
         objective: run.objective,
@@ -199,14 +213,14 @@ export async function generateSummary(
         totalCost,
         totalDuration,
         generatedAt: new Date(),
-      };
+      });
     }
   } catch {
     // LLM call failed — fall back to extractive
   }
 
   // Fallback to extractive results
-  return {
+  return persistAndReturn({
     runId: input.runId,
     method: "extractive",
     objective: run.objective,
@@ -219,7 +233,7 @@ export async function generateSummary(
     totalCost,
     totalDuration,
     generatedAt: new Date(),
-  };
+  });
 }
 
 /** Check if a summary is still fresh (no new messages since generation) */
@@ -230,19 +244,17 @@ export async function isSummaryFresh(
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
-  const [result] = await db
-    .select({ count: eq(teamRoomMessages.id, teamRoomMessages.id) })
+  const [newerMessage] = await db
+    .select({ id: teamRoomMessages.id })
     .from(teamRoomMessages)
     .where(
       and(
         eq(teamRoomMessages.runId, runId),
-        // Use sql for comparison since Drizzle doesn't support > directly
-        // on timestamp comparisons easily
+        gt(teamRoomMessages.createdAt, generatedAt),
       ),
     )
     .limit(1);
 
   // If any messages exist after generatedAt, summary is stale
-  // TODO: Implement proper timestamp comparison when needed
-  return true;
+  return !newerMessage;
 }

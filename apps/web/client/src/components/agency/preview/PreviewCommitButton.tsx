@@ -167,6 +167,10 @@ function commitLabel(previewType: string): string {
       return "Save to Library";
     case "comparison":
       return "Save to Library";
+    case "media_prompt":
+      return "Save Prompt";
+    case "text_content":
+      return "Save to Library";
     default:
       return "Save";
   }
@@ -182,6 +186,10 @@ function commitSuccessMessage(previewType: string): string {
       return "Storyboard saved to Library";
     case "comparison":
       return "Comparison saved to Library";
+    case "media_prompt":
+      return "Media prompt saved";
+    case "text_content":
+      return "Content saved to Library";
     default:
       return "Saved successfully";
   }

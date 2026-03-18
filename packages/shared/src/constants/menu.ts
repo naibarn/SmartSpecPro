@@ -28,6 +28,7 @@ export const defaultMenuItems: MenuItem[] = [
   { id: 'workflows',     label: 'Workflows',      labelTh: 'เวิร์กโฟลว์',    icon: 'GitBranch',       path: '/workflows',      platforms: ['web', 'desktop'], group: 'main', sortOrder: 3.5 },
   { id: 'webhook-triggers', label: 'Webhook Triggers', labelTh: 'เว็บฮุก', icon: 'Webhook', path: '/webhook-triggers', platforms: ['web', 'desktop'], group: 'main', sortOrder: 3.6, requiresFeature: 'webhookTriggers' },
   { id: 'agencies',      label: 'Agencies',       labelTh: 'เอเจนซี่',       icon: 'Users',           path: '/agencies',       platforms: ['web', 'desktop'], group: 'main', sortOrder: 3.7, requiresFeature: 'AGENCY_SWARM_ENABLED' },
+  { id: 'teams',         label: 'Teams',          labelTh: 'ทีม AI',         icon: 'UsersRound',      path: '/teams',          platforms: ['web', 'desktop'], group: 'main', sortOrder: 3.75, requiresFeature: 'ORCHESTRATOR_ENABLED' },
   { id: 'automation',    label: 'Automation Copilot', labelTh: 'ระบบอัตโนมัติ', icon: 'Bot', path: '/automation', platforms: ['web', 'desktop'], group: 'main', sortOrder: 3.8, requiresFeature: 'automationCopilot' },
   { id: 'media-history', label: 'Media History',  labelTh: 'ประวัติมีเดีย',  icon: 'Clock',           path: '/media-history',  platforms: ['web', 'desktop'], group: 'main', sortOrder: 4 },
   { id: 'document-management', label: 'Library', labelTh: 'คลังเอกสาร', icon: 'FileText', path: '/document-management', platforms: ['web', 'desktop'], group: 'main', sortOrder: 4.2 },
@@ -40,6 +41,7 @@ export const defaultMenuItems: MenuItem[] = [
   { id: 'video-editor',  label: 'Video Editor',    labelTh: 'ตัดต่อวีดีโอ',   icon: 'Film',            path: '/video-editor',   platforms: ['web', 'desktop'], group: 'main', sortOrder: 8.5 },
   { id: 'credits',       label: 'Credits',         labelTh: 'เครดิต',        icon: 'CreditCard',      path: '/credits',        platforms: ['web', 'desktop'], group: 'main', sortOrder: 9 },
   { id: 'usage-analytics', label: 'Usage Analytics', labelTh: 'สถิติการใช้งาน', icon: 'BarChart3',       path: '/usage',          platforms: ['web', 'desktop'], group: 'main', sortOrder: 9.5 },
+  { id: 'my-feedback',   label: 'My Feedback',     labelTh: 'ข้อเสนอของฉัน',  icon: 'MessageSquare',   path: '/my-feedback',    platforms: ['web', 'desktop'], group: 'main', sortOrder: 98 },
   { id: 'settings',      label: 'Settings',        labelTh: 'ตั้งค่า',       icon: 'Settings',        path: '/settings',       platforms: ['web', 'desktop'], group: 'main', sortOrder: 99 },
 
   // === Admin group ===

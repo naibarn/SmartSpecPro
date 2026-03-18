@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { pickEnabledModelId } from "@/lib/enabledModelSelection";
 import { trpc } from "../lib/trpc";
 import { Button } from "@/components/ui/button";
+import { HelpButton } from "@/components/help";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -655,6 +656,7 @@ export default function AdminSettings() {
               <h1 className="text-lg font-semibold text-gray-900">Platform Settings</h1>
               <p className="text-xs text-gray-500">Configure integrations and security</p>
             </div>
+            <HelpButton page="/admin/settings" variant="ghost" size="sm" />
           </div>
         </div>
       </div>

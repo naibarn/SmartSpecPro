@@ -30,6 +30,7 @@ export interface CreateRoomInput {
 
 export interface SendMessageInput {
   roomId: string;
+  tenantId: string;
   senderType: "user" | "assistant" | "system";
   senderUserId?: number;
   senderAssistantId?: string;
@@ -104,34 +105,7 @@ export async function createRoom(input: CreateRoomInput): Promise<TeamRoom> {
 
   const roomId = crypto.randomUUID();
 
-  // Create room
-  const [room] = await db
-    .insert(teamRooms)
-    .values({
-      id: roomId,
-      tenantId: input.tenantId,
-      teamId: input.teamId,
-      orchestratorUserId: input.orchestratorUserId,
-      roomType: input.roomType,
-      title: input.goalPrompt.substring(0, 255),
-      goalPrompt: input.goalPrompt,
-      projectId: input.projectId ?? null,
-      viewMode: input.viewMode ?? team.defaultViewMode ?? "transparent",
-      autonomyLevel: input.autonomyLevel ?? team.defaultAutonomyLevel ?? "guided",
-      status: "active",
-    })
-    .returning();
-
-  // Add orchestrator user as participant
-  await db.insert(teamRoomParticipants).values({
-    roomId,
-    participantType: "user",
-    participantUserId: input.orchestratorUserId,
-    participantLabel: "Orchestrator",
-    roleInRoom: "orchestrator",
-  });
-
-  // Add all active team members as participants
+  // Load all active team members before starting the transaction
   const members = await db
     .select()
     .from(assistantProfiles)
@@ -142,22 +116,67 @@ export async function createRoom(input: CreateRoomInput): Promise<TeamRoom> {
       ),
     );
 
-  for (const member of members) {
-    await db.insert(teamRoomParticipants).values({
-      roomId,
-      participantType: "assistant",
-      participantAssistantId: member.id,
-      participantLabel: member.displayName ?? member.nickname ?? "Agent",
-      roleInRoom: member.isLead ? "lead" : "member",
-    });
-  }
+  let room: typeof import("../../drizzle/schema").teamRooms.$inferSelect;
 
-  return room;
+  await db.transaction(async (tx) => {
+    // Create room
+    const [inserted] = await tx
+      .insert(teamRooms)
+      .values({
+        id: roomId,
+        tenantId: input.tenantId,
+        teamId: input.teamId,
+        orchestratorUserId: input.orchestratorUserId,
+        roomType: input.roomType,
+        title: input.goalPrompt.substring(0, 255),
+        goalPrompt: input.goalPrompt,
+        projectId: input.projectId ?? null,
+        viewMode: input.viewMode ?? team.defaultViewMode ?? "transparent",
+        autonomyLevel: input.autonomyLevel ?? team.defaultAutonomyLevel ?? "guided",
+        status: "active",
+      })
+      .returning();
+
+    room = inserted;
+
+    // Add orchestrator user as participant
+    await tx.insert(teamRoomParticipants).values({
+      roomId,
+      participantType: "user",
+      participantUserId: input.orchestratorUserId,
+      participantLabel: "Orchestrator",
+      roleInRoom: "orchestrator",
+    });
+
+    // Add all active team members as participants
+    for (const member of members) {
+      await tx.insert(teamRoomParticipants).values({
+        roomId,
+        participantType: "assistant",
+        participantAssistantId: member.id,
+        participantLabel: member.displayName ?? member.nickname ?? "Agent",
+        roleInRoom: member.isLead ? "lead" : "member",
+      });
+    }
+  });
+
+  return room!;
 }
 
 export async function sendMessage(input: SendMessageInput): Promise<TeamRoomMessage> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+
+  // Verify the room belongs to the caller's tenant
+  const [room] = await db
+    .select()
+    .from(teamRooms)
+    .where(and(eq(teamRooms.id, input.roomId), eq(teamRooms.tenantId, input.tenantId)))
+    .limit(1);
+
+  if (!room) {
+    throw new Error("Room not found");
+  }
 
   // Validate sender is participant (for user senders)
   if (input.senderType === "user" && input.senderUserId) {
@@ -225,10 +244,22 @@ export async function sendMessage(input: SendMessageInput): Promise<TeamRoomMess
 
 export async function getMessages(
   roomId: string,
+  tenantId: string,
   filters: MessageFilters,
 ): Promise<TeamRoomMessage[]> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+
+  // Verify the room belongs to the caller's tenant
+  const [room] = await db
+    .select()
+    .from(teamRooms)
+    .where(and(eq(teamRooms.id, roomId), eq(teamRooms.tenantId, tenantId)))
+    .limit(1);
+
+  if (!room) {
+    throw new Error("Room not found");
+  }
 
   const limit = filters.limit ?? 50;
 

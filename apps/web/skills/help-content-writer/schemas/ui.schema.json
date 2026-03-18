@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "sections": [
+    {
+      "id": "topic",
+      "title": { "en": "Topic Details", "th": "รายละเอียดหัวข้อ" },
+      "icon": "BookOpen",
+      "fields": [
+        {
+          "key": "topic_slug",
+          "label": { "en": "Topic Slug", "th": "Slug ของหัวข้อ" },
+          "type": "text",
+          "placeholder": { "en": "e.g. chat, media-generation", "th": "เช่น chat, media-generation" },
+          "required": true
+        },
+        {
+          "key": "section",
+          "label": { "en": "Section", "th": "หมวดหมู่" },
+          "type": "select",
+          "options": [
+            { "value": "getting-started", "label": { "en": "Getting Started", "th": "เริ่มต้นใช้งาน" } },
+            { "value": "features", "label": { "en": "Features", "th": "ฟีเจอร์" } },
+            { "value": "content-creation", "label": { "en": "Content Creation", "th": "สร้างคอนเทนต์" } },
+            { "value": "advanced", "label": { "en": "Advanced", "th": "ขั้นสูง" } },
+            { "value": "admin", "label": { "en": "Administration", "th": "การจัดการ" } }
+          ],
+          "required": true
+        },
+        {
+          "key": "action",
+          "label": { "en": "Action", "th": "การดำเนินการ" },
+          "type": "select",
+          "options": [
+            { "value": "create", "label": { "en": "Create New", "th": "สร้างใหม่" } },
+            { "value": "update", "label": { "en": "Update Existing", "th": "อัปเดต" } }
+          ],
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "content",
+      "title": { "en": "Content", "th": "เนื้อหา" },
+      "icon": "FileText",
+      "fields": [
+        {
+          "key": "description",
+          "label": { "en": "What should this topic cover?", "th": "หัวข้อนี้ควรครอบคลุมอะไร?" },
+          "type": "textarea",
+          "placeholder": { "en": "Describe the content you want...", "th": "อธิบายเนื้อหาที่ต้องการ..." },
+          "required": true
+        },
+        {
+          "key": "existing_content",
+          "label": { "en": "Existing content (for updates)", "th": "เนื้อหาเดิม (สำหรับอัปเดต)" },
+          "type": "textarea",
+          "placeholder": { "en": "Paste existing markdown content here...", "th": "วางเนื้อหา markdown เดิมที่นี่..." },
+          "required": false
+        }
+      ]
+    }
+  ]
+}

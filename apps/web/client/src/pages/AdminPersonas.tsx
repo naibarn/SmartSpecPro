@@ -42,10 +42,13 @@ import { toast } from "sonner";
 
 const TONE_OPTIONS = ["formal", "casual", "friendly", "technical", "creative"] as const;
 const SCOPE_OPTIONS = ["platform", "tenant"] as const;
+const GENDER_OPTIONS = ["female", "male", "neutral"] as const;
 
 interface PersonaFormData {
   name: string;
   description: string;
+  assistantNickname: string;
+  assistantGender: "female" | "male" | "neutral";
   systemPromptPrefix: string;
   tone: string;
   language: string;
@@ -56,6 +59,8 @@ interface PersonaFormData {
 const emptyForm: PersonaFormData = {
   name: "",
   description: "",
+  assistantNickname: "",
+  assistantGender: "neutral",
   systemPromptPrefix: "",
   tone: "friendly",
   language: "auto",
@@ -119,6 +124,8 @@ export default function AdminPersonas() {
         id: editingId,
         name: form.name,
         description: form.description || null,
+        assistantNickname: form.assistantNickname || null,
+        assistantGender: form.assistantGender,
         systemPromptPrefix: form.systemPromptPrefix,
         tone: form.tone as any,
         language: form.language,
@@ -128,6 +135,8 @@ export default function AdminPersonas() {
       createMutation.mutate({
         ...form,
         description: form.description || null,
+        assistantNickname: form.assistantNickname || null,
+        assistantGender: form.assistantGender,
         tone: form.tone as any,
       });
     }
@@ -137,6 +146,8 @@ export default function AdminPersonas() {
     setForm({
       name: persona.name,
       description: persona.description || "",
+      assistantNickname: persona.assistantNickname || "",
+      assistantGender: persona.assistantGender || "neutral",
       systemPromptPrefix: persona.systemPromptPrefix,
       tone: persona.tone || "friendly",
       language: persona.language || "auto",
@@ -239,6 +250,33 @@ export default function AdminPersonas() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>AI Nickname</Label>
+                  <Input
+                    value={form.assistantNickname}
+                    onChange={(e) => setForm((f) => ({ ...f, assistantNickname: e.target.value }))}
+                    placeholder="e.g., น้องเจน"
+                  />
+                </div>
+                <div>
+                  <Label>Gender Style</Label>
+                  <Select
+                    value={form.assistantGender}
+                    onValueChange={(v) => setForm((f) => ({ ...f, assistantGender: v as PersonaFormData["assistantGender"] }))}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {GENDER_OPTIONS.map((gender) => (
+                        <SelectItem key={gender} value={gender}>
+                          {gender.charAt(0).toUpperCase() + gender.slice(1)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               <div>
                 <Label>Description</Label>
                 <Input
@@ -327,6 +365,9 @@ export default function AdminPersonas() {
                     <TableRow key={p.id}>
                       <TableCell className="font-medium">
                         {p.name}
+                        {p.assistantNickname && (
+                          <Badge variant="secondary" className="ml-2 text-[10px]">@{p.assistantNickname}</Badge>
+                        )}
                         {p.isDefault && (
                           <Badge variant="default" className="ml-2 text-[10px]">Default</Badge>
                         )}

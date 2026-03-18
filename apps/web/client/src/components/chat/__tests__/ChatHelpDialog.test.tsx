@@ -4,11 +4,16 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
+import { I18nProvider } from "@/lib/i18n";
 import { ChatHelpDialog } from "../ChatHelpDialog";
+
+function renderWithI18n(ui: React.ReactElement) {
+  return render(<I18nProvider>{ui}</I18nProvider>);
+}
 
 describe("ChatHelpDialog", () => {
   it("opens the complete user guide with all sections", () => {
-    render(<ChatHelpDialog />);
+    renderWithI18n(<ChatHelpDialog />);
 
     fireEvent.click(screen.getByRole("button", { name: /help/i }));
 
@@ -21,7 +26,7 @@ describe("ChatHelpDialog", () => {
   });
 
   it("includes the agency guide with templates and preview lifecycle", () => {
-    render(<ChatHelpDialog />);
+    renderWithI18n(<ChatHelpDialog />);
 
     fireEvent.click(screen.getByRole("button", { name: /help/i }));
 
@@ -44,5 +49,21 @@ describe("ChatHelpDialog", () => {
     // Commit actions table
     expect(screen.getByText("Save to Library")).toBeInTheDocument();
     expect(screen.getByText("Save as Presentation")).toBeInTheDocument();
+  });
+
+  it("shows the language toggle and switches to Thai", () => {
+    renderWithI18n(<ChatHelpDialog />);
+
+    fireEvent.click(screen.getByRole("button", { name: /help/i }));
+
+    // Language buttons should be visible
+    expect(screen.getByRole("button", { name: "English" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "ไทย" })).toBeInTheDocument();
+
+    // Switch to Thai
+    fireEvent.click(screen.getByRole("button", { name: "ไทย" }));
+
+    // Title should change to Thai
+    expect(screen.getByText("คู่มือการใช้งาน")).toBeInTheDocument();
   });
 });

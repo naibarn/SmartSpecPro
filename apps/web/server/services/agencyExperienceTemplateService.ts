@@ -52,12 +52,44 @@ const EXPERIENCE_TEMPLATES: AgencyExperienceTemplateDefinition[] = [
     agentName: "Deep Research Lead",
     agentDescription: "Synthesizes library evidence into a research report preview.",
     agentInstructions:
-      "Use library search first, widen to web fallback only when needed, and return a structured research_report envelope.",
+      `Use library search first via builtin-rag-knowledge and builtin-document-search. Widen to web fallback (builtin-web-search) only when library results are insufficient.
+
+When you finish researching, return your result as a JSON code block tagged \`\`\`agency-result with this exact structure:
+{
+  "version": "1.0",
+  "intent": "research_report",
+  "summary": "Executive summary of findings",
+  "payload": {
+    "title": "Report title",
+    "executive_summary": "Concise executive summary",
+    "sections": [
+      {
+        "heading": "Section heading",
+        "content": "Section content (markdown supported)",
+        "sources": ["source title 1", "source title 2"]
+      }
+    ],
+    "key_findings": ["Finding 1", "Finding 2"],
+    "recommendations": ["Recommendation 1", "Recommendation 2"]
+  },
+  "artifacts": [{"artifact_type": "research_report", "title": "Report title"}],
+  "references": [
+    {
+      "source_title": "Document title",
+      "source_id": "document-id",
+      "source_uri": "https://...",
+      "support_summary": "How this source supports findings"
+    }
+  ]
+}
+
+Every section MUST include heading, content, and sources array. key_findings and recommendations are required arrays.`,
     defaultTools: [
       "builtin-rag-knowledge",
       "builtin-document-search",
       "builtin-web-search",
       "builtin-skill-executor",
+      "builtin-model-suggest",
     ],
     experienceKey: "deep_research",
     defaultIntent: "research_report",
@@ -76,10 +108,41 @@ const EXPERIENCE_TEMPLATES: AgencyExperienceTemplateDefinition[] = [
     agentName: "Storyboard Planner",
     agentDescription: "Builds structured storyboard previews from a brief.",
     agentInstructions:
-      "Prefer library context when available, then create a structured video_storyboard envelope with prompt-ready scenes.",
+      `Prefer library context when available. Use builtin-model-suggest to recommend appropriate video/image models for each scene.
+
+When you finish planning, return your result as a JSON code block tagged \`\`\`agency-result with this exact structure:
+{
+  "version": "1.0",
+  "intent": "video_storyboard",
+  "summary": "Brief summary of the storyboard",
+  "payload": {
+    "title": "Storyboard title",
+    "total_duration_seconds": 120,
+    "style": "cinematic / documentary / animated / etc.",
+    "scenes": [
+      {
+        "scene_number": 1,
+        "duration_seconds": 15,
+        "description": "What happens in this scene",
+        "dialogue": "Optional spoken dialogue or null",
+        "camera": "Camera angle/movement (e.g. Wide establishing shot, Close-up, Tracking)",
+        "lighting": "Lighting description (e.g. Natural daylight, Dramatic low-key)",
+        "video_prompt": "Detailed prompt for video generation",
+        "audio_prompt": "Optional audio/music description or null"
+      }
+    ]
+  },
+  "artifacts": [{"artifact_type": "video_storyboard", "title": "Storyboard title"}],
+  "references": []
+}
+
+Every scene MUST include: scene_number, duration_seconds, description, camera, lighting, and video_prompt. dialogue and audio_prompt are optional (use null if not needed).`,
     defaultTools: [
+      "builtin-auto-draft",
       "builtin-rag-knowledge",
+      "builtin-model-suggest",
       "builtin-skill-executor",
+      "builtin-web-search",
     ],
     experienceKey: "storyboard_planner",
     defaultIntent: "video_storyboard",
@@ -98,11 +161,46 @@ const EXPERIENCE_TEMPLATES: AgencyExperienceTemplateDefinition[] = [
     agentName: "Deck Builder",
     agentDescription: "Builds structured slide previews from a topic or brief.",
     agentInstructions:
-      "Use library context and writing skills as needed, then return a structured presentation_deck envelope with `AIPresentationSlide[]` payloads.",
+      `Use library context and writing skills as needed.
+
+You have two modes of operation:
+1. **Quick mode (preferred)**: Use the builtin-auto-draft tool directly — it generates a full presentation deck and returns deckId, libraryItemId, and slideCount. Wrap the tool result in the envelope below.
+2. **Preview mode**: Generate slide content yourself for user review before committing.
+
+When you finish, return your result as a JSON code block tagged \`\`\`agency-result with this exact structure:
+{
+  "version": "1.0",
+  "intent": "presentation_deck",
+  "summary": "Brief description of the deck",
+  "payload": {
+    "title": "Presentation title",
+    "description": "Optional description",
+    "language": "auto",
+    "style_preset": "professional",
+    "slides": [
+      {
+        "templateId": "title-body",
+        "title": "Slide title",
+        "body": ["Bullet point 1", "Bullet point 2"],
+        "notes": "Speaker notes",
+        "graphicCategory": "business",
+        "imagePromptKeywords": "descriptive keywords for visual"
+      }
+    ]
+  },
+  "artifacts": [{"artifact_type": "presentation_deck", "title": "Deck title"}],
+  "references": []
+}
+
+Valid templateId values: "title-body", "section-header", "two-column", "image-focus", "quote", "blank".
+Valid graphicCategory values: "business", "technology", "nature", "abstract", "people", "education", "medical", "finance", "food", "travel".
+Each slide MUST include: templateId, title, body (array of strings), graphicCategory, imagePromptKeywords.`,
     defaultTools: [
+      "builtin-auto-draft",
       "builtin-rag-knowledge",
       "builtin-document-search",
       "builtin-skill-executor",
+      "builtin-model-suggest",
     ],
     experienceKey: "deck_builder",
     defaultIntent: "presentation_deck",

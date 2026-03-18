@@ -76,6 +76,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { HelpButton } from "@/components/help";
 import {
   Dialog,
   DialogContent,
@@ -2359,6 +2360,10 @@ export default function PresentationEditor() {
             maxJobs: 60,
           });
           if (result.jobsResolved > 0) {
+            await refreshDeck();
+          } else if (result.jobsRemaining <= 0 && pendingMediaJobCount > 0) {
+            // Server already resolved all jobs (e.g., via background scheduler),
+            // but frontend still has stale pending state — force refresh.
             await refreshDeck();
           }
           if (result.jobsRemaining <= 0) {
@@ -9755,6 +9760,7 @@ export default function PresentationEditor() {
               </Button>
             </>
           )}
+          <HelpButton page="/presentation" variant="ghost" size="sm" className="shrink-0 text-slate-300 hover:bg-slate-800 hover:text-slate-100" />
         </div>
       </header>
 
@@ -10069,6 +10075,21 @@ export default function PresentationEditor() {
                   draggingSlideId !== null
                   && slideDropTargetId === slide.id
                   && draggingSlideId !== slide.id;
+                const cachedDraft = getCachedSlideDraft(slide.id);
+                const reorderContent = selectedSlideId === slide.id
+                  ? draftContent
+                  : cachedDraft?.content ?? ensureSlideContent(slide.slideContent);
+                const reorderPreview = summarizeSlidePreview(reorderContent);
+                const reorderBg = reorderContent.background;
+                const reorderBgStyle: React.CSSProperties = reorderBg?.type === "color"
+                  ? { backgroundColor: reorderBg.value }
+                  : reorderBg?.type === "image"
+                    ? {
+                        backgroundImage: `url(${reorderBg.url})`,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center",
+                      }
+                    : {};
                 return (
                   <button
                     key={`reorder-overview-${slide.id}`}
@@ -10086,6 +10107,55 @@ export default function PresentationEditor() {
                     aria-label={`Reorder slide ${slide.orderIndex + 1}`}
                     data-testid={`reorder-slide-tile-${slide.orderIndex + 1}`}
                   >
+                    <div
+                      className="relative mb-1.5 aspect-[16/9] overflow-hidden rounded border border-slate-200 bg-slate-100"
+                      style={reorderBgStyle}
+                    >
+                      {reorderPreview.mediaSrc && reorderPreview.mediaKind === "video" ? (
+                        reorderPreview.mediaPosterSrc ? (
+                          <img
+                            src={reorderPreview.mediaPosterSrc}
+                            alt={slide.title}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                            draggable={false}
+                          />
+                        ) : (
+                          <video
+                            src={reorderPreview.mediaSrc}
+                            className="h-full w-full object-cover"
+                            preload="metadata"
+                            muted
+                            playsInline
+                          />
+                        )
+                      ) : reorderPreview.mediaSrc ? (
+                        <img
+                          src={reorderPreview.mediaSrc}
+                          alt={slide.title}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                          draggable={false}
+                        />
+                      ) : reorderPreview.inlineSvgContent ? (
+                        <div
+                          className="h-full w-full"
+                          style={{ color: reorderPreview.inlineSvgColor || "#ffffff" }}
+                          dangerouslySetInnerHTML={{
+                            __html: DOMPurify.sanitize(reorderPreview.inlineSvgContent.replace(/currentColor/g, reorderPreview.inlineSvgColor || "#ffffff"), { USE_PROFILES: { svg: true, svgFilters: true } }),
+                          }}
+                        />
+                      ) : (
+                        <div className="grid h-full w-full place-items-center text-[9px] text-slate-400">
+                          No preview
+                        </div>
+                      )}
+                      {reorderPreview.mediaKind === "video" ? (
+                        <span className="absolute right-0.5 top-0.5 rounded bg-black/70 px-1 py-0.5 text-[8px] text-white">
+                          VIDEO
+                        </span>
+                      ) : null}
+                    </div>
                     <div className="flex items-center justify-between gap-2">
                       <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700">
                         #{slide.orderIndex + 1}

@@ -8,7 +8,7 @@ import AgencyActivityPanel from "@/components/agency/AgencyActivityPanel";
 import { BrowserSessionSummaryCard } from "@/components/browser-session/BrowserSessionSummaryCard";
 import { BrowserSessionLaunchSuggestionCard } from "@/components/browser-session/BrowserSessionLaunchSuggestionCard";
 import { AgencyPreviewCard, type AgencyPreviewProps } from "@/components/agency/preview";
-import { ChatHelpDialog } from "@/components/chat/ChatHelpDialog";
+import { HelpButton } from "@/components/help";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -537,12 +537,7 @@ export default function AgencyChat() {
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
-          <ChatHelpDialog
-            buttonVariant="ghost"
-            buttonSize="sm"
-            buttonClassName="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-            buttonLabel=""
-          />
+          <HelpButton page="/agency" variant="ghost" size="sm" className="h-8 text-muted-foreground hover:text-foreground" />
           {agencyBrowserSessionEnabled && (
             <Button
               variant="ghost"

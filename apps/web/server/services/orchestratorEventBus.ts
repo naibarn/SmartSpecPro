@@ -69,8 +69,9 @@ export async function publishEvent(
           await redis.publish(userChannel(event.userId), message);
         }
       }
-    } catch {
+    } catch (err) {
       // Redis not available; events are lost (acceptable in dev)
+      console.warn("Redis publish failed:", err);
     }
     return;
   }

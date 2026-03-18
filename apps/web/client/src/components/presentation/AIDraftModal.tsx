@@ -1267,7 +1267,7 @@ export function AIDraftModal({
 
   const handleAutoGenerate = useCallback(async () => {
     if (!topic.trim() || topic.trim().length < 3) {
-      toast.error("กรุณาระบุหัวข้อ (อย่างน้อย 3 ตัวอักษร)");
+      toast.error("Please enter a topic (at least 3 characters)");
       return;
     }
 
@@ -1685,7 +1685,7 @@ export function AIDraftModal({
           <div>
             <p className="text-sm font-medium text-blue-900">Auto mode</p>
             <p className="text-xs text-blue-600">
-              AI จะเลือก skill, model, style ให้อัตโนมัติ
+              AI will automatically select the best skill, model, and style
             </p>
           </div>
           <Switch

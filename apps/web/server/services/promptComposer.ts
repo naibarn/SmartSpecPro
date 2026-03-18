@@ -162,16 +162,20 @@ export async function composePrompt(
   // 4. Retrieve memories
   let memoryResults: MemorySearchResult[] = [];
   try {
-    memoryResults = await retrieveForPrompt(
-      input.assistantId,
-      input.runId,
-      input.roomId,
-      input.teamId,
-      input.objective,
-      MEMORY_BUDGET,
-    );
-  } catch {
+    if (profile?.tenantId) {
+      memoryResults = await retrieveForPrompt(
+        profile.tenantId,
+        input.assistantId,
+        input.runId,
+        input.roomId,
+        input.teamId,
+        input.objective,
+        MEMORY_BUDGET,
+      );
+    }
+  } catch (err) {
     // Memory service may not be fully available yet
+    console.warn("Memory retrieval failed:", err);
   }
 
   if (memoryResults.length > 0) {

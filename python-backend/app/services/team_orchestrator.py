@@ -44,6 +44,7 @@ class TeamOrchestratorService:
         try:
             if not self.llm_client:
                 from app.services.llm_gateway_client import LLMGatewayClient
+
                 self.llm_client = LLMGatewayClient()
 
             result = await self.llm_client.chat(
@@ -76,8 +77,9 @@ class TeamOrchestratorService:
             )
 
         except Exception as e:
-            logger.error(f"Team orchestrator turn failed: {e}", exc_info=True)
+            # F06: Log full exception server-side, never expose str(e) to callers.
+            logger.error("Team orchestrator turn failed", exc_info=True)
             return ExecuteTurnResponse(
-                content=f"[Error: Agent turn failed — {str(e)[:200]}]",
-                metadata={"error": str(e)[:500]},
+                content="[Agent turn unavailable]",
+                metadata={"error": "Agent turn unavailable"},
             )

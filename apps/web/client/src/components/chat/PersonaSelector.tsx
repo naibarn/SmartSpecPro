@@ -50,6 +50,11 @@ export function PersonaSelector({
           <SelectItem key={p.id} value={p.id}>
             <span className="flex items-center gap-1">
               {p.name}
+              {p.assistantNickname ? (
+                <span className="text-muted-foreground text-[10px]">
+                  @{p.assistantNickname}
+                </span>
+              ) : null}
               <span className="text-muted-foreground text-[10px]">
                 ({p.scope})
               </span>
