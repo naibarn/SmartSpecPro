@@ -8,7 +8,7 @@ import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
-import { scheduledMessages, scheduledMessageLogs, userNotifications } from "../../drizzle/schema";
+import { scheduledMessages, scheduledMessageLogs, userNotifications, notificationOccurrences } from "../../drizzle/schema";
 import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import { createScheduledJob, cancelScheduledJob } from "../services/scheduler";
 import { auditLogger } from "../services/auditLogger";
@@ -434,6 +434,11 @@ export const scheduledMessagesRouter = router({
         createdAt: userNotifications.createdAt,
         scheduledMessageId: userNotifications.scheduledMessageId,
         conversationId: userNotifications.conversationId,
+        actionUrl: userNotifications.actionUrl,
+        actionLabel: userNotifications.actionLabel,
+        relatedResourceType: userNotifications.relatedResourceType,
+        relatedResourceId: userNotifications.relatedResourceId,
+        metadata: userNotifications.metadata,
       })
       .from(userNotifications)
       .where(and(
@@ -462,6 +467,79 @@ export const scheduledMessagesRouter = router({
         .where(eq(userNotifications.userId, ctx.user.id))
         .orderBy(desc(userNotifications.createdAt))
         .limit(input.limit);
+    }),
+
+  /**
+   * Get notification history with filtering — supports full history page
+   */
+  getNotificationHistory: protectedProcedure
+    .input(z.object({
+      limit: z.number().min(1).max(100).default(50),
+      offset: z.number().min(0).default(0),
+      type: z.enum(["scheduled_message", "follow_request", "alert", "system"]).optional(),
+      priority: z.enum(["low", "normal", "high", "critical"]).optional(),
+      readState: z.enum(["all", "unread", "read"]).default("all"),
+      showDismissed: z.boolean().default(false),
+      search: z.string().max(200).optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) return { items: [], total: 0 };
+
+      const conditions = [eq(userNotifications.userId, ctx.user.id)];
+
+      if (input.type) {
+        conditions.push(eq(userNotifications.type, input.type));
+      }
+      if (input.priority) {
+        conditions.push(eq(userNotifications.priority, input.priority));
+      }
+      if (input.readState === "unread") {
+        conditions.push(eq(userNotifications.isRead, false));
+      } else if (input.readState === "read") {
+        conditions.push(eq(userNotifications.isRead, true));
+      }
+      if (!input.showDismissed) {
+        conditions.push(eq(userNotifications.isDismissed, false));
+      }
+      if (input.search) {
+        conditions.push(
+          sql`(${userNotifications.title} ILIKE ${"%" + input.search + "%"} OR ${userNotifications.content} ILIKE ${"%" + input.search + "%"})`
+        );
+      }
+
+      const whereClause = and(...conditions);
+
+      const [countResult] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(userNotifications)
+        .where(whereClause);
+
+      const items = await db
+        .select()
+        .from(userNotifications)
+        .where(whereClause)
+        .orderBy(desc(userNotifications.createdAt))
+        .limit(input.limit)
+        .offset(input.offset);
+
+      return { items, total: countResult.count };
+    }),
+
+  /**
+   * Dismiss a notification (separate from mark as read)
+   */
+  dismissNotification: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      await db.update(userNotifications)
+        .set({ isDismissed: true, isRead: true })
+        .where(and(eq(userNotifications.id, input.id), eq(userNotifications.userId, ctx.user.id)));
+
+      return { success: true };
     }),
 
   /**
@@ -653,5 +731,43 @@ Return ONLY the JSON, no markdown, no explanation.`;
       } catch {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to parse LLM response as schedule" });
       }
+    }),
+
+  getGroupOccurrences: protectedProcedure
+    .input(z.object({
+      notificationId: z.number().int().positive(),
+      limit: z.number().int().min(1).max(50).default(10),
+    }))
+    .query(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+
+      // Ownership check — verify the notification belongs to the current user
+      const [notification] = await db
+        .select({ id: userNotifications.id, userId: userNotifications.userId })
+        .from(userNotifications)
+        .where(eq(userNotifications.id, input.notificationId));
+
+      if (!notification || notification.userId !== ctx.user.id) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Notification not found" });
+      }
+
+      // Query occurrences ordered by time DESC
+      const occurrences = await db
+        .select({
+          id: notificationOccurrences.id,
+          content: notificationOccurrences.content,
+          metadata: notificationOccurrences.metadata,
+          occurredAt: notificationOccurrences.occurredAt,
+        })
+        .from(notificationOccurrences)
+        .where(eq(notificationOccurrences.notificationId, input.notificationId))
+        .orderBy(desc(notificationOccurrences.occurredAt))
+        .limit(input.limit);
+
+      return occurrences.map((o) => ({
+        ...o,
+        occurredAt: o.occurredAt.toISOString(),
+      }));
     }),
 });

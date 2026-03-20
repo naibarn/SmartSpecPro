@@ -788,7 +788,7 @@ app.post("/api/internal/notifications/admin-broadcast", async (req, res) => {
       relatedItems: z.record(z.string().max(200)).optional(),
     }).strict().optional();
 
-    const { type, title, content, priority, relatedResourceType, actionUrl, actionLabel } = req.body;
+    const { type, title, content, priority, relatedResourceType, actionUrl, actionLabel, groupKey } = req.body;
     const metadataParsed = metadataSchema.safeParse(req.body.metadata);
     const metadata = metadataParsed.success ? metadataParsed.data : undefined;
 
@@ -830,6 +830,7 @@ app.post("/api/internal/notifications/admin-broadcast", async (req, res) => {
           actionUrl: actionUrl || undefined,
           actionLabel: actionLabel || undefined,
           metadata: metadata || undefined,
+          groupKey: typeof groupKey === "string" ? groupKey.slice(0, 200) : undefined,
         });
         notified++;
       } catch (err) {

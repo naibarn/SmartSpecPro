@@ -65,7 +65,7 @@ describe("notificationService", () => {
         content: "Content",
       });
 
-      expect(result).toEqual({ notificationId: 42 });
+      expect(result).toEqual({ notificationId: 42, deduplicated: false });
     });
 
     it("calls enqueueTelegramNotification after DB insert", async () => {
@@ -105,7 +105,7 @@ describe("notificationService", () => {
         content: "Content",
       });
 
-      expect(result).toEqual({ notificationId: 42 });
+      expect(result).toEqual({ notificationId: 42, deduplicated: false });
     });
 
     it("passes priority through to Telegram enqueue", async () => {

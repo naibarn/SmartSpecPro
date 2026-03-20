@@ -122,6 +122,17 @@ async function notifyJobFailure(
       title: "Media Job Failed",
       content: `Your media job (${jobId.slice(0, 8)}...) failed: ${errorMessage.slice(0, 200)}`,
       priority: "high",
+      relatedResourceType: "media_job",
+      relatedResourceId: jobId,
+      actionUrl: `/media-studio?jobId=${jobId}`,
+      actionLabel: "View in Media Studio",
+      groupKey: `media_job_failure:${userIdNum}`,
+      metadata: {
+        source: "media_jobs",
+        errorDetails: {
+          errorMessage: errorMessage.slice(0, 500),
+        },
+      },
     });
 
     // Notify all admins
@@ -139,6 +150,17 @@ async function notifyJobFailure(
         title: "Media Job Failed (Admin Alert)",
         content: `User ${userId} — job ${jobId}: ${errorMessage.slice(0, 200)}`,
         priority: "high",
+        relatedResourceType: "media_job",
+        relatedResourceId: jobId,
+        actionUrl: `/media-studio?jobId=${jobId}`,
+        actionLabel: "View in Media Studio",
+        metadata: {
+          source: "media_jobs",
+          errorDetails: {
+            errorMessage: errorMessage.slice(0, 500),
+          },
+          relatedItems: { userId },
+        },
       });
     }
   } catch {

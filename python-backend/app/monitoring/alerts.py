@@ -10,6 +10,7 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 from enum import Enum
 import structlog
+import httpx
 
 logger = structlog.get_logger(__name__)
 
@@ -29,6 +30,7 @@ class AlertChannel(str, Enum):
     SLACK = "slack"
     DISCORD = "discord"
     WEBHOOK = "webhook"
+    IN_APP = "in_app"
 
 
 class AlertRule:
@@ -80,7 +82,14 @@ class AlertManager:
 
     def __init__(self):
         self.rules: List[AlertRule] = []
+        self._http_client: Optional[httpx.AsyncClient] = None
         self._setup_default_rules()
+
+    @property
+    def http_client(self) -> httpx.AsyncClient:
+        if self._http_client is None or self._http_client.is_closed:
+            self._http_client = httpx.AsyncClient(timeout=10.0)
+        return self._http_client
 
     def _setup_default_rules(self):
         """Setup default alert rules for marketplace"""
@@ -90,7 +99,7 @@ class AlertManager:
             name="high_error_rate",
             condition=lambda m: m.get("error_rate", 0) > 0.05,
             severity=AlertSeverity.ERROR,
-            channels=[AlertChannel.LOG, AlertChannel.EMAIL, AlertChannel.SLACK],
+            channels=[AlertChannel.LOG, AlertChannel.SLACK, AlertChannel.IN_APP],
             message_template="High error rate detected: {error_rate:.1%} (threshold: 5%)",
             cooldown_seconds=600  # 10 minutes
         ))
@@ -100,7 +109,7 @@ class AlertManager:
             name="slow_response_time",
             condition=lambda m: m.get("avg_response_time_ms", 0) > 2000,
             severity=AlertSeverity.WARNING,
-            channels=[AlertChannel.LOG, AlertChannel.SLACK],
+            channels=[AlertChannel.LOG, AlertChannel.SLACK, AlertChannel.IN_APP],
             message_template="Slow response time: {avg_response_time_ms:.0f}ms (threshold: 2000ms)",
             cooldown_seconds=300  # 5 minutes
         ))
@@ -110,7 +119,7 @@ class AlertManager:
             name="high_concurrent_load",
             condition=lambda m: m.get("concurrent_purchases", 0) > 100,
             severity=AlertSeverity.WARNING,
-            channels=[AlertChannel.LOG, AlertChannel.SLACK],
+            channels=[AlertChannel.LOG, AlertChannel.SLACK, AlertChannel.IN_APP],
             message_template="High concurrent load: {concurrent_purchases} purchases in progress",
             cooldown_seconds=300
         ))
@@ -120,8 +129,11 @@ class AlertManager:
             name="revenue_split_anomaly",
             condition=lambda m: self._check_revenue_anomaly(m),
             severity=AlertSeverity.CRITICAL,
-            channels=[AlertChannel.LOG, AlertChannel.EMAIL, AlertChannel.SLACK],
-            message_template="Revenue split anomaly detected! Expected 85/15 split, got creator={creator_percent:.1%}, platform={platform_percent:.1%}",
+            channels=[AlertChannel.LOG, AlertChannel.SLACK, AlertChannel.IN_APP],
+            message_template=(
+                "Revenue split anomaly detected! Expected 85/15 split, "
+                "got creator={creator_percent:.1%}, platform={platform_percent:.1%}"
+            ),
             cooldown_seconds=3600  # 1 hour
         ))
 
@@ -168,26 +180,34 @@ class AlertManager:
             message=message
         )
 
-        # Send through each channel
+        # Send through each channel concurrently
+        tasks = []
         for channel in rule.channels:
-            try:
-                if channel == AlertChannel.LOG:
-                    await self._send_log_alert(rule, message, metrics)
-                elif channel == AlertChannel.EMAIL:
-                    await self._send_email_alert(rule, message, metrics)
-                elif channel == AlertChannel.SLACK:
-                    await self._send_slack_alert(rule, message, metrics)
-                elif channel == AlertChannel.DISCORD:
-                    await self._send_discord_alert(rule, message, metrics)
-                elif channel == AlertChannel.WEBHOOK:
-                    await self._send_webhook_alert(rule, message, metrics)
-            except Exception as e:
-                logger.error(
-                    "alert_send_failed",
-                    rule=rule.name,
-                    channel=channel,
-                    error=str(e)
-                )
+            tasks.append(self._send_to_channel(channel, rule, message, metrics))
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+    async def _send_to_channel(
+        self, channel: AlertChannel, rule: AlertRule, message: str, metrics: Dict[str, Any]
+    ):
+        """Send to a single channel with error handling"""
+        try:
+            if channel == AlertChannel.LOG:
+                await self._send_log_alert(rule, message, metrics)
+            elif channel == AlertChannel.SLACK:
+                await self._send_slack_alert(rule, message, metrics)
+            elif channel == AlertChannel.DISCORD:
+                await self._send_discord_alert(rule, message, metrics)
+            elif channel == AlertChannel.WEBHOOK:
+                await self._send_webhook_alert(rule, message, metrics)
+            elif channel == AlertChannel.IN_APP:
+                await self._send_in_app_alert(rule, message, metrics)
+        except Exception as e:
+            logger.error(
+                "alert_send_failed",
+                rule=rule.name,
+                channel=channel,
+                error=str(e)
+            )
 
     async def _send_log_alert(self, rule: AlertRule, message: str, metrics: Dict[str, Any]):
         """Send alert to logs"""
@@ -198,47 +218,26 @@ class AlertManager:
             AlertSeverity.CRITICAL: logger.critical
         }.get(rule.severity, logger.info)
 
+        # Scrub financial/PII metrics before logging
+        safe_metrics = {
+            k: v for k, v in metrics.items()
+            if not k.startswith("revenue_") and k not in ("creator_percent", "platform_percent")
+        }
         log_method(
             "ALERT",
             rule=rule.name,
             severity=rule.severity,
             message=message,
-            metrics=metrics
+            metrics=safe_metrics
         )
-
-    async def _send_email_alert(self, rule: AlertRule, message: str, metrics: Dict[str, Any]):
-        """Send alert via email"""
-        # TODO: Implement email sending
-        # Use aiosmtplib or similar
-        email_to = os.getenv("ALERT_EMAIL", "admin@smartspec.pro")
-
-        logger.info(
-            "email_alert_pending",
-            to=email_to,
-            subject=f"[{rule.severity.upper()}] {rule.name}",
-            message=message
-        )
-
-        # Example implementation:
-        # import aiosmtplib
-        # from email.message import EmailMessage
-        #
-        # msg = EmailMessage()
-        # msg["From"] = "alerts@smartspec.pro"
-        # msg["To"] = email_to
-        # msg["Subject"] = f"[{rule.severity.upper()}] {rule.name}"
-        # msg.set_content(f"{message}\n\nMetrics:\n{json.dumps(metrics, indent=2)}")
-        #
-        # await aiosmtplib.send(msg, hostname="smtp.gmail.com", port=587, ...)
 
     async def _send_slack_alert(self, rule: AlertRule, message: str, metrics: Dict[str, Any]):
-        """Send alert to Slack"""
+        """Send alert to Slack via webhook"""
         webhook_url = os.getenv("SLACK_WEBHOOK_URL")
         if not webhook_url:
-            logger.warning("slack_webhook_not_configured")
+            logger.debug("slack_webhook_not_configured")
             return
 
-        # Slack color coding
         color_map = {
             AlertSeverity.INFO: "#36a64f",
             AlertSeverity.WARNING: "#ff9900",
@@ -249,88 +248,156 @@ class AlertManager:
         payload = {
             "attachments": [{
                 "color": color_map.get(rule.severity, "#cccccc"),
-                "title": f"🚨 {rule.name}",
+                "title": f"[{rule.severity.value.upper()}] {rule.name}",
                 "text": message,
                 "fields": [
-                    {"title": "Severity", "value": rule.severity.upper(), "short": True},
+                    {"title": "Severity", "value": rule.severity.value.upper(), "short": True},
                     {"title": "Timestamp", "value": datetime.utcnow().isoformat(), "short": True},
                 ],
-                "footer": "SmartSpecPro Marketplace Monitoring"
+                "footer": "SmartSpecPro Monitoring"
             }]
         }
 
         # Add key metrics to fields
-        if "error_rate" in metrics:
-            payload["attachments"][0]["fields"].append({
-                "title": "Error Rate",
-                "value": f"{metrics['error_rate']:.1%}",
-                "short": True
-            })
+        for key in ["error_rate", "avg_response_time_ms", "concurrent_purchases"]:
+            if key in metrics:
+                val = metrics[key]
+                if key == "error_rate":
+                    val = f"{val:.1%}"
+                elif key == "avg_response_time_ms":
+                    val = f"{val:.0f}ms"
+                payload["attachments"][0]["fields"].append({
+                    "title": key.replace("_", " ").title(),
+                    "value": str(val),
+                    "short": True
+                })
 
-        if "avg_response_time_ms" in metrics:
-            payload["attachments"][0]["fields"].append({
-                "title": "Avg Response Time",
-                "value": f"{metrics['avg_response_time_ms']:.0f}ms",
-                "short": True
-            })
-
-        logger.info("slack_alert_pending", webhook_url=webhook_url[:30] + "...")
-
-        # TODO: Send actual HTTP request
-        # import aiohttp
-        # async with aiohttp.ClientSession() as session:
-        #     async with session.post(webhook_url, json=payload) as response:
-        #         if response.status != 200:
-        #             logger.error("slack_alert_failed", status=response.status)
+        resp = await self.http_client.post(webhook_url, json=payload)
+        if resp.status_code != 200:
+            logger.error("slack_alert_failed", status=resp.status_code, body=resp.text[:200])
 
     async def _send_discord_alert(self, rule: AlertRule, message: str, metrics: Dict[str, Any]):
-        """Send alert to Discord"""
+        """Send alert to Discord via webhook"""
         webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
         if not webhook_url:
-            logger.warning("discord_webhook_not_configured")
+            logger.debug("discord_webhook_not_configured")
             return
 
-        # Discord color coding (decimal)
         color_map = {
-            AlertSeverity.INFO: 3581519,    # Green
-            AlertSeverity.WARNING: 16761095, # Orange
-            AlertSeverity.ERROR: 16711680,  # Red
-            AlertSeverity.CRITICAL: 10027008 # Dark Red
+            AlertSeverity.INFO: 3581519,     # Green
+            AlertSeverity.WARNING: 16761095,  # Orange
+            AlertSeverity.ERROR: 16711680,    # Red
+            AlertSeverity.CRITICAL: 10027008  # Dark Red
         }
 
         payload = {
             "embeds": [{
-                "title": f"🚨 {rule.name}",
+                "title": f"[{rule.severity.value.upper()}] {rule.name}",
                 "description": message,
                 "color": color_map.get(rule.severity, 8421504),
                 "timestamp": datetime.utcnow().isoformat(),
                 "fields": [
-                    {"name": "Severity", "value": rule.severity.upper(), "inline": True},
+                    {"name": "Severity", "value": rule.severity.value.upper(), "inline": True},
                 ],
-                "footer": {"text": "SmartSpecPro Marketplace"}
+                "footer": {"text": "SmartSpecPro Monitoring"}
             }]
         }
 
-        logger.info("discord_alert_pending", webhook_url=webhook_url[:30] + "...")
+        resp = await self.http_client.post(webhook_url, json=payload)
+        if resp.status_code not in (200, 204):
+            logger.error("discord_alert_failed", status=resp.status_code, body=resp.text[:200])
 
     async def _send_webhook_alert(self, rule: AlertRule, message: str, metrics: Dict[str, Any]):
         """Send alert to generic webhook"""
         webhook_url = os.getenv("ALERT_WEBHOOK_URL")
         if not webhook_url:
-            logger.warning("generic_webhook_not_configured")
+            logger.debug("generic_webhook_not_configured")
             return
 
         payload = {
             "rule": rule.name,
-            "severity": rule.severity,
+            "severity": rule.severity.value,
             "message": message,
             "metrics": metrics,
             "timestamp": datetime.utcnow().isoformat()
         }
 
-        logger.info("webhook_alert_pending", webhook_url=webhook_url[:30] + "...")
+        resp = await self.http_client.post(webhook_url, json=payload)
+        if resp.status_code not in (200, 201, 204):
+            logger.error("webhook_alert_failed", status=resp.status_code, body=resp.text[:200])
 
-        # TODO: Send actual HTTP request
+    async def _send_in_app_alert(self, rule: AlertRule, message: str, metrics: Dict[str, Any]):
+        """Forward alert to Node.js notification system via internal API.
+
+        Creates in-app notifications for admin users by calling the web app's
+        internal notification endpoint.
+        """
+        web_base = os.getenv("WEB_APP_URL", "http://localhost:3000")
+        gateway_token = os.getenv("SMARTSPEC_WEB_GATEWAY_TOKEN", "")
+
+        if not gateway_token:
+            logger.debug("in_app_alert_skipped", reason="no gateway token")
+            return
+
+        # Map severity to priority
+        priority_map = {
+            AlertSeverity.INFO: "low",
+            AlertSeverity.WARNING: "normal",
+            AlertSeverity.ERROR: "high",
+            AlertSeverity.CRITICAL: "critical",
+        }
+
+        # Map rule names to resource types and action URLs
+        action_map = {
+            "high_error_rate": ("/admin/system-guardian", "View System Guardian"),
+            "slow_response_time": ("/admin/system-guardian", "View System Guardian"),
+            "high_concurrent_load": ("/admin/queues", "View Queues"),
+            "revenue_split_anomaly": ("/admin/settings", "View Settings"),
+            "no_recent_purchases": ("/admin/settings", "View Settings"),
+        }
+
+        action_url, action_label = action_map.get(rule.name, ("/admin/system-guardian", "View Details"))
+
+        payload = {
+            "type": "alert",
+            "title": f"[{rule.severity.value.upper()}] {rule.name.replace('_', ' ').title()}",
+            "content": message,
+            "priority": priority_map.get(rule.severity, "normal"),
+            "relatedResourceType": "system_health",
+            "actionUrl": action_url,
+            "actionLabel": action_label,
+            "groupKey": f"python_alert:{rule.name}",
+            "metadata": {
+                "source": f"python.monitoring.{rule.name}",
+                "metrics": {k: v for k, v in metrics.items() if isinstance(v, (int, float, str, bool))},
+            },
+        }
+
+        try:
+            resp = await self.http_client.post(
+                f"{web_base}/api/internal/notifications/admin-broadcast",
+                json=payload,
+                headers={
+                    "Authorization": f"Bearer {gateway_token}",
+                    "Content-Type": "application/json",
+                },
+            )
+            if resp.status_code in (200, 201):
+                logger.info("in_app_alert_sent", rule=rule.name)
+            else:
+                logger.warning(
+                    "in_app_alert_failed",
+                    rule=rule.name,
+                    status=resp.status_code,
+                    body=resp.text[:200],
+                )
+        except httpx.RequestError as e:
+            logger.warning("in_app_alert_unreachable", rule=rule.name, error=str(e))
+
+    async def close(self):
+        """Close HTTP client"""
+        if self._http_client and not self._http_client.is_closed:
+            await self._http_client.aclose()
 
 
 # Global alert manager instance
