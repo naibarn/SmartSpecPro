@@ -5,7 +5,7 @@
  * and per-agent budget tracking.
  */
 
-import { eq, and, sql, count, desc } from "drizzle-orm";
+import { eq, and, sql, count, desc, inArray } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   teamRuns,
@@ -14,11 +14,22 @@ import {
   assistantProfiles,
   agentActivityEvents,
   agentRunSummaries,
+  teamWorkItems,
   type TeamRun,
   type StopPolicy,
   type BudgetSnapshot,
 } from "../../drizzle/schema";
 import crypto from "crypto";
+import { getCoordinatorProfile } from "./turnOrderEngine";
+import * as workItemService from "./workItemService";
+import * as roomService from "./roomService";
+import * as monitoringService from "./monitoringService";
+import type { PromptMessage } from "./promptComposer";
+import { agencyAgents, personaTemplates } from "../../drizzle/schema";
+import { getNextSpeaker, type TurnStrategy } from "./turnOrderEngine";
+import type { WorkItemStatus } from "./workItemService";
+import { routeRoomIntent } from "./roomIntentRouter";
+import { executeTeamRunSkillTurn } from "./teamRunSkillExecutor";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -46,6 +57,33 @@ export interface TurnCost {
   costCredits: number;
 }
 
+export interface RunTurnResult {
+  runId: string;
+  roomId: string;
+  teamId: string;
+  assistantId: string;
+  nextAssistantId: string | null;
+  nextSpeakerReason: string | null;
+  content: string;
+  tokenUsage: { inputTokens: number; outputTokens: number };
+  costCredits: number;
+  nextSpeakerHint?: string;
+  messageId: string;
+}
+
+export interface AutoLoopWorkItemSnapshot {
+  status: WorkItemStatus;
+  assignedMemberKind?: "assistant" | "human" | "external_connector" | null;
+  reviewerMemberKind?: "assistant" | "human" | "external_connector" | null;
+  approverMemberKind?: "assistant" | "human" | "external_connector" | null;
+}
+
+export interface AutoTeamLoopDecision {
+  continueLoop: boolean;
+  pauseRun: boolean;
+  reason: "awaiting_human_approval" | "awaiting_external_member" | "no_actionable_work_items" | null;
+}
+
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 export const DEFAULT_STOP_POLICY: StopPolicyInput = {
@@ -61,6 +99,12 @@ export const DEFAULT_STOP_POLICY: StopPolicyInput = {
 
 const MAX_CONCURRENT_RUNS_PER_USER = 3;
 const MAX_CONCURRENT_RUNS_PER_TENANT = 10;
+const INITIAL_WORK_ITEM_TITLE_LIMIT = 120;
+const AUTO_TEAM_INITIAL_TURNS = 3;
+const MAX_ADVANCE_TURNS = 5;
+const AUTO_TEAM_CONTINUATION_DELAY_MS = 200;
+const activeTurnExecutions = new Set<string>();
+const activeAutoAdvanceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 // ─── Budget Tracking (pure functions, exported for testing) ─────────────────
 
@@ -69,6 +113,486 @@ export function initBudgetSnapshot(): BudgetSnapshot {
     totalCreditsUsed: 0,
     perAgent: {},
   };
+}
+
+export function deriveInitialWorkItemTitle(objective: string): string {
+  const normalized = objective.replace(/\s+/g, " ").trim();
+  if (!normalized) return "Run kickoff task";
+  const truncated = normalized.length > INITIAL_WORK_ITEM_TITLE_LIMIT
+    ? `${normalized.slice(0, INITIAL_WORK_ITEM_TITLE_LIMIT - 3).trimEnd()}...`
+    : normalized;
+  return `Kickoff: ${truncated}`;
+}
+
+export function mapExecutionModeToTurnStrategy(
+  executionMode: StartRunInput["executionMode"] | TeamRun["executionMode"],
+): TurnStrategy {
+  switch (executionMode) {
+    case "team_chat":
+      return "handoff";
+    case "review":
+      return "priority";
+    case "auto_team":
+    default:
+      return "lead_directed";
+  }
+}
+
+export function formatPromptMessagesForAgent(messages: PromptMessage[]): string {
+  return messages
+    .map((message) => {
+      const label = message.role.toUpperCase();
+      return `[${label}]\n${message.content}`.trim();
+    })
+    .join("\n\n");
+}
+
+export function shouldContinueAutoTeamLoop(params: {
+  runStatus: TeamRun["status"] | "idle";
+  executionMode: StartRunInput["executionMode"] | TeamRun["executionMode"];
+  completedTurns: number;
+  shouldStop: boolean;
+}): boolean {
+  return (
+    params.runStatus === "running" &&
+    params.executionMode === "auto_team" &&
+    params.completedTurns > 0 &&
+    !params.shouldStop
+  );
+}
+
+function getResponsibleMemberKind(
+  workItem: AutoLoopWorkItemSnapshot,
+): "assistant" | "human" | "external_connector" | null {
+  switch (workItem.status) {
+    case "in_review":
+      return workItem.reviewerMemberKind ?? null;
+    case "awaiting_approval":
+      return workItem.approverMemberKind ?? null;
+    case "planned":
+    case "in_progress":
+    case "needs_revision":
+    case "blocked":
+    default:
+      return workItem.assignedMemberKind ?? null;
+  }
+}
+
+function isAssistantActionableWorkItem(workItem: AutoLoopWorkItemSnapshot): boolean {
+  const responsibleMemberKind = getResponsibleMemberKind(workItem);
+  switch (workItem.status) {
+    case "planned":
+    case "in_progress":
+    case "needs_revision":
+    case "blocked":
+    case "in_review":
+      return responsibleMemberKind !== "human" && responsibleMemberKind !== "external_connector";
+    case "awaiting_approval":
+      return responsibleMemberKind === null || responsibleMemberKind === "assistant";
+    default:
+      return false;
+  }
+}
+
+export function evaluateAutoTeamLoopDecision(params: {
+  runStatus: TeamRun["status"] | "idle";
+  executionMode: StartRunInput["executionMode"] | TeamRun["executionMode"];
+  completedTurns: number;
+  shouldStop: boolean;
+  openWorkItems: AutoLoopWorkItemSnapshot[];
+}): AutoTeamLoopDecision {
+  const baseContinuation = shouldContinueAutoTeamLoop({
+    runStatus: params.runStatus,
+    executionMode: params.executionMode,
+    completedTurns: params.completedTurns,
+    shouldStop: params.shouldStop,
+  });
+
+  if (!baseContinuation) {
+    return { continueLoop: false, pauseRun: false, reason: null };
+  }
+
+  if (params.openWorkItems.some((workItem) => isAssistantActionableWorkItem(workItem))) {
+    return { continueLoop: true, pauseRun: false, reason: null };
+  }
+
+  const waitingForHuman = params.openWorkItems.some(
+    (workItem) => getResponsibleMemberKind(workItem) === "human",
+  );
+  if (waitingForHuman) {
+    return { continueLoop: false, pauseRun: true, reason: "awaiting_human_approval" };
+  }
+
+  const waitingForExternal = params.openWorkItems.some(
+    (workItem) => getResponsibleMemberKind(workItem) === "external_connector",
+  );
+  if (waitingForExternal) {
+    return { continueLoop: false, pauseRun: true, reason: "awaiting_external_member" };
+  }
+
+  return { continueLoop: false, pauseRun: false, reason: "no_actionable_work_items" };
+}
+
+function normalizeAssistantTurnContent(content: string | null | undefined): string {
+  const normalized = (content ?? "").trim();
+  return normalized.length > 0 ? normalized : "[No response generated]";
+}
+
+function clearQueuedAutoAdvance(runId: string): void {
+  const timeout = activeAutoAdvanceTimers.get(runId);
+  if (!timeout) return;
+  clearTimeout(timeout);
+  activeAutoAdvanceTimers.delete(runId);
+}
+
+function isIgnorableAutoAdvanceError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("already advancing") ||
+    message.includes("must be 'running' to advance") ||
+    message.includes("not found")
+  );
+}
+
+async function listOpenAutoLoopWorkItems(params: {
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>;
+  roomId: string;
+  runId: string;
+  tenantId: string;
+  startedAt: Date | null;
+}): Promise<AutoLoopWorkItemSnapshot[]> {
+  const { db, roomId, runId, tenantId, startedAt } = params;
+  const workItems = await db
+    .select({
+      status: teamWorkItems.status,
+      assignedMemberId: teamWorkItems.assignedMemberId,
+      reviewerMemberId: teamWorkItems.reviewerMemberId,
+      approverMemberId: teamWorkItems.approverMemberId,
+      supersededByWorkItemId: teamWorkItems.supersededByWorkItemId,
+      runId: teamWorkItems.runId,
+      createdAt: teamWorkItems.createdAt,
+    })
+    .from(teamWorkItems)
+    .where(
+      and(
+        eq(teamWorkItems.roomId, roomId),
+        eq(teamWorkItems.tenantId, tenantId),
+      ),
+    );
+
+  const openStatuses = new Set<WorkItemStatus>([
+    "planned",
+    "in_progress",
+    "in_review",
+    "needs_revision",
+    "awaiting_approval",
+    "blocked",
+  ]);
+
+  const currentItems = workItems.filter((workItem) => {
+    if (workItem.supersededByWorkItemId) return false;
+    if (!openStatuses.has(workItem.status as WorkItemStatus)) return false;
+    if (workItem.runId === runId) return true;
+    if (workItem.runId == null && startedAt && workItem.createdAt >= startedAt) return true;
+    return false;
+  });
+
+  if (currentItems.length === 0) return [];
+
+  const memberIds = Array.from(new Set(
+    currentItems.flatMap((workItem) => [
+      workItem.assignedMemberId,
+      workItem.reviewerMemberId,
+      workItem.approverMemberId,
+    ]).filter((value): value is string => Boolean(value)),
+  ));
+
+  const memberKinds = new Map<string, "assistant" | "human" | "external_connector">();
+  if (memberIds.length > 0) {
+    const profiles = await db
+      .select({
+        id: assistantProfiles.id,
+        memberKind: assistantProfiles.memberKind,
+      })
+      .from(assistantProfiles)
+      .where(
+        and(
+          eq(assistantProfiles.tenantId, tenantId),
+          inArray(assistantProfiles.id, memberIds),
+        ),
+      );
+
+    for (const profile of profiles) {
+      memberKinds.set(profile.id, profile.memberKind as "assistant" | "human" | "external_connector");
+    }
+  }
+
+  return currentItems.map((workItem) => ({
+    status: workItem.status as WorkItemStatus,
+    assignedMemberKind: workItem.assignedMemberId ? memberKinds.get(workItem.assignedMemberId) ?? null : null,
+    reviewerMemberKind: workItem.reviewerMemberId ? memberKinds.get(workItem.reviewerMemberId) ?? null : null,
+    approverMemberKind: workItem.approverMemberId ? memberKinds.get(workItem.approverMemberId) ?? null : null,
+  }));
+}
+
+function queueAutoAdvance(
+  runId: string,
+  tenantId: string,
+  maxTurns: number,
+  delayMs: number = 0,
+): void {
+  if (activeAutoAdvanceTimers.has(runId)) return;
+
+  const timeout = setTimeout(() => {
+    activeAutoAdvanceTimers.delete(runId);
+    advanceRun(runId, tenantId, maxTurns).catch((error) => {
+      if (isIgnorableAutoAdvanceError(error)) return;
+      console.warn("Auto advance run failed", {
+        runId,
+        tenantId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+  }, delayMs);
+
+  activeAutoAdvanceTimers.set(runId, timeout);
+}
+
+async function resolveAssistantTurnContext(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  assistantId: string,
+) {
+  const [row] = await db
+    .select({
+      profile: assistantProfiles,
+      personaName: personaTemplates.name,
+      personaPrompt: personaTemplates.systemPromptPrefix,
+      agentInstructions: agencyAgents.instructions,
+      agentModel: agencyAgents.model,
+    })
+    .from(assistantProfiles)
+    .leftJoin(personaTemplates, eq(personaTemplates.id, assistantProfiles.personaId))
+    .leftJoin(agencyAgents, eq(agencyAgents.id, assistantProfiles.agencyAgentId))
+    .where(eq(assistantProfiles.id, assistantId))
+    .limit(1);
+
+  return row ?? null;
+}
+
+function buildPersonaContext(row: Awaited<ReturnType<typeof resolveAssistantTurnContext>>): string | undefined {
+  if (!row) return undefined;
+
+  const sections = [
+    row.profile.displayName ? `Display name: ${row.profile.displayName}` : null,
+    row.profile.roleTitle ? `Role: ${row.profile.roleTitle}` : null,
+    row.personaName ? `Persona: ${row.personaName}` : null,
+    row.profile.memberRole ? `Team role: ${row.profile.memberRole}` : null,
+    row.profile.preferredLanguage ? `Preferred language: ${row.profile.preferredLanguage}` : null,
+    row.profile.specialtyTags?.length ? `Specialties: ${row.profile.specialtyTags.join(", ")}` : null,
+    row.agentInstructions ? `Agent instructions: ${row.agentInstructions}` : null,
+    row.personaPrompt ? `Persona guidance: ${row.personaPrompt}` : null,
+  ].filter((value): value is string => Boolean(value && value.trim().length > 0));
+
+  if (sections.length === 0) return undefined;
+  return sections.join("\n");
+}
+
+async function resolveCurrentAssistantId(
+  db: NonNullable<Awaited<ReturnType<typeof getDb>>>,
+  run: TeamRun,
+): Promise<string> {
+  if (run.activeAssistantId) return run.activeAssistantId;
+
+  const candidates = await db
+    .select()
+    .from(assistantProfiles)
+    .where(
+      and(
+        eq(assistantProfiles.teamId, run.teamId),
+        eq(assistantProfiles.memberKind, "assistant"),
+        eq(assistantProfiles.isActive, true),
+      ),
+    )
+    .orderBy(assistantProfiles.sortOrder);
+
+  const coordinator = getCoordinatorProfile(candidates);
+  if (!coordinator) {
+    throw new Error("No active assistant available for run");
+  }
+  return coordinator.id;
+}
+
+async function initializeRunWorkContext(params: {
+  tenantId: string;
+  roomId: string;
+  teamId: string;
+  runId: string;
+  objective: string;
+  initiatedByUserId: number;
+  coordinatorAssistantId?: string | null;
+}): Promise<void> {
+  const kickoffWorkItem = await workItemService.createWorkItem({
+    tenantId: params.tenantId,
+    teamId: params.teamId,
+    roomId: params.roomId,
+    runId: params.runId,
+    sourceType: "run_objective",
+    sourceRef: `run:${params.runId}`,
+    title: deriveInitialWorkItemTitle(params.objective),
+    objective: params.objective,
+    status: "planned",
+    priority: "high",
+    riskClass: "medium",
+    actorAssistantId: params.coordinatorAssistantId ?? undefined,
+    actorUserId: params.initiatedByUserId,
+    autoAssignByRole: true,
+  });
+
+  const kickoffPrepared = roomService.prepareWorkUpdate({
+    roomId: params.roomId,
+    tenantId: params.tenantId,
+    senderAssistantId: "system",
+    runId: params.runId,
+    workItemId: kickoffWorkItem.id,
+    messageType: "work_update",
+    content: `Run started. Objective: ${params.objective}`,
+    sensitivity: "medium",
+  });
+
+  const kickoffMessage = await roomService.sendMessage({
+    roomId: params.roomId,
+    tenantId: params.tenantId,
+    senderType: "system",
+    senderUserId: params.initiatedByUserId,
+    recipientType: "all",
+    runId: params.runId,
+    turnType: kickoffPrepared.turnType,
+    visibility: kickoffPrepared.visibility,
+    content: kickoffPrepared.content,
+    summaryContent: kickoffPrepared.summaryContent,
+    artifactRefsJson: kickoffPrepared.artifactRefsJson,
+    memoryRefsJson: kickoffPrepared.memoryRefsJson,
+    metadataJson: kickoffPrepared.metadataJson,
+  });
+
+  const attachedWorkItem = await workItemService.setThreadRootMessageId(
+    kickoffWorkItem.id,
+    kickoffMessage.id,
+    params.tenantId,
+  );
+
+  if (!params.coordinatorAssistantId) {
+    return;
+  }
+
+  const routed = await workItemService.routeWorkItemByRole({
+    tenantId: params.tenantId,
+    workItemId: attachedWorkItem.id,
+    expectedRevisionVersion: attachedWorkItem.revisionVersion,
+    actorAssistantId: params.coordinatorAssistantId,
+    targetStep: "research",
+  });
+
+  const routePrepared = roomService.prepareWorkUpdate({
+    roomId: params.roomId,
+    tenantId: params.tenantId,
+    senderAssistantId: "system",
+    runId: params.runId,
+    workItemId: routed.workItem.id,
+    messageType: "decision",
+    replyToMessageId: kickoffMessage.id,
+    threadRootMessageId: kickoffMessage.id,
+    content: `Orchestrator routed kickoff work item to ${routed.targetStep} stage.`,
+    sensitivity: "medium",
+  });
+
+  await roomService.sendMessage({
+    roomId: params.roomId,
+    tenantId: params.tenantId,
+    senderType: "system",
+    senderUserId: params.initiatedByUserId,
+    recipientType: "all",
+    runId: params.runId,
+    turnType: routePrepared.turnType,
+    visibility: routePrepared.visibility,
+    content: routePrepared.content,
+    summaryContent: routePrepared.summaryContent,
+    artifactRefsJson: routePrepared.artifactRefsJson,
+    memoryRefsJson: routePrepared.memoryRefsJson,
+    metadataJson: routePrepared.metadataJson,
+  });
+}
+
+async function autoPauseRunForDependency(params: {
+  run: TeamRun;
+  tenantId: string;
+  reason: "awaiting_human_approval" | "awaiting_external_member";
+}): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const [updated] = await db
+    .update(teamRuns)
+    .set({ status: "paused", stopReason: params.reason })
+    .where(eq(teamRuns.id, params.run.id))
+    .returning();
+
+  stopAutoStopChecker(params.run.id);
+  clearQueuedAutoAdvance(params.run.id);
+
+  const explanation = params.reason === "awaiting_human_approval"
+    ? "Auto-paused the run because the current workflow is waiting for a human member to review or approve the next step."
+    : "Auto-paused the run because the current workflow is waiting for an external connector member to respond.";
+
+  const prepared = roomService.prepareWorkUpdate({
+    roomId: params.run.roomId,
+    tenantId: params.tenantId,
+    senderAssistantId: "system",
+    runId: params.run.id,
+    messageType: "decision",
+    content: explanation,
+    sensitivity: "medium",
+    metadataJson: {
+      autoPauseReason: params.reason,
+      runStatus: "paused",
+    },
+  });
+
+  await roomService.sendMessage({
+    roomId: params.run.roomId,
+    tenantId: params.tenantId,
+    senderType: "system",
+    senderUserId: params.run.initiatedByUserId,
+    recipientType: "all",
+    runId: params.run.id,
+    turnType: prepared.turnType,
+    visibility: prepared.visibility,
+    content: prepared.content,
+    summaryContent: prepared.summaryContent,
+    artifactRefsJson: prepared.artifactRefsJson,
+    memoryRefsJson: prepared.memoryRefsJson,
+    metadataJson: prepared.metadataJson,
+  });
+
+  try {
+    const { publishEvent, createEvent } = await import("./orchestratorEventBus");
+    await publishEvent(createEvent("status_change", {
+      tenantId: params.tenantId,
+      teamId: params.run.teamId,
+      roomId: params.run.roomId,
+      runId: params.run.id,
+      actorType: "system",
+      actorId: "system",
+      data: {
+        fromStatus: params.run.status,
+        toStatus: updated?.status ?? "paused",
+        reason: params.reason,
+      },
+      userId: params.run.initiatedByUserId,
+    }));
+  } catch {
+    // Best-effort realtime event
+  }
 }
 
 export function accumulateBudget(
@@ -185,17 +709,18 @@ export async function startRun(input: StartRunInput): Promise<TeamRun> {
     throw new Error("Maximum concurrent runs per user reached");
   }
 
-  // Find lead agent
-  const [leadProfile] = await db
+  // Find the preferred coordinating assistant: orchestrator first, then lead.
+  const coordinatorCandidates = await db
     .select()
     .from(assistantProfiles)
     .where(
       and(
         eq(assistantProfiles.teamId, room.teamId),
-        eq(assistantProfiles.isLead, true),
+        eq(assistantProfiles.memberKind, "assistant"),
+        eq(assistantProfiles.isActive, true),
       ),
-    )
-    .limit(1);
+    );
+  const coordinatorProfile = getCoordinatorProfile(coordinatorCandidates);
 
   const runId = crypto.randomUUID();
   const now = new Date();
@@ -214,7 +739,7 @@ export async function startRun(input: StartRunInput): Promise<TeamRun> {
       stopPolicyJson: input.stopPolicy,
       budgetSnapshotJson: initBudgetSnapshot(),
       status: "running",
-      activeAssistantId: leadProfile?.id ?? null,
+      activeAssistantId: coordinatorProfile?.id ?? null,
       startedAt: now,
     })
     .returning();
@@ -225,8 +750,43 @@ export async function startRun(input: StartRunInput): Promise<TeamRun> {
     .set({ lastRunId: runId, updatedAt: now })
     .where(eq(teamRooms.id, input.roomId));
 
+  try {
+    await initializeRunWorkContext({
+      tenantId: input.tenantId,
+      roomId: input.roomId,
+      teamId: room.teamId,
+      runId,
+      objective: input.objective,
+      initiatedByUserId: input.initiatedByUserId,
+      coordinatorAssistantId: coordinatorProfile?.id ?? null,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Failed to initialize run work context", {
+      roomId: input.roomId,
+      runId,
+      error: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
+    await db
+      .update(teamRuns)
+      .set({
+        status: "failed",
+        stopReason: `initialization_failed: ${errorMessage}`.slice(0, 1000),
+        endedAt: new Date(),
+      })
+      .where(eq(teamRuns.id, runId));
+
+    throw new Error(`Run initialization failed: ${errorMessage}`);
+  }
+
   // Start auto-stop policy checker
   startAutoStopChecker(runId);
+
+  if (input.executionMode === "auto_team") {
+    queueAutoAdvance(runId, input.tenantId, AUTO_TEAM_INITIAL_TURNS);
+  }
 
   // Publish run_started event to Redis for SSE
   try {
@@ -264,15 +824,14 @@ async function loadRunWithTenantCheck(
     .where(eq(teamRuns.id, runId))
     .limit(1);
   if (!run) return null;
-  if (tenantId) {
-    // Verify via room
-    const [room] = await db
-      .select({ tenantId: teamRooms.tenantId })
-      .from(teamRooms)
-      .where(and(eq(teamRooms.id, run.roomId), eq(teamRooms.tenantId, tenantId)))
-      .limit(1);
-    if (!room) return null;
-  }
+  // Always verify tenant isolation — reject if tenantId is missing
+  if (!tenantId) return null;
+  const [room] = await db
+    .select({ tenantId: teamRooms.tenantId })
+    .from(teamRooms)
+    .where(and(eq(teamRooms.id, run.roomId), eq(teamRooms.tenantId, tenantId)))
+    .limit(1);
+  if (!room) return null;
   return run;
 }
 
@@ -288,11 +847,12 @@ export async function pauseRun(runId: string, tenantId?: string): Promise<TeamRu
 
   const [updated] = await db
     .update(teamRuns)
-    .set({ status: "paused" })
+    .set({ status: "paused", stopReason: "user_paused" })
     .where(eq(teamRuns.id, runId))
     .returning();
 
   stopAutoStopChecker(runId);
+  clearQueuedAutoAdvance(runId);
   return updated;
 }
 
@@ -308,14 +868,250 @@ export async function resumeRun(runId: string, tenantId?: string): Promise<TeamR
 
   const [updated] = await db
     .update(teamRuns)
-    .set({ status: "running" })
+    .set({ status: "running", stopReason: null })
     .where(eq(teamRuns.id, runId))
     .returning();
 
   // Restart auto-stop checker
   startAutoStopChecker(runId);
 
+  if (tenantId && updated.executionMode === "auto_team") {
+    queueAutoAdvance(runId, tenantId, 1);
+  }
+
   return updated;
+}
+
+export async function runNextTurn(runId: string, tenantId?: string): Promise<RunTurnResult> {
+  if (!tenantId) throw new Error("Tenant context required");
+  if (activeTurnExecutions.has(runId)) {
+    throw new Error("Run is already advancing");
+  }
+
+  activeTurnExecutions.add(runId);
+  try {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+
+    const run = await loadRunWithTenantCheck(db, runId, tenantId);
+    if (!run) throw new Error(`Run ${runId} not found`);
+    if (run.status !== "running") {
+      throw new Error(`Run must be 'running' to advance, current status: ${run.status}`);
+    }
+
+    const [room] = await db
+      .select()
+      .from(teamRooms)
+      .where(and(eq(teamRooms.id, run.roomId), eq(teamRooms.tenantId, tenantId)))
+      .limit(1);
+
+    if (!room) {
+      throw new Error(`Room ${run.roomId} not found`);
+    }
+
+    const assistantId = await resolveCurrentAssistantId(db, run);
+    const assistantContext = await resolveAssistantTurnContext(db, assistantId);
+    if (!assistantContext) {
+      throw new Error(`Assistant ${assistantId} not found`);
+    }
+
+    const route = await routeRoomIntent({
+      message: run.objective ?? room.goalPrompt ?? "",
+      origin: "assistant",
+      context: "run_turn",
+      userId: run.initiatedByUserId,
+      tenantId,
+      roomId: run.roomId,
+      teamId: run.teamId,
+      assistantId,
+    });
+
+    const turnResponse = await executeTeamRunSkillTurn({
+      run,
+      tenantId,
+      userId: run.initiatedByUserId,
+      assistantId,
+      assistantContext: {
+        profile: {
+          preferredModelId: assistantContext.profile.preferredModelId ?? undefined,
+          displayName: assistantContext.profile.displayName ?? undefined,
+          roleTitle: assistantContext.profile.roleTitle ?? undefined,
+        },
+        agentModel: assistantContext.agentModel ?? undefined,
+        personaContext: buildPersonaContext(assistantContext),
+      },
+      roomId: run.roomId,
+      teamId: run.teamId,
+      objective: run.objective ?? room.goalPrompt ?? "",
+      route,
+    });
+
+    const content = normalizeAssistantTurnContent(turnResponse.content);
+    const message = await roomService.postWorkUpdate({
+      roomId: run.roomId,
+      tenantId,
+      senderAssistantId: assistantId,
+      runId,
+      content,
+      messageType: "work_update",
+      metadataJson: {
+        nextSpeakerHint: turnResponse.nextSpeakerHint ?? null,
+        toolLoopEnabled: Boolean(turnResponse.metadata?.toolLoopEnabled),
+        runtimeMetadata: turnResponse.metadata ?? {},
+      },
+      tokenUsageJson: {
+        inputTokens: turnResponse.tokenUsage.inputTokens,
+        outputTokens: turnResponse.tokenUsage.outputTokens,
+        model: assistantContext.profile.preferredModelId ?? assistantContext.agentModel ?? undefined,
+      },
+    });
+
+    const nextSpeaker = await getNextSpeaker({
+      roomId: run.roomId,
+      teamId: run.teamId,
+      runId,
+      currentAssistantId: assistantId,
+      strategy: mapExecutionModeToTurnStrategy(run.executionMode),
+      nextSpeakerHint: turnResponse.nextSpeakerHint,
+    });
+
+    const updatedBudget = accumulateBudget(
+      (run.budgetSnapshotJson as BudgetSnapshot) ?? initBudgetSnapshot(),
+      assistantId,
+      {
+        inputTokens: turnResponse.tokenUsage.inputTokens,
+        outputTokens: turnResponse.tokenUsage.outputTokens,
+        costCredits: turnResponse.costCredits,
+      },
+    );
+
+    await db
+      .update(teamRuns)
+      .set({
+        activeAssistantId: nextSpeaker.nextAssistantId,
+        budgetSnapshotJson: updatedBudget,
+      })
+      .where(eq(teamRuns.id, runId));
+
+    await monitoringService.recordEvent({
+      tenantId,
+      teamId: run.teamId,
+      roomId: run.roomId,
+      runId,
+      assistantId,
+      eventType: "agent_turn",
+      eventCategory: "communication",
+      summary: content.slice(0, 280),
+      detailJson: {
+        messageId: message.id,
+        nextSpeakerHint: turnResponse.nextSpeakerHint ?? null,
+        nextSpeakerId: nextSpeaker.nextAssistantId,
+        nextSpeakerReason: nextSpeaker.reason,
+        metadata: turnResponse.metadata ?? {},
+      },
+      tokenUsageSnapshot: turnResponse.tokenUsage.inputTokens + turnResponse.tokenUsage.outputTokens,
+      costSnapshot: turnResponse.costCredits,
+    });
+
+    monitoringService.captureSnapshot(runId, tenantId).catch(() => {});
+
+    try {
+      const { publishEvent, createEvent } = await import("./orchestratorEventBus");
+      await publishEvent(createEvent("agent_turn_completed", {
+        tenantId,
+        teamId: run.teamId,
+        roomId: run.roomId,
+        runId,
+        actorType: "assistant",
+        actorId: assistantId,
+        data: {
+          messageId: message.id,
+          nextSpeakerId: nextSpeaker.nextAssistantId,
+          nextSpeakerReason: nextSpeaker.reason,
+          nextSpeakerHint: turnResponse.nextSpeakerHint ?? null,
+        },
+        userId: run.initiatedByUserId,
+      }));
+    } catch {
+      // Best-effort realtime event
+    }
+
+    return {
+      runId,
+      roomId: run.roomId,
+      teamId: run.teamId,
+      assistantId,
+      nextAssistantId: nextSpeaker.nextAssistantId,
+      nextSpeakerReason: nextSpeaker.reason,
+      content,
+      tokenUsage: turnResponse.tokenUsage,
+      costCredits: turnResponse.costCredits,
+      nextSpeakerHint: turnResponse.nextSpeakerHint,
+      messageId: message.id,
+    };
+  } finally {
+    activeTurnExecutions.delete(runId);
+  }
+}
+
+export async function advanceRun(
+  runId: string,
+  tenantId?: string,
+  maxTurns: number = 1,
+): Promise<RunTurnResult[]> {
+  if (!tenantId) throw new Error("Tenant context required");
+  clearQueuedAutoAdvance(runId);
+  const turnsToRun = Math.min(Math.max(1, Math.trunc(maxTurns)), MAX_ADVANCE_TURNS);
+  const results: RunTurnResult[] = [];
+  let latestEvaluation: StopEvaluation = { shouldStop: false, reason: null };
+
+  for (let index = 0; index < turnsToRun; index += 1) {
+    const run = await getRun(runId, tenantId);
+    if (!run || run.status !== "running") break;
+
+    const turnResult = await runNextTurn(runId, tenantId);
+    results.push(turnResult);
+
+    latestEvaluation = await checkAndAutoStop(runId);
+    if (latestEvaluation.shouldStop) break;
+  }
+
+  const latestRun = await getRun(runId, tenantId);
+  if (latestRun) {
+    const autoLoopDb = await getDb();
+    if (!autoLoopDb) throw new Error("Database not available");
+    const openWorkItems = await listOpenAutoLoopWorkItems({
+      db: autoLoopDb,
+      roomId: latestRun.roomId,
+      runId,
+      tenantId,
+      startedAt: latestRun.startedAt ?? null,
+    });
+
+    const autoLoopDecision = evaluateAutoTeamLoopDecision({
+      runStatus: latestRun.status,
+      executionMode: latestRun.executionMode,
+      completedTurns: results.length,
+      shouldStop: latestEvaluation.shouldStop,
+      openWorkItems,
+    });
+
+    if (
+      autoLoopDecision.pauseRun &&
+      autoLoopDecision.reason &&
+      autoLoopDecision.reason !== "no_actionable_work_items"
+    ) {
+      await autoPauseRunForDependency({
+        run: latestRun,
+        tenantId,
+        reason: autoLoopDecision.reason,
+      });
+    } else if (autoLoopDecision.continueLoop) {
+      queueAutoAdvance(runId, tenantId, 1, AUTO_TEAM_CONTINUATION_DELAY_MS);
+    }
+  }
+
+  return results;
 }
 
 export async function stopRun(
@@ -333,13 +1129,14 @@ export async function stopRun(
   }
 
   const now = new Date();
+  const normalizedStatus = reason === "user_requested" ? "stopped" : "completed";
 
   const [updated] = await db.transaction(async (tx) => {
     // Update run status
     const [updatedRun] = await tx
       .update(teamRuns)
       .set({
-        status: "completed",
+        status: normalizedStatus,
         stopReason: reason,
         endedAt: now,
       })
@@ -376,6 +1173,7 @@ export async function stopRun(
   });
 
   stopAutoStopChecker(runId);
+  clearQueuedAutoAdvance(runId);
 
   // Publish run_completed event to Redis for SSE
   try {
@@ -387,7 +1185,7 @@ export async function stopRun(
       runId,
       actorType: "system",
       actorId: "system",
-      data: { reason, status: "completed" },
+      data: { reason, status: normalizedStatus },
     }));
   } catch {
     // Non-critical
@@ -487,4 +1285,50 @@ export function stopAutoStopChecker(runId: string): void {
     clearInterval(interval);
     activeCheckers.delete(runId);
   }
+}
+
+/**
+ * Rehydrate active runs after a process restart.
+ * Auto-team runs rely on in-memory timers, so without this they can remain
+ * marked "running" in the database while no further turns are executed.
+ */
+export async function recoverActiveRunsOnStartup(): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const activeRuns = await db
+    .select({
+      runId: teamRuns.id,
+      executionMode: teamRuns.executionMode,
+      roomId: teamRuns.roomId,
+      tenantId: teamRooms.tenantId,
+      startedAt: teamRuns.startedAt,
+    })
+    .from(teamRuns)
+    .innerJoin(teamRooms, eq(teamRooms.id, teamRuns.roomId))
+    .where(eq(teamRuns.status, "running"));
+
+  if (activeRuns.length === 0) {
+    console.log("[RunRecovery] No active runs to recover");
+    return;
+  }
+
+  for (const run of activeRuns) {
+    startAutoStopChecker(run.runId);
+
+    if (run.executionMode === "auto_team") {
+      queueAutoAdvance(run.runId, run.tenantId, 1, 500);
+    }
+  }
+
+  console.log("[RunRecovery] Recovered active runs", {
+    total: activeRuns.length,
+    autoTeam: activeRuns.filter((run) => run.executionMode === "auto_team").length,
+    running: activeRuns.map((run) => ({
+      runId: run.runId,
+      roomId: run.roomId,
+      executionMode: run.executionMode,
+      startedAt: run.startedAt,
+    })),
+  });
 }

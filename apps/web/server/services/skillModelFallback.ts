@@ -300,7 +300,9 @@ export async function executeSkillLlmWithFallback(
 async function buildCandidateList(
   policy: SkillExecutionPolicyResult,
 ): Promise<string[]> {
-  const rows = await loadEnabledLlmModelRows();
+  const rows = (await loadEnabledLlmModelRows()).filter(
+    (row) => policy.allowFreeModels || row.isFree !== true,
+  );
   if (rows.length === 0) return [];
 
   const primaryModel = policy.modelId;

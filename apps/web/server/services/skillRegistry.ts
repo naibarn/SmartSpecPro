@@ -34,6 +34,7 @@ import {
 } from "./skillFiles";
 import { clearSchemaCache } from "./skillSchemaLoader";
 import { clearSkillCatalogCache } from "./skillCatalog";
+import { getInternalSkillDefinitions } from "./internalSkills";
 
 export type { SkillType, SkillDefinition } from "@smartspec/skills";
 
@@ -631,17 +632,20 @@ async function loadSkillsFromDatabase(): Promise<SkillDefinition[]> {
       .from(skillsTable)
       .where(eq(skillsTable.isEnabled, true))
       .orderBy(desc(skillsTable.priority));
+    const registry = dbSkills.map((s) => dbSkillToDefinition(s as any));
+    const internalSkills = getInternalSkillDefinitions();
 
-    if (dbSkills.length === 0) {
-      console.log("[SkillRegistry] No skills in database");
-      return [];
+    for (const internalSkill of internalSkills) {
+      if (!registry.some((skill) => skill.id === internalSkill.id)) {
+        registry.push(internalSkill);
+      }
     }
 
-    console.log(`[SkillRegistry] Loaded ${dbSkills.length} skills from database`);
-    return dbSkills.map((s) => dbSkillToDefinition(s as any));
+    console.log(`[SkillRegistry] Loaded ${dbSkills.length} skills from database (+${internalSkills.length} internal)`);
+    return registry;
   } catch (error) {
     console.error("[SkillRegistry] Error loading skills from database:", error);
-    return [];
+    return getInternalSkillDefinitions();
   }
 }
 
@@ -705,14 +709,18 @@ export function resetAutoSyncFlag(): void {
  */
 export async function getAvailableSkillsAsync(): Promise<SkillDefinition[]> {
   const skills = await getSkillRegistryAsync();
-  return [...skills].sort((a, b) => b.priority - a.priority);
+  return [...skills]
+    .filter((skill) => !skill.internalOnly)
+    .sort((a, b) => b.priority - a.priority);
 }
 
 /**
  * Get all available skills (sync version for backward compatibility)
  */
 export function getAvailableSkills(): SkillDefinition[] {
-  return [...getSkillRegistry()].sort((a, b) => b.priority - a.priority);
+  return [...getSkillRegistry()]
+    .filter((skill) => !skill.internalOnly)
+    .sort((a, b) => b.priority - a.priority);
 }
 
 /**
@@ -765,7 +773,7 @@ export function getSkillByIdOrType(idOrType: string): SkillDefinition | undefine
  * Get skills by type
  */
 export function getSkillsByType(type: SkillType): SkillDefinition[] {
-  return getSkillRegistry().filter((s) => s.type === type);
+  return getSkillRegistry().filter((s) => s.type === type && !s.internalOnly);
 }
 
 /**

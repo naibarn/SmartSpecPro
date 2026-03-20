@@ -96,6 +96,7 @@ export async function getSkillCatalogSummary(
 
   const entries: SkillCatalogEntry[] = [];
   for (const skill of allSkills) {
+    if (skill.internalOnly) continue;
     if (restrictedSkillIds.has(skill.id)) continue;
 
     const category = skill.category || skill.type || "specialist";

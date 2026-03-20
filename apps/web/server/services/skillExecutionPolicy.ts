@@ -25,6 +25,8 @@ export interface SkillExecutionPolicyInput {
 export interface SkillExecutionPolicyResult {
   /** The resolved LLM model ID to use */
   modelId: string | null;
+  /** Whether free-tier models are allowed for this skill */
+  allowFreeModels: boolean;
   /** Optional pinned provider ID from skill configuration */
   preferredProviderId?: number;
   /** Whether to enforce the pinned provider with no fallback */
@@ -41,6 +43,16 @@ export interface SkillExecutionPolicyResult {
   matchedCapabilities?: string[];
   /** True when requirements found no match and a fallback model was used */
   requirementsFallback?: boolean;
+}
+
+function filterRowsByFreeModelPolicy(
+  rows: EnabledLlmModelRow[],
+  allowFreeModels: boolean,
+): EnabledLlmModelRow[] {
+  if (allowFreeModels) {
+    return rows;
+  }
+  return rows.filter((row) => row.isFree !== true);
 }
 
 /**
@@ -137,20 +149,32 @@ export async function resolveSkillExecutionPolicy(
   const requirements = policy?.requirements;
   const hasReqs = hasNonEmptyRequirements(requirements);
   const allowConvOverride = policy?.allowConversationOverride ?? false;
+  const allowFreeModels = policy?.allowFreeModels === true;
+  const eligibleRows = filterRowsByFreeModelPolicy(rows, allowFreeModels);
+  const resolvedBase = {
+    ...base,
+    allowFreeModels,
+  };
 
   // ─── Fixed mode: skip requirements, run existing cascade ───
   if (mode === "fixed") {
-    return legacyCascade({ rows, base, skillLlmModelId, skillDefaultModel, convModel });
+    return legacyCascade({
+      rows: eligibleRows,
+      base: resolvedBase,
+      skillLlmModelId,
+      skillDefaultModel,
+      convModel,
+    });
   }
 
   // ─── Hybrid mode: try fixedModel first ───
   if (mode === "hybrid" && policy?.fixedModel) {
     const fixedResolved = resolveEnabledLlmModelIdFromRows({
-      rows,
+      rows: eligibleRows,
       preferredModelIds: [policy.fixedModel],
     });
     if (fixedResolved) {
-      return { ...base, modelId: fixedResolved, modelSource: "skill_fixedModel" };
+      return { ...resolvedBase, modelId: fixedResolved, modelSource: "skill_fixedModel" };
     }
     // fixedModel unavailable: fall through to requirements
   }
@@ -162,8 +186,8 @@ export async function resolveSkillExecutionPolicy(
   // mode === "requirements" with empty requirements: use restricted fallback (no defaultModel)
   if (shouldTryRequirements && !hasReqs && mode === "requirements") {
     return requirementsFallbackCascade({
-      rows,
-      base,
+      rows: eligibleRows,
+      base: resolvedBase,
       skillLlmModelId,
       skillDefaultModel,
       convModel,
@@ -175,12 +199,12 @@ export async function resolveSkillExecutionPolicy(
   if (shouldTryRequirements && hasReqs) {
     const matched = selectBestLlmModel(
       requirements as Partial<CapabilityRequirements>,
-      rows,
+      eligibleRows,
     );
 
     if (matched) {
       // Find the matching row for capability description
-      const matchedRow = rows.find((r) => r.modelId === matched);
+      const matchedRow = eligibleRows.find((r) => r.modelId === matched);
       const caps = matchedRow
         ? describeRequirementsMatch(
             requirements as Partial<CapabilityRequirements>,
@@ -189,7 +213,7 @@ export async function resolveSkillExecutionPolicy(
         : { matched: [], missing: [] };
 
       return {
-        ...base,
+        ...resolvedBase,
         modelId: matched,
         modelSource: "requirements_match",
         matchedCapabilities: caps.matched,
@@ -199,8 +223,8 @@ export async function resolveSkillExecutionPolicy(
 
     // Requirements found no match — fall through with requirementsFallback flag
     return requirementsFallbackCascade({
-      rows,
-      base,
+      rows: eligibleRows,
+      base: resolvedBase,
       skillLlmModelId,
       skillDefaultModel,
       convModel,
@@ -210,7 +234,13 @@ export async function resolveSkillExecutionPolicy(
   }
 
   // ─── No requirements: existing cascade ───
-  return legacyCascade({ rows, base, skillLlmModelId, skillDefaultModel, convModel });
+  return legacyCascade({
+    rows: eligibleRows,
+    base: resolvedBase,
+    skillLlmModelId,
+    skillDefaultModel,
+    convModel,
+  });
 }
 
 /**
@@ -219,7 +249,7 @@ export async function resolveSkillExecutionPolicy(
  */
 function legacyCascade(opts: {
   rows: EnabledLlmModelRow[];
-  base: { preferredProviderId?: number; strictProviderPin?: boolean };
+  base: { allowFreeModels: boolean; preferredProviderId?: number; strictProviderPin?: boolean };
   skillLlmModelId?: string;
   skillDefaultModel?: string;
   convModel?: string;
@@ -263,7 +293,7 @@ function legacyCascade(opts: {
  */
 function requirementsFallbackCascade(opts: {
   rows: EnabledLlmModelRow[];
-  base: { preferredProviderId?: number; strictProviderPin?: boolean };
+  base: { allowFreeModels: boolean; preferredProviderId?: number; strictProviderPin?: boolean };
   skillLlmModelId?: string;
   skillDefaultModel?: string;
   convModel?: string;

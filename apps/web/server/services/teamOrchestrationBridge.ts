@@ -12,6 +12,9 @@ export interface ExecuteTurnRequest {
   modelId?: string;
   tenantId: string;
   userId: number;
+  personaContext?: string;
+  teamId?: string;
+  roomId?: string;
 }
 
 export interface ExecuteTurnResponse {
@@ -23,7 +26,7 @@ export interface ExecuteTurnResponse {
 }
 
 const PYTHON_BACKEND_URL = process.env.PYTHON_BACKEND_URL ?? "http://localhost:8000";
-const GATEWAY_TOKEN = process.env.SMARTSPEC_WEB_GATEWAY_TOKEN ?? "";
+const INTERNAL_PROXY_TOKEN = process.env.SMARTSPEC_PROXY_TOKEN ?? process.env.SMARTSPEC_WEB_GATEWAY_TOKEN ?? "";
 const TIMEOUT_MS = 120_000;
 
 export async function executeAgentTurn(
@@ -37,7 +40,7 @@ export async function executeAgentTurn(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Gateway-Token": GATEWAY_TOKEN,
+        "X-Proxy-Token": INTERNAL_PROXY_TOKEN,
       },
       body: JSON.stringify(params),
       signal: controller.signal,
@@ -48,7 +51,17 @@ export async function executeAgentTurn(
       throw new Error(`Team orchestrator responded ${res.status}: ${text}`);
     }
 
-    return await res.json() as ExecuteTurnResponse;
+    const raw = await res.json();
+    return {
+      content: raw.content ?? "",
+      tokenUsage: {
+        inputTokens: raw.tokenUsage?.inputTokens ?? raw.input_tokens ?? 0,
+        outputTokens: raw.tokenUsage?.outputTokens ?? raw.output_tokens ?? 0,
+      },
+      costCredits: raw.costCredits ?? raw.cost_credits ?? 0,
+      nextSpeakerHint: raw.nextSpeakerHint ?? raw.next_speaker_hint ?? undefined,
+      metadata: raw.metadata ?? {},
+    };
   } finally {
     clearTimeout(timeout);
   }

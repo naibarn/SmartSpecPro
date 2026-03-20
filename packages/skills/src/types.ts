@@ -53,6 +53,14 @@ export interface SkillDefinition {
   icon: string;
   type: SkillType;
   category?: string;
+  /** True when the skill is only intended for server-owned execution paths. */
+  internalOnly?: boolean;
+  /** Surfaces where this skill may be used. */
+  surfaceScopes?: Array<"chat" | "team_room" | "team_run" | "agency">;
+  /** Interaction modes the skill is designed for. */
+  interactionModes?: Array<"human_to_ai" | "agent_to_agent" | "work_item">;
+  /** True when this skill can be used by team-run orchestration. */
+  teamRunEligible?: boolean;
 
   /** Trigger rules (regex + optional per-pattern chainTo) */
   triggers: TriggerRule[];
@@ -168,6 +176,9 @@ export interface SkillExecutionPolicyConfig {
   /** Whether conversation model can override this policy */
   allowConversationOverride?: boolean;
 
+  /** Whether free-tier models are allowed for this skill */
+  allowFreeModels?: boolean;
+
   /** Preferred strategy: "cheapest", "fastest", "best" */
   preferredStrategy?: "cheapest" | "fastest" | "best";
 
@@ -277,6 +288,14 @@ export interface SkillMetadata {
   model_requirements?: Record<string, unknown>;
   modelRequirements?: Record<string, unknown>;
   contentQuality?: SkillContentQuality;
+  internal_only?: boolean;
+  internalOnly?: boolean;
+  surface_scopes?: Array<"chat" | "team_room" | "team_run" | "agency">;
+  surfaceScopes?: Array<"chat" | "team_room" | "team_run" | "agency">;
+  interaction_modes?: Array<"human_to_ai" | "agent_to_agent" | "work_item">;
+  interactionModes?: Array<"human_to_ai" | "agent_to_agent" | "work_item">;
+  team_run_eligible?: boolean;
+  teamRunEligible?: boolean;
 }
 
 export interface SkillDetectionResult {
