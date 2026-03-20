@@ -996,6 +996,20 @@ const en: TranslationDictionary = {
   "editor.slash.audio": "Audio",
   "editor.slash.table": "Table",
   "editor.slash.noResults": "No results",
+  "editor.toolbar.strikethrough": "Strikethrough",
+  "editor.toolbar.divider": "Divider",
+  "editor.toolbar.table": "Table",
+  "editor.placeholder": "Start writing...",
+  "editor.save.error": "Save failed",
+  "editor.conflict.title": "Document Conflict",
+  "editor.conflict.message": "This document has been modified in another tab or by another user. Your unsaved changes may conflict with the latest version.",
+  "editor.conflict.overwrite": "Overwrite",
+  "editor.conflict.reload": "Reload Latest",
+  "editor.media.remove": "Remove",
+  "editor.media.editAlt": "Edit alt text",
+  "editor.media.editCaption": "Edit caption",
+  "editor.media.replace": "Replace",
+  "editor.media.unsafeUrl": "Unsafe URL blocked",
 };
 
 export default en;

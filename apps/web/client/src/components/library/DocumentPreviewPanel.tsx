@@ -14,11 +14,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { DocumentLibraryItem, DocumentPreviewType } from "@/lib/documentManagementUi";
+import { getLibraryItemProcessingMeta } from "@/lib/libraryUi";
 import { getOfficePreviewDecision } from "@/lib/previewHostSafety";
 import { trpc } from "@/lib/trpc";
 import { AlertTriangle, Check, Copy, ExternalLink, Loader2, Pencil, Upload, X } from "lucide-react";
 // Heavy viewer components — lazy-loaded so they don't bloat the initial DocumentManagement chunk
-const MarkdownFileEditor = lazy(() => import("./MarkdownFileEditor"));
+// ROLLBACK: To revert to old editor, replace UnifiedDocumentSurface with:
+// const MarkdownFileEditor = lazy(() => import("./MarkdownFileEditor"));
+const UnifiedDocumentSurface = lazy(() => import("../editor/UnifiedDocumentSurface"));
 const CodeViewer = lazy(() => import("./CodeViewer"));
 const CSVViewer = lazy(() => import("./CSVViewer"));
 const JSONViewer = lazy(() => import("./JSONViewer"));
@@ -40,8 +43,6 @@ interface DocumentPreviewPanelProps {
   markdownUpdatedAt?: string;
   markdownError?: string;
   isMarkdownSaving?: boolean;
-  markdownFullHeight?: boolean;
-  markdownEditorOnly?: boolean;
   isRenamingTitle?: boolean;
   documentId?: number;
   onMarkdownChange?: (value: string) => void;
@@ -61,8 +62,6 @@ export default function DocumentPreviewPanel({
   markdownUpdatedAt,
   markdownError,
   isMarkdownSaving,
-  markdownFullHeight,
-  markdownEditorOnly,
   isRenamingTitle,
   documentId,
   onMarkdownChange,
@@ -157,6 +156,10 @@ export default function DocumentPreviewPanel({
   }
 
   const sourceUrl = item.source_url;
+  const processingMeta = getLibraryItemProcessingMeta({
+    status: item.status,
+    metadata: item.metadata,
+  });
   const canRename = Boolean(onRenameTitle);
   const normalizedTitle = titleDraft.trim();
   const officePreviewDecision = previewType === "office" && sourceUrl
@@ -252,8 +255,16 @@ export default function DocumentPreviewPanel({
             )}
             <div className="mt-2 flex flex-wrap gap-2">
               <Badge variant="secondary" className="bg-white/70">{item.item_type}</Badge>
-              <Badge variant="outline">{item.status}</Badge>
+              <Badge className={processingMeta.className}>{processingMeta.label}</Badge>
+              {processingMeta.searchQuality === "metadata_only" ? (
+                <Badge variant="outline">Metadata Search</Badge>
+              ) : null}
             </div>
+            {processingMeta.detail ? (
+              <div className="mt-2 rounded-md border border-slate-200 bg-white/80 px-3 py-2 text-xs text-slate-700">
+                {processingMeta.detail}
+              </div>
+            ) : null}
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             {previewType !== "markdown" && documentId ? (
@@ -295,17 +306,15 @@ export default function DocumentPreviewPanel({
 
       {previewType === "markdown" ? (
         <Suspense fallback={null}>
-          <MarkdownFileEditor
-            value={markdownValue || ""}
-            onChange={(value) => onMarkdownChange?.(value)}
+          <UnifiedDocumentSurface
+            initialContent={markdownValue || ""}
+            onContentChange={(value) => onMarkdownChange?.(value)}
             onSave={() => onMarkdownSave?.()}
             onVersionRestore={onVersionRestore}
             onEnterEditMode={onEnterEditMode}
             updatedAt={markdownUpdatedAt}
             isSaving={isMarkdownSaving}
             errorMessage={markdownError}
-            fullHeight={markdownFullHeight}
-            editorOnly={markdownEditorOnly}
             documentId={documentId}
           />
         </Suspense>
@@ -541,6 +550,9 @@ export default function DocumentPreviewPanel({
                 <p>
                   The current file will be archived as a previous version. You can restore it later from Version History.
                 </p>
+                <div className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+                  After upload, the new version will move through parsing and indexing before semantic search is fully updated.
+                </div>
                 {pendingReplaceFile ? (
                   <>
                     <div className="rounded-md border bg-slate-50 px-3 py-2 text-sm">

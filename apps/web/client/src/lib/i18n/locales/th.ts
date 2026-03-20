@@ -971,6 +971,20 @@ const th: TranslationDictionary = {
   "editor.slash.audio": "เสียง",
   "editor.slash.table": "ตาราง",
   "editor.slash.noResults": "ไม่พบรายการ",
+  "editor.toolbar.strikethrough": "ขีดฆ่า",
+  "editor.toolbar.divider": "เส้นแบ่ง",
+  "editor.toolbar.table": "ตาราง",
+  "editor.placeholder": "เริ่มเขียนเนื้อหา...",
+  "editor.save.error": "บันทึกไม่สำเร็จ",
+  "editor.conflict.title": "เอกสารขัดแย้ง",
+  "editor.conflict.message": "เอกสารนี้ถูกแก้ไขในแท็บอื่นหรือโดยผู้ใช้อื่น การเปลี่ยนแปลงที่ยังไม่ได้บันทึกอาจขัดแย้งกับเวอร์ชันล่าสุด",
+  "editor.conflict.overwrite": "บันทึกทับ",
+  "editor.conflict.reload": "โหลดเวอร์ชันล่าสุด",
+  "editor.media.remove": "ลบ",
+  "editor.media.editAlt": "แก้ไขข้อความ alt",
+  "editor.media.editCaption": "แก้ไขคำบรรยาย",
+  "editor.media.replace": "แทนที่",
+  "editor.media.unsafeUrl": "URL ไม่ปลอดภัย",
 };
 
 export default th;
