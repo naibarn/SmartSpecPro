@@ -3,8 +3,7 @@ import { resolveSkillExecutionPolicy } from "./skillExecutionPolicy";
 import { executeSkillLlmWithFallback } from "./skillModelFallback";
 import { runPlanner, recordStepAttempt } from "./taskPlannerMiddleware";
 import { composePrompt } from "./promptComposer";
-import { executeAgentTurn } from "./teamOrchestrationBridge";
-import { TEAM_DISCUSSION_SKILL_ID } from "./internalSkills";
+import { calculateCreditsForLLMDynamic } from "./creditService";
 import type { TeamRun } from "../../drizzle/schema";
 import type { SkillDefinition } from "@smartspec/skills";
 
@@ -26,7 +25,7 @@ export interface TeamRunSkillExecutionInput {
   teamId: string;
   objective: string;
   route: {
-    route: "chat" | "skill" | "agency";
+    route: "chat" | "skill";
     reason: string;
     selectedSkillId?: string;
   };
@@ -39,126 +38,37 @@ export interface TeamRunSkillExecutionResult {
   costCredits: number;
   metadata: Record<string, unknown>;
   skillId: string;
+  nextSpeakerHint?: string;
 }
 
-function isLlmStyleSkill(skill: SkillDefinition): boolean {
-  return (
-    skill.executionMode === "llm-only" ||
-    skill.executionMode === "core-text" ||
-    skill.executionMode === "enhance-prompt" ||
-    skill.type === "chat-assistant" ||
-    skill.type === "translation" ||
-    skill.type === "document-analysis" ||
-    skill.type === "code-assistant" ||
-    skill.type === "web-search"
-  );
-}
+const GENERAL_FALLBACK_SKILL_ID = "general-article-writer";
 
-function isTeamRunEligibleSkill(skill: SkillDefinition): boolean {
-  return Boolean(skill.internalOnly || skill.teamRunEligible || skill.type === "chat-assistant");
-}
-
-function formatPromptMessagesForAgent(messages: Array<{ role: string; content: string }>): string {
-  return messages
-    .map((message) => `[${message.role.toUpperCase()}]\n${message.content}`.trim())
-    .join("\n\n");
+function parseNextSpeakerHint(content: string): { cleaned: string; hint?: string } {
+  const match = content.match(/\s*\[NEXT:\s*([^\]]+)\]\s*$/i);
+  if (match) {
+    return { cleaned: content.slice(0, match.index).trimEnd(), hint: match[1].trim() };
+  }
+  return { cleaned: content };
 }
 
 async function resolveTeamRunSkill(selectedSkillId?: string): Promise<SkillDefinition> {
   if (selectedSkillId) {
     const selected = await getSkillByIdAsync(selectedSkillId);
-    if (selected && isTeamRunEligibleSkill(selected)) {
+    if (selected) {
       return selected;
     }
   }
 
-  const internal = await getSkillByIdAsync(TEAM_DISCUSSION_SKILL_ID);
-  if (internal) {
-    return internal;
+  const fallback = await getSkillByIdAsync(GENERAL_FALLBACK_SKILL_ID);
+  if (fallback) {
+    return fallback;
   }
 
-  throw new Error(`Skill not found: ${selectedSkillId ?? TEAM_DISCUSSION_SKILL_ID}`);
+  throw new Error(`No skill resolved for team run: tried ${selectedSkillId ?? "(none)"} and fallback ${GENERAL_FALLBACK_SKILL_ID}`);
 }
 
 export async function executeTeamRunSkillTurn(input: TeamRunSkillExecutionInput): Promise<TeamRunSkillExecutionResult> {
   const skill = await resolveTeamRunSkill(input.route.selectedSkillId);
-
-  // Agency route keeps the existing multi-agent orchestration path as a fallback.
-  if (input.route.route === "agency") {
-    const composed = await composePrompt({
-      assistantId: input.assistantId,
-      runId: input.run.id,
-      roomId: input.roomId,
-      teamId: input.teamId,
-      objective: input.objective,
-    });
-
-    const direct = await executeAgentTurn({
-      runId: input.run.id,
-      assistantId: input.assistantId,
-      roomId: input.roomId,
-      teamId: input.teamId,
-      tenantId: input.tenantId,
-      userId: input.userId,
-      modelId: input.assistantContext.profile.preferredModelId ?? input.assistantContext.agentModel ?? undefined,
-      personaContext: input.assistantContext.personaContext ?? undefined,
-      prompt: formatPromptMessagesForAgent(composed.messages),
-    });
-
-    return {
-      content: direct.content,
-      inputTokens: direct.tokenUsage.inputTokens,
-      outputTokens: direct.tokenUsage.outputTokens,
-      costCredits: direct.costCredits,
-      metadata: {
-        route: "agency",
-        routeReason: input.route.reason,
-        selectedSkillId: skill.id,
-        nextSpeakerHint: direct.nextSpeakerHint ?? null,
-        runtimeMetadata: direct.metadata ?? {},
-        directFallback: true,
-      },
-      skillId: skill.id,
-    };
-  }
-
-  if (!isLlmStyleSkill(skill)) {
-    const composed = await composePrompt({
-      assistantId: input.assistantId,
-      runId: input.run.id,
-      roomId: input.roomId,
-      teamId: input.teamId,
-      objective: input.objective,
-    });
-
-    const direct = await executeAgentTurn({
-      runId: input.run.id,
-      assistantId: input.assistantId,
-      roomId: input.roomId,
-      teamId: input.teamId,
-      tenantId: input.tenantId,
-      userId: input.userId,
-      modelId: input.assistantContext.profile.preferredModelId ?? input.assistantContext.agentModel ?? undefined,
-      personaContext: input.assistantContext.personaContext ?? undefined,
-      prompt: formatPromptMessagesForAgent(composed.messages),
-    });
-
-    return {
-      content: direct.content,
-      inputTokens: direct.tokenUsage.inputTokens,
-      outputTokens: direct.tokenUsage.outputTokens,
-      costCredits: direct.costCredits,
-      metadata: {
-        route: "skill",
-        routeReason: input.route.reason,
-        selectedSkillId: skill.id,
-        nextSpeakerHint: direct.nextSpeakerHint ?? null,
-        runtimeMetadata: direct.metadata ?? {},
-        directFallback: true,
-      },
-      skillId: skill.id,
-    };
-  }
 
   const conversationModel = input.assistantContext.profile.preferredModelId ?? input.assistantContext.agentModel ?? undefined;
   const executionPolicy = await resolveSkillExecutionPolicy({
@@ -183,12 +93,16 @@ export async function executeTeamRunSkillTurn(input: TeamRunSkillExecutionInput)
     objective: input.objective,
   });
 
-  const messages = [
-    ...(skill.systemPrompt
-      ? [{ role: "system" as const, content: skill.systemPrompt }]
-      : []),
-    { role: "user" as const, content: formatPromptMessagesForAgent(composed.messages) },
-  ];
+  const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [];
+  if (skill.systemPrompt) {
+    messages.push({ role: "system", content: skill.systemPrompt });
+  }
+  for (const msg of composed.messages) {
+    const role = msg.role === "system" ? "system" as const
+      : msg.role === "assistant" ? "assistant" as const
+      : "user" as const;
+    messages.push({ role, content: msg.content });
+  }
 
   const fallback = await executeSkillLlmWithFallback({
     messages,
@@ -211,19 +125,29 @@ export async function executeTeamRunSkillTurn(input: TeamRunSkillExecutionInput)
       inputTokens: fallback.inputTokens ?? 0,
       outputTokens: fallback.outputTokens ?? 0,
       snapshot: plannerResult.snapshot,
-      creditsUsed: fallback.totalDurationMs ? 0 : 0,
+      creditsUsed: 0,
     }).catch(() => {});
   }
 
+  const rawContent = fallback.content ?? "";
+  const { cleaned, hint: nextSpeakerHint } = parseNextSpeakerHint(rawContent);
+
+  const costCredits = await calculateCreditsForLLMDynamic(
+    fallback.inputTokens ?? 0,
+    fallback.outputTokens ?? 0,
+    fallback.modelId ?? executionPolicy.modelId ?? "unknown",
+  );
+
   return {
-    content: fallback.content ?? "",
+    content: cleaned,
     inputTokens: fallback.inputTokens ?? 0,
     outputTokens: fallback.outputTokens ?? 0,
-    costCredits: 0,
+    costCredits,
     metadata: {
       route: "skill",
       routeReason: input.route.reason,
       selectedSkillId: skill.id,
+      nextSpeakerHint: nextSpeakerHint ?? null,
       planner: plannerResult ? {
         taskRunId: plannerResult.taskRunId,
         resolvedModel: plannerResult.resolvedModel,
@@ -232,5 +156,6 @@ export async function executeTeamRunSkillTurn(input: TeamRunSkillExecutionInput)
       attempts: fallback.attempts,
     },
     skillId: skill.id,
+    nextSpeakerHint,
   };
 }

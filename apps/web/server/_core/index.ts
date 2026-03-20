@@ -70,6 +70,7 @@ import { initWebhookDispatchQueue, closeWebhookDispatchQueue } from "../services
 import { initializeTrashPurgeJob, shutdownTrashPurgeWorker } from "../jobs/purgeOldTrashItems";
 import { initializeGDriveCleanupJob, shutdownGDriveCleanupWorker } from "../jobs/gdriveSessionCleanup";
 import { initializePendingApprovalAlertJob } from "../jobs/pendingApprovalAlert";
+import { initializeNotificationJobs } from "../jobs/notificationJobs";
 import { initializeContentRefreshJob } from "../jobs/contentRefreshJob";
 import { initializeInactiveUserJob } from "../jobs/inactiveUserJob";
 import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
@@ -1375,6 +1376,13 @@ async function main() {
     await initializePendingApprovalAlertJob();
   } catch (error) {
     console.error("[Startup] Failed to initialize approval alert job:", error);
+  }
+
+  // Initialize notification jobs (escalation, future: digest, retention)
+  try {
+    await initializeNotificationJobs();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize notification jobs:", error);
   }
 
   // Initialize Google Drive edit session cleanup (every 6h)
