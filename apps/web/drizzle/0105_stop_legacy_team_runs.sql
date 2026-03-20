@@ -6,5 +6,6 @@ UPDATE team_runs
 SET status = 'stopped',
     "stopReason" = 'system_migration_051',
     "endedAt" = NOW()
-WHERE status IN ('running', 'paused')
+WHERE status IN ('running', 'paused', 'queued')
+  AND "stopReason" IS NULL
   AND "startedAt" < NOW() - INTERVAL '5 minutes';

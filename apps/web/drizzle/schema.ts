@@ -6585,6 +6585,7 @@ export const orchestratorNotifications = pgTable("orchestrator_notifications", {
 }, (t) => [
   index("orchestrator_notifications_user_unread_idx").on(t.userId, t.isRead, t.createdAt),
   index("orchestrator_notifications_tenant_created_idx").on(t.tenantId, t.createdAt),
+  index("idx_orch_notif_user_created").on(t.userId, t.createdAt),
 ]);
 
 export type OrchestratorNotification = typeof orchestratorNotifications.$inferSelect;

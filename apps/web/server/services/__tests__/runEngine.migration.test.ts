@@ -3,17 +3,8 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 // Mock db module before imports
-const mockUpdate = vi.fn();
-const mockSet = vi.fn();
-const mockWhere = vi.fn();
-const mockSelect = vi.fn();
-const mockFrom = vi.fn();
-
 vi.mock("../../db", () => ({
-  getDb: vi.fn(() => ({
-    update: mockUpdate,
-    select: mockSelect,
-  })),
+  getDb: vi.fn(() => ({})),
 }));
 
 // Mock schema imports
@@ -72,8 +63,10 @@ describe("migration — stop old runs", () => {
     );
     expect(sql).toContain("running");
     expect(sql).toContain("paused");
+    expect(sql).toContain("queued");
     expect(sql).toContain("system_migration_051");
     expect(sql).toContain("stopped");
+    expect(sql).toContain('"stopReason" IS NULL');
   });
 
   it("migration SQL should include time-bound guard", () => {
@@ -124,6 +117,7 @@ describe("migration — journal entry", () => {
       e.tag.includes("stop_legacy_team_runs"),
     );
     expect(entry).toBeDefined();
+    expect(entry.idx).toBe(105);
     expect(entry.version).toBe("7");
   });
 });

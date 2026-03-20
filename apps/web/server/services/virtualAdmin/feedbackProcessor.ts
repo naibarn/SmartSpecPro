@@ -138,6 +138,7 @@ export async function processTicket(ticketId: number): Promise<ProcessedTicket> 
 
     for (const admin of adminRows) {
       if (admin.id === ticket.submittedBy) continue;
+      const hasIncident = result.relatedIncidentId != null;
       await createNotification({
         db,
         userId: admin.id,
@@ -145,6 +146,21 @@ export async function processTicket(ticketId: number): Promise<ProcessedTicket> 
         title: `New Feedback: ${ticket.title.slice(0, 80)}`,
         content: `[${ticket.ticketType}] ${result.autoSummary ?? ticket.title}\nTicket #${ticketId}`,
         priority: priorityMap[result.autoPriority ?? "normal"] ?? "normal",
+        relatedResourceType: hasIncident ? "incident" : "feedback",
+        relatedResourceId: String(ticketId),
+        actionUrl: hasIncident
+          ? `/admin/system-guardian?incident=${result.relatedIncidentId}`
+          : `/admin/feedback-hub?ticketId=${ticketId}`,
+        actionLabel: "View Feedback",
+        metadata: {
+          source: "guardian.feedbackProcessor",
+          eventId: String(ticketId),
+          relatedItems: {
+            ruleId: result.relatedIncidentId != null ? String(result.relatedIncidentId) : undefined,
+            sensorId: "feedbackProcessor",
+            actionTaken: result.duplicateOf ? "duplicate_detected" : "triaged",
+          },
+        },
       });
     }
   } catch (err) {

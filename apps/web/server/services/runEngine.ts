@@ -1301,7 +1301,7 @@ export async function recoverActiveRunsOnStartup(): Promise<void> {
     })
     .where(
       and(
-        inArray(teamRuns.status, ["running", "paused"]),
+        inArray(teamRuns.status, ["running", "paused", "queued"]),
         sql`${teamRuns.stopReason} IS NULL`,
         sql`${teamRuns.startedAt} < NOW() - INTERVAL '5 minutes'`,
       ),
