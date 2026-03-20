@@ -146,13 +146,8 @@ describe("TiptapMarkdownBridge.serialize", () => {
       type: "doc",
       content: [
         {
-          type: "paragraph",
-          content: [
-            {
-              type: "image",
-              attrs: { src: "https://example.com/img.png", alt: "text" },
-            },
-          ],
+          type: "image",
+          attrs: { src: "https://example.com/img.png", alt: "text" },
         },
       ],
     };

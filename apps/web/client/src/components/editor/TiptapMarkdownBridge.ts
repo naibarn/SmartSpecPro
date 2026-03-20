@@ -9,8 +9,8 @@ import { TableHeader } from "@tiptap/extension-table-header";
 import { Underline } from "@tiptap/extension-underline";
 import { Markdown } from "tiptap-markdown";
 
-export type { JSONContent } from "@tiptap/core";
 import type { JSONContent } from "@tiptap/core";
+export type { JSONContent };
 
 /**
  * Returns the standard set of Tiptap extensions for the editor.
@@ -21,7 +21,7 @@ export function getDefaultExtensions(): Extension[] {
   return [
     StarterKit.configure({
       heading: { levels: [1, 2, 3, 4] },
-      // Disable extensions we configure separately
+      // StarterKit v3 bundles Link and Underline — disable to configure separately below
       link: false,
       underline: false,
     }),
@@ -76,10 +76,10 @@ export function serialize(
   const editor = createHeadlessEditor(exts);
   try {
     // Set JSON content directly (bypass tiptap-markdown's markdown parsing)
-    editor.commands.setContent(doc, false, {
-      preserveWhitespace: "full",
+    editor.commands.setContent(doc, {
+      parseOptions: { preserveWhitespace: "full" },
     });
-    return editor.storage.markdown.getMarkdown();
+    return (editor.storage as Record<string, any>).markdown.getMarkdown();
   } finally {
     editor.destroy();
   }
