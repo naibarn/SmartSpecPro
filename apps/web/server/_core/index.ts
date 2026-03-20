@@ -46,6 +46,7 @@ import { adapterRegistry } from "../services/channelAdapters/registry";
 import { createSlideRenderRouter } from "../routes/slideRender";
 import { createGuardianSSERouter } from "../routes/guardianSSE";
 import orchestratorStreamRouter from "../routes/orchestratorStream";
+import notificationStreamRouter from "../routes/notificationStream";
 import internalOrchestratorRouter from "../routes/internalOrchestrator";
 import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
 import { registerServicesRoutes } from "../routers/services";
@@ -70,8 +71,10 @@ import { initializeTrashPurgeJob, shutdownTrashPurgeWorker } from "../jobs/purge
 import { initializeGDriveCleanupJob, shutdownGDriveCleanupWorker } from "../jobs/gdriveSessionCleanup";
 import { initializePendingApprovalAlertJob } from "../jobs/pendingApprovalAlert";
 import { initializeContentRefreshJob } from "../jobs/contentRefreshJob";
+import { initializeInactiveUserJob } from "../jobs/inactiveUserJob";
 import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
 import { startHistoryCollection } from "../services/llmQueue";
+import { recoverActiveRunsOnStartup } from "../services/runEngine";
 import { createTasksRouter } from "../routes/tasks";
 import { presentationImportCallbackHandler } from "../routes/presentationImportCallback";
 import { PostgresAdapter } from "../services/postgresAdapter";
@@ -482,6 +485,7 @@ registerScheduleDraftToolRoute(app);
 registerSkillDiscoveryToolRoute(app);
 app.use("/api/virtual-admin/events", createGuardianSSERouter());
 app.use(orchestratorStreamRouter);
+app.use(notificationStreamRouter);
 app.use(internalOrchestratorRouter);
 
 // Proxy remote images through same-origin endpoint so browser canvas operations
@@ -517,6 +521,8 @@ const VALID_SOURCE_TYPES = new Set([
 function verifyInternalBearerToken(authHeader: string): boolean {
   if (!authHeader.startsWith("Bearer ") || !ENV.webGatewayToken) return false;
   const token = authHeader.slice(7);
+  // Enforce minimum token length to prevent empty-string bypass
+  if (token.length < 32 || ENV.webGatewayToken.length < 32) return false;
   const tokenBuf = Buffer.from(token);
   const expectedBuf = Buffer.from(ENV.webGatewayToken);
   if (tokenBuf.length !== expectedBuf.length) return false;
@@ -730,6 +736,110 @@ app.post("/api/internal/google-drive/cleanup", async (req, res) => {
     });
   } catch (err: any) {
     debugError("GDriveCleanup", "Internal cleanup failed", err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Internal admin broadcast notification (Python backend -> Node.js)
+// Creates notifications for all admin users from Python monitoring alerts
+const adminBroadcastRateLimit = (() => {
+  const window: number[] = [];
+  const MAX_RPM = 20;
+  return (): boolean => {
+    const now = Date.now();
+    // Remove entries older than 60s
+    while (window.length > 0 && window[0]! < now - 60_000) window.shift();
+    if (window.length >= MAX_RPM) return false;
+    window.push(now);
+    return true;
+  };
+})();
+
+app.post("/api/internal/notifications/admin-broadcast", async (req, res) => {
+  if (!verifyInternalBearerToken(req.headers.authorization || "")) {
+    return res.status(401).json({ success: false, error: "Unauthorized" });
+  }
+
+  // Rate limit: max 20 requests per minute
+  if (!adminBroadcastRateLimit()) {
+    return res.status(429).json({ success: false, error: "Rate limit exceeded (max 20/min)" });
+  }
+
+  try {
+    // Validate metadata with Zod schema to prevent arbitrary content injection
+    const { z } = await import("zod");
+    const metadataSchema = z.object({
+      eventId: z.string().max(100).optional(),
+      source: z.string().max(200).optional(),
+      errorDetails: z.object({
+        errorCode: z.string().max(50).optional(),
+        errorMessage: z.string().max(500).optional(),
+      }).optional(),
+      metrics: z.object({
+        durationMs: z.number().optional(),
+        costUsd: z.number().optional(),
+        itemCount: z.number().optional(),
+      }).optional(),
+      retryInfo: z.object({
+        retryCount: z.number().optional(),
+        maxRetries: z.number().optional(),
+        nextRetryAt: z.string().max(50).optional(),
+      }).optional(),
+      relatedItems: z.record(z.string().max(200)).optional(),
+    }).strict().optional();
+
+    const { type, title, content, priority, relatedResourceType, actionUrl, actionLabel } = req.body;
+    const metadataParsed = metadataSchema.safeParse(req.body.metadata);
+    const metadata = metadataParsed.success ? metadataParsed.data : undefined;
+
+    if (typeof title !== "string" || !title) {
+      return res.status(400).json({ success: false, error: "title is required" });
+    }
+
+    const db = await getDb();
+    if (!db) {
+      return res.status(500).json({ success: false, error: "Database not available" });
+    }
+
+    const { users } = await import("../../drizzle/schema");
+    const { eq, inArray } = await import("drizzle-orm");
+
+    // Get all admin users
+    const admins = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(inArray(users.role, ["admin", "domain_admin"]));
+
+    if (admins.length === 0) {
+      return res.json({ success: true, notified: 0 });
+    }
+
+    const { createNotification } = await import("../services/notificationService");
+    let notified = 0;
+
+    for (const admin of admins) {
+      try {
+        await createNotification({
+          db,
+          userId: admin.id,
+          type: type || "alert",
+          title: title.slice(0, 255),
+          content: (content || "").slice(0, 2000),
+          priority: priority || "normal",
+          relatedResourceType: relatedResourceType || undefined,
+          actionUrl: actionUrl || undefined,
+          actionLabel: actionLabel || undefined,
+          metadata: metadata || undefined,
+        });
+        notified++;
+      } catch (err) {
+        debugError("AdminBroadcast", `Failed for admin ${admin.id}`, err);
+      }
+    }
+
+    return res.json({ success: true, notified });
+  } catch (err: any) {
+    debugError("AdminBroadcast", "Internal broadcast failed", err);
     return res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -1245,6 +1355,13 @@ async function main() {
     console.error("[Startup] Queue info log failed:", error);
   }
 
+  // Rehydrate any in-flight team runs that were active before a process restart.
+  try {
+    await recoverActiveRunsOnStartup();
+  } catch (error) {
+    console.error("[Startup] Failed to recover active team runs:", error);
+  }
+
   // Initialize trash auto-purge job (daily at 2 AM)
   try {
     await initializeTrashPurgeJob();
@@ -1271,6 +1388,13 @@ async function main() {
     await initializeContentRefreshJob();
   } catch (error) {
     console.error("[Startup] Failed to initialize content refresh job:", error);
+  }
+
+  // Initialize inactive user checker (every 24h) — Invite code system
+  try {
+    await initializeInactiveUserJob();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize inactive user job:", error);
   }
 
   if (process.env.NODE_ENV === "development") {

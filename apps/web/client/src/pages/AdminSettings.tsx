@@ -7,6 +7,8 @@ import { useState, useEffect, Fragment } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { pickEnabledModelId } from "@/lib/enabledModelSelection";
+import InviteCodeManager from "@/components/admin/InviteCodeManager";
+import InviteCodeDashboard from "@/components/admin/InviteCodeDashboard";
 import { trpc } from "../lib/trpc";
 import { Button } from "@/components/ui/button";
 import { HelpButton } from "@/components/help";
@@ -15,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -89,6 +92,91 @@ interface StripeSettings {
   currency?: string;
 }
 
+const DEFAULT_VECTOR_DB_HEALTH = {
+  provider_status: {
+    current_read_provider: "unknown",
+    target_provider: null as string | null,
+    switch_status: "unknown",
+    mirror_writes: false,
+  },
+  queue_status: {
+    lag_minutes: 0,
+    lag_threshold_minutes: 0,
+    lag_window_minutes: 0,
+  },
+  campaign_progress: {
+    campaign_id: null as number | null,
+    status: "idle",
+    domain: "library",
+    queued: 0,
+    processed: 0,
+    succeeded: 0,
+    failed: 0,
+    skipped: 0,
+  },
+  latency_status: {
+    current_p95_ms: 0,
+    baseline_p95_ms: 0,
+    current_sample_count: 0,
+    baseline_sample_count: 0,
+    insufficient_baseline: true,
+  },
+  connection_health: {
+    healthy: false,
+    status: "unknown",
+    message: "Health data not available yet",
+    checked_at: "",
+  },
+  provider_capabilities: {} as Record<string, unknown>,
+  recent_failures: [] as Array<{
+    job_id: number;
+    tenant_id: string | null;
+    library_item_id: number;
+    error: string;
+    failed_at: string | null;
+  }>,
+  tenant_id: null as string | null,
+  timestamp: "",
+};
+
+function normalizeVectorDbHealthPayload(data: any) {
+  if (!data || ("error" in data)) {
+    return null;
+  }
+
+  return {
+    tenant_id: typeof data.tenant_id === "string" ? data.tenant_id : DEFAULT_VECTOR_DB_HEALTH.tenant_id,
+    timestamp: typeof data.timestamp === "string" ? data.timestamp : DEFAULT_VECTOR_DB_HEALTH.timestamp,
+    provider_status: {
+      ...DEFAULT_VECTOR_DB_HEALTH.provider_status,
+      ...(data.provider_status ?? {}),
+    },
+    queue_status: {
+      ...DEFAULT_VECTOR_DB_HEALTH.queue_status,
+      ...(data.queue_status ?? {}),
+    },
+    campaign_progress: {
+      ...DEFAULT_VECTOR_DB_HEALTH.campaign_progress,
+      ...(data.campaign_progress ?? {}),
+    },
+    latency_status: {
+      ...DEFAULT_VECTOR_DB_HEALTH.latency_status,
+      ...(data.latency_status ?? {}),
+    },
+    connection_health: {
+      ...DEFAULT_VECTOR_DB_HEALTH.connection_health,
+      ...(data.connection_health ?? {}),
+    },
+    provider_capabilities:
+      data.provider_capabilities && typeof data.provider_capabilities === "object"
+        ? data.provider_capabilities
+        : DEFAULT_VECTOR_DB_HEALTH.provider_capabilities,
+    recent_failures: Array.isArray(data.recent_failures)
+      ? data.recent_failures
+      : DEFAULT_VECTOR_DB_HEALTH.recent_failures,
+  };
+}
+
 export default function AdminSettings() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -106,6 +194,12 @@ export default function AdminSettings() {
     signupBonusCredits: 100,
     firstUserBonusCredits: 10000,
     autoAssignTenant: true,
+    registrationMode: "open" as "open" | "invite_only",
+    userInviteEnabled: false,
+    userReferralBonusCredits: 50,
+    allowedAuthMethods: ["email", "google", "github"] as string[],
+    inviteInactiveDaysLimit: 0,
+    maxRegistrationsPerDevice: 2,
   });
 
   // SMTP settings state
@@ -217,6 +311,12 @@ export default function AdminSettings() {
         signupBonusCredits: regSettings.signupBonusCredits,
         firstUserBonusCredits: regSettings.firstUserBonusCredits,
         autoAssignTenant: regSettings.autoAssignTenant,
+        registrationMode: regSettings.registrationMode ?? "open",
+        userInviteEnabled: regSettings.userInviteEnabled ?? false,
+        userReferralBonusCredits: regSettings.userReferralBonusCredits ?? 50,
+        allowedAuthMethods: regSettings.allowedAuthMethods ?? ["email", "google", "github"],
+        inviteInactiveDaysLimit: regSettings.inviteInactiveDaysLimit ?? 0,
+        maxRegistrationsPerDevice: regSettings.maxRegistrationsPerDevice ?? 2,
       });
     }
   }, [regSettings]);
@@ -394,13 +494,42 @@ export default function AdminSettings() {
 
   // AI / Memory settings
   const [aiSummaryModel, setAiSummaryModel] = useState("");
+  const [allowUserOwnLlmApiKeys, setAllowUserOwnLlmApiKeys] = useState(false);
   const [modelSearch, setModelSearch] = useState("");
+  const [googleAiForm, setGoogleAiForm] = useState({ apiKey: "" });
+  const [showGoogleAiApiKey, setShowGoogleAiApiKey] = useState(false);
+  const [googleAiKeyConfigured, setGoogleAiKeyConfigured] = useState(false);
   const { data: aiSettings, refetch: refetchAi } = trpc.systemSettings.getSettingsByCategory.useQuery(
     { category: "ai" as any },
     { enabled: !!user && user.role === "admin" }
   );
+  const { data: googleAiSettings, refetch: refetchGoogleAi } = trpc.systemSettings.getGoogleAiSettings.useQuery(
+    undefined,
+    { enabled: !!user && user.role === "admin" },
+  );
   const updateAiSettingMutation = trpc.systemSettings.updateSetting.useMutation({
     onSuccess: () => { toast.success("AI setting saved"); refetchAi(); },
+    onError: (err: any) => toast.error(err.message),
+  });
+  const updateAiPolicyMutation = trpc.systemSettings.updateSetting.useMutation({
+    onSuccess: () => {
+      toast.success("LLM key policy updated");
+      refetchAi();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+  const updateGoogleAiMutation = trpc.systemSettings.updateGoogleAiSettings.useMutation({
+    onSuccess: () => {
+      toast.success("Google AI key saved securely");
+      refetchGoogleAi();
+      setGoogleAiForm({ apiKey: "" });
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+  const testGoogleAiMutation = trpc.systemSettings.testGoogleAiConnection.useMutation({
+    onSuccess: (data) => {
+      data.success ? toast.success(data.message) : toast.error(data.message);
+    },
     onError: (err: any) => toast.error(err.message),
   });
   const { data: modelsData } = trpc.llmProviders.availableModels.useQuery(undefined, {
@@ -418,6 +547,7 @@ export default function AdminSettings() {
     }
 
     const summaryModelSetting = aiSettings.find((s: any) => s.key === "summaryModel");
+    const userOwnKeysSetting = aiSettings.find((s: any) => s.key === "allowUserOwnLlmApiKeys");
     setAiSummaryModel(
       pickEnabledModelId({
         preferredId: summaryModelSetting?.value,
@@ -425,7 +555,13 @@ export default function AdminSettings() {
         fallbackIds: [defaultAiSummaryModelId],
       }),
     );
+    setAllowUserOwnLlmApiKeys(userOwnKeysSetting?.value === "true");
   }, [aiSettings, defaultAiSummaryModelId, enabledAiSummaryModelIds, modelsData?.models]);
+
+  useEffect(() => {
+    if (!googleAiSettings) return;
+    setGoogleAiKeyConfigured(!!googleAiSettings.apiKeyConfigured);
+  }, [googleAiSettings]);
 
   const resolvedAiSummaryModel = pickEnabledModelId({
     preferredId: aiSummaryModel,
@@ -469,12 +605,18 @@ export default function AdminSettings() {
     undefined,
     { enabled: !!user && user.role === "admin" }
   );
+  const { data: vectorDbHealth, refetch: refetchVectorDbHealth } = trpc.systemSettings.getVectorDbHealth.useQuery(
+    undefined,
+    { enabled: !!user && user.role === "admin" }
+  );
+  const normalizedVectorDbHealth = normalizeVectorDbHealthPayload(vectorDbHealth);
 
   const updateVectorDbMutation = trpc.systemSettings.updateVectorDbSettings.useMutation({
     onSuccess: () => {
       toast.success("Vector Database settings saved");
       refetchVectorDb();
       refetchVectorDbStats();
+      refetchVectorDbHealth();
       setVectorDbForm(prev => ({ ...prev, pgvectorPassword: "", openaiApiKey: "", vectorizeApiToken: "" }));
     },
     onError: (err: any) => toast.error(`Failed: ${err.message}`),
@@ -506,23 +648,69 @@ export default function AdminSettings() {
   const { data: reindexStatus } = trpc.systemSettings.getReindexStatus.useQuery(
     undefined,
     {
-      enabled: !!user && user.role === "admin" && isReindexing,
+      enabled: !!user && user.role === "admin",
       refetchInterval: isReindexing ? 5000 : false,
     }
   );
 
+  const reindexResult = reindexStatus?.result as Record<string, any> | null | undefined;
+  const reindexExpectedJobs = Number(
+    reindexResult?.expected_enqueued_jobs
+    ?? reindexResult?.enqueued_jobs
+    ?? reindexResult?.total_jobs
+    ?? 0
+  );
+  const reindexCompletedJobs = Number(reindexResult?.completed_jobs ?? 0);
+  const reindexFailedJobs = Number(reindexResult?.failed_jobs ?? 0);
+  const reindexActiveJobs = Number(reindexResult?.active_jobs ?? 0);
+  const reindexProgressValue = reindexExpectedJobs > 0
+    ? Math.min(100, Math.max(0, (reindexCompletedJobs / reindexExpectedJobs) * 100))
+    : 0;
+
   // Stop polling when reindex completes
   useEffect(() => {
-    if (reindexStatus && (reindexStatus.status === "completed" || reindexStatus.status === "failed" || reindexStatus.status === "idle")) {
-      if (isReindexing && reindexStatus.status === "completed") {
+    if (!reindexStatus) return;
+
+    if (reindexStatus.status === "running") {
+      if (!isReindexing) {
+        setIsReindexing(true);
+      }
+      return;
+    }
+
+    if (reindexStatus.status === "completed") {
+      if (isReindexing) {
         toast.success("Reindex completed successfully");
-        refetchVectorDbStats();
-      } else if (isReindexing && reindexStatus.status === "failed") {
+      }
+      refetchVectorDbStats();
+      refetchVectorDbHealth();
+      setIsReindexing(false);
+      return;
+    }
+
+    if (reindexStatus.status === "completed_with_errors") {
+      if (isReindexing) {
+        toast.warning("Reindex completed with some errors — review recent failures in Vector DB Health");
+      }
+      refetchVectorDbStats();
+      refetchVectorDbHealth();
+      setIsReindexing(false);
+      return;
+    }
+
+    if (reindexStatus.status === "failed") {
+      if (isReindexing) {
         toast.error("Reindex failed — check server logs");
       }
+      refetchVectorDbHealth();
+      setIsReindexing(false);
+      return;
+    }
+
+    if (reindexStatus.status === "idle") {
       setIsReindexing(false);
     }
-  }, [reindexStatus]);
+  }, [isReindexing, reindexStatus, refetchVectorDbHealth, refetchVectorDbStats]);
 
   useEffect(() => {
     if (vectorDbSettings) {
@@ -1870,73 +2058,213 @@ export default function AdminSettings() {
 
           {/* Registration Settings Tab */}
           <TabsContent value="registration">
-            <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-              <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <UserPlus className="w-5 h-5 text-purple-500" />
-                  Registration Settings
-                </CardTitle>
-                <CardDescription>
-                  Configure new user signup credits and tenant assignment
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-6">
+              <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
+                <CardHeader className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <UserPlus className="w-5 h-5 text-purple-500" />
+                    Registration Settings
+                  </CardTitle>
+                  <CardDescription>
+                    Configure registration mode, auth methods, credits, and security
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-8 pt-6">
+                  {/* Section 1: Registration Mode */}
                   <div>
-                    <Label htmlFor="signupBonus">Signup Bonus Credits (New Users)</Label>
-                    <Input
-                      id="signupBonus"
-                      type="number"
-                      min={0}
-                      value={regForm.signupBonusCredits}
-                      onChange={(e) => setRegForm((prev) => ({ ...prev, signupBonusCredits: parseInt(e.target.value) || 0 }))}
-                      className="mt-1"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Credits given to new users on registration</p>
+                    <h4 className="font-semibold text-sm text-gray-900 mb-3">Registration Mode</h4>
+                    <div className="flex gap-4">
+                      <label className={`flex-1 p-4 rounded-xl border-2 cursor-pointer transition-all ${regForm.registrationMode === "open" ? "border-purple-500 bg-purple-50/50" : "border-gray-200 hover:border-gray-300"}`}>
+                        <input
+                          type="radio"
+                          name="regMode"
+                          value="open"
+                          checked={regForm.registrationMode === "open"}
+                          onChange={() => setRegForm((prev) => ({ ...prev, registrationMode: "open" }))}
+                          className="sr-only"
+                        />
+                        <div className="font-medium text-sm">Open Registration</div>
+                        <p className="text-xs text-gray-500 mt-1">Anyone can register (invite code optional)</p>
+                      </label>
+                      <label className={`flex-1 p-4 rounded-xl border-2 cursor-pointer transition-all ${regForm.registrationMode === "invite_only" ? "border-purple-500 bg-purple-50/50" : "border-gray-200 hover:border-gray-300"}`}>
+                        <input
+                          type="radio"
+                          name="regMode"
+                          value="invite_only"
+                          checked={regForm.registrationMode === "invite_only"}
+                          onChange={() => setRegForm((prev) => ({ ...prev, registrationMode: "invite_only" }))}
+                          className="sr-only"
+                        />
+                        <div className="font-medium text-sm">Invite Only</div>
+                        <p className="text-xs text-gray-500 mt-1">Only users with a valid invite code can register</p>
+                      </label>
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="firstUserBonus">First User (Admin) Bonus Credits</Label>
-                    <Input
-                      id="firstUserBonus"
-                      type="number"
-                      min={0}
-                      value={regForm.firstUserBonusCredits}
-                      onChange={(e) => setRegForm((prev) => ({ ...prev, firstUserBonusCredits: parseInt(e.target.value) || 0 }))}
-                      className="mt-1"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Credits given to the very first user (admin)</p>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-3">
-                  <input
-                    id="autoTenant"
-                    type="checkbox"
-                    checked={regForm.autoAssignTenant}
-                    onChange={(e) => setRegForm((prev) => ({ ...prev, autoAssignTenant: e.target.checked }))}
-                    className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                  />
+                  {/* Section 2: Allowed Auth Methods */}
                   <div>
-                    <Label htmlFor="autoTenant">Auto-assign tenant by domain</Label>
-                    <p className="text-xs text-gray-500">Automatically assign users to the tenant matching their registration domain</p>
+                    <h4 className="font-semibold text-sm text-gray-900 mb-3">Allowed Registration Methods</h4>
+                    <div className="flex gap-4">
+                      {(["email", "google", "github"] as const).map((method) => (
+                        <label key={method} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={regForm.allowedAuthMethods.includes(method)}
+                            onChange={(e) => {
+                              const newMethods = e.target.checked
+                                ? [...regForm.allowedAuthMethods, method]
+                                : regForm.allowedAuthMethods.filter((m) => m !== method);
+                              if (newMethods.length === 0) return; // at least one required
+                              setRegForm((prev) => ({ ...prev, allowedAuthMethods: newMethods }));
+                            }}
+                            className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                          />
+                          <span className="text-sm capitalize">{method === "email" ? "Email/Password" : method}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">At least one method must be enabled</p>
                   </div>
-                </div>
 
-                <div className="flex justify-end">
-                  <Button
-                    onClick={() => updateRegMutation.mutate(regForm)}
-                    disabled={updateRegMutation.isPending}
-                    className="bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600"
-                  >
-                    {updateRegMutation.isPending ? (
-                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
-                    ) : (
-                      <><Save className="w-4 h-4 mr-2" /> Save Registration Settings</>
+                  {/* Section 3: Credits */}
+                  <div>
+                    <h4 className="font-semibold text-sm text-gray-900 mb-3">Signup Credits</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <Label htmlFor="signupBonus">Signup Bonus Credits (New Users)</Label>
+                        <Input
+                          id="signupBonus"
+                          type="number"
+                          min={0}
+                          value={regForm.signupBonusCredits}
+                          onChange={(e) => setRegForm((prev) => ({ ...prev, signupBonusCredits: parseInt(e.target.value) || 0 }))}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="firstUserBonus">First User (Admin) Bonus Credits</Label>
+                        <Input
+                          id="firstUserBonus"
+                          type="number"
+                          min={0}
+                          value={regForm.firstUserBonusCredits}
+                          onChange={(e) => setRegForm((prev) => ({ ...prev, firstUserBonusCredits: parseInt(e.target.value) || 0 }))}
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Section 4: User Referral Settings */}
+                  <div>
+                    <h4 className="font-semibold text-sm text-gray-900 mb-3">User Referral Program</h4>
+                    <div className="flex items-center gap-3 mb-3">
+                      <input
+                        id="userInviteEnabled"
+                        type="checkbox"
+                        checked={regForm.userInviteEnabled}
+                        onChange={(e) => setRegForm((prev) => ({ ...prev, userInviteEnabled: e.target.checked }))}
+                        className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                      />
+                      <div>
+                        <Label htmlFor="userInviteEnabled">Allow users to share invite codes</Label>
+                        <p className="text-xs text-gray-500">Each user gets a unique referral code to share</p>
+                      </div>
+                    </div>
+                    {regForm.userInviteEnabled && (
+                      <div className="ml-7">
+                        <Label htmlFor="referralBonus">Referral Bonus Credits (for inviter)</Label>
+                        <Input
+                          id="referralBonus"
+                          type="number"
+                          min={0}
+                          value={regForm.userReferralBonusCredits}
+                          onChange={(e) => setRegForm((prev) => ({ ...prev, userReferralBonusCredits: parseInt(e.target.value) || 0 }))}
+                          className="mt-1 max-w-[200px]"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Credits given to the inviter when someone registers with their code</p>
+                      </div>
                     )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                  </div>
+
+                  {/* Section 5: Inactive User Policy */}
+                  <div>
+                    <h4 className="font-semibold text-sm text-gray-900 mb-3">Inactive User Policy</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <Label htmlFor="inactiveDays">Auto-disable after days of no credit usage</Label>
+                        <Input
+                          id="inactiveDays"
+                          type="number"
+                          min={0}
+                          max={365}
+                          value={regForm.inviteInactiveDaysLimit}
+                          onChange={(e) => setRegForm((prev) => ({ ...prev, inviteInactiveDaysLimit: parseInt(e.target.value) || 0 }))}
+                          className="mt-1 max-w-[200px]"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">0 = disabled. Only applies to users registered via admin invite codes.</p>
+                      </div>
+                      <div>
+                        <Label htmlFor="maxDeviceReg">Max registrations per device</Label>
+                        <Input
+                          id="maxDeviceReg"
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={regForm.maxRegistrationsPerDevice}
+                          onChange={(e) => setRegForm((prev) => ({ ...prev, maxRegistrationsPerDevice: parseInt(e.target.value) || 0 }))}
+                          className="mt-1 max-w-[200px]"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">0 = disabled. Block registration when same device exceeds limit.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Section 6: Tenant auto-assign */}
+                  <div className="flex items-center gap-3">
+                    <input
+                      id="autoTenant"
+                      type="checkbox"
+                      checked={regForm.autoAssignTenant}
+                      onChange={(e) => setRegForm((prev) => ({ ...prev, autoAssignTenant: e.target.checked }))}
+                      className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    />
+                    <div>
+                      <Label htmlFor="autoTenant">Auto-assign tenant by domain</Label>
+                      <p className="text-xs text-gray-500">Automatically assign users to the tenant matching their registration domain</p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={() => updateRegMutation.mutate(regForm)}
+                      disabled={updateRegMutation.isPending}
+                      className="bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600"
+                    >
+                      {updateRegMutation.isPending ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
+                      ) : (
+                        <><Save className="w-4 h-4 mr-2" /> Save Registration Settings</>
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Invite Code Statistics */}
+              <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
+                <CardContent className="pt-6">
+                  <InviteCodeDashboard />
+                </CardContent>
+              </Card>
+
+              {/* Admin Invite Codes Management */}
+              <Card className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
+                <CardContent className="pt-6">
+                  <InviteCodeManager />
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* 2FA Settings Tab */}
@@ -2225,6 +2553,34 @@ export default function AdminSettings() {
                 </p>
               </CardHeader>
               <CardContent className="p-6 space-y-6">
+                <div className="flex items-start justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">Allow users to manage their own LLM API keys</label>
+                    <p className="text-xs text-muted-foreground">
+                      Default is disabled. When off, users cannot add or update personal provider keys in Settings.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={allowUserOwnLlmApiKeys}
+                    onCheckedChange={(checked) => {
+                      const previousValue = allowUserOwnLlmApiKeys;
+                      setAllowUserOwnLlmApiKeys(checked);
+                      updateAiPolicyMutation.mutate(
+                        {
+                          category: "ai" as any,
+                          key: "allowUserOwnLlmApiKeys",
+                          value: checked ? "true" : "false",
+                          description: "Allow users to manage their own LLM API keys",
+                        },
+                        {
+                          onError: () => setAllowUserOwnLlmApiKeys(previousValue),
+                        },
+                      );
+                    }}
+                    disabled={updateAiPolicyMutation.isPending}
+                  />
+                </div>
+
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Summary / Consolidation Model</label>
                   <p className="text-xs text-muted-foreground">
@@ -2269,6 +2625,99 @@ export default function AdminSettings() {
                       )}
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">Google AI API Key for OCR / Real-World Vision</label>
+                    <p className="text-xs text-muted-foreground">
+                      This key is used only for explicitly requested OCR or real-world image analysis, such as photos of paper documents. AI-generated images and videos added from Media History keep using their saved prompts for search, so this key is not spent for those cases.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="googleAiApiKey">
+                      API Key {googleAiKeyConfigured ? "(leave empty to keep current)" : ""}
+                    </Label>
+                    <div className="relative max-w-xl">
+                      <Input
+                        id="googleAiApiKey"
+                        type={showGoogleAiApiKey ? "text" : "password"}
+                        value={googleAiForm.apiKey}
+                        onChange={(e) => setGoogleAiForm({ apiKey: e.target.value })}
+                        placeholder={googleAiKeyConfigured ? "AIza••••••••" : "AIza..."}
+                        className="pr-10 font-mono text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowGoogleAiApiKey(!showGoogleAiApiKey)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      >
+                        {showGoogleAiApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {googleAiKeyConfigured ? (
+                        <Badge variant="outline" className="text-green-600">
+                          <Check className="mr-1 h-3 w-3" />
+                          Key configured
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">Not configured</Badge>
+                      )}
+                      {googleAiSettings?.source ? (
+                        <Badge variant="outline">Source: {googleAiSettings.source}</Badge>
+                      ) : null}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      The key is encrypted before it is stored in the database and is never shown again after saving.
+                    </p>
+                  </div>
+
+                  <Card className="border-blue-200 bg-blue-50">
+                    <CardContent className="space-y-3 p-4 text-sm text-blue-950">
+                      <div className="font-medium">Where to create this key</div>
+                      <ol className="list-decimal space-y-1 pl-5 text-xs text-blue-900">
+                        <li>Open <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="font-medium underline">Google AI Studio</a> and sign in with the Google account that owns your project.</li>
+                        <li>Create or choose a Google Cloud project when prompted.</li>
+                        <li>Click <strong>Create API key</strong>.</li>
+                        <li>Copy the generated key that starts with <code className="rounded bg-white px-1 py-0.5 font-mono text-[11px]">AIza</code>.</li>
+                        <li>Paste it here, then click <strong>Save Google AI Key</strong>.</li>
+                      </ol>
+                      <div className="rounded-lg border border-blue-200 bg-white p-3 text-xs text-blue-900">
+                        Use this key for OCR and real-world photo understanding only. For AI-generated media saved from the app, prompt-based search is already used and is usually enough.
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      onClick={() => updateGoogleAiMutation.mutate({ apiKey: googleAiForm.apiKey || undefined })}
+                      disabled={updateGoogleAiMutation.isPending || !googleAiForm.apiKey.trim()}
+                      className="gap-2"
+                    >
+                      {updateGoogleAiMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="h-4 w-4" />
+                      )}
+                      Save Google AI Key
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => testGoogleAiMutation.mutate()}
+                      disabled={testGoogleAiMutation.isPending || !googleAiKeyConfigured}
+                    >
+                      {testGoogleAiMutation.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <TestTube className="mr-2 h-4 w-4" />
+                      )}
+                      Test Google AI Key
+                    </Button>
+                  </div>
                 </div>
 
                   <Button
@@ -2357,12 +2806,15 @@ export default function AdminSettings() {
                     {vectorDbStats.provider === "pgvector" && vectorDbStats.totalDocuments !== undefined && (
                       <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                          <CardTitle className="text-sm font-medium">Documents</CardTitle>
+                          <CardTitle className="text-sm font-medium">Indexed Items</CardTitle>
                           <HardDrive className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
                           <div className="text-2xl font-bold">{vectorDbStats.totalDocuments.toLocaleString()}</div>
-                          <p className="text-xs text-muted-foreground mt-1">Indexed documents</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {vectorDbStats.totalVectors?.toLocaleString?.() ?? "—"} vectors
+                            {vectorDbStats.activeItems !== undefined ? ` • ${vectorDbStats.activeItems.toLocaleString()} active items` : ""}
+                          </p>
                         </CardContent>
                       </Card>
                     )}
@@ -2394,6 +2846,99 @@ export default function AdminSettings() {
                         <p className="text-xs text-muted-foreground mt-1">Location</p>
                       </CardContent>
                     </Card>
+                  </div>
+                )}
+
+                {normalizedVectorDbHealth && (
+                  <div className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm font-medium">Active Read Provider</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                          <div className="text-2xl font-bold capitalize">
+                            {normalizedVectorDbHealth.provider_status.current_read_provider}
+                          </div>
+                          <div className="flex flex-wrap gap-2 text-xs">
+                            <Badge variant="outline">
+                              switch: {normalizedVectorDbHealth.provider_status.switch_status}
+                            </Badge>
+                            <Badge variant={normalizedVectorDbHealth.provider_status.mirror_writes ? "default" : "secondary"}>
+                              {normalizedVectorDbHealth.provider_status.mirror_writes ? "mirror writes on" : "mirror writes off"}
+                            </Badge>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm font-medium">Cutover Target</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                          <div className="text-2xl font-bold capitalize">
+                            {normalizedVectorDbHealth.provider_status.target_provider || "None"}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Current read provider stays authoritative until cutover finishes.
+                          </p>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm font-medium">Connection Health</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                          <Badge variant={normalizedVectorDbHealth.connection_health.healthy ? "default" : "destructive"}>
+                            {normalizedVectorDbHealth.connection_health.status}
+                          </Badge>
+                          <p className="text-xs text-muted-foreground">
+                            {normalizedVectorDbHealth.connection_health.message}
+                          </p>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm font-medium">Queue & Search</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-2 text-sm">
+                          <div className="font-semibold">
+                            Queue lag {normalizedVectorDbHealth.queue_status.lag_minutes.toFixed(1)} min
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            Search p95 {Math.round(normalizedVectorDbHealth.latency_status.current_p95_ms)} ms
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {normalizedVectorDbHealth.recent_failures.length > 0 && (
+                      <Card className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm font-medium">Recent Vector Failures</CardTitle>
+                          <CardDescription>
+                            Unsuperseded recent failures only. Completed retries are filtered out.
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                          {normalizedVectorDbHealth.recent_failures.slice(0, 3).map((failure) => (
+                            <div
+                              key={failure.job_id}
+                              className="rounded-md border border-amber-200 bg-white/70 p-3 text-xs dark:border-amber-900 dark:bg-slate-900/50"
+                            >
+                              <div className="font-medium">
+                                Item {failure.library_item_id} • Job {failure.job_id}
+                              </div>
+                              <div className="mt-1 text-muted-foreground break-all">
+                                {failure.error || "Unknown failure"}
+                              </div>
+                            </div>
+                          ))}
+                        </CardContent>
+                      </Card>
+                    )}
                   </div>
                 )}
 
@@ -2839,17 +3384,28 @@ export default function AdminSettings() {
                     This is required after switching providers or changing embedding models.
                   </p>
 
-                  {isReindexing && reindexStatus && (
+                  {(isReindexing || reindexStatus?.status === "running") && reindexStatus && (
                     <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
-                      <CardContent className="p-3 flex items-center gap-3">
-                        <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                        <div className="text-sm">
-                          <span className="font-medium text-blue-800">Reindexing in progress...</span>
-                          {reindexStatus.result && (
-                            <span className="text-blue-600 ml-2">
-                              ({reindexStatus.result.enqueued_jobs ?? 0} jobs enqueued)
-                            </span>
-                          )}
+                      <CardContent className="space-y-3 p-3">
+                        <div className="flex items-center gap-3">
+                          <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                          <div className="text-sm">
+                            <span className="font-medium text-blue-800">Reindexing in progress...</span>
+                            {reindexExpectedJobs > 0 && (
+                              <span className="text-blue-600 ml-2">
+                                ({reindexCompletedJobs}/{reindexExpectedJobs} completed)
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {reindexExpectedJobs > 0 && (
+                          <Progress value={reindexProgressValue} className="h-2" />
+                        )}
+                        <div className="grid gap-2 text-xs text-blue-700 md:grid-cols-4">
+                          <div>Active: {reindexActiveJobs}</div>
+                          <div>Completed: {reindexCompletedJobs}</div>
+                          <div>Failed: {reindexFailedJobs}</div>
+                          <div>Queued: {reindexExpectedJobs}</div>
                         </div>
                       </CardContent>
                     </Card>

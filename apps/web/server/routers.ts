@@ -84,6 +84,7 @@ import { feedbackRouter } from "./routers/feedback";
 import { teamRouter } from "./routers/team";
 import { teamRoomRouter } from "./routers/teamRoom";
 import { teamRunRouter } from "./routers/teamRun";
+import { teamWorkItemRouter } from "./routers/teamWorkItem";
 import { scopedMemoryRouter } from "./routers/scopedMemory";
 import { monitoringRouter } from "./routers/monitoring";
 import { inviteCodeRouter } from "./routers/inviteCode";
@@ -350,7 +351,7 @@ export const appRouter = router({
         }
 
         // Check registration mode (open vs invite-only)
-        const regCheck = await checkRegistrationAllowed(input.inviteCode);
+        const regCheck = await checkRegistrationAllowed(input.inviteCode, ctx.tenantId);
         if (!regCheck.allowed) {
           throw new Error(regCheck.error || 'Registration not allowed');
         }
@@ -1855,6 +1856,7 @@ export const appRouter = router({
   team: teamRouter,
   teamRoom: teamRoomRouter,
   teamRun: teamRunRouter,
+  teamWorkItem: teamWorkItemRouter,
   scopedMemory: scopedMemoryRouter,
   monitoring: monitoringRouter,
   help: helpRouter,

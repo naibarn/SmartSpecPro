@@ -27,6 +27,9 @@ import {
   Check,
   Building2,
   Info,
+  Ticket,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 
 type PlanType = 'free' | 'pro';
@@ -82,19 +85,46 @@ export default function Signup() {
 
   // Check which OAuth providers are configured
   const { data: oauthProviders } = trpc.auth.oauthProviders.useQuery();
-  const hasAnySocial = oauthProviders?.google || oauthProviders?.github;
+
+  // Get registration config (mode + allowed auth methods)
+  const { data: regConfig } = trpc.inviteCode.getRegistrationConfig.useQuery();
+  const allowedAuth = regConfig?.allowedAuthMethods ?? { email: true, google: true, github: true };
+  const isInviteOnly = regConfig?.registrationMode === "invite_only";
+
+  const hasAnySocial =
+    (oauthProviders?.google && allowedAuth.google) ||
+    (oauthProviders?.github && allowedAuth.github);
+
+  // Parse invite code from URL params (cap length, uppercase, strip invalid chars)
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlInviteCode = (urlParams.get("invite") || urlParams.get("ref") || "")
+    .slice(0, 32)
+    .toUpperCase()
+    .replace(/[^A-Z0-9-]/g, "");
 
   // Generate device fingerprint on mount (stored as __fp cookie)
   useEffect(() => { generateFingerprint().catch(() => {}); }, []);
 
   // Track signup page render
   useEffect(() => { getPostHog()?.capture("signup_started"); }, []);
+  const [inviteCode, setInviteCode] = useState(urlInviteCode);
+  const [showInviteField, setShowInviteField] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     company: '',
   });
+
+  // Validate invite code in real-time
+  const { data: inviteValidation, isLoading: isValidatingCode } = trpc.inviteCode.validate.useQuery(
+    { code: inviteCode },
+    { enabled: inviteCode.length >= 4, retry: false },
+  );
+
+  const inviteCodeValid = inviteCode.length >= 4 && inviteValidation?.valid === true;
+  const inviteCodeInvalid = inviteCode.length >= 4 && inviteValidation?.valid === false;
+  const registrationBlocked = isInviteOnly && !inviteCodeValid;
   const [showPassword, setShowPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -132,6 +162,7 @@ export default function Signup() {
             password: formData.password,
             company: formData.company || undefined,
             plan: selectedPlan,
+            inviteCode: inviteCode || undefined,
           },
         }),
         credentials: 'include',
@@ -162,6 +193,11 @@ export default function Signup() {
 
   const handleSocialSignup = async (provider: string) => {
     try {
+      // Set invite code cookie before OAuth redirect (10-min expiry, Secure)
+      if (inviteCode) {
+        document.cookie = `invite_code=${encodeURIComponent(inviteCode)}; path=/; max-age=600; SameSite=Lax; Secure`;
+      }
+
       const API_BASE_URL = import.meta.env.VITE_API_URL || '';
       const response = await fetch(`${API_BASE_URL}/api/oauth/${provider.toLowerCase()}/authorize`);
       if (!response.ok) {
@@ -309,11 +345,74 @@ export default function Signup() {
                   </p>
                 </div>
 
-                {/* Social Signup Buttons — shown only when OAuth is configured */}
-                {hasAnySocial && (
+                {/* "Have an invite code?" toggle for open mode */}
+                {!isInviteOnly && !inviteCode && !showInviteField && (
+                  <button
+                    type="button"
+                    onClick={() => setShowInviteField(true)}
+                    className="text-sm text-purple-600 hover:text-purple-700 mb-4 flex items-center gap-1"
+                  >
+                    <Ticket className="w-4 h-4" />
+                    Have an invite code?
+                  </button>
+                )}
+
+                {/* Invite Code Input — always visible in invite-only; expandable in open mode */}
+                {(isInviteOnly || inviteCode || showInviteField) && (
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Invite Code {isInviteOnly && <span className="text-red-500">*</span>}
+                    </label>
+                    <div className="relative">
+                      <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <Input
+                        type="text"
+                        value={inviteCode}
+                        onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                        placeholder="Enter invite code"
+                        className="pl-10 pr-10 h-12 bg-white border-gray-200 rounded-xl"
+                        maxLength={32}
+                      />
+                      {inviteCode.length >= 4 && !isValidatingCode && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          {inviteCodeValid ? (
+                            <CheckCircle2 className="w-5 h-5 text-green-500" />
+                          ) : inviteCodeInvalid ? (
+                            <XCircle className="w-5 h-5 text-red-500" />
+                          ) : null}
+                        </div>
+                      )}
+                    </div>
+                    {inviteCodeInvalid && inviteValidation?.error && (
+                      <p className="mt-1 text-sm text-red-500">{inviteValidation.error}</p>
+                    )}
+                    {inviteCodeValid && inviteValidation?.bonusCredits ? (
+                      <p className="mt-1 text-sm text-green-600">
+                        +{inviteValidation.bonusCredits} bonus credits with this code
+                      </p>
+                    ) : null}
+                    {isInviteOnly && !inviteCode && (
+                      <p className="mt-1 text-sm text-amber-600">
+                        Registration requires an invite code
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Invite-only blocked message */}
+                {registrationBlocked && (
+                  <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-center">
+                    <p className="text-amber-800 text-sm font-medium">
+                      Registration is by invitation only. Please enter a valid invite code to continue.
+                    </p>
+                  </div>
+                )}
+
+                {/* Social Signup Buttons — shown only when OAuth is configured and allowed */}
+                {hasAnySocial && !registrationBlocked && (
                   <>
-                    <div className={`grid ${oauthProviders?.google && oauthProviders?.github ? 'grid-cols-2' : 'grid-cols-1'} gap-3 mb-6`}>
-                      {oauthProviders?.google && (
+                    <div className={`grid ${(oauthProviders?.google && allowedAuth.google) && (oauthProviders?.github && allowedAuth.github) ? 'grid-cols-2' : 'grid-cols-1'} gap-3 mb-6`}>
+                      {oauthProviders?.google && allowedAuth.google && (
                         <Button
                           variant="outline"
                           onClick={() => handleSocialSignup('Google')}
@@ -323,7 +422,7 @@ export default function Signup() {
                           Google
                         </Button>
                       )}
-                      {oauthProviders?.github && (
+                      {oauthProviders?.github && allowedAuth.github && (
                         <Button
                           variant="outline"
                           onClick={() => handleSocialSignup('GitHub')}
@@ -335,20 +434,22 @@ export default function Signup() {
                       )}
                     </div>
 
-                    {/* Divider */}
-                    <div className="relative mb-6">
-                      <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-gray-200" />
+                    {/* Divider — only show if email auth is also enabled */}
+                    {allowedAuth.email && (
+                      <div className="relative mb-6">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full border-t border-gray-200" />
+                        </div>
+                        <div className="relative flex justify-center text-sm">
+                          <span className="px-4 bg-white text-gray-500">or continue with email</span>
+                        </div>
                       </div>
-                      <div className="relative flex justify-center text-sm">
-                        <span className="px-4 bg-white text-gray-500">or continue with email</span>
-                      </div>
-                    </div>
+                    )}
                   </>
                 )}
 
-                {/* Signup Form Step 1 */}
-                <form onSubmit={(e) => { e.preventDefault(); setStep(2); }} className="space-y-5">
+                {/* Signup Form Step 1 — only show if email auth is allowed */}
+                {allowedAuth.email && <form onSubmit={(e) => { e.preventDefault(); if (!registrationBlocked) setStep(2); }} className="space-y-5">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Full Name
@@ -434,12 +535,13 @@ export default function Signup() {
 
                   <Button
                     type="submit"
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 text-white py-3 rounded-xl shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 transition-all duration-300"
+                    disabled={registrationBlocked}
+                    className="w-full bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-700 hover:to-pink-600 text-white py-3 rounded-xl shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Continue
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
-                </form>
+                </form>}
               </>
             ) : (
               <>

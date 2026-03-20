@@ -182,7 +182,10 @@ export async function deductCredits(params: DeductCreditsParams) {
       // Atomic deduction: balance check + decrement in one statement
       const [result] = await tx
         .update(users)
-        .set({ credits: sql`${users.credits} - ${amount}` })
+        .set({
+          credits: sql`${users.credits} - ${amount}`,
+          lastCreditUsedAt: new Date(),
+        })
         .where(and(eq(users.id, userId), gte(users.credits, amount)))
         .returning({ newBalance: users.credits });
 

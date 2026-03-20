@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { TransactionDetailDialog } from '@/components/analytics/TransactionDetailDialog';
+import MyInviteCode from '@/components/user/MyInviteCode';
 import {
   Zap,
   CreditCard,
@@ -188,6 +189,11 @@ export default function Credits() {
       </header>
 
       <main className="px-4 sm:px-6 lg:px-8 py-8">
+        {/* Referral Code Widget */}
+        <div className="mb-6">
+          <MyInviteCode />
+        </div>
+
         {/* Stats Grid */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

@@ -982,6 +982,20 @@ const en: TranslationDictionary = {
   "editor.save.saved": "Saved",
   "editor.save.unsaved": "Unsaved changes",
   "editor.save.conflict": "Conflict detected",
+  "editor.slash.heading1": "Heading 1",
+  "editor.slash.heading2": "Heading 2",
+  "editor.slash.heading3": "Heading 3",
+  "editor.slash.heading4": "Heading 4",
+  "editor.slash.bulletList": "Bullet List",
+  "editor.slash.orderedList": "Ordered List",
+  "editor.slash.quote": "Quote",
+  "editor.slash.codeBlock": "Code Block",
+  "editor.slash.divider": "Divider",
+  "editor.slash.image": "Image",
+  "editor.slash.video": "Video",
+  "editor.slash.audio": "Audio",
+  "editor.slash.table": "Table",
+  "editor.slash.noResults": "No results",
 };
 
 export default en;

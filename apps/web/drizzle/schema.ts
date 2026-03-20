@@ -1505,6 +1505,9 @@ export const entityMemories = pgTable("entity_memories", {
   /** User this memory belongs to */
   userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
 
+  /** Persona scope for this memory; null means shared/legacy memory */
+  personaId: varchar("personaId", { length: 36 }).references(() => personaTemplates.id, { onDelete: "set null" }),
+
   /** Type of entity: user, project, preference, technical */
   entityType: entityTypeEnum("entityType").notNull(),
 
@@ -1537,7 +1540,9 @@ export const entityMemories = pgTable("entity_memories", {
 
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
-});
+}, (t) => [
+  index("entity_memories_user_persona_idx").on(t.userId, t.personaId),
+]);
 
 export type EntityMemory = typeof entityMemories.$inferSelect;
 export type InsertEntityMemory = typeof entityMemories.$inferInsert;
@@ -3077,10 +3082,50 @@ export const userNotifications = pgTable("user_notifications", {
 
   isRead: boolean("isRead").default(false).notNull(),
 
+  /** Structured resource linking — e.g. "media_job", "workflow", "skill", "feedback", "agency", "approval" */
+  relatedResourceType: varchar("relatedResourceType", { length: 50 }),
+
+  /** ID of the related resource for direct navigation */
+  relatedResourceId: varchar("relatedResourceId", { length: 200 }),
+
+  /** Direct action URL — overrides legacy string matching */
+  actionUrl: text("actionUrl"),
+
+  /** Action button label */
+  actionLabel: varchar("actionLabel", { length: 100 }),
+
+  /** Structured metadata: error details, metrics, retry info, related items */
+  metadata: jsonb("metadata").$type<{
+    eventId?: string;
+    source?: string;
+    errorDetails?: {
+      errorCode?: string;
+      errorMessage?: string;
+    };
+    metrics?: {
+      durationMs?: number;
+      costUsd?: number;
+      itemCount?: number;
+    };
+    retryInfo?: {
+      retryCount?: number;
+      maxRetries?: number;
+      nextRetryAt?: string;
+    };
+    relatedItems?: Record<string, string>;
+  }>(),
+
+  /** Separate from isRead — user explicitly dismissed */
+  isDismissed: boolean("isDismissed").default(false).notNull(),
+
+  /** Auto-cleanup after this timestamp */
+  expiresAt: timestamp("expiresAt", { withTimezone: true }),
+
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index("user_notifications_user_read").on(t.userId, t.isRead, t.createdAt),
   index("user_notifications_user_priority").on(t.userId, t.isRead, t.priority),
+  index("user_notifications_resource").on(t.relatedResourceType, t.relatedResourceId),
 ]);
 
 export type UserNotification = typeof userNotifications.$inferSelect;
@@ -4975,6 +5020,17 @@ export const personaTemplates = pgTable("persona_templates", {
   description: text("description"),
   assistantNickname: text("assistantNickname"),
   assistantGender: text("assistantGender").default("neutral"),
+  workingHours: jsonb("workingHours").$type<{
+    timezone: string;
+    days: Partial<Record<
+      "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday",
+      { startTime: string; endTime: string }
+    >>;
+  } | {
+    startTime: string;
+    endTime: string;
+    timezone: string;
+  }>(),
   sourceTemplateIds: text("sourceTemplateIds").array().default(sql`'{}'`).notNull(),
   sourceTemplateLabels: text("sourceTemplateLabels").array().default(sql`'{}'`).notNull(),
   sourceTemplateCategories: text("sourceTemplateCategories").array().default(sql`'{}'`).notNull(),
@@ -4985,12 +5041,15 @@ export const personaTemplates = pgTable("persona_templates", {
   restrictions: text("restrictions").array().default(sql`'{}'`),
   scope: text("scope").notNull(),
   isDefault: boolean("isDefault").default(false),
+  provisionedByBlueprintId: varchar("provisionedByBlueprintId", { length: 120 }),
+  provisionedByBlueprintMemberId: varchar("provisionedByBlueprintMemberId", { length: 120 }),
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index("persona_templates_tenant_scope_idx").on(t.tenantId, t.scope),
   index("persona_templates_user_idx").on(t.userId),
   index("persona_templates_source_template_ids_idx").using("gin", t.sourceTemplateIds),
+  index("persona_templates_blueprint_origin_idx").on(t.provisionedByBlueprintId, t.provisionedByBlueprintMemberId),
   check("persona_templates_assistant_gender_check", sql`"assistantGender" IN ('female','male','neutral') OR "assistantGender" IS NULL`),
   check("persona_templates_tone_check", sql`"tone" IN ('formal','casual','friendly','technical','creative') OR "tone" IS NULL`),
   check("persona_templates_scope_check", sql`"scope" IN ('platform','tenant','user')`),
@@ -5847,6 +5906,18 @@ export const assistantTeams = pgTable("assistant_teams", {
 export type AssistantTeam = typeof assistantTeams.$inferSelect;
 export type InsertAssistantTeam = typeof assistantTeams.$inferInsert;
 
+export const teamMemberKindEnum = pgEnum("team_member_kind", [
+  "assistant", "human", "external_connector",
+]);
+
+export const teamMemberRoleEnum = pgEnum("team_member_role", [
+  "orchestrator",
+  "researcher",
+  "reviewer",
+  "publisher",
+  "specialist",
+]);
+
 /**
  * assistant_profiles — per-member assistant identity.
  * Wraps one agency_agent + one persona_template, providing orchestration persona.
@@ -5858,11 +5929,16 @@ export const assistantProfiles = pgTable("assistant_profiles", {
   id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
   tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
   teamId: varchar("teamId", { length: 36 }).notNull().references(() => assistantTeams.id, { onDelete: "cascade" }),
-  agencyAgentId: varchar("agencyAgentId", { length: 36 }).notNull().references(() => agencyAgents.id, { onDelete: "cascade" }),
+  memberKind: teamMemberKindEnum("memberKind").notNull().default("assistant"),
+  agencyAgentId: varchar("agencyAgentId", { length: 36 }).references(() => agencyAgents.id, { onDelete: "cascade" }),
   personaId: varchar("personaId", { length: 36 }).references(() => personaTemplates.id, { onDelete: "set null" }),
+  humanUserId: integer("humanUserId").references(() => users.id, { onDelete: "set null" }),
+  externalRef: varchar("externalRef", { length: 255 }),
+  externalConfigJson: jsonb("externalConfigJson"),
   displayName: varchar("displayName", { length: 255 }),
   nickname: varchar("nickname", { length: 100 }),
   roleTitle: varchar("roleTitle", { length: 100 }),
+  memberRole: teamMemberRoleEnum("memberRole").default("specialist").notNull(),
   genderStyle: varchar("genderStyle", { length: 20 }),
   specialtyTags: text("specialtyTags").array(),
   preferredModelId: varchar("preferredModelId", { length: 100 }),
@@ -5881,6 +5957,9 @@ export const assistantProfiles = pgTable("assistant_profiles", {
   index("assistant_profiles_team_idx").on(t.teamId),
   index("assistant_profiles_agent_idx").on(t.agencyAgentId),
   index("assistant_profiles_persona_idx").on(t.personaId),
+  index("assistant_profiles_member_kind_idx").on(t.teamId, t.memberKind),
+  index("assistant_profiles_member_role_idx").on(t.teamId, t.memberRole),
+  index("assistant_profiles_human_user_idx").on(t.humanUserId),
 ]);
 
 export type AssistantProfile = typeof assistantProfiles.$inferSelect;
@@ -6070,6 +6149,19 @@ export const teamRunStatusEnum = pgEnum("team_run_status", [
 export const teamRunExecutionModeEnum = pgEnum("team_run_execution_mode", [
   "team_chat", "auto_team", "review",
 ]);
+export const workItemStatusEnum = pgEnum("work_item_status", [
+  "planned", "in_progress", "in_review", "needs_revision", "awaiting_approval",
+  "completed", "failed", "blocked", "cancelled", "superseded",
+]);
+export const workItemPriorityEnum = pgEnum("work_item_priority", [
+  "low", "normal", "high", "urgent",
+]);
+export const workItemRiskClassEnum = pgEnum("work_item_risk_class", [
+  "low", "medium", "high", "critical",
+]);
+export const workItemApprovalStateEnum = pgEnum("work_item_approval_state", [
+  "not_required", "pending", "approved", "rejected",
+]);
 export const agentEventCategoryEnum = pgEnum("agent_event_category", [
   "status_change", "communication", "tool_use", "memory_op",
   "artifact_op", "handoff", "approval", "error",
@@ -6120,6 +6212,7 @@ export const teamRoomParticipants = pgTable("team_room_participants", {
   roleInRoom: varchar("roleInRoom", { length: 100 }),
   isMuted: boolean("isMuted").default(false).notNull(),
   canWriteSharedMemory: boolean("canWriteSharedMemory").default(true).notNull(),
+  lastViewedAt: timestamp("lastViewedAt", { withTimezone: true }),
   joinedAt: timestamp("joinedAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index("team_room_participants_room_idx").on(t.roomId),
@@ -6209,6 +6302,74 @@ export const teamRuns = pgTable("team_runs", {
 
 export type TeamRun = typeof teamRuns.$inferSelect;
 export type InsertTeamRun = typeof teamRuns.$inferInsert;
+
+/**
+ * team_work_items — durable work objects for orchestrated routines and revisions.
+ */
+export const teamWorkItems = pgTable("team_work_items", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  teamId: varchar("teamId", { length: 36 }).notNull().references(() => assistantTeams.id, { onDelete: "cascade" }),
+  roomId: varchar("roomId", { length: 36 }).notNull().references(() => teamRooms.id, { onDelete: "cascade" }),
+  runId: varchar("runId", { length: 36 }).references(() => teamRuns.id, { onDelete: "set null" }),
+  routineId: varchar("routineId", { length: 36 }),
+  sourceType: varchar("sourceType", { length: 50 }).notNull().default("manual"),
+  sourceRef: varchar("sourceRef", { length: 255 }),
+  title: varchar("title", { length: 500 }).notNull(),
+  objective: text("objective"),
+  status: workItemStatusEnum("status").notNull().default("planned"),
+  revisionVersion: integer("revisionVersion").notNull().default(1),
+  threadRootMessageId: varchar("threadRootMessageId", { length: 36 }),
+  activeDraftArtifactId: varchar("activeDraftArtifactId", { length: 36 }),
+  priority: workItemPriorityEnum("priority").notNull().default("normal"),
+  riskClass: workItemRiskClassEnum("riskClass").notNull().default("medium"),
+  assignedMemberId: varchar("assignedMemberId", { length: 36 }).references(() => assistantProfiles.id, { onDelete: "set null" }),
+  reviewerMemberId: varchar("reviewerMemberId", { length: 36 }).references(() => assistantProfiles.id, { onDelete: "set null" }),
+  approverMemberId: varchar("approverMemberId", { length: 36 }).references(() => assistantProfiles.id, { onDelete: "set null" }),
+  lockOwnerMemberId: varchar("lockOwnerMemberId", { length: 36 }).references(() => assistantProfiles.id, { onDelete: "set null" }),
+  lockExpiresAt: timestamp("lockExpiresAt", { withTimezone: true }),
+  parentWorkItemId: varchar("parentWorkItemId", { length: 36 }),
+  supersededByWorkItemId: varchar("supersededByWorkItemId", { length: 36 }),
+  artifactRefsJson: jsonb("artifactRefsJson"),
+  approvalState: workItemApprovalStateEnum("approvalState").notNull().default("pending"),
+  carryOverReason: text("carryOverReason"),
+  dueAt: timestamp("dueAt", { withTimezone: true }),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("team_work_items_team_status_idx").on(t.teamId, t.status, t.updatedAt),
+  index("team_work_items_room_created_idx").on(t.roomId, t.createdAt),
+  index("team_work_items_parent_idx").on(t.parentWorkItemId),
+  index("team_work_items_assigned_status_idx").on(t.assignedMemberId, t.status),
+]);
+
+export type TeamWorkItem = typeof teamWorkItems.$inferSelect;
+export type InsertTeamWorkItem = typeof teamWorkItems.$inferInsert;
+
+/**
+ * work_item_events — immutable audit trail for revisions, review, approval, and locking.
+ */
+export const workItemEvents = pgTable("work_item_events", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  workItemId: varchar("workItemId", { length: 36 }).notNull().references(() => teamWorkItems.id, { onDelete: "cascade" }),
+  roomId: varchar("roomId", { length: 36 }).notNull().references(() => teamRooms.id, { onDelete: "cascade" }),
+  runId: varchar("runId", { length: 36 }).references(() => teamRuns.id, { onDelete: "set null" }),
+  actorAssistantId: varchar("actorAssistantId", { length: 36 }).references(() => assistantProfiles.id, { onDelete: "set null" }),
+  actorUserId: integer("actorUserId").references(() => users.id, { onDelete: "set null" }),
+  eventType: varchar("eventType", { length: 50 }).notNull(),
+  fromStatus: workItemStatusEnum("fromStatus"),
+  toStatus: workItemStatusEnum("toStatus"),
+  revisionVersion: integer("revisionVersion"),
+  detailJson: jsonb("detailJson"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("work_item_events_work_item_created_idx").on(t.workItemId, t.createdAt),
+  index("work_item_events_room_created_idx").on(t.roomId, t.createdAt),
+]);
+
+export type WorkItemEvent = typeof workItemEvents.$inferSelect;
+export type InsertWorkItemEvent = typeof workItemEvents.$inferInsert;
 
 /**
  * agent_activity_events — append-only event log for monitoring.
@@ -6507,6 +6668,12 @@ export const automationHandoffs = pgTable("automation_handoffs", {
   assistantId: varchar("assistantId", { length: 36 }).notNull(),
   destinationType: varchar("destinationType", { length: 50 }).notNull(),
   destinationId: varchar("destinationId", { length: 100 }),
+  idempotencyKey: varchar("idempotencyKey", { length: 64 }).notNull().default(sql`gen_random_uuid()::text`),
+  dispatchTokenHash: varchar("dispatchTokenHash", { length: 64 }),
+  callbackNonce: varchar("callbackNonce", { length: 64 }),
+  callbackDeadlineAt: timestamp("callbackDeadlineAt", { withTimezone: true }),
+  attemptCount: integer("attemptCount").notNull().default(0),
+  lastAttemptAt: timestamp("lastAttemptAt", { withTimezone: true }),
   status: handoffStatusEnum("status").notNull().default("pending"),
   approvalState: handoffApprovalStateEnum("approvalState").notNull().default("pending"),
   requestPayloadJson: jsonb("requestPayloadJson"),
@@ -6518,6 +6685,7 @@ export const automationHandoffs = pgTable("automation_handoffs", {
 }, (t) => [
   index("automation_handoffs_run_idx").on(t.runId),
   index("automation_handoffs_team_idx").on(t.teamId),
+  uniqueIndex("automation_handoffs_run_idempotency_idx").on(t.runId, t.idempotencyKey),
 ]);
 
 export type AutomationHandoff = typeof automationHandoffs.$inferSelect;
@@ -6580,6 +6748,8 @@ export const inviteCodes = pgTable("invite_codes", {
   label: varchar("label", { length: 128 }),
   /** Code type: admin-created or user-referral */
   type: inviteCodeTypeEnum("type").notNull(),
+  /** Tenant this code belongs to (null = legacy/global) */
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }),
   /** User who owns/created this code */
   ownerId: integer("ownerId").notNull().references(() => users.id, { onDelete: "cascade" }),
   /** Bonus credits given to the new user who registers with this code */
@@ -6601,6 +6771,7 @@ export const inviteCodes = pgTable("invite_codes", {
 }, (t) => [
   index("invite_codes_owner_idx").on(t.ownerId),
   index("invite_codes_type_active_idx").on(t.type, t.isActive),
+  index("invite_codes_tenant_idx").on(t.tenantId),
 ]);
 
 export type InviteCode = typeof inviteCodes.$inferSelect;
@@ -6621,6 +6792,7 @@ export const inviteCodeUsage = pgTable("invite_code_usage", {
 }, (t) => [
   index("invite_code_usage_code_idx").on(t.inviteCodeId),
   index("invite_code_usage_user_idx").on(t.registeredUserId),
+  uniqueIndex("invite_code_usage_code_user_unique").on(t.inviteCodeId, t.registeredUserId),
 ]);
 
 /**

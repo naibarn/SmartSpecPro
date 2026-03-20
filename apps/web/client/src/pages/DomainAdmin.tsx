@@ -25,6 +25,8 @@ import {
   FileText,
   PenLine,
 } from "lucide-react";
+import InviteCodeManager from "@/components/admin/InviteCodeManager";
+import InviteCodeDashboard from "@/components/admin/InviteCodeDashboard";
 
 interface UserData {
   id: number;
@@ -339,6 +341,16 @@ export default function DomainAdmin() {
               </div>
             </>
           )}
+        </div>
+
+        {/* Invite Code Statistics */}
+        <div className="mt-8 bg-white rounded-xl p-6 shadow-sm border">
+          <InviteCodeDashboard />
+        </div>
+
+        {/* Invite Code Management */}
+        <div className="mt-6 bg-white rounded-xl p-6 shadow-sm border">
+          <InviteCodeManager />
         </div>
       </div>
     </div>

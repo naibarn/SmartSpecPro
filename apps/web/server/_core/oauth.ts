@@ -4,6 +4,13 @@ import * as db from "../db";
 import { giveSignupBonus } from "../services/creditService";
 import { analyzeEmail } from "../services/emailAnalysis";
 import { ENABLE_FUNNEL_TRACKING, trackSignupCompleted } from "../services/funnelMilestones";
+import {
+  checkRegistrationAllowed,
+  checkDeviceFraudLimit,
+  processInviteCodeUsage,
+  giveInviteCodeBonuses,
+  getAuthMethodsConfig,
+} from "../services/inviteCodeService";
 import { registrationLimiter } from "../services/rateLimiter";
 import { evaluateRegistration, logRegistrationEvent, recordDeviceFingerprint } from "../services/trustScoring";
 import { getSessionCookieOptions } from "./cookies";
@@ -58,6 +65,45 @@ export function registerOAuthRoutes(app: Express) {
       const existingUser = await db.getUserByOpenId(userInfo.openId);
       const isNewUser = !existingUser;
 
+      // Shared request info (hoisted to avoid duplicate declarations)
+      const hostname = req.hostname || req.get("host")?.split(":")[0] || "localhost";
+      const ipAddress = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "unknown";
+      const fingerprintHash = req.cookies?.["__fp"] || undefined;
+
+      // For new users: check auth methods and invite code
+      let inviteCodeId: number | undefined;
+      if (isNewUser) {
+        // Check if this OAuth provider is allowed
+        const provider = userInfo.loginMethod ?? userInfo.platform ?? "oauth";
+        const authMethods = await getAuthMethodsConfig();
+        if (provider === "google" && !authMethods.google) {
+          res.redirect(302, "/?error=google_auth_disabled");
+          return;
+        }
+        if (provider === "github" && !authMethods.github) {
+          res.redirect(302, "/?error=github_auth_disabled");
+          return;
+        }
+
+        // Check invite code from cookie (set by frontend before OAuth redirect)
+        const inviteCodeValue = req.cookies?.["invite_code"];
+        const tenantId = (req as any).tenantId || (req as any).tenant?.id || null;
+        const regCheck = await checkRegistrationAllowed(inviteCodeValue, tenantId);
+        if (!regCheck.allowed) {
+          res.clearCookie("invite_code", { path: "/", secure: true, sameSite: "lax" });
+          res.redirect(302, `/?error=registration_not_allowed`);
+          return;
+        }
+        inviteCodeId = regCheck.codeId;
+
+        // Check device fraud limit
+        const fraudCheck = await checkDeviceFraudLimit(fingerprintHash, ipAddress);
+        if (!fraudCheck.allowed) {
+          res.redirect(302, "/?error=device_limit_reached");
+          return;
+        }
+      }
+
       // Check if this is the first user in the system (will become admin)
       let isFirstUser = false;
       if (isNewUser) {
@@ -67,11 +113,6 @@ export function registerOAuthRoutes(app: Express) {
           console.log(`[OAuth] First user detected! Will grant admin privileges.`);
         }
       }
-
-      // Get hostname for registeredDomain
-      const hostname = req.hostname || req.get("host")?.split(":")[0] || "localhost";
-      const ipAddress = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "unknown";
-      const fingerprintHash = req.cookies?.["__fp"] || undefined;
 
       // Email analysis for normalized email
       const emailAnalysis = userInfo.email ? analyzeEmail(userInfo.email) : null;
@@ -149,6 +190,19 @@ export function registerOAuthRoutes(app: Express) {
             console.log(`[OAuth] Withheld signup bonus for user ${newUser.id} (trust score: ${trustScore})`);
           }
 
+          // Process invite code if provided
+          if (inviteCodeId) {
+            try {
+              const usageResult = await processInviteCodeUsage(inviteCodeId, newUser.id);
+              if (usageResult.success) {
+                await giveInviteCodeBonuses(inviteCodeId, newUser.id);
+                console.log(`[OAuth] Processed invite code ${inviteCodeId} for user ${newUser.id}`);
+              }
+            } catch (err) {
+              console.error(`[OAuth] Failed to process invite code:`, err);
+            }
+          }
+
           // Track signup milestone (non-blocking, behind feature flag)
           if (ENABLE_FUNNEL_TRACKING) {
             trackSignupCompleted({
@@ -165,6 +219,9 @@ export function registerOAuthRoutes(app: Express) {
           }
         }
       }
+
+      // Clear invite code cookie regardless
+      res.clearCookie("invite_code", { path: "/", secure: true, sameSite: "lax" });
 
       const sessionToken = await sdk.createSessionToken(userInfo.openId, {
         name: userInfo.name || "",

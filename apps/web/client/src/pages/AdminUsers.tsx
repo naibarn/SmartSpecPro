@@ -40,6 +40,7 @@ interface UserData {
   loginMethod: string | null;
   registeredDomain: string | null;
   isDisabled: boolean;
+  disabledReason?: string | null;
   createdAt: Date;
   lastSignedIn: Date;
 }
@@ -139,6 +140,15 @@ export default function AdminUsers() {
     onError: (err) => {
       toast.error(`Failed to update user: ${err.message}`);
     },
+  });
+
+  const reactivateUserMutation = trpc.inviteCode.reactivateUser.useMutation({
+    onSuccess: () => {
+      toast.success("User reactivated");
+      refetchUsers();
+      refetchSelectedUser();
+    },
+    onError: (err) => toast.error(`Failed to reactivate: ${err.message}`),
   });
 
   // Redirect if not admin
@@ -351,6 +361,11 @@ export default function AdminUsers() {
                                   Domain Admin
                                 </span>
                               )}
+                              {u.isDisabled && (
+                                <span className="ml-2 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                                  Disabled{(u as UserData).disabledReason ? ` (${(u as UserData).disabledReason})` : ""}
+                                </span>
+                              )}
                             </p>
                             <div className="flex items-center gap-2 text-sm text-gray-500">
                               <span>{u.email || u.openId}</span>
@@ -467,6 +482,26 @@ export default function AdminUsers() {
                         </button>
                       </div>
                     </div>
+                    {selectedUserData.user.isDisabled && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-500">Status</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                            Disabled{(selectedUserData.user as UserData).disabledReason ? ` (${(selectedUserData.user as UserData).disabledReason})` : ""}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 text-xs"
+                            disabled={reactivateUserMutation.isPending}
+                            onClick={() => reactivateUserMutation.mutate({ userId: selectedUserData.user.id })}
+                          >
+                            <RefreshCw className="w-3 h-3 mr-1" />
+                            Reactivate
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-gray-500">Plan</span>
                       <span className="font-medium capitalize">{selectedUserData.user.plan}</span>

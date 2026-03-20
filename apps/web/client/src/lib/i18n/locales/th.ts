@@ -957,6 +957,20 @@ const th: TranslationDictionary = {
   "editor.save.saved": "บันทึกแล้ว",
   "editor.save.unsaved": "มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก",
   "editor.save.conflict": "พบข้อขัดแย้ง",
+  "editor.slash.heading1": "หัวข้อ 1",
+  "editor.slash.heading2": "หัวข้อ 2",
+  "editor.slash.heading3": "หัวข้อ 3",
+  "editor.slash.heading4": "หัวข้อ 4",
+  "editor.slash.bulletList": "รายการ",
+  "editor.slash.orderedList": "รายการลำดับ",
+  "editor.slash.quote": "อ้างอิง",
+  "editor.slash.codeBlock": "โค้ด",
+  "editor.slash.divider": "เส้นคั่น",
+  "editor.slash.image": "รูปภาพ",
+  "editor.slash.video": "วิดีโอ",
+  "editor.slash.audio": "เสียง",
+  "editor.slash.table": "ตาราง",
+  "editor.slash.noResults": "ไม่พบรายการ",
 };
 
 export default th;

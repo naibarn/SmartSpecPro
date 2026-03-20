@@ -96,6 +96,31 @@ function createAdminBearerToken(userId: number): string {
   );
 }
 
+async function fetchPythonAdminJson<T>(params: {
+  path: string;
+  userId: number;
+  method?: "GET" | "POST";
+  body?: unknown;
+}): Promise<T> {
+  const token = createAdminBearerToken(params.userId);
+  const response = await fetch(`${PYTHON_BACKEND_URL}${params.path}`, {
+    method: params.method ?? "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    signal: AbortSignal.timeout(PY_TIMEOUT_MS),
+    body: params.body === undefined ? undefined : JSON.stringify(params.body),
+  });
+
+  if (!response.ok) {
+    const detail = await readPythonErrorDetail(response);
+    throw new Error(detail || `python_admin_request_failed:${response.status}`);
+  }
+
+  return await response.json() as T;
+}
+
 async function assertVectorDbConfigEditAllowedOrThrow(params: {
   userId: number;
   tenantId?: string | null;
@@ -188,6 +213,50 @@ async function resolveTenantAutomationPolicyTenantId(params: {
     });
   }
   return ownTenant.id;
+}
+
+async function upsertSystemSetting(params: {
+  category: string;
+  key: string;
+  value: string;
+  sensitive: boolean;
+  userId?: number;
+  description?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const storedValue = params.sensitive ? encrypt(params.value) : params.value;
+  const existing = await db
+    .select()
+    .from(systemSettings)
+    .where(and(
+      eq(systemSettings.category, params.category as any),
+      eq(systemSettings.key, params.key),
+    ))
+    .limit(1);
+
+  if (existing.length > 0) {
+    await db
+      .update(systemSettings)
+      .set({
+        value: storedValue,
+        isSensitive: params.sensitive,
+        description: params.description ?? existing[0].description,
+        updatedBy: params.userId,
+        updatedAt: new Date(),
+      })
+      .where(eq(systemSettings.id, existing[0].id));
+  } else {
+    await db.insert(systemSettings).values({
+      category: params.category,
+      key: params.key,
+      value: storedValue,
+      isSensitive: params.sensitive,
+      description: params.description,
+      updatedBy: params.userId,
+    });
+  }
 }
 
 export const systemSettingsRouter = router({
@@ -586,6 +655,10 @@ export const systemSettingsRouter = router({
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
+      const storedValue = input.isSensitive && input.value !== undefined
+        ? encrypt(input.value)
+        : input.value;
+
       const existing = await db
         .select()
         .from(systemSettings)
@@ -599,7 +672,7 @@ export const systemSettingsRouter = router({
         await db
           .update(systemSettings)
           .set({
-            value: input.value,
+            value: storedValue,
             valueJson: input.valueJson,
             isSensitive: input.isSensitive ?? existing[0].isSensitive,
             description: input.description ?? existing[0].description,
@@ -611,7 +684,7 @@ export const systemSettingsRouter = router({
         await db.insert(systemSettings).values({
           category: input.category,
           key: input.key,
-          value: input.value,
+          value: storedValue,
           valueJson: input.valueJson,
           isSensitive: input.isSensitive ?? false,
           description: input.description,
@@ -621,6 +694,108 @@ export const systemSettingsRouter = router({
 
       return { success: true };
     }),
+
+  getGoogleAiSettings: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+
+    const settings = await db
+      .select()
+      .from(systemSettings)
+      .where(eq(systemSettings.category, "multimodal_embedding" as any));
+
+    let configured = false;
+    let source: "db" | "none" = "none";
+
+    for (const setting of settings) {
+      if ((setting.key === "google_api_key" || setting.key === "gemini_api_key") && setting.value) {
+        configured = true;
+        source = "db";
+        break;
+      }
+    }
+
+    return {
+      apiKeyConfigured: configured,
+      source,
+    };
+  }),
+
+  updateGoogleAiSettings: adminProcedure
+    .input(z.object({
+      apiKey: z.string().min(1).max(512).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      if (!input.apiKey?.trim()) {
+        return { success: true, preservedExisting: true };
+      }
+
+      await upsertSystemSetting({
+        category: "multimodal_embedding",
+        key: "google_api_key",
+        value: input.apiKey.trim(),
+        sensitive: true,
+        userId: ctx.user?.id,
+        description: "Google AI Studio API key for OCR and real-world vision enrichment",
+      });
+
+      return { success: true, preservedExisting: false };
+    }),
+
+  testGoogleAiConnection: adminProcedure.mutation(async () => {
+    const db = await getDb();
+    if (!db) return { success: false, message: "Database not available" };
+
+    const settings = await db
+      .select()
+      .from(systemSettings)
+      .where(eq(systemSettings.category, "multimodal_embedding" as any));
+
+    let encryptedKey = "";
+    for (const setting of settings) {
+      if ((setting.key === "google_api_key" || setting.key === "gemini_api_key") && setting.value) {
+        encryptedKey = setting.value;
+        break;
+      }
+    }
+
+    const apiKey = encryptedKey ? decrypt(encryptedKey) : "";
+    if (!apiKey) {
+      return {
+        success: false,
+        message: "Google AI API key is not configured in Admin Settings",
+      };
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10_000);
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`,
+          { signal: controller.signal },
+        );
+        if (!response.ok) {
+          if (response.status === 400 || response.status === 401 || response.status === 403) {
+            return { success: false, message: "Google AI API key is invalid or does not have access to Gemini APIs" };
+          }
+          return { success: false, message: `Google AI endpoint error (${response.status})` };
+        }
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      return {
+        success: true,
+        message: "Google AI API key is configured and Gemini endpoints are reachable",
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: `Cannot reach Google AI endpoints: ${error.message}`,
+      };
+    }
+  }),
 
   // ============================================================
   // User-level API Keys (Context7, etc.)
@@ -965,9 +1140,19 @@ export const systemSettingsRouter = router({
   // Registration Settings
   // ============================================================
 
-  getRegistrationSettings: adminProcedure.query(async () => {
+  getRegistrationSettings: domainAdminProcedure.query(async () => {
     const db = await getDb();
-    if (!db) return { signupBonusCredits: 100, firstUserBonusCredits: 10000, autoAssignTenant: true };
+    if (!db) return {
+      signupBonusCredits: 100,
+      firstUserBonusCredits: 10000,
+      autoAssignTenant: true,
+      registrationMode: "open" as const,
+      userInviteEnabled: false,
+      userReferralBonusCredits: 50,
+      allowedAuthMethods: ["email", "google", "github"] as string[],
+      inviteInactiveDaysLimit: 0,
+      maxRegistrationsPerDevice: 2,
+    };
 
     const settings = await db.select().from(systemSettings)
       .where(eq(systemSettings.category, "registration"));
@@ -977,18 +1162,37 @@ export const systemSettingsRouter = router({
       result[s.key] = s.value;
     }
 
+    let allowedAuthMethods: string[] = ["email", "google", "github"];
+    try {
+      if (result.allowed_auth_methods) {
+        allowedAuthMethods = JSON.parse(result.allowed_auth_methods);
+      }
+    } catch { /* use default */ }
+
     return {
       signupBonusCredits: parseInt(result.signup_bonus_credits || "100", 10),
       firstUserBonusCredits: parseInt(result.first_user_bonus_credits || "10000", 10),
       autoAssignTenant: result.auto_assign_tenant !== "false",
+      registrationMode: (result.registration_mode === "invite_only" ? "invite_only" : "open") as "open" | "invite_only",
+      userInviteEnabled: result.user_invite_enabled === "true",
+      userReferralBonusCredits: parseInt(result.user_referral_bonus_credits || "50", 10),
+      allowedAuthMethods,
+      inviteInactiveDaysLimit: parseInt(result.invite_inactive_days_limit || "0", 10),
+      maxRegistrationsPerDevice: parseInt(result.max_registrations_per_device || "2", 10),
     };
   }),
 
-  updateRegistrationSettings: adminProcedure
+  updateRegistrationSettings: domainAdminProcedure
     .input(z.object({
       signupBonusCredits: z.number().min(0).max(1000000),
       firstUserBonusCredits: z.number().min(0).max(1000000),
       autoAssignTenant: z.boolean(),
+      registrationMode: z.enum(["open", "invite_only"]).optional(),
+      userInviteEnabled: z.boolean().optional(),
+      userReferralBonusCredits: z.number().min(0).max(1000000).optional(),
+      allowedAuthMethods: z.array(z.enum(["email", "google", "github"])).min(1).optional(),
+      inviteInactiveDaysLimit: z.number().min(0).max(365).optional(),
+      maxRegistrationsPerDevice: z.number().min(0).max(100).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
@@ -999,6 +1203,26 @@ export const systemSettingsRouter = router({
         { key: "first_user_bonus_credits", value: String(input.firstUserBonusCredits) },
         { key: "auto_assign_tenant", value: String(input.autoAssignTenant) },
       ];
+
+      // Add new invite/registration settings
+      if (input.registrationMode !== undefined) {
+        pairs.push({ key: "registration_mode", value: input.registrationMode });
+      }
+      if (input.userInviteEnabled !== undefined) {
+        pairs.push({ key: "user_invite_enabled", value: String(input.userInviteEnabled) });
+      }
+      if (input.userReferralBonusCredits !== undefined) {
+        pairs.push({ key: "user_referral_bonus_credits", value: String(input.userReferralBonusCredits) });
+      }
+      if (input.allowedAuthMethods !== undefined) {
+        pairs.push({ key: "allowed_auth_methods", value: JSON.stringify(input.allowedAuthMethods) });
+      }
+      if (input.inviteInactiveDaysLimit !== undefined) {
+        pairs.push({ key: "invite_inactive_days_limit", value: String(input.inviteInactiveDaysLimit) });
+      }
+      if (input.maxRegistrationsPerDevice !== undefined) {
+        pairs.push({ key: "max_registrations_per_device", value: String(input.maxRegistrationsPerDevice) });
+      }
 
       for (const { key, value } of pairs) {
         const [existing] = await db.select().from(systemSettings)
@@ -1746,16 +1970,40 @@ export const systemSettingsRouter = router({
         try {
           const result = await pool.query(`
             SELECT
-              COUNT(*) as total_documents,
-              COUNT(DISTINCT doc_type) as unique_types
-            FROM vector_documents
+              COUNT(*)::bigint AS total_vectors,
+              COUNT(DISTINCT library_item_id)::bigint AS indexed_items
+            FROM library_chunk_vectors
+          `);
+          const activeItems = await pool.query(`
+            SELECT COUNT(*)::bigint AS active_items
+            FROM library_items
+            WHERE deleted_at IS NULL
+          `);
+          const dimensions = await pool.query(`
+            SELECT a.atttypmod AS embedding_dimensions
+            FROM pg_attribute a
+            JOIN pg_class c ON a.attrelid = c.oid
+            JOIN pg_namespace n ON c.relnamespace = n.oid
+            WHERE n.nspname = 'public'
+              AND c.relname = 'library_chunk_vectors'
+              AND a.attname = 'embedding'
+          `);
+          const rls = await pool.query(`
+            SELECT relrowsecurity, relforcerowsecurity
+            FROM pg_class
+            WHERE oid = to_regclass('public.library_chunk_vectors')
           `);
           await pool.end();
 
           return {
             provider: "pgvector",
-            totalDocuments: parseInt(result.rows[0]?.total_documents || "0", 10),
-            uniqueTypes: parseInt(result.rows[0]?.unique_types || "0", 10),
+            totalDocuments: parseInt(result.rows[0]?.indexed_items || "0", 10),
+            totalVectors: parseInt(result.rows[0]?.total_vectors || "0", 10),
+            indexedItems: parseInt(result.rows[0]?.indexed_items || "0", 10),
+            activeItems: parseInt(activeItems.rows[0]?.active_items || "0", 10),
+            dimensions: parseInt(dimensions.rows[0]?.embedding_dimensions || "0", 10) || undefined,
+            rlsEnabled: Boolean(rls.rows[0]?.relrowsecurity),
+            forceRls: Boolean(rls.rows[0]?.relforcerowsecurity),
             storageType: "PostgreSQL with pgvector extension",
           };
         } catch (error: any) {
@@ -1814,21 +2062,75 @@ export const systemSettingsRouter = router({
     }
   }),
 
+  getVectorDbHealth: adminProcedure.query(async ({ ctx }) => {
+    try {
+      return await fetchPythonAdminJson<{
+        tenant_id: string | null;
+        provider_status: {
+          current_read_provider: string;
+          target_provider: string | null;
+          switch_status: string;
+          mirror_writes: boolean;
+        };
+        queue_status: {
+          lag_minutes: number;
+          lag_threshold_minutes: number;
+          lag_window_minutes: number;
+        };
+        campaign_progress: {
+          campaign_id: number | null;
+          status: string;
+          domain: string;
+          queued: number;
+          processed: number;
+          succeeded: number;
+          failed: number;
+          skipped: number;
+        };
+        latency_status: {
+          current_p95_ms: number;
+          baseline_p95_ms: number;
+          current_sample_count: number;
+          baseline_sample_count: number;
+          insufficient_baseline: boolean;
+        };
+        connection_health: {
+          healthy: boolean;
+          status: string;
+          message: string;
+          checked_at: string;
+        };
+        provider_capabilities: Record<string, unknown>;
+        recent_failures: Array<{
+          job_id: number;
+          tenant_id: string | null;
+          library_item_id: number;
+          error: string;
+          failed_at: string | null;
+        }>;
+        timestamp: string;
+      }>({
+        path: "/api/admin/vectordb/health",
+        userId: ctx.user.id,
+      });
+    } catch (error: any) {
+      return {
+        error: error.message || "Failed to fetch vector DB health",
+      };
+    }
+  }),
+
   /**
    * Trigger full reindex of all library items
    */
-  triggerReindex: adminProcedure.mutation(async () => {
-    const PY = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+  triggerReindex: adminProcedure.mutation(async ({ ctx }) => {
     try {
-      const res = await fetch(`${PY}/api/admin/vectordb/reindex`, {
+      return await fetchPythonAdminJson<{ task_id: string; status: string; message: string }>({
+        path: "/api/admin/vectordb/reindex",
+        userId: ctx.user.id,
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        body: {},
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: res.statusText }));
-        return { status: "error", message: (err as any).detail || res.statusText };
-      }
-      return await res.json() as { task_id: string; status: string; message: string };
     } catch (error: any) {
       return { status: "error", message: error.message || "Failed to trigger reindex" };
     }
@@ -1837,14 +2139,12 @@ export const systemSettingsRouter = router({
   /**
    * Get reindex job status
    */
-  getReindexStatus: adminProcedure.query(async () => {
-    const PY = process.env.PYTHON_BACKEND_URL || "http://localhost:8000";
+  getReindexStatus: adminProcedure.query(async ({ ctx }) => {
     try {
-      const res = await fetch(`${PY}/api/admin/vectordb/reindex/status`);
-      if (!res.ok) {
-        return { status: "error", task_id: null, result: null };
-      }
-      return await res.json() as { status: string; task_id: string | null; result: any };
+      return await fetchPythonAdminJson<{ status: string; task_id: string | null; result: any }>({
+        path: "/api/admin/vectordb/reindex/status",
+        userId: ctx.user.id,
+      });
     } catch (error: any) {
       return { status: "error", task_id: null, result: null };
     }
