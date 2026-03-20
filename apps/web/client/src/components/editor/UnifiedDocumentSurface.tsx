@@ -1,0 +1,245 @@
+import { useState, useRef, useCallback, useEffect } from "react";
+import type { Editor } from "@tiptap/core";
+import { parse, serialize } from "./TiptapMarkdownBridge";
+import TiptapEditor from "./TiptapEditor";
+import SourceModePanel from "./SourceModePanel";
+import type {
+  EditorMode,
+  SaveStatus,
+  JSONContent,
+  UnifiedDocumentSurfaceProps,
+} from "./types";
+
+const AUTO_SAVE_DELAY = 2000;
+
+export default function UnifiedDocumentSurface({
+  initialContent,
+  updatedAt,
+  onContentChange,
+  onSave,
+  onEnterEditMode,
+  isSaving,
+  errorMessage,
+}: UnifiedDocumentSurfaceProps) {
+  const [mode, setMode] = useState<EditorMode>("view");
+  const [tiptapContent, setTiptapContent] = useState<JSONContent>(() =>
+    parse(initialContent),
+  );
+  const [sourceMarkdown, setSourceMarkdown] = useState(initialContent);
+  const [dirty, setDirty] = useState(false);
+
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const editorRef = useRef<Editor | null>(null);
+  const lastResetKeyRef = useRef(updatedAt);
+  const latestMarkdownRef = useRef(initialContent);
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+
+  // Reset content on version restore (updatedAt change)
+  useEffect(() => {
+    if (updatedAt !== lastResetKeyRef.current) {
+      const parsed = parse(initialContent);
+      setTiptapContent(parsed);
+      // Push new document into live Tiptap instance (it ignores content prop after mount)
+      editorRef.current?.commands.setContent(parsed);
+      setSourceMarkdown(initialContent);
+      latestMarkdownRef.current = initialContent;
+      setDirty(false);
+      lastResetKeyRef.current = updatedAt;
+    }
+  }, [updatedAt, initialContent]);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  const saveStatus: SaveStatus = isSaving
+    ? "saving"
+    : errorMessage
+      ? "error"
+      : dirty
+        ? "dirty"
+        : "clean";
+
+  // NOTE: onSave is fire-and-forget — caller must set errorMessage on failure (S10)
+  const doSave = useCallback(
+    (md: string) => {
+      onSave?.(md);
+      setDirty(false);
+    },
+    [onSave],
+  );
+
+  const scheduleSave = useCallback(
+    (md: string) => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        doSave(md);
+      }, AUTO_SAVE_DELAY);
+    },
+    [doSave],
+  );
+
+  const handleTiptapUpdate = useCallback(
+    (editor: Editor) => {
+      if (modeRef.current === "view") return;
+      editorRef.current = editor;
+      const md = (
+        editor.storage as Record<string, any>
+      ).markdown.getMarkdown() as string;
+      latestMarkdownRef.current = md;
+      setDirty(true);
+      onContentChange?.(md);
+      scheduleSave(md);
+    },
+    [onContentChange, scheduleSave],
+  );
+
+  const handleSourceChange = useCallback(
+    (value: string) => {
+      setSourceMarkdown(value);
+      latestMarkdownRef.current = value;
+      setDirty(true);
+      onContentChange?.(value);
+      scheduleSave(value);
+    },
+    [onContentChange, scheduleSave],
+  );
+
+  const immediateSave = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    doSave(latestMarkdownRef.current);
+  }, [doSave]);
+
+  const switchMode = useCallback(
+    (newMode: EditorMode) => {
+      if (newMode === mode) return;
+
+      // Edit -> Source: serialize current content
+      if (mode === "edit" && newMode === "source") {
+        if (editorRef.current) {
+          const md = (
+            editorRef.current.storage as Record<string, any>
+          ).markdown.getMarkdown() as string;
+          setSourceMarkdown(md);
+          latestMarkdownRef.current = md;
+        }
+      }
+
+      // Source -> Edit: re-parse markdown
+      if (mode === "source" && newMode === "edit") {
+        const parsed = parse(sourceMarkdown);
+        setTiptapContent(parsed);
+      }
+
+      // Switching to View triggers save if dirty
+      if (newMode === "view" && dirty) {
+        immediateSave();
+      }
+
+      if (newMode === "edit") {
+        onEnterEditMode?.();
+      }
+
+      setMode(newMode);
+    },
+    [mode, dirty, sourceMarkdown, immediateSave, onEnterEditMode],
+  );
+
+  const handleDoubleClick = useCallback(() => {
+    if (mode === "view") {
+      switchMode("edit");
+    }
+  }, [mode, switchMode]);
+
+  // Ctrl+S / Cmd+S and Escape
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        immediateSave();
+      }
+      if (e.key === "Escape" && mode !== "view") {
+        switchMode("view");
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [immediateSave, mode, switchMode]);
+
+  return (
+    <div className="unified-document-surface flex flex-col h-full">
+      {/* Minimal mode switcher — EditorToolbar replaces this in Section 04 */}
+      <div className="flex items-center gap-2 p-2 border-b border-border">
+        <button
+          type="button"
+          className={`px-2 py-1 text-sm rounded ${mode === "view" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+          onClick={() => switchMode("view")}
+          data-testid="mode-view"
+        >
+          View
+        </button>
+        <button
+          type="button"
+          className={`px-2 py-1 text-sm rounded ${mode === "edit" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+          onClick={() => switchMode("edit")}
+          data-testid="mode-edit"
+        >
+          Edit
+        </button>
+        <button
+          type="button"
+          className={`px-2 py-1 text-sm rounded ${mode === "source" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+          onClick={() => switchMode("source")}
+          data-testid="mode-source"
+        >
+          Source
+        </button>
+        <span className="ml-auto text-xs text-muted-foreground" data-testid="save-status">
+          {saveStatus === "saving"
+            ? "Saving..."
+            : saveStatus === "dirty"
+              ? "Unsaved changes"
+              : saveStatus === "error"
+                ? "Error"
+                : saveStatus === "clean"
+                  ? "Saved"
+                  : ""}
+        </span>
+      </div>
+
+      {errorMessage && (
+        <div
+          className="bg-destructive/10 text-destructive px-4 py-2 text-sm"
+          data-testid="error-banner"
+        >
+          {errorMessage}
+        </div>
+      )}
+
+      <div
+        className="flex-1 overflow-auto"
+        style={{ display: mode === "source" ? "none" : undefined }}
+        onDoubleClick={handleDoubleClick}
+      >
+        <TiptapEditor
+          content={tiptapContent}
+          editable={mode === "edit"}
+          onUpdate={handleTiptapUpdate}
+        />
+      </div>
+
+      <SourceModePanel
+        value={sourceMarkdown}
+        onChange={handleSourceChange}
+        visible={mode === "source"}
+      />
+    </div>
+  );
+}
+
+export { UnifiedDocumentSurface };
+export type { UnifiedDocumentSurfaceProps };
