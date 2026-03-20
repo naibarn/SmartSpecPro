@@ -1,10 +1,12 @@
 import { Node, mergeAttributes } from "@tiptap/core";
+import { ReactNodeViewRenderer } from "@tiptap/react";
 import {
   sanitizeMediaSrc,
   buildDataAttrs,
   parseDataAttr,
   escapeAttr,
 } from "./mediaSerializationRules";
+import AudioNodeView from "../nodeviews/AudioNodeView";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -67,6 +69,10 @@ export const AudioExtension = Node.create({
       "audio",
       mergeAttributes(rest, dataAttrs, controls ? { controls: "" } : {}),
     ];
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(AudioNodeView);
   },
 
   addCommands() {

@@ -1,11 +1,13 @@
 import { Image } from "@tiptap/extension-image";
 import { mergeAttributes } from "@tiptap/core";
+import { ReactNodeViewRenderer } from "@tiptap/react";
 import {
   sanitizeMediaSrc,
   buildDataAttrs,
   parseDataAttr,
   escapeAttr,
 } from "./mediaSerializationRules";
+import ImageNodeView from "../nodeviews/ImageNodeView";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -104,6 +106,10 @@ export const ImageExtension = Image.extend({
       "img",
       mergeAttributes(rest, dataAttrs),
     ];
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(ImageNodeView);
   },
 
   addCommands() {

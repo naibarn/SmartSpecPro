@@ -1,10 +1,12 @@
 import { Node, mergeAttributes } from "@tiptap/core";
+import { ReactNodeViewRenderer } from "@tiptap/react";
 import {
   sanitizeMediaSrc,
   buildDataAttrs,
   parseDataAttr,
   escapeAttr,
 } from "./mediaSerializationRules";
+import VideoNodeView from "../nodeviews/VideoNodeView";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -88,6 +90,10 @@ export const VideoExtension = Node.create({
       "video",
       mergeAttributes(rest, dataAttrs, controls ? { controls: "" } : {}),
     ];
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(VideoNodeView);
   },
 
   addCommands() {
