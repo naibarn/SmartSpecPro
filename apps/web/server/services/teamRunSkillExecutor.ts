@@ -25,7 +25,7 @@ export interface TeamRunSkillExecutionInput {
   teamId: string;
   objective: string;
   route: {
-    route: "chat" | "skill";
+    route: "chat" | "skill" | "agency";
     reason: string;
     selectedSkillId?: string;
   };
@@ -44,9 +44,9 @@ export interface TeamRunSkillExecutionResult {
 const GENERAL_FALLBACK_SKILL_ID = "general-article-writer";
 
 function parseNextSpeakerHint(content: string): { cleaned: string; hint?: string } {
-  const match = content.match(/\s*\[NEXT:\s*([^\]]+)\]\s*$/i);
+  const match = content.match(/\[NEXT:\s*([^\]]+)\]/i);
   if (match) {
-    return { cleaned: content.slice(0, match.index).trimEnd(), hint: match[1].trim() };
+    return { cleaned: content.replace(match[0], "").trimEnd(), hint: match[1].trim() };
   }
   return { cleaned: content };
 }
@@ -91,6 +91,7 @@ export async function executeTeamRunSkillTurn(input: TeamRunSkillExecutionInput)
     roomId: input.roomId,
     teamId: input.teamId,
     objective: input.objective,
+    tenantId: input.tenantId,
   });
 
   const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [];
@@ -116,6 +117,15 @@ export async function executeTeamRunSkillTurn(input: TeamRunSkillExecutionInput)
     throw new Error(fallback.error || `Skill execution failed for ${skill.id}`);
   }
 
+  const rawContent = fallback.content ?? "";
+  const { cleaned, hint: nextSpeakerHint } = parseNextSpeakerHint(rawContent);
+
+  const costCredits = await calculateCreditsForLLMDynamic(
+    fallback.inputTokens ?? 0,
+    fallback.outputTokens ?? 0,
+    fallback.modelId ?? executionPolicy.modelId ?? "unknown",
+  );
+
   if (plannerResult) {
     recordStepAttempt({
       taskRunId: plannerResult.taskRunId,
@@ -125,18 +135,9 @@ export async function executeTeamRunSkillTurn(input: TeamRunSkillExecutionInput)
       inputTokens: fallback.inputTokens ?? 0,
       outputTokens: fallback.outputTokens ?? 0,
       snapshot: plannerResult.snapshot,
-      creditsUsed: 0,
+      creditsUsed: costCredits,
     }).catch(() => {});
   }
-
-  const rawContent = fallback.content ?? "";
-  const { cleaned, hint: nextSpeakerHint } = parseNextSpeakerHint(rawContent);
-
-  const costCredits = await calculateCreditsForLLMDynamic(
-    fallback.inputTokens ?? 0,
-    fallback.outputTokens ?? 0,
-    fallback.modelId ?? executionPolicy.modelId ?? "unknown",
-  );
 
   return {
     content: cleaned,

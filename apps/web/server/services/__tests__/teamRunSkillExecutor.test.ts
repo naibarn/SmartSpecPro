@@ -244,4 +244,16 @@ describe("executeTeamRunSkillTurn — no Python dependency", () => {
     const source = fs.readFileSync(sourceFile, "utf-8");
     expect(source).not.toContain("formatPromptMessagesForAgent");
   });
+
+  it("should not contain isLlmStyleSkill", () => {
+    const sourceFile = path.resolve(__dirname, "../teamRunSkillExecutor.ts");
+    const source = fs.readFileSync(sourceFile, "utf-8");
+    expect(source).not.toContain("isLlmStyleSkill");
+  });
+
+  it("should not contain isTeamRunEligibleSkill", () => {
+    const sourceFile = path.resolve(__dirname, "../teamRunSkillExecutor.ts");
+    const source = fs.readFileSync(sourceFile, "utf-8");
+    expect(source).not.toContain("isTeamRunEligibleSkill");
+  });
 });
