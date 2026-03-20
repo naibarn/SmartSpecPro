@@ -14,7 +14,13 @@ import {
   users,
 } from "../../drizzle/schema";
 import { getRedisClient } from "./redis";
-import { logger } from "../_core/logger";
+import { debugLog } from "../_core/logger";
+
+// Shim structured logger to use debugLog
+const logger = {
+  info: (msg: string, data?: any) => debugLog("notification", msg, data),
+  error: (msg: string, data?: any) => debugLog("notification", `ERROR: ${msg}`, data),
+};
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -150,24 +156,26 @@ export async function getUnifiedNotifications(
           .offset(offset),
   ]);
 
+  // Track per-source overflow for hasMore detection
+  const userHasMore = userRows.length > limit;
+  const orchHasMore = orchRows.length > limit;
+
+  // Trim to limit before mapping
+  const trimmedUserRows = userRows.slice(0, limit);
+  const trimmedOrchRows = orchRows.slice(0, limit);
+
   // Map to unified format
   const mapped = [
-    ...userRows.map(mapUserNotification),
-    ...orchRows.map(mapOrchestratorNotification),
+    ...trimmedUserRows.map(mapUserNotification),
+    ...trimmedOrchRows.map(mapOrchestratorNotification),
   ];
 
-  // Filter guardian source if specifically requested
-  const filtered =
-    filters.source === "guardian"
-      ? mapped.filter((n) => n.source === "guardian")
-      : mapped;
-
   // Sort by createdAt DESC
-  filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  mapped.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
-  // N+1 pattern: detect hasMore
-  const hasMore = filtered.length > limit;
-  const items = filtered.slice(0, limit);
+  // hasMore: true if either source has more items
+  const hasMore = userHasMore || orchHasMore;
+  const items = mapped.slice(0, limit);
 
   const durationMs = Date.now() - startTime;
   try {
@@ -187,11 +195,19 @@ export async function getUnifiedNotifications(
 function buildUserConditions(tenantId: string, filters: UnifiedNotificationFilters) {
   const conditions: any[] = [
     // Tenant isolation: only users from current tenant
+    // tenants.id is varchar, users.currentTenantId is integer FK → cast for safe join
     inArray(
       userNotifications.userId,
-      sql`(SELECT id FROM users WHERE "currentTenantId" = (SELECT id FROM tenants WHERE id = ${tenantId} LIMIT 1))`,
+      sql`(SELECT id FROM users WHERE "currentTenantId" = (SELECT id FROM tenants WHERE id = ${tenantId} LIMIT 1)::integer)`,
     ),
   ];
+
+  // Push guardian source filter to SQL to avoid full table scan + in-memory discard
+  if (filters.source === "guardian") {
+    conditions.push(
+      sql`${userNotifications.metadata}->>'source' LIKE 'guardian.%'`,
+    );
+  }
 
   if (filters.severity) {
     conditions.push(eq(userNotifications.priority, filters.severity as any));
@@ -241,7 +257,7 @@ export async function getUnifiedStats(tenantId: string): Promise<UnifiedStats> {
 
   const tenantUserFilter = sql`"userId" IN (SELECT id FROM users WHERE "currentTenantId" = (SELECT id FROM tenants WHERE id = ${tenantId} LIMIT 1))`;
 
-  const [userStats, orchStats] = await Promise.all([
+  const [userStats, orchStats, userSeverity, orchSeverity] = await Promise.all([
     db
       .select({
         total: count(),
@@ -260,10 +276,39 @@ export async function getUnifiedStats(tenantId: string): Promise<UnifiedStats> {
       })
       .from(orchestratorNotifications)
       .where(eq(orchestratorNotifications.tenantId, tenantId)),
+    // Severity distribution for user notifications
+    db
+      .select({
+        severity: userNotifications.priority,
+        count: count(),
+      })
+      .from(userNotifications)
+      .where(tenantUserFilter)
+      .groupBy(userNotifications.priority),
+    // Severity distribution for orchestrator notifications (mapped)
+    db
+      .select({
+        severity: orchestratorNotifications.severity,
+        count: count(),
+      })
+      .from(orchestratorNotifications)
+      .where(eq(orchestratorNotifications.tenantId, tenantId))
+      .groupBy(orchestratorNotifications.severity),
   ]);
 
   const uStats = userStats[0] ?? { total: 0, unread: 0, critical: 0, today: 0 };
   const oStats = orchStats[0] ?? { total: 0, unread: 0, critical: 0, today: 0 };
+
+  // Merge severity distributions (map orch severities to unified)
+  const sevMap = new Map<string, number>();
+  for (const row of userSeverity) {
+    const sev = row.severity ?? "normal";
+    sevMap.set(sev, (sevMap.get(sev) ?? 0) + Number(row.count));
+  }
+  for (const row of orchSeverity) {
+    const mapped = ORCH_SEVERITY_MAP[row.severity ?? "info"] ?? "normal";
+    sevMap.set(mapped, (sevMap.get(mapped) ?? 0) + Number(row.count));
+  }
 
   return {
     total: Number(uStats.total) + Number(oStats.total),
@@ -274,7 +319,10 @@ export async function getUnifiedStats(tenantId: string): Promise<UnifiedStats> {
       { source: "user", count: Number(uStats.total) },
       { source: "orchestrator", count: Number(oStats.total) },
     ],
-    bySeverity: [], // Simplified — full severity distribution deferred
+    bySeverity: Array.from(sevMap.entries()).map(([severity, count]) => ({
+      severity,
+      count,
+    })),
   };
 }
 
