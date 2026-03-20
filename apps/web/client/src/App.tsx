@@ -58,6 +58,7 @@ const AdminSettings = lazy(() => import("./pages/AdminSettings"));
 const AdminQueueDashboard = lazy(() => import("./pages/AdminQueueDashboard"));
 const AdminQueueLLM = lazy(() => import("./pages/AdminQueueLLM"));
 const AdminQueueMedia = lazy(() => import("./pages/AdminQueueMedia"));
+const AdminAlertRules = lazy(() => import("./pages/AdminAlertRules"));
 const AdminAuditLogs = lazy(() => import("./pages/AdminAuditLogs"));
 const AdminOrchestrationLogs = lazy(() => import("./pages/AdminOrchestrationLogs"));
 const AdminAPIKeys = lazy(() => import("./pages/AdminAPIKeys"));
@@ -252,6 +253,9 @@ function Router() {
         </Route>
         <Route path="/admin/queues/media">
           <RequireAdmin><AdminQueueMedia /></RequireAdmin>
+        </Route>
+        <Route path="/admin/alert-rules">
+          <RequireAdmin><AdminAlertRules /></RequireAdmin>
         </Route>
         <Route path="/admin/audit-logs">
           <RequireAdmin><AdminAuditLogs /></RequireAdmin>

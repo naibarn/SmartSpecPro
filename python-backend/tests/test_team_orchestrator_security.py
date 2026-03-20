@@ -3,17 +3,18 @@ Security and unit tests for team orchestrator modules.
 
 Covers:
 - F01: _verify_proxy_token rejects missing/invalid tokens
-- F02: router is registered in main.py
-- F03: memory_embedding uses text() wrapper for SQL
+- F02: router is registered in main.py (generate-summary endpoint)
 - F04/F05: summary_generator keeps user content out of system prompt
-- F06: team_orchestrator returns generic error, not str(e)
 - F07: GenerateSummaryBody rejects bare dicts / oversized lists
+
+Note: execute-turn endpoint and TeamOrchestratorService were removed
+in spec-051 section-04. Tests for those have been removed.
 """
 
 from __future__ import annotations
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 
 # ---------------------------------------------------------------------------
@@ -39,6 +40,7 @@ class TestVerifyProxyToken:
     @pytest.mark.asyncio
     async def test_wrong_token_raises_401(self):
         from fastapi import HTTPException
+        from unittest.mock import patch
 
         from app.api.team_orchestrator_api import _verify_proxy_token
         from app.core.config import settings
@@ -51,6 +53,8 @@ class TestVerifyProxyToken:
 
     @pytest.mark.asyncio
     async def test_correct_token_passes(self):
+        from unittest.mock import patch
+
         from app.api.team_orchestrator_api import _verify_proxy_token
         from app.core.config import settings
 
@@ -62,6 +66,7 @@ class TestVerifyProxyToken:
     @pytest.mark.asyncio
     async def test_unconfigured_token_raises_500(self):
         from fastapi import HTTPException
+        from unittest.mock import patch
 
         from app.api.team_orchestrator_api import _verify_proxy_token
         from app.core.config import settings
@@ -84,105 +89,23 @@ class TestRouterRegistration:
 
         route_paths = [r.path for r in app.routes]
         team_routes = [p for p in route_paths if "team-orchestrator" in p]
-        assert len(team_routes) >= 2, (
-            f"Expected at least 2 team-orchestrator routes, got: {team_routes}"
+        assert len(team_routes) >= 1, (
+            f"Expected at least 1 team-orchestrator route, got: {team_routes}"
         )
 
-    def test_execute_turn_route_exists(self):
+    def test_execute_turn_route_removed(self):
         from app.main import app
 
         paths = [r.path for r in app.routes]
-        assert "/api/team-orchestrator/execute-turn" in paths
+        assert "/api/team-orchestrator/execute-turn" not in paths, (
+            "execute-turn route should have been removed"
+        )
 
     def test_generate_summary_route_exists(self):
         from app.main import app
 
         paths = [r.path for r in app.routes]
         assert "/api/team-orchestrator/generate-summary" in paths
-
-
-# ---------------------------------------------------------------------------
-# F03 — memory_embedding uses text() for SQL, not a bare string
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.unit
-class TestMemoryEmbeddingSQL:
-    def test_sql_uses_text_wrapper(self):
-        """The SQL in embed_memory must be wrapped with sqlalchemy.text()."""
-        import inspect
-
-        import app.services.memory_embedding as mod
-
-        src = inspect.getsource(mod.MemoryEmbeddingService.embed_memory)
-        # Must import and call text()
-        assert "text(" in src, "embed_memory must wrap SQL with text()"
-        # Must not contain a bare string passed directly to execute
-        assert 'execute(\n                    "UPDATE' not in src, (
-            "Bare SQL string found — must use text() wrapper"
-        )
-
-    @pytest.mark.asyncio
-    async def test_embed_memory_calls_text(self):
-        """embed_memory calls session.execute with a text() object."""
-        from unittest.mock import AsyncMock, MagicMock, patch
-
-        from sqlalchemy import TextClause
-
-        from app.services.memory_embedding import MemoryEmbeddingService
-
-        mock_session = AsyncMock()
-        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-        mock_session.__aexit__ = AsyncMock(return_value=False)
-
-        captured_args = []
-
-        async def fake_execute(stmt, params):
-            captured_args.append(stmt)
-
-        mock_session.execute = fake_execute
-
-        svc = MemoryEmbeddingService()
-        svc.embedding_client = AsyncMock()
-        svc.embedding_client.embed = AsyncMock(return_value=[0.1, 0.2, 0.3])
-
-        with patch("app.services.memory_embedding.get_session", return_value=mock_session):
-            await svc.embed_memory("mem-1", "some content", "title")
-
-        assert len(captured_args) == 1
-        assert isinstance(captured_args[0], TextClause), (
-            f"Expected TextClause, got {type(captured_args[0])}"
-        )
-
-    @pytest.mark.asyncio
-    async def test_embed_memory_returns_false_on_empty_embedding(self):
-        from app.services.memory_embedding import MemoryEmbeddingService
-
-        svc = MemoryEmbeddingService()
-        svc.embedding_client = AsyncMock()
-        svc.embedding_client.embed = AsyncMock(return_value=[])
-
-        result = await svc.embed_memory("mem-1", "content")
-        assert result is False
-
-    @pytest.mark.asyncio
-    async def test_embed_memory_returns_false_on_db_error(self):
-        from unittest.mock import patch
-
-        from app.services.memory_embedding import MemoryEmbeddingService
-
-        mock_session = AsyncMock()
-        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
-        mock_session.__aexit__ = AsyncMock(return_value=False)
-        mock_session.execute = AsyncMock(side_effect=Exception("db error"))
-
-        svc = MemoryEmbeddingService()
-        svc.embedding_client = AsyncMock()
-        svc.embedding_client.embed = AsyncMock(return_value=[0.1, 0.2])
-
-        with patch("app.services.memory_embedding.get_session", return_value=mock_session):
-            result = await svc.embed_memory("mem-1", "content")
-        assert result is False
 
 
 # ---------------------------------------------------------------------------
@@ -233,8 +156,6 @@ class TestSummaryGeneratorPromptInjection:
 
         result = svc._build_messages(msgs, "system_generated", "should be ignored")
 
-        # When method is system_generated, persona message should NOT be added
-        # (only transcript user message + system message)
         user_msgs_with_persona = [
             m
             for m in result
@@ -272,65 +193,6 @@ class TestSummaryGeneratorPromptInjection:
         llm_messages = captured[0]["messages"]
         roles = [m["role"] for m in llm_messages]
         assert "system" in roles
-
-
-# ---------------------------------------------------------------------------
-# F06 — team_orchestrator returns generic error message on exception
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.unit
-class TestTeamOrchestratorErrorLeak:
-    """LLM errors must not leak str(e) to the caller."""
-
-    @pytest.mark.asyncio
-    async def test_error_returns_generic_message(self):
-        from app.services.team_orchestrator import ExecuteTurnRequest, TeamOrchestratorService
-
-        secret_detail = "connection refused: db://secret-host:5432/prod"
-
-        async def fake_chat(**kwargs):
-            raise RuntimeError(secret_detail)
-
-        svc = TeamOrchestratorService()
-        svc.llm_client = MagicMock()
-        svc.llm_client.chat = fake_chat
-
-        response = await svc.execute_turn(
-            ExecuteTurnRequest(
-                run_id="r1",
-                assistant_id="a1",
-                prompt="hello",
-                tenant_id="t1",
-                user_id=1,
-            )
-        )
-
-        assert secret_detail not in response.content, (
-            "Exception detail leaked into response content"
-        )
-        assert secret_detail not in str(response.metadata), (
-            "Exception detail leaked into response metadata"
-        )
-        assert "unavailable" in response.content.lower()
-
-    @pytest.mark.asyncio
-    async def test_error_metadata_is_generic(self):
-        from app.services.team_orchestrator import ExecuteTurnRequest, TeamOrchestratorService
-
-        async def fake_chat(**kwargs):
-            raise ValueError("internal DB password=supersecret")
-
-        svc = TeamOrchestratorService()
-        svc.llm_client = MagicMock()
-        svc.llm_client.chat = fake_chat
-
-        response = await svc.execute_turn(
-            ExecuteTurnRequest(run_id="r2", assistant_id="a2", prompt="hi", tenant_id="t1", user_id=2)
-        )
-
-        assert "supersecret" not in str(response.metadata)
-        assert response.metadata.get("error") == "Agent turn unavailable"
 
 
 # ---------------------------------------------------------------------------

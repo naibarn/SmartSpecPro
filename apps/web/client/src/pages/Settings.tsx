@@ -64,8 +64,9 @@ import { UserLlmKeysPanel } from '@/components/settings/UserLlmKeysPanel';
 import { BudgetPanel } from '@/components/settings/BudgetPanel';
 import { PersonasPanel } from '@/components/settings/PersonasPanel';
 import { UserAutomationPreferencesPanel } from '@/components/settings/UserAutomationPreferencesPanel';
+import { NotificationPreferencesPanel } from '@/components/settings/NotificationPreferencesPanel';
 
-type SettingsTab = 'profile' | 'account' | 'security' | 'preferences' | 'automation' | 'api' | 'billing' | 'integrations' | 'personas';
+type SettingsTab = 'profile' | 'account' | 'security' | 'preferences' | 'notifications' | 'automation' | 'api' | 'billing' | 'integrations' | 'personas';
 
 type TwoFAStep = 'idle' | 'setup' | 'verify' | 'done' | 'disable' | 'regen';
 
@@ -568,6 +569,7 @@ export default function Settings() {
     { id: 'account', label: 'Account', icon: Mail },
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'preferences', label: 'Preferences', icon: Palette },
+    { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'automation', label: 'Automation', icon: Bot },
     { id: 'api', label: 'API Keys', icon: Key },
     { id: 'billing', label: 'Billing', icon: CreditCard },
@@ -1517,6 +1519,9 @@ export default function Settings() {
                   <OneDrivePanel />
                 </div>
               )}
+
+              {/* Notifications Tab */}
+              {activeTab === 'notifications' && <NotificationPreferencesPanel />}
 
               {/* Personas Tab */}
               {activeTab === 'personas' && <PersonasPanel />}

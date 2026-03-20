@@ -831,7 +831,7 @@ async function loadRunWithTenantCheck(
     .from(teamRooms)
     .where(and(eq(teamRooms.id, run.roomId), eq(teamRooms.tenantId, tenantId)))
     .limit(1);
-  if (!room) return null;
+  if (!room) { console.error(`[loadRunCheck] tenant mismatch: run=${runId}, roomId=${run.roomId}, resolvedTenant=${tenantId}`); return null; }
   return run;
 }
 
@@ -960,8 +960,8 @@ export async function runNextTurn(runId: string, tenantId?: string): Promise<Run
         runtimeMetadata: turnResponse.metadata ?? {},
       },
       tokenUsageJson: {
-        inputTokens: turnResponse.tokenUsage.inputTokens,
-        outputTokens: turnResponse.tokenUsage.outputTokens,
+        inputTokens: turnResponse.inputTokens,
+        outputTokens: turnResponse.outputTokens,
         model: assistantContext.profile.preferredModelId ?? assistantContext.agentModel ?? undefined,
       },
     });
@@ -979,8 +979,8 @@ export async function runNextTurn(runId: string, tenantId?: string): Promise<Run
       (run.budgetSnapshotJson as BudgetSnapshot) ?? initBudgetSnapshot(),
       assistantId,
       {
-        inputTokens: turnResponse.tokenUsage.inputTokens,
-        outputTokens: turnResponse.tokenUsage.outputTokens,
+        inputTokens: turnResponse.inputTokens,
+        outputTokens: turnResponse.outputTokens,
         costCredits: turnResponse.costCredits,
       },
     );
@@ -1009,7 +1009,7 @@ export async function runNextTurn(runId: string, tenantId?: string): Promise<Run
         nextSpeakerReason: nextSpeaker.reason,
         metadata: turnResponse.metadata ?? {},
       },
-      tokenUsageSnapshot: turnResponse.tokenUsage.inputTokens + turnResponse.tokenUsage.outputTokens,
+      tokenUsageSnapshot: turnResponse.inputTokens + turnResponse.outputTokens,
       costSnapshot: turnResponse.costCredits,
     });
 
@@ -1044,7 +1044,7 @@ export async function runNextTurn(runId: string, tenantId?: string): Promise<Run
       nextAssistantId: nextSpeaker.nextAssistantId,
       nextSpeakerReason: nextSpeaker.reason,
       content,
-      tokenUsage: turnResponse.tokenUsage,
+      tokenUsage: { inputTokens: turnResponse.inputTokens, outputTokens: turnResponse.outputTokens },
       costCredits: turnResponse.costCredits,
       nextSpeakerHint: turnResponse.nextSpeakerHint,
       messageId: message.id,
@@ -1195,10 +1195,8 @@ export async function stopRun(
   const stopPolicy = run.stopPolicyJson as StopPolicy | null;
   if (stopPolicy?.requireFinalSummary) {
     try {
-      const bridge = await import("./teamOrchestrationBridge");
-      if ("generateSummary" in bridge && typeof bridge.generateSummary === "function") {
-        (bridge.generateSummary as Function)(run.roomId, runId).catch(() => {});
-      }
+      const { generateSummary } = await import("./summaryService");
+      generateSummary({ runId, tenantId: tenantId ?? run.tenantId }).catch(() => {});
     } catch {
       // Summary generation is best-effort
     }
@@ -1251,7 +1249,13 @@ export async function checkAndAutoStop(runId: string): Promise<StopEvaluation> {
   });
 
   if (evaluation.shouldStop) {
-    await stopRun(runId, evaluation.reason ?? "auto_stop_policy");
+    // Resolve tenantId from the room (checkAndAutoStop runs outside request context)
+    const [room] = await db
+      .select({ tenantId: teamRooms.tenantId })
+      .from(teamRooms)
+      .where(eq(teamRooms.id, run.roomId))
+      .limit(1);
+    await stopRun(runId, evaluation.reason ?? "auto_stop_policy", room?.tenantId ?? undefined);
   }
 
   return evaluation;
