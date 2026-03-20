@@ -59,13 +59,15 @@ export async function isJtiRevoked(jti: string): Promise<boolean> {
   if (exp && exp <= nowMs()) mem.delete(jti);
 
   const r = await getRedis();
-  if (!r) return false;
+  if (!r) return false; // No Redis URL configured — single-instance mode, memory is authoritative
 
   try {
     const v = await r.get(`${PREFIX}${jti}`);
     return v === "1";
   } catch {
-    return false;
+    // Fail closed: if Redis is configured but unreachable, treat token as revoked
+    // to prevent revoked tokens from being accepted during Redis outages.
+    return true;
   }
 }
 

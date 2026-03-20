@@ -85,85 +85,72 @@ function TwoFactorSection() {
   const adminEnabled = statusQuery.data?.adminEnabled !== false;
   const enforced = statusQuery.data?.enforced || false;
 
-  const handleSetup = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch('/trpc/auth.setup2FA', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ json: {} }),
-        credentials: 'include',
-      });
-      const data = await res.json();
-      const result = data.result?.data?.json;
-      const err = data.error?.json?.message;
-      if (err) { toast.error(err); return; }
-      setSetupData(result);
+  const setup2FA = trpc.auth.setup2FA.useMutation({
+    onSuccess: (result) => {
+      setSetupData(result as { secret: string; uri: string; recoveryCodes: string[] });
       setStep('setup');
-    } catch { toast.error('Failed to start 2FA setup'); } finally { setIsLoading(false); }
-  };
+    },
+    onError: () => toast.error('Failed to start 2FA setup'),
+    onSettled: () => setIsLoading(false),
+  });
 
-  const handleConfirm = async () => {
-    if (code.length !== 6) { toast.error('Enter a 6-digit code'); return; }
-    setIsLoading(true);
-    try {
-      const res = await fetch('/trpc/auth.confirm2FA', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ json: { code } }),
-        credentials: 'include',
-      });
-      const data = await res.json();
-      const err = data.error?.json?.message;
-      if (err) { toast.error(err); return; }
+  const confirm2FA = trpc.auth.confirm2FA.useMutation({
+    onSuccess: () => {
       toast.success('2FA enabled successfully!');
       setStep('done');
       setShowCodes(true);
       statusQuery.refetch();
-    } catch { toast.error('Verification failed'); } finally { setIsLoading(false); }
-  };
+    },
+    onError: (err) => toast.error(err.message || 'Verification failed'),
+    onSettled: () => setIsLoading(false),
+  });
 
-  const handleDisable = async () => {
-    if (!disableCode) { toast.error('Enter your TOTP or recovery code'); return; }
-    setIsLoading(true);
-    try {
-      const res = await fetch('/trpc/auth.disable2FA', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ json: { code: disableCode } }),
-        credentials: 'include',
-      });
-      const data = await res.json();
-      const err = data.error?.json?.message;
-      if (err) { toast.error(err); return; }
+  const disable2FA = trpc.auth.disable2FA.useMutation({
+    onSuccess: () => {
       toast.success('2FA disabled');
       setStep('idle');
       setDisableCode('');
       setSetupData(null);
       statusQuery.refetch();
-    } catch { toast.error('Failed to disable 2FA'); } finally { setIsLoading(false); }
-  };
+    },
+    onError: (err) => toast.error(err.message || 'Failed to disable 2FA'),
+    onSettled: () => setIsLoading(false),
+  });
 
-  const handleRegen = async () => {
-    if (regenCode.length !== 6) { toast.error('Enter your current TOTP code'); return; }
-    setIsLoading(true);
-    try {
-      const res = await fetch('/trpc/auth.regenerateRecoveryCodes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ json: { code: regenCode } }),
-        credentials: 'include',
-      });
-      const data = await res.json();
-      const err = data.error?.json?.message;
-      if (err) { toast.error(err); return; }
-      setNewCodes(data.result?.data?.json?.recoveryCodes || []);
+  const regenCodes = trpc.auth.regenerateRecoveryCodes.useMutation({
+    onSuccess: (result) => {
+      setNewCodes((result as { recoveryCodes: string[] })?.recoveryCodes || []);
       setStep('done');
       setShowCodes(true);
       setRegenCode('');
       statusQuery.refetch();
       toast.success('New recovery codes generated');
-    } catch { toast.error('Failed to regenerate codes'); } finally { setIsLoading(false); }
+    },
+    onError: () => toast.error('Failed to regenerate codes'),
+    onSettled: () => setIsLoading(false),
+  });
+
+  const handleSetup = () => {
+    setIsLoading(true);
+    setup2FA.mutate();
+  };
+
+  const handleConfirm = () => {
+    if (code.length !== 6) { toast.error('Enter a 6-digit code'); return; }
+    setIsLoading(true);
+    confirm2FA.mutate({ code });
+  };
+
+  const handleDisable = () => {
+    if (!disableCode) { toast.error('Enter your TOTP or recovery code'); return; }
+    setIsLoading(true);
+    disable2FA.mutate({ code: disableCode });
+  };
+
+  const handleRegen = () => {
+    if (regenCode.length !== 6) { toast.error('Enter your current TOTP code'); return; }
+    setIsLoading(true);
+    regenCodes.mutate({ code: regenCode });
   };
 
   const copyToClipboard = (text: string) => {
