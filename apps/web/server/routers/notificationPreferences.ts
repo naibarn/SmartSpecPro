@@ -112,6 +112,14 @@ export const notificationPreferencesRouter = router({
         })
         .returning();
 
+      // Invalidate Redis preference cache
+      try {
+        const redis = getRedisClient();
+        await redis.del(`notification:prefs:${ctx.user.id}:${input.category}`);
+      } catch {
+        // Redis unavailable — preference will be re-read from DB
+      }
+
       return result;
     }),
 });

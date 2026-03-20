@@ -6,8 +6,8 @@
  */
 
 import type { DrizzleDB } from "../db";
-import { userNotifications, notificationOccurrences } from "../../drizzle/schema";
-import { sql } from "drizzle-orm";
+import { userNotifications, notificationOccurrences, notificationPreferences } from "../../drizzle/schema";
+import { sql, eq, and } from "drizzle-orm";
 
 /**
  * Sanitize actionUrl — only allow relative paths and https URLs.
@@ -50,6 +50,11 @@ function sanitizeMetadata(meta?: NotificationMetadata): NotificationMetadata | u
   if (sanitized.source) {
     sanitized.source = sanitized.source.slice(0, 200);
   }
+  // Strip escalation fields — only the escalation job (section-06) may set these
+  // by passing them after sanitization. Prevents untrusted callers from triggering bypass.
+  delete sanitized.isEscalated;
+  delete sanitized.escalatedAt;
+  delete sanitized.escalatedTo;
   return sanitized;
 }
 
@@ -83,7 +88,10 @@ type ResourceType =
   | "room"
   | "user"
   | "conversation"
-  | "scheduled_message";
+  | "scheduled_message"
+  | "system_health"
+  | "security"
+  | "incident";
 
 /**
  * Structured metadata attached to notifications
@@ -106,6 +114,9 @@ interface NotificationMetadata {
     nextRetryAt?: string;
   };
   relatedItems?: Record<string, string>;
+  isEscalated?: boolean;
+  escalatedAt?: string;
+  escalatedTo?: string;
 }
 
 /**
@@ -137,6 +148,121 @@ interface CreateNotificationParams {
 }
 
 /**
+ * Maps a notification's resource type and type to one of the 10 preference categories.
+ * Evaluated in order — first match wins. relatedResourceType takes priority over type.
+ */
+function mapToCategory(
+  relatedResourceType?: string,
+  type?: NotificationType
+): string {
+  if (relatedResourceType === "system_health") return "system_health";
+  if (relatedResourceType === "media_job") return "media_jobs";
+  if (relatedResourceType === "workflow") return "workflow";
+  if (relatedResourceType === "skill") return "skill";
+  if (relatedResourceType === "feedback") return "feedback";
+  if (relatedResourceType === "agency") return "agency";
+  if (relatedResourceType === "security") return "security";
+  if (type === "follow_request") return "follow";
+  if (type === "scheduled_message") return "scheduled";
+  return "business";
+}
+
+const SEVERITY_ORDER: Record<ReminderPriority, number> = {
+  low: 0,
+  normal: 1,
+  high: 2,
+  critical: 3,
+};
+
+function severityAtOrAbove(
+  actual: ReminderPriority,
+  threshold: ReminderPriority
+): boolean {
+  return SEVERITY_ORDER[actual] >= SEVERITY_ORDER[threshold];
+}
+
+interface UserPreference {
+  inApp: boolean;
+  email: boolean;
+  telegram: boolean;
+  minSeverity: ReminderPriority | null;
+  mutedUntil: Date | string | null;
+  emailDigestFrequency: string | null;
+}
+
+/**
+ * Load a user's notification preference for a category, with Redis caching.
+ * Returns null when no preference row exists (caller applies defaults).
+ */
+async function loadUserPreference(
+  db: DrizzleDB,
+  userId: number,
+  category: string
+): Promise<UserPreference | null> {
+  const cacheKey = `notification:prefs:${userId}:${category}`;
+
+  // 1. Try Redis cache
+  try {
+    const { getRedisClient } = await import("./redis");
+    const redis = getRedisClient();
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      console.log("[NotificationService] notification_preference_cache_hit", { userId, category });
+      return JSON.parse(cached) as UserPreference;
+    }
+  } catch {
+    // Redis unavailable — fall through to DB
+  }
+
+  console.log("[NotificationService] notification_preference_cache_miss", { userId, category });
+
+  // 2. Query DB
+  const rows = await db
+    .select()
+    .from(notificationPreferences)
+    .where(
+      and(
+        eq(notificationPreferences.userId, userId),
+        eq(notificationPreferences.category, category)
+      )
+    )
+    .limit(1);
+
+  if (rows.length === 0) return null;
+
+  const row = rows[0];
+  const pref: UserPreference = {
+    inApp: row.inApp,
+    email: row.email,
+    telegram: row.telegram,
+    minSeverity: row.minSeverity as ReminderPriority | null,
+    mutedUntil: row.mutedUntil,
+    emailDigestFrequency: row.emailDigestFrequency,
+  };
+
+  // 3. Store in Redis with 60s TTL
+  try {
+    const { getRedisClient } = await import("./redis");
+    const redis = getRedisClient();
+    await redis.set(cacheKey, JSON.stringify(pref), "EX", 60);
+  } catch {
+    // Non-fatal — next request will re-query DB
+  }
+
+  return pref;
+}
+
+function isPreferenceEnabled(): boolean {
+  return process.env.NOTIFICATION_PREFERENCES_ENABLED === "true";
+}
+
+interface ChannelFlags {
+  inApp: boolean;
+  email: boolean;
+  telegram: boolean;
+}
+
+/**
  * Centralized notification creator.
  *
  * Inserts a notification into the database and enqueues it for Telegram delivery
@@ -145,11 +271,11 @@ interface CreateNotificationParams {
  * Fire-and-forget pattern: Telegram enqueue failures are logged but don't fail
  * the notification creation.
  *
- * @returns Object containing the created notification ID
+ * @returns Object containing the created notification ID, or null if suppressed by preferences
  */
 async function createNotification(
   params: CreateNotificationParams
-): Promise<{ notificationId: number; deduplicated: boolean }> {
+): Promise<{ notificationId: number; deduplicated: boolean; channels?: ChannelFlags } | null> {
   const {
     db,
     userId,
@@ -167,6 +293,60 @@ async function createNotification(
     expiresAt,
     groupKey: rawGroupKey,
   } = params;
+
+  // --- Preference gate ---
+  // Read isEscalated from raw metadata BEFORE sanitization strips it.
+  // sanitizeMetadata removes isEscalated/escalatedAt/escalatedTo to prevent
+  // untrusted callers from triggering the bypass — only the escalation job
+  // (section-06) is allowed to set these fields.
+  const isEscalated = metadata?.isEscalated === true;
+  let channels: ChannelFlags = { inApp: true, email: false, telegram: false };
+
+  if (isEscalated) {
+    // Escalated notifications bypass all preference checks — deliver on all channels
+    channels = { inApp: true, email: true, telegram: true };
+    console.log("[NotificationService] notification_preference_check", {
+      userId,
+      category: mapToCategory(relatedResourceType, type),
+      result: "escalation_bypass",
+    });
+  } else if (isPreferenceEnabled()) {
+    const category = mapToCategory(relatedResourceType, type);
+    const pref = await loadUserPreference(db, userId, category);
+
+    if (pref) {
+      // Check mute window
+      if (pref.mutedUntil && new Date(pref.mutedUntil) > new Date()) {
+        console.log("[NotificationService] notification_preference_check", {
+          userId, category, result: "muted",
+        });
+        return null;
+      }
+      // Check minimum severity threshold
+      if (pref.minSeverity && !severityAtOrAbove(priority, pref.minSeverity)) {
+        console.log("[NotificationService] notification_preference_check", {
+          userId, category, result: "severity_filtered",
+        });
+        return null;
+      }
+      // Check in-app channel
+      if (!pref.inApp) {
+        console.log("[NotificationService] notification_preference_check", {
+          userId, category, result: "channel_disabled",
+        });
+        return null;
+      }
+      channels = { inApp: pref.inApp, email: pref.email, telegram: pref.telegram };
+      console.log("[NotificationService] notification_preference_check", {
+        userId, category, result: "delivered",
+      });
+    } else {
+      // No preference row — defaults apply: inApp=true, email=false, telegram=false
+      console.log("[NotificationService] notification_preference_check", {
+        userId, category, result: "default_delivered",
+      });
+    }
+  }
 
   // Truncate groupKey to 200 chars to match DB column constraint
   const groupKey = rawGroupKey?.substring(0, 200) || undefined;
@@ -278,19 +458,21 @@ async function createNotification(
     notificationId = result.id;
   }
 
-  // 2. Enqueue for Telegram delivery (fire-and-forget)
-  try {
-    const { enqueueTelegramNotification } = await import("./telegramService");
-    await enqueueTelegramNotification(db, userId, {
-      notificationId,
-      title,
-      content,
-      priority,
-      createdAt: new Date(),
-    });
-  } catch (err) {
-    // Log but don't throw - Telegram delivery is optional
-    console.error("[NotificationService] Telegram enqueue failed (non-fatal):", err);
+  // 2. Enqueue for Telegram delivery (only when channel is enabled)
+  if (channels.telegram) {
+    try {
+      const { enqueueTelegramNotification } = await import("./telegramService");
+      await enqueueTelegramNotification(db, userId, {
+        notificationId,
+        title,
+        content,
+        priority,
+        createdAt: new Date(),
+      });
+    } catch (err) {
+      // Log but don't throw - Telegram delivery is optional
+      console.error("[NotificationService] Telegram enqueue failed (non-fatal):", err);
+    }
   }
 
   // 3. Publish to Redis for real-time SSE (fire-and-forget)
@@ -320,8 +502,8 @@ async function createNotification(
     // Non-fatal — SSE listeners just won't get real-time updates
   }
 
-  return { notificationId, deduplicated };
+  return { notificationId, deduplicated, channels };
 }
 
-export { createNotification };
-export type { CreateNotificationParams, NotificationType, ReminderPriority, ResourceType, NotificationMetadata };
+export { createNotification, mapToCategory };
+export type { CreateNotificationParams, NotificationType, ReminderPriority, ResourceType, NotificationMetadata, ChannelFlags };
