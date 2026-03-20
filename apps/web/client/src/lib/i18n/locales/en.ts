@@ -1003,7 +1003,6 @@ const en: TranslationDictionary = {
   "editor.save.error": "Save failed",
   "editor.conflict.title": "Document Conflict",
   "editor.conflict.description": "This document has been modified elsewhere (another tab or user). Choose how to proceed:",
-  "editor.conflict.message": "This document has been modified in another tab or by another user. Your unsaved changes may conflict with the latest version.",
   "editor.conflict.overwrite": "Overwrite",
   "editor.conflict.overwriteHint": "Save your version, discarding the other changes",
   "editor.conflict.reload": "Reload",

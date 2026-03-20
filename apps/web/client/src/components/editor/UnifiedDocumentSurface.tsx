@@ -18,9 +18,13 @@ export default function UnifiedDocumentSurface({
   updatedAt,
   onContentChange,
   onSave,
+  onSaveForce,
+  onReloadContent,
   onEnterEditMode,
   isSaving,
   errorMessage,
+  hasConflict = false,
+  documentTitle,
 }: UnifiedDocumentSurfaceProps) {
   const [mode, setMode] = useState<EditorMode>("view");
   const [tiptapContent, setTiptapContent] = useState<JSONContent>(() =>
@@ -28,7 +32,6 @@ export default function UnifiedDocumentSurface({
   );
   const [sourceMarkdown, setSourceMarkdown] = useState(initialContent);
   const [dirty, setDirty] = useState(false);
-  const [conflictDetected, setConflictDetected] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorRef = useRef<Editor | null>(null);
@@ -58,7 +61,7 @@ export default function UnifiedDocumentSurface({
     };
   }, []);
 
-  const saveStatus: SaveStatus = conflictDetected
+  const saveStatus: SaveStatus = hasConflict
     ? "conflict"
     : isSaving
       ? "saving"
@@ -78,7 +81,7 @@ export default function UnifiedDocumentSurface({
   );
 
   const conflictRef = useRef(false);
-  conflictRef.current = conflictDetected;
+  conflictRef.current = hasConflict;
 
   const scheduleSave = useCallback(
     (md: string) => {
@@ -178,29 +181,18 @@ export default function UnifiedDocumentSurface({
     return () => document.removeEventListener("keydown", handler);
   }, [immediateSave, mode, switchMode]);
 
-  // Conflict resolution handlers
+  // Conflict resolution handlers — parent controls hasConflict prop
   const handleConflictOverwrite = useCallback(() => {
     // Re-save without expectedUpdatedAt (last-write-wins)
-    setConflictDetected(false);
-    doSave(latestMarkdownRef.current);
-  }, [doSave]);
+    onSaveForce?.(latestMarkdownRef.current);
+    setDirty(false);
+  }, [onSaveForce]);
 
   const handleConflictReload = useCallback(() => {
-    // Signal parent to reload — parent controls the data fetching
-    setConflictDetected(false);
     setDirty(false);
-    // Reset to initial content (parent will provide new content via props)
-    const parsed = parse(initialContent);
-    setTiptapContent(parsed);
-    editorRef.current?.commands.setContent(parsed);
-    setSourceMarkdown(initialContent);
-    latestMarkdownRef.current = initialContent;
-  }, [initialContent]);
-
-  // Expose conflict trigger for parent save error handling
-  const triggerConflict = useCallback(() => {
-    setConflictDetected(true);
-  }, []);
+    onReloadContent?.();
+    // Content will be updated via initialContent/updatedAt prop changes
+  }, [onReloadContent]);
 
   return (
     <div className="unified-document-surface flex flex-col h-full">
@@ -272,9 +264,10 @@ export default function UnifiedDocumentSurface({
         visible={mode === "source"}
       />
 
-      {conflictDetected && (
+      {hasConflict && (
         <ConflictResolutionDialog
           open={true}
+          documentTitle={documentTitle}
           onOverwrite={handleConflictOverwrite}
           onReload={handleConflictReload}
         />

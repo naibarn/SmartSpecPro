@@ -15,9 +15,16 @@ export interface UnifiedDocumentSurfaceProps {
   updatedAt?: string;
   onContentChange?: (markdown: string) => void;
   onSave?: (markdown: string) => void;
+  /** Called when user clicks "Overwrite" — save without version check */
+  onSaveForce?: (markdown: string) => void;
+  /** Called when user clicks "Reload" — refetch latest content */
+  onReloadContent?: () => void;
   onVersionRestore?: () => void;
   onEnterEditMode?: () => void;
   isSaving?: boolean;
   errorMessage?: string;
+  /** When true, the conflict resolution dialog is shown */
+  hasConflict?: boolean;
   documentId?: number;
+  documentTitle?: string;
 }

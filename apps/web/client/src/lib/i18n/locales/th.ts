@@ -978,7 +978,6 @@ const th: TranslationDictionary = {
   "editor.save.error": "บันทึกไม่สำเร็จ",
   "editor.conflict.title": "เอกสารขัดแย้ง",
   "editor.conflict.description": "เอกสารนี้ถูกแก้ไขจากที่อื่น (แท็บอื่นหรือผู้ใช้อื่น) เลือกวิธีดำเนินการ:",
-  "editor.conflict.message": "เอกสารนี้ถูกแก้ไขในแท็บอื่นหรือโดยผู้ใช้อื่น การเปลี่ยนแปลงที่ยังไม่ได้บันทึกอาจขัดแย้งกับเวอร์ชันล่าสุด",
   "editor.conflict.overwrite": "บันทึกทับ",
   "editor.conflict.overwriteHint": "บันทึกเวอร์ชันของคุณ ละทิ้งการเปลี่ยนแปลงอื่น",
   "editor.conflict.reload": "โหลดใหม่",
