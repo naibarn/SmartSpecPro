@@ -3,7 +3,7 @@
  * User registration with plan selection
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useLocation } from 'wouter';
 import { generateFingerprint } from '@/lib/fingerprint';
@@ -96,11 +96,13 @@ export default function Signup() {
     (oauthProviders?.github && allowedAuth.github);
 
   // Parse invite code from URL params (cap length, uppercase, strip invalid chars)
-  const urlParams = new URLSearchParams(window.location.search);
-  const urlInviteCode = (urlParams.get("invite") || urlParams.get("ref") || "")
-    .slice(0, 32)
-    .toUpperCase()
-    .replace(/[^A-Z0-9-]/g, "");
+  const urlInviteCode = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return (params.get("invite") || params.get("ref") || "")
+      .slice(0, 32)
+      .toUpperCase()
+      .replace(/[^A-Z0-9-]/g, "");
+  }, []);
 
   // Generate device fingerprint on mount (stored as __fp cookie)
   useEffect(() => { generateFingerprint().catch(() => {}); }, []);
@@ -136,6 +138,25 @@ export default function Signup() {
     }));
   };
 
+  const registerMutation = trpc.auth.register.useMutation({
+    onSuccess: (result) => {
+      const ph = getPostHog();
+      const anonId = ph?.get_distinct_id();
+      const userId = result.userId || result.id || formData.email;
+      if (anonId) ph?.alias(anonId, String(userId));
+      ph?.identify(String(userId), { email: formData.email, plan: selectedPlan });
+      ph?.capture("signup_completed", { plan: selectedPlan, auth_method: "email" });
+      toast.success('Account created! Please verify your email.');
+      navigate(`/verify-email?email=${encodeURIComponent(formData.email)}`);
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Registration failed. Please try again.');
+    },
+    onSettled: () => {
+      setIsLoading(false);
+    },
+  });
+
   const handleSubmit = async (e?: React.FormEvent | React.MouseEvent) => {
     if (e) e.preventDefault();
 
@@ -150,50 +171,25 @@ export default function Signup() {
     }
 
     setIsLoading(true);
-
-    try {
-      const response = await fetch('/trpc/auth.register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          json: {
-            name: formData.name,
-            email: formData.email,
-            password: formData.password,
-            company: formData.company || undefined,
-            plan: selectedPlan,
-            inviteCode: inviteCode || undefined,
-          },
-        }),
-        credentials: 'include',
-      });
-
-      const data = await response.json();
-      const result = data.result?.data?.json;
-      const errorMsg = data.error?.json?.message;
-
-      if (result?.success) {
-        const ph = getPostHog();
-        const anonId = ph?.get_distinct_id();
-        const userId = result.userId || result.id || formData.email;
-        if (anonId) ph?.alias(anonId, String(userId));
-        ph?.identify(String(userId), { email: formData.email, plan: selectedPlan });
-        ph?.capture("signup_completed", { plan: selectedPlan, auth_method: "email" });
-        toast.success('Account created! Please verify your email.');
-        navigate(`/verify-email?email=${encodeURIComponent(formData.email)}`);
-      } else {
-        toast.error(errorMsg || 'Registration failed');
-      }
-    } catch (error) {
-      toast.error('Registration failed. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+    registerMutation.mutate({
+      name: formData.name,
+      email: formData.email,
+      password: formData.password,
+      company: formData.company || undefined,
+      plan: selectedPlan,
+      inviteCode: inviteCode || undefined,
+    });
   };
+
+  const ALLOWED_OAUTH_ORIGINS = [
+    "https://accounts.google.com/",
+    "https://github.com/login/oauth/authorize",
+  ];
 
   const handleSocialSignup = async (provider: string) => {
     try {
-      // Set invite code cookie before OAuth redirect (10-min expiry, Secure)
+      // Set invite code cookie before OAuth redirect (Secure + SameSite=Lax)
+      // Note: HttpOnly not possible from client-side; the value is a public invite code
       if (inviteCode) {
         document.cookie = `invite_code=${encodeURIComponent(inviteCode)}; path=/; max-age=600; SameSite=Lax; Secure`;
       }
@@ -211,7 +207,15 @@ export default function Signup() {
       }
       const data = await response.json();
       sessionStorage.setItem('oauth_state', data.state);
-      window.location.href = data.authorization_url;
+
+      // Validate OAuth redirect URL against known provider origins
+      const redirectUrl = data.authorization_url;
+      if (!ALLOWED_OAUTH_ORIGINS.some((origin) => redirectUrl.startsWith(origin))) {
+        toast.error("Invalid authentication URL. Please try again.");
+        return;
+      }
+
+      window.location.href = redirectUrl;
     } catch {
       toast.error(`Could not connect to authentication service. Please try email registration.`);
     }

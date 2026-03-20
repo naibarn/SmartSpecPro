@@ -142,12 +142,13 @@ export async function reactivateUser(
     return { success: false, error: "User is not disabled" };
   }
 
-  // Tenant isolation: domain admins can only reactivate users in their tenant
+  // Tenant isolation: domain admins can only reactivate users in their own tenant
   // Super admins (adminTenantId = null) can reactivate any user
   // Note: currentTenantId is integer but tenantId is varchar — compare as strings
   if (adminTenantId) {
     const userTenant = user.currentTenantId != null ? String(user.currentTenantId) : null;
-    if (userTenant && userTenant !== String(adminTenantId)) {
+    // Block if user has no tenant (null) or belongs to a different tenant
+    if (!userTenant || userTenant !== String(adminTenantId)) {
       return { success: false, error: "Cannot reactivate user from another tenant" };
     }
   }

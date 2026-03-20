@@ -3121,15 +3121,46 @@ export const userNotifications = pgTable("user_notifications", {
   /** Auto-cleanup after this timestamp */
   expiresAt: timestamp("expiresAt", { withTimezone: true }),
 
+  /** Dedup identifier, e.g. "media_job_failure:user_123" */
+  groupKey: varchar("groupKey", { length: 200 }),
+
+  /** Number of events this notification represents */
+  occurrenceCount: integer("occurrenceCount").default(1).notNull(),
+
+  /** When first event in group occurred */
+  firstOccurredAt: timestamp("firstOccurredAt", { withTimezone: true }).defaultNow().notNull(),
+
+  /** When most recent event occurred */
+  lastOccurredAt: timestamp("lastOccurredAt", { withTimezone: true }).defaultNow().notNull(),
+
   createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index("user_notifications_user_read").on(t.userId, t.isRead, t.createdAt),
   index("user_notifications_user_priority").on(t.userId, t.isRead, t.priority),
   index("user_notifications_resource").on(t.relatedResourceType, t.relatedResourceId),
+  uniqueIndex("idx_notif_dedup_active")
+    .on(t.userId, t.groupKey)
+    .where(sql`"isDismissed" = false AND "groupKey" IS NOT NULL`),
 ]);
 
 export type UserNotification = typeof userNotifications.$inferSelect;
 export type InsertUserNotification = typeof userNotifications.$inferInsert;
+
+/**
+ * Notification Occurrences — individual events grouped under a deduped notification
+ */
+export const notificationOccurrences = pgTable("notification_occurrences", {
+  id: serial("id").primaryKey(),
+  notificationId: integer("notificationId").references(() => userNotifications.id, { onDelete: "cascade" }).notNull(),
+  content: text("content"),
+  metadata: jsonb("metadata"),
+  occurredAt: timestamp("occurredAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("idx_notif_occurrences_notif_time").on(t.notificationId, t.occurredAt),
+]);
+
+export type NotificationOccurrence = typeof notificationOccurrences.$inferSelect;
+export type InsertNotificationOccurrence = typeof notificationOccurrences.$inferInsert;
 
 /**
  * Direct Messages — user-to-user messaging

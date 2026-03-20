@@ -645,6 +645,83 @@
       "when": 1773871794173,
       "tag": "0091_supreme_mockingbird",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1773873083274,
+      "tag": "0092_same_king_cobra",
+      "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1773875701867,
+      "tag": "0093_naive_namora",
+      "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1773885000000,
+      "tag": "0094_persona_working_hours",
+      "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1773886200000,
+      "tag": "0095_automation_handoff_callback_security",
+      "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1773887400000,
+      "tag": "0096_work_item_revision_concurrency",
+      "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1773888600000,
+      "tag": "0097_team_member_kinds",
+      "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1773891000000,
+      "tag": "0098_team_member_roles",
+      "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1773892200000,
+      "tag": "0099_team_room_participant_last_viewed",
+      "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1773970800000,
+      "tag": "0100_team_blueprint_atomicity",
+      "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1774000674338,
+      "tag": "0101_fuzzy_network",
+      "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1774031348397,
+      "tag": "0102_slim_red_wolf",
+      "breakpoints": true
     }
   ]
 }
