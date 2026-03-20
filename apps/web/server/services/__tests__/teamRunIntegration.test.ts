@@ -2,8 +2,12 @@
  * Integration test: verifies the full team room pipeline from
  * skill detection → prompt composition → LLM execution.
  *
- * Mocks only external boundaries (DB, LLM providers, external services).
- * Tests the wiring between routeRoomIntent, composePrompt, and executeTeamRunSkillTurn.
+ * Mock boundaries:
+ * - External: skillDetector, skillModelFallback (LLM), creditService
+ * - Internal (mocked for DB isolation): promptComposer, skillRegistry, skillExecutionPolicy
+ *
+ * promptComposer is mocked because it requires complex Drizzle chain setup.
+ * Its internal wiring (persona, memory, history) is tested in promptComposer.enhanced.test.ts.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -45,6 +49,7 @@ vi.mock("../creditService", () => ({
 // --- Imports (after mocks) ---
 
 import { detectSkill } from "../skillDetector";
+import { classifyIntent } from "../skillIntentClassifier";
 import { routeRoomIntent, FALLBACK_CONTENT_SKILL_ID } from "../roomIntentRouter";
 import { composePrompt } from "../promptComposer";
 import {
@@ -62,6 +67,7 @@ const mockComposePrompt = vi.mocked(composePrompt);
 const mockGetSkill = vi.mocked(getSkillByIdAsync);
 const mockExecuteLlm = vi.mocked(executeSkillLlmWithFallback);
 const mockResolvePolicy = vi.mocked(resolveSkillExecutionPolicy);
+const mockClassifyIntent = vi.mocked(classifyIntent);
 
 // --- Helpers ---
 
@@ -142,6 +148,8 @@ describe("Team Room end-to-end flow", () => {
 
     expect(decision.selectedSkillId).toBe("lifestyle-article-writer");
     expect(decision.source).toBe("skill-detect");
+    // Assistant-origin should not call classifyIntent (short-circuits)
+    expect(mockClassifyIntent).not.toHaveBeenCalled();
 
     // Step 2: Execute with the detected skill
     const thaiSkill = makeSkill(
@@ -296,12 +304,11 @@ describe("Team Room end-to-end flow", () => {
     const msgs = messagesArg.messages ?? messagesArg;
 
     // Should have multiple messages (not flattened to a single string)
-    if (Array.isArray(msgs)) {
-      expect(msgs.length).toBeGreaterThan(2);
-      // Should contain mix of roles
-      const roles = msgs.map((m: any) => m.role);
-      expect(roles).toContain("system");
-    }
+    expect(Array.isArray(msgs)).toBe(true);
+    expect(msgs.length).toBeGreaterThan(2);
+    // Should contain mix of roles
+    const roles = msgs.map((m: any) => m.role);
+    expect(roles).toContain("system");
   });
 
   it("should not call Python bridge for any route type", async () => {
@@ -354,6 +361,7 @@ describe("Team Room end-to-end flow", () => {
     });
 
     expect(decision.selectedSkillId).toBe("business-article-writer");
+    expect(mockClassifyIntent).not.toHaveBeenCalled();
 
     const skill = makeSkill("business-article-writer", "You are a business article writer.");
     mockGetSkill.mockResolvedValue(skill as any);
