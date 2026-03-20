@@ -1,6 +1,5 @@
 import { Editor, type Extension } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
-import { Image } from "@tiptap/extension-image";
 import { Link } from "@tiptap/extension-link";
 import { Table } from "@tiptap/extension-table";
 import { TableRow } from "@tiptap/extension-table-row";
@@ -8,6 +7,9 @@ import { TableCell } from "@tiptap/extension-table-cell";
 import { TableHeader } from "@tiptap/extension-table-header";
 import { Underline } from "@tiptap/extension-underline";
 import { Markdown } from "tiptap-markdown";
+import { ImageExtension } from "./extensions/imageExtension";
+import { VideoExtension } from "./extensions/videoExtension";
+import { AudioExtension } from "./extensions/audioExtension";
 
 import type { JSONContent } from "@tiptap/core";
 export type { JSONContent };
@@ -25,7 +27,9 @@ export function getDefaultExtensions(): Extension[] {
       link: false,
       underline: false,
     }),
-    Image,
+    ImageExtension,
+    VideoExtension,
+    AudioExtension,
     Link.configure({ openOnClick: false }),
     Table.configure({ resizable: true }),
     TableRow,
