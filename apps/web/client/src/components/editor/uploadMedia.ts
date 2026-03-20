@@ -37,7 +37,8 @@ export function readFileAsBase64(file: File): Promise<string> {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
-      resolve(result);
+      // Strip the data:<mime>;base64, prefix — server expects raw base64
+      resolve(result.split(",")[1] ?? result);
     };
     reader.onerror = () => reject(new Error("Failed to read file"));
     reader.readAsDataURL(file);
@@ -46,4 +47,44 @@ export function readFileAsBase64(file: File): Promise<string> {
 
 export function getAcceptString(mediaType: "image" | "video" | "audio"): string {
   return (ACCEPTED_TYPES[mediaType] || []).join(",");
+}
+
+/**
+ * Determine the media node type for a given MIME type.
+ * Returns null if the MIME type is not a supported media format.
+ */
+export function classifyMediaType(
+  mimeType: string,
+): "image" | "video" | "audio" | null {
+  // SVG can contain embedded scripts — reject for paste/drop uploads
+  if (mimeType === "image/svg+xml") return null;
+  if (mimeType.startsWith("image/")) return "image";
+  if (mimeType.startsWith("video/")) return "video";
+  if (mimeType.startsWith("audio/")) return "audio";
+  return null;
+}
+
+/**
+ * Upload a media file to the server and return its public URL.
+ * Reuses the existing /api/media-jobs/upload endpoint.
+ */
+export async function uploadMedia(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch("/api/media-jobs/upload", {
+    method: "POST",
+    body: formData,
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    throw new Error(`Upload failed: ${res.status} ${res.statusText}`);
+  }
+
+  const data = (await res.json()) as { url?: string };
+  if (!data?.url) {
+    throw new Error("Upload response missing url");
+  }
+  return data.url;
 }
