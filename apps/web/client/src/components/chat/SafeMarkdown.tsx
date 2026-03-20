@@ -42,6 +42,7 @@ const ALLOWED_ATTR = [
   "colspan", "rowspan",
   "controls", "autoplay", "loop", "muted", "preload",
   "type", "width", "height",
+  "poster",
 ];
 
 // Sanitize content to prevent XSS
@@ -67,7 +68,7 @@ function sanitizeContent(content: string): string {
     ALLOWED_TAGS,
     ALLOWED_ATTR,
     ALLOW_DATA_ATTR: false,
-    ADD_ATTR: ["target"],
+    ADD_ATTR: ["target", "data-poster", "data-caption", "data-asset-id", "data-alignment"],
     FORBID_TAGS: ["style", "script", "iframe", "object", "embed", "form", "input"],
     FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover", "onfocus", "onblur"],
   });
@@ -204,14 +205,32 @@ function splitContentAndImages(content: string): Array<{ type: "text"; value: st
 // as native React elements (bypassing Streamdown's internal sanitizer).
 type MediaPart =
   | { kind: "text"; value: string }
-  | { kind: "video"; src: string }
-  | { kind: "audio"; src: string };
+  | { kind: "video"; src: string; poster?: string; caption?: string; assetId?: string }
+  | { kind: "audio"; src: string; caption?: string; assetId?: string };
 
-const MEDIA_TAG_REGEX = /<(video|audio)\b[^>]*\bsrc="([^"]*)"[^>]*>(?:<\/\1>)?/g;
+const MEDIA_TAG_REGEX = /<(video|audio)\b([^>]*?)\/?>(?:<\/\1>)?/g;
+
+function extractAttr(attrs: string, name: string): string | undefined {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`(?:^|\\s)${escaped}=["']([^"']*)["']`);
+  const m = re.exec(attrs);
+  return m ? m[1] : undefined;
+}
+
+// Allowlist-based URL validation for poster attribute.
+// Keep in sync with sanitizeMediaSrc in editor/extensions/mediaSerializationRules.ts
+function isUrlSafe(url: string): boolean {
+  const lower = url.trim().toLowerCase();
+  return (
+    lower.startsWith("http://") ||
+    lower.startsWith("https://") ||
+    lower.startsWith("/")
+  );
+}
 
 function splitByMedia(content: string): MediaPart[] | null {
-  // Fast path: no video/audio tags
-  if (!/<(video|audio)\b[^>]*\bsrc="/.test(content)) return null;
+  // Fast path: no video/audio tags (keep in sync with MEDIA_TAG_REGEX)
+  if (!/<(video|audio)\b/.test(content)) return null;
 
   const parts: MediaPart[] = [];
   const regex = new RegExp(MEDIA_TAG_REGEX.source, "g");
@@ -223,8 +242,28 @@ function splitByMedia(content: string): MediaPart[] | null {
       parts.push({ kind: "text", value: content.slice(lastIndex, match.index) });
     }
     const tag = match[1] as "video" | "audio";
-    const src = match[2];
-    if (src) parts.push({ kind: tag, src });
+    const attrString = match[2];
+    const src = extractAttr(attrString, "src");
+    if (!src) {
+      lastIndex = match.index + match[0].length;
+      continue;
+    }
+
+    const poster = extractAttr(attrString, "data-poster");
+    const caption = extractAttr(attrString, "data-caption");
+    const assetId = extractAttr(attrString, "data-asset-id");
+
+    if (tag === "video") {
+      parts.push({
+        kind: "video",
+        src,
+        poster: poster && isUrlSafe(poster) ? poster : undefined,
+        caption,
+        assetId,
+      });
+    } else {
+      parts.push({ kind: "audio", src, caption, assetId });
+    }
     lastIndex = match.index + match[0].length;
   }
 
@@ -232,7 +271,7 @@ function splitByMedia(content: string): MediaPart[] | null {
     parts.push({ kind: "text", value: content.slice(lastIndex) });
   }
 
-  return parts;
+  return parts.length > 0 ? parts : null;
 }
 
 export function SafeMarkdown({ children, className, onImageClick }: SafeMarkdownProps) {
@@ -272,29 +311,40 @@ export function SafeMarkdown({ children, className, onImageClick }: SafeMarkdown
       <div className={className}>
         {mediaParts.map((part, i) => {
           if (part.kind === "video") {
-            return (
+            const vid = (
               <video
-                key={i}
                 src={part.src}
                 controls
-                style={{
-                  display: "block",
-                  width: "100%",
-                  maxWidth: "720px",
-                  borderRadius: "8px",
-                  margin: "8px 0",
-                }}
+                poster={part.poster}
+                data-asset-id={part.assetId}
+                style={{ display: "block", width: "100%", maxWidth: "720px", borderRadius: "8px" }}
               />
+            );
+            return part.caption ? (
+              <figure key={i} style={{ margin: "8px 0" }}>
+                {vid}
+                <p className="text-sm text-muted-foreground mt-1">{part.caption}</p>
+              </figure>
+            ) : (
+              <video key={i} src={part.src} controls poster={part.poster} data-asset-id={part.assetId} style={{ display: "block", width: "100%", maxWidth: "720px", borderRadius: "8px", margin: "8px 0" }} />
             );
           }
           if (part.kind === "audio") {
-            return (
+            const aud = (
               <audio
-                key={i}
                 src={part.src}
                 controls
-                style={{ display: "block", width: "100%", margin: "4px 0" }}
+                data-asset-id={part.assetId}
+                style={{ display: "block", width: "100%" }}
               />
+            );
+            return part.caption ? (
+              <figure key={i} style={{ margin: "4px 0" }}>
+                {aud}
+                <p className="text-sm text-muted-foreground mt-1">{part.caption}</p>
+              </figure>
+            ) : (
+              <audio key={i} src={part.src} controls data-asset-id={part.assetId} style={{ display: "block", width: "100%", margin: "4px 0" }} />
             );
           }
           // Text part — sanitize and render through Streamdown
