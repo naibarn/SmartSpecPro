@@ -95,6 +95,21 @@ describe("userNotifications dedup index", () => {
     expect(dedupIndex).toBeDefined();
     expect(dedupIndex!.config.unique).toBe(true);
   });
+
+  it("WHERE predicate filters on isDismissed and groupKey", () => {
+    const config = getTableConfig(userNotifications);
+    const dedupIndex = config.indexes.find(
+      (i) => i.config.name === "idx_notif_dedup_active",
+    );
+    expect(dedupIndex).toBeDefined();
+    const whereClause = (dedupIndex!.config as any).where;
+    expect(whereClause).toBeDefined();
+    // Verify the SQL template contains both conditions
+    const sqlChunks = whereClause?.queryChunks ?? [];
+    const fullSql = sqlChunks.map((c: any) => (typeof c === "string" ? c : c?.value ?? "")).join("");
+    expect(fullSql).toContain("isDismissed");
+    expect(fullSql).toContain("groupKey");
+  });
 });
 
 describe("notificationOccurrences indexes", () => {
