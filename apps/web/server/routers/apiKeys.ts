@@ -199,7 +199,8 @@ export const apiKeysRouter = router({
         .limit(1);
       if (!oldKey) throw new TRPCError({ code: "NOT_FOUND", message: "API key not found" });
 
-      // Create new key with same settings
+      // Atomic rotation: create new key then revoke old key.
+      // If revoke fails, compensate by revoking the newly created key.
       const result = await createKey(
         tenantId,
         ctx.user.id,
@@ -216,8 +217,16 @@ export const apiKeysRouter = router({
         },
       );
 
-      // Revoke old key
-      await revokeKey(input.keyId, tenantId, ctx.user.id);
+      try {
+        await revokeKey(input.keyId, tenantId, ctx.user.id);
+      } catch (err) {
+        // Compensate: revoke the newly created key so we don't leave orphans
+        await revokeKey(result.id, tenantId, ctx.user.id).catch(() => {});
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Key rotation failed: could not revoke old key",
+        });
+      }
 
       return {
         id: result.id,

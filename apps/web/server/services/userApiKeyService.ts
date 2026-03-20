@@ -1,8 +1,18 @@
 import { eq, and } from "drizzle-orm";
 import { getDb } from "../db";
-import { userLlmApiKeys } from "../../drizzle/schema";
+import { systemSettings, userLlmApiKeys } from "../../drizzle/schema";
 import { encrypt, decrypt } from "./crypto";
 import { debugLog } from "../_core/logger";
+import { auditLogger } from "./auditLogger";
+
+const USER_LLM_API_KEYS_SETTING = {
+  category: "ai",
+  key: "allowUserOwnLlmApiKeys",
+} as const;
+
+function parseBooleanSetting(value: string | null | undefined): boolean {
+  return value?.trim().toLowerCase() === "true";
+}
 
 /**
  * Set (upsert) a user's LLM API key for a specific provider.
@@ -43,6 +53,12 @@ export async function setUserApiKey(
     });
 
   debugLog("userApiKeyService", "User LLM API key set", { userId, provider, action: "llm_key_set" });
+  auditLogger.log({
+    eventType: "user_llm_key_set",
+    userId,
+    endpoint: "userApiKeyService.setUserApiKey",
+    requestPayload: { provider, tenantId, keyHintLast4: keyHint },
+  });
   return { provider, keyHint };
 }
 
@@ -65,6 +81,28 @@ export async function getUserApiKeys(
 }
 
 /**
+ * Returns whether the platform allows users to manage their own LLM API keys.
+ * Defaults to false when the setting is unset.
+ */
+export async function isUserLlmApiKeySelfServiceEnabled(): Promise<boolean> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not initialized");
+
+  const rows = await db
+    .select({ value: systemSettings.value })
+    .from(systemSettings)
+    .where(
+      and(
+        eq(systemSettings.category, USER_LLM_API_KEYS_SETTING.category),
+        eq(systemSettings.key, USER_LLM_API_KEYS_SETTING.key),
+      ),
+    )
+    .limit(1);
+
+  return parseBooleanSetting(rows[0]?.value);
+}
+
+/**
  * Delete a user's API key for a specific provider.
  * No-op if the entry does not exist.
  */
@@ -84,6 +122,12 @@ export async function deleteUserApiKey(
       ),
     );
   debugLog("userApiKeyService", "User LLM API key deleted", { userId, provider, action: "llm_key_delete" });
+  auditLogger.log({
+    eventType: "user_llm_key_deleted",
+    userId,
+    endpoint: "userApiKeyService.deleteUserApiKey",
+    requestPayload: { provider },
+  });
 }
 
 /**

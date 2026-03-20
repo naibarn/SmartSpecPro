@@ -19,6 +19,7 @@ export type AuditEventType =
   | "llm_request"
   | "llm_response"
   | "llm_stream_end"
+  | "chat_context_timing"
   | "media_request"
   | "media_response"
   | "library_mutation"
@@ -43,6 +44,9 @@ export type AuditEventType =
   | "funnel_export"
   | "funnel_raw_events_query"
   | "agency_created"
+  | "team_created"
+  | "team_blueprint_created"
+  | "team_template_cloned"
   | "agency_updated"
   | "agency_deleted"
   | "agency_run_started"
@@ -91,6 +95,11 @@ export type AuditEventType =
   | "orchestration_param_extract"
   | "orchestration_fallback"
   | "agency_result_routed"
+  | "invite_code_used"
+  | "user_disabled_inactive"
+  | "user_reactivated"
+  | "user_llm_key_set"
+  | "user_llm_key_deleted"
   | "error";
 
 export interface AuditLogEntry {
@@ -396,8 +405,9 @@ class AuditLoggerService {
     traceId?: string;
     userId?: number;
     eventType?: string;
-    limit?: number;
+    limit?: number | null;
     offset?: number;
+    sortOrder?: "asc" | "desc";
   }): Promise<AuditLogEntry[]> {
     const filePath = this.getLogFilePath(opts.date);
 
@@ -424,9 +434,18 @@ class AuditLoggerService {
       }
     }
 
+    entries.sort((a, b) => {
+      const ta = a?.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const tb = b?.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return (opts.sortOrder ?? "asc") === "desc" ? tb - ta : ta - tb;
+    });
+
     const offset = opts.offset ?? 0;
-    const limit = opts.limit ?? 100;
-    entries = entries.slice(offset, offset + limit);
+    if (opts.limit == null) {
+      entries = entries.slice(offset);
+    } else {
+      entries = entries.slice(offset, offset + opts.limit);
+    }
 
     return entries;
   }
