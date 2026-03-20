@@ -37,6 +37,126 @@ describe("RunEngine", () => {
       expect(runEngine.DEFAULT_STOP_POLICY.maxBudgetCredits).toBe(100);
       expect(runEngine.DEFAULT_STOP_POLICY.idleTimeoutSeconds).toBe(120);
     });
+
+    it("derives a stable kickoff work item title from the run objective", () => {
+      expect(runEngine.deriveInitialWorkItemTitle("Research the latest solar market updates")).toBe(
+        "Kickoff: Research the latest solar market updates",
+      );
+    });
+
+    it("maps execution modes to turn strategies", () => {
+      expect(runEngine.mapExecutionModeToTurnStrategy("auto_team")).toBe("lead_directed");
+      expect(runEngine.mapExecutionModeToTurnStrategy("team_chat")).toBe("handoff");
+      expect(runEngine.mapExecutionModeToTurnStrategy("review")).toBe("priority");
+    });
+
+    it("continues the auto-team loop only when a running auto_team made progress", () => {
+      expect(runEngine.shouldContinueAutoTeamLoop({
+        runStatus: "running",
+        executionMode: "auto_team",
+        completedTurns: 1,
+        shouldStop: false,
+      })).toBe(true);
+
+      expect(runEngine.shouldContinueAutoTeamLoop({
+        runStatus: "paused",
+        executionMode: "auto_team",
+        completedTurns: 1,
+        shouldStop: false,
+      })).toBe(false);
+
+      expect(runEngine.shouldContinueAutoTeamLoop({
+        runStatus: "running",
+        executionMode: "team_chat",
+        completedTurns: 1,
+        shouldStop: false,
+      })).toBe(false);
+
+      expect(runEngine.shouldContinueAutoTeamLoop({
+        runStatus: "running",
+        executionMode: "auto_team",
+        completedTurns: 0,
+        shouldStop: false,
+      })).toBe(false);
+
+      expect(runEngine.shouldContinueAutoTeamLoop({
+        runStatus: "running",
+        executionMode: "auto_team",
+        completedTurns: 1,
+        shouldStop: true,
+      })).toBe(false);
+    });
+
+    it("keeps looping when assistant-owned work remains actionable", () => {
+      expect(runEngine.evaluateAutoTeamLoopDecision({
+        runStatus: "running",
+        executionMode: "auto_team",
+        completedTurns: 1,
+        shouldStop: false,
+        openWorkItems: [
+          {
+            status: "in_progress",
+            assignedMemberKind: "assistant",
+          },
+        ],
+      })).toEqual({
+        continueLoop: true,
+        pauseRun: false,
+        reason: null,
+      });
+    });
+
+    it("auto-pauses when only human approval remains", () => {
+      expect(runEngine.evaluateAutoTeamLoopDecision({
+        runStatus: "running",
+        executionMode: "auto_team",
+        completedTurns: 1,
+        shouldStop: false,
+        openWorkItems: [
+          {
+            status: "awaiting_approval",
+            approverMemberKind: "human",
+          },
+        ],
+      })).toEqual({
+        continueLoop: false,
+        pauseRun: true,
+        reason: "awaiting_human_approval",
+      });
+    });
+
+    it("auto-pauses when only external connector work remains", () => {
+      expect(runEngine.evaluateAutoTeamLoopDecision({
+        runStatus: "running",
+        executionMode: "auto_team",
+        completedTurns: 1,
+        shouldStop: false,
+        openWorkItems: [
+          {
+            status: "awaiting_approval",
+            approverMemberKind: "external_connector",
+          },
+        ],
+      })).toEqual({
+        continueLoop: false,
+        pauseRun: true,
+        reason: "awaiting_external_member",
+      });
+    });
+
+    it("stops queueing more turns when no actionable work is left", () => {
+      expect(runEngine.evaluateAutoTeamLoopDecision({
+        runStatus: "running",
+        executionMode: "auto_team",
+        completedTurns: 1,
+        shouldStop: false,
+        openWorkItems: [],
+      })).toEqual({
+        continueLoop: false,
+        pauseRun: false,
+        reason: "no_actionable_work_items",
+      });
+    });
   });
 
   describe("evaluateStopConditions (pure function)", () => {

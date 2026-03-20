@@ -275,42 +275,48 @@ function AlertRulesTab() {
       )}
 
       {/* Create Dialog */}
-      <AlertRuleFormDialog
-        open={isCreateOpen}
-        onOpenChange={setIsCreateOpen}
-        title="Create Alert Rule"
-        onSubmit={(data) => {
-          const payload = {
-            ...data,
-            targetUserId:
-              typeof data.targetUserId === "number"
-                ? data.targetUserId
-                : undefined,
-          };
-          createMutation.mutate(payload as any);
-        }}
-        isLoading={createMutation.isPending}
-      />
+      {isCreateOpen && (
+        <AlertRuleFormDialog
+          key="create-rule"
+          open={isCreateOpen}
+          onOpenChange={setIsCreateOpen}
+          title="Create Alert Rule"
+          onSubmit={(data) => {
+            const payload = {
+              ...data,
+              targetUserId:
+                typeof data.targetUserId === "number"
+                  ? data.targetUserId
+                  : undefined,
+            };
+            createMutation.mutate(payload as any);
+          }}
+          isLoading={createMutation.isPending}
+        />
+      )}
 
       {/* Edit Dialog */}
-      <AlertRuleFormDialog
-        open={!!editingRule}
-        onOpenChange={(open) => !open && setEditingRule(null)}
-        title="Edit Alert Rule"
-        defaultValues={editingRule}
-        onSubmit={(data) => {
-          const payload = {
-            id: editingRule!.id,
-            ...data,
-            targetUserId:
-              typeof data.targetUserId === "number"
-                ? data.targetUserId
-                : undefined,
-          };
-          updateMutation.mutate(payload as any);
-        }}
-        isLoading={updateMutation.isPending}
-      />
+      {editingRule && (
+        <AlertRuleFormDialog
+          key={`edit-rule-${editingRule.id}`}
+          open={!!editingRule}
+          onOpenChange={(open) => !open && setEditingRule(null)}
+          title="Edit Alert Rule"
+          defaultValues={editingRule}
+          onSubmit={(data) => {
+            const payload = {
+              id: editingRule!.id,
+              ...data,
+              targetUserId:
+                typeof data.targetUserId === "number"
+                  ? data.targetUserId
+                  : undefined,
+            };
+            updateMutation.mutate(payload as any);
+          }}
+          isLoading={updateMutation.isPending}
+        />
+      )}
 
       {/* Delete Confirmation */}
       <AlertDialog
@@ -520,7 +526,7 @@ function AlertRuleFormDialog({
             <Label>Channels *</Label>
             <div className="flex gap-3 mt-1">
               {CHANNELS.map((ch) => {
-                const channelValues = form.watch("channels") ?? [];
+                const channelValues = form.getValues("channels") ?? [];
                 return (
                   <label
                     key={ch}
@@ -777,44 +783,50 @@ function EscalationPoliciesTab() {
       )}
 
       {/* Create Dialog */}
-      <EscalationPolicyFormDialog
-        open={isCreateOpen}
-        onOpenChange={setIsCreateOpen}
-        title="Create Escalation Policy"
-        onSubmit={(data) => {
-          const payload = {
-            ...data,
-            escalateToUserId:
-              typeof data.escalateToUserId === "number"
-                ? data.escalateToUserId
-                : undefined,
-            escalateToRole: data.escalateToRole || undefined,
-          };
-          createMutation.mutate(payload as any);
-        }}
-        isLoading={createMutation.isPending}
-      />
+      {isCreateOpen && (
+        <EscalationPolicyFormDialog
+          key="create-policy"
+          open={isCreateOpen}
+          onOpenChange={setIsCreateOpen}
+          title="Create Escalation Policy"
+          onSubmit={(data) => {
+            const payload = {
+              ...data,
+              escalateToUserId:
+                typeof data.escalateToUserId === "number"
+                  ? data.escalateToUserId
+                  : undefined,
+              escalateToRole: data.escalateToRole || undefined,
+            };
+            createMutation.mutate(payload as any);
+          }}
+          isLoading={createMutation.isPending}
+        />
+      )}
 
       {/* Edit Dialog */}
-      <EscalationPolicyFormDialog
-        open={!!editingPolicy}
-        onOpenChange={(open) => !open && setEditingPolicy(null)}
-        title="Edit Escalation Policy"
-        defaultValues={editingPolicy}
-        onSubmit={(data) => {
-          const payload = {
-            id: editingPolicy!.id,
-            ...data,
-            escalateToUserId:
-              typeof data.escalateToUserId === "number"
-                ? data.escalateToUserId
-                : undefined,
-            escalateToRole: data.escalateToRole || undefined,
-          };
-          updateMutation.mutate(payload as any);
-        }}
-        isLoading={updateMutation.isPending}
-      />
+      {editingPolicy && (
+        <EscalationPolicyFormDialog
+          key={`edit-policy-${editingPolicy.id}`}
+          open={!!editingPolicy}
+          onOpenChange={(open) => !open && setEditingPolicy(null)}
+          title="Edit Escalation Policy"
+          defaultValues={editingPolicy}
+          onSubmit={(data) => {
+            const payload = {
+              id: editingPolicy!.id,
+              ...data,
+              escalateToUserId:
+                typeof data.escalateToUserId === "number"
+                  ? data.escalateToUserId
+                  : undefined,
+              escalateToRole: data.escalateToRole || undefined,
+            };
+            updateMutation.mutate(payload as any);
+          }}
+          isLoading={updateMutation.isPending}
+        />
+      )}
 
       {/* Delete Confirmation */}
       <AlertDialog
@@ -992,7 +1004,7 @@ function EscalationPolicyFormDialog({
             <Label>Channels *</Label>
             <div className="flex gap-3 mt-1">
               {CHANNELS.map((ch) => {
-                const channelValues = form.watch("escalateChannels") ?? [];
+                const channelValues = form.getValues("escalateChannels") ?? [];
                 return (
                   <label
                     key={ch}

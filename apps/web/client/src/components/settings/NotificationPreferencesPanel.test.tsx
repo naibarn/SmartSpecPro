@@ -57,6 +57,24 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
+vi.mock("@tanstack/react-query", async () => {
+  const actual = await vi.importActual("@tanstack/react-query");
+  return {
+    ...actual,
+    useQuery: (opts: any) => {
+      // Mock the tenant feature flag query
+      if (opts.queryKey?.[0] === "tenant") {
+        return {
+          data: {
+            tenant: { featureFlags: { notificationPreferences: true } },
+          },
+        };
+      }
+      return { data: undefined };
+    },
+  };
+});
+
 const CATEGORIES = [
   "system_health", "media_jobs", "workflow", "skill",
   "feedback", "agency", "follow", "scheduled",

@@ -24,7 +24,6 @@ import { getCoordinatorProfile } from "./turnOrderEngine";
 import * as workItemService from "./workItemService";
 import * as roomService from "./roomService";
 import * as monitoringService from "./monitoringService";
-import type { PromptMessage } from "./promptComposer";
 import { agencyAgents, personaTemplates } from "../../drizzle/schema";
 import { getNextSpeaker, type TurnStrategy } from "./turnOrderEngine";
 import type { WorkItemStatus } from "./workItemService";
@@ -136,15 +135,6 @@ export function mapExecutionModeToTurnStrategy(
     default:
       return "lead_directed";
   }
-}
-
-export function formatPromptMessagesForAgent(messages: PromptMessage[]): string {
-  return messages
-    .map((message) => {
-      const label = message.role.toUpperCase();
-      return `[${label}]\n${message.content}`.trim();
-    })
-    .join("\n\n");
 }
 
 export function shouldContinueAutoTeamLoop(params: {
@@ -1299,6 +1289,30 @@ export function stopAutoStopChecker(runId: string): void {
 export async function recoverActiveRunsOnStartup(): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+
+  // Safety net: stop legacy runs from the pre-migration Python-bridge pipeline.
+  // This catches any runs missed by the 0105 SQL migration (e.g. manual deploy without migration).
+  const legacyRuns = await db
+    .update(teamRuns)
+    .set({
+      status: "stopped",
+      stopReason: "system_migration_051",
+      endedAt: new Date(),
+    })
+    .where(
+      and(
+        inArray(teamRuns.status, ["running", "paused"]),
+        sql`${teamRuns.stopReason} IS NULL`,
+        sql`${teamRuns.startedAt} < NOW() - INTERVAL '5 minutes'`,
+      ),
+    )
+    .returning({ id: teamRuns.id });
+
+  if (legacyRuns.length > 0) {
+    console.log(
+      `[RunRecovery] Stopped ${legacyRuns.length} legacy runs from pre-migration pipeline`,
+    );
+  }
 
   const activeRuns = await db
     .select({

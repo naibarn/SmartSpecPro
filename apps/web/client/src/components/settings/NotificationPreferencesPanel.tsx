@@ -5,6 +5,7 @@
  */
 
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -116,13 +117,39 @@ function formatMutedUntil(mutedUntil: string | Date): string {
   return d.toLocaleString();
 }
 
+/**
+ * Check if notification preferences feature is enabled for the current tenant.
+ * Uses the tenant feature flags system — section-13 will add the formal
+ * `notificationPreferences` key to TenantFeatureFlags. Until then, the flag
+ * defaults to true (enabled) since the backend endpoints already exist.
+ */
+function useNotificationPreferencesEnabled(): boolean {
+  const { data } = useQuery({
+    queryKey: ["tenant", "current"],
+    queryFn: async () => {
+      const res = await fetch("/api/tenant/current");
+      if (!res.ok) return {};
+      return res.json();
+    },
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+  });
+  const flags = data?.tenant?.featureFlags as Record<string, boolean> | undefined;
+  // Default to true — section-13 will add the formal flag
+  return flags?.notificationPreferences !== false;
+}
+
 export function NotificationPreferencesPanel() {
+  const isEnabled = useNotificationPreferencesEnabled();
   const utils = trpc.useUtils();
   const [mutatingCategories, setMutatingCategories] = useState<Set<string>>(
     new Set(),
   );
 
-  const prefsQuery = trpc.notificationPreferences.getPreferences.useQuery();
+  const prefsQuery = trpc.notificationPreferences.getPreferences.useQuery(
+    undefined,
+    { enabled: isEnabled },
+  );
 
   const upsertMutation =
     trpc.notificationPreferences.upsertPreference.useMutation({
@@ -230,6 +257,21 @@ export function NotificationPreferencesPanel() {
 
   function handleUnmute(category: Category) {
     snoozeMutation.mutate({ category, mutedUntil: null });
+  }
+
+  if (!isEnabled) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Notification Preferences
+          </h2>
+          <p className="text-gray-600">
+            Notification preferences are not yet enabled for your organization.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   if (prefsQuery.isLoading) {

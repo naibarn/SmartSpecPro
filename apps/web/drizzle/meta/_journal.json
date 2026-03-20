@@ -736,6 +736,13 @@
       "when": 1774034015155,
       "tag": "0104_mean_power_man",
       "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1774256850000,
+      "tag": "0105_stop_legacy_team_runs",
+      "breakpoints": true
     }
   ]
 }

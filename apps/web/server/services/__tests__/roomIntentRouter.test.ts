@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { TEAM_DISCUSSION_SKILL_ID } from "../internalSkills";
+import { FALLBACK_CONTENT_SKILL_ID } from "../roomIntentRouter";
 
 vi.mock("../skillDetector", () => ({
   detectSkill: vi.fn(),
@@ -49,7 +49,7 @@ describe("roomIntentRouter", () => {
     // detectSkill IS called for assistant origin (skill detection runs for all origins)
     expect(mockDetectSkill).toHaveBeenCalledTimes(1);
     // selectedSkillId should NOT be team-discussion-assistant
-    expect(decision.selectedSkillId).not.toBe(TEAM_DISCUSSION_SKILL_ID);
+    expect(decision.selectedSkillId).toBe(FALLBACK_CONTENT_SKILL_ID);
     expect(mockClassifyIntent).not.toHaveBeenCalled();
   });
 
