@@ -3,6 +3,7 @@ import type { Editor } from "@tiptap/core";
 import { parse, serialize } from "./TiptapMarkdownBridge";
 import TiptapEditor from "./TiptapEditor";
 import SourceModePanel from "./SourceModePanel";
+import { ConflictResolutionDialog } from "./ConflictResolutionDialog";
 import type {
   EditorMode,
   SaveStatus,
@@ -27,6 +28,7 @@ export default function UnifiedDocumentSurface({
   );
   const [sourceMarkdown, setSourceMarkdown] = useState(initialContent);
   const [dirty, setDirty] = useState(false);
+  const [conflictDetected, setConflictDetected] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorRef = useRef<Editor | null>(null);
@@ -56,13 +58,15 @@ export default function UnifiedDocumentSurface({
     };
   }, []);
 
-  const saveStatus: SaveStatus = isSaving
-    ? "saving"
-    : errorMessage
-      ? "error"
-      : dirty
-        ? "dirty"
-        : "clean";
+  const saveStatus: SaveStatus = conflictDetected
+    ? "conflict"
+    : isSaving
+      ? "saving"
+      : errorMessage
+        ? "error"
+        : dirty
+          ? "dirty"
+          : "clean";
 
   // NOTE: onSave is fire-and-forget — caller must set errorMessage on failure (S10)
   const doSave = useCallback(
@@ -73,11 +77,15 @@ export default function UnifiedDocumentSurface({
     [onSave],
   );
 
+  const conflictRef = useRef(false);
+  conflictRef.current = conflictDetected;
+
   const scheduleSave = useCallback(
     (md: string) => {
+      if (conflictRef.current) return; // Pause auto-save during conflict
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
-        doSave(md);
+        if (!conflictRef.current) doSave(md);
       }, AUTO_SAVE_DELAY);
     },
     [doSave],
@@ -170,6 +178,30 @@ export default function UnifiedDocumentSurface({
     return () => document.removeEventListener("keydown", handler);
   }, [immediateSave, mode, switchMode]);
 
+  // Conflict resolution handlers
+  const handleConflictOverwrite = useCallback(() => {
+    // Re-save without expectedUpdatedAt (last-write-wins)
+    setConflictDetected(false);
+    doSave(latestMarkdownRef.current);
+  }, [doSave]);
+
+  const handleConflictReload = useCallback(() => {
+    // Signal parent to reload — parent controls the data fetching
+    setConflictDetected(false);
+    setDirty(false);
+    // Reset to initial content (parent will provide new content via props)
+    const parsed = parse(initialContent);
+    setTiptapContent(parsed);
+    editorRef.current?.commands.setContent(parsed);
+    setSourceMarkdown(initialContent);
+    latestMarkdownRef.current = initialContent;
+  }, [initialContent]);
+
+  // Expose conflict trigger for parent save error handling
+  const triggerConflict = useCallback(() => {
+    setConflictDetected(true);
+  }, []);
+
   return (
     <div className="unified-document-surface flex flex-col h-full">
       {/* Minimal mode switcher — EditorToolbar replaces this in Section 04 */}
@@ -199,15 +231,17 @@ export default function UnifiedDocumentSurface({
           Source
         </button>
         <span className="ml-auto text-xs text-muted-foreground" data-testid="save-status">
-          {saveStatus === "saving"
-            ? "Saving..."
-            : saveStatus === "dirty"
-              ? "Unsaved changes"
-              : saveStatus === "error"
-                ? "Error"
-                : saveStatus === "clean"
-                  ? "Saved"
-                  : ""}
+          {saveStatus === "conflict"
+            ? "Conflict detected"
+            : saveStatus === "saving"
+              ? "Saving..."
+              : saveStatus === "dirty"
+                ? "Unsaved changes"
+                : saveStatus === "error"
+                  ? "Error"
+                  : saveStatus === "clean"
+                    ? "Saved"
+                    : ""}
         </span>
       </div>
 
@@ -237,6 +271,14 @@ export default function UnifiedDocumentSurface({
         onChange={handleSourceChange}
         visible={mode === "source"}
       />
+
+      {conflictDetected && (
+        <ConflictResolutionDialog
+          open={true}
+          onOverwrite={handleConflictOverwrite}
+          onReload={handleConflictReload}
+        />
+      )}
     </div>
   );
 }

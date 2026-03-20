@@ -8,8 +8,20 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSSEReconnect } from "@/lib/useSSEReconnect";
 import { Bell, AlarmClock, X, Check, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
+
+/** Safe navigation — blocks javascript:, data:, vbscript: protocol URLs */
+function safeNavigate(url: string, setLocation: (url: string) => void) {
+  if (!url || typeof url !== "string") return;
+  const lower = url.toLowerCase().trim();
+  if (lower.startsWith("javascript:") || lower.startsWith("data:") || lower.startsWith("vbscript:") || lower.startsWith("blob:")) {
+    console.warn("[Security] Blocked unsafe actionUrl:", url.slice(0, 50));
+    return;
+  }
+  setLocation(url);
+}
 
 export function GlobalAlerts() {
   const { user } = useAuth();
@@ -462,11 +474,147 @@ function GlobalUrgentReminders() {
   );
 }
 
+function NotificationDetailPanel({ notification: n, onBack, onNavigate }: { notification: any; onBack: () => void; onNavigate: (url: string) => void }) {
+  const meta = n.metadata as any;
+  return (
+    <div style={{ padding: "12px 16px" }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
+        <button
+          onClick={onBack}
+          style={{ background: "none", border: "none", color: "#0078d4", cursor: "pointer", padding: "2px 4px", fontSize: "12px" }}
+        >
+          &larr; Back
+        </button>
+      </div>
+
+      {/* Title + Priority */}
+      <div style={{ marginBottom: "8px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
+          <span style={{
+            fontSize: "10px",
+            padding: "1px 6px",
+            borderRadius: "4px",
+            fontWeight: 600,
+            textTransform: "uppercase",
+            background: n.priority === "critical" ? "#d32f2f" : n.priority === "high" ? "#f57c00" : n.priority === "low" ? "#666" : "#0078d4",
+            color: "#fff",
+          }}>
+            {n.priority}
+          </span>
+          {n.type && (
+            <span style={{ fontSize: "10px", color: "var(--muted-foreground, #888)" }}>
+              {n.type.replace(/_/g, " ")}
+            </span>
+          )}
+        </div>
+        <h3 style={{ fontSize: "14px", fontWeight: 600, color: "var(--foreground, #e0e0e0)", margin: 0 }}>
+          {n.title}
+        </h3>
+        <span style={{ fontSize: "11px", color: "var(--muted-foreground, #666)", marginTop: "2px", display: "block" }}>
+          {new Date(n.createdAt).toLocaleString()}
+        </span>
+      </div>
+
+      {/* Content */}
+      {n.content && (
+        <p style={{ fontSize: "13px", color: "var(--foreground, #ccc)", lineHeight: 1.5, whiteSpace: "pre-wrap", margin: "8px 0", padding: "8px", background: "var(--muted, rgba(255,255,255,0.05))", borderRadius: "6px" }}>
+          {n.content}
+        </p>
+      )}
+
+      {/* Resource Info */}
+      {n.relatedResourceType && (
+        <div style={{ fontSize: "12px", color: "var(--muted-foreground, #888)", margin: "8px 0", display: "flex", gap: "8px", alignItems: "center" }}>
+          <span style={{ padding: "1px 6px", background: "rgba(0,120,212,0.1)", borderRadius: "4px", fontSize: "11px" }}>
+            {n.relatedResourceType.replace(/_/g, " ")}
+          </span>
+          {n.relatedResourceId && (
+            <span style={{ fontFamily: "monospace", fontSize: "11px" }}>
+              ID: {n.relatedResourceId.length > 20 ? n.relatedResourceId.slice(0, 20) + "..." : n.relatedResourceId}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Error Details */}
+      {meta?.errorDetails?.errorMessage && (
+        <div style={{ margin: "8px 0", padding: "8px", background: "rgba(211,47,47,0.08)", borderRadius: "6px", borderLeft: "3px solid #d32f2f" }}>
+          <div style={{ fontSize: "11px", fontWeight: 600, color: "#d32f2f", marginBottom: "4px" }}>Error Details</div>
+          {meta.errorDetails.errorCode && (
+            <div style={{ fontSize: "11px", color: "var(--muted-foreground, #888)" }}>Code: {meta.errorDetails.errorCode}</div>
+          )}
+          <div style={{ fontSize: "12px", color: "var(--foreground, #ccc)", whiteSpace: "pre-wrap" }}>
+            {meta.errorDetails.errorMessage.length > 500 ? meta.errorDetails.errorMessage.slice(0, 500) + "..." : meta.errorDetails.errorMessage}
+          </div>
+        </div>
+      )}
+
+      {/* Metrics */}
+      {meta?.metrics && (
+        <div style={{ margin: "8px 0", display: "flex", gap: "12px", flexWrap: "wrap" }}>
+          {meta.metrics.durationMs != null && (
+            <div style={{ fontSize: "11px", color: "var(--muted-foreground, #888)" }}>
+              Duration: <strong style={{ color: "var(--foreground, #ccc)" }}>{meta.metrics.durationMs > 1000 ? `${(meta.metrics.durationMs / 1000).toFixed(1)}s` : `${meta.metrics.durationMs}ms`}</strong>
+            </div>
+          )}
+          {meta.metrics.costUsd != null && (
+            <div style={{ fontSize: "11px", color: "var(--muted-foreground, #888)" }}>
+              Cost: <strong style={{ color: "var(--foreground, #ccc)" }}>${meta.metrics.costUsd.toFixed(4)}</strong>
+            </div>
+          )}
+          {meta.metrics.itemCount != null && (
+            <div style={{ fontSize: "11px", color: "var(--muted-foreground, #888)" }}>
+              Items: <strong style={{ color: "var(--foreground, #ccc)" }}>{meta.metrics.itemCount}</strong>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Retry Info */}
+      {meta?.retryInfo && (
+        <div style={{ margin: "8px 0", padding: "6px 8px", background: "rgba(245,124,0,0.08)", borderRadius: "6px", fontSize: "12px" }}>
+          Retry {meta.retryInfo.retryCount ?? 0}/{meta.retryInfo.maxRetries ?? "?"}
+          {meta.retryInfo.nextRetryAt && ` — next: ${new Date(meta.retryInfo.nextRetryAt).toLocaleString()}`}
+        </div>
+      )}
+
+      {/* Source */}
+      {meta?.source && (
+        <div style={{ fontSize: "11px", color: "var(--muted-foreground, #666)", marginTop: "8px" }}>
+          Source: <span style={{ fontFamily: "monospace" }}>{meta.source}</span>
+        </div>
+      )}
+
+      {/* Action Button */}
+      {n.actionUrl && (
+        <button
+          onClick={() => safeNavigate(n.actionUrl, onNavigate)}
+          style={{
+            marginTop: "12px",
+            padding: "8px 16px",
+            background: "#0078d4",
+            color: "#fff",
+            border: "none",
+            borderRadius: "6px",
+            fontSize: "13px",
+            cursor: "pointer",
+            width: "100%",
+          }}
+        >
+          {n.actionLabel || "View Details"} &rarr;
+        </button>
+      )}
+    </div>
+  );
+}
+
 function GlobalNotificationBell() {
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const [showDropdown, setShowDropdown] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [detailNotification, setDetailNotification] = useState<any>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const { data } = trpc.scheduledMessages.getNotificationCount.useQuery(
@@ -497,6 +645,21 @@ function GlobalNotificationBell() {
   });
 
   const count = data?.count || 0;
+
+  // Real-time SSE for instant notification updates (with exponential backoff)
+  const handleSSEMessage = useCallback(() => {
+    utils.scheduledMessages.getNotificationCount.invalidate();
+    if (showDropdown) {
+      utils.scheduledMessages.getNotifications.invalidate();
+    }
+  }, [showDropdown, utils]);
+
+  useSSEReconnect({
+    url: "/api/notifications/stream",
+    onMessage: handleSSEMessage,
+    eventType: "notification",
+    enabled: true,
+  });
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -643,7 +806,16 @@ function GlobalNotificationBell() {
             </div>
           </div>
 
-          {/* Notification List */}
+          {/* Notification Detail or List */}
+          {detailNotification ? (
+            <div style={{ overflowY: "auto", flex: 1, maxHeight: "400px" }}>
+              <NotificationDetailPanel
+                notification={detailNotification}
+                onBack={() => setDetailNotification(null)}
+                onNavigate={(url) => { setShowDropdown(false); setDetailNotification(null); setLocation(url); }}
+              />
+            </div>
+          ) : (
           <div style={{ overflowY: "auto", flex: 1, maxHeight: "400px" }}>
             {notifications && notifications.length > 0 ? (
               notifications.map((n: any) => (
@@ -659,6 +831,13 @@ function GlobalNotificationBell() {
                     cursor: "pointer",
                   }}
                   onClick={() => {
+                    if (!n.isRead) markRead.mutate({ id: n.id });
+                    // Has structured metadata — show detail panel
+                    if ((n as any).actionUrl || (n as any).metadata || (n as any).relatedResourceType) {
+                      setDetailNotification(n);
+                      return;
+                    }
+                    // Legacy: direct navigation for conversations
                     if (n.conversationId) {
                       setShowDropdown(false);
                       setLocation(`/chat?c=${n.conversationId}`);
@@ -668,7 +847,6 @@ function GlobalNotificationBell() {
                     } else {
                       setExpandedId(expandedId === n.id ? null : n.id);
                     }
-                    if (!n.isRead) markRead.mutate({ id: n.id });
                   }}
                 >
                   {/* Unread dot */}
@@ -700,6 +878,19 @@ function GlobalNotificationBell() {
                       >
                         {n.title}
                       </span>
+                      {(n.occurrenceCount ?? 1) > 1 && (
+                        <span style={{
+                          fontSize: "10px",
+                          padding: "1px 5px",
+                          borderRadius: "4px",
+                          background: "rgba(99, 102, 241, 0.15)",
+                          color: "#818cf8",
+                          fontWeight: 600,
+                          flexShrink: 0,
+                        }}>
+                          x{n.occurrenceCount}
+                        </span>
+                      )}
                       <span style={{ fontSize: "11px", color: "var(--muted-foreground, #666)", whiteSpace: "nowrap", flexShrink: 0 }}>
                         {formatTimeAgo(n.createdAt)}
                       </span>
@@ -722,18 +913,19 @@ function GlobalNotificationBell() {
                               }),
                         }}
                       >
-                        {n.content}
+                        {(n.occurrenceCount ?? 1) > 1 ? `Latest: ${n.content}` : n.content}
                       </p>
                     )}
-                    {/* Action link for expanded alerts without conversation */}
-                    {expandedId === n.id && !n.conversationId && (
-                      <div style={{ marginTop: "6px", display: "flex", gap: "8px" }}>
-                        {n.type === "alert" && n.title?.includes("Media Job") && (
+                    {/* Action link for expanded alerts */}
+                    {expandedId === n.id && (
+                      <div style={{ marginTop: "6px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                        {/* Structured action URL (preferred) */}
+                        {(n as any).actionUrl && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               setShowDropdown(false);
-                              setLocation("/media-studio");
+                              safeNavigate((n as any).actionUrl, setLocation);
                             }}
                             style={{
                               background: "none",
@@ -744,15 +936,16 @@ function GlobalNotificationBell() {
                               padding: 0,
                             }}
                           >
-                            Open Media Studio &rarr;
+                            {(n as any).actionLabel || "View Details"} &rarr;
                           </button>
                         )}
-                        {n.type === "alert" && (n.title?.includes("credit") || n.title?.includes("Credit")) && (
+                        {/* Conversation link */}
+                        {n.conversationId && !(n as any).actionUrl && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               setShowDropdown(false);
-                              setLocation("/admin/settings");
+                              setLocation(`/chat?conversationId=${n.conversationId}`);
                             }}
                             style={{
                               background: "none",
@@ -763,50 +956,11 @@ function GlobalNotificationBell() {
                               padding: 0,
                             }}
                           >
-                            Admin Settings &rarr;
+                            Open Chat &rarr;
                           </button>
                         )}
-                        {n.type === "alert" && (n.title?.includes("latency") || n.title?.includes("API error")) && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowDropdown(false);
-                              setLocation("/admin/system-guardian");
-                            }}
-                            style={{
-                              background: "none",
-                              border: "none",
-                              color: "#0078d4",
-                              fontSize: "12px",
-                              cursor: "pointer",
-                              padding: 0,
-                            }}
-                          >
-                            System Guardian &rarr;
-                          </button>
-                        )}
-                        {n.type === "alert" && (n.title?.includes("Feedback") || n.title?.includes("feedback")) && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowDropdown(false);
-                              const ticketMatch = n.content?.match(/Ticket #(\d+)/);
-                              const ticketId = ticketMatch?.[1];
-                              setLocation(ticketId ? `/admin/feedback-hub?ticketId=${ticketId}` : "/admin/feedback-hub");
-                            }}
-                            style={{
-                              background: "none",
-                              border: "none",
-                              color: "#0078d4",
-                              fontSize: "12px",
-                              cursor: "pointer",
-                              padding: 0,
-                            }}
-                          >
-                            View Feedback &rarr;
-                          </button>
-                        )}
-                        {n.scheduledMessageId && (
+                        {/* Schedule link */}
+                        {n.scheduledMessageId && !(n as any).actionUrl && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -824,6 +978,53 @@ function GlobalNotificationBell() {
                           >
                             View Schedule &rarr;
                           </button>
+                        )}
+                        {/* Legacy fallback for old notifications without actionUrl */}
+                        {!(n as any).actionUrl && !n.conversationId && !n.scheduledMessageId && n.type === "alert" && (
+                          <>
+                            {n.title?.includes("Media Job") && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setShowDropdown(false); setLocation("/media-studio"); }}
+                                style={{ background: "none", border: "none", color: "#0078d4", fontSize: "12px", cursor: "pointer", padding: 0 }}
+                              >
+                                Open Media Studio &rarr;
+                              </button>
+                            )}
+                            {(n.title?.includes("credit") || n.title?.includes("Credit")) && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setShowDropdown(false); setLocation("/admin/settings"); }}
+                                style={{ background: "none", border: "none", color: "#0078d4", fontSize: "12px", cursor: "pointer", padding: 0 }}
+                              >
+                                Admin Settings &rarr;
+                              </button>
+                            )}
+                            {(n.title?.includes("latency") || n.title?.includes("API error")) && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setShowDropdown(false); setLocation("/admin/system-guardian"); }}
+                                style={{ background: "none", border: "none", color: "#0078d4", fontSize: "12px", cursor: "pointer", padding: 0 }}
+                              >
+                                System Guardian &rarr;
+                              </button>
+                            )}
+                            {(n.title?.includes("Feedback") || n.title?.includes("feedback")) && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation(); setShowDropdown(false);
+                                  const ticketMatch = n.content?.match(/Ticket #(\d+)/);
+                                  setLocation(ticketMatch?.[1] ? `/admin/feedback-hub?ticketId=${ticketMatch[1]}` : "/admin/feedback-hub");
+                                }}
+                                style={{ background: "none", border: "none", color: "#0078d4", fontSize: "12px", cursor: "pointer", padding: 0 }}
+                              >
+                                View Feedback &rarr;
+                              </button>
+                            )}
+                          </>
+                        )}
+                        {/* Metadata details badge */}
+                        {(n as any).metadata?.errorDetails?.errorMessage && (
+                          <span style={{ fontSize: "11px", color: "#d32f2f", background: "#ffeaea", padding: "1px 6px", borderRadius: "4px" }}>
+                            Error: {(n as any).metadata.errorDetails.errorMessage.slice(0, 80)}
+                          </span>
                         )}
                       </div>
                     )}
@@ -881,18 +1082,38 @@ function GlobalNotificationBell() {
               </div>
             )}
           </div>
+          )}
 
           {/* Footer */}
           <div
             style={{
               padding: "8px 16px",
               borderTop: "1px solid var(--border, #333)",
-              textAlign: "center",
+              display: "flex",
+              justifyContent: "center",
+              gap: "16px",
             }}
           >
             <button
               onClick={() => {
                 setShowDropdown(false);
+                setDetailNotification(null);
+                setLocation("/notifications");
+              }}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#0078d4",
+                fontSize: "12px",
+                cursor: "pointer",
+              }}
+            >
+              View All Notifications
+            </button>
+            <button
+              onClick={() => {
+                setShowDropdown(false);
+                setDetailNotification(null);
                 setLocation("/chat?panel=schedule");
               }}
               style={{
@@ -903,7 +1124,7 @@ function GlobalNotificationBell() {
                 cursor: "pointer",
               }}
             >
-              View Scheduled Alerts
+              Scheduled Alerts
             </button>
           </div>
         </div>
