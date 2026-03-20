@@ -198,9 +198,9 @@ async function createNotification(
     values.relatedResourceId = relatedResourceId;
   }
 
-  if (actionUrl) {
-    const safeUrl = sanitizeActionUrl(actionUrl);
-    if (safeUrl) values.actionUrl = safeUrl;
+  const safeActionUrl = actionUrl ? sanitizeActionUrl(actionUrl) : undefined;
+  if (safeActionUrl) {
+    values.actionUrl = safeActionUrl;
   }
 
   if (actionLabel) {
@@ -307,7 +307,7 @@ async function createNotification(
         priority,
         relatedResourceType,
         relatedResourceId,
-        actionUrl,
+        actionUrl: safeActionUrl,
         actionLabel,
         metadata,
         occurrenceCount,
