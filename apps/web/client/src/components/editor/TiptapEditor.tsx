@@ -38,6 +38,11 @@ export default function TiptapEditor({
       onUpdate?.(ed);
     },
     editorProps: {
+      attributes: {
+        role: "textbox",
+        "aria-multiline": "true",
+        "aria-label": "Document editor",
+      },
       handlePaste: (view, event, slice) => {
         if (!editorRef.current) return false;
         return handlePaste(view, event, slice, editorRef.current) || false;

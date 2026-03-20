@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import type { Editor } from "@tiptap/core";
 import { parse, serialize } from "./TiptapMarkdownBridge";
+import { checkSerializationIntegrity } from "./serialization-guard";
 import TiptapEditor from "./TiptapEditor";
 import SourceModePanel from "./SourceModePanel";
 import { ConflictResolutionDialog } from "./ConflictResolutionDialog";
@@ -59,6 +60,20 @@ export default function UnifiedDocumentSurface({
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
+  }, []);
+
+  // Check serialization integrity on initial load
+  const [serializationWarning, setSerializationWarning] = useState<
+    string | null
+  >(null);
+  useEffect(() => {
+    const result = checkSerializationIntegrity(tiptapContent);
+    if (!result.ok && result.warning) {
+      setSerializationWarning(result.warning);
+      console.warn("[Editor] Serialization integrity warning:", result.warning);
+    }
+    // Only run once on mount (initial content)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const saveStatus: SaveStatus = hasConflict
@@ -243,6 +258,22 @@ export default function UnifiedDocumentSurface({
           data-testid="error-banner"
         >
           {errorMessage}
+        </div>
+      )}
+
+      {serializationWarning && (
+        <div
+          className="bg-yellow-50 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-200 px-4 py-2 text-sm flex items-center justify-between"
+          data-testid="serialization-warning"
+        >
+          <span>{serializationWarning}</span>
+          <button
+            type="button"
+            className="ml-2 text-xs underline hover:no-underline"
+            onClick={() => setSerializationWarning(null)}
+          >
+            Dismiss
+          </button>
         </div>
       )}
 

@@ -987,6 +987,10 @@ const th: TranslationDictionary = {
   "editor.media.editCaption": "แก้ไขคำบรรยาย",
   "editor.media.replace": "แทนที่",
   "editor.media.unsafeUrl": "URL ไม่ปลอดภัย",
+  "editor.serializationWarning": "เนื้อหาบางส่วนอาจไม่ถูกรักษาในรูปแบบนี้ ใช้โหมดซอร์สเพื่อควบคุมเต็มที่",
+  "editor.errorBoundary.title": "เอดิเตอร์พบข้อผิดพลาด",
+  "editor.errorBoundary.switchToSource": "เปลี่ยนเป็นโหมดซอร์ส",
+  "editor.ariaLabel": "ตัวแก้ไขเอกสาร",
 };
 
 export default th;

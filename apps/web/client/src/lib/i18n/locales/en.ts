@@ -1012,6 +1012,10 @@ const en: TranslationDictionary = {
   "editor.media.editCaption": "Edit caption",
   "editor.media.replace": "Replace",
   "editor.media.unsafeUrl": "Unsafe URL blocked",
+  "editor.serializationWarning": "Some content may not be preserved in this format. Use Source Mode for full control.",
+  "editor.errorBoundary.title": "Editor encountered an error",
+  "editor.errorBoundary.switchToSource": "Switch to Source Mode",
+  "editor.ariaLabel": "Document editor",
 };
 
 export default en;
