@@ -722,6 +722,20 @@
       "when": 1774031348397,
       "tag": "0102_slim_red_wolf",
       "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1774033945296,
+      "tag": "0103_calm_vermin",
+      "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1774034015155,
+      "tag": "0104_mean_power_man",
+      "breakpoints": true
     }
   ]
 }

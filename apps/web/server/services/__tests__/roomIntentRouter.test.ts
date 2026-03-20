@@ -21,7 +21,16 @@ describe("roomIntentRouter", () => {
     vi.clearAllMocks();
   });
 
-  it("defaults assistant-origin turns to the internal team discussion skill", async () => {
+  it("defaults assistant-origin turns to content fallback after skill detection", async () => {
+    mockDetectSkill.mockResolvedValue({
+      detected: false,
+      skill: null,
+      confidence: 0,
+      matchedTrigger: null,
+      suggestedPrompt: null,
+      patternChainTo: null,
+    });
+
     const decision = await routeRoomIntent({
       message: "Continue the handoff.",
       origin: "assistant",
@@ -33,11 +42,14 @@ describe("roomIntentRouter", () => {
 
     expect(decision).toMatchObject({
       route: "skill",
-      selectedSkillId: TEAM_DISCUSSION_SKILL_ID,
-      reason: "assistant_discussion_default",
+      reason: "assistant_content_fallback",
       source: "fallback",
+      confidence: 0.5,
     });
-    expect(mockDetectSkill).not.toHaveBeenCalled();
+    // detectSkill IS called for assistant origin (skill detection runs for all origins)
+    expect(mockDetectSkill).toHaveBeenCalledTimes(1);
+    // selectedSkillId should NOT be team-discussion-assistant
+    expect(decision.selectedSkillId).not.toBe(TEAM_DISCUSSION_SKILL_ID);
     expect(mockClassifyIntent).not.toHaveBeenCalled();
   });
 

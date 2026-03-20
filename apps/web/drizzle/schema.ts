@@ -1,4 +1,4 @@
-import { integer, pgEnum, pgTable, text, timestamp, varchar, json, jsonb, boolean, numeric, serial, uniqueIndex, index, foreignKey, bigint, bigserial, check, type AnyPgColumn, customType } from "drizzle-orm/pg-core";
+import { integer, pgEnum, pgTable, text, timestamp, varchar, json, jsonb, boolean, numeric, serial, uniqueIndex, index, foreignKey, bigint, bigserial, check, doublePrecision, type AnyPgColumn, customType } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 /**
@@ -3161,6 +3161,88 @@ export const notificationOccurrences = pgTable("notification_occurrences", {
 
 export type NotificationOccurrence = typeof notificationOccurrences.$inferSelect;
 export type InsertNotificationOccurrence = typeof notificationOccurrences.$inferInsert;
+
+/**
+ * Valid notification categories for preference management
+ */
+export const NOTIFICATION_CATEGORIES = [
+  "system_health", "media_jobs", "workflow", "skill",
+  "feedback", "agency", "follow", "scheduled",
+  "security", "business",
+] as const;
+
+/**
+ * Notification Preferences — per-user, per-category delivery settings
+ */
+export const notificationPreferences = pgTable("notification_preferences", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  category: varchar("category", { length: 50 }).notNull(),
+  inApp: boolean("inApp").default(true).notNull(),
+  email: boolean("email").default(false).notNull(),
+  telegram: boolean("telegram").default(false).notNull(),
+  minSeverity: reminderPriorityEnum("minSeverity"),
+  mutedUntil: timestamp("mutedUntil", { withTimezone: true }),
+  emailDigestFrequency: varchar("emailDigestFrequency", { length: 10 }),
+  emailDigestHour: integer("emailDigestHour"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex("notification_preferences_user_category").on(t.userId, t.category),
+]);
+
+export type NotificationPreference = typeof notificationPreferences.$inferSelect;
+export type InsertNotificationPreference = typeof notificationPreferences.$inferInsert;
+
+/**
+ * Alert Rules — tenant-scoped metric thresholds that trigger notifications
+ */
+export const alertRules = pgTable("alert_rules", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }).notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: text("description"),
+  metricName: varchar("metricName", { length: 100 }).notNull(),
+  operator: varchar("operator", { length: 10 }).notNull(),
+  threshold: doublePrecision("threshold").notNull(),
+  windowMinutes: integer("windowMinutes").default(5).notNull(),
+  severity: reminderPriorityEnum("severity").default("high").notNull(),
+  channels: jsonb("channels").$type<string[]>().default(["in_app"]).notNull(),
+  targetRole: varchar("targetRole", { length: 20 }),
+  targetUserId: integer("targetUserId"),
+  cooldownMinutes: integer("cooldownMinutes").default(10).notNull(),
+  lastTriggeredAt: timestamp("lastTriggeredAt", { withTimezone: true }),
+  isEnabled: boolean("isEnabled").default(true).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("alert_rules_tenant_enabled").on(t.tenantId, t.isEnabled),
+]);
+
+export type AlertRule = typeof alertRules.$inferSelect;
+export type InsertAlertRule = typeof alertRules.$inferInsert;
+
+/**
+ * Escalation Policies — define escalation paths for unresolved notifications
+ */
+export const escalationPolicies = pgTable("escalation_policies", {
+  id: serial("id").primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, { onDelete: "cascade" }).notNull(),
+  name: varchar("name", { length: 100 }).notNull(),
+  triggerSeverity: reminderPriorityEnum("triggerSeverity").notNull(),
+  triggerMinutes: integer("triggerMinutes").notNull(),
+  escalateToRole: varchar("escalateToRole", { length: 20 }),
+  escalateToUserId: integer("escalateToUserId"),
+  escalateChannels: jsonb("escalateChannels").$type<string[]>().notNull(),
+  escalateMessage: text("escalateMessage"),
+  isEnabled: boolean("isEnabled").default(true).notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index("escalation_policies_tenant_enabled").on(t.tenantId, t.isEnabled),
+]);
+
+export type EscalationPolicy = typeof escalationPolicies.$inferSelect;
+export type InsertEscalationPolicy = typeof escalationPolicies.$inferInsert;
 
 /**
  * Direct Messages — user-to-user messaging

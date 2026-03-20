@@ -1,6 +1,8 @@
 import { classifyIntent } from "./skillIntentClassifier";
 import { detectSkill } from "./skillDetector";
-import { TEAM_DISCUSSION_SKILL_ID } from "./internalSkills";
+/** Fallback skill for assistant/system turns when detection confidence is too low.
+ * Must be a real skill in the registry. See also: teamRunSkillExecutor.ts (section-03 ensures eligibility). */
+export const FALLBACK_CONTENT_SKILL_ID = "general-article-writer";
 
 export type RoomIntentOrigin = "human_user" | "assistant" | "system";
 export type RoomIntentContext = "room_message" | "run_turn" | "work_item";
@@ -55,12 +57,24 @@ export async function routeRoomIntent(input: RoomIntentRouterInput): Promise<Roo
     };
   }
 
+  // For assistant/run_turn: attempt skill detection with conversation context,
+  // then fall back to general content skill (not team-discussion-assistant).
   if (input.origin !== "human_user") {
+    const assistantDetection = await detectSkill(normalized, input.conversationId, undefined, input.userId);
+    if (assistantDetection.detected && assistantDetection.skill && assistantDetection.confidence >= 0.6) {
+      return {
+        route: "skill",
+        reason: `assistant_skill_match:${assistantDetection.skill.id}`,
+        selectedSkillId: assistantDetection.skill.id,
+        confidence: assistantDetection.confidence,
+        source: "skill-detect",
+      };
+    }
     return {
       route: "skill",
-      reason: "assistant_discussion_default",
-      selectedSkillId: TEAM_DISCUSSION_SKILL_ID,
-      confidence: 0.8,
+      reason: "assistant_content_fallback",
+      selectedSkillId: FALLBACK_CONTENT_SKILL_ID,
+      confidence: 0.5,
       source: "fallback",
     };
   }

@@ -89,6 +89,8 @@ import { scopedMemoryRouter } from "./routers/scopedMemory";
 import { monitoringRouter } from "./routers/monitoring";
 import { inviteCodeRouter } from "./routers/inviteCode";
 import { userApiKeysRouter } from "./routers/userApiKeys";
+import { notificationPreferencesRouter } from "./routers/notificationPreferences";
+import { alertRulesRouter } from "./routers/alertRules";
 
 // Zod schemas for validation
 const strongPasswordSchema = z.string().min(8).refine(
@@ -1472,6 +1474,10 @@ export const appRouter = router({
 
   // Scheduled Messages / Chat Alerts
   scheduledMessages: scheduledMessagesRouter,
+
+  // Notification Preferences & Alert Rules
+  notificationPreferences: notificationPreferencesRouter,
+  alertRules: alertRulesRouter,
 
   // User Follows
   follows: followsRouter,
