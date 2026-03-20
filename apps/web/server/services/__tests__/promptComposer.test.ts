@@ -8,7 +8,7 @@ import {
 describe("promptComposer", () => {
   describe("estimateTokens", () => {
     it("estimates ~1 token per 4 chars", () => {
-      expect(estimateTokens("hello world")).toBe(3); // 11 chars / 4 = 2.75 → 3
+      expect(estimateTokens("hello world")).toBe(7); // 11 chars / 4 = 2.75 + 4 framing = 6.75 → 7
     });
 
     it("returns 0 for empty string", () => {

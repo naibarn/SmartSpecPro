@@ -12,9 +12,12 @@ import {
   personaTemplates,
   teamRoomMessages,
   teamRoomParticipants,
+  teamRooms,
   type TeamRoomMessage,
 } from "../../drizzle/schema";
 import { retrieveForPrompt, type MemorySearchResult } from "./scopedMemoryService";
+import { buildPersonaPromptSegments, type PersonaPromptSegments } from "./personaService";
+import { getEntityMemories } from "./chatService";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -25,11 +28,13 @@ export interface PromptMessage {
 
 export interface ComposePromptInput {
   assistantId: string;
-  runId: string;
+  runId?: string;
   roomId: string;
   teamId: string;
   objective: string;
+  tenantId: string;
   tokenBudget?: number;
+  initiatedByUserId?: number;
 }
 
 export interface ComposePromptResult {
@@ -57,6 +62,23 @@ const HISTORY_BUDGET_FRACTION = 0.6; // 60% of remaining for history
  */
 const CHARS_PER_TOKEN_ASCII = 4.0;
 const CHARS_PER_TOKEN_CJK = 1.5;
+
+// ─── Sanitization ───────────────────────────────────────────────────────────
+
+/** Sanitize message content to prevent stored prompt injection */
+function sanitizeHistoryContent(content: string): string {
+  const normalized = content
+    .normalize("NFKC")
+    .replace(/[\x00-\x08\x0B-\x1F\x7F\u200B-\u200F\uFEFF]/g, "");
+  return normalized
+    .replace(/\[SYSTEM\]/gi, "[SYS]")
+    .replace(/\[OBJECTIVE\]/gi, "[OBJ]")
+    .replace(/\[\/OBJECTIVE\]/gi, "[/OBJ]")
+    .replace(/\[PERSONA START\]/gi, "[PS]")
+    .replace(/\[PERSONA END\]/gi, "[PE]")
+    .replace(/<\|system\|>/gi, "")
+    .replace(/ignore (all )?previous/gi, "[filtered]");
+}
 
 // ─── Helpers (exported for testing) ─────────────────────────────────────────
 
@@ -133,11 +155,19 @@ export async function composePrompt(
   const messages: PromptMessage[] = [];
   let usedTokens = 0;
 
-  // 1. Load assistant profile + persona
+  // 0. Tenant validation — verify room belongs to tenant (prevents IDOR)
+  const [room] = await db
+    .select({ tenantId: teamRooms.tenantId })
+    .from(teamRooms)
+    .where(and(eq(teamRooms.id, input.roomId), eq(teamRooms.tenantId, input.tenantId)))
+    .limit(1);
+  if (!room) throw new Error("Room not found or tenant mismatch");
+
+  // 1. Load assistant profile + persona (scoped to tenant)
   const [profile] = await db
     .select()
     .from(assistantProfiles)
-    .where(eq(assistantProfiles.id, input.assistantId))
+    .where(and(eq(assistantProfiles.id, input.assistantId), eq(assistantProfiles.tenantId, input.tenantId)))
     .limit(1);
 
   let personaSection = "";
@@ -148,17 +178,27 @@ export async function composePrompt(
       .where(eq(personaTemplates.id, profile.personaId))
       .limit(1);
 
-    if (persona) {
-      personaSection = [
+    if (persona?.systemPromptPrefix) {
+      // Use buildPersonaPromptSegments for full persona resolution
+      const segments: PersonaPromptSegments = buildPersonaPromptSegments(persona);
+
+      const identityLines = [
         `You are ${profile.displayName ?? persona.name}.`,
         profile.roleTitle ? `Role: ${profile.roleTitle}` : "",
-        persona.systemPromptPrefix,
         profile.specialtyTags?.length
           ? `Specialties: ${profile.specialtyTags.join(", ")}`
           : "",
-      ]
-        .filter(Boolean)
-        .join("\n");
+      ].filter(Boolean).join("\n");
+
+      // segments.restrictionsBulletPoints already includes "Restrictions:\n" prefix
+      const parts = [
+        identityLines,
+        segments.prefix,
+        segments.styleInstructions ?? "",
+        segments.restrictionsBulletPoints ?? "",
+      ].filter(Boolean);
+
+      personaSection = parts.join("\n\n");
     }
   }
 
@@ -184,25 +224,19 @@ export async function composePrompt(
     usedTokens += estimateTokens(teamInfo);
   }
 
-  // 3. Objective
-  const objectiveSection = `Current objective: ${input.objective}`;
-  messages.push({ role: "system", content: objectiveSection });
-  usedTokens += estimateTokens(objectiveSection);
-
-  // 4. Retrieve memories
+  // 3. Retrieve scoped memories
   let memoryResults: MemorySearchResult[] = [];
+  let scopedMemoryTokensUsed = 0;
   try {
-    if (profile?.tenantId) {
-      memoryResults = await retrieveForPrompt(
-        profile.tenantId,
-        input.assistantId,
-        input.runId,
-        input.roomId,
-        input.teamId,
-        input.objective,
-        MEMORY_BUDGET,
-      );
-    }
+    memoryResults = await retrieveForPrompt(
+      input.tenantId,
+      input.assistantId,
+      input.runId ?? "",
+      input.roomId,
+      input.teamId,
+      input.objective,
+      MEMORY_BUDGET,
+    );
   } catch (err) {
     // Memory service may not be fully available yet
     console.warn("Memory retrieval failed:", err);
@@ -215,16 +249,56 @@ export async function composePrompt(
 
     const truncatedMemory = truncateToTokenBudget(memoryContent, MEMORY_BUDGET);
     messages.push({ role: "system", content: `Relevant memories:\n${truncatedMemory}` });
-    usedTokens += estimateTokens(truncatedMemory);
+    scopedMemoryTokensUsed = estimateTokens(truncatedMemory);
+    usedTokens += scopedMemoryTokensUsed;
   }
 
-  // 5. Conversation history
+  // 3b. Entity memory injection
+  const entityBudget = MEMORY_BUDGET - scopedMemoryTokensUsed;
+  if (input.initiatedByUserId && profile && entityBudget > 50) {
+    try {
+      const entityMems = await getEntityMemories(
+        input.initiatedByUserId,
+        undefined,
+        profile.personaId ?? null,
+      );
+      if (entityMems.length > 0) {
+        const entityContent = entityMems
+          .map((em) => `- [${em.entityType}] ${em.entityName}: ${em.facts.join("; ")}`)
+          .join("\n");
+        const truncatedEntity = truncateToTokenBudget(entityContent, entityBudget);
+        messages.push({ role: "system", content: `Known facts about the user:\n${truncatedEntity}` });
+        usedTokens += estimateTokens(truncatedEntity);
+      }
+    } catch (err) {
+      console.warn("Entity memory retrieval failed:", err);
+    }
+  }
+
+  // 4. Objective (user role with delimiters — placed after all system messages)
+  const objectiveSection = `[OBJECTIVE]\n${input.objective}\n[/OBJECTIVE]`;
+  messages.push({ role: "user", content: objectiveSection });
+  usedTokens += estimateTokens(objectiveSection);
+
+  // 5. Conversation history (scoped to current run when available)
   const historyBudget = Math.floor((totalBudget - usedTokens) * HISTORY_BUDGET_FRACTION);
+
+  // Build assistant ID → display name lookup from participants
+  const assistantNameMap = new Map<string, string>();
+  for (const p of activeAssistants) {
+    if (p.participantAssistantId && p.participantLabel) {
+      assistantNameMap.set(p.participantAssistantId, p.participantLabel);
+    }
+  }
+
+  const historyWhere = input.runId
+    ? and(eq(teamRoomMessages.roomId, input.roomId), eq(teamRoomMessages.runId, input.runId))
+    : eq(teamRoomMessages.roomId, input.roomId);
 
   const recentMessages = await db
     .select()
     .from(teamRoomMessages)
-    .where(eq(teamRoomMessages.roomId, input.roomId))
+    .where(historyWhere)
     .orderBy(desc(teamRoomMessages.createdAt))
     .limit(100);
 
@@ -232,9 +306,13 @@ export async function composePrompt(
 
   for (const msg of compressed) {
     const role: "user" | "assistant" = msg.senderType === "user" ? "user" : "assistant";
-    const prefix = msg.senderType === "assistant" ? `[${msg.senderAssistantId}] ` : "";
-    messages.push({ role, content: `${prefix}${msg.content}` });
-    usedTokens += estimateTokens(msg.content);
+    const speakerName = msg.senderAssistantId
+      ? assistantNameMap.get(msg.senderAssistantId) ?? msg.senderAssistantId
+      : "";
+    const prefix = msg.senderType === "assistant" && speakerName ? `[${speakerName}] ` : "";
+    const sanitized = sanitizeHistoryContent(msg.content);
+    messages.push({ role, content: `${prefix}${sanitized}` });
+    usedTokens += estimateTokens(sanitized);
   }
 
   return { messages, estimatedTokens: usedTokens };
