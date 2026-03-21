@@ -8,6 +8,7 @@ import { detectProviderFamily, buildWebSearchParams } from "./webSearchToolInjec
 import { getProviderForModel } from "./llmRouter";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 import { executeUnified } from "./unifiedOrchestrator";
+import { parseNextSpeakerHint } from "./executors/textSkillExecutor";
 import type { UnifiedExecutionRequest } from "./executors/types";
 import type { TeamRun } from "../../drizzle/schema";
 import type { SkillDefinition } from "@smartspec/skills";
@@ -47,14 +48,6 @@ export interface TeamRunSkillExecutionResult {
 }
 
 const GENERAL_FALLBACK_SKILL_ID = "general-article-writer";
-
-function parseNextSpeakerHint(content: string): { cleaned: string; hint?: string } {
-  const match = content.match(/\[NEXT:\s*([^\]]+)\]/i);
-  if (match) {
-    return { cleaned: content.replace(match[0], "").trimEnd(), hint: match[1].trim() };
-  }
-  return { cleaned: content };
-}
 
 async function resolveTeamRunSkill(selectedSkillId?: string): Promise<SkillDefinition> {
   if (selectedSkillId) {
@@ -107,6 +100,7 @@ export async function executeTeamRunSkillTurn(input: TeamRunSkillExecutionInput)
         "skill_resolution_failed",
         "executor_not_found",
         "capability_not_allowed",
+        "rate_limited",
       ];
       if (errorReasons.includes(result.route.reason)) {
         throw new Error(`Orchestrator error: ${result.route.reason}`);

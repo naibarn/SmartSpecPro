@@ -376,13 +376,45 @@ function buildUserMessage(
   return contentParts;
 }
 
+/** U10: Reject URLs pointing to internal/metadata endpoints (SSRF prevention). */
+function isSafeImageUrl(url: string): boolean {
+  // Allow data: URIs (base64 images) and relative paths
+  if (/^data:image\//i.test(url) || !url.startsWith("http")) return true;
+  try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname.toLowerCase();
+    // Block cloud metadata endpoints
+    if (
+      hostname === "169.254.169.254" ||
+      hostname === "metadata.google.internal" ||
+      hostname.endsWith(".internal") ||
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "[::1]" ||
+      hostname.startsWith("10.") ||
+      hostname.startsWith("192.168.") ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(hostname)
+    ) {
+      console.warn(`[contextBuilder] Blocked internal URL in image: ${hostname}`);
+      return false;
+    }
+    // Block non-http(s) schemes
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function collectImageUrls(request: UnifiedExecutionRequest): string[] {
   const urls: string[] = [];
 
   // From attachments
   if (request.attachments) {
     for (const att of request.attachments) {
-      if (att.type === "image" && att.url) {
+      if (att.type === "image" && att.url && isSafeImageUrl(att.url)) {
         urls.push(att.url);
       }
     }
@@ -391,7 +423,7 @@ function collectImageUrls(request: UnifiedExecutionRequest): string[] {
   // From dynamicParams.reference_images
   if (Array.isArray(request.dynamicParams?.reference_images)) {
     for (const img of request.dynamicParams!.reference_images as unknown[]) {
-      if (typeof img === "string" && img.length > 0) {
+      if (typeof img === "string" && img.length > 0 && isSafeImageUrl(img)) {
         urls.push(img);
       }
     }

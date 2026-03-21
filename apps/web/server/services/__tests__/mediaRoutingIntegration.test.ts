@@ -79,6 +79,13 @@ vi.mock("../../_core/tokens", () => ({
   signBearerToken: vi.fn().mockReturnValue("mock-server-token"),
 }));
 
+vi.mock("../rateLimiter", () => ({
+  skillExecutionLimiter: {
+    isAllowed: vi.fn().mockReturnValue(true),
+    getResetTime: vi.fn().mockReturnValue(0),
+  },
+}));
+
 vi.mock("../promptEnhancementService", () => ({
   buildSystemPrompt: vi.fn(),
   buildUserPrompt: vi.fn(),

@@ -1,5 +1,6 @@
 import type { SkillDefinition } from "@smartspec/skills";
 import { getSkillByIdAsync, getSkillById } from "./skillRegistry";
+import { skillExecutionLimiter } from "./rateLimiter";
 import { getExecutor } from "./executors/executorRegistry";
 import {
   buildChatContext,
@@ -116,7 +117,18 @@ export function classifyCapability(
     return "writing.review";
   }
 
-  // 5. Default
+  // 5. Skill factory detection
+  if (
+    (skill as any).executionMode === "skill_factory" ||
+    (skill as any).category === "skill_factory"
+  ) {
+    console.warn(
+      "[unifiedOrchestrator] skill_factory.create capability requested but no dedicated executor — will fallback to text",
+    );
+    return "skill_factory.create";
+  }
+
+  // 6. Default
   return "writing.article";
 }
 
@@ -145,6 +157,17 @@ export async function executeUnified(
   const traceId = request.traceId || getTraceId() || crypto.randomUUID();
 
   try {
+    // ─── Rate Limiting (U04) ─────────────────────────────────
+    const rateLimitKey = `user:${request.userId}`;
+    if (!skillExecutionLimiter.isAllowed(rateLimitKey)) {
+      return makeErrorResult(
+        request,
+        "rate_limited",
+        "Too many requests",
+        startMs,
+      );
+    }
+
     // ─── Step 0: Input Sanitization ──────────────────────────
 
     // U06: Validate routeHint.reason
@@ -588,6 +611,7 @@ export const ERROR_REASONS = new Set([
   "executor_not_found",
   "capability_not_allowed",
   "orchestrator_error",
+  "rate_limited",
 ]);
 
 function makeErrorResult(
