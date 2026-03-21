@@ -33,6 +33,7 @@ export interface TenantFeatureFlags {
   notificationUnifiedCenter: boolean; // F26 — Unified notification center admin dashboard
   notificationEmailDelivery: boolean; // F27 — Email delivery channel for notifications
   notificationWebhookDelivery: boolean; // F28 — Webhook delivery channel for notifications
+  unifiedSkillExecution: boolean; // F29 — Unified skill execution pipeline (routes chat + team room through single orchestrator)
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -70,6 +71,7 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "notificationUnifiedCenter",
   "notificationEmailDelivery",
   "notificationWebhookDelivery",
+  "unifiedSkillExecution",
 ]);
 
 /**
@@ -106,4 +108,5 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   notificationUnifiedCenter: false,
   notificationEmailDelivery: false,
   notificationWebhookDelivery: false,
+  unifiedSkillExecution: false,
 };
