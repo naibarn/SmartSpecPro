@@ -28,6 +28,7 @@ export interface TenantFeatureFlags {
   skillOrchestrator: boolean; // F21 — Hybrid Skill Orchestrator (multi-skill routing)
   orchestratorEnabled: boolean; // F22 — Virtual AI Office Orchestrator (team rooms, runs, scoped memory)
   notificationUnifiedCenter: boolean; // F23 — Unified notification center admin dashboard
+  notificationEmailDelivery: boolean; // F24 — Email delivery channel for notifications
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -60,6 +61,7 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "skillOrchestrator",
   "orchestratorEnabled",
   "notificationUnifiedCenter",
+  "notificationEmailDelivery",
 ]);
 
 /**
@@ -91,4 +93,5 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   skillOrchestrator: false,
   orchestratorEnabled: true,
   notificationUnifiedCenter: false,
+  notificationEmailDelivery: false,
 };

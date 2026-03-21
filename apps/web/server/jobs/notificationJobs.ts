@@ -9,6 +9,10 @@ import {
   initializeEscalationJob,
   shutdownEscalationJob,
 } from "./escalationJob";
+import {
+  initializeDigestJob,
+  shutdownDigestJob,
+} from "./notificationDigestJob";
 
 export async function initializeNotificationJobs(): Promise<void> {
   try {
@@ -19,7 +23,14 @@ export async function initializeNotificationJobs(): Promise<void> {
       e instanceof Error ? e.message : e
     );
   }
-  // Section-10 adds: try { await initializeDigestJob(); } catch (e) { ... }
+  try {
+    await initializeDigestJob();
+  } catch (e) {
+    console.error(
+      "[notificationJobs] digest init failed:",
+      e instanceof Error ? e.message : e
+    );
+  }
   // Section-12 adds: try { await initializeRetentionJob(); } catch (e) { ... }
 }
 
@@ -32,6 +43,13 @@ export async function shutdownNotificationJobs(): Promise<void> {
       e instanceof Error ? e.message : e
     );
   }
-  // Section-10 adds: try { await shutdownDigestJob(); } catch (e) { ... }
+  try {
+    await shutdownDigestJob();
+  } catch (e) {
+    console.error(
+      "[notificationJobs] digest shutdown failed:",
+      e instanceof Error ? e.message : e
+    );
+  }
   // Section-12 adds: try { await shutdownRetentionJob(); } catch (e) { ... }
 }

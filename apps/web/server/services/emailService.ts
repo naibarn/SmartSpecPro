@@ -25,7 +25,7 @@ let cachedConfig: SmtpConfig | null = null;
 let cacheTime = 0;
 const CACHE_TTL = 60_000; // 1 minute
 
-async function getSmtpConfig(): Promise<SmtpConfig | null> {
+export async function getSmtpConfig(): Promise<SmtpConfig | null> {
   if (cachedConfig && Date.now() - cacheTime < CACHE_TTL) return cachedConfig;
 
   try {
@@ -68,7 +68,7 @@ export function clearSmtpCache() {
   cacheTime = 0;
 }
 
-async function createTransporter(): Promise<Transporter | null> {
+export async function createTransporter(): Promise<Transporter | null> {
   const config = await getSmtpConfig();
   if (!config) return null;
 

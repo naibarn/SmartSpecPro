@@ -6,7 +6,7 @@
  */
 
 import type { DrizzleDB } from "../db";
-import { userNotifications, notificationOccurrences, notificationPreferences } from "../../drizzle/schema";
+import { userNotifications, notificationOccurrences, notificationPreferences, users } from "../../drizzle/schema";
 import { sql, eq, and } from "drizzle-orm";
 
 /**
@@ -501,6 +501,40 @@ async function createNotification(
   } catch {
     // Non-fatal — SSE listeners just won't get real-time updates
   }
+
+  // 4. Email delivery (fire-and-forget, immediate for high/critical)
+  // Note: channels.email defaults to false — only true when user has email preference enabled.
+  // Tenant-level NOTIFICATION_EMAIL_DELIVERY flag gate is added by section-13.
+  // Locale hardcoded to "en" — users table has no locale column (known gap).
+  if (channels.email && (priority === "high" || priority === "critical")) {
+    try {
+      const userRow = await db.select({
+        email: users.email,
+        name: users.name,
+      }).from(users).where(eq(users.id, userId)).limit(1);
+      if (userRow[0]?.email) {
+        const { sendNotificationEmail } = await import("./notificationEmailService");
+        await sendNotificationEmail({
+          userEmail: userRow[0].email,
+          userName: userRow[0].name ?? undefined,
+          locale: "en",
+          notification: {
+            id: notificationId,
+            type,
+            title,
+            content,
+            priority,
+            actionUrl: safeActionUrl ?? undefined,
+            actionLabel: actionLabel ?? undefined,
+            metadata: metadata as Record<string, unknown> | undefined,
+          },
+        });
+      }
+    } catch (err) {
+      console.error("[NotificationService] Email delivery failed (non-fatal):", err);
+    }
+  }
+  // Low/normal priority with email=true: handled by digest job (notificationDigestJob.ts)
 
   return { notificationId, deduplicated, channels };
 }
