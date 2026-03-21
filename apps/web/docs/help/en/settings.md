@@ -41,7 +41,14 @@ Two-factor authentication (2FA) significantly reduces the risk of unauthorized a
 
 - **Language** — choose English or Thai (ภาษาไทย). The UI, help documentation, and AI default responses adjust accordingly.
 - **Theme** — Light, Dark, or System (follows your OS setting).
-- **Notification settings** — control email notifications for completed jobs, credit alerts, and system announcements.
+
+## Notifications
+
+The Notifications tab gives you fine-grained control over how you receive alerts for each notification category. Configure delivery channels (in-app, email, Telegram), minimum severity thresholds, mute schedules, and email digest frequency per category.
+
+See the [Notification Preferences](./notification-settings.md) guide for full details on categories, channels, and digest options.
+
+Requires feature flag: `notificationPreferencesEnabled`.
 
 ## Automation
 
@@ -74,7 +81,13 @@ Two-factor authentication (2FA) significantly reduces the risk of unauthorized a
 
 ## Personas
 
-The Personas tab is a shortcut to managing your custom AI personalities. See the [AI Personas](./personas.md) guide for full details on creating, editing, and using personas in chat.
+The Personas tab is the shortcut for managing your custom AI personalities. It now includes several important controls:
+
+- **Nickname** — lets you call a persona quickly from Chat with `@nickname`
+- **Working Hours** — define day-by-day availability with a timezone
+- **Default persona** — choose which persona should start your new chats
+
+See the [AI Personas](./personas.md) guide for full details on creating, editing, and using personas in chat.
 
 ## Tips
 
