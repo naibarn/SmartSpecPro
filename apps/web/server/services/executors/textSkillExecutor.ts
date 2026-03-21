@@ -19,7 +19,7 @@ export function parseNextSpeakerHint(
   const match = content.match(/\[NEXT:\s*([^\]]+)\]/i);
   if (match) {
     return {
-      cleaned: content.replace(match[0], "").trimEnd(),
+      cleaned: content.replace(/\s*\[NEXT:[^\]]+\]\s*/i, " ").trim(),
       hint: match[1].trim(),
     };
   }
@@ -51,6 +51,8 @@ export class TextSkillExecutor implements CapabilityExecutor {
       extraBodyParams: input.extraBodyParams,
       enableThinking: input.enableThinking,
       stream: input.stream,
+      maxTokens: input.maxTokens,
+      temperature: input.temperature,
     });
 
     if (!llmResult.success) {

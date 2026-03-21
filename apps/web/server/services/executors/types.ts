@@ -146,6 +146,8 @@ export interface ExecutorInput {
   channel: "chat" | "team_room";
   traceId?: string;
   stream?: boolean;
+  maxTokens?: number;
+  temperature?: number;
 }
 
 export interface ExecutorResult {
