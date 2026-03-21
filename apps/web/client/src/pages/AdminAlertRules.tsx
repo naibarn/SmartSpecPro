@@ -4,9 +4,12 @@
  * listEscalationPolicies, createEscalationPolicy, updateEscalationPolicy, deleteEscalationPolicy.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
+import { HelpButton } from "@/components/help";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -110,6 +113,7 @@ const alertRuleFormSchema = z.object({
 });
 
 type AlertRuleFormData = z.infer<typeof alertRuleFormSchema>;
+type AlertRuleFormInput = z.input<typeof alertRuleFormSchema>;
 
 const escalationPolicyFormSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -123,6 +127,7 @@ const escalationPolicyFormSchema = z.object({
 });
 
 type EscalationPolicyFormData = z.infer<typeof escalationPolicyFormSchema>;
+type EscalationPolicyFormInput = z.input<typeof escalationPolicyFormSchema>;
 
 // ─── Alert Rules Tab ────────────────────────────────────────────────────────
 
@@ -364,7 +369,7 @@ function AlertRuleFormDialog({
   onSubmit: (data: AlertRuleFormData) => void;
   isLoading: boolean;
 }) {
-  const form = useForm<AlertRuleFormData>({
+  const form = useForm<AlertRuleFormInput, unknown, AlertRuleFormData>({
     resolver: zodResolver(alertRuleFormSchema),
     defaultValues: defaultValues
       ? {
@@ -634,7 +639,10 @@ function EscalationPoliciesTab() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
-  const policiesQuery = trpc.alertRules.listEscalationPolicies.useQuery();
+  const policiesQuery = trpc.alertRules.listEscalationPolicies.useQuery({
+    limit: 50,
+    offset: 0,
+  });
 
   const createMutation =
     trpc.alertRules.createEscalationPolicy.useMutation({
@@ -666,13 +674,14 @@ function EscalationPoliciesTab() {
       onError: (err) => toast.error(err.message || "Failed to delete policy"),
     });
 
-  const policies = policiesQuery.data ?? [];
+  const policies = policiesQuery.data?.policies ?? [];
+  const totalPolicies = policiesQuery.data?.total ?? policies.length;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-500">
-          {policies.length} policies configured
+          {totalPolicies} policies configured
         </p>
         <Button onClick={() => setIsCreateOpen(true)} size="sm">
           <Plus className="w-4 h-4 mr-1" />
@@ -876,7 +885,11 @@ function EscalationPolicyFormDialog({
   onSubmit: (data: EscalationPolicyFormData) => void;
   isLoading: boolean;
 }) {
-  const form = useForm<EscalationPolicyFormData>({
+  const form = useForm<
+    EscalationPolicyFormInput,
+    unknown,
+    EscalationPolicyFormData
+  >({
     resolver: zodResolver(escalationPolicyFormSchema),
     defaultValues: defaultValues
       ? {
@@ -1082,6 +1095,30 @@ function EscalationPolicyFormDialog({
 
 export default function AdminAlertRules() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
+  const featureEnabled = useTenantFeatureFlag("notificationPreferencesEnabled");
+
+  useEffect(() => {
+    if (user && user.role !== "admin" && user.role !== "domain_admin") {
+      setLocation("/dashboard");
+    }
+  }, [user, setLocation]);
+
+  if (!featureEnabled) {
+    return (
+      <div className="mx-auto max-w-7xl p-6">
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <BellRing className="mb-4 h-12 w-12 text-muted-foreground" />
+            <h2 className="text-lg font-semibold">Feature Not Enabled</h2>
+            <p className="text-muted-foreground">
+              Alert Rules & Escalation is not enabled for this tenant.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-pink-50/20">
@@ -1111,6 +1148,7 @@ export default function AdminAlertRules() {
                 </p>
               </div>
             </div>
+            <HelpButton page="/admin/alert-rules" variant="ghost" size="sm" />
           </div>
         </div>
       </header>

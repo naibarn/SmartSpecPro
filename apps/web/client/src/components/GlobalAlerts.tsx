@@ -1126,6 +1126,22 @@ function GlobalNotificationBell() {
             >
               Scheduled Alerts
             </button>
+            <button
+              onClick={() => {
+                setShowDropdown(false);
+                setDetailNotification(null);
+                setLocation("/settings?tab=notifications");
+              }}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#6b7280",
+                fontSize: "12px",
+                cursor: "pointer",
+              }}
+            >
+              Preferences
+            </button>
           </div>
         </div>
       )}

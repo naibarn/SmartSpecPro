@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { HelpButton } from "@/components/help";
 import {
   Select,
   SelectContent,
@@ -161,6 +162,8 @@ export default function AdminNotifications() {
           <Bell className="h-6 w-6" />
           <h1 className="text-2xl font-bold">Notification Center</h1>
         </div>
+        <div className="flex items-center gap-2">
+        <HelpButton page="/admin/notifications" variant="ghost" size="sm" />
         <Button
           variant="outline"
           size="sm"
@@ -175,6 +178,7 @@ export default function AdminNotifications() {
           />
           Refresh
         </Button>
+        </div>
       </div>
 
       {/* Stat Cards */}
