@@ -32,6 +32,14 @@ import type {
   ExecutionTelemetry,
 } from "./executors/types";
 
+// ─── Executor Self-Registration (side-effect imports) ────────
+// Importing these modules triggers their self-registration with the executor registry
+
+import "./executors/textSkillExecutor";
+import "./executors/imageExecutor";
+import "./executors/videoExecutor";
+import "./executors/audioExecutor";
+
 // ─── Constants ──────────────────────────────────────────────
 
 const ROUTER_VERSION = "1.0.0";
