@@ -132,12 +132,7 @@ const ALLOWED_ROUTE_REASONS = new Set([
   "fallback",
 ]);
 
-// ─── Security: Sensitive dynamicParams keys to strip ────────
-
-const STRIPPED_DYNAMIC_PARAM_KEYS = new Set([
-  "userToken",
-  "apiConfig",
-]);
+// ─── Security: Keys stripped from dynamicParams to prevent auth bypass ────
 
 const SYSTEM_PROMPT_MAX_CHARS = 12_000;
 
@@ -163,20 +158,17 @@ export async function executeUnified(
       };
     }
 
-    // U01: Strip sensitive keys from dynamicParams (userToken, apiConfig)
+    // U01: Strip client-supplied auth tokens from dynamicParams
     // Media executors get server-generated tokens instead
-    if (request.dynamicParams) {
-      const sanitized = { ...request.dynamicParams };
-      for (const key of STRIPPED_DYNAMIC_PARAM_KEYS) {
-        delete sanitized[key];
-      }
-      // U01: Inject server-generated bearer token for media executors
-      sanitized.__serverUserToken = signBearerToken(
-        { sub: String(request.userId), tenantId: request.tenantId },
-        "5m",
-      );
-      request = { ...request, dynamicParams: sanitized };
-    }
+    const sanitized = { ...(request.dynamicParams ?? {}) };
+    // Only strip userToken (auth bypass risk); keep apiConfig (needed for provider routing)
+    delete sanitized.userToken;
+    // U01: Always inject server-generated bearer token for media executors
+    sanitized.__serverUserToken = signBearerToken(
+      { sub: String(request.userId), tenantId: request.tenantId },
+      "5m",
+    );
+    request = { ...request, dynamicParams: sanitized };
 
     // ─── Step 1: Resolve Skill ──────────────────────────────
     const skillId = request.routeHint?.selectedSkillId;
@@ -250,7 +242,7 @@ export async function executeUnified(
 
     // Audit: unified_route
     auditLogger.log({
-      eventType: "unified_route" as any,
+      eventType: "unified_route",
       userId: request.userId,
       requestPayload: {
         capability,
@@ -468,7 +460,7 @@ export async function executeUnified(
 
     // Audit: unified_credit
     auditLogger.log({
-      eventType: "unified_credit" as any,
+      eventType: "unified_credit",
       userId: request.userId,
       requestPayload: {
         creditMode,
@@ -569,7 +561,7 @@ export async function executeUnified(
     // Unrecoverable error — log full details server-side only
     const errorDetail = String(err);
     auditLogger.log({
-      eventType: "unified_error" as any,
+      eventType: "unified_error",
       userId: request.userId,
       requestPayload: {
         error: errorDetail,

@@ -333,10 +333,15 @@ function buildUserMessage(
           v !== "" &&
           !EXCLUDED_PARAM_KEYS.has(k),
       )
-      .map(
-        ([k, v]) =>
-          `- ${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`,
-      )
+      .map(([k, v]) => {
+        const raw = typeof v === "object" ? JSON.stringify(v) : String(v);
+        // Escape XML special chars to prevent fence-breaking injection
+        const safe = raw
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+        return `- ${k}: ${safe}`;
+      })
       .join("\n");
     if (paramSummary) {
       userText += `\n\n<form_inputs>\n${paramSummary}\n</form_inputs>`;

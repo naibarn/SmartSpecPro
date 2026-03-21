@@ -69,9 +69,10 @@ export class ImageGenerationExecutor implements CapabilityExecutor {
         totalDurationMs: Date.now() - startMs,
       };
     } catch (err: any) {
+      console.error("[imageExecutor] dispatch failed:", err);
       return {
         success: false,
-        error: err?.message || String(err),
+        error: "media_generation_failed",
         inputTokens: 0,
         outputTokens: 0,
         attempts: [],

@@ -346,14 +346,17 @@ describe("unifiedOrchestrator", () => {
       });
 
       it("chat with activePersonaId passes skill systemPrompt", async () => {
-        const req = buildRequest({
-          conversationContext: { activePersonaId: "persona-1" },
-        });
-
-        await executeUnified(req);
+        await executeUnified(
+          buildRequest({
+            conversationContext: { activePersonaId: "persona-1" },
+          }),
+        );
 
         expect(mockBuildChatContext).toHaveBeenCalledWith(
-          req,
+          expect.objectContaining({
+            channel: "chat",
+            conversationContext: { activePersonaId: "persona-1" },
+          }),
           "You are a helpful writer",
           null,
         );
@@ -363,19 +366,22 @@ describe("unifiedOrchestrator", () => {
     // ─── Context Building -- Team Room ──────────────────────────────────
     describe("Context Building -- Team Room channel", () => {
       it("team room calls buildTeamContext which delegates to composePrompt", async () => {
-        const req = buildRequest({
-          channel: "team_room",
-          teamContext: {
-            assistantId: "a1",
-            roomId: "r1",
-            teamId: "t1",
-            objective: "Write a report",
-          },
-        });
+        await executeUnified(
+          buildRequest({
+            channel: "team_room",
+            teamContext: {
+              assistantId: "a1",
+              roomId: "r1",
+              teamId: "t1",
+              objective: "Write a report",
+            },
+          }),
+        );
 
-        await executeUnified(req);
-
-        expect(mockBuildTeamContext).toHaveBeenCalledWith(req, "tenant-1");
+        expect(mockBuildTeamContext).toHaveBeenCalledWith(
+          expect.objectContaining({ channel: "team_room" }),
+          "tenant-1",
+        );
       });
     });
 

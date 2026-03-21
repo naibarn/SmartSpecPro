@@ -157,7 +157,8 @@ describe("ImageGenerationExecutor", () => {
       const result = await executor.execute(makeInput());
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain("Provider unavailable");
+      // Error is sanitized — no raw provider details exposed
+      expect(result.error).toBe("media_generation_failed");
       expect(result.mediaJob).toBeUndefined();
     });
 

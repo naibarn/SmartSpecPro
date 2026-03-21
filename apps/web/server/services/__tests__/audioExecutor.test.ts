@@ -128,7 +128,7 @@ describe("AudioGenerationExecutor", () => {
       const result = await executor.execute(makeInput());
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain("TTS service down");
+      expect(result.error).toBe("media_generation_failed");
       expect(result.mediaJob).toBeUndefined();
     });
 

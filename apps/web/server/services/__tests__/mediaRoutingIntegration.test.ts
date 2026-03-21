@@ -415,7 +415,7 @@ describe("Media Routing Integration", () => {
 
       expect(result.route.capability).toBe("media.image");
       expect(result.metadata.success).toBe(false);
-      expect(result.metadata.error).toContain("Provider unavailable");
+      expect(result.metadata.error).toBe("media_generation_failed");
     });
 
     it("credit mode calculate_only returns cost without deduction", async () => {
