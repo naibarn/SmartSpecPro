@@ -26,6 +26,8 @@ export interface TenantFeatureFlags {
   publicApi: boolean; // F19 — Public API & External Agent Gateway
   multimodalMemory: boolean; // F20 — Multimodal chat memory (image analysis, embedding, retrieval)
   skillOrchestrator: boolean; // F21 — Hybrid Skill Orchestrator (multi-skill routing)
+  orchestratorEnabled: boolean; // F22 — Virtual AI Office Orchestrator (team rooms, runs, scoped memory)
+  notificationUnifiedCenter: boolean; // F23 — Unified notification center admin dashboard
 }
 
 export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
@@ -56,6 +58,8 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "publicApi",
   "multimodalMemory",
   "skillOrchestrator",
+  "orchestratorEnabled",
+  "notificationUnifiedCenter",
 ]);
 
 /**
@@ -85,4 +89,6 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   publicApi: false,
   multimodalMemory: false,
   skillOrchestrator: false,
+  orchestratorEnabled: true,
+  notificationUnifiedCenter: false,
 };
